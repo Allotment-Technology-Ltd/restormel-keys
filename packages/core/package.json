@@ -16,11 +16,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/allotment-technology/restormel-keys.git"
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git"
   },
-  "homepage": "https://github.com/allotment-technology/restormel-keys#readme",
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys#readme",
   "bugs": {
-    "url": "https://github.com/allotment-technology/restormel-keys/issues"
+    "url": "https://github.com/allotment-technology-Ltd/restormel-keys/issues"
   },
   "files": [
     "dist",

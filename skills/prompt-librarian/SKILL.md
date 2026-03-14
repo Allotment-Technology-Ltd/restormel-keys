@@ -8,18 +8,18 @@ Keep prompt assets governed: known location, clear status, and a path to promote
 
 ## When to use
 
-- Adding or moving prompt files (e.g. under prompts/ or docs/Reference).
+- Adding or moving prompt files (e.g. under prompts/ or docs/reference).
 - Cleaning up prompt sprawl or deciding “is this canonical?”
 - Deciding whether a repeated prompt should become a Skill, Rule, or Subagent.
 
 ## Inputs
 
-- Prompt files and locations (e.g. prompts/canonical|reference|archive, docs/Reference, bootstrap_prompts.md).
+- Prompt files and locations (e.g. prompts/canonical|reference|archive, docs/reference, bootstrap_prompts.md).
 - docs/prompt-governance.md and docs/prompts-reference.md (current inventory and rules).
 
 ## Workflow
 
-1. List all prompt-like files (prompts/*, docs/Reference/* prompt packs, bootstrap_prompts, etc.).
+1. List all prompt-like files (prompts/*, docs/reference/* prompt packs, bootstrap_prompts, etc.).
 2. For each: assign class (canonical / reference / archive) and document in docs/prompts-reference.md.
 3. Check for repeated workflows → recommend Skill; stable repo law → recommend Rule; narrow specialist review → recommend Subagent.
 4. Update docs/prompts-reference.md with inventory and any promotion recommendations.

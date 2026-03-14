@@ -4,7 +4,7 @@
 
 ## Narrow purpose
 
-Given a **concrete change** (list of files or topics changed), check: (1) Is the same operational truth stated in more than one doc? (2) Should STATUS, ROADMAP, CHANGELOG, ARCHITECTURE, or a canonical docs/ doc be updated for this change but wasn’t? (3) Is any docs/Reference or prompt pack being used as canonical without being in docs/prompts-reference.md? Output only **warnings** and **concrete update actions**. Do not edit; do not do full “doc quality” review. Scope = duplicate truth + missing update for this change.
+Given a **concrete change** (list of files or topics changed), check: (1) Is the same operational truth stated in more than one doc? (2) Should STATUS, ROADMAP, CHANGELOG, ARCHITECTURE, or a canonical docs/ doc be updated for this change but wasn’t? (3) Is any docs/reference or prompt pack being used as canonical without being in docs/prompts-reference.md? Output only **warnings** and **concrete update actions**. Do not edit; do not do full “doc quality” review. Scope = duplicate truth + missing update for this change.
 
 ## Inputs
 

@@ -4,7 +4,7 @@
 
 ## Narrow purpose
 
-Given a **list of prompt files** (paths or “full inventory”: prompts/*, docs/Reference/*, bootstrap_prompts, etc.), assign **class** (canonical | reference | archive) and, if applicable, **promotion** (Skill | Rule | Subagent | —). Output a single table. Do not move files; do not edit docs/prompts-reference.md or docs/prompt-governance.md. Rule 05 defines governance; this subagent only classifies and recommends.
+Given a **list of prompt files** (paths or “full inventory”: prompts/*, docs/reference/*, bootstrap_prompts, etc.), assign **class** (canonical | reference | archive) and, if applicable, **promotion** (Skill | Rule | Subagent | —). Output a single table. Do not move files; do not edit docs/prompts-reference.md or docs/prompt-governance.md. Rule 05 defines governance; this subagent only classifies and recommends.
 
 ## Inputs
 

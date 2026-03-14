@@ -4,7 +4,7 @@
 
 Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/bootstrap-plan.md](docs/bootstrap-plan.md) and [docs/working-agreement.md](docs/working-agreement.md).
 
-**Cursor context:** Use **docs/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/Reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/cursor-indexing-policy.md](docs/cursor-indexing-policy.md).
+**Cursor context:** Use **docs/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/cursor-indexing-policy.md](docs/cursor-indexing-policy.md).
 
 ## How to work
 

@@ -18,14 +18,14 @@ Thumbs.db
 tmp/
 temp/
 
-# Duplicate: canonical plan is docs/bootstrap-plan.md
+# Ignore wrongly-named duplicate if present; canonical plan is docs/bootstrap-plan.md
 docs/bootstrap_plan.md
 
 # Archive: not active guidance (see docs/prompt-governance.md)
-docs/Archive/
+docs/archive/
 
 # Phase 1–4 prompt packs: reference for later; use @ when needed (keeps Phase 00 focus)
-docs/Reference/07-prompt-pack-phase-1.md
-docs/Reference/08-prompt-pack-phase-2.md
-docs/Reference/09-prompt-pack-phase-3.md
-docs/Reference/10-prompt-pack-phase-4.md
+docs/reference/07-prompt-pack-phase-1.md
+docs/reference/08-prompt-pack-phase-2.md
+docs/reference/09-prompt-pack-phase-3.md
+docs/reference/10-prompt-pack-phase-4.md
