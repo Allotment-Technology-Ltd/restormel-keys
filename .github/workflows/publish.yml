@@ -1,5 +1,6 @@
 # Publish @restormel/keys to npm on tag keys-v* (e.g. keys-v0.1.0).
 # pnpm version must match root package.json "packageManager" (9.0.0).
+# Provenance is omitted: npm only accepts provenance for public GitHub repos (private repo = 422).
 name: Publish
 on:
   push:
@@ -12,9 +13,6 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -33,6 +31,6 @@ jobs:
         run: pnpm --filter @restormel/keys run build
       - name: Publish to npm
         working-directory: packages/core
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
