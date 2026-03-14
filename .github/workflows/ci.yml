@@ -145,9 +145,10 @@ jobs:
           cache: 'pnpm'
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Build workspace (keys, elements, react) for demo-next
+      - name: Build workspace (keys, svelte, elements, react) for demo-next
         run: |
           pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/keys-svelte run build
           pnpm --filter @restormel/keys-elements run build
           pnpm --filter @restormel/keys-react run build
       - name: Build demo-next
