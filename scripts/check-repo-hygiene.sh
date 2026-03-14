@@ -6,8 +6,8 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MISSING=0
 
-# Top-level dirs
-for dir in .cursor/rules .github/workflows .github/ISSUE_TEMPLATE apps packages scripts Docs prompts skills subagents; do
+# Top-level dirs (use docs/ lowercase to match workflows and Linux CI)
+for dir in .cursor/rules .github/workflows .github/ISSUE_TEMPLATE apps packages scripts docs prompts skills subagents; do
   if [ ! -d "$ROOT/$dir" ]; then
     echo "Missing dir: $dir — create with: mkdir -p $dir"
     MISSING=1
