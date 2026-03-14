@@ -29,6 +29,8 @@ Thumbs.db
 tmp/
 temp/
 
+# Next.js / framework build (do not commit)
+.next/
+
 # Optional: uncomment when packages exist
 # packages/*/dist/
-# apps/*/.next/
