@@ -13,7 +13,9 @@ Pulumi stack for dashboard (Cloud Run), Artifact Registry, and load balancer on 
 
 ## Required GCP permissions
 
-The identity running `pulumi up` (your user or a service account) must have these permissions on the target project. If you see **403 Permission denied** for:
+**Two different identities:**
+
+1. **Identity running `pulumi up`** (your user or a service account) must have these permissions on the target project. If you see **403 Permission denied** for:
 
 | Error / resource | Required permission / role |
 |------------------|-----------------------------|
@@ -55,6 +57,8 @@ done
 ```
 
 Or in **GCP Console:** IAM & Admin → IAM → select the principal → Edit → Add another role → add the four roles above → Save.
+
+2. **Deploy identity (GitHub Actions)** — the service account used by the Deploy workflow (WIF or key-based) must have **Artifact Registry Writer** and **Cloud Run Admin** on the same project so it can push the site image and deploy. See [docs/domain-mapping-restormel-dev.md](../docs/domain-mapping-restormel-dev.md) §9 (Troubleshooting: `uploadArtifacts` denied).
 
 ## Enable APIs
 

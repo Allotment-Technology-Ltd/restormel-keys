@@ -27,9 +27,10 @@ env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
 jobs:
+  # Skip on fork PRs and Dependabot: secrets (GCP_PROJECT_ID, WIF_*) are not passed (Resource not accessible by integration).
   infra-preview:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     permissions:
       contents: read
       id-token: write
@@ -123,6 +124,14 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
+
+      # Diagnostic: identity and repo existence (helps debug uploadArtifacts denied)
+      - name: Diagnose GCP Artifact Registry
+        run: |
+          echo "Active account:"
+          gcloud auth list
+          echo "Artifact Registry repo (must exist; deploy identity needs roles/artifactregistry.writer):"
+          gcloud artifacts repositories describe restormel-keys --location=europe-west2 --project="${{ secrets.GCP_PROJECT_ID }}" || echo "Repo missing or no permission to describe — create with 'pulumi up' in infra/ and grant deploy SA roles/artifactregistry.writer"
 
       - name: Build site image
         run: |

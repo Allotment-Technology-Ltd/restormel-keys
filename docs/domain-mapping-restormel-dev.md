@@ -192,6 +192,23 @@ On **push to `main`** (when `apps/**`, `infra/**`, `Dockerfile.site`, or `.githu
 
 ## 9. Troubleshooting
 
+- **`Permission 'artifactregistry.repositories.uploadArtifacts' denied` (CI push)**  
+  The identity used by the Deploy workflow (the **WIF service account** from `WIF_SERVICE_ACCOUNT`, or the service account from your GitHub Actions credentials) does not have permission to push images. Do **both**:
+  1. **Ensure the Artifact Registry repo exists:** run `pulumi up` in `infra/` so the `restormel-keys` repository is created in `europe-west2`.
+  2. **Grant the deploy identity Artifact Registry Writer** on the project (replace `PROJECT_ID` and the principal; use the email shown in the workflow’s “Diagnose GCP Artifact Registry” step as the principal):
+     ```bash
+     gcloud projects add-iam-policy-binding PROJECT_ID \
+       --member="serviceAccount:YOUR_DEPLOY_SA_EMAIL" \
+       --role="roles/artifactregistry.writer"
+     ```
+     For Cloud Run deploy you also need **Cloud Run Admin** (or **Editor**):
+     ```bash
+     gcloud projects add-iam-policy-binding PROJECT_ID \
+       --member="serviceAccount:YOUR_DEPLOY_SA_EMAIL" \
+       --role="roles/run.admin"
+     ```
+     Then re-run the Deploy workflow (push to `main` or re-run the failed job).
+
 - **Certificate stuck in PROVISIONING**  
   Google needs the DNS A records to point to the load balancer IP before it can issue the cert. Confirm both apex and www resolve to that IP; then wait up to ~60 minutes.
 
