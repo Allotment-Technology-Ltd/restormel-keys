@@ -3,10 +3,10 @@ name: Docs
 on:
   push:
     branches: [main, master]
-    paths: ['docs/**', 'docs/**', 'README.md', 'ROADMAP.md', 'STATUS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'ARCHITECTURE.md']
+    paths: ['docs/**', 'README.md', 'ROADMAP.md', 'STATUS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'ARCHITECTURE.md']
   pull_request:
     branches: [main, master]
-    paths: ['docs/**', 'docs/**', 'README.md', 'ROADMAP.md', 'STATUS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'ARCHITECTURE.md']
+    paths: ['docs/**', 'README.md', 'ROADMAP.md', 'STATUS.md', 'CHANGELOG.md', 'CONTRIBUTING.md', 'ARCHITECTURE.md']
 jobs:
   docs-check:
     runs-on: ubuntu-latest
