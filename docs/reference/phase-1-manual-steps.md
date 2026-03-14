@@ -227,7 +227,7 @@ Nothing to paste back into Cursor; just ensure your deployment/config uses a sec
 - **If the npm Publish workflow failed:** the exact error message from the failed step (or a short screenshot).
 - **If CI failed:** the error message or a screenshot of the failed job.
 - **If you changed `packages/core/package.json` (repository/homepage/bugs):** no need to paste; just confirm the file is saved and committed.
-- **After everything succeeds:** a short confirmation, e.g. “Phase 1 manual steps done: CI green, tag pushed, Publish workflow green, npm shows @restormel/keys@0.1.0.”
+- **After everything succeeds:** a short confirmation, e.g. “Phase 1 manual steps done: CI green, tag pushed, Publish workflow green, npm shows @restormel/keys@0.1.0.” (First publish is complete as of v0.1.0.)
 - **Do not** paste your NPM_TOKEN or any other secret into Cursor.
 
 ---
@@ -247,7 +247,7 @@ Nothing to paste back into Cursor; just ensure your deployment/config uses a sec
 After you’ve finished the steps above (and the Publish workflow has succeeded), you can say:
 
 ```
-Phase 1 manual steps are done. I added NPM_TOKEN to GitHub, pushed the keys-v0.1.0 tag, and the Publish workflow succeeded. npm info @restormel/keys shows the package. Please update STATUS.md and any docs that reference “first publish” or “phase 1 complete” to reflect that @restormel/keys v0.1.0 is published, and add a short note to CHANGELOG for the first npm release.
+Phase 1 manual steps are done. I added NPM_TOKEN to GitHub, pushed the keys-v0.1.0 tag, and the Publish workflow succeeded. npm info @restormel/keys shows the package. **First publish complete:** @restormel/keys v0.1.0 is published; STATUS.md, ROADMAP, and CHANGELOG have been updated. Original request was: update STATUS.md and any docs that reference “first publish” or “phase 1 complete” to reflect that @restormel/keys v0.1.0 is published, and add a short note to CHANGELOG for the first npm release.
 ```
 
 If the Publish workflow failed:

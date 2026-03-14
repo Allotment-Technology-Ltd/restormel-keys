@@ -1,4 +1,4 @@
 config:
   gcp:project: restormel-keys-prod
   gcp:region: europe-west2
-  restormel-keys:domain: ""  # Set for managed SSL (e.g. dashboard.example.com)
+  restormel-keys:domain: "" # Set for managed SSL (e.g. dashboard.example.com)

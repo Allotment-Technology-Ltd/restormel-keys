@@ -6,7 +6,7 @@
 
 ### Phase 1: Foundation + core extraction (Weeks 1–2)
 
-Repo created. CI/CD from SOPHIA. Pulumi infra. `@restormel/keys` core: routing, cost, entitlements, wallet, validator, types. Provider adapters (OpenAI, Anthropic, Google). Storage adapters (memory, encrypted-local). Server middleware. Unit tests >80%. npm publish v0.1.0.
+Repo created. CI/CD from SOPHIA. Pulumi infra. `@restormel/keys` core: routing, cost, entitlements, wallet, validator, types. Provider adapters (OpenAI, Anthropic, Google). Storage adapters (memory, encrypted-local). Server middleware. Unit tests >80%. **Done:** npm publish v0.1.0 (first publish complete; `npm info @restormel/keys` shows package).
 
 **Gate:** `npm install @restormel/keys` works. SvelteKit app can configure providers and route requests.
 

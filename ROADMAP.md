@@ -9,7 +9,8 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 ## Phase 01 — Implementation (current)
 
-- To be executed per product direction: [docs/00-master-index.md](docs/00-master-index.md) and strategy docs in [docs/](docs/).
+- **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
+- Next: Phase 2 per product direction ([docs/00-master-index.md](docs/00-master-index.md), strategy docs in [docs/](docs/)).
 
 ---
 
