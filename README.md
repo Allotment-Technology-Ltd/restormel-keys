@@ -1,6 +1,6 @@
 # Restormel Keys
 
-Library-first BYOK and provider-routing product. Headless core is the product; UI wrappers are delivery mechanisms.
+Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless core is the product; UI wrappers are delivery mechanisms.
 
 **Phase:** 01 (gate lifted). **State:** [STATUS.md](STATUS.md) | **Plan:** [docs/bootstrap-plan.md](docs/bootstrap-plan.md)
 
