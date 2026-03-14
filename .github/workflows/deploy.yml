@@ -66,6 +66,27 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      # #region agent log — validate WIF secrets format (no secret values logged)
+      - name: Validate WIF format
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+        run: |
+          set -e
+          echo "=== WIF format checks (hypothesisId: A-E) ==="
+          p_len=${#WIF_PROVIDER}; g_len=${#GCP_PROJECT_ID}; s_len=${#WIF_SERVICE_ACCOUNT}
+          echo "H1_secrets_nonempty: GCP_PROJECT_ID_len=$g_len WIF_PROVIDER_len=$p_len WIF_SERVICE_ACCOUNT_len=$s_len"
+          [[ $g_len -gt 0 && $p_len -gt 0 && $s_len -gt 0 ]] && echo "H1_all_set: 1" || echo "H1_all_set: 0"
+          trim_p=$(echo "$WIF_PROVIDER" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          trim_len=${#trim_p}
+          echo "H4_trim_changed_length: orig=$p_len trimmed=$trim_len"
+          [[ "$WIF_PROVIDER" == "principal://"* ]] && echo "H3_has_principal_prefix: 1" || echo "H3_has_principal_prefix: 0"
+          [[ "$WIF_PROVIDER" == "projects/"* ]] && echo "H2_starts_projects: 1" || echo "H2_starts_projects: 0"
+          [[ "$WIF_PROVIDER" == *"/locations/global/workloadIdentityPools/"* ]] && echo "H2_has_pools_segment: 1" || echo "H2_has_pools_segment: 0"
+          [[ "$WIF_PROVIDER" == *"/providers/"* ]] && echo "H2_has_providers_segment: 1" || echo "H2_has_providers_segment: 0"
+          echo "=== end WIF format checks ==="
+      # #endregion
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v3
