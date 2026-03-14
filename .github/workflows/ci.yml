@@ -223,7 +223,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: (needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_deploy == 'true')
+    if: (needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_deploy != 'false')
     needs: [changes]
     permissions:
       contents: read
@@ -271,9 +271,11 @@ jobs:
       - name: Deploy failed — fix Artifact Registry / Cloud Run permissions
         if: failure()
         run: |
-          echo "::error::Push or deploy failed. The deploy identity needs Artifact Registry Writer and Cloud Run Admin."
+          echo "::error::Push or deploy failed. The deploy identity needs Artifact Registry Writer, Cloud Run Admin, and Service Account User on keys-dashboard-sa."
           echo "1. Ensure the repo exists: in infra/ run 'pulumi up' (creates restormel-keys in europe-west2)."
           echo "2. Grant the service account (see 'Diagnose GCP Artifact Registry' step above):"
           echo "   gcloud projects add-iam-policy-binding PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/artifactregistry.writer'"
           echo "   gcloud projects add-iam-policy-binding PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/run.admin'"
+          echo "3. If deploy fails with 'iam.serviceaccounts.actAs denied on keys-dashboard-sa', also run:"
+          echo "   gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@PROJECT_ID.iam.gserviceaccount.com --project=PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/iam.serviceAccountUser'"
           echo "See docs/domain-mapping-restormel-dev.md §9 for full steps."

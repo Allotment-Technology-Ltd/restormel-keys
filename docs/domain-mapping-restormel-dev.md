@@ -209,8 +209,25 @@ On **push to `main`** (when `apps/**`, `infra/**`, `Dockerfile.site`, or `.docke
      gcloud projects add-iam-policy-binding "$PROJECT_ID" \
        --member="$DEPLOY_SA" --role="roles/run.admin"
      ```
+     The Cloud Run service runs as **keys-dashboard-sa**. The deploy identity also needs **Service Account User** on that SA, or deploy fails with `Permission 'iam.serviceaccounts.actAs' denied`:
+     ```bash
+     gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+       --project="$PROJECT_ID" \
+       --member="$DEPLOY_SA" \
+       --role="roles/iam.serviceAccountUser"
+     ```
      If you see `INVALID_ARGUMENT`, you likely left `PROJECT_ID` or `DEPLOY_SA` as placeholder text; both must be real values.
      Then re-run the CI/CD workflow (push to `main` or re-run the failed job).
+
+- **`Permission 'iam.serviceaccounts.actAs' denied on service account keys-dashboard-sa@...` (Cloud Run deploy)**  
+  The deploy identity can push images but cannot set the Cloud Run revision to run as **keys-dashboard-sa**. Grant it **Service Account User** on that SA (use your project ID and deploy SA email):
+  ```bash
+  gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@restormel-keys-prod.iam.gserviceaccount.com \
+    --project=restormel-keys-prod \
+    --member="serviceAccount:github-deploy@restormel-keys-prod.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser"
+  ```
+  Then re-run the deploy job.
 
 - **Certificate stuck in PROVISIONING**  
   Google needs the DNS A records to point to the load balancer IP before it can issue the cert. Confirm both apex and www resolve to that IP; then wait up to ~60 minutes.
