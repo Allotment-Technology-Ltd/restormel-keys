@@ -169,7 +169,7 @@ If Vercel’s UI uses different labels (e.g. “Host” instead of “Name”), 
 
 ## 7. Deploy on push (CI)
 
-On **push to `main`** (when `apps/**`, `infra/**`, `Dockerfile.site`, or `.github/workflows/deploy.yml` change), the **Deploy** workflow:
+On **push to `main`** (when `apps/**`, `infra/**`, `Dockerfile.site`, or `.dockerignore` change), the **CI/CD** workflow runs the deploy job:
 
 1. Builds the site image from `Dockerfile.site` (Astro app in `apps/site`).
 2. Pushes the image to Artifact Registry: `europe-west2-docker.pkg.dev/<PROJECT>/restormel-keys/site:<sha>`.
@@ -192,22 +192,25 @@ On **push to `main`** (when `apps/**`, `infra/**`, `Dockerfile.site`, or `.githu
 
 ## 9. Troubleshooting
 
-- **`Permission 'artifactregistry.repositories.uploadArtifacts' denied` (CI push)**  
-  The identity used by the Deploy workflow (the **WIF service account** from `WIF_SERVICE_ACCOUNT`, or the service account from your GitHub Actions credentials) does not have permission to push images. Do **both**:
+- **`Permission 'artifactregistry.repositories.uploadArtifacts' denied` (CI/CD deploy job)**  
+  The identity used by the deploy job (the **WIF service account** from `WIF_SERVICE_ACCOUNT`, or the service account from your GitHub Actions credentials key file) does not have permission to push images. Do **both**:
   1. **Ensure the Artifact Registry repo exists:** run `pulumi up` in `infra/` so the `restormel-keys` repository is created in `europe-west2`.
-  2. **Grant the deploy identity Artifact Registry Writer** on the project (replace `PROJECT_ID` and the principal; use the email shown in the workflow’s “Diagnose GCP Artifact Registry” step as the principal):
+  2. **Grant the deploy identity Artifact Registry Writer and Cloud Run Admin** on the project. You must use **real values**, not the placeholders below:
+     - **Project ID:** Your GCP project (e.g. `restormel-keys-prod` from `pulumi config get gcp:project` in `infra/`).
+     - **Deploy SA email:** The service account that the workflow uses. Open the failed run → **Diagnose GCP Artifact Registry** step → copy the active account (e.g. `something@PROJECT.iam.gserviceaccount.com`). Use that full email.
      ```bash
-     gcloud projects add-iam-policy-binding PROJECT_ID \
-       --member="serviceAccount:YOUR_DEPLOY_SA_EMAIL" \
-       --role="roles/artifactregistry.writer"
+     # Replace PROJECT_ID with your project (e.g. restormel-keys-prod).
+     # Replace SA_EMAIL with the email from the workflow's "Diagnose GCP Artifact Registry" step.
+     export PROJECT_ID=restormel-keys-prod
+     export DEPLOY_SA="serviceAccount:SA_EMAIL"
+
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+       --member="$DEPLOY_SA" --role="roles/artifactregistry.writer"
+     gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+       --member="$DEPLOY_SA" --role="roles/run.admin"
      ```
-     For Cloud Run deploy you also need **Cloud Run Admin** (or **Editor**):
-     ```bash
-     gcloud projects add-iam-policy-binding PROJECT_ID \
-       --member="serviceAccount:YOUR_DEPLOY_SA_EMAIL" \
-       --role="roles/run.admin"
-     ```
-     Then re-run the Deploy workflow (push to `main` or re-run the failed job).
+     If you see `INVALID_ARGUMENT`, you likely left `PROJECT_ID` or `DEPLOY_SA` as placeholder text; both must be real values.
+     Then re-run the CI/CD workflow (push to `main` or re-run the failed job).
 
 - **Certificate stuck in PROVISIONING**  
   Google needs the DNS A records to point to the load balancer IP before it can issue the cert. Confirm both apex and www resolve to that IP; then wait up to ~60 minutes.

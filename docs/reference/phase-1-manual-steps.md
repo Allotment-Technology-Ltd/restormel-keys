@@ -191,7 +191,7 @@ When you want GitHub Actions to run `pulumi up` and deploy:
    - `GCP_PROJECT_ID` = your GCP project ID
    - `WIF_PROVIDER` = full WIF provider resource name
    - `WIF_SERVICE_ACCOUNT` = service account email used for deploy
-3. In `.github/workflows/deploy.yml`, uncomment the steps that use `google-github-actions/auth` and the real Pulumi / Docker / Cloud Run steps (per your setup).
+3. The deploy job lives in `.github/workflows/ci.yml` (single CI/CD workflow). Ensure the steps that use `google-github-actions/auth` and the Docker / Cloud Run steps are as needed for your setup.
 
 You do not need to bring config values back into Cursor unless you want the workflow file edited for you.
 
@@ -199,10 +199,10 @@ You do not need to bring config values back into Cursor unless you want the work
 
 ### E. Deploy workflow — GCP secrets (Prompt 1.3) — optional until you deploy
 
-The deploy workflow is valid YAML but uses placeholders. To actually deploy from CI:
+The CI/CD workflow (ci.yml) is valid YAML. To actually deploy from CI:
 
 - Add the GitHub secrets listed in D6 (`GCP_PROJECT_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`).
-- Uncomment and adjust the WIF auth and deploy steps in `.github/workflows/deploy.yml` (see D6).
+- Ensure WIF auth and deploy steps in `.github/workflows/ci.yml` (deploy job) are configured (see D6).
 
 No manual steps are required in the editor beyond that when you’re ready.
 
