@@ -9,7 +9,9 @@ import * as pulumi from "@pulumi/pulumi";
 const config = new pulumi.Config();
 const region = config.get("gcp:region") ?? "europe-west2";
 const project = config.get("gcp:project") ?? pulumi.getProject();
+/** Apex domain (e.g. restormel.dev). When set, www.<domain> is also supported; www redirects to apex. */
 const domain = config.get("domain") ?? "";
+const wwwDomain = domain ? `www.${domain}` : "";
 
 // --- (a) Service account for dashboard ---
 const dashboardSa = new gcp.serviceaccount.Account("keys-dashboard-sa", {
@@ -109,19 +111,39 @@ const backendService = new gcp.compute.BackendService("keys-dashboard-backend", 
 });
 
 // SSL: create managed cert only when domain is set (required for HTTPS proxy).
+// Cert covers both apex (restormel.dev) and www (www.restormel.dev).
 const managedCert =
   domain !== ""
     ? new gcp.compute.ManagedSslCertificate("keys-dashboard-cert", {
         name: "keys-dashboard-cert",
         managed: {
-          domains: [domain],
+          domains: wwwDomain ? [domain, wwwDomain] : [domain],
         },
       })
     : null;
 
+// Host rule: www.<domain> → redirect to apex; everything else → backend.
 const urlMap = new gcp.compute.URLMap("keys-dashboard-urlmap", {
   name: "keys-dashboard-urlmap",
   defaultService: backendService.id,
+  hostRules:
+    wwwDomain !== ""
+      ? [{ hosts: [wwwDomain], pathMatcher: "redirect-www" }]
+      : [],
+  pathMatchers:
+    wwwDomain !== ""
+      ? [
+          {
+            name: "redirect-www",
+            defaultUrlRedirect: {
+              hostRedirect: domain,
+              httpsRedirect: true,
+              redirectResponseCode: "MOVED_PERMANENTLY_DEFAULT",
+              stripQuery: true,
+            },
+          },
+        ]
+      : [],
 });
 
 // HTTPS proxy and forwarding rule require at least one SSL cert; create only when domain is set.
@@ -145,13 +167,63 @@ const forwardingRule =
       })
     : null;
 
+// HTTP (port 80) → HTTPS redirect when domain is set (same global IP).
+const httpRedirectUrlMap =
+  domain !== ""
+    ? new gcp.compute.URLMap("keys-dashboard-http-redirect-urlmap", {
+        name: "keys-dashboard-http-redirect-urlmap",
+        defaultUrlRedirect: {
+          httpsRedirect: true,
+          redirectResponseCode: "MOVED_PERMANENTLY_DEFAULT",
+          stripQuery: true,
+        },
+      })
+    : null;
+
+const httpProxy =
+  httpRedirectUrlMap != null
+    ? new gcp.compute.TargetHttpProxy("keys-dashboard-http-proxy", {
+        name: "keys-dashboard-http-proxy",
+        urlMap: httpRedirectUrlMap.id,
+      })
+    : null;
+
+const httpForwardingRule =
+  httpProxy != null
+    ? new gcp.compute.GlobalForwardingRule("keys-dashboard-http-rule", {
+        name: "keys-dashboard-http-rule",
+        target: httpProxy.id,
+        ipAddress: staticIp.address,
+        portRange: "80",
+        loadBalancingScheme: "EXTERNAL_MANAGED",
+      })
+    : null;
+
 // --- Exports ---
 export const dashboardServiceUrl = dashboardService.statuses.apply(
   (s) => (s && s[0] ? s[0].url : "")
 );
+export const dashboardServiceName = dashboardService.name;
 export const dashboardServiceAccountEmail = dashboardSa.email;
 export const artifactRegistryRepository = registry.name;
 export const loadBalancerIp = staticIp.address;
 export const loadBalancerHttpsRule = forwardingRule
   ? forwardingRule.name
   : pulumi.output("");
+
+/** Google-managed SSL certificate name. Check status with: gcloud compute ssl-certificates describe <name> --global */
+export const managedCertificateName = managedCert
+  ? managedCert.name
+  : pulumi.output("");
+
+/** DNS records to create in Vercel (or any DNS). Apex and www both point to load balancer IP. */
+export const dnsRecordsForVercel = pulumi
+  .all([domain, loadBalancerIp])
+  .apply(([d, ip]) =>
+    d && ip
+      ? {
+          apex: { type: "A" as const, name: "@", value: ip, ttl: 3600 },
+          www: { type: "A" as const, name: "www", value: ip, ttl: 3600 },
+        }
+      : null
+  );

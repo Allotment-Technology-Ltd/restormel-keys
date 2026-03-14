@@ -1,0 +1,18 @@
+/**
+ * Restormel brand design tokens (docs/04-design-and-site.md).
+ * --rm-* = Restormel marketing/site.
+ */
+:root {
+  --rm-bg: #1a1917;
+  --rm-surface: #141312;
+  --rm-surface-raised: #201f1d;
+  --rm-border: #2e2c29;
+  --rm-text: #e8e6e1;
+  --rm-muted: #9e9a93;
+  --rm-dim: #4a4845;
+  --rm-sage: #7fa383;
+  --rm-sage-bg: rgba(127, 163, 131, 0.1);
+  --rm-font-display: "Cormorant Garamond", Georgia, serif;
+  --rm-font-ui: "JetBrains Mono", "Courier New", monospace;
+  --rm-radius: 4px;
+}

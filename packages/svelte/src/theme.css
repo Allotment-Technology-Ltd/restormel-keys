@@ -1,0 +1,41 @@
+/**
+ * Restormel Keys — theme defaults and presets.
+ * Use --rk-* CSS custom properties; inherit fonts from host.
+ */
+
+.rk-dark,
+:where(.rk-keys) {
+  --rk-bg: #1a1b1e;
+  --rk-bg-elevated: #25262b;
+  --rk-bg-hover: #2c2e33;
+  --rk-border: #373a40;
+  --rk-text: #e8e8ed;
+  --rk-text-muted: #909296;
+  --rk-accent: #4dabf7;
+  --rk-accent-hover: #74c0fc;
+  --rk-danger: #ff6b6b;
+  --rk-danger-hover: #ff8787;
+  --rk-success: #51cf66;
+  --rk-amber: #f59e0b;
+  --rk-focus-ring: 0 0 0 2px var(--rk-bg) inset, 0 0 0 4px var(--rk-accent);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}
+
+.rk-light {
+  --rk-bg: #f8f9fa;
+  --rk-bg-elevated: #ffffff;
+  --rk-bg-hover: #e9ecef;
+  --rk-border: #dee2e6;
+  --rk-text: #212529;
+  --rk-text-muted: #868e96;
+  --rk-accent: #228be6;
+  --rk-accent-hover: #1c7ed6;
+  --rk-danger: #fa5252;
+  --rk-danger-hover: #f03e3e;
+  --rk-success: #40c057;
+  --rk-amber: #e67700;
+  --rk-focus-ring: 0 0 0 2px var(--rk-bg) inset, 0 0 0 4px var(--rk-accent);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}

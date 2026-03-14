@@ -10,7 +10,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 ## Phase 01 — Implementation (current)
 
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
-- Next: Phase 2 per product direction ([docs/00-master-index.md](docs/00-master-index.md), strategy docs in [docs/](docs/)).
+- **Phase 2 started:** @restormel/keys-svelte package with KeyManager Svelte 5 component (themeable, accessible, --rk-* theme, add/validate/list/delete keys). Next: further Phase 2 prompts per [docs/reference/08-prompt-pack-phase-2.md](docs/reference/08-prompt-pack-phase-2.md).
 
 ---
 

@@ -1,0 +1,18 @@
+# Only used when building Dockerfile.site from repo root
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+**/.astro
+.env
+.env.*
+*.md
+!apps/site/README.md
+.cursor
+.github
+docs
+prompts
+scripts
+*.log
+.DS_Store

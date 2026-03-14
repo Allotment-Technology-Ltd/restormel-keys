@@ -102,3 +102,29 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test
         run: pnpm --filter @restormel/keys test
+
+  demo-next:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.code == 'true'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace
+        run: pnpm --filter @restormel/keys build
+      - name: Build demo-next
+        run: pnpm --filter demo-next build
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: apps/demo-next
+      - name: E2E tests
+        run: pnpm run test:e2e
+        working-directory: apps/demo-next

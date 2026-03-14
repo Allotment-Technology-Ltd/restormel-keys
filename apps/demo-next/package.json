@@ -1,5 +1,26 @@
 {
   "name": "demo-next",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@restormel/keys": "workspace:*",
+    "@restormel/keys-elements": "workspace:*",
+    "@restormel/keys-react": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "typescript": "^5.7.2"
+  }
 }

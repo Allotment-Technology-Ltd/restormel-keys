@@ -10,12 +10,16 @@ on:
     paths:
       - 'apps/**'
       - 'infra/**'
+      - 'Dockerfile.site'
+      - '.dockerignore'
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [main]
     paths:
       - 'apps/**'
       - 'infra/**'
+      - 'Dockerfile.site'
+      - '.dockerignore'
       - '.github/workflows/deploy.yml'
 
 env:
@@ -52,7 +56,7 @@ jobs:
       - name: Infra preview
         run: |
           if [ -d infra ]; then
-            echo "Pulumi preview placeholder: enable once stack config and backend are ready"
+            echo "Run 'pulumi preview' locally or enable Pulumi in CI (PULUMI_ACCESS_TOKEN, stack) to preview infra changes."
           else
             echo "No infra directory yet"
           fi
@@ -86,7 +90,7 @@ jobs:
       - name: Infra apply
         run: |
           if [ -d infra ]; then
-            echo "Pulumi up placeholder: enable once stack config, backend, and deploy roles are ready"
+            echo "Run 'pulumi up' locally when infra changes. Deploy job below pushes site image and deploys to existing Cloud Run service."
           else
             echo "No infra directory yet"
           fi
@@ -97,8 +101,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      REGION: europe-west2
+      IMAGE_NAME: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/restormel-keys/site
     steps:
       - uses: actions/checkout@v4
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v3
@@ -112,23 +120,24 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Verify auth
+      - name: Configure Docker for Artifact Registry
         run: |
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
-          gcloud auth list
+          gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
 
-      - name: Docker meta
-        id: meta
+      - name: Build site image
         run: |
-          echo "image=europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/restormel-keys/app" >> $GITHUB_OUTPUT
-          echo "tags=latest,${{ github.sha }}" >> $GITHUB_OUTPUT
-      - name: Build and push
+          docker build -f Dockerfile.site -t ${{ env.IMAGE_NAME }}:latest -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+
+      - name: Push site image
         run: |
-          echo "Docker build placeholder: enable Artifact Registry auth and image push once Dockerfile and service target are ready"
-          echo "Target image: ${{ steps.meta.outputs.image }}"
+          docker push ${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
       - name: Deploy to Cloud Run
         run: |
-          echo "Cloud Run deploy placeholder: enable once service name, image push, and runtime config are ready"
-          echo "Region: $REGION"
-        env:
-          REGION: europe-west2
+          gcloud run deploy keys-dashboard \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --quiet

@@ -1,0 +1,11 @@
+{
+	"/": [],
+	"/api/keys": [
+		"src/routes/api/keys/+server.ts"
+	],
+	"/api/keys/[id]": [
+		"src/routes/api/keys/[id]/+server.ts"
+	],
+	"/demo": [],
+	"/settings": []
+}

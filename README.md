@@ -7,3 +7,67 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 **Docs:** [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [CONTRIBUTING](CONTRIBUTING.md) · [docs/](docs/) (canonical package)
 
 **License:** MIT — [LICENSE](LICENSE)
+
+---
+
+## Packages
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [@restormel/keys](packages/core) | 0.2.0 | Headless core: routing, cost, providers (OpenAI, Anthropic, Google), storage, server middleware |
+| [@restormel/keys-svelte](packages/svelte) | 0.1.0 | Svelte 5: KeyManager, ModelSelector, CostEstimator |
+| [@restormel/keys-elements](packages/elements) | 0.1.0 | Web Components: `<rk-key-manager>`, `<rk-model-selector>`, `<rk-cost-estimator>` |
+| [@restormel/keys-react](packages/react) | 0.1.0 | React 18+: KeyManager, ModelSelector, CostEstimator, hooks, KeysProvider |
+| [@restormel/keys-cli](packages/cli) | 0.1.0 | CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
+
+*(Vue wrapper is not published.)*
+
+---
+
+## Quick start
+
+**Core only (headless):**
+
+```bash
+pnpm add @restormel/keys
+```
+
+```ts
+import { createKeys, openaiProvider, anthropicProvider } from "@restormel/keys";
+
+const keys = createKeys(
+  { routing: { defaultProvider: "openai" } },
+  { providers: [openaiProvider, anthropicProvider] }
+);
+const resolved = await keys.resolve("openai", "gpt-4o");
+const cost = keys.estimateCost("gpt-4o-mini");
+```
+
+**With React (e.g. Next.js App Router):**
+
+```bash
+pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
+```
+
+Use `KeysProvider`, `KeyManager`, `ModelSelector` in a client component; fetch keys from your API and pass config. See [apps/demo-next](apps/demo-next) (Next.js) or [apps/demo-svelte](apps/demo-svelte) (SvelteKit) for full examples.
+
+**With Svelte:**
+
+```bash
+pnpm add @restormel/keys @restormel/keys-svelte
+```
+
+**CLI:**
+
+```bash
+pnpm add -D @restormel/keys-cli
+npx keys init
+npx keys add openai
+npx keys doctor
+```
+
+---
+
+## Publish (Phase 2)
+
+To publish all packages: ensure each has `version`, `files`, README, and `pnpm run build`; run `pnpm -r publish --dry-run` from repo root; then tag `keys-v0.2.0` and push to trigger the publish workflow. Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.

@@ -1,0 +1,119 @@
+---
+/**
+ * Restormel holding page — restormel.dev
+ * Brand and design tokens from docs/04-design-and-site.md.
+ */
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Restormel — developer tools for AI applications. Coming soon." />
+    <title>Restormel — Coming soon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <main class="holder" role="main">
+        <h1 class="brand">Restormel</h1>
+        <p class="tagline">Developer tools for AI applications.</p>
+        <p class="status" aria-live="polite">Coming soon.</p>
+        <div class="accent" aria-hidden="true"></div>
+      </main>
+      <footer class="footer" role="contentinfo">
+        <p class="footer-text">restormel.dev</p>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--rm-bg);
+    color: var(--rm-text);
+    font-family: var(--rm-font-ui);
+    line-height: 1.5;
+  }
+
+  .page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+
+  .holder {
+    text-align: center;
+    max-width: 28rem;
+  }
+
+  .brand {
+    font-family: var(--rm-font-display);
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.75rem;
+    color: var(--rm-text);
+  }
+
+  .tagline {
+    font-family: var(--rm-font-ui);
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--rm-muted);
+    margin: 0 0 1.5rem;
+  }
+
+  .status {
+    font-family: var(--rm-font-ui);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--rm-sage);
+    margin: 0;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .accent {
+    margin-top: 2.5rem;
+    width: 3rem;
+    height: 3px;
+    background: var(--rm-sage);
+    border-radius: var(--rm-radius);
+    opacity: 0.8;
+  }
+
+  .footer {
+    margin-top: auto;
+    padding-top: 3rem;
+  }
+
+  .footer-text {
+    font-size: 0.75rem;
+    color: var(--rm-dim);
+    margin: 0;
+  }
+</style>

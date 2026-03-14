@@ -168,11 +168,11 @@ Phase 1 infra is **code-only** (TypeScript compiles, `pulumi preview` shows reso
    ```bash
    pulumi config set gcp:project YOUR_PROJECT_ID
    ```
-2. If you have a domain for the dashboard and want managed SSL, set:
+2. If you have a domain for the site/dashboard and want managed SSL (e.g. **restormel.dev**), set:
    ```bash
-   pulumi config set domain your-dashboard.example.com
+   pulumi config set domain restormel.dev
    ```
-   Otherwise leave `domain` unset (HTTPS proxy won’t be created).
+   This enables the HTTPS load balancer, Google-managed SSL for both `restormel.dev` and `www.restormel.dev`, and HTTP→HTTPS redirect. For full steps and Vercel DNS, see **docs/domain-mapping-restormel-dev.md**. Otherwise leave `domain` unset (HTTPS proxy won’t be created).
 
 **D5. Run `pulumi up` when ready.**
 

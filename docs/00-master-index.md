@@ -85,8 +85,15 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | `docs/reference/operations/runbooks/zuplo-phase1-runbook.md` | `docs/runbooks/zuplo-setup.md` | Adapt for Keys gateway project. Same Zuplo patterns. Different backend URL and key prefix. |
 | `docs/reference/api/api-development-portal-roadmap.md` | `docs/api-portal-roadmap.md` | Adapt phasing for Keys. Same Zuplo + PostHog architecture. |
 | `.github/workflows/deploy.yml` | `.github/workflows/deploy.yml` | Copy. Replace service names, image names, path filters. Remove SurrealDB and ingestion job steps. |
-| `infra/index.ts` | `infra/index.ts` | Copy and simplify. Remove SurrealDB, VPC connector, ingestion job. Keep Cloud Run, load balancer, SSL, Artifact Registry, Secret Manager. |
+| `infra/index.ts` | `infra/index.ts` | Copy and simplify. Remove SurrealDB, VPC connector, ingestion job. Keep Cloud Run, load balancer, SSL, Artifact Registry, Secret Manager. Custom domain: see `docs/domain-mapping-restormel-dev.md`. |
 | `Dockerfile` | `Dockerfile` | Copy multi-stage build pattern. Adapt for dashboard SvelteKit app. |
+
+### Operational runbooks
+
+| Document | Purpose |
+|----------|---------|
+| `docs/domain-mapping-restormel-dev.md` | Custom domain restormel.dev on GCP (load balancer, managed SSL, Vercel DNS). |
+| `docs/reference/phase-1-manual-steps.md` | Phase 1 manual steps (npm, GCP, Pulumi config). |
 
 ---
 
