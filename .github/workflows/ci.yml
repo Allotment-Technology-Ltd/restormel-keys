@@ -145,10 +145,13 @@ jobs:
           cache: 'pnpm'
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Build workspace
-        run: pnpm --filter @restormel/keys build
+      - name: Build workspace (keys, elements, react) for demo-next
+        run: |
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/keys-elements run build
+          pnpm --filter @restormel/keys-react run build
       - name: Build demo-next
-        run: pnpm --filter demo-next build
+        run: pnpm --filter demo-next run build
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
         working-directory: apps/demo-next
@@ -272,10 +275,12 @@ jobs:
         if: failure()
         run: |
           echo "::error::Push or deploy failed. The deploy identity needs Artifact Registry Writer, Cloud Run Admin, and Service Account User on keys-dashboard-sa."
-          echo "1. Ensure the repo exists: in infra/ run 'pulumi up' (creates restormel-keys in europe-west2)."
-          echo "2. Grant the service account (see 'Diagnose GCP Artifact Registry' step above):"
-          echo "   gcloud projects add-iam-policy-binding PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/artifactregistry.writer'"
-          echo "   gcloud projects add-iam-policy-binding PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/run.admin'"
-          echo "3. If deploy fails with 'iam.serviceaccounts.actAs denied on keys-dashboard-sa', also run:"
-          echo "   gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@PROJECT_ID.iam.gserviceaccount.com --project=PROJECT_ID --member='serviceAccount:SA_EMAIL' --role='roles/iam.serviceAccountUser'"
-          echo "See docs/domain-mapping-restormel-dev.md §9 for full steps."
+          echo "---"
+          echo "If this failed with 'iam.serviceaccounts.actAs denied on keys-dashboard-sa', run this once (use the SA from 'Diagnose GCP Artifact Registry' if different):"
+          echo ""
+          echo "  gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@restormel-keys-prod.iam.gserviceaccount.com \\"
+          echo "    --project=restormel-keys-prod \\"
+          echo "    --member=\"serviceAccount:github-deploy@restormel-keys-prod.iam.gserviceaccount.com\" \\"
+          echo "    --role=\"roles/iam.serviceAccountUser\""
+          echo ""
+          echo "Then re-run this workflow. See docs/domain-mapping-restormel-dev.md §9 for full steps."
