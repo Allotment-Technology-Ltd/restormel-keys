@@ -1,0 +1,12 @@
+---
+description: Plan Mode; exact files; scripts over repeated reasoning; minimal rewrites and subagents
+globs:
+alwaysApply: true
+---
+
+# Credit efficiency
+
+- **Plan Mode** before: changes touching >3 files, repo structure, security-sensitive changes, workflow/CI, rule/skill/subagent work.
+- **Exact target files** and thin slices. Edit instead of rewrite; do not prompt to "improve the whole repo."
+- Use **scripts/hooks/CI** for repeatable checks (docs, secrets, hygiene, deps); prefer over repeated agent reasoning.
+- **Subagents:** use only for a clear specialist pass (e.g. security review, release-readiness) where a single focused prompt suffices; do not use for routine file creation or doc edits.

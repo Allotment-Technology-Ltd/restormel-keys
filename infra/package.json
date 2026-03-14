@@ -1,0 +1,17 @@
+{
+  "name": "restormel-keys-infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "bin/index.js",
+  "scripts": {
+    "build": "tsc",
+    "preview": "pulumi preview",
+    "up": "pulumi up"
+  },
+  "devDependencies": {
+    "@pulumi/gcp": "^9.15.0",
+    "@pulumi/pulumi": "^3.149.0",
+    "typescript": "^5.7.2"
+  }
+}

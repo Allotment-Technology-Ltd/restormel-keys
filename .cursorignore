@@ -1,0 +1,31 @@
+# Dependencies and build (noise, not guidance)
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Env and secrets (never index)
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+.tmp/
+tmp/
+temp/
+
+# Duplicate: canonical plan is docs/bootstrap-plan.md
+docs/bootstrap_plan.md
+
+# Archive: not active guidance (see docs/prompt-governance.md)
+docs/Archive/
+
+# Phase 1–4 prompt packs: reference for later; use @ when needed (keeps Phase 00 focus)
+docs/Reference/07-prompt-pack-phase-1.md
+docs/Reference/08-prompt-pack-phase-2.md
+docs/Reference/09-prompt-pack-phase-3.md
+docs/Reference/10-prompt-pack-phase-4.md

@@ -1,0 +1,117 @@
+# CI: path-filter, security (TruffleHog, pnpm audit, typecheck), test (vitest), CodeQL.
+# Bootstrap scripts run when repo/config paths change (Prompt 1.3).
+name: CI
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+      repo: ${{ steps.filter.outputs.repo }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'packages/**'
+              - 'apps/**'
+              - 'examples/**'
+            docs:
+              - 'docs/**'
+              - 'Docs/**'
+              - 'README.md'
+              - 'ROADMAP.md'
+              - 'STATUS.md'
+              - 'CHANGELOG.md'
+              - 'CONTRIBUTING.md'
+              - 'ARCHITECTURE.md'
+            repo:
+              - 'scripts/**'
+              - '.github/**'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'tsconfig.json'
+
+  bootstrap-checks:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.repo == 'true' || needs.changes.outputs.docs == 'true'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-repo-hygiene.sh
+        run: bash scripts/check-repo-hygiene.sh
+      - name: review-docs.sh
+        run: bash scripts/review-docs.sh
+      - name: check-secrets.sh
+        run: bash scripts/check-secrets.sh
+      - name: check-dependency-policy.sh
+        run: bash scripts/check-dependency-policy.sh
+
+  security:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.repo == 'true'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@v3
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+      - name: pnpm audit
+        run: pnpm audit --audit-level moderate
+      - name: Type check
+        run: pnpm --filter @restormel/keys typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.code == 'true'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm --filter @restormel/keys test
+
+  codeql:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.code == 'true'
+    needs: [changes]
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3

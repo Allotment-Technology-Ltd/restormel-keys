@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build and tooling
+dist/
+build/
+infra/bin/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs and temp
+*.log
+.tmp/
+tmp/
+temp/
+
+# Optional: uncomment when packages exist
+# packages/*/dist/
+# apps/*/.next/

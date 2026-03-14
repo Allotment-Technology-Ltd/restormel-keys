@@ -1,0 +1,17 @@
+{
+  "name": "restormel-keys",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Library-first BYOK and provider-routing product.",
+  "scripts": {
+    "review-docs": "bash scripts/review-docs.sh",
+    "docs-checklist": "bash scripts/docs-update-checklist.sh",
+    "hygiene": "bash scripts/check-repo-hygiene.sh",
+    "check-secrets": "bash scripts/check-secrets.sh",
+    "check-deps": "bash scripts/check-dependency-policy.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

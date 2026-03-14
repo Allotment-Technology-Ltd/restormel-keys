@@ -1,0 +1,88 @@
+# Deploy: infra (preview/apply) and Docker → Artifact Registry → Cloud Run.
+# WIF auth, europe-west2. No SurrealDB/VPC/ingestion (Prompt 1.3).
+name: Deploy
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+
+env:
+  REGION: europe-west2
+
+jobs:
+  infra-preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # Pulumi preview when stack exists (prompt 1.4)
+      - name: Infra preview
+        run: |
+          if [ -d infra ]; then
+            echo "Run Pulumi preview when stack is set up (prompt 1.4)"
+          else
+            echo "No infra directory yet"
+          fi
+
+  infra-apply:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # WIF auth placeholder – set workload_identity_provider in repo secrets
+      # - uses: google-github-actions/auth@v2
+      #   with:
+      #     project_id: ${{ secrets.GCP_PROJECT_ID }}
+      #     workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+      #     service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+      - name: Infra apply
+        run: |
+          if [ -d infra ]; then
+            echo "Run Pulumi up when stack is set up (prompt 1.4)"
+          else
+            echo "No infra directory yet"
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # WIF auth – uncomment and set secrets for real deploy
+      # - uses: google-github-actions/auth@v2
+      #   with:
+      #     project_id: ${{ secrets.GCP_PROJECT_ID }}
+      #     workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+      #     service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+      - name: Docker meta
+        id: meta
+        run: |
+          echo "image=restormel-keys/app" >> $GITHUB_OUTPUT
+          echo "tags=latest,${{ github.sha }}" >> $GITHUB_OUTPUT
+      # Docker build → Artifact Registry → Cloud Run (enable when app Dockerfile exists)
+      - name: Build and push
+        run: |
+          echo "Docker build → Artifact Registry (europe-west2) when Dockerfile and GCP secrets are configured"
+      - name: Deploy to Cloud Run
+        run: |
+          echo "Deploy to Cloud Run (europe-west2) when image and service are configured"
+        env:
+          REGION: europe-west2

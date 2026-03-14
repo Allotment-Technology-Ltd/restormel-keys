@@ -1,0 +1,15 @@
+# Repo hygiene: on-demand or weekly (docs/bootstrap-plan.md).
+name: Repo hygiene
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repo hygiene
+        run: bash scripts/check-repo-hygiene.sh
+      - name: Secret check
+        run: bash scripts/check-secrets.sh

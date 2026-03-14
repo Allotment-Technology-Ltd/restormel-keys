@@ -1,0 +1,13 @@
+---
+description: Safe user-facing behavior; states, confirmations, privacy, accessibility, degraded mode
+globs:
+alwaysApply: true
+---
+
+# UX safety
+
+- **Required states** for user-facing flows: loading, error, empty, success.
+- **Destructive actions** require explicit user confirmation before execution.
+- **Key handling:** use privacy-sensitive copy (e.g. "your key", "API key"); do not expose raw keys in UI or errors.
+- **Accessibility:** labels, keyboard support, focus management, meaningful status/error text.
+- **Support/debug:** use masked identifiers only (e.g. key prefix or hash); never log or display raw keys.

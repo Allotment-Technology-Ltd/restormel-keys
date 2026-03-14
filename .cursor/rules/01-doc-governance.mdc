@@ -1,0 +1,12 @@
+---
+description: One canonical source of truth per topic; update docs when process or structure changes
+globs:
+alwaysApply: true
+---
+
+# Doc governance
+
+- **One canonical source of truth per topic.** Do not duplicate the same operational truth in multiple docs.
+- **Canonical** = current authority. **Reference** = useful, not authoritative. **Archive** = superseded, traceability only.
+- When you change process or repo structure: **update** at least one of STATUS.md, ROADMAP.md, CHANGELOG.md, ARCHITECTURE.md and the docs/ doc that owns that topic (e.g. security-baseline, release-readiness).
+- Do not treat docs/Reference or prompt packs as canonical unless docs/prompt-governance.md or docs/prompts-reference.md explicitly says so.
