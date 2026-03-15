@@ -9,6 +9,13 @@ compatibility_date = "2024-01-01"
 # Worker entry (required when using [assets] so non-asset requests are handled)
 main = "worker.js"
 
+# Dashboard proxy: requests to /keys/dashboard are forwarded to Cloud Run.
+# Set KEYS_DASHBOARD_URL in Cloudflare (Workers & Pages → restormel-site → Settings → Variables)
+# to your Cloud Run URL, e.g. https://keys-dashboard-XXXXXXXX.run.app (no trailing slash).
+# For local dev, set in .dev.vars or leave unset (proxy disabled).
+[vars]
+KEYS_DASHBOARD_URL = ""
+
 # Static assets from Astro build (used by `wrangler deploy` for Workers Git flow)
 [assets]
 directory = "./dist"

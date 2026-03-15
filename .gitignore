@@ -11,6 +11,7 @@ infra/bin/
 .env
 .env.*
 !.env.example
+.dev.vars
 .restormel/
 
 # OS
