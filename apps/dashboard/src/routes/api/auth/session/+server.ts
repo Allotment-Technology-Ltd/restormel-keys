@@ -24,9 +24,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     });
     return json({ ok: true });
   } catch (e) {
-    // Auth errors (invalid/expired token) → 401; init/config errors may throw → 500 without this
+    // Auth errors (invalid/expired token) → 401; init/config errors → 503. Log for diagnostics; no tokens.
     const message = e instanceof Error ? e.message : "Invalid token";
     const status = message.includes("credential") || message.includes("initialization") ? 503 : 401;
+    console.error("[auth/session] failed:", status, message.slice(0, 80));
     return json({ error: status === 503 ? "Auth not configured" : "Invalid token" }, { status });
   }
 };

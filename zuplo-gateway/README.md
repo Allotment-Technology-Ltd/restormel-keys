@@ -34,12 +34,31 @@ This directory is the **Zuplo API gateway** project for the Keys cloud API. It i
 
 ## Required environment variables (in Zuplo)
 
-Set these in Zuplo Portal → Settings → Environment Variables (or via `zuplo variable create` / API). **Do not commit values.**
+Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API). **Do not commit values.**
 
 | Name | Description | Secret |
 |------|-------------|--------|
-| `KEYS_BACKEND_URL` | Backend base URL (e.g. `https://restormel.dev/keys/dashboard` or direct Cloud Run URL). No trailing slash. | No |
+| `KEYS_BACKEND_URL` | Backend base URL (e.g. `https://keys-dashboard-XXX.run.app/keys/dashboard` or `https://restormel.dev/keys/dashboard`). No trailing slash. | No |
 | `KEYS_BACKEND_API_KEY` | Backend API key (`sk-rk-...`) sent to Cloud Run in `Authorization: Bearer …`. | **Yes** |
+
+## Complete setup from CLI
+
+From this directory you can set Zuplo env vars and deploy in one go. Create `zuplo-gateway/.env` from `.env.example` and set at least:
+
+- `ZUPLO_API_KEY` — Portal → Settings → API Keys
+- `KEYS_BACKEND_URL` — e.g. `https://<dashboardServiceUrl>/keys/dashboard` (from `cd infra && pulumi stack output dashboardServiceUrl`)
+- `KEYS_BACKEND_API_KEY` — backend key (`sk-rk-...`) for Cloud Run
+
+Then run:
+
+```bash
+cd zuplo-gateway
+pnpm install
+# If this folder is not yet linked to your Zuplo project, run: pnpm exec zuplo link
+./scripts/setup-from-cli.sh
+```
+
+The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the `main` branch, then deploys the gateway (with `--no-verify-remote` for the monorepo). Optional env: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`. After it finishes, create a consumer (Portal or `./scripts/create-consumer-and-test.sh`) and test with `./scripts/test-gateway.sh`.
 
 ## Deploy
 

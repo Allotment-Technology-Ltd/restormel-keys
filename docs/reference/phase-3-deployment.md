@@ -187,6 +187,20 @@ If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied)
 
 ---
 
+## 5.2 Troubleshooting: 500 on Sign in with GitHub / dashboard links
+
+**500 or `auth/invalid-api-key` when clicking “Sign in with GitHub”:**
+
+1. **Firebase client config (auth/invalid-api-key)** — The client bundle is built with `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. These must be set as **GitHub Actions secrets** and passed as Docker build args so the dashboard image includes them. Add those three secrets in GitHub → Settings → Secrets and variables → Actions, then re-run the deploy workflow (or push a commit so the dashboard image is rebuilt). See phase-3-manual-steps A4 and B4.
+2. **Dashboard image** — The dashboard must be built and deployed to Cloud Run with the Firebase Admin change that uses `GOOGLE_APPLICATION_CREDENTIALS` (see `apps/dashboard/src/lib/server/firebase-admin.ts`). Redeploy the dashboard (CI or `gcloud run deploy`) so the new code is live.
+3. **Firebase authorized domains** — In [Firebase Console](https://console.firebase.google.com) → your project → **Authentication** → **Settings** → **Authorized domains**, add **`restormel.dev`** (and `www.restormel.dev` if you use it). Without this, Firebase can block the popup or token and the session endpoint may fail.
+4. **Cloud Run secret** — Ensure the dashboard service has the Firebase Admin secret mounted and the service account can read it (run `./infra/grant-firebase-secret-access.sh` if needed). Check Cloud Run logs for the request to `POST /keys/dashboard/api/auth/session` for the actual error.
+
+**Sidebar links (Overview, Projects, Billing, Settings) “not working”:**  
+When not signed in, those links load the same shell and show “Sign in to use the dashboard” — that is expected. After you sign in, they load the real pages. If they 404 or fail when clicked, confirm the dashboard was redeployed and that you’re opening `restormel.dev/keys/dashboard/...` (proxy and Worker env var set).
+
+---
+
 ## 6. Verify
 
 After deployment and DNS/proxy are in place:

@@ -37,6 +37,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
 2. Add **Repository secrets** (if not already present from Phase 1):
    - **GCP_PROJECT_ID** — value: your GCP Project ID (e.g. `restormel-keys-prod`).
    - **WIF_PROVIDER** and **WIF_SERVICE_ACCOUNT** — follow [Google Workload Identity Federation](https://github.com/google-github-actions/auth#setting-up-workload-identity-federation) so the deploy workflow can authenticate to GCP without a key file. Copy the provider name and service account email into these two secrets.
+   - **Firebase client (for dashboard “Sign in with GitHub”):** **PUBLIC_FIREBASE_API_KEY**, **PUBLIC_FIREBASE_AUTH_DOMAIN**, **PUBLIC_FIREBASE_PROJECT_ID** — from Firebase Console → Project Settings → General → Your apps (Web API Key, Auth domain, Project ID). These are baked into the dashboard image at build time; without them you get `auth/invalid-api-key` in the browser.
 3. **Never** commit these values. They stay only in GitHub Actions secrets.
 4. If deploy fails with “Artifact Registry” or “Cloud Run” permission errors, see `docs/domain-mapping-restormel-dev.md` §9 (grant the deploy identity **Artifact Registry Writer**, **Cloud Run Admin**, and **Service Account User** on `keys-dashboard-sa`).
 
@@ -67,10 +68,10 @@ Do these in the order below. Skip a step only if the note says “optional” or
 
 **B4. Configure the dashboard app with Firebase.**
 
-1. In the dashboard app, set **environment variables** (local `.env` or Cloud Run / build env) from the values you noted:
-   - **Client (public):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`.
-   - **Server (secret):** Either `GOOGLE_APPLICATION_CREDENTIALS` pointing to the JSON path, or `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`.
-2. For Cloud Run, use **Secret Manager** or **Environment variables** in the service; do not bake secrets into the image. See `infra/` and Pulumi config for wiring secrets into the dashboard service.
+1. In the dashboard app, set **environment variables** from the values you noted:
+   - **Client (public):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. For **CI builds** these must be in **GitHub Actions secrets** (A4) so the Docker build can bake them into the client bundle; otherwise the browser will show `auth/invalid-api-key` when clicking Sign in with GitHub.
+   - **Server (secret):** Cloud Run uses `GOOGLE_APPLICATION_CREDENTIALS` (secret mounted from Secret Manager). See `infra/` and Pulumi config.
+2. For Cloud Run, use **Secret Manager** for the Firebase Admin JSON; do not bake server secrets into the image. See `infra/README.md` and `grant-firebase-secret-access.sh`.
 3. **Secret Manager (one-time):** Create the secret `firebase-admin-credentials` in the **same GCP project** as your Pulumi stack (e.g. `restormel-keys-prod`), add a version with the JSON key. Grant the dashboard SA access once: from repo root run `./infra/grant-firebase-secret-access.sh`. See `infra/README.md` (§ Before every pulumi up, § Secret Manager: Firebase secret access).
 
 You do **not** need to paste the actual key values back into Cursor; only confirm that you have set them where the dashboard runs.

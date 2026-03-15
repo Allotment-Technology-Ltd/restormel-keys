@@ -166,6 +166,37 @@ The Zuplo build validates `config/policies.json` against an internal schema. If 
 
 ---
 
+## 8.6 Complete setup from CLI (one script)
+
+To set Zuplo env vars and deploy from the repo without using the Portal for variables:
+
+1. **Create the Zuplo project** once (if needed) in the [Portal](https://portal.zuplo.com) as **`restormel-keys-gateway`**, or use `zuplo init` / `zuplo link` from `zuplo-gateway/` to link this folder to an existing project.
+
+2. **Get values:**
+   - **ZUPLO_API_KEY** — Portal → Settings → API Keys.
+   - **KEYS_BACKEND_URL** — Direct Cloud Run URL + `/keys/dashboard`, e.g. `https://keys-dashboard-XXXXXXXX.run.app/keys/dashboard` (from `cd infra && pulumi stack output dashboardServiceUrl`). No trailing slash.
+   - **KEYS_BACKEND_API_KEY** — Backend key (`sk-rk-...`) from the dashboard (create an API key for a project; use it only in Zuplo as a secret).
+
+3. **Run the setup script** from repo root:
+   ```bash
+   cd zuplo-gateway
+   pnpm install
+   # Set env (or copy .env.example to .env and fill in)
+   export ZUPLO_API_KEY="<your-portal-api-key>"
+   export KEYS_BACKEND_URL="https://<dashboardServiceUrl>/keys/dashboard"
+   export KEYS_BACKEND_API_KEY="sk-rk-..."
+   ./scripts/setup-from-cli.sh
+   ```
+   The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the `main` branch, then deploys with `--no-verify-remote` (required when the project lives in a monorepo subfolder). Optional: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`.
+
+4. **Create a consumer** (Portal → API Key Service, or `./scripts/create-consumer-and-test.sh` with `ZUPLO_ACCOUNT_NAME`, `ZUPLO_BUCKET_NAME`, `GATEWAY_URL` set).
+
+5. **Validate** per §7 (no key → 401, valid key → 200, direct backend rejects `zpka_`).
+
+See [zuplo-gateway/README.md](../../zuplo-gateway/README.md) for `.env.example` and script details.
+
+---
+
 ## 9. Automated setup (CLI, config-as-code, agent)
 
 Zuplo has **no official MCP server or VS Code extension**. You can still drive setup from a Cursor agent or subagent using **config-as-code** plus the **Zuplo CLI** and optional **Developer API**.
