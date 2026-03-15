@@ -178,8 +178,12 @@ To avoid Git-triggered Cloudflare deploys wiping **KEYS_DASHBOARD_URL**, you can
 
 - Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
 - Add:
-  - **KEYS_DASHBOARD_URL** — value: `https://<dashboardServiceUrl>/keys/dashboard` (e.g. from `cd infra && pulumi stack output dashboardServiceUrl`; append `/keys/dashboard`; no trailing slash).
-  - **CLOUDFLARE_API_TOKEN** — value: a [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Workers Scripts: Edit** (and **Account: Read**). Use the same Cloudflare account that owns **restormel-site**.
+  - **KEYS_DASHBOARD_URL** — value: Cloud Run origin only, e.g. from `cd infra && pulumi stack output dashboardServiceUrl` (e.g. `https://keys-dashboard-xxx.run.app`). Do **not** append `/keys/dashboard`; the Worker appends the request path.
+  - **CLOUDFLARE_API_TOKEN** — value: a [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with:
+  - **Account** → **Workers Scripts** → **Edit**
+  - **Account** → **Account Settings** → **Read**
+  - **User** → **User Details** → **Read**
+  - **User** → **Memberships** → **Read** (required for wrangler’s /memberships call; without it you get authentication error 10000). Use the same Cloudflare account that owns **restormel-site**.
 
 **2. Cloudflare — disconnect Git**
 
@@ -195,11 +199,23 @@ If you leave Git connected, you can still add the two GitHub secrets; the job wi
 
 ---
 
+## 5.0 Error 1101 — Worker threw exception
+
+If **restormel.dev/keys/dashboard** shows **Error 1101: Worker threw exception**:
+
+1. **Use the real Cloud Run URL** — **KEYS_DASHBOARD_URL** must be the actual URL from `cd infra && pulumi stack output dashboardServiceUrl` (e.g. `https://keys-dashboard-bvfiwflowa-nw.a.run.app`). Do **not** use a placeholder like `https://keys-dashboard-<hash>.europe-west2.run.app`; the Worker will try to fetch that hostname and fail.
+2. **Apply the variable to Production** — In Cloudflare → **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets**, ensure **KEYS_DASHBOARD_URL** is set for **Production** (not only Preview).
+3. **Redeploy the Worker** after changing the variable so the new value is in effect.
+
+After the fix in `apps/site/worker.js`, backend fetch failures return **502 Dashboard backend unavailable** instead of Error 1101; if you still see 1101, the cause is likely one of the above or a missing **ASSETS** binding (deploy with `wrangler deploy` from `apps/site` so the static assets binding is attached).
+
+---
+
 ## 5.1 Troubleshooting: 401 on /keys/dashboard
 
 If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied) returns **401 Unauthorized**:
 
-0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets** (runtime) → add **KEYS_DASHBOARD_URL** = your Cloud Run URL (from `pulumi stack output dashboardServiceUrl` in `infra/`, append `/keys/dashboard`; no trailing slash). **Note:** Git-triggered Cloudflare deploys can clear runtime variables. To avoid that, add **KEYS_DASHBOARD_URL** and **CLOUDFLARE_API_TOKEN** to GitHub Actions secrets; the CI workflow will then deploy the Worker with the var injected. Optionally disable Cloudflare Git deployment for restormel-site so only CI deploys.
+0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets** (runtime) → add **KEYS_DASHBOARD_URL** = Cloud Run origin only (from `pulumi stack output dashboardServiceUrl` in `infra/`; do **not** append `/keys/dashboard`). **Note:** Git-triggered Cloudflare deploys can clear runtime variables. To avoid that, add **KEYS_DASHBOARD_URL** and **CLOUDFLARE_API_TOKEN** to GitHub Actions secrets; the CI workflow will then deploy the Worker with the var injected. Optionally disable Cloudflare Git deployment for restormel-site so only CI deploys.
 
 1. **Proxy target**  
    If you use a Cloudflare route to proxy `/keys/dashboard` to Cloud Run, the target must be the **direct Cloud Run URL** from `cd infra && pulumi stack output dashboardServiceUrl`. The dashboard app uses base path `/keys/dashboard`, so the backend must receive paths like `/keys/dashboard` and `/keys/dashboard/api/health`. Do **not** point the proxy at a load balancer or URL that requires IAM; the Cloud Run service is configured with public invoker (`allUsers` in infra).
@@ -216,7 +232,7 @@ If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied)
 
 **500 or `auth/invalid-api-key` when clicking “Sign in with GitHub”:**
 
-1. **Firebase client config (auth/invalid-api-key)** — The client bundle is built with `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. These must be set as **GitHub Actions secrets** and passed as Docker build args so the dashboard image includes them. Add those three secrets in GitHub → Settings → Secrets and variables → Actions, then re-run the deploy workflow (or push a commit so the dashboard image is rebuilt). See phase-3-manual-steps A4 and B4.
+1. **Firebase client config (auth/invalid-api-key)** — The client bundle is built with `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. These must be set as **GitHub Actions secrets** and passed as Docker build args so the dashboard image includes them. Add those three secrets in GitHub → Settings → Secrets and variables → Actions (see phase-3-manual-steps A4 and B4). **Important:** The values are baked in at **image build time**. After adding or changing the secrets, you must **trigger a new dashboard build** (push a commit that triggers the deploy job, or run the workflow via **Actions** → **CI** → **Run workflow** with “Run deploy” enabled); otherwise the running image still has the old (or empty) config and you will keep seeing `auth/invalid-api-key`.
 2. **Dashboard image** — The dashboard must be built and deployed to Cloud Run with the Firebase Admin change that uses `GOOGLE_APPLICATION_CREDENTIALS` (see `apps/dashboard/src/lib/server/firebase-admin.ts`). Redeploy the dashboard (CI or `gcloud run deploy`) so the new code is live.
 3. **Firebase authorized domains** — In [Firebase Console](https://console.firebase.google.com) → your project → **Authentication** → **Settings** → **Authorized domains**, add **`restormel.dev`** (and `www.restormel.dev` if you use it). Without this, Firebase can block the popup or token and the session endpoint may fail.
 4. **Cloud Run secret** — Ensure the dashboard service has the Firebase Admin secret mounted and the service account can read it (run `./infra/grant-firebase-secret-access.sh` if needed). Check Cloud Run logs for the request to `POST /keys/dashboard/api/auth/session` for the actual error.

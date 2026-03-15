@@ -22,7 +22,12 @@ export function getFirebaseAdmin() {
       privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
     } as ServiceAccount;
   }
-  return initializeApp(cred ? { credential: cert(cred) } : {});
+  if (!cred) {
+    throw new Error(
+      "Firebase Admin not configured: set GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_ADMIN_CLIENT_EMAIL + FIREBASE_ADMIN_PRIVATE_KEY"
+    );
+  }
+  return initializeApp({ credential: cert(cred) });
 }
 
 export function getAdminAuth() {
