@@ -49,10 +49,13 @@ export default {
  * Forward request to the dashboard backend. Preserves method, body, and
  * forwards cookies and Host so the app sees the public origin (restormel.dev).
  * Returns null if the backend fetch throws (caller returns 502).
+ * Normalizes base: if KEYS_DASHBOARD_URL includes /keys/dashboard, we strip it so
+ * the path is not doubled (backend receives /keys/dashboard/..., not /keys/dashboard/keys/dashboard/...).
  */
 async function proxyToDashboard(request, url, base) {
   try {
-    const backendUrl = base + url.pathname + url.search;
+    let backendBase = base.replace(/\/keys\/dashboard\/?$/, "");
+    const backendUrl = backendBase + url.pathname + url.search;
     const headers = new Headers(request.headers);
 
     // So the dashboard sees the public origin (for redirects, url.origin, etc.)
