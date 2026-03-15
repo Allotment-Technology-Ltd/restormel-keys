@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { base } from "$app/paths";
   import { signInWithGitHub, getIdToken } from "$lib/firebase-client";
   import AppLogo from "$lib/components/AppLogo.svelte";
@@ -24,7 +23,8 @@
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Session failed");
       }
-      await goto(base + "/", { replaceState: true });
+      // Full page navigation so the browser sends the new session cookie on the next request (proxy may set cookie on this response)
+      window.location.href = base + "/";
     } catch (e) {
       error = e instanceof Error ? e.message : "Sign in failed";
     } finally {

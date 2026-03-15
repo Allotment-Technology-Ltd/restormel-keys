@@ -70,20 +70,25 @@ async function proxyToDashboard(request, url, base) {
       redirect: "manual",
     });
 
-    // Copy all headers; Set-Cookie must be forwarded explicitly (can be dropped when copying Headers)
+    // Copy all headers; Set-Cookie is often stripped from fetch() response (cross-origin). Prefer X-Session-Cookie from backend.
     const outHeaders = new Headers();
+    const xSessionCookie = res.headers.get("X-Session-Cookie");
     const setCookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
     for (const [name, value] of res.headers.entries()) {
-      if (name.toLowerCase() === "set-cookie") continue;
+      const lower = name.toLowerCase();
+      if (lower === "set-cookie" || lower === "x-session-cookie") continue;
       outHeaders.set(name, value);
     }
-    for (const cookie of setCookies) {
-      outHeaders.append("Set-Cookie", cookie);
-    }
-    // If getSetCookie isn't available, fall back to single get (one cookie)
-    if (setCookies.length === 0) {
-      const one = res.headers.get("Set-Cookie");
-      if (one) outHeaders.set("Set-Cookie", one);
+    if (xSessionCookie) {
+      outHeaders.append("Set-Cookie", xSessionCookie);
+    } else {
+      for (const cookie of setCookies) {
+        outHeaders.append("Set-Cookie", cookie);
+      }
+      if (setCookies.length === 0) {
+        const one = res.headers.get("Set-Cookie");
+        if (one) outHeaders.set("Set-Cookie", one);
+      }
     }
     const opts = { status: res.status, statusText: res.statusText, headers: outHeaders };
     return new Response(res.body, opts);

@@ -15,14 +15,19 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     const adminAuth = getAdminAuth();
     await adminAuth.verifyIdToken(idToken);
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_SEC });
-    cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
+    const cookieOpts = {
       path: "/",
       maxAge: SESSION_MAX_AGE_SEC,
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "lax" as const,
+    };
+    cookies.set(SESSION_COOKIE_NAME, sessionCookie, cookieOpts);
+    // So the proxy (Cloudflare Worker) can set the cookie when Fetch strips Set-Cookie from backend response
+    const cookieHeader = `${SESSION_COOKIE_NAME}=${sessionCookie}; Path=/; Max-Age=${cookieOpts.maxAge}; HttpOnly; Secure; SameSite=Lax`;
+    return json({ ok: true }, {
+      headers: { "X-Session-Cookie": cookieHeader },
     });
-    return json({ ok: true });
   } catch (e) {
     // Auth errors (invalid/expired token) → 401; init/config errors → 503. Log for diagnostics; no tokens.
     const message = e instanceof Error ? e.message : "Invalid token";

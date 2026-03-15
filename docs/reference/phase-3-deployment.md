@@ -242,6 +242,16 @@ When not signed in, those links load the same shell and show “Sign in to use t
 
 ---
 
+## 5.3 Signed in with GitHub but dashboard still shows “Sign in to use the dashboard”
+
+If Firebase shows the user and GitHub sign-in succeeds, but Overview/Projects still show “Sign in to use the dashboard”:
+
+1. **Session cookie not reaching the browser** — When the dashboard is behind the Cloudflare Worker proxy, the backend’s `Set-Cookie` can be stripped from the `fetch()` response (cross-origin). The app sends the session cookie in a custom **X-Session-Cookie** header; the Worker copies it to `Set-Cookie` so the browser stores it. Ensure the latest Worker is deployed (commit that includes the X-Session-Cookie handling in `apps/site/worker.js`).
+2. **Full page redirect after login** — The login page uses a full page redirect (`window.location.href`) after a successful session POST so the next request is a normal navigation and sends the cookie. If you still see the prompt, try a hard refresh (Ctrl+F5 / Cmd+Shift+R) or clear cookies for restormel.dev and sign in again.
+3. **Zuplo vs dashboard login** — Dashboard “logged in” state is **separate** from Zuplo. The dashboard uses a **session cookie** (set by `POST /keys/dashboard/api/auth/session`). Zuplo (modules, schemas, docs, API keys) is for **external API access**; finishing Zuplo setup does not change whether the dashboard shows you as signed in. See `docs/runbooks/zuplo-setup.md` for gateway setup.
+
+---
+
 ## 6. Verify
 
 After deployment and DNS/proxy are in place:
