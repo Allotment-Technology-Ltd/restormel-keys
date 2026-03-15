@@ -252,6 +252,16 @@ If Firebase shows the user and GitHub sign-in succeeds, but Overview/Projects st
 
 ---
 
+## 5.4 500 on Overview or Projects (Billing/Settings work)
+
+If you are logged in but **Overview** or **Projects** return **500** while Billing and Settings load:
+
+1. **Cause** — Those two pages load project data from **Firestore** via `listProjects()`. Billing and Settings do not call Firestore, so they don’t 500. The failure is usually Firestore not enabled, missing indexes, or the dashboard service account lacking Firestore permissions.
+2. **Fix** — In GCP: enable **Cloud Firestore** (Native mode) for the project; ensure the dashboard’s service account (e.g. `keys-dashboard-sa@...`) has a role that allows Firestore read/write (e.g. **Cloud Datastore User** or a custom role). Check Cloud Run logs for the exact error (e.g. `[overview] listProjects failed:` or `[projects] listProjects failed:`).
+3. **Soft failure** — The load functions now catch Firestore errors and return an empty project list plus a message (“Unable to load projects”) so the page renders instead of 500. Fix Firestore and refresh to see projects.
+
+---
+
 ## 6. Verify
 
 After deployment and DNS/proxy are in place:

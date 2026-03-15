@@ -1,12 +1,15 @@
 <script lang="ts">
   import { base } from "$app/paths";
 
-  export let data: { projects: { id: string; name: string }[] };
+  export let data: { projects: { id: string; name: string }[]; projectsError?: string | null };
 </script>
 
 <h1 class="page-title">Overview</h1>
 <p class="page-desc">Your projects and quick stats.</p>
 
+{#if data.projectsError}
+  <p class="error-msg" role="alert">{data.projectsError}. Check Cloud Run logs; Firestore may need to be enabled or the service account may need Firestore permissions.</p>
+{/if}
 {#if data.projects.length === 0}
   <p class="empty">No projects yet. <a href={base + "/projects"}>Create one</a>.</p>
 {:else}
@@ -30,6 +33,11 @@
   }
   .page-desc {
     color: var(--rm-muted);
+    font-size: 0.875rem;
+    margin: 0 0 1rem;
+  }
+  .error-msg {
+    color: var(--rm-error, #c95c5c);
     font-size: 0.875rem;
     margin: 0 0 1rem;
   }

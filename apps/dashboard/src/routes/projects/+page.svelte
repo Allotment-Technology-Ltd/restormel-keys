@@ -2,7 +2,7 @@
   import { base } from "$app/paths";
   import { invalidateAll } from "$app/navigation";
 
-  export let data: { projects: { id: string; name: string; createdAt: number }[] };
+  export let data: { projects: { id: string; name: string; createdAt: number }[]; projectsError?: string | null };
 
   let creating = false;
   let newName = "";
@@ -31,6 +31,9 @@
 <h1 class="page-title">Projects</h1>
 <p class="page-desc">Create and manage projects. Each project has its own API keys.</p>
 
+{#if data.projectsError}
+  <p class="error-msg" role="alert">{data.projectsError}. Check Cloud Run logs; Firestore may need to be enabled or the service account may need Firestore permissions.</p>
+{/if}
 <div class="create-form">
   <input type="text" bind:value={newName} placeholder="Project name" class="input" />
   <button class="btn btn-primary" onclick={createProject} disabled={creating || !newName.trim()}>
@@ -56,6 +59,11 @@
   }
   .page-desc {
     color: var(--rm-muted);
+    font-size: 0.875rem;
+    margin: 0 0 1rem;
+  }
+  .error-msg {
+    color: var(--rm-error, #c95c5c);
     font-size: 0.875rem;
     margin: 0 0 1rem;
   }
