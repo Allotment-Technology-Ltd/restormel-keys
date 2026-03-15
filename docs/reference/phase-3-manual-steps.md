@@ -28,7 +28,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
 1. In a terminal, run: `pulumi login`. If you use the Pulumi web backend, open the URL it prints and complete sign-in.
 2. In the repo root, run: `cd infra && pulumi stack select production` (or `pulumi stack init production` if the stack does not exist).
 3. Set config: `pulumi config set gcp:project YOUR_PROJECT_ID` (use the Project ID from A1). Optionally: `pulumi config set domain restormel.dev` when you are ready for custom domain.
-4. Run `pulumi preview` and then `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`, `loadBalancerIp`) for later steps.
+4. Run `pulumi preview` and then `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`) for later steps.
 5. **Do not** commit `Pulumi.production.yaml` if it contains secrets; use `pulumi config set --secret` for any secret values.
 
 **A4. GitHub secrets for deploy (CI).**
@@ -71,6 +71,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
    - **Client (public):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`.
    - **Server (secret):** Either `GOOGLE_APPLICATION_CREDENTIALS` pointing to the JSON path, or `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`.
 2. For Cloud Run, use **Secret Manager** or **Environment variables** in the service; do not bake secrets into the image. See `infra/` and Pulumi config for wiring secrets into the dashboard service.
+3. **Secret Manager (one-time):** Create the secret `firebase-admin-credentials` in the **same GCP project** as your Pulumi stack (e.g. `restormel-keys-prod`), add a version with the JSON key, then run `pulumi up`. Pulumi will grant the dashboard service account Secret Accessor. If you see **403 CONSUMER_INVALID** on Secret Manager, see `infra/README.md` § Secret Manager and 403 CONSUMER_INVALID.
 
 You do **not** need to paste the actual key values back into Cursor; only confirm that you have set them where the dashboard runs.
 

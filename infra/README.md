@@ -1,6 +1,6 @@
 # Restormel Keys – GCP infra (Pulumi)
 
-Pulumi stack for dashboard (Cloud Run), Artifact Registry, and load balancer on GCP.
+Pulumi stack for dashboard (Cloud Run) and Artifact Registry on GCP. No load balancer; site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Pulumi stack for dashboard (Cloud Run), Artifact Registry, and load balancer on 
 | Error / resource | Required permission / role |
 |------------------|-----------------------------|
 | `iam.serviceAccounts.create` | `roles/iam.serviceAccountAdmin` |
-| `compute.globalAddresses.create`, `compute.regions.list`, NEG, BackendService, URLMap | `roles/compute.networkAdmin` or `roles/compute.admin` |
+| (none; no load balancer) | — |
 | `artifactregistry.repositories.create` | `roles/artifactregistry.admin` |
 | Cloud Run service | `roles/run.admin` |
 
@@ -29,7 +29,6 @@ Pulumi stack for dashboard (Cloud Run), Artifact Registry, and load balancer on 
 - **Option A – broad (easiest):** Project **Editor** or **Owner** on the project.
 - **Option B – minimal:** Grant these roles on the project:
   - `roles/iam.serviceAccountAdmin`
-  - `roles/compute.networkAdmin`
   - `roles/artifactregistry.admin`
   - `roles/run.admin`
 
@@ -49,14 +48,14 @@ Replace `YOUR_EMAIL` (or the service account email) and `restormel-keys-prod`:
 export PROJECT_ID=restormel-keys-prod
 export PRINCIPAL="user:YOUR_EMAIL"   # or serviceAccount:SA_EMAIL
 
-for role in roles/iam.serviceAccountAdmin roles/compute.networkAdmin roles/artifactregistry.admin roles/run.admin; do
+for role in roles/iam.serviceAccountAdmin roles/artifactregistry.admin roles/run.admin; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="$PRINCIPAL" \
     --role="$role"
 done
 ```
 
-Or in **GCP Console:** IAM & Admin → IAM → select the principal → Edit → Add another role → add the four roles above → Save.
+Or in **GCP Console:** IAM & Admin → IAM → select the principal → Edit → Add another role → add the three roles above → Save.
 
 2. **Deploy identity (GitHub Actions)** — the service account used by the Deploy workflow (WIF or key-based) must have **Artifact Registry Writer** and **Cloud Run Admin** on the same project so it can push the site image and deploy. See [docs/domain-mapping-restormel-dev.md](../docs/domain-mapping-restormel-dev.md) §9 (Troubleshooting: `uploadArtifacts` denied).
 
@@ -65,15 +64,32 @@ Or in **GCP Console:** IAM & Admin → IAM → select the principal → Edit →
 Ensure these APIs are enabled for the project:
 
 ```bash
-gcloud services enable compute.googleapis.com run.googleapis.com artifactregistry.googleapis.com iam.googleapis.com --project=restormel-keys-prod
+gcloud services enable compute.googleapis.com run.googleapis.com artifactregistry.googleapis.com iam.googleapis.com secretmanager.googleapis.com --project=restormel-keys-prod
 ```
 
 ## Config and run
 
 ```bash
 cd infra
+pnpm run build          # compile TypeScript → bin/index.js (Pulumi runs this)
 pulumi stack select production
 pulumi config set gcp:project restormel-keys-prod
 # optional: pulumi config set gcp:region europe-west2
 pulumi up
 ```
+
+**Important:** After any change to `index.ts`, run `pnpm run build` before `pulumi up`. Pulumi executes `bin/index.js`; if the build is stale, the wrong resources may be created or updated.
+
+## Secret Manager: Firebase secret access (one-time)
+
+**Why not Pulumi:** The GCP provider resolves the project for Secret Manager IAM as the Pulumi project name (`restormel-keys`), not `gcp:project`, so `SecretIamMember` would call the API with the wrong project and hit **403 CONSUMER_INVALID**. IAM for this secret is therefore not managed by Pulumi.
+
+**One-time step:** Grant the dashboard service account access to the Firebase Admin secret so Cloud Run can mount it. From the repo root:
+
+```bash
+./infra/grant-firebase-secret-access.sh
+```
+
+Optional: pass a different project, e.g. `./infra/grant-firebase-secret-access.sh restormel-keys-prod`.
+
+Ensure the secret `firebase-admin-credentials` exists in the GCP project and has at least one version. Then run `pulumi up`. If Cloud Run still reports "Permission denied on secret", run the script again and retry.

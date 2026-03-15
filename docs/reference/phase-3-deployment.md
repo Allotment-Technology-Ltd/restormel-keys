@@ -28,7 +28,7 @@ pulumi config set gcp:project YOUR_GCP_PROJECT_ID   # if not set
 pulumi up   # creates/updates Artifact Registry, Cloud Run service, load balancer
 ```
 
-Note the outputs: `dashboardServiceUrl`, `loadBalancerIp`, etc. (See `docs/domain-mapping-restormel-dev.md` if you use GCP for the full domain.)
+Note the outputs: `dashboardServiceUrl`, etc. (Site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy.)
 
 ### 1.2 Build and push dashboard image (local or CI)
 

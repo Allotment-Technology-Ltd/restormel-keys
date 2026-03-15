@@ -1,6 +1,6 @@
 /**
  * Restormel Keys GCP infrastructure.
- * Subset: service account, Artifact Registry, Cloud Run (dashboard), load balancer (global IP, serverless NEG, backend, SSL, URL map, HTTPS proxy, forwarding rule).
+ * Service account, Artifact Registry, Cloud Run (dashboard). No load balancer — site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy (Phase 3).
  * NO VPC, SurrealDB, or ingestion job (Prompt 1.4).
  */
 import * as gcp from "@pulumi/gcp";
@@ -8,10 +8,9 @@ import * as pulumi from "@pulumi/pulumi";
 
 const config = new pulumi.Config();
 const region = config.get("gcp:region") ?? "europe-west2";
-const project = config.get("gcp:project") ?? pulumi.getProject();
-/** Apex domain (e.g. restormel.dev). When set, www.<domain> is also supported; www redirects to apex. */
-const domain = config.get("domain") ?? "";
-const wwwDomain = domain ? `www.${domain}` : "";
+// Use the same project as the GCP provider (from config "gcp:project"). Do not use pulumi.getProject() — that is the Pulumi project name, e.g. "restormel-keys", not the GCP project ID.
+const gcpConfig = new pulumi.Config("gcp");
+const project = gcpConfig.require("project");
 
 // --- (a) Service account for dashboard ---
 const dashboardSa = new gcp.serviceaccount.Account("keys-dashboard-sa", {
@@ -97,12 +96,7 @@ const dashboardService = new gcp.cloudrun.Service("keys-dashboard", {
 });
 
 // Dashboard SA must be able to read Firebase Admin credentials from Secret Manager.
-const firebaseSecretId = pulumi.interpolate`projects/${project}/secrets/${firebaseAdminSecretName}`;
-new gcp.secretmanager.SecretIamMember("keys-dashboard-firebase-admin-access", {
-  secretId: firebaseSecretId,
-  role: "roles/secretmanager.secretAccessor",
-  member: pulumi.interpolate`serviceAccount:${dashboardSa.email}`,
-});
+// IAM is NOT managed by Pulumi: the GCP provider resolves project as the Pulumi project name ("restormel-keys"), causing 403. Grant access once with: infra/grant-firebase-secret-access.sh (or see infra/README.md).
 
 // --- (f) IAM: public invoker ---
 const publicInvoker = new gcp.cloudrun.IamMember("keys-dashboard-public-invoker", {
@@ -112,120 +106,6 @@ const publicInvoker = new gcp.cloudrun.IamMember("keys-dashboard-public-invoker"
   member: "allUsers",
 });
 
-// --- (e) Load balancer: global static IP, serverless NEG, backend service, SSL cert, URL map, HTTPS proxy, forwarding rule ---
-const staticIp = new gcp.compute.GlobalAddress("keys-dashboard-lb-ip", {
-  name: "keys-dashboard-lb-ip",
-});
-
-const serverlessNeg = new gcp.compute.RegionNetworkEndpointGroup("keys-dashboard-neg", {
-  name: "keys-dashboard-neg",
-  networkEndpointType: "SERVERLESS",
-  region,
-  cloudRun: {
-    service: dashboardService.name,
-  },
-});
-
-const backendService = new gcp.compute.BackendService("keys-dashboard-backend", {
-  name: "keys-dashboard-backend",
-  protocol: "HTTP",
-  loadBalancingScheme: "EXTERNAL_MANAGED",
-  backends: [
-    {
-      group: serverlessNeg.id,
-    },
-  ],
-});
-
-// SSL: create managed cert only when domain is set (required for HTTPS proxy).
-// Cert covers both apex (restormel.dev) and www (www.restormel.dev).
-const managedCert =
-  domain !== ""
-    ? new gcp.compute.ManagedSslCertificate("keys-dashboard-cert", {
-        name: "keys-dashboard-cert",
-        managed: {
-          domains: wwwDomain ? [domain, wwwDomain] : [domain],
-        },
-      })
-    : null;
-
-// Host rule: www.<domain> → redirect to apex; everything else → backend.
-const urlMap = new gcp.compute.URLMap("keys-dashboard-urlmap", {
-  name: "keys-dashboard-urlmap",
-  defaultService: backendService.id,
-  hostRules:
-    wwwDomain !== ""
-      ? [{ hosts: [wwwDomain], pathMatcher: "redirect-www" }]
-      : [],
-  pathMatchers:
-    wwwDomain !== ""
-      ? [
-          {
-            name: "redirect-www",
-            defaultUrlRedirect: {
-              hostRedirect: domain,
-              httpsRedirect: true,
-              redirectResponseCode: "MOVED_PERMANENTLY_DEFAULT",
-              stripQuery: true,
-            },
-          },
-        ]
-      : [],
-});
-
-// HTTPS proxy and forwarding rule require at least one SSL cert; create only when domain is set.
-const httpsProxy =
-  managedCert != null
-    ? new gcp.compute.TargetHttpsProxy("keys-dashboard-https-proxy", {
-        name: "keys-dashboard-https-proxy",
-        urlMap: urlMap.id,
-        sslCertificates: [managedCert.id],
-      })
-    : null;
-
-const forwardingRule =
-  httpsProxy != null
-    ? new gcp.compute.GlobalForwardingRule("keys-dashboard-https-rule", {
-        name: "keys-dashboard-https-rule",
-        target: httpsProxy.id,
-        ipAddress: staticIp.address,
-        portRange: "443",
-        loadBalancingScheme: "EXTERNAL_MANAGED",
-      })
-    : null;
-
-// HTTP (port 80) → HTTPS redirect when domain is set (same global IP).
-const httpRedirectUrlMap =
-  domain !== ""
-    ? new gcp.compute.URLMap("keys-dashboard-http-redirect-urlmap", {
-        name: "keys-dashboard-http-redirect-urlmap",
-        defaultUrlRedirect: {
-          httpsRedirect: true,
-          redirectResponseCode: "MOVED_PERMANENTLY_DEFAULT",
-          stripQuery: true,
-        },
-      })
-    : null;
-
-const httpProxy =
-  httpRedirectUrlMap != null
-    ? new gcp.compute.TargetHttpProxy("keys-dashboard-http-proxy", {
-        name: "keys-dashboard-http-proxy",
-        urlMap: httpRedirectUrlMap.id,
-      })
-    : null;
-
-const httpForwardingRule =
-  httpProxy != null
-    ? new gcp.compute.GlobalForwardingRule("keys-dashboard-http-rule", {
-        name: "keys-dashboard-http-rule",
-        target: httpProxy.id,
-        ipAddress: staticIp.address,
-        portRange: "80",
-        loadBalancingScheme: "EXTERNAL_MANAGED",
-      })
-    : null;
-
 // --- Exports ---
 export const dashboardServiceUrl = dashboardService.statuses.apply(
   (s) => (s && s[0] ? s[0].url : "")
@@ -233,24 +113,3 @@ export const dashboardServiceUrl = dashboardService.statuses.apply(
 export const dashboardServiceName = dashboardService.name;
 export const dashboardServiceAccountEmail = dashboardSa.email;
 export const artifactRegistryRepository = registry.name;
-export const loadBalancerIp = staticIp.address;
-export const loadBalancerHttpsRule = forwardingRule
-  ? forwardingRule.name
-  : pulumi.output("");
-
-/** Google-managed SSL certificate name. Check status with: gcloud compute ssl-certificates describe <name> --global */
-export const managedCertificateName = managedCert
-  ? managedCert.name
-  : pulumi.output("");
-
-/** DNS records to create in Vercel (or any DNS). Apex and www both point to load balancer IP. */
-export const dnsRecordsForVercel = pulumi
-  .all([domain, loadBalancerIp])
-  .apply(([d, ip]) =>
-    d && ip
-      ? {
-          apex: { type: "A" as const, name: "@", value: ip, ttl: 3600 },
-          www: { type: "A" as const, name: "www", value: ip, ttl: 3600 },
-        }
-      : null
-  );

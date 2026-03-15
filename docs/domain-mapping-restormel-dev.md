@@ -1,6 +1,8 @@
 # Custom domain mapping: restormel.dev on Google Cloud
 
-This runbook describes how **restormel.dev** (and **www.restormel.dev**) are served via the existing GCP load balancer and Cloud Run, with DNS managed in **Vercel**. It assumes you are using the Pulumi stack in `infra/` and that DNS for the domain is configured in Vercel (domain purchased there).
+> **Superseded (Phase 3).** The GCP load balancer described below has been removed. **restormel.dev** is now served by a **Cloudflare Worker** (site); the dashboard is reached via the direct Cloud Run URL or a Worker proxy. This runbook is kept for reference only. See `docs/reference/phase-3-deployment.md` and `docs/reference/phase-3-manual-steps.md` for current setup.
+
+This runbook describes how **restormel.dev** (and **www.restormel.dev**) *were* served via a GCP load balancer and Cloud Run, with DNS managed in **Vercel**. It assumes the Pulumi stack in `infra/` included the load balancer and that DNS for the domain was configured in Vercel.
 
 ---
 

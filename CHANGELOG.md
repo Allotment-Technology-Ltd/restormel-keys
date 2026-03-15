@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Removed
+
+- **GCP load balancer (Phase 3).** Pulumi infra no longer provisions the global HTTPS load balancer, static IP, serverless NEG, managed SSL cert, URL map, or forwarding rules. restormel.dev is served by a Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy. Exports `loadBalancerIp`, `loadBalancerHttpsRule`, `managedCertificateName`, `dnsRecordsForVercel` removed. Runbook `docs/domain-mapping-restormel-dev.md` marked superseded.
+
 ### Added
 
 - **Phase 3 manual actions (09-prompt-pack-phase-3 template):** `docs/reference/phase-3-manual-steps.md` — what you need to do now (GCP/Pulumi, Firebase, Paddle, Cloudflare Pages, DNS, Zuplo), what to bring back, what to do with code/files, copy-paste follow-up prompt, safety checks; explicit “no manual actions” for code-only Phase 3 work.
