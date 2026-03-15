@@ -2,13 +2,18 @@
  * Firebase client for login (GitHub). Config from env at build time. No secrets in repo.
  */
 import { browser } from "$app/environment";
+import {
+  PUBLIC_FIREBASE_API_KEY,
+  PUBLIC_FIREBASE_AUTH_DOMAIN,
+  PUBLIC_FIREBASE_PROJECT_ID,
+} from "$env/static/public";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GithubAuthProvider, type User } from "firebase/auth";
 
 const config = {
-  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY ?? "",
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
-  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID ?? "",
+  apiKey: PUBLIC_FIREBASE_API_KEY ?? "",
+  authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
+  projectId: PUBLIC_FIREBASE_PROJECT_ID ?? "",
 };
 
 let auth: ReturnType<typeof getAuth> | null = null;
