@@ -290,3 +290,52 @@ jobs:
           echo "    --role=\"roles/iam.serviceAccountUser\""
           echo ""
           echo "Then re-run this workflow. See docs/domain-mapping-restormel-dev.md §9 for full steps."
+
+  # Deploy site Worker with KEYS_DASHBOARD_URL injected so the var survives (not wiped by Git-based deploys).
+  # Requires: KEYS_DASHBOARD_URL, CLOUDFLARE_API_TOKEN in repo secrets. If you use this job, consider
+  # disabling Cloudflare Git deployment for restormel-site so only this workflow deploys the Worker.
+  deploy-site-worker:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build site
+        run: pnpm --filter site build
+      - name: Inject KEYS_DASHBOARD_URL into wrangler.toml
+        working-directory: apps/site
+        env:
+          KEYS_DASHBOARD_URL: ${{ secrets.KEYS_DASHBOARD_URL }}
+        run: |
+          if [ -z "$KEYS_DASHBOARD_URL" ]; then
+            echo "::warning::KEYS_DASHBOARD_URL not set; skipping Worker deploy. Add it and CLOUDFLARE_API_TOKEN to repo secrets to deploy from CI."
+            exit 0
+          fi
+          python3 -c "
+          import os
+          p = 'wrangler.toml'
+          with open(p) as f: c = f.read()
+          v = os.environ.get('KEYS_DASHBOARD_URL', '')
+          block = '\n# Injected by CI\n[vars]\nKEYS_DASHBOARD_URL = \"' + v.replace('\"', '\\\\\"') + '\"\n\n'
+          c = c.replace('\n[assets]', block + '[assets]')
+          with open(p, 'w') as f: f.write(c)
+          "
+      - name: Deploy Worker
+        working-directory: apps/site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN not set; skipping Worker deploy."
+            exit 0
+          fi
+          npx wrangler deploy

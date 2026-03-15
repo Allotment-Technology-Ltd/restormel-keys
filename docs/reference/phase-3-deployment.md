@@ -170,11 +170,36 @@ If **restormel.dev** or **www.restormel.dev** shows "Connection reset" or "This 
 
 ---
 
+## 4.1 Deploy site Worker from GitHub Actions only (optional)
+
+To avoid Git-triggered Cloudflare deploys wiping **KEYS_DASHBOARD_URL**, you can deploy the site Worker only from CI and disconnect Cloudflare’s Git deployment.
+
+**1. GitHub — add secrets**
+
+- Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+- Add:
+  - **KEYS_DASHBOARD_URL** — value: `https://<dashboardServiceUrl>/keys/dashboard` (e.g. from `cd infra && pulumi stack output dashboardServiceUrl`; append `/keys/dashboard`; no trailing slash).
+  - **CLOUDFLARE_API_TOKEN** — value: a [Cloudflare API token](https://dash.cloudflare.com/profile/api-tokens) with **Workers Scripts: Edit** (and **Account: Read**). Use the same Cloudflare account that owns **restormel-site**.
+
+**2. Cloudflare — disconnect Git**
+
+- **Workers & Pages** → **restormel-site** → open **Build** (or the page that shows “Connect your Worker to a Git repository”).
+- Click **Disconnect** next to the connected repository (`Allotment-Technology-Ltd/restormel-keys`).
+- Confirm. After this, Cloudflare will no longer build or deploy on push; only the GitHub Actions workflow will deploy the Worker (when the deploy job runs and the **deploy-site-worker** job injects `KEYS_DASHBOARD_URL` and runs `wrangler deploy`).
+
+**3. Result**
+
+- Pushes to `main` that touch `apps/**` or the deploy paths trigger the CI workflow; the **deploy-site-worker** job builds the site, injects `KEYS_DASHBOARD_URL` from the secret into `wrangler.toml`, and runs `npx wrangler deploy`. The Worker is updated with the var set, so the proxy keeps working and the var is not wiped.
+
+If you leave Git connected, you can still add the two GitHub secrets; the job will deploy after each push and re-inject the var, but a Cloudflare build that runs in parallel could occasionally overwrite the Worker. Disconnecting Git avoids that.
+
+---
+
 ## 5.1 Troubleshooting: 401 on /keys/dashboard
 
 If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied) returns **401 Unauthorized**:
 
-0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables** → set **KEYS_DASHBOARD_URL** to your Cloud Run URL (from `pulumi stack output dashboardServiceUrl`). Deploy with `cd apps/site && pnpm build && npx wrangler deploy` (Worker flow); Pages-only deploy does not run the proxy.
+0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets** (runtime) → add **KEYS_DASHBOARD_URL** = your Cloud Run URL (from `pulumi stack output dashboardServiceUrl` in `infra/`, append `/keys/dashboard`; no trailing slash). **Note:** Git-triggered Cloudflare deploys can clear runtime variables. To avoid that, add **KEYS_DASHBOARD_URL** and **CLOUDFLARE_API_TOKEN** to GitHub Actions secrets; the CI workflow will then deploy the Worker with the var injected. Optionally disable Cloudflare Git deployment for restormel-site so only CI deploys.
 
 1. **Proxy target**  
    If you use a Cloudflare route to proxy `/keys/dashboard` to Cloud Run, the target must be the **direct Cloud Run URL** from `cd infra && pulumi stack output dashboardServiceUrl`. The dashboard app uses base path `/keys/dashboard`, so the backend must receive paths like `/keys/dashboard` and `/keys/dashboard/api/health`. Do **not** point the proxy at a load balancer or URL that requires IAM; the Cloud Run service is configured with public invoker (`allUsers` in infra).

@@ -10,8 +10,8 @@ compatibility_date = "2024-01-01"
 main = "worker.js"
 
 # Dashboard proxy: requests to /keys/dashboard are forwarded to Cloud Run when KEYS_DASHBOARD_URL is set.
-# Do NOT add KEYS_DASHBOARD_URL here — set it only in Cloudflare (Workers & Pages → restormel-site →
-# Settings → Variables and Secrets, runtime). Otherwise Git-triggered deploys overwrite it with the repo value.
+# Do NOT add KEYS_DASHBOARD_URL here — set it only in Cloudflare (Settings → Variables and Secrets) or
+# deploy via CI (deploy-site-worker job injects it from secret). Git-triggered Cloudflare deploys can wipe dashboard-set vars.
 # For local dev, set in .dev.vars (see .dev.vars.example).
 
 # Static assets from Astro build (used by `wrangler deploy` for Workers Git flow)
