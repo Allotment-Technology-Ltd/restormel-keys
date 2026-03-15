@@ -1,7 +1,8 @@
 /**
  * Firebase client for login (GitHub). Config from env at build time. No secrets in repo.
  */
-import { initializeApp } from "firebase/app";
+import { browser } from "$app/environment";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GithubAuthProvider, type User } from "firebase/auth";
 
 const config = {
@@ -10,17 +11,30 @@ const config = {
   projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID ?? "",
 };
 
-const app = initializeApp(config);
-export const auth = getAuth(app);
+let auth: ReturnType<typeof getAuth> | null = null;
+
+function getClientAuth() {
+  if (!browser) {
+    throw new Error("Firebase Auth is only available in the browser");
+  }
+  if (!config.apiKey || !config.authDomain || !config.projectId) {
+    throw new Error("Firebase client config missing (PUBLIC_FIREBASE_* env vars)");
+  }
+  if (!auth) {
+    const app = getApps().length > 0 ? getApp() : initializeApp(config);
+    auth = getAuth(app);
+  }
+  return auth;
+}
 
 export async function signInWithGitHub(): Promise<User> {
   const provider = new GithubAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(getClientAuth(), provider);
   return result.user;
 }
 
 export async function getIdToken(): Promise<string | null> {
-  const user = auth.currentUser;
+  const user = getClientAuth().currentUser;
   if (!user) return null;
   return user.getIdToken();
 }
