@@ -28,7 +28,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
 1. In a terminal, run: `pulumi login`. If you use the Pulumi web backend, open the URL it prints and complete sign-in.
 2. In the repo root, run: `cd infra && pulumi stack select production` (or `pulumi stack init production` if the stack does not exist).
 3. Set config: `pulumi config set gcp:project YOUR_PROJECT_ID` (use the Project ID from A1). Optionally: `pulumi config set domain restormel.dev` when you are ready for custom domain.
-4. Run `pulumi preview` and then `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`) for later steps.
+4. **Before `pulumi up`:** Run `pnpm run build` in `infra` (Pulumi runs the compiled output; a stale build can cause wrong resources or 403). If this is the first run or Cloud Run fails with "Permission denied on secret", run once from repo root: `./infra/grant-firebase-secret-access.sh`. See **Before every pulumi up** in `infra/README.md`. Then run `pulumi preview` and `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`) for later steps.
 5. **Do not** commit `Pulumi.production.yaml` if it contains secrets; use `pulumi config set --secret` for any secret values.
 
 **A4. GitHub secrets for deploy (CI).**
@@ -71,7 +71,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
    - **Client (public):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`.
    - **Server (secret):** Either `GOOGLE_APPLICATION_CREDENTIALS` pointing to the JSON path, or `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`.
 2. For Cloud Run, use **Secret Manager** or **Environment variables** in the service; do not bake secrets into the image. See `infra/` and Pulumi config for wiring secrets into the dashboard service.
-3. **Secret Manager (one-time):** Create the secret `firebase-admin-credentials` in the **same GCP project** as your Pulumi stack (e.g. `restormel-keys-prod`), add a version with the JSON key, then run `pulumi up`. Pulumi will grant the dashboard service account Secret Accessor. If you see **403 CONSUMER_INVALID** on Secret Manager, see `infra/README.md` § Secret Manager and 403 CONSUMER_INVALID.
+3. **Secret Manager (one-time):** Create the secret `firebase-admin-credentials` in the **same GCP project** as your Pulumi stack (e.g. `restormel-keys-prod`), add a version with the JSON key. Grant the dashboard SA access once: from repo root run `./infra/grant-firebase-secret-access.sh`. See `infra/README.md` (§ Before every pulumi up, § Secret Manager: Firebase secret access).
 
 You do **not** need to paste the actual key values back into Cursor; only confirm that you have set them where the dashboard runs.
 
@@ -185,11 +185,19 @@ You do not need to paste build logs back into Cursor; only confirm the first dep
 2. Add or update the record as Cloudflare instructed when you added the custom domain in D3 (typically a **CNAME** for the Pages hostname, or **A** records to Cloudflare’s IPs). Save.
 3. Wait for propagation (minutes to hours). You can verify in Cloudflare Dashboard when the domain shows “Active.”
 
-**E2. Route /keys/dashboard to Cloud Run.**
+**E2. Enable /keys/dashboard proxy (Worker deploy).**
 
-1. **Option A — Proxy via Cloudflare:** If you use Cloudflare Workers or a proxy, add a route that matches `restormel.dev/keys/dashboard` (and children) and forwards to your Cloud Run URL (from Pulumi output `dashboardServiceUrl` or your load balancer URL). Preserve the path the backend expects (e.g. `/keys/dashboard/api/...`).
-2. **Option B — Subdomain:** Alternatively, use a subdomain (e.g. `dashboard.restormel.dev`) and point it to Cloud Run (or the load balancer) via CNAME or A record; then link to that URL from the site.
-3. Document which option you used so you can maintain it later.
+The site Worker (`apps/site/worker.js`) proxies `/keys/dashboard` to Cloud Run when `KEYS_DASHBOARD_URL` is set. You must deploy with the **Worker** flow (`pnpm build` then `npx wrangler deploy` from `apps/site`) and set the variable:
+
+1. Get your Cloud Run URL: `cd infra && pulumi stack output dashboardServiceUrl` (e.g. `https://keys-dashboard-XXXXXXXX.run.app`).
+2. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables** → add **KEYS_DASHBOARD_URL** = that URL (no trailing slash). Apply to Production (and Preview if needed).
+3. Redeploy the Worker so the new variable is in effect (e.g. from repo: `cd apps/site && pnpm build && npx wrangler deploy`).
+
+If you use **Pages-only** deploy (`wrangler pages deploy dist`) with no Worker, the proxy does not run; use **Option B** (subdomain) or switch to Worker deploy.
+
+**Option B — Subdomain instead:** Use e.g. `dashboard.restormel.dev` and point it to Cloud Run via CNAME; then link to that URL from the site. No Worker env var needed.
+
+If you see **401** on `/keys/dashboard`, see [Phase 3 deployment §5.1 — 401 on /keys/dashboard](phase-3-deployment.md#51-troubleshooting-401-on-keysdashboard) (proxy target, direct URL fallback, API auth).
 
 You do not need to paste DNS records back into Cursor; only confirm that `https://restormel.dev` serves the site and that the dashboard is reachable at your chosen path or subdomain.
 

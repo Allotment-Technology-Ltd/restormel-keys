@@ -20,14 +20,40 @@ This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External 
 
 ## 2. Configure routes (proxy to Cloud Run)
 
-1. In the Zuplo project, open **Routes** (or **API** → **Routes**).
-2. Add a route that proxies to the Keys dashboard backend:
-   - **Path:** e.g. `/*` or `/v1/*` (match the path prefix you want to expose).
-   - **Upstream (backend):** Cloud Run URL for the dashboard, e.g.  
-     `https://keys-dashboard-<hash>.europe-west2.run.app`  
-     or the canonical URL if behind a load balancer (e.g. `https://restormel.dev/keys/dashboard`).
-   - **Path rewrite (if needed):** If the gateway exposes `/v1/...` but the backend expects `/keys/dashboard/api/...`, configure the rewrite so the backend receives the path it expects (e.g. strip `/v1` and add `/keys/dashboard/api`).
-3. Ensure the backend base path matches how the dashboard is deployed (see [phase-3-deployment](../reference/phase-3-deployment.md)). The dashboard serves under base path `/keys/dashboard`, so backend paths are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc.
+In the Zuplo project, open **Code** → **routes.oas.json** and use the **Route Designer** (or click **Add** to add a new route). Fill in every field as below.
+
+### 2.1 Route Designer — field-by-field
+
+| Field | What to enter | Notes |
+|-------|----------------|--------|
+| **Path** | `/*` | Wildcard: all paths hit this route. To expose only the API, use `/v1/*` and set **Forward to** so the backend receives the path it expects (see path rewrite below). |
+| **Method** | `GET` (and add routes for `POST`, `PUT`, `PATCH`, `DELETE` if your API uses them) | Or use a single route with path `/*` and leave Method as `GET` only if you use the URL Forward handler for all methods (URL Forward forwards the incoming method). For a full REST API, add one route per method with the same path, or use a path that matches all methods depending on Zuplo’s route model. |
+| **Summary** | e.g. `Keys API proxy` | Shown in docs; descriptive label. |
+| **Operation ID** | (read-only) | Auto-generated (e.g. `new-route-ee8e252f`). Do not change. |
+| **Deny All Origins (CORS)** | Uncheck if clients call from browsers; check to deny all origins. | For server-to-server only, denying CORS is fine. |
+| **Request Handler** | **URL Forward** | Choose from the Handler dropdown. |
+| **Forward to** | Your backend base URL. Use an env var for per-environment config. | See below. |
+
+**Forward to (Request Handler URL):**
+
+- **Option A — Direct Cloud Run:**  
+  `https://keys-dashboard-<hash>.europe-west2.run.app`  
+  (Use the exact URL from Pulumi output `dashboardServiceUrl`.)
+- **Option B — Env var (recommended):**  
+  `${env.KEYS_BACKEND_URL}`  
+  Then in **Settings** → **Environment Variables**, add `KEYS_BACKEND_URL` with value = your Cloud Run or canonical dashboard URL (e.g. `https://restormel.dev/keys/dashboard` or the direct Run URL). No trailing slash.
+- **Path behavior:** URL Forward appends the **incoming path** to this base. So if a client calls the gateway at `https://your-gateway.zuplo.app/v1/health`, the backend receives `https://<KEYS_BACKEND_URL>/v1/health`. Your backend must expect that path (e.g. `/v1/health`) or you need a path rewrite (see [URL Rewrite Handler](https://zuplo.com/docs/handlers/url-rewrite) if the gateway path and backend path differ).
+
+**Path alignment with dashboard:**
+
+- The dashboard is served under base path `/keys/dashboard`; API routes are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc. (see [phase-3-deployment](../reference/phase-3-deployment.md)).
+- If the gateway exposes `https://gateway.zuplo.app/v1/*`, set **Forward to** to a base that yields `/keys/dashboard/api/...` on the backend. For example, if backend base is `https://restormel.dev`, use **Forward to** = `https://restormel.dev/keys/dashboard` so that gateway path `/v1/health` becomes backend path `/v1/health` (still wrong unless your app serves `/v1/health`). To get `/keys/dashboard/api/health`, you either expose gateway path `/*` with Forward to `https://restormel.dev/keys/dashboard` and call gateway as `https://gateway.zuplo.app/api/health`, or use URL Rewrite to map `/v1/*` → `/keys/dashboard/api/*`.
+
+**Practical recommendation:** Set **Path** = `/*`, **Forward to** = `https://restormel.dev/keys/dashboard` (or `${env.KEYS_BACKEND_URL}` with that value). Then client calls `https://<gateway>/api/health`, `https://<gateway>/api/projects`, etc., and the backend receives `/api/health`, `/api/projects` under the dashboard app (which serves at `/keys/dashboard`); the Host header and path the app sees depend on your Cloud Run/proxy setup—ensure the dashboard is configured to serve API at `/keys/dashboard/api/*` and that the URL you put in **Forward to** includes `/keys/dashboard` so the first path segment is correct.
+
+### 2.2 Path rewrite (if gateway path ≠ backend path)
+
+If the gateway exposes `/v1/*` but the backend expects `/keys/dashboard/api/*`, use the **URL Rewrite** handler instead of URL Forward, or add a route that forwards to a base URL that already includes the path prefix. See Zuplo docs: [URL Forward](https://zuplo.com/docs/handlers/url-forward), [URL Rewrite](https://zuplo.com/docs/handlers/url-rewrite). Keep the runbook’s path logic consistent with [phase-3-deployment](../reference/phase-3-deployment.md).
 
 ---
 
@@ -112,3 +138,110 @@ Ensure the dashboard backend is configured so that:
 | Direct backend | Must reject `zpka_` keys. |
 
 For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md).
+
+---
+
+## 8. Deployment checklist (zuplo-gateway / config-as-code)
+
+Use this checklist so deployment matches Zuplo’s expectations and avoids build failures. The in-repo project is **`zuplo-gateway/`**.
+
+| # | Check | Zuplo guidance / notes |
+|---|--------|-------------------------|
+| 1 | **zuplo.jsonc** at project root | `version: 1`, `compatibilityDate` (e.g. `2025-02-06`), `projectType: "managed-edge"`. See [zuplo.jsonc](https://zuplo.com/docs/programmable-api/zuplo-json). |
+| 2 | **tsconfig.json** at project root | Required by the build. Use Zuplo’s [recommended tsconfig](https://zuplo.com/docs/articles/tsconfig): `include` for `modules/**/*`, `.zuplo/**/*`, `tests/**/*`; `compilerOptions` as in the doc. |
+| 3 | **config/routes.oas.json** | Path: use **url-pattern** mode for catch-all, e.g. path `"/(.*)"` with `x-zuplo-path.pathMode: "url-pattern"` ([routing](https://zuplo.com/docs/articles/routing)). Handler: `urlForwardHandler`, `baseUrl`: `"${env.KEYS_BACKEND_URL}"`, `forwardSearch: true`, `followRedirects: false` ([URL Forward](https://zuplo.com/docs/handlers/url-forward)). |
+| 4 | **config/policies.json** | Build schema can reject custom root keys. If the build fails with “additionalProperties” or “must be object”, see [§8.5 Troubleshooting: policies.json](#85-troubleshooting-policiesjson-build-failures). |
+| 5 | **Environment variables** (in Zuplo) | `KEYS_BACKEND_URL` (backend base URL, no trailing slash), `KEYS_BACKEND_API_KEY` (secret). Set in Portal → Settings → Environment Variables or via CLI/API. |
+| 6 | **Placeholder dirs** (optional) | Empty `modules/`, `.zuplo/`, `tests/` satisfy tsconfig `include`; avoids warnings. |
+
+After a successful build, create at least one API key consumer (Portal or API) and run the validation steps in §7.
+
+### 8.5 Troubleshooting: policies.json build failures
+
+The Zuplo build validates `config/policies.json` against an internal schema. If you see errors like **“must NOT have additional properties”** or **“must be object”**:
+
+1. **Portal-first (recommended):** In the Zuplo project, use the **Route Designer** (Code → routes.oas.json) to add the four policies (API Key, Rate Limit, Quota, Set Headers) to the route. Save. Then use **Source Control** (or “Commit & push” / export) so Zuplo writes the correct `config/policies.json`. Copy that file into `zuplo-gateway/config/policies.json` and commit. Future CLI deploys will use the Portal-generated format.
+2. **In-repo format:** The `zuplo-gateway/` folder currently uses a root object with key `policies` and value an array of policy objects. If the build accepts that, no change needed. If it rejects `policies`, do not add other root keys (e.g. `policyInstances`); use step 1 instead.
+3. **Policy options:** Set Headers policy must use `$env(VAR_NAME)` for secret values ([Set Headers](https://zuplo.com/docs/policies/set-headers-inbound)); URL Forward uses `${env.VAR_NAME}` in `baseUrl` ([environment variables](https://zuplo.com/docs/articles/environment-variables)).
+
+---
+
+## 9. Automated setup (CLI, config-as-code, agent)
+
+Zuplo has **no official MCP server or VS Code extension**. You can still drive setup from a Cursor agent or subagent using **config-as-code** plus the **Zuplo CLI** and optional **Developer API**.
+
+### 9.1 How it works
+
+- **Routes and policies** are defined in project files: `config/routes.oas.json`, `config/policies.json`, and optionally `zuplo.jsonc`. There is no REST API to create or edit routes; they live in the deployed bundle.
+- **Deployment** is either:
+  - **Git-based:** Connect the Zuplo project to a GitHub repo (Settings → Source Control). Push to the repo (or a branch) → Zuplo auto-deploys. An agent can edit the config files in-repo and push.
+  - **CLI-based:** From a directory containing the Zuplo project files, run `zuplo deploy` (see [Custom CI/CD](https://zuplo.com/docs/articles/custom-ci-cd)). Requires `ZUPLO_API_KEY` (Settings → API Keys in the portal).
+- **Environment variables** (e.g. `KEYS_BACKEND_URL`, `KEYS_BACKEND_API_KEY`) can be set:
+  - In the portal (Settings → Environment Variables), or
+  - Via **CLI:** `zuplo variable create` / `zuplo variable update` (see [Zuplo CLI](https://zuplo.com/docs/cli/overview)), or
+  - Via **Developer API:** [Variables API](https://dev.zuplo.com/docs/api/variables) with your Zuplo API key.
+- **API key consumers** (for issuing `zpka_...` keys to clients) can be created in the portal or via the [API Key API](https://zuplo.com/docs/articles/api-key-api) (e.g. create consumer with key for testing).
+
+So an agent can:
+
+1. **Create or update config in repo** — Edit or generate `config/routes.oas.json` and `config/policies.json` (see [Reference config](#82-reference-config-for-agent)) in a Zuplo project directory. This repo has a ready-made project at **`zuplo-gateway/`** (see [zuplo-gateway/README.md](../../zuplo-gateway/README.md)).
+2. **Deploy** — Run `zuplo deploy` from that directory (with `ZUPLO_API_KEY` set), or push to the connected GitHub repo to trigger deploy.
+3. **Set variables** — Run `zuplo variable create` / `zuplo variable update`, or call the Variables API, for `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` (secret).
+4. **Create a test consumer** — Use the Developer API to create a consumer with an API key for validation.
+
+### 9.2 Reference config for agent
+
+A Cursor agent or subagent can generate or update the Zuplo project from a known schema:
+
+- **Project:** One Zuplo project (e.g. `restormel-keys-gateway`). Create once in the portal or with `zuplo project create --name restormel-keys-gateway` (CLI).
+- **Routes** (`config/routes.oas.json`): OpenAPI-style `paths` with Zuplo extensions. Catch-all: path `"/(.*)"` with `x-zuplo-path.pathMode: "url-pattern"`; methods `get`, `post`, `put`, `patch`, `delete`; `x-zuplo-route` containing:
+  - `handler`: URL Forward with `baseUrl`: `"${env.KEYS_BACKEND_URL}"`.
+  - `policies.inbound`: array of policy names in order: api-key, rate-limit, quota, inject-backend-auth (names must match `config/policies.json`).
+- **Policies** (`config/policies.json`): Format required by the Zuplo build may vary by runtime. If deploying from code, try root object with key `policies` and value an array of policy objects (each with `name`, `policyType`, `handler`). If the build rejects that, define policies in the Portal (Route Designer) and export/sync to obtain the valid file; then commit that format. Required policy names:
+  - **api-key-inbound** — `policyType`: `"api-key-inbound"`, handler from `@zuplo/runtime` `ApiKeyInboundPolicy`, options e.g. `allowUnauthenticatedRequests: false`.
+  - **rate-limit-inbound** — `policyType`: `"rate-limit-inbound"`, `RateLimitInboundPolicy`, options e.g. `rateLimitBy: "user"`, `requestsAllowed`, `timeWindowMinutes`.
+  - **quota-inbound** — `policyType`: `"quota-inbound"`, `QuotaInboundPolicy`, options e.g. `quotaBy: "user"`, `period: "monthly"`, `allowances: { "requests": N }`.
+  - **inject-backend-auth** — `policyType`: `"set-headers-inbound"`, `SetHeadersInboundPolicy`, options `headers`: `[{ "name": "Authorization", "value": "Bearer $env(KEYS_BACKEND_API_KEY)", "overwrite": true }]`.
+
+Minimal reference files are in this repo at **`docs/runbooks/zuplo-config-reference/`**:
+- `config-routes.example.json` — path `/(.*)` (url-pattern), URL Forward to `${env.KEYS_BACKEND_URL}`, inbound policy list.
+- `config-policies.example.json` — api-key-inbound, rate-limit-inbound, quota-inbound, inject-backend-auth (Set Headers with `$env(KEYS_BACKEND_API_KEY)`).
+
+If your Zuplo project uses a different path format for catch-all (e.g. from the Route Designer), match that. The agent should:
+
+1. Ensure the Zuplo project exists and is linked to the repo (or use CLI deploy).
+2. Use the in-repo project at **`zuplo-gateway/`** (it already contains `config/routes.oas.json` and `config/policies.json` matching this runbook), or write/update those files in your project directory.
+3. Set env vars `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo (portal or CLI/API); do not commit secrets.
+4. From `zuplo-gateway/` run `pnpm install` then `pnpm run deploy` (with `ZUPLO_API_KEY` set), or push to the connected branch to trigger Git-based deploy.
+
+### 9.3 CLI prerequisites
+
+- **Node.js** 20+ (22 recommended).
+- **Install:** `npm install -g zuplo` (or `npm install -g @zuplo/cli` if the package name differs; see [Zuplo CLI](https://zuplo.com/docs/cli/overview)).
+- **Auth:** `ZUPLO_API_KEY` from Zuplo portal (Settings → API Keys). Use for `zuplo deploy` and variable commands; do not commit.
+
+### 9.4 What cannot be fully automated today
+
+- **Linking the Zuplo project to a GitHub repo** is done in the portal (Settings → Source Control). After that, pushes deploy automatically; the agent only needs to edit files and push (or use `zuplo deploy` if not using GitHub).
+- **First-time project creation** can be done with `zuplo project create`; connecting a repo is portal-only.
+- **Developer Portal** (docs, try-it) is configured in the portal; OpenAPI can be imported or synced from the route spec.
+
+---
+
+## 10. Connecting to GitHub (optional — do after gateway is working)
+
+Zuplo **Source Control** (Settings → Source Control) only accepts:
+
+- An **empty** repository, or  
+- A repository whose **root** is a valid Zuplo project (i.e. `config/`, `zuplo.jsonc`, `tsconfig.json` at the **top level** of the repo).
+
+The **restormel-keys** repo is a monorepo with the gateway in **`zuplo-gateway/`**. Zuplo checks the repo root and does not see a Zuplo project there, so it shows: *"We can only connect to an empty repository or a repository containing a valid Zuplo project."* Do not connect the main restormel-keys repo to Zuplo unless the project root is changed (not supported by Zuplo today).
+
+**Options when you are ready to use GitHub:**
+
+| Option | Description |
+|--------|-------------|
+| **A — Dedicated gateway repo** | Create a new GitHub repo (e.g. `restormel-keys-gateway`). Copy the **contents** of this repo’s `zuplo-gateway/` into the **root** of that repo (so the new repo has `config/`, `zuplo.jsonc`, `tsconfig.json`, `package.json`, `README.md` at top level). Push, then in Zuplo connect to that repo. You get branch-based environments and deploy-on-push; keep `zuplo-gateway/` in restormel-keys as the source of truth and sync to the dedicated repo when needed (script or manual copy). |
+| **B — CLI deploy only** | Do not connect a repo. Deploy from this repo with `cd zuplo-gateway && ZUPLO_API_KEY=<key> pnpm run deploy` whenever you change the gateway. Optionally run the same from CI with `ZUPLO_API_KEY` as a secret. |
+
+**Recommendation:** Finish configuring and validating the gateway (env vars, consumers, §7 validation) first. Then choose A if you want branch environments and push-to-deploy, or B if a single gateway and CLI/CI deploys are enough. See also [zuplo-gateway/README.md](../../zuplo-gateway/README.md).

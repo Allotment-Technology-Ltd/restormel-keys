@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "Restormel Keys API", "version": "1.0.0" },
+  "paths": {
+    "/(.*)": {
+      "x-zuplo-path": { "pathMode": "url-pattern" },
+      "get": {
+        "summary": "Keys API proxy (GET)",
+        "operationId": "keys-api-proxy-get",
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

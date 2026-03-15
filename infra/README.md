@@ -2,6 +2,23 @@
 
 Pulumi stack for dashboard (Cloud Run) and Artifact Registry on GCP. No load balancer; site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy.
 
+## Before every `pulumi up`
+
+Do these **every time** you are about to run `pulumi up` (first run or after changing infra):
+
+1. **Build the program** — Pulumi runs the compiled `bin/index.js`, not `index.ts`. If you changed `index.ts`, run:
+   ```bash
+   cd infra && pnpm run build
+   ```
+   Skipping this can cause the wrong resources to be created or updated (e.g. repeated 403 on Secret Manager).
+2. **One-time only: grant Firebase secret access** — If the dashboard service account does not yet have access to the Firebase Admin secret, run once from repo root:
+   ```bash
+   ./infra/grant-firebase-secret-access.sh
+   ```
+   See [Secret Manager: Firebase secret access (one-time)](#secret-manager-firebase-secret-access-one-time) below. If Cloud Run already starts successfully, you can skip this.
+
+Then run `pulumi up` from the `infra` directory.
+
 ## Prerequisites
 
 - [Pulumi CLI](https://www.pulumi.com/docs/install/) and login (`pulumi login`)

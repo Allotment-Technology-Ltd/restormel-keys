@@ -4,6 +4,8 @@ This runbook covers deploying the **site** (Astro) to **Cloudflare Pages** and t
 
 **Gate:** All surfaces accessible (landing, docs, dashboard, Paddle checkout, Zuplo gateway when applicable).
 
+**Site URLs:** Custom domain **restormel.dev** DNS has been updated (namespaces no longer pointing at Vercel); the site is served from Cloudflare. If the custom domain is not yet active, use [https://restormel-site.adam-boon1984.workers.dev/keys/](https://restormel-site.adam-boon1984.workers.dev/keys/) for the marketing site.
+
 ---
 
 ## DO NOT
@@ -23,10 +25,14 @@ From repo root:
 
 ```bash
 cd infra
-pulumi stack select production   # or your stack name
+pnpm run build                  # required: Pulumi runs bin/index.js; stale build causes wrong resources or 403
+pulumi stack select production  # or your stack name
 pulumi config set gcp:project YOUR_GCP_PROJECT_ID   # if not set
-pulumi up   # creates/updates Artifact Registry, Cloud Run service, load balancer
+# One-time: if dashboard needs Firebase secret, run from repo root: ./infra/grant-firebase-secret-access.sh
+pulumi up   # creates/updates Artifact Registry, Cloud Run service
 ```
+
+See **Before every pulumi up** in `infra/README.md` for the full checklist.
 
 Note the outputs: `dashboardServiceUrl`, etc. (Site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy.)
 
@@ -123,19 +129,65 @@ npx wrangler pages deploy dist --project-name=restormel-site
   - **www** if you use it — same or CNAME to the Pages hostname.
 
 - **Route /keys/dashboard/* to Cloud Run**  
-  The site is on Cloudflare Pages; the dashboard runs on Cloud Run. You have two common options:
+  The site Worker (`apps/site/worker.js`) can proxy `/keys/dashboard` to Cloud Run. Set **KEYS_DASHBOARD_URL** in Cloudflare (Workers & Pages → restormel-site → Settings → Variables) to the Cloud Run URL from `pulumi stack output dashboardServiceUrl` (no trailing slash). Deploy with `cd apps/site && pnpm build && npx wrangler deploy` so the Worker (and proxy) run. See **docs/reference/phase-3-manual-steps.md** E2.
 
-  1. **Cloudflare Workers (or Pages Functions) proxy**  
-     Create a route that matches `restormel.dev/keys/dashboard` (and children) and proxies requests to the Cloud Run URL (`dashboardServiceUrl` from Pulumi). This keeps a single origin (restormel.dev) for users.
-
-  2. **Subdomain for dashboard**  
-     e.g. `dashboard.restormel.dev` or `keys-dashboard.restormel.dev` → CNAME or A to the Cloud Run load balancer (if you expose the load balancer for that host). Then the site can link to `https://dashboard.restormel.dev` (or the chosen subdomain) instead of `restormel.dev/keys/dashboard`.
-
-Document the choice (single domain + proxy vs subdomain) and the exact URLs in this runbook or in `docs/04-design-and-site.md`.
+  **Alternative — subdomain:** e.g. `dashboard.restormel.dev` → CNAME to Cloud Run; then link to that URL from the site. No Worker env var needed.
 
 ---
 
-## 5. Verify
+## 5. Troubleshooting: restormel.dev not loading (ERR_CONNECTION_RESET)
+
+If **restormel.dev** or **www.restormel.dev** shows "Connection reset" or "This site can't be reached", the cause is usually **DNS still pointing at the old GCP load balancer IP** after the load balancer was removed. Traffic hits an IP that no longer has listeners, so the connection is reset.
+
+**Do this first:**
+
+1. **Check what the domain resolves to** (from your machine or a tool like `dig`):
+   ```bash
+   dig restormel.dev +short
+   dig www.restormel.dev +short
+   ```
+   If you see **35.190.37.201** (or any other GCP static IP), that is the old load balancer; it has been torn down and must no longer be used.
+
+2. **Fix DNS — choose the panel where restormel.dev is managed:**
+
+   **If DNS is in Vercel** (e.g. apex and `*` ALIAS to `cname.vercel-dns-017.com`):
+   - Open **Vercel** → **Domains** (or the project that owns restormel.dev) → **restormel.dev** → **DNS** or **Configure**.
+   - The apex and wildcard ALIAS to Vercel may be resolving to the old GCP IP if the domain was ever assigned to a project that used that IP. To serve the site from the **Cloudflare Worker** instead:
+     - **Option A:** In Vercel, remove or unassign restormel.dev from any project that was pointing at the GCP load balancer. Then add **CNAME** records that point to your Cloudflare Worker: get the Worker’s hostname from **Cloudflare** → **Workers & Pages** → **restormel-site** → **Settings** → **Domains & routes** (e.g. `restormel-site.<your-subdomain>.workers.dev`). In Vercel DNS: add **CNAME** for **www** → that hostname. For the **apex** (@), Vercel often uses ALIAS; set the ALIAS target to the same Workers hostname if Vercel allows it, or use Cloudflare’s recommended apex target from the Worker custom-domain setup.
+     - **Option B:** Move DNS to Cloudflare (change nameservers at the registrar to Cloudflare, then manage DNS and Worker custom domains in Cloudflare). Re-add your existing mail/MX/TXT/CAA records in Cloudflare so email keeps working.
+   - Leave **mail, MX, TXT, CAA** (MailerSend, Zoho, ACME, etc.) as they are unless you move DNS; only change the records that control where the **website** (apex and www) resolve.
+
+   **If DNS is in Cloudflare:**
+   - Open **Cloudflare Dashboard** → **Websites** → **restormel.dev** → **DNS** → **Records**.
+   - Remove any **A** or **AAAA** records for **@** (apex) or **www** that point to **35.190.37.201** (or the old GCP IP).
+   - For the **Worker** (site), add the custom domain in **Workers & Pages** → your Worker (**restormel-site**) → **Settings** → **Domains & routes** → add `restormel.dev` and `www.restormel.dev`. Ensure those records are **Proxied** (orange cloud).
+
+3. **Wait for propagation** (a few minutes to an hour), then try `https://restormel.dev` again. Optionally test the Worker directly first: `https://restormel-site.<your-subdomain>.workers.dev` — if that works, the issue is DNS only.
+
+4. **Confirm the Worker is deployed:** From repo root run `cd apps/site && pnpm build && npx wrangler deploy --config apps/site/wrangler.toml` so the latest build is live.
+
+**Summary:** restormel.dev must resolve to **Cloudflare** (for the Worker), not to the old GCP IP. Remove stale A records and attach the domain to the Worker with proxied DNS.
+
+---
+
+## 5.1 Troubleshooting: 401 on /keys/dashboard
+
+If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied) returns **401 Unauthorized**:
+
+0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables** → set **KEYS_DASHBOARD_URL** to your Cloud Run URL (from `pulumi stack output dashboardServiceUrl`). Deploy with `cd apps/site && pnpm build && npx wrangler deploy` (Worker flow); Pages-only deploy does not run the proxy.
+
+1. **Proxy target**  
+   If you use a Cloudflare route to proxy `/keys/dashboard` to Cloud Run, the target must be the **direct Cloud Run URL** from `cd infra && pulumi stack output dashboardServiceUrl`. The dashboard app uses base path `/keys/dashboard`, so the backend must receive paths like `/keys/dashboard` and `/keys/dashboard/api/health`. Do **not** point the proxy at a load balancer or URL that requires IAM; the Cloud Run service is configured with public invoker (`allUsers` in infra).
+
+2. **Use direct Cloud Run until the proxy works**  
+   You can open the dashboard at `https://<dashboardServiceUrl>/keys/dashboard` (e.g. `https://keys-dashboard-XXXXXXXX.europe-west2.run.app/keys/dashboard`). For Zuplo, set **KEYS_BACKEND_URL** to that base (no trailing slash) so the gateway forwards to Cloud Run directly.
+
+3. **401 from dashboard API in the browser**  
+   If the 401 is from a **dashboard API** call (e.g. `GET /keys/dashboard/api/projects`) when using the UI, that is expected when not logged in. Sign in with GitHub via the dashboard; the session cookie then authenticates API requests.
+
+---
+
+## 6. Verify
 
 After deployment and DNS/proxy are in place:
 

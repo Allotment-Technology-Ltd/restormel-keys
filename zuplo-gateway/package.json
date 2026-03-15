@@ -1,0 +1,15 @@
+{
+  "name": "restormel-keys-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zuplo gateway config for Restormel Keys API (config-as-code)",
+  "scripts": {
+    "deploy": "zuplo deploy"
+  },
+  "devDependencies": {
+    "zuplo": "^6.67.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

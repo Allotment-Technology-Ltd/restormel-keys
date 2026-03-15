@@ -1,0 +1,60 @@
+{
+  "policies": [
+    {
+      "name": "api-key-inbound",
+      "policyType": "api-key-inbound",
+      "handler": {
+        "export": "ApiKeyInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "allowUnauthenticatedRequests": false,
+          "cacheTtlSeconds": 60
+        }
+      }
+    },
+    {
+      "name": "rate-limit-inbound",
+      "policyType": "rate-limit-inbound",
+      "handler": {
+        "export": "RateLimitInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "rateLimitBy": "user",
+          "requestsAllowed": 100,
+          "timeWindowMinutes": 1
+        }
+      }
+    },
+    {
+      "name": "quota-inbound",
+      "policyType": "quota-inbound",
+      "handler": {
+        "export": "QuotaInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "quotaBy": "user",
+          "period": "monthly",
+          "allowances": { "requests": 10000 },
+          "quotaOnStatusCodes": "200-399"
+        }
+      }
+    },
+    {
+      "name": "inject-backend-auth",
+      "policyType": "set-headers-inbound",
+      "handler": {
+        "export": "SetHeadersInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer $env(KEYS_BACKEND_API_KEY)",
+              "overwrite": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
