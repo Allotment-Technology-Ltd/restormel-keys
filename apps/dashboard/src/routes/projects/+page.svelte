@@ -6,22 +6,30 @@
 
   let creating = false;
   let newName = "";
+  let createError = "";
 
   async function createProject() {
     if (!newName.trim()) return;
     creating = true;
+    createError = "";
     try {
       const res = await fetch(`${base}/api/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName.trim() }),
+        credentials: "include",
       });
       if (res.ok) {
         const { data: project } = await res.json();
         newName = "";
         await invalidateAll();
         window.location.href = base + "/projects/" + project.id;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        createError = (err as { error?: string }).error || `Create failed (${res.status})`;
       }
+    } catch (e) {
+      createError = e instanceof Error ? e.message : "Create failed";
     } finally {
       creating = false;
     }
@@ -33,6 +41,9 @@
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. Check Cloud Run logs; Firestore may need to be enabled or the service account may need Firestore permissions.</p>
+{/if}
+{#if createError}
+  <p class="error-msg" role="alert">{createError}</p>
 {/if}
 <div class="create-form">
   <input type="text" bind:value={newName} placeholder="Project name" class="input" />

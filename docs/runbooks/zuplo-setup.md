@@ -119,6 +119,8 @@ Run these checks to meet the gate:
 | **Valid consumer key** | Request to Zuplo with valid consumer key → Zuplo forwards to Cloud Run with backend key → **200** (or appropriate response) from backend. |
 | **Direct backend rejects zpka_** | Request **directly** to Cloud Run (bypassing Zuplo) with `Authorization: Bearer zpka_...` → backend returns **401** or **403** (backend must not accept Zuplo consumer keys). |
 
+**Important:** Opening the **gateway URL** (e.g. `https://restormel-keys-gateway-main-….zuplo.app/`) in a browser with no API key will always return **401 Unauthorized — No Authorization Header**. That is expected. Use the **Dev Portal** URL for docs and “Try it”; call the gateway with a consumer key in the `Authorization` header (or as configured in your API Key policy) for API requests.
+
 Ensure the dashboard backend is configured so that:
 
 - It accepts the **backend key** (`sk-rk-...`) for server-to-server calls (e.g. from Zuplo).
@@ -276,3 +278,29 @@ The **restormel-keys** repo is a monorepo with the gateway in **`zuplo-gateway/`
 | **B — CLI deploy only** | Do not connect a repo. Deploy from this repo with `cd zuplo-gateway && ZUPLO_API_KEY=<key> pnpm run deploy` whenever you change the gateway. Optionally run the same from CI with `ZUPLO_API_KEY` as a secret. |
 
 **Recommendation:** Finish configuring and validating the gateway (env vars, consumers, §7 validation) first. Then choose A if you want branch environments and push-to-deploy, or B if a single gateway and CLI/CI deploys are enough. See also [zuplo-gateway/README.md](../../zuplo-gateway/README.md).
+
+---
+
+## 11. Troubleshooting: 401 on Main, “no routes” / holding page on Working Copy
+
+### Main — 401 when opening gateway or dev portal in browser
+
+- **Gateway URL** (`*.zuplo.app`, e.g. `restormel-keys-gateway-main-….zuplo.app`):  
+  Every route has **api-key-inbound** with `allowUnauthenticatedRequests: false`. Visiting the gateway in a browser (no API key) **correctly** returns **401 — No Authorization Header**. This is not a misconfiguration.
+
+  **What to do:**  
+  - For **API calls:** send a valid Zuplo consumer key (e.g. `Authorization: Bearer zpka_…` or the header your API Key policy uses). Create a consumer and key in Portal → API Key Service (or your API Key bucket) and use it in requests.  
+  - For **docs and Try it:** use the **Dev Portal** URL, not the gateway URL. In Zuplo go to **Environments** → **main** → copy the **Dev Portal** link (typically `*.zuplo.site`). The portal page should load without an API key; use “Try it” or the portal’s auth UI to send a key when calling the API.
+
+- If you see 401 on the **Dev Portal** URL (the `.zuplo.site` link):  
+  - Confirm you are opening the **Dev Portal** link from Environments, not the **Gateway** link.  
+  - Some Zuplo setups require you to **Log in** (Zuplo account) to view the portal; that is separate from the API key. Use the **Login** button on the portal if shown.  
+  - If the portal URL redirects to the gateway, or the portal is configured to sit behind the same routes, you would need to adjust portal/gateway separation in Zuplo (see Zuplo docs for your plan).
+
+### Working Copy — “no routes” on gateway, holding page on dev portal
+
+- **“No routes”** on the gateway for the Working Copy environment means that environment’s deployed config has **no route definitions** (or the build did not include them).  
+  - If Working Copy is a **branch environment** (e.g. from GitHub Source Control), that branch in the **connected repo** may have an empty or different `config/routes.oas.json` (or the branch was never synced with the same content as main).  
+  - **Fix:** Ensure the branch that backs “Working Copy” has the same `config/routes.oas.json` as main (e.g. merge main into that branch, or copy `zuplo-gateway/config/routes.oas.json` into the root of the dedicated gateway repo on that branch and push). After a successful deploy, the gateway for that environment should list the same routes as main.
+
+- **Holding page** on the dev portal for Working Copy is typically what Zuplo shows when there is **no OpenAPI spec or no routes** for that environment. Once the Working Copy environment has the same routes (and optional OpenAPI) as main and is redeployed, the dev portal for that environment should show the API reference instead of the holding page.
