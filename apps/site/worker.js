@@ -67,7 +67,21 @@ async function proxyToDashboard(request, url, base) {
       redirect: "manual",
     });
 
-    const outHeaders = new Headers(res.headers);
+    // Copy all headers; Set-Cookie must be forwarded explicitly (can be dropped when copying Headers)
+    const outHeaders = new Headers();
+    const setCookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+    for (const [name, value] of res.headers.entries()) {
+      if (name.toLowerCase() === "set-cookie") continue;
+      outHeaders.set(name, value);
+    }
+    for (const cookie of setCookies) {
+      outHeaders.append("Set-Cookie", cookie);
+    }
+    // If getSetCookie isn't available, fall back to single get (one cookie)
+    if (setCookies.length === 0) {
+      const one = res.headers.get("Set-Cookie");
+      if (one) outHeaders.set("Set-Cookie", one);
+    }
     const opts = { status: res.status, statusText: res.statusText, headers: outHeaders };
     return new Response(res.body, opts);
   } catch {
