@@ -7,12 +7,29 @@
  * /keys/dashboard is not proxied and will 404.
  */
 const DASHBOARD_PREFIX = "/keys/dashboard";
+const PROXY_STATUS_PATH = "/keys/dashboard-proxy-status";
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const base = env.KEYS_DASHBOARD_URL?.trim();
 
+    // Diagnostic: GET /keys/dashboard-proxy-status → 200 + { proxy, backendConfigured }
+    if (url.pathname === PROXY_STATUS_PATH) {
+      const base = env.KEYS_DASHBOARD_URL?.trim();
+      return new Response(
+        JSON.stringify({
+          proxy: "active",
+          backendConfigured: !!base,
+          path: url.pathname,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const base = env.KEYS_DASHBOARD_URL?.trim();
     if (base && (url.pathname === DASHBOARD_PREFIX || url.pathname.startsWith(DASHBOARD_PREFIX + "/"))) {
       return proxyToDashboard(request, url, base);
     }
