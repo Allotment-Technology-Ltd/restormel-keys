@@ -34,7 +34,7 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
     "vite-plugin-dts": "^4.0.0",
-    "vitest": "^2.1.6"
+    "vitest": "^4.1.0"
   },
   "scripts": {
     "build": "vite build",

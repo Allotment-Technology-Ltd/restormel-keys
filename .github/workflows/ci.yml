@@ -16,7 +16,7 @@ on:
       run_deploy_site_worker:
         description: 'Run deploy-site-worker job (build site, inject KEYS_DASHBOARD_URL, wrangler deploy)'
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
