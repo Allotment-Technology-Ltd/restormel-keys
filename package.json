@@ -8,7 +8,11 @@
     "docs-checklist": "bash scripts/docs-update-checklist.sh",
     "hygiene": "bash scripts/check-repo-hygiene.sh",
     "check-secrets": "bash scripts/check-secrets.sh",
-    "check-deps": "bash scripts/check-dependency-policy.sh"
+    "check-deps": "bash scripts/check-dependency-policy.sh",
+    "bootstrap-paddle": "tsx scripts/bootstrap-paddle.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   },
   "engines": {
     "node": ">=18"

@@ -57,6 +57,7 @@ jobs:
             deploy:
               - 'apps/**'
               - 'infra/**'
+              - 'Dockerfile.dashboard'
               - 'Dockerfile.site'
               - '.dockerignore'
 
@@ -234,7 +235,7 @@ jobs:
       id-token: write
     env:
       REGION: europe-west2
-      IMAGE_NAME: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/restormel-keys/site
+      IMAGE_NAME: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/restormel-keys/dashboard
     steps:
       - uses: actions/checkout@v4
       - name: Authenticate to Google Cloud
@@ -257,10 +258,10 @@ jobs:
           gcloud auth list
           echo "Artifact Registry repo (must exist; deploy identity needs roles/artifactregistry.writer):"
           gcloud artifacts repositories describe restormel-keys --location=europe-west2 --project="${{ secrets.GCP_PROJECT_ID }}" || echo "Repo missing or no permission to describe — create with 'pulumi up' in infra/ and grant deploy SA roles/artifactregistry.writer"
-      - name: Build site image
+      - name: Build dashboard image
         run: |
-          docker build -f Dockerfile.site -t ${{ env.IMAGE_NAME }}:latest -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
-      - name: Push site image
+          docker build -f Dockerfile.dashboard -t ${{ env.IMAGE_NAME }}:latest -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+      - name: Push dashboard image
         run: |
           docker push ${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}

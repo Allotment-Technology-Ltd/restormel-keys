@@ -4,3 +4,4 @@ config:
   # Apex domain for custom domain + managed SSL. When set, www.<domain> is supported (redirects to apex).
   # Example: pulumi config set domain restormel.dev
   restormel-keys:domain: "restormel.dev" # e.g. restormel.dev
+  restormel-keys:PADDLE_SECRET_REF: paddle-webhook-secret-sandbox

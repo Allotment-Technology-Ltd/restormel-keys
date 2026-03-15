@@ -17,9 +17,19 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | 01 | `01-product-strategy.md` | Vision, mission, problem statement, two product modes, target users, use cases, competitive positioning |
 | 02 | `02-architecture.md` | Framework compatibility, package structure, CLI, SDK, hosted API, Zuplo API management, security model |
 | 03 | `03-infrastructure-and-billing.md` | GCP infrastructure (lift from SOPHIA), Paddle billing (lift from SOPHIA), Zuplo gateway (lift from SOPHIA), repo strategy, what to copy and what to adapt |
-| 04 | `04-design-and-site.md` | Restormel brand design tokens, restormel.dev/keys landing page wireframe, dashboard routes, docs site, site technology stack, deployment architecture |
+| 04 | `04-design-and-site.md` | Restormel brand design tokens (aliases to design system), restormel.dev/keys landing page wireframe, dashboard routes, docs site, site technology stack, deployment architecture |
 | 05 | `05-monetisation.md` | Pricing tiers, open-source vs paid boundaries, bolt-ons, revenue sequence, unit economics, pricing decision framework |
 | 06 | `06-roadmap-and-launch.md` | Phased roadmap (weeks 1–16), launch sequence, success metrics, risk register |
+
+### Design system (canonical for all UI)
+
+| # | Document | What it covers |
+|---|----------|---------------|
+| — | `design-system-index.md` | **Entry point.** Declares design system as canonical; links to tokens, spec, component inventory; implementation and alignment for site, dashboard, packages. |
+| — | `DESIGN-TOKENS.md` | Colors, typography, spacing, radius, shadows, interaction, focus, component sizes. Single source for token values. |
+| — | `DESIGN-SPECIFICATION.md` | Design principles, foundation, components, graph patterns, page layouts, usage guidelines, accessibility. |
+| — | `COMPONENT-INVENTORY.md` | Full component inventory (atoms, molecules, organisms, graph components). |
+| — | `design-tokens.css` | Reference implementation of DESIGN-TOKENS.md as CSS custom properties. |
 
 ### Prompt packs (Cursor-targeted)
 
@@ -86,7 +96,8 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | `docs/reference/api/api-development-portal-roadmap.md` | `docs/api-portal-roadmap.md` | Adapt phasing for Keys. Same Zuplo + PostHog architecture. |
 | `.github/workflows/deploy.yml` | `.github/workflows/deploy.yml` | Copy. Replace service names, image names, path filters. Remove SurrealDB and ingestion job steps. |
 | `infra/index.ts` | `infra/index.ts` | Copy and simplify. Remove SurrealDB, VPC connector, ingestion job. Keep Cloud Run, load balancer, SSL, Artifact Registry, Secret Manager. Custom domain: see `docs/domain-mapping-restormel-dev.md`. |
-| `Dockerfile` | `Dockerfile` | Copy multi-stage build pattern. Adapt for dashboard SvelteKit app. |
+| `Dockerfile.dashboard` | (repo root) | SvelteKit dashboard (apps/dashboard) for Cloud Run. CI deploys this to keys-dashboard. |
+| `Dockerfile.site` | (repo root) | Astro site (apps/site) for Cloud Run; use Cloudflare Pages for production (see phase-3-deployment). |
 
 ### Operational runbooks
 
@@ -94,6 +105,9 @@ This build pack contains everything needed to take Restormel Keys from concept t
 |----------|---------|
 | `docs/domain-mapping-restormel-dev.md` | Custom domain restormel.dev on GCP (load balancer, managed SSL, Vercel DNS). |
 | `docs/reference/phase-1-manual-steps.md` | Phase 1 manual steps (npm, GCP, Pulumi config). |
+| `docs/reference/phase-3-manual-steps.md` | Phase 3 manual actions (GCP, Firebase, Paddle, Cloudflare, DNS, Zuplo); what to bring back; safety checks. |
+| `docs/reference/phase-3-deployment.md` | Phase 3 cloud deployment: dashboard → Cloud Run, site → Cloudflare Pages, Paddle webhook, DNS, verification. |
+| `docs/runbooks/zuplo-setup.md` | Zuplo gateway (restormel-keys-gateway): routes to Cloud Run, inbound policies, backend key, developer portal, validation. |
 
 ---
 

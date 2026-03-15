@@ -1,0 +1,21 @@
+# Restormel Keys dashboard (SvelteKit) — build and serve on Cloud Run.
+# Build from repo root: docker build -f Dockerfile.dashboard -t restormel-dashboard .
+
+# --- Build stage ---
+FROM node:20-alpine AS build
+RUN corepack enable && corepack prepare pnpm@9 --activate
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter dashboard build
+
+# --- Serve stage ---
+FROM node:20-alpine
+WORKDIR /app
+# adapter-node outputs to apps/dashboard/build (index.js + client/ etc.)
+COPY --from=build /app/apps/dashboard/build ./
+COPY --from=build /app/apps/dashboard/package.json ./package.json
+RUN npm install --omit=dev
+ENV PORT=8080
+# Cloud Run sets PORT at runtime
+CMD ["node", "index.js"]

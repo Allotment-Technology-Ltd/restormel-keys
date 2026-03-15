@@ -32,5 +32,9 @@ temp/
 # Next.js / framework build (do not commit)
 .next/
 
+# SvelteKit / Astro build and generated (do not commit)
+.svelte-kit/
+.astro/
+
 # Optional: uncomment when packages exist
 # packages/*/dist/

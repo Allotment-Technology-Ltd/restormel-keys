@@ -4,22 +4,26 @@
 
 ## 1. Design tokens
 
-```css
---rm-bg: #1A1917;
---rm-surface: #141312;
---rm-surface-raised: #201F1D;
---rm-border: #2E2C29;
---rm-text: #E8E6E1;
---rm-muted: #9E9A93;
---rm-dim: #4A4845;
---rm-sage: #7FA383;
---rm-sage-bg: rgba(127,163,131,0.10);
---rm-font-display: 'Cormorant Garamond', Georgia, serif;
---rm-font-ui: 'JetBrains Mono', 'Courier New', monospace;
---rm-radius: 4px;
-```
+**Canonical design system:** All tokens, typography, and components are defined in [DESIGN-TOKENS.md](./DESIGN-TOKENS.md), [DESIGN-SPECIFICATION.md](./DESIGN-SPECIFICATION.md), and [COMPONENT-INVENTORY.md](./COMPONENT-INVENTORY.md). See [design-system-index.md](./design-system-index.md) for how the whole product aligns.
 
-Embeddable components use `--rk-*` namespace for host-app theming via CSS custom properties on the component element. Shadow DOM for style isolation.
+The Keys marketing/site layer uses **`--rm-*`** as aliases to the canonical tokens so that site and dashboard share the same visual language. Implementations should use [design-tokens.css](./design-tokens.css) and map as follows:
+
+| Alias (--rm-*) | Canonical token | Usage |
+|----------------|-----------------|--------|
+| `--rm-bg` | `--ink` | Page background |
+| `--rm-surface` | `--charcoal` | Panels, cards |
+| `--rm-surface-raised` | `--elevated` | Raised surfaces |
+| `--rm-border` | `--slate` | Borders, dividers |
+| `--rm-text` | `--paper` | Primary text |
+| `--rm-muted` | `--mist` | Body/secondary text |
+| `--rm-dim` | `--steel` | Captions, metadata |
+| `--rm-sage` | `--signal-teal` | Primary actions, success, links |
+| `--rm-sage-bg` | `--signal-teal-10` | Subtle teal backgrounds |
+| `--rm-font-display` | `--font-sans` (or design system display) | Headings |
+| `--rm-font-ui` | `--font-mono` | UI, code |
+| `--rm-radius` | `--radius-base` | Default radius |
+
+Embeddable components use **`--rk-*`** for host-app theming (see packages/svelte theme.css); those values must align with the design system (e.g. `--rk-accent` → path-blue, `--rk-success` → signal-teal, `--rk-danger` → coral-alert). Shadow DOM for style isolation.
 
 ---
 

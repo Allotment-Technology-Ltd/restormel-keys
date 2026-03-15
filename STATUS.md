@@ -4,9 +4,9 @@ Current state and next actions. Single source for "where we are"; keep aligned w
 
 **Phase:** 01 — Implementation (gate lifted)
 
-**State:** Phase 00 bootstrap complete. **@restormel/keys v0.1.0** is published to npm; first publish and Phase 1 manual steps are done. Canonical docs, rules, skills, subagents, scripts, CI in place per [docs/bootstrap-plan.md](docs/bootstrap-plan.md). Publish workflow (tag `keys-v0.1.0`) succeeded.
+**State:** Phase 00 bootstrap complete. **@restormel/keys v0.1.0** is published to npm; first publish and Phase 1 manual steps are done. Phase 2 complete (Svelte, elements, React, CLI, Next.js demo, SOPHIA runbook, a11y, publish, SvelteKit demo). Phase 3 started: Astro + Starlight marketing site scaffold (3.1) in `apps/site` — marketing layout, homepage, Starlight at `/keys/docs/*`, Cloudflare Pages.
 
-**Next:** Phase 2 in progress. KeyManager (2.1), ModelSelector, CostEstimator, icons (2.2) in `@restormel/keys-svelte`; Web Component wrappers (2.3) in `@restormel/keys-elements`; React wrapper and hooks (2.4) in `@restormel/keys-react` (KeyManager, ModelSelector, CostEstimator TSX, useKeys, useModels, useCost, KeysProvider, README, tests). Continue with further Phase 2 prompts (e.g. CLI) per [docs/reference/08-prompt-pack-phase-2.md](docs/reference/08-prompt-pack-phase-2.md).
+**Next:** Phase 3.2 (Keys landing page), 3.3 (Pricing), 3.4 (dashboard), etc. per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md).
 
 **Blockers:** None.
 

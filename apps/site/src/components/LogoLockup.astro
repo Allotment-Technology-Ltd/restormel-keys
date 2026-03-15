@@ -1,0 +1,65 @@
+---
+/**
+ * Restormel lockup: mark + wordmark. Use in nav, footer, hero.
+ * Variant: "nav" (compact for header/footer), "dark" (full lockup dark bg), "light" (full lockup light bg).
+ */
+interface Props {
+  variant?: "nav" | "dark" | "light";
+  href?: string;
+  height?: string;
+  class?: string;
+}
+
+const { variant = "nav", href = "/", height = "2rem", class: className = "" } = Astro.props;
+
+const src =
+  variant === "nav"
+    ? "/restormel-lockup-nav.svg"
+    : variant === "light"
+      ? "/restormel-lockup-light.svg"
+      : "/restormel-lockup-dark.svg";
+
+const wrapClass = `logo-lockup-wrap ${className}`.trim();
+---
+
+{href ? (
+  <a href={href} class={wrapClass} aria-label="Restormel home">
+    <img
+      src={src}
+      alt="Restormel"
+      width={variant === "nav" ? 160 : undefined}
+      height={variant === "nav" ? 24 : undefined}
+      class="logo-lockup"
+      style={variant === "nav" ? `height: ${height}; width: auto;` : "max-width: 100%; height: auto;"}
+      fetchpriority="high"
+    />
+  </a>
+) : (
+  <span class={wrapClass}>
+    <img
+      src={src}
+      alt="Restormel"
+      width={variant === "nav" ? 160 : undefined}
+      height={variant === "nav" ? 24 : undefined}
+      class="logo-lockup"
+      style={variant === "nav" ? `height: ${height}; width: auto;` : "max-width: 100%; height: auto;"}
+      fetchpriority="high"
+    />
+  </span>
+)}
+
+<style>
+  .logo-lockup-wrap {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+  }
+  .logo-lockup-wrap:hover {
+    opacity: 0.9;
+  }
+  .logo-lockup {
+    display: block;
+    object-fit: contain;
+  }
+</style>

@@ -10,6 +10,8 @@ High-level architecture summary. **Single entry point** for structure; details l
 
 **Trust/security:** BYOK-first. [docs/security-baseline.md](docs/security-baseline.md), [docs/threat-model-starter.md](docs/threat-model-starter.md).
 
+**Design system:** All UI (site, dashboard, embeddable components, demos) aligns with [docs/design-system-index.md](docs/design-system-index.md). Tokens and components from DESIGN-TOKENS.md, DESIGN-SPECIFICATION.md, COMPONENT-INVENTORY.md; reference implementation in docs/design-tokens.css.
+
 ---
 
 *Record decisions in docs/decisions/. Keep this file as summary only.*

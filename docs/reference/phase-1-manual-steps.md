@@ -51,7 +51,7 @@ You do **not** need to paste anything back into Cursor unless something failed.
 **B1. Point the package to your real repo.**
 
 - Open in Cursor: `packages/core/package.json`.
-- If your repo is **not** `https://github.com/allotment-technology/restormel-keys`, update these three fields to match your repo:
+- If your repo is **not** `https://github.com/Allotment-Technology-Ltd/restormel-keys`, update these three fields to match your repo:
   - `repository.url` → e.g. `https://github.com/YOUR_ORG/YOUR_REPO.git`
   - `homepage` → e.g. `https://github.com/YOUR_ORG/YOUR_REPO#readme`
   - `bugs.url` → e.g. `https://github.com/YOUR_ORG/YOUR_REPO/issues`

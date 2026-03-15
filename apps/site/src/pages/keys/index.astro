@@ -1,0 +1,727 @@
+---
+/**
+ * Restormel Keys landing — restormel.dev/keys
+ * Prompt 3.2: 9 sections per docs/04-design-and-site.md wireframe.
+ * Dark theme, plain CSS with --rm-* tokens, mobile responsive. No Tailwind, no icon libs, no JS.
+ */
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import { Code } from "astro:components";
+
+const serverCode = `// app/api/chat/route.ts (Next.js App Router)
+import { createResolveMiddleware } from "@restormel/keys";
+
+const resolve = createResolveMiddleware({
+  keys: await getStoredKeys(),
+  providers: ["openai", "anthropic"],
+});
+
+export async function POST(req: Request) {
+  const { model, messages } = await req.json();
+  const { provider, apiKey } = await resolve(model);
+  const res = await fetch(provider.chatUrl, {
+    method: "POST",
+    headers: { "Authorization": \`Bearer \${apiKey}\` },
+    body: JSON.stringify({ model, messages }),
+  });
+  return Response.json(await res.json());
+}`;
+
+const uiCode = `// app/settings/page.tsx
+import { KeyManager } from "@restormel/keys-react";
+
+export default function Settings() {
+  return (
+    <KeyManager
+      keys={keys}
+      onKeyAdded={handleAdd}
+      userId={user.id}
+    />
+  );
+}`;
+---
+
+<MarketingLayout>
+  <Fragment slot="head">
+    <title>Restormel Keys — BYOK for AI apps</title>
+    <meta name="description" content="Drop-in BYOK for AI apps. Ship key management in your existing stack — Next.js, React, SvelteKit, Web Components. No Docker, no proxy server." />
+    <meta property="og:title" content="Restormel Keys — BYOK for AI apps" />
+    <meta property="og:description" content="Drop-in BYOK for AI apps. Next.js, React, SvelteKit, Web Components. No Docker, no proxy." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://restormel.dev/keys" />
+    <meta property="og:image" content="https://restormel.dev/restormel-social-avatar.svg" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Restormel Keys — BYOK for AI apps" />
+    <meta name="twitter:description" content="Drop-in BYOK and provider routing for AI apps. Library-first. No proxy." />
+  </Fragment>
+
+  <article class="keys-page">
+    <!-- S1 Hero -->
+    <section class="section section-hero" aria-labelledby="hero-heading">
+      <div class="container">
+        <h1 id="hero-heading" class="hero-headline">Drop-in BYOK for AI apps.</h1>
+        <p class="hero-subhead">
+          Multi-provider routing and production-grade key management inside your app. One interface; your stack. Ship it in an afternoon.
+        </p>
+        <p class="hero-who">For AI SaaS builders, open-source maintainers, and small teams that need routing and end-user BYOK without running a gateway or rewriting key logic from scratch.</p>
+        <div class="hero-ctas">
+          <a href="/keys/docs/" class="btn btn-primary">Get started</a>
+          <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Keys exists -->
+    <section class="section section-why section-alt" aria-labelledby="why-heading">
+      <div class="container container-narrow">
+        <h2 id="why-heading" class="section-title">Why Keys exists</h2>
+        <p class="section-intro">Every AI app eventually needs two things: <strong>multi-provider routing</strong> (OpenAI, Anthropic, Google through one interface, with cost tracking and fallbacks) and <strong>end-user BYOK</strong> (let your users bring their own keys so you’re not on the hook for their usage). Today you get LiteLLM (Docker, Postgres, Redis) or Portkey (gateway-first, enterprise pricing) — or you build it yourself. Keys is the library that does both: routing and key management you embed in your app, with optional embeddable UI. No proxy by default.</p>
+      </div>
+    </section>
+
+    <!-- S2 Three modes -->
+    <section class="section section-modes" aria-labelledby="modes-heading">
+      <div class="container">
+        <h2 id="modes-heading" class="section-title">Three ways to use it</h2>
+        <p class="section-intro">Builder routing, end-user BYOK, or both. Same core; you choose what you expose.</p>
+        <div class="modes-grid">
+          <div class="mode-card">
+            <h3 class="mode-title">Builder routing</h3>
+            <p class="mode-copy">Your server resolves model → provider and API key. One middleware, any provider. Cost estimation and tracking built in. For SaaS backends and internal tools.</p>
+          </div>
+          <div class="mode-card">
+            <h3 class="mode-title">End-user BYOK</h3>
+            <p class="mode-copy">Your users add their own keys. Your app stores them securely and routes requests with per-user limits. Their usage, their keys — you control routing and entitlements.</p>
+          </div>
+          <div class="mode-card">
+            <h3 class="mode-title">Combined</h3>
+            <p class="mode-copy">Platform keys for core features; user keys for premium or heavy usage. One routing, cost, and entitlement layer. This is how SOPHIA runs in production.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- S3 Code example -->
+    <section class="section section-code section-alt" aria-labelledby="code-heading">
+      <div class="container">
+        <h2 id="code-heading" class="section-title">Add it to your stack</h2>
+        <p class="section-intro">Next.js App Router: one route handler and a settings page. No Docker, Redis, or proxy.</p>
+        <div class="code-split">
+          <div class="code-pane">
+            <span class="code-label">Server</span>
+            <div class="code-block">
+              <Code code={serverCode} lang="ts" theme="css-variables" wrap />
+            </div>
+          </div>
+          <div class="code-pane">
+            <span class="code-label">React / Next.js</span>
+            <div class="code-block">
+              <Code code={uiCode} lang="tsx" theme="css-variables" wrap />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- S4 Framework compatibility -->
+    <section class="section section-frameworks" aria-labelledby="frameworks-heading">
+      <div class="container">
+        <h2 id="frameworks-heading" class="section-title">Fits your framework</h2>
+        <p class="frameworks-copy">
+          <strong>Next.js</strong> App Router is the primary path. <strong>React</strong>: wrapper components plus hooks (useKeys, useModels, useCost). <strong>SvelteKit</strong>: native Svelte 5 components. <strong>Web Components</strong> for Astro, vanilla HTML, or any framework. <strong>Headless core</strong> when you want full control. Same API; no Docker, Redis, or proxy.
+        </p>
+        <ul class="framework-list" aria-label="Supported frameworks">
+          <li><span class="fw-pill">Next.js</span></li>
+          <li><span class="fw-pill">React</span></li>
+          <li><span class="fw-pill">SvelteKit</span></li>
+          <li><span class="fw-pill">Vue</span></li>
+          <li><span class="fw-pill">Astro</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- S5 Feature grid -->
+    <section class="section section-features section-alt" aria-labelledby="features-heading">
+      <div class="container">
+        <h2 id="features-heading" class="section-title">What’s in the box</h2>
+        <p class="section-intro">Routing, key management, cost, entitlements, and embeddable UI. One library.</p>
+        <div class="features-grid">
+          <div class="feature-card"><h3 class="feature-title">Key management</h3><p>Add, validate, list, delete. Keys masked in UI and logs; raw key returned only at creation.</p></div>
+          <div class="feature-card"><h3 class="feature-title">Routing</h3><p>Model → provider resolution. One middleware, multiple backends. Fallbacks and health checks.</p></div>
+          <div class="feature-card"><h3 class="feature-title">Cost</h3><p>Per-model cost and budget comparison. Input/output token pricing. Estimate before you call.</p></div>
+          <div class="feature-card"><h3 class="feature-title">Entitlements</h3><p>Gate features by tier. Optional usage limits. Same logic for platform and user keys.</p></div>
+          <div class="feature-card"><h3 class="feature-title">Embeddable UI</h3><p>KeyManager, ModelSelector, CostEstimator. Svelte, React, or Web Components. Drop into your settings page.</p></div>
+          <div class="feature-card"><h3 class="feature-title">Storage adapters</h3><p>In-memory, encrypted local file, or plug in Firestore, Supabase, Postgres when you go cloud.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- S6 Comparison table -->
+    <section class="section section-comparison" aria-labelledby="comparison-heading">
+      <div class="container container-narrow">
+        <h2 id="comparison-heading" class="section-title">Keys vs the alternatives</h2>
+        <p class="section-intro">LiteLLM and Portkey are gateways: you send traffic through their proxy. Keys is a library: you add it to your app. Custom means you build routing and BYOK yourself.</p>
+        <div class="table-wrap">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">Keys</th>
+                <th scope="col">LiteLLM</th>
+                <th scope="col">Portkey</th>
+                <th scope="col">Custom</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">BYOK inside your app</th><td>Yes</td><td>Via proxy</td><td>Via proxy</td><td>You build it</td></tr>
+              <tr><th scope="row">No extra server to run</th><td>Yes</td><td>No</td><td>No</td><td>Depends</td></tr>
+              <tr><th scope="row">Embeddable key UI</th><td>Yes</td><td>No</td><td>Separate dashboard</td><td>No</td></tr>
+              <tr><th scope="row">Framework-native (Next, Svelte, etc.)</th><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+              <tr><th scope="row">Cost + entitlement logic</th><td>Built in</td><td>Limited</td><td>Via platform</td><td>You build it</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- S7 Pricing preview -->
+    <section class="section section-pricing section-alt" aria-labelledby="pricing-heading">
+      <div class="container">
+        <h2 id="pricing-heading" class="section-title">Pricing</h2>
+        <p class="section-intro">The core is open source. Pay for cloud API, dashboard, and team features when you need them.</p>
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <h3 class="pricing-tier">Free</h3>
+            <p class="pricing-price">£0</p>
+            <p class="pricing-desc">Open source. Self-host. Memory + local storage. No Paddle.</p>
+          </div>
+          <div class="pricing-card">
+            <h3 class="pricing-tier">Pro</h3>
+            <p class="pricing-price">£19<span class="pricing-period">/mo</span></p>
+            <p class="pricing-desc">Cloud API, dashboard. 1K keys, 100K requests/mo. Firestore, Supabase, Postgres.</p>
+          </div>
+          <div class="pricing-card">
+            <h3 class="pricing-tier">Team</h3>
+            <p class="pricing-price">£49<span class="pricing-period">/mo</span></p>
+            <p class="pricing-desc">Unlimited users, 10K keys. Usage dashboard, team sharing, audit log.</p>
+          </div>
+          <div class="pricing-card">
+            <h3 class="pricing-tier">Enterprise</h3>
+            <p class="pricing-price">£149<span class="pricing-period">/mo</span></p>
+            <p class="pricing-desc">Unlimited keys & API. SSO, SLA, export. Zuplo gateway + custom.</p>
+          </div>
+        </div>
+        <p class="pricing-cta"><a href="/keys/pricing">See full pricing and FAQ →</a></p>
+      </div>
+    </section>
+
+    <!-- S8 Proof point -->
+    <section class="section section-proof" aria-labelledby="proof-heading">
+      <div class="container container-narrow">
+        <h2 id="proof-heading" class="section-title section-title-center">Built from production</h2>
+        <ul class="proof-list">
+          <li><strong>Extracted from SOPHIA</strong> — a shipping AI application. Keys is the same routing, key management, and entitlement logic, packaged as a library.</li>
+          <li><strong>Library-first</strong> — no proxy in the default path. Your app, your infra. We don’t sit in the request path.</li>
+          <li><strong>TypeScript, MIT</strong> — headless core plus Svelte, React, and Web Component wrappers. Use what fits.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- S9 Footer CTA -->
+    <section class="section section-cta" aria-labelledby="cta-heading">
+      <div class="container">
+        <h2 id="cta-heading" class="cta-headline">Add Keys to your app</h2>
+        <p class="cta-sub">Install, wire your providers, add a settings page. Next.js and SvelteKit guides in the docs.</p>
+        <a href="/keys/docs/" class="btn btn-primary">Get started</a>
+      </div>
+    </section>
+  </article>
+</MarketingLayout>
+
+<style>
+  .keys-page {
+    --keys-max: var(--rm-container-max);
+  }
+
+  .container {
+    max-width: var(--keys-max);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+  }
+
+  .container-narrow {
+    max-width: var(--rm-container-narrow);
+  }
+
+  .section {
+    padding: var(--rm-section-padding) 0;
+  }
+
+  .section-alt {
+    background: var(--rm-surface);
+  }
+
+  .section-alt .container {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .section-title {
+    font-family: var(--rm-font-display);
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: var(--font-semibold);
+    line-height: var(--leading-tight);
+    color: var(--rm-text);
+    margin: 0 0 var(--space-6);
+  }
+
+  .section-intro {
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-6);
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+    max-width: var(--rm-container-narrow);
+  }
+
+  /* S1 Hero */
+  .section-hero {
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-12);
+  }
+
+  .hero-headline {
+    font-family: var(--rm-font-display);
+    font-size: clamp(2.25rem, 6vw, 3.5rem);
+    font-weight: var(--font-semibold);
+    line-height: var(--leading-tight);
+    color: var(--rm-text);
+    margin: 0 0 var(--space-3);
+  }
+
+  .hero-subhead {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-lg);
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-2);
+    max-width: var(--rm-reading-width);
+    line-height: var(--leading-relaxed);
+  }
+
+  .hero-who {
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    margin: 0 0 var(--space-8);
+    max-width: var(--rm-reading-width);
+    line-height: var(--leading-normal);
+  }
+
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .btn {
+    display: inline-block;
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-5);
+    min-height: var(--button-height-md);
+    line-height: 1.25;
+    border-radius: var(--rm-radius);
+    text-decoration: none;
+    font-weight: var(--font-medium);
+    transition: filter var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+  }
+
+  .btn:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .btn-primary {
+    background: var(--rm-sage);
+    color: var(--rm-bg);
+  }
+
+  .btn-primary:hover {
+    background: var(--rm-sage);
+    filter: brightness(1.1);
+  }
+
+  .btn-secondary {
+    background: var(--rm-surface-raised);
+    color: var(--rm-text);
+    border: 1px solid var(--rm-border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--rm-sage);
+    color: var(--rm-sage);
+  }
+
+  /* S2 Modes */
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 900px) {
+    .modes-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .modes-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .mode-card {
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-card-radius);
+    padding: var(--space-6);
+    box-shadow: var(--rm-card-shadow);
+  }
+
+  .mode-title {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--rm-sage);
+    margin: 0 0 var(--space-2);
+  }
+
+  .mode-copy {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: 0;
+    line-height: var(--leading-relaxed);
+  }
+
+  /* S3 Code */
+  .code-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 768px) {
+    .code-split {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .code-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .code-label {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: var(--font-medium);
+  }
+
+  .code-block {
+    background: var(--rm-surface);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-card-radius);
+    overflow: auto;
+    font-size: var(--text-sm);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .code-block :global(pre) {
+    margin: 0;
+    padding: var(--space-5);
+  }
+
+  .code-block :global(code) {
+    font-family: var(--rm-font-ui);
+    font-weight: var(--font-normal);
+  }
+
+  /* S4 Frameworks */
+  .frameworks-copy {
+    font-size: var(--text-base);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+    margin: 0 0 var(--space-5);
+    max-width: var(--rm-container-narrow);
+  }
+
+  .frameworks-copy strong {
+    color: var(--rm-text);
+  }
+
+  .framework-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fw-pill {
+    display: inline-block;
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    color: var(--rm-muted);
+    transition: border-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+  }
+
+  .fw-pill:hover {
+    border-color: var(--rm-sage);
+    color: var(--rm-text);
+  }
+
+  /* S5 Features */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 768px) {
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .feature-card {
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-card-radius);
+    padding: var(--space-6);
+    box-shadow: var(--rm-card-shadow);
+  }
+
+  .feature-title {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--rm-text);
+    margin: 0 0 var(--space-2);
+  }
+
+  .feature-card p {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: 0;
+    line-height: var(--leading-relaxed);
+  }
+
+  /* S6 Table */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-card-radius);
+    background: var(--rm-surface-raised);
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--rm-border);
+  }
+
+  .comparison-table thead th {
+    color: var(--rm-dim);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .comparison-table tbody th {
+    color: var(--rm-text);
+    font-weight: var(--font-medium);
+  }
+
+  .comparison-table td {
+    color: var(--rm-muted);
+  }
+
+  .comparison-table td:nth-child(2) {
+    color: var(--rm-text);
+    font-weight: var(--font-medium);
+  }
+
+  .comparison-table tbody tr:last-child th,
+  .comparison-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* S7 Pricing */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+
+  @media (max-width: 768px) {
+    .pricing-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .pricing-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .pricing-card {
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-card-radius);
+    padding: var(--space-6);
+    box-shadow: var(--rm-card-shadow);
+  }
+
+  .pricing-tier {
+    font-family: var(--rm-font-ui);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--rm-text);
+    margin: 0 0 var(--space-1);
+  }
+
+  .pricing-price {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--rm-sage);
+    margin: 0 0 var(--space-1);
+  }
+
+  .pricing-period {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--rm-dim);
+  }
+
+  .pricing-desc {
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    margin: 0;
+    line-height: var(--leading-normal);
+  }
+
+  .pricing-cta {
+    margin: 0;
+    font-size: var(--text-base);
+  }
+
+  .pricing-cta a {
+    color: var(--rm-sage);
+    text-decoration: none;
+    font-weight: var(--font-medium);
+  }
+
+  .pricing-cta a:hover {
+    text-decoration: underline;
+  }
+
+  .pricing-cta a:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+    border-radius: var(--rm-radius);
+  }
+
+  /* S8 Proof */
+  .section-title-center {
+    text-align: center;
+  }
+
+  .proof-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .proof-list li {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+    padding-left: var(--space-6);
+    position: relative;
+  }
+
+  .proof-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.5em;
+    width: 0.375rem;
+    height: 0.375rem;
+    background: var(--rm-sage);
+    border-radius: var(--radius-full);
+  }
+
+  .proof-list strong {
+    color: var(--rm-text);
+  }
+
+  /* S9 CTA */
+  .section-cta {
+    background: var(--rm-surface-raised);
+    border-top: 1px solid var(--rm-border);
+    padding-top: var(--space-12);
+    padding-bottom: var(--space-12);
+  }
+
+  .section-cta .container {
+    text-align: center;
+  }
+
+  .cta-headline {
+    font-family: var(--rm-font-display);
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: var(--font-semibold);
+    color: var(--rm-text);
+    margin: 0 0 var(--space-3);
+  }
+
+  .cta-sub {
+    font-size: var(--text-base);
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-6);
+    max-width: var(--rm-reading-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .section-cta .btn {
+    margin-top: 0;
+  }
+</style>

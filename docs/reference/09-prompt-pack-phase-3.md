@@ -30,7 +30,6 @@ DO NOT: Build Keys landing page yet (3.2). Build dashboard (3.4). Add auth.
 ## Prompt 3.2 — Keys landing page
 
 ```
-C## Prompt 3.2 — Keys landing page
 
 Create restormel.dev/keys landing page following the wireframe in 04-design-and-site.md.
 

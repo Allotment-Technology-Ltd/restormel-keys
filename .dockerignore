@@ -1,4 +1,4 @@
-# Only used when building Dockerfile.site from repo root
+# Used when building Dockerfile.site or Dockerfile.dashboard from repo root
 .git
 .gitignore
 node_modules
@@ -12,6 +12,7 @@ node_modules
 .cursor
 .github
 docs
+!docs/design-tokens.css
 prompts
 scripts
 *.log

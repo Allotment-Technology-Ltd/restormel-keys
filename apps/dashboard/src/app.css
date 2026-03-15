@@ -1,0 +1,50 @@
+/**
+ * Dashboard: Restormel design system (docs/design-system-index.md).
+ * Canonical tokens from docs/design-tokens.css; --rm-* are Keys aliases.
+ */
+@import "../../../docs/design-tokens.css";
+
+:root {
+  /* Keys marketing/dashboard aliases (04-design-and-site.md) */
+  --rm-bg: var(--ink);
+  --rm-surface: var(--charcoal);
+  --rm-surface-raised: var(--elevated);
+  --rm-border: var(--slate);
+  --rm-text: var(--paper);
+  --rm-muted: var(--mist);
+  --rm-dim: var(--steel);
+  --rm-sage: var(--signal-teal);
+  --rm-sage-bg: var(--signal-teal-10);
+  --rm-font-display: var(--font-sans);
+  --rm-font-ui: var(--font-mono);
+  --rm-radius: var(--radius-base);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--rm-bg);
+  color: var(--rm-text);
+  font-family: var(--rm-font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+a {
+  color: var(--rm-sage);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}

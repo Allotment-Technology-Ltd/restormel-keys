@@ -2,6 +2,8 @@
 
 **Scope:** Work is performed **in the SOPHIA repo** (`Allotment-Technology-Ltd/sophia`). This doc is the runbook and template for that integration.
 
+**Local path (for scripts/reuse):** `/Users/adamboon/projects/sophia`. Useful for reusing Paddle setup: `scripts/bootstrap-paddle.ts`, `scripts/sync-paddle-prod-secrets.sh`, and billing code under `src/lib/server/billing/` (e.g. `paddle.ts`, webhook, checkout, portal).
+
 **Goal:** Replace SOPHIA's inline BYOK code with `@restormel/keys` while keeping API contracts, billing (wallet, top-ups, founder offers), and existing functionality.
 
 **Gate:** SOPHIA tests pass. BYOK works end-to-end.

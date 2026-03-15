@@ -10,7 +10,8 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 ## Phase 01 — Implementation (current)
 
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
-- **Phase 2 started:** @restormel/keys-svelte package with KeyManager Svelte 5 component (themeable, accessible, --rk-* theme, add/validate/list/delete keys). Next: further Phase 2 prompts per [docs/reference/08-prompt-pack-phase-2.md](docs/reference/08-prompt-pack-phase-2.md).
+- **Phase 2 complete:** @restormel/keys-svelte (KeyManager, ModelSelector, CostEstimator), @restormel/keys-elements, @restormel/keys-react, CLI, Next.js/SvelteKit demos, SOPHIA runbook, a11y, publish.
+- **Phase 3 started:** Astro + Starlight marketing site (3.1) in apps/site — marketing layout, homepage “Restormel makes reasoning visible”, Starlight at /keys/docs/*, Cloudflare Pages. Next: 3.2 Keys landing, 3.3 Pricing, 3.4 dashboard per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md).
 
 ---
 

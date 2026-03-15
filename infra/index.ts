@@ -31,12 +31,16 @@ const registry = new gcp.artifactregistry.Repository("keys-registry", {
 // Placeholder image until first deploy; 512Mi/1 CPU, 0-3 instances.
 const dashboardImage = config.get("dashboardImage") ?? "gcr.io/cloudrun/placeholder";
 const dashboardSecrets: Record<string, pulumi.Input<string>> = {};
-["PADDLE_SECRET", "FIREBASE_CONFIG", "API_KEY_HASH"].forEach((key) => {
+["PADDLE_SECRET", "PADDLE_API_KEY", "FIREBASE_CONFIG", "API_KEY_HASH"].forEach((key) => {
   const secretRef = config.get(`${key}_SECRET_REF`);
   if (secretRef) {
     dashboardSecrets[key] = secretRef;
   }
 });
+
+/** Secret Manager secret id for Firebase Admin credentials (full JSON key). Mounted as file; no env ref. */
+const firebaseAdminSecretName = "firebase-admin-credentials";
+const firebaseCredentialsPath = "/secrets/firebase-admin/key.json";
 
 const dashboardService = new gcp.cloudrun.Service("keys-dashboard", {
   name: "keys-dashboard",
@@ -61,20 +65,43 @@ const dashboardService = new gcp.cloudrun.Service("keys-dashboard", {
               cpu: "1",
             },
           },
-          envs: Object.entries(dashboardSecrets).map(([name, value]) => ({
-            name,
-            valueFrom: {
-              secretKeyRef: {
-                name: value as string,
-                key: "latest",
+          envs: [
+            ...Object.entries(dashboardSecrets).map(([name, value]) => ({
+              name,
+              valueFrom: {
+                secretKeyRef: {
+                  name: value as string,
+                  key: "latest",
+                },
               },
-            },
-          })),
+            })),
+            { name: "GOOGLE_APPLICATION_CREDENTIALS", value: firebaseCredentialsPath },
+          ],
+          volumeMounts: [
+            { name: "firebase-admin", mountPath: "/secrets/firebase-admin" },
+          ],
+        },
+      ],
+      volumes: [
+        {
+          name: "firebase-admin",
+          secret: {
+            secretName: firebaseAdminSecretName,
+            items: [{ key: "latest", path: "key.json" }],
+          },
         },
       ],
     },
   },
   traffics: [{ percent: 100, latestRevision: true }],
+});
+
+// Dashboard SA must be able to read Firebase Admin credentials from Secret Manager.
+const firebaseSecretId = pulumi.interpolate`projects/${project}/secrets/${firebaseAdminSecretName}`;
+new gcp.secretmanager.SecretIamMember("keys-dashboard-firebase-admin-access", {
+  secretId: firebaseSecretId,
+  role: "roles/secretmanager.secretAccessor",
+  member: pulumi.interpolate`serviceAccount:${dashboardSa.email}`,
 });
 
 // --- (f) IAM: public invoker ---
