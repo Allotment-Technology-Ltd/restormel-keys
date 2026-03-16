@@ -3,8 +3,8 @@
 #
 # Prerequisites:
 #   - ZUPLO_API_KEY (required): Portal → Settings → API Keys
-#   - KEYS_BACKEND_URL (required): e.g. https://keys-dashboard-XXX.run.app/keys/dashboard (no trailing slash)
-#   - KEYS_BACKEND_API_KEY (required for backend auth): backend key sk-rk-...; set in Zuplo as secret
+#   - KEYS_BACKEND_URL (required): dashboard base URL, e.g. https://restormel.dev/keys/dashboard (no trailing slash)
+#   - KEYS_BACKEND_API_KEY (required for backend auth): backend key sk-rk-... from Keys dashboard; set in Zuplo as secret
 #   - Optional: ZUPLO_ACCOUNT_NAME, ZUPLO_PROJECT_NAME, ZUPLO_BRANCH (default main)
 #
 # Usage:
@@ -35,8 +35,8 @@ for var in ZUPLO_API_KEY KEYS_BACKEND_URL KEYS_BACKEND_API_KEY; do
   if [[ -z "${!var}" ]]; then
     echo "Error: $var is required. Set it in your environment or zuplo-gateway/.env"
     echo "  ZUPLO_API_KEY: Zuplo Portal → Settings → API Keys"
-    echo "  KEYS_BACKEND_URL: Cloud Run URL + /keys/dashboard (from: cd infra && pulumi stack output dashboardServiceUrl)"
-    echo "  KEYS_BACKEND_API_KEY: Backend key (sk-rk-...) for Authorization header to Cloud Run"
+    echo "  KEYS_BACKEND_URL: Dashboard base URL, e.g. https://restormel.dev/keys/dashboard (no trailing slash)"
+    echo "  KEYS_BACKEND_API_KEY: Backend key (sk-rk-...) from Keys dashboard (Vercel) for Authorization header"
     exit 1
   fi
 done

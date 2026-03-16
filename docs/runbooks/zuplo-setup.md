@@ -1,10 +1,12 @@
-# Zuplo gateway setup — Restormel Keys (Prompt 3.6)
+# Zuplo gateway setup — Restormel Keys
 
-This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Cloud Run) using a single **backend API key** (`sk-rk-...`).
+This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Vercel) using a single **backend API key** (`sk-rk-...`).
 
-**Gate:** External call through Zuplo → Cloud Run returns 200. Developer portal shows API docs.
+**Current stack:** Dashboard is on **Vercel** (site on Cloudflare; `KEYS_BACKEND_URL` = `https://restormel.dev/keys/dashboard`). Data is in **Neon**; auth is **Neon Auth**. No GCP/Cloud Run or Firebase.
 
-**DO NOT:** Modify the dashboard backend to add Zuplo-specific logic. Consumer keys never hit the backend directly; only the backend key is sent to Cloud Run.
+**Gate:** External call through Zuplo → dashboard returns 200. Developer portal shows API docs.
+
+**DO NOT:** Modify the dashboard backend to add Zuplo-specific logic. Consumer keys never hit the backend directly; only the backend key is sent to the dashboard.
 
 ---
 
@@ -33,8 +35,8 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 | Variable | Where to get it |
 |----------|-----------------|
 | **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
-| **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Example: `https://<dashboardServiceUrl>/keys/dashboard` where `<dashboardServiceUrl>` is from `cd infra && pulumi stack output dashboardServiceUrl`. If using a custom domain: `https://restormel.dev/keys/dashboard`. |
-| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Cloud Run): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `sk-rk-...`. |
+| **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard` (Cloudflare → Vercel dashboard). |
+| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Vercel): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `sk-rk-...`. |
 | **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
 | **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |
 | **ZUPLO_BRANCH** | Environment name: `main` or `working-copy` (or your branch name). Scripts default to `main`. |
@@ -52,7 +54,7 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 
 ---
 
-## 2. Configure routes (proxy to Cloud Run)
+## 2. Configure routes (proxy to dashboard)
 
 In the Zuplo project, open **Code** → **routes.oas.json** and use the **Route Designer** (or click **Add** to add a new route). Fill in every field as below.
 
@@ -70,24 +72,19 @@ In the Zuplo project, open **Code** → **routes.oas.json** and use the **Route 
 
 **Forward to (Request Handler URL):**
 
-- **Option A — Direct Cloud Run:**  
-  `https://keys-dashboard-<hash>.europe-west2.run.app`  
-  (Use the exact URL from Pulumi output `dashboardServiceUrl`.)
-- **Option B — Env var (recommended):**  
+- **Env var (recommended):**  
   `${env.KEYS_BACKEND_URL}`  
-  Then in **Settings** → **Environment Variables**, add `KEYS_BACKEND_URL` with value = your Cloud Run or canonical dashboard URL (e.g. `https://restormel.dev/keys/dashboard` or the direct Run URL). No trailing slash.
-- **Path behavior:** URL Forward appends the **incoming path** to this base. So if a client calls the gateway at `https://your-gateway.zuplo.app/v1/health`, the backend receives `https://<KEYS_BACKEND_URL>/v1/health`. Your backend must expect that path (e.g. `/v1/health`) or you need a path rewrite (see [URL Rewrite Handler](https://zuplo.com/docs/handlers/url-rewrite) if the gateway path and backend path differ).
+  In **Settings** → **Environment Variables**, set `KEYS_BACKEND_URL` = dashboard base URL, e.g. `https://restormel.dev/keys/dashboard`. No trailing slash.
+- **Path behavior:** URL Forward appends the **incoming path** to this base. So if a client calls the gateway at `https://your-gateway.zuplo.app/api/health`, the backend receives `https://<KEYS_BACKEND_URL>/api/health`. The dashboard serves API at `/keys/dashboard/api/*`, so **Forward to** must include `/keys/dashboard` (e.g. `https://restormel.dev/keys/dashboard`).
 
-**Path alignment with dashboard:**
+**Path alignment:**
 
-- The dashboard is served under base path `/keys/dashboard`; API routes are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc. (see [phase-3-deployment](../reference/phase-3-deployment.md)).
-- If the gateway exposes `https://gateway.zuplo.app/v1/*`, set **Forward to** to a base that yields `/keys/dashboard/api/...` on the backend. For example, if backend base is `https://restormel.dev`, use **Forward to** = `https://restormel.dev/keys/dashboard` so that gateway path `/v1/health` becomes backend path `/v1/health` (still wrong unless your app serves `/v1/health`). To get `/keys/dashboard/api/health`, you either expose gateway path `/*` with Forward to `https://restormel.dev/keys/dashboard` and call gateway as `https://gateway.zuplo.app/api/health`, or use URL Rewrite to map `/v1/*` → `/keys/dashboard/api/*`.
-
-**Practical recommendation:** Set **Path** = `/*`, **Forward to** = `https://restormel.dev/keys/dashboard` (or `${env.KEYS_BACKEND_URL}` with that value). Then client calls `https://<gateway>/api/health`, `https://<gateway>/api/projects`, etc., and the backend receives `/api/health`, `/api/projects` under the dashboard app (which serves at `/keys/dashboard`); the Host header and path the app sees depend on your Cloud Run/proxy setup—ensure the dashboard is configured to serve API at `/keys/dashboard/api/*` and that the URL you put in **Forward to** includes `/keys/dashboard` so the first path segment is correct.
+- Dashboard (Vercel) is served at base path `/keys/dashboard`; API routes are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc. (see [phase-3-deployment](../reference/phase-3-deployment.md)).
+- **Recommendation:** **Path** = `/*`, **Forward to** = `${env.KEYS_BACKEND_URL}` with value `https://restormel.dev/keys/dashboard`. Client calls `https://<gateway>/api/health`, `https://<gateway>/api/projects`, etc.; backend receives the same path under the dashboard app.
 
 ### 2.2 Path rewrite (if gateway path ≠ backend path)
 
-If the gateway exposes `/v1/*` but the backend expects `/keys/dashboard/api/*`, use the **URL Rewrite** handler instead of URL Forward, or add a route that forwards to a base URL that already includes the path prefix. See Zuplo docs: [URL Forward](https://zuplo.com/docs/handlers/url-forward), [URL Rewrite](https://zuplo.com/docs/handlers/url-rewrite). Keep the runbook’s path logic consistent with [phase-3-deployment](../reference/phase-3-deployment.md).
+If the gateway exposes `/v1/*` but the backend expects `/keys/dashboard/api/*`, use the **URL Rewrite** handler or forward to a base URL that includes the path prefix. See Zuplo docs: [URL Forward](https://zuplo.com/docs/handlers/url-forward), [URL Rewrite](https://zuplo.com/docs/handlers/url-rewrite). Path logic is consistent with [phase-3-deployment](../reference/phase-3-deployment.md) and [extraction-vercel](../reference/extraction-vercel.md).
 
 ---
 
@@ -100,15 +97,15 @@ Attach the following **inbound** policies to the route, in this order:
 | 1 | **api-key-inbound** | Validate Zuplo consumer API key; reject missing or invalid keys (401). |
 | 2 | **rate-limit-inbound** | Apply rate limits per consumer key. |
 | 3 | **quota-inbound** | Enforce quota (e.g. daily/monthly) per consumer key. |
-| 4 | **inject-backend-auth** | Add `Authorization: Bearer <KEYS_BACKEND_API_KEY>` (or equivalent header) before forwarding to Cloud Run. |
+| 4 | **inject-backend-auth** | Add `Authorization: Bearer <KEYS_BACKEND_API_KEY>` (or equivalent header) before forwarding to the dashboard. |
 
-Create each policy in the Zuplo dashboard if it does not exist (same pattern as SOPHIA’s `sophia-api-gateway`). The backend must accept only the injected backend key and must **reject** Zuplo consumer keys (`zpka_...`) if they are sent directly to the backend (see §7).
+Create each policy in the Zuplo dashboard if it does not exist (same pattern as SOPHIA’s `sophia-api-gateway`). The dashboard must accept only the injected backend key and must **reject** Zuplo consumer keys (`zpka_...`) if they are sent directly to the backend (see §7).
 
 ---
 
 ## 4. Backend API key (Zuplo env)
 
-1. Create a **backend API key** for server-to-server calls from Zuplo to Cloud Run. This key must be in the format used by your backend (e.g. `sk-rk-<random>`). Store it in your secrets manager; do not commit it.
+1. Create a **backend API key** in the Keys dashboard (Vercel): log in → create/select a project → create an API key (`sk-rk-...`). Use it only for Zuplo; store in secrets manager; do not commit.
 2. In the Zuplo project, open **Settings** → **Environment Variables** (or **Secrets**).
 3. Add a variable:
    - **Name:** `KEYS_BACKEND_API_KEY`
@@ -116,7 +113,7 @@ Create each policy in the Zuplo dashboard if it does not exist (same pattern as 
    - **Mark as secret** so it is not shown in logs or the UI.
 4. Configure the **inject-backend-auth** policy to use this variable (e.g. set the `Authorization` header to `Bearer ${KEYS_BACKEND_API_KEY}`).
 
-The dashboard backend must accept this key for programmatic API requests. It must **not** accept Zuplo consumer keys (`zpka_...`) on direct calls to Cloud Run.
+The dashboard must accept this key for programmatic API requests. It must **not** accept Zuplo consumer keys (`zpka_...`) on direct calls to the dashboard.
 
 ---
 
@@ -135,9 +132,9 @@ The dashboard backend must accept this key for programmatic API requests. It mus
 
 ## 6. Create backend API key (via dashboard)
 
-1. In the **Keys dashboard** (Cloud Run), log in and create or select a project.
+1. In the **Keys dashboard** (Vercel: e.g. https://restormel.dev/keys/dashboard), log in and create or select a project.
 2. Create an **API key** for the project (or use a dedicated “gateway” project). This key is the one you will use as **KEYS_BACKEND_API_KEY** in Zuplo (§4).
-3. Store the key securely; configure it in Zuplo as in §4. The backend must accept this key for requests that Zuplo forwards (inject-backend-auth).
+3. Store the key securely; configure it in Zuplo as in §4. The dashboard must accept this key for requests that Zuplo forwards (inject-backend-auth).
 
 ---
 
@@ -149,15 +146,15 @@ Run these checks to meet the gate:
 |-------|----------|
 | **Missing auth** | Request to Zuplo with no API key → **401** from Zuplo. |
 | **Invalid key** | Request to Zuplo with invalid or revoked consumer key → **401** from Zuplo. |
-| **Valid consumer key** | Request to Zuplo with valid consumer key → Zuplo forwards to Cloud Run with backend key → **200** (or appropriate response) from backend. |
-| **Direct backend rejects zpka_** | Request **directly** to Cloud Run (bypassing Zuplo) with `Authorization: Bearer zpka_...` → backend returns **401** or **403** (backend must not accept Zuplo consumer keys). |
+| **Valid consumer key** | Request to Zuplo with valid consumer key → Zuplo forwards to dashboard with backend key → **200** (or appropriate response) from dashboard. |
+| **Direct backend rejects zpka_** | Request **directly** to the dashboard (bypassing Zuplo) with `Authorization: Bearer zpka_...` → dashboard returns **401** or **403** (dashboard must not accept Zuplo consumer keys). |
 
 **Important:** Opening the **gateway URL** (e.g. `https://restormel-keys-gateway-main-….zuplo.app/`) in a browser with no API key will always return **401 Unauthorized — No Authorization Header**. That is expected. Use the **Dev Portal** URL for docs and “Try it”; call the gateway with a consumer key in the `Authorization` header (or as configured in your API Key policy) for API requests.
 
-Ensure the dashboard backend is configured so that:
+Ensure the dashboard is configured so that:
 
 - It accepts the **backend key** (`sk-rk-...`) for server-to-server calls (e.g. from Zuplo).
-- It **rejects** Zuplo consumer keys (`zpka_...`) when they are sent directly to the backend (so clients cannot bypass Zuplo).
+- It **rejects** Zuplo consumer keys (`zpka_...`) when they are sent directly to the dashboard (so clients cannot bypass Zuplo).
 
 ---
 
@@ -171,7 +168,7 @@ Use this checklist to confirm Zuplo is **fully configured for launch**. Complete
 | 2 | **Routes** | Routes deployed: path `/(.*)` (url-pattern), URL Forward to `${env.KEYS_BACKEND_URL}`, methods GET, POST, PUT, PATCH, DELETE. Code → routes.oas.json matches §2 and §8.3. |
 | 3 | **Policies** | All four inbound policies attached in order: api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth. Code → policies.json. **API key bucket:** `api-key-inbound` uses a `bucketName` that is project-specific. If you created the project in the portal, the bucket ID is in Portal → Project → Settings → Project Information (or API Key Service). If deploy fails or keys are rejected, ensure `config/policies.json` uses the bucket for this project (or define policies in the Portal and export per §8.5). |
 | 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `sk-rk-...`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
-| 5 | **Backend key** | Backend API key created in the Keys dashboard (Cloud Run); same key set as **KEYS_BACKEND_API_KEY** in Zuplo. Backend accepts this key and rejects `zpka_...` on direct calls (§7). |
+| 5 | **Backend key** | Backend API key created in the Keys dashboard (Vercel); same key set as **KEYS_BACKEND_API_KEY** in Zuplo. Dashboard accepts this key and rejects `zpka_...` on direct calls (§7). |
 | 6 | **Developer portal** | Developer portal **enabled**. OpenAPI spec **added or imported** (e.g. from [docs/api/openapi.yaml](../api/openapi.yaml) or a minimal spec with paths `/api/health`, `/api/projects`, etc.). Portal shows API reference and auth (API key) so developers can try the API. §5. |
 | 7 | **At least one consumer** | At least one API key **consumer** created (Portal → API Key Service or script `zuplo-gateway/scripts/create-consumer-and-test.sh`). Clients use the issued `zpka_...` key to call the gateway. |
 | 8 | **Validation (§7)** | All four checks passed: no key → 401; invalid key → 401; valid key → 200 (or appropriate backend response); direct backend with `zpka_...` → 401/403. |
@@ -187,13 +184,13 @@ When all items are done, Zuplo is ready for launch: gateway returns 401 without 
 | Item | Value |
 |------|--------|
 | Zuplo project | `restormel-keys-gateway` |
-| Backend | Cloud Run dashboard URL (e.g. `https://keys-dashboard-<hash>.run.app` or canonical URL with `/keys/dashboard` base path). |
+| Backend | Dashboard URL (Vercel via Cloudflare), e.g. `https://restormel.dev/keys/dashboard`. No trailing slash. |
 | Policy chain | api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth |
 | Backend key env | `KEYS_BACKEND_API_KEY` (secret; `sk-rk-...`) |
 | Consumer keys | Issued by Zuplo; used by clients; never sent to backend. |
-| Direct backend | Must reject `zpka_` keys. |
+| Direct backend | Dashboard must reject `zpka_` keys. |
 
-For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md).
+For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md) and [extraction-vercel](../reference/extraction-vercel.md).
 
 ---
 
@@ -231,8 +228,8 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
 
 2. **Get values:**
    - **ZUPLO_API_KEY** — Portal → Settings → API Keys.
-   - **KEYS_BACKEND_URL** — Direct Cloud Run URL + `/keys/dashboard`, e.g. `https://keys-dashboard-XXXXXXXX.run.app/keys/dashboard` (from `cd infra && pulumi stack output dashboardServiceUrl`). No trailing slash.
-   - **KEYS_BACKEND_API_KEY** — Backend key (`sk-rk-...`) from the dashboard (create an API key for a project; use it only in Zuplo as a secret).
+   - **KEYS_BACKEND_URL** — Dashboard base URL, no trailing slash. Current: `https://restormel.dev/keys/dashboard` (Cloudflare → Vercel).
+   - **KEYS_BACKEND_API_KEY** — Backend key (`sk-rk-...`) from the Keys dashboard (Vercel): create an API key for a project; use it only in Zuplo as a secret.
 
 3. **Run the setup script** from repo root:
    ```bash
@@ -240,7 +237,7 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
    pnpm install
    # Set env (or copy .env.example to .env and fill in)
    export ZUPLO_API_KEY="<your-portal-api-key>"
-   export KEYS_BACKEND_URL="https://<dashboardServiceUrl>/keys/dashboard"
+   export KEYS_BACKEND_URL="https://restormel.dev/keys/dashboard"
    export KEYS_BACKEND_API_KEY="sk-rk-..."
    ./scripts/setup-from-cli.sh
    ```
