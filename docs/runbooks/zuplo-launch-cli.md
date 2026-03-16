@@ -2,7 +2,7 @@
 
 Single-path runbook to take Zuplo from zero to launch-ready using the CLI, with Portal (or browser MCP) only where the CLI cannot act.
 
-**Prerequisites:** Zuplo project **`restormel-keys-gateway`** exists (create once in [Portal](https://portal.zuplo.com)). Dashboard is on **Vercel** (e.g. https://restormel.dev/keys/dashboard); backend Gateway key created in the Keys dashboard. **KEYS_BACKEND_URL** is set to the dashboard URL (e.g. `https://restormel.dev/keys/dashboard`).
+**Prerequisites:** Zuplo project **`restormel-keys-gateway`** exists (create once in [Portal](https://portal.zuplo.com)). Dashboard at **restormel.dev/keys/dashboard**; backend Gateway key created in the Keys dashboard. **KEYS_BACKEND_URL** = `https://restormel.dev/keys/dashboard`.
 
 **Reference:** Full setup and field-by-field details in [zuplo-setup.md](zuplo-setup.md). Value sources: [zuplo-setup.md § Where to get each value](zuplo-setup.md#where-to-get-each-value).
 

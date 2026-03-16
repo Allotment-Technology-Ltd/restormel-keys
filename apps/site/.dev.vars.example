@@ -1,3 +1,0 @@
-# Optional: for local Worker dev (wrangler dev). Copy to .dev.vars (gitignored).
-# When set, /keys/dashboard is proxied to this URL. Use Cloud Run origin only (do not append /keys/dashboard).
-# KEYS_DASHBOARD_URL=https://keys-dashboard-XXXXXXXX.run.app

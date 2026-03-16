@@ -10,7 +10,7 @@ This page explains how the different parts of Restormel Keys fit together and ho
 | Place | URL | Purpose |
 |-------|-----|--------|
 | **Product docs** | [restormel.dev/keys/docs](https://restormel.dev/keys/docs/) | Framework guides, install, BYOK concepts. Start here for building with Keys in your app. |
-| **Dashboard** | [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard/) | Sign in, create projects, **create Gateway keys** (`rk_...`). You get your backend key and manage projects here. |
+| **Dashboard** | [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard) | Sign in, create projects, **create Gateway keys** (`rk_...`). You get your backend key and manage projects here. |
 | **API Gateway** | `https://restormel-keys-gateway-main-bc13eba.zuplo.app` | The **API** itself. Call `/api/health`, `/api/projects`, etc. with a **consumer key** (`zpka_...`). The gateway is not a website — opening it in a browser at `/` returns 404; use the API paths or this portal. |
 | **This Developer Portal** | You are here | **API reference**, schemas, and “Try it” for the Cloud API. Use the **API Reference** link in the sidebar for endpoints and request/response schemas. |
 

@@ -38,7 +38,7 @@ Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API
 
 | Name | Description | Secret |
 |------|-------------|--------|
-| `KEYS_BACKEND_URL` | Dashboard base URL (e.g. `https://restormel.dev/keys/dashboard` — Cloudflare → Vercel). No trailing slash. | No |
+| `KEYS_BACKEND_URL` | Dashboard base URL (e.g. `https://restormel.dev/keys/dashboard`). No trailing slash. | No |
 | `KEYS_BACKEND_API_KEY` | Backend API key (`sk-rk-...`) sent to the dashboard in `Authorization: Bearer …`. | **Yes** |
 
 ## Complete setup from CLI
@@ -46,7 +46,7 @@ Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API
 From this directory you can set Zuplo env vars and deploy in one go. Copy `.env.example` to `.env` and set at least:
 
 - `ZUPLO_API_KEY` — Portal → Settings → API Keys
-- `KEYS_BACKEND_URL` — dashboard URL, e.g. `https://restormel.dev/keys/dashboard` (Vercel)
+- `KEYS_BACKEND_URL` — dashboard URL, e.g. `https://restormel.dev/keys/dashboard`
 - `KEYS_BACKEND_API_KEY` — backend key (`sk-rk-...`) from the Keys dashboard (create in dashboard → project → API key)
 
 Then run:

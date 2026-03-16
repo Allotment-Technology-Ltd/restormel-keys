@@ -6,7 +6,7 @@ This index is the single entry point for the Restormel design system. All produc
 
 ## Target model (confirmed)
 
-- **Mixed stack:** Astro/Starlight (site, docs), SvelteKit (dashboard), Svelte (reference components), Web Components (elements), React (wrappers) remain the approved stack. No framework consolidation required; consistency is achieved through shared tokens, nav, and copy.
+- **Single app:** Site, docs, and dashboard are one SvelteKit app (`apps/dashboard`) at restormel.dev (marketing at `/keys`, `/keys/pricing`; docs at `/keys/docs`; dashboard at `/keys/dashboard`). Consistency is achieved through shared tokens, nav, and copy. Embeddable: Svelte (reference components), Web Components (elements), React (wrappers).
 - **Token architecture:** Base canonical tokens ([design-tokens.css](./design-tokens.css)) → semantic surface tokens (`--rm-*` for brand/app/docs shells, `--rk-*` for embeddable components) → optional component-level tokens. All surfaces consume from this chain; no ad-hoc values in shells or components.
 - **Contract:** Shells (brand, app, docs) and embeddable packages must map to the canonical base and use the same semantic intent; drift checks and docs enforce alignment.
 
@@ -18,15 +18,15 @@ One login, one cookie, same links everywhere. Sign-in uses a single entry point 
 
 Logo and lockup are **core layout primitives**, not decoration. Use them consistently so brand is embedded in structure.
 
-**One lockup in nav contexts:** The same asset (**restormel-lockup-nav.svg**) is used for nav/header/sidebar across site, docs, and dashboard. No alternate lockup in these contexts so the product reads as one brand. Site and Starlight use it via [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) and astro.config.mjs `logo.src`; dashboard uses it in [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte) (copied to dashboard static). Hero and marketing full-width contexts may use the larger lockup variants (dark/light); nav, header, and sidebar must use the nav lockup only.
+**One lockup in nav contexts:** The same asset (**restormel-lockup-nav.svg**) is used for nav/header/sidebar across site, docs, and dashboard. No alternate lockup in these contexts so the product reads as one brand. Marketing layout and docs layout use it in [keys/+layout.svelte](../apps/dashboard/src/routes/keys/+layout.svelte) and [keys/docs/+layout.svelte](../apps/dashboard/src/routes/keys/docs/+layout.svelte); dashboard uses it in [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte). Hero and marketing full-width contexts may use the larger lockup variants (dark/light); nav, header, and sidebar must use the nav lockup only.
 
 | Context | Asset | Size / rule | Where |
 |--------|--------|-------------|--------|
-| Marketing nav (header) | restormel-lockup-nav.svg | Height 28px; min-height container `--rm-nav-height` (3.5rem) | [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) variant `nav`, `height="28"`; [MarketingLayout.astro](../apps/site/src/layouts/MarketingLayout.astro) `.nav` / `.nav-inner`. |
-| Marketing footer | restormel-lockup-nav.svg | Height 24px | LogoLockup variant `nav`, `height="24"`. |
+| Marketing nav (header) | restormel-lockup-nav.svg | Height 28px; min-height container `--rm-nav-height` (3.5rem) | [keys/+layout.svelte](../apps/dashboard/src/routes/keys/+layout.svelte) `.marketing-nav-inner` / `.logo`. |
+| Marketing footer | restormel-lockup-nav.svg | Height 24px | Same layout, `.marketing-footer-logo`. |
 | Dashboard sidebar | restormel-lockup-nav.svg | Height 28px; padding `var(--space-4)` to match nav links | [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte) `height="28"`; layout `.logo` padding. |
-| Docs (Starlight) | restormel-lockup-nav.svg | Same as marketing nav; header min-height `--sl-nav-height` (3.5rem) | astro.config.mjs `logo.src`; [starlight-theme.css](../apps/site/src/styles/starlight-theme.css) `.header` / `.sl-navbar`. |
-| Icon-only (favicon, tight spaces) | Mark | 24–32px; use [LogoMark.astro](../apps/site/src/components/LogoMark.astro) or equivalent. | Favicon, OG, or icon-only UI. |
+| Docs layout | restormel-lockup-nav.svg | Same as marketing nav | [keys/docs/+layout.svelte](../apps/dashboard/src/routes/keys/docs/+layout.svelte) `.docs-nav`. |
+| Icon-only (favicon, tight spaces) | Mark | 24–32px | Favicon, OG, or icon-only UI (dashboard static or equivalent). |
 
 **Rules:** (1) **One lockup in nav/header/sidebar:** restormel-lockup-nav.svg everywhere; no exceptions. (2) Lockup = mark + wordmark; use in nav, header, footer. (3) Mark only = concentric symbol; use when space is tight or icon-only is required. (4) **Sizing mandatory:** nav/header = 28px height; footer = 24px; dashboard sidebar = 28px. (5) **Clear-space:** same vertical/horizontal rhythm as surrounding nav (`--space-4` / `--space-6`); header/sidebar use `--rm-nav-height` or equivalent so the logo sits in the layout grid. (6) Focus and contrast: use `--focus-ring-*`; sufficient contrast on `--rm-surface` / `--rm-bg`. (7) All shell headers/sidebars use the same tokenized spacing so the logo is part of the layout system, not a tag-on.
 
@@ -37,7 +37,7 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 | [DESIGN-TOKENS.md](./DESIGN-TOKENS.md) | Colors, typography, spacing, radius, shadows, interaction, focus, component sizes. Single source for token values. |
 | [DESIGN-SPECIFICATION.md](./DESIGN-SPECIFICATION.md) | Design principles, foundation, components, graph patterns, page layouts, usage guidelines, accessibility. |
 | [COMPONENT-INVENTORY.md](./COMPONENT-INVENTORY.md) | Full component inventory (atoms, molecules, organisms, graph components, templates) with variants and props. |
-| [documentation-strategy.md](./documentation-strategy.md) | Single coherent doc journey, agent-readability, compulsory same links (Dashboard/Sign in), runbooks and Starlight alignment. |
+| [documentation-strategy.md](./documentation-strategy.md) | Single coherent doc journey, agent-readability, compulsory same links (Dashboard/Sign in), runbooks and in-app docs alignment. |
 | [ux-contracts.md](./ux-contracts.md) | Shared navigation model, copy registry (product nouns, CTA grammar), and state conventions (loading/error/empty/success) across site, docs, dashboard, and embeddable surfaces. |
 
 ## Implementation
@@ -51,8 +51,7 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 
 | Surface | Token namespace | Alignment |
 |---------|------------------|-----------|
-| apps/site (Astro) | `--rm-*` (aliases to design tokens) | Uses design-tokens; global.css and layouts use canonical or aliased tokens. |
-| apps/dashboard (SvelteKit) | `--rm-*` (aliases) | Same; app.css and components use design system. |
+| apps/dashboard (SvelteKit) | `--rm-*` (aliases) | Single app: marketing, docs, and dashboard. app.css and layouts use design-tokens; all routes use canonical or aliased tokens. |
 | packages/svelte (KeyManager, ModelSelector, CostEstimator) | `--rk-*` | [packages/svelte/src/theme.css](../packages/svelte/src/theme.css) defaults use design system values (ink, charcoal, path-blue, signal-teal, coral-alert, amber-insight). |
 | packages/elements (Web Components) | `--rk-*` | Same as Svelte; host can override via CSS custom properties. |
 | apps/demo-svelte, apps/demo-next | `--rm-*` / `--rk-*` | Demos use the same tokens so components look correct in context. |

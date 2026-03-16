@@ -4,7 +4,7 @@ This runbook covers switching the dashboard storage from **Firestore** to **Neon
 
 **Canonical:** This doc is the single source for Neon storage setup. See also [03-infrastructure-and-billing.md](../03-infrastructure-and-billing.md) for overall infra.
 
-**Dashboard on Vercel + site on Cloudflare:** After Neon and Neon Auth are configured, to serve the dashboard from Vercel while the main site stays on Cloudflare, see [extraction-vercel.md](../reference/extraction-vercel.md) § "Current setup (1)" for wiring **KEYS_DASHBOARD_URL** and **NEON_AUTH_BASE_URL**.
+**Dashboard and site on Vercel:** After Neon and Neon Auth are configured, see [extraction-vercel.md](../reference/extraction-vercel.md) for **NEON_AUTH_BASE_URL** and dashboard URL. Dashboard is at `https://restormel.dev/keys/dashboard`.
 
 ---
 
@@ -17,7 +17,7 @@ To get Neon DB working with the dashboard (storage **and** GitHub sign-in via Ne
 | **1. Neon schema** | Run once per database: Section 2 below (e.g. Neon MCP **run_sql**, or psql, or Neon Console). Creates `projects`, `api_keys`, and optional `users`. Neon Auth uses its own `neon_auth` schema (managed in Neon Console). |
 | **2. `DATABASE_URL`** | Neon Postgres connection string. Get from Neon MCP **get_connection_string** (with your `projectId` and `databaseName: "neondb"`) or Neon Console → Connection details. Put in `apps/dashboard/.env` and deployment env. |
 | **3. `NEON_AUTH_BASE_URL`** | From Neon Console: Project → Branch → **Auth** → enable Auth → **Configuration** → copy the Auth base URL (e.g. `https://ep-xxx.neonauth.region.aws.neon.tech/neondb/auth`). Put in `.env` and deployment env. |
-| **4. Neon Auth + GitHub** | In Neon Console (Auth → OAuth providers), add **GitHub**. Create a [GitHub OAuth App](https://github.com/settings/developers) and set **Authorization callback URL** to your **dashboard** auth callback so the flow is proxied: e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github` (local: `http://localhost:5173/keys/dashboard/api/auth/callback/github`). Enter the GitHub **Client ID** and **Client Secret** in Neon Console (not in app env). |
+| **4. Neon Auth + GitHub** | In Neon Console (Auth → OAuth providers), add **GitHub**. Create a [GitHub OAuth App](https://github.com/settings/developers) and set **Authorization callback URL** to your **dashboard** auth callback so the flow is proxied: e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github` (local: `http://localhost:5173/api/auth/callback/github`). Enter the GitHub **Client ID** and **Client Secret** in Neon Console (not in app env). |
 
 After the above, restart the dashboard (and redeploy if applicable). Sign-in with GitHub will use Neon Auth (proxied at `/api/auth/*`) and store sessions/users in Neon.
 

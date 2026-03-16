@@ -1,10 +1,13 @@
 # Phase 3 — Cloud deployment runbook
 
-This runbook covers deploying the **site** (Astro) to **Cloudflare Pages** and the **dashboard** (SvelteKit) to **GCP Cloud Run**, then wiring DNS and Paddle so all surfaces are accessible.
+**Current deployment:** Site and dashboard run on **Vercel** only. No Cloudflare or GCP Cloud Run.
 
-**Gate:** All surfaces accessible (landing, docs, dashboard, Paddle checkout, Zuplo gateway when applicable).
+- **Site** (Astro): Vercel project, Root `apps/site`, custom domain **restormel.dev**. Redirects `/keys/dashboard` and `/keys/dashboard/*` to the dashboard.
+- **Dashboard** (SvelteKit): Vercel project, Root `.`, custom domain **restormel.dev/keys/dashboard**. Served at root (no path prefix).
 
-**Site URLs:** Custom domain **restormel.dev** DNS has been updated (namespaces no longer pointing at Vercel); the site is served from Cloudflare. If the custom domain is not yet active, use [https://restormel-site.adam-boon1984.workers.dev/keys/](https://restormel-site.adam-boon1984.workers.dev/keys/) for the marketing site.
+**Gate:** All surfaces accessible (landing, docs, dashboard at restormel.dev/keys/dashboard, Paddle checkout, Zuplo gateway when applicable).
+
+The sections below retain historical Cloud Run and Cloudflare notes for reference; follow [extraction-vercel.md](extraction-vercel.md) for current Vercel setup.
 
 ---
 
@@ -75,15 +78,19 @@ In the **Paddle dashboard** (sandbox or production):
 1. Open **Developer tools** → **Webhooks** (or **Notifications**).
 2. Set the **Webhook URL** to your dashboard’s billing endpoint, e.g.  
    `https://<your-cloud-run-url>/keys/dashboard/api/billing/webhook`  
-   or the canonical URL once DNS is set (e.g. `https://restormel.dev/keys/dashboard/api/billing/webhook`).
+   or the dashboard URL (e.g. `https://restormel.dev/keys/dashboard/api/billing/webhook`).
 3. Select the events you need (e.g. subscription created, updated, cancelled).
 4. Save. Paddle will send subscription events to this URL; ensure your dashboard API validates the signature and updates state accordingly.
 
 ---
 
-## 3. Site → Cloudflare Pages
+## 3. Site → Vercel (current)
 
-The marketing site and Keys docs (`apps/site`, Astro + Starlight) are deployed to **Cloudflare Pages**.
+The marketing site and Keys docs (`apps/site`, Astro + Starlight) are deployed to **Vercel**. Create a Vercel project with Root Directory **apps/site**; add custom domain **restormel.dev**. The site’s `vercel.json` redirects `/keys/dashboard` and `/keys/dashboard/*` to **https://restormel.dev/keys/dashboard**.
+
+### 3.1 (Historical) Site → Cloudflare Pages
+
+The following described **Cloudflare Pages**; it is superseded by Vercel.
 
 ### 3.1 Connect repo and build
 
@@ -122,17 +129,9 @@ npx wrangler pages deploy dist --project-name=restormel-site
 
 ---
 
-## 4. DNS: restormel.dev → Cloudflare, /keys/dashboard/* → Cloud Run
+## 4. DNS (Vercel)
 
-- **Point restormel.dev to Cloudflare**  
-  At your DNS provider (e.g. Cloudflare DNS, or the registrar if using Cloudflare only for proxy), set:
-  - **A** (apex) or **CNAME** for `restormel.dev` to the Cloudflare Pages target (or the Cloudflare proxy IPs as instructed when you add the custom domain in Pages).
-  - **www** if you use it — same or CNAME to the Pages hostname.
-
-- **Route /keys/dashboard/* to Cloud Run**  
-  The site Worker (`apps/site/worker.js`) can proxy `/keys/dashboard` to Cloud Run. Set **KEYS_DASHBOARD_URL** in Cloudflare (Workers & Pages → restormel-site → Settings → Variables) to the Cloud Run URL from `pulumi stack output dashboardServiceUrl` (no trailing slash). Deploy with `cd apps/site && pnpm build && npx wrangler deploy` so the Worker (and proxy) run. See **docs/reference/phase-3-manual-steps.md** E2.
-
-  **Alternative — subdomain:** e.g. `dashboard.restormel.dev` → CNAME to Cloud Run; then link to that URL from the site. No Worker env var needed.
+Domain is managed in **Vercel**. Add **restormel.dev** to the site project and **restormel.dev/keys/dashboard** to the dashboard project. No Cloudflare or Worker; the site project’s redirects send `/keys/dashboard` traffic to restormel.dev/keys/dashboard.
 
 ---
 
@@ -202,30 +201,13 @@ If you leave Git connected, you can still add the two GitHub secrets; the job wi
 
 ## 5.0 Error 1101 — Worker threw exception
 
-If **restormel.dev/keys/dashboard** shows **Error 1101: Worker threw exception**:
-
-1. **Use the real Cloud Run URL** — **KEYS_DASHBOARD_URL** must be the actual URL from `cd infra && pulumi stack output dashboardServiceUrl` (e.g. `https://keys-dashboard-bvfiwflowa-nw.a.run.app`). Do **not** use a placeholder like `https://keys-dashboard-<hash>.europe-west2.run.app`; the Worker will try to fetch that hostname and fail.
-2. **Apply the variable to Production** — In Cloudflare → **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets**, ensure **KEYS_DASHBOARD_URL** is set for **Production** (not only Preview).
-3. **Redeploy the Worker** after changing the variable so the new value is in effect.
-
-After the fix in `apps/site/worker.js`, backend fetch failures return **502 Dashboard backend unavailable** instead of Error 1101; if you still see 1101, the cause is likely one of the above or a missing **ASSETS** binding (deploy with `wrangler deploy` from `apps/site` so the static assets binding is attached).
+**(Superseded — no Cloudflare.)** Dashboard is at **restormel.dev/keys/dashboard**; use [extraction-vercel.md](extraction-vercel.md) for troubleshooting.
 
 ---
 
-## 5.1 Troubleshooting: 401 on /keys/dashboard
+## 5.1 Troubleshooting: 401 on dashboard
 
-If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied) returns **401 Unauthorized**:
-
-0. **Proxy enabled** — The in-repo Worker (`apps/site/worker.js`) proxies when **KEYS_DASHBOARD_URL** is set. In Cloudflare: **Workers & Pages** → **restormel-site** → **Settings** → **Variables and Secrets** (runtime) → add **KEYS_DASHBOARD_URL** = Cloud Run origin only (from `pulumi stack output dashboardServiceUrl` in `infra/`; do **not** append `/keys/dashboard`). **Note:** Git-triggered Cloudflare deploys can clear runtime variables. To avoid that, add **KEYS_DASHBOARD_URL** and **CLOUDFLARE_API_TOKEN** to GitHub Actions secrets; the CI workflow will then deploy the Worker with the var injected. Optionally disable Cloudflare Git deployment for restormel-site so only CI deploys.
-
-1. **Proxy target**  
-   If you use a Cloudflare route to proxy `/keys/dashboard` to Cloud Run, the target must be the **direct Cloud Run URL** from `cd infra && pulumi stack output dashboardServiceUrl`. The dashboard app uses base path `/keys/dashboard`, so the backend must receive paths like `/keys/dashboard` and `/keys/dashboard/api/health`. Do **not** point the proxy at a load balancer or URL that requires IAM; the Cloud Run service is configured with public invoker (`allUsers` in infra).
-
-2. **Use direct Cloud Run until the proxy works**  
-   You can open the dashboard at `https://<dashboardServiceUrl>/keys/dashboard` (e.g. `https://keys-dashboard-XXXXXXXX.europe-west2.run.app/keys/dashboard`). For Zuplo, set **KEYS_BACKEND_URL** to that base (no trailing slash) so the gateway forwards to Cloud Run directly.
-
-3. **401 from dashboard API in the browser**  
-   If the 401 is from a **dashboard API** call (e.g. `GET /keys/dashboard/api/projects`) when using the UI, that is expected when not logged in. Sign in with GitHub via the dashboard; the session cookie then authenticates API requests.
+If **restormel.dev/keys/dashboard** returns **401** on API calls when not signed in, that is expected. Sign in with GitHub; the session cookie then authenticates requests. For auth callback issues, set GitHub OAuth callback to `https://restormel.dev/keys/dashboard/api/auth/callback/github` and ensure **NEON_AUTH_BASE_URL** is set in the dashboard Vercel project.
 
 ---
 
@@ -233,12 +215,11 @@ If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied)
 
 **500 or auth errors when clicking “Sign in with GitHub”:**
 
-1. **Dashboard env (Neon Auth)** — The dashboard uses **Neon Auth** (managed in Neon Console). Cloud Run (or the host) must have **runtime** env: `DATABASE_URL` (Neon Postgres), `NEON_AUTH_BASE_URL` (from Neon Console → Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console (Auth → OAuth providers), not in app env. Add these in Pulumi as secret refs (see phase-3-manual-steps and infra/README) or Cloud Run env vars.
-2. **GitHub OAuth App** — Create a GitHub OAuth App with **Authorization callback URL** = your dashboard’s auth callback so the flow is proxied: `https://<your-domain>/keys/dashboard/api/auth/callback/github`. In Neon Console, add GitHub as an OAuth provider using the same GitHub App’s Client ID and Client Secret.
-3. **Cloud Run logs** — Check logs for requests to `/keys/dashboard/api/auth/*` for the actual error (no tokens or secrets in logs).
+1. **Dashboard env (Neon Auth)** — In the dashboard Vercel project, set **DATABASE_URL** and **NEON_AUTH_BASE_URL**. GitHub OAuth is configured in Neon Console (Auth → OAuth providers).
+2. **GitHub OAuth App** — **Authorization callback URL** = `https://restormel.dev/keys/dashboard/api/auth/callback/github`. In Neon Console, add GitHub as an OAuth provider with the same Client ID and Client Secret.
+3. **Vercel logs** — Check dashboard function logs for `/api/auth/*` errors (no tokens or secrets in logs).
 
-**Sidebar links (Overview, Projects, Billing, Settings) “not working”:**  
-When not signed in, those links load the same shell and show “Sign in to use the dashboard” — that is expected. After you sign in, they load the real pages. If they 404 or fail when clicked, confirm the dashboard was redeployed and that you’re opening `restormel.dev/keys/dashboard/...` (proxy and Worker env var set).
+**Sidebar links:** When not signed in, links show “Sign in to use the dashboard”. After sign-in they load the real pages. Use **restormel.dev/keys/dashboard** as the dashboard URL.
 
 ---
 
@@ -270,7 +251,7 @@ After deployment and DNS/proxy are in place:
 |-------|----------|
 | **Landing** | `https://restormel.dev` (or your domain) serves the marketing homepage. |
 | **Docs** | `https://restormel.dev/keys/docs/` (or equivalent) serves Starlight docs. |
-| **Dashboard** | `https://restormel.dev/keys/dashboard` (or dashboard subdomain) loads the SvelteKit app; login and shell work. |
+| **Dashboard** | `https://restormel.dev/keys/dashboard` loads the SvelteKit app; login and shell work. |
 | **Paddle checkout** | From `/keys/pricing`, “Subscribe” opens Paddle checkout; success redirects to dashboard with `?billing=success` (or configured path). |
 | **Zuplo gateway** | If Phase 3 includes Zuplo, external calls through Zuplo to the Cloud Run API work and developer portal shows docs. |
 

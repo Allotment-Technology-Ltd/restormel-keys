@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { NAV_ITEMS, topbarTitle } from "./nav-config";
-import { base } from "$app/paths";
+import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
 describe("NAV_ITEMS", () => {
   it("includes all canonical sections in order", () => {
@@ -35,11 +35,11 @@ describe("NAV_ITEMS", () => {
 
 describe("topbarTitle", () => {
   it("returns Overview for root path", () => {
-    expect(topbarTitle(base + "/")).toBe("Overview");
+    expect(topbarTitle(DASHBOARD_BASE + "/")).toBe("Overview");
   });
 
   it("returns Projects for /projects", () => {
-    expect(topbarTitle(base + "/projects")).toBe("Projects");
+    expect(topbarTitle(DASHBOARD_BASE + "/projects")).toBe("Projects");
   });
 
   it("returns Project for project detail path", () => {
