@@ -43,31 +43,6 @@ export const GET: RequestHandler = async ({ url }) => {
     );
   }
 
-  // If Neon responds with an error status, log the body and surface a clearer error upstream.
-  if (!res.ok && (res.status < 300 || res.status >= 400)) {
-    let errorText = "";
-    try {
-      errorText = await res.text();
-    } catch {
-      // ignore
-    }
-    console.error("[auth] Neon Auth sign-in/social failed", {
-      status: res.status,
-      body: errorText.slice(0, 600),
-      endpoint: `${NEON_AUTH_BASE_URL}/sign-in/social`,
-      callbackURL,
-    });
-
-    return json(
-      {
-        error: "Failed to start GitHub sign-in",
-        upstreamStatus: res.status,
-        upstreamMessage: errorText || undefined,
-      },
-      { status: 502 }
-    );
-  }
-
   // Prefer redirect Location header if present.
   const location = res.headers.get("Location");
   if (location && res.status >= 300 && res.status < 400) {
@@ -91,13 +66,20 @@ export const GET: RequestHandler = async ({ url }) => {
     throw redirect(302, maybeUrl);
   }
 
-  return json(
-    {
-      error: "Failed to start GitHub sign-in",
-      upstreamStatus: res.status,
-      upstreamMessage: data ?? null,
+  // If we reach here, Neon returned a non-redirect response. Surface its body and status directly
+  // so we can see the real error instead of a generic 502.
+  let fallbackText = "";
+  try {
+    fallbackText = typeof data === "string" ? data : JSON.stringify(data);
+  } catch {
+    // ignore
+  }
+
+  return new Response(fallbackText || "Neon Auth did not return a redirect URL", {
+    status: res.status,
+    headers: {
+      "content-type": res.headers.get("content-type") ?? "text/plain",
     },
-    { status: 502 }
-  );
+  });
 };
 
