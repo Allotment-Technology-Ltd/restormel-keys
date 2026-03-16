@@ -55,6 +55,11 @@ function parseUrl(value: string | null): URL | null {
   }
 }
 
+function originOnly(value: string | null): string | null {
+  const parsed = parseUrl(value);
+  return parsed ? parsed.origin : null;
+}
+
 function derivePublicUrl(request: Request, ourUrl: URL): URL {
   const originUrl = parseUrl(request.headers.get("origin"));
   if (originUrl) return originUrl;
@@ -171,7 +176,8 @@ export async function proxyAuthRequest(
       xForwardedProto: headers.get("x-forwarded-proto"),
       xForwardedPort: headers.get("x-forwarded-port"),
       origin: headers.get("origin"),
-      referer: headers.get("referer"),
+      // Log only the origin to avoid leaking query params or other identifiers.
+      refererOrigin: originOnly(headers.get("referer")),
     });
     bodyToReturn = errText;
   }
