@@ -18,15 +18,17 @@ One login, one cookie, same links everywhere. Sign-in uses a single entry point 
 
 Logo and lockup are **core layout primitives**, not decoration. Use them consistently so brand is embedded in structure.
 
+**One lockup in nav contexts:** The same asset (**restormel-lockup-nav.svg**) is used for nav/header/sidebar across site, docs, and dashboard. No alternate lockup in these contexts so the product reads as one brand. Site and Starlight use it via [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) and astro.config.mjs `logo.src`; dashboard uses it in [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte) (copied to dashboard static). Hero and marketing full-width contexts may use the larger lockup variants (dark/light); nav, header, and sidebar must use the nav lockup only.
+
 | Context | Asset | Size / rule | Where |
 |--------|--------|-------------|--------|
-| Marketing nav (header) | Lockup | Height 28px; clear-space = nav padding rhythm | [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) variant `nav`, `height="28"`. |
-| Marketing footer | Lockup | Height 24px | LogoLockup variant `nav`, `height="24"`. |
-| Dashboard sidebar | App lockup | Height 26–28px; horizontal padding matches nav links | [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte); `height="26"` or `"28px"`. |
-| Docs (Starlight) | Starlight logo config | Same lockup as marketing nav; sizing via Starlight header | astro.config.mjs `logo.src`; theme uses `--sl-*` aligned to `--rm-*`. |
+| Marketing nav (header) | restormel-lockup-nav.svg | Height 28px; min-height container `--rm-nav-height` (3.5rem) | [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) variant `nav`, `height="28"`; [MarketingLayout.astro](../apps/site/src/layouts/MarketingLayout.astro) `.nav` / `.nav-inner`. |
+| Marketing footer | restormel-lockup-nav.svg | Height 24px | LogoLockup variant `nav`, `height="24"`. |
+| Dashboard sidebar | restormel-lockup-nav.svg | Height 28px; padding `var(--space-4)` to match nav links | [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte) `height="28"`; layout `.logo` padding. |
+| Docs (Starlight) | restormel-lockup-nav.svg | Same as marketing nav; header min-height `--sl-nav-height` (3.5rem) | astro.config.mjs `logo.src`; [starlight-theme.css](../apps/site/src/styles/starlight-theme.css) `.header` / `.sl-navbar`. |
 | Icon-only (favicon, tight spaces) | Mark | 24–32px; use [LogoMark.astro](../apps/site/src/components/LogoMark.astro) or equivalent. | Favicon, OG, or icon-only UI. |
 
-**Rules:** (1) Lockup = mark + wordmark; use in nav, header, footer. (2) Mark only = concentric symbol; use when space is tight or icon-only is required. (3) Sizing: nav/header = 28px height; footer = 24px; dashboard sidebar = 26–28px. (4) Clear-space: same vertical/horizontal rhythm as surrounding nav (e.g. `--space-4` / `--space-6`). (5) Focus and contrast: use `--focus-ring-*` and ensure logo has sufficient contrast on `--rm-surface` / `--rm-bg`. (6) All shell headers/sidebars that show the logo must use the same tokenized spacing and typography hierarchy so the logo sits in the layout system, not as a tag-on.
+**Rules:** (1) **One lockup in nav/header/sidebar:** restormel-lockup-nav.svg everywhere; no exceptions. (2) Lockup = mark + wordmark; use in nav, header, footer. (3) Mark only = concentric symbol; use when space is tight or icon-only is required. (4) **Sizing mandatory:** nav/header = 28px height; footer = 24px; dashboard sidebar = 28px. (5) **Clear-space:** same vertical/horizontal rhythm as surrounding nav (`--space-4` / `--space-6`); header/sidebar use `--rm-nav-height` or equivalent so the logo sits in the layout grid. (6) Focus and contrast: use `--focus-ring-*`; sufficient contrast on `--rm-surface` / `--rm-bg`. (7) All shell headers/sidebars use the same tokenized spacing so the logo is part of the layout system, not a tag-on.
 
 ## Canonical documents
 
@@ -64,3 +66,22 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 5. **Semantic color meaning** — Blue = primary/selection, Teal = verified/success, Amber = warning, Coral = error, Violet = inference/reasoning.
 
 When adding or changing UI, prefer tokens and components from this system; avoid one-off colors or typography.
+
+## Visual harmony checklist
+
+Use this checklist for reviews and drift checks so the product keeps one look and feel across site, docs, and dashboard.
+
+1. **Logo asset and sizing (nav/header/sidebar)**  
+   One lockup (restormel-lockup-nav.svg) in all shells; nav/header/sidebar height 28px; footer 24px; container min-height `--rm-nav-height` (3.5rem); same horizontal padding (`--space-4` / `--space-6`) so the logo sits in the layout grid.
+
+2. **Nav labels and canonical URLs**  
+   Only: Keys, Docs, Pricing, GitHub, Dashboard (and Sign in in docs Product section). Same URLs everywhere: Dashboard → `/keys/dashboard`, Sign in → `/keys/dashboard/login`, Docs → `/keys/docs/`, Pricing → `/keys/pricing`, Keys → `/keys`. No alternate labels or paths unless explicitly added.
+
+3. **Section pattern (title + intro + content)**  
+   Marketing/docs: section-title (h2) + optional section-intro (p) + content; spacing `--space-6` / `--space-8`. Dashboard: page-title (h1) + page-desc (p) + content; `.page-title` margin `0 0 var(--space-2)`, `.page-desc` margin `0 0 var(--space-4)`; font sizes `var(--text-2xl)` and `var(--text-sm)`; desc color `--rm-muted`.
+
+4. **Button and card tokens**  
+   Buttons and cards use `--rm-radius`, `--rm-sage`, `--rm-border`, `--rm-surface-raised` and padding scale `--space-2`, `--space-4`, `--space-6`. Same tokens on site and dashboard so components are visually interchangeable.
+
+5. **Empty and error state pattern**  
+   Every empty view: explicit copy + one primary recovery action (e.g. Create a project, Generate API key). Every error: clear message + recovery (Try again, Sign in, link to docs). Use shared `.empty-state` (title, description, CTA) and semantic error styling (`--coral-alert` / `--rk-*` error tokens). Loading states shown (e.g. “Creating…”, “Generating…”); no blank content during requests.

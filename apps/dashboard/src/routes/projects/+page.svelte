@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { invalidateAll } from "$app/navigation";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   export let data: { projects: { id: string; name: string; createdAt: number }[]; projectsError?: string | null };
 
@@ -45,59 +46,68 @@
 {#if createError}
   <p class="error-msg" role="alert">{createError}</p>
 {/if}
-<div class="create-form">
+<div class="create-form" id="create-form">
   <input type="text" bind:value={newName} placeholder="Project name" class="input" />
   <button class="btn btn-primary" onclick={createProject} disabled={creating || !newName.trim()}>
     {creating ? "Creating…" : "Create project"}
   </button>
 </div>
 
-<ul class="project-list">
-  {#each data.projects as p}
-    <li>
-      <a href={base + "/projects/" + p.id}>{p.name}</a>
-    </li>
-  {/each}
-</ul>
+{#if data.projects.length === 0}
+  <EmptyState
+    title="No projects yet"
+    description="Create your first project to get API keys and use the Cloud API."
+  >
+    <a href="#create-form" class="btn btn-primary">Create a project</a>
+  </EmptyState>
+{:else}
+  <ul class="project-list">
+    {#each data.projects as p}
+      <li>
+        <a href={base + "/projects/" + p.id}>{p.name}</a>
+      </li>
+    {/each}
+  </ul>
+{/if}
 
 <style>
   .page-title {
     font-family: var(--rm-font-display);
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 600;
     color: var(--rm-text);
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
   .page-desc {
     color: var(--rm-muted);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .error-msg {
-    color: var(--rm-error, #c95c5c);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    color: var(--coral-alert);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .create-form {
     display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
     flex-wrap: wrap;
   }
   .input {
-    padding: 0.5rem 0.75rem;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     color: var(--rm-text);
     font-family: inherit;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     min-width: 12rem;
   }
   .btn {
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 500;
     border: none;
     cursor: pointer;
@@ -116,7 +126,7 @@
     margin: 0;
   }
   .project-list li {
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--rm-border);
   }
 </style>

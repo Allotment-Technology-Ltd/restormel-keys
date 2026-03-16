@@ -15,7 +15,7 @@
   <div class="shell">
     <aside class="sidebar">
       <div class="logo">
-        <AppLogo height="26" />
+        <AppLogo height="28" />
       </div>
       <nav class="nav" aria-label="Dashboard">
         <a href={base + "/"} class="nav-link">Overview</a>

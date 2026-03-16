@@ -19,6 +19,9 @@
   --rm-font-ui: var(--font-mono);
   --rm-radius: var(--radius-base);
   --rm-container-narrow: 56rem;
+  --rm-nav-height: 3.5rem;
+  --rm-section-padding: var(--space-12);
+  --rm-section-padding-sm: var(--space-8);
 }
 
 *,

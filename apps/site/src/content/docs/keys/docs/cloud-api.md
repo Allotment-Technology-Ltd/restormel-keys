@@ -24,3 +24,10 @@ See the portal’s [How it all fits together](https://restormel-keys-gateway-mai
 - [Developer Portal (API reference + Try it)](https://restormel-keys-gateway-main-bc13eba.zuplo.site)
 - [Introduction & authentication](https://restormel-keys-gateway-main-bc13eba.zuplo.site/introduction)
 - [Dashboard](https://restormel.dev/keys/dashboard)
+
+## See also
+
+- [Dashboard](/keys/dashboard/) — create projects and API keys
+- [Sign in](/keys/dashboard/login) — authenticate with GitHub
+- [Docs](/keys/docs/) — framework compatibility and guides
+- [Pricing](/keys/pricing/) — tiers and plans

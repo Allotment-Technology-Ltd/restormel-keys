@@ -1,5 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   export let data: { projects: { id: string; name: string }[]; projectsError?: string | null };
 </script>
@@ -11,7 +12,12 @@
   <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
 {/if}
 {#if data.projects.length === 0}
-  <p class="empty">No projects yet. <a href={base + "/projects"}>Create one</a>.</p>
+  <EmptyState
+    title="No projects yet"
+    description="Create a project to get API keys and use the Cloud API."
+  >
+    <a href={base + "/projects"} class="btn btn-primary">Create a project</a>
+  </EmptyState>
 {:else}
   <ul class="project-list">
     {#each data.projects as p}
@@ -26,35 +32,35 @@
 <style>
   .page-title {
     font-family: var(--rm-font-display);
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 600;
     color: var(--rm-text);
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
   .page-desc {
     color: var(--rm-muted);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .error-msg {
-    color: var(--rm-error, #c95c5c);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    color: var(--coral-alert);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .empty {
     color: var(--rm-muted);
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
   }
   .project-list {
     list-style: none;
     padding: 0;
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
   }
   .project-list li {
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--rm-border);
   }
   .btn-link {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
 </style>

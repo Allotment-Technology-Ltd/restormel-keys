@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from "$app/paths";
   import { invalidateAll } from "$app/navigation";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -66,19 +67,30 @@
       </div>
     {/if}
 
-    <button class="btn btn-primary" onclick={generateKey} disabled={generating}>
-      {generating ? "Generating…" : "Generate API key"}
-    </button>
+    {#if data.keys.length === 0 && !newKeyRaw}
+      <EmptyState
+        title="No API keys yet"
+        description="Generate an API key to use the Cloud API. Copy it when created; we won’t show it again."
+      >
+        <button class="btn btn-primary" onclick={generateKey} disabled={generating}>
+          {generating ? "Generating…" : "Generate API key"}
+        </button>
+      </EmptyState>
+    {:else}
+      <button class="btn btn-primary" onclick={generateKey} disabled={generating}>
+        {generating ? "Generating…" : "Generate API key"}
+      </button>
 
-    {#if data.keys.length > 0}
-      <ul class="key-list">
-        {#each data.keys as k}
-          <li class="key-row">
-            <code class="key-prefix">{k.keyPrefix}</code>
-            <button type="button" class="btn btn-danger" onclick={() => revokeKey(k.id)}>Revoke</button>
-          </li>
-        {/each}
-      </ul>
+      {#if data.keys.length > 0}
+        <ul class="key-list">
+          {#each data.keys as k}
+            <li class="key-row">
+              <code class="key-prefix">{k.keyPrefix}</code>
+              <button type="button" class="btn btn-danger" onclick={() => revokeKey(k.id)}>Revoke</button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     {/if}
   </section>
 
@@ -88,52 +100,52 @@
 <style>
   .page-title {
     font-family: var(--rm-font-display);
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 600;
     color: var(--rm-text);
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
   .page-desc {
     color: var(--rm-muted);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .section {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-6);
   }
   .section-title {
-    font-size: 1rem;
+    font-size: var(--text-base);
     font-weight: 600;
     color: var(--rm-text);
-    margin: 0 0 0.25rem;
+    margin: 0 0 var(--space-1);
   }
   .section-desc {
     color: var(--rm-muted);
-    font-size: 0.8125rem;
-    margin: 0 0 0.75rem;
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-3);
   }
   .new-key-box {
     background: var(--rm-surface-raised);
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);
-    padding: 1rem;
-    margin-bottom: 0.75rem;
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
   }
   .new-key-label {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--rm-dim);
-    margin: 0 0 0.25rem;
+    margin: 0 0 var(--space-1);
   }
   .new-key-value {
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     word-break: break-all;
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-2);
   }
   .btn {
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 500;
     border: none;
     cursor: pointer;
@@ -153,26 +165,27 @@
     border: 1px solid var(--rm-border);
   }
   .btn-danger:hover {
-    color: #c95c5c;
-    border-color: #c95c5c;
+    color: var(--coral-alert);
+    border-color: var(--coral-alert);
   }
   .key-list {
     list-style: none;
     padding: 0;
-    margin: 1rem 0 0;
+    margin: var(--space-4) 0 0;
   }
   .key-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--rm-border);
   }
   .key-prefix {
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     color: var(--rm-muted);
   }
   .error {
-    color: #c95c5c;
+    color: var(--coral-alert);
+    font-size: var(--text-sm);
   }
 </style>

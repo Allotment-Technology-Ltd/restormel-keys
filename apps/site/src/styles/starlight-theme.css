@@ -55,11 +55,11 @@
   --sl-line-height: var(--leading-relaxed);
   --sl-line-height-headings: var(--leading-tight);
 
-  /* Layout alignment with marketing site */
+  /* Layout alignment with marketing site (--rm-nav-height from global.css) */
   --sl-content-width: 52rem;
   --sl-content-pad-x: var(--space-6);
   --sl-content-gap-y: var(--space-8);
-  --sl-nav-height: 3.5rem;
+  --sl-nav-height: var(--rm-nav-height, 3.5rem);
   --sl-sidebar-width: 20rem;
   --sl-sidebar-pad-x: var(--space-5);
   --sl-nav-pad-x: var(--space-6);

@@ -27,6 +27,7 @@
   --rm-reading-width: 65ch;
   --rm-card-radius: var(--radius-md);
   --rm-card-shadow: var(--shadow-base);
+  --rm-nav-height: 3.5rem;
 }
 
 @media (max-width: 640px) {
