@@ -11,7 +11,9 @@
   </div>
   <h1 class="login-title">Sign in</h1>
   <p class="login-desc">Use GitHub to sign in to the Keys dashboard.</p>
-  <a href={base + "/api/auth/initiate/github"} class="btn btn-primary" rel="external">Sign in with GitHub</a>
+  <form action={base + "/api/auth/initiate/github"} method="get" class="login-form">
+    <button type="submit" class="btn btn-primary">Sign in with GitHub</button>
+  </form>
   <a href={base + "/"} class="back-link">Back to overview</a>
 </div>
 
@@ -35,6 +37,9 @@
   .login-desc {
     color: var(--rm-muted);
     font-size: 0.875rem;
+    margin: 0 0 1.5rem;
+  }
+  .login-form {
     margin: 0 0 1.5rem;
   }
   .login-error {
