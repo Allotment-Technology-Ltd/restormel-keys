@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter dashboard build",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/", "destination": "/keys/dashboard" }
   ]
