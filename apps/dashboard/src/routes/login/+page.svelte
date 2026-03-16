@@ -12,13 +12,28 @@
     try {
       const absoluteCallback =
         typeof window !== "undefined" ? window.location.origin + base + "/" : base + "/";
-      await authClient.signIn.social({
+      const result = await authClient.signIn.social({
         provider: "github",
         callbackURL: absoluteCallback,
         newUserCallbackURL: absoluteCallback,
         errorCallbackURL: absoluteCallback,
+        disableRedirect: true,
       });
-      // Neon Auth redirects to GitHub; after callback it redirects to callbackURL
+
+      if (result?.error) {
+        error = result.error.message ?? "Sign in failed";
+        loading = false;
+        return;
+      }
+
+      const url = result?.data?.url;
+      if (url && typeof window !== "undefined") {
+        window.location.href = url;
+        return;
+      }
+
+      error = "Sign in did not return a redirect URL.";
+      loading = false;
     } catch (e) {
       error = e instanceof Error ? e.message : "Sign in failed";
       loading = false;
