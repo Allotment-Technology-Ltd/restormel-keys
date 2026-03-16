@@ -41,6 +41,36 @@ function encodeLocalhostSetCookie(setCookie: string, host: string): string {
   return out;
 }
 
+function forwardedPort(url: URL): string {
+  if (url.port) return url.port;
+  return url.protocol === "https:" ? "443" : "80";
+}
+
+function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Headers {
+  const headers = new Headers();
+  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", ourUrl.host);
+  const contentType = request.headers.get("content-type");
+  const accept = request.headers.get("accept");
+  const acceptLanguage = request.headers.get("accept-language");
+  const userAgent = request.headers.get("user-agent");
+  const referer = request.headers.get("referer");
+
+  headers.set("host", targetUrl.host);
+  headers.set("x-forwarded-host", ourUrl.host);
+  headers.set("x-forwarded-proto", ourUrl.protocol.replace(":", ""));
+  headers.set("x-forwarded-port", forwardedPort(ourUrl));
+  headers.set("origin", ourUrl.origin);
+
+  if (referer) headers.set("referer", referer);
+  if (cookie) headers.set("cookie", cookie);
+  if (contentType) headers.set("content-type", contentType);
+  if (accept) headers.set("accept", accept);
+  if (acceptLanguage) headers.set("accept-language", acceptLanguage);
+  if (userAgent) headers.set("user-agent", userAgent);
+
+  return headers;
+}
+
 /**
  * Get current session from Neon Auth by forwarding the request’s cookies.
  */
@@ -92,11 +122,7 @@ export async function proxyAuthRequest(
   targetUrl.search = ourUrl.search;
   const ourHost = ourUrl.host;
   const ourOrigin = ourUrl.origin;
-  const headers = new Headers(request.headers);
-  headers.delete("host");
-  headers.set("Host", targetUrl.host);
-  const incomingCookie = decodeLocalhostCookieHeader(headers.get("cookie") ?? "", ourHost);
-  if (incomingCookie) headers.set("cookie", incomingCookie);
+  const headers = buildProxyHeaders(request, ourUrl, targetUrl);
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const res = await fetch(targetUrl.toString(), {
     method: request.method,
@@ -113,6 +139,14 @@ export async function proxyAuthRequest(
   if (res.status >= 400 && res.status < 500) {
     const errText = await res.text();
     console.error("[auth] Neon Auth", res.status, "for", path, "—", errText.slice(0, 600));
+    console.error("[auth] forwarded headers", {
+      host: headers.get("host"),
+      xForwardedHost: headers.get("x-forwarded-host"),
+      xForwardedProto: headers.get("x-forwarded-proto"),
+      xForwardedPort: headers.get("x-forwarded-port"),
+      origin: headers.get("origin"),
+      referer: headers.get("referer"),
+    });
     bodyToReturn = errText;
   }
   const outHeaders = new Headers(res.headers);
