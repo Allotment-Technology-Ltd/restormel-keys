@@ -32,6 +32,19 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 
 **Vercel:** Add custom domain **restormel.dev**. **NEON_AUTH_BASE_URL** = `https://restormel.dev`; GitHub OAuth callback = `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
 
+## 404 on every path (restormel.dev)
+
+If **all** routes (/, /favicon.ico, /keys/dashboard) return 404:
+
+1. **Domain → project** — Vercel → **Domains**: confirm **restormel.dev** is assigned to the **same project** that is connected to this repo and builds the dashboard. If you have multiple projects (e.g. an old “site” project), move the domain to the project that runs `pnpm --filter dashboard build` (or Root Directory `apps/dashboard` with `pnpm run build`).
+2. **Root Directory** — Use **one** of:
+   - **`.`** (repo root): root `vercel.json` applies (`outputDirectory`: `apps/dashboard/.vercel/output`). Build runs from repo root.
+   - **`apps/dashboard`**: `apps/dashboard/vercel.json` applies (`outputDirectory`: `.vercel/output`). Build runs from that folder; install is `cd .. && pnpm install`.
+3. **Latest deployment** — Vercel → **Deployments**: open the latest deployment. If it **failed**, fix the build (e.g. lockfile, Node version) and redeploy. If the last **successful** deployment is old, trigger a new deploy from **main**.
+4. **Runtime env** — In **Settings → Environment Variables**, set at least **Production**: `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Missing env can cause serverless functions to fail and return 5xx or 404.
+
+The browser messages *"Event handler must be added on initial evaluation"* and *"runtime.lastError... back/forward cache"* are from **extensions** (e.g. DevTools), not the site; they do not cause the 404s.
+
 ## After extraction
 
 - **Pulumi / GCP (decommissioning path)** — The dashboard now runs on Vercel. Plan for a burn-in window where Cloud Run remains as a manual rollback target, then:
