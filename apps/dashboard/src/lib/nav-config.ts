@@ -2,7 +2,7 @@
  * Dashboard nav: canonical information architecture.
  * Single source for nav items and path → title mapping.
  */
-import { base } from "$app/paths";
+import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
 export type NavItem = {
   href: string;
@@ -11,53 +11,53 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: base + "/", label: "Overview" },
-  { href: base + "/projects", label: "Projects" },
-  { href: base + "/access", label: "Access" },
-  { href: base + "/integrations", label: "Provider Integrations" },
-  { href: base + "/models", label: "Models" },
-  { href: base + "/routes", label: "Routes" },
-  { href: base + "/policies", label: "Policies" },
-  { href: base + "/analytics", label: "Analytics" },
-  { href: base + "/logs", label: "Logs & Traces" },
-  { href: base + "/lifecycle", label: "Lifecycle & Migrations" },
-  { href: base + "/billing", label: "Billing & Forecasting" },
-  { href: "/keys/docs/", label: "Documentation", external: true },
-  { href: base + "/settings", label: "Settings" },
+  { href: DASHBOARD_BASE + "/", label: "Overview" },
+  { href: DASHBOARD_BASE + "/projects", label: "Projects" },
+  { href: DASHBOARD_BASE + "/access", label: "Access" },
+  { href: DASHBOARD_BASE + "/integrations", label: "Provider Integrations" },
+  { href: DASHBOARD_BASE + "/models", label: "Models" },
+  { href: DASHBOARD_BASE + "/routes", label: "Routes" },
+  { href: DASHBOARD_BASE + "/policies", label: "Policies" },
+  { href: DASHBOARD_BASE + "/analytics", label: "Analytics" },
+  { href: DASHBOARD_BASE + "/logs", label: "Logs & Traces" },
+  { href: DASHBOARD_BASE + "/lifecycle", label: "Lifecycle & Migrations" },
+  { href: DASHBOARD_BASE + "/billing", label: "Billing & Forecasting" },
+  { href: "/keys/docs", label: "Documentation", external: true },
+  { href: DASHBOARD_BASE + "/settings", label: "Settings" },
 ];
 
 const PATH_TO_TITLE: Record<string, string> = {
-  [base + "/"]: "Overview",
-  [base + "/projects"]: "Projects",
-  [base + "/access"]: "Access",
-  [base + "/integrations"]: "Provider Integrations",
-  [base + "/models"]: "Models",
-  [base + "/routes"]: "Routes",
-  [base + "/policies"]: "Policies",
-  [base + "/analytics"]: "Analytics",
-  [base + "/logs"]: "Logs & Traces",
-  [base + "/lifecycle"]: "Lifecycle & Migrations",
-  [base + "/billing"]: "Billing & Forecasting",
-  [base + "/settings"]: "Settings",
+  [DASHBOARD_BASE + "/"]: "Overview",
+  [DASHBOARD_BASE + "/projects"]: "Projects",
+  [DASHBOARD_BASE + "/access"]: "Access",
+  [DASHBOARD_BASE + "/integrations"]: "Provider Integrations",
+  [DASHBOARD_BASE + "/models"]: "Models",
+  [DASHBOARD_BASE + "/routes"]: "Routes",
+  [DASHBOARD_BASE + "/policies"]: "Policies",
+  [DASHBOARD_BASE + "/analytics"]: "Analytics",
+  [DASHBOARD_BASE + "/logs"]: "Logs & Traces",
+  [DASHBOARD_BASE + "/lifecycle"]: "Lifecycle & Migrations",
+  [DASHBOARD_BASE + "/billing"]: "Billing & Forecasting",
+  [DASHBOARD_BASE + "/settings"]: "Settings",
 };
 
 /** Title for topbar from pathname (exact match or segment). */
 export function topbarTitle(pathname: string): string {
   if (PATH_TO_TITLE[pathname]) return PATH_TO_TITLE[pathname];
-  if (pathname.startsWith(base + "/projects/") && pathname !== base + "/projects") {
+  if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname !== DASHBOARD_BASE + "/projects") {
     return "Project";
   }
-  if (pathname.startsWith(base + "/integrations/") && pathname !== base + "/integrations") {
+  if (pathname.startsWith(DASHBOARD_BASE + "/integrations/") && pathname !== DASHBOARD_BASE + "/integrations") {
     return "Provider Integration";
   }
-  if (pathname.startsWith(base + "/models/") && pathname !== base + "/models") {
+  if (pathname.startsWith(DASHBOARD_BASE + "/models/") && pathname !== DASHBOARD_BASE + "/models") {
     return "Model";
   }
-  if (pathname.startsWith(base + "/projects/") && pathname.includes("/routes")) {
+  if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname.includes("/routes")) {
     if (pathname.endsWith("/routes")) return "Routes";
     return "Route";
   }
-  if (pathname.startsWith(base + "/policies/") && pathname !== base + "/policies") {
+  if (pathname.startsWith(DASHBOARD_BASE + "/policies/") && pathname !== DASHBOARD_BASE + "/policies") {
     return "Policy";
   }
   return "";

@@ -21,25 +21,16 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
    - `DATABASE_URL` — Neon connection string for the **production** branch.
    - `NEON_AUTH_BASE_URL` — Auth base URL from Neon Console for the **production** branch (Project → Branch → Auth → Configuration).
    - Any Paddle vars if needed.
-5. **Neon Auth + GitHub** — In **Neon Console** (Project → Branch → Auth), enable Auth and add GitHub as an OAuth provider. In your **GitHub OAuth App**, set **Authorization callback URL** to your dashboard’s auth callback (so the flow is proxied through the app), e.g. `https://your-vercel-domain.vercel.app/keys/dashboard/api/auth/callback/github` (or `https://restormel.dev/keys/dashboard/api/auth/callback/github` if users reach the dashboard via your custom domain).
-6. **Proxy / DNS** — If the site is currently on Cloudflare and proxies `/keys/dashboard` to Cloud Run, point the same route to the **Vercel URL** instead (e.g. set `KEYS_DASHBOARD_URL` or the Worker’s upstream to the Vercel deployment URL). No code change required; only deployment and env.
+5. **Neon Auth + GitHub** — In **Neon Console** (Project → Branch → Auth), enable Auth and add GitHub as an OAuth provider. In your **GitHub OAuth App**, set **Authorization callback URL** to your dashboard’s auth callback, e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
+6. **DNS** — One Vercel project serves site, docs, and dashboard at **restormel.dev** (dashboard at `/keys/dashboard`, docs at `/keys/docs`). Custom domain **restormel.dev**.
 
-## Current setup (1): Site on Cloudflare, dashboard on Vercel
+## Current setup: Single app on Vercel
 
-Recommended post-migration setup:
+| Surface | Vercel project | URL |
+|--------|-----------------|-----|
+| **Site** (landing, /keys, /keys/pricing), **Docs** (/keys/docs), **Dashboard** (/keys/dashboard) | One project (Root: ., build: `pnpm --filter dashboard build`) | restormel.dev |
 
-| Surface | Host | URL |
-|--------|------|-----|
-| **Site** (landing, /keys, /keys/docs, /keys/pricing) | Cloudflare (Pages/Worker) | e.g. restormel.dev |
-| **Dashboard** (Overview, Projects, Billing, login) | Vercel | e.g. restormel-keys.vercel.app/keys/dashboard |
-
-**Wire the Worker to Vercel:**
-
-1. **Cloudflare** — Workers & Pages → restormel-site → Settings → Variables and Secrets. Set **KEYS_DASHBOARD_URL** = `https://restormel-keys.vercel.app` (or your Vercel project URL; no trailing slash, no `/keys/dashboard`). Apply to Production (and Preview if needed). Redeploy the Worker after changing.
-2. **GitHub Actions** (if CI deploys the Worker) — In repo Settings → Secrets and variables → Actions, set **KEYS_DASHBOARD_URL** to the same Vercel URL. The deploy-site-worker job injects it and deploys; /keys/dashboard will then proxy to Vercel.
-3. **NEON_AUTH_BASE_URL** in Vercel is your Neon Auth URL from Neon Console. The GitHub OAuth App callback URL must be your **dashboard** URL (so sign-in goes through the app proxy), e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
-
-After this, **restormel.dev/keys/dashboard** serves the Vercel-deployed dashboard via the Worker proxy.
+**Vercel:** Add custom domain **restormel.dev**. **NEON_AUTH_BASE_URL** = `https://restormel.dev`; GitHub OAuth callback = `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
 
 ## After extraction
 

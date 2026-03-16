@@ -1,4 +1,4 @@
-# Single CI/CD workflow: path-filter, docs, security, test, demo-next, and deploy-site-worker (Cloudflare). Dashboard deploys via Vercel on push to main.
+# Single CI/CD workflow: path-filter, docs, security, test, demo-next. Site and dashboard deploy via Vercel (no Cloudflare).
 # One workflow run per push/PR; jobs skip when their paths unchanged.
 # pnpm version must match root package.json "packageManager" (9.0.0).
 name: CI/CD
@@ -10,11 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       run_deploy:
-        description: 'Run deploy job (build image, push to Artifact Registry, deploy to Cloud Run)'
-        type: boolean
-        default: true
-      run_deploy_site_worker:
-        description: 'Run deploy-site-worker job (build site, inject KEYS_DASHBOARD_URL, wrangler deploy)'
+        description: 'Run deploy-related checks (deploy is via Vercel)'
         type: boolean
         default: true
 
@@ -165,52 +161,3 @@ jobs:
       - name: E2E tests
         run: pnpm run test:e2e
         working-directory: apps/demo-next
-
-  # Deploy site Worker with KEYS_DASHBOARD_URL injected so the var survives (not wiped by Git-based deploys).
-  # Requires: KEYS_DASHBOARD_URL, CLOUDFLARE_API_TOKEN in repo secrets. If you use this job, consider
-  # disabling Cloudflare Git deployment for restormel-site so only this workflow deploys the Worker.
-  deploy-site-worker:
-    runs-on: ubuntu-latest
-    if: >
-      (needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main')
-      || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_deploy_site_worker == 'true')
-    needs: [changes]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build site
-        run: pnpm --filter site build
-      - name: Inject KEYS_DASHBOARD_URL into wrangler.toml
-        working-directory: apps/site
-        env:
-          KEYS_DASHBOARD_URL: ${{ secrets.KEYS_DASHBOARD_URL }}
-        run: |
-          if [ -z "$KEYS_DASHBOARD_URL" ]; then
-            echo "::warning::KEYS_DASHBOARD_URL not set; skipping Worker deploy. Add it and CLOUDFLARE_API_TOKEN to repo secrets to deploy from CI."
-            exit 0
-          fi
-          python3 -c "
-          import os
-          p = 'wrangler.toml'
-          with open(p) as f: c = f.read()
-          v = os.environ.get('KEYS_DASHBOARD_URL', '')
-          block = '\n# Injected by CI\n[vars]\nKEYS_DASHBOARD_URL = \"' + v.replace('\"', '\\\\\"') + '\"\n\n'
-          c = c.replace('\n[assets]', block + '[assets]')
-          with open(p, 'w') as f: f.write(c)
-          "
-      - name: Deploy Worker
-        working-directory: apps/site
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::warning::CLOUDFLARE_API_TOKEN not set; skipping Worker deploy."
-            exit 0
-          fi
-          npx wrangler deploy

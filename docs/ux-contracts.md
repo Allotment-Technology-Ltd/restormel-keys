@@ -10,22 +10,22 @@ All user-facing surfaces must align with these contracts so the product feels co
 
 | Label / concept   | URL                     | Use everywhere |
 |-------------------|-------------------------|----------------|
-| Dashboard         | `/keys/dashboard`       | Nav, footer, docs, runbooks, CTAs. |
-| Sign in           | `/keys/dashboard/login` | Auth CTAs, runbooks (“sign in” links). |
-| Log out           | `/keys/dashboard/logout`| Dashboard only. |
+| Dashboard         | `https://restormel.dev/keys/dashboard`       | Nav, footer, docs, runbooks, CTAs. |
+| Sign in           | `https://restormel.dev/keys/dashboard/login` | Auth CTAs, runbooks (“sign in” links). |
+| Log out           | `https://restormel.dev/keys/dashboard/logout`| Dashboard only. |
 | Docs              | `/keys/docs/`           | Marketing nav, dashboard welcome. |
 | Pricing           | `/keys/pricing`         | Marketing nav, dashboard welcome, billing. |
 | Keys (product)    | `/keys`                 | Marketing nav, breadcrumbs. |
 
-When the app is served at a custom domain (e.g. restormel.dev), use the same paths; full URLs are `https://<origin>/keys/dashboard`, etc. No alternate paths or wording (e.g. “Login” vs “Sign in”, or `/dashboard` without `/keys`).
+Site, docs, and dashboard are one app at restormel.dev (dashboard at `/keys/dashboard`). Use the canonical dashboard URLs above in links; no alternate paths or wording (e.g. “Login” vs “Sign in”).
 
 ### Shell entry points
 
 - **Marketing (site):** Nav links → Keys, Docs, Pricing, GitHub, Dashboard. Footer → same + Dashboard.
-- **Docs (Starlight):** Sidebar → Start here (Overview, Framework compatibility, Cloud API); Product → Dashboard, Sign in.
+- **Docs (in-app):** Sidebar → Overview, Framework compatibility, Cloud API; Product → Dashboard, Sign in.
 - **Dashboard:** Sidebar → Overview, Projects, Access, Provider Integrations, Models, Routes, Policies, Analytics, Logs & Traces, Lifecycle & Migrations, Billing & Forecasting, Settings, Documentation; topbar → Sign in (when logged out) or user/account.
 
-Shared nav schema: site nav, Starlight sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md) (SSO and same links).
+Shared nav schema: site nav, docs sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md) (SSO and same links).
 
 ## 2. Copy conventions (content registry)
 
@@ -45,7 +45,7 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 | **Models**           | The model catalog (canonical models and provider variants). |
 | **Analytics**        | Request count, latency, error rate, usage by provider/model/route. |
 | **Logs & Traces**    | Request-level logs from the gateway. |
-| **Dashboard**        | The app at `/keys/dashboard` (not "admin" or "portal"). |
+| **Dashboard**        | The app at restormel.dev/keys/dashboard (not "admin" or "portal"). |
 | Sign in        | Auth CTA (not “Login”, “Log in”). |
 | Cloud API      | The HTTP API exposed via Zuplo gateway. |
 | Zuplo gateway  | The gateway that fronts the Cloud API; consumer keys `zpka_...`, backend key is a Gateway Key `rk_...`. |
@@ -53,8 +53,8 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 
 ### CTA grammar
 
-- **Primary auth:** “Sign in with GitHub” (button/link). Link target: `/keys/dashboard/login`.
-- **Dashboard entry:** “Dashboard” (link). Target: `/keys/dashboard`.
+- **Primary auth:** “Sign in with GitHub” (button/link). Link target: `https://restormel.dev/keys/dashboard/login`.
+- **Dashboard entry:** “Dashboard” (link). Target: `https://restormel.dev/keys/dashboard`.
 - **After checkout:** “You’re sent to the dashboard. Sign in with GitHub if you aren’t already.”
 - **Key handling:** Use privacy-sensitive copy: “your key”, “Gateway key”; never expose raw keys in UI or errors. Use masked identifiers (e.g. key prefix or hash) in support/debug text.
 

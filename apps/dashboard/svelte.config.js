@@ -8,8 +8,8 @@ const config = {
   kit: {
     adapter: adapter(),
     paths: {
-      base: "/keys/dashboard",
-      relative: false, // Emit absolute asset URLs (/keys/dashboard/_app/...) so they work behind the Worker proxy
+      base: "", // Served at /keys/dashboard on restormel.dev (no path prefix in app)
+      relative: false,
     },
   },
 };

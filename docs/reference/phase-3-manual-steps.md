@@ -62,7 +62,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
 **B3. GitHub OAuth App (for “Sign in with GitHub”).**
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App** (or use an existing one).
-2. **Authorization callback URL:** set to your **dashboard** auth callback so the flow is proxied: `https://<your-dashboard-domain>/keys/dashboard/api/auth/callback/github` (e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github`).
+2. **Authorization callback URL:** set to your **dashboard** auth callback: `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
 3. Note **Client ID** and **Client Secret**. Enter them in **Neon Console** (Auth → OAuth providers → GitHub). **Do not** commit the client secret or put it in app env.
 
 Ensure Cloud Run has: `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Use Pulumi config `*_SECRET_REF` for each if stored in Secret Manager (see `infra/README.md`). You do **not** need to paste the actual secrets back into Cursor; only confirm that you have set them where the dashboard runs and in Neon Console.
@@ -80,7 +80,7 @@ Paddle is already configured for SOPHIA (sandbox and prod) under the same vendor
 | **API key** (server-side) | **Dashboard:** Create a GCP Secret Manager secret (e.g. `paddle-api-key`) with the key value; set Pulumi config `PADDLE_API_KEY_SECRET_REF=paddle-api-key` (or whatever secret name you use). |
 | **Webhook secret** | **Dashboard:** Add a **new** webhook in Paddle for the Keys dashboard URL (see C2). Use that webhook’s **Endpoint secret key** in a GCP secret (e.g. `paddle-webhook-secret`) and set `PADDLE_SECRET_REF` to that secret name. (SOPHIA’s webhook URL is different, so Keys needs its own webhook and thus its own endpoint secret.) |
 | **Sandbox price ID** (e.g. SOPHIA-CHECKOUT-SANDBOX or the actual `pri_...` id) | **Site (optional):** `PUBLIC_PADDLE_SANDBOX_PRICE_ID`. Lets the pricing page open Paddle checkout with that price when the dashboard is not yet available. |
-| — | **Site:** `PUBLIC_KEYS_DASHBOARD_URL` = base URL of the Keys dashboard (e.g. `https://restormel.dev` if dashboard is at `restormel.dev/keys/dashboard`). Needed so Subscribe buttons POST to `/api/billing/checkout`. |
+| — | **Site:** `PUBLIC_KEYS_DASHBOARD_URL` = dashboard URL (e.g. `https://restormel.dev/keys/dashboard`). Needed so Subscribe buttons POST to `/api/billing/checkout`. |
 
 No new Paddle account or client-side token is required; use the existing sandbox (and later prod) credentials.
 
@@ -121,7 +121,7 @@ In Paddle, webhooks are set up as **notification destinations** under **Develope
 4. **Notification type:** URL (webhook endpoint).
 5. **URL:** your dashboard billing webhook endpoint, e.g.  
    - Cloud Run at root: `https://<your-cloud-run-url>/api/billing/webhook`  
-   - Dashboard at path: `https://restormel.dev/keys/dashboard/api/billing/webhook`  
+   - Dashboard: `https://restormel.dev/keys/dashboard/api/billing/webhook`  
    Use the same base URL/path as your checkout (where the site POSTs to `/api/billing/checkout`).
 6. **API version:** leave default. **Usage type:** Platform only (or include Simulation if you want test events).
 7. **Events:** tick at least `subscription.created`, `subscription.updated`, `subscription.canceled`, `transaction.completed` (and optionally `transaction.updated`).

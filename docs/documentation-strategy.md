@@ -1,16 +1,16 @@
 # Documentation strategy
 
-**Status:** Canonical. All product docs, runbooks, and Starlight content must align with this strategy.
+**Status:** Canonical. All product docs, runbooks, and in-app docs must align with this strategy.
 
 Documentation is a first-class part of the product. It must be **user-friendly** for humans and **agent-readable** for coding agents, with a **single coherent journey** and **compulsory same links** everywhere.
 
 ## 1. Single coherent journey
 
 - **One information architecture:** Entry points (docs home, getting started), paths by intent (e.g. “I want to integrate” → framework compatibility → dashboard/API; “I want to use the Cloud API” → Cloud API doc → Zuplo runbooks), and handoffs (docs ↔ dashboard, docs ↔ pricing, runbooks ↔ dashboard) that use the **same canonical link targets**.
-- **No fragmented stories:** Starlight in-app docs, `docs/` runbooks and reference, and Zuplo runbooks form **one consistent doc map**. Where Zuplo is referenced (Cloud API, gateway, consumer keys, backend URL), use the same canonical dashboard URL and terminology as the rest of the product.
+- **No fragmented stories:** In-app docs (`/keys/docs`), `docs/` runbooks and reference, and Zuplo runbooks form **one consistent doc map**. Where Zuplo is referenced (Cloud API, gateway, consumer keys, backend URL), use the same canonical dashboard URL and terminology as the rest of the product.
 - **Discoverable paths:**
   - **Integrate:** Docs overview → Framework compatibility → Dashboard (create project, Gateway key) or Cloud API.
-  - **Cloud API / gateway:** Starlight [Cloud API](https://restormel.dev/keys/docs/keys/docs/cloud-api/) → [Zuplo setup runbook](runbooks/zuplo-setup.md) and [Zuplo launch CLI](runbooks/zuplo-launch-cli.md). Runbooks link back to docs and dashboard with the same URLs.
+  - **Cloud API / gateway:** In-app [Cloud API](https://restormel.dev/keys/docs/cloud-api) → [Zuplo setup runbook](runbooks/zuplo-setup.md) and [Zuplo launch CLI](runbooks/zuplo-launch-cli.md). Runbooks link back to docs and dashboard with the same URLs.
 
 ## 2. Same links (compulsory)
 
@@ -18,10 +18,10 @@ Every surface—marketing nav, docs header/sidebar, dashboard, runbooks, and ref
 
 | Label   | URL                     |
 |--------|-------------------------|
-| Dashboard | `/keys/dashboard`     |
-| Sign in   | `/keys/dashboard/login` |
+| Dashboard | `https://restormel.dev/keys/dashboard`     |
+| Sign in   | `https://restormel.dev/keys/dashboard/login` |
 
-Use these in: in-app nav, footer, Starlight sidebar/hero, runbooks (e.g. zuplo-setup.md, zuplo-launch-cli.md), and any phase/reference doc that points to the product. When the site is served at a custom domain (e.g. restormel.dev), full URLs are `https://restormel.dev/keys/dashboard` and `https://restormel.dev/keys/dashboard/login`.
+Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, zuplo-launch-cli.md), and any phase/reference doc that points to the product. Site, docs, and dashboard are served from one app at restormel.dev (dashboard at `/keys/dashboard`, docs at `/keys/docs`).
 
 ## 3. Agent-readability
 
@@ -34,7 +34,7 @@ Use these in: in-app nav, footer, Starlight sidebar/hero, runbooks (e.g. zuplo-s
 
 | Content type        | Location                    | Role |
 |---------------------|-----------------------------|------|
-| User-facing docs    | Starlight (`apps/site`, `/keys/docs/`) | Overview, compatibility, Cloud API, getting started. |
+| User-facing docs    | In-app docs (`apps/dashboard`, `/keys/docs`) | Overview, compatibility, Cloud API, getting started. |
 | Runbooks (ops)      | `docs/runbooks/`            | Zuplo setup/launch, Firestore→Neon, phase-3 manual steps. |
 | Reference           | `docs/reference/`, `docs/api/` | Deployment, extraction, OpenAPI, prompt packs. **Implemented behaviour:** [docs/reference/implemented-behaviour.md](reference/implemented-behaviour.md) — what is live in the dashboard and product so docs do not contradict. **Remaining backlog:** [docs/reference/remaining-backlog-after-implementation.md](reference/remaining-backlog-after-implementation.md) — completed vs partial vs missing, tech debt, next tasks (grounded in repo state). |
 | Design system       | `docs/design-system-index.md`, `docs/design-tokens.css` | Tokens, brand, components. |
@@ -45,4 +45,4 @@ Starlight sidebar includes a **Product** group with Dashboard and Sign in links.
 
 - When adding or changing docs that mention Dashboard or Sign in, use only the canonical URLs.
 - When adding runbooks or reference docs that point to the product, add them to [runbooks.md](runbooks.md) or the master index as appropriate and keep same-link compliance.
-- Review Starlight content and runbooks periodically for coherence and duplicate/contradictory truths; one canonical source per topic.
+- Review in-app docs and runbooks periodically for coherence and duplicate/contradictory truths; one canonical source per topic.
