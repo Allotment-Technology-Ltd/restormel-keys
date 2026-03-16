@@ -38,16 +38,16 @@ Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API
 
 | Name | Description | Secret |
 |------|-------------|--------|
-| `KEYS_BACKEND_URL` | Backend base URL (e.g. `https://keys-dashboard-XXX.run.app/keys/dashboard` or `https://restormel.dev/keys/dashboard`). No trailing slash. | No |
-| `KEYS_BACKEND_API_KEY` | Backend API key (`sk-rk-...`) sent to Cloud Run in `Authorization: Bearer …`. | **Yes** |
+| `KEYS_BACKEND_URL` | Dashboard base URL (e.g. `https://restormel.dev/keys/dashboard` — Cloudflare → Vercel). No trailing slash. | No |
+| `KEYS_BACKEND_API_KEY` | Backend API key (`sk-rk-...`) sent to the dashboard in `Authorization: Bearer …`. | **Yes** |
 
 ## Complete setup from CLI
 
 From this directory you can set Zuplo env vars and deploy in one go. Copy `.env.example` to `.env` and set at least:
 
 - `ZUPLO_API_KEY` — Portal → Settings → API Keys
-- `KEYS_BACKEND_URL` — e.g. `https://<dashboardServiceUrl>/keys/dashboard` (from `cd infra && pulumi stack output dashboardServiceUrl`)
-- `KEYS_BACKEND_API_KEY` — backend key (`sk-rk-...`) for Cloud Run
+- `KEYS_BACKEND_URL` — dashboard URL, e.g. `https://restormel.dev/keys/dashboard` (Vercel)
+- `KEYS_BACKEND_API_KEY` — backend key (`sk-rk-...`) from the Keys dashboard (create in dashboard → project → API key)
 
 Then run:
 
@@ -70,7 +70,7 @@ The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zupl
 ## After deploy
 
 1. Create at least one **API key consumer** in Zuplo (Services → API Key Service, or [API Key API](https://zuplo.com/docs/articles/api-key-api)) so clients can call the gateway with a `zpka_...` key.
-2. Ensure the **dashboard backend** accepts only the backend key (`sk-rk-...`) and rejects Zuplo consumer keys (`zpka_...`) on direct calls. See runbook §7.
+2. Ensure the **dashboard** (Vercel) accepts only the backend key (`sk-rk-...`) and rejects Zuplo consumer keys (`zpka_...`) on direct calls. See runbook §7.
 3. Validate using the runbook §7 table (missing auth → 401, valid key → 200, etc.).
 
 ## Local secrets (for testing)

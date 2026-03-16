@@ -80,7 +80,8 @@ export async function proxyAuthRequest(
 ): Promise<Response> {
   const base = baseUrl();
   if (!base) {
-    console.error("[auth] NEON_AUTH_BASE_URL is not set; returning 503. Put it in apps/dashboard/.env and restart.");
+    const raw = process.env.NEON_AUTH_BASE_URL;
+    console.error("[auth] NEON_AUTH_BASE_URL is not set; returning 503. (typeof:", typeof raw, "length:", raw?.length ?? 0, ") Set it in Vercel → Settings → Environment Variables for Production.");
     return new Response(JSON.stringify({ error: "Neon Auth not configured" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },
