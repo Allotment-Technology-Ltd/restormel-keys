@@ -8,7 +8,7 @@
 <p class="page-desc">Your projects and quick stats.</p>
 
 {#if data.projectsError}
-  <p class="error-msg" role="alert">{data.projectsError}. Check Cloud Run logs; Firestore may need to be enabled or the service account may need Firestore permissions.</p>
+  <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
 {/if}
 {#if data.projects.length === 0}
   <p class="empty">No projects yet. <a href={base + "/projects"}>Create one</a>.</p>

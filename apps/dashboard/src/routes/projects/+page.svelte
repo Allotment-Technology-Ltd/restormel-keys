@@ -40,7 +40,7 @@
 <p class="page-desc">Create and manage projects. Each project has its own API keys.</p>
 
 {#if data.projectsError}
-  <p class="error-msg" role="alert">{data.projectsError}. Check Cloud Run logs; Firestore may need to be enabled or the service account may need Firestore permissions.</p>
+  <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
 {/if}
 {#if createError}
   <p class="error-msg" role="alert">{createError}</p>
