@@ -65,7 +65,7 @@
           .catch((err: Error) => ({
             key,
             available: false as const,
-            reason: err?.message === NO_KEY_AVAILABLE ? "No API key" : "Unavailable",
+            reason: err?.message === NO_KEY_AVAILABLE ? "No provider credential" : "Unavailable",
           }))
       )
     ).then((results) => {

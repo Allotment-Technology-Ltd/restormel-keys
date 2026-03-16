@@ -200,8 +200,8 @@ You do not need to paste DNS records back into Cursor; only confirm that `https:
 **F1. Create Zuplo project and configure.**
 
 1. Follow the full runbook: [docs/runbooks/zuplo-setup.md](../runbooks/zuplo-setup.md).
-2. In short: log in to [Zuplo](https://zuplo.com) → create project **`restormel-keys-gateway`** → add route proxying to your Cloud Run dashboard URL → attach inbound policies (api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth) in that order → set **KEYS_BACKEND_API_KEY** in Zuplo env (secret; value is a backend key `sk-rk-...` created from the dashboard) → configure developer portal with OpenAPI.
-3. **Never** paste `KEYS_BACKEND_API_KEY` or consumer keys into Cursor. Store them only in Zuplo and in your secret manager or dashboard.
+2. In short: log in to [Zuplo](https://zuplo.com) → create project **`restormel-keys-gateway`** → add route proxying to your Cloud Run dashboard URL → attach inbound policies (api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth) in that order → set **KEYS_BACKEND_API_KEY** in Zuplo env (secret; value is a Gateway Key from the dashboard Access page; env var name kept for compatibility) → configure developer portal with OpenAPI.
+3. **Never** paste `KEYS_BACKEND_API_KEY` (Gateway Key) or consumer keys into Cursor. Store them only in Zuplo and in your secret manager or dashboard.
 
 **F2. Validate.**
 
@@ -256,7 +256,7 @@ Phase 3 manual step [letter/number] failed: [paste the error or describe what yo
 - [ ] **Paddle:** Still on **Sandbox**; production is not enabled. Webhook URL points to your dashboard billing endpoint and is saved in Paddle.
 - [ ] **Deploy:** A push to `main` (or your deploy branch) triggers the deploy job and the dashboard image builds and deploys to Cloud Run, or you have run the deploy steps locally and confirmed `/api/health` returns 200.
 - [ ] **Site:** The site builds on Cloudflare Pages and the custom domain (e.g. `restormel.dev`) loads the marketing site and docs. The pricing page loads and the “Subscribe” flow opens Paddle (or shows the expected redirect if dashboard URL is unset).
-- [ ] **Dashboard:** You can open the dashboard at your configured URL, sign in with GitHub, create a project, and generate an API key. No raw keys are logged or displayed after creation.
+- [ ] **Dashboard:** You can open the dashboard at your configured URL, sign in with GitHub, create a project, and create a Gateway Key (Access). No raw keys are logged or displayed after creation.
 - [ ] **Zuplo (if configured):** A request to Zuplo with a valid consumer key returns 200; a request with no key or invalid key returns 401; a direct request to Cloud Run with a `zpka_` key is rejected.
 
 If any check fails, fix that step (or ask Cursor to help) before treating Phase 3 deployment as complete.

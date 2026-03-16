@@ -39,3 +39,31 @@ export { createEntitlements } from "./entitlements.js";
 export type { Entitlements } from "./entitlements.js";
 export { createWallet } from "./wallet.js";
 export type { Wallet, WalletStore } from "./wallet.js";
+
+export type {
+  Workspace,
+  Project,
+  Environment,
+  GatewayKey,
+  ManagementKey,
+  ProviderIntegration,
+  ProviderBinding,
+  Model,
+  ProviderModelVariant,
+  LifecycleState,
+  Route,
+  RouteStep,
+  Policy,
+  PolicyType,
+  PolicyBinding,
+  PolicyTargetType,
+  RequestLog,
+  UsageAggregate,
+  AuditEvent,
+  CustomerTenant,
+  ExposureRule,
+  PricingRecord,
+  RateLimitRecord,
+  LifecycleEvent,
+  LifecycleEventType,
+} from "./domain.js";

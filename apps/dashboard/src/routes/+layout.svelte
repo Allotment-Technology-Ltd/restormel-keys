@@ -3,10 +3,13 @@
   import { page } from "$app/stores";
   import { base } from "$app/paths";
   import AppLogo from "$lib/components/AppLogo.svelte";
+  import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === base + "/login" || $page.url.pathname === base + "/logout";
+  $: currentPath = $page.url.pathname;
+  $: title = topbarTitle(currentPath);
 </script>
 
 {#if isAuthRoute}
@@ -18,10 +21,13 @@
         <AppLogo height="28" />
       </div>
       <nav class="nav" aria-label="Dashboard">
-        <a href={base + "/"} class="nav-link">Overview</a>
-        <a href={base + "/projects"} class="nav-link">Projects</a>
-        <a href={base + "/billing"} class="nav-link">Billing</a>
-        <a href={base + "/settings"} class="nav-link">Settings</a>
+        {#each NAV_ITEMS as item}
+          {#if item.external}
+            <a href={item.href} class="nav-link" target="_blank" rel="noopener noreferrer">{item.label}</a>
+          {:else}
+            <a href={item.href} class="nav-link" class:nav-link-active={currentPath === item.href || (item.href !== base + "/" && currentPath.startsWith(item.href + "/"))}>{item.label}</a>
+          {/if}
+        {/each}
       </nav>
       {#if user || authError}
         <div class="sidebar-footer">
@@ -31,7 +37,7 @@
     </aside>
     <div class="main-wrap">
       <header class="topbar">
-        <span class="topbar-title">{$page.url.pathname === base + "/" ? "Overview" : ""}</span>
+        <span class="topbar-title">{title}</span>
         {#if user}
           <span class="topbar-user" title={user.email ?? undefined}>{user.email ?? user.uid}</span>
         {:else}
@@ -51,11 +57,14 @@
           {:else}
             <div class="welcome" role="region" aria-labelledby="welcome-heading">
               <h1 id="welcome-heading" class="welcome-title">Restormel Keys Dashboard</h1>
-              <p class="welcome-intro">The dashboard lets you create projects, generate API keys for the Cloud API, and manage billing. Sign in once with GitHub and use the same account across the whole Restormel site.</p>
+              <p class="welcome-intro">Control your AI access from one place: create a workspace and project, create a Gateway Key to call the API, connect providers, define routes, and track usage.</p>
               <ol class="welcome-checklist" aria-label="Get started">
-                <li><strong>Sign in</strong> with GitHub (use the button above).</li>
-                <li><strong>Create a project</strong> and generate an API key.</li>
-                <li><strong>Use your key</strong> with the Cloud API or in your app.</li>
+                <li><strong>Sign in</strong> with GitHub (button above).</li>
+                <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
+                <li><strong>Key model:</strong> A <strong>Gateway Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
+                <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
+                <li><strong>Create a Gateway Key</strong> (Access), <strong>connect a provider</strong> (Integrations), then <strong>create a route</strong> (Routes).</li>
+                <li><strong>First request</strong> → then <strong>Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
@@ -103,6 +112,10 @@
     color: var(--rm-sage);
     background: var(--rm-sage-bg);
     text-decoration: none;
+  }
+  .nav-link-active {
+    color: var(--rm-sage);
+    font-weight: 500;
   }
   .sidebar-footer {
     margin-top: auto;

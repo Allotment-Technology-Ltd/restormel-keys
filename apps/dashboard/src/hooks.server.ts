@@ -1,10 +1,13 @@
 /**
- * Neon Auth session. Populates event.locals.user (uid, email).
+ * Neon Auth session or Bearer key (Gateway / Management). Populates event.locals.user.
+ * Session: uid, email. Gateway key: uid = project owner, projectIdForKey, keyId. Management key: workspaceId, keyId.
  * Adds X-Session-Cookie for proxy when response sets cookie.
  */
 import type { Handle } from "@sveltejs/kit";
 import { getSession } from "$lib/server/auth";
 import { upsertUser } from "$lib/server/db";
+import { getBearerToken } from "$lib/server/bearer";
+import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
 
 export const handle: Handle = async ({ event, resolve }) => {
   try {
@@ -21,7 +24,36 @@ export const handle: Handle = async ({ event, resolve }) => {
         if (msg) console.error("[db] upsertUser:", msg.slice(0, 100));
       }
     } else {
-      event.locals.user = undefined;
+      const bearer = getBearerToken(event.request);
+      if (bearer) {
+        try {
+          const gateway = await verifyGatewayKey(bearer);
+          if (gateway) {
+            event.locals.user = {
+              uid: gateway.userId,
+              email: null,
+              authType: "gateway_key",
+              projectIdForKey: gateway.projectId,
+              keyId: gateway.keyId,
+            };
+          } else {
+            const mgmt = await verifyManagementKey(bearer);
+            if (mgmt) {
+              event.locals.user = {
+                uid: "",
+                email: null,
+                authType: "management_key",
+                keyId: mgmt.keyId,
+                workspaceId: mgmt.workspaceId,
+              };
+            }
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "";
+          if (msg) console.error("[auth] Bearer verify:", msg.slice(0, 100));
+        }
+      }
+      if (!event.locals.user) event.locals.user = undefined;
     }
   } catch (e) {
     event.locals.user = undefined;

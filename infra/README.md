@@ -95,7 +95,7 @@ pulumi up
 
 ## Neon setup (dashboard database + auth)
 
-The dashboard uses **Neon Postgres** for data (projects, API keys) and **Neon Auth** (sessions + GitHub OAuth, managed in Neon Console).
+The dashboard uses **Neon Postgres** for data (workspaces, projects, Gateway keys) and **Neon Auth** (sessions + GitHub OAuth, managed in Neon Console).
 
 1. **Create a Neon project** at [Neon](https://neon.tech) and a database. Copy the connection string.
 2. **Enable Neon Auth** in Neon Console: Project → Branch → **Auth** → enable and copy the **Auth base URL** (e.g. `https://ep-xxx.neonauth.region.aws.neon.tech/neondb/auth`). Add **GitHub** as an OAuth provider in the same Auth section (Client ID and Secret from your GitHub OAuth App).

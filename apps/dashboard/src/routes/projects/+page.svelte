@@ -38,7 +38,7 @@
 </script>
 
 <h1 class="page-title">Projects</h1>
-<p class="page-desc">Create and manage projects. Each project has its own API keys.</p>
+<p class="page-desc">Create and manage projects. Each project has its own Gateway keys.</p>
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
@@ -56,7 +56,7 @@
 {#if data.projects.length === 0}
   <EmptyState
     title="No projects yet"
-    description="Create your first project to get API keys and use the Cloud API."
+    description="Create your first project to get Gateway keys and use the Cloud API."
   >
     <a href="#create-form" class="btn btn-primary">Create a project</a>
   </EmptyState>

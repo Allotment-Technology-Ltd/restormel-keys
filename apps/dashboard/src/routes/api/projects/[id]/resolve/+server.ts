@@ -1,0 +1,107 @@
+/**
+ * Request execution: resolve route for project + environment, then log.
+ * Flow: Gateway Key auth (or session) → project/environment context → route resolution → provider/model → request log.
+ * Caller can use the returned provider/model to forward to a proxy or use downstream.
+ */
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import {
+  getProject,
+  getProjectInWorkspace,
+  getOrCreateDefaultWorkspace,
+  insertRequestLog,
+} from "$lib/server/db";
+import { resolveRouteForExecution } from "$lib/server/route-resolver";
+
+async function projectScope(
+  locals: App.Locals,
+  projectId: string
+): Promise<{ projectId: string; userId: string } | null> {
+  if (!locals.user) return null;
+  if (locals.user.authType === "gateway_key") {
+    if (locals.user.projectIdForKey !== projectId) return null;
+    return { projectId, userId: locals.user.uid };
+  }
+  if (locals.user.authType === "management_key" && locals.user.workspaceId) {
+    const project = await getProjectInWorkspace(projectId, locals.user.workspaceId);
+    return project ? { projectId, userId: project.userId } : null;
+  }
+  const project = await getProject(projectId, locals.user.uid);
+  return project ? { projectId, userId: locals.user.uid } : null;
+}
+
+export const POST: RequestHandler = async ({ params, request, locals }) => {
+  const scope = await projectScope(locals, params.id);
+  if (!scope) {
+    return json({ error: "Unauthorized or project not found" }, { status: 401 });
+  }
+
+  let body: { environmentId?: string; routeId?: string };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const environmentId = typeof body.environmentId === "string" ? body.environmentId.trim() : "";
+  if (!environmentId) {
+    return json({ error: "environmentId is required" }, { status: 400 });
+  }
+
+  const start = Date.now();
+  const resolved = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
+    routeId: typeof body.routeId === "string" ? body.routeId.trim() : undefined,
+  });
+  const latencyMs = Date.now() - start;
+
+  const gatewayKeyId = locals.user?.authType === "gateway_key" ? locals.user.keyId ?? null : null;
+
+  if (!resolved) {
+    try {
+      const project = await getProject(scope.projectId, scope.userId);
+      const workspaceId =
+        project?.workspaceId ?? (await getOrCreateDefaultWorkspace(scope.userId)).id;
+      await insertRequestLog({
+        workspaceId,
+        projectId: scope.projectId,
+        environmentId,
+        providerType: "none",
+        requestStatus: "no_route",
+        latencyMs,
+        gatewayKeyId,
+        metadata: { explanation: "no active route for environment" },
+      });
+    } catch (e) {
+      console.error("[resolve] insertRequestLog no_route:", e);
+    }
+    return json(
+      { error: "no_route", message: "No active route found for this project and environment" },
+      { status: 404 }
+    );
+  }
+
+  try {
+    await insertRequestLog({
+      workspaceId: resolved.workspaceId,
+      projectId: resolved.projectId,
+      environmentId: resolved.environmentId,
+      routeId: resolved.route.id,
+      gatewayKeyId,
+      providerType: resolved.providerType ?? "none",
+      finalModelId: resolved.modelId,
+      requestStatus: "resolved",
+      latencyMs,
+      metadata: { explanation: resolved.explanation },
+    });
+  } catch (e) {
+    console.error("[resolve] insertRequestLog resolved:", e);
+  }
+
+  return json({
+    data: {
+      routeId: resolved.route.id,
+      providerType: resolved.providerType,
+      modelId: resolved.modelId,
+      explanation: resolved.explanation,
+    },
+  });
+};

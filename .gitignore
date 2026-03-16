@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+# Prefer pnpm; avoid accidental npm lockfile in workspace apps
+apps/dashboard/package-lock.json
 
 # Build and tooling
 dist/

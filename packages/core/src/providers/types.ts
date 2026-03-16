@@ -31,10 +31,10 @@ export interface ProviderDefinition {
   name: string;
   /** Model ids served by this provider. */
   models: string[];
-  /** Validate API key (e.g. GET /v1/models). Uses fetch; no SDK. */
-  validateKey: (apiKey: string, fetchFn?: typeof fetch) => Promise<ProviderValidationResult>;
+  /** Validate provider credential (e.g. OpenAI API key) via GET /v1/models. Uses fetch; no SDK. */
+  validateKey: (providerCredential: string, fetchFn?: typeof fetch) => Promise<ProviderValidationResult>;
   /** Cost estimate for a model (pricing table lookup). */
   estimateCost: (modelId: string) => ProviderCostEstimate | null;
-  /** Create a minimal client (no SDK). */
-  createClient: (apiKey: string) => ProviderClient;
+  /** Create a minimal client (no SDK). Parameter is the provider credential (e.g. OpenAI API key). */
+  createClient: (providerCredential: string) => ProviderClient;
 }
