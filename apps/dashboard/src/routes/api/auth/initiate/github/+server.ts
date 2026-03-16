@@ -11,20 +11,37 @@ export const GET: RequestHandler = async ({ url }) => {
 
   const callbackURL = `${url.origin}${base}/api/auth/redeem`;
 
-  const res = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: url.origin,
-    },
-    body: JSON.stringify({
-      provider: "github",
+  let res: Response;
+  try {
+    res = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: url.origin,
+      },
+      body: JSON.stringify({
+        provider: "github",
+        callbackURL,
+        newUserCallbackURL: callbackURL,
+        errorCallbackURL: callbackURL,
+      }),
+      redirect: "manual",
+    });
+  } catch (e) {
+    console.error("[auth] Neon Auth sign-in/social network error", {
+      error: e instanceof Error ? e.message : String(e),
+      endpoint: `${NEON_AUTH_BASE_URL}/sign-in/social`,
       callbackURL,
-      newUserCallbackURL: callbackURL,
-      errorCallbackURL: callbackURL,
-    }),
-    redirect: "manual",
-  });
+    });
+    return json(
+      {
+        error: "Failed to reach Neon Auth for GitHub sign-in",
+        upstreamStatus: null,
+        upstreamMessage: e instanceof Error ? e.message : String(e),
+      },
+      { status: 502 }
+    );
+  }
 
   // If Neon responds with an error status, log the body and surface a clearer error upstream.
   if (!res.ok && (res.status < 300 || res.status >= 400)) {
