@@ -15,7 +15,7 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 ## Moving to Vercel
 
 1. **Adapter** — The dashboard already uses `@sveltejs/adapter-vercel` and `apps/dashboard/vercel.json` (install from monorepo root, build from `apps/dashboard`).
-2. **Build** — In Vercel, set **Root Directory** to **`apps/dashboard`**. The repo’s `vercel.json` in that directory sets `installCommand` to `cd .. && pnpm install --frozen-lockfile` (monorepo root) and `buildCommand` to `pnpm run build`. No need to override Output Directory; the adapter emits the correct structure.
+2. **Build** — In Vercel, set **Root Directory** to **`apps/dashboard`**. The repo’s `vercel.json` in that directory sets `installCommand` to `cd .. && pnpm install` (monorepo root; omit `--frozen-lockfile` so install succeeds when Vercel’s pnpm version differs from the repo’s) and `buildCommand` to `pnpm run build`. No need to override Output Directory; the adapter emits the correct structure.
 3. **Env** — In Vercel → Project → Settings → Environment Variables, add:
    - `DATABASE_URL` — Neon connection string for the **production** branch.
    - `NEON_AUTH_BASE_URL` — Auth base URL from Neon Console for the **production** branch (Project → Branch → Auth → Configuration).
