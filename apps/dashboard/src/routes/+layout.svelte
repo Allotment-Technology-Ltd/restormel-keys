@@ -2,26 +2,11 @@
   import "../app.css";
   import { page } from "$app/stores";
   import { base } from "$app/paths";
-  import { onMount } from "svelte";
-  import { authClient } from "$lib/auth-client";
   import AppLogo from "$lib/components/AppLogo.svelte";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === base + "/login" || $page.url.pathname === base + "/logout";
-
-  onMount(async () => {
-    const verifier = $page.url.searchParams.get("neon_auth_session_verifier");
-    if (!verifier) return;
-    try {
-      // Let Neon SDK redeem verifier and persist session cookie using the canonical getSession flow.
-      await authClient.getSession();
-    } catch {
-      // Ignore; authError query params (if present) are shown by layout.
-    } finally {
-      window.location.replace(base + "/");
-    }
-  });
 </script>
 
 {#if isAuthRoute}
