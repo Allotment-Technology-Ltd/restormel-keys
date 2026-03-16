@@ -14,10 +14,6 @@ infra/bin/
 .dev.vars
 .restormel/
 
-# Do not commit npm lockfiles (repo uses pnpm)
-package-lock.json
-**/package-lock.json
-
 # OS
 .DS_Store
 Thumbs.db
