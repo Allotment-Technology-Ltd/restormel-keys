@@ -174,10 +174,13 @@ export async function proxyAuthRequest(
   if (setCookies.length > 0 && ourHost) {
     outHeaders.delete("Set-Cookie");
     for (const cookie of setCookies) {
-      // Remove Domain so cookies are scoped to our host.
-      // Keep Secure intact: __Secure-* cookies are rejected by browsers if Secure is removed.
-      const rewritten =
-        encodeLocalhostSetCookie(cookie.replace(/;\s*Domain=[^;]+/gi, "") || cookie, ourHost);
+      // Scope cookies to our host and root path so session is available on /keys/dashboard.
+      // - Strip Domain so the browser uses the current origin.
+      // - Normalize Path to / so the cookie is sent to all app routes.
+      // - Keep Secure intact: __Secure-* cookies are rejected by browsers if Secure is removed.
+      const withoutDomain = cookie.replace(/;\s*Domain=[^;]+/gi, "") || cookie;
+      const withRootPath = withoutDomain.replace(/;\s*Path=[^;]+/gi, "; Path=/");
+      const rewritten = encodeLocalhostSetCookie(withRootPath, ourHost);
       outHeaders.append("Set-Cookie", rewritten);
     }
   }
