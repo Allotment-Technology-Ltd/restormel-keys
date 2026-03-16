@@ -22,6 +22,13 @@ export default defineConfig({
             { slug: "keys/docs/cloud-api", label: "Cloud API" },
           ],
         },
+        {
+          label: "Product",
+          items: [
+            { label: "Dashboard", link: "/keys/dashboard" },
+            { label: "Sign in", link: "/keys/dashboard/login" },
+          ],
+        },
       ],
       editLink: {
         baseUrl: "https://github.com/Allotment-Technology-Ltd/restormel-keys/edit/main/apps/site/",

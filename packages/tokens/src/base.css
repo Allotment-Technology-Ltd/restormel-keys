@@ -1,0 +1,174 @@
+/**
+ * Restormel Design System — canonical base tokens.
+ * Mirror of docs/design-tokens.css. Single source for token values in the tokens package.
+ * See docs/design-system-index.md.
+ */
+
+:root {
+  /* Base */
+  --black: #0a0e14;
+  --white: #ffffff;
+
+  /* Neutrals */
+  --ink: #0f1419;
+  --charcoal: #1a1f26;
+  --elevated: #212830;
+  --slate: #2e3440;
+  --steel: #8892a6;
+  --mist: #c4cfdb;
+  --paper: #e8edf2;
+
+  /* Primary (path-blue) */
+  --path-blue: #4c8dff;
+  --path-blue-hover: #6ba3ff;
+  --path-blue-active: #3d7ae6;
+  --path-blue-5: rgba(76, 141, 255, 0.05);
+  --path-blue-10: rgba(76, 141, 255, 0.1);
+  --path-blue-20: rgba(76, 141, 255, 0.2);
+
+  /* Verified (signal-teal) */
+  --signal-teal: #2ec4b6;
+  --signal-teal-hover: #4dd4c7;
+  --signal-teal-active: #25afa3;
+  --signal-teal-5: rgba(46, 196, 182, 0.05);
+  --signal-teal-10: rgba(46, 196, 182, 0.1);
+  --signal-teal-20: rgba(46, 196, 182, 0.2);
+
+  /* Warning (amber-insight) */
+  --amber-insight: #ffb84d;
+  --amber-insight-hover: #ffc570;
+  --amber-insight-active: #e6a63e;
+  --amber-insight-5: rgba(255, 184, 77, 0.05);
+  --amber-insight-10: rgba(255, 184, 77, 0.1);
+  --amber-insight-20: rgba(255, 184, 77, 0.2);
+
+  /* Error (coral-alert) */
+  --coral-alert: #f25c54;
+  --coral-alert-hover: #f4736d;
+  --coral-alert-active: #d94e47;
+  --coral-alert-5: rgba(242, 92, 84, 0.05);
+  --coral-alert-10: rgba(242, 92, 84, 0.1);
+  --coral-alert-20: rgba(242, 92, 84, 0.2);
+
+  /* Reasoning (violet-depth) */
+  --violet-depth: #9d84b7;
+  --violet-depth-hover: #b199c9;
+  --violet-depth-active: #8b72a3;
+  --violet-depth-5: rgba(157, 132, 183, 0.05);
+  --violet-depth-10: rgba(157, 132, 183, 0.1);
+  --violet-depth-20: rgba(157, 132, 183, 0.2);
+
+  --slate-30: rgba(46, 52, 64, 0.3);
+  --slate-50: rgba(46, 52, 64, 0.5);
+
+  /* Typography */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Monaco, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+
+  /* Spacing (4px base) */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* Radius */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-base: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Border */
+  --border-0: 0;
+  --border-1: 1px;
+  --border-2: 2px;
+  --border-4: 4px;
+
+  /* Shadows */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-base: 0 2px 8px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 16px 48px 0 rgba(0, 0, 0, 0.7);
+  --shadow-glow-blue: 0 0 20px rgba(76, 141, 255, 0.3);
+  --shadow-glow-teal: 0 0 20px rgba(46, 196, 182, 0.3);
+  --shadow-glow-amber: 0 0 20px rgba(255, 184, 77, 0.3);
+  --shadow-glow-coral: 0 0 20px rgba(242, 92, 84, 0.3);
+
+  /* Interaction */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-linear: linear;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --opacity-disabled: 0.4;
+  --opacity-dimmed: 0.6;
+  --opacity-subtle: 0.8;
+
+  /* Focus */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: #4c8dff;
+  --focus-ring: 0 0 0 2px rgba(76, 141, 255, 0.5);
+
+  /* Component sizes */
+  --button-height-sm: 32px;
+  --button-height-md: 40px;
+  --button-height-lg: 48px;
+  --button-padding-sm: 12px 16px;
+  --button-padding-md: 12px 20px;
+  --button-padding-lg: 14px 24px;
+  --input-height-sm: 32px;
+  --input-height-md: 40px;
+  --input-height-lg: 48px;
+  --input-padding-x: 12px;
+  --card-padding-sm: 16px;
+  --card-padding-md: 20px;
+  --card-padding-lg: 24px;
+  --modal-max-width-sm: 400px;
+  --modal-max-width-md: 600px;
+  --modal-max-width-lg: 800px;
+  --modal-max-width-xl: 1200px;
+
+  /* Z-index */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal: 1200;
+  --z-popover: 1300;
+  --z-toast: 1400;
+}

@@ -2,6 +2,8 @@
 
 Early operational notes. **Single place** for procedures; expand when hosted components exist. Principles: [reliability-standards.md](reliability-standards.md).
 
+**Doc journey & links:** All runbooks and reference docs must use the same canonical product URLs: **Dashboard** → [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard), **Sign in** → [restormel.dev/keys/dashboard/login](https://restormel.dev/keys/dashboard/login). See [documentation-strategy.md](documentation-strategy.md).
+
 **Phase 00:** No production services. Stub for: incident response and escalation, deployment and rollback, secret rotation and access, health/readiness checks (when applicable).
 
 ### Linked runbooks and manual steps

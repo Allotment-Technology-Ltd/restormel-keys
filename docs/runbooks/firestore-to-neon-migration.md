@@ -109,7 +109,7 @@ You're ready for this step when: schema is applied (Section 2), `DATABASE_URL` a
 
 1. **Confirm env** — In `apps/dashboard/.env` (and deployment env): `DATABASE_URL` and `NEON_AUTH_BASE_URL` are set. No code change is required; the app uses Neon for data and proxies `/api/auth/*` to Neon Auth.
 2. **Restart the dashboard** — Local: stop and run `pnpm run dev` (or your usual command) from the dashboard app. Deployed: trigger a redeploy or restart so the process picks up the env.
-3. **Verify** — Open the dashboard URL → sign in with GitHub → create a project → create an API key. If all succeed, the dashboard is running on Neon for data and Neon Auth for sign-in.
+3. **Verify** — Open the [dashboard](https://restormel.dev/keys/dashboard), [Sign in](https://restormel.dev/keys/dashboard/login) with GitHub, create a project, and create an API key. If all succeed, the dashboard is running on Neon for data and Neon Auth for sign-in.
 
 **If you see "HTTP 503 Service Unavailable" on the login page:**
 

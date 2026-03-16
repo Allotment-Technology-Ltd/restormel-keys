@@ -23,5 +23,15 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   }
 
   const authError = url.searchParams.get("error") ?? null;
+
+  // Redirect unauthenticated users from protected routes to login (Overview shows welcome instead).
+  const baseNorm = base.endsWith("/") ? base.slice(0, -1) : base;
+  const protectedPaths = ["/projects", "/billing", "/settings"];
+  const pathAfterBase = pathname.slice(pathname.indexOf(baseNorm) + baseNorm.length) || "/";
+  const isProtected = protectedPaths.some((p) => pathAfterBase === p || pathAfterBase.startsWith(p + "/"));
+  if (!locals.user && isProtected) {
+    throw redirect(302, `${url.origin}${baseNorm}/login?redirect=${encodeURIComponent(pathname)}`);
+  }
+
   return { user: locals.user, authError };
 };

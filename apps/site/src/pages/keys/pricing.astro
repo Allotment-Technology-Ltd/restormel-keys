@@ -33,6 +33,7 @@ import MarketingLayout from "../../layouts/MarketingLayout.astro";
           </button>
           <span class="toggle-label" data-period="annual">Annual</span>
         </div>
+        <div id="checkout-message" class="checkout-message" role="alert" aria-live="polite" hidden></div>
       </header>
 
       <section class="tiers-section" aria-labelledby="tiers-heading">
@@ -100,12 +101,23 @@ import MarketingLayout from "../../layouts/MarketingLayout.astro";
   </article>
 </MarketingLayout>
 
-<script define:vars={{ paddleClientToken: import.meta.env.PUBLIC_PADDLE_CLIENT_TOKEN ?? '', dashboardUrl: import.meta.env.PUBLIC_KEYS_DASHBOARD_URL ?? '', sandboxPriceId: import.meta.env.PUBLIC_PADDLE_SANDBOX_PRICE_ID ?? '' }}>
+<script define:vars={{
+  paddleClientToken: import.meta.env.PUBLIC_PADDLE_CLIENT_TOKEN ?? '',
+  dashboardUrl: import.meta.env.PUBLIC_KEYS_DASHBOARD_URL ?? '',
+  sandboxPriceId: import.meta.env.PUBLIC_PADDLE_SANDBOX_PRICE_ID ?? '',
+  priceIdMap: JSON.stringify({
+    pro: { monthly: import.meta.env.PUBLIC_PADDLE_PRICE_PRO_MONTHLY ?? '', annual: import.meta.env.PUBLIC_PADDLE_PRICE_PRO_ANNUAL ?? '' },
+    team: { monthly: import.meta.env.PUBLIC_PADDLE_PRICE_TEAM_MONTHLY ?? '', annual: import.meta.env.PUBLIC_PADDLE_PRICE_TEAM_ANNUAL ?? '' },
+    enterprise: { monthly: import.meta.env.PUBLIC_PADDLE_PRICE_ENTERPRISE_MONTHLY ?? '', annual: import.meta.env.PUBLIC_PADDLE_PRICE_ENTERPRISE_ANNUAL ?? '' },
+  }),
+}}>
   import { initPaddleCheckout } from '../../scripts/paddle-checkout';
   initPaddleCheckout({
     token: paddleClientToken,
     dashboardUrl,
     sandboxPriceId: sandboxPriceId || undefined,
+    priceIdMap: typeof priceIdMap === 'string' ? JSON.parse(priceIdMap) : priceIdMap,
+    messageContainerId: 'checkout-message',
   });
 </script>
 
@@ -416,6 +428,19 @@ import MarketingLayout from "../../layouts/MarketingLayout.astro";
     line-height: var(--leading-relaxed);
   }
 
+  .checkout-message {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+  }
+  .checkout-message-error {
+    background: var(--coral-alert-10, rgba(242, 92, 84, 0.1));
+    border-color: var(--coral-alert, #f25c54);
+    color: var(--coral-alert, #f25c54);
+  }
   .visually-hidden {
     position: absolute;
     width: 1px;

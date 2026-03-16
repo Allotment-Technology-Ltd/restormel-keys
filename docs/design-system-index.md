@@ -4,6 +4,30 @@
 
 This index is the single entry point for the Restormel design system. All product UI—marketing site, dashboard, embeddable components (Svelte, React, Web Components), and demos—should use the tokens, patterns, and components defined here.
 
+## Target model (confirmed)
+
+- **Mixed stack:** Astro/Starlight (site, docs), SvelteKit (dashboard), Svelte (reference components), Web Components (elements), React (wrappers) remain the approved stack. No framework consolidation required; consistency is achieved through shared tokens, nav, and copy.
+- **Token architecture:** Base canonical tokens ([design-tokens.css](./design-tokens.css)) → semantic surface tokens (`--rm-*` for brand/app/docs shells, `--rk-*` for embeddable components) → optional component-level tokens. All surfaces consume from this chain; no ad-hoc values in shells or components.
+- **Contract:** Shells (brand, app, docs) and embeddable packages must map to the canonical base and use the same semantic intent; drift checks and docs enforce alignment.
+
+## SSO and same links
+
+One login, one cookie, same links everywhere. Sign-in uses a single entry point (`/keys/dashboard/login`). The session cookie is scoped to the full origin (e.g. `restormel.dev`) when the dashboard is served behind the Worker proxy (Path=/; Domain omitted so the browser uses the current origin). Every surface—marketing nav, docs header, dashboard topbar, and all runbooks/reference docs—must use the same canonical URLs: **Dashboard** → `/keys/dashboard`, **Sign in** → `/keys/dashboard/login`. No alternate URLs or wording.
+
+## Brand and logo usage
+
+Logo and lockup are **core layout primitives**, not decoration. Use them consistently so brand is embedded in structure.
+
+| Context | Asset | Size / rule | Where |
+|--------|--------|-------------|--------|
+| Marketing nav (header) | Lockup | Height 28px; clear-space = nav padding rhythm | [LogoLockup.astro](../apps/site/src/components/LogoLockup.astro) variant `nav`, `height="28"`. |
+| Marketing footer | Lockup | Height 24px | LogoLockup variant `nav`, `height="24"`. |
+| Dashboard sidebar | App lockup | Height 26–28px; horizontal padding matches nav links | [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte); `height="26"` or `"28px"`. |
+| Docs (Starlight) | Starlight logo config | Same lockup as marketing nav; sizing via Starlight header | astro.config.mjs `logo.src`; theme uses `--sl-*` aligned to `--rm-*`. |
+| Icon-only (favicon, tight spaces) | Mark | 24–32px; use [LogoMark.astro](../apps/site/src/components/LogoMark.astro) or equivalent. | Favicon, OG, or icon-only UI. |
+
+**Rules:** (1) Lockup = mark + wordmark; use in nav, header, footer. (2) Mark only = concentric symbol; use when space is tight or icon-only is required. (3) Sizing: nav/header = 28px height; footer = 24px; dashboard sidebar = 26–28px. (4) Clear-space: same vertical/horizontal rhythm as surrounding nav (e.g. `--space-4` / `--space-6`). (5) Focus and contrast: use `--focus-ring-*` and ensure logo has sufficient contrast on `--rm-surface` / `--rm-bg`. (6) All shell headers/sidebars that show the logo must use the same tokenized spacing and typography hierarchy so the logo sits in the layout system, not as a tag-on.
+
 ## Canonical documents
 
 | Document | Purpose |
@@ -11,11 +35,15 @@ This index is the single entry point for the Restormel design system. All produc
 | [DESIGN-TOKENS.md](./DESIGN-TOKENS.md) | Colors, typography, spacing, radius, shadows, interaction, focus, component sizes. Single source for token values. |
 | [DESIGN-SPECIFICATION.md](./DESIGN-SPECIFICATION.md) | Design principles, foundation, components, graph patterns, page layouts, usage guidelines, accessibility. |
 | [COMPONENT-INVENTORY.md](./COMPONENT-INVENTORY.md) | Full component inventory (atoms, molecules, organisms, graph components, templates) with variants and props. |
+| [documentation-strategy.md](./documentation-strategy.md) | Single coherent doc journey, agent-readability, compulsory same links (Dashboard/Sign in), runbooks and Starlight alignment. |
+| [ux-contracts.md](./ux-contracts.md) | Shared navigation model, copy registry (product nouns, CTA grammar), and state conventions (loading/error/empty/success) across site, docs, dashboard, and embeddable surfaces. |
 
 ## Implementation
 
 - **Reference implementation:** [design-tokens.css](./design-tokens.css) — CSS custom properties that implement DESIGN-TOKENS.md. Use this file (or equivalent values) in site, dashboard, and packages so the whole product shares one visual language.
 - **Keys-specific aliases:** The marketing/site layer uses `--rm-*` and embeddable components use `--rk-*`; these are documented in [04-design-and-site.md](./04-design-and-site.md) and must map to the canonical tokens so that changing the design system updates the whole product.
+- **Shared tokens package:** [packages/tokens](../packages/tokens) provides `base.css`, `semantic-rm.css`, `semantic-rk.css`, and `contracts.ts` (typed semantic keys for tooling). Consumers can import from `@restormel/keys-tokens` or continue using docs/design-tokens.css plus local aliases.
+- **Drift check:** Run `pnpm run check-token-drift` (or `scripts/check-token-drift.sh`) to verify `--rk-*` parity between packages/svelte and packages/elements. Fix any drift before committing.
 
 ## Where the design system applies
 

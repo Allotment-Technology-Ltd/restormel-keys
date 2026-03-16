@@ -9,7 +9,7 @@ The **Cloud API** lets you manage projects and keys over HTTP. It is exposed thr
 
 - **API reference and Try it:** [Restormel Keys Developer Portal](https://restormel-keys-gateway-main-bc13eba.zuplo.site) — full endpoint list, request/response schemas, and interactive “Try it” with a consumer key.
 - **Gateway base URL (for API calls):** `https://restormel-keys-gateway-main-bc13eba.zuplo.app` — call `/api/health`, `/api/projects`, `/api/projects/{id}`, `/api/projects/{id}/keys`. The gateway root (`/`) is not a page; use these paths.
-- **Dashboard:** [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard) — sign in, create projects, and create the **backend** API key that the gateway uses when forwarding to the Keys backend.
+- **Dashboard:** [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard) — [Sign in](https://restormel.dev/keys/dashboard/login), create projects, and create the **backend** API key that the gateway uses when forwarding to the Keys backend.
 
 ## How it fits together
 

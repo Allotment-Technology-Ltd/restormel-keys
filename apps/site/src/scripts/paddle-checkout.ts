@@ -9,11 +9,18 @@ const PADDLE_SCRIPT_URL = "https://cdn.paddle.com/paddle/v2/paddle.js";
 /** Post-checkout redirect (same-origin). */
 const DASHBOARD_SUCCESS_PATH = "/keys/dashboard?billing=success";
 
+/** Map tier and billing period to Paddle price ID (from env at build). */
+export type PriceIdMap = Partial<Record<string, Partial<Record<"monthly" | "annual", string>>>>;
+
 export type PaddleCheckoutConfig = {
   token: string;
   dashboardUrl: string;
   /** Optional: sandbox price ID to open checkout directly when dashboard API is not available */
   sandboxPriceId?: string;
+  /** Optional: tier+period -> priceId so Subscribe sends a valid priceId to the dashboard API */
+  priceIdMap?: PriceIdMap;
+  /** Optional: id of a DOM element to show checkout errors (e.g. auth required, API error) */
+  messageContainerId?: string;
 };
 
 declare global {
@@ -50,8 +57,27 @@ function loadScript(src: string): Promise<void> {
  * Initialize Paddle and wire Subscribe buttons.
  * Call once when the pricing page loads.
  */
+function showMessage(containerId: string | undefined, message: string, isError: boolean): void {
+  if (!containerId) return;
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.textContent = message;
+  el.setAttribute("role", "alert");
+  el.className = isError ? "checkout-message checkout-message-error" : "checkout-message";
+  el.hidden = false;
+}
+
+function clearMessage(containerId: string | undefined): void {
+  if (!containerId) return;
+  const el = document.getElementById(containerId);
+  if (el) {
+    el.textContent = "";
+    el.hidden = true;
+  }
+}
+
 export function initPaddleCheckout(config: PaddleCheckoutConfig): void {
-  const { token, dashboardUrl, sandboxPriceId } = config;
+  const { token, dashboardUrl, sandboxPriceId, priceIdMap, messageContainerId } = config;
 
   if (!token || typeof token !== "string") {
     console.warn("[Paddle] No client token; checkout disabled.");
@@ -62,6 +88,7 @@ export function initPaddleCheckout(config: PaddleCheckoutConfig): void {
     .then(() => {
       if (!window.Paddle) {
         console.error("[Paddle] Paddle.js did not attach to window.");
+        showMessage(messageContainerId, "Checkout could not be loaded. Please try again later.", true);
         return;
       }
 
@@ -73,46 +100,77 @@ export function initPaddleCheckout(config: PaddleCheckoutConfig): void {
             window.location.href = new URL(DASHBOARD_SUCCESS_PATH, window.location.origin).href;
           }
           if (name === "checkout.closed" || name === "checkout.cancelled") {
-            // Stay on pricing page; no redirect
+            clearMessage(messageContainerId);
           }
         },
       });
 
-      bindSubscribeButtons(dashboardUrl, sandboxPriceId);
+      bindSubscribeButtons(dashboardUrl, sandboxPriceId, priceIdMap ?? {}, messageContainerId);
     })
     .catch((err) => {
       console.error("[Paddle] Failed to load Paddle.js", err);
+      showMessage(messageContainerId, "Checkout could not be loaded. Please try again later.", true);
     });
 }
 
-function bindSubscribeButtons(dashboardUrl: string, sandboxPriceId?: string): void {
+function bindSubscribeButtons(
+  dashboardUrl: string,
+  sandboxPriceId: string | undefined,
+  priceIdMap: PriceIdMap,
+  messageContainerId: string | undefined,
+): void {
   document.querySelectorAll<HTMLButtonElement>("[data-paddle-checkout]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const priceId = btn.getAttribute("data-price-id") || undefined;
+      clearMessage(messageContainerId);
+      const fromButton = btn.getAttribute("data-price-id")?.trim() || undefined;
       const tier = btn.getAttribute("data-tier") || undefined;
       const billingPeriod = (btn.getAttribute("data-billing-period") as "monthly" | "annual") || "monthly";
+      const fromMap =
+        tier && priceIdMap[tier]?.[billingPeriod] ? priceIdMap[tier][billingPeriod]! : undefined;
+      const priceId = fromButton || fromMap;
 
       if (dashboardUrl) {
+        if (!priceId) {
+          showMessage(
+            messageContainerId,
+            "This plan is not configured for checkout yet. Please set Paddle price IDs for this tier and period.",
+            true,
+          );
+          return;
+        }
         try {
           const res = await fetch(`${dashboardUrl.replace(/\/$/, "")}/api/billing/checkout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ priceId, tier, billingPeriod }),
           });
-          if (!res.ok) {
-            const text = await res.text();
-            console.error("[Paddle] Checkout API error", res.status, text);
+          const json = await res.json().catch(() => ({}));
+          if (res.status === 401) {
+            showMessage(
+              messageContainerId,
+              "Please sign in first. Open the Dashboard and sign in with GitHub, then try again.",
+              true,
+            );
             return;
           }
-          const json = await res.json();
+          if (!res.ok) {
+            const msg = json?.error ?? (typeof json === "string" ? json : "Checkout request failed.");
+            showMessage(messageContainerId, String(msg), true);
+            return;
+          }
           const transactionId = json?.data?.transactionId ?? json?.transactionId;
           if (transactionId && window.Paddle?.Checkout) {
             window.Paddle.Checkout.open({ transactionId });
           } else {
-            console.error("[Paddle] No transactionId in response", json);
+            showMessage(messageContainerId, "Checkout could not be opened. Please try again.", true);
           }
         } catch (e) {
           console.error("[Paddle] Checkout API request failed", e);
+          showMessage(
+            messageContainerId,
+            "Unable to reach the billing service. Check your connection and try again.",
+            true,
+          );
         }
         return;
       }
@@ -124,7 +182,11 @@ function bindSubscribeButtons(dashboardUrl: string, sandboxPriceId?: string): vo
             items: [{ priceId: id, quantity: 1 }],
           });
         } else {
-          console.warn("[Paddle] No dashboard URL and no price ID; set PUBLIC_KEYS_DASHBOARD_URL or PUBLIC_PADDLE_SANDBOX_PRICE_ID.");
+          showMessage(
+            messageContainerId,
+            "Checkout is not configured. Set PUBLIC_KEYS_DASHBOARD_URL or add Paddle price IDs.",
+            true,
+          );
         }
       }
     });
