@@ -9,7 +9,7 @@ import { config as loadDotenv } from "dotenv";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: path.resolve(__dirname, "../../../.env") });
 
-const baseUrl = () => process.env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
+export const baseUrl = () => process.env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
 
 function getSessionUrl(): string {
   const base = baseUrl();

@@ -1,44 +1,8 @@
 <script lang="ts">
   import { base } from "$app/paths";
-  import { authClient } from "$lib/auth-client";
   import AppLogo from "$lib/components/AppLogo.svelte";
 
-  let loading = false;
-  let error = "";
-
-  async function handleLogin() {
-    loading = true;
-    error = "";
-    try {
-      const absoluteCallback =
-        typeof window !== "undefined" ? window.location.origin + base + "/" : base + "/";
-      const result = await authClient.signIn.social({
-        provider: "github",
-        callbackURL: absoluteCallback,
-        newUserCallbackURL: absoluteCallback,
-        errorCallbackURL: absoluteCallback,
-        disableRedirect: true,
-      });
-
-      if (result?.error) {
-        error = result.error.message ?? "Sign in failed";
-        loading = false;
-        return;
-      }
-
-      const url = result?.data?.url;
-      if (url && typeof window !== "undefined") {
-        window.location.href = url;
-        return;
-      }
-
-      error = "Sign in did not return a redirect URL.";
-      loading = false;
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Sign in failed";
-      loading = false;
-    }
-  }
+  // All GitHub sign-in is initiated on the server via /api/auth/initiate/github.
 </script>
 
 <div class="login-page">
@@ -47,12 +11,7 @@
   </div>
   <h1 class="login-title">Sign in</h1>
   <p class="login-desc">Use GitHub to sign in to the Keys dashboard.</p>
-  {#if error}
-    <p class="login-error" role="alert">{error}</p>
-  {/if}
-  <button class="btn btn-primary" onclick={handleLogin} disabled={loading}>
-    {loading ? "Signing in…" : "Sign in with GitHub"}
-  </button>
+  <a href={base + "/api/auth/initiate/github"} class="btn btn-primary">Sign in with GitHub</a>
   <a href={base + "/"} class="back-link">Back to overview</a>
 </div>
 
