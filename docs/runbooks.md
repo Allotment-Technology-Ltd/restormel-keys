@@ -9,8 +9,11 @@ Early operational notes. **Single place** for procedures; expand when hosted com
 | Doc | Purpose |
 |-----|---------|
 | [reference/phase-3-manual-steps.md](reference/phase-3-manual-steps.md) | Phase 3 manual actions required (GCP, Firebase, Paddle, Cloudflare, DNS, Zuplo); template from 09-prompt-pack-phase-3. |
-| [runbooks/zuplo-setup.md](runbooks/zuplo-setup.md) | Zuplo API gateway for Keys cloud API (restormel-keys-gateway, routes to Cloud Run, policies, developer portal). §8: Deployment checklist and policies.json troubleshooting. §9: CLI/config-as-code. §10: Connecting to GitHub (optional). |
+| [runbooks/firestore-to-neon-migration.md](runbooks/firestore-to-neon-migration.md) | Switch dashboard storage from Firestore to Neon Postgres. Schema (001_initial.sql), connection string (Neon MCP or Console), env (USE_NEON_DB, DATABASE_URL), optional data migration. |
+| [runbooks/zuplo-setup.md](runbooks/zuplo-setup.md) | Zuplo API gateway for Keys cloud API (restormel-keys-gateway, routes to Cloud Run, policies, developer portal). Quick Start + value table; §8: Deployment checklist and policies.json troubleshooting. §9: CLI/config-as-code. §10: Connecting to GitHub (optional). |
+| [runbooks/zuplo-launch-cli.md](runbooks/zuplo-launch-cli.md) | **Single-path launch:** CLI execution order (main then working-copy), launch-checklist script, portal-only steps. |
 | [runbooks/zuplo-config-reference/](runbooks/zuplo-config-reference/README.md) | Reference `routes.oas.json` and `policies.json` for agent-driven or scripted Zuplo setup. |
+| [api/openapi.yaml](api/openapi.yaml) | Canonical OpenAPI spec for Keys cloud API; import into Zuplo Developer Portal for launch-ready docs. |
 | [zuplo-gateway/](../zuplo-gateway/README.md) | In-repo Zuplo project (config-as-code). Deploy with `pnpm run deploy` and `ZUPLO_API_KEY`; set `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo. |
 
 Keep procedures here or in linked docs; avoid duplicating across files.

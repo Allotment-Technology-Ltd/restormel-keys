@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 # Test the gateway with the consumer key. Run from zuplo-gateway/ with .env present.
-# Usage: ./scripts/test-gateway.sh [gateway_url]
+# Usage: ./scripts/test-gateway.sh <GATEWAY_URL>
+#   GATEWAY_URL from Portal → Environments → main (or working-copy) → Gateway.
+#   Or set GATEWAY_URL in .env and run: ./scripts/test-gateway.sh
 
 set -e
 
-GATEWAY_URL="${1:-https://restormel-keys-gateway-main-bc13eba.zuplo.app}"
-ENV_FILE="$(dirname "$0")/../.env"
-
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GATEWAY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$GATEWAY_DIR/.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a
   source "$ENV_FILE"
   set +a
+fi
+
+GATEWAY_URL="${1:-$GATEWAY_URL}"
+if [[ -z "$GATEWAY_URL" ]]; then
+  echo "Error: GATEWAY_URL required. Pass as argument or set in zuplo-gateway/.env"
+  echo "  Get from: Portal → Environments → main (or working-copy) → Gateway"
+  echo "  Usage: ./scripts/test-gateway.sh https://restormel-keys-gateway-main-XXXX.zuplo.app"
+  exit 1
 fi
 
 if [[ -z "$ZUPLO_CONSUMER_KEY" ]]; then

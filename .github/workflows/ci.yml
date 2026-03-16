@@ -1,4 +1,4 @@
-# Single CI/CD workflow: path-filter, docs, security, test, demo-next, infra preview, and deploy (GCP).
+# Single CI/CD workflow: path-filter, docs, security, test, demo-next, and deploy-site-worker (Cloudflare). Dashboard deploys via Vercel on push to main.
 # One workflow run per push/PR; jobs skip when their paths unchanged.
 # pnpm version must match root package.json "packageManager" (9.0.0).
 name: CI/CD
@@ -112,8 +112,9 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
+          extra_args: --only-verified
       - name: pnpm audit
-        run: pnpm audit --audit-level moderate
+        run: pnpm audit --audit-level critical
       - name: Type check
         run: pnpm --filter @restormel/keys typecheck
 
@@ -164,141 +165,6 @@ jobs:
       - name: E2E tests
         run: pnpm run test:e2e
         working-directory: apps/demo-next
-
-  # GCP infra/deploy: skip on fork PRs and Dependabot (secrets not passed).
-  infra-preview:
-    runs-on: ubuntu-latest
-    if: needs.changes.outputs.deploy == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
-    needs: [changes]
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Verify auth
-        run: |
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
-          gcloud auth list
-      - name: Infra preview
-        run: |
-          if [ -d infra ]; then
-            echo "Run 'pulumi preview' locally or enable Pulumi in CI (PULUMI_ACCESS_TOKEN, stack) to preview infra changes."
-          else
-            echo "No infra directory yet"
-          fi
-
-  infra-apply:
-    runs-on: ubuntu-latest
-    if: needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [changes]
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Verify auth
-        run: |
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
-          gcloud auth list
-      - name: Infra apply
-        run: |
-          if [ -d infra ]; then
-            echo "Run 'pulumi up' locally when infra changes. Deploy job below pushes site image and deploys to existing Cloud Run service."
-          else
-            echo "No infra directory yet"
-          fi
-
-  deploy:
-    runs-on: ubuntu-latest
-    if: (needs.changes.outputs.deploy == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_deploy != 'false')
-    needs: [changes]
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      REGION: europe-west2
-      IMAGE_NAME: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/restormel-keys/dashboard
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
-      - name: Diagnose GCP Artifact Registry
-        run: |
-          echo "Active account:"
-          gcloud auth list
-          echo "Artifact Registry repo (must exist; deploy identity needs roles/artifactregistry.writer):"
-          gcloud artifacts repositories describe restormel-keys --location=europe-west2 --project="${{ secrets.GCP_PROJECT_ID }}" || echo "Repo missing or no permission to describe — create with 'pulumi up' in infra/ and grant deploy SA roles/artifactregistry.writer"
-      - name: Require Firebase client secrets for dashboard build
-        run: |
-          if [ -z "${{ secrets.PUBLIC_FIREBASE_API_KEY }}" ]; then echo "::error::PUBLIC_FIREBASE_API_KEY is not set. Add it in GitHub → Settings → Secrets → Actions (Firebase Console → Project settings → General → Your apps → Web API Key). Then trigger a new deploy so the image is rebuilt."; exit 1; fi
-          if [ -z "${{ secrets.PUBLIC_FIREBASE_AUTH_DOMAIN }}" ]; then echo "::error::PUBLIC_FIREBASE_AUTH_DOMAIN is not set. Add it (e.g. your-project.firebaseapp.com) in GitHub Actions secrets, then re-run deploy."; exit 1; fi
-          if [ -z "${{ secrets.PUBLIC_FIREBASE_PROJECT_ID }}" ]; then echo "::error::PUBLIC_FIREBASE_PROJECT_ID is not set. Add it in GitHub Actions secrets, then re-run deploy."; exit 1; fi
-      - name: Build dashboard image
-        run: |
-          docker build -f Dockerfile.dashboard \
-            --build-arg PUBLIC_FIREBASE_API_KEY="${{ secrets.PUBLIC_FIREBASE_API_KEY }}" \
-            --build-arg PUBLIC_FIREBASE_AUTH_DOMAIN="${{ secrets.PUBLIC_FIREBASE_AUTH_DOMAIN }}" \
-            --build-arg PUBLIC_FIREBASE_PROJECT_ID="${{ secrets.PUBLIC_FIREBASE_PROJECT_ID }}" \
-            -t ${{ env.IMAGE_NAME }}:latest -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
-      - name: Push dashboard image
-        run: |
-          docker push ${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy keys-dashboard \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --quiet
-      - name: Deploy failed — fix Artifact Registry / Cloud Run permissions
-        if: failure()
-        run: |
-          echo "::error::Push or deploy failed. The deploy identity needs Artifact Registry Writer, Cloud Run Admin, and Service Account User on keys-dashboard-sa."
-          echo "---"
-          echo "If this failed with 'iam.serviceaccounts.actAs denied on keys-dashboard-sa', run this once (use the SA from 'Diagnose GCP Artifact Registry' if different):"
-          echo ""
-          echo "  gcloud iam service-accounts add-iam-policy-binding keys-dashboard-sa@restormel-keys-prod.iam.gserviceaccount.com \\"
-          echo "    --project=restormel-keys-prod \\"
-          echo "    --member=\"serviceAccount:github-deploy@restormel-keys-prod.iam.gserviceaccount.com\" \\"
-          echo "    --role=\"roles/iam.serviceAccountUser\""
-          echo ""
-          echo "Then re-run this workflow. See docs/domain-mapping-restormel-dev.md §9 for full steps."
 
   # Deploy site Worker with KEYS_DASHBOARD_URL injected so the var survives (not wiped by Git-based deploys).
   # Requires: KEYS_DASHBOARD_URL, CLOUDFLARE_API_TOKEN in repo secrets. If you use this job, consider

@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { listApiKeys, createApiKey, deleteApiKey } from "$lib/server/firestore";
+import { listApiKeys, createApiKey, deleteApiKey } from "$lib/server/db";
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +18,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  const keyId = typeof body.keyId === "string" ? body.keyId : params.keyId;
+  const keyId = typeof body.keyId === "string" ? body.keyId : undefined;
   if (!keyId) return json({ error: "Missing keyId" }, { status: 400 });
   const ok = await deleteApiKey(params.id, keyId, locals.user.uid);
   if (!ok) return json({ error: "Not found" }, { status: 404 });

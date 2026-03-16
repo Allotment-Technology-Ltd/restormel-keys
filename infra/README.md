@@ -1,23 +1,19 @@
-# Restormel Keys – GCP infra (Pulumi)
+# Restormel Keys – GCP infra (Pulumi, legacy)
 
-Pulumi stack for dashboard (Cloud Run) and Artifact Registry on GCP. No load balancer; site is on Cloudflare Worker; dashboard is reached via direct Cloud Run URL or Worker proxy.
+> **Status:** This stack is **legacy**. The dashboard now runs on **Vercel** with Neon (`DATABASE_URL`, `NEON_AUTH_BASE_URL` in Vercel env). Use this Pulumi stack **only for emergency rollback** or while decommissioning the old Cloud Run deployment. Do **not** run `pulumi up` for routine deploys.
 
-## Before every `pulumi up`
+Pulumi stack for the previous dashboard deployment (Cloud Run) and Artifact Registry on GCP. No load balancer; site is on Cloudflare Worker; dashboard was reached via direct Cloud Run URL or Worker proxy.
 
-Do these **every time** you are about to run `pulumi up` (first run or after changing infra):
+## Before any (rare) `pulumi up`
+
+You should normally **not** need to run this stack anymore. If you temporarily re-enable the GCP path (for example, as a short-term rollback), do these steps before **any** `pulumi up` (first run or after changing infra):
 
 1. **Build the program** — Pulumi runs the compiled `bin/index.js`, not `index.ts`. If you changed `index.ts`, run:
    ```bash
    cd infra && pnpm run build
    ```
    Skipping this can cause the wrong resources to be created or updated (e.g. repeated 403 on Secret Manager).
-2. **One-time only: grant Firebase secret access** — If the dashboard service account does not yet have access to the Firebase Admin secret, run once from repo root:
-   ```bash
-   ./infra/grant-firebase-secret-access.sh
-   ```
-   See [Secret Manager: Firebase secret access (one-time)](#secret-manager-firebase-secret-access-one-time) below. If Cloud Run already starts successfully, you can skip this.
-
-Then run `pulumi up` from the `infra` directory.
+Then run `pulumi up` from the `infra` directory. Ensure dashboard env (DATABASE_URL, NEON_AUTH_BASE_URL) are set via Pulumi config secret refs or Cloud Run env; see [Neon setup](#neon-setup-dashboard-database--auth) below.
 
 ## Prerequisites
 
@@ -97,16 +93,18 @@ pulumi up
 
 **Important:** After any change to `index.ts`, run `pnpm run build` before `pulumi up`. Pulumi executes `bin/index.js`; if the build is stale, the wrong resources may be created or updated.
 
-## Secret Manager: Firebase secret access (one-time)
+## Neon setup (dashboard database + auth)
 
-**Why not Pulumi:** The GCP provider resolves the project for Secret Manager IAM as the Pulumi project name (`restormel-keys`), not `gcp:project`, so `SecretIamMember` would call the API with the wrong project and hit **403 CONSUMER_INVALID**. IAM for this secret is therefore not managed by Pulumi.
+The dashboard uses **Neon Postgres** for data (projects, API keys) and **Neon Auth** (sessions + GitHub OAuth, managed in Neon Console).
 
-**One-time step:** Grant the dashboard service account access to the Firebase Admin secret so Cloud Run can mount it. From the repo root:
+1. **Create a Neon project** at [Neon](https://neon.tech) and a database. Copy the connection string.
+2. **Enable Neon Auth** in Neon Console: Project → Branch → **Auth** → enable and copy the **Auth base URL** (e.g. `https://ep-xxx.neonauth.region.aws.neon.tech/neondb/auth`). Add **GitHub** as an OAuth provider in the same Auth section (Client ID and Secret from your GitHub OAuth App).
+3. **Store the connection string** in GCP Secret Manager (e.g. create secret `neon-database-url` with the value). Grant the dashboard service account access to read this secret if you use secret refs.
+4. **Pulumi config:** Set secret refs so Cloud Run gets env at runtime, e.g.:
+   - `pulumi config set DATABASE_URL_SECRET_REF neon-database-url`
+   - `pulumi config set NEON_AUTH_BASE_URL_SECRET_REF neon-auth-base-url` (or set `NEON_AUTH_BASE_URL` as plain config if not secret)
+   Create the corresponding secrets in Secret Manager. The dashboard only needs `DATABASE_URL` and `NEON_AUTH_BASE_URL`; GitHub credentials live in Neon Console.
+5. **Run migrations once** against the Neon database: from repo root, `psql "$DATABASE_URL" -f apps/dashboard/migrations/001_initial.sql` (and optionally `002_better_auth.sql` if you had previously used in-app Better Auth; Neon Auth uses its own `neon_auth` schema).
+6. **GitHub OAuth App:** Set **Authorization callback URL** to your dashboard’s auth callback: `https://<your-domain>/keys/dashboard/api/auth/callback/github` so the OAuth flow is proxied through the app.
 
-```bash
-./infra/grant-firebase-secret-access.sh
-```
-
-Optional: pass a different project, e.g. `./infra/grant-firebase-secret-access.sh restormel-keys-prod`.
-
-Ensure the secret `firebase-admin-credentials` exists in the GCP project and has at least one version. Then run `pulumi up`. If Cloud Run still reports "Permission denied on secret", run the script again and retry.
+See **docs/reference/phase-3-manual-steps.md** §B and **docs/reference/phase-3-deployment.md** §5.2 and §5.4 for troubleshooting.

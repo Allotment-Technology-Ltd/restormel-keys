@@ -30,16 +30,12 @@ const registry = new gcp.artifactregistry.Repository("keys-registry", {
 // Placeholder image until first deploy; 512Mi/1 CPU, 0-3 instances.
 const dashboardImage = config.get("dashboardImage") ?? "gcr.io/cloudrun/placeholder";
 const dashboardSecrets: Record<string, pulumi.Input<string>> = {};
-["PADDLE_SECRET", "PADDLE_API_KEY", "FIREBASE_CONFIG", "API_KEY_HASH"].forEach((key) => {
+["PADDLE_SECRET", "PADDLE_API_KEY", "API_KEY_HASH", "DATABASE_URL", "NEON_AUTH_BASE_URL"].forEach((key) => {
   const secretRef = config.get(`${key}_SECRET_REF`);
   if (secretRef) {
     dashboardSecrets[key] = secretRef;
   }
 });
-
-/** Secret Manager secret id for Firebase Admin credentials (full JSON key). Mounted as file; no env ref. */
-const firebaseAdminSecretName = "firebase-admin-credentials";
-const firebaseCredentialsPath = "/secrets/firebase-admin/key.json";
 
 const dashboardService = new gcp.cloudrun.Service("keys-dashboard", {
   name: "keys-dashboard",
@@ -74,29 +70,13 @@ const dashboardService = new gcp.cloudrun.Service("keys-dashboard", {
                 },
               },
             })),
-            { name: "GOOGLE_APPLICATION_CREDENTIALS", value: firebaseCredentialsPath },
           ],
-          volumeMounts: [
-            { name: "firebase-admin", mountPath: "/secrets/firebase-admin" },
-          ],
-        },
-      ],
-      volumes: [
-        {
-          name: "firebase-admin",
-          secret: {
-            secretName: firebaseAdminSecretName,
-            items: [{ key: "latest", path: "key.json" }],
-          },
         },
       ],
     },
   },
   traffics: [{ percent: 100, latestRevision: true }],
 });
-
-// Dashboard SA must be able to read Firebase Admin credentials from Secret Manager.
-// IAM is NOT managed by Pulumi: the GCP provider resolves project as the Pulumi project name ("restormel-keys"), causing 403. Grant access once with: infra/grant-firebase-secret-access.sh (or see infra/README.md).
 
 // --- (f) IAM: public invoker ---
 const publicInvoker = new gcp.cloudrun.IamMember("keys-dashboard-public-invoker", {

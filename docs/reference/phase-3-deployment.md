@@ -15,9 +15,11 @@ This runbook covers deploying the **site** (Astro) to **Cloudflare Pages** and t
 
 ---
 
-## 1. Dashboard → Cloud Run
+## 1. Dashboard hosting (historical Cloud Run, current Vercel)
 
-The dashboard (SvelteKit, `apps/dashboard`) is built as a Docker image, pushed to Artifact Registry, and deployed to the existing Cloud Run service `keys-dashboard`.
+Today the dashboard runs on **Vercel** (see [extraction-vercel.md](extraction-vercel.md)). This section documents the **historical** Cloud Run path managed by Pulumi for reference and potential short-term rollback only.
+
+The legacy path builds the dashboard (SvelteKit, `apps/dashboard`) as a Docker image, pushes it to Artifact Registry, and deploys it to the existing Cloud Run service `keys-dashboard`.
 
 ### 1.1 Ensure infra and registry exist
 
@@ -28,7 +30,6 @@ cd infra
 pnpm run build                  # required: Pulumi runs bin/index.js; stale build causes wrong resources or 403
 pulumi stack select production  # or your stack name
 pulumi config set gcp:project YOUR_GCP_PROJECT_ID   # if not set
-# One-time: if dashboard needs Firebase secret, run from repo root: ./infra/grant-firebase-secret-access.sh
 pulumi up   # creates/updates Artifact Registry, Cloud Run service
 ```
 
@@ -230,12 +231,11 @@ If **restormel.dev/keys/dashboard** (or the path where the dashboard is proxied)
 
 ## 5.2 Troubleshooting: 500 on Sign in with GitHub / dashboard links
 
-**500 or `auth/invalid-api-key` when clicking “Sign in with GitHub”:**
+**500 or auth errors when clicking “Sign in with GitHub”:**
 
-1. **Firebase client config (auth/invalid-api-key)** — The client bundle is built with `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. These must be set as **GitHub Actions secrets** and passed as Docker build args so the dashboard image includes them. Add those three secrets in GitHub → Settings → Secrets and variables → Actions (see phase-3-manual-steps A4 and B4). **Important:** The values are baked in at **image build time**. After adding or changing the secrets, you must **trigger a new dashboard build** (push a commit that triggers the deploy job, or run the workflow via **Actions** → **CI** → **Run workflow** with “Run deploy” enabled); otherwise the running image still has the old (or empty) config and you will keep seeing `auth/invalid-api-key`.
-2. **Dashboard image** — The dashboard must be built and deployed to Cloud Run with the Firebase Admin change that uses `GOOGLE_APPLICATION_CREDENTIALS` (see `apps/dashboard/src/lib/server/firebase-admin.ts`). Redeploy the dashboard (CI or `gcloud run deploy`) so the new code is live.
-3. **Firebase authorized domains** — In [Firebase Console](https://console.firebase.google.com) → your project → **Authentication** → **Settings** → **Authorized domains**, add **`restormel.dev`** (and `www.restormel.dev` if you use it). Without this, Firebase can block the popup or token and the session endpoint may fail.
-4. **Cloud Run secret** — Ensure the dashboard service has the Firebase Admin secret mounted and the service account can read it (run `./infra/grant-firebase-secret-access.sh` if needed). Check Cloud Run logs for the request to `POST /keys/dashboard/api/auth/session` for the actual error.
+1. **Dashboard env (Neon Auth)** — The dashboard uses **Neon Auth** (managed in Neon Console). Cloud Run (or the host) must have **runtime** env: `DATABASE_URL` (Neon Postgres), `NEON_AUTH_BASE_URL` (from Neon Console → Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console (Auth → OAuth providers), not in app env. Add these in Pulumi as secret refs (see phase-3-manual-steps and infra/README) or Cloud Run env vars.
+2. **GitHub OAuth App** — Create a GitHub OAuth App with **Authorization callback URL** = your dashboard’s auth callback so the flow is proxied: `https://<your-domain>/keys/dashboard/api/auth/callback/github`. In Neon Console, add GitHub as an OAuth provider using the same GitHub App’s Client ID and Client Secret.
+3. **Cloud Run logs** — Check logs for requests to `/keys/dashboard/api/auth/*` for the actual error (no tokens or secrets in logs).
 
 **Sidebar links (Overview, Projects, Billing, Settings) “not working”:**  
 When not signed in, those links load the same shell and show “Sign in to use the dashboard” — that is expected. After you sign in, they load the real pages. If they 404 or fail when clicked, confirm the dashboard was redeployed and that you’re opening `restormel.dev/keys/dashboard/...` (proxy and Worker env var set).
@@ -244,21 +244,21 @@ When not signed in, those links load the same shell and show “Sign in to use t
 
 ## 5.3 Signed in with GitHub but dashboard still shows “Sign in to use the dashboard”
 
-If Firebase shows the user and GitHub sign-in succeeds, but Overview/Projects still show “Sign in to use the dashboard”:
+If GitHub sign-in succeeds but Overview/Projects still show “Sign in to use the dashboard”:
 
-1. **Session cookie not reaching the browser** — When the dashboard is behind the Cloudflare Worker proxy, the backend’s `Set-Cookie` can be stripped from the `fetch()` response (cross-origin). The app sends the session cookie in a custom **X-Session-Cookie** header; the Worker copies it to `Set-Cookie` so the browser stores it. Ensure the latest Worker is deployed (commit that includes the X-Session-Cookie handling in `apps/site/worker.js`).
-2. **Full page redirect after login** — The login page uses a full page redirect (`window.location.href`) after a successful session POST so the next request is a normal navigation and sends the cookie. If you still see the prompt, try a hard refresh (Ctrl+F5 / Cmd+Shift+R) or clear cookies for restormel.dev and sign in again.
-3. **Zuplo vs dashboard login** — Dashboard “logged in” state is **separate** from Zuplo. The dashboard uses a **session cookie** (set by `POST /keys/dashboard/api/auth/session`). Zuplo (modules, schemas, docs, API keys) is for **external API access**; finishing Zuplo setup does not change whether the dashboard shows you as signed in. See `docs/runbooks/zuplo-setup.md` for gateway setup.
+1. **Session cookie not reaching the browser** — When the dashboard is behind the Cloudflare Worker proxy, the backend’s `Set-Cookie` can be stripped from the response. The app sends the session cookie in a custom **X-Session-Cookie** header; the Worker copies it to `Set-Cookie` so the browser stores it. Ensure the latest Worker is deployed (X-Session-Cookie handling in `apps/site/worker.js`).
+2. **Full page redirect after login** — Neon Auth (proxied at `/api/auth/*`) redirects to GitHub then back to the callback; after callback the app sets the session cookie. If you still see the prompt, try a hard refresh (Ctrl+F5 / Cmd+Shift+R) or clear cookies for the domain and sign in again.
+3. **Zuplo vs dashboard login** — Dashboard “logged in” state is **separate** from Zuplo. The dashboard uses a **session cookie** (set via Neon Auth proxy at `/api/auth/*`). Zuplo (modules, schemas, docs, API keys) is for **external API access**; finishing Zuplo setup does not change whether the dashboard shows you as signed in. See `docs/runbooks/zuplo-setup.md` for gateway setup.
 
 ---
 
-## 5.4 500 on Overview or Projects (Billing/Settings work)
+## 5.4 “Unable to load projects” or 500 on Overview / Projects
 
-If you are logged in but **Overview** or **Projects** return **500** while Billing and Settings load:
+If you see **“Unable to load projects”** or 500 on Overview/Projects:
 
-1. **Cause** — Those two pages load project data from **Firestore** via `listProjects()`. Billing and Settings do not call Firestore, so they don’t 500. The failure is usually Firestore not enabled, missing indexes, or the dashboard service account lacking Firestore permissions.
-2. **Fix** — In GCP: enable **Cloud Firestore** (Native mode) for the project; ensure the dashboard’s service account (e.g. `keys-dashboard-sa@...`) has a role that allows Firestore read/write (e.g. **Cloud Datastore User** or a custom role). Check Cloud Run logs for the exact error (e.g. `[overview] listProjects failed:` or `[projects] listProjects failed:`).
-3. **Soft failure** — The load functions now catch Firestore errors and return an empty project list plus a message (“Unable to load projects”) so the page renders instead of 500. Fix Firestore and refresh to see projects.
+1. **Cause** — Overview and Projects use **Neon Postgres** via `listProjects()`. The failure is usually `DATABASE_URL` not set, wrong connection string, or migrations not run.
+2. **Neon setup** — Create a Neon project and database at [Neon](https://neon.tech), copy the connection string, and set `DATABASE_URL` (or `DATABASE_URL_SECRET_REF` in Pulumi) for the dashboard. Run the SQL migrations in `apps/dashboard/migrations/` (001_initial.sql, 002_better_auth.sql) against the Neon database once. See **Neon setup** in `infra/README.md` and phase-3-manual-steps.
+3. **Soft failure** — The app shows “Unable to load projects” instead of 500 so the page still loads. After `DATABASE_URL` is set and migrations are applied, refresh the page; creating a project should then work.
 
 ---
 

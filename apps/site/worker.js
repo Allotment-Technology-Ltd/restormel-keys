@@ -1,10 +1,11 @@
 /**
  * Worker that serves static assets from the Astro build (dist/) and proxies
- * /keys/dashboard to the dashboard backend (Cloud Run).
+ * /keys/dashboard to the dashboard backend (Vercel or Cloud Run).
  *
- * Set KEYS_DASHBOARD_URL in Cloudflare (Settings → Variables) to the Cloud Run
- * origin only (e.g. https://keys-dashboard-xxx.run.app). Do not append /keys/dashboard
- * — the Worker appends the request path. If unset, /keys/dashboard is not proxied.
+ * Set KEYS_DASHBOARD_URL in Cloudflare (Settings → Variables) to the dashboard
+ * origin only (e.g. https://restormel-keys.vercel.app or https://keys-dashboard-xxx.run.app).
+ * Do not append /keys/dashboard — the Worker appends the request path. If unset,
+ * /keys/dashboard is not proxied.
  */
 const DASHBOARD_PREFIX = "/keys/dashboard";
 const PROXY_STATUS_PATH = "/keys/dashboard-proxy-status";

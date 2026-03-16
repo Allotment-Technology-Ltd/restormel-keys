@@ -2,7 +2,7 @@
 
 This directory is the **Zuplo API gateway** project for the Keys cloud API. It is intended to be deployed to Zuplo (either by connecting this repo to Zuplo Source Control or via the Zuplo CLI from this folder).
 
-**Runbook:** [docs/runbooks/zuplo-setup.md](../docs/runbooks/zuplo-setup.md)
+**Runbooks:** [zuplo-setup.md](../docs/runbooks/zuplo-setup.md) (full reference) · [zuplo-launch-cli.md](../docs/runbooks/zuplo-launch-cli.md) (single-path CLI launch)
 
 ## Contents
 
@@ -43,7 +43,7 @@ Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API
 
 ## Complete setup from CLI
 
-From this directory you can set Zuplo env vars and deploy in one go. Create `zuplo-gateway/.env` from `.env.example` and set at least:
+From this directory you can set Zuplo env vars and deploy in one go. Copy `.env.example` to `.env` and set at least:
 
 - `ZUPLO_API_KEY` — Portal → Settings → API Keys
 - `KEYS_BACKEND_URL` — e.g. `https://<dashboardServiceUrl>/keys/dashboard` (from `cd infra && pulumi stack output dashboardServiceUrl`)
@@ -58,7 +58,7 @@ pnpm install
 ./scripts/setup-from-cli.sh
 ```
 
-The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the `main` branch, then deploys the gateway (with `--no-verify-remote` for the monorepo). Optional env: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`. After it finishes, create a consumer (Portal or `./scripts/create-consumer-and-test.sh`) and test with `./scripts/test-gateway.sh`.
+The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the chosen branch (`ZUPLO_BRANCH`, default `main`), then deploys. For **working-copy**, run again with `ZUPLO_BRANCH=working-copy`. Optional env: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`. After it finishes, create a consumer (Portal or `./scripts/create-consumer-and-test.sh`), set `ZUPLO_CONSUMER_KEY` in `.env`, then run `./scripts/launch-checklist.sh <GATEWAY_URL>` for the launch validation report.
 
 ## Deploy
 
