@@ -107,6 +107,13 @@ export async function proxyAuthRequest(
   if (res.status === 503) {
     console.error("[auth] Neon Auth returned 503 for", path, "— check NEON_AUTH_BASE_URL and that Auth is enabled in Neon Console.");
   }
+  // Log 4xx body so we can see Neon's error message in Vercel logs
+  let bodyToReturn: BodyInit = res.body;
+  if (res.status >= 400 && res.status < 500) {
+    const errText = await res.text();
+    console.error("[auth] Neon Auth", res.status, "for", path, "—", errText.slice(0, 600));
+    bodyToReturn = errText;
+  }
   const outHeaders = new Headers(res.headers);
   // Preserve all auth cookies. Neon may set multiple cookies during OAuth.
   const setCookies =
@@ -144,7 +151,7 @@ export async function proxyAuthRequest(
       // leave Location as-is if not a valid URL
     }
   }
-  return new Response(res.body, {
+  return new Response(bodyToReturn, {
     status: res.status,
     statusText: res.statusText,
     headers: outHeaders,
