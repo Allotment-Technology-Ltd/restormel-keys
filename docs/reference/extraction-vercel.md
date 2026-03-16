@@ -14,14 +14,15 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 
 ## Moving to Vercel
 
-1. **Adapter** — The dashboard already uses `@sveltejs/adapter-vercel` and `apps/dashboard/vercel.json` (install from monorepo root, build from `apps/dashboard`).
-2. **Build** — In Vercel, set **Root Directory** to **`apps/dashboard`**. The repo’s `vercel.json` in that directory sets `installCommand` to `cd .. && pnpm install` (monorepo root; omit `--frozen-lockfile` so install succeeds when Vercel’s pnpm version differs from the repo’s) and `buildCommand` to `pnpm run build`. No need to override Output Directory; the adapter emits the correct structure.
-3. **Env** — In Vercel → Project → Settings → Environment Variables, add:
+1. **Adapter** — The dashboard uses `@sveltejs/adapter-vercel`. The repo uses **pnpm only**; do not commit `package-lock.json` in `apps/dashboard` (it is gitignored) or Vercel will run npm and conflict with pnpm.
+2. **Build (recommended)** — In Vercel, set **Root Directory** to **`.`** (repo root). The root **`vercel.json`** then applies: `installCommand`: `pnpm install`, `buildCommand`: `pnpm --filter dashboard build`, `outputDirectory`: `apps/dashboard/.vercel/output`. This avoids mixed npm/pnpm and cache issues.
+3. **Build (alternative)** — If you keep Root Directory as **`apps/dashboard`**, the `apps/dashboard/vercel.json` runs `cd .. && pnpm install` and `pnpm run build`. Ensure no `package-lock.json` exists there.
+4. **Env** — In Vercel → Project → Settings → Environment Variables, add:
    - `DATABASE_URL` — Neon connection string for the **production** branch.
    - `NEON_AUTH_BASE_URL` — Auth base URL from Neon Console for the **production** branch (Project → Branch → Auth → Configuration).
    - Any Paddle vars if needed.
-4. **Neon Auth + GitHub** — In **Neon Console** (Project → Branch → Auth), enable Auth and add GitHub as an OAuth provider. In your **GitHub OAuth App**, set **Authorization callback URL** to your dashboard’s auth callback (so the flow is proxied through the app), e.g. `https://your-vercel-domain.vercel.app/keys/dashboard/api/auth/callback/github` (or `https://restormel.dev/keys/dashboard/api/auth/callback/github` if users reach the dashboard via your custom domain).
-5. **Proxy / DNS** — If the site is currently on Cloudflare and proxies `/keys/dashboard` to Cloud Run, point the same route to the **Vercel URL** instead (e.g. set `KEYS_DASHBOARD_URL` or the Worker’s upstream to the Vercel deployment URL). No code change required; only deployment and env.
+5. **Neon Auth + GitHub** — In **Neon Console** (Project → Branch → Auth), enable Auth and add GitHub as an OAuth provider. In your **GitHub OAuth App**, set **Authorization callback URL** to your dashboard’s auth callback (so the flow is proxied through the app), e.g. `https://your-vercel-domain.vercel.app/keys/dashboard/api/auth/callback/github` (or `https://restormel.dev/keys/dashboard/api/auth/callback/github` if users reach the dashboard via your custom domain).
+6. **Proxy / DNS** — If the site is currently on Cloudflare and proxies `/keys/dashboard` to Cloud Run, point the same route to the **Vercel URL** instead (e.g. set `KEYS_DASHBOARD_URL` or the Worker’s upstream to the Vercel deployment URL). No code change required; only deployment and env.
 
 ## Current setup (1): Site on Cloudflare, dashboard on Vercel
 
