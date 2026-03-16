@@ -55,44 +55,15 @@ function parseUrl(value: string | null): URL | null {
   }
 }
 
-function originOnly(value: string | null): string | null {
-  const parsed = parseUrl(value);
-  return parsed ? parsed.origin : null;
-}
-
-function derivePublicUrl(request: Request, ourUrl: URL): URL {
-  const originUrl = parseUrl(request.headers.get("origin"));
-  if (originUrl) return originUrl;
-
-  const refererUrl = parseUrl(request.headers.get("referer"));
-  if (refererUrl) return new URL(refererUrl.origin);
-
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  if (forwardedHost) {
-    const forwardedProto = request.headers.get("x-forwarded-proto") || ourUrl.protocol.replace(":", "");
-    return new URL(`${forwardedProto}://${forwardedHost}`);
-  }
-
-  return ourUrl;
-}
-
 function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Headers {
   const headers = new Headers();
-  const publicUrl = derivePublicUrl(request, ourUrl);
-  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", publicUrl.host);
+  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", ourUrl.host);
   const contentType = request.headers.get("content-type");
   const accept = request.headers.get("accept");
   const acceptLanguage = request.headers.get("accept-language");
   const userAgent = request.headers.get("user-agent");
-  const referer = request.headers.get("referer");
 
   headers.set("host", targetUrl.host);
-  headers.set("x-forwarded-host", publicUrl.host);
-  headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
-  headers.set("x-forwarded-port", forwardedPort(publicUrl));
-  headers.set("origin", publicUrl.origin);
-
-  if (referer) headers.set("referer", referer);
   if (cookie) headers.set("cookie", cookie);
   if (contentType) headers.set("content-type", contentType);
   if (accept) headers.set("accept", accept);
@@ -172,12 +143,9 @@ export async function proxyAuthRequest(
     console.error("[auth] Neon Auth", res.status, "for", path, "—", errText.slice(0, 600));
     console.error("[auth] forwarded headers", {
       host: headers.get("host"),
-      xForwardedHost: headers.get("x-forwarded-host"),
-      xForwardedProto: headers.get("x-forwarded-proto"),
-      xForwardedPort: headers.get("x-forwarded-port"),
-      origin: headers.get("origin"),
-      // Log only the origin to avoid leaking query params or other identifiers.
-      refererOrigin: originOnly(headers.get("referer")),
+      contentType: headers.get("content-type"),
+      accept: headers.get("accept"),
+      hasCookie: Boolean(headers.get("cookie")),
     });
     bodyToReturn = errText;
   }
