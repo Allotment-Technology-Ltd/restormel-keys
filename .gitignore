@@ -39,3 +39,4 @@ temp/
 
 # Optional: uncomment when packages exist
 # packages/*/dist/
+.vercel

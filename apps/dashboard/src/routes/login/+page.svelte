@@ -1,6 +1,6 @@
 <script lang="ts">
   import { base } from "$app/paths";
-  import { signInWithGitHub, getIdToken } from "$lib/firebase-client";
+  import { authClient } from "$lib/auth-client";
   import AppLogo from "$lib/components/AppLogo.svelte";
 
   let loading = false;
@@ -10,24 +10,13 @@
     loading = true;
     error = "";
     try {
-      await signInWithGitHub();
-      const idToken = await getIdToken();
-      if (!idToken) throw new Error("No token");
-      const res = await fetch(`${base}/api/auth/session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-        credentials: "include",
+      await authClient.signIn.social({
+        provider: "github",
+        callbackURL: typeof window !== "undefined" ? window.location.origin + base + "/" : base + "/",
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Session failed");
-      }
-      // Full page navigation so the browser sends the new session cookie on the next request (proxy may set cookie on this response)
-      window.location.href = base + "/";
+      // Neon Auth redirects to GitHub; after callback it redirects to callbackURL
     } catch (e) {
       error = e instanceof Error ? e.message : "Sign in failed";
-    } finally {
       loading = false;
     }
   }

@@ -1,42 +1,47 @@
 /**
- * Firebase Auth session verification. Session cookie is set by POST /api/auth/session (after client login).
- * No raw keys or secrets in logs. Any auth/config error clears the session and continues so the app never 500s.
+ * Neon Auth session. Populates event.locals.user (uid, email).
+ * Adds X-Session-Cookie for proxy when response sets cookie.
  */
 import type { Handle } from "@sveltejs/kit";
-import { getAdminAuth } from "$lib/server/firebase-admin";
-
-const SESSION_COOKIE_NAME = "session";
+import { getSession } from "$lib/server/auth";
+import { upsertUser } from "$lib/server/db";
 
 export const handle: Handle = async ({ event, resolve }) => {
   try {
-    const token = event.cookies.get(SESSION_COOKIE_NAME);
-    if (token) {
+    const { data: session } = await getSession(event.request, event.url.host);
+    if (session?.user) {
+      event.locals.user = {
+        uid: session.user.id,
+        email: session.user.email ?? null,
+      };
       try {
-        const adminAuth = getAdminAuth();
-        const decoded = await adminAuth.verifySessionCookie(token, true);
-        event.locals.user = {
-          uid: decoded.uid,
-          email: decoded.email ?? null,
-        };
-      } catch {
-        event.locals.user = undefined;
-        event.cookies.delete(SESSION_COOKIE_NAME, { path: "/" });
+        await upsertUser(session.user.id, session.user.email ?? null);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg) console.error("[db] upsertUser:", msg.slice(0, 100));
       }
     } else {
       event.locals.user = undefined;
     }
   } catch (e) {
     event.locals.user = undefined;
-    try {
-      event.cookies.delete(SESSION_COOKIE_NAME, { path: "/" });
-    } catch {
-      // ignore
-    }
     const msg = e instanceof Error ? e.message : "";
-    if (msg && !msg.includes("not configured")) console.error("[auth] session hook:", msg.slice(0, 100));
+    if (msg && !msg.includes("not configured")) console.error("[auth] getSession:", msg.slice(0, 100));
   }
 
-  return resolve(event);
+  const response = await resolve(event);
+
+  const setCookie = response.headers.get("Set-Cookie");
+  if (setCookie) {
+    const headers = new Headers(response.headers);
+    headers.set("X-Session-Cookie", setCookie);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+  return response;
 };
 
 export const config = {

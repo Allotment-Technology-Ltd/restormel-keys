@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { listProjects } from "$lib/server/firestore";
+import { listProjects } from "$lib/server/db";
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) return { projects: [], projectsError: null };

@@ -3,13 +3,7 @@
 
 # --- Build stage ---
 FROM node:20-alpine AS build
-# Firebase client config is public (baked into client bundle). Pass at build time so Sign in with GitHub works.
-ARG PUBLIC_FIREBASE_API_KEY
-ARG PUBLIC_FIREBASE_AUTH_DOMAIN
-ARG PUBLIC_FIREBASE_PROJECT_ID
-ENV PUBLIC_FIREBASE_API_KEY=$PUBLIC_FIREBASE_API_KEY
-ENV PUBLIC_FIREBASE_AUTH_DOMAIN=$PUBLIC_FIREBASE_AUTH_DOMAIN
-ENV PUBLIC_FIREBASE_PROJECT_ID=$PUBLIC_FIREBASE_PROJECT_ID
+# Auth and DB config are runtime env (Better Auth + Neon); no build-time secrets.
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app

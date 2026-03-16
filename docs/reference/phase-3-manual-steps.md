@@ -8,7 +8,7 @@ This document lists **all** manual actions required to complete Phase 3 of the R
 
 Do these in the order below. Skip a step only if the note says “optional” or “when you’re ready.”
 
-### A. GCP and Pulumi (if not already done in Phase 1)
+### A. GCP and Pulumi (legacy, only if you need rollback)
 
 **A1. Create or select a GCP project.**
 
@@ -28,7 +28,7 @@ Do these in the order below. Skip a step only if the note says “optional” or
 1. In a terminal, run: `pulumi login`. If you use the Pulumi web backend, open the URL it prints and complete sign-in.
 2. In the repo root, run: `cd infra && pulumi stack select production` (or `pulumi stack init production` if the stack does not exist).
 3. Set config: `pulumi config set gcp:project YOUR_PROJECT_ID` (use the Project ID from A1). Optionally: `pulumi config set domain restormel.dev` when you are ready for custom domain.
-4. **Before `pulumi up`:** Run `pnpm run build` in `infra` (Pulumi runs the compiled output; a stale build can cause wrong resources or 403). If this is the first run or Cloud Run fails with "Permission denied on secret", run once from repo root: `./infra/grant-firebase-secret-access.sh`. See **Before every pulumi up** in `infra/README.md`. Then run `pulumi preview` and `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`) for later steps.
+4. **Only if you are intentionally running the legacy GCP stack:** Before `pulumi up`, run `pnpm run build` in `infra` (Pulumi runs the compiled output; a stale build can cause wrong resources or 403). See **Before any pulumi up** in `infra/README.md`. Then run `pulumi preview` and `pulumi up` and confirm. Note the outputs (e.g. `dashboardServiceUrl`) for later steps. Configure dashboard secrets (DATABASE_URL, NEON_AUTH_BASE_URL) per infra/README and section B below. For normal operation, the dashboard is deployed by Vercel, not this stack.
 5. **Do not** commit `Pulumi.production.yaml` if it contains secrets; use `pulumi config set --secret` for any secret values.
 
 **A4. GitHub secrets for deploy (CI).**
@@ -37,44 +37,35 @@ Do these in the order below. Skip a step only if the note says “optional” or
 2. Add **Repository secrets** (if not already present from Phase 1):
    - **GCP_PROJECT_ID** — value: your GCP Project ID (e.g. `restormel-keys-prod`).
    - **WIF_PROVIDER** and **WIF_SERVICE_ACCOUNT** — follow [Google Workload Identity Federation](https://github.com/google-github-actions/auth#setting-up-workload-identity-federation) so the deploy workflow can authenticate to GCP without a key file. Copy the provider name and service account email into these two secrets.
-   - **Firebase client (for dashboard “Sign in with GitHub”):** **PUBLIC_FIREBASE_API_KEY**, **PUBLIC_FIREBASE_AUTH_DOMAIN**, **PUBLIC_FIREBASE_PROJECT_ID** — from Firebase Console → Project Settings → General → Your apps (Web API Key, Auth domain, Project ID). These are baked into the dashboard image at build time; without them you get `auth/invalid-api-key` in the browser. **After adding or changing them, trigger a new deploy** (push to main so the deploy job runs, or Actions → CI → Run workflow) so the dashboard image is rebuilt.
+   - **Dashboard (Neon Auth + Neon DB):** For CI deploy, the dashboard image does not need build-time secrets. At **runtime**, Cloud Run needs `DATABASE_URL`, `NEON_AUTH_BASE_URL` (set via Pulumi secret refs or Cloud Run env). GitHub OAuth is configured in Neon Console. See section B (Neon and Neon Auth).
 3. **Never** commit these values. They stay only in GitHub Actions secrets.
 4. If deploy fails with “Artifact Registry” or “Cloud Run” permission errors, see `docs/domain-mapping-restormel-dev.md` §9 (grant the deploy identity **Artifact Registry Writer**, **Cloud Run Admin**, and **Service Account User** on `keys-dashboard-sa`).
 
 ---
 
-### B. Firebase (for dashboard auth)
+### B. Neon and Neon Auth (dashboard data + GitHub sign-in)
 
-**B1. Create or select a Firebase project.**
+**B1. Neon (Postgres).**
 
-1. Go to [Firebase Console](https://console.firebase.google.com).
-2. Click **Add project** (or select an existing project). Link it to the same GCP project as in A1 if you prefer.
-3. Note the **Project ID** and the **Web API Key** (under Project Settings → General → Your apps).
+1. Create a project at [Neon](https://neon.tech) and a database.
+2. Copy the **connection string** (e.g. `postgresql://user:pass@host/dbname?sslmode=require`). Store it in GCP Secret Manager (e.g. secret name `neon-database-url`) or set as Cloud Run env `DATABASE_URL`. For Pulumi: `pulumi config set DATABASE_URL_SECRET_REF neon-database-url` (or the secret name you use).
+3. Run the dashboard migrations once against this database:
+   - From repo root: `psql "$DATABASE_URL" -f apps/dashboard/migrations/001_initial.sql` (and optionally `002_better_auth.sql` if you had in-app Better Auth; Neon Auth uses its own schema).
+   - Or in Neon SQL Editor, paste and run the contents of each file in order.
 
-**B2. Enable GitHub sign-in.**
+**B2. Neon Auth (enable and get URL).**
 
-1. In Firebase Console, open **Build** → **Authentication** → **Sign-in method**.
-2. Click **GitHub** → **Enable** → toggle **Enable**.
-3. Copy the **Web API Key** from the Firebase Web app (or create a Web app if none exists). You will need: **API Key**, **Auth domain** (e.g. `your-project.firebaseapp.com`), **Project ID**.
-4. In the **GitHub** provider config, set **Client ID** and **Client Secret** from a GitHub OAuth App ([GitHub](https://github.com/settings/developers) → **OAuth Apps** → **New**; set Authorization callback URL to `https://<your-auth-domain>/__/auth/handler`).
-5. Save. **Do not** commit the Client Secret; store it only in Firebase and in env/secrets where the app runs.
+1. In [Neon Console](https://console.neon.tech), open your project → branch → **Auth** → enable Auth and open **Configuration**.
+2. Copy the **Auth base URL** (e.g. `https://ep-xxx.neonauth.region.aws.neon.tech/neondb/auth`). Set it as Cloud Run env `NEON_AUTH_BASE_URL` (or store in Secret Manager and set `NEON_AUTH_BASE_URL_SECRET_REF` in Pulumi).
+3. In the same Auth section, add **GitHub** as an OAuth provider: enter your GitHub OAuth App **Client ID** and **Client Secret** (from B3). You do **not** set these in the dashboard env; they live in Neon Console.
 
-**B3. Get Firebase Admin credentials.**
+**B3. GitHub OAuth App (for “Sign in with GitHub”).**
 
-1. In GCP Console (same project), go to **IAM & Admin** → **Service accounts**.
-2. Create a service account (e.g. `firebase-admin-keys`) with role **Firebase Admin SDK Administrator** (or minimal roles needed for Auth and Firestore).
-3. Create a **Key** (JSON) and download the file. Store it somewhere safe (e.g. local only, or in GCP Secret Manager). You will use it via `GOOGLE_APPLICATION_CREDENTIALS` or by pasting `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` into the environment where the dashboard runs (Cloud Run env or Secret Manager references).
-4. **Never** commit the JSON key or the private key. Do not paste the full key back into Cursor.
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers) → **OAuth Apps** → **New OAuth App** (or use an existing one).
+2. **Authorization callback URL:** set to your **dashboard** auth callback so the flow is proxied: `https://<your-dashboard-domain>/keys/dashboard/api/auth/callback/github` (e.g. `https://restormel.dev/keys/dashboard/api/auth/callback/github`).
+3. Note **Client ID** and **Client Secret**. Enter them in **Neon Console** (Auth → OAuth providers → GitHub). **Do not** commit the client secret or put it in app env.
 
-**B4. Configure the dashboard app with Firebase.**
-
-1. In the dashboard app, set **environment variables** from the values you noted:
-   - **Client (public):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`. For **CI builds** these must be in **GitHub Actions secrets** (A4) so the Docker build can bake them into the client bundle; otherwise the browser will show `auth/invalid-api-key` when clicking Sign in with GitHub.
-   - **Server (secret):** Cloud Run uses `GOOGLE_APPLICATION_CREDENTIALS` (secret mounted from Secret Manager). See `infra/` and Pulumi config.
-2. For Cloud Run, use **Secret Manager** for the Firebase Admin JSON; do not bake server secrets into the image. See `infra/README.md` and `grant-firebase-secret-access.sh`.
-3. **Secret Manager (one-time):** Create the secret `firebase-admin-credentials` in the **same GCP project** as your Pulumi stack (e.g. `restormel-keys-prod`), add a version with the JSON key. Grant the dashboard SA access once: from repo root run `./infra/grant-firebase-secret-access.sh`. See `infra/README.md` (§ Before every pulumi up, § Secret Manager: Firebase secret access).
-
-You do **not** need to paste the actual key values back into Cursor; only confirm that you have set them where the dashboard runs.
+Ensure Cloud Run has: `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Use Pulumi config `*_SECRET_REF` for each if stored in Secret Manager (see `infra/README.md`). You do **not** need to paste the actual secrets back into Cursor; only confirm that you have set them where the dashboard runs and in Neon Console.
 
 ---
 
@@ -223,7 +214,7 @@ You do not need to paste DNS records back into Cursor; only confirm that `https:
 ## 2. What to bring back into Cursor
 
 - **GCP Project ID** — Only if you need Cursor to add it to a config file (e.g. a non-committed example); otherwise keep it in Pulumi config and GitHub secrets only.
-- **Firebase:** Do **not** paste API keys, private keys, or client secrets into Cursor. Confirm in chat that you have set the required env vars (or Secret Manager refs) where the dashboard runs.
+- **Neon / Neon Auth:** Do **not** paste `DATABASE_URL` or Neon Auth URL into Cursor. Confirm that you have set the required env vars (or Secret Manager refs) where the dashboard runs; GitHub credentials live in Neon Console.
 - **Paddle:** Do **not** paste the client token or webhook secret into Cursor unless you are adding them to a local `.env.example` with placeholders; real values stay in env/secret manager only.
 - **Cloudflare:** No need to paste anything back; confirm the Pages deploy URL and that the custom domain is active.
 - **DNS:** No need to paste records back; confirm that the site and dashboard URLs resolve as expected.
@@ -237,8 +228,7 @@ If nothing needs to be brought back, you can simply say: “Phase 3 manual steps
 ## 3. What to do with any code or files
 
 - **Pulumi config:** Keep `infra/Pulumi.production.yaml` (or stack state) out of commits if it contains secrets. Use `pulumi config set --secret` for sensitive values. Commit only non-secret config (e.g. `gcp:project`, `domain`).
-- **Firebase service account JSON:** Do **not** put it in the repo. Store it on the machine or in GCP Secret Manager; point Cloud Run (or local) to it via `GOOGLE_APPLICATION_CREDENTIALS` or inject the three env vars from the JSON.
-- **Environment files:** If you create a local `.env` or `.env.local` for the dashboard or site, add them to `.gitignore` and do not commit. You may add a `.env.example` with placeholder names (e.g. `PUBLIC_FIREBASE_API_KEY=your_key_here`) and commit that.
+- **Environment files:** If you create a local `.env` or `.env.local` for the dashboard or site, add them to `.gitignore` and do not commit. You may add a `.env.example` with placeholder names (e.g. `DATABASE_URL=`, `NEON_AUTH_BASE_URL=`) and commit that.
 - **GitHub secrets:** Values stay in GitHub only. No file in the repo should contain them.
 - **Zuplo:** No code or files need to be added to the repo for Zuplo; the runbook and this doc are sufficient. If you add an OpenAPI spec to the repo (e.g. `docs/api/openapi.yaml`), commit that; do not commit any Zuplo API keys or tokens.
 

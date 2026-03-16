@@ -1,10 +1,12 @@
 <script lang="ts">
   import { base } from "$app/paths";
 
-  export let data: { project: { id: string; name: string } | null };
+  export let data: { project: { id: string; name: string } | null; error?: string | null };
 </script>
 
-{#if !data.project}
+{#if data.error}
+  <p class="error" role="alert">{data.error}</p>
+{:else if !data.project}
   <p class="error">Project not found.</p>
 {:else}
   <h1 class="page-title">Usage</h1>

@@ -2,10 +2,26 @@
   import "../app.css";
   import { page } from "$app/stores";
   import { base } from "$app/paths";
+  import { onMount } from "svelte";
+  import { authClient } from "$lib/auth-client";
   import AppLogo from "$lib/components/AppLogo.svelte";
 
   $: user = $page.data.user;
+  $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === base + "/login" || $page.url.pathname === base + "/logout";
+
+  onMount(async () => {
+    const verifier = $page.url.searchParams.get("neon_auth_session_verifier");
+    if (!verifier) return;
+    try {
+      // Let Neon SDK redeem verifier and persist session cookie using the canonical getSession flow.
+      await authClient.getSession();
+    } catch {
+      // Ignore; authError query params (if present) are shown by layout.
+    } finally {
+      window.location.replace(base + "/");
+    }
+  });
 </script>
 
 {#if isAuthRoute}
@@ -22,9 +38,9 @@
         <a href={base + "/billing"} class="nav-link">Billing</a>
         <a href={base + "/settings"} class="nav-link">Settings</a>
       </nav>
-      {#if user}
+      {#if user || authError}
         <div class="sidebar-footer">
-          <a href={base + "/logout"} class="nav-link">Log out</a>
+          <a href={base + "/logout"} class="nav-link" data-sveltekit-reload>Log out</a>
         </div>
       {/if}
     </aside>
@@ -39,6 +55,15 @@
       </header>
       <main class="main">
         {#if !user && !isAuthRoute}
+          {#if authError === "session-verifier-not-found"}
+            <div class="auth-error" role="alert">
+              <p>Sign-in link expired or already used.</p>
+              <p class="auth-error-actions">
+                <a href={base + "/logout"} class="auth-error-link" data-sveltekit-reload>Log out</a> to clear any existing session, then
+                <a href={base + "/login"} class="auth-error-link">sign in again</a>.
+              </p>
+            </div>
+          {/if}
           <p class="auth-prompt">Sign in to use the dashboard.</p>
           <a href={base + "/login"} class="btn btn-primary">Sign in with GitHub</a>
         {:else}
@@ -135,5 +160,30 @@
   .auth-prompt {
     margin: 0 0 1rem;
     color: var(--rm-muted);
+  }
+  .auth-error {
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--rm-error-bg, rgba(201, 92, 92, 0.12));
+    color: var(--rm-error, #c95c5c);
+    font-size: 0.875rem;
+    border-radius: var(--rm-radius);
+  }
+  .auth-error p {
+    margin: 0 0 0.5rem;
+  }
+  .auth-error p:last-child {
+    margin-bottom: 0;
+  }
+  .auth-error-actions {
+    color: var(--rm-muted);
+    font-size: 0.8125rem;
+  }
+  .auth-error-link {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .auth-error-link:hover {
+    text-decoration: underline;
   }
 </style>

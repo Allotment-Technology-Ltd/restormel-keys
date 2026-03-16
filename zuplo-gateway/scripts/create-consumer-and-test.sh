@@ -1,25 +1,36 @@
 #!/usr/bin/env bash
 # Create a Zuplo API key consumer and test the gateway from CLI.
 #
-# Prerequisites:
-#   - ZUPLO_API_KEY: Your Zuplo Developer API key (Portal → Settings → API Keys)
-#   - ZUPLO_ACCOUNT_NAME: Your account name (from portal URL, e.g. silver_profitable_wasp)
-#   - ZUPLO_BUCKET_NAME: Key bucket for the project (Portal → Project → Settings → Project Information)
-#   - GATEWAY_URL: Gateway URL to test (e.g. https://restormel-keys-gateway-main-0a9c221.d2.zuplo.dev)
+# Prerequisites (set in zuplo-gateway/.env or export):
+#   - ZUPLO_API_KEY: Portal → Settings → API Keys
+#   - ZUPLO_ACCOUNT_NAME: from portal URL (e.g. portal.zuplo.com/ACCOUNT/PROJECT)
+#   - ZUPLO_BUCKET_NAME: Portal → Project → Settings → Project Information (or bucketName in config/policies.json)
+#   - GATEWAY_URL: Portal → Environments → <env> → Gateway URL
 #
 # Usage:
-#   ZUPLO_API_KEY=zpka_xxx ZUPLO_ACCOUNT_NAME=my-account ZUPLO_BUCKET_NAME=my-bucket GATEWAY_URL=https://... ./scripts/create-consumer-and-test.sh
+#   cd zuplo-gateway && ./scripts/create-consumer-and-test.sh
+#   Or: GATEWAY_URL=https://... ./scripts/create-consumer-and-test.sh
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GATEWAY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$GATEWAY_DIR/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
 
 CONSUMER_NAME="${ZUPLO_CONSUMER_NAME:-test-consumer-cli}"
 API_BASE="https://dev.zuplo.com/v1"
 
 for var in ZUPLO_API_KEY ZUPLO_ACCOUNT_NAME ZUPLO_BUCKET_NAME GATEWAY_URL; do
   if [[ -z "${!var}" ]]; then
-    echo "Error: $var is required. Set it in your environment."
+    echo "Error: $var is required. Set it in zuplo-gateway/.env or export it."
     echo "  ZUPLO_ACCOUNT_NAME: from portal URL (e.g. portal.zuplo.com/ACCOUNT/PROJECT)"
     echo "  ZUPLO_BUCKET_NAME: Portal → Project → Settings → Project Information"
+    echo "  GATEWAY_URL: Portal → Environments → main (or working-copy) → Gateway"
     exit 1
   fi
 done
@@ -40,7 +51,8 @@ if echo "$RESPONSE" | grep -q '"key"'; then
     -H "Authorization: Bearer $API_KEY" \
     "$GATEWAY_URL/api/health"
   echo ""
-  echo "To use this key: export ZUPLO_CONSUMER_KEY=$API_KEY"
+  echo "Add to zuplo-gateway/.env: ZUPLO_CONSUMER_KEY=<key>"
+  echo "Then run: ./scripts/launch-checklist.sh $GATEWAY_URL"
 else
   echo "Failed to create consumer. Response:"
   echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE"

@@ -2,11 +2,45 @@
 
 This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Cloud Run) using a single **backend API key** (`sk-rk-...`).
 
-**Reference:** SOPHIA repo `docs/reference/operations/runbooks/zuplo-phase1-runbook.md` (same policy patterns; Keys uses its own project and backend URL).
-
 **Gate:** External call through Zuplo → Cloud Run returns 200. Developer portal shows API docs.
 
 **DO NOT:** Modify the dashboard backend to add Zuplo-specific logic. Consumer keys never hit the backend directly; only the backend key is sent to Cloud Run.
+
+---
+
+## Quick Start (10–15 min, CLI-first)
+
+**Single path:** Use the CLI from `zuplo-gateway/` for deploy and env vars; use the Portal (or browser MCP) only where the CLI cannot do the step.
+
+| Step | Action | Where |
+|------|--------|--------|
+| 1 | Create Zuplo project **`restormel-keys-gateway`** (once) | [Portal](https://portal.zuplo.com) — no CLI equivalent. |
+| 2 | Get **required values** (see table below) | Portal + infra/dashboard. |
+| 3 | Copy `zuplo-gateway/.env.example` → `.env`, fill in the three required vars | Local. |
+| 4 | Run **setup + deploy** for **main**, then **working-copy** if you use it | `./scripts/setup-from-cli.sh` (see [zuplo-launch-cli.md](zuplo-launch-cli.md)). |
+| 5 | Create at least one **consumer** and get a `zpka_...` key | Portal → API Key Service, or `./scripts/create-consumer-and-test.sh`. |
+| 6 | Run **launch validation** | `./scripts/launch-checklist.sh` (see [zuplo-launch-cli.md](zuplo-launch-cli.md)). |
+| 7 | **Portal-only:** Enable Developer Portal, import [docs/api/openapi.yaml](../api/openapi.yaml) | Portal (or browser MCP fallback). See [zuplo-launch-cli.md § Portal-only steps](zuplo-launch-cli.md#portal-only-steps). |
+
+**Execution runbook:** For the exact commands and order (main then working-copy), use **[zuplo-launch-cli.md](zuplo-launch-cli.md)**.
+
+---
+
+## Where to get each value
+
+Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit real values.**
+
+| Variable | Where to get it |
+|----------|-----------------|
+| **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
+| **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Example: `https://<dashboardServiceUrl>/keys/dashboard` where `<dashboardServiceUrl>` is from `cd infra && pulumi stack output dashboardServiceUrl`. If using a custom domain: `https://restormel.dev/keys/dashboard`. |
+| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Cloud Run): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `sk-rk-...`. |
+| **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
+| **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |
+| **ZUPLO_BRANCH** | Environment name: `main` or `working-copy` (or your branch name). Scripts default to `main`. |
+| **ZUPLO_BUCKET_NAME** | Portal → **Project** → **Settings** → **Project Information** (API Key bucket ID), or same as `bucketName` in `zuplo-gateway/config/policies.json` (e.g. `zprj-...-production`). Required for `create-consumer-and-test.sh`. |
+| **GATEWAY_URL** | After deploy: Portal → **Environments** → select env (e.g. main) → copy **Gateway** URL (e.g. `https://restormel-keys-gateway-main-XXXX.zuplo.app`). |
+| **ZUPLO_CONSUMER_KEY** | After creating a consumer: the `zpka_...` key (shown once). Put in `.env` for `test-gateway.sh` / `launch-checklist.sh`. |
 
 ---
 
@@ -91,9 +125,8 @@ The dashboard backend must accept this key for programmatic API requests. It mus
 1. In Zuplo, open **Developer Portal** (or **Docs**).
 2. Enable the developer portal for the project.
 3. Add or link an **OpenAPI spec** that describes the Keys cloud API (projects, project keys, health). You can:
-   - Write a minimal OpenAPI (e.g. `openapi: 3.0`, paths for `/api/health`, `/api/projects`, `/api/projects/{id}`, `/api/projects/{id}/keys`), or
-   - Use an exported spec from the dashboard if one exists, or
-   - Use a spec maintained in this repo (e.g. `docs/api/openapi.yaml`) and paste or import it into Zuplo.
+   - **Use the canonical spec** in this repo: [docs/api/openapi.yaml](../api/openapi.yaml) — import or paste it into Zuplo Developer Portal (Portal → Developer Portal → add/import spec). Update the **Servers** URL in the portal to your gateway URL (e.g. from Environments → main → Gateway) if needed.
+   - Or write a minimal OpenAPI (paths for `/api/health`, `/api/projects`, `/api/projects/{id}`, `/api/projects/{id}/keys`), or use an exported spec from the dashboard if one exists.
 4. Configure the portal to show authentication (API key in header or query) and example requests so developers can try the API.
 
 **Gate:** Developer portal is live and shows the API docs.
@@ -128,6 +161,27 @@ Ensure the dashboard backend is configured so that:
 
 ---
 
+## Launch readiness checklist
+
+Use this checklist to confirm Zuplo is **fully configured for launch**. Complete every item for the environment(s) you ship.
+
+| # | Item | How to verify / notes |
+|---|------|------------------------|
+| 1 | **Project** | Zuplo project **`restormel-keys-gateway`** exists. Portal or CLI. |
+| 2 | **Routes** | Routes deployed: path `/(.*)` (url-pattern), URL Forward to `${env.KEYS_BACKEND_URL}`, methods GET, POST, PUT, PATCH, DELETE. Code → routes.oas.json matches §2 and §8.3. |
+| 3 | **Policies** | All four inbound policies attached in order: api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth. Code → policies.json. **API key bucket:** `api-key-inbound` uses a `bucketName` that is project-specific. If you created the project in the portal, the bucket ID is in Portal → Project → Settings → Project Information (or API Key Service). If deploy fails or keys are rejected, ensure `config/policies.json` uses the bucket for this project (or define policies in the Portal and export per §8.5). |
+| 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `sk-rk-...`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
+| 5 | **Backend key** | Backend API key created in the Keys dashboard (Cloud Run); same key set as **KEYS_BACKEND_API_KEY** in Zuplo. Backend accepts this key and rejects `zpka_...` on direct calls (§7). |
+| 6 | **Developer portal** | Developer portal **enabled**. OpenAPI spec **added or imported** (e.g. from [docs/api/openapi.yaml](../api/openapi.yaml) or a minimal spec with paths `/api/health`, `/api/projects`, etc.). Portal shows API reference and auth (API key) so developers can try the API. §5. |
+| 7 | **At least one consumer** | At least one API key **consumer** created (Portal → API Key Service or script `zuplo-gateway/scripts/create-consumer-and-test.sh`). Clients use the issued `zpka_...` key to call the gateway. |
+| 8 | **Validation (§7)** | All four checks passed: no key → 401; invalid key → 401; valid key → 200 (or appropriate backend response); direct backend with `zpka_...` → 401/403. |
+| 9 | **Other environments** | If you use **Working Copy** (or any non-main branch environment): that environment has the **same** routes and policies (same `routes.oas.json` in the branch or same deploy), and **env vars set for that environment**. Otherwise you see “no routes” or holding page. §11. |
+| 10 | **CORS** | If clients call the gateway **from a browser**, CORS is configured (e.g. route not “Deny All Origins”). For server-to-server only, default is fine. §2.1. |
+
+When all items are done, Zuplo is ready for launch: gateway returns 401 without a key, 200 with a valid consumer key; dev portal shows docs; backend receives only the backend key.
+
+---
+
 ## Summary
 
 | Item | Value |
@@ -155,6 +209,7 @@ Use this checklist so deployment matches Zuplo’s expectations and avoids build
 | 4 | **config/policies.json** | Build schema can reject custom root keys. If the build fails with “additionalProperties” or “must be object”, see [§8.5 Troubleshooting: policies.json](#85-troubleshooting-policiesjson-build-failures). |
 | 5 | **Environment variables** (in Zuplo) | `KEYS_BACKEND_URL` (backend base URL, no trailing slash), `KEYS_BACKEND_API_KEY` (secret). Set in Portal → Settings → Environment Variables or via CLI/API. |
 | 6 | **Placeholder dirs** (optional) | Empty `modules/`, `.zuplo/`, `tests/` satisfy tsconfig `include`; avoids warnings. |
+| 7 | **API key bucket** | The `api-key-inbound` policy in `config/policies.json` has a `bucketName` (e.g. `zprj-...-production`) that is **project-specific**. If you created the Zuplo project in the portal, get the bucket name from Portal → Project → Settings → Project Information (or API Key Service) and set it in `policies.json` before deploy; otherwise the build or key validation may fail. See also Launch readiness checklist item 3. |
 
 After a successful build, create at least one API key consumer (Portal or API) and run the validation steps in §7.
 

@@ -1,6 +1,6 @@
 # Keys dashboard
 
-SvelteKit 2 + Svelte 5 dashboard for Restormel Keys (Phase 3.4). Firebase Auth (GitHub sign-in), Firestore `projects/{projectId}`, API keys CRUD. Served at `/keys/dashboard` (base path).
+SvelteKit 2 + Svelte 5 dashboard for Restormel Keys. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (projects, API keys). Served at `/keys/dashboard` (base path).
 
 ## Commands
 
@@ -24,13 +24,15 @@ SvelteKit 2 + Svelte 5 dashboard for Restormel Keys (Phase 3.4). Firebase Auth (
 - `GET/POST /keys/dashboard/api/projects` — List, create
 - `GET/PATCH/DELETE /keys/dashboard/api/projects/[id]` — Project CRUD
 - `GET/POST/DELETE /keys/dashboard/api/projects/[id]/keys` — API keys
-- `POST /keys/dashboard/api/auth/session` — Set session cookie (body: `{ idToken }`)
+- `GET/POST /keys/dashboard/api/auth/*` — Neon Auth proxy (sign-in, callback, sign-out)
 - `GET /keys/dashboard/api/health` — Health check
 
 ## Environment (no secrets in repo)
 
-- **Firebase Admin (server):** `GOOGLE_APPLICATION_CREDENTIALS` (path to service account JSON) or `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`
-- **Firebase client (login):** `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID` (same project as Admin; enable GitHub sign-in in Firebase Console)
+- **DATABASE_URL** — Neon Postgres connection string
+- **NEON_AUTH_BASE_URL** — Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env.
+
+Run migrations in `migrations/` (001_initial.sql; optionally 002_better_auth.sql if you had in-app Better Auth) once against the Neon database.
 
 ## Gate
 

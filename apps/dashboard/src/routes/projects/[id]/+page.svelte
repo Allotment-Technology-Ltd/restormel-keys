@@ -5,6 +5,7 @@
   export let data: {
     project: { id: string; name: string } | null;
     keys: { id: string; keyPrefix: string }[];
+    error?: string | null;
   };
 
   let generating = false;
@@ -45,7 +46,9 @@
   }
 </script>
 
-{#if !data.project}
+{#if data.error}
+  <p class="error" role="alert">{data.error}</p>
+{:else if !data.project}
   <p class="error">Project not found.</p>
 {:else}
   <h1 class="page-title">{data.project.name}</h1>
