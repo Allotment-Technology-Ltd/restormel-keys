@@ -45,6 +45,7 @@ One core; different wrappers. Use the headless API for resolution and cost on th
 
 ## Quick links
 
+- [Cloud API](/keys/docs/cloud-api/) — API reference, gateway URL, and Developer Portal (Try it)
 - [Keys landing](/keys) — what Keys is, modes, comparison, pricing
 - [Pricing](/keys/pricing) — tiers and FAQ
 - [Restormel](https://restormel.dev/) — homepage

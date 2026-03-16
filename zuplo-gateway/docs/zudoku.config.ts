@@ -6,7 +6,11 @@ const config: ZudokuConfig = {
     {
       type: "category",
       label: "Docs",
-      items: [{ type: "doc", file: "introduction" }, { type: "doc", file: "authentication" }],
+      items: [
+        { type: "doc", file: "introduction" },
+        { type: "doc", file: "how-it-fits-together" },
+        { type: "doc", file: "authentication" },
+      ],
     },
     { type: "link", to: "/api", label: "API Reference" },
   ],

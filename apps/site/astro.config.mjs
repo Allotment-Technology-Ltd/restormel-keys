@@ -19,6 +19,7 @@ export default defineConfig({
           items: [
             { slug: "keys/docs", label: "Overview" },
             { slug: "keys/docs/compatibility", label: "Framework compatibility" },
+            { slug: "keys/docs/cloud-api", label: "Cloud API" },
           ],
         },
       ],
