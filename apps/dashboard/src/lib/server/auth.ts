@@ -46,9 +46,40 @@ function forwardedPort(url: URL): string {
   return url.protocol === "https:" ? "443" : "80";
 }
 
+function parseUrl(value: string | null): URL | null {
+  if (!value) return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function originOnly(value: string | null): string | null {
+  const parsed = parseUrl(value);
+  return parsed ? parsed.origin : null;
+}
+
+function derivePublicUrl(request: Request, ourUrl: URL): URL {
+  const originUrl = parseUrl(request.headers.get("origin"));
+  if (originUrl) return originUrl;
+
+  const refererUrl = parseUrl(request.headers.get("referer"));
+  if (refererUrl) return new URL(refererUrl.origin);
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) {
+    const forwardedProto = request.headers.get("x-forwarded-proto") || ourUrl.protocol.replace(":", "");
+    return new URL(`${forwardedProto}://${forwardedHost}`);
+  }
+
+  return ourUrl;
+}
+
 function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Headers {
   const headers = new Headers();
-  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", ourUrl.host);
+  const publicUrl = derivePublicUrl(request, ourUrl);
+  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", publicUrl.host);
   const contentType = request.headers.get("content-type");
   const accept = request.headers.get("accept");
   const acceptLanguage = request.headers.get("accept-language");
@@ -56,10 +87,10 @@ function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Heade
   const referer = request.headers.get("referer");
 
   headers.set("host", targetUrl.host);
-  headers.set("x-forwarded-host", ourUrl.host);
-  headers.set("x-forwarded-proto", ourUrl.protocol.replace(":", ""));
-  headers.set("x-forwarded-port", forwardedPort(ourUrl));
-  headers.set("origin", ourUrl.origin);
+  headers.set("x-forwarded-host", publicUrl.host);
+  headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
+  headers.set("x-forwarded-port", forwardedPort(publicUrl));
+  headers.set("origin", publicUrl.origin);
 
   if (referer) headers.set("referer", referer);
   if (cookie) headers.set("cookie", cookie);
@@ -145,7 +176,8 @@ export async function proxyAuthRequest(
       xForwardedProto: headers.get("x-forwarded-proto"),
       xForwardedPort: headers.get("x-forwarded-port"),
       origin: headers.get("origin"),
-      referer: headers.get("referer"),
+      // Log only the origin to avoid leaking query params or other identifiers.
+      refererOrigin: originOnly(headers.get("referer")),
     });
     bodyToReturn = errText;
   }
