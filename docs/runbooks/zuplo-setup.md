@@ -36,7 +36,7 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 |----------|-----------------|
 | **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
 | **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard` (Cloudflare → Vercel dashboard). |
-| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Vercel): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `rk_...`. |
+| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Vercel): [Sign in](https://restormel.dev/keys/dashboard/login) → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `rk_...`. |
 | **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
 | **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |
 | **ZUPLO_BRANCH** | Environment name: `main` or `working-copy` (or your branch name). Scripts default to `main`. |
@@ -105,7 +105,7 @@ Create each policy in the Zuplo dashboard if it does not exist (same pattern as 
 
 ## 4. Backend API key (Zuplo env)
 
-1. Create a **backend API key** in the Keys dashboard (Vercel): log in → create/select a project → create an API key (`rk_...`). Use it only for Zuplo; store in secrets manager; do not commit.
+1. Create a **backend API key** in the Keys dashboard (Vercel): [Sign in](https://restormel.dev/keys/dashboard/login) → create/select a project → create an API key (`rk_...`). Use it only for Zuplo; store in secrets manager; do not commit.
 2. In the Zuplo project, open **Settings** → **Environment Variables** (or **Secrets**).
 3. Add a variable:
    - **Name:** `KEYS_BACKEND_API_KEY`
@@ -132,7 +132,7 @@ The dashboard must accept this key for programmatic API requests. It must **not*
 
 ## 6. Create backend API key (via dashboard)
 
-1. In the **Keys dashboard** (Vercel: e.g. https://restormel.dev/keys/dashboard), log in and create or select a project.
+1. In the **Keys dashboard** (Vercel: [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard)): [Sign in](https://restormel.dev/keys/dashboard/login) and create or select a project.
 2. Create an **API key** for the project (or use a dedicated “gateway” project). This key is the one you will use as **KEYS_BACKEND_API_KEY** in Zuplo (§4).
 3. Store the key securely; configure it in Zuplo as in §4. The dashboard must accept this key for requests that Zuplo forwards (inject-backend-auth).
 

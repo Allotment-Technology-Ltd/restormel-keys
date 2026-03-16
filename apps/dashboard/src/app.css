@@ -18,6 +18,7 @@
   --rm-font-display: var(--font-sans);
   --rm-font-ui: var(--font-mono);
   --rm-radius: var(--radius-base);
+  --rm-container-narrow: 56rem;
 }
 
 *,

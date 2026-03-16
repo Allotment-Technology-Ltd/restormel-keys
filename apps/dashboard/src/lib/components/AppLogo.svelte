@@ -26,16 +26,16 @@
     display: inline-flex;
     align-items: center;
     text-decoration: none;
-    padding: 0 0.25rem;
-    transition: opacity 0.15s ease;
+    padding: 0 var(--space-1);
+    transition: opacity var(--duration-fast, 0.15s) var(--ease, ease);
   }
   .app-logo:hover {
     opacity: 0.9;
   }
   .app-logo:focus-visible {
-    outline: 2px solid var(--focus-ring-color, #4c8dff);
-    outline-offset: 2px;
-    border-radius: 4px;
+    outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset, 2px);
+    border-radius: var(--rm-radius, var(--radius-base));
   }
   img {
     display: block;

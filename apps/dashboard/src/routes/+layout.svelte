@@ -48,9 +48,22 @@
                 <a href={base + "/login"} class="auth-error-link">sign in again</a>.
               </p>
             </div>
+          {:else}
+            <div class="welcome" role="region" aria-labelledby="welcome-heading">
+              <h1 id="welcome-heading" class="welcome-title">Restormel Keys Dashboard</h1>
+              <p class="welcome-intro">The dashboard lets you create projects, generate API keys for the Cloud API, and manage billing. Sign in once with GitHub and use the same account across the whole Restormel site.</p>
+              <ol class="welcome-checklist" aria-label="Get started">
+                <li><strong>Sign in</strong> with GitHub (use the button above).</li>
+                <li><strong>Create a project</strong> and generate an API key.</li>
+                <li><strong>Use your key</strong> with the Cloud API or in your app.</li>
+              </ol>
+              <p class="welcome-links">
+                <a href="/keys/docs/">Docs</a>
+                <span class="welcome-sep">·</span>
+                <a href="/keys/pricing">Pricing</a>
+              </p>
+            </div>
           {/if}
-          <p class="auth-prompt">Sign in to use the dashboard.</p>
-          <a href={base + "/login"} class="btn btn-primary">Sign in with GitHub</a>
         {:else}
           <slot />
         {/if}
@@ -68,22 +81,23 @@
     width: 12rem;
     background: var(--rm-surface);
     border-right: 1px solid var(--rm-border);
-    padding: 1rem 0;
+    padding: var(--space-4) 0;
     display: flex;
     flex-direction: column;
   }
   .logo {
-    margin-bottom: 1.5rem;
+    padding: 0 var(--space-4);
+    margin-bottom: var(--space-6);
   }
   .nav {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-1);
   }
   .nav-link {
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     color: var(--rm-muted);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
   .nav-link:hover {
     color: var(--rm-sage);
@@ -92,7 +106,7 @@
   }
   .sidebar-footer {
     margin-top: auto;
-    padding-top: 1rem;
+    padding-top: var(--space-4);
     border-top: 1px solid var(--rm-border);
   }
   .main-wrap {
@@ -102,20 +116,20 @@
     min-width: 0;
   }
   .topbar {
-    height: 3rem;
+    min-height: 3rem;
     border-bottom: 1px solid var(--rm-border);
     background: var(--rm-surface-raised);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1.5rem;
+    padding: 0 var(--space-6);
   }
   .topbar-title {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--rm-muted);
   }
   .topbar-user {
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     color: var(--rm-dim);
     max-width: 12rem;
     overflow: hidden;
@@ -123,13 +137,13 @@
   }
   .main {
     flex: 1;
-    padding: 1.5rem;
+    padding: var(--space-6);
   }
   .btn {
     display: inline-block;
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 500;
     border: none;
     cursor: pointer;
@@ -143,26 +157,26 @@
     text-decoration: none;
   }
   .auth-prompt {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
     color: var(--rm-muted);
   }
   .auth-error {
-    margin: 0 0 1rem;
-    padding: 0.75rem 1rem;
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
     background: var(--rm-error-bg, rgba(201, 92, 92, 0.12));
     color: var(--rm-error, #c95c5c);
     font-size: 0.875rem;
     border-radius: var(--rm-radius);
   }
   .auth-error p {
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
   .auth-error p:last-child {
     margin-bottom: 0;
   }
   .auth-error-actions {
     color: var(--rm-muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
   }
   .auth-error-link {
     color: var(--rm-sage);
@@ -170,5 +184,45 @@
   }
   .auth-error-link:hover {
     text-decoration: underline;
+  }
+  .welcome {
+    max-width: var(--rm-container-narrow);
+  }
+  .welcome-title {
+    font-family: var(--rm-font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--rm-text);
+    margin: 0 0 var(--space-3);
+  }
+  .welcome-intro {
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    margin: 0 0 var(--space-5);
+  }
+  .welcome-checklist {
+    margin: 0 0 var(--space-5);
+    padding-left: var(--space-5);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+  .welcome-checklist li {
+    margin-bottom: var(--space-2);
+  }
+  .welcome-checklist strong {
+    color: var(--rm-text);
+  }
+  .welcome-links {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+  .welcome-links a {
+    color: var(--rm-sage);
+  }
+  .welcome-sep {
+    color: var(--rm-dim);
+    margin: 0 var(--space-2);
   }
 </style>

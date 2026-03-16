@@ -9,6 +9,7 @@
     "hygiene": "bash scripts/check-repo-hygiene.sh",
     "check-secrets": "bash scripts/check-secrets.sh",
     "check-deps": "bash scripts/check-dependency-policy.sh",
+    "check-token-drift": "bash scripts/check-token-drift.sh",
     "bootstrap-paddle": "tsx scripts/bootstrap-paddle.ts"
   },
   "devDependencies": {

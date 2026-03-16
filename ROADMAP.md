@@ -12,6 +12,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
 - **Phase 2 complete:** @restormel/keys-svelte (KeyManager, ModelSelector, CostEstimator), @restormel/keys-elements, @restormel/keys-react, CLI, Next.js/SvelteKit demos, SOPHIA runbook, a11y, publish.
 - **Phase 3 started:** Astro + Starlight marketing site (3.1) in apps/site — marketing layout, homepage “Restormel makes reasoning visible”, Starlight at /keys/docs/*, Cloudflare Pages. Next: 3.2 Keys landing, 3.3 Pricing, 3.4 dashboard per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md).
+- **Experience unification (Phase A–D):** Dashboard logged-out UX and SSO, frontend brand shell and logo integration, journey fixes (pricing checkout, docs handoff, billing copy), docs/Zuplo same-link and documentation strategy, shared tokens package and drift check, UX contracts (nav/copy/state), reintegration seams documented in ARCHITECTURE.md.
 
 ---
 
