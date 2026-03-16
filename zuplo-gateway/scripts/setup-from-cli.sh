@@ -21,9 +21,13 @@ ENV_FILE="$GATEWAY_DIR/.env"
 
 # Load .env if present (do not commit secrets; .env is gitignored)
 if [[ -f "$ENV_FILE" ]]; then
+  # Preserve explicit shell-provided branch overrides (so `ZUPLO_BRANCH=working-copy ...`
+  # isn't overwritten by a default in .env).
+  EXPLICIT_ZUPLO_BRANCH="${ZUPLO_BRANCH-}"
   set -a
   source "$ENV_FILE"
   set +a
+  [[ -n "$EXPLICIT_ZUPLO_BRANCH" ]] && ZUPLO_BRANCH="$EXPLICIT_ZUPLO_BRANCH"
 fi
 
 PROJECT_NAME="${ZUPLO_PROJECT_NAME:-restormel-keys-gateway}"
