@@ -109,7 +109,7 @@ You're ready for this step when: schema is applied (Section 2), `DATABASE_URL` a
 
 1. **Confirm env** — In `apps/dashboard/.env` (and deployment env): `DATABASE_URL` and `NEON_AUTH_BASE_URL` are set. No code change is required; the app uses Neon for data and proxies `/api/auth/*` to Neon Auth.
 2. **Restart the dashboard** — Local: stop and run `pnpm run dev` (or your usual command) from the dashboard app. Deployed: trigger a redeploy or restart so the process picks up the env.
-3. **Verify** — Open the [dashboard](https://restormel.dev/keys/dashboard), [Sign in](https://restormel.dev/keys/dashboard/login) with GitHub, create a project, and create an API key. If all succeed, the dashboard is running on Neon for data and Neon Auth for sign-in.
+3. **Verify** — Open the [dashboard](https://restormel.dev/keys/dashboard), [Sign in](https://restormel.dev/keys/dashboard/login) with GitHub, create a project, and create a Gateway Key (Access). If all succeed, the dashboard is running on Neon for data and Neon Auth for sign-in.
 
 **If you see "HTTP 503 Service Unavailable" on the login page:**
 
@@ -134,10 +134,10 @@ For other failures: confirm DATABASE_URL is the correct Neon connection string (
 
 ## 5. Migrating existing Firestore data (optional)
 
-If you already have projects and API keys in Firestore and want them in Neon:
+If you already have projects and Gateway keys in Firestore and want them in Neon:
 
 1. **Export from Firestore:** Use the Firebase Console or a script to read `projects` and each project’s `apiKeys` subcollection. Export to JSON or a format you can iterate over.
-2. **Import into Neon:** For each project, `INSERT INTO projects (id, name, user_id, created_at) VALUES (...)`. For each API key, `INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at) VALUES (...)`. Use the same `id` values if you rely on existing URLs or references.
+2. **Import into Neon:** For each project, `INSERT INTO projects (id, name, user_id, created_at) VALUES (...)`. For each Gateway key, `INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at) VALUES (...)`. Use the same `id` values if you rely on existing URLs or references.
 3. **Verify:** Run the dashboard with Neon and confirm projects and keys appear. Then switch off Firestore (set `USE_NEON_DB=true` and remove or stop using Firebase for this data).
 
 A one-off script can be added under `apps/dashboard/scripts/` (e.g. `migrate-firestore-to-neon.ts`) that uses the Firebase Admin SDK to read and the Neon driver to write; keep it out of the main app and do not commit any credentials.

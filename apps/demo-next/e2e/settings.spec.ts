@@ -14,13 +14,13 @@ test.describe("settings page", () => {
   test.skip(skipClientContentInCI, "client content loads (dynamic import)", async ({ page }) => {
     await page.goto("/settings");
     await expect(page.getByTestId("settings-client-content")).toBeVisible({ timeout: CLIENT_LOAD_TIMEOUT });
-    await expect(page.getByRole("heading", { name: /API keys/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: /Provider credentials/i })).toBeVisible({ timeout: 5000 });
   });
 
   test.skip(skipClientContentInCI, "add key flow: empty state and add button", async ({ page }) => {
     await page.goto("/settings");
     await expect(page.getByTestId("settings-client-content")).toBeVisible({ timeout: CLIENT_LOAD_TIMEOUT });
-    await expect(page.getByText(/no api keys yet|add your first key/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/no provider credentials yet|add your first key/i)).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole("button", { name: /add key/i }).first()).toBeVisible({ timeout: 5000 });
   });
 

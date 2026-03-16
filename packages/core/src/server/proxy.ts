@@ -23,7 +23,7 @@ function getBaseUrl(provider: string): string {
 }
 
 /**
- * Create proxy handler: forwards request to provider with resolved API key, streams response.
+ * Create proxy handler: forwards request to provider with resolved provider credential, streams response.
  */
 export function createProxy(
   keys: KeysInstance,

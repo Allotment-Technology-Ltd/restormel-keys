@@ -12,6 +12,9 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
   if (!uid) {
     return json({ error: "Authentication required" }, { status: 401 });
   }
+  if (locals.user?.authType === "gateway_key" || locals.user?.authType === "management_key") {
+    return json({ error: "Checkout requires session auth" }, { status: 403 });
+  }
 
   let body: { priceId?: string; tier?: string; billingPeriod?: string };
   try {

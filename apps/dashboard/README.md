@@ -1,20 +1,30 @@
 # Keys dashboard
 
-SvelteKit 2 + Svelte 5 dashboard for Restormel Keys. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (projects, API keys). Served at `/keys/dashboard` (base path).
+SvelteKit 2 + Svelte 5 dashboard for Restormel Keys. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (workspaces, projects, environments, Gateway keys, provider integrations, models, routes, policies, request logs). Run migrations 001–005 as needed. Served at `/keys/dashboard` (base path).
 
 ## Commands
 
 - `pnpm dev` — dev server (open http://localhost:5173/keys/dashboard)
 - `pnpm build` — build for Node (adapter-node)
 - `pnpm preview` — preview production build
+- `pnpm run seed:catalog` — ingest model catalog from `data/model-catalog-seed.json` (requires DATABASE_URL)
 
-## Routes
+## Routes (match sidebar)
 
-- `/keys/dashboard` — Overview (project list)
+- `/keys/dashboard` — **Overview** (project list; onboarding checklist when no project/keys/integrations)
 - `/keys/dashboard/projects` — List + create project
-- `/keys/dashboard/projects/[id]` — Project detail, generate/revoke API keys
-- `/keys/dashboard/projects/[id]/usage` — Placeholder (Phase 4)
-- `/keys/dashboard/billing` — Placeholder (3.5)
+- `/keys/dashboard/projects/[id]` — Project detail (environments, usage placeholder)
+- `/keys/dashboard/projects/[id]/routes` — Routes for project
+- `/keys/dashboard/projects/[id]/routes/[routeId]` — Route detail (steps, default model, lifecycle warnings)
+- `/keys/dashboard/access` — **Access**: list/create/revoke Gateway Keys (across projects)
+- `/keys/dashboard/integrations` — **Provider Integrations**: connect OpenAI, Anthropic, Google, etc.
+- `/keys/dashboard/models` — **Models**: catalog (lifecycle, variants)
+- `/keys/dashboard/routes` — **Routes**: list routes across projects
+- `/keys/dashboard/policies` — **Policies**: list/create policies
+- `/keys/dashboard/analytics` — **Analytics**: request count, latency, error rate, provider/model/route mix, spend placeholder
+- `/keys/dashboard/logs` — **Logs & Traces**: request logs (filter by project/route)
+- `/keys/dashboard/lifecycle` — **Lifecycle & Migrations**: placeholder and migration guidance
+- `/keys/dashboard/billing` — **Billing & Forecasting**: placeholder
 - `/keys/dashboard/settings` — Account (user id, email)
 - `/keys/dashboard/login` — Sign in with GitHub
 - `/keys/dashboard/logout` — Clear session, redirect to login
@@ -23,7 +33,9 @@ SvelteKit 2 + Svelte 5 dashboard for Restormel Keys. **Neon Auth** (GitHub OAuth
 
 - `GET/POST /keys/dashboard/api/projects` — List, create
 - `GET/PATCH/DELETE /keys/dashboard/api/projects/[id]` — Project CRUD
-- `GET/POST/DELETE /keys/dashboard/api/projects/[id]/keys` — API keys
+- `GET/POST/DELETE /keys/dashboard/api/projects/[id]/keys` — Gateway keys
+- `GET /keys/dashboard/api/request-logs` — Request logs (workspace-scoped)
+- `GET /keys/dashboard/api/usage-aggregates` — Usage aggregates or on-the-fly from request_logs
 - `GET/POST /keys/dashboard/api/auth/*` — Neon Auth proxy (sign-in, callback, sign-out)
 - `GET /keys/dashboard/api/health` — Health check
 
@@ -32,8 +44,9 @@ SvelteKit 2 + Svelte 5 dashboard for Restormel Keys. **Neon Auth** (GitHub OAuth
 - **DATABASE_URL** — Neon Postgres connection string
 - **NEON_AUTH_BASE_URL** — Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env.
 
-Run migrations in `migrations/` (001_initial.sql; optionally 002_better_auth.sql if you had in-app Better Auth) once against the Neon database.
+Run migrations in `migrations/` (001_initial.sql through 005_seed_model_catalog.sql as needed) against the Neon database.
 
-## Gate
+## Terminology
 
-Dashboard runs. Sign in with GitHub. Create project. Generate API key.
+- **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
+- **Provider credential** — Your OpenAI/Anthropic/Google etc. key; stored in Provider Integrations so Restormel can route requests.

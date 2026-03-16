@@ -23,7 +23,7 @@ When the app is served at a custom domain (e.g. restormel.dev), use the same pat
 
 - **Marketing (site):** Nav links → Keys, Docs, Pricing, GitHub, Dashboard. Footer → same + Dashboard.
 - **Docs (Starlight):** Sidebar → Start here (Overview, Framework compatibility, Cloud API); Product → Dashboard, Sign in.
-- **Dashboard:** Sidebar → Overview, Projects, Billing, Settings; topbar → Sign in (when logged out) or user/account.
+- **Dashboard:** Sidebar → Overview, Projects, Access, Provider Integrations, Models, Routes, Policies, Analytics, Logs & Traces, Lifecycle & Migrations, Billing & Forecasting, Settings, Documentation; topbar → Sign in (when logged out) or user/account.
 
 Shared nav schema: site nav, Starlight sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md) (SSO and same links).
 
@@ -35,12 +35,20 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 
 | Term           | Use for |
 |----------------|---------|
-| Project        | The container for API keys and usage (dashboard). |
-| API key        | Keys created in the dashboard for the Cloud API; format `rk_...`. |
-| Dashboard      | The app at `/keys/dashboard` (not “admin” or “portal”). |
+| **Gateway Key**      | The credential your app, CLI, or SDK uses to authenticate to Restormel (Cloud API). Created in the dashboard (Access); format `rk_...`. Not the same as a provider credential. |
+| **Provider credential** | Your OpenAI, Anthropic, Google, or other provider API key. Stored in Restormel (Provider Integrations) so Restormel can route requests on your behalf. Optional; you can use Gateway Key only or both. |
+| **Workspace**        | Top-level account boundary; one default workspace per user, created when you sign in. |
+| **Project**          | Container for Gateway keys, routes, and usage. One per app or product. |
+| **Environment**      | Dev, staging, prod (or similar) within a project. |
+| **Provider integration** | A connected provider (OpenAI, Anthropic, etc.) and its credential reference; managed under Provider Integrations. |
+| **Route**            | Per-project/environment: which model(s), fallbacks, and billing mode. |
+| **Models**           | The model catalog (canonical models and provider variants). |
+| **Analytics**        | Request count, latency, error rate, usage by provider/model/route. |
+| **Logs & Traces**    | Request-level logs from the gateway. |
+| **Dashboard**        | The app at `/keys/dashboard` (not "admin" or "portal"). |
 | Sign in        | Auth CTA (not “Login”, “Log in”). |
 | Cloud API      | The HTTP API exposed via Zuplo gateway. |
-| Zuplo gateway  | The gateway that fronts the Cloud API; consumer keys `zpka_...`, backend key `rk_...`. |
+| Zuplo gateway  | The gateway that fronts the Cloud API; consumer keys `zpka_...`, backend key is a Gateway Key `rk_...`. |
 | Restormel Keys | Product name (not “Keys” alone when disambiguation is needed). |
 
 ### CTA grammar
@@ -48,12 +56,12 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 - **Primary auth:** “Sign in with GitHub” (button/link). Link target: `/keys/dashboard/login`.
 - **Dashboard entry:** “Dashboard” (link). Target: `/keys/dashboard`.
 - **After checkout:** “You’re sent to the dashboard. Sign in with GitHub if you aren’t already.”
-- **Key handling:** Use privacy-sensitive copy: “your key”, “API key”; never expose raw keys in UI or errors. Use masked identifiers (e.g. key prefix or hash) in support/debug text.
+- **Key handling:** Use privacy-sensitive copy: “your key”, “Gateway key”; never expose raw keys in UI or errors. Use masked identifiers (e.g. key prefix or hash) in support/debug text.
 
 ### Security and key copy
 
-- In UI and docs: “your key”, “API key”, “masked in UI”, “never logged”.
-- Same object model terms everywhere: Project, API Key, Provider, Plan, Usage (site, docs, dashboard, embed).
+- In UI and docs: “your key”, “Gateway key”, “masked in UI”, “never logged”.
+- Same object model terms everywhere: Workspace, Project, Environment, Gateway Key, Provider credential, Provider integration, Route, Models, Analytics, Logs (site, docs, dashboard, embed).
 
 ## 3. State conventions
 

@@ -1,6 +1,6 @@
 /**
- * API key hashing and masking. Uses Node.js crypto (createHmac, timingSafeEqual, randomBytes).
- * Never store or log raw keys.
+ * Gateway Key hashing and masking (dashboard keys, format rk_... / sk-rk-...).
+ * Uses Node.js crypto (createHmac, timingSafeEqual, randomBytes). Never store or log raw keys.
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -17,7 +17,7 @@ export interface CreateApiKeyResult {
 }
 
 /**
- * Generate a new API key: prefix + random, HMAC-SHA256 hash, and a short ID for lookup.
+ * Generate a new Gateway Key: prefix + random, HMAC-SHA256 hash, and a short ID for lookup.
  * Returns raw key (show once to user), hash (store this, not raw), and id (storage key).
  * @param hashSecret - Secret for HMAC (required).
  * @param prefix - Key prefix (default "sk-rk").

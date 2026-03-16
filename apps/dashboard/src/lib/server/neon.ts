@@ -1,20 +1,38 @@
 /**
- * Neon (Postgres) storage: projects and api_keys.
- * No raw API keys stored; prefix + hash only. See security-baseline.
- * Requires DATABASE_URL (Neon connection string). Schema: apps/dashboard/migrations/001_initial.sql.
+ * Neon (Postgres) storage: workspaces, projects, environments, api_keys (Gateway keys).
+ * No raw Gateway keys stored; prefix + hash only. See security-baseline.
+ * Schema: 001_initial, 002_better_auth, 003_workspaces_and_environments.
  */
 import { neon } from "@neondatabase/serverless";
 import { randomBytes, createHash } from "crypto";
 
 const KEY_PREFIX = "rk_";
 
+export type Workspace = {
+  id: string;
+  name: string;
+  slug: string;
+  ownerUserId: string;
+  createdAt: number;
+};
+
 export type Project = {
   id: string;
   name: string;
   userId: string;
+  workspaceId: string | null;
   createdAt: number;
 };
 
+export type Environment = {
+  id: string;
+  projectId: string;
+  name: string;
+  type: string;
+  createdAt: number;
+};
+
+/** Gateway key record (Restormel auth). Stored as prefix + hash; table name api_keys for compatibility. */
 export type ApiKeyRecord = {
   id: string;
   keyPrefix: string;
@@ -41,11 +59,40 @@ export async function upsertUser(userId: string, email?: string | null): Promise
   `;
 }
 
-/** List projects for user */
+/** Get or create the default workspace for a user (one workspace per user for first rollout). */
+export async function getOrCreateDefaultWorkspace(userId: string): Promise<Workspace> {
+  const sql = getSql();
+  const existing = await sql`
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt"
+    FROM workspaces
+    WHERE owner_user_id = ${userId}
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  if (existing.length > 0) {
+    const r = existing[0];
+    return {
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      ownerUserId: r.ownerUserId,
+      createdAt: Number(r.createdAt),
+    } as Workspace;
+  }
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO workspaces (id, name, slug, owner_user_id, created_at)
+    VALUES (${id}, 'Default', 'default', ${userId}, ${createdAt})
+  `;
+  return { id, name: "Default", slug: "default", ownerUserId: userId, createdAt };
+}
+
+/** List projects for user (ownership via user_id; projects belong to user's workspace). */
 export async function listProjects(userId: string): Promise<Project[]> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, name, user_id AS "userId", created_at AS "createdAt"
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
     FROM projects
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
@@ -54,33 +101,124 @@ export async function listProjects(userId: string): Promise<Project[]> {
     id: r.id,
     name: r.name,
     userId: r.userId,
+    workspaceId: r.workspaceId ?? null,
     createdAt: Number(r.createdAt),
   })) as Project[];
 }
 
-/** Create project; returns new project with id */
+/** List projects in a workspace (for Management key scope). */
+export async function listProjectsByWorkspace(workspaceId: string): Promise<Project[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
+    FROM projects
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    userId: r.userId,
+    workspaceId: r.workspaceId ?? null,
+    createdAt: Number(r.createdAt),
+  })) as Project[];
+}
+
+/** Get project if it belongs to the given workspace (for Management key scope). */
+export async function getProjectInWorkspace(projectId: string, workspaceId: string): Promise<Project | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
+    FROM projects
+    WHERE id = ${projectId} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    name: r.name,
+    userId: r.userId,
+    workspaceId: r.workspaceId ?? null,
+    createdAt: Number(r.createdAt),
+  } as Project;
+}
+
+/** Create project under user's default workspace; seeds dev and prod environments. */
 export async function createProject(userId: string, name: string): Promise<Project> {
   const sql = getSql();
+  const workspace = await getOrCreateDefaultWorkspace(userId);
   const id = crypto.randomUUID();
   const createdAt = Date.now();
+  const projectName = name || "Unnamed project";
   await sql`
-    INSERT INTO projects (id, name, user_id, created_at)
-    VALUES (${id}, ${name || "Unnamed project"}, ${userId}, ${createdAt})
+    INSERT INTO projects (id, name, user_id, workspace_id, created_at)
+    VALUES (${id}, ${projectName}, ${userId}, ${workspace.id}, ${createdAt})
   `;
-  return { id, name: name || "Unnamed project", userId, createdAt };
+  const envCreatedAt = Date.now();
+  await sql`
+    INSERT INTO environments (id, project_id, name, type, created_at)
+    VALUES
+      (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
+      (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
+  `;
+  return { id, name: projectName, userId, workspaceId: workspace.id, createdAt };
 }
 
 /** Get project; returns null if not found or not owner */
 export async function getProject(projectId: string, userId: string): Promise<Project | null> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, name, user_id AS "userId", created_at AS "createdAt"
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
     FROM projects
     WHERE id = ${projectId} AND user_id = ${userId}
   `;
   if (rows.length === 0) return null;
   const r = rows[0];
-  return { id: r.id, name: r.name, userId: r.userId, createdAt: Number(r.createdAt) } as Project;
+  return {
+    id: r.id,
+    name: r.name,
+    userId: r.userId,
+    workspaceId: r.workspaceId ?? null,
+    createdAt: Number(r.createdAt),
+  } as Project;
+}
+
+/** List environments for a project (caller must own project). */
+export async function listEnvironments(projectId: string, userId: string): Promise<Environment[]> {
+  const project = await getProject(projectId, userId);
+  if (!project) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", name, type, created_at AS "createdAt"
+    FROM environments
+    WHERE project_id = ${projectId}
+    ORDER BY type ASC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    projectId: r.projectId,
+    name: r.name,
+    type: r.type,
+    createdAt: Number(r.createdAt),
+  })) as Environment[];
+}
+
+/** Get environment if it belongs to the project (for route creation). */
+export async function getEnvironmentInProject(
+  environmentId: string,
+  projectId: string
+): Promise<Environment | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", name, type, created_at AS "createdAt"
+    FROM environments
+    WHERE id = ${environmentId} AND project_id = ${projectId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { id: r.id, projectId: r.projectId, name: r.name, type: r.type, createdAt: Number(r.createdAt) } as Environment;
 }
 
 /** Update project name */
@@ -94,7 +232,7 @@ export async function updateProject(projectId: string, userId: string, name: str
   return Array.isArray(rows) && rows.length > 0;
 }
 
-/** Delete project (and its api_keys via FK CASCADE) */
+/** Delete project (and its Gateway keys in api_keys via FK CASCADE) */
 export async function deleteProject(projectId: string, userId: string): Promise<boolean> {
   const sql = getSql();
   const rows = await sql`
@@ -108,7 +246,65 @@ function hashKey(raw: string): string {
   return createHash("sha256").update(raw, "utf8").digest("hex");
 }
 
-/** List API keys for project (prefix only) */
+/** Result of verifying a Gateway key (Bearer). Used for programmatic API access. */
+export type GatewayKeyContext = {
+  keyId: string;
+  projectId: string;
+  userId: string;
+};
+
+/**
+ * Verify a raw Gateway key and record last-used. Returns key context or null.
+ * Uses same hash as create (SHA-256). Never log or expose raw key.
+ */
+export async function verifyGatewayKey(rawKey: string): Promise<GatewayKeyContext | null> {
+  const keyHash = hashKey(rawKey);
+  const sql = getSql();
+  const rows = await sql`
+    SELECT k.id AS "keyId", k.project_id AS "projectId", p.user_id AS "userId"
+    FROM api_keys k
+    INNER JOIN projects p ON k.project_id = p.id
+    WHERE k.key_hash = ${keyHash}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0] as { keyId: string; projectId: string; userId: string };
+  const now = Date.now();
+  await sql`
+    UPDATE api_keys SET last_used_at = ${now} WHERE id = ${r.keyId}
+  `;
+  return { keyId: r.keyId, projectId: r.projectId, userId: r.userId };
+}
+
+/** Result of verifying a Management key (Bearer). Workspace-scoped admin. */
+export type ManagementKeyContext = {
+  keyId: string;
+  workspaceId: string;
+};
+
+/**
+ * Verify a raw Management key and record last-used. Returns key context or null.
+ * Only active keys (status = 'active' or null) are accepted.
+ */
+export async function verifyManagementKey(rawKey: string): Promise<ManagementKeyContext | null> {
+  const keyHash = hashKey(rawKey);
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId"
+    FROM management_keys
+    WHERE key_hash = ${keyHash} AND (status IS NULL OR status = 'active')
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0] as { id: string; workspaceId: string };
+  const now = Date.now();
+  await sql`
+    UPDATE management_keys SET last_used_at = ${now} WHERE id = ${r.id}
+  `;
+  return { keyId: r.id, workspaceId: r.workspaceId };
+}
+
+/** List Gateway keys for project (prefix only) */
 export async function listApiKeys(projectId: string, userId: string): Promise<ApiKeyRecord[]> {
   const project = await getProject(projectId, userId);
   if (!project) return [];
@@ -128,7 +324,7 @@ export async function listApiKeys(projectId: string, userId: string): Promise<Ap
 }
 
 /**
- * Create API key. Returns { rawKey, keyPrefix } once; caller must show to user. Store only prefix + hash.
+ * Create Gateway key. Returns { rawKey, keyPrefix } once; caller must show to user. Store only prefix + hash.
  */
 export async function createApiKey(
   projectId: string,
@@ -146,10 +342,26 @@ export async function createApiKey(
     INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at)
     VALUES (${id}, ${projectId}, ${keyPrefix}, ${keyHash}, ${createdAt})
   `;
+  if (project.workspaceId) {
+    try {
+      await insertAuditEvent({
+        workspaceId: project.workspaceId,
+        actorId: userId,
+        actorType: "user",
+        eventType: "gateway_key_created",
+        targetType: "gateway_key",
+        targetId: id,
+        summary: "Gateway key created",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after create:", msg.slice(0, 80));
+    }
+  }
   return { rawKey, keyPrefix };
 }
 
-/** Revoke (delete) API key */
+/** Revoke (delete) Gateway key */
 export async function deleteApiKey(projectId: string, keyId: string, userId: string): Promise<boolean> {
   const project = await getProject(projectId, userId);
   if (!project) return false;
@@ -158,5 +370,1677 @@ export async function deleteApiKey(projectId: string, keyId: string, userId: str
     DELETE FROM api_keys WHERE id = ${keyId} AND project_id = ${projectId}
     RETURNING id
   `;
+  const deleted = Array.isArray(rows) && rows.length > 0;
+  if (deleted && project.workspaceId) {
+    try {
+      await insertAuditEvent({
+        workspaceId: project.workspaceId,
+        actorId: userId,
+        actorType: "user",
+        eventType: "gateway_key_revoked",
+        targetType: "gateway_key",
+        targetId: keyId,
+        summary: "Gateway key revoked",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after revoke:", msg.slice(0, 80));
+    }
+  }
+  return deleted;
+}
+
+// ---------------------------------------------------------------------------
+// Audit events (control-plane; used by key create/revoke)
+// ---------------------------------------------------------------------------
+
+export type AuditEventRecord = {
+  id: string;
+  workspaceId: string;
+  actorId: string;
+  actorType: string;
+  eventType: string;
+  targetType: string;
+  targetId: string;
+  summary?: string | null;
+  createdAt: number;
+};
+
+/** Record an audit event. Requires audit_events table (migration 004). */
+export async function insertAuditEvent(params: {
+  workspaceId: string;
+  actorId: string;
+  actorType: string;
+  eventType: string;
+  targetType: string;
+  targetId: string;
+  summary?: string;
+}): Promise<void> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO audit_events (id, workspace_id, actor_id, actor_type, event_type, target_type, target_id, summary, created_at)
+    VALUES (${id}, ${params.workspaceId}, ${params.actorId}, ${params.actorType}, ${params.eventType}, ${params.targetType}, ${params.targetId}, ${params.summary ?? null}, ${createdAt})
+  `;
+}
+
+/** List recent audit events for a workspace (caller must have access). */
+export async function listAuditEvents(
+  workspaceId: string,
+  options: { limit?: number; since?: number } = {}
+): Promise<AuditEventRecord[]> {
+  const { limit = 50, since } = options;
+  const sql = getSql();
+  const rows = since
+    ? await sql`
+        SELECT id, workspace_id AS "workspaceId", actor_id AS "actorId", actor_type AS "actorType",
+               event_type AS "eventType", target_type AS "targetType", target_id AS "targetId",
+               summary, created_at AS "createdAt"
+        FROM audit_events
+        WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT id, workspace_id AS "workspaceId", actor_id AS "actorId", actor_type AS "actorType",
+               event_type AS "eventType", target_type AS "targetType", target_id AS "targetId",
+               summary, created_at AS "createdAt"
+        FROM audit_events
+        WHERE workspace_id = ${workspaceId}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+  return rows.map((r) => ({
+    id: r.id,
+    workspaceId: r.workspaceId,
+    actorId: r.actorId,
+    actorType: r.actorType,
+    eventType: r.eventType,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    summary: r.summary ?? undefined,
+    createdAt: Number(r.createdAt),
+  })) as AuditEventRecord[];
+}
+
+// ---------------------------------------------------------------------------
+// Provider integrations (credential_ref only; no raw secrets)
+// ---------------------------------------------------------------------------
+
+export type ProviderIntegrationRecord = {
+  id: string;
+  workspaceId: string;
+  providerType: string;
+  displayName: string | null;
+  status: string;
+  verificationStatus: string | null;
+  credentialRef: string | null;
+  createdBy: string | null;
+  createdAt: number;
+  lastVerifiedAt: number | null;
+  metadata: Record<string, unknown> | null;
+  region: string | null;
+};
+
+export type ProviderBindingRecord = {
+  id: string;
+  providerIntegrationId: string;
+  projectId: string;
+  environmentId: string | null;
+  status: string;
+  usageMode: string | null;
+  createdAt: number;
+};
+
+const PROVIDER_INTEGRATION_DEFAULT_STATUS = "active";
+
+/** List provider integrations for a workspace. */
+export async function listProviderIntegrations(workspaceId: string): Promise<ProviderIntegrationRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", provider_type AS "providerType", display_name AS "displayName",
+           status, verification_status AS "verificationStatus", credential_ref AS "credentialRef",
+           created_by AS "createdBy", created_at AS "createdAt", last_verified_at AS "lastVerifiedAt",
+           metadata, region
+    FROM provider_integrations
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    workspaceId: r.workspaceId,
+    providerType: r.providerType,
+    displayName: r.displayName ?? null,
+    status: r.status ?? PROVIDER_INTEGRATION_DEFAULT_STATUS,
+    verificationStatus: r.verificationStatus ?? null,
+    credentialRef: r.credentialRef ?? null,
+    createdBy: r.createdBy ?? null,
+    createdAt: Number(r.createdAt),
+    lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
+    metadata: r.metadata ?? null,
+    region: r.region ?? null,
+  })) as ProviderIntegrationRecord[];
+}
+
+/** Get one provider integration; returns null if not in workspace. */
+export async function getProviderIntegration(
+  id: string,
+  workspaceId: string
+): Promise<ProviderIntegrationRecord | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", provider_type AS "providerType", display_name AS "displayName",
+           status, verification_status AS "verificationStatus", credential_ref AS "credentialRef",
+           created_by AS "createdBy", created_at AS "createdAt", last_verified_at AS "lastVerifiedAt",
+           metadata, region
+    FROM provider_integrations
+    WHERE id = ${id} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    workspaceId: r.workspaceId,
+    providerType: r.providerType,
+    displayName: r.displayName ?? null,
+    status: r.status ?? PROVIDER_INTEGRATION_DEFAULT_STATUS,
+    verificationStatus: r.verificationStatus ?? null,
+    credentialRef: r.credentialRef ?? null,
+    createdBy: r.createdBy ?? null,
+    createdAt: Number(r.createdAt),
+    lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
+    metadata: r.metadata ?? null,
+    region: r.region ?? null,
+  } as ProviderIntegrationRecord;
+}
+
+/** Create provider integration. credentialRef only; no raw secrets. */
+export async function createProviderIntegration(params: {
+  workspaceId: string;
+  providerType: string;
+  displayName?: string;
+  credentialRef?: string;
+  createdBy?: string;
+  actorId: string;
+  actorType: string;
+}): Promise<ProviderIntegrationRecord> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const status = PROVIDER_INTEGRATION_DEFAULT_STATUS;
+  const displayName = params.displayName?.trim() || null;
+  const credentialRef = params.credentialRef?.trim() || null;
+  await sql`
+    INSERT INTO provider_integrations (id, workspace_id, provider_type, display_name, status, credential_ref, created_by, created_at)
+    VALUES (${id}, ${params.workspaceId}, ${params.providerType}, ${displayName}, ${status}, ${credentialRef}, ${params.createdBy ?? null}, ${createdAt})
+  `;
+  try {
+    await insertAuditEvent({
+      workspaceId: params.workspaceId,
+      actorId: params.actorId,
+      actorType: params.actorType,
+      eventType: "provider_integration_created",
+      targetType: "provider_integration",
+      targetId: id,
+      summary: `Provider integration created: ${params.providerType}`,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    console.error("[audit] insertAuditEvent after provider create:", msg.slice(0, 80));
+  }
+  const out = await getProviderIntegration(id, params.workspaceId);
+  if (!out) throw new Error("Provider integration not found after insert");
+  return out;
+}
+
+/** Update provider integration (display name, status, verification). No raw credential. */
+export async function updateProviderIntegration(
+  id: string,
+  workspaceId: string,
+  updates: {
+    displayName?: string;
+    status?: string;
+    verificationStatus?: string;
+    lastVerifiedAt?: number;
+    metadata?: Record<string, unknown>;
+    region?: string | null;
+  },
+  audit?: { actorId: string; actorType: string }
+): Promise<ProviderIntegrationRecord | null> {
+  const sql = getSql();
+  const existing = await getProviderIntegration(id, workspaceId);
+  if (!existing) return null;
+  const displayName = updates.displayName !== undefined ? (updates.displayName?.trim() || null) : existing.displayName;
+  const status = updates.status ?? existing.status;
+  const verificationStatus = updates.verificationStatus !== undefined ? updates.verificationStatus : existing.verificationStatus;
+  const lastVerifiedAt = updates.lastVerifiedAt !== undefined ? updates.lastVerifiedAt : existing.lastVerifiedAt;
+  const metadata = updates.metadata !== undefined ? updates.metadata : existing.metadata;
+  const region = updates.region !== undefined ? updates.region : existing.region;
+  await sql`
+    UPDATE provider_integrations
+    SET display_name = ${displayName}, status = ${status}, verification_status = ${verificationStatus},
+        last_verified_at = ${lastVerifiedAt}, metadata = ${metadata ? JSON.stringify(metadata) : null}, region = ${region}
+    WHERE id = ${id} AND workspace_id = ${workspaceId}
+  `;
+  if (audit) {
+    try {
+      await insertAuditEvent({
+        workspaceId,
+        actorId: audit.actorId,
+        actorType: audit.actorType,
+        eventType: "provider_integration_updated",
+        targetType: "provider_integration",
+        targetId: id,
+        summary: "Provider integration updated",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after provider update:", msg.slice(0, 80));
+    }
+  }
+  return getProviderIntegration(id, workspaceId);
+}
+
+/** Delete provider integration (cascade deletes bindings). */
+export async function deleteProviderIntegration(
+  id: string,
+  workspaceId: string,
+  audit?: { actorId: string; actorType: string }
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM provider_integrations WHERE id = ${id} AND workspace_id = ${workspaceId}
+    RETURNING id
+  `;
+  const deleted = Array.isArray(rows) && rows.length > 0;
+  if (deleted && audit) {
+    try {
+      await insertAuditEvent({
+        workspaceId,
+        actorId: audit.actorId,
+        actorType: audit.actorType,
+        eventType: "provider_integration_deleted",
+        targetType: "provider_integration",
+        targetId: id,
+        summary: "Provider integration deleted",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after provider delete:", msg.slice(0, 80));
+    }
+  }
+  return deleted;
+}
+
+/** Update verification state (hook for provider-specific verification). */
+export async function updateProviderVerification(
+  id: string,
+  workspaceId: string,
+  status: string,
+  actorId: string,
+  actorType: string
+): Promise<ProviderIntegrationRecord | null> {
+  const now = Date.now();
+  return updateProviderIntegration(
+    id,
+    workspaceId,
+    { verificationStatus: status, lastVerifiedAt: now },
+    { actorId, actorType }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Provider bindings (project/environment scope)
+// ---------------------------------------------------------------------------
+
+/** List bindings for an integration. */
+export async function listProviderBindingsByIntegration(
+  providerIntegrationId: string
+): Promise<ProviderBindingRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, provider_integration_id AS "providerIntegrationId", project_id AS "projectId",
+           environment_id AS "environmentId", status, usage_mode AS "usageMode", created_at AS "createdAt"
+    FROM provider_bindings
+    WHERE provider_integration_id = ${providerIntegrationId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    providerIntegrationId: r.providerIntegrationId,
+    projectId: r.projectId,
+    environmentId: r.environmentId ?? null,
+    status: r.status ?? "active",
+    usageMode: r.usageMode ?? null,
+    createdAt: Number(r.createdAt),
+  })) as ProviderBindingRecord[];
+}
+
+/** List bindings for a project (for frontend). */
+export async function listProviderBindingsByProject(projectId: string): Promise<
+  (ProviderBindingRecord & { integration?: ProviderIntegrationRecord })[]
+> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT pb.id, pb.provider_integration_id AS "providerIntegrationId", pb.project_id AS "projectId",
+           pb.environment_id AS "environmentId", pb.status, pb.usage_mode AS "usageMode", pb.created_at AS "createdAt",
+           pi.workspace_id AS "piWorkspaceId", pi.provider_type AS "providerType", pi.display_name AS "displayName",
+           pi.status AS "piStatus", pi.verification_status AS "verificationStatus", pi.credential_ref AS "credentialRef",
+           pi.created_by AS "createdBy", pi.created_at AS "piCreatedAt", pi.last_verified_at AS "lastVerifiedAt",
+           pi.metadata AS "piMetadata", pi.region AS "piRegion"
+    FROM provider_bindings pb
+    INNER JOIN provider_integrations pi ON pb.provider_integration_id = pi.id
+    WHERE pb.project_id = ${projectId}
+    ORDER BY pb.created_at DESC
+  `;
+  return rows.map((r) => {
+    const binding: ProviderBindingRecord = {
+      id: r.id,
+      providerIntegrationId: r.providerIntegrationId,
+      projectId: r.projectId,
+      environmentId: r.environmentId ?? null,
+      status: r.status ?? "active",
+      usageMode: r.usageMode ?? null,
+      createdAt: Number(r.createdAt),
+    };
+    const integration: ProviderIntegrationRecord = {
+      id: r.providerIntegrationId,
+      workspaceId: r.piWorkspaceId,
+      providerType: r.providerType,
+      displayName: r.displayName ?? null,
+      status: r.piStatus ?? "active",
+      verificationStatus: r.verificationStatus ?? null,
+      credentialRef: null,
+      createdBy: r.createdBy ?? null,
+      createdAt: Number(r.piCreatedAt),
+      lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
+      metadata: r.piMetadata ?? null,
+      region: r.piRegion ?? null,
+    };
+    return { ...binding, integration };
+  });
+}
+
+/** Create a binding (link integration to project/environment). Project must be in the same workspace. */
+export async function createProviderBinding(params: {
+  providerIntegrationId: string;
+  projectId: string;
+  environmentId?: string | null;
+  workspaceId: string;
+  actorId: string;
+  actorType: string;
+}): Promise<ProviderBindingRecord | null> {
+  const sql = getSql();
+  const integration = await getProviderIntegration(params.providerIntegrationId, params.workspaceId);
+  if (!integration) return null;
+  const projectRows = await sql`
+    SELECT id FROM projects WHERE id = ${params.projectId} AND workspace_id = ${params.workspaceId} LIMIT 1
+  `;
+  if (projectRows.length === 0) return null;
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const status = "active";
+  await sql`
+    INSERT INTO provider_bindings (id, provider_integration_id, project_id, environment_id, status, created_at)
+    VALUES (${id}, ${params.providerIntegrationId}, ${params.projectId}, ${params.environmentId ?? null}, ${status}, ${createdAt})
+  `;
+  try {
+    await insertAuditEvent({
+      workspaceId: params.workspaceId,
+      actorId: params.actorId,
+      actorType: params.actorType,
+      eventType: "provider_binding_created",
+      targetType: "provider_binding",
+      targetId: id,
+      summary: `Provider bound to project`,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    console.error("[audit] insertAuditEvent after binding create:", msg.slice(0, 80));
+  }
+  const rows = await sql`
+    SELECT id, provider_integration_id AS "providerIntegrationId", project_id AS "projectId",
+           environment_id AS "environmentId", status, usage_mode AS "usageMode", created_at AS "createdAt"
+    FROM provider_bindings WHERE id = ${id}
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    providerIntegrationId: r.providerIntegrationId,
+    projectId: r.projectId,
+    environmentId: r.environmentId ?? null,
+    status: r.status ?? "active",
+    usageMode: r.usageMode ?? null,
+    createdAt: Number(r.createdAt),
+  } as ProviderBindingRecord;
+}
+
+/** Delete a binding. */
+export async function deleteProviderBinding(
+  id: string,
+  workspaceId: string,
+  audit?: { actorId: string; actorType: string }
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM provider_bindings pb
+    USING provider_integrations pi
+    WHERE pb.id = ${id} AND pb.provider_integration_id = pi.id AND pi.workspace_id = ${workspaceId}
+    RETURNING pb.id
+  `;
+  const deleted = Array.isArray(rows) && rows.length > 0;
+  if (deleted && audit) {
+    try {
+      await insertAuditEvent({
+        workspaceId,
+        actorId: audit.actorId,
+        actorType: audit.actorType,
+        eventType: "provider_binding_deleted",
+        targetType: "provider_binding",
+        targetId: id,
+        summary: "Provider binding removed",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after binding delete:", msg.slice(0, 80));
+    }
+  }
+  return deleted;
+}
+
+// ---------------------------------------------------------------------------
+// Model catalog (read-only; ingestion later)
+// ---------------------------------------------------------------------------
+
+export type ModelRecord = {
+  id: string;
+  canonicalName: string;
+  family: string | null;
+  lifecycleState: string | null;
+  description: string | null;
+  modalities: string[] | null;
+  capabilities: string[] | null;
+  contextWindow: number | null;
+  maxOutputTokens: number | null;
+  supportsTools: boolean | null;
+  supportsStructuredOutput: boolean | null;
+  supportsMcp: boolean | null;
+  editorialSummary: string | null;
+  strengths: string[] | null;
+  weaknesses: string[] | null;
+  recommendedFor: string[] | null;
+  avoidFor: string[] | null;
+  deprecationDate: number | null;
+  retirementDate: number | null;
+  replacementModelId: string | null;
+  sourceLastVerifiedAt: number | null;
+};
+
+export type ProviderModelVariantRecord = {
+  id: string;
+  modelId: string;
+  providerIntegrationType: string;
+  providerModelId: string;
+  availabilityStatus: string | null;
+  pricingRef: string | null;
+  rateLimitRef: string | null;
+  metadata: Record<string, unknown> | null;
+  sourceLastVerifiedAt: number | null;
+};
+
+function mapModelRow(r: Record<string, unknown>): ModelRecord {
+  return {
+    id: r.id as string,
+    canonicalName: r.canonicalName as string,
+    family: (r.family as string) ?? null,
+    lifecycleState: (r.lifecycleState as string) ?? null,
+    description: (r.description as string) ?? null,
+    modalities: (r.modalities as string[]) ?? null,
+    capabilities: (r.capabilities as string[]) ?? null,
+    contextWindow: r.contextWindow != null ? Number(r.contextWindow) : null,
+    maxOutputTokens: r.maxOutputTokens != null ? Number(r.maxOutputTokens) : null,
+    supportsTools: r.supportsTools != null ? Boolean(r.supportsTools) : null,
+    supportsStructuredOutput: r.supportsStructuredOutput != null ? Boolean(r.supportsStructuredOutput) : null,
+    supportsMcp: r.supportsMcp != null ? Boolean(r.supportsMcp) : null,
+    editorialSummary: (r.editorialSummary as string) ?? null,
+    strengths: (r.strengths as string[]) ?? null,
+    weaknesses: (r.weaknesses as string[]) ?? null,
+    recommendedFor: (r.recommendedFor as string[]) ?? null,
+    avoidFor: (r.avoidFor as string[]) ?? null,
+    deprecationDate: r.deprecationDate != null ? Number(r.deprecationDate) : null,
+    retirementDate: r.retirementDate != null ? Number(r.retirementDate) : null,
+    replacementModelId: (r.replacementModelId as string) ?? null,
+    sourceLastVerifiedAt: r.sourceLastVerifiedAt != null ? Number(r.sourceLastVerifiedAt) : null,
+  };
+}
+
+function mapVariantRow(r: Record<string, unknown>): ProviderModelVariantRecord {
+  return {
+    id: r.id as string,
+    modelId: r.modelId as string,
+    providerIntegrationType: r.providerIntegrationType as string,
+    providerModelId: r.providerModelId as string,
+    availabilityStatus: (r.availabilityStatus as string) ?? null,
+    pricingRef: (r.pricingRef as string) ?? null,
+    rateLimitRef: (r.rateLimitRef as string) ?? null,
+    metadata: (r.metadata as Record<string, unknown>) ?? null,
+    sourceLastVerifiedAt: r.sourceLastVerifiedAt != null ? Number(r.sourceLastVerifiedAt) : null,
+  };
+}
+
+export type ListModelsFilters = {
+  lifecycleState?: string;
+  family?: string;
+  limit?: number;
+  offset?: number;
+};
+
+/** List models (catalog). Optional filter by lifecycleState, family; pagination via limit/offset. */
+export async function listModels(filters: ListModelsFilters = {}): Promise<ModelRecord[]> {
+  const sql = getSql();
+  const { lifecycleState, family, limit = 100, offset = 0 } = filters;
+  const safeLimit = Math.min(Math.max(1, limit), 500);
+  const safeOffset = Math.max(0, offset);
+  if (lifecycleState != null && lifecycleState !== "" && family != null && family !== "") {
+    const rows = await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE lifecycle_state = ${lifecycleState} AND family = ${family}
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `;
+    return (rows as Record<string, unknown>[]).map(mapModelRow);
+  }
+  if (lifecycleState != null && lifecycleState !== "") {
+    const rows = await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE lifecycle_state = ${lifecycleState}
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `;
+    return (rows as Record<string, unknown>[]).map(mapModelRow);
+  }
+  if (family != null && family !== "") {
+    const rows = await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE family = ${family}
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `;
+    return (rows as Record<string, unknown>[]).map(mapModelRow);
+  }
+  const rows = await sql`
+    SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+           description, modalities, capabilities, context_window AS "contextWindow",
+           max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+           supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+           editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+           avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+    FROM models
+    ORDER BY canonical_name ASC
+    LIMIT ${safeLimit} OFFSET ${safeOffset}
+  `;
+  return (rows as Record<string, unknown>[]).map(mapModelRow);
+}
+
+/** Get one model by id. */
+export async function getModel(id: string): Promise<ModelRecord | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+           description, modalities, capabilities, context_window AS "contextWindow",
+           max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+           supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+           editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+           avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+    FROM models
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapModelRow(rows[0] as Record<string, unknown>);
+}
+
+/** Lifecycle-only view for warnings (deprecated/retiring models in use). */
+export type ModelLifecycleInfo = {
+  id: string;
+  canonicalName: string;
+  lifecycleState: string | null;
+  deprecationDate: number | null;
+  retirementDate: number | null;
+  replacementModelId: string | null;
+  sourceLastVerifiedAt: number | null;
+};
+
+/** Get lifecycle fields for multiple model IDs. Returns only existing models. Used to warn when routes use deprecated/retiring models. */
+export async function getModelsLifecycleByIds(ids: string[]): Promise<ModelLifecycleInfo[]> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return [];
+  const models = await Promise.all(unique.map((id) => getModel(id)));
+  return models
+    .filter((m): m is ModelRecord => m != null)
+    .map((m) => ({
+      id: m.id,
+      canonicalName: m.canonicalName,
+      lifecycleState: m.lifecycleState,
+      deprecationDate: m.deprecationDate,
+      retirementDate: m.retirementDate,
+      replacementModelId: m.replacementModelId,
+      sourceLastVerifiedAt: m.sourceLastVerifiedAt,
+    }));
+}
+
+/** List provider model variants for a model. */
+export async function listProviderModelVariants(modelId: string): Promise<ProviderModelVariantRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, model_id AS "modelId", provider_integration_type AS "providerIntegrationType",
+           provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
+           pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
+           source_last_verified_at AS "sourceLastVerifiedAt"
+    FROM provider_model_variants
+    WHERE model_id = ${modelId}
+    ORDER BY provider_integration_type ASC, provider_model_id ASC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapVariantRow);
+}
+
+// ---------------------------------------------------------------------------
+// Routes (project/environment-scoped; first-class backend objects)
+// ---------------------------------------------------------------------------
+
+export type RouteRecord = {
+  id: string;
+  projectId: string;
+  environmentId: string;
+  name: string;
+  description: string | null;
+  defaultModelId: string | null;
+  billingMode: string | null;
+  routeMode: string | null;
+  status: string;
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type RouteStepRecord = {
+  id: string;
+  routeId: string;
+  orderIndex: number;
+  providerPreference: string | null;
+  modelId: string | null;
+  conditionBlock: Record<string, unknown> | null;
+  fallbackOn: string | null;
+  timeoutMs: number | null;
+  enabled: boolean;
+};
+
+const ROUTE_DEFAULT_STATUS = "active";
+
+/** List routes for a project; optional filter by environmentId. */
+export async function listRoutes(
+  projectId: string,
+  userId: string,
+  options?: { environmentId?: string }
+): Promise<RouteRecord[]> {
+  const project = await getProject(projectId, userId);
+  if (!project) return [];
+  const sql = getSql();
+  const envFilter = options?.environmentId;
+  const rows = envFilter
+    ? await sql`
+        SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+               default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+               status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+        FROM routes
+        WHERE project_id = ${projectId} AND environment_id = ${envFilter}
+        ORDER BY created_at DESC
+      `
+    : await sql`
+        SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+               default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+               status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+        FROM routes
+        WHERE project_id = ${projectId}
+        ORDER BY created_at DESC
+      `;
+  return rows.map((r) => mapRouteRow(r)) as RouteRecord[];
+}
+
+/** Get one route; returns null if not in project. */
+export async function getRoute(id: string, projectId: string, userId: string): Promise<RouteRecord | null> {
+  const project = await getProject(projectId, userId);
+  if (!project) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+           default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+           status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM routes
+    WHERE id = ${id} AND project_id = ${projectId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapRouteRow(rows[0]) as RouteRecord;
+}
+
+function mapRouteRow(r: Record<string, unknown>): RouteRecord {
+  return {
+    id: r.id as string,
+    projectId: r.projectId as string,
+    environmentId: r.environmentId as string,
+    name: r.name as string,
+    description: (r.description as string) ?? null,
+    defaultModelId: (r.defaultModelId as string) ?? null,
+    billingMode: (r.billingMode as string) ?? null,
+    routeMode: (r.routeMode as string) ?? null,
+    status: (r.status as string) ?? ROUTE_DEFAULT_STATUS,
+    createdBy: (r.createdBy as string) ?? null,
+    createdAt: Number(r.createdAt),
+    updatedAt: Number(r.updatedAt),
+  };
+}
+
+/** Create route. Environment must belong to project; caller must own project. */
+export async function createRoute(params: {
+  projectId: string;
+  environmentId: string;
+  name: string;
+  description?: string;
+  defaultModelId?: string | null;
+  billingMode?: string | null;
+  routeMode?: string | null;
+  userId: string;
+}): Promise<RouteRecord | null> {
+  const project = await getProject(params.projectId, params.userId);
+  if (!project) return null;
+  const env = await getEnvironmentInProject(params.environmentId, params.projectId);
+  if (!env) return null;
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const name = params.name?.trim() || "Unnamed route";
+  await sql`
+    INSERT INTO routes (id, project_id, environment_id, name, description, default_model_id, billing_mode, route_mode, status, created_by, created_at, updated_at)
+    VALUES (${id}, ${params.projectId}, ${params.environmentId}, ${name},
+            ${params.description?.trim() || null}, ${params.defaultModelId ?? null}, ${params.billingMode ?? null}, ${params.routeMode ?? null},
+            ${ROUTE_DEFAULT_STATUS}, ${params.userId}, ${now}, ${now})
+  `;
+  return getRoute(id, params.projectId, params.userId);
+}
+
+/** Update route. */
+export async function updateRoute(
+  id: string,
+  projectId: string,
+  userId: string,
+  updates: {
+    name?: string;
+    description?: string | null;
+    defaultModelId?: string | null;
+    billingMode?: string | null;
+    routeMode?: string | null;
+    status?: string;
+  }
+): Promise<RouteRecord | null> {
+  const existing = await getRoute(id, projectId, userId);
+  if (!existing) return null;
+  const sql = getSql();
+  const name = updates.name !== undefined ? (updates.name.trim() || existing.name) : existing.name;
+  const description = updates.description !== undefined ? (updates.description?.trim() || null) : existing.description;
+  const defaultModelId = updates.defaultModelId !== undefined ? updates.defaultModelId : existing.defaultModelId;
+  const billingMode = updates.billingMode !== undefined ? updates.billingMode : existing.billingMode;
+  const routeMode = updates.routeMode !== undefined ? updates.routeMode : existing.routeMode;
+  const status = updates.status ?? existing.status;
+  const now = Date.now();
+  await sql`
+    UPDATE routes
+    SET name = ${name}, description = ${description}, default_model_id = ${defaultModelId},
+        billing_mode = ${billingMode}, route_mode = ${routeMode}, status = ${status}, updated_at = ${now}
+    WHERE id = ${id} AND project_id = ${projectId}
+  `;
+  return getRoute(id, projectId, userId);
+}
+
+/** Delete route (cascade deletes steps). Caller must have project access. */
+export async function deleteRoute(id: string, projectId: string, userId: string): Promise<boolean> {
+  const project = await getProject(projectId, userId);
+  if (!project) return false;
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM routes WHERE id = ${id} AND project_id = ${projectId}
+    RETURNING id
+  `;
   return Array.isArray(rows) && rows.length > 0;
+}
+
+/** List steps for a route (caller must have access to route's project). */
+export async function listRouteSteps(routeId: string, projectId: string, userId: string): Promise<RouteStepRecord[]> {
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
+           model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
+           timeout_ms AS "timeoutMs", enabled
+    FROM route_steps
+    WHERE route_id = ${routeId}
+    ORDER BY order_index ASC
+  `;
+  return rows.map((r) => mapRouteStepRow(r)) as RouteStepRecord[];
+}
+
+function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
+  return {
+    id: r.id as string,
+    routeId: r.routeId as string,
+    orderIndex: Number(r.orderIndex),
+    providerPreference: (r.providerPreference as string) ?? null,
+    modelId: (r.modelId as string) ?? null,
+    conditionBlock: (r.conditionBlock as Record<string, unknown>) ?? null,
+    fallbackOn: (r.fallbackOn as string) ?? null,
+    timeoutMs: r.timeoutMs != null ? Number(r.timeoutMs) : null,
+    enabled: r.enabled !== false,
+  };
+}
+
+/** Create route step (fallback behaviour: fallbackOn string; orderIndex for ordering). */
+export async function createRouteStep(params: {
+  routeId: string;
+  projectId: string;
+  userId: string;
+  orderIndex: number;
+  providerPreference?: string | null;
+  modelId?: string | null;
+  conditionBlock?: Record<string, unknown> | null;
+  fallbackOn?: string | null;
+  timeoutMs?: number | null;
+  enabled?: boolean;
+}): Promise<RouteStepRecord | null> {
+  const route = await getRoute(params.routeId, params.projectId, params.userId);
+  if (!route) return null;
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const enabled = params.enabled !== false;
+  await sql`
+    INSERT INTO route_steps (id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on, timeout_ms, enabled)
+    VALUES (${id}, ${params.routeId}, ${params.orderIndex},
+            ${params.providerPreference ?? null}, ${params.modelId ?? null},
+            ${params.conditionBlock ? JSON.stringify(params.conditionBlock) : null}, ${params.fallbackOn ?? null}, ${params.timeoutMs ?? null}, ${enabled})
+  `;
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
+           model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
+           timeout_ms AS "timeoutMs", enabled
+    FROM route_steps WHERE id = ${id}
+  `;
+  if (rows.length === 0) return null;
+  return mapRouteStepRow(rows[0]) as RouteStepRecord;
+}
+
+/** Update route step. */
+export async function updateRouteStep(
+  stepId: string,
+  routeId: string,
+  projectId: string,
+  userId: string,
+  updates: Partial<{
+    orderIndex: number;
+    providerPreference: string | null;
+    modelId: string | null;
+    conditionBlock: Record<string, unknown> | null;
+    fallbackOn: string | null;
+    timeoutMs: number | null;
+    enabled: boolean;
+  }>
+): Promise<RouteStepRecord | null> {
+  const steps = await listRouteSteps(routeId, projectId, userId);
+  const step = steps.find((s) => s.id === stepId);
+  if (!step) return null;
+  const sql = getSql();
+  const orderIndex = updates.orderIndex !== undefined ? updates.orderIndex : step.orderIndex;
+  const providerPreference = updates.providerPreference !== undefined ? updates.providerPreference : step.providerPreference;
+  const modelId = updates.modelId !== undefined ? updates.modelId : step.modelId;
+  const conditionBlock = updates.conditionBlock !== undefined ? updates.conditionBlock : step.conditionBlock;
+  const fallbackOn = updates.fallbackOn !== undefined ? updates.fallbackOn : step.fallbackOn;
+  const timeoutMs = updates.timeoutMs !== undefined ? updates.timeoutMs : step.timeoutMs;
+  const enabled = updates.enabled !== undefined ? updates.enabled : step.enabled;
+  await sql`
+    UPDATE route_steps
+    SET order_index = ${orderIndex}, provider_preference = ${providerPreference}, model_id = ${modelId},
+        condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null}, fallback_on = ${fallbackOn}, timeout_ms = ${timeoutMs}, enabled = ${enabled}
+    WHERE id = ${stepId} AND route_id = ${routeId}
+  `;
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
+           model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
+           timeout_ms AS "timeoutMs", enabled
+    FROM route_steps WHERE id = ${stepId}
+  `;
+  if (rows.length === 0) return null;
+  return mapRouteStepRow(rows[0]) as RouteStepRecord;
+}
+
+/** Delete route step. */
+export async function deleteRouteStep(
+  stepId: string,
+  routeId: string,
+  projectId: string,
+  userId: string
+): Promise<boolean> {
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return false;
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM route_steps WHERE id = ${stepId} AND route_id = ${routeId}
+    RETURNING id
+  `;
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/** Get route with steps for resolution/logging (caller must have project access). */
+export async function getRouteWithSteps(
+  routeId: string,
+  projectId: string,
+  userId: string
+): Promise<{ route: RouteRecord; steps: RouteStepRecord[] } | null> {
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return null;
+  const steps = await listRouteSteps(routeId, projectId, userId);
+  return { route, steps };
+}
+
+// ---------------------------------------------------------------------------
+// Policies (workspace-scoped; explicit rule shapes)
+// ---------------------------------------------------------------------------
+
+export type PolicyRecord = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  type: string;
+  status: string;
+  ruleDefinition: Record<string, unknown> | null;
+  createdBy: string | null;
+  createdAt: number;
+};
+
+export type PolicyBindingRecord = {
+  id: string;
+  policyId: string;
+  targetType: string;
+  targetId: string;
+  createdAt: number;
+};
+
+/** Rule shapes: modelIds or providerTypes arrays; budget/token use limit (placeholder). */
+export type PolicyRuleShape =
+  | { modelIds?: string[] }
+  | { providerTypes?: string[] }
+  | { limit?: number };
+
+const POLICY_DEFAULT_STATUS = "active";
+
+/** List policies for workspace. */
+export async function listPolicies(workspaceId: string): Promise<PolicyRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", name, type, status, rule_definition AS "ruleDefinition",
+           created_by AS "createdBy", created_at AS "createdAt"
+    FROM policies
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    workspaceId: r.workspaceId,
+    name: r.name,
+    type: r.type,
+    status: r.status ?? POLICY_DEFAULT_STATUS,
+    ruleDefinition: r.ruleDefinition ?? null,
+    createdBy: r.createdBy ?? null,
+    createdAt: Number(r.createdAt),
+  })) as PolicyRecord[];
+}
+
+/** Get one policy. */
+export async function getPolicy(id: string, workspaceId: string): Promise<PolicyRecord | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", name, type, status, rule_definition AS "ruleDefinition",
+           created_by AS "createdBy", created_at AS "createdAt"
+    FROM policies
+    WHERE id = ${id} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    workspaceId: r.workspaceId,
+    name: r.name,
+    type: r.type,
+    status: r.status ?? POLICY_DEFAULT_STATUS,
+    ruleDefinition: r.ruleDefinition ?? null,
+    createdBy: r.createdBy ?? null,
+    createdAt: Number(r.createdAt),
+  } as PolicyRecord;
+}
+
+/** Create policy. */
+export async function createPolicy(params: {
+  workspaceId: string;
+  name: string;
+  type: string;
+  ruleDefinition?: Record<string, unknown> | null;
+  createdBy?: string;
+  actorId: string;
+  actorType: string;
+}): Promise<PolicyRecord> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const status = POLICY_DEFAULT_STATUS;
+  const name = params.name?.trim() || "Unnamed policy";
+  await sql`
+    INSERT INTO policies (id, workspace_id, name, type, status, rule_definition, created_by, created_at)
+    VALUES (${id}, ${params.workspaceId}, ${name}, ${params.type}, ${status},
+            ${params.ruleDefinition ? JSON.stringify(params.ruleDefinition) : null}, ${params.createdBy ?? null}, ${createdAt})
+  `;
+  try {
+    await insertAuditEvent({
+      workspaceId: params.workspaceId,
+      actorId: params.actorId,
+      actorType: params.actorType,
+      eventType: "policy_created",
+      targetType: "policy",
+      targetId: id,
+      summary: `Policy created: ${name}`,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    console.error("[audit] policy create:", msg.slice(0, 80));
+  }
+  const out = await getPolicy(id, params.workspaceId);
+  if (!out) throw new Error("Policy not found after insert");
+  return out;
+}
+
+/** Update policy. */
+export async function updatePolicy(
+  id: string,
+  workspaceId: string,
+  updates: { name?: string; type?: string; status?: string; ruleDefinition?: Record<string, unknown> | null }
+): Promise<PolicyRecord | null> {
+  const existing = await getPolicy(id, workspaceId);
+  if (!existing) return null;
+  const sql = getSql();
+  const name = updates.name !== undefined ? (updates.name.trim() || existing.name) : existing.name;
+  const type = updates.type ?? existing.type;
+  const status = updates.status ?? existing.status;
+  const ruleDefinition = updates.ruleDefinition !== undefined ? updates.ruleDefinition : existing.ruleDefinition;
+  await sql`
+    UPDATE policies SET name = ${name}, type = ${type}, status = ${status}, rule_definition = ${ruleDefinition ? JSON.stringify(ruleDefinition) : null}
+    WHERE id = ${id} AND workspace_id = ${workspaceId}
+  `;
+  return getPolicy(id, workspaceId);
+}
+
+/** Delete policy (cascade deletes bindings). */
+export async function deletePolicy(id: string, workspaceId: string): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM policies WHERE id = ${id} AND workspace_id = ${workspaceId}
+    RETURNING id
+  `;
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/** List bindings for a policy. */
+export async function listPolicyBindings(policyId: string, workspaceId: string): Promise<PolicyBindingRecord[]> {
+  const policy = await getPolicy(policyId, workspaceId);
+  if (!policy) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, policy_id AS "policyId", target_type AS "targetType", target_id AS "targetId", created_at AS "createdAt"
+    FROM policy_bindings
+    WHERE policy_id = ${policyId}
+    ORDER BY created_at ASC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    policyId: r.policyId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    createdAt: Number(r.createdAt),
+  })) as PolicyBindingRecord[];
+}
+
+/** List bindings for a target (e.g. all policies bound to a project). */
+export async function listPolicyBindingsByTarget(
+  targetType: string,
+  targetId: string,
+  workspaceId: string
+): Promise<(PolicyBindingRecord & { policy?: PolicyRecord })[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT pb.id, pb.policy_id AS "policyId", pb.target_type AS "targetType", pb.target_id AS "targetId", pb.created_at AS "createdAt",
+           p.workspace_id AS "pWorkspaceId", p.name AS "pName", p.type AS "pType", p.status AS "pStatus", p.rule_definition AS "pRuleDefinition", p.created_by AS "pCreatedBy", p.created_at AS "pCreatedAt"
+    FROM policy_bindings pb
+    INNER JOIN policies p ON pb.policy_id = p.id
+    WHERE pb.target_type = ${targetType} AND pb.target_id = ${targetId} AND p.workspace_id = ${workspaceId}
+    ORDER BY pb.created_at ASC
+  `;
+  return rows.map((r) => {
+    const binding = {
+      id: r.id,
+      policyId: r.policyId,
+      targetType: r.targetType,
+      targetId: r.targetId,
+      createdAt: Number(r.createdAt),
+    } as PolicyBindingRecord;
+    const policy = {
+      id: r.policyId,
+      workspaceId: r.pWorkspaceId,
+      name: r.pName,
+      type: r.pType,
+      status: r.pStatus ?? POLICY_DEFAULT_STATUS,
+      ruleDefinition: r.pRuleDefinition ?? null,
+      createdBy: r.pCreatedBy ?? null,
+      createdAt: Number(r.pCreatedAt),
+    } as PolicyRecord;
+    return { ...binding, policy };
+  });
+}
+
+/** Create policy binding. */
+export async function createPolicyBinding(params: {
+  policyId: string;
+  targetType: string;
+  targetId: string;
+  workspaceId: string;
+}): Promise<PolicyBindingRecord | null> {
+  const policy = await getPolicy(params.policyId, params.workspaceId);
+  if (!policy) return null;
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO policy_bindings (id, policy_id, target_type, target_id, created_at)
+    VALUES (${id}, ${params.policyId}, ${params.targetType}, ${params.targetId}, ${createdAt})
+  `;
+  const rows = await sql`
+    SELECT id, policy_id AS "policyId", target_type AS "targetType", target_id AS "targetId", created_at AS "createdAt"
+    FROM policy_bindings WHERE id = ${id}
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { id: r.id, policyId: r.policyId, targetType: r.targetType, targetId: r.targetId, createdAt: Number(r.createdAt) } as PolicyBindingRecord;
+}
+
+/** Delete policy binding. */
+export async function deletePolicyBinding(
+  bindingId: string,
+  policyId: string,
+  workspaceId: string
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM policy_bindings pb
+    USING policies p
+    WHERE pb.id = ${bindingId} AND pb.policy_id = ${policyId} AND p.id = pb.policy_id AND p.workspace_id = ${workspaceId}
+    RETURNING pb.id
+  `;
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Policy evaluation (simple, explicit; for route/request validation)
+// ---------------------------------------------------------------------------
+
+export type PolicyEvaluationContext = {
+  workspaceId: string;
+  projectId?: string;
+  environmentId?: string;
+  routeId?: string;
+  modelId?: string;
+  providerType?: string;
+  /** Pass from catalog for deprecated_model_block. */
+  modelLifecycleState?: string;
+};
+
+export type PolicyViolation = {
+  policyId: string;
+  policyName: string;
+  type: string;
+  message: string;
+};
+
+/** Evaluate policies bound to the given context. Returns violations; empty array means allowed. */
+export async function evaluatePolicies(context: PolicyEvaluationContext): Promise<PolicyViolation[]> {
+  const sql = getSql();
+  const targets: { targetType: string; targetId: string }[] = [
+    { targetType: "workspace", targetId: context.workspaceId },
+  ];
+  if (context.projectId) targets.push({ targetType: "project", targetId: context.projectId });
+  if (context.environmentId) targets.push({ targetType: "environment", targetId: context.environmentId });
+  if (context.routeId) targets.push({ targetType: "route", targetId: context.routeId });
+
+  const policyIds = new Set<string>();
+  for (const t of targets) {
+    const rows = await sql`
+      SELECT pb.policy_id AS "policyId"
+      FROM policy_bindings pb
+      INNER JOIN policies p ON pb.policy_id = p.id
+      WHERE pb.target_type = ${t.targetType} AND pb.target_id = ${t.targetId}
+        AND p.workspace_id = ${context.workspaceId} AND (p.status IS NULL OR p.status = 'active')
+    `;
+    for (const r of rows) policyIds.add((r as { policyId: string }).policyId);
+  }
+  if (policyIds.size === 0) return [];
+
+  const policies = await sql`
+    SELECT id, name, type, rule_definition AS "ruleDefinition"
+    FROM policies
+    WHERE id = ANY(${Array.from(policyIds)})
+  `;
+
+  const violations: PolicyViolation[] = [];
+  for (const p of policies as { id: string; name: string; type: string; ruleDefinition: unknown }[]) {
+    const rule = (p.ruleDefinition as Record<string, unknown>) ?? {};
+    if (p.type === "model_allowlist") {
+      const modelIds = (rule.modelIds as string[]) ?? [];
+      if (modelIds.length > 0 && context.modelId && !modelIds.includes(context.modelId)) {
+        violations.push({
+          policyId: p.id,
+          policyName: p.name,
+          type: p.type,
+          message: `Model ${context.modelId} is not in allowlist`,
+        });
+      }
+    } else if (p.type === "model_denylist") {
+      const modelIds = (rule.modelIds as string[]) ?? [];
+      if (context.modelId && modelIds.includes(context.modelId)) {
+        violations.push({
+          policyId: p.id,
+          policyName: p.name,
+          type: p.type,
+          message: `Model ${context.modelId} is denylisted`,
+        });
+      }
+    } else if (p.type === "provider_allowlist") {
+      const providerTypes = (rule.providerTypes as string[]) ?? [];
+      if (providerTypes.length > 0 && context.providerType && !providerTypes.includes(context.providerType)) {
+        violations.push({
+          policyId: p.id,
+          policyName: p.name,
+          type: p.type,
+          message: `Provider ${context.providerType} is not in allowlist`,
+        });
+      }
+    } else if (p.type === "provider_denylist") {
+      const providerTypes = (rule.providerTypes as string[]) ?? [];
+      if (context.providerType && providerTypes.includes(context.providerType)) {
+        violations.push({
+          policyId: p.id,
+          policyName: p.name,
+          type: p.type,
+          message: `Provider ${context.providerType} is denylisted`,
+        });
+      }
+    } else if (p.type === "deprecated_model_block") {
+      if (context.modelLifecycleState === "deprecated" || context.modelLifecycleState === "retired") {
+        violations.push({
+          policyId: p.id,
+          policyName: p.name,
+          type: p.type,
+          message: `Deprecated or retired models are blocked`,
+        });
+      }
+    }
+    // budget_cap, token_cap: placeholder — not enforced in v1
+  }
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
+// Request logs (execution path: route resolution → provider/model → log)
+// ---------------------------------------------------------------------------
+
+export type RequestLogParams = {
+  workspaceId: string;
+  projectId: string;
+  environmentId: string;
+  providerType: string;
+  requestStatus: string;
+  latencyMs: number;
+  routeId?: string | null;
+  gatewayKeyId?: string | null;
+  finalModelId?: string | null;
+  providerModelVariantId?: string | null;
+  errorCode?: string | null;
+  fallbackCount?: number | null;
+  ttftMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  cachedTokens?: number | null;
+  estimatedCost?: number | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export type RequestLogRecord = {
+  id: string;
+  workspaceId: string;
+  projectId: string;
+  environmentId: string;
+  routeId: string | null;
+  gatewayKeyId: string | null;
+  providerType: string;
+  finalModelId: string | null;
+  requestStatus: string;
+  latencyMs: number;
+  ttftMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cachedTokens: number | null;
+  estimatedCost: number | null;
+  fallbackCount: number | null;
+  errorCode: string | null;
+  createdAt: number;
+};
+
+/** Insert a request log row. Used after route resolution and/or proxy. */
+export async function insertRequestLog(params: RequestLogParams): Promise<void> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO request_logs (
+      id, workspace_id, project_id, environment_id, route_id, gateway_key_id,
+      provider_type, provider_model_variant_id, final_model_id, request_status,
+      latency_ms, ttft_ms, input_tokens, output_tokens, cached_tokens, estimated_cost,
+      fallback_count, error_code, created_at, metadata
+    )
+    VALUES (
+      ${id}, ${params.workspaceId}, ${params.projectId}, ${params.environmentId},
+      ${params.routeId ?? null}, ${params.gatewayKeyId ?? null},
+      ${params.providerType}, ${params.providerModelVariantId ?? null}, ${params.finalModelId ?? null},
+      ${params.requestStatus}, ${params.latencyMs},
+      ${params.ttftMs ?? null}, ${params.inputTokens ?? null}, ${params.outputTokens ?? null},
+      ${params.cachedTokens ?? null}, ${params.estimatedCost ?? null},
+      ${params.fallbackCount ?? null}, ${params.errorCode ?? null}, ${createdAt},
+      ${params.metadata ? JSON.stringify(params.metadata) : null}
+    )
+  `;
+}
+
+export type ListRequestLogsFilters = {
+  limit?: number;
+  since?: number;
+  until?: number;
+  projectId?: string;
+  routeId?: string;
+};
+
+/** List request logs for a workspace (or project). For frontend consumption. */
+export async function listRequestLogs(
+  workspaceId: string,
+  options: ListRequestLogsFilters = {}
+): Promise<RequestLogRecord[]> {
+  const { limit = 50, since, until, projectId, routeId } = options;
+  const sql = getSql();
+  const safeLimit = Math.min(Math.max(1, limit), 500);
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", project_id AS "projectId", environment_id AS "environmentId",
+           route_id AS "routeId", gateway_key_id AS "gatewayKeyId", provider_type AS "providerType",
+           final_model_id AS "finalModelId", request_status AS "requestStatus", latency_ms AS "latencyMs",
+           ttft_ms AS "ttftMs", input_tokens AS "inputTokens", output_tokens AS "outputTokens",
+           cached_tokens AS "cachedTokens", estimated_cost AS "estimatedCost",
+           fallback_count AS "fallbackCount", error_code AS "errorCode", created_at AS "createdAt"
+    FROM request_logs
+    WHERE workspace_id = ${workspaceId}
+      ${since != null ? sql`AND created_at >= ${since}` : sql``}
+      ${until != null ? sql`AND created_at <= ${until}` : sql``}
+      ${projectId != null ? sql`AND project_id = ${projectId}` : sql``}
+      ${routeId != null ? sql`AND route_id = ${routeId}` : sql``}
+    ORDER BY created_at DESC
+    LIMIT ${safeLimit}
+  `;
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id,
+    workspaceId: r.workspaceId,
+    projectId: r.projectId,
+    environmentId: r.environmentId,
+    routeId: r.routeId ?? null,
+    gatewayKeyId: r.gatewayKeyId ?? null,
+    providerType: r.providerType,
+    finalModelId: r.finalModelId ?? null,
+    requestStatus: r.requestStatus,
+    latencyMs: Number(r.latencyMs),
+    ttftMs: r.ttftMs != null ? Number(r.ttftMs) : null,
+    inputTokens: r.inputTokens != null ? Number(r.inputTokens) : null,
+    outputTokens: r.outputTokens != null ? Number(r.outputTokens) : null,
+    cachedTokens: r.cachedTokens != null ? Number(r.cachedTokens) : null,
+    estimatedCost: r.estimatedCost != null ? Number(r.estimatedCost) : null,
+    fallbackCount: r.fallbackCount != null ? Number(r.fallbackCount) : null,
+    errorCode: r.errorCode ?? null,
+    createdAt: Number(r.createdAt),
+  })) as RequestLogRecord[];
+}
+
+// ---------------------------------------------------------------------------
+// Usage aggregates (grouped summaries: project, route, provider, model, key)
+// ---------------------------------------------------------------------------
+
+export type UsageAggregateRecord = {
+  id: string;
+  granularity: string;
+  periodStart: number;
+  periodEnd: number;
+  workspaceId: string | null;
+  projectId: string | null;
+  environmentId: string | null;
+  routeId: string | null;
+  gatewayKeyId: string | null;
+  providerType: string | null;
+  modelId: string | null;
+  requestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens: number | null;
+  estimatedCost: number | null;
+  avgLatencyMs: number | null;
+  errorRate: number | null;
+  fallbackRate: number | null;
+};
+
+export type ListUsageAggregatesFilters = {
+  limit?: number;
+  periodStart?: number;
+  periodEnd?: number;
+  projectId?: string;
+  routeId?: string;
+  providerType?: string;
+  modelId?: string;
+  gatewayKeyId?: string;
+  granularity?: string;
+};
+
+/** List usage aggregates for a workspace. For frontend consumption. */
+export async function listUsageAggregates(
+  workspaceId: string,
+  options: ListUsageAggregatesFilters = {}
+): Promise<UsageAggregateRecord[]> {
+  const {
+    limit = 100,
+    periodStart,
+    periodEnd,
+    projectId,
+    routeId,
+    providerType,
+    modelId,
+    gatewayKeyId,
+    granularity,
+  } = options;
+  const sql = getSql();
+  const safeLimit = Math.min(Math.max(1, limit), 500);
+  const rows = await sql`
+    SELECT id, granularity, period_start AS "periodStart", period_end AS "periodEnd",
+           workspace_id AS "workspaceId", project_id AS "projectId", environment_id AS "environmentId",
+           route_id AS "routeId", gateway_key_id AS "gatewayKeyId", provider_type AS "providerType",
+           model_id AS "modelId", request_count AS "requestCount", input_tokens AS "inputTokens",
+           output_tokens AS "outputTokens", cached_tokens AS "cachedTokens", estimated_cost AS "estimatedCost",
+           avg_latency_ms AS "avgLatencyMs", error_rate AS "errorRate", fallback_rate AS "fallbackRate"
+    FROM usage_aggregates
+    WHERE workspace_id = ${workspaceId}
+      ${periodStart != null ? sql`AND period_end >= ${periodStart}` : sql``}
+      ${periodEnd != null ? sql`AND period_start <= ${periodEnd}` : sql``}
+      ${projectId != null ? sql`AND project_id = ${projectId}` : sql``}
+      ${routeId != null ? sql`AND route_id = ${routeId}` : sql``}
+      ${providerType != null ? sql`AND provider_type = ${providerType}` : sql``}
+      ${modelId != null ? sql`AND model_id = ${modelId}` : sql``}
+      ${gatewayKeyId != null ? sql`AND gateway_key_id = ${gatewayKeyId}` : sql``}
+      ${granularity != null ? sql`AND granularity = ${granularity}` : sql``}
+    ORDER BY period_start DESC, project_id, route_id, provider_type, model_id
+    LIMIT ${safeLimit}
+  `;
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id,
+    granularity: r.granularity,
+    periodStart: Number(r.periodStart),
+    periodEnd: Number(r.periodEnd),
+    workspaceId: r.workspaceId ?? null,
+    projectId: r.projectId ?? null,
+    environmentId: r.environmentId ?? null,
+    routeId: r.routeId ?? null,
+    gatewayKeyId: r.gatewayKeyId ?? null,
+    providerType: r.providerType ?? null,
+    modelId: r.modelId ?? null,
+    requestCount: Number(r.requestCount),
+    inputTokens: Number(r.inputTokens),
+    outputTokens: Number(r.outputTokens),
+    cachedTokens: r.cachedTokens != null ? Number(r.cachedTokens) : null,
+    estimatedCost: r.estimatedCost != null ? Number(r.estimatedCost) : null,
+    avgLatencyMs: r.avgLatencyMs != null ? Number(r.avgLatencyMs) : null,
+    errorRate: r.errorRate != null ? Number(r.errorRate) : null,
+    fallbackRate: r.fallbackRate != null ? Number(r.fallbackRate) : null,
+  })) as UsageAggregateRecord[];
+}
+
+export type InsertUsageAggregateParams = {
+  granularity: string;
+  periodStart: number;
+  periodEnd: number;
+  workspaceId?: string | null;
+  projectId?: string | null;
+  environmentId?: string | null;
+  routeId?: string | null;
+  gatewayKeyId?: string | null;
+  providerType?: string | null;
+  modelId?: string | null;
+  requestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens?: number | null;
+  estimatedCost?: number | null;
+  avgLatencyMs?: number | null;
+  errorRate?: number | null;
+  fallbackRate?: number | null;
+};
+
+/** Insert a usage aggregate row (e.g. from a batch job that groups request_logs). */
+export async function insertUsageAggregate(params: InsertUsageAggregateParams): Promise<void> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  await sql`
+    INSERT INTO usage_aggregates (
+      id, granularity, period_start, period_end, workspace_id, project_id, environment_id,
+      route_id, gateway_key_id, provider_type, model_id,
+      request_count, input_tokens, output_tokens, cached_tokens, estimated_cost,
+      avg_latency_ms, error_rate, fallback_rate
+    )
+    VALUES (
+      ${id}, ${params.granularity}, ${params.periodStart}, ${params.periodEnd},
+      ${params.workspaceId ?? null}, ${params.projectId ?? null}, ${params.environmentId ?? null},
+      ${params.routeId ?? null}, ${params.gatewayKeyId ?? null}, ${params.providerType ?? null}, ${params.modelId ?? null},
+      ${params.requestCount}, ${params.inputTokens}, ${params.outputTokens},
+      ${params.cachedTokens ?? 0}, ${params.estimatedCost ?? null},
+      ${params.avgLatencyMs ?? null}, ${params.errorRate ?? null}, ${params.fallbackRate ?? null}
+    )
+  `;
+}
+
+/** Aggregate request_logs on the fly for a time range. Use when pre-aggregated usage_aggregates are not yet populated. */
+export async function aggregateRequestLogsToUsage(
+  workspaceId: string,
+  options: { since: number; until: number; projectId?: string }
+): Promise<UsageAggregateRecord[]> {
+  const { since, until, projectId } = options;
+  const sql = getSql();
+  const projectFilter = projectId != null ? sql`AND project_id = ${projectId}` : sql``;
+  const rows = await sql`
+    SELECT
+      project_id AS "projectId", route_id AS "routeId", gateway_key_id AS "gatewayKeyId",
+      provider_type AS "providerType", final_model_id AS "modelId",
+      COUNT(*)::bigint AS "requestCount",
+      (COUNT(*) FILTER (WHERE request_status NOT IN ('resolved', 'ok'))::float / NULLIF(COUNT(*), 0))::real AS "errorRate",
+      COALESCE(SUM(input_tokens), 0)::bigint AS "inputTokens",
+      COALESCE(SUM(output_tokens), 0)::bigint AS "outputTokens",
+      COALESCE(SUM(cached_tokens), 0)::bigint AS "cachedTokens",
+      SUM(estimated_cost)::real AS "estimatedCost",
+      AVG(latency_ms)::real AS "avgLatencyMs"
+    FROM request_logs
+    WHERE workspace_id = ${workspaceId} AND created_at >= ${since} AND created_at <= ${until}
+      ${projectFilter}
+    GROUP BY project_id, route_id, gateway_key_id, provider_type, final_model_id
+    ORDER BY project_id, route_id, provider_type, final_model_id
+    LIMIT 500
+  `;
+  return rows.map((r: Record<string, unknown>, i: number) => ({
+    id: `onfly-${since}-${until}-${i}`,
+    granularity: "ad_hoc",
+    periodStart: since,
+    periodEnd: until,
+    workspaceId,
+    projectId: r.projectId ?? null,
+    environmentId: null,
+    routeId: r.routeId ?? null,
+    gatewayKeyId: r.gatewayKeyId ?? null,
+    providerType: r.providerType ?? null,
+    modelId: r.modelId ?? null,
+    requestCount: Number(r.requestCount),
+    inputTokens: Number(r.inputTokens),
+    outputTokens: Number(r.outputTokens),
+    cachedTokens: Number(r.cachedTokens) || null,
+    estimatedCost: r.estimatedCost != null ? Number(r.estimatedCost) : null,
+    avgLatencyMs: r.avgLatencyMs != null ? Number(r.avgLatencyMs) : null,
+    errorRate: r.errorRate != null ? Number(r.errorRate) : null,
+    fallbackRate: null,
+  })) as UsageAggregateRecord[];
 }

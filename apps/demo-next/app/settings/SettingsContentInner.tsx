@@ -12,7 +12,7 @@ function Inner({ refetch }: { refetch: () => void }) {
   const { keys } = useKeysContext();
   return (
     <div data-testid="settings-client-content" style={{ padding: "1.5rem", maxWidth: "32rem" }}>
-      <h2>API keys</h2>
+      <h2>Provider credentials</h2>
       <KeyManager
         keys={keys}
         userId={DEMO_USER}

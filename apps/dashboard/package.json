@@ -10,7 +10,12 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "seed:catalog": "node scripts/ingest-model-catalog.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "@sveltejs/adapter-vercel": "^6.3.3",

@@ -1,0 +1,249 @@
+{
+  "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
+  "source": "static",
+  "lastUpdated": "2025-03-16",
+  "models": [
+    {
+      "id": "gpt-4o",
+      "canonicalName": "gpt-4o",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4o: multimodal flagship model.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4o", "availabilityStatus": "available", "pricingRef": "openai-gpt-4o" }
+      ]
+    },
+    {
+      "id": "gpt-4o-mini",
+      "canonicalName": "gpt-4o-mini",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4o mini: fast and affordable.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4o-mini", "availabilityStatus": "available", "pricingRef": "openai-gpt-4o-mini" }
+      ]
+    },
+    {
+      "id": "gpt-4o-nano",
+      "canonicalName": "gpt-4o-nano",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4o nano: smallest and fastest.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4o-nano", "availabilityStatus": "available", "pricingRef": "openai-gpt-4o-nano" }
+      ]
+    },
+    {
+      "id": "o1",
+      "canonicalName": "o1",
+      "family": "o1",
+      "lifecycleState": "active",
+      "description": "o1: reasoning model.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 100000,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "reasoning"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "o1", "availabilityStatus": "available", "pricingRef": "openai-o1" }
+      ]
+    },
+    {
+      "id": "o1-mini",
+      "canonicalName": "o1-mini",
+      "family": "o1",
+      "lifecycleState": "active",
+      "description": "o1 mini: smaller reasoning model.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 65536,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "reasoning"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "o1-mini", "availabilityStatus": "available", "pricingRef": "openai-o1-mini" }
+      ]
+    },
+    {
+      "id": "claude-3-5-sonnet",
+      "canonicalName": "claude-3-5-sonnet",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude 3.5 Sonnet: balanced performance.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-sonnet-20241022", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-5-sonnet" }
+      ]
+    },
+    {
+      "id": "claude-sonnet-4",
+      "canonicalName": "claude-sonnet-4",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude Sonnet 4.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-sonnet-4", "availabilityStatus": "available", "pricingRef": "anthropic-claude-sonnet-4" }
+      ]
+    },
+    {
+      "id": "claude-haiku-4.5",
+      "canonicalName": "claude-haiku-4.5",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude Haiku 4.5: fast and efficient.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-haiku-4-5", "availabilityStatus": "available", "pricingRef": "anthropic-claude-haiku-4-5" }
+      ]
+    },
+    {
+      "id": "claude-opus-4",
+      "canonicalName": "claude-opus-4",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude Opus 4: most capable.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-opus-4", "availabilityStatus": "available", "pricingRef": "anthropic-claude-opus-4" }
+      ]
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "canonicalName": "gemini-2.5-pro",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 2.5 Pro.",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-2.5-pro", "availabilityStatus": "available", "pricingRef": "google-gemini-2-5-pro" }
+      ]
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "canonicalName": "gemini-2.5-flash",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 2.5 Flash: fast and efficient.",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-2.5-flash", "availabilityStatus": "available", "pricingRef": "google-gemini-2-5-flash" }
+      ]
+    }
+  ]
+}

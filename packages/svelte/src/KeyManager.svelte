@@ -7,8 +7,8 @@
   interface Props {
     keys: KeysInstance;
     userId: string;
-    /** Called with key config and, for persistence, the raw API key. Host must store and never log the raw key. */
-    onKeyAdded?: (key: KeyConfig, apiKey?: string) => void;
+    /** Called with key config and, for persistence, the raw provider credential. Host must store and never log the raw credential. */
+    onKeyAdded?: (key: KeyConfig, rawCredential?: string) => void;
     onKeyRemoved?: (keyId: string) => void;
     providers?: ProviderDefinition[];
   }
@@ -60,7 +60,7 @@
   async function validateAndSave() {
     const raw = (document.getElementById("rk-key-input") as HTMLInputElement | null)?.value?.trim();
     if (!raw || !entryProvider) {
-      entryError = "Enter your API key and select a provider.";
+      entryError = "Enter your provider credential and select a provider.";
       return;
     }
     const def = providers.find((p) => p.id === entryProvider);
@@ -108,17 +108,17 @@
 
 </script>
 
-<div class="rk-keys rk-dark" role="region" aria-label="API key settings">
+<div class="rk-keys rk-dark" role="region" aria-label="Provider credentials">
   <div aria-live="polite" aria-atomic="true" class="rk-sr-only">{announceLive}</div>
 
   {#if showEmpty}
     <div class="rk-empty">
-      <p class="rk-empty-text">No API keys yet. Add your first key to get started.</p>
+      <p class="rk-empty-text">No provider credentials yet. Add your first credential to get started.</p>
       <button
         type="button"
         class="rk-btn rk-btn-primary"
         onclick={openEntry}
-        aria-label="Add your first API key"
+        aria-label="Add your first provider credential"
       >
         Add key
       </button>
@@ -132,7 +132,7 @@
       tabindex="-1"
       onkeydown={(e) => e.key === "Escape" && (e.preventDefault(), closeEntry())}
     >
-      <h2 id="rk-entry-heading" class="rk-heading">Add API key</h2>
+      <h2 id="rk-entry-heading" class="rk-heading">Add provider credential</h2>
       {#if entryStep === "provider"}
         <div class="rk-form">
           {#if providers.length > 0}
@@ -148,13 +148,13 @@
               {/each}
             </select>
           {/if}
-          <label for="rk-key-input" class="rk-label">Your API key</label>
+          <label for="rk-key-input" class="rk-label">Your provider credential</label>
           <input
             id="rk-key-input"
             type="password"
             class="rk-input"
             placeholder="sk-…"
-            aria-label="API key (never shown in full)"
+            aria-label="Provider credential (never shown in full)"
             autocomplete="off"
             disabled={entryBusy}
           />
@@ -192,7 +192,7 @@
           type="button"
           class="rk-btn rk-btn-primary"
           onclick={openEntry}
-          aria-label="Add another API key"
+          aria-label="Add another provider credential"
         >
           Add key
         </button>
@@ -238,7 +238,7 @@
                   type="button"
                   class="rk-btn rk-btn-danger"
                   onclick={() => removeKey(id)}
-                  aria-label="Remove this API key"
+                  aria-label="Remove this provider credential"
                 >
                   Remove key
                 </button>

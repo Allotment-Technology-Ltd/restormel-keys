@@ -2,8 +2,8 @@
   import { base } from "$app/paths";
 </script>
 
-<h1 class="page-title">Billing</h1>
-<p class="page-desc">Current tier and subscription. Manage your subscription and view invoices via Paddle.</p>
+<h1 class="page-title">Billing & Forecasting</h1>
+<p class="page-desc">Current tier and subscription. Manage your subscription and view invoices via Paddle. Cost forecasting coming later.</p>
 <p><a href="/keys/pricing">View pricing and plans</a></p>
 
 <style>

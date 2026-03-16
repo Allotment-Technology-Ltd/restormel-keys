@@ -10,7 +10,7 @@ pnpm --filter @restormel/keys build
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Use **Settings** to manage API keys (in-memory for this demo).
+Open [http://localhost:3000](http://localhost:3000). Use **Settings** to manage provider credentials (in-memory for this demo).
 
 ## Client boundary expectations
 
