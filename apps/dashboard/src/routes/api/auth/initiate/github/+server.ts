@@ -1,8 +1,24 @@
-import { json, redirect } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { base } from "$app/paths";
 
 const NEON_AUTH_BASE_URL = (process.env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
+
+/** Collect all Set-Cookie values from a response (handles multi-value headers). */
+function getSetCookies(headers: Headers): string[] {
+  if (typeof (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function") {
+    return (headers as Headers & { getSetCookie: () => string[] }).getSetCookie();
+  }
+  const single = headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
+/** Strip Domain and normalise Path to / so cookies are scoped to our app's root. */
+function normaliseCookie(cookie: string): string {
+  return cookie
+    .replace(/;\s*Domain=[^;]+/gi, "")
+    .replace(/;\s*Path=[^;]+/gi, "; Path=/");
+}
 
 export const GET: RequestHandler = async ({ url }) => {
   if (!NEON_AUTH_BASE_URL) {
@@ -43,48 +59,61 @@ export const GET: RequestHandler = async ({ url }) => {
     );
   }
 
-  // Prefer redirect Location header if present.
+  // Determine where to send the browser (GitHub OAuth URL).
+  let redirectTo: string | null = null;
+
+  // Neon sometimes returns a 3xx with Location header.
   const location = res.headers.get("Location");
   if (location && res.status >= 300 && res.status < 400) {
-    throw redirect(302, location);
+    redirectTo = location;
   }
 
-  // Fallback: try to read JSON { data: { url } } shape.
-  let data: unknown = null;
-  try {
-    data = await res.json();
-  } catch {
-    // ignore
-  }
+  // More commonly it returns 200 JSON: { url, redirect: true } or { data: { url } }.
+  if (!redirectTo) {
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // ignore
+    }
+    if (data && typeof data === "object") {
+      if ("url" in data && typeof (data as any).url === "string") {
+        redirectTo = (data as any).url;
+      } else if ("data" in data && (data as any).data?.url) {
+        redirectTo = (data as any).data.url;
+      }
+    }
 
-  // Neon may respond either with { data: { url } } or with { url, redirect: true }.
-  let maybeUrl: string | null = null;
-  if (data && typeof data === "object") {
-    if ("data" in data && (data as any).data?.url) {
-      maybeUrl = (data as any).data.url;
-    } else if ("url" in data && typeof (data as any).url === "string") {
-      maybeUrl = (data as any).url;
+    if (!redirectTo) {
+      // Surface the real Neon error so it's visible in the browser.
+      let body = "";
+      try {
+        body = typeof data === "string" ? data : JSON.stringify(data);
+      } catch { /* ignore */ }
+      console.error("[auth] Neon Auth sign-in/social did not return a redirect URL", {
+        status: res.status,
+        body: body.slice(0, 400),
+      });
+      return new Response(body || "Neon Auth did not return a redirect URL", {
+        status: res.status,
+        headers: { "content-type": res.headers.get("content-type") ?? "text/plain" },
+      });
     }
   }
 
-  if (typeof maybeUrl === "string") {
-    throw redirect(302, maybeUrl);
-  }
+  // CRITICAL: Neon sets a session challenge cookie in the sign-in/social response.
+  // We must forward it to the browser (scoped to our domain/root path) so that
+  // when the browser returns to /api/auth/redeem, it sends the cookie back and
+  // Neon can verify the challenge (SESSION_CHALLANGE_COOKIE_NOT_FOUND fix).
+  const challengeCookies = getSetCookies(res.headers);
+  console.log("[auth] initiate: forwarding", challengeCookies.length, "challenge cookie(s) to browser");
 
-  // If we reach here, Neon returned a non-redirect response. Surface its body and status directly
-  // so we can see the real error instead of a generic 502.
-  let fallbackText = "";
-  try {
-    fallbackText = typeof data === "string" ? data : JSON.stringify(data);
-  } catch {
-    // ignore
-  }
-
-  return new Response(fallbackText || "Neon Auth did not return a redirect URL", {
-    status: res.status,
-    headers: {
-      "content-type": res.headers.get("content-type") ?? "text/plain",
-    },
+  const response = new Response(null, {
+    status: 302,
+    headers: { Location: redirectTo },
   });
+  for (const cookie of challengeCookies) {
+    response.headers.append("Set-Cookie", normaliseCookie(cookie));
+  }
+  return response;
 };
-
