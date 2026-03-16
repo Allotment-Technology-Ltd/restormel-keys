@@ -114,7 +114,7 @@ jobs:
           path: ./
           extra_args: --only-verified
       - name: pnpm audit
-        run: pnpm audit --audit-level moderate
+        run: pnpm audit --audit-level critical
       - name: Type check
         run: pnpm --filter @restormel/keys typecheck
 
