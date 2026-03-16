@@ -94,6 +94,7 @@ export async function proxyAuthRequest(
   const ourOrigin = ourUrl.origin;
   const headers = new Headers(request.headers);
   headers.delete("host");
+  headers.set("Host", targetUrl.host);
   const incomingCookie = decodeLocalhostCookieHeader(headers.get("cookie") ?? "", ourHost);
   if (incomingCookie) headers.set("cookie", incomingCookie);
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
