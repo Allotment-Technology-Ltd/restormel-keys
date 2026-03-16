@@ -68,3 +68,10 @@ If you’re on Next.js App Router, the fastest path is:
 3. Use the core on the server for resolution and cost; use the React components on the client for UI.
 
 A full App Router example is available in the repo (`apps/demo-next`). A dedicated Next.js guide will be linked here when added.
+
+## See also
+
+- [Cloud API](/keys/docs/cloud-api/) — gateway URL, Developer Portal, and API reference
+- [Dashboard](/keys/dashboard/) — create projects and API keys
+- [Sign in](/keys/dashboard/login) — authenticate with GitHub
+- [Pricing](/keys/pricing/) — tiers and plans

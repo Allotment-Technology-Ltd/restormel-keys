@@ -115,6 +115,7 @@ import LogoLockup from "../components/LogoLockup.astro";
   .nav {
     border-bottom: 1px solid var(--rm-border);
     background: var(--rm-surface);
+    min-height: var(--rm-nav-height);
   }
 
   .nav-inner {
@@ -125,10 +126,12 @@ import LogoLockup from "../components/LogoLockup.astro";
     align-items: center;
     justify-content: space-between;
     gap: var(--space-6);
+    min-height: var(--rm-nav-height);
   }
 
   .logo {
     display: inline-flex;
+    align-items: center;
     text-decoration: none;
     transition: opacity var(--duration-fast) var(--ease);
   }

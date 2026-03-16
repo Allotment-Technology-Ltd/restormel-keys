@@ -18,21 +18,22 @@
 <style>
   .page-title {
     font-family: var(--rm-font-display);
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 600;
     color: var(--rm-text);
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
   .page-desc {
     color: var(--rm-muted);
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
   }
   .placeholder {
     color: var(--rm-dim);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
   .error {
-    color: #c95c5c;
+    color: var(--coral-alert);
+    font-size: var(--text-sm);
   }
 </style>

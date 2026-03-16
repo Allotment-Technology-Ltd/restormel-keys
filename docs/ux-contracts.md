@@ -70,10 +70,19 @@ Every user-facing flow must define and handle these states where applicable:
 
 **Destructive actions:** Require explicit user confirmation before execution (per [.cursor/rules/04-ux-safety.mdc](../.cursor/rules/04-ux-safety.mdc)).
 
-## 4. Application
+## 4. Section pattern (shell rhythm)
 
-- **Site (Astro):** MarketingLayout nav and footer use the navigation model and canonical URLs. Pricing and docs use the same links and copy conventions.
-- **Dashboard (SvelteKit):** Layout and routes use the same URLs; welcome and error blocks use state conventions and copy registry terms.
+One pattern for every major section so the product shares the same rhythm:
+
+- **Marketing and docs:** Section = **section-title** (h2) + optional **section-intro** (p) + content. Spacing: `--space-6` between title and intro, `--space-6` or `--space-8` below intro to content. Use `.section-title` and `.section-intro` (or equivalent) with tokenized margins and `--rm-muted` for intro text.
+- **Dashboard:** Page = **page-title** (h1) + **page-desc** (p) + content. Use `.page-title` and `.page-desc` with `margin: 0 0 var(--space-2)` and `margin: 0 0 var(--space-4)` respectively; font size `var(--text-2xl)` for title, `var(--text-sm)` for desc, color `--rm-muted` for desc. Sub-sections use the same pattern (e.g. `.section-title` + `.section-desc` + content) with tokenized spacing.
+
+Apply this pattern on all dashboard pages (Overview, Projects, Billing, Settings, project detail, usage) and keep site Keys/Pricing sections aligned. Buttons and cards use `--rm-radius`, `--rm-sage`, `--rm-border`, `--rm-surface-raised` and padding scale `--space-2`, `--space-4`, `--space-6` so they are visually interchangeable across site and dashboard.
+
+## 5. Application
+
+- **Site (Astro):** MarketingLayout nav and footer use the navigation model and canonical URLs. Section pattern: `.section-title` + `.section-intro` + content. Pricing and docs use the same links and copy conventions.
+- **Dashboard (SvelteKit):** Layout and routes use the same URLs; welcome and error blocks use state conventions and copy registry terms. Section pattern: `.page-title` + `.page-desc` (and `.section-title` + `.section-desc` for sub-sections) with tokenized spacing.
 - **Docs (Starlight):** Sidebar and content use Dashboard/Sign in links and product nouns from the registry.
 - **Embeddable components:** KeyManager and other embeddables use the same security/key copy and state patterns (loading/error/empty/success) where applicable.
 

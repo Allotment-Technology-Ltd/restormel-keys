@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * Restormel app header lockup for dashboard sidebar and auth.
-   * Uses restormel-app-header-lockup.svg from static/.
+   * Restormel lockup for dashboard sidebar. Same asset as site nav (restormel-lockup-nav.svg)
+   * for one brand across site, docs, and dashboard. Height 28px matches marketing nav.
    */
   import { base } from '$app/paths';
 
@@ -13,7 +13,7 @@
 
 <a {href} class="app-logo {className}" aria-label="Restormel dashboard home">
   <img
-    src="{base}/restormel-app-header-lockup.svg"
+    src="{base}/restormel-lockup-nav.svg"
     alt="Restormel"
     width={compact ? 120 : 160}
     height={compact ? 18 : 24}
