@@ -91,7 +91,7 @@ These steps have no CLI or API; use the Portal UI or **browser MCP** as fallback
 
 | Step | Action |
 |------|--------|
-| **Developer Portal** | Portal → Developer Portal → enable. Import or paste [docs/api/openapi.yaml](../api/openapi.yaml). Set **Servers** URL to your gateway URL (Environments → main → Gateway). |
+| **Developer Portal** | Portal → Developer Portal → enable. **No portal editing required** if you deploy from this repo: the portal uses the deployed OpenAPI from `zuplo-gateway/config/routes.oas.json`. (Optional: you can still import [docs/api/openapi.yaml](../api/openapi.yaml), but if the editor is read-only, edit in git and redeploy instead.) |
 | **GitHub connection** (optional) | Portal → Settings → Source Control. Connects to a repo whose **root** is a Zuplo project (e.g. a dedicated gateway repo). See [zuplo-setup.md §10](zuplo-setup.md#10-connecting-to-github-optional--do-after-gateway-is-working). |
 
 When the portal shows the API reference and "Try it" works with a consumer key, the gateway is launch-ready.

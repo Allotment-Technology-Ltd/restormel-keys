@@ -2,129 +2,290 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Restormel Keys API",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "description": "API for managing projects and API keys. Call through this Zuplo gateway with a consumer API key."
   },
+  "servers": [
+    { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
+    { "url": "https://restormel-keys-gateway-working-co-185f3e3.zuplo.app" }
+  ],
+  "security": [{ "apiKey": [] }],
   "paths": {
-    "/(.*)": {
-      "x-zuplo-path": { "pathMode": "url-pattern" },
+    "/api/health": {
       "get": {
-        "summary": "Keys API proxy (GET)",
-        "operationId": "keys-api-proxy-get",
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "service": { "type": "string", "example": "keys-dashboard" }
+                  }
+                }
+              }
+            }
+          }
+        },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": {
-              "baseUrl": "${env.KEYS_BACKEND_URL}",
-              "forwardSearch": true,
-              "followRedirects": false
-            }
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
           },
           "policies": {
-            "inbound": [
-              "api-key-inbound",
-              "rate-limit-inbound",
-              "quota-inbound",
-              "inject-backend-auth"
-            ]
+            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "summary": "List projects",
+        "operationId": "listProjects",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "List of projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": {
+            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
           }
         }
       },
       "post": {
-        "summary": "Keys API proxy (POST)",
-        "operationId": "keys-api-proxy-post",
+        "summary": "Create project",
+        "operationId": "createProject",
+        "tags": ["Projects"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "name": { "type": "string", "description": "Project display name" } } }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+              }
+            }
+          }
+        },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": {
-              "baseUrl": "${env.KEYS_BACKEND_URL}",
-              "forwardSearch": true,
-              "followRedirects": false
-            }
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
           },
           "policies": {
-            "inbound": [
-              "api-key-inbound",
-              "rate-limit-inbound",
-              "quota-inbound",
-              "inject-backend-auth"
-            ]
+            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
           }
         }
-      },
-      "put": {
-        "summary": "Keys API proxy (PUT)",
-        "operationId": "keys-api-proxy-put",
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "summary": "Get project",
+        "operationId": "getProject",
+        "tags": ["Projects"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Project details",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } } } }
+          },
+          "404": { "description": "Not found" }
+        },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": {
-              "baseUrl": "${env.KEYS_BACKEND_URL}",
-              "forwardSearch": true,
-              "followRedirects": false
-            }
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
           },
-          "policies": {
-            "inbound": [
-              "api-key-inbound",
-              "rate-limit-inbound",
-              "quota-inbound",
-              "inject-backend-auth"
-            ]
-          }
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
         }
       },
       "patch": {
-        "summary": "Keys API proxy (PATCH)",
-        "operationId": "keys-api-proxy-patch",
+        "summary": "Update project",
+        "operationId": "updateProject",
+        "tags": ["Projects"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "404": { "description": "Not found" }
+        },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": {
-              "baseUrl": "${env.KEYS_BACKEND_URL}",
-              "forwardSearch": true,
-              "followRedirects": false
-            }
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
           },
-          "policies": {
-            "inbound": [
-              "api-key-inbound",
-              "rate-limit-inbound",
-              "quota-inbound",
-              "inject-backend-auth"
-            ]
-          }
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
         }
       },
       "delete": {
-        "summary": "Keys API proxy (DELETE)",
-        "operationId": "keys-api-proxy-delete",
+        "summary": "Delete project",
+        "operationId": "deleteProject",
+        "tags": ["Projects"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "404": { "description": "Not found" }
+        },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": {
-              "baseUrl": "${env.KEYS_BACKEND_URL}",
-              "forwardSearch": true,
-              "followRedirects": false
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/api/projects/{id}/keys": {
+      "get": {
+        "summary": "List API keys for project",
+        "operationId": "listProjectKeys",
+        "tags": ["Keys"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "List of key metadata (prefix/hash only; raw key never returned)",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/KeyInfo" } } } } } }
+          },
+          "404": { "description": "Not found" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      },
+      "post": {
+        "summary": "Create API key",
+        "operationId": "createApiKey",
+        "tags": ["Keys"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "201": {
+            "description": "Key created; raw key returned once in response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "rawKey": { "type": "string", "description": "Shown only once; store securely" },
+                        "keyPrefix": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
-          "policies": {
-            "inbound": [
-              "api-key-inbound",
-              "rate-limit-inbound",
-              "quota-inbound",
-              "inject-backend-auth"
-            ]
-          }
+          "404": { "description": "Not found" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      },
+      "delete": {
+        "summary": "Revoke API key",
+        "operationId": "deleteApiKey",
+        "tags": ["Keys"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "keyId": { "type": "string", "description": "Key ID to revoke" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "404": { "description": "Not found" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    }
+  }
+  ,
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key",
+        "description": "Consumer API key (issued by Zuplo). Send as Authorization: Bearer <key>."
+      }
+    },
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "KeyInfo": {
+        "type": "object",
+        "description": "Key metadata only (prefix/hash); raw key is never returned in list.",
+        "properties": {
+          "keyPrefix": { "type": "string" },
+          "keyId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
         }
       }
     }

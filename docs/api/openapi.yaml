@@ -11,10 +11,10 @@ info:
     Authentication is required for all endpoints (API key in Authorization header).
 
 servers:
-  - url: https://restormel-keys-gateway-main-{env}.zuplo.app
-    variables:
-      env:
-        default: bc13eba
+  - url: https://restormel-keys-gateway-main-bc13eba.zuplo.app
+    description: Main (production)
+  - url: https://restormel-keys-gateway-working-co-185f3e3.zuplo.app
+    description: Working copy (resilience / fallback)
 
 security:
   - apiKey: []

@@ -1,6 +1,6 @@
 # Zuplo gateway setup — Restormel Keys
 
-This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Vercel) using a single **backend API key** (`sk-rk-...`).
+This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Vercel) using a single **backend API key** (`rk_...`).
 
 **Current stack:** Dashboard is on **Vercel** (site on Cloudflare; `KEYS_BACKEND_URL` = `https://restormel.dev/keys/dashboard`). Data is in **Neon**; auth is **Neon Auth**. No GCP/Cloud Run or Firebase.
 
@@ -36,7 +36,7 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 |----------|-----------------|
 | **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
 | **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard` (Cloudflare → Vercel dashboard). |
-| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Vercel): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `sk-rk-...`. |
+| **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard** (Vercel): log in → create/select a project → create an API key. Use that key only in Zuplo (as secret). Format: `rk_...`. |
 | **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
 | **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |
 | **ZUPLO_BRANCH** | Environment name: `main` or `working-copy` (or your branch name). Scripts default to `main`. |
@@ -105,11 +105,11 @@ Create each policy in the Zuplo dashboard if it does not exist (same pattern as 
 
 ## 4. Backend API key (Zuplo env)
 
-1. Create a **backend API key** in the Keys dashboard (Vercel): log in → create/select a project → create an API key (`sk-rk-...`). Use it only for Zuplo; store in secrets manager; do not commit.
+1. Create a **backend API key** in the Keys dashboard (Vercel): log in → create/select a project → create an API key (`rk_...`). Use it only for Zuplo; store in secrets manager; do not commit.
 2. In the Zuplo project, open **Settings** → **Environment Variables** (or **Secrets**).
 3. Add a variable:
    - **Name:** `KEYS_BACKEND_API_KEY`
-   - **Value:** the backend key (e.g. `sk-rk-...`).
+   - **Value:** the backend key (e.g. `rk_...`).
    - **Mark as secret** so it is not shown in logs or the UI.
 4. Configure the **inject-backend-auth** policy to use this variable (e.g. set the `Authorization` header to `Bearer ${KEYS_BACKEND_API_KEY}`).
 
@@ -136,6 +136,17 @@ The dashboard must accept this key for programmatic API requests. It must **not*
 2. Create an **API key** for the project (or use a dedicated “gateway” project). This key is the one you will use as **KEYS_BACKEND_API_KEY** in Zuplo (§4).
 3. Store the key securely; configure it in Zuplo as in §4. The dashboard must accept this key for requests that Zuplo forwards (inject-backend-auth).
 
+### 6.1 What to name things (app → Zuplo)
+
+| Where | What to use | Notes |
+|-------|-------------|--------|
+| **Restormel Keys app — Project name** | `Zuplo Gateway` or `restormel-keys-gateway` | One project is enough; use it only for the key Zuplo will send to the dashboard. |
+| **Restormel Keys app — API key** | No name in UI; just click **Generate API key** | Copy the full key once (format `rk_...`). You will not see it again. |
+| **Zuplo — Env variable name** | `KEYS_BACKEND_API_KEY` | Exactly this; the inject-backend-auth policy reads it. |
+| **Zuplo — Value** | Paste the full key from the app (e.g. `rk_abc123...`) | Mark as **secret** in Zuplo so it is not shown in logs or UI. |
+
+**Flow:** In the app → create/select the project → **Generate API key** → copy the key → in Zuplo, **Settings → Environment Variables** → add `KEYS_BACKEND_API_KEY` with that value (secret).
+
 ---
 
 ## 7. Validation
@@ -153,7 +164,7 @@ Run these checks to meet the gate:
 
 Ensure the dashboard is configured so that:
 
-- It accepts the **backend key** (`sk-rk-...`) for server-to-server calls (e.g. from Zuplo).
+- It accepts the **backend key** (`rk_...`) for server-to-server calls (e.g. from Zuplo).
 - It **rejects** Zuplo consumer keys (`zpka_...`) when they are sent directly to the dashboard (so clients cannot bypass Zuplo).
 
 ---
@@ -167,7 +178,7 @@ Use this checklist to confirm Zuplo is **fully configured for launch**. Complete
 | 1 | **Project** | Zuplo project **`restormel-keys-gateway`** exists. Portal or CLI. |
 | 2 | **Routes** | Routes deployed: path `/(.*)` (url-pattern), URL Forward to `${env.KEYS_BACKEND_URL}`, methods GET, POST, PUT, PATCH, DELETE. Code → routes.oas.json matches §2 and §8.3. |
 | 3 | **Policies** | All four inbound policies attached in order: api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth. Code → policies.json. **API key bucket:** `api-key-inbound` uses a `bucketName` that is project-specific. If you created the project in the portal, the bucket ID is in Portal → Project → Settings → Project Information (or API Key Service). If deploy fails or keys are rejected, ensure `config/policies.json` uses the bucket for this project (or define policies in the Portal and export per §8.5). |
-| 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `sk-rk-...`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
+| 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `rk_...`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
 | 5 | **Backend key** | Backend API key created in the Keys dashboard (Vercel); same key set as **KEYS_BACKEND_API_KEY** in Zuplo. Dashboard accepts this key and rejects `zpka_...` on direct calls (§7). |
 | 6 | **Developer portal** | Developer portal **enabled**. OpenAPI spec **added or imported** (e.g. from [docs/api/openapi.yaml](../api/openapi.yaml) or a minimal spec with paths `/api/health`, `/api/projects`, etc.). Portal shows API reference and auth (API key) so developers can try the API. §5. |
 | 7 | **At least one consumer** | At least one API key **consumer** created (Portal → API Key Service or script `zuplo-gateway/scripts/create-consumer-and-test.sh`). Clients use the issued `zpka_...` key to call the gateway. |
@@ -186,7 +197,7 @@ When all items are done, Zuplo is ready for launch: gateway returns 401 without 
 | Zuplo project | `restormel-keys-gateway` |
 | Backend | Dashboard URL (Vercel via Cloudflare), e.g. `https://restormel.dev/keys/dashboard`. No trailing slash. |
 | Policy chain | api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth |
-| Backend key env | `KEYS_BACKEND_API_KEY` (secret; `sk-rk-...`) |
+| Backend key env | `KEYS_BACKEND_API_KEY` (secret; `rk_...`) |
 | Consumer keys | Issued by Zuplo; used by clients; never sent to backend. |
 | Direct backend | Dashboard must reject `zpka_` keys. |
 
@@ -229,7 +240,7 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
 2. **Get values:**
    - **ZUPLO_API_KEY** — Portal → Settings → API Keys.
    - **KEYS_BACKEND_URL** — Dashboard base URL, no trailing slash. Current: `https://restormel.dev/keys/dashboard` (Cloudflare → Vercel).
-   - **KEYS_BACKEND_API_KEY** — Backend key (`sk-rk-...`) from the Keys dashboard (Vercel): create an API key for a project; use it only in Zuplo as a secret.
+   - **KEYS_BACKEND_API_KEY** — Backend key (`rk_...`) from the Keys dashboard (Vercel): create an API key for a project; use it only in Zuplo as a secret.
 
 3. **Run the setup script** from repo root:
    ```bash
@@ -238,7 +249,7 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
    # Set env (or copy .env.example to .env and fill in)
    export ZUPLO_API_KEY="<your-portal-api-key>"
    export KEYS_BACKEND_URL="https://restormel.dev/keys/dashboard"
-   export KEYS_BACKEND_API_KEY="sk-rk-..."
+   export KEYS_BACKEND_API_KEY="rk_..."
    ./scripts/setup-from-cli.sh
    ```
    The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the `main` branch, then deploys with `--no-verify-remote` (required when the project lives in a monorepo subfolder). Optional: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`.
