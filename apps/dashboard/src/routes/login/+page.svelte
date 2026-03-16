@@ -10,9 +10,13 @@
     loading = true;
     error = "";
     try {
+      const absoluteCallback =
+        typeof window !== "undefined" ? window.location.origin + base + "/" : base + "/";
       await authClient.signIn.social({
         provider: "github",
-        callbackURL: typeof window !== "undefined" ? window.location.origin + base + "/" : base + "/",
+        callbackURL: absoluteCallback,
+        newUserCallbackURL: absoluteCallback,
+        errorCallbackURL: absoluteCallback,
       });
       // Neon Auth redirects to GitHub; after callback it redirects to callbackURL
     } catch (e) {

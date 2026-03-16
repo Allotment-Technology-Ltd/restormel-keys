@@ -55,6 +55,16 @@ function parseUrl(value: string | null): URL | null {
   }
 }
 
+function getPublicOrigin(request: Request, ourUrl: URL): string {
+  const origin = parseUrl(request.headers.get("origin"));
+  if (origin) return origin.origin;
+
+  const referer = parseUrl(request.headers.get("referer"));
+  if (referer) return referer.origin;
+
+  return ourUrl.origin;
+}
+
 function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Headers {
   const headers = new Headers();
   const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", ourUrl.host);
@@ -62,8 +72,10 @@ function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Heade
   const accept = request.headers.get("accept");
   const acceptLanguage = request.headers.get("accept-language");
   const userAgent = request.headers.get("user-agent");
+  const origin = getPublicOrigin(request, ourUrl);
 
   headers.set("host", targetUrl.host);
+  headers.set("origin", origin);
   if (cookie) headers.set("cookie", cookie);
   if (contentType) headers.set("content-type", contentType);
   if (accept) headers.set("accept", accept);
@@ -143,6 +155,7 @@ export async function proxyAuthRequest(
     console.error("[auth] Neon Auth", res.status, "for", path, "—", errText.slice(0, 600));
     console.error("[auth] forwarded headers", {
       host: headers.get("host"),
+      origin: headers.get("origin"),
       contentType: headers.get("content-type"),
       accept: headers.get("accept"),
       hasCookie: Boolean(headers.get("cookie")),
