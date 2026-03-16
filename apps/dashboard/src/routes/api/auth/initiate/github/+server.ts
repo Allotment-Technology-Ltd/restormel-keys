@@ -57,10 +57,15 @@ export const GET: RequestHandler = async ({ url }) => {
     // ignore
   }
 
-  const maybeUrl =
-    data && typeof data === "object" && "data" in data
-      ? (data as any).data?.url
-      : null;
+  // Neon may respond either with { data: { url } } or with { url, redirect: true }.
+  let maybeUrl: string | null = null;
+  if (data && typeof data === "object") {
+    if ("data" in data && (data as any).data?.url) {
+      maybeUrl = (data as any).data.url;
+    } else if ("url" in data && typeof (data as any).url === "string") {
+      maybeUrl = (data as any).url;
+    }
+  }
 
   if (typeof maybeUrl === "string") {
     throw redirect(302, maybeUrl);
