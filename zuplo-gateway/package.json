@@ -7,9 +7,18 @@
     "deploy": "zuplo deploy"
   },
   "devDependencies": {
-    "zuplo": "^6.67.0"
+    "zuplo": "^6.67.25"
   },
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "fastify": ">=5.7.3",
+      "undici": ">=6.24.0",
+      "minimatch": ">=10.2.3",
+      "js-yaml": ">=4.1.1",
+      "tmp": ">=0.2.4"
+    }
   }
 }

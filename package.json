@@ -21,7 +21,9 @@
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "overrides": {
-      "esbuild": ">=0.25.0"
+      "esbuild": ">=0.25.0",
+      "cookie": ">=0.7.0",
+      "@tootallnate/once": ">=3.0.1"
     }
   }
 }
