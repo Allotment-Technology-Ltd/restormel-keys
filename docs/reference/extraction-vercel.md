@@ -15,7 +15,7 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 ## Moving to Vercel
 
 1. **Adapter** — The dashboard uses `@sveltejs/adapter-vercel`. The repo uses **pnpm only**; do not commit `package-lock.json` in `apps/dashboard` (it is gitignored) or Vercel will run npm and conflict with pnpm.
-2. **Build (recommended)** — In Vercel, set **Root Directory** to **`.`** (repo root). The root **`vercel.json`** then applies: `installCommand`: `pnpm install`, `buildCommand`: `pnpm --filter dashboard build`, `outputDirectory`: `apps/dashboard/.vercel/output`. This avoids mixed npm/pnpm and cache issues.
+2. **Build (recommended)** — In Vercel, set **Root Directory** to **`.`** (repo root). The root **`vercel.json`** sets `installCommand`: `pnpm install`, `buildCommand`: `pnpm --filter dashboard build`. The dashboard build copies `apps/dashboard/.vercel/output` to repo root `.vercel/output` so Vercel finds it. **You must set Build Command override** in Project Settings to **`pnpm --filter dashboard build`** if the log shows "Running \"vercel build\"" (see 404 section).
 3. **Build (alternative)** — If you keep Root Directory as **`apps/dashboard`**, the `apps/dashboard/vercel.json` runs `cd .. && pnpm install` and `pnpm run build`. Ensure no `package-lock.json` exists there.
 4. **Env** — In Vercel → Project → Settings → Environment Variables, add:
    - `DATABASE_URL` — Neon connection string for the **production** branch.
@@ -36,16 +36,27 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 
 If **all** routes (/, /favicon.ico, /keys/dashboard) return 404:
 
-The repo’s root **`vercel.json`** sets **`framework`: null** so Vercel treats the project as “Other” and uses our `buildCommand` / `outputDirectory` instead of the SvelteKit preset. If you still see 404 after a redeploy, use the **Root Directory = apps/dashboard** flow below.
+The repo’s root **`vercel.json`** sets **`framework`: null** so Vercel treats the project as “Other” and uses our `buildCommand` instead of the SvelteKit preset. If you still see 404 after a redeploy, use the **Root Directory = apps/dashboard** flow below.
 
 1. **Domain → project** — Vercel → **Domains**: confirm **restormel.dev** is assigned to the **same project** that is connected to this repo and builds the dashboard. If you have multiple projects (e.g. an old “site” project), move the domain to the project that runs `pnpm --filter dashboard build` (or Root Directory `apps/dashboard` with `pnpm run build`).
 2. **Root Directory** — Use **one** of:
-   - **`.`** (repo root): root `vercel.json` applies (`outputDirectory`: `apps/dashboard/.vercel/output`). Build runs from repo root.
+   - **`.`** (repo root): root `vercel.json` applies; build copies output to `.vercel/output` at root. Build runs from repo root. Override Build Command in UI if needed.
    - **`apps/dashboard`**: `apps/dashboard/vercel.json` applies (`outputDirectory`: `.vercel/output`). Build runs from that folder; install is `cd .. && pnpm install`.
 3. **Latest deployment** — Vercel → **Deployments**: open the latest deployment. If it **failed**, fix the build (e.g. lockfile, Node version) and redeploy. If the last **successful** deployment is old, trigger a new deploy from **main**.
 4. **Runtime env** — In **Settings → Environment Variables**, set at least **Production**: `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Missing env can cause serverless functions to fail and return 5xx or 404.
 
 The browser messages *"Event handler must be added on initial evaluation"* and *"runtime.lastError... back/forward cache"* are from **extensions** (e.g. DevTools), not the site; they do not cause the 404s.
+
+### Build log shows "Running \"vercel build\"" and build finishes in &lt;1s
+
+If the deploy log shows **Running "vercel build"** and the build completes in a few hundred ms, Vercel is **ignoring** `vercel.json` and using the default CLI build. Override in the dashboard:
+
+1. **Vercel** → **restormel-keys** → **Settings** → **Build and Deployment**.
+2. Turn **on** the **Override** for **Build Command**.
+3. Set **Build Command** to: **`pnpm --filter dashboard build`**
+4. Save and **Redeploy**.
+
+With that override, the real SvelteKit build runs (~60s), the copy script puts `.vercel/output` at repo root, and the site should serve. Alternatively use **Root Directory = apps/dashboard** (see below) so the build runs from the app folder and no copy is needed.
 
 ### If still 404: switch to Root Directory = `apps/dashboard`
 
