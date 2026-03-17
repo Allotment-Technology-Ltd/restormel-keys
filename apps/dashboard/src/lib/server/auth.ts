@@ -108,7 +108,7 @@ export async function getSession(
     }
     const data = (await res.json()) as { user?: SessionUser; session?: unknown } | null;
     const user = data?.user ?? null;
-    return { data: user ? { user } : { user: null }, error: null };
+    return { data: user ? { user } : null, error: null };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
   }
@@ -142,14 +142,14 @@ export async function proxyAuthRequest(
     method: request.method,
     headers,
     body: hasBody ? request.body : undefined,
-    duplex: hasBody ? ("half" as RequestDuplex) : undefined,
     redirect: "manual",
-  });
+    ...(hasBody && { duplex: "half" as const }),
+  } as RequestInit);
   if (res.status === 503) {
     console.error("[auth] Neon Auth returned 503 for", path, "— check NEON_AUTH_BASE_URL and that Auth is enabled in Neon Console.");
   }
   // Log 4xx body so we can see Neon's error message in Vercel logs
-  let bodyToReturn: BodyInit = res.body;
+  let bodyToReturn: BodyInit = res.body ?? "";
   if (res.status >= 400 && res.status < 500) {
     const errText = await res.text();
     console.error("[auth] Neon Auth", res.status, "for", path, "—", errText.slice(0, 600));

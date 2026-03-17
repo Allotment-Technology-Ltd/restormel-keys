@@ -1,5 +1,6 @@
 <script lang="ts">
-  /** Docs overview — ported from Starlight index.md */
+  /** Docs overview */
+  import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
 </script>
 
 <svelte:head>
@@ -15,7 +16,7 @@
 
   <h2>Start with Next.js</h2>
   <p>Using <strong>Next.js App Router</strong>? Install the core plus React and Web Components, then add KeyManager and your key storage. Full path: <a href="/keys/docs/compatibility">Framework compatibility</a>.</p>
-  <pre class="code-block"><code>pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements</code></pre>
+  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
 
   <h2>Pick your framework</h2>
   <p>One core; different wrappers. Use the headless API for resolution and cost on the server; add UI (KeyManager, ModelSelector, CostEstimator) where it fits.</p>
@@ -34,6 +35,7 @@
 
   <h2>Quick links</h2>
   <ul>
+    <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
     <li><a href="/keys/docs/cloud-api">Cloud API</a> — API reference, gateway URL, and Developer Portal</li>
     <li><a href="/keys">Keys landing</a> — what Keys is, modes, comparison, pricing</li>
     <li><a href="/keys/pricing">Pricing</a> — tiers and FAQ</li>
@@ -74,16 +76,6 @@
   }
   .doc-content li {
     margin-bottom: var(--space-2);
-  }
-  .code-block {
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    overflow-x: auto;
-    margin: 0 0 var(--space-4);
   }
   .doc-table {
     width: 100%;

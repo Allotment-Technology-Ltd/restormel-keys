@@ -62,7 +62,7 @@ Embeddable components use **`--rk-*`** for host-app theming (see packages/svelte
 
 ---
 
-## 4. Documentation site (Starlight)
+## 4. Documentation site (Svelte)
 
 P0 pages: Quickstart, Next.js guide, React guide, SvelteKit guide, API reference, Configuration reference, Provider reference, Storage adapters, Security model.
 
@@ -91,7 +91,7 @@ restormel.dev (Cloudflare Pages)
 ├── /                    static homepage
 ├── /keys                static landing page
 ├── /keys/pricing        static + Paddle.js
-├── /keys/docs/*         static docs (Starlight)
+├── /keys/docs/*         docs (Svelte routes)
 └── /keys/dashboard/*    reverse-proxy → Cloud Run
 
 keys-dashboard.europe-west2.run.app (Cloud Run)

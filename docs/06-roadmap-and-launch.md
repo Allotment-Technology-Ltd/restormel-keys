@@ -18,7 +18,7 @@ Svelte components (KeyManager, ModelSelector, CostEstimator). Theming. Web Compo
 
 ### Phase 3: Site + dashboard + billing (Weeks 5–7)
 
-Landing page (Astro). Docs (Starlight). Dashboard (SvelteKit). Paddle billing (from SOPHIA). Zuplo gateway. PostHog analytics. Cloud API. Cloud deployment (Cloud Run + Cloudflare Pages).
+Landing page, docs, and dashboard (Svelte/SvelteKit). Paddle billing (from SOPHIA). Zuplo gateway. PostHog analytics. Cloud API. Cloud deployment (Cloud Run + Cloudflare Pages).
 
 **Gate:** Landing page live. Dashboard handles CRUD + billing. Zuplo portal accessible.
 

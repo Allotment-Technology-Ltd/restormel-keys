@@ -1,7 +1,11 @@
 <script lang="ts">
-  /** Restormel Keys landing — migrated from Astro (Phase B). */
+  /** Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages. */
+  import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+
+  const pkgKeys = "@restormel/keys";
+  const pkgReact = "@restormel/keys-react";
   const serverCode = `// app/api/chat/route.ts (Next.js App Router)
-import { createResolveMiddleware } from "@restormel/keys";
+import { createResolveMiddleware } from "${pkgKeys}";
 
 const resolve = createResolveMiddleware({
   keys: await getStoredKeys(),
@@ -20,7 +24,7 @@ export async function POST(req: Request) {
 }`;
 
   const uiCode = `// app/settings/page.tsx
-import { KeyManager } from "@restormel/keys-react";
+import { KeyManager } from "${pkgReact}";
 
 export default function Settings() {
   return (
@@ -47,7 +51,8 @@ export default function Settings() {
       </p>
       <p class="hero-who">For AI SaaS builders, open-source maintainers, and small teams that need routing and end-user BYOK without running a gateway or rewriting key logic from scratch.</p>
       <div class="hero-ctas">
-        <a href="/keys/docs" class="btn btn-primary">Get started</a>
+        <a href="/keys/docs/walkthrough/phase-0-inventory" class="btn btn-primary btn-cta-hero">Start the walkthrough</a>
+        <a href="/keys/docs" class="btn btn-secondary">Docs</a>
         <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
     </div>
@@ -88,11 +93,11 @@ export default function Settings() {
       <div class="code-split">
         <div class="code-pane">
           <span class="code-label">Server</span>
-          <div class="code-block"><pre><code>{serverCode}</code></pre></div>
+          <CodeBlock language="ts" code={serverCode} />
         </div>
         <div class="code-pane">
           <span class="code-label">React / Next.js</span>
-          <div class="code-block"><pre><code>{uiCode}</code></pre></div>
+          <CodeBlock language="tsx" code={uiCode} />
         </div>
       </div>
     </div>
@@ -249,6 +254,18 @@ export default function Settings() {
   .btn-primary:hover {
     filter: brightness(1.1);
   }
+  .btn-cta-hero {
+    padding: var(--space-4) var(--space-8);
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    min-width: 16rem;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+  .btn-cta-hero:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
   .btn-secondary {
     background: var(--rm-surface-raised);
     color: var(--rm-text);
@@ -303,20 +320,6 @@ export default function Settings() {
     color: var(--rm-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-  }
-  .code-block {
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    overflow: auto;
-    font-size: var(--text-sm);
-  }
-  .code-block :global(pre) {
-    margin: 0;
-    padding: var(--space-5);
-  }
-  .code-block :global(code) {
-    font-family: var(--rm-font-ui);
   }
   .frameworks-copy {
     font-size: var(--text-base);

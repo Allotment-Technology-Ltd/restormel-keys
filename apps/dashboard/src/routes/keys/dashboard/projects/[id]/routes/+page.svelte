@@ -40,7 +40,7 @@
     creating = true;
     createError = "";
     try {
-      const res = await fetch(`${base}/api/projects/${data.project.id}/routes`, {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

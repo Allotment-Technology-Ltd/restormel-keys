@@ -25,7 +25,7 @@
     saving = true;
     saveError = "";
     try {
-      const res = await fetch(`${base}/api/policies/${data.policy.id}`, {
+      const res = await fetch(`${DASHBOARD_BASE}/api/policies/${data.policy.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: editStatus }),

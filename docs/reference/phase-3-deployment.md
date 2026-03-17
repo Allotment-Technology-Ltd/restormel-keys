@@ -2,7 +2,7 @@
 
 **Current deployment:** Site and dashboard run on **Vercel** only. No Cloudflare or GCP Cloud Run.
 
-- **Site** (Astro): Vercel project, Root `apps/site`, custom domain **restormel.dev**. Redirects `/keys/dashboard` and `/keys/dashboard/*` to the dashboard.
+- **Site** (SvelteKit): Dashboard and docs in one app; deploy per runbook. Custom domain **restormel.dev**. Dashboard at `/keys/dashboard`, docs at `/keys/docs`.
 - **Dashboard** (SvelteKit): Vercel project, Root `.`, custom domain **restormel.dev/keys/dashboard**. Served at root (no path prefix).
 
 **Gate:** All surfaces accessible (landing, docs, dashboard at restormel.dev/keys/dashboard, Paddle checkout, Zuplo gateway when applicable).
@@ -86,7 +86,7 @@ In the **Paddle dashboard** (sandbox or production):
 
 ## 3. Site → Vercel (current)
 
-The marketing site and Keys docs (`apps/site`, Astro + Starlight) are deployed to **Vercel**. Create a Vercel project with Root Directory **apps/site**; add custom domain **restormel.dev**. The site’s `vercel.json` redirects `/keys/dashboard` and `/keys/dashboard/*` to **https://restormel.dev/keys/dashboard**.
+The marketing site and Keys docs are served by the SvelteKit app (dashboard + docs); deploy per phase-3 runbooks. Create a Vercel project with Root Directory **apps/site**; add custom domain **restormel.dev**. The site’s `vercel.json` redirects `/keys/dashboard` and `/keys/dashboard/*` to **https://restormel.dev/keys/dashboard**.
 
 ### 3.1 (Historical) Site → Cloudflare Pages
 
@@ -250,7 +250,7 @@ After deployment and DNS/proxy are in place:
 | Check | Expected |
 |-------|----------|
 | **Landing** | `https://restormel.dev` (or your domain) serves the marketing homepage. |
-| **Docs** | `https://restormel.dev/keys/docs/` (or equivalent) serves Starlight docs. |
+| **Docs** | `https://restormel.dev/keys/docs/` (or equivalent) serves Svelte docs. |
 | **Dashboard** | `https://restormel.dev/keys/dashboard` loads the SvelteKit app; login and shell work. |
 | **Paddle checkout** | From `/keys/pricing`, “Subscribe” opens Paddle checkout; success redirects to dashboard with `?billing=success` (or configured path). |
 | **Zuplo gateway** | If Phase 3 includes Zuplo, external calls through Zuplo to the Cloud Run API work and developer portal shows docs. |

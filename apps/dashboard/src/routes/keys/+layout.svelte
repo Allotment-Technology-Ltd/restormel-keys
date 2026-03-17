@@ -5,7 +5,7 @@
 
 <svelte:head>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
   <link
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
@@ -14,7 +14,7 @@
 
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <header class="marketing-nav" role="banner">
+  <header class="marketing-nav">
     <nav class="marketing-nav-inner" aria-label="Main">
       <a href="/" class="logo">
         <img src="/restormel-lockup-nav.svg" alt="Restormel" class="logo-img" style="height: 28px; width: auto;" />
@@ -28,10 +28,10 @@
       </ul>
     </nav>
   </header>
-  <main id="main-content" class="marketing-main" role="main">
+  <main id="main-content" class="marketing-main">
     <slot />
   </main>
-  <footer class="marketing-footer" role="contentinfo">
+  <footer class="marketing-footer">
     <div class="marketing-footer-inner">
       <div class="marketing-footer-col">
         <span class="marketing-footer-title">Product</span>

@@ -14,6 +14,12 @@ export type IntegrationsLocals = {
   };
 };
 
+function isDbNotReadyError(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  // Postgres: undefined table / undefined column (common when migrations not applied)
+  return code === "42P01" || code === "42703";
+}
+
 export async function getWorkspaceAndActor(
   locals: IntegrationsLocals
 ): Promise<{ workspaceId: string; actorId: string; actorType: string } | null> {
@@ -26,7 +32,16 @@ export async function getWorkspaceAndActor(
       actorType: "management_key",
     };
   }
-  const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
+  let workspace;
+  try {
+    workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
+  } catch (e) {
+    if (isDbNotReadyError(e)) {
+      console.warn("[db] not ready (missing migrations) — treating as unauthenticated for now");
+      return null;
+    }
+    throw e;
+  }
   return {
     workspaceId: workspace.id,
     actorId: locals.user.uid,

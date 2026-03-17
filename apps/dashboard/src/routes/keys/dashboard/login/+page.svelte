@@ -42,11 +42,6 @@
   .login-form {
     margin: 0 0 1.5rem;
   }
-  .login-error {
-    color: #c95c5c;
-    font-size: 0.875rem;
-    margin: 0 0 1rem;
-  }
   .btn {
     display: inline-block;
     padding: 0.5rem 1rem;

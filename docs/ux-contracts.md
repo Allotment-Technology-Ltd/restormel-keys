@@ -89,9 +89,9 @@ Apply this pattern on all dashboard pages (Overview, Projects, Billing, Settings
 
 ## 5. Application
 
-- **Site (Astro):** MarketingLayout nav and footer use the navigation model and canonical URLs. Section pattern: `.section-title` + `.section-intro` + content. Pricing and docs use the same links and copy conventions.
+- **Site (Svelte/SvelteKit):** Nav and footer use the navigation model and canonical URLs. Section pattern: `.section-title` + `.section-intro` + content. Pricing and docs use the same links and copy conventions.
 - **Dashboard (SvelteKit):** Layout and routes use the same URLs; welcome and error blocks use state conventions and copy registry terms. Section pattern: `.page-title` + `.page-desc` (and `.section-title` + `.section-desc` for sub-sections) with tokenized spacing.
-- **Docs (Starlight):** Sidebar and content use Dashboard/Sign in links and product nouns from the registry.
+- **Docs (Svelte):** Sidebar and content use Dashboard/Sign in links and product nouns from the registry.
 - **Embeddable components:** KeyManager and other embeddables use the same security/key copy and state patterns (loading/error/empty/success) where applicable.
 
 When adding or changing copy or nav, check this document and [documentation-strategy.md](documentation-strategy.md) for consistency.

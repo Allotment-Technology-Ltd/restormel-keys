@@ -188,3 +188,9 @@ export function createResolveHandler(storage: KeyStorage) {
 
 - **SOPHIA tests pass.**
 - **BYOK works end-to-end.**
+
+---
+
+## See also
+
+- **SOPHIA dogfooding plan** — [sophia-dogfooding-plan.md](sophia-dogfooding-plan.md): using Restormel Keys for the **ingestion pipeline** (fallback routes and policies) and **embedded UI** (ModelSelector) so end-users can select models for philosophy queries. That plan extends this runbook with ingestion + resolve API + policies + embeddable model selection.

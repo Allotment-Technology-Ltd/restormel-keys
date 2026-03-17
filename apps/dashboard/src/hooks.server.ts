@@ -10,9 +10,6 @@ import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
 
 export const handle: Handle = async ({ event, resolve }) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7463/ingest/4d73a77a-e2c7-48aa-ae41-73a13b42405f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fc0f8'},body:JSON.stringify({sessionId:'4fc0f8',location:'hooks.server.ts:12',message:'request reached SvelteKit handle',data:{method:event.request.method,url:event.url.pathname,host:event.url.host},timestamp:Date.now(),hypothesisId:'C-D'})}).catch(()=>{});
-  // #endregion
   try {
     const { data: session } = await getSession(event.request, event.url.host);
     if (session?.user) {
