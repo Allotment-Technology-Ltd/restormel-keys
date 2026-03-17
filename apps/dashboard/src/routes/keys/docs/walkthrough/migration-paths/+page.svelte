@@ -262,7 +262,6 @@ DO NOT: Change code. Remove the old system. Paste secrets.`,
   </WalkthroughStep>
 
   <AgentPromptsSection
-    heading="Agent prompts for this phase"
     intro="These are optional and collapsed by default. Use them if you're migrating from an existing routing system with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}

@@ -42,3 +42,10 @@ temp/
 # Optional: uncomment when packages exist
 # packages/*/dist/
 .vercel
+
+# Local-only internal notes (not committed)
+internal/**
+!internal/README.md
+
+# Cursor plan artifacts (local-only)
+.cursor/plans/**

@@ -240,7 +240,6 @@ USE_RESTORMEL_KEYS=false`} />
   </WalkthroughStep>
 
   <AgentPromptsSection
-    heading="Agent prompts for this phase"
     intro="These are optional and collapsed by default. Use them if you're implementing Phase 1 with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}

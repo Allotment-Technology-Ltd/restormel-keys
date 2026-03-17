@@ -5,6 +5,18 @@
   import { page } from "$app/stores";
   import { absoluteUrl } from "$lib/seo";
 
+  $: pathname = $page.url.pathname;
+  $: navActive =
+    pathname === "/keys" || pathname === "/keys/"
+      ? "keys"
+      : pathname.startsWith("/keys/docs")
+        ? "docs"
+        : pathname.startsWith("/keys/pricing")
+          ? "pricing"
+          : pathname.startsWith("/keys/dashboard")
+            ? "dashboard"
+            : "keys";
+
   const orgJsonLd = (baseUrl: URL) => ({
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -42,7 +54,7 @@
 
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <SiteHeader active="keys" />
+  <SiteHeader active={navActive as "keys" | "docs" | "pricing" | "dashboard"} />
   <main id="main-content" class="marketing-main">
     <slot />
   </main>

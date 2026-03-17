@@ -231,7 +231,6 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={verificationSteps} />
 
   <AgentPromptsSection
-    heading="Agent prompts"
     intro="These are optional and collapsed by default. Use them if you're adding verification and CI gates with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}

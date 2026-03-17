@@ -15,4 +15,4 @@ This repo previously carried a “hosted key storage / paste provider keys into 
 - Provider credentials live in your **gateway vendor** (OpenRouter / Vercel AI Gateway / Portkey) or your own **env/secrets manager** by default.
 - A hosted provider-secret vault is **future/optional**, not the default story.
 
-Archived legacy doc: `docs/reference/archive/2026-03-17-01-product-strategy.md`
+Legacy planning material is kept **local-only** under `internal/strategy/archive/` (not published in the public repo).

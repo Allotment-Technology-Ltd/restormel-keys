@@ -278,7 +278,6 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
   </WalkthroughStep>
 
   <AgentPromptsSection
-    heading="Agent prompts for this phase"
     intro="These are optional and collapsed by default. Use them if you're implementing Phase 0 with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}
