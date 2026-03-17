@@ -178,8 +178,9 @@
     color: var(--rm-text);
   }
   .topbar-title {
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-size: var(--text-base);
+    color: var(--rm-text);
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -2,6 +2,7 @@
   /** Docs layout — docs sidebar is collapsible and width-constrained. */
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
 
   const STORAGE_KEY = "rk_docs_sidebar_collapsed";
   let collapsed = false;
@@ -14,6 +15,9 @@
     collapsed = !collapsed;
     localStorage.setItem(STORAGE_KEY, String(collapsed));
   }
+
+  $: pathname = $page.url.pathname;
+  $: docsPath = pathname.startsWith("/keys/docs") ? pathname.slice("/keys/docs".length) || "/" : pathname;
 </script>
 
 <svelte:head>
@@ -47,6 +51,10 @@
     <a href={DASHBOARD_BASE + "/login"}>Sign in</a>
   </nav>
   <main class="docs-main">
+    <header class="docs-topbar" aria-label="Docs header">
+      <div class="docs-topbar-title">Docs</div>
+      <div class="docs-topbar-path" aria-hidden="true">{docsPath}</div>
+    </header>
     <slot />
   </main>
 </div>
@@ -105,6 +113,31 @@
   .docs-main {
     flex: 1;
     padding: var(--space-6);
+  }
+  .docs-topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin: 0 0 var(--space-5);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--rm-border);
+  }
+  .docs-topbar-title {
+    font-family: var(--rm-font-display);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--rm-text);
+    line-height: 1.1;
+  }
+  .docs-topbar-path {
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    font-family: var(--rm-font-ui);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
   }
 
   .docs-shell-collapsed .docs-nav {
