@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -27,6 +28,63 @@
     "# Confirm the package installed correctly\nnode -e \"const k = require('@restormel/keys'); console.log('OK:', Object.keys(k).length, 'exports')\"";
 
   const doctorTestCmd = 'npx @restormel/doctor && echo "PASS" || echo "FAIL"';
+
+  const installAndConfigurePrompt = `You are working in [your app repo].
+
+Goal: Install Restormel Keys packages, scaffold the config, and prepare env vars for integration.
+
+Steps:
+1. Read the routing inventory at docs/restormel-integration/00-routing-inventory.md (or your equivalent) to confirm the framework and whether UI packages are needed.
+2. Install the correct packages for this framework:
+   - Next.js/React: pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
+   - SvelteKit: pnpm add @restormel/keys @restormel/keys-svelte
+   - Server-only: pnpm add @restormel/keys
+3. Run: npx @restormel/keys-cli init (accept the detected framework and suggested packages).
+4. Add to .env.example (placeholder names only, no values):
+   RESTORMEL_GATEWAY_KEY=
+   RESTORMEL_PROJECT_ID=
+   RESTORMEL_ENVIRONMENT_ID=
+   USE_RESTORMEL_KEYS=false
+5. Run: npx @restormel/doctor and confirm it exits 0 (ignore any warnings about missing cloud env values if you have not set them yet).
+6. Commit: restormel.config.json, .env.example, package.json and lockfile changes.
+
+DO NOT: Commit real API keys or secrets. Add values to .env.example. Modify any application logic in this phase.`;
+
+  const agentPrompts = [
+    {
+      id: "p1-review",
+      title: "Prompt 1A — Review this phase (no code changes)",
+      intent: "Have an agent read Phase 1 and determine exactly what to install/configure for your framework, without changing code yet.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-1-install",
+        "Phase 0 output: docs/restormel-integration/00-routing-inventory.md (in your app repo)",
+      ],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 1 of the Restormel Keys walkthrough and produce a concrete plan (no code changes).
+
+Steps:
+1. Read the Phase 1 walkthrough page in full.
+2. Confirm which framework path applies (Next.js/React vs SvelteKit vs server-only) by inspecting the repo and/or Phase 0 inventory.
+3. List the exact commands you will run (package installs and CLI init/doctor).
+4. List the exact files you expect to change (package.json, lockfile, restormel.config.json, .env.example).
+5. Restate the Phase 1 gate in your own words.
+
+DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or IDs.`,
+      gate: "You have a concrete Phase 1 execution plan (commands + files) with no changes made yet.",
+    },
+    {
+      id: "p1-install",
+      title: "Prompt 1B — Install and configure",
+      intent: "Install the right packages for your framework, run init/doctor, and add env var placeholders safely.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-1-install",
+        "Framework choice: /keys/docs/compatibility",
+      ],
+      prompt: installAndConfigurePrompt,
+      gate: "keys doctor exits 0; restormel.config.json exists; .env.example lists required vars; no secrets committed.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -163,6 +221,13 @@ RESTORMEL_ENVIRONMENT_ID=
 # Optional: feature flag for phased rollout (see Phase 0)
 USE_RESTORMEL_KEYS=false`} />
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 1 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase1Steps} />

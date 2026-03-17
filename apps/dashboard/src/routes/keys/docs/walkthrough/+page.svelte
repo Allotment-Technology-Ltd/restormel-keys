@@ -30,6 +30,9 @@
     <li><a href="/keys/docs/walkthrough/verification-strategy"><strong>Verification strategy</strong></a> — Dashboard, CLI, smoke tests; ongoing monitoring and CI.</li>
   </ol>
 
+  <h2>Implementing with a coding agent</h2>
+  <p>Each phase page includes an <strong>“Agent prompts”</strong> section. It’s collapsed by default so you only see it when you need it. Use it if you want a coding agent to review the docs for that phase and implement it in your repo in a safe, gated sequence.</p>
+
   <h2>Auth at a glance</h2>
   <ul>
     <li><strong>Gateway Key</strong> — Resolve API, project-scoped; use in app env vars for your backend.</li>

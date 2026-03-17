@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -121,6 +122,88 @@ export async function resolveProvider(preferredModel?: string) {
   }
 }
 return legacyResolve(preferredModel);`;
+
+  const createResolveClientPrompt = `You are working in [your app repo].
+
+Goal: Create a typed Restormel resolve client, wire it into the feature flag from Phase 0, and add error handling with legacy fallback.
+
+Steps:
+1. Identify the legacy function that currently decides which provider/model to call (from your Phase 0 routing inventory).
+2. Create src/lib/server/restormel.ts (or equivalent server-only module) that:
+   - Reads RESTORMEL_BASE_URL (default https://restormel.dev/keys/dashboard), RESTORMEL_GATEWAY_KEY, RESTORMEL_PROJECT_ID from environment.
+   - Exports restormelResolve({ environmentId, routeId? }) that POSTs to /api/projects/\${RESTORMEL_PROJECT_ID}/resolve with Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}.
+   - Throws on non-2xx responses with status and a truncated response body (no secrets).
+3. Create scripts/test-resolve.ts and run it with npx tsx to confirm the response contains data.providerType and data.modelId.
+4. Update your resolve wrapper (e.g. src/lib/server/resolve-provider.ts):
+   - If USE_RESTORMEL_KEYS=true: call restormelResolve inside try/catch.
+   - On any failure: log a safe message (no raw keys), then fall back to legacy routing unchanged.
+   - If USE_RESTORMEL_KEYS=false: always use legacy routing unchanged.
+5. Add RESTORMEL_BASE_URL= to .env.example (placeholder only).
+6. Verify:
+   - Flag off (default): app behaviour unchanged.
+   - Flag on: resolve happens via Restormel.
+   - Flag on + invalid Gateway Key: fallback to legacy and request still succeeds.
+
+DO NOT: Default USE_RESTORMEL_KEYS to true. Log the Gateway Key. Commit secrets. Remove legacy routing in this phase.`;
+
+  const createLocalResolvePrompt = `You are working in [your app repo].
+
+Goal: Add an optional local (in-process) Restormel Keys resolve path, so you can avoid an HTTP call while keeping the same resolve wrapper API.
+
+Steps:
+1. Create src/lib/server/restormel-local.ts (or equivalent) that:
+   - Imports createKeys and provider definitions from @restormel/keys.
+   - Uses getPlatformKey(provider) to read existing provider API keys from env vars (do not hardcode values).
+   - Exports a keys instance.
+2. Update your resolve wrapper to support a local option (e.g. USE_RESTORMEL_LOCAL=true):
+   - If USE_RESTORMEL_KEYS and USE_RESTORMEL_LOCAL: call keys.resolve(...) locally.
+   - If USE_RESTORMEL_KEYS and not local: call the HTTP resolve client.
+   - Otherwise: legacy path.
+3. Add USE_RESTORMEL_LOCAL=false (placeholder) to .env.example.
+4. Verify keys.resolve() returns a valid provider/model result when provider env vars are present.
+
+DO NOT: Import UI packages in server code. Remove the HTTP resolve client. Commit secrets.`;
+
+  const agentPrompts = [
+    {
+      id: "p2-review",
+      title: "Prompt 2A — Review this phase (no code changes)",
+      intent: "Have an agent read Phase 2 and produce an implementation plan for adding resolve behind the Phase 0 feature flag.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-2-resolve",
+        "Phase 0 output: docs/restormel-integration/00-routing-inventory.md (in your app repo)",
+      ],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 2 of the Restormel Keys walkthrough and produce a concrete implementation plan (no code changes).
+
+Steps:
+1. Read the Phase 2 walkthrough page in full.
+2. Identify the existing “legacy routing” entry point(s) from the Phase 0 inventory.
+3. Decide where the resolve client and wrapper should live in this repo (paths + module boundaries).
+4. List the environment variables that must be added (placeholders only).
+5. Define exactly how you will test: curl test, script test, flag-on/flag-off validation, and failure fallback.
+
+DO NOT: Create files yet. Install packages. Paste secrets.`,
+      gate: "You have a Phase 2 plan: exact file paths, test commands, and gate criteria, with no changes made yet.",
+    },
+    {
+      id: "p2-http",
+      title: "Prompt 2B — Create HTTP resolve client + wire feature flag",
+      intent: "Implement the HTTP resolve client, wire it into the Phase 0 feature flag, and add safe fallback behaviour.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-2-resolve"],
+      prompt: createResolveClientPrompt,
+      gate: "A test script prints a valid resolve response; flag off is unchanged; flag on resolves via Restormel or safely falls back to legacy.",
+    },
+    {
+      id: "p2-local",
+      title: "Prompt 2C — (Optional) Add local resolve (no HTTP)",
+      intent: "Add an optional local resolve path that keeps secrets server-side and preserves the wrapper API.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-2-resolve (Step 2.6)"],
+      prompt: createLocalResolvePrompt,
+      gate: "Local resolve can be enabled without breaking HTTP resolve or the legacy path; keys remain unlogged and uncommitted.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -218,13 +301,7 @@ return legacyResolve(preferredModel);`;
   <h3>How to test</h3>
   <p>Temporarily set an invalid Gateway Key and enable the flag: <code>RESTORMEL_GATEWAY_KEY=rk_invalid USE_RESTORMEL_KEYS=true pnpm dev</code>. Make a request that triggers an AI call. You should see a console error and the request should succeed via the legacy path. Restore your real Gateway Key after testing.</p>
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: create-resolve-client</h3>
-    <p><strong>Context docs</strong> (adapt paths for your project): this page; Phase 0 (routing inventory, feature flag).</p>
-    <p><strong>Goal:</strong> Create a typed Restormel resolve client, wire it into the feature flag from Phase 0, and add error handling with legacy fallback. Use <code>ResolveResponse.data.providerType</code> and <code>data.modelId</code>. Add <code>RESTORMEL_BASE_URL</code> to <code>.env.example</code>. Create <code>scripts/test-resolve.ts</code>. Verify flag off → unchanged; flag on → Restormel or fallback.</p>
-    <p><strong>DO NOT:</strong> Set <code>USE_RESTORMEL_KEYS=true</code> as default. Log the Gateway Key or raw keys. Modify legacy logic. Commit real API keys or secrets.</p>
-    <p><strong>Gate:</strong> Test script prints a valid resolve response with <code>data.providerType</code>. Flag off → unchanged behaviour. Flag on + invalid key → fallback to legacy and log error. No secrets committed.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a sequenced set of prompts (review → implement).</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="2.6" title="Step 2.6 — (Optional) Use the npm package resolve locally" {phaseSlug}>
@@ -234,6 +311,13 @@ return legacyResolve(preferredModel);`;
     <strong>Tip</strong> — You can start with local resolve (this step) and switch to HTTP resolve (Step 2.3) later when you're ready to use dashboard-managed routes and policies. The <code>resolveProvider</code> wrapper from Step 2.4 makes this a one-line change.
   </div>
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 2 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase2Steps} />

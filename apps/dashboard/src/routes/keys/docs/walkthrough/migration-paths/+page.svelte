@@ -2,6 +2,8 @@
   /** Migration paths. Progressive disclosure: checklist + expandable sections. */
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
+  import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -18,6 +20,99 @@
     { id: "comparison", label: "Comparison: what each source gives you" },
     { id: "strangler", label: "The safe strangler approach in detail" },
     { id: "checkpoint", label: "Checkpoint" },
+  ];
+
+  const migrateFromLitellmPrompt = `You are working in [your app repo] which currently uses LiteLLM for AI provider routing.
+
+Goal: Inventory the LiteLLM integration and produce a migration plan to Restormel Keys.
+
+Steps:
+1. Locate the LiteLLM config (litellm_config.yaml, docker-compose, process manager config, env vars used).
+2. Extract: models, fallback order, allowed/blocked models, budget settings, and the env var names used for provider keys (do not copy values).
+3. Find every place your app calls the LiteLLM proxy endpoint and list those call sites.
+4. Map LiteLLM features to Restormel equivalents:
+   - model list / fallbacks → routes + steps (fallback_chain)
+   - allowed_models / restrictions → policies (model_allowlist)
+   - budget settings → budget_cap policy (if applicable)
+5. Decide: remove LiteLLM (call providers directly) or keep LiteLLM as a normalisation layer (Restormel decides the model, LiteLLM does request shape).
+6. Write the plan to docs/restormel-integration/01-litellm-migration.md (or your equivalent).
+
+DO NOT: Remove LiteLLM yet. Copy real API keys into docs. Assume config that isn’t present.`;
+
+  const migrateFromPortkeyPrompt = `You are working in [your app repo] which currently uses Portkey.
+
+Goal: Inventory the Portkey integration and produce a migration plan to Restormel Keys.
+
+Steps:
+1. Locate Portkey usage: SDK imports, Portkey endpoint calls, config headers, and where the Portkey API key is stored (record env var names only).
+2. Extract routing behaviour: provider order, fallbacks, model restrictions, any budgets/limits.
+3. Map to Restormel: routes + steps for fallbacks; policies for restrictions/budgets.
+4. Identify all app call sites that currently go through Portkey.
+5. Write the plan to docs/restormel-integration/01-portkey-migration.md.
+
+DO NOT: Remove Portkey yet. Copy real keys into docs. Assume caching/observability features will be replaced (they are not).`;
+
+  const migrateFromOpenrouterPrompt = `You are working in [your app repo] which currently uses OpenRouter.
+
+Goal: Inventory OpenRouter usage and produce a migration plan to Restormel Keys (explicit provider control).
+
+Steps:
+1. Locate all OpenRouter API calls and how model names are chosen today.
+2. Record the OpenRouter API key env var name(s) (no values).
+3. Decide which models/providers you will run directly (OpenAI/Anthropic/Google) vs whether OpenRouter remains as an optional step/provider.
+4. Map to Restormel: create explicit routes + steps that represent your desired fallback chain(s), then use policies for governance.
+5. Write the plan to docs/restormel-integration/01-openrouter-migration.md.
+
+DO NOT: Remove OpenRouter yet. Copy real keys into docs. Assume you can access provider models directly without accounts.`;
+
+  const agentPrompts = [
+    {
+      id: "pm-review",
+      title: "Prompt M1 — Review and choose your migration variant (no code changes)",
+      intent: "Have an agent read this page and decide which variant applies, then outline the exact plan and sequencing for your repo.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/migration-paths",
+        "Phase 0: /keys/docs/walkthrough/phase-0-inventory",
+        "Phase 6: /keys/docs/walkthrough/phase-6-golive",
+      ],
+      prompt: `You are working in [your app repo].
+
+Goal: Review the Restormel Keys migration paths doc and choose the correct variant (no code changes).
+
+Steps:
+1. Read the Migration paths walkthrough page in full.
+2. Identify which source system the repo uses today: custom routing, LiteLLM, Portkey, or OpenRouter.
+3. Summarise the “strangler pattern” rollout sequence and how it maps to this repo’s deployment setup.
+4. List the Phase 0 inventory items you must produce and which later phases replace each item.
+5. Choose whether the old system is REMOVE (fully retire) or WRAP (keep as a normalisation layer) and justify the choice.
+
+DO NOT: Change code. Remove the old system. Paste secrets.`,
+      gate: "You have selected a migration variant and produced a repo-specific strangler rollout plan, with no changes made yet.",
+    },
+    {
+      id: "pm-litellm",
+      title: "Prompt M2 — Migrate from LiteLLM (plan-only)",
+      intent: "Create a migration plan document mapping LiteLLM config/features to Restormel routes/policies.",
+      contextDocs: ["This page: /keys/docs/walkthrough/migration-paths (Variant B)"],
+      prompt: migrateFromLitellmPrompt,
+      gate: "A LiteLLM → Restormel migration plan doc exists, including keep/remove decision and a feature mapping table.",
+    },
+    {
+      id: "pm-portkey",
+      title: "Prompt M3 — Migrate from Portkey (plan-only)",
+      intent: "Create a migration plan document mapping Portkey routing to Restormel routes/policies.",
+      contextDocs: ["This page: /keys/docs/walkthrough/migration-paths (Variant C)"],
+      prompt: migrateFromPortkeyPrompt,
+      gate: "A Portkey → Restormel migration plan doc exists with call sites and routing mapping.",
+    },
+    {
+      id: "pm-openrouter",
+      title: "Prompt M4 — Migrate from OpenRouter (plan-only)",
+      intent: "Create a migration plan document mapping OpenRouter usage to explicit Restormel routes/policies.",
+      contextDocs: ["This page: /keys/docs/walkthrough/migration-paths (Variant D)"],
+      prompt: migrateFromOpenrouterPrompt,
+      gate: "An OpenRouter → Restormel migration plan doc exists with explicit provider/route decisions.",
+    },
   ];
 </script>
 
@@ -91,13 +186,7 @@
       <tr><td>6</td><td>Shift traffic. When 100% is on Restormel: stop the LiteLLM container, remove config, remove Docker/process config.</td></tr>
     </tbody>
   </table>
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: migrate-from-litellm</h3>
-    <p><strong>Context docs</strong> (adapt for your project): this page (Variant B); <a href="/keys/docs/walkthrough/phase-0-inventory">Phase 0 — Inventory</a>; <a href="/keys/docs/walkthrough/phase-3-routes">Phase 3 — Routes</a>; <a href="/keys/docs/walkthrough/phase-4-policies">Phase 4 — Policies</a>.</p>
-    <p><strong>Goal:</strong> Inventory the LiteLLM integration and produce a migration plan to Restormel Keys. Locate config; extract models, fallback order, allowed/blocked models, budget settings, env vars (no values). Map every LiteLLM feature to Restormel (route steps, fallback_chain, model_allowlist, budget_cap, provider credentials). Decide: remove LiteLLM entirely or keep as normalisation layer. Write the plan to a doc (e.g. <code>docs/restormel-integration/01-litellm-migration.md</code>).</p>
-    <p><strong>DO NOT:</strong> Remove LiteLLM or its config yet (plan only). Copy real API keys into the migration doc. Assume features that aren't actually configured.</p>
-    <p><strong>Gate:</strong> A migration plan document exists mapping every LiteLLM feature to its Restormel equivalent, with a decision on whether to keep LiteLLM as a normalisation layer or remove it entirely.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for plan-only prompts for each migration variant.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="variant-c" title="Variant C — I'm using Portkey" phaseSlug={phaseSlug}>
@@ -171,6 +260,13 @@
   <p>You now have: a clear mapping from your source system (custom, LiteLLM, Portkey, or OpenRouter) to the walkthrough phases; a strangler approach that lets you migrate incrementally with instant rollback; source-specific notes on what Restormel replaces and what it doesn't; and (if LiteLLM) a build-agent prompt for producing a migration plan document.</p>
   <p><strong>Next:</strong> <a href="/keys/docs/walkthrough/verification-strategy">Verification strategy</a> — ongoing checks for dashboard, CLI, and smoke tests after integration.</p>
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're migrating from an existing routing system with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each section complete as you read it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={migrationSteps} />

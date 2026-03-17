@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 PREVIEW_PORT="${PREVIEW_PORT:-4173}"
-BASE="http://127.0.0.1:${PREVIEW_PORT}"
+BASE="http://localhost:${PREVIEW_PORT}"
 
 # Build if needed so preview has something to serve
 if [ ! -d "apps/dashboard/.svelte-kit/output" ]; then
@@ -21,11 +21,11 @@ PREV_PID=$!
 trap 'kill $PREV_PID 2>/dev/null || true' EXIT
 
 # Wait for server to respond (retry a few times)
-for i in 1 2 3 4 5 6 7 8 9 10; do
+for i in $(seq 1 30); do
   if curl -s -o /dev/null -w "%{http_code}" "${BASE}/keys/docs" 2>/dev/null | grep -q '^[23]'; then
     break
   fi
-  if [ "$i" -eq 10 ]; then
+  if [ "$i" -eq 30 ]; then
     echo "[smoke] Preview did not become ready in time."
     exit 1
   fi

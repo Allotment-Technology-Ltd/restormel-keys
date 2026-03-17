@@ -4,7 +4,7 @@ High-level architecture summary. **Single entry point** for structure; details l
 
 **Product shape:** Headless core (`@restormel/keys`) = product. UI: Svelte (reference), Elements, React, CLI. Later: dashboard, site, billing, hosted.
 
-**Repo shape:** Monorepo (pnpm). `packages/` (core, svelte, elements, react, cli), `apps/` (dashboard, demo-next, site), `docs/`, `scripts/`, `prompts/`, `skills/`, `subagents/`.
+**Repo shape:** Monorepo (pnpm). `packages/` (core, svelte, elements, react, cli), `apps/` (dashboard — single SvelteKit app for Keys landing, docs/walkthrough with optional agent prompts, and dashboard; demo-next, demo-svelte; site archived), `docs/`, `scripts/`, `prompts/`, `skills/`, `subagents/`.
 
 **Phase 00:** Scaffolding and governance only. No provider, routing, billing, or hosted logic.
 
