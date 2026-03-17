@@ -1,8 +1,6 @@
 <script lang="ts">
   import { createKeys, openaiProvider, anthropicProvider } from "@restormel/keys";
   import type { KeyConfig, ProviderDefinition } from "@restormel/keys";
-  import { KeyManager, ModelSelector } from "@restormel/keys-svelte";
-  import "@restormel/keys-svelte/theme.css";
 
   const providers = [openaiProvider, anthropicProvider];
   const PROVIDER_MAP: Record<string, ProviderDefinition> = {
@@ -11,52 +9,41 @@
   };
 
   /** In-memory key list for this sandbox session; never persisted. */
-  let keysList = $state<(KeyConfig & { id?: string })[]>([]);
-  let keys = $state(
-    createKeys(
-      { keys: keysList, routing: { defaultProvider: "openai" } },
-      { providers }
-    )
+  let keysList: (KeyConfig & { id?: string })[] = [];
+  $: keys = createKeys(
+    { keys: keysList, routing: { defaultProvider: "openai" } },
+    { providers }
   );
   /** Raw credentials in memory only, for running validate in-browser; never displayed or sent. */
-  let sandboxRawByKeyId = $state<Record<string, string>>({});
-  /** Sandbox user id for labels only; keys are in-memory. */
-  const sandboxUserId = "sandbox-user";
+  let sandboxRawByKeyId: Record<string, string> = {};
 
-  function syncKeysFromList(list: (KeyConfig & { id?: string })[]) {
-    keysList = list;
-    keys = createKeys(
-      { keys: list, routing: { defaultProvider: "openai" } },
-      { providers }
-    );
+  function addKey(provider: "openai" | "anthropic", rawCredential: string) {
+    const raw = rawCredential.trim();
+    if (!raw) return;
+    const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `key-${Date.now()}`;
+    const keyWithId: KeyConfig & { id?: string } = { provider, id };
+    keysList = [...keysList, keyWithId];
+    sandboxRawByKeyId = { ...sandboxRawByKeyId, [id]: raw };
   }
 
-  function onKeyAdded(key: KeyConfig & { id?: string }, rawCredential?: string) {
-    const id = key.id ?? crypto.randomUUID?.() ?? `key-${Date.now()}`;
-    const keyWithId = { ...key, id };
-    const next = [...keysList, keyWithId];
-    syncKeysFromList(next);
-    if (typeof rawCredential === "string" && rawCredential.trim()) {
-      sandboxRawByKeyId = { ...sandboxRawByKeyId, [id]: rawCredential };
-    }
-  }
-
-  function onKeyRemoved(keyId: string) {
-    syncKeysFromList(keysList.filter((k) => (k as KeyConfig & { id?: string }).id !== keyId));
+  function removeKey(keyId: string) {
+    keysList = keysList.filter((k) => (k as KeyConfig & { id?: string }).id !== keyId);
     const next = { ...sandboxRawByKeyId };
     delete next[keyId];
     sandboxRawByKeyId = next;
   }
 
-  function onModelSelect(modelId: string, providerId: string) {
-    selectedModel = { modelId, providerId };
+  // —— Add-key form (minimal, no KeyManager to avoid Svelte 5 runes dependency)
+  let addProvider: "openai" | "anthropic" = "openai";
+  let addRaw = "";
+  function submitAddKey() {
+    addKey(addProvider, addRaw);
+    addRaw = "";
   }
-
-  let selectedModel = $state<{ modelId: string; providerId: string } | null>(null);
 
   // —— Doctor panel: copy command
   const doctorCommand = "npx @restormel/keys-cli doctor";
-  let doctorCopied = $state(false);
+  let doctorCopied = false;
   async function copyDoctorCommand() {
     try {
       await navigator.clipboard.writeText(doctorCommand);
@@ -67,8 +54,7 @@
     }
   }
 
-  // —— Framework snippet for Doctor
-  let doctorFramework = $state<"sveltekit" | "next">("sveltekit");
+  let doctorFramework: "sveltekit" | "next" = "sveltekit";
   const doctorSnippets: Record<string, { install: string; note: string }> = {
     sveltekit: {
       install: "pnpm add @restormel/keys @restormel/keys-svelte",
@@ -80,10 +66,10 @@
     },
   };
 
-  // —— Validate panel: run validation on in-memory keys
+  // —— Validate panel
   type ValidateResult = { keyId: string; provider: string; valid: boolean; error?: string };
-  let validateResults = $state<ValidateResult[] | null>(null);
-  let validateRunning = $state(false);
+  let validateResults: ValidateResult[] | null = null;
+  let validateRunning = false;
   async function runValidate() {
     validateRunning = true;
     validateResults = null;
@@ -116,14 +102,10 @@
     validateResults = results;
     validateRunning = false;
   }
-  const validateAllValid = $derived(
-    validateResults !== null && validateResults.length > 0 && validateResults.every((r) => r.valid)
-  );
-  const validateAnyInvalid = $derived(
-    validateResults !== null && validateResults.some((r) => !r.valid)
-  );
+  $: validateAllValid =
+    validateResults !== null && validateResults.length > 0 && validateResults.every((r) => r.valid);
+  $: validateAnyInvalid = validateResults !== null && validateResults.some((r) => !r.valid);
 
-  /** Mask key id for display (e.g. key-1234 → …1234). */
   function maskId(id: string): string {
     if (id.length <= 6) return "••••";
     return "…" + id.slice(-4);
@@ -133,36 +115,61 @@
 <main class="sandbox" aria-labelledby="sandbox-heading">
   <h1 id="sandbox-heading" class="page-title">Sandbox</h1>
   <p class="page-desc">
-    Try the embeddable KeyManager and ModelSelector here. Keys and selections are kept in memory only and are not saved.
+    Try key management and validation here. Keys are kept in memory only and are not saved. Use Doctor and Validate below.
   </p>
 
-  <section class="panel" aria-labelledby="embed-heading">
-    <h2 id="embed-heading" class="section-title">Embeddable UI preview</h2>
+  <section class="panel" aria-labelledby="keys-heading">
+    <h2 id="keys-heading" class="section-title">Keys (in-memory)</h2>
     <p class="section-desc">
-      This is the same KeyManager and ModelSelector you can embed in your app. Add keys below to see model availability.
+      Add keys to test validation. Credentials are not stored or displayed; only masked IDs are shown.
     </p>
     <div class="embed-preview">
-      <KeyManager
-        {keys}
-        userId={sandboxUserId}
-        {providers}
-        onKeyAdded={onKeyAdded}
-        onKeyRemoved={onKeyRemoved}
-      />
-      <div class="rm-section">
-        <h3 class="rm-heading">Models</h3>
-        <ModelSelector {keys} {providers} onSelect={onModelSelect} />
-        {#if selectedModel}
-          <p class="selected-model" role="status">
-            Selected: <strong>{selectedModel.modelId}</strong> ({selectedModel.providerId})
-          </p>
-        {/if}
-      </div>
+      <form class="add-key-form" onsubmit={(e) => { e.preventDefault(); submitAddKey(); }}>
+        <label for="add-provider" class="snippet-label">Provider</label>
+        <select id="add-provider" class="input" bind:value={addProvider} aria-label="Provider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+        <label for="add-raw" class="snippet-label">API key (not stored, used only for Validate)</label>
+        <input
+          id="add-raw"
+          type="password"
+          class="input"
+          bind:value={addRaw}
+          placeholder="sk-… or sk-ant-…"
+          autocomplete="off"
+          aria-label="API key"
+        />
+        <button type="submit" class="btn btn-primary" disabled={!addRaw.trim()}>
+          Add key
+        </button>
+      </form>
+      {#if keysList.length > 0}
+        <ul class="key-list" aria-label="Added keys">
+          {#each keysList as k (k.id ?? k.provider)}
+            {@const id = (k as KeyConfig & { id?: string }).id ?? k.provider}
+            <li class="key-item">
+              <span class="validate-provider">{k.provider}</span>
+              <span class="validate-mask" aria-hidden="true">{maskId(id)}</span>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                onclick={() => removeKey(id)}
+                aria-label="Remove key"
+              >
+                Remove
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="empty-hint">No keys yet. Add one above to run Validate.</p>
+      {/if}
     </div>
   </section>
 
   <section class="panel" aria-labelledby="doctor-heading">
-    <h2 id="doctor-heading" class="section-title">Doctor preview</h2>
+    <h2 id="doctor-heading" class="section-title">Doctor</h2>
     <p class="section-desc">
       <code>keys doctor</code> checks framework detection, config file, suggested packages, and stored keys. Run it in your project root.
     </p>
@@ -189,12 +196,12 @@
   </section>
 
   <section class="panel" aria-labelledby="validate-heading">
-    <h2 id="validate-heading" class="section-title">Validate preview</h2>
+    <h2 id="validate-heading" class="section-title">Validate</h2>
     <p class="section-desc">
       Re-validate the keys you added above. Same semantics as <code>keys validate</code> (exit 0 if all valid, 1 if any invalid). Results use masked identifiers only.
     </p>
     {#if keysList.length === 0}
-      <p class="empty-hint">Add keys in the Embeddable UI preview above, then run Validate.</p>
+      <p class="empty-hint">Add keys in the Keys section above, then run Validate.</p>
     {:else}
       <button
         type="button"
@@ -270,22 +277,28 @@
     border-radius: var(--rm-radius);
     padding: var(--space-4);
   }
-  .rm-section {
-    margin-top: var(--space-4);
+  .add-key-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 24rem;
+    margin-bottom: var(--space-4);
   }
-  .rm-heading {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--rm-text);
-    margin: 0 0 var(--space-2);
+  .key-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
   }
-  .selected-model {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+  .key-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
   }
-  .selected-model strong {
-    color: var(--rm-text);
+  .btn-sm {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
   }
   .copy-row {
     display: flex;

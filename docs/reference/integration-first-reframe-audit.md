@@ -175,8 +175,8 @@
 
 ### 14) Prompt packs and reference docs still describe Keys as “AI gateway” or “key manager”
 - **File/path**:
-  - `docs/prompts/restormel-prompt-pack.md`
-  - `docs/prompts/restormel-cursor-implementation-prompt-pack.md`
+  - `internal/prompts/restormel-prompt-pack.md` (local-only)
+  - `internal/prompts/restormel-cursor-implementation-prompt-pack.md` (local-only)
   - various `docs/reference/*` notes
 - **Exact issue**:
   - Broad “AI gateway and control plane” framing without explicit “complements external gateways; not a vault by default.”

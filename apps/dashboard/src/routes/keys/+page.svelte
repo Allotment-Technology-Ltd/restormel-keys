@@ -50,19 +50,19 @@ export default function Settings() {
   <title>Restormel Keys — BYOK for AI apps</title>
   <meta
     name="description"
-    content="Embeddable control layer for AI provider access. Routing, policies, health, cost, and UX — compatible with OpenRouter, Vercel AI Gateway, Portkey, and direct providers. No proxy by default."
+    content="Routing and governance for AI without replacing your stack. Works with OpenRouter, Vercel AI Gateway, Portkey, or your own env. One route handler, policies, health, cost, and embeddable UX."
   />
 </svelte:head>
 
 <article class="keys-page">
   <section class="section section-hero" aria-labelledby="hero-heading">
     <div class="container">
-      <h1 id="hero-heading" class="hero-headline">Control layer for AI provider access.</h1>
+      <h1 id="hero-heading" class="hero-headline">Routing and governance for AI — without replacing your stack.</h1>
       <p class="hero-subhead">
-        Routing, policies, health, cost, and embeddable UX — designed to slot into your existing stack with minimal migration.
+        You keep provider access where it is: OpenRouter, Portkey, Vercel AI Gateway, or your own env and secrets. Restormel Keys adds routing, policies, health checks, cost visibility, and embeddable UX on top.
       </p>
       <p class="hero-who">
-        For AI SaaS builders and small teams that want better routing and governance without replacing OpenRouter, Portkey, Vercel AI Gateway, or their own secret management.
+        For AI SaaS builders and small teams that want one control layer across gateways and direct providers.
       </p>
       <div class="hero-ctas">
         <a href="/keys/docs/walkthrough/phase-0-inventory" class="btn btn-primary btn-cta-hero">Start the walkthrough</a>
@@ -76,8 +76,7 @@ export default function Settings() {
     <div class="container container-narrow">
       <h2 id="why-heading" class="section-title">Why Keys exists</h2>
       <p class="section-intro">
-        Every AI app eventually needs a <strong>governance layer</strong>: routing, fallbacks, allow/deny policies, health checks, cost controls, and a UX surface your team can operate.
-        Most stacks already have a <em>provider access layer</em> (direct env vars, a secrets manager, or a gateway like OpenRouter / Portkey / Vercel AI Gateway). Keys is designed to <strong>integrate cleanly</strong> with those layers — not replace them.
+        Every AI app needs a governance layer: routing, fallbacks, allow/deny policies, health checks, cost controls, and a UX your team can run. You already have provider access — env vars, a secrets manager, or a gateway like OpenRouter, Portkey, or Vercel AI Gateway. Restormel Keys integrates with that layer. It does not replace it.
       </p>
     </div>
   </section>
@@ -106,7 +105,7 @@ export default function Settings() {
   <section class="section section-code section-alt" aria-labelledby="code-heading">
     <div class="container">
       <h2 id="code-heading" class="section-title">Add it to your stack</h2>
-      <p class="section-intro">Next.js App Router: one route handler and (optionally) a settings page. Works with gateways or direct providers.</p>
+      <p class="section-intro">One route handler and, if you want end-user model choice, one settings page. Works with your existing gateway or direct provider keys.</p>
       <div class="code-split">
         <div class="code-pane">
           <span class="code-label">Server</span>
@@ -139,7 +138,7 @@ export default function Settings() {
   <section class="section section-features section-alt" aria-labelledby="features-heading">
     <div class="container">
       <h2 id="features-heading" class="section-title">What's in the box</h2>
-      <p class="section-intro">Routing, policies, health, cost, and embeddable UX — designed to sit alongside your existing provider-access layer.</p>
+      <p class="section-intro">Routing, policies, health, cost, and embeddable UX that sit alongside your existing provider access.</p>
       <div class="features-grid">
         <div class="feature-card"><h3 class="feature-title">Integrations</h3><p>Works with OpenRouter, Vercel AI Gateway, Portkey, and direct providers.</p></div>
         <div class="feature-card"><h3 class="feature-title">Routing</h3><p>Model → provider resolution. One middleware, multiple backends.</p></div>
@@ -184,7 +183,7 @@ export default function Settings() {
   <section class="section section-cta" aria-labelledby="cta-heading">
     <div class="container">
       <h2 id="cta-heading" class="cta-headline">Add governance to your AI stack</h2>
-      <p class="cta-sub">Install, choose a provider access mode (gateway-backed or direct), then layer in routing and policies.</p>
+      <p class="cta-sub">Install the packages, pick gateway-backed or direct provider access, then add routes and policies. The walkthrough guides you step by step.</p>
       <a href="/keys/docs" class="btn btn-primary">Get started</a>
     </div>
   </section>
@@ -331,7 +330,7 @@ export default function Settings() {
     grid-template-columns: 1fr 1fr;
     gap: var(--space-6);
   }
-  @media (max-width: 768px) {
+  @media (max-width: 900px) {
     .code-split {
       grid-template-columns: 1fr;
     }
@@ -340,6 +339,11 @@ export default function Settings() {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    min-width: 0;
+    overflow: hidden;
+  }
+  .code-pane :global(.codeblock) {
+    min-width: 0;
   }
   .code-label {
     font-family: var(--rm-font-ui);

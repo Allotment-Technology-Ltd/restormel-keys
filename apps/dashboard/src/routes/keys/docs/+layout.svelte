@@ -18,11 +18,17 @@
   }
 
   $: pathname = $page.url.pathname;
-  $: docsPath = pathname.startsWith("/keys/docs") ? pathname.slice("/keys/docs".length) || "/" : pathname;
-  $: breadcrumbs = [
+  $: docsPathRaw = pathname.startsWith("/keys/docs") ? pathname.slice("/keys/docs".length) || "" : "";
+  $: docsPath = docsPathRaw.replace(/^\/+/, ""); // no leading slash to avoid "Docs / /segment"
+  $: pathSegments = docsPath ? docsPath.split("/").filter(Boolean) : [];
+  $: breadcrumbItems = [
     { name: "Keys", path: "/keys" },
     { name: "Docs", path: "/keys/docs" },
-    ...(docsPath && docsPath !== "/" ? [{ name: docsPath.replace(/\//g, " ").trim(), path: pathname }] : []),
+    ...pathSegments.map((segment, i) => {
+      const path = "/keys/docs/" + pathSegments.slice(0, i + 1).join("/");
+      const name = segment.replace(/-/g, " ");
+      return { name, path };
+    }),
   ];
 </script>
 
@@ -37,7 +43,7 @@
     {JSON.stringify({
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
-      itemListElement: breadcrumbs.map((b, idx) => ({
+      itemListElement: breadcrumbItems.map((b, idx) => ({
         "@type": "ListItem",
         position: idx + 1,
         name: b.name,
@@ -76,9 +82,16 @@
   </nav>
   <main class="docs-main">
     <nav class="docs-topbar" aria-label="Breadcrumb">
-      <a class="docs-crumb" href="/keys/docs">Docs</a>
-      <span class="docs-crumb-sep" aria-hidden="true">/</span>
-      <span class="docs-crumb-current">{docsPath}</span>
+      {#each breadcrumbItems as item, i}
+        {#if i > 0}
+          <span class="docs-crumb-sep" aria-hidden="true">/</span>
+        {/if}
+        {#if i < breadcrumbItems.length - 1}
+          <a class="docs-crumb" href={item.path}>{item.name}</a>
+        {:else}
+          <span class="docs-crumb-current">{item.name}</span>
+        {/if}
+      {/each}
     </nav>
     <slot />
   </main>
@@ -137,7 +150,11 @@
   }
   .docs-main {
     flex: 1;
+    min-width: 0;
     padding: var(--space-6);
+  }
+  .docs-shell-collapsed .docs-main {
+    padding-left: 6.5rem;
   }
   .docs-topbar {
     display: flex;

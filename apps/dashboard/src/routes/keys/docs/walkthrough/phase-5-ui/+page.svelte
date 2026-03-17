@@ -185,7 +185,6 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase5Steps} />
 
   <AgentPromptsSection
-    heading="Agent prompts for this phase"
     intro="These are optional and collapsed by default. Use them if you're implementing Phase 5 with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}

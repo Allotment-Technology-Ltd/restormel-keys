@@ -4,8 +4,8 @@ Prompt inventory. **Single source** for what exists and its class; rules in [pro
 
 **Classes:** Canonical (approved operational) · Reference (useful, not authoritative) · Archive (superseded, traceability).
 
-**Phase 00 inventory:** Bootstrap prompt(s) — docs/reference/bootstrap_prompts.md as reference; canonical entry in `prompts/canonical/` when stabilised. Phase packs 07–10 — reference in docs/reference/; classify under prompts/reference or archive as decided.
+**Phase 00 inventory:** Prompt packs and internal implementation prompts are kept **local-only** under `internal/prompts/` (not published in the public repo). If any prompt becomes stable, reusable “repo law”, promote it into `prompts/canonical/` and inventory it here.
 
-**Locations:** `prompts/canonical/`, `prompts/reference/`, `prompts/archive/`. Update this file when adding or reclassifying. Use prompt-librarian skill to inventory and recommend promotions.
+**Locations:** `prompts/canonical/`, `prompts/reference/`, `prompts/archive/` (public) and `internal/prompts/` (local-only).
 
-**Manual steps (implementation checklists):** [Phase 1](reference/phase-1-manual-steps.md) · [Phase 2](prompts/phase-2-manual-steps.md). These follow the “Manual actions required” template in the phase prompt packs (07, 08).
+**Manual steps (implementation checklists):** Public checklists live under `docs/reference/*manual-steps.md`. Any additional phase checklists and prompt packs are kept **local-only** under `internal/prompts/` (not published in the public repo).

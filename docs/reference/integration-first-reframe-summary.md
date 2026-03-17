@@ -78,15 +78,9 @@ Also created the requested repo-level guide files as pointers to the canonical p
 
 - **Hosted provider-secret vault** is explicitly framed as **future / optional / not default** (kept as a door-open concept, not the v1 identity).
 
-## Legacy docs treatment (archived vs canonical)
+## Legacy docs treatment (local-only vs canonical)
 
-To avoid perpetuating wrong assumptions, several legacy planning docs were replaced with “current truth” pointers and archived under `docs/reference/archive/`:
-
-- `docs/01-product-strategy.md` → pointer; archived: `docs/reference/archive/2026-03-17-01-product-strategy.md`
-- `docs/02-architecture.md` → pointer; archived pointer: `docs/reference/archive/2026-03-17-02-architecture.md`
-- `docs/03-infrastructure-and-billing.md` → pointer; archived: `docs/reference/archive/2026-03-17-03-infrastructure-and-billing.md`
-- `docs/04-design-and-site.md` → pointer; archived pointer: `docs/reference/archive/2026-03-17-04-design-and-site.md`
-- `docs/06-roadmap-and-launch.md` → pointer; archived pointer: `docs/reference/archive/2026-03-17-06-roadmap-and-launch.md`
+To avoid perpetuating wrong assumptions, several legacy planning docs were replaced with “current truth” pointers. The legacy material is kept **local-only** under `internal/strategy/archive/` (not published in the public repo).
 
 ## Follow-up tasks recommended
 

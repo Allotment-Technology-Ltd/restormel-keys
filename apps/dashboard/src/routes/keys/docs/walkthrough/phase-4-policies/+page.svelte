@@ -201,7 +201,6 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase4Steps} />
 
   <AgentPromptsSection
-    heading="Agent prompts for this phase"
     intro="These are optional and collapsed by default. Use them if you're implementing Phase 4 with a coding agent."
     prompts={agentPrompts}
     defaultOpen={false}

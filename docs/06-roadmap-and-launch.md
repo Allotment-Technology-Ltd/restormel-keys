@@ -6,5 +6,5 @@ This file is legacy and has been superseded by:
 - `ROADMAP.md` — current roadmap (if present)
 - `CHANGELOG.md` — shipped milestones and changes
 
-Archived legacy doc: `docs/reference/archive/2026-03-17-06-roadmap-and-launch.md`
+Legacy planning material is kept **local-only** under `internal/strategy/archive/` (not published in the public repo).
 

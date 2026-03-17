@@ -13,5 +13,6 @@ Skill inventory and when to use. **Single source** for the Phase 00 set; full de
 | security-review | Before/after security-sensitive changes |
 | architecture-recorder | Record architecture or governance decisions |
 | release-prep | Before Phase 01 or release; readiness audit |
+| content-writing | Marketing/landing copy; align with brand voice and marketing best practice |
 
 **Location:** `skills/<name>/`. Invoke by name; prefer over ad-hoc multi-step prompts.
