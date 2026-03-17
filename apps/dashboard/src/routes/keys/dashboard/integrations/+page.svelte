@@ -10,9 +10,12 @@
   };
 
   const PROVIDER_TYPES = [
-    { value: "openai", label: "OpenAI" },
-    { value: "anthropic", label: "Anthropic" },
-    { value: "google", label: "Google" },
+    { value: "openrouter", label: "OpenRouter (gateway)" },
+    { value: "vercel_ai_gateway", label: "Vercel AI Gateway (gateway)" },
+    { value: "portkey", label: "Portkey (gateway)" },
+    { value: "openai", label: "OpenAI (direct)" },
+    { value: "anthropic", label: "Anthropic (direct)" },
+    { value: "google", label: "Google (direct)" },
     { value: "other", label: "Other" },
   ];
 
@@ -24,6 +27,28 @@
   let credentialRef = "";
 
   $: effectiveProviderType = providerType === "other" ? otherProviderType.trim() : providerType;
+
+  function startJourney(kind: "openrouter" | "vercel_ai_gateway" | "portkey" | "direct") {
+    connectError = "";
+    if (kind === "openrouter") {
+      providerType = "openrouter";
+      displayName = "OpenRouter";
+      credentialRef = "";
+    } else if (kind === "vercel_ai_gateway") {
+      providerType = "vercel_ai_gateway";
+      displayName = "Vercel AI Gateway";
+      credentialRef = "";
+    } else if (kind === "portkey") {
+      providerType = "portkey";
+      displayName = "Portkey";
+      credentialRef = "";
+    } else {
+      providerType = "openai";
+      displayName = "Direct providers (env/secrets)";
+      credentialRef = "";
+    }
+    document.getElementById("connect-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   async function connectProvider() {
     const type = effectiveProviderType;
@@ -63,25 +88,66 @@
   }
 </script>
 
-<h1 class="page-title">Provider Integrations</h1>
+<h1 class="page-title">Integrations</h1>
 <p class="page-desc">
-  Connect provider credentials (e.g. OpenAI, Anthropic) to your workspace. Each integration stores a credential reference only; secrets stay in your own store. Bind integrations to projects so routes can use them.
+  Connect your <strong>provider access layer</strong> (gateway-backed or direct) to Restormel so routes and policies can reference it. Integrations store references/metadata only — don’t paste raw secrets here.
 </p>
 
 {#if data.error}
   <p class="error-msg" role="alert">{data.error}</p>
 {:else}
-  <section class="section" aria-labelledby="connect-heading">
-    <h2 id="connect-heading" class="section-title">Connect a provider</h2>
+  <section class="section" aria-labelledby="journeys-heading">
+    <h2 id="journeys-heading" class="section-title">Integration journeys</h2>
     <p class="section-desc">
-      Add a new provider integration. You can set a display name and an optional credential reference (e.g. secret manager key). Do not paste raw API keys here.
+      Pick the journey that matches how your stack reaches providers. Each one explains what Restormel adds (routing, policies, health, analytics, UX) without forcing you to replace your gateway or secret management.
+    </p>
+    <div class="journeys-grid">
+      <div class="journey-card">
+        <h3 class="journey-title">OpenRouter</h3>
+        <p class="journey-desc">Keep OpenRouter as execution. Use Restormel for routes, policies, fallbacks, health checks, and dashboard governance.</p>
+        <div class="journey-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => startJourney("openrouter")}>Start</button>
+          <a class="btn-link" href="/keys/docs/guides/openrouter" target="_blank" rel="noopener noreferrer">Guide →</a>
+        </div>
+      </div>
+      <div class="journey-card">
+        <h3 class="journey-title">Vercel AI Gateway</h3>
+        <p class="journey-desc">Keep Vercel gateway auth/observability. Let Restormel control routing policies and progressive adoption.</p>
+        <div class="journey-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => startJourney("vercel_ai_gateway")}>Start</button>
+          <a class="btn-link" href="/keys/docs/guides/vercel-ai-gateway" target="_blank" rel="noopener noreferrer">Guide →</a>
+        </div>
+      </div>
+      <div class="journey-card">
+        <h3 class="journey-title">Portkey</h3>
+        <p class="journey-desc">Keep Portkey as the gateway. Use Restormel for explicit routes/policies and fallback governance.</p>
+        <div class="journey-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => startJourney("portkey")}>Start</button>
+          <a class="btn-link" href="/keys/docs/guides/portkey" target="_blank" rel="noopener noreferrer">Guide →</a>
+        </div>
+      </div>
+      <div class="journey-card">
+        <h3 class="journey-title">Direct providers</h3>
+        <p class="journey-desc">Keep provider keys in env/secrets manager. Restormel resolves route/provider/model decisions and enforces policies.</p>
+        <div class="journey-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => startJourney("direct")}>Start</button>
+          <a class="btn-link" href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">Modes →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="connect-heading">
+    <h2 id="connect-heading" class="section-title">Connect an integration</h2>
+    <p class="section-desc">
+      Add a new integration. Use <strong>Credential reference</strong> for an identifier in your gateway/secrets manager (no raw keys). Then bind the integration to projects so routes can use it.
     </p>
     {#if connectError}
       <p class="error-msg" role="alert">{connectError}</p>
     {/if}
     <form class="connect-form" onsubmit={(e) => { e.preventDefault(); connectProvider(); }}>
       <div class="form-row">
-        <label for="provider-type">Provider type</label>
+        <label for="provider-type">Integration type</label>
         <select id="provider-type" bind:value={providerType} class="input">
           {#each PROVIDER_TYPES as opt}
             <option value={opt.value}>{opt.label}</option>
@@ -90,7 +156,7 @@
       </div>
       {#if providerType === "other"}
         <div class="form-row">
-          <label for="other-type">Provider name (e.g. openai, anthropic)</label>
+          <label for="other-type">Integration name (e.g. openrouter, openai)</label>
           <input id="other-type" type="text" bind:value={otherProviderType} class="input" placeholder="e.g. openai" />
         </div>
       {/if}
@@ -103,7 +169,7 @@
         <input id="credential-ref" type="text" bind:value={credentialRef} class="input" placeholder="e.g. secret key id — never paste raw keys" autocomplete="off" />
       </div>
       <button type="submit" class="btn btn-primary" disabled={connecting}>
-        {connecting ? "Connecting…" : "Connect provider"}
+        {connecting ? "Connecting…" : "Connect integration"}
       </button>
     </form>
   </section>
@@ -112,10 +178,10 @@
     <h2 id="list-heading" class="section-title">Your integrations</h2>
     {#if data.integrations.length === 0}
       <EmptyState
-        title="No provider integrations yet"
-        description="Connect a provider above. Each integration is a credential reference (no raw keys stored here)."
+        title="No integrations yet"
+        description="Start with a journey above, or connect an integration below. Restormel stores references/metadata only (no raw secrets)."
       >
-        <a href="#connect-heading" class="btn btn-primary">Connect a provider</a>
+        <a href="#journeys-heading" class="btn btn-primary">Choose a journey</a>
       </EmptyState>
     {:else}
       <ul class="integration-list">
@@ -203,6 +269,11 @@
     text-decoration: none;
     display: inline-block;
   }
+  .btn-secondary {
+    background: var(--rm-surface);
+    color: var(--rm-text);
+    border: 1px solid var(--rm-border);
+  }
   .btn-primary {
     background: var(--rm-sage);
     color: var(--rm-bg);
@@ -249,5 +320,44 @@
     color: var(--rm-dim);
     display: block;
     margin-top: var(--space-1);
+  }
+
+  .journeys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-3);
+  }
+  .journey-card {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-4);
+  }
+  .journey-title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-text);
+  }
+  .journey-desc {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .journey-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .btn-link {
+    font-size: var(--text-sm);
+    color: var(--rm-sage);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .btn-link:hover {
+    text-decoration: underline;
   }
 </style>

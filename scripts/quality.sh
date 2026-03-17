@@ -23,6 +23,9 @@ bash scripts/check-secrets.sh
 echo "[quality] Repo hygiene..."
 bash scripts/check-repo-hygiene.sh
 
+echo "[quality] Registry validation..."
+node scripts/validate-registry.mjs
+
 # Optional: smoke-test docs routes (catches runtime 500s e.g. undefined refs in templates)
 if [ -n "${RUN_SMOKE:-}" ]; then
   echo "[quality] Smoke-testing docs routes..."

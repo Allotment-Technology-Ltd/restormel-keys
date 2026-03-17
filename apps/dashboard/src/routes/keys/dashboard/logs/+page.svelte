@@ -30,6 +30,9 @@
 <p class="page-desc">
   Request logs from the gateway. Filter by project or route via query params. For analytics summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Analytics</a>.
 </p>
+<p class="notice">
+  <strong>Note:</strong> This page shows Restormel request logs. If your execution layer is OpenRouter/Portkey/Vercel and traffic doesn’t flow through Restormel, import gateway logs/usage exports via <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.
+</p>
 {#if data.filter && (data.filter.routeId || data.filter.projectId)}
   <p class="filter-msg" role="status">
     Filtered by
@@ -83,6 +86,19 @@
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
   }
+  .notice {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-left-width: 4px;
+    border-left-color: var(--rm-muted);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .notice a { color: var(--rm-sage); font-weight: 500; }
   .error-msg {
     color: var(--coral-alert);
     font-size: var(--text-sm);

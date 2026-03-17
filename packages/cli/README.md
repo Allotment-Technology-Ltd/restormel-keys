@@ -6,8 +6,13 @@ CLI for Restormel Keys: reduce setup friction for Next.js, React, SvelteKit, and
 
 ```bash
 pnpm add -D @restormel/keys-cli
-# or
+```
+
+If you only need checks (no Keys scaffolding), use the standalone wedge CLIs:
+
+```bash
 npx @restormel/doctor
+npx @restormel/validate
 ```
 
 ## Commands

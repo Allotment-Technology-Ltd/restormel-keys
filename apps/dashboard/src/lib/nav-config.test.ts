@@ -11,7 +11,7 @@ describe("NAV_ITEMS", () => {
     expect(labels).toContain("Overview");
     expect(labels).toContain("Projects");
     expect(labels).toContain("Access");
-    expect(labels).toContain("Provider Integrations");
+    expect(labels).toContain("Integrations");
     expect(labels).toContain("Models");
     expect(labels).toContain("Routes");
     expect(labels).toContain("Policies");

@@ -20,6 +20,18 @@ pnpm add -D @restormel/doctor
 restormel-doctor
 ```
 
+### Repo scan (best-effort)
+
+```bash
+restormel-doctor --repo
+```
+
+### Manifest output (CI-stable inventory)
+
+```bash
+restormel-doctor --repo --manifest-out restormel.doctor.manifest.json
+```
+
 ### Output formats
 
 - **Text (default)**:

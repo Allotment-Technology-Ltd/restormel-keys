@@ -174,6 +174,25 @@ export function createResolveHandler(storage: KeyStorage) {
 - Run the full SOPHIA test suite; all tests must pass.
 - Manually verify the full BYOK flow: add key, list keys, use key for a request, delete key.
 
+### Dogfooding gates (recommended)
+
+Use the same verification gates the public walkthrough recommends, so SOPHIA exercises the wedge CLIs during integration:
+
+- **Doctor (local setup + repo scan):**
+
+```bash
+npx @restormel/doctor
+npx @restormel/doctor --repo --manifest-out restormel.doctor.manifest.json
+```
+
+- **Validate (credential health, CI-friendly):**
+
+```bash
+npx @restormel/validate
+```
+
+**Note on exit codes:** `restormel-validate` exits `3` when failures appear transient only (timeouts, rate limits, 5xx) and no credential is confirmed invalid. In CI, treat this as “retry once + alert if persistent,” rather than an immediate “credential revoked” signal.
+
 ---
 
 ## DO NOT

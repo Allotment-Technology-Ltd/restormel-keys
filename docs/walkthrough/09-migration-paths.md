@@ -139,6 +139,8 @@ Portkey is a gateway with routing, fallbacks, caching, and observability. You ca
 
 **Key difference from LiteLLM:** Portkey configs are typically JSON objects passed as headers or configured via their dashboard/SDK. You'll need to extract the routing logic from those configs manually.
 
+**Tip:** During migration, use `npx @restormel/validate` to confirm your Portkey key is still valid (CI-friendly), and `npx @restormel/doctor --repo` to surface which models your codebase appears to use and whether any are at lifecycle risk (registry-based, advisory).
+
 ---
 
 ## Variant D: "I'm using OpenRouter"
@@ -163,6 +165,8 @@ OpenRouter is a unified API that routes requests to multiple providers with a si
 | 4 | Add policies. OpenRouter has no policy concept — this is net-new governance. |
 | 5 | Embed ModelSelector. OpenRouter has no embeddable UI — this is net-new. |
 | 6 | Shift traffic. When 100% is on Restormel: remove OpenRouter SDK/API calls, revoke OpenRouter API key if no longer needed. |
+
+**Tip:** If you keep OpenRouter as a fallback step for coverage, run `npx @restormel/validate` (OpenRouter key validity) and `npx @restormel/doctor --repo` (model usage + lifecycle signals) as part of your cutover checklist.
 
 **Key difference:** OpenRouter abstracts away provider choice entirely. Moving to Restormel means you're taking explicit control of which provider handles each request. This is more work but gives you full visibility and policy control.
 

@@ -18,6 +18,10 @@
   let removingBindingId: string | null = null;
   let deletingIntegration = false;
   let deleteError = "";
+  let importBusy = false;
+  let importError = "";
+  let importOk = "";
+  let importFile: File | null = null;
 
   $: addBindingProjectId = data.projects.length && !addBindingProjectId
     ? data.projects[0].id
@@ -110,16 +114,46 @@
       deletingIntegration = false;
     }
   }
+
+  async function importOpenRouterActivity() {
+    if (!data.integration) return;
+    importBusy = true;
+    importError = "";
+    importOk = "";
+    try {
+      if (!importFile) {
+        importError = "Choose a JSON export file first.";
+        return;
+      }
+      const form = new FormData();
+      form.set("file", importFile);
+      const res = await fetch(`${DASHBOARD_BASE}/api/integrations/${data.integration.id}/import/openrouter-activity`, {
+        method: "POST",
+        body: form,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        importOk = `Imported ${body?.data?.importedRows ?? 0} day rows into Usage aggregates.`;
+        await invalidateAll();
+      } else {
+        importError = (body as { error?: string }).error ?? `Import failed (${res.status})`;
+      }
+    } catch (e) {
+      importError = e instanceof Error ? e.message : "Import failed";
+    } finally {
+      importBusy = false;
+    }
+  }
 </script>
 
 {#if data.error || !data.integration}
   <p class="error-msg" role="alert">{data.error ?? "Integration not found."}</p>
   <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Provider Integrations</a></p>
 {:else}
-  <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Provider Integrations</a></p>
+  <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Integrations</a></p>
   <h1 class="page-title">{data.integration.displayName || data.integration.providerType}</h1>
   <p class="page-desc">
-    {data.integration.providerType} integration. Credential is stored by reference only; no raw keys are shown or stored here.
+    {data.integration.providerType} integration. Restormel stores references/metadata only; no raw secrets are shown or stored here.
   </p>
 
   <section class="section" aria-labelledby="status-heading">
@@ -202,6 +236,51 @@
     <p class="placeholder-note">Model discovery summary coming soon.</p>
   </section>
 
+  <section class="section" aria-labelledby="import-heading">
+    <h2 id="import-heading" class="section-title">Import data</h2>
+    <p class="section-desc">
+      Bring gateway data into Restormel analytics without changing your execution path. Start with exports; add automated sync later.
+    </p>
+
+    <div class="import-card">
+      <h3 class="import-title">OpenRouter — Activity export (JSON)</h3>
+      <p class="import-desc">
+        Imports daily usage aggregates (requests, tokens, spend) from OpenRouter’s activity data into Restormel’s <em>Usage aggregates</em>.
+        This does not import request-level logs.
+      </p>
+      <p class="import-links">
+        <a href="/keys/docs/guides/openrouter" target="_blank" rel="noopener noreferrer">Guide</a>
+        <span class="dot">·</span>
+        <a href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">Provider access modes</a>
+      </p>
+
+      {#if importError}
+        <p class="error-msg" role="alert">{importError}</p>
+      {/if}
+      {#if importOk}
+        <p class="ok-msg" role="status">{importOk}</p>
+      {/if}
+
+      <div class="import-row">
+        <input
+          type="file"
+          class="file"
+          accept="application/json,.json"
+          onchange={(e) => {
+            const f = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
+            importFile = f;
+          }}
+          aria-label="Choose OpenRouter activity JSON file"
+          disabled={importBusy}
+        />
+        <button type="button" class="btn btn-secondary" onclick={importOpenRouterActivity} disabled={importBusy}>
+          {importBusy ? "Importing…" : "Import OpenRouter activity"}
+        </button>
+      </div>
+      <p class="import-note">Tip: if you don’t have an export file handy, you can fetch activity via OpenRouter’s API and save the JSON, then upload it here.</p>
+    </div>
+  </section>
+
   <section class="section danger-zone">
     <h2 class="section-title">Delete integration</h2>
     <p class="section-desc">
@@ -268,6 +347,11 @@
     font-size: var(--text-sm);
     color: var(--rm-dim);
     font-style: italic;
+  }
+  .ok-msg {
+    color: var(--rm-sage);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-2);
   }
   .add-binding-form {
     display: flex;
@@ -352,5 +436,58 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .import-card {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface);
+    padding: var(--space-4);
+    max-width: var(--rm-container-narrow, 36rem);
+  }
+  .import-title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-text);
+  }
+  .import-desc {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .import-links {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+  }
+  .import-links a {
+    color: var(--rm-sage);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .import-links a:hover {
+    text-decoration: underline;
+  }
+  .dot {
+    margin: 0 var(--space-2);
+  }
+  .import-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin: 0 0 var(--space-2);
+  }
+  .file {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .import-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    font-style: italic;
   }
 </style>

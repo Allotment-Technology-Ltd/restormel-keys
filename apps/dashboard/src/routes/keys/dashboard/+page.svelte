@@ -33,7 +33,10 @@
         {/if}
       </li>
       <li class="step step-info"><span class="step-label">Key model</span> — Gateway Key = app auth to Restormel. Provider credential = your OpenAI/Anthropic/etc. key; Restormel uses it to route. You can use one or both.</li>
-      <li class="step step-info"><span class="step-label">Billing mode</span> — Set per route: bring your own keys or Restormel-managed. <a href={DASHBOARD_BASE + "/billing"} class="step-action">Billing</a></li>
+      <li class="step step-info">
+        <span class="step-label">Provider access mode</span> — Choose gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct (env/secrets). Hosted vault is future/optional.
+        <a href="/keys/docs/guides/provider-access-modes" class="step-action" target="_blank" rel="noopener noreferrer">Guide</a>
+      </li>
       <li class="step" class:step-done={o?.hasKeys}>
         {#if o?.hasKeys}
           <span class="step-label">Gateway Key</span> — Done.
@@ -45,7 +48,7 @@
         {#if o?.hasIntegrations}
           <span class="step-label">Provider connection</span> — Done.
         {:else}
-          <a href={DASHBOARD_BASE + "/integrations"} class="step-action">Connect a provider</a> (Integrations)
+          <a href={DASHBOARD_BASE + "/integrations"} class="step-action">Configure an integration</a> (Integrations)
         {/if}
       </li>
       <li class="step">

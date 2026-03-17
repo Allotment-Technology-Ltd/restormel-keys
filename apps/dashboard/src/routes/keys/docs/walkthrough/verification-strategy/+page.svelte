@@ -153,11 +153,14 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
 
   <h3>3.2 <code>keys validate</code></h3>
   <CodeBlock language="bash" code="npx @restormel/validate" />
-  <p><strong>Checks:</strong> Re-validates all stored provider keys (makes lightweight test calls to each provider).</p>
-  <p><strong>Expected:</strong> Exit code 0 if all keys are valid. Exit code 1 if any key is invalid or expired.</p>
-  <p><strong>When to run:</strong> Before deploy, in CI on a schedule (e.g. daily), after rotating any provider keys.</p>
+  <p>
+    <strong>Checks:</strong> Provider access verification for the mode you’ve chosen:
+    <strong>gateway-backed</strong> (canary request through gateway / auth + reachability) or <strong>builder-managed direct</strong> (presence/shape checks for required env vars and optional canary calls if you explicitly enable them).
+  </p>
+  <p><strong>Expected:</strong> Exit code 0 if checks pass. Exit code 1 if verification fails.</p>
+  <p><strong>When to run:</strong> Before deploy, in CI on a schedule (e.g. daily), after rotating any gateway/provider credentials in your own infrastructure.</p>
   <div class="callout callout-tip">
-    <strong>Tip</strong> — <code>keys validate</code> with exit code 1 is designed for CI gates. Add it to your deploy pipeline so deploys fail if a provider key has been revoked or expired.
+    <strong>Tip</strong> — <code>keys validate</code> with exit code 1 is designed for CI gates. Add it to your deploy pipeline so deploys fail when your provider-access layer (gateway or env-backed) is misconfigured or unhealthy.
   </div>
   <CodeBlock language="yaml" code={`# .github/workflows/deploy.yml
 - name: Validate Restormel keys
@@ -261,14 +264,6 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
   .doc-table th { background: var(--rm-surface-raised); font-weight: var(--font-medium); }
   .doc-table td { color: var(--rm-muted); }
   .doc-table code { font-family: var(--rm-font-ui); font-size: 0.9em; }
-  .build-agent-block {
-    margin: var(--space-6) 0;
-    padding: var(--space-4);
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-  }
-  .build-agent-block h3 { margin-top: 0; }
   .doc-footer { margin-top: var(--space-6); font-size: var(--text-sm); color: var(--rm-muted); }
   .doc-footer a { color: var(--rm-primary); }
 </style>

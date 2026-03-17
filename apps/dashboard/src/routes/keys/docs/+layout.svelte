@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
+  import { absoluteUrl } from "$lib/seo";
 
   const STORAGE_KEY = "rk_docs_sidebar_collapsed";
   let collapsed = false;
@@ -18,10 +19,32 @@
 
   $: pathname = $page.url.pathname;
   $: docsPath = pathname.startsWith("/keys/docs") ? pathname.slice("/keys/docs".length) || "/" : pathname;
+  $: breadcrumbs = [
+    { name: "Keys", path: "/keys" },
+    { name: "Docs", path: "/keys/docs" },
+    ...(docsPath && docsPath !== "/" ? [{ name: docsPath.replace(/\//g, " ").trim(), path: pathname }] : []),
+  ];
 </script>
 
 <svelte:head>
   <title>Docs — Restormel Keys</title>
+  <meta property="og:site_name" content="Restormel Keys" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={absoluteUrl($page.url, $page.url.pathname)} />
+  <meta property="twitter:card" content="summary" />
+
+  <script type="application/ld+json">
+    {JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbs.map((b, idx) => ({
+        "@type": "ListItem",
+        position: idx + 1,
+        name: b.name,
+        item: absoluteUrl($page.url, b.path),
+      })),
+    })}
+  </script>
 </svelte:head>
 
 <div class="docs-shell" class:docs-shell-collapsed={collapsed}>
@@ -40,6 +63,7 @@
     <div class="nav-divider" aria-hidden="true"></div>
     <div class="nav-section" aria-label="Guides section">Guides</div>
     <a href="/keys/docs/guides/provider-access-modes">Provider access modes</a>
+    <a href="/keys/docs/reference/cli">CLI options</a>
     <a href="/keys/docs/guides/openrouter">OpenRouter</a>
     <a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway</a>
     <a href="/keys/docs/guides/portkey">Portkey</a>

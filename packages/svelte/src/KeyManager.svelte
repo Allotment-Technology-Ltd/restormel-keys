@@ -120,7 +120,7 @@
         onclick={openEntry}
         aria-label="Add your first provider credential"
       >
-        Add key
+        Add credential
       </button>
     </div>
   {:else if showEntry}
@@ -176,7 +176,7 @@
               onclick={validateAndSave}
               disabled={entryBusy}
               aria-busy={entryBusy}
-              aria-label={entryBusy ? "Validating…" : "Validate and save key"}
+              aria-label={entryBusy ? "Validating…" : "Validate and save credential"}
             >
               {entryBusy ? "Validating…" : "Validate and save"}
             </button>
@@ -187,14 +187,14 @@
   {:else if showList}
     <div class="rk-list">
       <div class="rk-list-header">
-        <h2 class="rk-heading">Your keys</h2>
+        <h2 class="rk-heading">Your credentials</h2>
         <button
           type="button"
           class="rk-btn rk-btn-primary"
           onclick={openEntry}
           aria-label="Add another provider credential"
         >
-          Add key
+          Add credential
         </button>
       </div>
       <ul class="rk-list-ul" role="list">
@@ -240,7 +240,7 @@
                   onclick={() => removeKey(id)}
                   aria-label="Remove this provider credential"
                 >
-                  Remove key
+                  Remove credential
                 </button>
               </div>
             {/if}

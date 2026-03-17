@@ -2,13 +2,21 @@
  * Storage adapter types. KeyStorage is user-scoped; never expose raw keys in logs.
  */
 
-/** A stored key record (opaque payload; adapter may encrypt). */
-export interface StoredKey {
+/**
+ * Provider credential metadata stored via an adapter.
+ *
+ * NOTE: This record is intentionally generic: in integration-first mode, adapters may store
+ * only references/metadata rather than raw secret material. Avoid treating this as “vault custody”.
+ */
+export interface CredentialRecord {
   id: string;
   provider?: string;
   label?: string;
   [key: string]: unknown;
 }
+
+/** Backwards-compatible alias. Prefer `CredentialRecord`. */
+export type StoredKey = CredentialRecord;
 
 /** Usage entry for one key (e.g. token counts). */
 export interface StoredUsage {
