@@ -101,6 +101,31 @@ Implement in this order (or in parallel with clear handoffs): **(0) Remove SOPHI
 - **Policies:** At least one policy type (e.g. model allowlist or deprecated_model_block) is configured and affects resolution or allowed model list in SOPHIA.
 - **UI:** End-users can select the model for philosophy queries via the embedded ModelSelector; selection is consistent with Restormel routes/policies and catalog.
 
+### Operational checks (bring the wedge CLIs into dogfooding)
+
+Use these checks during the SOPHIA rollout so dogfooding validates the standalone CLIs and the wrapper surface:
+
+- **Doctor** (local setup + inventory + lifecycle warnings):
+
+```bash
+npx @restormel/doctor
+npx @restormel/doctor --repo
+```
+
+If SOPHIA wants CI-stable inventory results, write a manifest:
+
+```bash
+npx @restormel/doctor --repo --manifest-out restormel.doctor.manifest.json
+```
+
+- **Validate** (credential health gate):
+
+```bash
+npx @restormel/validate
+```
+
+In CI, treat exit code `3` as “transient-only” (retry once + alert if persistent).
+
 This gives Restormel Keys a single, real-world test: SOPHIA as the first consumer of the full stack (control plane, resolve, fallback, policies, embeddable UI).
 
 ---

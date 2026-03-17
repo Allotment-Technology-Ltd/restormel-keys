@@ -1,0 +1,42 @@
+name: Registry refresh
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Refresh registry (best-effort)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+        run: node scripts/refresh-registry.mjs
+      - name: Validate registry
+        run: node scripts/validate-registry.mjs
+      - name: Create PR if changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(registry): refresh metadata"
+          title: "chore(registry): refresh metadata"
+          body: |
+            ## Summary
+            - Automated refresh of registry metadata (best-effort).
+
+            ## Notes
+            - This job only updates `registry/models.json` when live sources are configured via repo secrets.
+          branch: chore/registry-refresh
+          delete-branch: true
+

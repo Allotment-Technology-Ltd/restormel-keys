@@ -163,10 +163,10 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <WalkthroughStep stepId="5.6" title="Step 5.6 — Embed KeyManager (optional — for BYOK apps)" {phaseSlug}>
   <p>If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. Wire <code>onKeyAdded</code> and <code>onKeyRemoved</code> to your backend (e.g. <code>POST /api/keys</code>, <code>DELETE /api/keys/:id</code>).</p>
   <div class="callout callout-security">
-    <strong>Security</strong> — KeyManager validates keys client-side via a lightweight test call to the provider. Raw key material is never sent to Restormel. Your backend should store only hashed keys and metadata (provider, label, key prefix). Never log or expose raw keys.
+    <strong>Security</strong> — Treat provider credentials as <em>builder-managed</em>. Raw key material should never be logged or persisted in plaintext. Restormel does not need to custody raw provider secrets by default: store credentials in your own backend/secret store (or use a gateway-backed scheme) and return only masked identifiers and metadata to the UI.
   </div>
   <h3>You'll see</h3>
-  <p>A settings panel with an empty state, a form to select a provider and paste a key, validation feedback, a list of stored keys (masked), and delete buttons.</p>
+  <p>A settings panel with an empty state, a form to select a provider and add a credential, feedback, a list of saved credentials (masked), and remove buttons.</p>
   <h3>How to test</h3>
   <p>Navigate to settings, add a key (test/invalid is fine to confirm validation), confirm <code>onKeyAdded</code> fires and your API receives the request. With a valid key, confirm validation passes. Delete the key and confirm <code>onKeyRemoved</code> fires.</p>
   </WalkthroughStep>
@@ -220,12 +220,4 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   }
   .doc-table th { background: var(--rm-surface-raised); font-weight: var(--font-medium); }
   .doc-table td { color: var(--rm-muted); }
-  .build-agent-block {
-    margin: var(--space-6) 0;
-    padding: var(--space-4);
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-  }
-  .build-agent-block h3 { margin-top: 0; }
 </style>

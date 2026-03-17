@@ -185,13 +185,30 @@ RESTORMEL_ENVIRONMENT_ID=`} />
   </WalkthroughStep>
 
   <WalkthroughStep stepId="1.5" title="Step 1.5 — Configure provider credentials (optional)" {phaseSlug}>
-  <p>If your app uses <strong>platform keys</strong> (your own OpenAI/Anthropic/Google keys, not user-provided BYOK), you can add them as provider credentials in the dashboard now. This is optional — you can also continue using your existing env vars and let Restormel resolve point to the provider while you supply the key yourself.</p>
-  <p>To add provider credentials in the dashboard: in your project, go to <strong>Provider Credentials</strong>; click <strong>Add credential</strong>, choose the provider (e.g. OpenAI), paste your API key; Restormel validates the key and stores it encrypted.</p>
-  <p>If you prefer to keep provider keys in your own env vars and only use Restormel for routing decisions, skip this step. The resolve response tells you <em>which</em> provider to call; you can supply the key from your own env.</p>
+  <p>
+    This step is about choosing how your stack reaches providers. Restormel is designed to work with <strong>external gateways</strong> (OpenRouter, Vercel AI Gateway, Portkey) and with <strong>builder-managed direct provider keys</strong> (env vars / secret manager).
+    Restormel does <em>not</em> need to custody raw provider secrets by default.
+  </p>
+
+  <h3>Option A — Gateway-backed provider access (recommended)</h3>
+  <p>
+    Keep your gateway as the provider access layer, and use Restormel for routing, policies, health, analytics, and progressive rollout.
+    See: <a href="/keys/docs/guides/openrouter">OpenRouter</a>, <a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway</a>, <a href="/keys/docs/guides/portkey">Portkey</a>.
+  </p>
+
+  <h3>Option B — Builder-managed direct providers</h3>
+  <p>
+    Keep provider keys in your own environment (e.g. <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>) or secret manager. Restormel resolve tells you <em>which</em> provider/model to call; your app supplies provider access from its own infrastructure.
+  </p>
+
+  <h3>Option C — Future hosted vault (later / optional)</h3>
+  <p>
+    A Restormel-hosted provider-secret vault may exist as a future capability, but it is not the v1 default proposition. If you need hosted custody today, use a gateway vendor or your existing secret store.
+  </p>
   <h3>You'll see</h3>
-  <p>The credential listed in the dashboard with the provider name and a masked key preview. Validation status shows green if the key is valid.</p>
+  <p>You have a clear provider access mode for your stack (gateway-backed or builder-managed direct). If you are using a gateway, your app still uses the gateway’s auth and endpoint; Restormel adds the control layer.</p>
   <h3>How to test</h3>
-  <p>No code-level test yet. The dashboard shows the credential as valid.</p>
+  <p>No code-level test in this phase. You’ll verify your chosen mode in Phase 2 when you make your first resolve call.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="1.6" title="Step 1.6 — Run keys doctor again" {phaseSlug}>

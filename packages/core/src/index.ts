@@ -23,6 +23,10 @@ export {
   ANTHROPIC_MODELS,
   googleProvider,
   GOOGLE_MODELS,
+  openrouterProvider,
+  OPENROUTER_MODELS,
+  portkeyProvider,
+  PORTKEY_MODELS,
 } from "./providers/index.js";
 export type {
   ProviderDefinition,

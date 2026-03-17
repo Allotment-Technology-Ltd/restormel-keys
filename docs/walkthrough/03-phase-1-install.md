@@ -4,7 +4,7 @@
 > **Prerequisites:** [Phase 0](./02-phase-0-inventory.md) complete (routing inventory exists), a Restormel Keys account
 > **You'll need:** Terminal access, your app's package manager (`pnpm`, `npm`, or `yarn`), access to the [Dashboard](https://restormel.dev/keys/dashboard)
 
-This phase gets the Restormel Keys packages into your project and creates the dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, `keys doctor` passes (framework, packages, and local config) and your dashboard shows a project ready for routes and policies. The CLI does not validate Cloud env vars (e.g. `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`) today — you verify those in Phase 2 when you make your first resolve call.
+This phase gets the Restormel Keys packages into your project and creates the dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, `keys doctor` passes (framework, packages, and local config) and your dashboard shows a project ready for routes and policies. Doctor validates **local** setup (framework, packages, config, local key store). It does not validate Cloud env vars (e.g. `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`) — you verify those in Phase 2 when you make your first resolve call.
 
 ---
 
@@ -85,6 +85,8 @@ Run 'keys doctor' to verify your setup.
 ```bash
 npx @restormel/doctor
 ```
+
+> You can also run the wrapper: `npx @restormel/keys-cli doctor`.
 
 `doctor` checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).
 

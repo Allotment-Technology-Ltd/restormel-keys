@@ -68,6 +68,14 @@ npx keys add openai
 npx @restormel/doctor
 ```
 
+### CLI choices (what to use when)
+
+- **`@restormel/doctor`**: local setup + repo inventory checks (great for “is this wired correctly?”).\n
+- **`@restormel/validate`**: credential health gates (great for CI; stable exit codes).\n
+- **`@restormel/keys-cli`**: onboarding and wrappers (`keys init/add/list/estimate`, plus `keys doctor/validate` delegating to the wedge CLIs).
+
+See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
+
 ---
 
 ## Publish (Phase 2)

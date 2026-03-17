@@ -105,6 +105,10 @@
 <p class="page-desc">
   Request counts, latency, error rate, and usage by provider, model, and route. Data from request logs ({periodLabel()}).
 </p>
+<p class="notice">
+  <strong>Imported gateway analytics:</strong> If you’re using OpenRouter/Portkey/Vercel as your execution layer, you can import their usage exports into Restormel.
+  Imported aggregates appear in <a href={DASHBOARD_BASE + "/usage"}>Usage</a> (and will be surfaced here as coverage expands). See <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.
+</p>
 {#if !data.error && (data.aggregates.length > 0 || data.recentLogs.length > 0)}
   <p class="period-links" role="navigation" aria-label="Time range">
     <span class="period-label">Range:</span>
@@ -254,6 +258,19 @@
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
   }
+  .notice {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-left-width: 4px;
+    border-left-color: var(--rm-sage);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .notice a { color: var(--rm-sage); font-weight: 500; }
   .error-msg {
     color: var(--coral-alert);
     font-size: var(--text-sm);

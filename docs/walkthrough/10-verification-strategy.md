@@ -63,6 +63,7 @@ These checks run in a terminal and can be scripted into CI.
 
 ```bash
 npx @restormel/doctor
+# (or) npx @restormel/keys-cli doctor
 ```
 
 **Checks:** Framework detection, packages installed, config file validity, and whether local provider keys are present (if you use them).
@@ -75,11 +76,12 @@ npx @restormel/doctor
 
 ```bash
 npx @restormel/validate
+# (or) npx @restormel/keys-cli validate
 ```
 
 **Checks:** Re-validates all stored provider keys (makes lightweight test calls to each provider).
 
-**Expected:** Exit code 0 if all keys are valid. Exit code 1 if any key is invalid or expired.
+**Expected:** Exit code 0 if all keys are valid. Exit code 1 if any key is invalid. Exit code 3 if only transient failures occurred (timeouts / rate limits / 5xx).
 
 **When to run:** Before deploy, in CI on a schedule (e.g. daily), after rotating any provider keys.
 

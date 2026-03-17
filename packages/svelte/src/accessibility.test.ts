@@ -12,8 +12,8 @@ import { openaiProvider, anthropicProvider } from "@restormel/keys";
 
 // axe-core run in jsdom: some rules (e.g. color-contrast) are unreliable without layout.
 // We run WCAG 2 AA tag and filter to rules that are meaningful in jsdom.
-const AXE_RUN_OPTIONS = {
-  runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] as const },
+const AXE_RUN_OPTIONS: import("axe-core").RunOptions = {
+  runOnly: ["wcag2a", "wcag2aa"],
   rules: {
     "color-contrast": { enabled: false },
     "color-contrast-enhanced": { enabled: false },
@@ -24,8 +24,8 @@ const AXE_RUN_OPTIONS = {
   },
 };
 
-async function runAxe(container: HTMLElement): Promise<{ violations: unknown[] }> {
-  const axe = (await import("axe-core")).default;
+async function runAxe(container: HTMLElement): Promise<import("axe-core").AxeResults> {
+  const axe = await import("axe-core");
   return axe.run(container, AXE_RUN_OPTIONS);
 }
 

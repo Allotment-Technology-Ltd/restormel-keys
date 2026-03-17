@@ -9,6 +9,7 @@ import { registerList } from "./commands/list.js";
 import { registerValidate } from "./commands/validate.js";
 import { registerDoctor } from "./commands/doctor.js";
 import { registerEstimate } from "./commands/estimate.js";
+import { registerSync } from "./commands/sync.js";
 
 const program = new Command();
 program
@@ -22,5 +23,6 @@ registerList(program);
 registerValidate(program);
 registerDoctor(program);
 registerEstimate(program);
+registerSync(program);
 
 program.parse();

@@ -2,6 +2,25 @@
   /** Marketing layout: nav + footer for /keys and /keys/pricing. */
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
+  import { page } from "$app/stores";
+  import { absoluteUrl } from "$lib/seo";
+
+  const orgJsonLd = (baseUrl: URL) => ({
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Restormel",
+    url: absoluteUrl(baseUrl, "/keys"),
+    logo: absoluteUrl(baseUrl, "/restormel-lockup-nav.svg"),
+  });
+
+  const productJsonLd = (baseUrl: URL) => ({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Restormel Keys",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Any",
+    url: absoluteUrl(baseUrl, "/keys"),
+  });
 </script>
 
 <svelte:head>
@@ -11,6 +30,14 @@
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
+
+  <meta property="og:site_name" content="Restormel Keys" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={absoluteUrl($page.url, $page.url.pathname)} />
+  <meta property="twitter:card" content="summary" />
+
+  <script type="application/ld+json">{JSON.stringify(orgJsonLd($page.url))}</script>
+  <script type="application/ld+json">{JSON.stringify(productJsonLd($page.url))}</script>
 </svelte:head>
 
 <div class="marketing-page">

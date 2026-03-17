@@ -6,15 +6,15 @@ import { maskApiKey } from "../store.js";
 export function registerList(program: Command): void {
   program
     .command("list")
-    .description("Show stored keys (masked)")
+    .description("Show provider credentials (local, masked)")
     .action(async () => {
       const cwd = process.cwd();
       const store = await readStore(cwd);
       if (store.keys.length === 0) {
-        console.log(chalk.gray("No keys stored. Use keys add <provider> to add one."));
+        console.log(chalk.gray("No provider credentials found. Use keys add <provider> to add one."));
         return;
       }
-      console.log(chalk.cyan("Stored keys (masked):"));
+      console.log(chalk.cyan("Provider credentials (local, masked):"));
       for (const k of store.keys) {
         const mask = k.mask ?? maskApiKey(k.apiKey);
         console.log(" ", chalk.white(k.provider), chalk.gray(mask), k.label ? chalk.gray(`(${k.label})`) : "");
