@@ -106,7 +106,7 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 > 2. Install correct packages (Next.js: core + react + elements; SvelteKit: core + svelte; server-only: core).
 > 3. Run `npx @restormel/keys-cli init`.
 > 4. Add to `.env.example`: `RESTORMEL_GATEWAY_KEY=`, `RESTORMEL_PROJECT_ID=`, `RESTORMEL_ENVIRONMENT_ID=`, `USE_RESTORMEL_KEYS=false`.
-> 5. Run `npx @restormel/keys-cli doctor` — confirm exit 0.
+> 5. Run `npx @restormel/doctor` — confirm exit 0.
 > 6. Commit config, `.env.example`, `package.json`, lockfile.
 >
 > **DO NOT:** Commit real keys. Add values to `.env.example`. Modify application code. Install wrong packages.

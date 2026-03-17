@@ -31,8 +31,8 @@ export const USE_RESTORMEL_KEYS =
 USE_RESTORMEL_KEYS=true
 RESTORMEL_ROLLOUT_PERCENT=100  # if using percentage-based rollout`;
 
-  const doctorValidateSnippet = `npx @restormel/keys-cli doctor
-npx @restormel/keys-cli validate`;
+  const doctorValidateSnippet = `npx @restormel/doctor
+npx @restormel/validate`;
 </script>
 
 <svelte:head>
@@ -64,8 +64,8 @@ npx @restormel/keys-cli validate`;
       <tr><td>Error fallback works</td><td>Set invalid Gateway Key; confirm legacy routing takes over</td><td>☐</td></tr>
       <tr><td>ModelSelector renders</td><td>Open settings page; confirm component loads and selection works</td><td>☐</td></tr>
       <tr><td>(If BYOK) KeyManager works</td><td>Add/remove a test key; confirm callbacks fire</td><td>☐</td></tr>
-      <tr><td><code>keys doctor</code> passes</td><td>Run <code>npx @restormel/keys-cli doctor</code> in the staging env</td><td>☐</td></tr>
-      <tr><td><code>keys validate</code> passes</td><td>Run <code>npx @restormel/keys-cli validate</code> to re-check stored keys</td><td>☐</td></tr>
+      <tr><td><code>keys doctor</code> passes</td><td>Run <code>npx @restormel/doctor</code> in the staging env</td><td>☐</td></tr>
+      <tr><td><code>keys validate</code> passes</td><td>Run <code>npx @restormel/validate</code> to re-check stored keys</td><td>☐</td></tr>
       <tr><td>No secrets committed</td><td>Run <code>scripts/check-secrets.sh</code> or <code>git log --diff-filter=A -- '*.env'</code></td><td>☐</td></tr>
       <tr><td>Dashboard logs show requests</td><td>Check the project's usage/logs section in the dashboard</td><td>☐</td></tr>
     </tbody>

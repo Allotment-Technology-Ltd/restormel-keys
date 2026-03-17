@@ -5,3 +5,4 @@
 import "./rk-key-manager.js";
 import "./rk-model-selector.js";
 import "./rk-cost-estimator.js";
+import "./rk-healthcheck-summary.js";

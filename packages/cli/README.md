@@ -7,7 +7,7 @@ CLI for Restormel Keys: reduce setup friction for Next.js, React, SvelteKit, and
 ```bash
 pnpm add -D @restormel/keys-cli
 # or
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 ```
 
 ## Commands
@@ -17,8 +17,8 @@ npx @restormel/keys-cli doctor
 | `keys init` | Detect framework, generate config, suggest packages |
 | `keys add <provider>` | Prompt for API key, validate, store (openai \| anthropic \| google) |
 | `keys list` | Show stored keys (masked) |
-| `keys validate` | Re-validate all keys; exit 1 if any invalid (CI-friendly) |
-| `keys doctor` | Check framework, packages, config, key health |
+| `keys validate` | Wrapper for `restormel-validate` (exit 1 if invalid — CI-friendly) |
+| `keys doctor` | Wrapper for `restormel-doctor` (setup/health checks) |
 | `keys estimate <model> --input <n> --output <n>` | Cost estimate for a model |
 
 ## Config and storage
@@ -28,4 +28,4 @@ npx @restormel/keys-cli doctor
 
 ## Gate
 
-In a fresh Next.js (App Router) project, `npx @restormel/keys-cli doctor` should run and report framework and package status. Run `keys init` first to create config; then `keys doctor` exits 0 when setup is OK.
+In a fresh Next.js (App Router) project, `npx @restormel/doctor` should run and report framework and package status. Run `keys init` first to create config; then `restormel-doctor` exits 0 when setup is OK.

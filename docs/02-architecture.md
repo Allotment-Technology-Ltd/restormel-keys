@@ -148,10 +148,10 @@ Package: `@restormel/keys-cli`. Installed globally or via npx.
 | `keys init` | Interactive scaffolding. Detects framework, creates config, installs packages. |
 | `keys add <provider>` | Add a provider API key interactively. Validates before saving. |
 | `keys list` | List configured providers and key status. |
-| `keys validate` | Re-validate all stored keys. Useful in CI. |
+| `restormel-validate` | Re-validate all stored keys. Useful in CI. (`keys validate` is provided by `@restormel/keys-cli` as a wrapper.) |
 | `keys test <provider> <model>` | Send test request. Returns latency, tokens, cost. |
 | `keys estimate <model> --input <n> --output <n>` | Estimate cost without executing. |
-| `keys doctor` | Check environment: framework detection, package versions, config validity, key health. |
+| `restormel-doctor` | Check environment: framework detection, package versions, config validity, key health. (`keys doctor` is provided by `@restormel/keys-cli` as a wrapper.) |
 
 ---
 

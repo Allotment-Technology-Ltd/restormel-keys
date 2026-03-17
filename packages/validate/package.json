@@ -1,0 +1,56 @@
+{
+  "name": "@restormel/validate",
+  "version": "0.1.0",
+  "description": "Restormel Validate — open-source CLI for credential and configuration validation.",
+  "keywords": [
+    "restormel",
+    "validate",
+    "credentials",
+    "cli",
+    "byok",
+    "llm"
+  ],
+  "author": "Allotment Technology Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys#readme",
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "restormel-validate": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@restormel/keys": "workspace:*",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
