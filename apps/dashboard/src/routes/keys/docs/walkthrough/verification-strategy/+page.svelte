@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -17,6 +18,50 @@
     { id: "smoke", label: "4. Smoke tests" },
     { id: "monitoring", label: "5. Ongoing monitoring recommendations" },
     { id: "schedule", label: "6. Verification schedule summary" },
+  ];
+
+  const addCiVerificationPrompt = `You are working in [your app repo].
+
+Goal: Add Restormel Keys verification steps to CI (doctor + validate) and optionally run the smoke test post-deploy.
+
+Steps:
+1. Open your CI workflow (e.g. .github/workflows/ci.yml).
+2. Add a step after install/build: npx @restormel/doctor (fail on non-zero exit).
+3. Add a step: npx @restormel/validate (fail on non-zero exit).
+4. Store RESTORMEL_GATEWAY_KEY as a CI secret (use a dedicated staging key, not production).
+5. Optionally add a deploy-stage job/step to run pnpm run smoke:restormel (only if your staging endpoint is reachable from CI).
+6. Verify on a PR that doctor and validate run and pass.
+
+DO NOT: Commit secrets to the workflow file. Use production keys in CI. Make the smoke test gate deploys if it can’t reach staging.`;
+
+  const agentPrompts = [
+    {
+      id: "pv-review",
+      title: "Prompt V1 — Review verification for your repo (no changes)",
+      intent: "Have an agent read this page and propose a verification plan (what runs locally vs CI vs after deploy).",
+      contextDocs: ["This page: /keys/docs/walkthrough/verification-strategy", "Phase 6: /keys/docs/walkthrough/phase-6-golive"],
+      prompt: `You are working in [your app repo].
+
+Goal: Review the Restormel Keys verification strategy and produce a repo-specific plan (no code changes).
+
+Steps:
+1. Read the Verification strategy page in full.
+2. Identify the repo’s CI system (GitHub Actions, etc.) and where deploy jobs live.
+3. Decide which checks run on every PR (doctor), which run on schedules (validate), and which run post-deploy (smoke test).
+4. Identify the secrets required and where they should be stored.
+5. Restate the gate for “verification is set up” in your own words.
+
+DO NOT: Change CI config. Add secrets. Run deploys.`,
+      gate: "You have a verification plan (PR checks + scheduled checks + post-deploy checks) with no changes made yet.",
+    },
+    {
+      id: "pv-ci",
+      title: "Prompt V2 — Add CI verification",
+      intent: "Implement CI checks for doctor + validate (and optional smoke) using CI secrets safely.",
+      contextDocs: ["This page: /keys/docs/walkthrough/verification-strategy", "CLI: npx @restormel/doctor, npx @restormel/validate"],
+      prompt: addCiVerificationPrompt,
+      gate: "CI runs keys doctor + keys validate using a staging Gateway Key secret; both pass on a PR.",
+    },
   ];
 </script>
 
@@ -159,13 +204,7 @@
     </tbody>
   </table>
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: add-ci-verification</h3>
-    <p><strong>Context docs</strong> (adapt for your project): this page; <a href="/keys/docs/walkthrough/phase-6-golive">Phase 6 — Go live</a> (smoke test script).</p>
-    <p><strong>Goal:</strong> Add Restormel Keys verification steps to your CI pipeline. Add a step after build: <code>npx @restormel/doctor</code> (fail on non-zero exit). Add <code>npx @restormel/validate</code> (fail on non-zero exit; requires <code>RESTORMEL_GATEWAY_KEY</code> as a CI secret). Use a dedicated staging key in CI, not production. Optionally add post-deploy <code>pnpm run smoke:restormel</code> (gate behind env if staging isn't available in CI).</p>
-    <p><strong>DO NOT:</strong> Use the production Gateway Key in CI. Commit secrets to the workflow file. Make the smoke test block deploys if it hits an unavailable endpoint.</p>
-    <p><strong>Gate:</strong> CI runs <code>keys doctor</code> and <code>keys validate</code> on every PR; both pass; Gateway Key is a CI secret.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts” below for a ready-to-run CI prompt.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="schedule" title="6. Verification schedule summary" {phaseSlug}>
@@ -187,6 +226,13 @@
 
   <p><strong>Checkpoint checklist:</strong> mark each section complete as you read it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={verificationSteps} />
+
+  <AgentPromptsSection
+    heading="Agent prompts"
+    intro="These are optional and collapsed by default. Use them if you're adding verification and CI gates with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p class="doc-footer">See the <a href="/keys/docs/walkthrough">Walkthrough</a> index for the full phase listing and related docs.</p>
 

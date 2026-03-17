@@ -19,8 +19,8 @@ Allotment-Technology-Ltd/restormel-keys
 │   ├── react/                 # @restormel/keys-react
 │   └── cli/                   # @restormel/keys-cli
 ├── apps/
-│   ├── site/                  # SvelteKit app (dashboard + docs + marketing)
-│   ├── dashboard/             # SvelteKit authenticated dashboard
+│   ├── dashboard/             # Single SvelteKit app: Keys landing, docs/walkthrough (with optional agent prompts), dashboard (Neon Auth/Postgres)
+│   ├── site/                  # Archived (Astro/Starlight); all surfaces now in apps/dashboard
 │   ├── demo-next/             # Next.js App Router demo
 │   └── demo-svelte/           # SvelteKit demo
 ├── examples/

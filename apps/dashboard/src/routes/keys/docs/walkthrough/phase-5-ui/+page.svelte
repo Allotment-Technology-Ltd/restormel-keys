@@ -2,6 +2,7 @@
   /** Phase 5 — UI. Progressive disclosure: checklist + expandable steps. */
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -30,6 +31,58 @@
   ];
 
   const resolveProviderModelExample = "resolveProvider({ model: userSelectedModel })";
+
+  const embedUiPrompt = `You are working in [your app repo].
+
+Goal: Embed Restormel Keys UI components (ModelSelector and optionally KeyManager) in your settings page, with safe key handling and required UI states.
+
+Steps:
+1. Find the existing model picker / BYOK settings UI from your Phase 0 routing inventory.
+2. Based on your framework:
+   - Next.js/React: use @restormel/keys-react (KeysProvider + client component ModelSelector).
+   - SvelteKit: use @restormel/keys-svelte (ModelSelector component + createKeys).
+   - Other: use @restormel/keys-elements (Web Component) and set keys/providers as JS properties.
+3. Wire selection events:
+   - ModelSelector: save { modelId, providerId } to your backend (e.g. POST /api/preferences).
+   - KeyManager (if BYOK): wire add/remove to your key storage API (POST /api/keys, DELETE /api/keys/:id).
+4. Filter models by policy:
+   - Recommended: a server-side endpoint (e.g. GET /api/allowed-models) that calls policy evaluate using a Management Key; return only allowed model IDs to the browser.
+5. Add required UI states: loading, error (with retry), empty.
+6. Theme the components via --rk-* CSS custom properties to match your app.
+7. Verify: renders, callbacks fire, theming applies, keyboard navigation works.
+
+DO NOT: Expose Management Key or Gateway Key in the browser. Log raw keys. Skip empty/error/loading states. Hardcode real secrets.`;
+
+  const agentPrompts = [
+    {
+      id: "p5-review",
+      title: "Prompt 5A — Review this phase (no code changes)",
+      intent: "Have an agent read Phase 5 and plan exactly where to embed UI, how events map to your backend, and what states must exist.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-5-ui", "Phase 0 output: docs/restormel-integration/00-routing-inventory.md (in your app repo)"],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 5 of the Restormel Keys walkthrough and produce a concrete plan (no code changes).
+
+Steps:
+1. Read the Phase 5 walkthrough page in full.
+2. Identify which components you need (ModelSelector required? KeyManager for BYOK?).
+3. Identify the target page(s) and component boundaries in your app where these will be embedded.
+4. Define the backend endpoints you will wire (preferences save, key storage) and the data contracts.
+5. Decide how model filtering will work (server proxy using Management Key vs local entitlements if using local resolve).
+6. List required UI states and accessibility checks.
+
+DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
+      gate: "You have an implementation plan (files + endpoints + states + security constraints) with no changes made yet.",
+    },
+    {
+      id: "p5-embed",
+      title: "Prompt 5B — Embed ModelSelector (and optional KeyManager)",
+      intent: "Implement UI embedding and wiring, including policy-filtered model list and safe key handling.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-5-ui", "Compatibility: /keys/docs/compatibility"],
+      prompt: embedUiPrompt,
+      gate: "Components render; callbacks work; policy filtering is server-side; required states exist; no raw keys are logged or exposed.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -131,13 +184,12 @@
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase5Steps} />
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: embed-ui-components</h3>
-    <p><strong>Context docs</strong> (adapt paths for your project): this page; <a href="/keys/docs/compatibility">Framework compatibility</a> (which package for which framework).</p>
-    <p><strong>Goal:</strong> Embed ModelSelector (and optionally KeyManager) into your app's settings page. Use KeysProvider + client component for Next.js/React; direct import for SvelteKit; <code>@restormel/keys-elements</code> and properties for Web Components. Wire <code>onSelect</code> / <code>rk-model-selected</code> to save preferences; wire KeyManager callbacks to your key storage API. Add <code>--rk-*</code> overrides. Handle loading, error, and empty states. Verify rendering, callbacks, theme, and keyboard navigation.</p>
-    <p><strong>DO NOT:</strong> Import UI packages in server-only code. Log or expose raw API keys. Skip empty/error/loading states. Hardcode model lists. Commit real API keys or secrets.</p>
-    <p><strong>Gate:</strong> ModelSelector renders and fires onSelect with modelId and providerId. (If BYOK) KeyManager add/remove callbacks work. Theme tokens apply. Loading, error, empty states handled. Keyboard navigation works.</p>
-  </div>
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 5 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <h2>Checkpoint</h2>
   <p>You now have: ModelSelector embedded and filtered by your policies; (optional) KeyManager for BYOK with callbacks wired to your backend; components themed via <code>--rk-*</code>; callbacks saving user selections. The UI components work alongside your resolve integration from Phases 2–4. When a user selects a model, your backend can pass that to <code>{resolveProviderModelExample}</code> and Restormel evaluates it against routes and policies.</p>

@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -71,6 +72,52 @@ Steps:
 5. Verify the app starts and behaves identically with the flag unset.
 
 DO NOT: Set the flag to true yet. Modify existing routing logic beyond adding the branch. Implement restormelResolve yet. Commit real API keys or secrets.`;
+
+  const agentPrompts = [
+    {
+      id: "p0-review",
+      title: "Prompt 0A — Review this phase (no code changes)",
+      intent: "Have an agent read this page and produce a Phase 0 execution plan for your repo (files to touch later, risks, and gates), without changing code.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-0-inventory",
+        "Optional: docs/walkthrough/11-prompt-index.md (reference prompt ordering)",
+      ],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 0 of the Restormel Keys walkthrough and produce an implementation-ready plan (no code changes).
+
+Steps:
+1. Read the Phase 0 walkthrough page in full.
+2. Summarise the Phase 0 deliverables in your own words.
+3. List exactly what evidence you will collect during the inventory (imports, call sites, UI, BYOK, env vars, fallback chains).
+4. Identify likely files/directories to search in this repo and the search terms you will use.
+5. Define what the routing inventory document will contain (tables/sections) and where it will live.
+6. State the gate criteria you will use to decide Phase 0 is complete.
+
+DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy real secrets into docs.`,
+      gate: "You have a written Phase 0 plan and a checklist of what you will inventory (but no code or docs changed yet).",
+    },
+    {
+      id: "p0-inventory",
+      title: "Prompt 0B — Inventory current routing (audit-only)",
+      intent: "Generate a routing inventory document that identifies what to REMOVE, KEEP, or WRAP before integrating.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-0-inventory"],
+      prompt: buildAgentInventoryPrompt,
+      gate: "A routing inventory doc exists with all routing/selection/BYOK files classified and at least one end-to-end provider call pattern documented.",
+    },
+    {
+      id: "p0-flag",
+      title: "Prompt 0C — Add feature flag (optional but recommended)",
+      intent: "Add a USE_RESTORMEL_KEYS flag that defaults off, so later phases can be rolled out safely.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-0-inventory (Step 0.5)",
+        "Phase 2: /keys/docs/walkthrough/phase-2-resolve (where the flag is used)",
+        "Phase 6: /keys/docs/walkthrough/phase-6-golive (where the flag is flipped)",
+      ],
+      prompt: buildAgentFlagPrompt,
+      gate: "The flag exists (defaults off) and the app behaves identically when unset.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -194,13 +241,7 @@ DO NOT: Set the flag to true yet. Modify existing routing logic beyond adding th
   <h3>How to test</h3>
   <p>Pick one entry point. Trace the request from "user action" to "provider API call" and back. Confirm your documentation matches reality.</p>
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: inventory-current-routing</h3>
-    <p><strong>Context docs</strong> (use in the Restormel Keys repo or adapt paths for your project): this page; <code>docs/02-architecture.md</code> §1–2.</p>
-    <p><strong>Prompt:</strong></p>
-    <CodeBlock language="text" code={buildAgentInventoryPrompt} />
-    <p><strong>Gate:</strong> A routing inventory document exists that lists every routing/selection/BYOK file, classifies each as REMOVE/KEEP/WRAP, and documents at least one end-to-end provider call pattern.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for an audit-only prompt you can paste into a coding agent.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="0.4" title="Step 0.4 — Plan the replacement sequence" {phaseSlug}>
@@ -233,14 +274,15 @@ DO NOT: Set the flag to true yet. Modify existing routing logic beyond adding th
   <h3>How to test</h3>
   <CodeBlock language="bash" code={flagTestSnippet} />
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: add-feature-flag</h3>
-    <p><strong>Context docs</strong> (adapt paths for your project): this page §0.5; Phase 2 (resolve); Phase 6 (go live).</p>
-    <p><strong>Prompt:</strong></p>
-    <CodeBlock language="text" code={buildAgentFlagPrompt} />
-    <p><strong>Gate:</strong> App starts with no behaviour change. A <code>USE_RESTORMEL_KEYS</code> env var exists in <code>.env.example</code>. The conditional branch is in place but the old path runs by default.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a ready-to-run prompt for adding the flag safely.</p>
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 0 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase0Steps} />

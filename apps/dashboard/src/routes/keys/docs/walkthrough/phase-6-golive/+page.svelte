@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -33,6 +34,77 @@ RESTORMEL_ROLLOUT_PERCENT=100  # if using percentage-based rollout`;
 
   const doctorValidateSnippet = `npx @restormel/doctor
 npx @restormel/validate`;
+
+  const smokeTestPrompt = `You are working in [your app repo].
+
+Goal: Create a post-cutover smoke test script that verifies Restormel Keys is working (resolve + policy evaluation + CLI health checks).
+
+Steps:
+1. Create scripts/smoke-test-restormel.sh (bash, executable).
+2. The script must:
+   a) Call the resolve endpoint for your project/environment/route and print providerType, modelId, explanation.
+   b) Call the policy evaluate endpoint for an allowed model (and a blocked model if you have one), using RESTORMEL_MANAGEMENT_KEY.
+   c) Run: npx @restormel/doctor and npx @restormel/validate.
+   d) Exit 0 if all checks pass; exit 1 otherwise.
+3. Read all values from env vars (no hardcoded secrets): RESTORMEL_GATEWAY_KEY, RESTORMEL_PROJECT_ID, RESTORMEL_ENVIRONMENT_ID, RESTORMEL_MANAGEMENT_KEY.
+4. Add a package.json script: smoke:restormel = bash scripts/smoke-test-restormel.sh
+5. Verify the smoke test exits 0 in staging.
+
+DO NOT: Hardcode secrets. Make destructive calls. Use production keys in CI. Commit secrets.`;
+
+  const removeLegacyPrompt = `You are working in [your app repo].
+
+Goal: Remove legacy routing code after Restormel has handled 100% of traffic for at least one release cycle.
+
+Steps:
+1. Read the routing inventory (Phase 0) and delete every item marked REMOVE.
+2. Remove the feature flag and any rollout-percent logic from your codebase and .env.example.
+3. Update your resolve wrapper:
+   - Always call restormelResolve
+   - Keep try/catch, but fallback is now a safe default or a user-friendly error (not legacy routing)
+4. Remove replaced UI (custom model picker/BYOK panels) that Restormel components replaced.
+5. Remove unused env vars that only supported legacy routing.
+6. Run tests and run the smoke test.
+
+DO NOT: Remove KEEP items (auth, billing, orchestration). Remove error handling. Remove the smoke test. Commit secrets.`;
+
+  const agentPrompts = [
+    {
+      id: "p6-review",
+      title: "Prompt 6A — Review this phase (no code changes)",
+      intent: "Have an agent read Phase 6 and plan cutover + verification steps specific to your deployment setup.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-6-golive", "Verification: /keys/docs/walkthrough/verification-strategy"],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 6 of the Restormel Keys walkthrough and produce a cutover/runbook plan (no code changes).
+
+Steps:
+1. Read the Phase 6 walkthrough page in full.
+2. Identify how feature flags are managed in this repo (env vars vs a flag service).
+3. Propose a safe rollout sequence (5% → 25% → 50% → 100%) and what metrics/logs to watch at each step.
+4. Enumerate post-cutover checks (Dashboard, CLI, smoke test).
+5. Define the rollback procedure and the exact config change needed.
+
+DO NOT: Change config. Deploy anything. Paste real keys.`,
+      gate: "You have a Phase 6 cutover plan + rollback plan tailored to this repo, with no changes made yet.",
+    },
+    {
+      id: "p6-smoke",
+      title: "Prompt 6B — Create smoke test script",
+      intent: "Add an automated smoke test that can be run after deploy and in CI/schedules.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-6-golive (Step 6.4)", "Phase 2: /keys/docs/walkthrough/phase-2-resolve", "Phase 4: /keys/docs/walkthrough/phase-4-policies"],
+      prompt: smokeTestPrompt,
+      gate: "pnpm run smoke:restormel exits 0 in staging; no secrets are hardcoded; checks cover resolve + evaluate + doctor/validate.",
+    },
+    {
+      id: "p6-remove",
+      title: "Prompt 6C — Remove legacy routing (post burn-in)",
+      intent: "After burn-in, delete legacy routing and make Restormel the single source of truth.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-6-golive (Step 6.5)", "Phase 0: /keys/docs/walkthrough/phase-0-inventory"],
+      prompt: removeLegacyPrompt,
+      gate: "Legacy routing is removed safely; tests pass; smoke test passes; Restormel remains resilient via try/catch and safe fallback.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -117,13 +189,7 @@ npx @restormel/validate`;
   <p><strong>Dashboard checks:</strong> Usage (request count non-zero and growing, no error spikes); Routes (traffic against configured routes); Policies (no unexpected violations); Provider credentials (all show "valid").</p>
   <p><strong>Application checks:</strong> Make a request through each major code path; confirm correct provider and model. Test fallback (temporarily remove a provider credential, confirm next step is used, restore). Test a policy block (request a model not on the allowlist). Check latency; resolve adds a network round-trip (typically &lt;100ms).</p>
   <p><strong>Smoke test script:</strong> Create a script that (1) calls the resolve endpoint and prints provider, model, explanation; (2) calls the policy evaluate endpoint for an allowed model; (3) runs <code>keys doctor</code>. Use <code>RESTORMEL_GATEWAY_KEY</code> and <code>RESTORMEL_MANAGEMENT_KEY</code> from the environment; never hardcode secrets.</p>
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: create-smoke-test</h3>
-    <p><strong>Context docs</strong> (adapt for your project): this page; <a href="/keys/docs/walkthrough/phase-2-resolve">Phase 2 — Resolve</a>; <a href="/keys/docs/walkthrough/phase-4-policies">Phase 4 — Policies</a>.</p>
-    <p><strong>Goal:</strong> Create a post-cutover smoke test script. It must: call resolve and print provider/model/source; call policy evaluate for an allowed (and optionally blocked) model; run <code>keys doctor</code> and <code>keys validate</code>; read keys and project ID from env; exit 0 if all pass, 1 if any fail. Add <code>smoke:restormel</code> to <code>package.json</code> scripts.</p>
-    <p><strong>DO NOT:</strong> Hardcode real API keys, project IDs, or URLs. Make the script destructive. Skip doctor/validate. Commit real secrets.</p>
-    <p><strong>Gate:</strong> <code>pnpm run smoke:restormel</code> exits 0 in staging; script prints resolved provider and policy results; no secrets hardcoded.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a ready-to-run smoke-test prompt.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="6.5" title="Step 6.5 — Remove legacy routing code" {phaseSlug}>
@@ -135,14 +201,15 @@ npx @restormel/validate`;
     <li><strong>Remove unused env vars.</strong> Any <code>DEFAULT_MODEL</code>, <code>AI_PROVIDER</code>, or provider-specific routing env vars that Restormel replaces.</li>
     <li><strong>Keep the error fallback to a sensible default.</strong> Your resolve wrapper should still handle Restormel errors gracefully (e.g. return a hardcoded default or a user-facing error).</li>
   </ol>
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: remove-legacy-routing</h3>
-    <p><strong>Context docs</strong> (adapt for your project): this page (Step 6.5); <a href="/keys/docs/walkthrough/phase-0-inventory">Phase 0 — Inventory</a> ("REMOVE" items); <a href="/keys/docs/walkthrough/phase-2-resolve">Phase 2 — Resolve</a> (feature flag and legacy fallback to remove).</p>
-    <p><strong>Goal:</strong> Remove legacy routing code. Delete every "REMOVE" item from the routing inventory. In the resolve module: remove the feature flag and <code>legacyResolve</code>; resolve always uses Restormel; keep try/catch with a safe default or user-facing error on failure. Remove the flag from <code>.env.example</code>. Remove replaced UI (custom model picker/BYOK). Remove unused routing env vars. Run tests and the smoke test.</p>
-    <p><strong>DO NOT:</strong> Remove billing, auth, session, or orchestration code. Remove Restormel error handling. Remove env vars other parts of the app use. Remove the smoke test script. Commit real secrets.</p>
-    <p><strong>Gate:</strong> All "REMOVE" items deleted; feature flag gone; <code>resolveProvider</code> always uses Restormel; tests and smoke test pass.</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a post-burn-in cleanup prompt.</p>
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 6 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase6Steps} />

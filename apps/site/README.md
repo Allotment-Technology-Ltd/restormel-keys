@@ -9,3 +9,5 @@
 Deploy the single app from repo root: build command `pnpm --filter dashboard build`, output `apps/dashboard/.vercel/output`. One Vercel project, one domain (e.g. restormel.dev).
 
 This directory is kept so that workspace and hygiene scripts that expect `apps/site` continue to pass. Do not restore the Astro app here without updating docs and deployment.
+
+For current tech status and apps layout, see [STATUS.md](../../STATUS.md) and [ARCHITECTURE.md](../../ARCHITECTURE.md).

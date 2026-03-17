@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -63,6 +64,55 @@ Mode:  fallback_chain
   }
   return legacyResolve(options?.model);
 }`;
+
+  const wireRouteIdsPrompt = `You are working in [your app repo].
+
+Goal: Update your resolve wrapper to accept a routeId so different parts of your app can use different Restormel routes, then update all call sites.
+
+Steps:
+1. Open your resolve wrapper module (e.g. src/lib/server/resolve-provider.ts from Phase 2).
+2. Update the function signature to accept options?: { routeId?: string; model?: string }.
+3. Pass options.routeId through to restormelResolve({ environmentId, routeId: options.routeId }).
+4. Use your Phase 0 routing inventory to find every call site that resolves a provider/model, and update each call site to pass the appropriate routeId:
+   - ingestion/background jobs → routeId: 'ingestion'
+   - chat/interactive requests → routeId: 'interactive' (or whatever you named it)
+5. If you need multiple routes, create them in the Dashboard and configure steps.
+6. Verify with USE_RESTORMEL_KEYS=true that each call site resolves via its intended route, and that fallback works when the first step is unavailable.
+
+DO NOT: Change the legacy path. Remove error handling / legacy fallback. Reference route IDs that do not exist. Commit secrets.`;
+
+  const agentPrompts = [
+    {
+      id: "p3-review",
+      title: "Prompt 3A — Review this phase (no code changes)",
+      intent: "Have an agent read Phase 3 and plan route creation + how routeIds map to your app’s call sites.",
+      contextDocs: [
+        "This page: /keys/docs/walkthrough/phase-3-routes",
+        "Phase 0 output: docs/restormel-integration/00-routing-inventory.md (in your app repo)",
+      ],
+      prompt: `You are working in [your app repo].
+
+Goal: Review Phase 3 of the Restormel Keys walkthrough and produce a plan (no code changes).
+
+Steps:
+1. Read the Phase 3 walkthrough page in full.
+2. List the routes you will create in the Dashboard (names, purpose, step order).
+3. Map each major app code path (from the Phase 0 inventory) to a routeId.
+4. Describe how you will validate fallback behaviour safely in staging/dev.
+5. Restate the Phase 3 gate in your own words.
+
+DO NOT: Create routes/steps yet. Change any application code. Paste secrets.`,
+      gate: "You have a route plan (routeIds + step order) and a call-site mapping, with no changes made yet.",
+    },
+    {
+      id: "p3-wire",
+      title: "Prompt 3B — Wire route IDs into your application",
+      intent: "Implement routeId plumbing in the resolve wrapper and update call sites to pass the correct routeId.",
+      contextDocs: ["This page: /keys/docs/walkthrough/phase-3-routes", "Phase 2: /keys/docs/walkthrough/phase-2-resolve"],
+      prompt: wireRouteIdsPrompt,
+      gate: "All relevant call sites pass routeId; flag off remains unchanged; flag on resolves via the intended route; fallback works.",
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -155,13 +205,7 @@ Mode:  fallback_chain
   <h3>How to test</h3>
   <p><code>USE_RESTORMEL_KEYS=true pnpm dev</code> — trigger an ingestion job (should resolve via <code>ingestion</code> route) and a chat request (should resolve via <code>interactive</code> if you created one).</p>
 
-  <div class="build-agent-block">
-    <h3>Build-agent prompt: wire-route-ids</h3>
-    <p><strong>Context docs</strong> (adapt paths for your project): this page; Phase 2 (resolve client and feature flag wrapper).</p>
-    <p><strong>Goal:</strong> Update the resolve wrapper to accept a <code>routeId</code> parameter so different parts of your app use different routes. Update the function signature to <code>{optionsSignature}</code>, pass <code>options.routeId</code> to <code>restormelResolve</code>, then update each call site from your routing inventory to pass the appropriate <code>routeId</code> (e.g. ingestion → <code>ingestion</code>, chat → <code>interactive</code>). Create additional routes in the Dashboard if needed.</p>
-    <p><strong>DO NOT:</strong> Change the legacy path. Hardcode route IDs that don't exist in the dashboard. Remove error handling or legacy fallback. Commit real API keys or secrets.</p>
-    <p><strong>Gate:</strong> Each call site passes a <code>routeId</code>. With the flag on, resolve returns the correct route's provider/model. With the flag off, the app behaves identically. Fallback works (remove a provider credential → resolve returns the next step's provider).</p>
-  </div>
+  <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a prompt you can paste into a coding agent.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="3.6" title="Step 3.6 — (Optional) Create a second route" {phaseSlug}>
@@ -169,6 +213,13 @@ Mode:  fallback_chain
   <h3>How to test</h3>
   <p>Resolve with <code>routeId: "autocomplete"</code> and <code>routeId: "analysis"</code>; <code>jq '.data.providerType, .data.modelId'</code> should show different providers/models.</p>
   </WalkthroughStep>
+
+  <AgentPromptsSection
+    heading="Agent prompts for this phase"
+    intro="These are optional and collapsed by default. Use them if you're implementing Phase 3 with a coding agent."
+    prompts={agentPrompts}
+    defaultOpen={false}
+  />
 
   <p><strong>Checkpoint checklist:</strong> mark each step complete as you finish it.</p>
   <WalkthroughChecklist phaseSlug={phaseSlug} steps={phase3Steps} />

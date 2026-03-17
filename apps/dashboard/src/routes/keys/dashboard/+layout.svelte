@@ -4,22 +4,38 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import AppLogo from "$lib/components/AppLogo.svelte";
   import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
+  import { onMount } from "svelte";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
+
+  const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
+  let collapsed = false;
+
+  onMount(() => {
+    collapsed = localStorage.getItem(STORAGE_KEY) === "true";
+  });
+
+  function toggleSidebar() {
+    collapsed = !collapsed;
+    localStorage.setItem(STORAGE_KEY, String(collapsed));
+  }
 </script>
 
 {#if isAuthRoute}
   <slot />
 {:else}
-  <div class="shell">
-    <aside class="sidebar">
+  <div class="shell" class:shell-collapsed={collapsed}>
+    <aside class="sidebar" aria-label="Dashboard navigation">
       <div class="logo">
         <AppLogo height="28" />
       </div>
+      <button type="button" class="sidebar-toggle" aria-pressed={collapsed} on:click={toggleSidebar}>
+        {collapsed ? "Expand nav" : "Collapse nav"}
+      </button>
       <nav class="nav" aria-label="Dashboard">
         {#each NAV_ITEMS as item}
           {#if item.external}
@@ -85,6 +101,11 @@
   .shell {
     display: flex;
     min-height: 100vh;
+    max-width: var(--rm-container-max);
+    margin: 0 auto;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
   }
   .sidebar {
     width: 12rem;
@@ -93,6 +114,20 @@
     padding: var(--space-4) 0;
     display: flex;
     flex-direction: column;
+  }
+  .sidebar-toggle {
+    margin: 0 var(--space-4) var(--space-4);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-bg);
+    color: var(--rm-muted);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    text-align: left;
+  }
+  .sidebar-toggle:hover {
+    background: var(--rm-surface-raised);
+    color: var(--rm-text);
   }
   .logo {
     padding: 0 var(--space-4);
@@ -151,6 +186,16 @@
   .main {
     flex: 1;
     padding: var(--space-6);
+  }
+
+  .shell-collapsed .sidebar {
+    width: 0;
+    padding: 0;
+    border-right: 0;
+    overflow: hidden;
+  }
+  .shell-collapsed .sidebar-toggle {
+    display: none;
   }
   .btn {
     display: inline-block;
