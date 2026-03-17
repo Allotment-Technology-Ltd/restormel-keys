@@ -36,6 +36,8 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 
 If **all** routes (/, /favicon.ico, /keys/dashboard) return 404:
 
+The repo’s root **`vercel.json`** sets **`framework`: null** so Vercel treats the project as “Other” and uses our `buildCommand` / `outputDirectory` instead of the SvelteKit preset. If you still see 404 after a redeploy, use the **Root Directory = apps/dashboard** flow below.
+
 1. **Domain → project** — Vercel → **Domains**: confirm **restormel.dev** is assigned to the **same project** that is connected to this repo and builds the dashboard. If you have multiple projects (e.g. an old “site” project), move the domain to the project that runs `pnpm --filter dashboard build` (or Root Directory `apps/dashboard` with `pnpm run build`).
 2. **Root Directory** — Use **one** of:
    - **`.`** (repo root): root `vercel.json` applies (`outputDirectory`: `apps/dashboard/.vercel/output`). Build runs from repo root.
@@ -44,6 +46,20 @@ If **all** routes (/, /favicon.ico, /keys/dashboard) return 404:
 4. **Runtime env** — In **Settings → Environment Variables**, set at least **Production**: `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Missing env can cause serverless functions to fail and return 5xx or 404.
 
 The browser messages *"Event handler must be added on initial evaluation"* and *"runtime.lastError... back/forward cache"* are from **extensions** (e.g. DevTools), not the site; they do not cause the 404s.
+
+### If still 404: switch to Root Directory = `apps/dashboard`
+
+When the output lives in a subdirectory (`apps/dashboard/.vercel/output`), Vercel can sometimes fail to serve it. Use the app as project root so the output is at `.vercel/output` with no subpath:
+
+1. **Vercel** → **restormel-keys** → **Settings** → **General** → **Root Directory**: set to **`apps/dashboard`** (no leading dot or slash). Save.
+2. **Settings** → **Build and Deployment** — set these and **Save** (override toggles **ON** for each):
+   - **Build Command:** `pnpm run build`
+   - **Output Directory:** `.vercel/output`
+   - **Install Command:** `cd .. && pnpm install`
+3. **Framework Preset:** set to **Other** (or leave SvelteKit; the overrides take precedence).
+4. **Deployments** → **Redeploy** the latest deployment (use **main**), or push a commit to **main** to trigger a new build.
+
+With this, the build runs inside `apps/dashboard`, produces `.vercel/output` there, and Vercel serves it directly. Root `vercel.json` is not used when Root Directory is `apps/dashboard`; only `apps/dashboard/vercel.json` applies (and the UI overrides above match it).
 
 ## After extraction
 
