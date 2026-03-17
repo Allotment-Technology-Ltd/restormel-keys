@@ -5,18 +5,27 @@
 
 <svelte:head>
   <title>Restormel Keys docs</title>
-  <meta name="description" content="Documentation for Restormel Keys — drop-in BYOK and provider routing for AI apps." />
+  <meta name="description" content="Documentation for Restormel Keys — an integration-first control layer for AI provider access (routing, policies, health, cost, and UX)." />
 </svelte:head>
 
 <div class="doc-content">
-  <h1>Restormel Keys docs</h1>
-  <p class="doc-tagline">Drop-in BYOK and provider routing for AI apps. Get started in minutes.</p>
+  <h1>Docs</h1>
+  <p class="doc-tagline">Choose a provider access mode, then follow the walkthrough.</p>
 
-  <p>Restormel Keys adds multi-provider routing and production-grade key management to your app. This doc set covers install, framework choice, and API.</p>
+  <p>
+    Restormel Keys is designed to slot into your existing stack. It complements provider-access layers like <strong>OpenRouter</strong>, <strong>Vercel AI Gateway</strong>, and <strong>Portkey</strong>, and it also supports direct providers when you manage credentials in your own environment.
+    This doc set covers install, framework choice, provider access modes, and the control-plane API.
+  </p>
 
   <h2>Start with Next.js</h2>
-  <p>Using <strong>Next.js App Router</strong>? Install the core plus React and Web Components, then add KeyManager and your key storage. Full path: <a href="/keys/docs/compatibility">Framework compatibility</a>.</p>
+  <p>Using <strong>Next.js App Router</strong>? Install the core plus React and Web Components. Full path: <a href="/keys/docs/compatibility">Framework compatibility</a>.</p>
   <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
+
+  <h2>Choose a provider access mode</h2>
+  <p>
+    Before you wire anything, decide how your stack will reach providers. Restormel does not need to hold raw provider secrets by default.
+    See <a href="/keys/docs/guides/provider-access-modes">Provider access modes</a> for a simple decision tree.
+  </p>
 
   <h2>Pick your framework</h2>
   <p>One core; different wrappers. Use the headless API for resolution and cost on the server; add UI (KeyManager, ModelSelector, CostEstimator) where it fits.</p>
@@ -37,6 +46,9 @@
   <ul>
     <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
     <li><a href="/keys/docs/cloud-api">Cloud API</a> — API reference, gateway URL, and Developer Portal</li>
+    <li><a href="/keys/docs/guides/openrouter">OpenRouter integration</a> — keep OpenRouter as your provider access layer</li>
+    <li><a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway integration</a> — keep Vercel gateway auth and observability</li>
+    <li><a href="/keys/docs/guides/portkey">Portkey integration</a> — keep Portkey as your gateway and route via Restormel</li>
     <li><a href="/keys">Keys landing</a> — what Keys is, modes, comparison, pricing</li>
     <li><a href="/keys/pricing">Pricing</a> — tiers and FAQ</li>
     <li><a href="/keys/dashboard">Dashboard</a> — create projects and API keys</li>

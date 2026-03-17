@@ -2,7 +2,6 @@
   import "../../../app.css";
   import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import AppLogo from "$lib/components/AppLogo.svelte";
   import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
   import { onMount } from "svelte";
 
@@ -30,12 +29,6 @@
 {:else}
   <div class="shell" class:shell-collapsed={collapsed}>
     <aside class="sidebar" aria-label="Dashboard navigation">
-      <div class="logo">
-        <AppLogo height="28" />
-      </div>
-      <button type="button" class="sidebar-toggle" aria-pressed={collapsed} on:click={toggleSidebar}>
-        {collapsed ? "Expand nav" : "Collapse nav"}
-      </button>
       <nav class="nav" aria-label="Dashboard">
         {#each NAV_ITEMS as item}
           {#if item.external}
@@ -53,7 +46,18 @@
     </aside>
     <div class="main-wrap">
       <header class="topbar">
-        <span class="topbar-title">{title}</span>
+        <div class="topbar-left">
+          <button
+            type="button"
+            class="topbar-nav-toggle"
+            aria-pressed={collapsed}
+            aria-label={collapsed ? "Expand dashboard navigation" : "Collapse dashboard navigation"}
+            on:click={toggleSidebar}
+          >
+            {collapsed ? "Expand nav" : "Collapse nav"}
+          </button>
+          <span class="topbar-title">{title}</span>
+        </div>
         {#if user}
           <span class="topbar-user" title={user.email ?? undefined}>{user.email ?? user.uid}</span>
         {:else}
@@ -115,24 +119,6 @@
     display: flex;
     flex-direction: column;
   }
-  .sidebar-toggle {
-    margin: 0 var(--space-4) var(--space-4);
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    border-radius: var(--rm-radius);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    text-align: left;
-  }
-  .sidebar-toggle:hover {
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
-  }
-  .logo {
-    padding: 0 var(--space-4);
-    margin-bottom: var(--space-6);
-  }
   .nav {
     display: flex;
     flex-direction: column;
@@ -172,9 +158,32 @@
     justify-content: space-between;
     padding: 0 var(--space-6);
   }
-  .topbar-title {
-    font-size: var(--text-sm);
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  .topbar-nav-toggle {
+    border: 1px solid var(--rm-border);
+    background: var(--rm-bg);
     color: var(--rm-muted);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .topbar-nav-toggle:hover {
+    background: var(--rm-surface);
+    color: var(--rm-text);
+  }
+  .topbar-title {
+    font-size: var(--text-base);
+    color: var(--rm-text);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .topbar-user {
     font-size: var(--text-sm);
@@ -193,9 +202,6 @@
     padding: 0;
     border-right: 0;
     overflow: hidden;
-  }
-  .shell-collapsed .sidebar-toggle {
-    display: none;
   }
   .btn {
     display: inline-block;

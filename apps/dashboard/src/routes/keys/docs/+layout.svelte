@@ -2,6 +2,7 @@
   /** Docs layout — docs sidebar is collapsible and width-constrained. */
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
 
   const STORAGE_KEY = "rk_docs_sidebar_collapsed";
   let collapsed = false;
@@ -14,6 +15,9 @@
     collapsed = !collapsed;
     localStorage.setItem(STORAGE_KEY, String(collapsed));
   }
+
+  $: pathname = $page.url.pathname;
+  $: docsPath = pathname.startsWith("/keys/docs") ? pathname.slice("/keys/docs".length) || "/" : pathname;
 </script>
 
 <svelte:head>
@@ -21,6 +25,11 @@
 </svelte:head>
 
 <div class="docs-shell" class:docs-shell-collapsed={collapsed}>
+  {#if collapsed}
+    <button type="button" class="docs-nav-fab" aria-label="Expand docs navigation" on:click={toggle}>
+      Expand nav
+    </button>
+  {/if}
   <nav class="docs-nav" aria-label="Docs navigation">
     <button type="button" class="docs-nav-toggle" aria-pressed={collapsed} on:click={toggle}>
       {collapsed ? "Expand nav" : "Collapse nav"}
@@ -28,12 +37,25 @@
     <a href="/keys">Keys</a>
     <a href="/keys/docs">Overview</a>
     <a href="/keys/docs/walkthrough">Walkthrough</a>
+    <div class="nav-divider" aria-hidden="true"></div>
+    <div class="nav-section" aria-label="Guides section">Guides</div>
+    <a href="/keys/docs/guides/provider-access-modes">Provider access modes</a>
+    <a href="/keys/docs/guides/openrouter">OpenRouter</a>
+    <a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway</a>
+    <a href="/keys/docs/guides/portkey">Portkey</a>
+    <a href="/keys/docs/guides/integration-vs-hosted-vault">Integration vs hosted vault</a>
+    <div class="nav-divider" aria-hidden="true"></div>
     <a href="/keys/docs/compatibility">Compatibility</a>
     <a href="/keys/docs/cloud-api">Cloud API</a>
     <a href={DASHBOARD_BASE}>Dashboard</a>
     <a href={DASHBOARD_BASE + "/login"}>Sign in</a>
   </nav>
   <main class="docs-main">
+    <nav class="docs-topbar" aria-label="Breadcrumb">
+      <a class="docs-crumb" href="/keys/docs">Docs</a>
+      <span class="docs-crumb-sep" aria-hidden="true">/</span>
+      <span class="docs-crumb-current">{docsPath}</span>
+    </nav>
     <slot />
   </main>
 </div>
@@ -47,6 +69,7 @@
     border: 1px solid var(--rm-border);
     border-radius: var(--radius-md);
     overflow: hidden;
+    position: relative;
   }
   .docs-nav {
     width: 14rem;
@@ -76,9 +99,49 @@
     font-size: var(--text-sm);
     color: var(--rm-muted);
   }
+  .nav-divider {
+    height: 1px;
+    background: var(--rm-border);
+    margin: var(--space-2) 0;
+  }
+  .nav-section {
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
+    margin: var(--space-1) 0;
+  }
   .docs-main {
     flex: 1;
     padding: var(--space-6);
+  }
+  .docs-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    font-family: var(--rm-font-ui);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .docs-crumb {
+    color: var(--rm-muted);
+    font-weight: 500;
+  }
+  .docs-crumb:hover {
+    color: var(--rm-text);
+    text-decoration: none;
+  }
+  .docs-crumb-sep {
+    color: var(--rm-dim);
+  }
+  .docs-crumb-current {
+    color: var(--rm-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .docs-shell-collapsed .docs-nav {
@@ -89,6 +152,21 @@
   }
   .docs-shell-collapsed .docs-nav-toggle {
     display: none;
+  }
+  .docs-nav-fab {
+    position: absolute;
+    top: var(--space-4);
+    left: var(--space-4);
+    z-index: 10;
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface-raised);
+    color: var(--rm-text);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+  .docs-nav-fab:hover {
+    background: var(--rm-surface);
   }
 
   /* Shared callout styles — each type has a distinct tint and border so cards don't blend into the page */
