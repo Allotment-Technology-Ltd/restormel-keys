@@ -8,7 +8,9 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "vite dev",
+    "precheck": "pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
     "build": "vite build && node ../../scripts/vercel-copy-build-output.mjs",
+    "prebuild": "pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
@@ -20,6 +22,7 @@
   "dependencies": {
     "@restormel/keys": "workspace:*",
     "@restormel/keys-react": "workspace:*",
+    "@restormel/keys-svelte": "workspace:*",
     "@sveltejs/adapter-vercel": "^6.3.3",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",

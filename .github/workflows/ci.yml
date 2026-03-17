@@ -131,6 +131,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test
         run: pnpm --filter @restormel/keys test
+      - name: Build workspace (keys, keys-svelte) for dashboard
+        run: |
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/keys-svelte run build
       - name: Dashboard check (svelte-check)
         run: pnpm --filter dashboard run check
       - name: Dashboard build
