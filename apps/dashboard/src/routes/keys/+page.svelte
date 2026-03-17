@@ -8,13 +8,22 @@
 import { createResolveMiddleware } from "${pkgKeys}";
 
 const resolve = createResolveMiddleware({
-  keys: await getStoredKeys(),
+  // Provider access stays in your stack (env vars, secret manager, or a gateway like OpenRouter/Portkey/Vercel AI Gateway).
+  // Restormel resolves routing + policy; you decide how to supply provider access.
   providers: ["openai", "anthropic"],
 });
 
 export async function POST(req: Request) {
   const { model, messages } = await req.json();
-  const { provider, apiKey } = await resolve(model);
+  const { provider } = await resolve(model);
+
+  // Example: builder-managed direct provider mode (keys live in your env/secrets manager).
+  const apiKey =
+    provider.type === "openai" ? process.env.OPENAI_API_KEY :
+    provider.type === "anthropic" ? process.env.ANTHROPIC_API_KEY :
+    undefined;
+  if (!apiKey) return new Response("Missing provider access", { status: 500 });
+
   const res = await fetch(provider.chatUrl, {
     method: "POST",
     headers: { "Authorization": \`Bearer \${apiKey}\` },
@@ -39,21 +48,26 @@ export default function Settings() {
 
 <svelte:head>
   <title>Restormel Keys — BYOK for AI apps</title>
-  <meta name="description" content="Drop-in BYOK for AI apps. Ship key management in your existing stack — Next.js, React, SvelteKit, Web Components. No Docker, no proxy server." />
+  <meta
+    name="description"
+    content="Embeddable control layer for AI provider access. Routing, policies, health, cost, and UX — compatible with OpenRouter, Vercel AI Gateway, Portkey, and direct providers. No proxy by default."
+  />
 </svelte:head>
 
 <article class="keys-page">
   <section class="section section-hero" aria-labelledby="hero-heading">
     <div class="container">
-      <h1 id="hero-heading" class="hero-headline">Drop-in BYOK for AI apps.</h1>
+      <h1 id="hero-heading" class="hero-headline">Control layer for AI provider access.</h1>
       <p class="hero-subhead">
-        Multi-provider routing and production-grade key management inside your app. One interface; your stack. Ship it in an afternoon.
+        Routing, policies, health, cost, and embeddable UX — designed to slot into your existing stack with minimal migration.
       </p>
-      <p class="hero-who">For AI SaaS builders, open-source maintainers, and small teams that need routing and end-user BYOK without running a gateway or rewriting key logic from scratch.</p>
+      <p class="hero-who">
+        For AI SaaS builders and small teams that want better routing and governance without replacing OpenRouter, Portkey, Vercel AI Gateway, or their own secret management.
+      </p>
       <div class="hero-ctas">
         <a href="/keys/docs/walkthrough/phase-0-inventory" class="btn btn-primary btn-cta-hero">Start the walkthrough</a>
         <a href="/keys/docs" class="btn btn-secondary">Docs</a>
-        <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="hero-link" target="_blank" rel="noopener noreferrer">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -61,26 +75,29 @@ export default function Settings() {
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
       <h2 id="why-heading" class="section-title">Why Keys exists</h2>
-      <p class="section-intro">Every AI app eventually needs two things: <strong>multi-provider routing</strong> (OpenAI, Anthropic, Google through one interface, with cost tracking and fallbacks) and <strong>end-user BYOK</strong> (let your users bring their own keys so you're not on the hook for their usage). Today you get LiteLLM (Docker, Postgres, Redis) or Portkey (gateway-first, enterprise pricing) — or you build it yourself. Keys is the library that does both: routing and key management you embed in your app, with optional embeddable UI. No proxy by default.</p>
+      <p class="section-intro">
+        Every AI app eventually needs a <strong>governance layer</strong>: routing, fallbacks, allow/deny policies, health checks, cost controls, and a UX surface your team can operate.
+        Most stacks already have a <em>provider access layer</em> (direct env vars, a secrets manager, or a gateway like OpenRouter / Portkey / Vercel AI Gateway). Keys is designed to <strong>integrate cleanly</strong> with those layers — not replace them.
+      </p>
     </div>
   </section>
 
   <section class="section section-modes" aria-labelledby="modes-heading">
     <div class="container">
       <h2 id="modes-heading" class="section-title">Three ways to use it</h2>
-      <p class="section-intro">Builder routing, end-user BYOK, or both. Same core; you choose what you expose.</p>
+      <p class="section-intro">Gateway-backed, builder-managed direct, or end-user BYOK. Same core; adopt progressively.</p>
       <div class="modes-grid">
         <div class="mode-card">
-          <h3 class="mode-title">Builder routing</h3>
-          <p class="mode-copy">Your server resolves model → provider and API key. One middleware, any provider. Cost estimation and tracking built in. For SaaS backends and internal tools.</p>
+          <h3 class="mode-title">Gateway-backed</h3>
+          <p class="mode-copy">Keep OpenRouter / Portkey / Vercel AI Gateway as your provider-access layer. Use Restormel for routing policies, health, analytics, and progressive rollout.</p>
         </div>
         <div class="mode-card">
-          <h3 class="mode-title">End-user BYOK</h3>
-          <p class="mode-copy">Your users add their own keys. Your app stores them securely and routes requests with per-user limits. Their usage, their keys — you control routing and entitlements.</p>
+          <h3 class="mode-title">Builder-managed direct</h3>
+          <p class="mode-copy">Keep provider keys in your env/secrets manager. Restormel resolves the route/model/provider decision; you supply provider access from your own infrastructure.</p>
         </div>
         <div class="mode-card">
-          <h3 class="mode-title">Combined</h3>
-          <p class="mode-copy">Platform keys for core features; user keys for premium or heavy usage. One routing, cost, and entitlement layer.</p>
+          <h3 class="mode-title">End-user BYOK (builder-managed)</h3>
+          <p class="mode-copy">Offer a KeyManager UX for users, but store credentials in <em>your</em> backend (or a gateway-backed scheme). Restormel remains the control layer.</p>
         </div>
       </div>
     </div>
@@ -89,7 +106,7 @@ export default function Settings() {
   <section class="section section-code section-alt" aria-labelledby="code-heading">
     <div class="container">
       <h2 id="code-heading" class="section-title">Add it to your stack</h2>
-      <p class="section-intro">Next.js App Router: one route handler and a settings page. No Docker, Redis, or proxy.</p>
+      <p class="section-intro">Next.js App Router: one route handler and (optionally) a settings page. Works with gateways or direct providers.</p>
       <div class="code-split">
         <div class="code-pane">
           <span class="code-label">Server</span>
@@ -122,14 +139,14 @@ export default function Settings() {
   <section class="section section-features section-alt" aria-labelledby="features-heading">
     <div class="container">
       <h2 id="features-heading" class="section-title">What's in the box</h2>
-      <p class="section-intro">Routing, key management, cost, entitlements, and embeddable UI. One library.</p>
+      <p class="section-intro">Routing, policies, health, cost, and embeddable UX — designed to sit alongside your existing provider-access layer.</p>
       <div class="features-grid">
-        <div class="feature-card"><h3 class="feature-title">Key management</h3><p>Add, validate, list, delete. Keys masked in UI and logs.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Integrations</h3><p>Works with OpenRouter, Vercel AI Gateway, Portkey, and direct providers.</p></div>
         <div class="feature-card"><h3 class="feature-title">Routing</h3><p>Model → provider resolution. One middleware, multiple backends.</p></div>
         <div class="feature-card"><h3 class="feature-title">Cost</h3><p>Per-model cost and budget comparison. Estimate before you call.</p></div>
         <div class="feature-card"><h3 class="feature-title">Entitlements</h3><p>Gate features by tier. Optional usage limits.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Embeddable UI</h3><p>KeyManager, ModelSelector, CostEstimator. Svelte, React, or Web Components.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Storage adapters</h3><p>In-memory, encrypted local file, or plug in Firestore, Supabase, Postgres.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Embeddable UX</h3><p>ModelSelector, CostEstimator, and optional KeyManager. Svelte, React, or Web Components.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Progressive adoption</h3><p>Start with local/in-process resolution, then add dashboard policies, analytics, and health checks.</p></div>
       </div>
     </div>
   </section>
@@ -166,8 +183,8 @@ export default function Settings() {
 
   <section class="section section-cta" aria-labelledby="cta-heading">
     <div class="container">
-      <h2 id="cta-heading" class="cta-headline">Add Keys to your app</h2>
-      <p class="cta-sub">Install, wire your providers, add a settings page. Next.js and SvelteKit guides in the docs.</p>
+      <h2 id="cta-heading" class="cta-headline">Add governance to your AI stack</h2>
+      <p class="cta-sub">Install, choose a provider access mode (gateway-backed or direct), then layer in routing and policies.</p>
       <a href="/keys/docs" class="btn btn-primary">Get started</a>
     </div>
   </section>
@@ -274,6 +291,16 @@ export default function Settings() {
   .btn-secondary:hover {
     border-color: var(--rm-sage);
     color: var(--rm-sage);
+  }
+  .hero-link {
+    align-self: center;
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    padding: var(--space-2) 0;
+  }
+  .hero-link:hover {
+    color: var(--rm-sage);
+    text-decoration: none;
   }
   .modes-grid {
     display: grid;

@@ -62,7 +62,7 @@
       <div class="tiers-grid">
         <div class="tier-card">
           <h3 class="tier-name">Free</h3>
-          <p class="tier-desc">Open source. Self-host. Memory + encrypted-local storage. No Paddle.</p>
+          <p class="tier-desc">Open source. Self-host. Local/in-process routing, policies, and embeddable UX. No account required.</p>
           <p class="tier-price" data-monthly="£0" data-annual="£0">£0</p>
           <p class="tier-period">—</p>
           <a href="/keys/docs" class="btn btn-secondary">Get started</a>
@@ -70,39 +70,42 @@
 
         <div class="tier-card">
           <h3 class="tier-name">Pro</h3>
-          <p class="tier-desc">Cloud API, dashboard. 100K requests/mo, 1K stored keys. Firestore, Supabase, Postgres.</p>
+          <p class="tier-desc">Cloud control plane + dashboard. Policies, routes, health checks, and analytics for your provider-access layer (gateway-backed or direct).</p>
           <p class="tier-price" data-monthly="£19" data-annual="£192">£19</p>
           <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="pro" data-billing-period="monthly" data-price-id="">Subscribe</button>
+          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="pro" data-billing-period="monthly" data-price-id="">Start Pro</button>
+          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
         </div>
 
         <div class="tier-card">
           <h3 class="tier-name">Team</h3>
-          <p class="tier-desc">Unlimited users, 10K keys, unlimited requests. Usage dashboard, team sharing, audit log.</p>
+          <p class="tier-desc">Team workflows. Shared projects, audit trail, higher limits, and richer analytics for multi-env routing and policy changes.</p>
           <p class="tier-price" data-monthly="£49" data-annual="£468">£49</p>
           <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="team" data-billing-period="monthly" data-price-id="">Subscribe</button>
+          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="team" data-billing-period="monthly" data-price-id="">Start Team</button>
+          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
         </div>
 
         <div class="tier-card">
           <h3 class="tier-name">Enterprise</h3>
-          <p class="tier-desc">Unlimited keys & API. SSO, SLA, export. Zuplo gateway + custom.</p>
+          <p class="tier-desc">SSO, SLA, export, custom policy/routing support. Optional managed edge/gateway integrations. Hosted vault (future/optional).</p>
           <p class="tier-price" data-monthly="£149" data-annual="£1,428">£149</p>
           <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="enterprise" data-billing-period="monthly" data-price-id="">Subscribe</button>
+          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="enterprise" data-billing-period="monthly" data-price-id="">Start Enterprise</button>
+          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
         </div>
       </div>
-      <p class="tiers-overage">Overage: £3/1K keys, £4/100K requests, £4/1K API calls. Free tier has no overage.</p>
+      <p class="tiers-overage">Overage: based on control-plane usage (requests, routes/policies, analytics retention). Free tier has no overage.</p>
     </section>
 
     <section class="features-section" aria-labelledby="features-heading">
       <h2 id="features-heading" class="section-title">What you get in every tier</h2>
       <div class="features-grid">
-        <div class="feat"><span class="feat-name">Key management</span><span class="feat-desc">Add, validate, list, delete. Masked in UI.</span></div>
+        <div class="feat"><span class="feat-name">Provider access modes</span><span class="feat-desc">Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span></div>
         <div class="feat"><span class="feat-name">Provider routing</span><span class="feat-desc">Model → provider resolution. One middleware.</span></div>
-        <div class="feat"><span class="feat-name">Cost & budget</span><span class="feat-desc">Per-model cost, budget comparison.</span></div>
-        <div class="feat"><span class="feat-name">Embeddable UI</span><span class="feat-desc">KeyManager, ModelSelector, CostEstimator.</span></div>
-        <div class="feat"><span class="feat-name">Storage adapters</span><span class="feat-desc">In-memory, file, Firestore, Supabase, Neon.</span></div>
+        <div class="feat"><span class="feat-name">Policies</span><span class="feat-desc">Allow/deny models, enforce route rules, and keep behavior inspectable.</span></div>
+        <div class="feat"><span class="feat-name">Health & fallbacks</span><span class="feat-desc">Detect failures and shift traffic safely with explicit fallback chains.</span></div>
+        <div class="feat"><span class="feat-name">Embeddable UX</span><span class="feat-desc">ModelSelector, CostEstimator, and optional KeyManager for BYOK flows.</span></div>
         <div class="feat"><span class="feat-name">Dashboard & API</span><span class="feat-desc">Cloud API, project dashboard (Pro+).</span></div>
       </div>
     </section>
@@ -111,7 +114,7 @@
       <h2 id="faq-heading" class="section-title">FAQ</h2>
       <dl class="faq-list">
         <dt class="faq-q">Can I use Keys without paying?</dt>
-        <dd class="faq-a">Yes. The core is MIT. Self-host with in-memory or local storage; no Paddle, no account. Pro and above add cloud API, dashboard, and paid storage adapters.</dd>
+        <dd class="faq-a">Yes. The core is MIT. Use it self-hosted with no account. Pro and above add cloud control plane + dashboard features.</dd>
         <dt class="faq-q">What happens after I subscribe?</dt>
         <dd class="faq-a">You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your project; you can create API keys and use the cloud API from there.</dd>
         <dt class="faq-q">Can I change plan later?</dt>
@@ -233,6 +236,12 @@
     font-size: var(--text-sm);
     color: var(--rm-dim);
     margin: 0 0 var(--space-4);
+  }
+  .tier-hint {
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    margin: var(--space-3) 0 0;
+    line-height: var(--leading-normal);
   }
   .tiers-overage {
     font-size: var(--text-sm);

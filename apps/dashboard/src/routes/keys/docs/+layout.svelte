@@ -51,10 +51,11 @@
     <a href={DASHBOARD_BASE + "/login"}>Sign in</a>
   </nav>
   <main class="docs-main">
-    <header class="docs-topbar" aria-label="Docs header">
-      <div class="docs-topbar-title">Docs</div>
-      <div class="docs-topbar-path" aria-hidden="true">{docsPath}</div>
-    </header>
+    <nav class="docs-topbar" aria-label="Breadcrumb">
+      <a class="docs-crumb" href="/keys/docs">Docs</a>
+      <span class="docs-crumb-sep" aria-hidden="true">/</span>
+      <span class="docs-crumb-current">{docsPath}</span>
+    </nav>
     <slot />
   </main>
 </div>
@@ -116,28 +117,31 @@
   }
   .docs-topbar {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4);
+    align-items: center;
+    gap: var(--space-2);
     margin: 0 0 var(--space-5);
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--rm-border);
-  }
-  .docs-topbar-title {
-    font-family: var(--rm-font-display);
-    font-size: var(--text-xl);
-    font-weight: 600;
-    color: var(--rm-text);
-    line-height: 1.1;
-  }
-  .docs-topbar-path {
     font-size: var(--text-sm);
     color: var(--rm-dim);
     font-family: var(--rm-font-ui);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 60%;
+  }
+  .docs-crumb {
+    color: var(--rm-muted);
+    font-weight: 500;
+  }
+  .docs-crumb:hover {
+    color: var(--rm-text);
+    text-decoration: none;
+  }
+  .docs-crumb-sep {
+    color: var(--rm-dim);
+  }
+  .docs-crumb-current {
+    color: var(--rm-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .docs-shell-collapsed .docs-nav {
