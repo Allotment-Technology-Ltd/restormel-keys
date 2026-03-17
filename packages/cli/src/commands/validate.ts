@@ -1,45 +1,31 @@
 import type { Command } from "commander";
 import chalk from "chalk";
-import {
-  openaiProvider,
-  anthropicProvider,
-  googleProvider,
-} from "@restormel/keys";
-import type { ProviderDefinition } from "@restormel/keys";
-import { readStore } from "../store.js";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const PROVIDERS: Record<string, ProviderDefinition> = {
-  openai: openaiProvider,
-  anthropic: anthropicProvider,
-  google: googleProvider,
-};
+async function delegateTo(pkgName: string, passthroughArgs: string[]): Promise<number> {
+  let resolved: string;
+  try {
+    resolved = import.meta.resolve(pkgName);
+  } catch {
+    console.error(chalk.red("Cannot resolve"), pkgName);
+    return 2;
+  }
+  const entryPath = fileURLToPath(resolved);
+  const child = spawn(process.execPath, [entryPath, ...passthroughArgs], { stdio: "inherit" });
+  return await new Promise<number>((resolve) => {
+    child.on("close", (code) => resolve(code ?? 1));
+    child.on("error", () => resolve(2));
+  });
+}
 
 export function registerValidate(program: Command): void {
   program
-    .command("validate")
-    .description("Re-validate all stored keys (exit 1 if any invalid — CI-friendly)")
-    .action(async () => {
-      const cwd = process.cwd();
-      const store = await readStore(cwd);
-      if (store.keys.length === 0) {
-        console.log(chalk.gray("No keys to validate."));
-        process.exit(0);
-      }
-      let allValid = true;
-      for (const k of store.keys) {
-        const provider = PROVIDERS[k.provider];
-        if (!provider) {
-          console.log(chalk.yellow("Skip (unknown provider):"), k.provider);
-          continue;
-        }
-        const result = await provider.validateKey(k.apiKey);
-        if (result.valid) {
-          console.log(chalk.green("OK"), k.provider, chalk.gray(k.mask ?? k.id));
-        } else {
-          console.log(chalk.red("INVALID"), k.provider, chalk.gray(k.mask ?? k.id), result.errors?.[0] ?? "");
-          allValid = false;
-        }
-      }
-      process.exit(allValid ? 0 : 1);
+    .command("validate [args...]")
+    .description("Run Restormel Validate (standalone OSS CLI; CI-friendly)")
+    .allowUnknownOption(true)
+    .action(async (args: string[] = []) => {
+      const code = await delegateTo("@restormel/validate", args);
+      process.exit(code);
     });
 }

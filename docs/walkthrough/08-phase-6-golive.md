@@ -20,8 +20,8 @@ Before enabling the feature flag in production, verify everything works in a sta
 | Error fallback works | Set invalid Gateway Key; confirm legacy routing takes over | ☐ |
 | ModelSelector renders | Open settings page; confirm component loads and selection works | ☐ |
 | (If BYOK) KeyManager works | Add/remove a test key; confirm callbacks fire | ☐ |
-| `keys doctor` passes | Run `npx @restormel/keys-cli doctor` in the staging env | ☐ |
-| `keys validate` passes | Run `npx @restormel/keys-cli validate` to re-check stored keys | ☐ |
+| `keys doctor` passes | Run `npx @restormel/doctor` in the staging env | ☐ |
+| `keys validate` passes | Run `npx @restormel/validate` to re-check stored keys | ☐ |
 | No secrets committed | Run `scripts/check-secrets.sh` or `git log --diff-filter=A -- '*.env'` | ☐ |
 | Dashboard logs show requests | Check the project's usage/logs section in the dashboard | ☐ |
 
@@ -107,10 +107,10 @@ Run a comprehensive check within the first hour after cutover.
 
 ```bash
 # Doctor: confirm environment is healthy
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 
 # Validate: re-check all stored keys
-npx @restormel/keys-cli validate
+npx @restormel/validate
 ```
 
 **Dashboard checks:**
@@ -157,7 +157,7 @@ echo "   Result: $(echo $EVAL | jq '.data')"
 
 # 3. CLI doctor
 echo "3. keys doctor..."
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 
 echo "=== Done ==="
 ```
@@ -179,8 +179,8 @@ echo "=== Done ==="
 >    a. Call the resolve endpoint with your production project ID and environment. Print the resolved provider, model, and source.
 >    b. Call the policy evaluate endpoint with an allowed model. Print whether it's allowed.
 >    c. Call the policy evaluate endpoint with a blocked model (if one exists). Print whether it's blocked.
->    d. Run `npx @restormel/keys-cli doctor` and print the result.
->    e. Run `npx @restormel/keys-cli validate` and print the result.
+>    d. Run `npx @restormel/doctor` and print the result.
+>    e. Run `npx @restormel/validate` and print the result.
 >    f. Exit with code 0 if all checks pass, 1 if any fail.
 > 3. The script reads `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, and `RESTORMEL_ENVIRONMENT_ID` from the environment. It must not contain hardcoded secrets.
 > 4. Add the script to `package.json` scripts: `"smoke:restormel": "bash scripts/smoke-test-restormel.sh"`.

@@ -62,7 +62,7 @@ These checks run in a terminal and can be scripted into CI.
 ### 3.1 `keys doctor`
 
 ```bash
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 ```
 
 **Checks:** Framework detection, packages installed, config file validity, and whether local provider keys are present (if you use them).
@@ -74,7 +74,7 @@ npx @restormel/keys-cli doctor
 ### 3.2 `keys validate`
 
 ```bash
-npx @restormel/keys-cli validate
+npx @restormel/validate
 ```
 
 **Checks:** Re-validates all stored provider keys (makes lightweight test calls to each provider).
@@ -89,7 +89,7 @@ npx @restormel/keys-cli validate
 ```yaml
 # .github/workflows/deploy.yml
 - name: Validate Restormel keys
-  run: npx @restormel/keys-cli validate
+  run: npx @restormel/validate
 ```
 
 ### 3.3 `keys estimate` (optional)
@@ -206,8 +206,8 @@ pnpm run smoke:restormel
 > **Steps:**
 >
 > 1. Open your CI workflow file (e.g. `.github/workflows/ci.yml`).
-> 2. Add a step after build: `npx @restormel/keys-cli doctor`. Fail the build on non-zero exit.
-> 3. Add a step: `npx @restormel/keys-cli validate`. Fail the build on non-zero exit. Requires `RESTORMEL_GATEWAY_KEY` as a CI secret.
+> 2. Add a step after build: `npx @restormel/doctor`. Fail the build on non-zero exit.
+> 3. Add a step: `npx @restormel/validate`. Fail the build on non-zero exit. Requires `RESTORMEL_GATEWAY_KEY` as a CI secret.
 > 4. Add the CI secret: GitHub → Settings → Secrets → Actions → `RESTORMEL_GATEWAY_KEY` (use a staging key, not production).
 > 5. Optionally add a post-deploy step: `pnpm run smoke:restormel`. Gate behind an env check if the staging endpoint isn't available during CI.
 > 6. Verify: push a PR, confirm doctor and validate pass in CI.

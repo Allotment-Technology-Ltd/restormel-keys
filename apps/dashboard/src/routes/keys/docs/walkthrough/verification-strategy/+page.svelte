@@ -101,13 +101,13 @@
   <p>These checks run in a terminal and can be scripted into CI.</p>
 
   <h3>3.1 <code>keys doctor</code></h3>
-  <CodeBlock language="bash" code="npx @restormel/keys-cli doctor" />
+  <CodeBlock language="bash" code="npx @restormel/doctor" />
   <p><strong>Checks:</strong> Framework detection, packages installed, config file validity, and whether local provider keys are present (if you use them).</p>
   <p><strong>Expected:</strong> Exit code 0, all checks green.</p>
   <p><strong>When to run:</strong> After install (Phase 1), before every deploy, in CI on every PR.</p>
 
   <h3>3.2 <code>keys validate</code></h3>
-  <CodeBlock language="bash" code="npx @restormel/keys-cli validate" />
+  <CodeBlock language="bash" code="npx @restormel/validate" />
   <p><strong>Checks:</strong> Re-validates all stored provider keys (makes lightweight test calls to each provider).</p>
   <p><strong>Expected:</strong> Exit code 0 if all keys are valid. Exit code 1 if any key is invalid or expired.</p>
   <p><strong>When to run:</strong> Before deploy, in CI on a schedule (e.g. daily), after rotating any provider keys.</p>
@@ -116,7 +116,7 @@
   </div>
   <CodeBlock language="yaml" code={`# .github/workflows/deploy.yml
 - name: Validate Restormel keys
-  run: npx @restormel/keys-cli validate`} />
+  run: npx @restormel/validate`} />
 
   <h3>3.3 <code>keys estimate</code> (optional)</h3>
   <CodeBlock language="bash" code="npx @restormel/keys-cli estimate gpt-4o --input 1000 --output 500" />
@@ -162,7 +162,7 @@
   <div class="build-agent-block">
     <h3>Build-agent prompt: add-ci-verification</h3>
     <p><strong>Context docs</strong> (adapt for your project): this page; <a href="/keys/docs/walkthrough/phase-6-golive">Phase 6 — Go live</a> (smoke test script).</p>
-    <p><strong>Goal:</strong> Add Restormel Keys verification steps to your CI pipeline. Add a step after build: <code>npx @restormel/keys-cli doctor</code> (fail on non-zero exit). Add <code>npx @restormel/keys-cli validate</code> (fail on non-zero exit; requires <code>RESTORMEL_GATEWAY_KEY</code> as a CI secret). Use a dedicated staging key in CI, not production. Optionally add post-deploy <code>pnpm run smoke:restormel</code> (gate behind env if staging isn't available in CI).</p>
+    <p><strong>Goal:</strong> Add Restormel Keys verification steps to your CI pipeline. Add a step after build: <code>npx @restormel/doctor</code> (fail on non-zero exit). Add <code>npx @restormel/validate</code> (fail on non-zero exit; requires <code>RESTORMEL_GATEWAY_KEY</code> as a CI secret). Use a dedicated staging key in CI, not production. Optionally add post-deploy <code>pnpm run smoke:restormel</code> (gate behind env if staging isn't available in CI).</p>
     <p><strong>DO NOT:</strong> Use the production Gateway Key in CI. Commit secrets to the workflow file. Make the smoke test block deploys if it hits an unavailable endpoint.</p>
     <p><strong>Gate:</strong> CI runs <code>keys doctor</code> and <code>keys validate</code> on every PR; both pass; Gateway Key is a CI secret.</p>
   </div>

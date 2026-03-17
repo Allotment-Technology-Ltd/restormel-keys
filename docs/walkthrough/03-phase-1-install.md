@@ -83,7 +83,7 @@ Run 'keys doctor' to verify your setup.
 ### How to test
 
 ```bash
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 ```
 
 `doctor` checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).
@@ -183,7 +183,7 @@ No code-level test yet. The dashboard shows the credential as valid.
 Now that you have a config (and optionally env vars), run the doctor check again:
 
 ```bash
-npx @restormel/keys-cli doctor
+npx @restormel/doctor
 ```
 
 ### You'll see
@@ -205,7 +205,7 @@ Cloud env vars (`RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, `RESTORMEL_ENVI
 `keys doctor` exits with code 0.
 
 ```bash
-npx @restormel/keys-cli doctor && echo "PASS" || echo "FAIL"
+npx @restormel/doctor && echo "PASS" || echo "FAIL"
 ```
 
 > **Pitfall**
@@ -258,7 +258,7 @@ USE_RESTORMEL_KEYS=false
 >    USE_RESTORMEL_KEYS=false
 >    ```
 > 5. If a `.env` file exists and is gitignored, add the same keys with empty values there as well.
-> 6. Run `npx @restormel/keys-cli doctor` and confirm it exits 0 (ignoring the "no gateway key" warning if `.env` values are empty).
+> 6. Run `npx @restormel/doctor` and confirm it exits 0 (ignoring the "no gateway key" warning if `.env` values are empty).
 > 7. Commit `restormel.config.json`, `.env.example` changes, and `package.json` / lockfile changes.
 >
 > **DO NOT:**
@@ -267,7 +267,7 @@ USE_RESTORMEL_KEYS=false
 > - Modify any existing application code. This prompt is install-and-configure only.
 > - Install packages that don't match the framework (e.g. don't install `@restormel/keys-react` in a SvelteKit-only project).
 
-**Gate:** `npx @restormel/keys-cli doctor` exits 0. `restormel.config.json` exists and is committed. `.env.example` lists the four Restormel env vars. No real keys are committed.
+**Gate:** `npx @restormel/doctor` exits 0. `restormel.config.json` exists and is committed. `.env.example` lists the four Restormel env vars. No real keys are committed.
 
 ---
 

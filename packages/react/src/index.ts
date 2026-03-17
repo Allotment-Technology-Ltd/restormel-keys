@@ -14,3 +14,6 @@ export { useModels } from "./useModels";
 export type { UseModelsResult, ModelGroup } from "./useModels";
 export { useCost } from "./useCost";
 export type { UseCostResult } from "./useCost";
+
+export { HealthcheckSummary } from "./HealthcheckSummary";
+export type { HealthcheckSummaryProps, HealthcheckEmbedReport, HealthcheckIntegrationSummary } from "./HealthcheckSummary";

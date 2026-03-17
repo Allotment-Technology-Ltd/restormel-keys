@@ -26,7 +26,7 @@
   const confirmPackageCmd =
     "# Confirm the package installed correctly\nnode -e \"const k = require('@restormel/keys'); console.log('OK:', Object.keys(k).length, 'exports')\"";
 
-  const doctorTestCmd = 'npx @restormel/keys-cli doctor && echo "PASS" || echo "FAIL"';
+  const doctorTestCmd = 'npx @restormel/doctor && echo "PASS" || echo "FAIL"';
 </script>
 
 <svelte:head>
@@ -78,7 +78,7 @@
 
 Run 'keys doctor' to verify your setup.`} />
   <h3>How to test</h3>
-  <CodeBlock language="bash" code="npx @restormel/keys-cli doctor" />
+  <CodeBlock language="bash" code="npx @restormel/doctor" />
   <p><code>doctor</code> checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).</p>
   <div class="callout callout-note">
     <strong>If you see "framework not detected"</strong> — The CLI looks for framework markers (<code>next.config.*</code>, <code>svelte.config.*</code>, <code>astro.config.*</code>). If your project uses a non-standard layout, run <code>keys init --framework next</code> (or <code>sveltekit</code>, <code>react</code>, <code>astro</code>) to specify manually.
@@ -138,7 +138,7 @@ RESTORMEL_ENVIRONMENT_ID=`} />
 
   <WalkthroughStep stepId="1.6" title="Step 1.6 — Run keys doctor again" {phaseSlug}>
   <p>Now that you have a config (and optionally env vars), run the doctor check again:</p>
-  <CodeBlock language="bash" code="npx @restormel/keys-cli doctor" />
+  <CodeBlock language="bash" code="npx @restormel/doctor" />
   <h3>You'll see</h3>
   <p><code>keys doctor</code> checks framework detection, package versions, and config validity. Example output:</p>
   <CodeBlock language="text" code={`✔ Framework: Next.js (App Router)
