@@ -23,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: DASHBOARD_BASE + "/logs", label: "Logs & Traces" },
   { href: DASHBOARD_BASE + "/lifecycle", label: "Lifecycle & Migrations" },
   { href: DASHBOARD_BASE + "/billing", label: "Billing & Forecasting" },
+  { href: DASHBOARD_BASE + "/sandbox", label: "Sandbox" },
   { href: "/keys/docs", label: "Documentation", external: true },
   { href: DASHBOARD_BASE + "/settings", label: "Settings" },
 ];
@@ -40,6 +41,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/logs"]: "Logs & Traces",
   [DASHBOARD_BASE + "/lifecycle"]: "Lifecycle & Migrations",
   [DASHBOARD_BASE + "/billing"]: "Billing & Forecasting",
+  [DASHBOARD_BASE + "/sandbox"]: "Sandbox",
   [DASHBOARD_BASE + "/settings"]: "Settings",
 };
 

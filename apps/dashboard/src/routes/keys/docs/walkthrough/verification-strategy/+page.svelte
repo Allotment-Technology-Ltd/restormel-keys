@@ -45,7 +45,7 @@
   </WalkthroughStep>
 
   <WalkthroughStep stepId="dashboard" title="2. Dashboard checks" {phaseSlug}>
-  <p>Open the <a href={DASHBOARD_BASE}>Dashboard</a> and verify the following. These checks require no code — just visual confirmation.</p>
+  <p>Open the <a href={DASHBOARD_BASE}>Dashboard</a> and verify the following. These checks require no code — just visual confirmation. You can also try the embeddable KeyManager and ModelSelector and run doctor/validate-style checks in the <a href={DASHBOARD_BASE + "/sandbox"}>Sandbox</a> (after signing in).</p>
 
   <h3>2.1 Project health</h3>
   <table class="doc-table">

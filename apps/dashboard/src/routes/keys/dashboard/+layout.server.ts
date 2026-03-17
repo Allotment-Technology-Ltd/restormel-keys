@@ -26,7 +26,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
   // Redirect unauthenticated users from protected routes to login (Overview shows welcome instead).
   const baseNorm = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE.slice(0, -1) : DASHBOARD_BASE;
-  const protectedPaths = ["/projects", "/healthcheck", "/billing", "/settings"];
+  const protectedPaths = ["/projects", "/healthcheck", "/billing", "/settings", "/sandbox"];
   const pathAfterBase = pathname.slice(pathname.indexOf(baseNorm) + baseNorm.length) || "/";
   const isProtected = protectedPaths.some((p) => pathAfterBase === p || pathAfterBase.startsWith(p + "/"));
   if (!locals.user && isProtected) {
