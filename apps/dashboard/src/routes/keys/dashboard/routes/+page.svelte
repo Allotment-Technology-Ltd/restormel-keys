@@ -20,7 +20,7 @@
     title="No projects yet"
     description="Create a project first. Routes belong to a project and an environment."
   >
-    <a href={base + "/projects"} class="btn btn-primary">Go to Projects</a>
+    <a href={DASHBOARD_BASE + "/projects"} class="btn btn-primary">Go to Projects</a>
   </EmptyState>
 {:else}
   <section class="section" aria-labelledby="projects-heading">

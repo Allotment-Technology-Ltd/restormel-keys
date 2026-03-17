@@ -187,9 +187,6 @@
     color: var(--rm-muted);
     margin: 0 0 var(--space-4);
   }
-  .checkout-message-error {
-    color: var(--coral-alert);
-  }
   .visually-hidden {
     position: absolute;
     width: 1px;

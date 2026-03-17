@@ -129,7 +129,7 @@
 
 {#if selectedId}
   <div class="drawer-backdrop" role="presentation" onclick={closeDetail}></div>
-  <aside class="drawer" role="dialog" aria-labelledby="drawer-title" aria-modal="true">
+  <div class="drawer" role="dialog" aria-labelledby="drawer-title" aria-modal="true">
     <div class="drawer-header">
       <h2 id="drawer-title">Model detail</h2>
       <button type="button" class="btn-close" onclick={closeDetail} aria-label="Close">×</button>
@@ -138,7 +138,7 @@
       <a href={DASHBOARD_BASE + "/models/" + selectedId} class="btn btn-secondary">Open full page</a>
       <p class="muted">Full detail and provider variants on the model page.</p>
     </div>
-  </aside>
+  </div>
 {/if}
 
 <style>

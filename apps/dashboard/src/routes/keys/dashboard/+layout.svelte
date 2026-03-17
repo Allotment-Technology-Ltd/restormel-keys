@@ -169,10 +169,6 @@
     filter: brightness(1.1);
     text-decoration: none;
   }
-  .auth-prompt {
-    margin: 0 0 var(--space-4);
-    color: var(--rm-muted);
-  }
   .auth-error {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);

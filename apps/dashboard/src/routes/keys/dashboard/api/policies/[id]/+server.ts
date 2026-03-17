@@ -20,7 +20,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   } catch {
     return json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const updates: Parameters<typeof updatePolicy>[3] = {};
+  const updates: Parameters<typeof updatePolicy>[2] = {};
   if (typeof body.name === "string") updates.name = body.name.trim();
   if (typeof body.type === "string") updates.type = body.type.trim();
   if (typeof body.status === "string") updates.status = body.status.trim();

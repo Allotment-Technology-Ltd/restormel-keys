@@ -31,6 +31,17 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | — | `COMPONENT-INVENTORY.md` | Full component inventory (atoms, molecules, organisms, graph components). |
 | — | `design-tokens.css` | Reference implementation of DESIGN-TOKENS.md as CSS custom properties. |
 
+### Walkthrough (public integration docs)
+
+| # | Document | What it covers |
+|---|----------|----------------|
+| — | `docs/walkthrough/00-index.md` | **Entry point.** Master index and reading order for the integration walkthrough. |
+| — | `docs/walkthrough/00-walkthrough-ia.md` | Docs IA: placement in Svelte docs, page map, flow diagram, cross-links. |
+| — | `docs/walkthrough/01-writing-style-guide.md` | Terminology, auth cheat-sheet (Gateway vs Management Key vs session), callouts, code conventions. |
+| — | `docs/walkthrough/02-phase-0-inventory.md` … `11-prompt-index.md` | Phase 0–6 pages, migration paths, verification, prompt index. |
+
+Documentation lives in the Svelte/SvelteKit app (`/keys/docs/` and `/keys/docs/walkthrough/`); Zuplo is used for the Cloud API gateway. Use the walkthrough as the canonical onboarding journey for integrating Restormel Keys.
+
 ### Prompt packs (Cursor-targeted)
 
 | # | Document | Phase | Prompts | Est. effort |
@@ -66,7 +77,7 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | CI/CD | GitHub Actions | Already operational in SOPHIA. Copy and adapt. |
 | IaC | Pulumi | Already operational in SOPHIA. Copy and simplify. |
 | Auth | Firebase Auth (GitHub sign-in) | Already operational in SOPHIA. Developer audience prefers GitHub sign-in. |
-| Static site | Astro + Starlight | Fast, Markdown-friendly, good SEO. Starlight is purpose-built for docs. |
+| Docs and site | Svelte/SvelteKit + Zuplo | Documentation and product pages live in the SvelteKit app; Zuplo for Cloud API gateway. |
 | Dashboard | SvelteKit | Matches SOPHIA's stack. SSR for auth. Svelte for interactive UI. |
 | Static hosting | Cloudflare Pages | Free tier, global CDN, fast deploys from GitHub. |
 | Product analytics | PostHog | Already configured for SOPHIA. Generous free tier. Open-source. |
@@ -97,7 +108,7 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | `.github/workflows/deploy.yml` | `.github/workflows/deploy.yml` | Copy. Replace service names, image names, path filters. Remove SurrealDB and ingestion job steps. |
 | `infra/index.ts` | `infra/index.ts` | Copy and simplify. Remove SurrealDB, VPC connector, ingestion job. Keep Cloud Run, load balancer, SSL, Artifact Registry, Secret Manager. Custom domain: see `docs/domain-mapping-restormel-dev.md`. |
 | `Dockerfile.dashboard` | (repo root) | SvelteKit dashboard (apps/dashboard) for Cloud Run. CI deploys this to keys-dashboard. |
-| `Dockerfile.site` | (repo root) | Astro site (apps/site) for Cloud Run; use Cloudflare Pages for production (see phase-3-deployment). |
+| `Dockerfile.site` | (repo root) | SvelteKit app (dashboard + docs) for Cloud Run; see phase-3-deployment for hosting. |
 
 ### Operational runbooks
 

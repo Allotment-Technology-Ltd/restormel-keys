@@ -16,7 +16,7 @@
 | **Data** | Neon Postgres. Migrations: `001_initial.sql` (projects, api_keys), `002_better_auth.sql` (user, session, account, verification). **Note:** `neon.ts` references a `users` table (upsertUser) that is not created in 001/002 — schema drift or missing migration. |
 | **Auth** | Better Auth with Neon Auth; GitHub sign-in; session in DB. No Management Keys / PATs. |
 | **Gateway** | Zuplo: consumer keys (`zpka_...`) at edge; backend key (`rk_...`) injected to dashboard API. Runbooks in `docs/runbooks/zuplo-*`. |
-| **Site** | Astro + Starlight in `apps/site` (marketing + docs at `/keys/docs/*`). |
+| **Site** | Svelte/SvelteKit app (dashboard + docs at `/keys/docs/*`). |
 | **Embeddable** | `@restormel/keys-svelte` (KeyManager, ModelSelector, CostEstimator), `@restormel/keys-elements`, `@restormel/keys-react`. Demos: demo-next, demo-svelte. |
 
 ---
@@ -126,7 +126,7 @@ restormel-keys/
 │   │   └── src/routes/api/ # projects, projects/[id], projects/[id]/keys, auth/*, health, billing/*
 │   ├── demo-next/          # Next.js demo; KeyManager, settings, API keys
 │   ├── demo-svelte/        # SvelteKit demo; KeyManager, settings
-│   └── site/               # Astro + Starlight; marketing + /keys/docs/*
+│   └── dashboard/          # SvelteKit; dashboard + /keys/docs/*
 ├── packages/
 │   ├── core/               # @restormel/keys — keys, router, providers, cost, entitlements, wallet
 │   │   ├── src/            # types.ts, keys.ts, router.ts, providers/*, server/*, storage/*

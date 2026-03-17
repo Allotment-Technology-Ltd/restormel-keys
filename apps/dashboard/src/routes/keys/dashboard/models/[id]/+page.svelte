@@ -44,9 +44,9 @@
 
 {#if data.error || !data.model}
   <p class="error-msg" role="alert">{data.error ?? "Model not found."}</p>
-  <p><a href={base + "/models"} class="back-link">← Back to Model catalog</a></p>
+  <p><a href={DASHBOARD_BASE + "/models"} class="back-link">← Back to Model catalog</a></p>
 {:else}
-  <p><a href={base + "/models"} class="back-link">← Back to Model catalog</a></p>
+  <p><a href={DASHBOARD_BASE + "/models"} class="back-link">← Back to Model catalog</a></p>
   <h1 class="page-title">{data.model.canonicalName}</h1>
   <p class="page-desc">
     <span class="lifecycle-badge lifecycle-{lifecycleBadge(data.model.lifecycleState)}">
@@ -87,7 +87,7 @@
       {/if}
       {#if data.model.replacementModelId}
         <dt>Replacement</dt>
-        <dd><a href={base + "/models/" + data.model.replacementModelId}>{data.model.replacementModelId}</a></dd>
+        <dd><a href={DASHBOARD_BASE + "/models/" + data.model.replacementModelId}>{data.model.replacementModelId}</a></dd>
       {/if}
       <dt>Source</dt>
       <dd>{data.model.sourceLastVerifiedAt != null ? "Last verified: " + formatDate(data.model.sourceLastVerifiedAt) : "Not yet verified"}</dd>
@@ -102,7 +102,7 @@
       <h2 id="migration-heading" class="section-title">Migration</h2>
       <p class="section-desc">
         {#if data.model.replacementModelId}
-          Consider migrating to <a href={base + "/models/" + data.model.replacementModelId}>{data.model.replacementModelId}</a>.
+          Consider migrating to <a href={DASHBOARD_BASE + "/models/" + data.model.replacementModelId}>{data.model.replacementModelId}</a>.
         {/if}
         See <a href={DASHBOARD_BASE + "/lifecycle"}>Lifecycle & Migrations</a> for guidance.
       </p>

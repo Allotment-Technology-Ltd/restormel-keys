@@ -10,7 +10,10 @@
     "check-secrets": "bash scripts/check-secrets.sh",
     "check-deps": "bash scripts/check-dependency-policy.sh",
     "check-token-drift": "bash scripts/check-token-drift.sh",
-    "bootstrap-paddle": "tsx scripts/bootstrap-paddle.ts"
+    "bootstrap-paddle": "tsx scripts/bootstrap-paddle.ts",
+    "quality": "bash scripts/quality.sh",
+    "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build",
+    "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

@@ -19,7 +19,7 @@ Allotment-Technology-Ltd/restormel-keys
 │   ├── react/                 # @restormel/keys-react
 │   └── cli/                   # @restormel/keys-cli
 ├── apps/
-│   ├── site/                  # Astro marketing + Starlight docs
+│   ├── site/                  # SvelteKit app (dashboard + docs + marketing)
 │   ├── dashboard/             # SvelteKit authenticated dashboard
 │   ├── demo-next/             # Next.js App Router demo
 │   └── demo-svelte/           # SvelteKit demo

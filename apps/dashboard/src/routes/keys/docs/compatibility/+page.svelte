@@ -1,5 +1,6 @@
 <script lang="ts">
-  /** Framework compatibility — ported from Starlight compatibility.md */
+  /** Framework compatibility */
+  import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
 </script>
 
 <svelte:head>
@@ -28,19 +29,19 @@
 
   <h2>Install paths</h2>
   <p><strong>Headless only (no UI):</strong></p>
-  <pre class="code-block"><code>pnpm add @restormel/keys</code></pre>
+  <CodeBlock language="bash" code="pnpm add @restormel/keys" />
 
   <p><strong>Next.js or React (KeyManager, ModelSelector, CostEstimator):</strong></p>
-  <pre class="code-block"><code>pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements</code></pre>
+  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
 
   <p><strong>SvelteKit (native Svelte components):</strong></p>
-  <pre class="code-block"><code>pnpm add @restormel/keys @restormel/keys-svelte</code></pre>
+  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-svelte" />
 
   <p><strong>Web Components (Astro, vanilla HTML, or any framework):</strong></p>
-  <pre class="code-block"><code>pnpm add @restormel/keys @restormel/keys-elements</code></pre>
+  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-elements" />
 
   <p><strong>CLI (init, add keys, validate, doctor):</strong></p>
-  <pre class="code-block"><code>pnpm add -D @restormel/keys-cli</code></pre>
+  <CodeBlock language="bash" code="pnpm add -D @restormel/keys-cli" />
 
   <h2>When to use which</h2>
   <ul>
@@ -93,16 +94,6 @@
   }
   .doc-content li {
     margin-bottom: var(--space-2);
-  }
-  .code-block {
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    overflow-x: auto;
-    margin: 0 0 var(--space-4);
   }
   .doc-table {
     width: 100%;

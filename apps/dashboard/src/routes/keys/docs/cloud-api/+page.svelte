@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** Cloud API doc — ported from Starlight cloud-api.md */
+  /** Cloud API doc */
 </script>
 
 <svelte:head>
@@ -14,7 +14,7 @@
   <h2>Where to use it</h2>
   <ul>
     <li><strong>API reference and Try it:</strong> <a href="https://restormel-keys-gateway-main-bc13eba.zuplo.site" target="_blank" rel="noopener noreferrer">Restormel Keys Developer Portal</a> — full endpoint list, request/response schemas, and interactive “Try it” with a consumer key.</li>
-    <li><strong>Gateway base URL (for API calls):</strong> <code>https://restormel-keys-gateway-main-bc13eba.zuplo.app</code> — call <code>/api/health</code>, <code>/api/projects</code>, <code>/api/projects/{id}</code>, <code>/api/projects/{id}/keys</code>. The gateway root (<code>/</code>) is not a page; use these paths.</li>
+    <li><strong>Gateway base URL (for API calls):</strong> <code>https://restormel-keys-gateway-main-bc13eba.zuplo.app</code> — call <code>/api/health</code>, <code>/api/projects</code>, <code>/api/projects/{'{'}id{'}'}</code>, <code>/api/projects/{'{'}id{'}'}/keys</code>. The gateway root (<code>/</code>) is not a page; use these paths.</li>
     <li><strong>Dashboard:</strong> <a href="/keys/dashboard">Dashboard</a> — <a href="/keys/dashboard/login">Sign in</a>, create projects, and create the <strong>backend</strong> API key that the gateway uses when forwarding to the Keys backend.</li>
   </ul>
 

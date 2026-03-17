@@ -32,6 +32,8 @@ No Cloud Run, Artifact Registry, Firebase, or GCP Secret Manager is required for
 
 **Vercel:** Add custom domain **restormel.dev**. **NEON_AUTH_BASE_URL** = `https://restormel.dev`; GitHub OAuth callback = `https://restormel.dev/keys/dashboard/api/auth/callback/github`.
 
+**Verified working (Mar 2026):** Root Directory = `.`, Build Command override = `pnpm --filter dashboard build`, Output Directory override = **ON** with value **empty** (so Vercel uses Build Output API from `.vercel/output`). Copy script `scripts/vercel-copy-build-output.mjs` runs as part of dashboard build and copies `apps/dashboard/.vercel/output` to repo root.
+
 ## 404 on every path (restormel.dev)
 
 If **all** routes (/, /favicon.ico, /keys/dashboard) return 404:
@@ -52,11 +54,11 @@ The browser messages *"Event handler must be added on initial evaluation"* and *
 If the deploy log shows **Running "vercel build"** and the build completes in a few hundred ms, Vercel is **ignoring** `vercel.json` and using the default CLI build. Override in the dashboard:
 
 1. **Vercel** → **restormel-keys** → **Settings** → **Build and Deployment**.
-2. Turn **on** the **Override** for **Build Command**.
-3. Set **Build Command** to: **`pnpm --filter dashboard build`**
+2. Turn **on** the **Override** for **Build Command**; set to **`pnpm --filter dashboard build`**.
+3. Turn **on** the **Override** for **Output Directory** and leave the value **empty** (clear any `public` or other path) so Vercel uses the Build Output API.
 4. Save and **Redeploy**.
 
-With that override, the real SvelteKit build runs (~60s), the copy script puts `.vercel/output` at repo root, and the site should serve. Alternatively use **Root Directory = apps/dashboard** (see below) so the build runs from the app folder and no copy is needed.
+With that, the real SvelteKit build runs (~60s), the copy script puts `.vercel/output` at repo root, and the site should serve. Alternatively use **Root Directory = apps/dashboard** (see below) so the build runs from the app folder and no copy is needed.
 
 ### If still 404: switch to Root Directory = `apps/dashboard`
 

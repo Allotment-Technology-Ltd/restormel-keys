@@ -43,10 +43,10 @@ describe("topbarTitle", () => {
   });
 
   it("returns Project for project detail path", () => {
-    expect(topbarTitle(base + "/projects/abc-123")).toBe("Project");
+    expect(topbarTitle(DASHBOARD_BASE + "/projects/abc-123")).toBe("Project");
   });
 
   it("returns empty string for unknown path", () => {
-    expect(topbarTitle(base + "/unknown")).toBe("");
+    expect(topbarTitle(DASHBOARD_BASE + "/unknown")).toBe("");
   });
 });

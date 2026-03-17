@@ -104,10 +104,6 @@
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
   }
-  .empty {
-    color: var(--rm-muted);
-    margin: 0 0 var(--space-4);
-  }
   .project-list {
     list-style: none;
     padding: 0;
