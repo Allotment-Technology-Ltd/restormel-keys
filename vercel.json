@@ -2,6 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter dashboard build",
-  "outputDirectory": "apps/dashboard/.vercel/output"
+  "buildCommand": "pnpm --filter dashboard build && node scripts/vercel-copy-build-output.mjs"
 }
