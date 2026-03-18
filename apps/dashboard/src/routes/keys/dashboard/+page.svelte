@@ -7,7 +7,13 @@
     projectsError?: string | null;
     onboarding: { hasProjects: boolean; hasKeys: boolean; hasIntegrations: boolean } | null;
     entitlements:
-      | { workspaceId: string; plan: "free" | "pro"; projectLimit: number; monthlyRequestLimit: number }
+      | {
+          workspaceId: string;
+          plan: "free" | "pro";
+          projectLimit: number;
+          monthlyRequestLimit: number;
+          foundingProExpiresAt: number | null;
+        }
       | null;
     usage:
       | {
@@ -33,6 +39,17 @@
 
 <h1 class="page-title">Overview</h1>
 <p class="page-desc">Your projects and quick stats.</p>
+
+{#if data.entitlements?.foundingProExpiresAt}
+  <div class="founding-banner" role="status">
+    <div class="founding-title">Founding Pro</div>
+    <div class="founding-desc">
+      Full Pro limits until {new Date(data.entitlements.foundingProExpiresAt).toLocaleDateString(undefined, {
+        dateStyle: "medium",
+      })}. Thank you for being among our first users.
+    </div>
+  </div>
+{/if}
 
 {#if showLimitReached}
   <div class="upgrade-banner" role="status">
@@ -269,5 +286,25 @@
   .upgrade-cta {
     display: inline-block;
     text-decoration: none;
+  }
+  .founding-banner {
+    max-width: var(--rm-container-narrow, 36rem);
+    border: 1px solid color-mix(in oklab, var(--rm-sage, #5a8f6f) 40%, var(--rm-border));
+    background: color-mix(in oklab, var(--rm-sage, #5a8f6f) 12%, var(--rm-surface-raised));
+    border-radius: var(--rm-radius, var(--radius-md));
+    padding: var(--space-4);
+    margin: 0 0 var(--space-4);
+  }
+  .founding-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-text);
+    margin: 0 0 var(--space-1);
+  }
+  .founding-desc {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: 0;
+    line-height: var(--leading-relaxed);
   }
 </style>

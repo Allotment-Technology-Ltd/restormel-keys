@@ -46,6 +46,7 @@
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
             <li>2 projects</li>
+            <li>First 50 signups: 12 months Pro included</li>
             <li>Local key handling (user-controlled storage)</li>
             <li>Multi-provider routing</li>
             <li>Key validation</li>

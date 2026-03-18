@@ -15,6 +15,8 @@ export type Workspace = {
   ownerUserId: string;
   createdAt: number;
   plan: "free" | "pro";
+  /** Unix ms; Pro reverts after this unless NULL (paid / no calendar expiry). */
+  planExpiresAt: number | null;
 };
 
 export type Project = {
@@ -47,6 +49,66 @@ function getSql() {
   return neon(url);
 }
 
+/** Max users who receive founding Pro on first workspace creation (default 50). 0 = disable new grants. */
+export function foundingPromoMaxUsers(): number {
+  const n = parseInt(process.env.FOUNDING_PROMO_MAX_USERS ?? "50", 10);
+  if (!Number.isFinite(n) || n < 0) return 50;
+  return Math.min(n, 100_000);
+}
+
+export function foundingPromoMonths(): number {
+  const n = parseInt(process.env.FOUNDING_PROMO_MONTHS ?? "12", 10);
+  if (!Number.isFinite(n) || n < 1) return 12;
+  return Math.min(n, 120);
+}
+
+function addMonthsMillis(fromMs: number, months: number): number {
+  const d = new Date(fromMs);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.getTime();
+}
+
+function rowToWorkspace(r: {
+  id: string;
+  name: string;
+  slug: string;
+  ownerUserId: string;
+  createdAt: unknown;
+  plan: string;
+  planExpiresAt: unknown;
+}): Workspace {
+  const exp = r.planExpiresAt;
+  const planExpiresAt =
+    exp == null || exp === "" ? null : typeof exp === "bigint" ? Number(exp) : Number(exp);
+  return {
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    ownerUserId: r.ownerUserId,
+    createdAt: Number(r.createdAt),
+    plan: (r.plan === "pro" ? "pro" : "free") as "free" | "pro",
+    planExpiresAt: Number.isFinite(planExpiresAt) ? planExpiresAt : null,
+  };
+}
+
+/** Signup order among Better Auth users (1 = earliest). Null if user not in "user" table. */
+export async function getAuthUserSignupRank(userId: string): Promise<number | null> {
+  const sql = getSql();
+  try {
+    const rows = await sql`
+      SELECT sub.rn AS rn FROM (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY "createdAt" ASC, id ASC) AS rn
+        FROM "user"
+      ) sub WHERE sub.id = ${userId} LIMIT 1
+    `;
+    const n = rows[0]?.rn;
+    if (n == null) return null;
+    return typeof n === "bigint" ? Number(n) : Number(n);
+  } catch {
+    return null;
+  }
+}
+
 /** Ensure app-level users table has a row for authenticated user. */
 export async function upsertUser(userId: string, email?: string | null): Promise<void> {
   const sql = getSql();
@@ -64,7 +126,8 @@ export async function upsertUser(userId: string, email?: string | null): Promise
 export async function getOrCreateDefaultWorkspace(userId: string): Promise<Workspace> {
   const sql = getSql();
   const existing = await sql`
-    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan,
+           plan_expires_at AS "planExpiresAt"
     FROM workspaces
     WHERE owner_user_id = ${userId}
     ORDER BY created_at ASC
@@ -72,47 +135,98 @@ export async function getOrCreateDefaultWorkspace(userId: string): Promise<Works
   `;
   if (existing.length > 0) {
     const r = existing[0];
-    return {
+    return rowToWorkspace({
       id: r.id,
       name: r.name,
       slug: r.slug,
       ownerUserId: r.ownerUserId,
-      createdAt: Number(r.createdAt),
-      plan: (r.plan === "pro" ? "pro" : "free") as "free" | "pro",
-    } as Workspace;
+      createdAt: r.createdAt,
+      plan: r.plan,
+      planExpiresAt: r.planExpiresAt,
+    });
   }
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   await sql`
-    INSERT INTO workspaces (id, name, slug, owner_user_id, created_at, plan, plan_updated_at)
-    VALUES (${id}, 'Default', 'default', ${userId}, ${createdAt}, 'free', ${createdAt})
+    INSERT INTO workspaces (id, name, slug, owner_user_id, created_at, plan, plan_updated_at, plan_expires_at)
+    VALUES (${id}, 'Default', 'default', ${userId}, ${createdAt}, 'free', ${createdAt}, NULL)
   `;
-  return { id, name: "Default", slug: "default", ownerUserId: userId, createdAt, plan: "free" };
+  const cap = foundingPromoMaxUsers();
+  if (cap > 0) {
+    const rank = await getAuthUserSignupRank(userId);
+    if (rank != null && rank <= cap) {
+      const expiresAt = addMonthsMillis(Date.now(), foundingPromoMonths());
+      const now = Date.now();
+      await sql`
+        UPDATE workspaces
+        SET plan = 'pro', plan_updated_at = ${now}, plan_expires_at = ${expiresAt}
+        WHERE id = ${id}
+      `;
+      return {
+        id,
+        name: "Default",
+        slug: "default",
+        ownerUserId: userId,
+        createdAt,
+        plan: "pro",
+        planExpiresAt: expiresAt,
+      };
+    }
+  }
+  return {
+    id,
+    name: "Default",
+    slug: "default",
+    ownerUserId: userId,
+    createdAt,
+    plan: "free",
+    planExpiresAt: null,
+  };
 }
 
 export async function getWorkspace(workspaceId: string): Promise<Workspace | null> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan,
+           plan_expires_at AS "planExpiresAt"
     FROM workspaces
     WHERE id = ${workspaceId}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
   const r = rows[0];
-  return {
+  return rowToWorkspace({
     id: r.id,
     name: r.name,
     slug: r.slug,
     ownerUserId: r.ownerUserId,
-    createdAt: Number(r.createdAt),
-    plan: (r.plan === "pro" ? "pro" : "free") as "free" | "pro",
-  };
+    createdAt: r.createdAt,
+    plan: r.plan,
+    planExpiresAt: r.planExpiresAt,
+  });
+}
+
+/** Time-limited Pro past expiry → Free (paid Pro keeps plan_expires_at NULL). */
+export async function downgradeWorkspaceIfProExpired(workspaceId: string): Promise<void> {
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE workspaces
+    SET plan = 'free',
+        plan_updated_at = ${now},
+        plan_expires_at = NULL
+    WHERE id = ${workspaceId}
+      AND plan = 'pro'
+      AND plan_expires_at IS NOT NULL
+      AND plan_expires_at <= ${now}
+  `;
 }
 
 export async function setWorkspacePlan(params: {
   workspaceId: string;
   plan: "free" | "pro";
+  /** null = paid Pro (no calendar expiry); number = founding-style expiry */
+  planExpiresAt?: number | null;
   paddleCustomerId?: string | null;
   paddleTransactionId?: string | null;
   paddleSubscriptionId?: string | null;
@@ -120,16 +234,36 @@ export async function setWorkspacePlan(params: {
 }): Promise<void> {
   const sql = getSql();
   const now = Date.now();
-  await sql`
-    UPDATE workspaces
-    SET plan = ${params.plan},
-        plan_updated_at = ${now},
-        paddle_customer_id = COALESCE(${params.paddleCustomerId ?? null}, paddle_customer_id),
-        paddle_transaction_id = COALESCE(${params.paddleTransactionId ?? null}, paddle_transaction_id),
-        paddle_subscription_id = COALESCE(${params.paddleSubscriptionId ?? null}, paddle_subscription_id),
-        paddle_subscription_status = COALESCE(${params.paddleSubscriptionStatus ?? null}, paddle_subscription_status)
-    WHERE id = ${params.workspaceId}
-  `;
+  const exp =
+    params.planExpiresAt === undefined
+      ? undefined
+      : params.planExpiresAt === null
+        ? null
+        : params.planExpiresAt;
+  if (exp === undefined) {
+    await sql`
+      UPDATE workspaces
+      SET plan = ${params.plan},
+          plan_updated_at = ${now},
+          paddle_customer_id = COALESCE(${params.paddleCustomerId ?? null}, paddle_customer_id),
+          paddle_transaction_id = COALESCE(${params.paddleTransactionId ?? null}, paddle_transaction_id),
+          paddle_subscription_id = COALESCE(${params.paddleSubscriptionId ?? null}, paddle_subscription_id),
+          paddle_subscription_status = COALESCE(${params.paddleSubscriptionStatus ?? null}, paddle_subscription_status)
+      WHERE id = ${params.workspaceId}
+    `;
+  } else {
+    await sql`
+      UPDATE workspaces
+      SET plan = ${params.plan},
+          plan_updated_at = ${now},
+          plan_expires_at = ${exp},
+          paddle_customer_id = COALESCE(${params.paddleCustomerId ?? null}, paddle_customer_id),
+          paddle_transaction_id = COALESCE(${params.paddleTransactionId ?? null}, paddle_transaction_id),
+          paddle_subscription_id = COALESCE(${params.paddleSubscriptionId ?? null}, paddle_subscription_id),
+          paddle_subscription_status = COALESCE(${params.paddleSubscriptionStatus ?? null}, paddle_subscription_status)
+      WHERE id = ${params.workspaceId}
+    `;
+  }
 }
 
 /** List projects for user (ownership via user_id; projects belong to user's workspace). */

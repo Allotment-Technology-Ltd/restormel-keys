@@ -11,6 +11,8 @@ vi.mock("$lib/server/neon", () => ({
     slug: "default",
     ownerUserId: "u1",
     createdAt: 0,
+    plan: "free",
+    planExpiresAt: null,
   }),
 }));
 

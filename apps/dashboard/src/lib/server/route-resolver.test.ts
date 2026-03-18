@@ -2,7 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("$lib/server/db", () => ({
   getProject: vi.fn().mockResolvedValue({ id: "p1", userId: "u1", workspaceId: "ws1" }),
-  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({ id: "ws1" }),
+  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({
+    id: "ws1",
+    name: "Default",
+    slug: "default",
+    ownerUserId: "u1",
+    createdAt: 0,
+    plan: "free",
+    planExpiresAt: null,
+  }),
   listRoutes: vi.fn().mockResolvedValue([{ id: "r1", name: "ingestion", status: "active" }]),
   getRouteWithSteps: vi.fn().mockResolvedValue({
     route: { id: "r1", name: "ingestion", defaultModelId: "gpt-4o" },

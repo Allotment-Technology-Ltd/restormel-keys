@@ -34,7 +34,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       return json(
         {
           error: "project_limit_reached",
-          detail: "Free tier supports 2 projects. Upgrade to Pro for more.",
+          detail:
+            ent.plan === "free"
+              ? "Free tier supports 2 projects. Upgrade to Pro for more."
+              : "Project limit reached for your plan. Contact support or remove a project.",
         },
         { status: 402 }
       );

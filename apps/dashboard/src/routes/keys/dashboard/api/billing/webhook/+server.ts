@@ -41,6 +41,7 @@ async function handleWebhookEvent(event: PaddleWebhookEvent): Promise<{ ok: bool
       await setWorkspacePlan({
         workspaceId: ws.id,
         plan: "pro",
+        planExpiresAt: null,
         paddleTransactionId: transactionId,
         paddleSubscriptionStatus: "active",
       });

@@ -5,7 +5,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("$lib/server/db", () => ({
   evaluatePolicies: vi.fn().mockResolvedValue([]),
-  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({ id: "ws-1" }),
+  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({
+    id: "ws-1",
+    name: "Default",
+    slug: "default",
+    ownerUserId: "u1",
+    createdAt: 0,
+    plan: "free",
+    planExpiresAt: null,
+  }),
   getProject: vi.fn().mockResolvedValue({
     id: "proj-1",
     userId: "u1",

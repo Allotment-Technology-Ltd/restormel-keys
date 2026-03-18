@@ -88,6 +88,7 @@ describe("control-plane flow (integration)", () => {
       ownerUserId: USER_ID,
       createdAt: 1,
       plan: "free",
+      planExpiresAt: null,
     });
     vi.mocked(db.listRoutes).mockResolvedValue([mockRoute]);
     vi.mocked(db.getRouteWithSteps).mockResolvedValue({

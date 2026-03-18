@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Added
+
+- **Founding Pro:** First **50** Better Auth signups → **12 months Pro** (`workspaces.plan_expires_at`). Migration `008` backfills eligible existing users. Env `FOUNDING_PROMO_MAX_USERS`, `FOUNDING_PROMO_MONTHS`. [docs/reference/founding-pro-promo.md](docs/reference/founding-pro-promo.md).
+
 ### Fixed
 
 - **Dashboard chrome:** Removed duplicate **API portal** link and second **user avatar** menu from the inner dashboard topbar; global **SiteHeader** on `/keys/*` already provides them.

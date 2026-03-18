@@ -43,7 +43,15 @@ const mockStep = {
 vi.mock("$lib/server/db", () => ({
   getProject: vi.fn().mockResolvedValue(mockProject),
   getProjectInWorkspace: vi.fn(),
-  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({ id: "ws1" }),
+  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({
+    id: "ws1",
+    name: "Default",
+    slug: "default",
+    ownerUserId: "u1",
+    createdAt: 0,
+    plan: "free",
+    planExpiresAt: null,
+  }),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
 }));
 
