@@ -57,7 +57,7 @@
   let doctorFramework: "sveltekit" | "next" = "sveltekit";
   const doctorSnippets: Record<string, { install: string; note: string }> = {
     sveltekit: {
-      install: "pnpm add @restormel/keys @restormel/keys-svelte",
+      install: "pnpm add @restormel/keys   # headless Phases 1–4; add @restormel/keys-svelte for Phase 5 when on npm",
       note: "Then add KeyManager and ModelSelector to a settings or sandbox page; keys can be stored via your API.",
     },
     next: {

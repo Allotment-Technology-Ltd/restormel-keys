@@ -24,6 +24,7 @@ Before enabling the feature flag in production, verify everything works in a sta
 | `keys validate` passes | Run `npx @restormel/validate` to re-check stored keys | ☐ |
 | No secrets committed | Run `scripts/check-secrets.sh` or `git log --diff-filter=A -- '*.env'` | ☐ |
 | Dashboard logs show requests | Check the project's usage/logs section in the dashboard | ☐ |
+| **Observed model matches actual route** | Logs, verify endpoints, and extraction pipelines report the **same** provider/model the request used (not a default env label). Fix hardcoded metadata before full cutover. | ☐ |
 
 > **Pitfall**
 > Do not skip the error fallback check. The most dangerous production failure mode is Restormel being unreachable and your app not falling back to legacy. Confirm this works before proceeding.

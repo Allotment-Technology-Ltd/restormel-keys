@@ -10,6 +10,13 @@
 
 ---
 
+## 0. Routing surface and metadata (dogfooding notes)
+
+- **Multiple entrypoints:** Chat, verification (`api/v1/verify`), extraction, learning, and similar paths each choose a model. Plan Restormel resolve (or a shared resolver) so **policies and fallbacks stay consistent** across every path — not only the main chat route.
+- **Reported model vs actual route:** If any endpoint hardcodes model metadata (e.g. always “Gemini”) while the real route differs, that drift becomes visible once routing is externalised. Before go-live, align **observability and API response metadata** with the **resolved** provider/model.
+
+---
+
 ## 1. In SOPHIA repo: add dependency
 
 ```bash

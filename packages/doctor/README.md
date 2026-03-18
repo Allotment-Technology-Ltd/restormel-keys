@@ -57,7 +57,8 @@ restormel-doctor --format json --out doctor.json
 
 - Framework detection (Next.js / React / SvelteKit / Astro)
 - `restormel.config.json` presence + parseability
-- Suggested Restormel packages installed
+- **Core:** `@restormel/keys` must be installed (exit **non-zero** if missing)
+- **Optional UI (Phase 5):** `@restormel/keys-svelte` / `keys-react` / `keys-elements` — **warning only** if missing (headless Phases 1–4 still pass)
 - Local key store presence (keys are never printed raw)
 
 ## Relationship to Restormel Keys

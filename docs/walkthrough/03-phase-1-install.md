@@ -4,21 +4,48 @@
 > **Prerequisites:** [Phase 0](./02-phase-0-inventory.md) complete (routing inventory exists), a Restormel Keys account
 > **You'll need:** Terminal access, your app's package manager (`pnpm`, `npm`, or `yarn`), access to the [Dashboard](https://restormel.dev/keys/dashboard)
 
-This phase gets the Restormel Keys packages into your project and creates the dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, `keys doctor` passes (framework, packages, and local config) and your dashboard shows a project ready for routes and policies. Doctor validates **local** setup (framework, packages, config, local key store). It does not validate Cloud env vars (e.g. `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`) — you verify those in Phase 2 when you make your first resolve call.
+This phase gets the Restormel Keys packages into your project and creates the dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, **`npx @restormel/doctor` exits 0** (framework, **`@restormel/keys`**, config) and your dashboard shows a project ready for routes and policies. Doctor validates **local** setup. It does not validate Cloud env vars (e.g. `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`) — you verify those in Phase 2 when you make your first resolve call.
+
+**See also:** [npm packages — scope and install path](../reference/npm-packages.md) (which packages are required vs optional, pnpm monorepos, verifying `npm view`).
+
+### pnpm monorepos
+
+Add dependencies to the **package that owns your app** (the directory with `svelte.config.js`, `next.config.*`, etc.), not only the repo root:
+
+```bash
+cd apps/my-app
+pnpm add @restormel/keys
+```
+
+From the workspace root, use a filter or `-w` only when that root **is** the app:
+
+```bash
+pnpm add @restormel/keys --filter my-app
+# or, when the app lives at the root:
+pnpm add -w @restormel/keys
+```
 
 ---
 
 ## Step 1.1 — Install the packages
 
-Choose the packages for your framework. The headless core (`@restormel/keys`) is always required. Add UI packages if you plan to embed ModelSelector or KeyManager (Phase 5).
+The headless core (**`@restormel/keys`**) is **always required** for Phases 1–4. **UI packages** (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) are for **Phase 5** only; Restormel Doctor **passes without them** (you may see an advisory warning listing optional UI packages — that is OK).
 
-**Next.js / React:**
+Before installing UI packages, confirm they resolve: `npm view @restormel/keys-svelte version` (etc.). If npm returns 404, stay on **`@restormel/keys` only** until those packages are published.
+
+**Server-only / SvelteKit headless (Phases 1–4):**
+
+```bash
+pnpm add @restormel/keys
+```
+
+**Next.js / React (with UI in Phase 5, when packages exist on npm):**
 
 ```bash
 pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
 ```
 
-**SvelteKit:**
+**SvelteKit + Phase 5 UI (when `@restormel/keys-svelte` is on npm):**
 
 ```bash
 pnpm add @restormel/keys @restormel/keys-svelte
@@ -27,17 +54,13 @@ pnpm add @restormel/keys @restormel/keys-svelte
 **Vanilla / Astro / Web Components:**
 
 ```bash
-pnpm add @restormel/keys @restormel/keys-elements
-```
-
-**Server-only (no UI, just resolve):**
-
-```bash
 pnpm add @restormel/keys
+# Phase 5 UI when published:
+pnpm add @restormel/keys-elements
 ```
 
 > **Tip**
-> Not sure which packages you need? See [Framework compatibility](/keys/docs/compatibility/) for the full decision tree. If you only need server-side resolution and no embedded UI, the headless core is enough.
+> See [Framework compatibility](/keys/docs/compatibility/) for the full decision tree. For dogfooding or CI-friendly Phase 1, **`@restormel/keys` + manual or CLI config + doctor** is enough.
 
 ### You'll see
 
@@ -58,27 +81,30 @@ node --input-type=module -e "import { createKeys } from '@restormel/keys'; conso
 
 ---
 
-## Step 1.2 — Scaffold with the CLI
+## Step 1.2 — Scaffold config (CLI or manual)
 
-The CLI generates a starter config and validates your setup. If you prefer to configure manually, skip to Step 1.3.
+### Option A — `@restormel/keys-cli` (when available on npm)
 
 ```bash
 npx @restormel/keys-cli init
 ```
 
-The `init` command detects your framework, suggests the right packages (confirming what you installed in 1.1), and creates a `restormel.config.json` in your project root.
+If `npx` reports **404** or **package not found**, use **Option B** — doctor and resolve do not require the CLI.
 
-### You'll see
+The `init` command writes `restormel.config.json` and prints suggested packages (core + optional UI for Phase 5).
 
-Interactive prompts asking for your framework, which providers you use, and your preferred storage adapter. On completion:
+### Option B — Manual `restormel.config.json` (no CLI)
 
+Create **`restormel.config.json`** in the **app root** (same directory as your framework config). No secrets — only framework id and optional provider labels:
+
+```json
+{
+  "framework": "sveltekit",
+  "providers": []
+}
 ```
-✔ Detected framework: Next.js (App Router)
-✔ Created restormel.config.json
-✔ Suggested packages: @restormel/keys, @restormel/keys-react, @restormel/keys-elements
 
-Run 'keys doctor' to verify your setup.
-```
+Use `"framework":` one of `next` | `sveltekit` | `react` | `astro` | `none` to match your stack. `providers` can stay `[]` until you use `keys add` or document providers elsewhere.
 
 ### How to test
 
@@ -86,19 +112,22 @@ Run 'keys doctor' to verify your setup.
 npx @restormel/doctor
 ```
 
-> You can also run the wrapper: `npx @restormel/keys-cli doctor`.
+`doctor` checks framework detection, **`@restormel/keys`**, config, and local key store. It **warns** (non-blocking) if optional UI packages for Phase 5 are missing. At this point it should **exit 0** with a note that no Gateway Key is configured yet (Step 1.4) if your local key store is empty.
 
-`doctor` checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).
+> Wrapper: `npx @restormel/keys-cli doctor` (when `keys-cli` is installed).
 
 :::note[If you see "framework not detected"]
-The CLI looks for framework markers (`next.config.*`, `svelte.config.*`, `astro.config.*`). If your project uses a non-standard layout, run `keys init --framework next` (or `sveltekit`, `react`, `astro`) to specify manually.
+Ensure `restormel.config.json` exists and `framework` matches your stack. The CLI, when available, looks for `next.config.*`, `svelte.config.*`, `astro.config.*`.
 :::
 
 ---
 
 ## Step 1.3 — Create a project in the Dashboard
 
-Open the [Dashboard](https://restormel.dev/keys/dashboard) and sign in with GitHub.
+Open the [Dashboard](https://restormel.dev/keys/dashboard) and sign in with **GitHub** (interactive OAuth).
+
+> **Human step (not headless CI)**  
+> Workspace/project creation and Gateway Key generation require an **authenticated browser session**. Coding agents and unattended automation **cannot** complete GitHub sign-in for you. A human operator must sign in, create the project and environment, then copy **project ID** and **Gateway Key** into `.env` or your secret manager. There is no API-only substitute documented for this walkthrough yet.
 
 1. **Create a workspace** (if you don't have one). This is your top-level organisational container. Name it after your company or team.
 2. **Create a project.** Name it after your app (e.g. "My Writing Tool" or "SOPHIA Ingestion"). The project is where routes, policies, and keys live.
@@ -190,14 +219,16 @@ npx @restormel/doctor
 
 ### You'll see
 
-`keys doctor` checks framework detection, package versions, and config validity. Example output:
+Example output (headless SvelteKit — UI line may warn):
 
 ```
-✔ Framework: Next.js (App Router)
-✔ Packages: @restormel/keys@0.2.0, @restormel/keys-react@0.1.0, @restormel/keys-elements@0.1.0
-✔ Config: restormel.config.json valid
+✔ Framework detection — SvelteKit
+✔ Core package (@restormel/keys) — installed
+○ UI packages (Phase 5 — optional) — not installed: @restormel/keys-svelte — OK for headless Phases 1–4
+✔ restormel.config.json — found
+○ Local key store — no keys stored
 
-All checks passed.
+OK
 ```
 
 Cloud env vars (`RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, `RESTORMEL_ENVIRONMENT_ID`) are not validated by the CLI. You confirm they work in Phase 2 when you call the resolve endpoint.
@@ -211,7 +242,7 @@ npx @restormel/doctor && echo "PASS" || echo "FAIL"
 ```
 
 > **Pitfall**
-> If `doctor` reports missing packages, install them (Step 1.1). If it reports a missing config, run `keys init` (Step 1.2). For resolve to work in Phase 2, ensure your `.env` (or secret manager) has the Gateway Key and project/environment IDs and that your app loads them at runtime.
+> If doctor **fails** on the core package, run `pnpm add @restormel/keys` in the app package. If config is missing, add `restormel.config.json` (Step 1.2). **Warnings** for optional UI packages are expected for headless setups. For Phase 2, set Gateway Key and project/environment IDs in `.env` after a human completes the Dashboard steps.
 
 ---
 
@@ -246,12 +277,9 @@ USE_RESTORMEL_KEYS=false
 >
 > **Steps:**
 >
-> 1. Read the routing inventory at `docs/restormel-integration/00-routing-inventory.md` to confirm the framework and whether UI packages are needed.
-> 2. Install the correct packages for this framework:
->    - Next.js/React: `pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements`
->    - SvelteKit: `pnpm add @restormel/keys @restormel/keys-svelte`
->    - Server-only: `pnpm add @restormel/keys`
-> 3. Run `npx @restormel/keys-cli init` and accept the detected framework and suggested packages.
+> 1. Read the routing inventory at `docs/restormel-integration/00-routing-inventory.md` to confirm the framework and whether UI packages are needed for Phase 5.
+> 2. In the **app package** (pnpm: `cd` into the app or use `--filter`), install at least `@restormel/keys`. Add UI packages only if on npm and needed for Phase 5.
+> 3. Create `restormel.config.json` via `npx @restormel/keys-cli init` **or** manually (`framework` + `providers`). See Step 1.2.
 > 4. Add to `.env.example` (placeholder names only, no values):
 >    ```
 >    RESTORMEL_GATEWAY_KEY=
@@ -260,16 +288,16 @@ USE_RESTORMEL_KEYS=false
 >    USE_RESTORMEL_KEYS=false
 >    ```
 > 5. If a `.env` file exists and is gitignored, add the same keys with empty values there as well.
-> 6. Run `npx @restormel/doctor` and confirm it exits 0 (ignoring the "no gateway key" warning if `.env` values are empty).
-> 7. Commit `restormel.config.json`, `.env.example` changes, and `package.json` / lockfile changes.
+> 6. Run `npx @restormel/doctor` and confirm it exits 0 (optional UI package warnings are OK; "no keys stored" is OK).
+> 7. A **human** completes Dashboard sign-in, project/environment creation, and Gateway Key → copy IDs into local `.env` (not committed). Agents document placeholders in `.env.example` only.
+> 8. Commit `restormel.config.json`, `.env.example` changes, and `package.json` / lockfile changes.
 >
 > **DO NOT:**
 > - Commit real API keys or secrets to the repo.
 > - Add values to `.env.example` — only placeholder names.
 > - Modify any existing application code. This prompt is install-and-configure only.
-> - Install packages that don't match the framework (e.g. don't install `@restormel/keys-react` in a SvelteKit-only project).
 
-**Gate:** `npx @restormel/doctor` exits 0. `restormel.config.json` exists and is committed. `.env.example` lists the four Restormel env vars. No real keys are committed.
+**Gate:** `npx @restormel/doctor` exits 0. `restormel.config.json` exists and is committed. `.env.example` lists the Restormel env vars. No real keys are committed. Dashboard steps completed by a signed-in human or explicitly deferred with placeholders only.
 
 ---
 

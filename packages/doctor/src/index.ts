@@ -77,19 +77,31 @@ async function runDoctor(): Promise<DoctorReport> {
     details: config ?? undefined,
   });
 
-  const missingPkgs: string[] = [];
-  for (const p of detected.packagePaths) {
-    const pkgPath = join(cwd, "node_modules", p);
-    const found = existsSync(pkgPath);
-    if (!found) missingPkgs.push(p);
-  }
+  const missingCore = detected.corePackages.filter((p) => !existsSync(join(cwd, "node_modules", p)));
   checks.push({
-    id: "packages",
-    label: "Suggested Restormel packages",
-    status: missingPkgs.length === 0 ? "ok" : "fail",
-    message: missingPkgs.length === 0 ? "installed" : `missing: ${missingPkgs.join(", ")}`,
-    details: { suggested: detected.packagePaths, missing: missingPkgs },
+    id: "packages-core",
+    label: "Core package (@restormel/keys)",
+    status: missingCore.length === 0 ? "ok" : "fail",
+    message:
+      missingCore.length === 0
+        ? "installed"
+        : `missing: ${missingCore.join(", ")} (pnpm add @restormel/keys)`,
+    details: { required: detected.corePackages, missing: missingCore },
   });
+
+  const missingUi = detected.optionalUiPackages.filter((p) => !existsSync(join(cwd, "node_modules", p)));
+  if (detected.optionalUiPackages.length > 0) {
+    checks.push({
+      id: "packages-ui",
+      label: "UI packages (Phase 5 — optional)",
+      status: missingUi.length === 0 ? "ok" : "warn",
+      message:
+        missingUi.length === 0
+          ? "installed"
+          : `not installed: ${missingUi.join(", ")} — OK for headless Phases 1–4; add before Phase 5`,
+      details: { optional: detected.optionalUiPackages, missing: missingUi },
+    });
+  }
 
   const store = await readStore(cwd);
   checks.push({
@@ -364,7 +376,7 @@ async function main(): Promise<void> {
   program
     .name("restormel-doctor")
     .description("Restormel Doctor — open-source CLI for setup and health checks")
-    .version("0.1.0")
+    .version("0.1.1")
     .option("--format <format>", "Output format: text|json", "text")
     .option("--out <path>", "Write JSON output to a file (requires --format json)")
     .option("--repo", "Best-effort scan of the repo for provider/model identifiers (no secrets)", false)

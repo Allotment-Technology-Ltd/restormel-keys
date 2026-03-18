@@ -140,6 +140,7 @@ DO NOT: Change config. Deploy anything. Paste real keys.`,
       <tr><td><code>keys validate</code> passes</td><td>Run <code>npx @restormel/validate</code> to re-check stored keys</td><td>☐</td></tr>
       <tr><td>No secrets committed</td><td>Run <code>scripts/check-secrets.sh</code> or <code>git log --diff-filter=A -- '*.env'</code></td><td>☐</td></tr>
       <tr><td>Dashboard logs show requests</td><td>Check the project's usage/logs section in the dashboard</td><td>☐</td></tr>
+      <tr><td>Observed model matches actual route</td><td>Verify/learn/extract metadata reflects the resolved model, not a hardcoded label</td><td>☐</td></tr>
     </tbody>
   </table>
   <div class="callout callout-pitfall">

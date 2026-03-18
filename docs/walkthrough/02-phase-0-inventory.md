@@ -14,7 +14,7 @@ This walkthrough takes you from your current AI routing setup to a full Restorme
 
 | Phase | What you do | What you get |
 |-------|------------|--------------|
-| **0 — Inventory** | Audit and retire your custom routing | Clean separation; one place left to wire |
+| **0 — Inventory** | Audit and retire your custom routing | Clean separation; **one shared resolver** (or one place per entrypoint) identified for later wiring |
 | **1 — Install** | Add packages, create a project in the dashboard | Working config, `keys doctor` passes |
 | **2 — Resolve** | Make your first resolve call | Backend knows which provider + model to use |
 | **3 — Routes** | Configure routes with fallback steps | Automatic failover when a provider is down |
@@ -55,12 +55,18 @@ Search your codebase for the code that currently decides which AI provider and m
 
 **Look for:**
 
+- **Shared resolver helpers** — functions such as `getReasoningModelRoute`, `resolveModel`, `getClientForProvider`, or a single `vertex.ts` / `ai-router` module. Grep SDK imports alone often misses routing; trace **callers of those helpers** across the repo.
 - Direct provider SDK imports (`openai`, `@anthropic-ai/sdk`, `@google/generative-ai`) — where are they called, and what decides _which_ one to call?
 - Environment variables like `DEFAULT_MODEL`, `AI_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` — who reads them and how do they affect routing?
 - Custom router/gateway modules — any file named `router`, `provider`, `gateway`, `ai-client`, `model-selector`, or similar.
 - Fallback logic — `try/catch` blocks that retry with a different provider on failure.
 - Model selection UI — any dropdown, radio group, or settings page where users pick a model.
 - BYOK settings — any UI or API where users paste their own provider API keys.
+
+**Multi-entrypoint apps:** Inventory **every** path that reaches a model — not only primary chat. Include **verification**, **evaluation**, **extraction**, **learning**, **constitution checks**, batch jobs, and admin tools. Each should map to the same Restormel routing story in later phases so policies do not diverge by endpoint.
+
+> **BYOK during migration**  
+> Existing user BYOK custody (DB, env, your own key storage) can **stay in place** while Restormel takes over **which provider/model** to call. You do not have to migrate key custody before Phase 2 resolve.
 
 ### You'll see
 
@@ -149,8 +155,8 @@ Pick one entry point. Trace the request from "user action" to "provider API call
 >
 > **Steps:**
 >
-> 1. Search for all AI provider SDK imports (`openai`, `@anthropic-ai/sdk`, `@google/generative-ai`, or equivalent). List every file that creates a provider client or calls a completion/chat endpoint.
-> 2. For each file found, trace backwards: what decides which provider and model to use? List the routing/selection logic files.
+> 1. Search for shared routing helpers (`getReasoningModelRoute`, `resolveModel`, `vertex`, `ai-router`, etc.) and for direct provider SDK imports. List every file that chooses or calls a model.
+> 2. Trace backwards: what decides which provider and model to use? List routing/selection modules (including shared abstractions). Include **secondary** AI entrypoints (verify, extract, learn, eval) — not only main chat.
 > 3. Search for model selection UI (dropdowns, selectors, settings pages that let users choose a model or provider). List those components.
 > 4. Search for BYOK / key management code (where users paste or store their own provider API keys). List those files.
 > 5. For each item, classify as REMOVE (Restormel replaces it), KEEP (app-specific, not routing), or WRAP (insert Restormel resolve before the existing provider call).
@@ -193,28 +199,28 @@ Walk through each row and confirm: "When Phase N is complete, this inventory ite
 
 If your app supports feature flags, create one now: `USE_RESTORMEL_KEYS` (or equivalent). This lets you run old and new routing in parallel during Phases 2–6 and roll back instantly if something breaks.
 
+**Larger codebases:** Prefer introducing a **single shared resolver interface** (one module all entrypoints call) *first*, then branch `USE_RESTORMEL_KEYS` **once** inside that layer. Branching the flag in many unrelated files risks missing verify/learn/extract paths. Smaller apps may still use one primary function.
+
 ```ts
 // src/lib/feature-flags.ts
 export const USE_RESTORMEL_KEYS = process.env.USE_RESTORMEL_KEYS === 'true';
 ```
 
-In your routing code, the eventual pattern will be:
+Example: gate inside the shared resolver:
 
 ```ts
-// src/lib/server/resolve-provider.ts
+// src/lib/server/resolve-provider.ts (or your shared AI routing module)
 import { USE_RESTORMEL_KEYS } from '../feature-flags';
 
 export async function resolveProvider(request: AIRequest) {
   if (USE_RESTORMEL_KEYS) {
-    // New path: call Restormel resolve
     return await restormelResolve(request);
   }
-  // Old path: existing custom routing
   return await legacyRouter.resolve(request);
 }
 ```
 
-You'll wire `restormelResolve` in Phase 2. For now, the flag just exists.
+You'll wire `restormelResolve` in Phase 2. For now, the flag just exists (or the shared module exports a placeholder).
 
 ### You'll see
 
@@ -247,8 +253,8 @@ pnpm dev  # or your start command
 > **Steps:**
 >
 > 1. Create a feature flags module (e.g. `src/lib/feature-flags.ts` or the equivalent for your framework) that exports `USE_RESTORMEL_KEYS`, reading from `process.env.USE_RESTORMEL_KEYS` and defaulting to `false`.
-> 2. Identify the primary function(s) that currently resolve which AI provider to call (from the routing inventory in `docs/restormel-integration/00-routing-inventory.md`).
-> 3. In each of those functions, add a conditional branch: if `USE_RESTORMEL_KEYS` is true, call a placeholder `restormelResolve()` function (which throws "not yet implemented" for now); otherwise, call the existing logic unchanged.
+> 2. From the routing inventory, identify either **one shared resolver** or the minimal set of functions every AI entrypoint uses. Prefer adding the flag **once** in that shared layer.
+> 3. Add a conditional branch: if `USE_RESTORMEL_KEYS` is true, call a placeholder `restormelResolve()` (throws "not yet implemented"); otherwise, existing logic unchanged. If you cannot centralise yet, list every entrypoint you branch (chat, verify, extract, learn, …) so none are missed.
 > 4. Add `USE_RESTORMEL_KEYS=false` to `.env.example` (not `.env`).
 > 5. Verify the app starts and behaves identically with the flag unset.
 >

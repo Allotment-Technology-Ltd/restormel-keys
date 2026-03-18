@@ -36,6 +36,9 @@
     "vite-plugin-dts": "^4.0.0",
     "vitest": "^4.1.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",

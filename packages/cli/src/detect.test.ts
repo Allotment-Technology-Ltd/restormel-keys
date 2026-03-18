@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { detectFramework } from "./detect.js";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
-import { join } from "path";
 
 vi.mock("fs/promises", () => ({ readFile: vi.fn() }));
 vi.mock("fs", () => ({ existsSync: vi.fn() }));
@@ -20,6 +19,7 @@ describe("detectFramework", () => {
     const r = await detectFramework("/cwd");
     expect(r.id).toBe("none");
     expect(r.name).toBe("None");
+    expect(r.corePackages).toEqual([]);
   });
 
   it("detects Next.js with App Router when app/layout.tsx exists", async () => {
@@ -32,7 +32,9 @@ describe("detectFramework", () => {
     const r = await detectFramework("/cwd");
     expect(r.id).toBe("next");
     expect(r.hasAppRouter).toBe(true);
-    expect(r.packagePaths).toContain("@restormel/keys-react");
+    expect(r.corePackages).toEqual(["@restormel/keys"]);
+    expect(r.optionalUiPackages).toContain("@restormel/keys-react");
+    expect(r.optionalUiPackages).toContain("@restormel/keys-elements");
   });
 
   it("detects Next.js without App Router when no app/ layout", async () => {
@@ -48,7 +50,7 @@ describe("detectFramework", () => {
     vi.mocked(existsSync).mockImplementation((p: string) => p.endsWith("package.json"));
     const r = await detectFramework("/cwd");
     expect(r.id).toBe("react");
-    expect(r.packagePaths).toContain("@restormel/keys-react");
+    expect(r.optionalUiPackages).toEqual(["@restormel/keys-react"]);
   });
 
   it("detects SvelteKit", async () => {
@@ -56,7 +58,8 @@ describe("detectFramework", () => {
     vi.mocked(existsSync).mockImplementation((p: string) => p.endsWith("package.json"));
     const r = await detectFramework("/cwd");
     expect(r.id).toBe("sveltekit");
-    expect(r.packagePaths).toContain("@restormel/keys-svelte");
+    expect(r.corePackages).toEqual(["@restormel/keys"]);
+    expect(r.optionalUiPackages).toEqual(["@restormel/keys-svelte"]);
   });
 
   it("detects Astro", async () => {
@@ -64,6 +67,15 @@ describe("detectFramework", () => {
     vi.mocked(existsSync).mockImplementation((p: string) => p.endsWith("package.json"));
     const r = await detectFramework("/cwd");
     expect(r.id).toBe("astro");
-    expect(r.packagePaths).toContain("@restormel/keys-elements");
+    expect(r.optionalUiPackages).toEqual(["@restormel/keys-elements"]);
+  });
+
+  it("detects generic project as none with keys core only", async () => {
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: { lodash: "1" } }));
+    vi.mocked(existsSync).mockImplementation((p: string) => p.endsWith("package.json"));
+    const r = await detectFramework("/cwd");
+    expect(r.id).toBe("none");
+    expect(r.corePackages).toEqual(["@restormel/keys"]);
+    expect(r.optionalUiPackages).toEqual([]);
   });
 });

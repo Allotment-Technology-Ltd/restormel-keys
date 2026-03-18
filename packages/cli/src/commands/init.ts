@@ -18,6 +18,12 @@ export function registerInit(program: Command): void {
       console.log(chalk.gray("Detected framework:"), chalk.white(detected.name));
       if (detected.packagePaths.length) {
         console.log(chalk.gray("Suggested packages:"), chalk.white(detected.packagePaths.join(", ")));
+        if (detected.optionalUiPackages.length) {
+          console.log(
+            chalk.gray("Optional UI (Phase 5 — ModelSelector / KeyManager):"),
+            chalk.white(detected.optionalUiPackages.join(", "))
+          );
+        }
       }
       console.log("");
 

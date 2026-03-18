@@ -12,6 +12,8 @@ Single record of meaningful repo changes.
 
 - **Zuplo portal login:** JWT `aud` now follows the OAuth **`client_id`** from `/keys/auth/authorize` (and cookie on callback), matching Zudoku’s configured client id — fixes `unexpected JWT "aud" (audience) claim value` when `RESTORMEL_OIDC_CLIENT_ID` was unset on Vercel while Zuplo used e.g. `restormel-keys-portal`.
 
+- **@restormel/doctor v0.1.1:** Package check requires only `@restormel/keys`; framework UI packages optional (warn). Unblocks SvelteKit Phase 1 when `keys-svelte` / `keys-cli` are not on npm. **Dogfooding docs:** Phase 0–1 walkthrough (shared resolver, multi-entrypoint, pnpm workspaces, manual `restormel.config.json`, Dashboard human sign-in); [docs/reference/npm-packages.md](docs/reference/npm-packages.md); Phase 6 + SOPHIA model-metadata checklist. `publishConfig` on `keys-cli` / `keys-svelte` for future npm.
+
 ### Added
 
 - **API portal navigation and UX.** Header on Keys/Docs marketing shell: **API portal** link; **Pricing** in avatar menu + footer. Dashboard: topbar + sidebar **API portal** (same tab for SSO), **Pricing** in avatar menu; Access page blurb; docs sidebar link. Zuplo portal: **On restormel.dev** nav tab, logo → Keys, introduction copy. Env: `PUBLIC_KEYS_DEVELOPER_PORTAL_URL`, `ZUDOKU_PUBLIC_RESTORMEL_SITE_ORIGIN`. See [docs/reference/developer-portal-ux-navigation.md](docs/reference/developer-portal-ux-navigation.md).
@@ -53,6 +55,10 @@ Single record of meaningful repo changes.
 - **Prompt 2.2:** ModelSelector and CostEstimator Svelte 5 components. ModelSelector: models grouped by provider, available/unavailable styling with reasons (No API key), click fires onSelect(modelId, providerId). CostEstimator: cost breakdown (model, provider, input/output per 1M tokens), optional budget comparison with green/amber/red badges (Within budget, Near budget, Over budget). Icons module: PROVIDER_ICONS, GENERIC_ICON, getProviderIcon() for OpenAI, Anthropic, Google, generic. All exported from index. Tests: icons, ModelSelector (rendering, grouping, theme), CostEstimator (empty, breakdown, budget badges, theme). KeyManager now uses shared getProviderIcon.
 - **Prompt 2.4:** @restormel/keys-react — React wrapper and hooks. Deps: @restormel/keys, @restormel/keys-elements; peer React 18+. KeyManager, ModelSelector, CostEstimator TSX wrap Web Components; useRef + useEffect for props/events; typed props and callbacks; "use client". Hooks: useKeys(config, options) → { keys, loading, error }; useModels(keys, providers) → { modelIds, groups }; useCost(keys, modelId) → { cost }. KeysProvider context. README: generic React, Next.js App Router settings page, dynamic import. Tests: wrapper rendering and event propagation, useKeys/useModels/useCost, KeysProvider and useKeysContext throw.
 - **Prompt 2.3:** @restormel/keys-elements — Web Component wrappers. Single Vite lib bundle. Custom elements: &lt;rk-key-manager&gt;, &lt;rk-model-selector&gt;, &lt;rk-cost-estimator&gt;. Each: shadow DOM, default theme CSS, :host --rk-* for host theming, kebab-case attributes (user-id, budget, estimated-cost), object props via properties (keys, providers, cost), custom events (rk-key-added, rk-key-removed, rk-model-selected, rk-cost-updated). register.ts side-effect import. README: plain HTML, Astro, script import examples; React/Next.js compatibility note (object props, @restormel/keys-react). Tests: registration, attribute/prop mapping, event dispatch, defaultThemeCss :host/--rk-*, no shadow before connect.
+
+## keys-v0.2.1 (2025-03-18)
+
+**npm publish** (Git tag `keys-v0.2.1`, workflow **Publish**): `@restormel/keys@0.2.1`, `@restormel/doctor@0.1.1`, `@restormel/validate@0.1.1`.
 
 ## [0.1.0] — first npm release
 

@@ -51,8 +51,8 @@ pnpm dev  # or your start command`;
 Goal: Audit the codebase to produce a routing inventory for Restormel Keys integration.
 
 Steps:
-1. Search for all AI provider SDK imports (openai, @anthropic-ai/sdk, @google/generative-ai, or equivalent). List every file that creates a provider client or calls a completion/chat endpoint.
-2. For each file found, trace backwards: what decides which provider and model to use? List the routing/selection logic files.
+1. Search for shared routing helpers and SDK imports. List every file that chooses or calls a model.
+2. Trace routing/selection modules; include secondary entrypoints (verify, extract, learn, eval), not only chat.
 3. Search for model selection UI (dropdowns, selectors, settings pages). List those components.
 4. Search for BYOK / key management code. List those files.
 5. For each item, classify as REMOVE (Restormel replaces it), KEEP (app-specific, not routing), or WRAP (insert Restormel Resolve before the existing provider call).
@@ -67,8 +67,8 @@ Goal: Add a feature flag USE_RESTORMEL_KEYS to gate the Restormel Keys integrati
 
 Steps:
 1. Create a feature flags module (e.g. src/lib/feature-flags.ts) that exports USE_RESTORMEL_KEYS, reading from process.env.USE_RESTORMEL_KEYS and defaulting to false.
-2. Identify the primary function(s) that currently resolve which AI provider to call (from the routing inventory).
-3. In each of those functions, add a conditional branch: if USE_RESTORMEL_KEYS is true, call a placeholder restormelResolve() that throws "not yet implemented"; otherwise, call the existing logic unchanged.
+2. Prefer one shared resolver module: add the flag branch there so chat, verify, extract, and learn paths stay aligned. If you branch many files, list every entrypoint so none are missed.
+3. If USE_RESTORMEL_KEYS is true, call a placeholder restormelResolve() that throws "not yet implemented"; otherwise existing logic unchanged.
 4. Add USE_RESTORMEL_KEYS=false to .env.example (not .env).
 5. Verify the app starts and behaves identically with the flag unset.
 
@@ -144,7 +144,7 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
       <tr><th>Phase</th><th>What you do</th><th>What you get</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>0 — Inventory</strong></td><td>Audit and retire your custom routing</td><td>Clean separation; one place left to wire</td></tr>
+      <tr><td><strong>0 — Inventory</strong></td><td>Audit and retire your custom routing</td><td>Clean separation; one shared resolver (or one place per entrypoint) identified</td></tr>
       <tr><td><strong>1 — Install</strong></td><td>Add packages, create a project in the dashboard</td><td>Working config, <code>keys doctor</code> passes</td></tr>
       <tr><td><strong>2 — Resolve</strong></td><td>Make your first resolve call</td><td>Backend knows which provider + model to use</td></tr>
       <tr><td><strong>3 — Routes</strong></td><td>Configure routes with fallback steps</td><td>Automatic failover when a provider is down</td></tr>
@@ -179,6 +179,7 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
   <p>Search your codebase for the code that currently decides which AI provider and model to use for a given request.</p>
   <p><strong>Look for:</strong></p>
   <ul>
+    <li><strong>Shared resolver helpers</strong> — e.g. <code>getReasoningModelRoute</code>, <code>resolveModel</code>, <code>vertex.ts</code>, <code>ai-router</code>. Grep SDK imports alone often misses routing; trace callers of those helpers.</li>
     <li>Direct provider SDK imports (<code>openai</code>, <code>@anthropic-ai/sdk</code>, <code>@google/generative-ai</code>) — where are they called, and what decides <em>which</em> one to call?</li>
     <li>Environment variables like <code>DEFAULT_MODEL</code>, <code>AI_PROVIDER</code>, <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code> — who reads them and how do they affect routing?</li>
     <li>Custom router/gateway modules — any file named <code>router</code>, <code>provider</code>, <code>gateway</code>, <code>ai-client</code>, <code>model-selector</code>, or similar.</li>
@@ -186,6 +187,10 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
     <li>Model selection UI — any dropdown, radio group, or settings page where users pick a model.</li>
     <li>BYOK settings — any UI or API where users paste their own provider API keys.</li>
   </ul>
+  <p><strong>Multi-entrypoint apps:</strong> Include verification, extraction, learning, eval, and batch jobs — not only main chat — so policies stay consistent.</p>
+  <div class="callout callout-note">
+    <strong>BYOK during migration</strong> — Existing user BYOK storage can stay in place while Restormel handles provider/model resolution.
+  </div>
   <h3>You'll see</h3>
   <p>A list of files and modules. Organise them into three categories:</p>
   <table class="doc-table">
@@ -266,8 +271,9 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
 
   <WalkthroughStep stepId="0.5" title="Step 0.5 — Set up a feature flag (optional but recommended)" {phaseSlug}>
   <p>If your app supports feature flags, create one now: <code>USE_RESTORMEL_KEYS</code> (or equivalent). This lets you run old and new routing in parallel during Phases 2–6 and roll back instantly if something breaks.</p>
+  <p><strong>Larger apps:</strong> Gate inside a <strong>shared resolver</strong> so verify/learn/extract paths use the same branch — avoid sprinkling the flag only on chat.</p>
   <CodeBlock language="ts" code={featureFlagSnippet} />
-  <p>In your routing code, the eventual pattern will be:</p>
+  <p>Example — branch once in shared routing code:</p>
   <CodeBlock language="ts" code={resolveProviderSnippet} />
   <p>You'll wire <code>restormelResolve</code> in Phase 2. For now, the flag just exists.</p>
   <h3>You'll see</h3>

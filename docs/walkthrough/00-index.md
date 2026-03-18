@@ -32,6 +32,7 @@ The walkthrough is designed to work as:
 | `09-migration-paths.md` | Migration variants: custom, LiteLLM, Portkey, OpenRouter. Strangler pattern. Comparison table. Prompt: P11. | Migration guide |
 | `10-verification-strategy.md` | Dashboard checks, CLI checks, smoke tests, ongoing monitoring, CI integration. Prompt: P12. | Verification |
 | `11-prompt-index.md` | All 12 build-agent prompts collected with context doc references and execution order. | Prompt pack |
+| `../reference/npm-packages.md` | npm scope: headless vs UI, pnpm monorepos, verify before install. | Reference |
 
 ---
 
