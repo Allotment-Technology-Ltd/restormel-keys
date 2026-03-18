@@ -156,4 +156,59 @@ describe("POST /api/projects/[id]/resolve", () => {
       })
     );
   });
+
+  it("returns 403 and violations when all steps blocked by policy", async () => {
+    const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
+    const { insertRequestLog } = await import("$lib/server/db");
+    const violations = [
+      { policyId: "pol-1", policyName: "Allowlist", type: "model_allowlist", message: "Model x is not in allowlist" },
+    ];
+    vi.mocked(resolveRouteForExecution).mockResolvedValue({
+      workspaceId: "ws1",
+      projectId: "p1",
+      environmentId: "env-1",
+      route: mockRoute,
+      steps: [mockStep],
+      selectedStep: null,
+      providerType: null,
+      modelId: null,
+      explanation: "route=route-1 all_steps_blocked_by_policy",
+      policyViolations: violations,
+    });
+
+    const POST = await getHandler();
+    const res = await POST(mockEvent({ environmentId: "env-1" }));
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("policy_blocked");
+    expect(data.message).toContain("blocked by policy");
+    expect(data.violations).toEqual(violations);
+    expect(insertRequestLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestStatus: "policy_blocked",
+        providerType: "none",
+      })
+    );
+  });
+
+  it("returns providerType vertex when resolver returns google", async () => {
+    const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
+    vi.mocked(resolveRouteForExecution).mockResolvedValue({
+      workspaceId: "ws1",
+      projectId: "p1",
+      environmentId: "env-1",
+      route: mockRoute,
+      steps: [{ ...mockStep, providerPreference: "google" }],
+      selectedStep: { ...mockStep, providerPreference: "google" },
+      providerType: "google",
+      modelId: "gpt-4o",
+      explanation: "route=route-1 step=0 provider=google model=gpt-4o",
+    });
+
+    const POST = await getHandler();
+    const res = await POST(mockEvent({ environmentId: "env-1" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.providerType).toBe("vertex");
+  });
 });

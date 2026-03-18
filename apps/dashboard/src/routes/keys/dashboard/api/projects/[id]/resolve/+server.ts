@@ -122,6 +122,32 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     );
   }
 
+  if (resolved.policyViolations && resolved.policyViolations.length > 0) {
+    try {
+      await insertRequestLog({
+        workspaceId: resolved.workspaceId,
+        projectId: resolved.projectId,
+        environmentId: resolved.environmentId,
+        routeId: resolved.route.id,
+        gatewayKeyId,
+        providerType: "none",
+        requestStatus: "policy_blocked",
+        latencyMs,
+        metadata: { explanation: resolved.explanation, violations: resolved.policyViolations },
+      });
+    } catch (e) {
+      console.error("[resolve] insertRequestLog policy_blocked:", e);
+    }
+    return json(
+      {
+        error: "policy_blocked",
+        message: "All route steps were blocked by policy",
+        violations: resolved.policyViolations,
+      },
+      { status: 403 }
+    );
+  }
+
   try {
     await insertRequestLog({
       workspaceId: resolved.workspaceId,
@@ -139,10 +165,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     console.error("[resolve] insertRequestLog resolved:", e);
   }
 
+  const outProviderType =
+    resolved.providerType === "google" ? "vertex" : resolved.providerType ?? undefined;
+
   return json({
     data: {
       routeId: resolved.route.name,
-      providerType: resolved.providerType,
+      providerType: outProviderType,
       modelId: resolved.modelId,
       explanation: resolved.explanation,
     },

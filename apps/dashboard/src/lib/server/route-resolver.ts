@@ -1,14 +1,18 @@
 /**
  * Route resolution for request execution: project + environment → route → step → provider/model.
  * Used by the execution API after Gateway Key auth. Does not depend on packages/core.
+ * Policy enforcement: first enabled step with no policy violations is selected; if all are blocked, returns policyViolations.
  */
 import {
   getProject,
   getOrCreateDefaultWorkspace,
   listRoutes,
   getRouteWithSteps,
+  evaluatePolicies,
+  getModelsLifecycleByIds,
   type RouteRecord,
   type RouteStepRecord,
+  type PolicyViolation,
 } from "$lib/server/db";
 
 export type ResolvedRouteResult = {
@@ -17,7 +21,7 @@ export type ResolvedRouteResult = {
   environmentId: string;
   route: RouteRecord;
   steps: RouteStepRecord[];
-  /** First enabled step, or null if none. */
+  /** First enabled step that passes policy, or null if none or all blocked. */
   selectedStep: RouteStepRecord | null;
   /** Provider type from selected step (provider_preference) or null. */
   providerType: string | null;
@@ -25,6 +29,8 @@ export type ResolvedRouteResult = {
   modelId: string | null;
   /** Explanation for logging/audit. */
   explanation: string;
+  /** Set when there were enabled steps but all were blocked by policy (selectedStep is null). */
+  policyViolations?: PolicyViolation[];
 };
 
 /**
@@ -60,12 +66,54 @@ export async function resolveRouteForExecution(
     .filter((s) => s.enabled)
     .slice()
     .sort((a, b) => a.orderIndex - b.orderIndex);
-  const selectedStep = enabledSteps[0] ?? null;
-  const providerType = selectedStep?.providerPreference ?? null;
-  const modelId = selectedStep?.modelId ?? routeRecord.defaultModelId ?? null;
 
-  const explanation = selectedStep
-    ? `route=${routeRecord.id} step=${selectedStep.orderIndex} provider=${providerType ?? "—"} model=${modelId ?? "—"}`
+  const modelIds = [
+    ...new Set([
+      ...enabledSteps.map((s) => s.modelId).filter(Boolean),
+      routeRecord.defaultModelId,
+    ].filter(Boolean) as string[]),
+  ];
+  const lifecycleByModel = new Map(
+    (await getModelsLifecycleByIds(modelIds)).map((m) => [m.id, m.lifecycleState ?? undefined])
+  );
+
+  const allViolations: PolicyViolation[] = [];
+  for (const step of enabledSteps) {
+    const providerType = step.providerPreference ?? null;
+    const modelId = step.modelId ?? routeRecord.defaultModelId ?? null;
+    const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
+
+    const violations = await evaluatePolicies({
+      workspaceId,
+      projectId,
+      environmentId,
+      routeId: routeRecord.id,
+      modelId: modelId ?? undefined,
+      providerType: providerType ?? undefined,
+      modelLifecycleState: lifecycleState,
+    });
+    if (violations.length === 0) {
+      const explanation = `route=${routeRecord.id} step=${step.orderIndex} provider=${providerType ?? "—"} model=${modelId ?? "—"}`;
+      return {
+        workspaceId,
+        projectId,
+        environmentId,
+        route: routeRecord,
+        steps,
+        selectedStep: step,
+        providerType,
+        modelId,
+        explanation,
+      };
+    }
+    allViolations.push(...violations);
+  }
+
+  const selectedStep = null;
+  const providerType = null;
+  const modelId = null;
+  const explanation = enabledSteps.length > 0
+    ? `route=${routeRecord.id} all_steps_blocked_by_policy`
     : `route=${routeRecord.id} no_enabled_step default_model=${routeRecord.defaultModelId ?? "—"}`;
 
   return {
@@ -78,5 +126,6 @@ export async function resolveRouteForExecution(
     providerType,
     modelId,
     explanation,
+    ...(enabledSteps.length > 0 ? { policyViolations: allViolations } : {}),
   };
 }

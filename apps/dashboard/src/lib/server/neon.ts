@@ -1808,6 +1808,45 @@ export async function deletePolicyBinding(
 }
 
 // ---------------------------------------------------------------------------
+// Usage totals for policy caps (budget_cap, token_cap)
+// ---------------------------------------------------------------------------
+
+export type UsageTotalsForScope = { totalCost: number; totalTokens: number };
+
+/** Sum cost and tokens from request_logs for a binding scope and time range. Used by budget_cap/token_cap. */
+export async function getUsageTotalsForScope(
+  workspaceId: string,
+  targetType: string,
+  targetId: string,
+  since: number,
+  until: number
+): Promise<UsageTotalsForScope> {
+  const sql = getSql();
+  const scopeCond =
+    targetType === "workspace"
+      ? sql`workspace_id = ${targetId}`
+      : targetType === "project"
+        ? sql`workspace_id = ${workspaceId} AND project_id = ${targetId}`
+        : targetType === "environment"
+          ? sql`workspace_id = ${workspaceId} AND environment_id = ${targetId}`
+          : targetType === "route"
+            ? sql`workspace_id = ${workspaceId} AND route_id = ${targetId}`
+            : sql`workspace_id = ${workspaceId} AND 1 = 0`;
+  const rows = await sql`
+    SELECT
+      COALESCE(SUM(estimated_cost), 0)::real AS "totalCost",
+      (COALESCE(SUM(input_tokens), 0) + COALESCE(SUM(output_tokens), 0))::bigint AS "totalTokens"
+    FROM request_logs
+    WHERE ${scopeCond} AND created_at >= ${since} AND created_at <= ${until}
+  `;
+  const r = (Array.isArray(rows) ? rows[0] : rows) as { totalCost: number; totalTokens: string } | undefined;
+  return {
+    totalCost: r?.totalCost != null ? Number(r.totalCost) : 0,
+    totalTokens: r?.totalTokens != null ? Number(r.totalTokens) : 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Policy evaluation (simple, explicit; for route/request validation)
 // ---------------------------------------------------------------------------
 
@@ -1839,23 +1878,27 @@ export async function evaluatePolicies(context: PolicyEvaluationContext): Promis
   if (context.environmentId) targets.push({ targetType: "environment", targetId: context.environmentId });
   if (context.routeId) targets.push({ targetType: "route", targetId: context.routeId });
 
-  const policyIds = new Set<string>();
+  type BindingHit = { policyId: string; targetType: string; targetId: string };
+  const bindingHits: BindingHit[] = [];
   for (const t of targets) {
     const rows = await sql`
-      SELECT pb.policy_id AS "policyId"
+      SELECT pb.policy_id AS "policyId", pb.target_type AS "targetType", pb.target_id AS "targetId"
       FROM policy_bindings pb
       INNER JOIN policies p ON pb.policy_id = p.id
       WHERE pb.target_type = ${t.targetType} AND pb.target_id = ${t.targetId}
         AND p.workspace_id = ${context.workspaceId} AND (p.status IS NULL OR p.status = 'active')
     `;
-    for (const r of rows) policyIds.add((r as { policyId: string }).policyId);
+    for (const r of rows as { policyId: string; targetType: string; targetId: string }[]) {
+      bindingHits.push({ policyId: r.policyId, targetType: r.targetType, targetId: r.targetId });
+    }
   }
-  if (policyIds.size === 0) return [];
+  const policyIds = [...new Set(bindingHits.map((b) => b.policyId))];
+  if (policyIds.length === 0) return [];
 
   const policies = await sql`
     SELECT id, name, type, rule_definition AS "ruleDefinition"
     FROM policies
-    WHERE id = ANY(${Array.from(policyIds)})
+    WHERE id = ANY(${policyIds})
   `;
 
   const violations: PolicyViolation[] = [];
@@ -1910,8 +1953,47 @@ export async function evaluatePolicies(context: PolicyEvaluationContext): Promis
           message: `Deprecated or retired models are blocked`,
         });
       }
+    } else if (p.type === "budget_cap" || p.type === "token_cap") {
+      const limit = typeof rule.limit === "number" && rule.limit >= 0 ? rule.limit : undefined;
+      if (limit === undefined) continue;
+
+      const now = Date.now();
+      const monthStart = new Date(now);
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const since = monthStart.getTime();
+      const until = now;
+
+      const bindingsForPolicy = bindingHits.filter((b) => b.policyId === p.id);
+      for (const b of bindingsForPolicy) {
+        const { totalCost, totalTokens } = await getUsageTotalsForScope(
+          context.workspaceId,
+          b.targetType,
+          b.targetId,
+          since,
+          until
+        );
+        if (p.type === "budget_cap") {
+          if (totalCost >= limit) {
+            violations.push({
+              policyId: p.id,
+              policyName: p.name,
+              type: p.type,
+              message: `Budget cap exceeded: ${totalCost.toFixed(2)} >= ${limit} (limit)`,
+            });
+          }
+        } else {
+          if (totalTokens >= limit) {
+            violations.push({
+              policyId: p.id,
+              policyName: p.name,
+              type: p.type,
+              message: `Token cap exceeded: ${totalTokens} >= ${limit} (limit)`,
+            });
+          }
+        }
+      }
     }
-    // budget_cap, token_cap: placeholder — not enforced in v1
   }
   return violations;
 }

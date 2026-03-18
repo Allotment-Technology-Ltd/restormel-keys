@@ -12,6 +12,8 @@ vi.mock("$lib/server/db", () => ({
     planExpiresAt: null,
   }),
   listRoutes: vi.fn().mockResolvedValue([{ id: "r1", name: "ingestion", status: "active" }]),
+  evaluatePolicies: vi.fn().mockResolvedValue([]),
+  getModelsLifecycleByIds: vi.fn().mockResolvedValue([]),
   getRouteWithSteps: vi.fn().mockResolvedValue({
     route: { id: "r1", name: "ingestion", defaultModelId: "gpt-4o" },
     steps: [

@@ -54,8 +54,9 @@ vi.mock("$lib/server/db", () => ({
   getOrCreateDefaultWorkspace: vi.fn(),
   listRoutes: vi.fn(),
   getRouteWithSteps: vi.fn(),
+  evaluatePolicies: vi.fn().mockResolvedValue([]),
+  getModelsLifecycleByIds: vi.fn().mockResolvedValue([]),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
-  // Stub other db exports used by resolve or route-resolver so the module resolves
   listRouteSteps: vi.fn().mockResolvedValue([]),
   getRoute: vi.fn().mockResolvedValue(null),
 }));
@@ -149,5 +150,47 @@ describe("control-plane flow (integration)", () => {
         providerType: "none",
       })
     );
+  });
+
+  it("full path: all steps blocked by policy returns 403 and violations", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.evaluatePolicies).mockResolvedValue([
+      { policyId: "pol-1", policyName: "Allowlist", type: "model_allowlist", message: "Model gpt-4o is not in allowlist" },
+    ]);
+
+    const POST = await getHandler();
+    const res = await POST(mockEvent({ environmentId: ENV_ID }));
+    expect(res.status).toBe(403);
+
+    const data = await res.json();
+    expect(data.error).toBe("policy_blocked");
+    expect(Array.isArray(data.violations)).toBe(true);
+    expect(data.violations[0].type).toBe("model_allowlist");
+
+    expect(db.insertRequestLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestStatus: "policy_blocked",
+        providerType: "none",
+      })
+    );
+  });
+
+  it("full path: resolve response normalizes google to vertex", async () => {
+    const db = await import("$lib/server/db");
+    const googleStep = { ...mockStep, id: "step-google", providerPreference: "google" };
+    vi.mocked(db.getRouteWithSteps).mockResolvedValue({
+      route: mockRoute,
+      steps: [googleStep],
+    });
+    vi.mocked(db.evaluatePolicies).mockResolvedValue([]);
+    vi.mocked(db.getModelsLifecycleByIds).mockResolvedValue([
+      { id: "gpt-4o", canonicalName: "gpt-4o", lifecycleState: null, deprecationDate: null, retirementDate: null, replacementModelId: null, sourceLastVerifiedAt: null },
+    ]);
+
+    const POST = await getHandler();
+    const res = await POST(mockEvent({ environmentId: ENV_ID }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.providerType).toBe("vertex");
   });
 });

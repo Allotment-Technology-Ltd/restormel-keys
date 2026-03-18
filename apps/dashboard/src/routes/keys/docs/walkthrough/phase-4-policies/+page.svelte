@@ -113,7 +113,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   <p>This phase adds guardrails around resolution. Policies constrain which models and providers can be returned, block deprecated models, and cap spend. By the end, your resolve calls are filtered through policies before returning a result, and you can test that policy violations are correctly rejected.</p>
 
   <WalkthroughStep stepId="4.1" title="Step 4.1 — Understand policy types" defaultOpen={true} {phaseSlug}>
-  <p>Policies are rules attached at the workspace, project, or environment level. They are evaluated during every resolve call. If a policy blocks the resolved model or provider, Restormel falls through to the next step in the route (or returns an error if no step passes).</p>
+  <p>Policies are rules attached at the workspace, project, or environment level. They are evaluated during every resolve call. Resolve uses <strong>enabled-step order with policy filtering</strong>: it tries each enabled step in order and returns the first step that passes all policies. There is no implicit provider health probing. If a policy blocks a step, Restormel skips to the next step; if all steps are blocked, resolve returns a <code>policy_blocked</code> error (403) with violation details.</p>
   <table class="doc-table">
     <thead>
       <tr><th>Policy type</th><th>What it does</th><th>Example</th></tr>
@@ -139,7 +139,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   <ol>
     <li><strong>Type:</strong> <code>model_allowlist</code></li>
     <li><strong>Scope:</strong> Project (applies to all environments and routes in this project)</li>
-    <li><strong>Models:</strong> Add the models you want to allow (e.g. <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>claude-sonnet-4-20250514</code>, <code>gemini-2.5-pro</code>)</li>
+    <li><strong>Models:</strong> Add model IDs from your dashboard's model catalog (e.g. <code>gpt-4o</code>, <code>gpt-4o-mini</code>, <code>claude-sonnet-4-20250514</code>, or whatever is in your seeded catalog)</li>
     <li><strong>Save</strong> the policy.</li>
   </ol>
   <h3>You'll see</h3>
@@ -149,7 +149,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   <div class="callout callout-tip">
     <strong>Tip</strong> — The resolve endpoint does not take an arbitrary <code>model</code> override today. To test allowlisting deterministically, set a route step's <code>modelId</code> to a blocked model, then confirm resolve skips it.
   </div>
-  <p>Call resolve with an allowed model in your route; expected: one of your allowed models (e.g. <code>"gpt-4o"</code>).</p>
+  <p>Call resolve with an allowed model in your route; expected: one of your allowed models (e.g. <code>"gpt-4o"</code>). The resolve API returns <code>data.providerType</code> as <code>vertex</code> when the selected provider is Google.</p>
   </WalkthroughStep>
 
   <WalkthroughStep stepId="4.3" title="Step 4.3 — Add a deprecated-model block" {phaseSlug}>
@@ -192,7 +192,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   </WalkthroughStep>
 
   <WalkthroughStep stepId="4.6" title="Step 4.6 — Handle policy errors in your resolve wrapper" {phaseSlug}>
-  <p>When all route steps are blocked by policies, Restormel returns an error. Your resolve wrapper (from Phase 2) already catches errors and falls back to legacy. Add specific handling for policy errors so you can log or alert on them.</p>
+  <p>When all route steps are blocked by policies, Restormel returns HTTP 403 with <code>error: "policy_blocked"</code> and a <code>violations</code> array. Your resolve wrapper (from Phase 2) already catches errors and falls back to legacy. Add specific handling for policy errors so you can log or alert on them.</p>
   <CodeBlock language="ts" code={policyErrorHandlingSnippet} />
   <p>For budget cap errors, optionally add an alert. For all policy errors, the function still falls through to the legacy path. Do not expose raw Restormel error messages to end-users; translate them into user-friendly messages.</p>
   </WalkthroughStep>
@@ -207,7 +207,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   />
 
   <h2>Checkpoint</h2>
-  <p>You now have: a <code>model_allowlist</code> policy; a <code>deprecated_model_block</code> policy; (optional) a <code>budget_cap</code> policy; policy error handling in your resolve wrapper that distinguishes budget, blocked, and generic errors; and the evaluate endpoint as a tool for testing policy combinations without executing a full resolve. Policies are active on the Restormel side. Your app handles policy errors gracefully and falls back to legacy when needed.</p>
+  <p>You now have: a <code>model_allowlist</code> policy; a <code>deprecated_model_block</code> policy; (optional) a <code>budget_cap</code> policy; policy error handling in your resolve wrapper that distinguishes budget, blocked, and generic errors; and the evaluate endpoint as a tool for testing policy combinations without executing a full resolve. Policies are active on the Restormel side. Policy creation, bindings, and rules can be managed in the dashboard or via the Policies API. Your app handles policy errors gracefully and falls back to legacy when needed.</p>
 
   <WalkthroughPhaseNav {prev} {next} {stepOf} />
 </div>

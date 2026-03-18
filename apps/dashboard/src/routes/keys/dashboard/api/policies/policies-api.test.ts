@@ -110,4 +110,36 @@ describe("Policy evaluation (evaluatePolicies)", () => {
     expect(violations).toHaveLength(1);
     expect(violations[0].type).toBe("model_denylist");
   });
+
+  it("returns budget_cap violation shape when over limit", async () => {
+    const { evaluatePolicies } = await import("$lib/server/db");
+    vi.mocked(evaluatePolicies).mockResolvedValue([
+      {
+        policyId: "p1",
+        policyName: "Budget",
+        type: "budget_cap",
+        message: "Budget cap exceeded: 600.00 >= 500 (limit)",
+      },
+    ]);
+    const violations = await evaluatePolicies({ workspaceId: "ws-1", projectId: "proj-1" });
+    expect(violations).toHaveLength(1);
+    expect(violations[0].type).toBe("budget_cap");
+    expect(violations[0].message).toMatch(/\d+\.?\d* >= \d+ \(limit\)/);
+  });
+
+  it("returns token_cap violation shape when over limit", async () => {
+    const { evaluatePolicies } = await import("$lib/server/db");
+    vi.mocked(evaluatePolicies).mockResolvedValue([
+      {
+        policyId: "p2",
+        policyName: "Tokens",
+        type: "token_cap",
+        message: "Token cap exceeded: 11000000 >= 10000000 (limit)",
+      },
+    ]);
+    const violations = await evaluatePolicies({ workspaceId: "ws-1", projectId: "proj-1" });
+    expect(violations).toHaveLength(1);
+    expect(violations[0].type).toBe("token_cap");
+    expect(violations[0].message).toContain(">=");
+  });
 });

@@ -10,7 +10,7 @@ This phase adds guardrails around resolution. Policies constrain which models an
 
 ## Step 4.1 — Understand policy types
 
-Policies are rules attached at the workspace, project, or environment level. They are evaluated during every resolve call. If a policy blocks the resolved model or provider, Restormel falls through to the next step in the route (or returns an error if no step passes).
+Policies are rules attached at the workspace, project, or environment level. They are evaluated during every resolve call. Resolve uses **enabled-step order with policy filtering**: it tries each enabled step in order and returns the first step that passes all policies. There is no implicit provider health probing. If a policy blocks a step, Restormel skips to the next step; if all steps are blocked, resolve returns a `policy_blocked` error with violation details.
 
 | Policy type | What it does | Example |
 |-------------|-------------|---------|
@@ -35,11 +35,7 @@ Start with the most common policy: restricting which models your app can use.
 
 1. **Type:** `model_allowlist`
 2. **Scope:** Project (applies to all environments and routes in this project)
-3. **Models:** Add the models you want to allow. For example:
-   - `gpt-4o`
-   - `gpt-4o-mini`
-   - `claude-sonnet-4-20250514`
-   - `gemini-2.5-pro`
+3. **Models:** Add the model IDs you want to allow. Use IDs from your dashboard’s model catalog (e.g. `gpt-4o`, `gpt-4o-mini`, `claude-sonnet-4-20250514`, or whatever is present in your seeded catalog). If a model is missing from the catalog, add it via your seed data or catalog API first.
 4. **Save** the policy.
 
 ### You'll see
@@ -59,7 +55,7 @@ curl -s -X POST \
   | jq '.'
 ```
 
-**Expected:** The resolve returns `data.modelId` from the first enabled step that passes policies. If your route steps include a blocked model, resolve skips that step and returns the next allowed step.
+**Expected:** The resolve returns `data.modelId` and `data.providerType` from the first enabled step that passes all policies. If your route steps include a blocked model, resolve skips that step and returns the next allowed step. (Provider naming: the API returns `vertex` when the selected provider is Google-backed; policy evaluation uses the internal provider type.)
 
 > **Tip**
 > The resolve endpoint does not take an arbitrary `model` override today. To test allowlisting deterministically, set a route step’s `modelId` to a blocked model, then confirm resolve skips it.
@@ -76,7 +72,7 @@ curl -s -X POST \
   | jq '.data.modelId'
 ```
 
-**Expected:** One of your allowed models (e.g. `"gpt-4o"`).
+**Expected:** One of your allowed models (e.g. `"gpt-4o"`). The resolve API normalizes provider names for consumers: when the selected step uses Google, `data.providerType` is returned as `vertex`.
 
 ---
 
@@ -185,7 +181,7 @@ Test with several model/provider combinations to confirm the intersection of you
 
 ## Step 4.6 — Handle policy errors in your resolve wrapper
 
-When all route steps are blocked by policies, Restormel returns an error. Your resolve wrapper (from Phase 2) already catches errors and falls back to legacy. Add specific handling for policy errors so you can log or alert on them.
+When all route steps are blocked by policies, Restormel returns HTTP 403 with `error: "policy_blocked"` and a `violations` array. Your resolve wrapper (from Phase 2) already catches errors and falls back to legacy. Add specific handling for policy errors so you can log or alert on them.
 
 ```ts
 // src/lib/server/resolve-provider.ts — updated error handling
@@ -259,6 +255,6 @@ You now have:
 - Policy error handling in your resolve wrapper that distinguishes budget, blocked, and generic errors.
 - The evaluate endpoint as a tool for testing policy combinations without executing a full resolve.
 
-Policies are active on the Restormel side. Your app handles policy errors gracefully and falls back to legacy when needed.
+Policies are active on the Restormel side. Policy creation, bindings, and rule editing are available in the dashboard and via the Policies API (e.g. for automation). Your app handles policy errors gracefully and falls back to legacy when needed.
 
 **Next:** [Phase 5 — Embed the UI](/keys/docs/walkthrough/phase-5-ui) — add ModelSelector and KeyManager to your app so end-users can choose models and manage their own provider credentials.
