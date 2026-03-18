@@ -3,8 +3,6 @@ title: Routes & Steps
 description: Create and manage route steps (Dashboard API).
 ---
 
-# Routes & Steps
-
 Route steps are managed via the **Dashboard API** (runtime/control plane). These endpoints are authenticated with a **Gateway Key** (`rk_...`) and are called directly from your backend.
 
 **Base URL**: `https://restormel.dev/keys/dashboard/api`  

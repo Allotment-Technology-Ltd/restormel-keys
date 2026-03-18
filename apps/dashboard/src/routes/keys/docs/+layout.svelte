@@ -95,7 +95,11 @@
     <a href="/keys/docs/compatibility" on:click={closeNavOnMobile}>Compatibility</a>
     <a href="/keys/docs/cloud-api" on:click={closeNavOnMobile}>Cloud API</a>
     <div class="nav-divider" aria-hidden="true"></div>
-    <a href={developerPortalUrl()} on:click={closeNavOnMobile}>API portal</a>
+    <a
+      href={developerPortalUrl()}
+      target="_blank"
+      rel="noopener noreferrer"
+      on:click={closeNavOnMobile}>API portal</a>
     <a href={DASHBOARD_BASE} on:click={closeNavOnMobile}>Dashboard</a>
     <a href={DASHBOARD_BASE + "/login"} on:click={closeNavOnMobile}>Sign in</a>
   </nav>

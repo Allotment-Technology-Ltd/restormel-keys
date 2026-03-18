@@ -26,7 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: DASHBOARD_BASE + "/logs", label: "Logs & Traces" },
   { href: DASHBOARD_BASE + "/lifecycle", label: "Lifecycle & Migrations" },
   { href: DASHBOARD_BASE + "/sandbox", label: "Sandbox" },
-  { href: developerPortalUrl(), label: "API portal", external: true, openInNewTab: false },
+  { href: developerPortalUrl(), label: "API portal", external: true, openInNewTab: true },
   { href: "/keys/docs", label: "Documentation", external: true },
   { href: DASHBOARD_BASE + "/settings", label: "Profile" },
 ];

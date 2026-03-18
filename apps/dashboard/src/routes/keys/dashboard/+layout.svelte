@@ -50,7 +50,7 @@
       <p class="mobile-gate-links">
         <a href="/keys/docs">Open docs</a>
         <span class="mobile-gate-sep">·</span>
-        <a href={developerPortalUrl()}>API portal</a>
+        <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a>
         <span class="mobile-gate-sep">·</span>
         <a href="/keys/pricing">Pricing</a>
       </p>
@@ -90,7 +90,12 @@
           <span class="topbar-title">{title}</span>
         </div>
         <div class="topbar-right">
-        <a class="topbar-portal" href={developerPortalUrl()}>API portal</a>
+        <a
+          class="topbar-portal"
+          href={developerPortalUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="API portal (opens in new tab)">API portal</a>
         {#if user}
           <UserMenu user={{ uid: user.uid, email: user.email ?? null, name: (user as { name?: string | null }).name ?? null }} align="right" />
         {:else}
@@ -123,7 +128,7 @@
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
                 <span class="welcome-sep">·</span>
-                <a href={developerPortalUrl()}>API portal</a>
+                <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a>
                 <span class="welcome-sep">·</span>
                 <a href="/keys/pricing">Pricing</a>
               </p>

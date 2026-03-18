@@ -8,7 +8,7 @@
 |--------|-----|
 | **Persistent “back to product”** | API docs often live on a different host (e.g. Zuplo). Users need an always-visible path to the main app, not only search. |
 | **Logo → product home** | Familiar convention; reduces “stranded” feeling. |
-| **Same-tab links when SSO matters** | Opening the portal in the same tab preserves session cookies on the IdP domain (`restormel.dev`). |
+| **New tab from product site** | Links to the Zuplo portal from `restormel.dev` open in a **new tab** so users keep their place on Keys/Docs/Dashboard. Portal login still hits `restormel.dev` for OIDC in that tab. |
 | **Footer + nav redundancy** | Pricing and legal links stay discoverable if header is minimal. |
 | **Docs vs API reference** | Separate mental models: *guides* on `restormel.dev/keys/docs`, *Gateway OAS + Try it* on the Zuplo portal. |
 

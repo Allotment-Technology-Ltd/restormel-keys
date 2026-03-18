@@ -31,8 +31,15 @@
     <ul class="site-header-links">
       <li><a href="/keys" class:active={active === "keys"}>Keys</a></li>
       <li><a href="/keys/docs" class:active={active === "docs"}>Docs</a></li>
-      <li>
-        <a href={portalUrl} class="site-header-external">API portal</a>
+      <li class="site-header-portal-item">
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="site-header-portal-link"
+          aria-label="API portal (opens in new tab)"
+        >API portal</a>
+        <span class="site-header-portal-hint" aria-hidden="true">New tab</span>
       </li>
       <li><a href={DASHBOARD_BASE} class:active={active === "dashboard"}>Dashboard</a></li>
     </ul>
@@ -69,7 +76,13 @@
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <a href="/keys" class:active={active === "keys"} on:click={closeMobileMenu}>Keys</a>
     <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Docs</a>
-    <a href={portalUrl} on:click={closeMobileMenu}>API portal</a>
+    <a
+      href={portalUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="API portal (opens in new tab)"
+      on:click={closeMobileMenu}
+      >API portal <span class="site-header-portal-hint-inline">(new tab)</span></a>
     <a href={DASHBOARD_BASE} class:active={active === "dashboard"} on:click={closeMobileMenu}>Dashboard</a>
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
@@ -145,10 +158,33 @@
     color: var(--rm-text);
     font-weight: var(--font-medium);
   }
-  .site-header-external::after {
-    content: " ↗";
+  .site-header-portal-item {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .site-header-portal-link {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    text-decoration: none;
+    padding: var(--space-2) 0;
+  }
+  .site-header-portal-link:hover {
+    color: var(--rm-sage);
+  }
+  .site-header-portal-hint {
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    font-weight: 400;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+  }
+  .site-header-portal-hint-inline {
+    color: var(--rm-dim);
+    font-weight: 400;
     font-size: 0.85em;
-    opacity: 0.7;
   }
   .site-header-right {
     display: flex;

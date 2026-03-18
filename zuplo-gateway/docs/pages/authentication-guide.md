@@ -3,8 +3,6 @@ title: Authentication
 description: Sign in, get your consumer key, and understand which key goes where.
 ---
 
-# Authentication
-
 Restormel Keys uses **two different keys** for two different API surfaces.
 
 ## 1) Consumer key (Gateway API)

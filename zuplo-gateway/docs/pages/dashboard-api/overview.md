@@ -3,8 +3,6 @@ title: Dashboard API
 description: Runtime control plane for Restormel Keys (resolve, policies, routes/steps).
 ---
 
-# Dashboard API
-
 The Dashboard API is the runtime control plane for Restormel Keys. Your backend calls it directly — **not through the Zuplo gateway**.
 
 **Base URL**: `https://restormel.dev/keys/dashboard/api`  

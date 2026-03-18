@@ -6,8 +6,6 @@ description: Retrieve your Zuplo consumer key for Gateway API access.
 import { ConsumerKeyDisplay } from "../components/ConsumerKeyDisplay";
 import { SignedIn, SignedOut } from "../components/AuthGate";
 
-# My Consumer Key
-
 Your consumer key authenticates you to the [Gateway API Reference](/api). Use it in the "Try it" panel or in your own API calls to the Zuplo gateway.
 
 <SignedIn>
@@ -15,6 +13,9 @@ Your consumer key authenticates you to the [Gateway API Reference](/api). Use it
 </SignedIn>
 
 <SignedOut>
-  Please [sign in](/oauth/login) to view your consumer key.
+  <p className="my-keys-signin">
+    <a href="/oauth/login">Sign in</a>
+    {" "}to view your consumer key.
+  </p>
 </SignedOut>
 

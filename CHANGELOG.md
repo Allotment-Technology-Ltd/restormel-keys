@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 ### Fixed
 
+- **Developer portal UI:** Removed duplicate page titles (Zudoku already shows frontmatter `title`). **My Consumer Key:** explicit `<a href="/oauth/login">` for sign-in (markdown inside MDX was not becoming a link). **restormel.dev:** API portal opens in a new tab with a small “New tab” hint instead of a ↗ icon.
+
 - **Zuplo portal login:** JWT `aud` now follows the OAuth **`client_id`** from `/keys/auth/authorize` (and cookie on callback), matching Zudoku’s configured client id — fixes `unexpected JWT "aud" (audience) claim value` when `RESTORMEL_OIDC_CLIENT_ID` was unset on Vercel while Zuplo used e.g. `restormel-keys-portal`.
 
 ### Added

@@ -78,7 +78,7 @@
   Gateway keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate — see Provider Integrations.
 </p>
 <p class="page-desc page-desc-secondary">
-  <strong>API portal</strong> (Zuplo): Gateway API reference, Try it, and your Zuplo consumer key (<code class="inline-code">zpka_…</code>) — <a href={developerPortalUrl()} rel="noopener noreferrer">open API portal</a>. Use the portal nav or logo to return to Keys, Docs, or this dashboard.
+  <strong>API portal</strong> (Zuplo): Gateway API reference, Try it, and your Zuplo consumer key (<code class="inline-code">zpka_…</code>) — <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">open API portal</a>. Use the portal nav or logo to return to Keys, Docs, or this dashboard.
 </p>
 
 {#if data.error}
