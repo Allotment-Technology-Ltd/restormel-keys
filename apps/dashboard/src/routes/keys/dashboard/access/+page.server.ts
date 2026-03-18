@@ -15,6 +15,7 @@ export type KeyWithProject = {
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) {
     return {
+      signedIn: false,
       projects: [],
       keys: [] as KeyWithProject[],
       workspaceId: null as string | null,
@@ -37,6 +38,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
     const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
     return {
+      signedIn: true,
       projects,
       keys: keysByProject,
       workspaceId: workspace.id,
@@ -46,6 +48,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[access] load failed:", msg.slice(0, 120));
     return {
+      signedIn: true,
       projects: [],
       keys: [] as KeyWithProject[],
       workspaceId: null,
