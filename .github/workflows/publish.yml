@@ -55,10 +55,8 @@ jobs:
         run: pnpm --filter @restormel/keys-cli test
       - name: Build @restormel/keys-cli
         run: pnpm --filter @restormel/keys-cli run build
-      - name: Patch keys-cli deps for npm (workspace:* → semver)
-        run: node scripts/patch-keys-cli-deps-for-npm-publish.mjs
+      # pnpm publish rewrites workspace:^ deps to semver; npm publish leaves workspace:* broken on consumers.
       - name: Publish @restormel/keys-cli to npm
-        working-directory: packages/cli
-        run: npm publish --access public
+        run: pnpm --filter @restormel/keys-cli publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

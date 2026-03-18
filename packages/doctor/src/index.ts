@@ -378,7 +378,7 @@ async function main(): Promise<void> {
   program
     .name("restormel-doctor")
     .description("Restormel Doctor — open-source CLI for setup and health checks")
-    .version("0.1.2")
+    .version("0.1.3")
     .option("--format <format>", "Output format: text|json", "text")
     .option("--out <path>", "Write JSON output to a file (requires --format json)")
     .option("--repo", "Best-effort scan of the repo for provider/model identifiers (no secrets)", false)

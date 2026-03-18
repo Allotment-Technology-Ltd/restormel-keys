@@ -4,8 +4,12 @@ CLI for Restormel Keys: reduce setup friction for Next.js, React, SvelteKit, and
 
 ## Install
 
+Use **v0.1.1+** on npm. **v0.1.0** is broken (`workspace:*` deps → `EUNSUPPORTEDPROTOCOL` when installing).
+
 ```bash
 pnpm add -D @restormel/keys-cli
+# or
+npx @restormel/keys-cli@0.1.1 init
 ```
 
 If you only need checks (no Keys scaffolding), use the standalone wedge CLIs:
