@@ -58,7 +58,7 @@ Single record of meaningful repo changes.
 
 ## keys-v0.2.2 (2025-03-18)
 
-**npm publish** (tag `keys-v0.2.2`): `@restormel/keys@0.2.2`, `@restormel/doctor@0.1.2`, `@restormel/validate@0.1.2`, **`@restormel/keys-cli@0.1.1`** (first publish). CI patches `workspace:*` → semver before `keys-cli` publish.
+**npm publish** (tag `keys-v0.2.2`): `@restormel/keys@0.2.2`, `@restormel/doctor@0.1.2`, `@restormel/validate@0.1.2`, **`@restormel/keys-cli@0.1.0`** (first publish). CI patches `workspace:*` → semver before `keys-cli` publish.
 
 ## keys-v0.2.1 (2025-03-18)
 

@@ -20,7 +20,7 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 | [@restormel/keys-react](packages/react) | 0.1.0 | React 18+: KeyManager, ModelSelector, CostEstimator, hooks, KeysProvider |
 | [@restormel/doctor](packages/doctor) | 0.1.2 | OSS CLI: setup and health checks (`restormel-doctor`) |
 | [@restormel/validate](packages/validate) | 0.1.2 | OSS CLI: credential/config validation (`restormel-validate`) |
-| [@restormel/keys-cli](packages/cli) | 0.1.1 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
+| [@restormel/keys-cli](packages/cli) | 0.1.0 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
 
 *(Vue wrapper is not published.)*
 
