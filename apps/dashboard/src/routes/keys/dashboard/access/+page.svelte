@@ -5,6 +5,7 @@
   import type { KeyWithProject } from "./+page.server";
 
   export let data: {
+    signedIn: boolean;
     projects: { id: string; name: string }[];
     keys: KeyWithProject[];
     workspaceId: string | null;
@@ -160,9 +161,17 @@
   <section class="section" aria-labelledby="dashboard-access-heading">
     <h2 id="dashboard-access-heading" class="section-title">Dashboard access</h2>
     <p class="section-desc">
-      Sign in with GitHub to configure projects, routes, policies, and integrations in the dashboard UI.
+      {#if data.signedIn}
+        You’re signed in. Use the dashboard to configure projects, routes, policies, and integrations.
+      {:else}
+        Sign in with GitHub to configure projects, routes, policies, and integrations in the dashboard UI.
+      {/if}
     </p>
-    <a href={DASHBOARD_BASE + "/login"} class="btn btn-secondary">Sign in</a>
+    {#if data.signedIn}
+      <a href={DASHBOARD_BASE + "/projects"} class="btn btn-secondary">Go to projects</a>
+    {:else}
+      <a href={DASHBOARD_BASE + "/login"} class="btn btn-secondary">Sign in</a>
+    {/if}
   </section>
 
   <section class="section" aria-labelledby="provider-creds-heading">
