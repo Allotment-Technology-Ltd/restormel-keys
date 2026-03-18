@@ -50,3 +50,15 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Test @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli test
+      - name: Build @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli run build
+      - name: Patch keys-cli deps for npm (workspace:* → semver)
+        run: node scripts/patch-keys-cli-deps-for-npm-publish.mjs
+      - name: Publish @restormel/keys-cli to npm
+        working-directory: packages/cli
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

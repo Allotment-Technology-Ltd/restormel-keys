@@ -8,7 +8,7 @@ Current state and next actions. Single source for "where we are"; keep aligned w
 
 **Next:** Phase 3.2 (Keys landing page), 3.3 (Pricing), 3.4 (dashboard), etc. per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md). For a practical remaining backlog (completed vs partial vs missing, tech debt, next tasks), see [docs/reference/remaining-backlog-after-implementation.md](docs/reference/remaining-backlog-after-implementation.md). **SOPHIA dogfooding** (ingestion pipeline + fallback routes/policies + UI embedding for model selection): [docs/reference/sophia-dogfooding-plan.md](docs/reference/sophia-dogfooding-plan.md).
 
-**Dogfooding / npm:** Walkthrough Phase 0–1 and [docs/reference/npm-packages.md](docs/reference/npm-packages.md) now match **headless-first** installs: `@restormel/doctor` **v0.1.1+** passes SvelteKit with only `@restormel/keys` (UI packages warn only). Dashboard project + Gateway Key still require **human GitHub sign-in**. Publish `@restormel/keys-cli` / UI packages when ready so `npx` install paths match full walkthrough.
+**Dogfooding / npm:** Publish workflow ships **@restormel/keys-cli** from tag `keys-v0.2.2+` (with keys/doctor/validate). [docs/reference/npm-packages.md](docs/reference/npm-packages.md). Dashboard Gateway Key: human GitHub sign-in.
 
 **Blockers:** None.
 
