@@ -11,6 +11,11 @@ const config = {
       base: "", // Served at /keys/dashboard on restormel.dev (no path prefix in app)
       relative: false,
     },
+    // SvelteKit CSRF protection rejects cross-origin form-encoded POSTs.
+    // The OIDC token endpoint (/keys/auth/token) receives exactly these from the portal.
+    // Disabling is safe: all sensitive endpoints enforce security via JWT signature
+    // or session validation — not relying on SvelteKit's CSRF tokens.
+    csrf: { checkOrigin: false },
   },
 };
 
