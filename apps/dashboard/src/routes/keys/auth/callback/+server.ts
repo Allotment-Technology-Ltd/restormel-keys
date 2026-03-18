@@ -4,6 +4,7 @@ import { jwksFromPublicKey, signJwtRs256 } from "$lib/server/oidc";
 import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
 import { isAllowedPortalOidcRedirectUri } from "$lib/server/portal-oidc-redirect";
+import { resolvePortalJwtAudience } from "$lib/server/portal-oidc-audience";
 
 const ISSUER = "https://restormel.dev/keys/auth";
 
@@ -58,6 +59,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const ctx = ctxRaw ? JSON.parse(Buffer.from(ctxRaw, "base64url").toString("utf8")) : null;
   const redirectUri = typeof ctx?.redirectUri === "string" ? ctx.redirectUri : "";
   const state = typeof ctx?.state === "string" ? ctx.state : url.searchParams.get("state") ?? "";
+  const jwtAudience = resolvePortalJwtAudience(
+    typeof ctx?.oauthClientId === "string" ? ctx.oauthClientId : null
+  );
 
   const accessToken = await exchangeGitHubCode(code);
   const profile = await fetchGitHubProfile(accessToken);
@@ -77,7 +81,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 60 * 60; // 1 hour
 
-  const clientId = process.env.RESTORMEL_OIDC_CLIENT_ID ?? "";
   const idToken = signJwtRs256(
     {
       sub: ws.id,
@@ -87,7 +90,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       iat: now,
       exp,
     },
-    { issuer: ISSUER, audience: clientId || "zudoku", kid }
+    { issuer: ISSUER, audience: jwtAudience, kid }
   );
 
   let target: string;

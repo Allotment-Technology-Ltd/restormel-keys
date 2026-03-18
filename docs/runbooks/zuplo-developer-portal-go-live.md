@@ -94,8 +94,8 @@ Set these in the Zuplo project environment variables/secrets (not in git):
 
 - `ZUDOKU_PUBLIC_RESTORMEL_SITE_ORIGIN` (optional)
   - e.g. `https://restormel.dev` — used for **On restormel.dev** nav links and the header logo URL. Defaults to `https://restormel.dev` if unset.
-- `RESTORMEL_OIDC_CLIENT_ID`
-  - the client id Zudoku uses for the OIDC provider (can be any stable string; must match the audience used by the issuer)
+- `RESTORMEL_OIDC_CLIENT_ID` (optional on dashboard if Zuplo sends `client_id`)
+  - must **match** Zuplo’s `ZUDOKU_PUBLIC_RESTORMEL_OIDC_CLIENT_ID` if set. The issuer sets JWT **`aud`** to the OAuth **`client_id`** from the authorize request (e.g. `restormel-keys-portal`), so login works even when this env is unset on Vercel. Set it anyway if you use multiple portal clients.
 
 ### In Restormel dashboard app (server env)
 

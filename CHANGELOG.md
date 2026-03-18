@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Fixed
+
+- **Zuplo portal login:** JWT `aud` now follows the OAuth **`client_id`** from `/keys/auth/authorize` (and cookie on callback), matching Zudoku’s configured client id — fixes `unexpected JWT "aud" (audience) claim value` when `RESTORMEL_OIDC_CLIENT_ID` was unset on Vercel while Zuplo used e.g. `restormel-keys-portal`.
+
 ### Added
 
 - **API portal navigation and UX.** Header on Keys/Docs marketing shell: **API portal** link; **Pricing** in avatar menu + footer. Dashboard: topbar + sidebar **API portal** (same tab for SSO), **Pricing** in avatar menu; Access page blurb; docs sidebar link. Zuplo portal: **On restormel.dev** nav tab, logo → Keys, introduction copy. Env: `PUBLIC_KEYS_DEVELOPER_PORTAL_URL`, `ZUDOKU_PUBLIC_RESTORMEL_SITE_ORIGIN`. See [docs/reference/developer-portal-ux-navigation.md](docs/reference/developer-portal-ux-navigation.md).

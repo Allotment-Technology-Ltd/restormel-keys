@@ -5,6 +5,7 @@ import { jwksFromPublicKey, signJwtRs256 } from "$lib/server/oidc";
 import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
 import { isAllowedPortalOidcRedirectUri } from "$lib/server/portal-oidc-redirect";
+import { resolvePortalJwtAudience } from "$lib/server/portal-oidc-audience";
 
 const ISSUER = "https://restormel.dev/keys/auth";
 
@@ -18,6 +19,8 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
   const redirectUri = url.searchParams.get("redirect_uri") ?? "";
   const state = url.searchParams.get("state") ?? "";
   const scope = url.searchParams.get("scope") ?? "openid profile email";
+  const oauthClientId = url.searchParams.get("client_id") ?? "";
+  const jwtAudience = resolvePortalJwtAudience(oauthClientId);
 
   if (!redirectUri || !isAllowedPortalOidcRedirectUri(redirectUri)) {
     throw error(400, "Invalid or missing redirect_uri");
@@ -39,7 +42,6 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
       const { kid } = jwksFromPublicKey();
       const now = Math.floor(Date.now() / 1000);
       const exp = now + 60 * 60;
-      const clientId = process.env.RESTORMEL_OIDC_CLIENT_ID ?? "";
       const idToken = signJwtRs256(
         {
           sub: ws.id,
@@ -49,7 +51,7 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
           iat: now,
           exp,
         },
-        { issuer: ISSUER, audience: clientId || "zudoku", kid }
+        { issuer: ISSUER, audience: jwtAudience, kid }
       );
       const out = new URL(redirectUri);
       out.searchParams.set("code", idToken);
@@ -65,6 +67,7 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
     redirectUri,
     state,
     scope,
+    oauthClientId: oauthClientId || undefined,
     createdAt: Date.now(),
   };
   cookies.set("rm_oidc_ctx", Buffer.from(JSON.stringify(ctx), "utf8").toString("base64url"), {
