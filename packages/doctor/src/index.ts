@@ -228,7 +228,8 @@ async function runDoctor(): Promise<DoctorReport> {
         for (const m of envMatches) {
           envVars.add(m);
         }
-        if (envMatches.length) hits.push({ file: fullPath, kind: "env", value: envMatches[0] });
+        const envFirst = envMatches[0];
+        if (envFirst !== undefined) hits.push({ file: fullPath, kind: "env", value: envFirst });
 
         // Models
         const modelMatches = raw.match(modelRe) ?? [];
@@ -236,7 +237,8 @@ async function runDoctor(): Promise<DoctorReport> {
           // normalise to original casing for IDs
           models.add(m);
         }
-        if (modelMatches.length) hits.push({ file: fullPath, kind: "model", value: modelMatches[0] });
+        const modelFirst = modelMatches[0];
+        if (modelFirst !== undefined) hits.push({ file: fullPath, kind: "model", value: modelFirst });
       }
     }
 
