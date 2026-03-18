@@ -20,10 +20,10 @@
   <h2>Phases</h2>
   <ol class="walkthrough-steps">
     <li><a href="/keys/docs/walkthrough/phase-0-inventory"><strong>Phase 0 — Inventory</strong></a> — Audit existing routing and decide what to remove, keep, or wrap.</li>
-    <li><a href="/keys/docs/walkthrough/phase-1-install"><strong>Phase 1 — Install and configure</strong></a> — Packages, dashboard project, Gateway Key, <code>keys doctor</code> (framework and config; Cloud env is verified in Phase 2).</li>
+    <li><a href="/keys/docs/walkthrough/phase-1-install"><strong>Phase 1 — Install and configure</strong></a> — Packages, dashboard project, Gateway Key, Restormel Doctor (framework and config; Cloud env is verified in Phase 2).</li>
     <li><a href="/keys/docs/walkthrough/phase-2-resolve"><strong>Phase 2 — Resolve your first model</strong></a> — One resolve call from your backend; verify <code>providerType</code> and <code>modelId</code> in the response.</li>
     <li><a href="/keys/docs/walkthrough/phase-3-routes"><strong>Phase 3 — Add routes and fallbacks</strong></a> — Create routes with steps in the Dashboard; configure fallback chain; wire route IDs.</li>
-    <li><a href="/keys/docs/walkthrough/phase-4-policies"><strong>Phase 4 — Apply policies</strong></a> — Model allowlist, deprecated-model block, budget cap; use the evaluate endpoint with a <strong>Management Key</strong> (workspace-scoped, not the project Gateway Key).</li>
+    <li><a href="/keys/docs/walkthrough/phase-4-policies"><strong>Phase 4 — Apply policies</strong></a> — Model allowlist, deprecated-model block, budget cap; use the evaluate endpoint from your backend with your project <strong>Gateway Key</strong> (or from dashboard session).</li>
     <li><a href="/keys/docs/walkthrough/phase-5-ui"><strong>Phase 5 — Embed the UI</strong></a> — ModelSelector and optional KeyManager; policy-filtered model list via a server-side proxy.</li>
     <li><a href="/keys/docs/walkthrough/phase-6-golive"><strong>Phase 6 — Go live</strong></a> — Parallel run, cutover, smoke test, legacy code removal.</li>
     <li><a href="/keys/docs/walkthrough/migration-paths"><strong>Migration paths</strong></a> — LiteLLM, Portkey, OpenRouter, custom.</li>
@@ -35,9 +35,8 @@
 
   <h2>Auth at a glance</h2>
   <ul>
-    <li><strong>Gateway Key</strong> — Resolve API, project-scoped; use in app env vars for your backend.</li>
-    <li><strong>Management Key</strong> — Policies evaluate, workspace-scoped; backend or automation only; never in the browser.</li>
-    <li><strong>Session</strong> — Dashboard UI (Sign in with GitHub).</li>
+    <li><strong>Gateway Key</strong> — Resolve API and backend policy evaluate calls for your project; keep it server-side only.</li>
+    <li><strong>Session</strong> — Dashboard UI (Sign in with GitHub) and policy testing from the dashboard.</li>
   </ul>
 
   <h2>Next</h2>

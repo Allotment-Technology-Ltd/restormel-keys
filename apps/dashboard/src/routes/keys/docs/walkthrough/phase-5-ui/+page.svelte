@@ -46,12 +46,12 @@ Steps:
    - ModelSelector: save { modelId, providerId } to your backend (e.g. POST /api/preferences).
    - KeyManager (if BYOK): wire add/remove to your key storage API (POST /api/keys, DELETE /api/keys/:id).
 4. Filter models by policy:
-   - Recommended: a server-side endpoint (e.g. GET /api/allowed-models) that calls policy evaluate using a Management Key; return only allowed model IDs to the browser.
+   - Recommended: a server-side endpoint (e.g. GET /api/allowed-models) that calls policy evaluate using your project Gateway Key; return only allowed model IDs to the browser.
 5. Add required UI states: loading, error (with retry), empty.
 6. Theme the components via --rk-* CSS custom properties to match your app.
 7. Verify: renders, callbacks fire, theming applies, keyboard navigation works.
 
-DO NOT: Expose Management Key or Gateway Key in the browser. Log raw keys. Skip empty/error/loading states. Hardcode real secrets.`;
+DO NOT: Expose Gateway Key in the browser. Log raw keys. Skip empty/error/loading states. Hardcode real secrets.`;
 
   const agentPrompts = [
     {
@@ -68,7 +68,7 @@ Steps:
 2. Identify which components you need (ModelSelector required? KeyManager for BYOK?).
 3. Identify the target page(s) and component boundaries in your app where these will be embedded.
 4. Define the backend endpoints you will wire (preferences save, key storage) and the data contracts.
-5. Decide how model filtering will work (server proxy using Management Key vs local entitlements if using local resolve).
+5. Decide how model filtering will work (server proxy using Gateway Key vs local entitlements if using local resolve).
 6. List required UI states and accessibility checks.
 
 DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
@@ -149,9 +149,9 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
 
   <WalkthroughStep stepId="5.5" title="Step 5.5 — Filter the model list by policies" {phaseSlug}>
   <p>The ModelSelector shows all models from the configured providers by default. If you have policies (Phase 4) that restrict which models are allowed, filter the model list so users only see valid choices.</p>
-  <p><strong>Server-side filtering (recommended):</strong> Add an API route (e.g. <code>GET /api/allowed-models</code>) that calls the Restormel <strong>evaluate</strong> endpoint for each candidate model, using a <strong>Management Key</strong> (not the Gateway Key). Return only the allowed model IDs to the client and configure the component with that list.</p>
+  <p><strong>Server-side filtering (recommended):</strong> Add an API route (e.g. <code>GET /api/allowed-models</code>) that calls the Restormel <strong>evaluate</strong> endpoint for each candidate model, using your project <strong>Gateway Key</strong> from server-side environment variables. Return only the allowed model IDs to the client and configure the component with that list.</p>
   <div class="callout callout-security">
-    <strong>Security</strong> — Never call the policies API from the browser. Keep <code>RESTORMEL_MANAGEMENT_KEY</code> server-side only. Use a server proxy like <code>/api/allowed-models</code> and return only the filtered model IDs to the client.
+    <strong>Security</strong> — Never call the policies API from the browser. Keep <code>RESTORMEL_GATEWAY_KEY</code> server-side only. Use a server proxy like <code>/api/allowed-models</code> and return only the filtered model IDs to the client.
   </div>
   <p><strong>Client-side filtering:</strong> If you use local resolve (Phase 2, Step 2.6), you can use <code>keys.entitlements.getAvailableModels(allModelIds)</code> to filter.</p>
   <h3>You'll see</h3>

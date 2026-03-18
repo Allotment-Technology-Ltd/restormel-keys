@@ -5,6 +5,7 @@
 export {
   upsertUser,
   getOrCreateDefaultWorkspace,
+  getWorkspace,
   listProjects,
   listProjectsByWorkspace,
   getProjectInWorkspace,
@@ -75,6 +76,7 @@ export {
   listUsageAggregates,
   aggregateRequestLogsToUsage,
   insertUsageAggregate,
+  setWorkspacePlan,
   type RequestLogParams,
   type RequestLogRecord,
   type ListRequestLogsFilters,

@@ -1,13 +1,13 @@
 <svelte:head>
-  <title>Integration vs hosted vault — Restormel Keys</title>
-  <meta name="description" content="Clarify what Restormel Keys owns in v1 (control plane keys) vs what your gateway/provider/secret store owns; hosted vault is future/optional." />
+  <title>Integration vs key custody — Restormel Keys</title>
+  <meta name="description" content="Clarify what Restormel Keys stores (routing/policy config) vs what your gateway/provider/secret store should hold. Keys remain user-controlled." />
 </svelte:head>
 
 <div class="doc-content">
-  <h1>Integration vs hosted vault</h1>
+  <h1>Integration vs key custody</h1>
   <p class="doc-intro">
-    Restormel Keys should not be assumed to be a hosted custodian of raw provider secrets in v1.
-    This page clarifies the boundary: what Restormel owns, what your gateway/provider owns, and what “future hosted vault” would mean.
+    Restormel Keys does not take custody of raw provider secrets as a core product feature.
+    This page clarifies the boundary: what Restormel stores, and what should live in your gateway/provider account or your own secret store.
   </p>
 
   <h2>What Restormel owns (v1 default)</h2>
@@ -24,14 +24,8 @@
     <li><strong>Builder-managed direct:</strong> in your env vars / secret manager, never pasted into Restormel-hosted infrastructure by default</li>
   </ul>
 
-  <h2>Future hosted vault (optional, later)</h2>
-  <p>
-    A Restormel-hosted provider-secret vault can be an optional later-phase capability for teams that explicitly want it.
-    If implemented, it should be clearly opt-in, with well-defined threat model, auditability, and isolation boundaries.
-  </p>
-
   <div class="callout callout-tip">
-    <strong>Practical guidance</strong> — If a doc or UI flow implies “paste your OpenAI key into Restormel,” treat that as legacy unless it is explicitly marked as an optional future feature.
+    <strong>Practical guidance</strong> — If a doc or UI flow implies “paste your OpenAI key into Restormel,” treat that as legacy. Use your own storage (env, secret manager, gateway vendor) and keep keys user-controlled.
   </div>
 </div>
 

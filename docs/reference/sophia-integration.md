@@ -150,7 +150,7 @@ export function createResolveHandler(storage: KeyStorage) {
 - **POST (add key):** The Keys middleware validates the key and calls `storage.set(userId, id, { id, provider, label })`. It does **not** store the raw key. In SOPHIA you already store the hashed key in Firestore at creation time. Either:
   - Intercept POST in your route: first create the key in Firestore (hash + metadata) using your existing logic, then call the Keys middleware for the response; or
   - Extend your Firestore `KeyStorage.set` so that when the middleware calls `set`, you also receive the raw key from the request body and persist the hash in the same document (ensure the route passes the body to the handler that has access to it). The standard middleware reads body once, so you may need a small wrapper that stores the hash then calls the middleware.
-- **getKeyValue for proxy:** If you use the Keys proxy, you must provide `getKeyValue(userId, resolved)` that returns the raw key for the resolved key id. Implement that by reading from your secure store (e.g. decrypt or look up by id from the same Firestore doc where you store the key material or its reference).
+- **getKeyValue (optional execution helper):** If you use the optional Request/Response forwarder in your own app, you must provide `getKeyValue(userId, resolved)` that returns the raw key for the resolved key id. Implement that by reading from your secure store (e.g. decrypt or look up by id from the same Firestore doc where you store the key material or its reference). This is not required when you execute via your existing provider access layer (OpenRouter/Portkey/Vercel AI Gateway or direct providers).
 
 ---
 

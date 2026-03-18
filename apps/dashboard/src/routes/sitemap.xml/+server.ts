@@ -3,6 +3,9 @@ import type { RequestHandler } from "./$types";
 const STATIC_PATHS = [
   "/keys",
   "/keys/pricing",
+  "/keys/privacy",
+  "/keys/terms",
+  "/keys/refund-policy",
   "/keys/docs",
   "/keys/docs/walkthrough",
   "/keys/docs/walkthrough/phase-0-inventory",

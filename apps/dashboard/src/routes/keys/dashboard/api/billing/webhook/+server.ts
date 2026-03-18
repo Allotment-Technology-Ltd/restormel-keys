@@ -9,9 +9,45 @@ import {
   parsePaddleWebhook,
   type PaddleWebhookEvent,
 } from "$lib/server/billing/paddle";
+import { getOrCreateDefaultWorkspace, setWorkspacePlan } from "$lib/server/db";
 
-function handleWebhookEvent(_event: PaddleWebhookEvent): { ok: boolean; message: string } {
-  // Phase 3: acknowledge only. Persist subscription/customer in a later phase.
+function asString(x: unknown): string | null {
+  return typeof x === "string" && x.trim() ? x.trim() : null;
+}
+
+function getCustomData(event: PaddleWebhookEvent): Record<string, unknown> {
+  const data = event.data ?? {};
+  const custom =
+    (data.custom_data as Record<string, unknown> | undefined) ??
+    (data.customData as Record<string, unknown> | undefined) ??
+    {};
+  return custom && typeof custom === "object" ? custom : {};
+}
+
+async function handleWebhookEvent(event: PaddleWebhookEvent): Promise<{ ok: boolean; message: string }> {
+  const type = (event.event_type ?? "").toLowerCase();
+  if (!type) return { ok: true, message: "ignored" };
+
+  // Minimal v1 billing: treat a completed checkout as Pro activation for the user's workspace.
+  // We use custom_data from checkout creation (uid, tier, billingPeriod).
+  if (type === "transaction.completed" || type === "checkout.completed") {
+    const custom = getCustomData(event);
+    const uid = asString(custom.uid);
+    const tier = asString(custom.tier)?.toLowerCase();
+    const transactionId = asString((event.data as any)?.id) ?? asString((event.data as any)?.transaction_id);
+
+    if (uid && tier === "pro") {
+      const ws = await getOrCreateDefaultWorkspace(uid);
+      await setWorkspacePlan({
+        workspaceId: ws.id,
+        plan: "pro",
+        paddleTransactionId: transactionId,
+        paddleSubscriptionStatus: "active",
+      });
+      return { ok: true, message: "plan_updated" };
+    }
+  }
+
   return { ok: true, message: "received" };
 }
 
@@ -30,6 +66,6 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: "Invalid webhook payload" }, { status: 400 });
   }
 
-  const outcome = handleWebhookEvent(event);
+  const outcome = await handleWebhookEvent(event);
   return json(outcome);
 };

@@ -102,12 +102,12 @@ If you have a route step that specifies a model currently marked as deprecated, 
 To verify the policy is active, use the **evaluate** endpoint:
 
 > **Security**
-> `/api/policies/*` endpoints are workspace-scoped and do **not** accept a project Gateway Key. Use a **Management Key** for server-to-server checks, or test from the dashboard UI (session cookie).
+> Never call `/api/policies/*` from the browser. Call it from your backend with the project Gateway Key, or test from the dashboard UI (session cookie).
 
 ```bash
 curl -s -X POST \
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_MANAGEMENT_KEY}" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "'${RESTORMEL_PROJECT_ID}'",
@@ -160,7 +160,7 @@ Policies stack: all active policies must pass for a model to be resolved. Verify
 ```bash
 curl -s -X POST \
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_MANAGEMENT_KEY}" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "'${RESTORMEL_PROJECT_ID}'",

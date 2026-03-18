@@ -36,6 +36,8 @@ const mockStep = {
   fallbackOn: null,
   timeoutMs: null,
   enabled: true,
+  createdAt: new Date(1).toISOString(),
+  updatedAt: new Date(1).toISOString(),
 };
 
 vi.mock("$lib/server/db", () => ({
@@ -132,7 +134,7 @@ describe("POST /api/projects/[id]/resolve", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.data).toMatchObject({
-      routeId: "route-1",
+      routeId: "Default",
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),

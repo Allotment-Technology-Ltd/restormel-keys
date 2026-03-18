@@ -150,7 +150,7 @@ echo "   Explanation: $(echo $RESULT | jq -r '.data.explanation')"
 echo "2. Policy evaluate (allowed model)..."
 EVAL=$(curl -s -X POST \
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_MANAGEMENT_KEY}" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
   -H "Content-Type: application/json" \
   -d '{ "projectId": "'${RESTORMEL_PROJECT_ID}'", "environmentId": "production", "modelId": "gpt-4o", "providerType": "openai" }')
 echo "   Result: $(echo $EVAL | jq '.data')"

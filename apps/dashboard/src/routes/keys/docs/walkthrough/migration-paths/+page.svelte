@@ -134,7 +134,7 @@ DO NOT: Change code. Remove the old system. Paste secrets.`,
   <p>The walkthrough phases (0–6) are framework-agnostic. This page maps each migration source to the phases, highlights what's different, and provides source-specific prompts.</p>
 
   <WalkthroughStep stepId="principle" title="Migration principle: the strangler pattern" defaultOpen={true} phaseSlug={phaseSlug}>
-  <p>Your app sends 100% traffic to the old routing system (LiteLLM, Portkey, or custom). A feature flag gates Restormel resolve; when enabled, some traffic takes the new path to the AI provider. Both paths can hit the provider until you cut over.</p>
+  <p>Your app sends 100% traffic to the old routing system (LiteLLM, Portkey, or custom). A feature flag gates <strong>Restormel Resolve</strong>; when enabled, some traffic takes the new path to the AI provider. Both paths can hit the provider until you cut over.</p>
   <ol>
     <li><strong>Install</strong> Restormel Keys alongside your existing system (Phase 1). Nothing changes yet.</li>
     <li><strong>Wire</strong> the resolve call behind a feature flag (Phase 2). Old system still handles 100%.</li>
@@ -179,7 +179,7 @@ DO NOT: Change code. Remove the old system. Paste secrets.`,
     <tbody>
       <tr><td>0</td><td>Inventory: your LiteLLM config, the Docker/process setup, and every place your app calls the LiteLLM proxy. Classify as "REMOVE" (call providers directly) or "WRAP" (keep LiteLLM as normalisation layer with Restormel doing routing).</td></tr>
       <tr><td>1</td><td>Install Restormel packages. No change to LiteLLM yet.</td></tr>
-      <tr><td>2</td><td>Wire Restormel resolve. If keeping LiteLLM: resolve returns the model, you pass it to LiteLLM. If removing: resolve returns the provider, you call the provider SDK directly.</td></tr>
+      <tr><td>2</td><td>Wire <strong>Restormel Resolve</strong>. If keeping LiteLLM: resolve returns the model, you pass it to LiteLLM. If removing: resolve returns the provider, you call the provider SDK directly.</td></tr>
       <tr><td>3</td><td>Translate LiteLLM fallback settings into dashboard routes. Each LiteLLM fallback model becomes a step in a Restormel route.</td></tr>
       <tr><td>4</td><td>Translate any LiteLLM allowed_models or budget settings into Restormel policies.</td></tr>
       <tr><td>5</td><td>If LiteLLM had no UI, this is net-new. If it did, replace with Restormel ModelSelector.</td></tr>
@@ -200,7 +200,7 @@ DO NOT: Change code. Remove the old system. Paste secrets.`,
     <tbody>
       <tr><td>0</td><td>Inventory: Portkey configs (JSON headers or API configs), the Portkey API key, every place your app calls the Portkey API or uses the Portkey SDK.</td></tr>
       <tr><td>1</td><td>Install Restormel packages alongside Portkey.</td></tr>
-      <tr><td>2</td><td>Wire Restormel resolve. Your app calls resolve first, then makes the provider call directly. Feature flag gates which path runs.</td></tr>
+      <tr><td>2</td><td>Wire <strong>Restormel Resolve</strong>. Your app calls resolve first, then makes the provider call directly. Feature flag gates which path runs.</td></tr>
       <tr><td>3</td><td>Translate Portkey routing configs (provider order, fallback strategy) into dashboard routes with steps.</td></tr>
       <tr><td>4</td><td>Translate any Portkey model restrictions or budget controls into Restormel policies.</td></tr>
       <tr><td>5</td><td>Embed Restormel UI. Portkey has no embeddable BYOK UI — this is net-new.</td></tr>

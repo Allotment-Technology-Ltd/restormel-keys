@@ -201,8 +201,8 @@ export async function GET() {
       {
         method: 'POST',
         headers: {
-          // Use a Management Key for policies (Gateway Keys do not have access to workspace-scoped policy APIs)
-          'Authorization': `Bearer ${process.env.RESTORMEL_MANAGEMENT_KEY}`,
+          // Use your Gateway Key from server-side env for policy evaluate
+          'Authorization': `Bearer ${process.env.RESTORMEL_GATEWAY_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -224,7 +224,7 @@ export async function GET() {
 Then in your client component, fetch `/api/allowed-models` and only configure the providers/models that are allowed.
 
 > **Security**
-> Never call the policies API from the browser. Keep `RESTORMEL_MANAGEMENT_KEY` server-side only (e.g. in a route handler). Use a server proxy like `/api/allowed-models` and return only the filtered model IDs to the client.
+> Never call the policies API from the browser. Keep `RESTORMEL_GATEWAY_KEY` server-side only (e.g. in a route handler). Use a server proxy like `/api/allowed-models` and return only the filtered model IDs to the client.
 
 **B) Client-side filtering with entitlements:** If you use local resolve (Phase 2, Step 2.6), the `keys.entitlements` object can filter models:
 

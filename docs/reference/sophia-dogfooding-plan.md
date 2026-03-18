@@ -42,16 +42,16 @@ A full **build-agent prompt** for the SOPHIA repo is in [§ Build-agent prompt (
 
 ## 1. Ingestion pipeline on Restormel Keys
 
-- **Current (SOPHIA):** Ingestion likely uses platform keys and/or ad-hoc routing. Goal is to route all ingestion through Restormel so resolution, fallback, and policies are centralized.
+- **Current (SOPHIA):** Ingestion likely uses platform keys and/or ad-hoc routing. Goal is to call **Restormel Resolve** for decisions (route/provider/model + policy outcomes) so product controls are centralized, while execution stays in your existing provider access layer (gateway or direct) and observability stays in your existing tooling.
 - **Restormel side:**
   - Create (or reuse) a **workspace** and **project** for SOPHIA ingestion.
   - Define **environments** (e.g. production, staging).
   - Create **routes** with **steps** that define provider order and optional model pinning; set **route mode** to fallback chain so failed steps trigger the next step.
   - Attach **policies** as needed (model allowlist, budget cap, deprecated-model block).
-  - **Resolve API:** `POST /keys/dashboard/api/projects/[id]/resolve` (or equivalent gateway-backed API) with `environmentId` (and optional `routeId`) returns `routeId`, `providerType`, `modelId`, etc. SOPHIA ingestion calls this before each AI request and uses the returned provider/model (and gateway key) to call the provider or a Restormel proxy.
+  - **Resolve API:** `POST /keys/dashboard/api/projects/[id]/resolve` with `environmentId` (and optional `routeId`) returns `routeId`, `providerType`, `modelId`, etc. SOPHIA ingestion calls this before each AI request and uses the returned provider/model to call your provider access layer (OpenRouter/Portkey/Vercel AI Gateway or direct providers).
 - **SOPHIA side (in SOPHIA repo):**
   - Add a **resolve** step to the ingestion path: call Restormel resolve API with project + environment (and optionally route), then use the returned provider/model and credential (platform or BYOK) for the upstream request.
-  - Use **Gateway Key** (or Management Key) for authenticating to Restormel; store in SOPHIA env or secret manager.
+  - Use a **Gateway Key** for authenticating to Restormel; store it in SOPHIA env or secret manager.
   - On resolve failure or 503, implement local fallback (e.g. retry, skip step) as needed.
 
 **Reference:** Dashboard route resolver: `apps/dashboard/src/lib/server/route-resolver.ts`. Resolve endpoint: `apps/dashboard/src/routes/keys/dashboard/api/projects/[id]/resolve/+server.ts`. Zuplo/API gateway runbooks: `docs/runbooks/zuplo-setup.md`, `docs/runbooks/zuplo-launch-cli.md`.

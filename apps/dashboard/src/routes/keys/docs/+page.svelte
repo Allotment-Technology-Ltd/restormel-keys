@@ -13,9 +13,17 @@
   <p class="doc-tagline">Choose a provider access mode, then follow the walkthrough.</p>
 
   <p>
-    Restormel Keys is designed to slot into your existing stack. It complements provider-access layers like <strong>OpenRouter</strong>, <strong>Vercel AI Gateway</strong>, and <strong>Portkey</strong>, and it also supports direct providers when you manage credentials in your own environment.
-    This doc set covers install, framework choice, provider access modes, and the control-plane API.
+    <strong>Restormel Keys</strong> is a product in the <strong>Restormel</strong> platform. It’s designed to slot into your existing stack. It complements provider-access layers like <strong>OpenRouter</strong>, <strong>Vercel AI Gateway</strong>, and <strong>Portkey</strong>, and it also supports direct providers when you manage credentials in your own environment.
+    This doc set covers install, framework choice, provider access modes, the <strong>Restormel Resolve</strong> API surface, and the Dashboard.
   </p>
+
+  <h2>Products and components</h2>
+  <ul>
+    <li><strong>Restormel Keys</strong> — routing, policies, cost, and embeddable UX for AI apps.</li>
+    <li><strong>Restormel Resolve</strong> — the API surface that returns the provider/model decision for a request.</li>
+    <li><strong>Restormel Doctor</strong> — health checks for framework + config.</li>
+    <li><strong>Restormel Validate</strong> — verification checks for provider access and stored credentials (CI-friendly).</li>
+  </ul>
 
   <h2>Start with Next.js</h2>
   <p>Using <strong>Next.js App Router</strong>? Install the core plus React and Web Components. Full path: <a href="/keys/docs/compatibility">Framework compatibility</a>.</p>

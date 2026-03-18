@@ -6,16 +6,6 @@ const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-  const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) {
-    return {
-      aggregates: [],
-      recentLogs: [],
-      period: { since: 0, until: 0 },
-      days: DEFAULT_DAYS,
-      error: "Unauthorized" as string | null,
-    };
-  }
   const daysParam = url.searchParams.get("days");
   const days = Math.min(
     MAX_DAYS,
@@ -24,6 +14,16 @@ export const load: PageServerLoad = async ({ url, locals }) => {
   const until = Date.now();
   const since = until - days * 24 * 60 * 60 * 1000;
   try {
+    const ctx = await getWorkspaceAndActor(locals);
+    if (!ctx) {
+      return {
+        aggregates: [],
+        recentLogs: [],
+        period: { since, until },
+        days,
+        error: "Unauthorized" as string | null,
+      };
+    }
     const [aggregates, recentLogs] = await Promise.all([
       aggregateRequestLogsToUsage(ctx.workspaceId, { since, until }),
       listRequestLogs(ctx.workspaceId, { limit: 50, since, until }),

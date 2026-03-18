@@ -22,7 +22,7 @@
 
   const curlEvaluate = `curl -s -X POST \\
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \\
-  -H "Authorization: Bearer \${RESTORMEL_MANAGEMENT_KEY}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "projectId": "'\${RESTORMEL_PROJECT_ID}'",
@@ -32,7 +32,7 @@
   }' | jq '.data'`;
 
   const curlStacking = `curl -s -X POST "..." /api/policies/evaluate \\
-  -H "Authorization: Bearer \${RESTORMEL_MANAGEMENT_KEY}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
   -d '{ "projectId": "...", "environmentId": "production", "modelId": "gpt-4o", "providerType": "openai" }' \\
   | jq '.data'`;
 
@@ -78,7 +78,7 @@ Goal: Review Phase 4 of the Restormel Keys walkthrough and produce a concrete pl
 Steps:
 1. Read the Phase 4 walkthrough page in full.
 2. Decide which policies you will create first (model_allowlist, deprecated_model_block, optional budget_cap) and at what scope.
-3. Plan how you will test each policy (route step with blocked model, evaluate endpoint with Management Key, etc.).
+3. Plan how you will test each policy (route step with blocked model, evaluate endpoint with Gateway Key from your backend or dashboard session, etc.).
 4. Identify what (if anything) must change in your app code for policy errors (logging, user-safe messages, alerts).
 5. Restate the Phase 4 gate in your own words.
 
@@ -98,7 +98,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
 
 <svelte:head>
   <title>Phase 4 — Apply policies — Restormel Keys</title>
-  <meta name="description" content="Add model allowlist, deprecated-model block, budget cap; use the evaluate endpoint with a Management Key (workspace-scoped)." />
+  <meta name="description" content="Add model allowlist, deprecated-model block, budget cap; use the evaluate endpoint from your backend with your Gateway Key." />
 </svelte:head>
 
 <div class="doc-content">
@@ -162,7 +162,7 @@ DO NOT: Create policies yet. Paste real keys into prompts. Change code.`,
   <h3>How to test</h3>
   <p>If you have a route step that specifies a model currently marked as deprecated, resolve should skip that step. To verify the policy is active, use the <strong>evaluate</strong> endpoint.</p>
   <div class="callout callout-security">
-    <strong>Security</strong> — <code>/api/policies/*</code> endpoints are workspace-scoped and do <strong>not</strong> accept a project Gateway Key. Use a <strong>Management Key</strong> for server-to-server checks, or test from the dashboard UI (session cookie).
+    <strong>Security</strong> — Never call <code>/api/policies/*</code> from the browser. Call it from your backend with your project <strong>Gateway Key</strong>, or test directly from the dashboard UI (session cookie).
   </div>
   <CodeBlock language="bash" code={curlEvaluate} />
   <p><strong>Expected:</strong> <code>data.allowed</code> is <code>false</code> when the model/provider combination is blocked by policies; <code>data.violations</code> explains why.</p>

@@ -50,16 +50,22 @@ export default function Settings() {
   <title>Restormel Keys — BYOK for AI apps</title>
   <meta
     name="description"
-    content="Routing and governance for AI without replacing your stack. Works with OpenRouter, Vercel AI Gateway, Portkey, or your own env. One route handler, policies, health, cost, and embeddable UX."
+    content="The missing application layer for AI apps: BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers. No proxy. No infrastructure. No migration."
   />
 </svelte:head>
 
 <article class="keys-page">
   <section class="section section-hero" aria-labelledby="hero-heading">
     <div class="container">
-      <h1 id="hero-heading" class="hero-headline">Routing and governance for AI — without replacing your stack.</h1>
+      <h1 id="hero-heading" class="hero-headline">The missing layer for AI apps</h1>
       <p class="hero-subhead">
-        You keep provider access where it is: OpenRouter, Portkey, Vercel AI Gateway, or your own env and secrets. Restormel Keys adds routing, policies, health checks, cost visibility, and embeddable UX on top.
+        Add BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers.
+      </p>
+      <p class="hero-who">
+        No proxy. No infrastructure. No migration.
+      </p>
+      <p class="hero-who">
+        <strong>Restormel Keys</strong> is a product in the <strong>Restormel</strong> platform.
       </p>
       <p class="hero-who">
         For AI SaaS builders and small teams that want one control layer across gateways and direct providers.
@@ -74,16 +80,33 @@ export default function Settings() {
 
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
-      <h2 id="why-heading" class="section-title">Why Keys exists</h2>
+      <h2 id="why-heading" class="section-title">AI infrastructure is solved. Product logic isn’t.</h2>
       <p class="section-intro">
-        Every AI app needs a governance layer: routing, fallbacks, allow/deny policies, health checks, cost controls, and a UX your team can run. You already have provider access — env vars, a secrets manager, or a gateway like OpenRouter, Portkey, or Vercel AI Gateway. Restormel Keys integrates with that layer. It does not replace it.
+        Tools like OpenRouter, Portkey, Vercel AI Gateway, and LiteLLM handle infrastructure concerns: provider access, aggregation, and (often) proxy-style routing.
+        But every AI product still has to build the application layer: end-user BYOK, plan-based model access, budgets, and routing decisions based on user context.
+        <strong>Restormel Keys</strong> is that missing application layer — designed to sit above your existing stack.
       </p>
     </div>
   </section>
 
   <section class="section section-modes" aria-labelledby="modes-heading">
     <div class="container">
-      <h2 id="modes-heading" class="section-title">Three ways to use it</h2>
+      <h2 id="modes-heading" class="section-title">Restormel sits above your existing stack</h2>
+      <p class="section-intro">
+        Keep your infrastructure. Restormel adds the application layer: BYOK for your users, routing based on user + plan, cost awareness before execution, and embeddable UX for key management.
+      </p>
+      <div class="two-layer" aria-label="Two-layer model">
+        <div class="layer-card">
+          <p class="layer-kicker">Layer 1 — Infrastructure</p>
+          <p class="layer-copy">OpenRouter / Portkey / Vercel AI / direct providers</p>
+        </div>
+        <div class="layer-card">
+          <p class="layer-kicker">Layer 2 — Application</p>
+          <p class="layer-copy">Restormel Keys (BYOK, routing, policies, entitlements, budgets)</p>
+        </div>
+      </div>
+
+      <h3 class="section-subtitle">Three ways to use it</h3>
       <p class="section-intro">Gateway-backed, builder-managed direct, or end-user BYOK. Same core; adopt progressively.</p>
       <div class="modes-grid">
         <div class="mode-card">
@@ -141,39 +164,65 @@ export default function Settings() {
       <p class="section-intro">Routing, policies, health, cost, and embeddable UX that sit alongside your existing provider access.</p>
       <div class="features-grid">
         <div class="feature-card"><h3 class="feature-title">Integrations</h3><p>Works with OpenRouter, Vercel AI Gateway, Portkey, and direct providers.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Routing</h3><p>Model → provider resolution. One middleware, multiple backends.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Restormel Resolve</h3><p>Model → provider resolution. One middleware, multiple backends.</p></div>
         <div class="feature-card"><h3 class="feature-title">Cost</h3><p>Per-model cost and budget comparison. Estimate before you call.</p></div>
         <div class="feature-card"><h3 class="feature-title">Entitlements</h3><p>Gate features by tier. Optional usage limits.</p></div>
         <div class="feature-card"><h3 class="feature-title">Embeddable UX</h3><p>ModelSelector, CostEstimator, and optional KeyManager. Svelte, React, or Web Components.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Progressive adoption</h3><p>Start with local/in-process resolution, then add dashboard policies, analytics, and health checks.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Restormel Doctor & Validate</h3><p>Health checks you can run locally or in CI to catch bad config and broken provider access before deploy.</p></div>
       </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" aria-labelledby="fit-heading">
+    <div class="container">
+      <h2 id="fit-heading" class="section-title">Where Restormel fits in your AI stack</h2>
+      <div class="table-wrap" role="region" aria-label="Where Restormel fits comparison table">
+        <table class="fit-table">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>LiteLLM / Portkey / OpenRouter</th>
+              <th>Restormel Keys</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Primary role</td><td>Infrastructure / gateway / proxy</td><td>Application-layer library</td></tr>
+            <tr><td>How it runs</td><td>Hosted service or self-hosted infra</td><td>Runs inside your app</td></tr>
+            <tr><td>Request routing</td><td>Yes (proxy-based)</td><td>Yes (in-app, key-aware)</td></tr>
+            <tr><td>Request/response normalisation</td><td>Yes</td><td>Handled by your provider or gateway</td></tr>
+            <tr><td>Caching</td><td>Sometimes built-in</td><td>Use your existing cache (Redis, CDN, gateway)</td></tr>
+            <tr><td>Observability / tracing</td><td>Often built-in</td><td>Use your existing observability tools</td></tr>
+            <tr><td>Access to multiple providers</td><td>Yes (via proxy or aggregation)</td><td>Yes (via your providers or OpenRouter)</td></tr>
+            <tr><td>End-user BYOK (bring your own keys)</td><td>No</td><td>Yes — first-class</td></tr>
+            <tr><td>Embeddable key management UI</td><td>No</td><td>Yes — drop-in components</td></tr>
+            <tr><td>Per-user model availability</td><td>No</td><td>Yes — based on user keys</td></tr>
+            <tr><td>Cost estimation (before request)</td><td>Limited</td><td>Yes — built-in</td></tr>
+            <tr><td>Plan-based entitlements</td><td>Limited</td><td>Yes — first-class</td></tr>
+            <tr><td>Library-first (no infra required)</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Works with existing stack</td><td>N/A (is the stack)</td><td>Yes — designed to sit on top</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fit-note">
+        Restormel doesn’t replace your AI gateway — it completes it. Use OpenRouter, Portkey, or direct providers for infrastructure. Use Restormel to add BYOK, routing logic, and product-level controls.
+      </p>
     </div>
   </section>
 
   <section class="section section-pricing section-alt" aria-labelledby="pricing-heading">
     <div class="container">
       <h2 id="pricing-heading" class="section-title">Pricing</h2>
-      <p class="section-intro">The core is open source. Pay for cloud API, dashboard, and team features when you need them.</p>
+      <p class="section-intro">Free to build. Upgrade to Pro when you’re ready to ship.</p>
       <div class="pricing-grid">
         <div class="pricing-card">
           <h3 class="pricing-tier">Free</h3>
           <p class="pricing-price">£0</p>
-          <p class="pricing-desc">Open source. Self-host. Memory + local storage. No Paddle.</p>
+          <p class="pricing-desc">Best for prototyping. 1 project and 1,000 requests/month.</p>
         </div>
         <div class="pricing-card">
           <h3 class="pricing-tier">Pro</h3>
-          <p class="pricing-price">£19<span class="pricing-period">/mo</span></p>
-          <p class="pricing-desc">Cloud API, dashboard. 1K keys, 100K requests/mo.</p>
-        </div>
-        <div class="pricing-card">
-          <h3 class="pricing-tier">Team</h3>
-          <p class="pricing-price">£49<span class="pricing-period">/mo</span></p>
-          <p class="pricing-desc">Unlimited users, 10K keys. Usage dashboard, team sharing, audit log.</p>
-        </div>
-        <div class="pricing-card">
-          <h3 class="pricing-tier">Enterprise</h3>
-          <p class="pricing-price">£149<span class="pricing-period">/mo</span></p>
-          <p class="pricing-desc">Unlimited keys & API. SSO, SLA, export. Zuplo gateway + custom.</p>
+          <p class="pricing-price">£10<span class="pricing-period">/mo</span></p>
+          <p class="pricing-desc">Best for production. Higher limits, visibility, and routing controls.</p>
         </div>
       </div>
       <p class="pricing-cta"><a href="/keys/pricing">See full pricing and FAQ →</a></p>
@@ -301,6 +350,60 @@ export default function Settings() {
     color: var(--rm-sage);
     text-decoration: none;
   }
+  .section-subtitle {
+    margin: var(--space-8) 0 var(--space-3);
+    font-size: var(--text-lg);
+    color: var(--rm-text);
+    font-family: var(--rm-font-display);
+  }
+  .two-layer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0 0 var(--space-6);
+  }
+  .layer-card {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-4);
+  }
+  .layer-kicker {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
+  }
+  .layer-copy {
+    margin: 0;
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  @media (max-width: 760px) {
+    .two-layer {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 480px) {
+    .hero-ctas {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .btn-cta-hero {
+      min-width: 0;
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-base);
+    }
+    .btn-secondary {
+      width: 100%;
+      text-align: center;
+    }
+    .hero-link {
+      align-self: flex-start;
+    }
+  }
   .modes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -383,6 +486,40 @@ export default function Settings() {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
     gap: var(--space-4);
+  }
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface);
+    margin: 0 0 var(--space-4);
+  }
+  .fit-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 52rem;
+    font-size: var(--text-sm);
+  }
+  .fit-table th,
+  .fit-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--rm-border);
+    vertical-align: top;
+    text-align: left;
+  }
+  .fit-table thead th {
+    background: var(--rm-surface-raised);
+    color: var(--rm-text);
+    font-weight: var(--font-medium);
+  }
+  .fit-table tbody td {
+    color: var(--rm-muted);
+  }
+  .fit-note {
+    margin: 0;
+    color: var(--rm-muted);
+    max-width: var(--rm-container-narrow);
+    line-height: var(--leading-relaxed);
   }
   .feature-card {
     background: var(--rm-surface-raised);

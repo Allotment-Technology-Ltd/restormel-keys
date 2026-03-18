@@ -1,6 +1,8 @@
 # Restormel Keys — Zuplo gateway (config-as-code)
 
-This directory is the **Zuplo API gateway** project for the Keys cloud API. It is intended to be deployed to Zuplo (either by connecting this repo to Zuplo Source Control or via the Zuplo CLI from this folder).
+This directory is the **Zuplo API gateway** project for the **Restormel Keys control-plane API**. It is intended to be deployed to Zuplo (either by connecting this repo to Zuplo Source Control or via the Zuplo CLI from this folder).
+
+**Important:** Zuplo is **control-plane CRUD only** (projects, catalog/config, etc.). Runtime operations (Resolve, policy evaluate, routes/steps) live on the **Dashboard API** (`/keys/dashboard/api/...`) and are authenticated with a **Gateway Key** (`rk_...`) from your backend. Restormel Keys is not an execution proxy.
 
 **Runbooks:** [zuplo-setup.md](../docs/runbooks/zuplo-setup.md) (full reference) · [zuplo-launch-cli.md](../docs/runbooks/zuplo-launch-cli.md) (single-path CLI launch)
 
@@ -39,7 +41,7 @@ Set these in Zuplo Portal → Settings → Environment Variables (or via CLI/API
 | Name | Description | Secret |
 |------|-------------|--------|
 | `KEYS_BACKEND_URL` | Dashboard base URL (e.g. `https://restormel.dev/keys/dashboard`). No trailing slash. | No |
-| `KEYS_BACKEND_API_KEY` | Backend API key (`sk-rk-...`) sent to the dashboard in `Authorization: Bearer …`. | **Yes** |
+| `KEYS_BACKEND_API_KEY` | Backend auth key sent to the dashboard in `Authorization: Bearer …` (a **Gateway Key**: `rk_...`). | **Yes** |
 
 ## Complete setup from CLI
 
@@ -47,7 +49,7 @@ From this directory you can set Zuplo env vars and deploy in one go. Copy `.env.
 
 - `ZUPLO_API_KEY` — Portal → Settings → API Keys
 - `KEYS_BACKEND_URL` — dashboard URL, e.g. `https://restormel.dev/keys/dashboard`
-- `KEYS_BACKEND_API_KEY` — backend key (`sk-rk-...`) from the Keys dashboard (create in dashboard → project → API key)
+- `KEYS_BACKEND_API_KEY` — backend key (`rk_<gateway_key_placeholder>`) from the Keys dashboard (create in dashboard → project → Gateway Key)
 
 Then run:
 
@@ -70,7 +72,7 @@ The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zupl
 ## After deploy
 
 1. Create at least one **API key consumer** in Zuplo (Services → API Key Service, or [API Key API](https://zuplo.com/docs/articles/api-key-api)) so clients can call the gateway with a `zpka_...` key.
-2. Ensure the **dashboard** (Vercel) accepts only the backend key (`sk-rk-...`) and rejects Zuplo consumer keys (`zpka_...`) on direct calls. See runbook §7.
+2. Ensure the **dashboard** (Vercel) accepts only the backend key (`rk_...`) and rejects Zuplo consumer keys (`zpka_...`) on direct calls. See runbook §7.
 3. Validate using the runbook §7 table (missing auth → 401, valid key → 200, etc.).
 
 ## Local secrets (for testing)

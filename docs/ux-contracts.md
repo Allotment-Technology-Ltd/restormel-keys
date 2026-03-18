@@ -23,7 +23,7 @@ Site, docs, and dashboard are one app at restormel.dev (dashboard at `/keys/dash
 
 - **Marketing (site):** Nav links → Keys, Docs, Pricing, GitHub, Dashboard. Footer → same + Dashboard.
 - **Docs (in-app):** Sidebar → Overview, Framework compatibility, Cloud API; Product → Dashboard, Sign in.
-- **Dashboard:** Sidebar → Overview, Projects, Access, Provider Integrations, Models, Routes, Policies, Analytics, Logs & Traces, Lifecycle & Migrations, Billing & Forecasting, Settings, Documentation; topbar → Sign in (when logged out) or user/account.
+- **Dashboard:** Sidebar → Overview, Projects, Access, Provider Integrations, Models, Routes, Policies, Analytics, Logs & Traces, Lifecycle & Migrations, Sandbox, Documentation, Profile; topbar → Sign in (when logged out) or account menu (avatar) when signed in.
 
 Shared nav schema: site nav, docs sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md) (SSO and same links).
 
@@ -55,6 +55,7 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 
 - **Primary auth:** “Sign in with GitHub” (button/link). Link target: `https://restormel.dev/keys/dashboard/login`.
 - **Dashboard entry:** “Dashboard” (link). Target: `https://restormel.dev/keys/dashboard`.
+- **Signed-in account menu:** Avatar opens a menu with “Profile & settings”, “Subscription”, and “Sign out”.
 - **After checkout:** “You’re sent to the dashboard. Sign in with GitHub if you aren’t already.”
 - **Key handling:** Use privacy-sensitive copy: “your key”, “Gateway key”; never expose raw keys in UI or errors. Use masked identifiers (e.g. key prefix or hash) in support/debug text.
 

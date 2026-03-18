@@ -44,6 +44,8 @@ const mockStep = {
   fallbackOn: null,
   timeoutMs: null,
   enabled: true,
+  createdAt: new Date(1).toISOString(),
+  updatedAt: new Date(1).toISOString(),
 };
 
 vi.mock("$lib/server/db", () => ({
@@ -85,6 +87,7 @@ describe("control-plane flow (integration)", () => {
       slug: "default",
       ownerUserId: USER_ID,
       createdAt: 1,
+      plan: "free",
     });
     vi.mocked(db.listRoutes).mockResolvedValue([mockRoute]);
     vi.mocked(db.getRouteWithSteps).mockResolvedValue({
@@ -101,7 +104,7 @@ describe("control-plane flow (integration)", () => {
 
     const data = await res.json();
     expect(data.data).toBeDefined();
-    expect(data.data.routeId).toBe(ROUTE_ID);
+    expect(data.data.routeId).toBe(mockRoute.name);
     expect(data.data.providerType).toBe("openai");
     expect(data.data.modelId).toBe("gpt-4o");
     expect(data.data.explanation).toBeDefined();

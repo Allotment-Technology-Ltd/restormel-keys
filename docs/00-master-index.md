@@ -37,7 +37,7 @@ This build pack contains everything needed to take Restormel Keys from concept t
 |---|----------|----------------|
 | — | `docs/walkthrough/00-index.md` | **Entry point.** Master index and reading order for the integration walkthrough. |
 | — | `docs/walkthrough/00-walkthrough-ia.md` | Docs IA: placement in Svelte docs, page map, flow diagram, cross-links. |
-| — | `docs/walkthrough/01-writing-style-guide.md` | Terminology, auth cheat-sheet (Gateway vs Management Key vs session), callouts, code conventions. |
+| — | `docs/walkthrough/01-writing-style-guide.md` | Terminology, auth cheat-sheet (Gateway Key vs session), callouts, code conventions. |
 | — | `docs/walkthrough/02-phase-0-inventory.md` … `11-prompt-index.md` | Phase 0–6 pages, migration paths, verification, prompt index. |
 
 Documentation lives in the Svelte/SvelteKit app (`/keys/docs/` and `/keys/docs/walkthrough/`); Zuplo is used for the Cloud API gateway. Use the walkthrough as the canonical onboarding journey for integrating Restormel Keys.

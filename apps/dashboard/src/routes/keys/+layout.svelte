@@ -6,6 +6,7 @@
   import { absoluteUrl } from "$lib/seo";
 
   $: pathname = $page.url.pathname;
+  $: user = $page.data.user;
   $: navActive =
     pathname === "/keys" || pathname === "/keys/"
       ? "keys"
@@ -54,7 +55,7 @@
 
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <SiteHeader active={navActive as "keys" | "docs" | "pricing" | "dashboard"} />
+  <SiteHeader active={navActive as "keys" | "docs" | "pricing" | "dashboard"} {user} />
   <main id="main-content" class="marketing-main">
     <slot />
   </main>
@@ -89,5 +90,10 @@
   .marketing-main {
     flex: 1;
     padding: var(--space-8) var(--space-6);
+  }
+  @media (max-width: 760px) {
+    .marketing-main {
+      padding: var(--space-6) var(--space-4);
+    }
   }
 </style>

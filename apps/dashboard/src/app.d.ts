@@ -1,4 +1,12 @@
 declare global {
+  interface Window {
+    posthog?: {
+      init?: (apiKey: string, opts?: Record<string, unknown>) => void;
+      capture?: (event: string, props?: Record<string, unknown>) => void;
+    };
+    rmCapture?: (event: string, props?: Record<string, unknown>) => void;
+  }
+
   namespace App {
     interface Locals {
       user?: {

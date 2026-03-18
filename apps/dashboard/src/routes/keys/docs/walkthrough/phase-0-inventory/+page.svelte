@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import TextPanel from "$lib/components/docs/TextPanel.svelte";
   import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
@@ -32,7 +33,7 @@ export async function resolveProvider(request: AIRequest) {
   const inventoryExample = `REMOVE  src/lib/server/ai-router.ts        — custom fallback chain, replaced by Restormel routes
 REMOVE  src/lib/server/model-allowlist.ts   — hardcoded model list, replaced by Restormel policies
 KEEP    src/lib/server/billing/wallet.ts    — billing logic, not routing
-WRAP    src/lib/server/ingestion/worker.ts — replace ai-router call with Restormel resolve
+WRAP    src/lib/server/ingestion/worker.ts — replace ai-router call with Restormel Resolve
 REMOVE  src/components/ModelPicker.svelte  — custom model UI, replaced by Restormel ModelSelector
 WRAP    src/components/KeySettings.tsx     — BYOK UI, may replace with Restormel KeyManager or keep as wrapper`;
 
@@ -54,7 +55,7 @@ Steps:
 2. For each file found, trace backwards: what decides which provider and model to use? List the routing/selection logic files.
 3. Search for model selection UI (dropdowns, selectors, settings pages). List those components.
 4. Search for BYOK / key management code. List those files.
-5. For each item, classify as REMOVE (Restormel replaces it), KEEP (app-specific, not routing), or WRAP (insert Restormel resolve before the existing provider call).
+5. For each item, classify as REMOVE (Restormel replaces it), KEEP (app-specific, not routing), or WRAP (insert Restormel Resolve before the existing provider call).
 6. Document the current provider call pattern for at least one primary entry point: entry point → selection logic → credential source → provider call → error handling.
 7. Write the results to docs/restormel-integration/00-routing-inventory.md (or your equivalent docs folder).
 
@@ -218,7 +219,7 @@ DO NOT: Modify or delete any code. Create feature flags. Commit anything. Copy r
   </table>
   <h3>You'll see</h3>
   <p>An annotated version of your inventory. For example:</p>
-  <CodeBlock language="text" code={inventoryExample} />
+  <TextPanel title="Example annotation" kind="output" content={inventoryExample} />
   <h3>How to test</h3>
   <p>Review your annotations with a second pair of eyes (or a coding agent). Confirm: every "REMOVE" item has a Restormel equivalent identified in the phases ahead. Every "KEEP" item genuinely has no routing responsibility.</p>
   <div class="callout callout-pitfall">

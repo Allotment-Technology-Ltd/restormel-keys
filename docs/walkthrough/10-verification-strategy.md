@@ -159,7 +159,7 @@ echo "PASS: fallback resolved to openai"
 # Allowed model
 EVAL=$(curl -sf -X POST \
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_MANAGEMENT_KEY}" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
   -H "Content-Type: application/json" \
   -d '{ "projectId": "'${RESTORMEL_PROJECT_ID}'", "environmentId": "production", "modelId": "gpt-4o", "providerType": "openai" }')
 echo "Allowed model: $(echo $EVAL | jq '.data.allowed')"
@@ -167,7 +167,7 @@ echo "Allowed model: $(echo $EVAL | jq '.data.allowed')"
 # Blocked model
 EVAL_BLOCKED=$(curl -sf -X POST \
   "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_MANAGEMENT_KEY}" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
   -H "Content-Type: application/json" \
   -d '{ "projectId": "'${RESTORMEL_PROJECT_ID}'", "environmentId": "production", "modelId": "gpt-3.5-turbo", "providerType": "openai" }')
 echo "Blocked model: $(echo $EVAL_BLOCKED | jq '.data.allowed')"

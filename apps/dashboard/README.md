@@ -51,4 +51,4 @@ Run migrations in `migrations/` (001_initial.sql through 005_seed_model_catalog.
 ## Terminology
 
 - **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
-- **Provider credential** — Your OpenAI/Anthropic/Google etc. key; stored in Provider Integrations so Restormel can route requests.
+- **Provider credential** — Your OpenAI/Anthropic/Google etc. key. In v1, prefer gateway-backed access (OpenRouter/Vercel AI Gateway/Portkey) or keep provider keys in your own env/secret manager; Restormel stays the control layer.

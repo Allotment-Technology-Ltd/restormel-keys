@@ -3,19 +3,21 @@
   "info": {
     "title": "Restormel Keys API",
     "version": "1.0.0",
-    "description": "API for managing projects and API keys. Call through this Zuplo gateway with a consumer API key."
+    "description": "Zuplo Gateway API (control-plane CRUD) for managing projects and Gateway keys. Call through this Zuplo gateway with a Zuplo consumer key (zpka_...). Runtime operations (Resolve, policies/evaluate, routes/steps) are Dashboard API endpoints and are NOT served through this gateway."
   },
   "servers": [
     { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
     { "url": "https://restormel-keys-gateway-working-co-185f3e3.zuplo.app" }
   ],
-  "security": [{ "apiKey": [] }],
+  "security": [{ "consumerKey": [] }],
   "paths": {
     "/api/health": {
       "get": {
         "summary": "Health check",
+        "description": "Returns gateway health status. No auth required.",
         "operationId": "getHealth",
         "tags": ["System"],
+        "security": [],
         "responses": {
           "200": {
             "description": "Service is healthy",
@@ -40,7 +42,7 @@
             "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
           },
           "policies": {
-            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
+            "inbound": []
           }
         }
       }
@@ -48,6 +50,7 @@
     "/api/projects": {
       "get": {
         "summary": "List projects",
+        "description": "Returns all projects in the authenticated workspace.",
         "operationId": "listProjects",
         "tags": ["Projects"],
         "responses": {
@@ -63,7 +66,8 @@
                 }
               }
             }
-          }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -96,7 +100,8 @@
                 "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
               }
             }
-          }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -122,7 +127,8 @@
             "description": "Project details",
             "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } } } }
           },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -144,7 +150,8 @@
         },
         "responses": {
           "200": { "description": "Updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -163,7 +170,8 @@
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
           "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -178,16 +186,17 @@
     },
     "/api/projects/{id}/keys": {
       "get": {
-        "summary": "List API keys for project",
+        "summary": "List Gateway Keys for a project",
         "operationId": "listProjectKeys",
         "tags": ["Keys"],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
           "200": {
-            "description": "List of key metadata (prefix/hash only; raw key never returned)",
+            "description": "List of Gateway keys (masked)",
             "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/KeyInfo" } } } } } }
           },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -200,7 +209,7 @@
         }
       },
       "post": {
-        "summary": "Create API key",
+        "summary": "Create Gateway Key",
         "operationId": "createApiKey",
         "tags": ["Keys"],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
@@ -224,7 +233,8 @@
               }
             }
           },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -246,7 +256,8 @@
         },
         "responses": {
           "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "404": { "description": "Not found" }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
@@ -263,30 +274,60 @@
   ,
   "components": {
     "securitySchemes": {
-      "apiKey": {
+      "consumerKey": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "API Key",
-        "description": "Consumer API key (issued by Zuplo). Send as Authorization: Bearer <key>."
+        "description": "A Zuplo consumer key (zpka_...). Send as Authorization: Bearer <key>."
       }
     },
     "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      },
       "Project": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "id": { "type": "string", "example": "91f652fb-fedc-4893-ae5e-025491ae5231" },
+          "name": { "type": "string", "example": "Sophia" },
+          "workspaceId": { "type": "string", "nullable": true },
+          "createdAt": { "type": "integer", "format": "int64", "description": "Epoch milliseconds." },
+          "environments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Environment" },
+            "description": "Optional. Present when expanded by the backend."
+          }
+        }
+      },
+      "Environment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "prod" },
+          "name": { "type": "string", "example": "Production" }
         }
       },
       "KeyInfo": {
         "type": "object",
-        "description": "Key metadata only (prefix/hash); raw key is never returned in list.",
+        "description": "A Gateway Key. Full key is shown only at creation time.",
         "properties": {
-          "keyPrefix": { "type": "string" },
-          "keyId": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "id": { "type": "string" },
+          "keyPrefix": { "type": "string", "example": "rk_a3f..." },
+          "createdAt": { "type": "integer", "format": "int64", "description": "Epoch milliseconds." },
+          "type": { "type": "string", "example": "gateway" }
         }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid consumer key",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
       }
     }
   }

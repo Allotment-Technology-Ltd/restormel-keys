@@ -53,3 +53,24 @@ button {
   font-family: inherit;
   cursor: pointer;
 }
+
+/* Inline code styling (docs + UI prose). Keep code blocks unaffected. */
+:where(.doc-content, .page-desc, .section-desc, .callout, .notice, .empty-desc, .doc-table) code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 0.95em;
+  padding: 0.08rem 0.35rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--rm-border);
+  background: color-mix(in oklab, var(--rm-surface-raised, var(--rm-surface)) 75%, black 25%);
+  color: var(--rm-text);
+  white-space: nowrap;
+}
+
+:where(pre code, .codeblock pre code) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  white-space: pre;
+}

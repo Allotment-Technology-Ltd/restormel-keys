@@ -3,6 +3,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getWalkthroughPrevNext } from "$lib/docs-walkthrough-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import TextPanel from "$lib/components/docs/TextPanel.svelte";
   import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughChecklist from "$lib/components/walkthrough/WalkthroughChecklist.svelte";
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
@@ -33,7 +34,36 @@
   routeId: 'ingestion',
 });`;
 
-  const stepsApiBodyExample = `{ "orderIndex": 0, "providerPreference": "openai", "modelId": "gpt-4o", "fallbackOn": "error", "enabled": true }`;
+  const stepsApiBodyExample = `{
+  "orderIndex": 0,
+  "providerPreference": "openai",
+  "modelId": "gpt-4o",
+  "fallbackOn": "error",
+  "enabled": true
+}`;
+
+  const providerPreferenceEnum = `openai | anthropic | google | openrouter | vercel | portkey`;
+  const fallbackOnEnum = `error | rate_limit | no_key | policy_block | any`;
+
+  const createStepCurl = `curl -s -X POST \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/routes/\${RESTORMEL_ROUTE_INTERNAL_ID}/steps" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '${stepsApiBodyExample}' | jq '.data'`;
+
+  const listStepsCurl = `curl -s \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/routes/\${RESTORMEL_ROUTE_INTERNAL_ID}/steps" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`;
+
+  const updateStepCurl = `curl -s -X PATCH \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/routes/\${RESTORMEL_ROUTE_INTERNAL_ID}/steps/\${RESTORMEL_STEP_ID}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "enabled": false }' | jq '.data'`;
+
+  const deleteStepCurl = `curl -s -X DELETE \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/routes/\${RESTORMEL_ROUTE_INTERNAL_ID}/steps/\${RESTORMEL_STEP_ID}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}"`;
 
   const routeDiagram = `Route: "ingestion"
 Mode:  fallback_chain
@@ -133,7 +163,7 @@ DO NOT: Create routes/steps yet. Change any application code. Paste secrets.`,
 
   <WalkthroughStep stepId="3.1" title="Step 3.1 — Understand routes and steps" defaultOpen={true} {phaseSlug}>
   <p>A <strong>route</strong> is a named routing configuration inside your project. It contains one or more <strong>steps</strong>, evaluated in order. Each step specifies a provider preference and an optional model. The <strong>route mode</strong> controls how steps are evaluated.</p>
-  <CodeBlock language="text" code={routeDiagram} />
+  <TextPanel title="Route diagram" kind="diagram" content={routeDiagram} />
   <p>When your backend calls resolve with <code>routeId: "ingestion"</code>, Restormel walks the chain. If the first step's provider has a valid key and is not blocked by a policy, it's returned. If not (no key, rate-limited, deprecated), Restormel tries the next step.</p>
   <table class="doc-table">
     <thead>
@@ -156,7 +186,7 @@ DO NOT: Create routes/steps yet. Change any application code. Paste secrets.`,
     <li><strong>Route mode:</strong> Select <code>fallback_chain</code>.</li>
     <li><strong>Save</strong> the route.</li>
   </ol>
-  <p>At the moment, the dashboard UI shows steps but you create steps via the Steps API in Step 3.4a. Adjust provider order and models to match your actual preferences.</p>
+  <p>At the moment, the Dashboard UI shows the route and its steps list, but step editing is API-first. You create, reorder, and disable steps via the Steps API in Step 3.4a.</p>
   <h3>You'll see</h3>
   <p>The route detail page in the dashboard showing your named route, mode, and the steps in order. Each step shows the provider, model, and fallback condition.</p>
   <h3>How to test</h3>
@@ -181,7 +211,36 @@ DO NOT: Create routes/steps yet. Change any application code. Paste secrets.`,
   <h2>Step 3.4 — Test fallback behaviour</h2>
   <p>To confirm the fallback chain works, make the first step unusable and confirm resolve returns the next enabled step. You create and manage steps via the Steps API (or the dashboard when a full step editor is available).</p>
   <h3>Step 3.4a — Create steps via the Steps API</h3>
-  <p>You need the route's internal ID (from the dashboard URL when viewing the route). Then create steps with <code>POST .../routes/$ROUTE_ID/steps</code> and body <code>{stepsApiBodyExample}</code>. Add a second step with <code>orderIndex: 1</code> and another provider.</p>
+  <p>The Steps API is how you configure the fallback chain programmatically. You’ll use two identifiers:</p>
+  <ul>
+    <li><strong>Route name</strong> (e.g. <code>ingestion</code>) — used in your <strong>Resolve</strong> call (<code>routeId</code> field).</li>
+    <li>
+      <strong>Route internal ID</strong> (UUID) — used in the Steps API URL. Copy it from the Dashboard URL when viewing the route:
+      <code>/keys/dashboard/projects/{'{'}projectId{'}'}/routes/{'{'}routeInternalId{'}'}</code>.
+    </li>
+  </ul>
+
+  <p><strong>Step schema (create):</strong></p>
+  <CodeBlock language="json" code={stepsApiBodyExample} />
+  <p><strong>Valid values:</strong></p>
+  <ul>
+    <li><code>providerPreference</code>: <code>{providerPreferenceEnum}</code></li>
+    <li><code>fallbackOn</code>: <code>{fallbackOnEnum}</code> (defaults to <code>error</code>)</li>
+  </ul>
+  <p><strong>Ordering:</strong> <code>orderIndex</code> is 0-based; lower indices are tried first.</p>
+
+  <p><strong>Create a step (orderIndex 0):</strong></p>
+  <CodeBlock language="bash" code={createStepCurl} />
+  <p>Create a second step with <code>orderIndex: 1</code> and another provider/model.</p>
+
+  <p><strong>List steps (ordered by orderIndex):</strong></p>
+  <CodeBlock language="bash" code={listStepsCurl} />
+
+  <p><strong>Update a step (disable):</strong></p>
+  <CodeBlock language="bash" code={updateStepCurl} />
+
+  <p><strong>Delete a step:</strong></p>
+  <CodeBlock language="bash" code={deleteStepCurl} />
   <h3>Step 3.4b — Disable the first step and re-resolve</h3>
   <p>Temporarily disable (or delete) the first step so resolve returns the second step. Then call resolve again with the same route.</p>
   <div class="callout callout-tip">

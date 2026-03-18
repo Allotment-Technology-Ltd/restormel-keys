@@ -41,11 +41,10 @@ Use these terms exactly. Do not invent synonyms in any walkthrough page.
 
 | Credential | Scope | Use for | Never use for |
 |------------|--------|---------|----------------|
-| **Gateway Key** (`RESTORMEL_GATEWAY_KEY`, format `rk_…`) | Project + environment | Resolve API, project-scoped calls from your backend | Policies evaluate, workspace-level APIs, dashboard UI |
-| **Management Key** (`RESTORMEL_MANAGEMENT_KEY`, format `rk_…`) | Workspace | Policies evaluate (`/api/policies/*`), workspace-scoped automation | Resolve (use Gateway Key); do not send from the browser |
-| **Session** (dashboard login) | User + workspace | Dashboard UI: routes, policies, keys, logs | Server-side or API calls; use Management Key or Gateway Key instead |
+| **Gateway Key** (`RESTORMEL_GATEWAY_KEY`, format `rk_…`) | Project + environment | Resolve API and backend policy evaluate calls for that project | Browser/client-side code; unrelated projects |
+| **Session** (dashboard login) | User + workspace | Dashboard UI: routes, policies, keys, logs | Server-side automation from untrusted contexts |
 
-Use the Gateway Key in app env vars for resolve. Use the Management Key only in backend or secure automation when calling the evaluate endpoint. Never expose either key in the browser or in client-side code.
+Use the Gateway Key in server-side env vars for resolve and evaluate calls. Never expose the Gateway Key in browser code.
 
 ### Provider names
 
@@ -138,7 +137,7 @@ Use exactly these callout labels and styles. Do not invent new ones.
 - **Imports:** Always show imports. Never assume the reader knows where a function comes from.
 - **Copy-paste ready:** Every code block should work if pasted into the right file. No `// ...` placeholders unless the omitted code is genuinely irrelevant and clearly labelled.
 - **File paths:** When a code block is meant for a specific file, include a comment on line 1: `// src/lib/server/restormel.ts` or `// app/api/resolve/route.ts`.
-- **Environment variables:** Show placeholder patterns, never real values. Use `RESTORMEL_GATEWAY_KEY=rk_your_key_here` not `RESTORMEL_GATEWAY_KEY=rk_abc123def456`.
+- **Environment variables:** Show placeholder patterns, never real values. Use `RESTORMEL_GATEWAY_KEY=<gateway_key_placeholder>` not any real-looking key value.
 - **Framework-aware:** When a code example differs by framework, show the primary framework (Next.js App Router) first, then provide a tabbed or clearly-labelled alternative for SvelteKit and vanilla/Web Components.
 
 ---

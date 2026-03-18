@@ -76,6 +76,8 @@ Use this checklist for reviews and drift checks so the product keeps one look an
 2. **Nav labels and canonical URLs**  
    Only: Keys, Docs, Pricing, GitHub, Dashboard (and Sign in in docs Product section). Same URLs everywhere: Dashboard → `/keys/dashboard`, Sign in → `/keys/dashboard/login`, Docs → `/keys/docs/`, Pricing → `/keys/pricing`, Keys → `/keys`. No alternate labels or paths unless explicitly added.
 
+   Signed-in state: show an **account menu (avatar)** in the header/topbar with Profile & settings, Subscription, and Sign out.
+
 3. **Section pattern (title + intro + content)**  
    Marketing/docs: section-title (h2) + optional section-intro (p) + content; spacing `--space-6` / `--space-8`. Dashboard: page-title (h1) + page-desc (p) + content; `.page-title` margin `0 0 var(--space-2)`, `.page-desc` margin `0 0 var(--space-4)`; font sizes `var(--text-2xl)` and `var(--text-sm)`; desc color `--rm-muted`.
 

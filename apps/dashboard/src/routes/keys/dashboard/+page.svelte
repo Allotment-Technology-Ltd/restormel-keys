@@ -6,14 +6,63 @@
     projects: { id: string; name: string }[];
     projectsError?: string | null;
     onboarding: { hasProjects: boolean; hasKeys: boolean; hasIntegrations: boolean } | null;
+    entitlements:
+      | { workspaceId: string; plan: "free" | "pro"; projectLimit: number; monthlyRequestLimit: number }
+      | null;
+    usage:
+      | {
+          usedThisMonth: number | null;
+          monthlyLimit: number;
+          projectLimit: number;
+          providersConnected: number;
+        }
+      | null;
   };
 
   const o = data.onboarding;
   const showOnboarding = o && (!o.hasProjects || !o.hasKeys || !o.hasIntegrations);
+
+  const isFree = data.entitlements?.plan === "free";
+  const used = data.usage?.usedThisMonth ?? null;
+  const limit = data.usage?.monthlyLimit ?? null;
+  const pct = used != null && limit ? used / limit : null;
+  const show80 = isFree && pct != null && pct >= 0.8 && pct < 1;
+  const showLimitReached = isFree && pct != null && pct >= 1;
+  const showMultiProvider = isFree && (data.usage?.providersConnected ?? 0) >= 2;
 </script>
 
 <h1 class="page-title">Overview</h1>
 <p class="page-desc">Your projects and quick stats.</p>
+
+{#if showLimitReached}
+  <div class="upgrade-banner" role="status">
+    <div class="upgrade-title">You’ve reached your free usage limit.</div>
+    <div class="upgrade-desc">Upgrade to continue running your app.</div>
+    <a class="btn btn-primary upgrade-cta" href="/keys/pricing">Upgrade to Pro</a>
+  </div>
+{:else if show80}
+  <div class="upgrade-banner upgrade-banner-warn" role="status">
+    <div class="upgrade-title">You’ve used 80% of your monthly request limit.</div>
+    <div class="upgrade-desc">Upgrade to avoid interruptions.</div>
+    <a class="btn btn-primary upgrade-cta" href="/keys/pricing">Upgrade to Pro</a>
+  </div>
+{/if}
+
+{#if isFree}
+  <div class="upgrade-banner upgrade-banner-subtle" role="status">
+    <div class="upgrade-title">Unlock detailed usage and cost insights with Pro.</div>
+    <div class="upgrade-desc">Deploying your app? Upgrade for production-grade limits and visibility.</div>
+    <a class="btn btn-secondary upgrade-cta" href="/keys/pricing">View pricing</a>
+  </div>
+{/if}
+
+{#if showMultiProvider}
+  <div class="upgrade-banner upgrade-banner-subtle" role="status">
+    <div class="upgrade-title">Using multiple providers?</div>
+    <div class="upgrade-desc">Pro gives you better control and monitoring.</div>
+    <a class="btn btn-secondary upgrade-cta" href="/keys/pricing">Upgrade to Pro</a>
+  </div>
+{/if}
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
@@ -34,7 +83,7 @@
       </li>
       <li class="step step-info"><span class="step-label">Key model</span> — Gateway Key = app auth to Restormel. Provider credential = your OpenAI/Anthropic/etc. key; Restormel uses it to route. You can use one or both.</li>
       <li class="step step-info">
-        <span class="step-label">Provider access mode</span> — Choose gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct (env/secrets). Hosted vault is future/optional.
+        <span class="step-label">Provider access mode</span> — Choose gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct (env/secrets). Keys remain user-controlled.
         <a href="/keys/docs/guides/provider-access-modes" class="step-action" target="_blank" rel="noopener noreferrer">Guide</a>
       </li>
       <li class="step" class:step-done={o?.hasKeys}>
@@ -189,5 +238,36 @@
   }
   .step-action:hover {
     text-decoration: underline;
+  }
+
+  .upgrade-banner {
+    max-width: var(--rm-container-narrow, 36rem);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface-raised);
+    border-radius: var(--rm-radius, var(--radius-md));
+    padding: var(--space-4);
+    margin: 0 0 var(--space-4);
+  }
+  .upgrade-banner-warn {
+    border-color: color-mix(in oklab, var(--rm-warning, #f4c430) 45%, var(--rm-border));
+  }
+  .upgrade-banner-subtle {
+    background: color-mix(in oklab, var(--rm-surface-raised) 85%, black 15%);
+  }
+  .upgrade-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-text);
+    margin: 0 0 var(--space-1);
+  }
+  .upgrade-desc {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-3);
+    line-height: var(--leading-relaxed);
+  }
+  .upgrade-cta {
+    display: inline-block;
+    text-decoration: none;
   }
 </style>
