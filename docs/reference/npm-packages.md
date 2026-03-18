@@ -35,7 +35,7 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 | `@restormel/keys-elements` | Web components / Astro                        |
 | `@restormel/keys-cli`   | `keys init`, `keys add`, wrappers for doctor/validate |
 
-**Do not use `@restormel/keys-cli@0.1.0`** — it was published with invalid `workspace:*` dependencies (`EUNSUPPORTEDPROTOCOL`). Use **`@restormel/keys-cli@0.1.1`** or newer, or the manual `restormel.config.json` path.
+**Avoid `@restormel/keys-cli@0.1.0`** and **`@restormel/validate@0.1.3`** — broken `workspace:*` on `@restormel/keys`. Use **keys-cli ≥0.1.1**, **validate ≥0.1.4**, or manual config / doctor-only checks.
 
 If a package returns **404** from npm, use the **manual config** path and `@restormel/doctor` until that package is published (see repo [README](../../README.md#publish-phase-2) and release workflow).
 

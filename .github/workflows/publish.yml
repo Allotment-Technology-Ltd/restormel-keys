@@ -45,9 +45,9 @@ jobs:
 
       - name: Build @restormel/validate
         run: pnpm --filter @restormel/validate run build
+      # pnpm publish rewrites workspace:^ (validate depends on @restormel/keys)
       - name: Publish @restormel/validate to npm
-        working-directory: packages/validate
-        run: npm publish --access public
+        run: pnpm --filter @restormel/validate publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

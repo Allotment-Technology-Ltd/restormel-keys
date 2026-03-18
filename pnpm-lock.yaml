@@ -152,13 +152,13 @@ importers:
   packages/cli:
     dependencies:
       '@restormel/doctor':
-        specifier: workspace:^0.1.3
+        specifier: workspace:^0.1.4
         version: link:../doctor
       '@restormel/keys':
-        specifier: workspace:^0.2.4
+        specifier: workspace:^0.2.5
         version: link:../core
       '@restormel/validate':
-        specifier: workspace:^0.1.3
+        specifier: workspace:^0.1.4
         version: link:../validate
       chalk:
         specifier: ^5.3.0
@@ -331,7 +331,7 @@ importers:
   packages/validate:
     dependencies:
       '@restormel/keys':
-        specifier: workspace:*
+        specifier: workspace:^0.2.5
         version: link:../core
       chalk:
         specifier: ^5.3.0

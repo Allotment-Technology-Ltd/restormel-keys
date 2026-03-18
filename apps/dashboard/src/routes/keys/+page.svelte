@@ -217,7 +217,7 @@ export default function Settings() {
         <div class="pricing-card">
           <h3 class="pricing-tier">Free</h3>
           <p class="pricing-price">£0</p>
-          <p class="pricing-desc">Best for prototyping. 1 project and 1,000 requests/month.</p>
+          <p class="pricing-desc">Best for prototyping. 2 projects and 1,000 requests/month.</p>
         </div>
         <div class="pricing-card">
           <h3 class="pricing-tier">Pro</h3>

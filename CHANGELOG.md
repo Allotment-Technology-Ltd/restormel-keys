@@ -56,6 +56,12 @@ Single record of meaningful repo changes.
 - **Prompt 2.4:** @restormel/keys-react — React wrapper and hooks. Deps: @restormel/keys, @restormel/keys-elements; peer React 18+. KeyManager, ModelSelector, CostEstimator TSX wrap Web Components; useRef + useEffect for props/events; typed props and callbacks; "use client". Hooks: useKeys(config, options) → { keys, loading, error }; useModels(keys, providers) → { modelIds, groups }; useCost(keys, modelId) → { cost }. KeysProvider context. README: generic React, Next.js App Router settings page, dynamic import. Tests: wrapper rendering and event propagation, useKeys/useModels/useCost, KeysProvider and useKeysContext throw.
 - **Prompt 2.3:** @restormel/keys-elements — Web Component wrappers. Single Vite lib bundle. Custom elements: &lt;rk-key-manager&gt;, &lt;rk-model-selector&gt;, &lt;rk-cost-estimator&gt;. Each: shadow DOM, default theme CSS, :host --rk-* for host theming, kebab-case attributes (user-id, budget, estimated-cost), object props via properties (keys, providers, cost), custom events (rk-key-added, rk-key-removed, rk-model-selected, rk-cost-updated). register.ts side-effect import. README: plain HTML, Astro, script import examples; React/Next.js compatibility note (object props, @restormel/keys-react). Tests: registration, attribute/prop mapping, event dispatch, defaultThemeCss :host/--rk-*, no shadow before connect.
 
+## keys-v0.2.5 (2025-03-18)
+
+**npm:** `@restormel/keys@0.2.5`, `@restormel/doctor@0.1.4`, `@restormel/validate@0.1.4` (**pnpm publish** — fixes **validate@0.1.3** `workspace:*` on keys), `@restormel/keys-cli@0.1.2`.
+
+**Dashboard:** Free tier **2 projects** (was 1) so a second integration (e.g. dogfood) fits without Pro; pricing copy updated.
+
 ## keys-v0.2.4 (2025-03-18)
 
 **npm publish** (tag `keys-v0.2.4`): `@restormel/keys@0.2.4`, `@restormel/doctor@0.1.3`, `@restormel/validate@0.1.3`, `@restormel/keys-cli@0.1.1`. **keys-cli** deps use `workspace:^` in repo; **`pnpm publish`** rewrites to `^semver` (fix **0.1.0** `workspace:*` / `EUNSUPPORTEDPROTOCOL`).

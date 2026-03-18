@@ -9,9 +9,10 @@ export type WorkspaceEntitlements = {
   monthlyRequestLimit: number;
 };
 
+/** Free tier: 2 projects so builders can add e.g. a dogfood/eval project without upgrading. */
 const FREE: Omit<WorkspaceEntitlements, "workspaceId"> = {
   plan: "free",
-  projectLimit: 1,
+  projectLimit: 2,
   monthlyRequestLimit: 1_000,
 };
 

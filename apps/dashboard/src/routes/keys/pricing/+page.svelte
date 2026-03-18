@@ -45,7 +45,7 @@
           <p class="tier-price">£0</p>
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
-            <li>1 project</li>
+            <li>2 projects</li>
             <li>Local key handling (user-controlled storage)</li>
             <li>Multi-provider routing</li>
             <li>Key validation</li>

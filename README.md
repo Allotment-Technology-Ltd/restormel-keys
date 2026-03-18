@@ -14,13 +14,13 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| [@restormel/keys](packages/core) | 0.2.4 | Headless core: routing, cost, providers (OpenAI, Anthropic, Google), storage, server middleware |
+| [@restormel/keys](packages/core) | 0.2.5 | Headless core: routing, cost, providers (OpenAI, Anthropic, Google), storage, server middleware |
 | [@restormel/keys-svelte](packages/svelte) | 0.1.0 | Svelte 5: KeyManager, ModelSelector, CostEstimator |
 | [@restormel/keys-elements](packages/elements) | 0.1.0 | Web Components: `<rk-key-manager>`, `<rk-model-selector>`, `<rk-cost-estimator>` |
 | [@restormel/keys-react](packages/react) | 0.1.0 | React 18+: KeyManager, ModelSelector, CostEstimator, hooks, KeysProvider |
-| [@restormel/doctor](packages/doctor) | 0.1.3 | OSS CLI: setup and health checks (`restormel-doctor`) |
-| [@restormel/validate](packages/validate) | 0.1.3 | OSS CLI: credential/config validation (`restormel-validate`) |
-| [@restormel/keys-cli](packages/cli) | 0.1.1 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
+| [@restormel/doctor](packages/doctor) | 0.1.4 | OSS CLI: setup and health checks (`restormel-doctor`) |
+| [@restormel/validate](packages/validate) | 0.1.4 | OSS CLI: credential/config validation (`restormel-validate`) |
+| [@restormel/keys-cli](packages/cli) | 0.1.2 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
 
 *(Vue wrapper is not published.)*
 
@@ -84,4 +84,4 @@ See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
 
 ## Publish (Phase 2)
 
-To publish all packages: ensure each has `version`, `files`, README, and `pnpm run build`; run `pnpm -r publish --dry-run` from repo root; then tag `keys-v0.2.4` (or next `keys-v*`) and push. **keys-cli** is published with `pnpm publish` so deps are semver (avoid **0.1.0** — broken `workspace:*` on npm). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
+To publish all packages: ensure each has `version`, `files`, README, and `pnpm run build`; run `pnpm -r publish --dry-run` from repo root; then tag `keys-v0.2.5` (or next `keys-v*`). **keys-cli** and **validate** use `pnpm publish` so `@restormel/keys` is `^semver` in the tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
