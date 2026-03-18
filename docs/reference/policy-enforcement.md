@@ -1,23 +1,43 @@
-# Policy enforcement: what is enforced now vs later
+# Policy enforcement: what is enforced
 
-**Status:** Reference. Describes the initial policy engine and what is enforced in v1.
+**Status:** Reference. Aligns with dashboard `evaluatePolicies` and resolve route resolution.
 
-## Enforced now (v1)
+## Evaluate vs resolve
 
-- **model_allowlist** — Rule shape: `{ modelIds: string[] }`. If the list is non-empty and the request has a `modelId`, the model must be in the list; otherwise a violation is returned.
-- **model_denylist** — Rule shape: `{ modelIds: string[] }`. If the request has a `modelId` and it is in the list, a violation is returned.
-- **provider_allowlist** — Rule shape: `{ providerTypes: string[] }`. If the list is non-empty and the request has a `providerType`, the provider must be in the list.
-- **provider_denylist** — Rule shape: `{ providerTypes: string[] }`. If the request has a `providerType` and it is in the list, a violation is returned.
-- **deprecated_model_block** — No rule config. If the context includes `modelLifecycleState === "deprecated"` or `"retired"`, a violation is returned. The caller must pass this from the model catalog when evaluating.
+- **Evaluate** (`POST .../policies/evaluate`): hypothetical check for a given `modelId` / `providerType` / scope. Returns `{ allowed, violations }`.
+- **Resolve** (`POST .../projects/:id/resolve`): walks **enabled route steps in order**; each candidate step is checked with the same policy engine. First passing step wins; if none pass → **403** `policy_blocked`.
 
-Evaluation is explicit: call `evaluatePolicies(context)` with `workspaceId` and optional `projectId`, `environmentId`, `routeId`, `modelId`, `providerType`, `modelLifecycleState`. Policies bound to the workspace and to any of the given targets (project, environment, route) are loaded; only active policies are applied. The function returns an array of violations; empty means allowed.
+## Policy types (rule shapes)
 
-## Placeholder (not enforced in v1)
+| Type | Rule | Behavior |
+|------|------|----------|
+| `model_allowlist` | `{ modelIds: string[] }` | Non-empty list → `modelId` must be in list |
+| `model_denylist` | `{ modelIds: string[] }` | `modelId` in list → violation |
+| `provider_allowlist` | `{ providerTypes: string[] }` | Non-empty → `providerType` must be in list |
+| `provider_denylist` | `{ providerTypes: string[] }` | `providerType` in list → violation |
+| `deprecated_model_block` | (none) | Violation if `modelLifecycleState` is `deprecated` or `retired` |
+| `budget_cap` | `{ limit: number }` | Violation if summed `estimated_cost` in **request_logs** for binding scope **this calendar month** ≥ `limit` |
+| `token_cap` | `{ limit: number }` | Violation if summed input+output tokens same window ≥ `limit` |
 
-- **budget_cap** — Rule shape: `{ limit?: number }`. Reserved for future usage/budget checks. Not evaluated in v1.
-- **token_cap** — Rule shape: `{ limit?: number }`. Reserved for token limits. Not evaluated in v1.
-- **environment_restriction**, **privacy_constraint**, **downstream_exposure** — Not implemented in the engine yet.
+Bindings attach policies to targets: **workspace**, **project**, **environment**, **route**. Only **active** policies apply.
 
-## Wiring
+## Resolve API: `policy_blocked` (403)
 
-- **Route selection / request validation:** The dashboard does not yet call `evaluatePolicies` during route resolution or on every request. To enforce policies, call `evaluatePolicies(context)` before or after resolving a route (or in gateway middleware) and block or redirect when `violations.length > 0`. See [routes-bridging.md](routes-bridging.md) for how route resolution could integrate policy checks.
+| Field | Type | Description |
+|-------|------|-------------|
+| `error` | string | `"policy_blocked"` |
+| `message` | string | Short summary |
+| `violations` | array | `{ policyId, policyName, type, message }` each |
+
+Clients should parse JSON on non-2xx; do not rely only on thrown `Error.message`.
+
+## Provider naming
+
+- Policy evaluation uses internal provider keys (e.g. **`google`**).
+- Resolve **response** `data.providerType` maps **`google` → `vertex`** for downstream consumers.
+
+## Not implemented here
+
+`environment_restriction`, `privacy_constraint`, `downstream_exposure` — not in the engine yet.
+
+See [routes-bridging.md](routes-bridging.md) for route/policy context.

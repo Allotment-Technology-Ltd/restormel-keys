@@ -1,260 +1,203 @@
 # Phase 4 — Apply Policies
 
-> **Time:** ~15 minutes
+> **Time:** ~20 minutes
 > **Prerequisites:** [Phase 3](/keys/docs/walkthrough/phase-3-routes) complete (at least one route with steps configured, resolve returns route-aware results)
 > **You'll need:** Access to the [Dashboard](/keys/dashboard), your project from Phase 1
 
-This phase adds guardrails around resolution. Policies constrain which models and providers can be returned, block deprecated models, and cap spend. By the end, your resolve calls are filtered through policies before returning a result, and you can test that policy violations are correctly rejected.
+This phase adds guardrails around resolution. Policies constrain which models and providers can be returned, block deprecated models, and cap spend. By the end, resolve is filtered through policies, and you can prove it with evaluate + resolve.
+
+---
+
+## Terminology
+
+| Term | Meaning |
+|------|---------|
+| **Evaluate** | Hypothetical check: would this `modelId` / `providerType` (and optional route context) pass all bound policies? Returns `allowed` + `violations`. Does **not** run route resolution. |
+| **Resolve** | Route execution: first **enabled** step in order that passes the same policy rules. |
+| **Policy binding** | Attachment of a policy to a **target** (workspace, project, environment, route). |
+| **Scope** | Usually which target you bind to (e.g. project-wide vs one environment). |
+| **Restormel step fallback** | Next enabled step when the current step is blocked by policy. |
+| **App legacy fallback** | Your app’s non-Restormel routing when resolve fails — **not** the same as step fallback. |
+| **policy_blocked** | HTTP **403** from resolve when every enabled step fails policies; JSON body includes `violations`. |
 
 ---
 
 ## Step 4.1 — Understand policy types
 
-Policies are rules attached at the workspace, project, or environment level. They are evaluated during every resolve call. Resolve uses **enabled-step order with policy filtering**: it tries each enabled step in order and returns the first step that passes all policies. There is no implicit provider health probing. If a policy blocks a step, Restormel skips to the next step; if all steps are blocked, resolve returns a `policy_blocked` error with violation details.
+Resolve uses **enabled-step order with policy filtering**: tries each enabled step in order; first that passes all policies wins. No provider health probing. If all steps fail → `policy_blocked`.
 
-| Policy type | What it does | Example |
-|-------------|-------------|---------|
-| `model_allowlist` | Only these models can be resolved | Allow `gpt-4o`, `claude-sonnet-4-20250514`, block everything else |
-| `model_denylist` | These specific models are blocked | Block `gpt-3.5-turbo` (too old for your use case) |
-| `provider_allowlist` | Only these providers can be resolved | Allow `openai` and `anthropic`, block `google` |
-| `provider_denylist` | These specific providers are blocked | Block a provider with a compliance issue |
-| `deprecated_model_block` | Block models marked as deprecated in the Restormel model catalog | Prevent resolution to models approaching end-of-life |
-| `budget_cap` | Cap total spend per period | Max $500/month per environment |
-| `token_cap` | Cap total tokens per period | Max 10M tokens/month |
+| Policy type | What it does |
+|-------------|-------------|
+| `model_allowlist` | Only listed models can pass |
+| `model_denylist` | Listed models blocked |
+| `provider_allowlist` / `provider_denylist` | Provider allow/deny |
+| `deprecated_model_block` | Blocks deprecated/retired catalog models |
+| `budget_cap` | Monthly cap on summed `estimated_cost` in request_logs (per binding scope) |
+| `token_cap` | Monthly cap on input+output tokens in request_logs |
 
-Policies stack. If you have both a `model_allowlist` and a `budget_cap`, both must pass for a model to be resolved.
+Policies **stack**: every bound policy must pass. Resolve returns `data.providerType` as **`vertex`** when the step uses Google internally; policies still use provider type **`google`**.
 
 ---
 
 ## Step 4.2 — Create a model allowlist
 
-Start with the most common policy: restricting which models your app can use.
-
-> **Dashboard**
-> Your project → **Policies** → **Create policy**.
+> **Dashboard** — Project → **Policies** → **Create policy**.
 
 1. **Type:** `model_allowlist`
-2. **Scope:** Project (applies to all environments and routes in this project)
-3. **Models:** Add the model IDs you want to allow. Use IDs from your dashboard’s model catalog (e.g. `gpt-4o`, `gpt-4o-mini`, `claude-sonnet-4-20250514`, or whatever is present in your seeded catalog). If a model is missing from the catalog, add it via your seed data or catalog API first.
-4. **Save** the policy.
-
-### You'll see
-
-The policy listed on the project's Policies page with the type, scope, and allowed models.
+2. **Scope:** Project (typical)
+3. **Models:** Pick each **model ID from your live catalog** (Dashboard → Models or `GET /api/models`). Example IDs in older docs are **not** guaranteed in your deployment.
+4. **Save.** If bindings are not available in the UI, use the Policies API.
 
 ### How to test
 
-Call resolve requesting a model that is **not** on the allowlist:
-
-```bash
-curl -s -X POST \
-  "https://restormel.dev/keys/dashboard/api/projects/${RESTORMEL_PROJECT_ID}/resolve" \
-  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{ "environmentId": "production", "routeId": "ingestion" }' \
-  | jq '.'
-```
-
-**Expected:** The resolve returns `data.modelId` and `data.providerType` from the first enabled step that passes all policies. If your route steps include a blocked model, resolve skips that step and returns the next allowed step. (Provider naming: the API returns `vertex` when the selected provider is Google-backed; policy evaluation uses the internal provider type.)
-
-> **Tip**
-> The resolve endpoint does not take an arbitrary `model` override today. To test allowlisting deterministically, set a route step’s `modelId` to a blocked model, then confirm resolve skips it.
-
-
-Call resolve with an allowed model:
-
-```bash
-curl -s -X POST \
-  "https://restormel.dev/keys/dashboard/api/projects/${RESTORMEL_PROJECT_ID}/resolve" \
-  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{ "environmentId": "production", "routeId": "ingestion" }' \
-  | jq '.data.modelId'
-```
-
-**Expected:** One of your allowed models (e.g. `"gpt-4o"`). The resolve API normalizes provider names for consumers: when the selected step uses Google, `data.providerType` is returned as `vertex`.
+- Route with first step blocked by allowlist, second allowed → **200**, `data.modelId` from second step.
+- All steps blocked → **403**, `error: "policy_blocked"`, `violations` populated.
 
 ---
 
-## Step 4.3 — Add a deprecated-model block
+## Step 4.3 — Deprecated-model block + evaluate
 
-This policy prevents your app from resolving to models that the Restormel model catalog has marked as approaching end-of-life. It's a safety net: even if a route step specifies a deprecated model, this policy blocks it and forces a fallback.
+> **Dashboard** — Create `deprecated_model_block` at project scope.
 
-> **Dashboard**
-> Your project → **Policies** → **Create policy**.
+**Security:** Do not call `/api/policies/*` from the browser with a Gateway Key. Call from **backend** (key in env) or use session in dashboard.
 
-1. **Type:** `deprecated_model_block`
-2. **Scope:** Project
-3. **Save.** No additional configuration needed — the policy reads deprecation status from the model catalog automatically.
+### Evaluate response (200)
 
-### You'll see
-
-The policy listed on the Policies page. Its effect depends on whether any models in your routes are actually deprecated in the catalog.
-
-### How to test
-
-If you have a route step that specifies a model currently marked as deprecated, resolve should skip that step. If none of your models are deprecated, this policy has no visible effect yet — but it protects you when providers deprecate models in the future.
-
-To verify the policy is active, use the **evaluate** endpoint:
-
-> **Security**
-> Never call `/api/policies/*` from the browser. Call it from your backend with the project Gateway Key, or test from the dashboard UI (session cookie).
-
-```bash
-curl -s -X POST \
-  "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectId": "'${RESTORMEL_PROJECT_ID}'",
-    "environmentId": "production",
-    "modelId": "gpt-4-0314",
-    "providerType": "openai"
-  }' \
-  | jq '.data'
-```
-
-**Expected:** `data.allowed` is `false` when the model/provider combination is blocked by policies; `data.violations` explains why.
-
-> **Tip**
-> The evaluate endpoint is useful for testing policies without actually resolving. It tells you "would this model/provider combination pass all policies?" without executing a full route evaluation.
-
----
-
-## Step 4.4 — Add a budget cap
-
-Budget caps prevent unexpected spend. When the cap is reached for a period, resolve returns an error rather than allowing more requests.
-
-> **Dashboard**
-> Your project → **Policies** → **Create policy**.
-
-1. **Type:** `budget_cap`
-2. **Scope:** Environment (`production`)
-3. **Limit:** Set a monthly limit in USD (e.g. `500`)
-4. **Period:** `monthly`
-5. **Save.**
-
-### You'll see
-
-The policy listed with the cap amount and period. Current spend tracking appears in the project's usage section.
-
-### How to test
-
-Budget caps take effect as usage accumulates. For immediate testing, set a very low cap (e.g. `$0.01`) and make a few resolve calls with tracked usage. Then call resolve again — it should fail with a budget error.
-
-**Restore the cap to a realistic value after testing.**
-
-> **Pitfall**
-> Budget caps depend on usage tracking. The dashboard resolve endpoint logs resolutions, but it does not automatically know the cost of your provider call unless you also report usage back to Restormel. Until usage reporting is part of your integration, treat `budget_cap` as a config you can create and bind, and validate it primarily via evaluate and later via usage reporting.
-
----
-
-## Step 4.5 — Test policy stacking
-
-Policies stack: all active policies must pass for a model to be resolved. Verify this by having both a `model_allowlist` and a `deprecated_model_block` active, then evaluating a model that is on the allowlist but deprecated (if one exists).
-
-```bash
-curl -s -X POST \
-  "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
-  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectId": "'${RESTORMEL_PROJECT_ID}'",
-    "environmentId": "production",
-    "modelId": "gpt-4o",
-    "providerType": "openai"
-  }' \
-  | jq '.data'
-```
-
-**Expected:** `gpt-4o` is on the allowlist and not deprecated → allowed. A model that's on the allowlist but deprecated → blocked by the deprecation policy.
-
-### You'll see
-
-The evaluate response shows which policies passed and which blocked.
-
-### How to test
-
-Test with several model/provider combinations to confirm the intersection of your policies behaves as expected.
-
----
-
-## Step 4.6 — Handle policy errors in your resolve wrapper
-
-When all route steps are blocked by policies, Restormel returns HTTP 403 with `error: "policy_blocked"` and a `violations` array. Your resolve wrapper (from Phase 2) already catches errors and falls back to legacy. Add specific handling for policy errors so you can log or alert on them.
-
-```ts
-// src/lib/server/resolve-provider.ts — updated error handling
-
-try {
-  const result = await restormelResolve({
-    environmentId: process.env.RESTORMEL_ENVIRONMENT_ID ?? 'production',
-    routeId: options?.routeId,
-  });
-  return {
-    provider: result.data.providerType ?? (process.env.DEFAULT_AI_PROVIDER ?? 'openai'),
-    model: result.data.modelId ?? options?.model ?? null,
-    source: 'restormel',
-  };
-} catch (err) {
-  const message = err instanceof Error ? err.message : String(err);
-
-  if (message.includes('budget') || message.includes('cap')) {
-    console.error('[restormel] Budget cap reached:', message);
-    // Optionally: alert, notify, or return a specific error to the user
-  } else if (message.includes('no_key_available')) {
-    console.warn('[restormel] No provider key available for route');
-  } else {
-    console.error('[restormel] Resolve failed:', message);
+```json
+{
+  "data": {
+    "allowed": true,
+    "violations": []
   }
-
-  // Fall through to legacy
 }
 ```
 
-### Build-agent prompt: add-policies-and-error-handling
+Each violation: `policyId`, `policyName`, `type`, `message`.
 
-**Context docs** (adapt paths for your project): this page (policy types, evaluate endpoint, error handling); Phase 2 (resolve client and error handling).
+### curl (replace placeholders from your catalog)
 
-**Prompt:**
+```bash
+curl -s -X POST \
+  "https://restormel.dev/keys/dashboard/api/policies/evaluate" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "'${RESTORMEL_PROJECT_ID}'",
+    "environmentId": "YOUR_ENV_ID",
+    "modelId": "PICK_FROM_CATALOG",
+    "providerType": "openai"
+  }' | jq '.data'
+```
 
-> You are working in [your app repo].
->
-> **Goal:** Update the resolve error handling to distinguish policy errors (budget cap, model blocked) from network/auth errors, and add appropriate logging or user-facing responses.
->
-> **Steps:**
->
-> 1. Open `src/lib/server/resolve-provider.ts` (or equivalent).
-> 2. In the `catch` block for the Restormel resolve call, parse the error message for known policy error patterns:
->    - `budget` or `cap` → budget cap reached (log as error, optionally return a user-friendly "quota exceeded" response).
->    - `no_key_available` → no provider could be resolved (log as warning).
->    - `deprecated` or `blocked` → model blocked by policy (log as warning).
->    - Anything else → generic resolve failure (log as error).
-> 3. For budget cap errors, optionally add an alert mechanism (e.g. send a notification, emit a metric) so you're notified before production requests start failing.
-> 4. For all policy errors, the function still falls through to the legacy path (existing behaviour from Phase 2).
-> 5. Add a comment in the code referencing the policy types and evaluate endpoint for future maintainers.
-> 6. Verify: with `USE_RESTORMEL_KEYS=true` and a low budget cap set in the dashboard, the budget error is caught and logged, and the legacy fallback runs.
->
-> **DO NOT:**
-> - Change the legacy fallback logic.
-> - Remove the generic error handling from Phase 2.
-> - Expose raw Restormel error messages to end-users. Translate them into user-friendly messages.
-> - Commit real API keys or secrets.
+### Minimal backend helper (server-only)
 
-**Gate:** Policy errors (budget, blocked model) are logged distinctly from generic errors. The legacy fallback still runs on any Restormel failure. No raw error details leak to end-users.
+```ts
+const base = process.env.RESTORMEL_KEYS_BASE ?? "https://restormel.dev";
+
+export async function evaluatePoliciesRemote(input: {
+  projectId: string;
+  environmentId?: string;
+  routeId?: string;
+  modelId?: string;
+  providerType?: string;
+}) {
+  const key = process.env.RESTORMEL_GATEWAY_KEY;
+  if (!key) throw new Error("RESTORMEL_GATEWAY_KEY is not set");
+  const res = await fetch(`${base}/keys/dashboard/api/policies/evaluate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const json = (await res.json()) as {
+    data?: { allowed: boolean; violations: { policyId: string; policyName: string; type: string; message: string }[] };
+    error?: string;
+  };
+  if (!res.ok) throw new Error(json.error ?? `evaluate HTTP ${res.status}`);
+  return json.data!;
+}
+```
 
 ---
 
-## Checkpoint
+## Step 4.4 — Budget / token caps
 
-You now have:
+Enforcement uses **request_logs** for the bound scope over the **current calendar month**.
 
-- A `model_allowlist` policy constraining which models can be resolved.
-- A `deprecated_model_block` policy preventing resolution to end-of-life models.
-- (Optional) A `budget_cap` policy limiting spend per environment per period.
-- Policy error handling in your resolve wrapper that distinguishes budget, blocked, and generic errors.
-- The evaluate endpoint as a tool for testing policy combinations without executing a full resolve.
+**Success criteria (choose what matches you):**
 
-Policies are active on the Restormel side. Policy creation, bindings, and rule editing are available in the dashboard and via the Policies API (e.g. for automation). Your app handles policy errors gracefully and falls back to legacy when needed.
+1. **Config only** — Policy + binding exist (API or dashboard).
+2. **Evaluate** — Under cap → allowed; over cap (e.g. very low `limit` or logs with cost/tokens) → `budget_cap` / `token_cap` in `violations`.
+3. **Resolve** — Same rules as other policies (step skip or `policy_blocked`).
 
-**Next:** [Phase 5 — Embed the UI](/keys/docs/walkthrough/phase-5-ui) — add ModelSelector and KeyManager to your app so end-users can choose models and manage their own provider credentials.
+Without usage reporting, `estimated_cost` on logs may stay zero — **token_cap** is often easier to test than **budget_cap** until costs are reported.
+
+---
+
+## Step 4.5 — Stacking
+
+With `model_allowlist` + `deprecated_model_block`, evaluate a model that is allowlisted **and** deprecated **in your catalog** (if any) → should be `allowed: false`, `violations[].type` includes `deprecated_model_block`. Use real catalog IDs only.
+
+---
+
+## Step 4.6 — Resolve errors (structured contract)
+
+On **403** `policy_blocked`, body shape:
+
+```json
+{
+  "error": "policy_blocked",
+  "message": "All route steps were blocked by policy",
+  "violations": [
+    {
+      "policyId": "…",
+      "policyName": "…",
+      "type": "model_allowlist",
+      "message": "…"
+    }
+  ]
+}
+```
+
+**Do not** classify failures only by `Error.message` from a thrown exception. **Parse `response.json()`** on non-2xx, branch on `error` and `violations[].type`. Log violation detail server-side; user-facing copy should be generic/safe.
+
+Other resolve errors (e.g. **402** `usage_limit_reached`, **404** `no_route`) have different bodies — see Phase 2.
+
+```ts
+const res = await fetch(resolveUrl, { method: "POST", headers, body: JSON.stringify({ environmentId, routeId }) });
+const body = await res.json().catch(() => ({} as Record<string, unknown>));
+if (!res.ok) {
+  const code = typeof body.error === "string" ? body.error : "unknown";
+  const violations = Array.isArray(body.violations) ? body.violations : [];
+  if (res.status === 403 && code === "policy_blocked") {
+    // Classify by violations[].type — logs only; separate user message
+  }
+  return legacyResolve(); // app legacy fallback, not Restormel step fallback
+}
+```
+
+---
+
+## Agent prompts (handoff)
+
+**4A — Review:** Plan only; no code.
+
+**4C — Create and bind:** Create `model_allowlist`, `deprecated_model_block`, optional `budget_cap`; bind to project/environment; record policy IDs and binding targets; use catalog-backed model IDs only.
+
+**4D — Verify:** Backend `evaluate` for allowed + blocked cases; `resolve` for step skip + `policy_blocked`; redacted evidence; restore test config.
+
+**4B — Error handling:** Structured JSON on non-2xx; no substring-only classification.
+
+---
+
+## Checkpoint (strict)
+
+Phase 4 is complete only if:
+
+- Policies **created** and **bound**; targets documented.
+- **Evaluate** run from backend: at least one allowed and one blocked case with `violations[].type` recorded.
+- **Resolve** tested: step skip **or** `policy_blocked` when all steps fail.
+- App parses **structured** resolve errors, not only thrown message text.
+
+**Dashboard note:** Creation works; rule edits and bindings may require API — future “test policy” UI would reduce friction.
+
+**Next:** [Phase 5 — Embed the UI](/keys/docs/walkthrough/phase-5-ui)

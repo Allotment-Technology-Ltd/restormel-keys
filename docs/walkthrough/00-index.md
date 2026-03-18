@@ -26,7 +26,7 @@ The walkthrough is designed to work as:
 | `03-phase-1-install.md` | **Phase 1.** Install packages, create dashboard project, generate Gateway Key, run `keys doctor`. Prompt: P03. | Walkthrough page |
 | `04-phase-2-resolve.md` | **Phase 2.** First resolve call (curl + typed client), feature flag wiring, error handling, optional local resolve. Prompts: P04, P05. | Walkthrough page |
 | `05-phase-3-routes.md` | **Phase 3.** Create routes with steps, configure fallback chain, test failover, wire route IDs. Prompt: P06. | Walkthrough page |
-| `06-phase-4-policies.md` | **Phase 4.** Model allowlist, deprecated-model block, budget cap, evaluate endpoint, policy error handling. Prompt: P07. | Walkthrough page |
+| `06-phase-4-policies.md` | **Phase 4.** Policies, bindings, evaluate vs resolve, structured errors, budget/token caps. Prompts: P07B, P07C, P07. | Walkthrough page |
 | `07-phase-5-ui.md` | **Phase 5.** Embed ModelSelector (React, SvelteKit, Web Components), optional KeyManager, policy-filtered model list, theming. Prompt: P08. | Walkthrough page |
 | `08-phase-6-golive.md` | **Phase 6.** Pre-cutover checklist, parallel run, full cutover, smoke test, legacy code removal. Prompts: P09, P10. | Walkthrough page |
 | `09-migration-paths.md` | Migration variants: custom, LiteLLM, Portkey, OpenRouter. Strangler pattern. Comparison table. Prompt: P11. | Migration guide |

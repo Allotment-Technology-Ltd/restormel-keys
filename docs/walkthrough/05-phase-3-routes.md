@@ -21,7 +21,7 @@ Mode:  fallback_chain
   Step 3 → Google    (gemini-2.5-pro) → if step 2 fails
 ```
 
-When your backend calls resolve with `routeId: "ingestion"`, Restormel walks the chain. If the first step's provider has a valid key and is not blocked by a policy, it's returned. If not (no key, rate-limited, deprecated), Restormel tries the next step.
+When your backend calls resolve with `routeId: "ingestion"`, Restormel walks **enabled** steps in order. The first step that passes **policies** (Phase 4) is returned; blocked steps are skipped. There is no separate “provider health” probe in resolve today—proving fallback is usually **disable the first step** or **block it via policy**. Resolve returns **`vertex`** as `providerType` when the step uses Google internally (policies still use `google`).
 
 Route modes available:
 

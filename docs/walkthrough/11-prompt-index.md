@@ -16,7 +16,9 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 | P04 | `create-resolve-client` | [Phase 2](./04-phase-2-resolve.md) §2.5 | 2 |
 | P05 | `create-local-resolve` | [Phase 2](./04-phase-2-resolve.md) §2.6 | 2 |
 | P06 | `wire-route-ids` | [Phase 3](./05-phase-3-routes.md) §3.5 | 3 |
-| P07 | `add-policies-and-error-handling` | [Phase 4](./06-phase-4-policies.md) §4.6 | 4 |
+| P07 | `structured-resolve-policy-errors` | [Phase 4](./06-phase-4-policies.md) §4.6 | 4 |
+| P07B | `create-and-bind-policies` | [Phase 4](./06-phase-4-policies.md) (Prompt 4C) | 4 |
+| P07C | `verify-policies-evaluate-resolve` | [Phase 4](./06-phase-4-policies.md) (Prompt 4D) | 4 |
 | P08 | `embed-ui-components` | [Phase 5](./07-phase-5-ui.md) §5.7 | 5 |
 | P09 | `create-smoke-test` | [Phase 6](./08-phase-6-golive.md) §6.4 | 6 |
 | P10 | `remove-legacy-routing` | [Phase 6](./08-phase-6-golive.md) §6.5 | 6 |
@@ -209,34 +211,57 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 
 ---
 
-## P07 — `add-policies-and-error-handling`
+## P07B — `create-and-bind-policies` (before P07 / P07C)
+
+**Phase:** 4  **Source:** Dashboard + Policies API; [06-phase-4-policies.md](./06-phase-4-policies.md)
+
+**Context docs:**
+- `docs/walkthrough/06-phase-4-policies.md`
+- `docs/reference/policy-enforcement.md`
+
+**Prompt:** Create `model_allowlist` and `deprecated_model_block` at project scope (catalog-backed model IDs only); optionally `budget_cap` at environment; create **policy bindings** for each target; record policy IDs and binding targets. Use API for rule/bindings if dashboard is incomplete.
+
+**Gate:** Policies exist, bound, documented. No invalid catalog model IDs.
+
+---
+
+## P07C — `verify-policies-evaluate-resolve`
+
+**Phase:** 4  **Source:** [06-phase-4-policies.md](./06-phase-4-policies.md)
+
+**Context docs:**
+- Same as P07B; `docs/walkthrough/04-phase-2-resolve.md`
+
+**Prompt:** From backend, call **evaluate** with Gateway Key: allowed + blocked model cases (`violations[].type`). Call **resolve**: first step blocked / second allowed → 200 from second step; all steps blocked → 403 `policy_blocked`. Stacking if applicable. Redacted evidence; restore test config.
+
+**Gate:** Documented HTTP status + error codes + violation types. No browser exposure of Gateway Key.
+
+---
+
+## P07 — `structured-resolve-policy-errors`
 
 **Phase:** 4  **Source:** [06-phase-4-policies.md](./06-phase-4-policies.md) §4.6
 
 **Context docs:**
-- `docs/walkthrough/06-phase-4-policies.md` — policy types, evaluate endpoint
-- `docs/walkthrough/04-phase-2-resolve.md` — resolve error handling
-- `docs/reference/sophia-dogfooding-plan.md` — §2 policies
-- `apps/dashboard/src/routes/keys/dashboard/api/policies/evaluate/+server.ts` — evaluate endpoint
-- `packages/core/src/entitlements.ts` — entitlements engine
-- `docs/01-product-strategy.md` — §5 product modes
+- `docs/walkthrough/06-phase-4-policies.md` — `policy_blocked` JSON contract
+- `docs/walkthrough/04-phase-2-resolve.md` — 402/404 resolve shapes
+- `docs/reference/policy-enforcement.md`
 
 **Prompt:**
 
 > You are working in [your app repo].
 >
-> **Goal:** Distinguish policy errors from network/auth errors in resolve handling.
+> **Goal:** On resolve non-2xx, parse **response.json()**; branch on `error` and `violations[].type`. Do not classify only from `Error.message`.
 >
 > **Steps:**
-> 1. In catch block, parse for budget/cap, `no_key_available`, deprecated/blocked.
-> 2. Log each distinctly.
-> 3. Optionally add budget alert mechanism.
-> 4. Legacy fallback still runs.
-> 5. Verify: low budget cap → caught and logged, legacy runs.
+> 1. Read JSON body for 403 `policy_blocked` (`violations`: `policyId`, `policyName`, `type`, `message`).
+> 2. Map types (`model_allowlist`, `budget_cap`, `token_cap`, …) to logging; user-facing messages stay generic.
+> 3. Handle 402 `usage_limit_reached`, 404 `no_route` per Phase 2.
+> 4. **App legacy fallback** (non-Restormel routing) still runs on failure.
 >
-> **DO NOT:** Change legacy fallback. Remove Phase 2 handling. Expose raw errors. Commit secrets.
+> **DO NOT:** Substring-match thrown errors only. Expose raw API text to users. Commit secrets.
 
-**Gate:** Policy errors logged distinctly. Legacy runs on failure. No raw errors to users.
+**Gate:** Structured parsing in place. Legacy fallback preserved. Safe user messages.
 
 ---
 
@@ -405,7 +430,7 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 **Fresh integration (no prior gateway):**
 
 ```
-P01 → P02 → P03 → P04 → P06 → P07 → P08 → P09 → [cutover] → P10 → P12
+P01 → P02 → P03 → P04 → P06 → P07B → P07C → P07 → P08 → P09 → [cutover] → P10 → P12
 ```
 
 P05 (local resolve) is optional, alongside or instead of P04.
@@ -413,7 +438,7 @@ P05 (local resolve) is optional, alongside or instead of P04.
 **LiteLLM migration:**
 
 ```
-P11 → P01 → P02 → P03 → P04 → P06 → P07 → P08 → P09 → [cutover] → P10 → P12
+P11 → P01 → P02 → P03 → P04 → P06 → P07B → P07C → P07 → P08 → P09 → [cutover] → P10 → P12
 ```
 
 ---

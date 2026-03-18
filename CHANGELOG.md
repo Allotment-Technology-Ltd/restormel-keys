@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Changed
+
+- **Phase 4 docs and agent prompts:** Terminology (evaluate vs resolve; Restormel step fallback vs app legacy fallback). Structured **403 `policy_blocked`** contract (`error`, `message`, `violations[]` fields). Replace message-substring error handling with JSON body parsing. Minimal **backend evaluate** TypeScript example (Gateway Key from env). Catalog-first model IDs (no guaranteed example IDs). Budget/token cap success criteria (config vs evaluate vs end-to-end). Stricter Phase 4 checkpoint. New agent prompts **4C** (create/bind) and **4D** (verify evaluate+resolve) on dashboard walkthrough page. [docs/walkthrough/06-phase-4-policies.md](docs/walkthrough/06-phase-4-policies.md), [docs/reference/policy-enforcement.md](docs/reference/policy-enforcement.md), prompt index P07B/P07C + revised P07.
+
 ### Added
 
 - **Founding Pro:** First **50** Better Auth signups → **12 months Pro** (`workspaces.plan_expires_at`). Migration `008` backfills eligible existing users. Env `FOUNDING_PROMO_MAX_USERS`, `FOUNDING_PROMO_MONTHS`. [docs/reference/founding-pro-promo.md](docs/reference/founding-pro-promo.md).
