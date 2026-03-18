@@ -39,7 +39,9 @@ const config: ZudokuConfig = {
   },
   authentication: {
     type: "openid",
-    clientId: process.env.RESTORMEL_OIDC_CLIENT_ID ?? "",
+    // Zudoku warns if the clientId env var isn't public-prefixed. Keep backwards
+    // compat with the older name while letting hosted builds use the public one.
+    clientId: process.env.ZUDOKU_PUBLIC_RESTORMEL_OIDC_CLIENT_ID ?? process.env.RESTORMEL_OIDC_CLIENT_ID ?? "",
     issuer: "https://restormel.dev/keys/auth",
     scopes: ["openid", "profile", "email"],
   },

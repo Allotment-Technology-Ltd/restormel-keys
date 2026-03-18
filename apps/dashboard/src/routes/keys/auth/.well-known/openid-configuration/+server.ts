@@ -1,11 +1,9 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { jwksFromPublicKey } from "$lib/server/oidc";
 
 const ISSUER = "https://restormel.dev/keys/auth";
 
 export const GET: RequestHandler = async () => {
-  const { kid } = jwksFromPublicKey();
   return json({
     issuer: ISSUER,
     authorization_endpoint: `${ISSUER}/authorize`,
@@ -18,7 +16,6 @@ export const GET: RequestHandler = async () => {
     scopes_supported: ["openid", "profile", "email"],
     token_endpoint_auth_methods_supported: ["none"],
     claims_supported: ["sub", "email", "name", "picture"],
-    kid,
   });
 };
 
