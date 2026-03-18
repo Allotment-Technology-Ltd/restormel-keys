@@ -1,5 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { developerPortalUrl } from "$lib/developer-portal-url";
   import { invalidateAll } from "$app/navigation";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import type { KeyWithProject } from "./+page.server";
@@ -75,6 +76,9 @@
 <h1 class="page-title">Access</h1>
 <p class="page-desc">
   Gateway keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate — see Provider Integrations.
+</p>
+<p class="page-desc page-desc-secondary">
+  <strong>API portal</strong> (Zuplo): Gateway API reference, Try it, and your Zuplo consumer key (<code class="inline-code">zpka_…</code>) — <a href={developerPortalUrl()} rel="noopener noreferrer">open API portal</a>. Use the portal nav or logo to return to Keys, Docs, or this dashboard.
 </p>
 
 {#if data.error}
@@ -203,6 +207,26 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
+  }
+  .page-desc-secondary {
+    margin-top: calc(-1 * var(--space-2));
+    padding: var(--space-3);
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    line-height: 1.5;
+  }
+  .page-desc-secondary a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .inline-code {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: 0.9em;
+    padding: 0.1em 0.35em;
+    background: var(--rm-bg);
+    border-radius: 4px;
+    border: 1px solid var(--rm-border);
   }
   .section {
     margin-bottom: var(--space-6);

@@ -3,11 +3,14 @@
  * Single source for nav items and path → title mapping.
  */
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
+import { developerPortalUrl } from "$lib/developer-portal-url";
 
 export type NavItem = {
   href: string;
   label: string;
   external?: boolean;
+  /** Default true for external; set false for API portal (same tab → SSO-friendly). */
+  openInNewTab?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -23,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: DASHBOARD_BASE + "/logs", label: "Logs & Traces" },
   { href: DASHBOARD_BASE + "/lifecycle", label: "Lifecycle & Migrations" },
   { href: DASHBOARD_BASE + "/sandbox", label: "Sandbox" },
+  { href: developerPortalUrl(), label: "API portal", external: true, openInNewTab: false },
   { href: "/keys/docs", label: "Documentation", external: true },
   { href: DASHBOARD_BASE + "/settings", label: "Profile" },
 ];

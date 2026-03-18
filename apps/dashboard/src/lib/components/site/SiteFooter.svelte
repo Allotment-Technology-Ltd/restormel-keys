@@ -1,5 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { developerPortalUrl } from "$lib/developer-portal-url";
 </script>
 
 <footer class="site-footer">
@@ -9,6 +10,7 @@
       <ul class="site-footer-links" aria-label="Product">
         <li><a href="/keys">Keys</a></li>
         <li><a href="/keys/docs">Docs</a></li>
+        <li><a href={developerPortalUrl()}>API portal</a></li>
         <li><a href="/keys/pricing">Pricing</a></li>
         <li><a href={DASHBOARD_BASE}>Dashboard</a></li>
       </ul>

@@ -1,9 +1,50 @@
 import type { ZudokuConfig } from "zudoku";
 import { createApiIdentityPlugin } from "zudoku/plugins";
 
+/** Product site (Keys, Docs, Dashboard). Same-tab so Neon session applies for SSO. */
+const RESTORMEL_SITE = (
+  process.env.ZUDOKU_PUBLIC_RESTORMEL_SITE_ORIGIN ?? "https://restormel.dev"
+).replace(/\/$/, "");
+
 const config: ZudokuConfig = {
-  site: { title: "Restormel Keys" },
+  site: {
+    title: "Restormel Keys — API portal",
+    logo: {
+      src: { light: `${RESTORMEL_SITE}/restormel-lockup-nav.svg`, dark: `${RESTORMEL_SITE}/restormel-lockup-nav.svg` },
+      href: `${RESTORMEL_SITE}/keys`,
+      alt: "Restormel",
+      width: "134px",
+    },
+  },
   navigation: [
+    {
+      type: "category",
+      label: "On restormel.dev",
+      icon: "arrow-left",
+      items: [
+        {
+          type: "link",
+          label: "Keys (product)",
+          to: `${RESTORMEL_SITE}/keys`,
+          target: "_self",
+          icon: "home",
+        },
+        {
+          type: "link",
+          label: "Documentation",
+          to: `${RESTORMEL_SITE}/keys/docs`,
+          target: "_self",
+          icon: "book-open",
+        },
+        {
+          type: "link",
+          label: "Dashboard",
+          to: `${RESTORMEL_SITE}/keys/dashboard`,
+          target: "_self",
+          icon: "layout-dashboard",
+        },
+      ],
+    },
     {
       type: "category",
       label: "Getting started",

@@ -116,6 +116,9 @@
       <a class="user-menu-item" role="menuitem" href={DASHBOARD_BASE + "/billing"} on:click={close}>
         Subscription
       </a>
+      <a class="user-menu-item" role="menuitem" href="/keys/pricing" on:click={close}>
+        Pricing
+      </a>
       <div class="user-menu-sep" aria-hidden="true"></div>
       <a
         class="user-menu-item user-menu-danger"

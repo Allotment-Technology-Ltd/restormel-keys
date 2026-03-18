@@ -92,6 +92,8 @@ This enables:
 
 Set these in the Zuplo project environment variables/secrets (not in git):
 
+- `ZUDOKU_PUBLIC_RESTORMEL_SITE_ORIGIN` (optional)
+  - e.g. `https://restormel.dev` — used for **On restormel.dev** nav links and the header logo URL. Defaults to `https://restormel.dev` if unset.
 - `RESTORMEL_OIDC_CLIENT_ID`
   - the client id Zudoku uses for the OIDC provider (can be any stable string; must match the audience used by the issuer)
 
@@ -108,6 +110,11 @@ Set these in the dashboard deployment environment (secrets manager / Vercel env)
 
 - `OIDC_PRIVATE_KEY` (secret PEM)
 - `OIDC_PUBLIC_KEY` (public PEM)
+
+#### Dashboard (Vercel) — portal URL for links
+
+- `PUBLIC_KEYS_DEVELOPER_PORTAL_URL` (optional)
+  - Zuplo site URL (no trailing slash), e.g. `https://your-project.zuplo.site`. Used for **API portal** links in header, footer, docs sidebar, and dashboard. If unset, a default host is used (update when your Zuplo preview URL changes).
 
 #### Zuplo Developer API (for consumer provisioning)
 

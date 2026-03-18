@@ -5,6 +5,7 @@
   import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
   import { onMount } from "svelte";
   import UserMenu from "$lib/components/UserMenu.svelte";
+  import { developerPortalUrl } from "$lib/developer-portal-url";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
@@ -49,7 +50,9 @@
       <p class="mobile-gate-links">
         <a href="/keys/docs">Open docs</a>
         <span class="mobile-gate-sep">·</span>
-        <a href="/keys/pricing">View pricing</a>
+        <a href={developerPortalUrl()}>API portal</a>
+        <span class="mobile-gate-sep">·</span>
+        <a href="/keys/pricing">Pricing</a>
       </p>
     </section>
   </div>
@@ -61,7 +64,11 @@
       <nav class="nav" aria-label="Dashboard">
         {#each NAV_ITEMS as item}
           {#if item.external}
-            <a href={item.href} class="nav-link" target="_blank" rel="noopener noreferrer">{item.label}</a>
+            <a
+              href={item.href}
+              class="nav-link"
+              target={item.openInNewTab === false ? undefined : "_blank"}
+              rel={item.openInNewTab === false ? undefined : "noopener noreferrer"}>{item.label}</a>
           {:else}
             <a href={item.href} class="nav-link" class:nav-link-active={currentPath === item.href || (item.href !== DASHBOARD_BASE + "/" && currentPath.startsWith(item.href + "/"))}>{item.label}</a>
           {/if}
@@ -82,11 +89,14 @@
           </button>
           <span class="topbar-title">{title}</span>
         </div>
+        <div class="topbar-right">
+        <a class="topbar-portal" href={developerPortalUrl()}>API portal</a>
         {#if user}
           <UserMenu user={{ uid: user.uid, email: user.email ?? null, name: (user as { name?: string | null }).name ?? null }} align="right" />
         {:else}
           <a href={DASHBOARD_BASE + "/login"} class="btn btn-primary">Sign in with GitHub</a>
         {/if}
+        </div>
       </header>
       <main class="main">
         {#if !user && !isAuthRoute}
@@ -112,6 +122,8 @@
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
+                <span class="welcome-sep">·</span>
+                <a href={developerPortalUrl()}>API portal</a>
                 <span class="welcome-sep">·</span>
                 <a href="/keys/pricing">Pricing</a>
               </p>
@@ -203,6 +215,22 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-shrink: 0;
+  }
+  .topbar-portal {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .topbar-portal:hover {
+    color: var(--rm-sage);
+    text-decoration: none;
   }
   .main {
     flex: 1;

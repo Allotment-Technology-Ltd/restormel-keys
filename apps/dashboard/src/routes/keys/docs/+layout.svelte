@@ -1,6 +1,7 @@
 <script lang="ts">
   /** Docs layout — docs sidebar is collapsible and width-constrained. */
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { developerPortalUrl } from "$lib/developer-portal-url";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { absoluteUrl } from "$lib/seo";
@@ -93,6 +94,8 @@
     <div class="nav-divider" aria-hidden="true"></div>
     <a href="/keys/docs/compatibility" on:click={closeNavOnMobile}>Compatibility</a>
     <a href="/keys/docs/cloud-api" on:click={closeNavOnMobile}>Cloud API</a>
+    <div class="nav-divider" aria-hidden="true"></div>
+    <a href={developerPortalUrl()} on:click={closeNavOnMobile}>API portal</a>
     <a href={DASHBOARD_BASE} on:click={closeNavOnMobile}>Dashboard</a>
     <a href={DASHBOARD_BASE + "/login"} on:click={closeNavOnMobile}>Sign in</a>
   </nav>

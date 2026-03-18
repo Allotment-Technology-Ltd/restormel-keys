@@ -1,9 +1,11 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { page } from "$app/stores";
 
-  export let active: "keys" | "docs" | "pricing" | "dashboard" | null = null;
+  export let active: "keys" | "docs" | "dashboard" | null = null;
+  $: portalUrl = developerPortalUrl();
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
   export let user: { uid: string; email?: string | null; name?: string | null } | null = null;
@@ -29,7 +31,9 @@
     <ul class="site-header-links">
       <li><a href="/keys" class:active={active === "keys"}>Keys</a></li>
       <li><a href="/keys/docs" class:active={active === "docs"}>Docs</a></li>
-      <li><a href="/keys/pricing" class:active={active === "pricing"}>Pricing</a></li>
+      <li>
+        <a href={portalUrl} class="site-header-external">API portal</a>
+      </li>
       <li><a href={DASHBOARD_BASE} class:active={active === "dashboard"}>Dashboard</a></li>
     </ul>
 
@@ -65,10 +69,11 @@
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <a href="/keys" class:active={active === "keys"} on:click={closeMobileMenu}>Keys</a>
     <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Docs</a>
-    <a href="/keys/pricing" class:active={active === "pricing"} on:click={closeMobileMenu}>Pricing</a>
+    <a href={portalUrl} on:click={closeMobileMenu}>API portal</a>
     <a href={DASHBOARD_BASE} class:active={active === "dashboard"} on:click={closeMobileMenu}>Dashboard</a>
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
+      <a href="/keys/pricing" on:click={closeMobileMenu}>Pricing</a>
       <a href={DASHBOARD_BASE + "/settings"} on:click={closeMobileMenu}>Profile &amp; settings</a>
       <a href={DASHBOARD_BASE + "/billing"} on:click={closeMobileMenu}>Subscription</a>
       <a href={DASHBOARD_BASE + "/logout"} data-sveltekit-reload on:click={closeMobileMenu}>Sign out</a>
@@ -139,6 +144,11 @@
   .site-header-links a.active {
     color: var(--rm-text);
     font-weight: var(--font-medium);
+  }
+  .site-header-external::after {
+    content: " ↗";
+    font-size: 0.85em;
+    opacity: 0.7;
   }
   .site-header-right {
     display: flex;

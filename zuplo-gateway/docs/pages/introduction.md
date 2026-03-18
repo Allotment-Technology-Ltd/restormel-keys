@@ -5,6 +5,8 @@ description: Restormel Keys Cloud API — gateway and developer portal.
 
 # Introduction
 
+**You are in the API portal** (Gateway reference and Try it). To leave this site: use the **On restormel.dev** tab in the nav for **Keys**, **Documentation**, or **Dashboard** — or click the Restormel logo to return to the product home.
+
 The Restormel Keys API has two distinct surfaces. Use the right one for your task.
 
 ## Gateway API (this portal)
