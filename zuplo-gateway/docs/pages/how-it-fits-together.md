@@ -1,7 +1,8 @@
 ---
-title: How it all fits together
 description: How the dashboard, gateway, this portal, and Restormel Keys docs relate.
 ---
+
+# How it all fits together
 
 This page explains how the different parts of Restormel Keys fit together and how a user gets here.
 

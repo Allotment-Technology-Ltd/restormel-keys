@@ -4,7 +4,6 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
   import { onMount } from "svelte";
-  import UserMenu from "$lib/components/UserMenu.svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
 
   $: user = $page.data.user;
@@ -88,19 +87,6 @@
             {collapsed ? "Expand nav" : "Collapse nav"}
           </button>
           <span class="topbar-title">{title}</span>
-        </div>
-        <div class="topbar-right">
-        <a
-          class="topbar-portal"
-          href={developerPortalUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="API portal (opens in new tab)">API portal</a>
-        {#if user}
-          <UserMenu user={{ uid: user.uid, email: user.email ?? null, name: (user as { name?: string | null }).name ?? null }} align="right" />
-        {:else}
-          <a href={DASHBOARD_BASE + "/login"} class="btn btn-primary">Sign in with GitHub</a>
-        {/if}
         </div>
       </header>
       <main class="main">
@@ -220,22 +206,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    flex-shrink: 0;
-  }
-  .topbar-portal {
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .topbar-portal:hover {
-    color: var(--rm-sage);
-    text-decoration: none;
   }
   .main {
     flex: 1;

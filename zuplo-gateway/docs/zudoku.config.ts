@@ -73,6 +73,10 @@ const config: ZudokuConfig = {
       type: "file",
       input: "../config/routes.oas.json",
       path: "/api",
+      options: {
+        disablePlayground: false,
+        disableSidecar: false,
+      },
     },
   ],
   docs: {
@@ -86,7 +90,8 @@ const config: ZudokuConfig = {
     issuer: "https://restormel.dev/keys/auth",
     scopes: ["openid", "profile", "email"],
   },
-  protectedRoutes: ["/api/*", "/my-keys"],
+  /** /my-keys stays public so users can read help + use a real Sign in navigation. */
+  protectedRoutes: ["/api/*"],
   plugins: [
     createApiIdentityPlugin({
       getIdentities: async (context) => {

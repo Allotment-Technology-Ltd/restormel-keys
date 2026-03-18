@@ -4,8 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/apply-zudoku-ui-patches.mjs",
     "dev": "zudoku dev --zuplo",
-    "build": "zudoku build --zuplo"
+    "build": "node scripts/apply-zudoku-ui-patches.mjs && zudoku build --zuplo"
   },
   "dependencies": {
     "react": ">19.0.0",

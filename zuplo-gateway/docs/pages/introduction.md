@@ -1,7 +1,8 @@
 ---
-title: Introduction
 description: Restormel Keys Cloud API — gateway and developer portal.
 ---
+
+# Introduction
 
 **You are in the API portal** (Gateway reference and Try it). To leave this site: use the **On restormel.dev** tab in the nav for **Keys**, **Documentation**, or **Dashboard** — or click the Restormel logo to return to the product home.
 
@@ -23,6 +24,7 @@ The Restormel Keys API has two distinct surfaces. Use the right one for your tas
 
 ## Authentication
 
-Sign in with GitHub to use "Try it" in the Gateway API Reference and to retrieve your consumer key.  
-[Sign in →](/oauth/login)
+Sign in with GitHub to open the **Gateway API Reference** (protected) and to use the **playground** on the right of each operation to send test requests. In the playground, pick **My consumer key (zpka_…)** as the API identity, or paste your key manually — see [My Consumer Key](/my-keys).
+
+**Sign in:** use the account control in the portal header, or go to `/oauth/login` on this site.
 

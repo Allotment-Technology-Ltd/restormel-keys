@@ -1,7 +1,8 @@
 ---
-title: Policies evaluate
 description: Evaluate policies for a request context (Dashboard API).
 ---
+
+# Policies evaluate
 
 This is a **Dashboard API** runtime endpoint used to test whether a model/provider choice is allowed by the active policies for a project/environment.
 

@@ -122,11 +122,16 @@ Set these in the dashboard deployment environment (secrets manager / Vercel env)
 - `ZUPLO_BUCKET_NAME`
 - `ZUPLO_API_KEY` (secret)
 
+## 5b) Portal build (duplicate Logout / titles)
+
+- **`zuplo-gateway/docs`**: `npm install` runs `postinstall` which patches Zudoku’s `Header.tsx` to remove a **second hardcoded Logout** (the profile plugin already adds one).
+- **Doc pages**: main headings use a single `# Title` in the markdown body (no duplicate `title` in frontmatter + H1).
+
 ## 6) Validation checklist
 
 1. Portal loads and shows **Gateway API Reference** at `/api`
-2. Unauthenticated users cannot run “Try it” on `/api/*` (prompts login)
+2. Unauthenticated users cannot open `/api` (prompts login); playground is on the right when viewing an operation after sign-in
 3. Login works via GitHub → returns to portal signed in
-4. `/my-keys` shows a `zpka_...` key
-5. “Try it” on `GET /api/projects` returns 200 when signed in
+4. `/my-keys` is readable without login (help copy); signed-in users see `zpka_...` and can copy it
+5. In **Gateway API Reference**, pick **My consumer key (zpka_…)** as the API identity (or Bearer), then send a test request (e.g. `GET /api/projects`) → 200 when entitled
 

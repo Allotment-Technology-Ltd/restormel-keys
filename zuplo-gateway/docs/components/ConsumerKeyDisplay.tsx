@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "zudoku/components";
+import { SignInButton } from "./SignInButton";
 
 export function ConsumerKeyDisplay(props: { endpoint: string }) {
   const { endpoint } = props;
@@ -9,41 +10,77 @@ export function ConsumerKeyDisplay(props: { endpoint: string }) {
   const [key, setKey] = React.useState<string | null>(null);
   const [revealed, setRevealed] = React.useState(false);
 
+  const isAuthEnabled = Boolean(auth?.isAuthEnabled);
+  const isPending = Boolean(auth?.isPending);
+  const isAuthenticated = Boolean(auth?.isAuthenticated);
+
   React.useEffect(() => {
+    if (!isAuthEnabled) {
+      setLoading(false);
+      setError(null);
+      setKey(null);
+      return;
+    }
+    if (isPending) {
+      setLoading(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      setLoading(false);
+      setError(null);
+      setKey(null);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const headers: Record<string, string> = {};
-    try {
-      const token = (auth as any)?.getAccessToken?.();
-      // getAccessToken may be sync or async depending on provider
-      Promise.resolve(token)
-        .then((t) => {
-          if (typeof t === "string" && t) headers.Authorization = `Bearer ${t}`;
-          return fetch(endpoint, { headers });
-        })
-        .then(async (res) => {
-          if (res.status === 401) throw new Error("Sign in to view your key.");
-          const json = (await res.json().catch(() => ({}))) as any;
-          if (!res.ok) throw new Error(json?.error ?? json?.detail ?? "Failed to load key.");
-          const k = json?.key;
-          if (typeof k !== "string" || !k.startsWith("zpka_")) throw new Error("Invalid key response.");
-          if (!cancelled) setKey(k);
-        })
-        .catch((e) => {
-          if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load key.");
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load key.");
-      setLoading(false);
+
+    async function fetchWithRetry(attempt: number): Promise<void> {
+      const getToken = (auth as { getAccessToken?: () => string | Promise<string> })?.getAccessToken;
+      const token = getToken ? await Promise.resolve(getToken()) : "";
+      const headers: Record<string, string> = {};
+      if (typeof token === "string" && token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(endpoint, { headers });
+      if (res.status === 401 && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        if (!cancelled) return fetchWithRetry(attempt + 1);
+        return;
+      }
+      if (res.status === 401) {
+        if (!cancelled) {
+          setError("sign_in_required");
+          setKey(null);
+        }
+        return;
+      }
+      const json = (await res.json().catch(() => ({}))) as { key?: string; error?: string; detail?: string };
+      if (!res.ok) {
+        if (!cancelled) setError(json?.error ?? json?.detail ?? "Failed to load key.");
+        return;
+      }
+      const k = json?.key;
+      if (typeof k !== "string" || !k.startsWith("zpka_")) {
+        if (!cancelled) setError("Invalid key response.");
+        return;
+      }
+      if (!cancelled) setKey(k);
     }
+
+    fetchWithRetry(0)
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load key.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [endpoint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- token fetch when session gates flip
+  }, [endpoint, isAuthEnabled, isPending, isAuthenticated]);
 
   const masked = React.useMemo(() => {
     if (!key) return "";
@@ -60,8 +97,53 @@ export function ConsumerKeyDisplay(props: { endpoint: string }) {
     }
   }
 
-  if (loading) return <div style={{ color: "var(--z-muted)" }}>Loading…</div>;
-  if (error) return <div style={{ color: "var(--z-danger)" }}>{error}</div>;
+  if (!isAuthEnabled) {
+    return (
+      <p style={{ color: "var(--z-muted)" }}>
+        Sign-in is not configured on this portal. Use a consumer key from your Zuplo project settings if available.
+      </p>
+    );
+  }
+
+  if (isPending) return <div style={{ color: "var(--z-muted)" }}>Checking session…</div>;
+
+  if (!isAuthenticated) {
+    return (
+      <div
+        style={{
+          border: "1px solid var(--z-border)",
+          borderRadius: 10,
+          padding: 20,
+          background: "var(--z-surface)",
+          maxWidth: 560,
+        }}
+      >
+        <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>
+          Sign in to load your consumer key from Restormel. This uses a full page navigation so the session is shared
+          with the dashboard.
+        </p>
+        <SignInButton />
+      </div>
+    );
+  }
+
+  if (loading) return <div style={{ color: "var(--z-muted)" }}>Loading your key…</div>;
+
+  if (error === "sign_in_required") {
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <p style={{ color: "var(--z-danger)", marginBottom: 12 }}>
+          We could not load your key with this session. Sign in again.
+        </p>
+        <SignInButton>Sign in again</SignInButton>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div style={{ color: "var(--z-danger)" }}>{error}</div>;
+  }
+
   if (!key) return null;
 
   return (
@@ -87,7 +169,7 @@ export function ConsumerKeyDisplay(props: { endpoint: string }) {
       >
         {revealed ? key : masked}
       </div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           type="button"
           onClick={() => setRevealed((v) => !v)}
@@ -118,9 +200,9 @@ export function ConsumerKeyDisplay(props: { endpoint: string }) {
         </button>
       </div>
       <div style={{ marginTop: 10, color: "var(--z-muted)", fontSize: 13 }}>
-        Use this key as <code>Authorization: Bearer zpka_...</code> when calling the gateway API.
+        Use as <code>Authorization: Bearer zpka_…</code> on the gateway base URL. In the API reference playground,
+        choose the <strong>My consumer key (zpka_…)</strong> identity.
       </div>
     </div>
   );
 }
-

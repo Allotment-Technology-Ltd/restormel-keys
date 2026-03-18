@@ -1,7 +1,8 @@
 ---
-title: Resolve
 description: Resolve which provider/model to use for a request (Dashboard API).
 ---
+
+# Resolve
 
 Resolve is a **Dashboard API** runtime endpoint. Your backend calls it directly to get a route/provider/model decision, then you execute the request via your existing provider access layer (OpenRouter/Portkey/Vercel AI Gateway or direct providers).
 
