@@ -14,6 +14,7 @@ export type Workspace = {
   slug: string;
   ownerUserId: string;
   createdAt: number;
+  plan: "free" | "pro";
 };
 
 export type Project = {
@@ -63,7 +64,7 @@ export async function upsertUser(userId: string, email?: string | null): Promise
 export async function getOrCreateDefaultWorkspace(userId: string): Promise<Workspace> {
   const sql = getSql();
   const existing = await sql`
-    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt"
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan
     FROM workspaces
     WHERE owner_user_id = ${userId}
     ORDER BY created_at ASC
@@ -77,15 +78,58 @@ export async function getOrCreateDefaultWorkspace(userId: string): Promise<Works
       slug: r.slug,
       ownerUserId: r.ownerUserId,
       createdAt: Number(r.createdAt),
+      plan: (r.plan === "pro" ? "pro" : "free") as "free" | "pro",
     } as Workspace;
   }
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   await sql`
-    INSERT INTO workspaces (id, name, slug, owner_user_id, created_at)
-    VALUES (${id}, 'Default', 'default', ${userId}, ${createdAt})
+    INSERT INTO workspaces (id, name, slug, owner_user_id, created_at, plan, plan_updated_at)
+    VALUES (${id}, 'Default', 'default', ${userId}, ${createdAt}, 'free', ${createdAt})
   `;
-  return { id, name: "Default", slug: "default", ownerUserId: userId, createdAt };
+  return { id, name: "Default", slug: "default", ownerUserId: userId, createdAt, plan: "free" };
+}
+
+export async function getWorkspace(workspaceId: string): Promise<Workspace | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan
+    FROM workspaces
+    WHERE id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    ownerUserId: r.ownerUserId,
+    createdAt: Number(r.createdAt),
+    plan: (r.plan === "pro" ? "pro" : "free") as "free" | "pro",
+  };
+}
+
+export async function setWorkspacePlan(params: {
+  workspaceId: string;
+  plan: "free" | "pro";
+  paddleCustomerId?: string | null;
+  paddleTransactionId?: string | null;
+  paddleSubscriptionId?: string | null;
+  paddleSubscriptionStatus?: string | null;
+}): Promise<void> {
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE workspaces
+    SET plan = ${params.plan},
+        plan_updated_at = ${now},
+        paddle_customer_id = COALESCE(${params.paddleCustomerId ?? null}, paddle_customer_id),
+        paddle_transaction_id = COALESCE(${params.paddleTransactionId ?? null}, paddle_transaction_id),
+        paddle_subscription_id = COALESCE(${params.paddleSubscriptionId ?? null}, paddle_subscription_id),
+        paddle_subscription_status = COALESCE(${params.paddleSubscriptionStatus ?? null}, paddle_subscription_status)
+    WHERE id = ${params.workspaceId}
+  `;
 }
 
 /** List projects for user (ownership via user_id; projects belong to user's workspace). */
@@ -1099,6 +1143,8 @@ export type RouteStepRecord = {
   fallbackOn: string | null;
   timeoutMs: number | null;
   enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const ROUTE_DEFAULT_STATUS = "active";
@@ -1248,7 +1294,7 @@ export async function listRouteSteps(routeId: string, projectId: string, userId:
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled
+           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps
     WHERE route_id = ${routeId}
     ORDER BY order_index ASC
@@ -1257,6 +1303,8 @@ export async function listRouteSteps(routeId: string, projectId: string, userId:
 }
 
 function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
+  const createdAt = Number(r.createdAt ?? 0);
+  const updatedAt = Number(r.updatedAt ?? 0);
   return {
     id: r.id as string,
     routeId: r.routeId as string,
@@ -1267,6 +1315,8 @@ function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
     fallbackOn: (r.fallbackOn as string) ?? null,
     timeoutMs: r.timeoutMs != null ? Number(r.timeoutMs) : null,
     enabled: r.enabled !== false,
+    createdAt: new Date(createdAt).toISOString(),
+    updatedAt: new Date(updatedAt).toISOString(),
   };
 }
 
@@ -1288,16 +1338,17 @@ export async function createRouteStep(params: {
   const sql = getSql();
   const id = crypto.randomUUID();
   const enabled = params.enabled !== false;
+  const now = Date.now();
   await sql`
-    INSERT INTO route_steps (id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on, timeout_ms, enabled)
+    INSERT INTO route_steps (id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on, timeout_ms, enabled, created_at, updated_at)
     VALUES (${id}, ${params.routeId}, ${params.orderIndex},
             ${params.providerPreference ?? null}, ${params.modelId ?? null},
-            ${params.conditionBlock ? JSON.stringify(params.conditionBlock) : null}, ${params.fallbackOn ?? null}, ${params.timeoutMs ?? null}, ${enabled})
+            ${params.conditionBlock ? JSON.stringify(params.conditionBlock) : null}, ${params.fallbackOn ?? null}, ${params.timeoutMs ?? null}, ${enabled}, ${now}, ${now})
   `;
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled
+           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${id}
   `;
   if (rows.length === 0) return null;
@@ -1331,16 +1382,18 @@ export async function updateRouteStep(
   const fallbackOn = updates.fallbackOn !== undefined ? updates.fallbackOn : step.fallbackOn;
   const timeoutMs = updates.timeoutMs !== undefined ? updates.timeoutMs : step.timeoutMs;
   const enabled = updates.enabled !== undefined ? updates.enabled : step.enabled;
+  const now = Date.now();
   await sql`
     UPDATE route_steps
     SET order_index = ${orderIndex}, provider_preference = ${providerPreference}, model_id = ${modelId},
-        condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null}, fallback_on = ${fallbackOn}, timeout_ms = ${timeoutMs}, enabled = ${enabled}
+        condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null}, fallback_on = ${fallbackOn}, timeout_ms = ${timeoutMs}, enabled = ${enabled},
+        updated_at = ${now}
     WHERE id = ${stepId} AND route_id = ${routeId}
   `;
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled
+           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${stepId}
   `;
   if (rows.length === 0) return null;

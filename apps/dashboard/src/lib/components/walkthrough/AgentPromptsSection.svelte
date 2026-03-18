@@ -93,19 +93,15 @@
     border-radius: var(--radius-md);
     background: color-mix(in oklab, var(--rm-surface-raised) 55%, var(--rm-surface));
     overflow: hidden;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0 var(--space-3);
-    align-items: start;
+    display: block;
   }
 
   .agent-prompts-header {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: subgrid;
-    align-items: start;
-    gap: var(--space-2) var(--space-3);
-    margin: 0 0 var(--space-2);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
   }
 
   .agent-prompts-heading-row {
@@ -114,6 +110,7 @@
     justify-content: space-between;
     gap: var(--space-3);
     min-width: 0;
+    width: 100%;
   }
 
   .agent-prompts-heading {
@@ -164,7 +161,6 @@
   }
 
   .agent-prompts-body {
-    grid-column: 2;
     margin: 0;
     padding: 0;
     min-width: 0;

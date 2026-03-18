@@ -2,9 +2,9 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
 </script>
 
-<h1 class="page-title">Billing & Forecasting</h1>
-<p class="page-desc">Current tier and subscription. Manage your subscription and view invoices via Paddle. Cost forecasting coming later.</p>
-<p><a href="/keys/pricing">View pricing and plans</a></p>
+<h1 class="page-title">Billing</h1>
+<p class="page-desc">Manage your Pro subscription and view invoices via Paddle.</p>
+<p><a href="/keys/pricing">View pricing</a></p>
 
 <style>
   .page-title {

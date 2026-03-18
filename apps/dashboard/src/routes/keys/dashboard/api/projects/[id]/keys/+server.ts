@@ -1,6 +1,8 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { getProjectInWorkspace, listApiKeys, createApiKey, deleteApiKey } from "$lib/server/db";
+import { getOrCreateDefaultWorkspace } from "$lib/server/db";
+import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
 
 async function projectIdAndUid(
   locals: App.Locals,
@@ -32,6 +34,18 @@ export const POST: RequestHandler = async ({ params, locals }) => {
   if (!scope) return json({ error: "Not found" }, { status: 404 });
   const result = await createApiKey(scope.projectId, scope.userId);
   if (!result) return json({ error: "Not found" }, { status: 404 });
+
+  // Best-effort: ensure a Zuplo consumer exists for this workspace so the developer portal can "Try it".
+  // Never log keys; never fail key creation if Zuplo provisioning is down.
+  try {
+    if (locals.user.authType !== "gateway_key" && locals.user.authType !== "management_key") {
+      const ws = await getOrCreateDefaultWorkspace(locals.user.uid);
+      await ensureZuploConsumer({ workspaceId: ws.id, userEmail: locals.user.email ?? null });
+    }
+  } catch {
+    // no-op
+  }
+
   return json({ data: { rawKey: result.rawKey, keyPrefix: result.keyPrefix, type: "gateway" as const } }, { status: 201 });
 };
 

@@ -73,7 +73,7 @@
 
 <h1 class="page-title">Access</h1>
 <p class="page-desc">
-  Manage how you and your apps access the Restormel API: Gateway keys (for the Cloud API) and Management keys (for workspace automation). Provider credentials are separate — see Provider Integrations.
+  Gateway keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate — see Provider Integrations.
 </p>
 
 {#if data.error}
@@ -157,12 +157,20 @@
     {/if}
   </section>
 
-  <section class="section" aria-labelledby="management-keys-heading">
-    <h2 id="management-keys-heading" class="section-title">Management keys</h2>
+  <section class="section" aria-labelledby="dashboard-access-heading">
+    <h2 id="dashboard-access-heading" class="section-title">Dashboard access</h2>
     <p class="section-desc">
-      Management keys are for workspace-level automation and admin APIs. They are not the same as Gateway keys (which are for the Cloud API per project). Management keys are coming soon.
+      Sign in with GitHub to configure projects, routes, policies, and integrations in the dashboard UI.
     </p>
-    <p class="placeholder-note">No Management keys yet. This feature is not yet available.</p>
+    <a href={DASHBOARD_BASE + "/login"} class="btn btn-secondary">Sign in</a>
+  </section>
+
+  <section class="section" aria-labelledby="provider-creds-heading">
+    <h2 id="provider-creds-heading" class="section-title">Provider credentials</h2>
+    <p class="section-desc">
+      Provider credentials (OpenAI, Anthropic, etc.) are separate from Gateway keys. By default, keep provider credentials in your own env vars or secret manager — not pasted into Restormel. See Provider access modes for the decision tree.
+    </p>
+    <a href="/keys/docs/guides/provider-access-modes" class="btn btn-secondary">Provider access modes</a>
   </section>
 
   <section class="section" aria-labelledby="audit-heading">
@@ -200,12 +208,6 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-3);
-  }
-  .placeholder-note {
-    font-size: var(--text-sm);
-    color: var(--rm-dim);
-    font-style: italic;
-    margin: 0;
   }
   .new-key-box {
     background: var(--rm-surface-raised);

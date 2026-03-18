@@ -6,6 +6,7 @@ import {
   getProject,
   createProject,
 } from "$lib/server/db";
+import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 
 export const GET: RequestHandler = async ({ locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
@@ -25,6 +26,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
   if (locals.user.authType === "gateway_key" || locals.user.authType === "management_key") {
     return json({ error: "Key auth cannot create projects" }, { status: 403 });
+  }
+  const ent = await getWorkspaceEntitlements(locals);
+  if (ent && ent.plan === "free") {
+    const existing = await listProjects(locals.user.uid);
+    if (existing.length >= ent.projectLimit) {
+      return json(
+        {
+          error: "project_limit_reached",
+          detail: "Free tier supports 1 project. Upgrade to Pro to create more projects.",
+        },
+        { status: 402 }
+      );
+    }
   }
   const body = await request.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : "Unnamed project";

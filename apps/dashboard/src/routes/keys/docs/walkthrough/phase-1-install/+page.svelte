@@ -17,7 +17,7 @@
     { id: "1.3", label: "Create a project in the Dashboard" },
     { id: "1.4", label: "Generate a Gateway Key" },
     { id: "1.5", label: "Configure provider credentials (optional)" },
-    { id: "1.6", label: "Run keys doctor again" },
+    { id: "1.6", label: "Run Restormel Doctor again" },
     { id: "1.7", label: "Add env var placeholders to .env.example" },
   ];
 
@@ -82,14 +82,14 @@ DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or 
         "Framework choice: /keys/docs/compatibility",
       ],
       prompt: installAndConfigurePrompt,
-      gate: "keys doctor exits 0; restormel.config.json exists; .env.example lists required vars; no secrets committed.",
+      gate: "Restormel Doctor exits 0; restormel.config.json exists; .env.example lists required vars; no secrets committed.",
     },
   ];
 </script>
 
 <svelte:head>
   <title>Phase 1 — Install and configure — Restormel Keys</title>
-  <meta name="description" content="Install Restormel Keys packages, create a project in the dashboard, generate a Gateway Key, run keys doctor." />
+  <meta name="description" content="Install Restormel Keys packages, create a project in the Dashboard, generate a Gateway Key, run Restormel Doctor." />
 </svelte:head>
 
 <div class="doc-content">
@@ -101,7 +101,7 @@ DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or 
     <strong>You'll need:</strong> Terminal access, your app's package manager (pnpm, npm, or yarn), access to the <a href={DASHBOARD_BASE}>Dashboard</a>
   </p>
 
-  <p>This phase gets the Restormel Keys packages into your project and creates the dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, <code>keys doctor</code> passes (framework, packages, and local config) and your dashboard shows a project ready for routes and policies. The CLI does not validate Cloud env vars (e.g. <code>RESTORMEL_GATEWAY_KEY</code>, <code>RESTORMEL_PROJECT_ID</code>) today — you verify those in Phase 2 when you make your first resolve call.</p>
+  <p>This phase gets the Restormel Keys packages into your project and creates the Dashboard-side resources (workspace, project, environment, Gateway Key) that later phases depend on. By the end, <strong>Restormel Doctor</strong> (<code>npx @restormel/doctor</code>) passes (framework, packages, and local config) and your Dashboard shows a project ready for routes and policies. The CLI does not validate Cloud env vars (e.g. <code>RESTORMEL_GATEWAY_KEY</code>, <code>RESTORMEL_PROJECT_ID</code>) today — you verify those in Phase 2 when you make your first resolve call.</p>
 
   <WalkthroughStep stepId="1.1" title="Step 1.1 — Install the packages" defaultOpen={true} {phaseSlug}>
   <p>Choose the packages for your framework. The headless core (<code>@restormel/keys</code>) is always required. Add UI packages if you plan to embed ModelSelector or KeyManager (Phase 5).</p>
@@ -134,10 +134,10 @@ DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or 
 ✔ Created restormel.config.json
 ✔ Suggested packages: @restormel/keys, @restormel/keys-react, @restormel/keys-elements
 
-Run 'keys doctor' to verify your setup.`} />
+Run 'npx @restormel/doctor' to verify your setup.`} />
   <h3>How to test</h3>
   <CodeBlock language="bash" code="npx @restormel/doctor" />
-  <p><code>doctor</code> checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).</p>
+  <p><strong>Restormel Doctor</strong> checks framework detection, package versions, config validity, and key health. At this point it should pass with a note that no Gateway Key is configured yet (that's Step 1.4).</p>
   <div class="callout callout-note">
     <strong>If you see "framework not detected"</strong> — The CLI looks for framework markers (<code>next.config.*</code>, <code>svelte.config.*</code>, <code>astro.config.*</code>). If your project uses a non-standard layout, run <code>keys init --framework next</code> (or <code>sveltekit</code>, <code>react</code>, <code>astro</code>) to specify manually.
   </div>
@@ -201,21 +201,17 @@ RESTORMEL_ENVIRONMENT_ID=`} />
     Keep provider keys in your own environment (e.g. <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>) or secret manager. Restormel resolve tells you <em>which</em> provider/model to call; your app supplies provider access from its own infrastructure.
   </p>
 
-  <h3>Option C — Future hosted vault (later / optional)</h3>
-  <p>
-    A Restormel-hosted provider-secret vault may exist as a future capability, but it is not the v1 default proposition. If you need hosted custody today, use a gateway vendor or your existing secret store.
-  </p>
   <h3>You'll see</h3>
   <p>You have a clear provider access mode for your stack (gateway-backed or builder-managed direct). If you are using a gateway, your app still uses the gateway’s auth and endpoint; Restormel adds the control layer.</p>
   <h3>How to test</h3>
   <p>No code-level test in this phase. You’ll verify your chosen mode in Phase 2 when you make your first resolve call.</p>
   </WalkthroughStep>
 
-  <WalkthroughStep stepId="1.6" title="Step 1.6 — Run keys doctor again" {phaseSlug}>
+  <WalkthroughStep stepId="1.6" title="Step 1.6 — Run Restormel Doctor again" {phaseSlug}>
   <p>Now that you have a config (and optionally env vars), run the doctor check again:</p>
   <CodeBlock language="bash" code="npx @restormel/doctor" />
   <h3>You'll see</h3>
-  <p><code>keys doctor</code> checks framework detection, package versions, and config validity. Example output:</p>
+  <p><strong>Restormel Doctor</strong> checks framework detection, package versions, and config validity. Example output:</p>
   <CodeBlock language="text" code={`✔ Framework: Next.js (App Router)
 ✔ Packages: @restormel/keys@0.2.0, @restormel/keys-react@0.1.0, @restormel/keys-elements@0.1.0
 ✔ Config: restormel.config.json valid
@@ -255,7 +251,7 @@ USE_RESTORMEL_KEYS=false`} />
     <li>A <code>restormel.config.json</code> that matches your framework.</li>
     <li>A project and environment created in the Restormel Dashboard.</li>
     <li>A Gateway Key stored in your <code>.env</code> (gitignored).</li>
-    <li><code>keys doctor</code> passing.</li>
+    <li><strong>Restormel Doctor</strong> passing.</li>
   </ul>
   <p>Your app still runs on the old routing path (the feature flag from Phase 0 is still <code>false</code>). Nothing has changed in your application behaviour.</p>
 

@@ -5,17 +5,32 @@
 
 <PlaceholderPage
   title="Lifecycle & Migrations"
-  description="Model lifecycle events, deprecation notices, and migration guidance. This section will show when models move to deprecated or retired, and suggest replacements."
+  description="Lifecycle state for models, plus what you can do today to reduce deprecation risk during route resolution."
   links={[
     { href: DASHBOARD_BASE + "/models", label: "Model catalog (lifecycle state is shown per model)" },
+    { href: "/keys/docs/walkthrough/phase-4-policies", label: "Walkthrough: Phase 4 policies (deprecated_model_block)" },
   ]}
 />
 
+<section class="section" aria-labelledby="available-heading">
+  <h2 id="available-heading" class="section-title">Available now</h2>
+  <ul class="section-list">
+    <li><strong>Model catalog lifecycle state</strong> — Each model shows a lifecycle state (current / preview / deprecated / retired) at <a href={DASHBOARD_BASE + "/models"}>Models</a>.</li>
+    <li><strong>Deprecated-model blocking</strong> — Use the <code>deprecated_model_block</code> policy to block deprecated models during resolution. See <a href="/keys/docs/walkthrough/phase-4-policies">Phase 4 policies</a> for the creation flow and test curl examples.</li>
+  </ul>
+</section>
+
+<section class="section" aria-labelledby="coming-heading">
+  <h2 id="coming-heading" class="section-title">Coming later</h2>
+  <ul class="section-list">
+    <li><strong>Proactive notices</strong> — deprecation notifications when models move to deprecated/retired.</li>
+    <li><strong>Migration guidance</strong> — replacement suggestions and “what to change” checklists when a model is deprecated.</li>
+    <li><strong>Automatic recommendations</strong> — safer defaults and suggested route updates when better replacements exist.</li>
+  </ul>
+</section>
+
 <p class="honest-note" role="status">
-  <strong>Placeholder.</strong> Full lifecycle accuracy depends on the ingestion system. Until then, lifecycle state in the model catalog may be placeholder-driven. We do not fabricate deprecation or migration dates here.
-</p>
-<p class="honest-note" role="status">
-  Migration recommendations (e.g. prefer the replacement model when a model is deprecated) can be documented on this page. We do not hardcode confidence or fake verification; show source timestamps or “not yet verified” where appropriate.
+  <strong>Accuracy note:</strong> Model lifecycle state in the catalog may reflect placeholder data until the full ingestion pipeline is wired. Do not rely on lifecycle state for automated compliance until this note is removed.
 </p>
 
 <style>
@@ -27,5 +42,21 @@
     background: var(--rm-surface-raised);
     border-radius: var(--rm-radius);
     border: 1px solid var(--rm-border);
+  }
+  .section {
+    margin-top: var(--space-6);
+  }
+  .section-title {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-2);
+  }
+  .section-list {
+    margin: 0;
+    padding-left: var(--space-5);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .section-list li {
+    margin: 0 0 var(--space-2);
   }
 </style>

@@ -17,6 +17,9 @@
       <span class="site-footer-title">Resources</span>
       <ul class="site-footer-links" aria-label="Resources">
         <li><a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        <li><a href="/keys/terms">Terms</a></li>
+        <li><a href="/keys/privacy">Privacy</a></li>
+        <li><a href="/keys/refund-policy">Refund policy</a></li>
       </ul>
     </div>
     <div class="site-footer-col site-footer-brand">

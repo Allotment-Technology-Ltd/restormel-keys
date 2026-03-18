@@ -18,9 +18,8 @@ describe("NAV_ITEMS", () => {
     expect(labels).toContain("Analytics");
     expect(labels).toContain("Logs & Traces");
     expect(labels).toContain("Lifecycle & Migrations");
-    expect(labels).toContain("Billing & Forecasting");
     expect(labels).toContain("Documentation");
-    expect(labels).toContain("Settings");
+    expect(labels).toContain("Profile");
   });
 
   it("Overview is first", () => {
@@ -40,6 +39,10 @@ describe("topbarTitle", () => {
 
   it("returns Projects for /projects", () => {
     expect(topbarTitle(DASHBOARD_BASE + "/projects")).toBe("Projects");
+  });
+
+  it("returns Profile for /settings", () => {
+    expect(topbarTitle(DASHBOARD_BASE + "/settings")).toBe("Profile");
   });
 
   it("returns Project for project detail path", () => {

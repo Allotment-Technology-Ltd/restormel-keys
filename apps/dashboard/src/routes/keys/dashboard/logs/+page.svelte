@@ -28,7 +28,7 @@
 
 <h1 class="page-title">Logs & Traces</h1>
 <p class="page-desc">
-  Request logs from the gateway. Filter by project or route via query params. For analytics summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Analytics</a>.
+  Request logs captured by Restormel (from the Dashboard API execution path). Filter by project or route via query params. For analytics summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Analytics</a>.
 </p>
 <p class="notice">
   <strong>Note:</strong> This page shows Restormel request logs. If your execution layer is OpenRouter/Portkey/Vercel and traffic doesn’t flow through Restormel, import gateway logs/usage exports via <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.

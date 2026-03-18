@@ -1,0 +1,20 @@
+---
+title: My Consumer Key
+description: Retrieve your Zuplo consumer key for Gateway API access.
+---
+
+import { ConsumerKeyDisplay } from "../components/ConsumerKeyDisplay";
+import { SignedIn, SignedOut } from "zudoku/components";
+
+# My Consumer Key
+
+Your consumer key authenticates you to the [Gateway API Reference](/api). Use it in the "Try it" panel or in your own API calls to the Zuplo gateway.
+
+<SignedIn>
+  <ConsumerKeyDisplay endpoint="https://restormel.dev/keys/dashboard/api/consumer-key" />
+</SignedIn>
+
+<SignedOut>
+  Please [sign in](/oauth/login) to view your consumer key.
+</SignedOut>
+

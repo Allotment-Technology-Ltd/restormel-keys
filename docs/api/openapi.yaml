@@ -15,6 +15,8 @@ servers:
     description: Main (production)
   - url: https://restormel-keys-gateway-working-co-185f3e3.zuplo.app
     description: Working copy (resilience / fallback)
+  - url: https://restormel.dev/keys/dashboard
+    description: Dashboard API (Gateway Key)
 
 security:
   - apiKey: []
@@ -217,6 +219,310 @@ paths:
         "404":
           description: Not found
 
+  # ---------------------------------------------------------------------------
+  # Dashboard API (Gateway Key) — runtime operations (Resolve + policies + routes/steps)
+  # Server: https://restormel.dev/keys/dashboard
+  # ---------------------------------------------------------------------------
+
+  /api/projects/{projectId}/resolve:
+    post:
+      summary: Resolve (routing decision)
+      operationId: resolveRoute
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId]
+              properties:
+                environmentId: { type: string, description: Environment to resolve against (e.g. dev, prod) }
+                routeId: { type: string, description: Route name to evaluate; if omitted uses first active route for the environment }
+      responses:
+        "200":
+          description: Resolved provider/model decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      routeId: { type: string, description: Matched route name }
+                      providerType: { type: string, nullable: true }
+                      modelId: { type: string, nullable: true }
+                      explanation: { type: string }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: No route found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Route exists but no step can resolve
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/policies/evaluate:
+    post:
+      summary: Evaluate policies
+      operationId: evaluatePolicies
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId: { type: string }
+                environmentId: { type: string }
+                routeId: { type: string }
+                modelId: { type: string }
+                providerType: { type: string }
+      responses:
+        "200":
+          description: Policy evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      allowed: { type: boolean }
+                      violations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            policyId: { type: string }
+                            policyName: { type: string }
+                            type: { type: string }
+                            message: { type: string }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/steps:
+    get:
+      summary: List route steps
+      operationId: listRouteSteps
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route internal ID (UUID) }
+      responses:
+        "200":
+          description: List of route steps (ordered by orderIndex)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/RouteStep" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    post:
+      summary: Create route step
+      operationId: createRouteStep
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route internal ID (UUID) }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteStepCreate" }
+      responses:
+        "201":
+          description: Route step created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RouteStep" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Duplicate orderIndex
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/steps/{stepId}:
+    patch:
+      summary: Update route step
+      operationId: updateRouteStep
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route internal ID (UUID) }
+        - name: stepId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteStepPatch" }
+      responses:
+        "200":
+          description: Route step updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/RouteStep" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Duplicate orderIndex
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      summary: Delete route step
+      operationId: deleteRouteStep
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route internal ID (UUID) }
+        - name: stepId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Step deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
 components:
   securitySchemes:
     apiKey:
@@ -224,7 +530,18 @@ components:
       scheme: bearer
       bearerFormat: API Key
       description: Consumer API key (issued by Zuplo). Send as Authorization Bearer token. Do not log or expose the key.
+    gatewayKey:
+      type: http
+      scheme: bearer
+      bearerFormat: Gateway Key
+      description: Gateway Key (rk_...) for Dashboard API calls. Send as Authorization Bearer token. Keep server-side only.
   schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+        detail: { type: string }
     Project:
       type: object
       properties:
@@ -238,3 +555,47 @@ components:
         keyPrefix: { type: string }
         keyId: { type: string }
         createdAt: { type: string, format: date-time }
+
+    RouteStep:
+      type: object
+      properties:
+        id: { type: string }
+        routeId: { type: string }
+        orderIndex: { type: integer, minimum: 0 }
+        providerPreference:
+          type: string
+          enum: [openai, anthropic, google, openrouter, vercel, portkey]
+        modelId: { type: string, nullable: true }
+        fallbackOn:
+          type: string
+          enum: [error, rate_limit, no_key, policy_block, any]
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    RouteStepCreate:
+      type: object
+      required: [orderIndex, providerPreference]
+      properties:
+        orderIndex: { type: integer, minimum: 0 }
+        providerPreference:
+          type: string
+          enum: [openai, anthropic, google, openrouter, vercel, portkey]
+        modelId: { type: string, nullable: true }
+        fallbackOn:
+          type: string
+          enum: [error, rate_limit, no_key, policy_block, any]
+        enabled: { type: boolean, default: true }
+
+    RouteStepPatch:
+      type: object
+      properties:
+        orderIndex: { type: integer, minimum: 0 }
+        providerPreference:
+          type: string
+          enum: [openai, anthropic, google, openrouter, vercel, portkey]
+        modelId: { type: string, nullable: true }
+        fallbackOn:
+          type: string
+          enum: [error, rate_limit, no_key, policy_block, any]
+        enabled: { type: boolean }

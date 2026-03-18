@@ -216,11 +216,11 @@ DO NOT: Create files yet. Install packages. Paste secrets.`,
   <h1>Phase 2 — Resolve your first model</h1>
   <p class="doc-prereqs">
     <strong>Time:</strong> ~15 minutes<br />
-    <strong>Prerequisites:</strong> <a href="/keys/docs/walkthrough/phase-1-install">Phase 1</a> complete (packages installed, project created, Gateway Key in <code>.env</code>, <code>keys doctor</code> passes)<br />
+    <strong>Prerequisites:</strong> <a href="/keys/docs/walkthrough/phase-1-install">Phase 1</a> complete (packages installed, project created, Gateway Key in <code>.env</code>, Restormel Doctor passes)<br />
     <strong>You'll need:</strong> Terminal access, a running dev server (or curl/httpie), your Gateway Key and Project ID from the <a href={DASHBOARD_BASE}>Dashboard</a>
   </p>
 
-  <p>This phase wires a single resolve call into your backend. By the end, your app can ask Restormel "which provider and model should I use for this request?" and get a concrete answer. You verify the response shape, then plug it into the feature-flag branch from Phase 0.</p>
+  <p>This phase wires a single <strong>Restormel Resolve</strong> call into your backend. By the end, your app can ask Restormel "which provider and model should I use for this request?" and get a concrete answer. You verify the response shape, then plug it into the feature-flag branch from Phase 0.</p>
 
   <WalkthroughStep stepId="2.1" title="Step 2.1 — Understand the resolve flow" defaultOpen={true} {phaseSlug}>
   <p>Before writing code, understand what happens when your backend calls resolve:</p>

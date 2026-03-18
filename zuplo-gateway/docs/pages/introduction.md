@@ -3,12 +3,26 @@ title: Introduction
 description: Restormel Keys Cloud API — gateway and developer portal.
 ---
 
-Restormel Keys exposes a **Cloud API** via a Zuplo gateway. This portal is the **API reference** for that API.
+# Introduction
 
-- **Clients** call the Zuplo gateway using a **consumer key** (`zpka_...`).
-- Zuplo validates the consumer key (API key policy, rate limit, quota).
-- Zuplo forwards the request to the dashboard backend and injects a **backend key** (`rk_...`) as `Authorization: Bearer ...`.
+The Restormel Keys API has two distinct surfaces. Use the right one for your task.
 
-**Next:** [How it all fits together](/how-it-fits-together) (dashboard, gateway, this portal, product docs).  
-Use the **API Reference** in the sidebar for endpoints, schemas, and **Try it**.
+## Gateway API (this portal)
+
+**Base URL**: `https://restormel-keys-gateway-main-bc13eba.zuplo.app`  
+**Auth**: Consumer key (`zpka_...`) — [get yours here](/my-keys)  
+**Use for**: Project management and Gateway key CRUD (control-plane)
+
+## Dashboard API
+
+**Base URL**: `https://restormel.dev/keys/dashboard/api`  
+**Auth**: Gateway Key (`rk_...`) — created in the [Restormel dashboard](https://restormel.dev/keys/dashboard)  
+**Use for**: Resolve, policy evaluate, route steps (runtime operations)
+
+> Not sure which to use? If you're integrating Restormel Keys into your app, you almost certainly want the **Dashboard API**. See [Dashboard API Overview](/dashboard-api/overview).
+
+## Authentication
+
+Sign in with GitHub to use "Try it" in the Gateway API Reference and to retrieve your consumer key.  
+[Sign in →](/oauth/login)
 

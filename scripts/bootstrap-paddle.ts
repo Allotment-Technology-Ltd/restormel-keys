@@ -1,7 +1,7 @@
 /**
  * Restormel Keys — Paddle Bootstrap (catalog only)
  *
- * Creates (or reuses) Paddle products and prices for Keys tiers: Pro, Team, Enterprise.
+ * Creates (or reuses) Paddle products and prices for Keys tiers: Pro.
  * Does not create webhooks (configure in Paddle Dashboard → Developer tools → Notifications).
  *
  * Per Paddle docs: 240 requests/min per IP; on 429 you must wait 60s (Retry-After header).
@@ -116,30 +116,10 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     name: "Restormel Keys Pro",
     description: "Restormel Keys Pro subscription — cloud API and dashboard.",
     prices: [
-      { key: "keys_pro_monthly_gbp", envVar: "PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_MONTHLY_GBP", 1900), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Pro Monthly (GBP)", description: "Restormel Keys Pro monthly subscription in GBP." },
+      { key: "keys_pro_monthly_gbp", envVar: "PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_MONTHLY_GBP", 1000), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Pro Monthly (GBP)", description: "Restormel Keys Pro monthly subscription in GBP." },
       { key: "keys_pro_monthly_usd", envVar: "PADDLE_PRICE_KEYS_PRO_MONTHLY_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_MONTHLY_USD", 2400), currency: "USD", recurring: true, interval: "month", frequency: 1, displayName: "Pro Monthly (USD)", description: "Restormel Keys Pro monthly subscription in USD." },
       { key: "keys_pro_annual_gbp", envVar: "PADDLE_PRICE_KEYS_PRO_ANNUAL_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_ANNUAL_GBP", 19200), currency: "GBP", recurring: true, interval: "year", frequency: 1, displayName: "Pro Annual (GBP)", description: "Restormel Keys Pro annual subscription in GBP." },
       { key: "keys_pro_annual_usd", envVar: "PADDLE_PRICE_KEYS_PRO_ANNUAL_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_ANNUAL_USD", 24000), currency: "USD", recurring: true, interval: "year", frequency: 1, displayName: "Pro Annual (USD)", description: "Restormel Keys Pro annual subscription in USD." },
-    ],
-  },
-  {
-    key: "keys_team",
-    name: "Restormel Keys Team",
-    description: "Restormel Keys Team subscription — team features and higher limits.",
-    prices: [
-      { key: "keys_team_monthly_gbp", envVar: "PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_MONTHLY_GBP", 4900), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Team Monthly (GBP)", description: "Restormel Keys Team monthly subscription in GBP." },
-      { key: "keys_team_monthly_usd", envVar: "PADDLE_PRICE_KEYS_TEAM_MONTHLY_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_MONTHLY_USD", 5900), currency: "USD", recurring: true, interval: "month", frequency: 1, displayName: "Team Monthly (USD)", description: "Restormel Keys Team monthly subscription in USD." },
-      { key: "keys_team_annual_gbp", envVar: "PADDLE_PRICE_KEYS_TEAM_ANNUAL_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_ANNUAL_GBP", 46800), currency: "GBP", recurring: true, interval: "year", frequency: 1, displayName: "Team Annual (GBP)", description: "Restormel Keys Team annual subscription in GBP." },
-      { key: "keys_team_annual_usd", envVar: "PADDLE_PRICE_KEYS_TEAM_ANNUAL_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_ANNUAL_USD", 58800), currency: "USD", recurring: true, interval: "year", frequency: 1, displayName: "Team Annual (USD)", description: "Restormel Keys Team annual subscription in USD." },
-    ],
-  },
-  {
-    key: "keys_enterprise",
-    name: "Restormel Keys Enterprise",
-    description: "Restormel Keys Enterprise subscription — highest tier.",
-    prices: [
-      { key: "keys_enterprise_monthly_gbp", envVar: "PADDLE_PRICE_KEYS_ENTERPRISE_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_ENTERPRISE_MONTHLY_GBP", 14900), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Enterprise Monthly (GBP)", description: "Restormel Keys Enterprise monthly subscription in GBP." },
-      { key: "keys_enterprise_monthly_usd", envVar: "PADDLE_PRICE_KEYS_ENTERPRISE_MONTHLY_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_ENTERPRISE_MONTHLY_USD", 17900), currency: "USD", recurring: true, interval: "month", frequency: 1, displayName: "Enterprise Monthly (USD)", description: "Restormel Keys Enterprise monthly subscription in USD." },
     ],
   },
 ];

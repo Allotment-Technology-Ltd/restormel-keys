@@ -43,10 +43,10 @@ Steps:
 1. Create scripts/smoke-test-restormel.sh (bash, executable).
 2. The script must:
    a) Call the resolve endpoint for your project/environment/route and print providerType, modelId, explanation.
-   b) Call the policy evaluate endpoint for an allowed model (and a blocked model if you have one), using RESTORMEL_MANAGEMENT_KEY.
+   b) Call the policy evaluate endpoint for an allowed model (and a blocked model if you have one), using RESTORMEL_GATEWAY_KEY.
    c) Run: npx @restormel/doctor and npx @restormel/validate.
    d) Exit 0 if all checks pass; exit 1 otherwise.
-3. Read all values from env vars (no hardcoded secrets): RESTORMEL_GATEWAY_KEY, RESTORMEL_PROJECT_ID, RESTORMEL_ENVIRONMENT_ID, RESTORMEL_MANAGEMENT_KEY.
+3. Read all values from env vars (no hardcoded secrets): RESTORMEL_GATEWAY_KEY, RESTORMEL_PROJECT_ID, RESTORMEL_ENVIRONMENT_ID.
 4. Add a package.json script: smoke:restormel = bash scripts/smoke-test-restormel.sh
 5. Verify the smoke test exits 0 in staging.
 
@@ -188,7 +188,7 @@ DO NOT: Change config. Deploy anything. Paste real keys.`,
   <CodeBlock language="bash" code={doctorValidateSnippet} />
   <p><strong>Dashboard checks:</strong> Usage (request count non-zero and growing, no error spikes); Routes (traffic against configured routes); Policies (no unexpected violations); Provider credentials (all show "valid").</p>
   <p><strong>Application checks:</strong> Make a request through each major code path; confirm correct provider and model. Test fallback (temporarily remove a provider credential, confirm next step is used, restore). Test a policy block (request a model not on the allowlist). Check latency; resolve adds a network round-trip (typically &lt;100ms).</p>
-  <p><strong>Smoke test script:</strong> Create a script that (1) calls the resolve endpoint and prints provider, model, explanation; (2) calls the policy evaluate endpoint for an allowed model; (3) runs <code>keys doctor</code>. Use <code>RESTORMEL_GATEWAY_KEY</code> and <code>RESTORMEL_MANAGEMENT_KEY</code> from the environment; never hardcode secrets.</p>
+  <p><strong>Smoke test script:</strong> Create a script that (1) calls the resolve endpoint and prints provider, model, explanation; (2) calls the policy evaluate endpoint for an allowed model; (3) runs <code>keys doctor</code>. Use <code>RESTORMEL_GATEWAY_KEY</code> from the environment; never hardcode secrets.</p>
   <p><strong>Implementors:</strong> See “Agent prompts for this phase” below for a ready-to-run smoke-test prompt.</p>
   </WalkthroughStep>
 

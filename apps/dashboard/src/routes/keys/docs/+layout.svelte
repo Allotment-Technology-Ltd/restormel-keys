@@ -7,14 +7,34 @@
 
   const STORAGE_KEY = "rk_docs_sidebar_collapsed";
   let collapsed = false;
+  let isMobile = false;
 
   onMount(() => {
-    collapsed = localStorage.getItem(STORAGE_KEY) === "true";
+    const media = window.matchMedia("(max-width: 900px)");
+
+    const applyMode = () => {
+      isMobile = media.matches;
+      if (isMobile) {
+        // Phone/tablet docs default to closed off-canvas navigation.
+        collapsed = true;
+      } else {
+        collapsed = localStorage.getItem(STORAGE_KEY) === "true";
+      }
+    };
+
+    applyMode();
+    media.addEventListener("change", applyMode);
+
+    return () => media.removeEventListener("change", applyMode);
   });
 
   function toggle() {
     collapsed = !collapsed;
-    localStorage.setItem(STORAGE_KEY, String(collapsed));
+    if (!isMobile) localStorage.setItem(STORAGE_KEY, String(collapsed));
+  }
+
+  function closeNavOnMobile() {
+    if (isMobile) collapsed = true;
   }
 
   $: pathname = $page.url.pathname;
@@ -54,34 +74,52 @@
 </svelte:head>
 
 <div class="docs-shell" class:docs-shell-collapsed={collapsed}>
-  {#if collapsed}
-    <button type="button" class="docs-nav-fab" aria-label="Expand docs navigation" on:click={toggle}>
-      Expand nav
-    </button>
+  {#if isMobile && !collapsed}
+    <button type="button" class="docs-nav-backdrop" aria-label="Close docs navigation" on:click={toggle}></button>
   {/if}
+
   <nav class="docs-nav" aria-label="Docs navigation">
-    <button type="button" class="docs-nav-toggle" aria-pressed={collapsed} on:click={toggle}>
-      {collapsed ? "Expand nav" : "Collapse nav"}
-    </button>
-    <a href="/keys">Keys</a>
-    <a href="/keys/docs">Overview</a>
-    <a href="/keys/docs/walkthrough">Walkthrough</a>
+    <a href="/keys" on:click={closeNavOnMobile}>Keys</a>
+    <a href="/keys/docs" on:click={closeNavOnMobile}>Overview</a>
+    <a href="/keys/docs/walkthrough" on:click={closeNavOnMobile}>Walkthrough</a>
     <div class="nav-divider" aria-hidden="true"></div>
     <div class="nav-section" aria-label="Guides section">Guides</div>
-    <a href="/keys/docs/guides/provider-access-modes">Provider access modes</a>
-    <a href="/keys/docs/reference/cli">CLI options</a>
-    <a href="/keys/docs/guides/openrouter">OpenRouter</a>
-    <a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway</a>
-    <a href="/keys/docs/guides/portkey">Portkey</a>
-    <a href="/keys/docs/guides/integration-vs-hosted-vault">Integration vs hosted vault</a>
+    <a href="/keys/docs/guides/provider-access-modes" on:click={closeNavOnMobile}>Provider access modes</a>
+    <a href="/keys/docs/reference/cli" on:click={closeNavOnMobile}>CLI options</a>
+    <a href="/keys/docs/guides/openrouter" on:click={closeNavOnMobile}>OpenRouter</a>
+    <a href="/keys/docs/guides/vercel-ai-gateway" on:click={closeNavOnMobile}>Vercel AI Gateway</a>
+    <a href="/keys/docs/guides/portkey" on:click={closeNavOnMobile}>Portkey</a>
+    <a href="/keys/docs/guides/integration-vs-hosted-vault" on:click={closeNavOnMobile}>Integration vs key custody</a>
     <div class="nav-divider" aria-hidden="true"></div>
-    <a href="/keys/docs/compatibility">Compatibility</a>
-    <a href="/keys/docs/cloud-api">Cloud API</a>
-    <a href={DASHBOARD_BASE}>Dashboard</a>
-    <a href={DASHBOARD_BASE + "/login"}>Sign in</a>
+    <a href="/keys/docs/compatibility" on:click={closeNavOnMobile}>Compatibility</a>
+    <a href="/keys/docs/cloud-api" on:click={closeNavOnMobile}>Cloud API</a>
+    <a href={DASHBOARD_BASE} on:click={closeNavOnMobile}>Dashboard</a>
+    <a href={DASHBOARD_BASE + "/login"} on:click={closeNavOnMobile}>Sign in</a>
   </nav>
   <main class="docs-main">
     <nav class="docs-topbar" aria-label="Breadcrumb">
+      <button
+        type="button"
+        class="docs-topbar-nav-toggle"
+        aria-pressed={collapsed}
+        aria-label={
+          isMobile
+            ? collapsed
+              ? "Open docs navigation"
+              : "Close docs navigation"
+            : collapsed
+              ? "Expand docs navigation"
+              : "Collapse docs navigation"
+        }
+        aria-expanded={isMobile ? !collapsed : undefined}
+        on:click={toggle}
+      >
+        {#if isMobile}
+          {collapsed ? "Browse docs" : "Close"}
+        {:else}
+          {collapsed ? "Expand nav" : "Collapse nav"}
+        {/if}
+      </button>
       {#each breadcrumbItems as item, i}
         {#if i > 0}
           <span class="docs-crumb-sep" aria-hidden="true">/</span>
@@ -117,21 +155,6 @@
     flex-direction: column;
     gap: var(--space-2);
   }
-  .docs-nav-toggle {
-    margin: 0 0 var(--space-3);
-    width: 100%;
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    border-radius: var(--rm-radius);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    text-align: left;
-  }
-  .docs-nav-toggle:hover {
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
-  }
   .docs-nav a {
     font-size: var(--text-sm);
     color: var(--rm-muted);
@@ -153,9 +176,6 @@
     min-width: 0;
     padding: var(--space-6);
   }
-  .docs-shell-collapsed .docs-main {
-    padding-left: 6.5rem;
-  }
   .docs-topbar {
     display: flex;
     align-items: center;
@@ -167,6 +187,20 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .docs-topbar-nav-toggle {
+    border: 1px solid var(--rm-border);
+    background: var(--rm-bg);
+    color: var(--rm-muted);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .docs-topbar-nav-toggle:hover {
+    background: var(--rm-surface);
+    color: var(--rm-text);
   }
   .docs-crumb {
     color: var(--rm-muted);
@@ -191,23 +225,12 @@
     border-right: 0;
     overflow: hidden;
   }
-  .docs-shell-collapsed .docs-nav-toggle {
+  .docs-nav-backdrop {
     display: none;
   }
-  .docs-nav-fab {
-    position: absolute;
-    top: var(--space-4);
-    left: var(--space-4);
-    z-index: 10;
-    border: 1px solid var(--rm-border);
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
-    border-radius: var(--rm-radius);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-  }
-  .docs-nav-fab:hover {
-    background: var(--rm-surface);
+  .docs-topbar-nav-toggle {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   /* Shared callout styles — each type has a distinct tint and border so cards don't blend into the page */
@@ -264,5 +287,51 @@
   }
   .docs-main :global(.callout-security strong) {
     color: var(--rm-danger, #b91c1c);
+  }
+
+  @media (max-width: 900px) {
+    .docs-shell {
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0;
+      min-height: auto;
+    }
+    .docs-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: min(18rem, 84vw);
+      z-index: var(--z-modal);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transform: translateX(0);
+      transition: transform 0.18s ease;
+      border-right: 1px solid var(--rm-border);
+    }
+    .docs-shell-collapsed .docs-nav {
+      transform: translateX(-100%);
+      width: min(18rem, 84vw);
+      padding: var(--space-4);
+      border-right: 1px solid var(--rm-border);
+      overflow: auto;
+    }
+    .docs-main {
+      padding: var(--space-4);
+    }
+    .docs-topbar {
+      flex-wrap: wrap;
+      gap: var(--space-1);
+      white-space: normal;
+      overflow: visible;
+    }
+    .docs-nav-backdrop {
+      display: block;
+      position: absolute;
+      inset: 0;
+      border: 0;
+      background: rgba(0, 0, 0, 0.42);
+      z-index: calc(var(--z-modal) - 1);
+      padding: 0;
+    }
   }
 </style>

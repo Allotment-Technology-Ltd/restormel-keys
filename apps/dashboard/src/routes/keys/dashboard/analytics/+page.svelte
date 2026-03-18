@@ -126,8 +126,8 @@
   <p><a href={DASHBOARD_BASE + "/logs"}>View Logs & Traces</a> for raw request data.</p>
 {:else if data.aggregates.length === 0 && data.recentLogs.length === 0}
   <div class="empty-state" role="status">
-    <p class="empty-title">No analytics data yet</p>
-    <p class="empty-desc">Request logs will appear here once traffic flows through resolved routes. Create a route and use the API to generate data.</p>
+    <p class="empty-title">No requests yet</p>
+    <p class="empty-desc">Usage data will appear here once traffic flows through resolved routes.</p>
     <a href={DASHBOARD_BASE + "/routes"} class="btn btn-primary">Routes</a>
     <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Logs & Traces</a>
   </div>

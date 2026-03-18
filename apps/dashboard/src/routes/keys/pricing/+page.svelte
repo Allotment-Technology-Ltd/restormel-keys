@@ -1,29 +1,10 @@
 <script lang="ts">
-  /** Pricing page — full tiers, annual toggle, FAQ, Paddle checkout. */
+  /** Pricing page — Free + Pro only (two-tier). */
   import { onMount } from "svelte";
   import { initPaddleCheckout } from "$lib/paddle-checkout";
   import { browser } from "$app/environment";
 
-  export let data: { dashboardUrl: string; paddleToken: string };
-
-  let annual = false;
-
-  function toggleAnnual() {
-    annual = !annual;
-    document.querySelectorAll(".tier-price").forEach((el) => {
-      const month = el.getAttribute("data-monthly");
-      const year = el.getAttribute("data-annual");
-      if (month != null && year != null) el.textContent = annual ? year : month;
-    });
-    document.querySelectorAll(".tier-period").forEach((el) => {
-      const month = el.getAttribute("data-monthly");
-      const year = el.getAttribute("data-annual");
-      if (month != null && year != null) el.textContent = annual ? year : month;
-    });
-    document.querySelectorAll("[data-paddle-checkout]").forEach((btn) => {
-      btn.setAttribute("data-billing-period", annual ? "annual" : "monthly");
-    });
-  }
+  export let data: { dashboardUrl: string; paddleToken: string; proPriceIdMonthlyGbp: string };
 
   onMount(() => {
     if (browser && data.paddleToken) {
@@ -33,27 +14,25 @@
         messageContainerId: "checkout-message",
       });
     }
+    if (browser) {
+      window.rmCapture?.("pricing_view", { surface: "keys_pricing" });
+    }
   });
 </script>
 
 <svelte:head>
   <title>Pricing — Restormel Keys</title>
-  <meta name="description" content="Restormel Keys pricing: Free (open source), Pro, Team, Enterprise. Cloud API and dashboard when you need them." />
+  <meta name="description" content="Restormel Keys pricing: Free (build/prototype) and Pro (£10/mo) for production limits and visibility. No hosted key custody. Library-first." />
 </svelte:head>
 
 <article class="pricing-page">
   <div class="container">
     <header class="pricing-header">
       <h1 class="pricing-title">Pricing</h1>
-      <p class="pricing-intro">The core library is free and open source. Use it self-hosted with no account. When you need cloud API, dashboard, or team features, subscribe below. No lock-in.</p>
-
-      <div class="toggle-wrap" role="group" aria-label="Billing period">
-        <span class="toggle-label" data-period="monthly">Monthly</span>
-        <button type="button" class="toggle-btn" id="annual-toggle" aria-pressed={annual} aria-label="Toggle annual billing" onclick={toggleAnnual}>
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </button>
-        <span class="toggle-label" data-period="annual">Annual</span>
-      </div>
+      <p class="pricing-kicker">Ship BYOK in minutes — not weeks</p>
+      <p class="pricing-intro">
+        <strong>Restormel Keys</strong> gives you production-grade key management, routing, and cost control — without running heavy infrastructure. Free for development. Upgrade when you’re ready to ship.
+      </p>
       <div id="checkout-message" class="checkout-message" role="alert" aria-live="polite" hidden></div>
     </header>
 
@@ -62,51 +41,60 @@
       <div class="tiers-grid">
         <div class="tier-card">
           <h3 class="tier-name">Free</h3>
-          <p class="tier-desc">Open source. Self-host. Local/in-process routing, policies, and embeddable UX. No account required.</p>
-          <p class="tier-price" data-monthly="£0" data-annual="£0">£0</p>
-          <p class="tier-period">—</p>
-          <a href="/keys/docs" class="btn btn-secondary">Get started</a>
+          <p class="tier-desc"><strong>Best for:</strong> experimenting and prototyping</p>
+          <p class="tier-price">£0</p>
+          <p class="tier-period">/ month</p>
+          <ul class="tier-list">
+            <li>1 project</li>
+            <li>Local key handling (user-controlled storage)</li>
+            <li>Multi-provider routing</li>
+            <li>Key validation</li>
+            <li>Basic dashboard</li>
+            <li>1,000 API requests / month</li>
+          </ul>
+          <p class="tier-limitations"><strong>Limitations:</strong> no advanced usage insights; limited scale; not production-optimised.</p>
+          <a href="/keys/docs" class="btn btn-secondary">Get started for free</a>
         </div>
 
         <div class="tier-card">
           <h3 class="tier-name">Pro</h3>
-          <p class="tier-desc">Cloud control plane + dashboard. Policies, routes, health checks, and analytics for your provider-access layer (gateway-backed or direct).</p>
-          <p class="tier-price" data-monthly="£19" data-annual="£192">£19</p>
-          <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="pro" data-billing-period="monthly" data-price-id="">Start Pro</button>
-          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
-        </div>
-
-        <div class="tier-card">
-          <h3 class="tier-name">Team</h3>
-          <p class="tier-desc">Team workflows. Shared projects, audit trail, higher limits, and richer analytics for multi-env routing and policy changes.</p>
-          <p class="tier-price" data-monthly="£49" data-annual="£468">£49</p>
-          <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="team" data-billing-period="monthly" data-price-id="">Start Team</button>
-          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
-        </div>
-
-        <div class="tier-card">
-          <h3 class="tier-name">Enterprise</h3>
-          <p class="tier-desc">SSO, SLA, export, custom policy/routing support. Optional managed edge/gateway integrations. Hosted vault (future/optional).</p>
-          <p class="tier-price" data-monthly="£149" data-annual="£1,428">£149</p>
-          <p class="tier-period" data-monthly="/mo" data-annual="/yr">/mo</p>
-          <button type="button" class="btn btn-primary" data-paddle-checkout data-tier="enterprise" data-billing-period="monthly" data-price-id="">Start Enterprise</button>
+          <p class="tier-desc"><strong>Best for:</strong> shipping real AI products</p>
+          <p class="tier-price">£10</p>
+          <p class="tier-period">/ month</p>
+          <ul class="tier-list">
+            <li>Advanced routing controls</li>
+            <li>Usage insights + cost tracking</li>
+            <li>50k–100k API requests / month</li>
+            <li>5–10 projects</li>
+            <li>Key health + validation feedback</li>
+            <li>Production-grade performance</li>
+          </ul>
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-paddle-checkout
+            data-tier="pro"
+            data-billing-period="monthly"
+            data-price-id={data.proPriceIdMonthlyGbp}
+            onclick={() => window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "pro" })}
+          >
+            Upgrade to Pro
+          </button>
           <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
         </div>
       </div>
-      <p class="tiers-overage">Overage: based on control-plane usage (requests, routes/policies, analytics retention). Free tier has no overage.</p>
+      <p class="tiers-anchor">Most developers start on Free and upgrade when they deploy.</p>
     </section>
 
     <section class="features-section" aria-labelledby="features-heading">
       <h2 id="features-heading" class="section-title">What you get in every tier</h2>
       <div class="features-grid">
         <div class="feat"><span class="feat-name">Provider access modes</span><span class="feat-desc">Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span></div>
-        <div class="feat"><span class="feat-name">Provider routing</span><span class="feat-desc">Model → provider resolution. One middleware.</span></div>
+        <div class="feat"><span class="feat-name">Restormel Resolve</span><span class="feat-desc">Model → provider resolution. One middleware.</span></div>
         <div class="feat"><span class="feat-name">Policies</span><span class="feat-desc">Allow/deny models, enforce route rules, and keep behavior inspectable.</span></div>
         <div class="feat"><span class="feat-name">Health & fallbacks</span><span class="feat-desc">Detect failures and shift traffic safely with explicit fallback chains.</span></div>
         <div class="feat"><span class="feat-name">Embeddable UX</span><span class="feat-desc">ModelSelector, CostEstimator, and optional KeyManager for BYOK flows.</span></div>
-        <div class="feat"><span class="feat-name">Dashboard & API</span><span class="feat-desc">Cloud API, project dashboard (Pro+).</span></div>
+        <div class="feat"><span class="feat-name">Dashboard & API</span><span class="feat-desc">Cloud API and Dashboard (Pro+).</span></div>
       </div>
     </section>
 
@@ -114,11 +102,11 @@
       <h2 id="faq-heading" class="section-title">FAQ</h2>
       <dl class="faq-list">
         <dt class="faq-q">Can I use Keys without paying?</dt>
-        <dd class="faq-a">Yes. The core is MIT. Use it self-hosted with no account. Pro and above add cloud control plane + dashboard features.</dd>
+        <dd class="faq-a">Yes. Start on Free for development and prototyping. Upgrade when you need production-grade limits and visibility.</dd>
         <dt class="faq-q">What happens after I subscribe?</dt>
         <dd class="faq-a">You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your project; you can create API keys and use the cloud API from there.</dd>
         <dt class="faq-q">Can I change plan later?</dt>
-        <dd class="faq-a">Yes. In the dashboard, use "Manage subscription" to upgrade, downgrade, or cancel. Billing is through Paddle.</dd>
+        <dd class="faq-a">Yes. Billing is through Paddle. You can cancel any time and keep using Free.</dd>
       </dl>
     </section>
   </div>
@@ -145,45 +133,12 @@
     margin: 0 0 var(--space-6);
     max-width: var(--rm-container-narrow);
   }
-  .toggle-wrap {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-  }
-  .toggle-label {
+  .pricing-kicker {
+    margin: 0 0 var(--space-2);
     font-size: var(--text-sm);
-    color: var(--rm-muted);
-  }
-  .toggle-btn {
-    background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-full);
-    width: 2.5rem;
-    height: 1.25rem;
-    padding: 0;
-    cursor: pointer;
-  }
-  .toggle-track {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-full);
-    background: var(--rm-border);
-    position: relative;
-  }
-  .toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: calc(1.25rem - 4px);
-    height: calc(1.25rem - 4px);
-    background: var(--rm-sage);
-    border-radius: var(--radius-full);
-    transition: transform var(--duration-fast) var(--ease);
-  }
-  .toggle-btn[aria-pressed="true"] .toggle-thumb {
-    transform: translateX(1.25rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
   }
   .checkout-message {
     font-size: var(--text-sm);
@@ -213,6 +168,10 @@
     border-radius: var(--radius-md);
     padding: var(--space-6);
   }
+  .tier-card:nth-child(2) {
+    border-color: color-mix(in oklab, var(--rm-sage) 55%, var(--rm-border));
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--rm-sage) 20%, transparent);
+  }
   .tier-name {
     font-family: var(--rm-font-ui);
     font-size: var(--text-base);
@@ -237,13 +196,26 @@
     color: var(--rm-dim);
     margin: 0 0 var(--space-4);
   }
+  .tier-list {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-5);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
+  .tier-limitations {
+    margin: 0 0 var(--space-4);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+  }
   .tier-hint {
     font-size: var(--text-xs);
     color: var(--rm-dim);
     margin: var(--space-3) 0 0;
     line-height: var(--leading-normal);
   }
-  .tiers-overage {
+  .tiers-anchor {
     font-size: var(--text-sm);
     color: var(--rm-dim);
     margin: 0;

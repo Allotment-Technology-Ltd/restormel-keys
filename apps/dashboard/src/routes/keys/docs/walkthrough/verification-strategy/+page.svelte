@@ -145,13 +145,13 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
   <WalkthroughStep stepId="cli" title="3. CLI checks" {phaseSlug}>
   <p>These checks run in a terminal and can be scripted into CI.</p>
 
-  <h3>3.1 <code>keys doctor</code></h3>
+  <h3>3.1 Restormel Doctor (<code>npx @restormel/doctor</code>)</h3>
   <CodeBlock language="bash" code="npx @restormel/doctor" />
   <p><strong>Checks:</strong> Framework detection, packages installed, config file validity, and whether local provider keys are present (if you use them).</p>
   <p><strong>Expected:</strong> Exit code 0, all checks green.</p>
   <p><strong>When to run:</strong> After install (Phase 1), before every deploy, in CI on every PR.</p>
 
-  <h3>3.2 <code>keys validate</code></h3>
+  <h3>3.2 Restormel Validate (<code>npx @restormel/validate</code>)</h3>
   <CodeBlock language="bash" code="npx @restormel/validate" />
   <p>
     <strong>Checks:</strong> Provider access verification for the mode you’ve chosen:
@@ -160,7 +160,7 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
   <p><strong>Expected:</strong> Exit code 0 if checks pass. Exit code 1 if verification fails.</p>
   <p><strong>When to run:</strong> Before deploy, in CI on a schedule (e.g. daily), after rotating any gateway/provider credentials in your own infrastructure.</p>
   <div class="callout callout-tip">
-    <strong>Tip</strong> — <code>keys validate</code> with exit code 1 is designed for CI gates. Add it to your deploy pipeline so deploys fail when your provider-access layer (gateway or env-backed) is misconfigured or unhealthy.
+    <strong>Tip</strong> — <strong>Restormel Validate</strong> is designed for CI gates. It exits 1 when verification fails, so deploys fail when your provider-access layer (gateway or env-backed) is misconfigured or unhealthy.
   </div>
   <CodeBlock language="yaml" code={`# .github/workflows/deploy.yml
 - name: Validate Restormel keys
@@ -184,7 +184,7 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
   <p><strong>Expected:</strong> Resolve returns the fallback step's provider.</p>
 
   <h3>4.3 Policy smoke test</h3>
-  <p>Call the policy evaluate endpoint for an allowed model (expect <code>allowed: true</code>) and for a blocked model (expect <code>allowed: false</code>). Use <code>RESTORMEL_MANAGEMENT_KEY</code> for auth.</p>
+  <p>Call the policy evaluate endpoint for an allowed model (expect <code>allowed: true</code>) and for a blocked model (expect <code>allowed: false</code>). Use <code>RESTORMEL_GATEWAY_KEY</code> from your backend for auth.</p>
 
   <h3>4.4 Combined smoke test script</h3>
   <p>The script from Phase 6 (Step 6.4) combines all checks:</p>
@@ -200,10 +200,10 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
       <tr><td>Resolve latency</td><td>Log time per <code>restormelResolve()</code> call; alert if p95 &gt; 200ms</td><td>Every request</td></tr>
       <tr><td>Resolve errors</td><td>Count errors from resolve client; alert on spike</td><td>Every request</td></tr>
       <tr><td>Fallback rate</td><td>Count fallback-to-legacy or next-step events; alert if &gt; 5%</td><td>Every request</td></tr>
-      <tr><td>Credential expiry</td><td><code>keys validate</code> in CI; alert on exit code 1</td><td>Daily</td></tr>
+      <tr><td>Credential expiry</td><td><strong>Restormel Validate</strong> in CI; alert on exit code 1</td><td>Daily</td></tr>
       <tr><td>Policy violations</td><td>Dashboard logs; alert if unexpected blocks</td><td>Daily</td></tr>
       <tr><td>Budget utilisation</td><td>Dashboard usage; alert at 80% of cap</td><td>Daily</td></tr>
-      <tr><td>Config drift</td><td><code>keys doctor</code> in CI; alert on warnings</td><td>Every deploy</td></tr>
+      <tr><td>Config drift</td><td><strong>Restormel Doctor</strong> in CI; alert on warnings</td><td>Every deploy</td></tr>
     </tbody>
   </table>
 
@@ -216,13 +216,13 @@ DO NOT: Change CI config. Add secrets. Run deploys.`,
       <tr><th>Event</th><th>Checks to run</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>Phase 1 complete</strong></td><td><code>keys doctor</code></td></tr>
-      <tr><td><strong>Phase 2 complete</strong></td><td><code>keys doctor</code>, resolve curl test</td></tr>
+      <tr><td><strong>Phase 1 complete</strong></td><td><strong>Restormel Doctor</strong></td></tr>
+      <tr><td><strong>Phase 2 complete</strong></td><td><strong>Restormel Doctor</strong>, resolve curl test</td></tr>
       <tr><td><strong>Phase 3 complete</strong></td><td>Resolve with route ID, fallback test</td></tr>
       <tr><td><strong>Phase 4 complete</strong></td><td>Policy evaluate (allowed + blocked)</td></tr>
       <tr><td><strong>Phase 5 complete</strong></td><td>Visual: ModelSelector renders, callbacks fire</td></tr>
       <tr><td><strong>Phase 6 cutover</strong></td><td>Full smoke test, dashboard usage, error rate</td></tr>
-      <tr><td><strong>Ongoing</strong></td><td><code>keys doctor</code> + <code>keys validate</code> in CI; smoke test on schedule; dashboard monitoring</td></tr>
+      <tr><td><strong>Ongoing</strong></td><td><strong>Restormel Doctor</strong> + <strong>Restormel Validate</strong> in CI; smoke test on schedule; dashboard monitoring</td></tr>
     </tbody>
   </table>
   </WalkthroughStep>

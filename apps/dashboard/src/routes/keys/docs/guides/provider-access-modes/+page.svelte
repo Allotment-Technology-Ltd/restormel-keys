@@ -1,6 +1,6 @@
 <svelte:head>
   <title>Provider access modes — Restormel Keys</title>
-  <meta name="description" content="Choose between gateway-backed, builder-managed direct, and future hosted-vault provider access modes with Restormel Keys." />
+  <meta name="description" content="Choose between gateway-backed, builder-managed direct, and end-user BYOK access modes with Restormel Keys. Keys remain user-controlled." />
 </svelte:head>
 
 <div class="doc-content">
@@ -24,7 +24,7 @@
   <h2>Mode B — Builder-managed direct providers</h2>
   <p>
     Your backend calls providers directly using their SDKs or HTTP APIs. Provider credentials live in your env vars or secret manager.
-    Restormel resolves route/provider/model decisions and enforces policies in your control plane.
+    <strong>Restormel Resolve</strong> returns route/provider/model decisions and enforces policies in your control plane.
   </p>
   <ul>
     <li><strong>Where credentials live:</strong> Your env vars / secret manager</li>
@@ -36,12 +36,6 @@
   <p>
     If your product lets end-users bring credentials, you can expose a KeyManager UI and store end-user credentials in <em>your</em> backend (or a gateway-backed scheme).
     Restormel remains the control layer; it does not need to become the custodian.
-  </p>
-
-  <h2>Mode D — Future: Restormel-hosted vault (optional)</h2>
-  <p>
-    A hosted provider-secret vault can be an optional future capability, but it is not the v1/default proposition.
-    If you need hosted custody today, use your gateway vendor or your existing secret store.
   </p>
 
   <div class="callout callout-tip">

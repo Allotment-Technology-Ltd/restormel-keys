@@ -1,6 +1,6 @@
 # @restormel/keys
 
-Drop-in BYOK for AI apps. Headless key resolution, cost estimation, provider adapters (OpenAI, Anthropic, Google), and optional server middleware.
+Drop-in BYOK for AI apps. Headless key resolution, cost estimation, and optional server helpers.
 
 ## Install
 
@@ -51,10 +51,11 @@ const allowed = keys.entitlements.check("gpt-4o").allowed;
 const available = keys.entitlements.getAvailableModels(keys.getAllModelIds());
 ```
 
-### 5. Optional: storage and server
+### 5. Optional: storage and server helpers
 
 - **Storage:** `import { createMemoryStorage } from "@restormel/keys/storage/memory"` or use encrypted localStorage with `@restormel/keys/storage/encrypted-local`.
-- **Server:** `import { createMiddleware, createResolveMiddleware, createProxy } from "@restormel/keys/server"` for key management and proxy (standard `Request`/`Response`).
+- **Server:** `import { createMiddleware, createResolveMiddleware } from "@restormel/keys/server"` for BYOK and resolve flows (standard `Request`/`Response`). If you already use a gateway (OpenRouter/Portkey/Vercel AI Gateway) or call providers directly, you keep that execution layer.
+- **Optional execution helper:** `createProxy` exists for edge cases where you explicitly want a Request/Response forwarder in your own app. It is not required and is not the default product shape.
 - **Security:** `import { createApiKey, hashApiKey, maskApiKey, createKeyVerifier } from "@restormel/keys/security"` for key hashing and verification.
 
 Never log or store raw API keys; use hashed keys and masked display only.

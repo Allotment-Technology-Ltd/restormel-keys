@@ -84,6 +84,11 @@ export function initPaddleCheckout(config: PaddleCheckoutConfig): void {
         token,
         eventCallback: (data: PaddleEventData) => {
           if (data?.name === "checkout.completed") {
+            try {
+              window.rmCapture?.("checkout_completed", { surface: "paddle_overlay" });
+            } catch {
+              // no-op
+            }
             window.location.href = new URL(DASHBOARD_SUCCESS_PATH, window.location.origin).href;
           }
           if (data?.name === "checkout.closed" || data?.name === "checkout.cancelled") {
@@ -119,12 +124,17 @@ function bindSubscribeButtons(
         if (!priceId) {
           showMessage(
             messageContainerId,
-            "This plan is not configured for checkout yet. Set Paddle price IDs for this tier and period.",
+            "This plan is not configured for checkout yet. Set Paddle price IDs (e.g. PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP) and try again.",
             true,
           );
           return;
         }
         try {
+          try {
+            window.rmCapture?.("checkout_started", { surface: "keys_pricing", tier, billingPeriod });
+          } catch {
+            // no-op
+          }
           const res = await fetch(`${dashboardUrl.replace(/\/$/, "")}/api/billing/checkout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

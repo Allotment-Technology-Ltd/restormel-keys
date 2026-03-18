@@ -46,7 +46,7 @@ export async function resolveRouteForExecution(
   const routes = await listRoutes(projectId, userId, { environmentId });
   const activeRoutes = routes.filter((r) => r.status === "active");
   const route = options?.routeId
-    ? activeRoutes.find((r) => r.id === options.routeId) ?? activeRoutes[0]
+    ? activeRoutes.find((r) => r.id === options.routeId || r.name === options.routeId) ?? activeRoutes[0]
     : activeRoutes[0];
   if (!route) {
     return null;
@@ -56,7 +56,10 @@ export async function resolveRouteForExecution(
   if (!withSteps) return null;
 
   const { route: routeRecord, steps } = withSteps;
-  const enabledSteps = steps.filter((s) => s.enabled);
+  const enabledSteps = steps
+    .filter((s) => s.enabled)
+    .slice()
+    .sort((a, b) => a.orderIndex - b.orderIndex);
   const selectedStep = enabledSteps[0] ?? null;
   const providerType = selectedStep?.providerPreference ?? null;
   const modelId = selectedStep?.modelId ?? routeRecord.defaultModelId ?? null;

@@ -4,6 +4,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
   import { onMount } from "svelte";
+  import UserMenu from "$lib/components/UserMenu.svelte";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
@@ -13,9 +14,19 @@
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   let collapsed = false;
+  let isPhone = false;
 
   onMount(() => {
     collapsed = localStorage.getItem(STORAGE_KEY) === "true";
+
+    const media = window.matchMedia("(max-width: 767px)");
+    const updatePhone = () => {
+      isPhone = media.matches;
+    };
+    updatePhone();
+    media.addEventListener("change", updatePhone);
+
+    return () => media.removeEventListener("change", updatePhone);
   });
 
   function toggleSidebar() {
@@ -28,7 +39,21 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-{#if isAuthRoute}
+{#if isPhone}
+  <div class="mobile-gate-wrap">
+    <section class="mobile-gate" aria-labelledby="mobile-gate-heading">
+      <h1 id="mobile-gate-heading" class="mobile-gate-title">Dashboard is desktop-first</h1>
+      <p class="mobile-gate-desc">
+        This dashboard is designed for larger screens. For the best setup experience, open it on a desktop or tablet.
+      </p>
+      <p class="mobile-gate-links">
+        <a href="/keys/docs">Open docs</a>
+        <span class="mobile-gate-sep">·</span>
+        <a href="/keys/pricing">View pricing</a>
+      </p>
+    </section>
+  </div>
+{:else if isAuthRoute}
   <slot />
 {:else}
   <div class="shell" class:shell-collapsed={collapsed}>
@@ -42,11 +67,6 @@
           {/if}
         {/each}
       </nav>
-      {#if user || authError}
-        <div class="sidebar-footer">
-          <a href={DASHBOARD_BASE + "/logout"} class="nav-link" data-sveltekit-reload>Log out</a>
-        </div>
-      {/if}
     </aside>
     <div class="main-wrap">
       <header class="topbar">
@@ -63,7 +83,7 @@
           <span class="topbar-title">{title}</span>
         </div>
         {#if user}
-          <span class="topbar-user" title={user.email ?? undefined}>{user.email ?? user.uid}</span>
+          <UserMenu user={{ uid: user.uid, email: user.email ?? null, name: (user as { name?: string | null }).name ?? null }} align="right" />
         {:else}
           <a href={DASHBOARD_BASE + "/login"} class="btn btn-primary">Sign in with GitHub</a>
         {/if}
@@ -142,11 +162,6 @@
     color: var(--rm-sage);
     font-weight: 500;
   }
-  .sidebar-footer {
-    margin-top: auto;
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--rm-border);
-  }
   .main-wrap {
     flex: 1;
     display: flex;
@@ -188,13 +203,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .topbar-user {
-    font-size: var(--text-sm);
-    color: var(--rm-dim);
-    max-width: 12rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .main {
     flex: 1;
@@ -286,6 +294,40 @@
     color: var(--rm-sage);
   }
   .welcome-sep {
+    color: var(--rm-dim);
+    margin: 0 var(--space-2);
+  }
+  .mobile-gate-wrap {
+    max-width: var(--rm-container-narrow);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+  }
+  .mobile-gate {
+    background: var(--rm-surface);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+  }
+  .mobile-gate-title {
+    margin: 0 0 var(--space-2);
+    font-family: var(--rm-font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--rm-text);
+  }
+  .mobile-gate-desc {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .mobile-gate-links {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+  .mobile-gate-links a {
+    color: var(--rm-sage);
+  }
+  .mobile-gate-sep {
     color: var(--rm-dim);
     margin: 0 var(--space-2);
   }

@@ -20,7 +20,7 @@
   <ol>
     <li><strong>Keep your existing OpenRouter calls.</strong> Don’t touch credentials or request format yet.</li>
     <li><strong>Add Restormel control plane.</strong> Create a project, routes, and policies that describe the behavior you want.</li>
-    <li><strong>Use Restormel resolve for decisions.</strong> For a given request, ask Restormel which route/provider/model should apply, then execute via OpenRouter.</li>
+    <li><strong>Use Restormel Resolve for decisions.</strong> For a given request, ask Restormel which route/provider/model should apply, then execute via OpenRouter.</li>
     <li><strong>Progressively cut over.</strong> Start with a small traffic slice, verify logs/health, then expand.</li>
   </ol>
 
