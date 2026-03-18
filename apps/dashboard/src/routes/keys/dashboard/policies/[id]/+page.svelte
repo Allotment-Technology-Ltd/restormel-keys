@@ -10,7 +10,11 @@
       status: string;
       ruleDefinition: Record<string, unknown> | null;
     } | null;
-    bindings: { id: string; targetType: string; targetId: string }[];
+    bindings: { id: string; targetType: string; targetId: string; label: string }[];
+    projects: { id: string; name: string; userId: string; environments: { id: string; name: string }[]; routes: { id: string; name: string }[] }[];
+    models: { id: string; canonicalName: string }[];
+    workspaceId: string | null;
+    workspaceName?: string;
     error: string | null;
   };
 
@@ -18,7 +22,126 @@
   let saveError = "";
   let editStatus = data.policy?.status ?? "active";
 
+  let testProjectId = "";
+  let testEnvironmentId = "";
+  let testModelId = "";
+  let testProviderType = "openai";
+  let evaluateLoading = false;
+  let evaluateError = "";
+  let evaluateResult: { allowed: boolean; violations: { policyId: string; policyName: string; type: string; message: string }[] } | null = null;
+
+  let addTargetType: "workspace" | "project" | "environment" | "route" = "project";
+  let addBindingProjectId = "";
+  let addTargetId = "";
+  let addBindingLoading = false;
+  let addBindingError = "";
+  let removingBindingId: string | null = null;
+
   $: if (data.policy) editStatus = data.policy.status;
+
+  $: selectedProject = data.projects?.find((p) => p.id === testProjectId) ?? null;
+  $: envOptions = selectedProject?.environments ?? [];
+  $: routeOptions = selectedProject?.routes ?? [];
+  $: if (testProjectId && testEnvironmentId && envOptions.length && !envOptions.some((e) => e.id === testEnvironmentId)) {
+    testEnvironmentId = "";
+  }
+  $: addProjectForBinding = data.projects?.find((p) => p.id === addBindingProjectId) ?? null;
+  $: addEnvOptions = addProjectForBinding?.environments ?? [];
+  $: addRouteOptions = addProjectForBinding?.routes ?? [];
+  $: if ((addTargetType === "environment" || addTargetType === "route") && addBindingProjectId && addProjectForBinding) {
+    const valid = addTargetType === "environment"
+      ? addEnvOptions.some((e) => e.id === addTargetId)
+      : addRouteOptions.some((r) => r.id === addTargetId);
+    if (addTargetId && !valid) addTargetId = "";
+  }
+  $: resolvedAddTargetId =
+    addTargetType === "workspace" ? (data.workspaceId ?? "")
+    : addTargetType === "project" ? addTargetId
+    : addTargetType === "environment" || addTargetType === "route" ? addTargetId
+    : "";
+  $: canSubmitAddBinding =
+    addTargetType === "workspace" ? !!data.workspaceId
+    : addTargetType === "project" ? !!addTargetId
+    : addTargetType === "environment" ? !!addBindingProjectId && !!addTargetId
+    : addTargetType === "route" ? !!addBindingProjectId && !!addTargetId
+    : false;
+
+  async function runEvaluate() {
+    if (!testProjectId.trim()) {
+      evaluateError = "Select a project.";
+      return;
+    }
+    evaluateLoading = true;
+    evaluateError = "";
+    evaluateResult = null;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/policies/evaluate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          projectId: testProjectId,
+          environmentId: testEnvironmentId || undefined,
+          modelId: testModelId || undefined,
+          providerType: testProviderType || undefined,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        evaluateError = (json as { error?: string }).error ?? `Request failed (${res.status})`;
+        return;
+      }
+      const d = (json as { data?: { allowed?: boolean; violations?: { policyId: string; policyName: string; type: string; message: string }[] } }).data;
+      evaluateResult = {
+        allowed: d?.allowed ?? true,
+        violations: Array.isArray(d?.violations) ? d.violations : [],
+      };
+    } catch (e) {
+      evaluateError = e instanceof Error ? e.message : "Request failed";
+    } finally {
+      evaluateLoading = false;
+    }
+  }
+
+  async function addBinding() {
+    if (!data.policy) return;
+    const targetId = resolvedAddTargetId.trim();
+    if (!targetId) {
+      addBindingError = "Select a target.";
+      return;
+    }
+    addBindingLoading = true;
+    addBindingError = "";
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/policies/${data.policy.id}/bindings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ targetType: addTargetType, targetId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) await invalidateAll();
+      else addBindingError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
+    } catch (e) {
+      addBindingError = e instanceof Error ? e.message : "Request failed";
+    } finally {
+      addBindingLoading = false;
+    }
+  }
+
+  async function removeBinding(bindingId: string) {
+    if (!data.policy || !confirm("Remove this binding? The policy will no longer apply to this target.")) return;
+    removingBindingId = bindingId;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/policies/${data.policy.id}/bindings/${bindingId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) await invalidateAll();
+    } finally {
+      removingBindingId = null;
+    }
+  }
 
   async function saveStatus() {
     if (!data.policy) return;
@@ -80,17 +203,164 @@
     {/if}
   </section>
 
+  <section class="section" aria-labelledby="test-heading">
+    <h2 id="test-heading" class="section-title">Test policy</h2>
+    <p class="section-desc">
+      Evaluate uses your current session and shows whether a given model/provider combination would pass all policies bound to the selected scope (including this one).
+    </p>
+    <form class="test-form" onsubmit={(e) => { e.preventDefault(); runEvaluate(); }}>
+      <div class="form-row">
+        <label for="test-project">Project</label>
+        <select id="test-project" bind:value={testProjectId} class="input" required>
+          <option value="">Select project</option>
+          {#each data.projects ?? [] as p}
+            <option value={p.id}>{p.name}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="test-env">Environment</label>
+        <select id="test-env" bind:value={testEnvironmentId} class="input">
+          <option value="">Any</option>
+          {#each envOptions as env}
+            <option value={env.id}>{env.name}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="test-model">Model</label>
+        <select id="test-model" bind:value={testModelId} class="input">
+          <option value="">Any</option>
+          {#each data.models ?? [] as m}
+            <option value={m.id}>{m.canonicalName ?? m.id}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="test-provider">Provider</label>
+        <select id="test-provider" bind:value={testProviderType} class="input">
+          <option value="openai">openai</option>
+          <option value="anthropic">anthropic</option>
+          <option value="google">google</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" disabled={evaluateLoading}>
+        {evaluateLoading ? "Evaluating…" : "Evaluate"}
+      </button>
+    </form>
+    {#if evaluateError}
+      <p class="error-msg" role="alert">{evaluateError}</p>
+    {/if}
+    {#if evaluateResult}
+      <div class="evaluate-result" role="status">
+        <p class="evaluate-badge" class:allowed={evaluateResult.allowed} class:blocked={!evaluateResult.allowed}>
+          {evaluateResult.allowed ? "Allowed" : "Blocked"}
+        </p>
+        {#if evaluateResult.violations.length > 0}
+          <ul class="violations-list">
+            {#each evaluateResult.violations as v}
+              <li><strong>{v.type}</strong> — {v.message} <span class="muted">({v.policyName})</span></li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+  </section>
+
   <section class="section">
     <h2 class="section-title">Bindings</h2>
     <p class="section-desc">
       Bindings attach this policy to a target (workspace, project, environment, route). Impacted objects depend on the target.
     </p>
+    <div class="add-binding-form">
+      <h3 class="subsection-title">Add binding</h3>
+      <form onsubmit={(e) => { e.preventDefault(); addBinding(); }}>
+        <div class="form-row">
+          <label for="add-target-type">Target type</label>
+          <select id="add-target-type" bind:value={addTargetType} class="input">
+            <option value="workspace">Workspace</option>
+            <option value="project">Project</option>
+            <option value="environment">Environment</option>
+            <option value="route">Route</option>
+          </select>
+        </div>
+        {#if addTargetType === "workspace"}
+          <p class="muted">Target: {data.workspaceName ?? "This workspace"} (<code>{data.workspaceId}</code>)</p>
+        {:else if addTargetType === "project"}
+          <div class="form-row">
+            <label for="add-project">Project</label>
+            <select id="add-project" bind:value={addTargetId} class="input">
+              <option value="">Select project</option>
+              {#each data.projects ?? [] as p}
+                <option value={p.id}>{p.name}</option>
+              {/each}
+            </select>
+          </div>
+        {:else if addTargetType === "environment"}
+          <div class="form-row">
+            <label for="add-env-project">Project</label>
+            <select id="add-env-project" bind:value={addBindingProjectId} class="input">
+              <option value="">Select project</option>
+              {#each data.projects ?? [] as p}
+                <option value={p.id}>{p.name}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="add-env">Environment</label>
+            <select id="add-env" bind:value={addTargetId} class="input">
+              <option value="">Select environment</option>
+              {#each addEnvOptions as env}
+                <option value={env.id}>{env.name}</option>
+              {/each}
+            </select>
+          </div>
+        {:else if addTargetType === "route"}
+          <div class="form-row">
+            <label for="add-route-project">Project</label>
+            <select id="add-route-project" bind:value={addBindingProjectId} class="input">
+              <option value="">Select project</option>
+              {#each data.projects ?? [] as p}
+                <option value={p.id}>{p.name}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="add-route">Route</label>
+            <select id="add-route" bind:value={addTargetId} class="input">
+              <option value="">Select route</option>
+              {#each addRouteOptions as r}
+                <option value={r.id}>{r.name}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+        <button type="submit" class="btn btn-primary" disabled={addBindingLoading || !canSubmitAddBinding}>
+          {addBindingLoading ? "Adding…" : "Add binding"}
+        </button>
+      </form>
+      {#if addBindingError}
+        <p class="error-msg" role="alert">{addBindingError}</p>
+      {/if}
+    </div>
     {#if data.bindings.length === 0}
-      <p class="muted">No bindings. Use POST /api/policies/{data.policy.id}/bindings to add (targetType, targetId).</p>
+      <p class="muted">No bindings yet. Add one above.</p>
     {:else}
       <ul class="binding-list">
         {#each data.bindings as b}
-          <li class="binding-row">{b.targetType} → {b.targetId}</li>
+          <li class="binding-row">
+            <span class="binding-label">{b.label}</span>
+            <span class="binding-meta">{b.targetType} · <code>{b.targetId}</code></span>
+            <button
+              type="button"
+              class="btn btn-remove"
+              aria-label="Remove binding for {b.label}"
+              disabled={removingBindingId === b.id}
+              onclick={() => removeBinding(b.id)}
+            >
+              {removingBindingId === b.id ? "Removing…" : "Remove"}
+            </button>
+          </li>
         {/each}
       </ul>
     {/if}
@@ -179,5 +449,77 @@
   .error-msg {
     color: var(--coral-alert);
     font-size: var(--text-sm);
+  }
+  .test-form {
+    max-width: 28rem;
+    margin-bottom: var(--space-3);
+  }
+  .test-form .form-row {
+    margin-bottom: var(--space-3);
+  }
+  .test-form label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    margin-bottom: var(--space-1);
+  }
+  .evaluate-result {
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    background: var(--rm-surface-raised);
+    border-radius: var(--rm-radius);
+  }
+  .evaluate-badge {
+    font-weight: 600;
+    font-size: var(--text-base);
+    margin: 0 0 var(--space-2);
+  }
+  .evaluate-badge.allowed { color: var(--rm-sage); }
+  .evaluate-badge.blocked { color: var(--coral-alert); }
+  .violations-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+  .violations-list li {
+    padding: var(--space-1) 0;
+    border-bottom: 1px solid var(--rm-border);
+  }
+  .subsection-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin: 0 0 var(--space-2);
+  }
+  .add-binding-form {
+    margin-bottom: var(--space-4);
+  }
+  .add-binding-form .form-row {
+    margin-bottom: var(--space-3);
+  }
+  .add-binding-form label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    margin-bottom: var(--space-1);
+  }
+  .binding-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .binding-label {
+    font-weight: 500;
+  }
+  .binding-meta {
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+  .btn-remove {
+    margin-left: auto;
+    background: transparent;
+    color: var(--coral-alert);
+    border: 1px solid var(--rm-border);
   }
 </style>

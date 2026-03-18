@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 ### Changed
 
+- **Phase 5 and Framework compatibility docs:** Align with npm-packages.md: Phase 5 walkthrough (canonical `docs/walkthrough/07-phase-5-ui.md` and in-app `/keys/docs/walkthrough/phase-5-ui`) and Framework compatibility page (`/keys/docs/compatibility`) now state that the UI packages (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) may return **404** from npm until published; readers are directed to verify with `npm view ... version` and to use the headless path + server-side allowed-models proxy + own model picker when packages are not available.
+
 - **Phase 4 docs and agent prompts:** Terminology (evaluate vs resolve; Restormel step fallback vs app legacy fallback). Structured **403 `policy_blocked`** contract (`error`, `message`, `violations[]` fields). Replace message-substring error handling with JSON body parsing. Minimal **backend evaluate** TypeScript example (Gateway Key from env). Catalog-first model IDs (no guaranteed example IDs). Budget/token cap success criteria (config vs evaluate vs end-to-end). Stricter Phase 4 checkpoint. New agent prompts **4C** (create/bind) and **4D** (verify evaluate+resolve) on dashboard walkthrough page. [docs/walkthrough/06-phase-4-policies.md](docs/walkthrough/06-phase-4-policies.md), [docs/reference/policy-enforcement.md](docs/reference/policy-enforcement.md), prompt index P07B/P07C + revised P07.
 
 ### Added

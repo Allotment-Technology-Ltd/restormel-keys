@@ -58,6 +58,16 @@
       "types": "./dist/security/*.d.ts",
       "import": "./dist/security/*.js",
       "default": "./dist/security/*.js"
+    },
+    "./dashboard": {
+      "types": "./dist/dashboard/index.d.ts",
+      "import": "./dist/dashboard/index.js",
+      "default": "./dist/dashboard/index.js"
+    },
+    "./dashboard/*": {
+      "types": "./dist/dashboard/*.d.ts",
+      "import": "./dist/dashboard/*.js",
+      "default": "./dist/dashboard/*.js"
     }
   },
   "scripts": {

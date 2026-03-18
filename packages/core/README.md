@@ -60,6 +60,44 @@ const available = keys.entitlements.getAvailableModels(keys.getAllModelIds());
 
 Never log or store raw API keys; use hashed keys and masked display only.
 
+### 6. Dashboard API client (resolve and evaluate)
+
+If your app calls the Restormel **dashboard** REST API (route resolve, policy evaluate), use the typed client so you get structured errors instead of parsing JSON by hand:
+
+```ts
+import {
+  resolve,
+  evaluatePolicies,
+  isPolicyBlocked,
+  isNoRoute,
+} from "@restormel/keys/dashboard";
+
+// Resolve: returns { ok: true, data } or { ok: false, status, error, violations? }
+const result = await resolve({
+  projectId: "proj-1",
+  environmentId: "prod",
+  auth: { type: "bearer", token: process.env.RESTORMEL_GATEWAY_KEY! },
+});
+if (result.ok) {
+  console.log(result.data.providerType, result.data.modelId);
+} else if (isPolicyBlocked(result)) {
+  console.error("Blocked:", result.violations);
+} else if (isNoRoute(result)) {
+  console.error("No route");
+}
+
+// Evaluate: returns { allowed, violations }; throws on HTTP error
+const { allowed, violations } = await evaluatePolicies({
+  projectId: "proj-1",
+  environmentId: "prod",
+  modelId: "gpt-4o",
+  providerType: "openai",
+  auth: { type: "bearer", token: process.env.RESTORMEL_GATEWAY_KEY! },
+});
+```
+
+**Security:** Use the dashboard client **only on the server**. Never send the Gateway Key to the browser or expose it in client-side code. Pass the token from environment variables or a secure server session.
+
 ## License
 
 MIT

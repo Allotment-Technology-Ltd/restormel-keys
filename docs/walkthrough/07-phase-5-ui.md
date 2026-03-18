@@ -2,9 +2,11 @@
 
 > **Time:** ~25 minutes
 > **Prerequisites:** [Phase 4](/keys/docs/walkthrough/phase-4-policies) complete (routes and policies configured, resolve works with route IDs)
-> **You'll need:** Your app's frontend codebase, the UI packages installed in Phase 1
+> **You'll need:** Your app's frontend codebase, the UI packages installed in Phase 1 (when available on npm)
 
 This phase puts Restormel's embeddable components into your app so end-users can select models and (optionally) manage their own provider credentials. By the end, your app shows a ModelSelector filtered by your policies and a KeyManager for BYOK, both wired to your backend.
+
+> **Package availability** — The UI packages (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) may **not be published to npm yet** and can return **404** from `npm view`. Before installing, verify: `npm view @restormel/keys-svelte version` (and the same for `keys-react`, `keys-elements`). If any return 404, use the **headless path** until they are published: keep `@restormel/keys` only, implement a server-side allowed-models proxy (e.g. `GET /api/allowed-models`) backed by Restormel evaluate, and use your own model picker UI. See [npm packages](../reference/npm-packages.md) for verify-before-install and 404 handling.
 
 ---
 
