@@ -1,8 +1,9 @@
-import { redirect } from "@sveltejs/kit";
+import { redirect, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { jwksFromPublicKey, signJwtRs256 } from "$lib/server/oidc";
 import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
+import { isAllowedPortalOidcRedirectUri } from "$lib/server/portal-oidc-redirect";
 
 const ISSUER = "https://restormel.dev/keys/auth";
 
@@ -89,8 +90,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     { issuer: ISSUER, audience: clientId || "zudoku", kid }
   );
 
-  // We use a signed JWT as the "code" to keep the flow stateless.
-  const out = new URL(redirectUri || "https://restormel-keys-gateway-main-bc13eba.zuplo.site/oauth/callback");
+  let target: string;
+  if (redirectUri && isAllowedPortalOidcRedirectUri(redirectUri)) {
+    target = redirectUri;
+  } else if (redirectUri) {
+    throw error(400, "Invalid redirect_uri");
+  } else {
+    target = "https://restormel-keys-gateway-main-bc13eba.zuplo.site/oauth/callback";
+  }
+  const out = new URL(target);
   out.searchParams.set("code", idToken);
   if (state) out.searchParams.set("state", state);
 

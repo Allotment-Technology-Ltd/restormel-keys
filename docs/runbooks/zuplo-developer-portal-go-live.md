@@ -49,6 +49,22 @@ Zudoku needs an OpenID Connect issuer. Restormel Keys provides a minimal OIDC br
 
 - `https://restormel.dev/keys/auth/.well-known/openid-configuration`
 
+### Single sign-on with the dashboard (recommended)
+
+If the user is already signed in via **Neon Auth** on `restormel.dev` (Keys dashboard), visiting the portal’s **Login** sends them to `/keys/auth/authorize` with their session cookie. The bridge **skips the separate GitHub OAuth app** and issues the portal JWT immediately, so they are not prompted to authenticate again for the developer portal.
+
+Users who are not signed into the dashboard still complete **GitHub** via `PORTAL_GITHUB_*` (portal OAuth app).
+
+### `redirect_uri` allowlist
+
+`/keys/auth/authorize` and `/keys/auth/callback` only accept `redirect_uri` values that are:
+
+- `https://*.zuplo.site/...` or `https://*.zuplo.app/...`, or
+- `http://localhost/...` / `http://127.0.0.1/...` (local dev), or
+- origins listed in **`PORTAL_ALLOWED_ORIGINS`** (comma-separated full origins, e.g. a preview Zuplo URL).
+
+Set `PORTAL_ALLOWED_ORIGINS` in the dashboard env if you use a non-standard portal host.
+
 ### GitHub OAuth App (manual prerequisite)
 
 Create a GitHub OAuth App for the Developer Portal:
