@@ -2,7 +2,7 @@
 
 This guide walks you through setting up a **non-production** Restormel target and wiring it into your app’s CI (e.g. GitHub Actions) for PR validation, nightly checks, and optional post-deploy smoke tests. It tells you exactly **where to get** each value, **what to call it**, **where to save it**, and **what to do if you need to rotate or replace it**.
 
-**Dashboard:** [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard)
+**Dashboard:** [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard). Open your **staging project** → the **Copy for CI (GitHub Secrets)** section lists the secret names, lets you copy project ID and environment ID, and tells you where to create and copy a Gateway key (keys are never shown in full after creation).
 
 **Principle:** Do not point CI at your main production environment unless you explicitly accept that risk. Use a dedicated staging project or at least a staging environment inside your project.
 

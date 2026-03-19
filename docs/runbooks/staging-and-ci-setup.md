@@ -23,7 +23,14 @@ This runbook is a short **ops checklist** for anyone who has already read the gu
 
 - **Path:** Settings → Secrets and variables → Actions → New repository secret.
 - Add the secrets with the names above (see walkthrough for exact names and rotate/replace steps).
-- In workflows: map to env (e.g. `RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY_STAGING }}`).
+- **In workflows:** you must **map** the secret names to the env vars your script or CLI expects. If you store `RESTORMEL_GATEWAY_KEY_STAGING` but your step runs `test -n "$RESTORMEL_GATEWAY_KEY"`, the step will see an empty value unless you set env, e.g.:
+  ```yaml
+  env:
+    RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY_STAGING }}
+    RESTORMEL_PROJECT_ID: ${{ secrets.RESTORMEL_PROJECT_ID_STAGING }}
+    RESTORMEL_ENVIRONMENT_ID: ${{ secrets.RESTORMEL_ENVIRONMENT_ID_STAGING }}
+  ```
+  Add this at the **job** or **step** level so the step that runs the test (or `npx @restormel/validate`) receives the values.
 
 ### Nightly CI
 
