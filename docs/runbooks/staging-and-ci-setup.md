@@ -14,10 +14,11 @@ This runbook is a short **ops checklist** for anyone who has already read the gu
 ### In Restormel Dashboard
 
 1. Create or use a **non-production** project or environment (dedicated staging project preferred).
-2. **Project → API Keys** → generate a key (`rk_...`) → that’s `RESTORMEL_GATEWAY_KEY_STAGING`.
-3. Copy **project ID** (UUID) and **environment ID** (staging) → `RESTORMEL_PROJECT_ID_STAGING`, `RESTORMEL_ENVIRONMENT_ID_STAGING`.
-4. (Optional) Note the **route ID** for smoke tests → `RESTORMEL_SMOKE_ROUTE_ID_STAGING`.
-5. (Optional) Pick a **blocked model + provider** for policy smoke → `RESTORMEL_SMOKE_BLOCKED_MODEL_ID_STAGING`, `RESTORMEL_SMOKE_BLOCKED_PROVIDER_TYPE_STAGING`.
+2. **Get the three required values** from the **Copy for CI** page:
+   - Open [restormel.dev/keys/dashboard/copy-for-ci](https://restormel.dev/keys/dashboard/copy-for-ci), or in the dashboard **left sidebar** click **Copy for CI** (under Projects).
+   - If you get a **404** or don’t see “Copy for CI”: the page is in the current dashboard release; ensure the app is deployed from the branch that includes it (e.g. merge to `main` and redeploy). **Fallback:** **Projects** → click your staging project name → on the project page, scroll to **Copy for CI (GitHub Secrets)**.
+   - On the Copy for CI page, click your **staging project** name. Copy **project ID** and **environment ID**; click **Create key in Access**, copy the key once (that’s `RESTORMEL_GATEWAY_KEY_STAGING`). Copy **project ID** → `RESTORMEL_PROJECT_ID_STAGING`, **environment ID** → `RESTORMEL_ENVIRONMENT_ID_STAGING`.
+3. (Optional) Note **route ID** from the same project → `RESTORMEL_SMOKE_ROUTE_ID_STAGING`; pick **blocked model + provider** from Routes/Policies → `RESTORMEL_SMOKE_BLOCKED_MODEL_ID_STAGING`, `RESTORMEL_SMOKE_BLOCKED_PROVIDER_TYPE_STAGING`.
 
 ### In your app repo (e.g. GitHub)
 

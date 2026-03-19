@@ -2,9 +2,35 @@
 
 This guide walks you through setting up a **non-production** Restormel target and wiring it into your app’s CI (e.g. GitHub Actions) for PR validation, nightly checks, and optional post-deploy smoke tests. It tells you exactly **where to get** each value, **what to call it**, **where to save it**, and **what to do if you need to rotate or replace it**.
 
-**Dashboard:** [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard). Open your **staging project** → the **Copy for CI (GitHub Secrets)** section lists the secret names, lets you copy project ID and environment ID, and tells you where to create and copy a Gateway key (keys are never shown in full after creation).
-
 **Principle:** Do not point CI at your main production environment unless you explicitly accept that risk. Use a dedicated staging project or at least a staging environment inside your project.
+
+---
+
+## Order of operations
+
+Do these in order:
+
+1. **Restormel (Dashboard)** — Get project ID, environment ID, and a Gateway key from the **Copy for CI** page (or from your staging project page). See **Step 0** below.
+2. **GitHub (your app repo)** — Add those values as **repository secrets** (Settings → Secrets and variables → Actions).
+3. **Your repo (workflow / local)** — In CI, map the secrets to env vars and run `npx @restormel/validate` (and optionally smoke tests). See sections 3–6 below.
+
+---
+
+## Step 0: Get the secrets from Restormel
+
+Before you add anything to GitHub, collect the three required values from the Dashboard.
+
+1. **Open the Dashboard** — [restormel.dev/keys/dashboard](https://restormel.dev/keys/dashboard). Sign in with GitHub if prompted.
+2. **Go to Copy for CI** — In the **left sidebar**, click **Copy for CI** (or open [restormel.dev/keys/dashboard/copy-for-ci](https://restormel.dev/keys/dashboard/copy-for-ci)).
+   - **If you get a 404 or don’t see “Copy for CI” in the sidebar:** The dashboard you’re on may not have that page yet (it’s in the current release). Use **Projects** → click your **staging project** name → on the project page, scroll to the **Copy for CI (GitHub Secrets)** section.
+3. **Choose your staging project** — On the Copy for CI page, click your **staging project** name (e.g. “My App Staging”). You’ll land on that project’s page with the Copy for CI section in view.
+4. **Copy the three required values:**
+   - **Project ID** — Use the **Copy** button next to the project ID.
+   - **Environment ID** — Use the **Copy** button next to the environment ID.
+   - **Gateway Key** — Click **Create key in Access**, then copy the key when it’s shown (you only see it once). Store it somewhere temporary (e.g. a password manager) until you add it to GitHub in the next step.
+5. **Optional later:** From the same project page you can note the **route ID** for smoke tests, and from **Routes** / **Policies** you can pick a blocked model + provider for policy tests. See the tables in section 2.
+
+You’ll add these as GitHub (or GCP) secrets in **section 2** and wire them into your workflow in **sections 3–6**.
 
 ---
 

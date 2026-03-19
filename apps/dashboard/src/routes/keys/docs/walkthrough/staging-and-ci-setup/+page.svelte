@@ -10,6 +10,7 @@
   const phaseSlug = "staging-and-ci-setup";
 
   const steps = [
+    { id: "get-secrets", label: "0. Get the secrets from Restormel" },
     { id: "create", label: "1. What to create in Restormel" },
     { id: "secrets", label: "2. Each secret: get it, name it, save it, rotate" },
     { id: "nightly", label: "3. Configure nightly CI" },
@@ -35,7 +36,23 @@
   <p class="doc-meta"><span class="doc-step">{stepOf}</span></p>
   <h1>Staging and CI setup</h1>
   <p class="doc-intro">Set up a <strong>non-production</strong> Restormel target and wire it into your app’s CI. For each secret you get: <strong>where to get it</strong>, <strong>what to call it</strong>, <strong>where to save it</strong>, and <strong>how to rotate or replace it</strong>.</p>
-  <p>Dashboard: <a href={DASHBOARD_BASE}>{DASHBOARD_BASE}</a>. Do not point CI at production unless you explicitly accept that risk.</p>
+  <p><strong>Order of operations:</strong> (1) Get secrets from Restormel (Copy for CI) → (2) Add them to GitHub (or GCP) → (3) Use them in your repo (workflow env + <code>npx @restormel/validate</code>). Do not point CI at production unless you explicitly accept that risk.</p>
+
+  <WalkthroughStep stepId="get-secrets" title="0. Get the secrets from Restormel" defaultOpen={true} {phaseSlug}>
+  <p>Before adding anything to GitHub, collect the three required values from the Dashboard.</p>
+  <ol>
+    <li><strong>Open the Dashboard</strong> — <a href={DASHBOARD_BASE}>{DASHBOARD_BASE}</a>. Sign in with GitHub if prompted.</li>
+    <li><strong>Go to Copy for CI</strong> — In the <strong>left sidebar</strong>, click <strong>Copy for CI</strong> (or open <a href={DASHBOARD_BASE + "/copy-for-ci"}>{DASHBOARD_BASE}/copy-for-ci</a>).
+      <ul>
+        <li>If you get a <strong>404</strong> or don't see "Copy for CI" in the sidebar, the dashboard may not have that page yet. Use <strong>Projects</strong> → click your <strong>staging project</strong> name → on the project page, scroll to the <strong>Copy for CI (GitHub Secrets)</strong> section.</li>
+      </ul>
+    </li>
+    <li><strong>Choose your staging project</strong> — On the Copy for CI page, click your staging project name. You'll land on that project's page with the Copy for CI section in view.</li>
+    <li><strong>Copy the three required values:</strong> Project ID (Copy button), Environment ID (Copy button), and Gateway Key (click <strong>Create key in Access</strong>, then copy the key when shown—you only see it once). Store the key somewhere temporary until you add it to GitHub.</li>
+    <li>Optional later: note the route ID for smoke tests; from Routes/Policies pick a blocked model + provider for policy tests (see section 2).</li>
+  </ol>
+  <p>Add these as GitHub (or GCP) secrets in <strong>section 2</strong> and wire them into your workflow in sections 3–6.</p>
+  </WalkthroughStep>
 
   <table class="doc-table doc-table-compact">
     <thead>
