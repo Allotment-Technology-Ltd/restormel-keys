@@ -59,6 +59,7 @@ vi.mock("$lib/server/db", () => ({
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
   listRouteSteps: vi.fn().mockResolvedValue([]),
   getRoute: vi.fn().mockResolvedValue(null),
+  downgradeWorkspaceIfProExpired: vi.fn().mockResolvedValue(undefined),
 }));
 
 async function getHandler() {

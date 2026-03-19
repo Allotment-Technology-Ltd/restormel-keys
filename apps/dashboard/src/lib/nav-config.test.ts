@@ -11,13 +11,17 @@ describe("NAV_ITEMS", () => {
     expect(labels).toContain("Overview");
     expect(labels).toContain("Projects");
     expect(labels).toContain("Access");
-    expect(labels).toContain("Integrations");
+    expect(labels).toContain("Provider Access");
+    expect(labels).toContain("Developer Tools");
     expect(labels).toContain("Models");
+    expect(labels).toContain("Healthcheck");
     expect(labels).toContain("Routes");
     expect(labels).toContain("Policies");
     expect(labels).toContain("Analytics");
     expect(labels).toContain("Logs & Traces");
     expect(labels).toContain("Lifecycle & Migrations");
+    expect(labels).toContain("Sandbox");
+    expect(labels).toContain("API portal");
     expect(labels).toContain("Documentation");
     expect(labels).toContain("Profile");
   });

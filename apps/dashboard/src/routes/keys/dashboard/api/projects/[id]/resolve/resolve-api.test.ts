@@ -53,6 +53,7 @@ vi.mock("$lib/server/db", () => ({
     planExpiresAt: null,
   }),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
+  downgradeWorkspaceIfProExpired: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("$lib/server/route-resolver", () => ({
