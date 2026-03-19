@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Changed
+
+- **Docs: storage canonicalization, validate-then-persist, onRevalidate key-id-centric.** README §7: added "Storage canonicalization when migrating from alias ids" (persist canonical id, thin translation layer for legacy data, optional one-time migration). README §8: validate-then-persist without double validation made explicit (e.g. client sends `preValidated: true`, server skips second validation); onRevalidate documented as key-id-centric with recommendation for revalidate endpoints that accept keyId and look up stored credential by keyId. [sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md): added "Second refactor" section (what Sophia did, remaining gaps, suggestions addressed in docs).
+
 ### Added
 
 - **Expanded providers and models for click-and-select.** All 15 first-party providers now ship with larger model lists so users get a full dropdown experience with minimal manual setup. New or expanded: **OpenAI** (gpt-4-turbo, gpt-3.5-turbo, o3-mini, gpt-4o-audio-preview), **Anthropic** (Claude 3.5/3 Opus, Sonnet, Haiku), **Google** (Gemini 2.0-flash-exp, 1.5 Pro/Flash, 1.0 Pro), **Mistral** (pixtral, minstral), **DeepSeek** (coder, r1, r1-distill-llama-70b), **Groq** (Llama 3.2 90b/11b vision, 3.1 70b, llama-guard-3), **Cohere** (command-r7b, command-a, aya-23), **Fireworks** (Llama v3p1, Qwen 2.5, DeepSeek R1 distill, Code Llama, Falcon 2), **Together** (Llama 3.2/3.1 70b/405b, Mistral 7B, Qwen 2.5 7b, DeepSeek V3/R1, Gemma 2, Hermes 3), **Perplexity** (sonar-reasoning-pro, sonar-small/medium-chat). **OpenRouter** and **Azure OpenAI** now have curated model lists; **Portkey** has common gateway model ids. **`defaultProviders`** export: single array of all 15 providers for one-import click-and-select in KeyManager, ModelSelector, and catalog UIs. See `packages/core/README.md`.

@@ -164,6 +164,8 @@ const keys = createKeys(config, {
 
 **Provider aliases:** Use the `aliases` field for normalisation (e.g. `google` has aliases `["vertex", "gemini"]`). The `resolveProviderId(id, providers)` helper finds a provider by id or alias. Use **`canonicalizeProviderId(id, providers)`** when persisting key records so that alias-based ids (e.g. `"vertex"`) are stored as the definition's canonical id (e.g. `"google"`); this avoids host-specific id mismatch when the UI shows one id and storage uses another.
 
+**Storage canonicalization when migrating from alias ids:** If your app historically stored provider ids under an alias (e.g. `vertex` for Google), you can (a) **persist canonical id from now on** — when saving new keys or updating, use `canonicalizeProviderId(providerId, providers)` and store that (e.g. `google`); (b) **keep a thin translation layer for legacy data** — when loading keys from storage, if your store still has `vertex`, map it to `google` for the UI (e.g. `provider: storedProvider === "vertex" ? "google" : storedProvider`) so KeyManager and ModelSelector see a known provider id; (c) **optional one-time migration** — backfill existing key records to canonical ids so save/revalidate/remove paths can assume canonical id in storage and you can remove the translation layer.
+
 **Custom icons:** Set `icon` on your `ProviderDefinition` to an inline SVG string. UI components (`KeyManager`, `ModelSelector`) will render it instead of the built-in generic icon.
 
 ### 8. Server-side validation and KeyManager integration
@@ -204,9 +206,9 @@ For apps where raw credentials should not go directly from the browser to provid
 
 The component awaits each host callback. On `{ ok: false, error }`, the error is shown inline and the form stays open. On `{ ok: true }`, the entry closes and the list refreshes.
 
-**Revalidate:** Provide **`onRevalidate(keyId, provider)`** so the key detail view can re-check an existing key server-side (e.g. using stored credential). Prefer this over overloading `onValidate` with an empty-credential sentinel.
+**Revalidate:** Provide **`onRevalidate(keyId, provider)`** so the key detail view can re-check an existing key server-side. The component passes **keyId** and **provider**; prefer **key-id-centric** revalidate endpoints that accept **keyId**, look up the stored credential by keyId (server-side), then validate against the provider. That way revalidation is scoped to the specific key and you avoid provider-only endpoints that don't know which key to revalidate. Prefer this over overloading `onValidate` with an empty-credential sentinel.
 
-**Validate-then-persist:** If you use `onValidate`, the component validates before calling `onKeyAdded`. Your save endpoint can **skip a second validation** and trust the client already validated, or validate again for defence-in-depth; if you validate again on persist and it fails, return `{ ok: false, error }` and optionally delete the just-saved key so the UI stays consistent.
+**Validate-then-persist (avoid double validation):** If you use `onValidate`, the component validates before calling `onKeyAdded`. Your save endpoint can **skip a second validation** and trust the client already validated, so the add flow does not hit the provider twice. For example, have the client send `preValidated: true` in the save body when it used `onValidate`; the server then persists without calling the provider again. If you prefer defence-in-depth, validate again on persist and return `{ ok: false, error }` (and optionally delete the just-saved key) on failure; that keeps UI consistent but duplicates the provider call.
 
 **KeyRecord metadata:** Pass keys as `KeyRecord[]` (extends `KeyConfig` with `id`, `status`, `validatedAt`, `updatedAt`, `lastError`, `fingerprint`, `metadata`) to display richer status in the list view. Supported statuses: `active`, `pending_validation`, `invalid`, `revoked`. Set `updatedAt` (ISO 8601) when the record was last updated so hosts don't need to tuck it into `metadata`.
 

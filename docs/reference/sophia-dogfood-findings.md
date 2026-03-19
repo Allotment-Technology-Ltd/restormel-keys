@@ -165,6 +165,34 @@ After SOPHIA refactored to the new KeyManager contract (onValidate, async onKeyA
 
 ---
 
+## Second refactor (defaultProviders, onRevalidate, updatedAt, canonicalize)
+
+Sophia completed a second refactor to use Restormel’s latest contract and providers.
+
+### What Sophia did
+
+- **Provider list** — Derives KeyManager provider list from Restormel’s **`defaultProviders`**; no custom provider list.
+- **onRevalidate** — SettingsTab.svelte uses the new **`onRevalidate`** prop instead of the empty-string `onValidate` sentinel.
+- **KeyRecord.updatedAt** — Maps **`updatedAt`** at the top level when building KeyRecords; no longer uses `metadata.updatedAt`.
+- **xAI / Voyage** — Removed custom `defineProvider` definitions; uses first-party **xaiProvider** and **voyageProvider** from Restormel.
+- **Canonicalization** — Helper layer uses Restormel’s **`canonicalizeProviderId`** and builds UI records from the richer **KeyRecord** shape in key-manager.ts.
+- **Packages** — Refreshed local Restormel package tarballs in Sophia’s package.json.
+
+### Remaining issues / gaps
+
+- **Vertex vs google in storage** — Sophia still stores Google Gemini BYOK under historical **vertex** ids in backend routes/stores. The UI canonicalizes to **google** for display, but the save/revalidate/remove path still translates back to **vertex** for persistence. A clearer storage-canonicalization story for hosts migrating from alias ids would help.
+- **Double validation on save** — The save endpoint still performs a second provider validation after client-side `onValidate`. Sophia kept the defensive delete-on-failed-second-validation behaviour because the backend contract has not been relaxed. Making the “validate-then-persist without double validation” path explicit in server examples would let consumer apps remove redundant second validation safely.
+- **onRevalidate keyId unused** — KeyManager passes **keyId** and **provider** to `onRevalidate`, but Sophia’s revalidate endpoint is still provider-centric (not key-id-centric), so **keyId** is currently unused by the host callback. If `onRevalidate` is meant to be key-specific, documenting or encouraging server endpoints that accept **keyId** (look up stored credential by keyId, then validate) would align host backends.
+- **validate-raw still required** — Sophia’s custody model keeps provider validation server-side; **validate-raw** (or equivalent) is still needed rather than calling providers directly from the browser.
+
+### Suggestions for Restormel (addressed in docs)
+
+- **Storage canonicalization for migration** — Add a clearer story for hosts migrating from alias ids (e.g. vertex) to canonical ids (e.g. google): when to persist canonical id, when to keep a thin translation layer for legacy storage, and optional one-time migration. *Addressed in README §7 and §8 (see below).*
+- **Validate-then-persist without double validation** — Make the path explicit in server examples (e.g. save endpoint accepts `preValidated: true` and skips second validation). *Addressed in README §8.*
+- **onRevalidate key-id-centric** — Document or encourage revalidate endpoints that accept **keyId** and look up the stored credential by keyId before validating. *Addressed in README §8.*
+
+---
+
 **Related docs:**
 
 - [sophia-dogfooding-plan.md](sophia-dogfooding-plan.md) — original dogfooding plan
