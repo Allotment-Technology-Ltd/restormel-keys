@@ -4,7 +4,7 @@ High-level architecture summary. **Single entry point** for structure; details l
 
 **Product shape:** Headless core (`@restormel/keys`) = product. UI: Svelte (reference), Elements, React, CLI. Later: dashboard, site, billing, hosted.
 
-**Repo shape:** Monorepo (pnpm). `packages/` (core, svelte, elements, react, cli, doctor, validate), `apps/` (dashboard — single SvelteKit app for Keys landing, docs/walkthrough with optional agent prompts, and dashboard; demo-next, demo-svelte; site archived), `docs/`, `scripts/`, `prompts/`, `skills/`, `subagents/`. **npm install scope** (headless vs UI, pnpm workspaces): [docs/reference/npm-packages.md](docs/reference/npm-packages.md).
+**Repo shape:** Monorepo (pnpm). `packages/` (core, svelte, elements, react, cli, doctor, validate, tokens, **aaif**, **mcp**), `apps/` (dashboard — single SvelteKit app for Keys landing, docs/walkthrough with optional agent prompts, **Integrations landing** at `/integrations`, and dashboard; demo-next, demo-svelte; site archived), `docs/`, `scripts/`, `prompts/`, `skills/`, `subagents/`. **npm install scope** (headless vs UI, pnpm workspaces): [docs/reference/npm-packages.md](docs/reference/npm-packages.md).
 
 **Phase 00:** Scaffolding and governance only. No provider, routing, billing, or hosted logic.
 
@@ -20,6 +20,10 @@ High-level architecture summary. **Single entry point** for structure; details l
 - **Documentation:** Single coherent doc journey and same-link rule for site, docs, dashboard, and runbooks. See [docs/documentation-strategy.md](docs/documentation-strategy.md).
 
 Upstream or sibling products that integrate with Keys should use these contracts (same URLs, same terms, token alignment) for a consistent experience. Keys product framing does not change for reintegration.
+
+**Integrations layer:** `@restormel/aaif` (request/response types for structured AI interaction), `@restormel/mcp` (MCP tool schema definitions). Marketing at `/integrations` (top-level route, separate from `/keys/`, designed for future extraction). Dashboard "Developer Tools" at `/keys/dashboard/dev-tools`. Existing dashboard provider integrations relabelled to "Provider Access" (URL unchanged). Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
+
+**Extraction seams:** When Integrations moves to its own repo: (1) `src/routes/integrations/` lifts into a new SvelteKit app, (2) `packages/aaif/` and `packages/mcp/` move as-is, (3) dashboard dev-tools section stays in dashboard app (shared auth/shell), (4) shared components (`IntegrationCard`, `StatusBadge`) move with the marketing page or into a shared package.
 
 ---
 

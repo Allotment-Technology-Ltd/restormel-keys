@@ -1,0 +1,41 @@
+{
+  "name": "@restormel/aaif",
+  "version": "0.0.1",
+  "description": "Agent-to-Agent Interaction Format — structured request/response contract for predictable AI interactions.",
+  "keywords": ["aaif", "ai", "agent", "restormel", "interaction-format"],
+  "author": "Allotment Technology Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/aaif"
+  },
+  "files": ["dist"],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "@restormel/keys": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@restormel/keys": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

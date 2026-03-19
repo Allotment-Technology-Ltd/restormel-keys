@@ -17,7 +17,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: DASHBOARD_BASE + "/", label: "Overview" },
   { href: DASHBOARD_BASE + "/projects", label: "Projects" },
   { href: DASHBOARD_BASE + "/access", label: "Access" },
-  { href: DASHBOARD_BASE + "/integrations", label: "Integrations" },
+  { href: DASHBOARD_BASE + "/integrations", label: "Provider Access" },
+  { href: DASHBOARD_BASE + "/dev-tools", label: "Developer Tools" },
   { href: DASHBOARD_BASE + "/models", label: "Models" },
   { href: DASHBOARD_BASE + "/healthcheck", label: "Healthcheck" },
   { href: DASHBOARD_BASE + "/routes", label: "Routes" },
@@ -35,7 +36,8 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/"]: "Overview",
   [DASHBOARD_BASE + "/projects"]: "Projects",
   [DASHBOARD_BASE + "/access"]: "Access",
-  [DASHBOARD_BASE + "/integrations"]: "Integrations",
+  [DASHBOARD_BASE + "/integrations"]: "Provider Access",
+  [DASHBOARD_BASE + "/dev-tools"]: "Developer Tools",
   [DASHBOARD_BASE + "/models"]: "Models",
   [DASHBOARD_BASE + "/healthcheck"]: "Healthcheck",
   [DASHBOARD_BASE + "/routes"]: "Routes",
@@ -54,7 +56,10 @@ export function topbarTitle(pathname: string): string {
     return "Project";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/integrations/") && pathname !== DASHBOARD_BASE + "/integrations") {
-    return "Integration";
+    return "Provider Access";
+  }
+  if (pathname.startsWith(DASHBOARD_BASE + "/dev-tools/") && pathname !== DASHBOARD_BASE + "/dev-tools") {
+    return "Developer Tools";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/models/") && pathname !== DASHBOARD_BASE + "/models") {
     return "Model";

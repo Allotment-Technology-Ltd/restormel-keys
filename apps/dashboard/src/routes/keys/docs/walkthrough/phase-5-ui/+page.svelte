@@ -43,8 +43,8 @@ Steps:
    - SvelteKit: use @restormel/keys-svelte (ModelSelector component + createKeys).
    - Other: use @restormel/keys-elements (Web Component) and set keys/providers as JS properties.
 3. Wire selection events:
-   - ModelSelector: save { modelId, providerId } to your backend (e.g. POST /api/preferences).
-   - KeyManager (if BYOK): wire add/remove to your key storage API (POST /api/keys, DELETE /api/keys/:id).
+   - ModelSelector: send { modelId, providerId } to your backend (e.g. persist via POST /api/preferences, or use request-scoped selection per request — both valid).
+   - KeyManager (if BYOK): wire add/remove to your key storage API (KeyManager sits on top of host-owned endpoints: POST /api/keys, DELETE /api/keys/:id).
 4. Filter models by policy:
    - Recommended: a server-side endpoint (e.g. GET /api/allowed-models) that calls policy evaluate using your project Gateway Key; return only allowed model IDs to the browser.
 5. Add required UI states: loading, error (with retry), empty.
@@ -122,7 +122,7 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   </WalkthroughStep>
 
   <WalkthroughStep stepId="5.2" title="Step 5.2 — Embed ModelSelector (Next.js / React)" {phaseSlug}>
-  <p>Use <code>KeysProvider</code> from <code>@restormel/keys-react</code> and a client component that renders <code>ModelSelector</code> with <code>keys</code>, <code>providers</code>, and <code>onSelect</code>. The <code>onSelect</code> callback should save the user's model preference to your backend (e.g. <code>POST /api/preferences</code> with <code>modelId</code> and <code>providerId</code>).</p>
+  <p>Use <code>KeysProvider</code> from <code>@restormel/keys-react</code> and a client component that renders <code>ModelSelector</code> with <code>keys</code>, <code>providers</code>, and <code>onSelect</code>. Wire <code>onSelect</code> to your backend — for example persist to <code>POST /api/preferences</code> with <code>modelId</code> and <code>providerId</code>, or use request-scoped model selection (pass selection per request); both are valid.</p>
   <div class="callout callout-tip">
     <strong>Tip</strong> — Use <code>next/dynamic</code> with <code>ssr: false</code> to lazy-load the model selector so it doesn't increase your initial page bundle.
   </div>
@@ -133,7 +133,7 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   </WalkthroughStep>
 
   <WalkthroughStep stepId="5.3" title="Step 5.3 — Embed ModelSelector (SvelteKit)" {phaseSlug}>
-  <p>Import <code>ModelSelector</code> from <code>@restormel/keys-svelte</code> and <code>createKeys</code> plus provider definitions from <code>@restormel/keys</code>. Create the <code>keys</code> instance and pass <code>keys</code>, <code>providers</code>, and <code>onSelect</code> to the component. Wire <code>onSelect</code> to your backend (e.g. <code>POST /api/preferences</code> with <code>modelId</code> and <code>providerId</code>).</p>
+  <p>Import <code>ModelSelector</code> from <code>@restormel/keys-svelte</code> and <code>createKeys</code> plus provider definitions from <code>@restormel/keys</code>. Create the <code>keys</code> instance and pass <code>keys</code>, <code>providers</code>, and <code>onSelect</code> to the component. Wire <code>onSelect</code> to your backend (e.g. persist via <code>POST /api/preferences</code> or use request-scoped selection — both are valid).</p>
   <h3>You'll see</h3>
   <p>The same model selection UI as the React version, rendered natively in Svelte.</p>
   <h3>How to test</h3>
@@ -165,7 +165,7 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   </WalkthroughStep>
 
   <WalkthroughStep stepId="5.6" title="Step 5.6 — Embed KeyManager (optional — for BYOK apps)" {phaseSlug}>
-  <p>If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. Wire <code>onKeyAdded</code> and <code>onKeyRemoved</code> to your backend (e.g. <code>POST /api/keys</code>, <code>DELETE /api/keys/:id</code>).</p>
+  <p>If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. <strong>KeyManager sits on top of your own storage and validation endpoints</strong> — you implement and own the key storage API (e.g. <code>POST /api/keys</code>, <code>DELETE /api/keys/:id</code>) and any server-side validation; KeyManager is the UI layer that calls them via <code>onKeyAdded</code> and <code>onKeyRemoved</code>.</p>
   <div class="callout callout-security">
     <strong>Security</strong> — Treat provider credentials as <em>builder-managed</em>. Raw key material should never be logged or persisted in plaintext. Restormel does not need to custody raw provider secrets by default: store credentials in your own backend/secret store (or use a gateway-backed scheme) and return only masked identifiers and metadata to the UI.
   </div>

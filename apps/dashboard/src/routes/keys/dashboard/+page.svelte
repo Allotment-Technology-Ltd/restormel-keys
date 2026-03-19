@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import UsagePathSelector from "$lib/components/UsagePathSelector.svelte";
 
   export let data: {
     projects: { id: string; name: string }[];
@@ -81,6 +82,8 @@
   </div>
 {/if}
 
+<UsagePathSelector />
+
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
 {/if}
@@ -114,7 +117,7 @@
         {#if o?.hasIntegrations}
           <span class="step-label">Provider connection</span> — Done.
         {:else}
-          <a href={DASHBOARD_BASE + "/integrations"} class="step-action">Configure an integration</a> (Integrations)
+          <a href={DASHBOARD_BASE + "/integrations"} class="step-action">Configure provider access</a> (Provider Access)
         {/if}
       </li>
       <li class="step">

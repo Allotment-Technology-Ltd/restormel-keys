@@ -92,6 +92,12 @@
     <a href="/keys/docs/guides/portkey" on:click={closeNavOnMobile}>Portkey</a>
     <a href="/keys/docs/guides/integration-vs-hosted-vault" on:click={closeNavOnMobile}>Integration vs key custody</a>
     <div class="nav-divider" aria-hidden="true"></div>
+    <div class="nav-section" aria-label="Integrations section">Integrations</div>
+    <a href="/keys/docs/integrations" on:click={closeNavOnMobile}>Overview</a>
+    <a href="/keys/docs/integrations/cli" on:click={closeNavOnMobile}>CLI</a>
+    <a href="/keys/docs/integrations/mcp" on:click={closeNavOnMobile}>MCP</a>
+    <a href="/keys/docs/integrations/aaif" on:click={closeNavOnMobile}>AAIF</a>
+    <div class="nav-divider" aria-hidden="true"></div>
     <a href="/keys/docs/compatibility" on:click={closeNavOnMobile}>Compatibility</a>
     <a href="/keys/docs/cloud-api" on:click={closeNavOnMobile}>Cloud API</a>
     <div class="nav-divider" aria-hidden="true"></div>

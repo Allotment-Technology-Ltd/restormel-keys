@@ -4,7 +4,7 @@
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { page } from "$app/stores";
 
-  export let active: "keys" | "docs" | "dashboard" | null = null;
+  export let active: "keys" | "docs" | "integrations" | "dashboard" | null = null;
   $: portalUrl = developerPortalUrl();
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
@@ -31,6 +31,7 @@
     <ul class="site-header-links">
       <li><a href="/keys" class:active={active === "keys"}>Keys</a></li>
       <li><a href="/keys/docs" class:active={active === "docs"}>Docs</a></li>
+      <li><a href="/integrations" class:active={active === "integrations"}>Integrations</a></li>
       <li>
         <a
           href={portalUrl}
@@ -75,6 +76,7 @@
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <a href="/keys" class:active={active === "keys"} on:click={closeMobileMenu}>Keys</a>
     <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Docs</a>
+    <a href="/integrations" class:active={active === "integrations"} on:click={closeMobileMenu}>Integrations</a>
     <a
       href={portalUrl}
       target="_blank"

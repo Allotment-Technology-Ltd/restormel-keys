@@ -88,9 +88,9 @@
   }
 </script>
 
-<h1 class="page-title">Integrations</h1>
+<h1 class="page-title">Provider Access</h1>
 <p class="page-desc">
-  Connect your <strong>provider access layer</strong> (gateway-backed or direct) to Restormel so routes and policies can reference it. Integrations store references/metadata only — don’t paste raw secrets here.
+  Connect your <strong>provider access layer</strong> (gateway-backed or direct) to Restormel so routes and policies can reference it. Provider access entries store references/metadata only — don’t paste raw secrets here.
 </p>
 
 {#if data.error}
