@@ -8,6 +8,7 @@
 
   export let code: string | undefined = undefined;
   export let language: string | undefined = undefined;
+  export let label: string | undefined = undefined;
   export let tabs: CodeTab[] | undefined = undefined;
 
   let activeIdx = 0;
@@ -65,7 +66,9 @@
       </div>
     {:else}
       <div class="codeblock-label">
-        {#if displayedLanguage}
+        {#if label}
+          <span class="codeblock-lang">{label}</span>
+        {:else if displayedLanguage}
           <span class="codeblock-lang">{displayedLanguage}</span>
         {:else}
           <span class="codeblock-lang">Code</span>
