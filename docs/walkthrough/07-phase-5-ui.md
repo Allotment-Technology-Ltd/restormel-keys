@@ -61,7 +61,8 @@ export function ModelSelectorClient() {
   const { keys } = useKeysContext();
 
   function handleSelect(modelId: string, providerId: string) {
-    // Save the user's model preference to your backend
+    // Example: persist preference to your backend. Request-scoped selection
+    // (pass modelId/providerId per request) is equally valid.
     fetch('/api/preferences', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -96,7 +97,7 @@ A model selection UI grouped by provider. Each model shows its availability base
 1. Start your dev server: `pnpm dev`
 2. Navigate to `/settings` (or wherever you embedded the component).
 3. Confirm the ModelSelector renders with provider groups and models.
-4. Click a model. Confirm the `onSelect` callback fires (check your network tab for the `POST /api/preferences` call).
+4. Click a model. Confirm the `onSelect` callback fires (e.g. network tab shows your preferences or request-scoped API call).
 
 ---
 
@@ -116,6 +117,7 @@ A model selection UI grouped by provider. Each model shows its availability base
   const providers = [openaiProvider, anthropicProvider, googleProvider];
 
   function handleSelect(modelId: string, providerId: string) {
+    // Example: save to backend; request-scoped selection is equally valid
     fetch('/api/preferences', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -159,6 +161,7 @@ For frameworks not covered by the React or Svelte wrappers, use the Web Componen
 
   el.addEventListener('rk-model-selected', (e) => {
     const { modelId, providerId } = e.detail;
+    // Example: persist preference; request-scoped selection is equally valid
     fetch('/api/preferences', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -247,7 +250,7 @@ Add a `model_allowlist` policy that excludes one model (e.g. block `gpt-3.5-turb
 
 ## Step 5.6 — Embed KeyManager (optional — for BYOK apps)
 
-If your app lets end-users bring their own API keys, embed the KeyManager component. This provides a settings panel for users to add, validate, list, and remove their provider credentials.
+If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. **KeyManager sits on top of your own storage and validation endpoints** — you implement and own `POST /api/keys`, `DELETE /api/keys/:id`, and any server-side validation; KeyManager is the UI layer that calls them via `onKeyAdded` and `onKeyRemoved`.
 
 **Next.js / React:**
 
@@ -364,6 +367,14 @@ Components render with your app's colour scheme instead of the defaults.
 
 Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). Confirm the accent colour updates on buttons and highlights.
 
+### Integration options and host responsibilities
+
+- **Replace existing picker.** Phase 5 expects the app’s existing model picker to be **replaced** by the packaged ModelSelector (not only “embed alongside”). Use the routing inventory to find the current picker and swap it for the Restormel component.
+- **Model choice: request-scoped vs persisted.** Both are valid. **Request-scoped:** pass modelId/providerId per request (e.g. into resolve); no `POST /api/preferences`. **Persisted:** save selection to a preferences endpoint (e.g. `POST /api/preferences`) and load it on next visit. The walkthrough and prompts support either; choose per product needs.
+- **ModelSelector wrapper.** When allowed models come from the host’s API (e.g. `GET /api/allowed-models`), the packaged ModelSelector may need a **host wrapper** to provide: current-selection visibility, request-scoped auto routing, and **host-owned** loading/error/empty/retry states (the component does not yet fully own these when the list is fetched externally). See [sophia-dogfood-findings.md](../reference/sophia-dogfood-findings.md) §Phase 5 packaged path.
+- **Theming.** At minimum set `--rk-bg`, `--rk-text`, and `--rk-accent`. For a full pass, deliberately apply `--rk-*` tokens across **both** ModelSelector and KeyManager (and any Restormel UI) as a separate design task if visual consistency matters.
+- **Manual verification.** Phase 5 gate includes keyboard navigation and theming. Prefer an **in-browser manual check** (keyboard: Tab, Enter, Escape; render and theme). If browser/Playwright (or equivalent) is unavailable, document that verification is code/test only and add a manual verification step to the runbook for a human to run later.
+
 ### Build-agent prompt: embed-ui-components
 
 **Context docs** (adapt paths for your project): this page (embedding patterns for React, SvelteKit, Web Components); [Framework compatibility](/keys/docs/compatibility) (which package for which framework).
@@ -372,20 +383,21 @@ Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). C
 
 > You are working in [your app repo].
 >
-> **Goal:** Embed Restormel Keys UI components (ModelSelector and optionally KeyManager) into your app's settings page.
+> **Goal:** Replace the app’s existing model picker with the packaged Restormel ModelSelector (and optionally embed KeyManager for BYOK) so the settings/main flow use Restormel’s UI components.
 >
 > **Steps:**
 >
-> 1. Read the routing inventory (`docs/restormel-integration/00-routing-inventory.md`) to identify the existing model picker and/or BYOK settings UI to replace.
+> 1. Read the routing inventory (`docs/restormel-integration/00-routing-inventory.md`) to find the **existing model picker and/or BYOK UI**. **Replace** that UI with the packaged components (do not leave the old picker in place).
 > 2. Based on your framework:
 >    - **Next.js/React:** Create a client component wrapping `ModelSelector` from `@restormel/keys-react` inside a `KeysProvider`. Use `next/dynamic` with `ssr: false` for the client component. See `packages/react/README.md` for the exact pattern.
 >    - **SvelteKit:** Import `ModelSelector` from `@restormel/keys-svelte` directly. Create the `keys` instance with `createKeys`.
 >    - **Web Components:** Import `@restormel/keys-elements`, set `keys` and `providers` as properties on the `<rk-model-selector>` element.
-> 3. Wire the `onSelect` callback (or `rk-model-selected` event) to save the user's model preference to your backend (e.g. `POST /api/preferences`).
-> 4. If BYOK is needed: embed `KeyManager` with `onKeyAdded` and `onKeyRemoved` callbacks wired to your key storage API (e.g. `POST /api/keys`, `DELETE /api/keys/:id`). Follow the KeyStorage adapter pattern from `docs/reference/sophia-integration.md`.
-> 5. Add `--rk-*` CSS overrides to match your app's theme. At minimum set `--rk-bg`, `--rk-text`, and `--rk-accent`.
-> 6. Handle all required states: loading (show skeleton), error (show message + retry), empty (show "Add your first key" or "No models available").
-> 7. Verify: components render, selection fires callbacks, theme applies, keyboard navigation works (Tab, Enter, Escape).
+> 3. Wire `onSelect` (or `rk-model-selected`) to your backend. Either **request-scoped** (pass modelId/providerId per request; no preferences endpoint) or **persisted** (e.g. `POST /api/preferences`); both are valid — choose per product.
+> 4. If BYOK is needed: embed `KeyManager` with `onKeyAdded` and `onKeyRemoved` wired to your key API. Use server-side validation (no raw provider calls from browser). See `docs/reference/sophia-integration.md` KeyStorage pattern.
+> 5. If allowed models come from your API (e.g. `GET /api/allowed-models`): consider a **host wrapper** around ModelSelector for selected-state display and host-owned loading/error/empty/retry; see Phase 5 “Integration options” above.
+> 6. Add `--rk-*` CSS overrides (at least `--rk-bg`, `--rk-text`, `--rk-accent`). Optionally do a full `--rk-*` pass across ModelSelector and KeyManager for consistent theming.
+> 7. Handle all required states: loading, error (with retry), empty. These may live in your wrapper if the list is from your API.
+> 8. Verify: components render, selection fires callbacks, theme applies, keyboard navigation (Tab, Enter, Escape). Prefer in-browser manual check; if browser/Playwright is unavailable, document “code/test verified; manual a11y/visual check pending” and add a runbook step for later.
 >
 > **DO NOT:**
 > - Import UI packages in server-side code. All UI components are client-only.
@@ -394,7 +406,7 @@ Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). C
 > - Hardcode model lists. Read from the `keys` instance or fetch allowed models from your backend.
 > - Commit real API keys or secrets.
 
-**Gate:** ModelSelector renders and fires `onSelect` with modelId and providerId. (If BYOK) KeyManager renders, add/remove key callbacks work. Components respect `--rk-*` theme tokens. Loading, error, and empty states are handled. Keyboard navigation works (Tab through controls, Enter to select, Escape to close).
+**Gate:** Existing picker replaced by ModelSelector; `onSelect` fires with modelId and providerId. (If BYOK) KeyManager works with server-side validation. Loading, error, empty, retry handled. Theme tokens applied. Keyboard nav works (or documented as manual verification pending if browser tooling unavailable).
 
 ---
 

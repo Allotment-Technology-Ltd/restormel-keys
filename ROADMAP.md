@@ -14,6 +14,17 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 - **Phase 3 started:** Astro + Starlight marketing site (3.1) in apps/site — marketing layout, homepage “Restormel makes reasoning visible”, Starlight at /keys/docs/*, Cloudflare Pages. Next: 3.2 Keys landing, 3.3 Pricing, 3.4 dashboard per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md).
 - **Experience unification (Phase A–D):** Dashboard logged-out UX and SSO, frontend brand shell and logo integration, journey fixes (pricing checkout, docs handoff, billing copy), docs/Zuplo same-link and documentation strategy, shared tokens package and drift check, UX contracts (nav/copy/state), reintegration seams documented in ARCHITECTURE.md.
 
+## Integrations — Developer Enablement
+
+- **Marketing:** `/integrations` landing page (hero, integration cards, setup steps).
+- **Dashboard:** `/keys/dashboard/dev-tools` overview + CLI, MCP, AAIF sub-pages. Existing provider integrations relabelled to "Provider Access".
+- **Packages:** `@restormel/aaif` v0.0.1 (types, validation), `@restormel/mcp` v0.0.1 (tool schemas — `models.list`, `cost.estimate`, `routing.explain`, etc.).
+- **CLI:** `keys models list` and `keys routing explain` commands added.
+- **Onboarding:** Usage path selector ("In my app / terminal / agent") on dashboard overview.
+- **Docs:** `/keys/docs/integrations/` with CLI quickstart, MCP setup, AAIF overview.
+- **Next:** MCP runtime server, AAIF routing integration, webhook/event stream support.
+- Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
+
 ## Dogfood-driven priorities (from SOPHIA Phase 5)
 
 Findings from the first real integration. See [docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md) for full context and workarounds.
@@ -25,6 +36,7 @@ Findings from the first real integration. See [docs/reference/sophia-dogfood-fin
 5. **Provider definitions and icons.** More first-party providers for common OpenAI-compatible APIs; document custom provider definitions as a normal integration path; expand icon set.
 6. **KeyManager contract.** Host-driven add/remove flows (async result), richer item metadata prop.
 7. **Provider normalization.** Consistent `google` handling across UI, docs, and API helpers.
+8. **ModelSelector host control (Phase 5 packaged path).** Sophia uses wrapped ModelSelector in main flow; wrapper needed for current-selection visibility, request-scoped routing, host-owned loading/error/empty states, retry/disabled around allowed-models fetch. Make ModelSelector more host-controllable (selection visibility, loading/error/empty/retry/disabled) so hosts need thinner wrappers or none.
 
 ---
 

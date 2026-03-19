@@ -193,6 +193,57 @@ Sophia completed a second refactor to use Restormel’s latest contract and prov
 
 ---
 
+## Phase 5 packaged path (ModelSelector in main flow)
+
+Phase 5 is implemented on the real packaged path in Sophia. **For Sophia’s dogfood goal it is complete enough functionally;** relative to the broader Phase 5 wording and docs, a few things are under-specified or not yet delivered.
+
+### What is delivered in Sophia
+
+- **Packaged ModelSelector** is embedded in the real app flow (via wrapper **RestormelModelSelector.svelte**, provider/key shaping in **model-selector.ts**, app-page swap in **src/routes/app/+page.svelte**).
+- **Packaged KeyManager** is embedded in settings (**SettingsTab.svelte**).
+- **`/api/allowed-models`** filters models server-side; Gateway Key is kept off the client.
+- **Loading, error, retry, and empty states** are implemented around the selector and allowed-models fetch.
+- **Custom model overrides** are disabled while policy filtering is active.
+- **Server-side validation** is used for BYOK; raw credentials do not go browser-to-provider.
+
+### What is still not delivered (relative to broader Phase 5 wording)
+
+- **No persisted `POST /api/preferences`-style model preference endpoint** — Sophia keeps model choice **request-scoped** instead (selection per request, not stored user preference).
+- **No successful in-browser manual verification pass** for keyboard/render/theming — Playwright’s local Chrome session is failing in this environment; Phase 5 is code/test verified only.
+- **Theming** is applied through the wrapper/tokens added around the packaged selector, but there was **no full deliberate `--rk-*` pass** across both packaged components as a separate design task.
+
+### What docs/prompts still under-specify
+
+- The **prompts do not explicitly ask** the agent to **replace** the app’s existing picker with the packaged ModelSelector (they say “embed” and “identify UI to replace” but don’t require the swap).
+- They **do not cover** the case where model choice is **request-scoped** instead of persisted preferences (walkthrough mentions both in passing; prompts don’t call it out).
+- They **do not mention** that ModelSelector **may need a host wrapper** for auto mode, selected-state display, and host-owned loading/error/empty when allowed-models come from the host’s API.
+- They **do not require** a **theming pass** beyond “apply tokens” (no explicit “deliberate `--rk-*` across both components” as a design task).
+- They **do not force** an explicit **manual accessibility/browser verification step** with a fallback when browser tooling (e.g. Playwright) is unavailable.
+
+### Main component finding: ModelSelector not fully host-controlled
+
+The packaged ModelSelector is **usable** but not fully host-controlled. Sophia had to wrap it to preserve:
+
+- **Current-selection visibility** — Host needs to show and persist the currently selected model in the request/app context.
+- **Request-scoped auto routing** — Selection drives resolve/routing for the current request; the host owns that wiring.
+- **Host-owned loading / error / empty states** — Loading while allowed-models are fetched, error and retry when the fetch fails, empty state when no models are allowed.
+- **Retry and disabled behavior** — Around the `/api/allowed-models` fetch.
+
+**Suggestion for Restormel:** Make ModelSelector more host-controllable so wrappers can be thinner or unnecessary: expose or support **current selection** (controlled or visible to host), **loading/error/empty** slots or callbacks, and **retry/disabled** behavior when the allowed-models source is loading or has failed. Document the pattern when the host fetches allowed models from its own API and passes them in.
+
+### Verification (Sophia)
+
+- **Tests:** `model-selector.test.ts`, `key-manager.test.ts`, `allowed-models.test.ts`, `resolve-provider.test.ts`, `validate-raw.test.ts` — passed.
+- **pnpm check** — passed.
+- **Browser visual smoke** — not completed (Playwright Chrome persistent-session launch failing). Phase 5 is code/test verified only.
+
+### Conclusion
+
+- **For Sophia’s dogfood goal:** yes — enough to complete Phase 5 pragmatically.
+- **For “everything the documentation alludes to”:** no — there are still under-specified areas; completing the phase cleanly required interpreting the walkthrough, compatibility/docs updates, and component behavior rather than the two prompts alone.
+
+---
+
 **Related docs:**
 
 - [sophia-dogfooding-plan.md](sophia-dogfooding-plan.md) — original dogfooding plan

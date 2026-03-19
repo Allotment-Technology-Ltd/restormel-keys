@@ -4,6 +4,18 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Added
+
+- **Restormel Integrations — developer enablement layer.** Marketing landing page at `/integrations` with hero, integration cards (CLI, MCP, AAIF), setup steps, philosophy section. Dashboard "Developer Tools" section at `/keys/dashboard/dev-tools` with overview + CLI, MCP, AAIF sub-pages. New packages: `@restormel/aaif` v0.0.1 (AAIFRequest/AAIFResponse types + runtime validation guards), `@restormel/mcp` v0.0.1 (MCP tool schema definitions for models.list, providers.validate, cost.estimate, routing.explain, entitlements.check, integration.generate, docs.search). CLI extended with `keys models list` and `keys routing explain` commands. Usage path selector ("In my app / terminal / agent") added to dashboard overview. Docs pages at `/keys/docs/integrations/` (overview, CLI, MCP, AAIF). New shared components: IntegrationCard, StatusBadge. Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
+
+### Changed
+
+- **Dashboard "Integrations" relabelled to "Provider Access".** Existing provider integration management (OpenRouter, Portkey, Vercel AI Gateway, direct) is now labelled "Provider Access" in the dashboard sidebar and page heading. URLs unchanged. "Integrations" now refers to the developer enablement layer (CLI, MCP, AAIF). Global site navigation updated with "Integrations" link.
+
+### Added
+
+- **Phase 5 packaged path (SOPHIA).** [sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md): "Phase 5 packaged path" section — what is delivered in Sophia (packaged ModelSelector + KeyManager, allowed-models server-side, loading/error/retry/empty, no custom overrides during policy filter, server-side BYOK validation); what is not (no persisted preferences endpoint — request-scoped only; no in-browser manual verification; theming via wrapper, not full --rk-* pass); what docs/prompts under-specify (replace picker, request-scoped vs preferences, host wrapper need, theming pass, manual a11y verification with fallback). **Conclusion:** dogfood goal met; full doc promise not — two prompts were not enough without walkthrough/compatibility/component behavior. ROADMAP #8: ModelSelector host control. **Walkthrough and prompts:** [07-phase-5-ui.md](docs/walkthrough/07-phase-5-ui.md) — "Integration options and host responsibilities" (replace picker, request-scoped vs preferences, wrapper, theming, manual verification fallback); build-agent prompt and P08 updated to require replace, allow request-scoped, mention wrapper, theming, and manual verification with fallback when browser tooling unavailable. [10-verification-strategy.md](docs/walkthrough/10-verification-strategy.md): Phase 5 row — manual keyboard/theming check with fallback if Playwright unavailable.
+
 ### Changed
 
 - **Docs: storage canonicalization, validate-then-persist, onRevalidate key-id-centric.** README §7: added "Storage canonicalization when migrating from alias ids" (persist canonical id, thin translation layer for legacy data, optional one-time migration). README §8: validate-then-persist without double validation made explicit (e.g. client sends `preValidated: true`, server skips second validation); onRevalidate documented as key-id-centric with recommendation for revalidate endpoints that accept keyId and look up stored credential by keyId. [sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md): added "Second refactor" section (what Sophia did, remaining gaps, suggestions addressed in docs).

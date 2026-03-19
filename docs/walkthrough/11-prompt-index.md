@@ -270,7 +270,7 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 **Phase:** 5  **Source:** [07-phase-5-ui.md](./07-phase-5-ui.md) §5.7
 
 **Context docs:**
-- `docs/walkthrough/07-phase-5-ui.md` — embedding patterns
+- `docs/walkthrough/07-phase-5-ui.md` — embedding patterns, integration options (replace picker, request-scoped vs preferences, wrapper need, theming, manual verification)
 - `docs/02-architecture.md` — framework compatibility, package structure
 - `packages/react/README.md` — React wrapper API
 - `packages/svelte/src/ModelSelector.test.ts` — ModelSelector props
@@ -278,25 +278,27 @@ Execute prompts in order. Each prompt's **Context docs** list must be read (or p
 - `docs/ux-contracts.md` — §3 state conventions
 - `docs/reference/sophia-dogfooding-plan.md` — §3 UI embedding
 - `docs/reference/sophia-integration.md` — §2 KeyStorage pattern
+- `docs/reference/sophia-dogfood-findings.md` — Phase 5 packaged path (wrapper gap, host-controlled states)
 
 **Prompt:**
 
 > You are working in [your app repo].
 >
-> **Goal:** Embed ModelSelector (and optionally KeyManager) in settings page.
+> **Goal:** Replace the app’s existing model picker with the packaged ModelSelector (and optionally KeyManager in settings). Do not leave the old picker in place.
 >
 > **Steps:**
-> 1. Read inventory for existing UI to replace.
+> 1. Read inventory; find existing model picker and/or BYOK UI. **Replace** them with packaged ModelSelector (and KeyManager if BYOK).
 > 2. Embed ModelSelector per framework (React: KeysProvider + client component; SvelteKit: direct; Web Components: element + JS props).
-> 3. Wire `onSelect` to save preference.
-> 4. (If BYOK) Embed KeyManager with callbacks to key API.
-> 5. Add `--rk-*` CSS overrides.
-> 6. Handle loading/error/empty states.
-> 7. Verify: renders, callbacks fire, theme applies, keyboard nav works.
+> 3. Wire `onSelect`: either **request-scoped** (pass modelId/providerId per request) or **persisted** (e.g. POST /api/preferences); both valid.
+> 4. (If BYOK) Embed KeyManager with callbacks to key API; use server-side validation (no raw provider calls from browser).
+> 5. If allowed models come from your API: consider a host wrapper for selected-state and host-owned loading/error/empty/retry (see Phase 5 “Integration options” and sophia-dogfood-findings).
+> 6. Add `--rk-*` overrides (min: `--rk-bg`, `--rk-text`, `--rk-accent`); optional full pass across both components.
+> 7. Handle loading/error/empty/retry (in wrapper if list from your API).
+> 8. Verify: renders, callbacks, theme, keyboard nav. Prefer in-browser manual check; if browser/Playwright unavailable, document “manual a11y/visual verification pending” and add runbook step.
 >
 > **DO NOT:** Import UI in server code. Log raw keys. Skip states. Hardcode models. Commit secrets.
 
-**Gate:** ModelSelector renders + callbacks. KeyManager (if used) works. Theme applies. States handled. Keyboard works.
+**Gate:** Existing picker replaced. ModelSelector + callbacks. KeyManager (if used) + server-side validation. States and theme. Keyboard (or manual verification documented).
 
 ---
 

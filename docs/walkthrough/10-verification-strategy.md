@@ -231,7 +231,7 @@ pnpm run smoke:restormel
 | **Phase 2 complete** | `keys doctor`, resolve curl test |
 | **Phase 3 complete** | Resolve with route ID, fallback test |
 | **Phase 4 complete** | Policy evaluate (allowed + blocked) |
-| **Phase 5 complete** | Visual: ModelSelector renders, callbacks fire |
+| **Phase 5 complete** | Visual: ModelSelector renders, callbacks fire. Manual: keyboard (Tab, Enter, Escape), theming. If browser/Playwright unavailable: document “code/test verified; manual a11y/visual check pending” and add runbook step for later. |
 | **Phase 6 cutover** | Full smoke test, dashboard usage, error rate |
 | **Ongoing** | `keys doctor` + `keys validate` in CI; smoke test on schedule; dashboard monitoring |
 
