@@ -40,6 +40,16 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | — | `docs/walkthrough/01-writing-style-guide.md` | Terminology, auth cheat-sheet (Gateway Key vs session), callouts, code conventions. |
 | — | `docs/walkthrough/02-phase-0-inventory.md` … `11-prompt-index.md` | Phase 0–6 pages, migration paths, verification, prompt index. |
 
+### Integrations walkthrough (CLI, MCP, AAIF)
+
+| # | Document | What it covers |
+|---|----------|----------------|
+| — | `docs/integrations-walkthrough/00-index.md` | **Entry point.** Integrations walkthrough: from "never heard of it" to full implementation. Same principles and layout as Keys walkthrough; agent prompts (I01–I08) per phase. |
+| — | `docs/integrations-walkthrough/01-writing-style.md` | Terminology (Integrations, CLI, MCP, AAIF, Developer Tools, Provider Access, usage path); page template. |
+| — | `docs/integrations-walkthrough/02-phase-0-overview.md` … `09-prompt-index.md` | Phase 0–6 (overview, choose workflow, CLI, MCP, AAIF, dashboard & docs, verify) and prompt index. |
+
+Served at `/keys/docs/integrations-walkthrough/`. Use for onboarding to Restormel Integrations (developer enablement layer) with optional coding-agent execution.
+
 Documentation lives in the Svelte/SvelteKit app (`/keys/docs/` and `/keys/docs/walkthrough/`); Zuplo is used for the Cloud API gateway. Use the walkthrough as the canonical onboarding journey for integrating Restormel Keys.
 
 ### Prompt packs (Cursor-targeted)
