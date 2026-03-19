@@ -12,6 +12,28 @@ export interface KeyConfig {
   [key: string]: unknown;
 }
 
+export type KeyStatus = "active" | "pending_validation" | "invalid" | "revoked";
+
+export interface KeyRecord extends KeyConfig {
+  id: string;
+  status?: KeyStatus;
+  validatedAt?: string;
+  lastError?: string;
+  fingerprint?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface KeyAddResult {
+  ok: boolean;
+  error?: string;
+  savedKey?: KeyRecord;
+}
+
+export interface KeyRemoveResult {
+  ok: boolean;
+  error?: string;
+}
+
 export interface ModelDefinition {
   id: string;
   provider: ProviderId;

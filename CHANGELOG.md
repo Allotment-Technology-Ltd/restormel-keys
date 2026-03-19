@@ -4,6 +4,18 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Added
+
+- **SOPHIA dogfood findings:** Canonical doc ([docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md)) capturing integration findings from SOPHIA Phase 5A.
+
+- **KeyManager async persistence and host-driven flows.** `onKeyAdded` and `onKeyRemoved` now accept `Promise<KeyAddResult>` / `Promise<KeyRemoveResult>`. Component shows saving/removing states, displays inline errors on `{ ok: false }`, closes only on success. New `onValidate` prop for server-side validation (host-owned, no raw provider calls from browser). `KeyRecord` extends `KeyConfig` with `id`, `status` (`active` | `pending_validation` | `invalid` | `revoked`), `validatedAt`, `lastError`, `fingerprint`, `metadata`. Detail view shows all fields. Revalidate button when `onValidate` is provided. All three packages updated: `@restormel/keys-svelte`, `@restormel/keys-elements`, `@restormel/keys-react`.
+
+- **8 new first-party provider definitions.** Mistral, Groq, Together AI, DeepSeek, Fireworks AI, Cohere, Perplexity, Azure OpenAI — all with `validateKey`, `estimateCost`, `createClient`. Total: 13 providers. `googleProvider` gets `aliases: ["vertex", "google-ai", "gemini"]`. New helpers: `defineProvider()` for custom providers, `resolveProviderId(id, providers)` for alias lookup.
+
+- **Provider icons expanded.** Icons for all 13 first-party providers plus aliases (`vertex`, `azure`). `ProviderDefinition.icon` allows host apps to supply custom SVG icons that override built-ins. `getProviderIcon(id, customIcon?)` in `@restormel/keys-svelte`.
+
+- **Custom provider and server-side validation docs.** `packages/core/README.md` §7 (custom provider definitions with `defineProvider`, icons, aliases) and §8 (server-side validation with `onValidate`, async persistence with error handling, `KeyRecord` metadata).
+
 ### Changed
 
 - **Phase 5 and Framework compatibility docs:** Align with npm-packages.md: Phase 5 walkthrough (canonical `docs/walkthrough/07-phase-5-ui.md` and in-app `/keys/docs/walkthrough/phase-5-ui`) and Framework compatibility page (`/keys/docs/compatibility`) now state that the UI packages (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) may return **404** from npm until published; readers are directed to verify with `npm view ... version` and to use the headless path + server-side allowed-models proxy + own model picker when packages are not available.

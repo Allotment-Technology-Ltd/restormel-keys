@@ -1,15 +1,32 @@
 <script lang="ts">
   import type { KeysInstance } from "@restormel/keys";
-  import type { KeyConfig } from "@restormel/keys";
-  import type { ProviderDefinition } from "@restormel/keys";
+  import type { KeyConfig, KeyRecord, KeyAddResult, KeyRemoveResult } from "@restormel/keys";
+  import type { ProviderDefinition, ProviderValidationResult } from "@restormel/keys";
   import { getProviderIcon } from "./icons.js";
 
   interface Props {
     keys: KeysInstance;
     userId: string;
-    /** Called with key config and, for persistence, the raw provider credential. Host must store and never log the raw credential. */
-    onKeyAdded?: (key: KeyConfig, rawCredential?: string) => void;
-    onKeyRemoved?: (keyId: string) => void;
+    /**
+     * Called when a key is added. Return a promise to enable async persistence:
+     * the component shows a saving state and only closes on success.
+     * Return { ok: true, savedKey? } on success, { ok: false, error } on failure.
+     * For backwards compat, returning void is treated as success.
+     */
+    onKeyAdded?: (key: KeyConfig, rawCredential?: string) => void | KeyAddResult | Promise<void | KeyAddResult>;
+    /**
+     * Called when a key is removed. Return a promise for async persistence.
+     * Return { ok: true } on success, { ok: false, error } on failure.
+     * Returning void is treated as success.
+     */
+    onKeyRemoved?: (keyId: string) => void | KeyRemoveResult | Promise<void | KeyRemoveResult>;
+    /**
+     * Host-driven validation. If provided, the component calls this instead of
+     * provider.validateKey. Use for server-side validation where raw credentials
+     * should not be sent directly from the browser to providers.
+     * Return { valid: true } or { valid: false, errors: [...] }.
+     */
+    onValidate?: (provider: string, rawCredential: string) => Promise<ProviderValidationResult>;
     providers?: ProviderDefinition[];
   }
 
@@ -18,13 +35,14 @@
     userId,
     onKeyAdded,
     onKeyRemoved,
+    onValidate,
     providers = [],
   }: Props = $props();
 
   type View = "empty" | "list" | "entry" | "detail";
   type EntryStep = "provider" | "test" | "saving";
 
-  const keysList = $derived((keys.config?.keys ?? []) as (KeyConfig & { id?: string })[]);
+  const keysList = $derived((keys.config?.keys ?? []) as KeyRecord[]);
   let view = $state<View>("list");
   let expandedId = $state<string | null>(null);
   let entryProvider = $state<string>("");
@@ -33,6 +51,10 @@
   let entryBusy = $state(false);
   let announceLive = $state("");
 
+  let removingId = $state<string | null>(null);
+  let removeError = $state<string | null>(null);
+  let revalidatingId = $state<string | null>(null);
+
   const showEmpty = $derived(keysList.length === 0 && view !== "entry");
   const showEntry = $derived(view === "entry");
   const showList = $derived(keysList.length > 0 && view !== "entry");
@@ -40,6 +62,35 @@
   function maskKey(label?: string): string {
     if (label && /^[\w-]+$/.test(label)) return label;
     return "••••••••";
+  }
+
+  function getStatusLabel(status?: string): string {
+    switch (status) {
+      case "pending_validation": return "Pending";
+      case "invalid": return "Invalid";
+      case "revoked": return "Revoked";
+      case "active": return "Active";
+      default: return "Active";
+    }
+  }
+
+  function getStatusClass(status?: string): string {
+    switch (status) {
+      case "pending_validation": return "rk-status-pending";
+      case "invalid": return "rk-status-invalid";
+      case "revoked": return "rk-status-revoked";
+      case "active": return "rk-status-active";
+      default: return "rk-status-active";
+    }
+  }
+
+  function formatTime(iso?: string): string {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return iso;
+    }
   }
 
   function openEntry() {
@@ -57,53 +108,108 @@
     entryBusy = false;
   }
 
+  function getProviderDef(id: string): ProviderDefinition | undefined {
+    return providers.find((p) => p.id === id || p.aliases?.includes(id));
+  }
+
   async function validateAndSave() {
     const raw = (document.getElementById("rk-key-input") as HTMLInputElement | null)?.value?.trim();
     if (!raw || !entryProvider) {
       entryError = "Enter your provider credential and select a provider.";
       return;
     }
-    const def = providers.find((p) => p.id === entryProvider);
-    if (!def) {
-      entryError = "Unknown provider.";
+    const def = getProviderDef(entryProvider);
+    if (!def && !onValidate) {
+      entryError = "Unknown provider. Supply a custom provider definition or use onValidate for host-driven validation.";
       return;
     }
     entryBusy = true;
     entryError = null;
-    announceLive = "Validating your key…";
+    announceLive = "Validating your credential…";
     try {
-      const result = await def.validateKey(raw);
-      if (result.valid) {
-        announceLive = "Key validated. Saving.";
-        const id = crypto.randomUUID?.() ?? `key-${Date.now()}`;
-        const keyConfig: KeyConfig & { id?: string } = {
-          id,
-          provider: entryProvider,
-          label: maskKey(),
-        };
-        onKeyAdded?.(keyConfig, raw);
-        announceLive = "Key added.";
-        closeEntry();
-      } else {
-        entryError = result.errors?.join(" ") ?? "Key validation failed.";
+      const result: ProviderValidationResult = onValidate
+        ? await onValidate(entryProvider, raw)
+        : await def!.validateKey(raw);
+
+      if (!result.valid) {
+        entryError = result.errors?.join(" ") ?? "Credential validation failed.";
         announceLive = entryError;
+        entryBusy = false;
+        return;
       }
+
+      announceLive = "Credential validated. Saving…";
+      entryStep = "saving";
+      const id = crypto.randomUUID?.() ?? `key-${Date.now()}`;
+      const keyConfig: KeyConfig & { id?: string } = {
+        id,
+        provider: entryProvider,
+        label: maskKey(),
+      };
+
+      const hostResult = await onKeyAdded?.(keyConfig, raw);
+      if (hostResult && typeof hostResult === "object" && "ok" in hostResult) {
+        if (!hostResult.ok) {
+          entryError = hostResult.error ?? "Failed to save credential.";
+          entryStep = "provider";
+          announceLive = entryError;
+          entryBusy = false;
+          return;
+        }
+      }
+
+      announceLive = "Credential added.";
+      closeEntry();
     } catch (e) {
       entryError = e instanceof Error ? e.message : "Validation failed.";
+      entryStep = "provider";
       announceLive = entryError;
     } finally {
       entryBusy = false;
     }
   }
 
-  function removeKey(keyId: string) {
-    onKeyRemoved?.(keyId);
-    expandedId = null;
-    announceLive = "Key removed.";
+  async function removeKey(keyId: string) {
+    removingId = keyId;
+    removeError = null;
+    announceLive = "Removing credential…";
+    try {
+      const hostResult = await onKeyRemoved?.(keyId);
+      if (hostResult && typeof hostResult === "object" && "ok" in hostResult) {
+        if (!hostResult.ok) {
+          removeError = hostResult.error ?? "Failed to remove credential.";
+          announceLive = removeError;
+          removingId = null;
+          return;
+        }
+      }
+      expandedId = null;
+      announceLive = "Credential removed.";
+    } catch (e) {
+      removeError = e instanceof Error ? e.message : "Remove failed.";
+      announceLive = removeError;
+    } finally {
+      removingId = null;
+    }
+  }
+
+  async function revalidateKey(keyId: string, provider: string) {
+    if (!onValidate) return;
+    revalidatingId = keyId;
+    announceLive = "Revalidating credential…";
+    try {
+      await onValidate(provider, "");
+      announceLive = "Revalidation requested.";
+    } catch {
+      announceLive = "Revalidation failed.";
+    } finally {
+      revalidatingId = null;
+    }
   }
 
   function toggleDetail(id: string) {
     expandedId = expandedId === id ? null : id;
+    removeError = null;
   }
 
 </script>
@@ -130,10 +236,10 @@
       aria-labelledby="rk-entry-heading"
       aria-modal="true"
       tabindex="-1"
-      onkeydown={(e) => e.key === "Escape" && (e.preventDefault(), closeEntry())}
+      onkeydown={(e) => e.key === "Escape" && !entryBusy && (e.preventDefault(), closeEntry())}
     >
       <h2 id="rk-entry-heading" class="rk-heading">Add provider credential</h2>
-      {#if entryStep === "provider"}
+      {#if entryStep === "provider" || entryStep === "saving"}
         <div class="rk-form">
           {#if providers.length > 0}
             <label for="rk-provider-select" class="rk-label">Provider</label>
@@ -142,6 +248,7 @@
               class="rk-select"
               bind:value={entryProvider}
               aria-label="Select provider"
+              disabled={entryBusy}
             >
               {#each providers as p}
                 <option value={p.id}>{p.name}</option>
@@ -176,9 +283,13 @@
               onclick={validateAndSave}
               disabled={entryBusy}
               aria-busy={entryBusy}
-              aria-label={entryBusy ? "Validating…" : "Validate and save credential"}
+              aria-label={entryBusy ? (entryStep === "saving" ? "Saving…" : "Validating…") : "Validate and save credential"}
             >
-              {entryBusy ? "Validating…" : "Validate and save"}
+              {#if entryBusy}
+                {entryStep === "saving" ? "Saving…" : "Validating…"}
+              {:else}
+                Validate and save
+              {/if}
             </button>
           </div>
         </div>
@@ -199,8 +310,10 @@
       </div>
       <ul class="rk-list-ul" role="list">
         {#each keysList as key (key.id ?? key.provider)}
-          {@const id = (key as KeyConfig & { id?: string }).id ?? key.provider}
+          {@const id = key.id ?? key.provider}
           {@const isExpanded = expandedId === id}
+          {@const def = getProviderDef(key.provider)}
+          {@const isRemoving = removingId === id}
           <li class="rk-list-item">
             <div
               class="rk-list-row"
@@ -220,10 +333,10 @@
                 }
               }}
             >
-              <span class="rk-list-icon" aria-hidden="true">{@html getProviderIcon(key.provider)}</span>
-              <span class="rk-list-provider">{key.provider}</span>
+              <span class="rk-list-icon" aria-hidden="true">{@html getProviderIcon(key.provider, def?.icon)}</span>
+              <span class="rk-list-provider">{def?.name ?? key.provider}</span>
               <span class="rk-list-masked">{maskKey(key.label)}</span>
-              <span class="rk-list-status">Active</span>
+              <span class="rk-list-status {getStatusClass(key.status)}">{getStatusLabel(key.status)}</span>
               <span class="rk-list-chevron" aria-hidden="true">{isExpanded ? "▼" : "▶"}</span>
             </div>
             {#if isExpanded}
@@ -233,15 +346,45 @@
                 role="region"
                 aria-labelledby="rk-row-{id}"
               >
-                <p class="rk-detail-meta">Provider: {key.provider}. Use settings to view models and usage.</p>
-                <button
-                  type="button"
-                  class="rk-btn rk-btn-danger"
-                  onclick={() => removeKey(id)}
-                  aria-label="Remove this provider credential"
-                >
-                  Remove credential
-                </button>
+                <dl class="rk-detail-meta">
+                  <div class="rk-detail-row"><dt>Provider</dt><dd>{def?.name ?? key.provider}</dd></div>
+                  <div class="rk-detail-row"><dt>Status</dt><dd class={getStatusClass(key.status)}>{getStatusLabel(key.status)}</dd></div>
+                  {#if key.fingerprint}
+                    <div class="rk-detail-row"><dt>Fingerprint</dt><dd class="rk-mono">{key.fingerprint}</dd></div>
+                  {/if}
+                  {#if key.validatedAt}
+                    <div class="rk-detail-row"><dt>Last validated</dt><dd>{formatTime(key.validatedAt)}</dd></div>
+                  {/if}
+                  {#if key.lastError}
+                    <div class="rk-detail-row rk-detail-error"><dt>Last error</dt><dd>{key.lastError}</dd></div>
+                  {/if}
+                </dl>
+                {#if removeError && removingId === null}
+                  <p class="rk-error" role="alert">{removeError}</p>
+                {/if}
+                <div class="rk-detail-actions">
+                  {#if onValidate}
+                    <button
+                      type="button"
+                      class="rk-btn rk-btn-secondary"
+                      onclick={() => revalidateKey(id, key.provider)}
+                      disabled={revalidatingId === id || isRemoving}
+                      aria-busy={revalidatingId === id}
+                    >
+                      {revalidatingId === id ? "Revalidating…" : "Revalidate"}
+                    </button>
+                  {/if}
+                  <button
+                    type="button"
+                    class="rk-btn rk-btn-danger"
+                    onclick={() => removeKey(id)}
+                    disabled={isRemoving}
+                    aria-busy={isRemoving}
+                    aria-label="Remove this provider credential"
+                  >
+                    {isRemoving ? "Removing…" : "Remove credential"}
+                  </button>
+                </div>
               </div>
             {/if}
           </li>
@@ -446,9 +589,13 @@
 
   .rk-list-status {
     font-size: 0.75rem;
-    color: var(--rk-success);
     margin-left: auto;
   }
+
+  .rk-status-active { color: var(--rk-success); }
+  .rk-status-pending { color: var(--rk-amber); }
+  .rk-status-invalid { color: var(--rk-danger); }
+  .rk-status-revoked { color: var(--rk-text-muted); text-decoration: line-through; }
 
   .rk-list-chevron {
     color: var(--rk-text-muted);
@@ -464,6 +611,39 @@
   .rk-detail-meta {
     margin: 0 0 0.75rem;
     font-size: 0.875rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .rk-detail-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .rk-detail-row dt {
     color: var(--rk-text-muted);
+    min-width: 7rem;
+    flex-shrink: 0;
+  }
+
+  .rk-detail-row dd {
+    margin: 0;
+    color: var(--rk-text);
+  }
+
+  .rk-detail-error dd {
+    color: var(--rk-danger);
+  }
+
+  .rk-mono {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8em;
+  }
+
+  .rk-detail-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
   }
 </style>

@@ -37,4 +37,21 @@ export interface ProviderDefinition {
   estimateCost: (modelId: string) => ProviderCostEstimate | null;
   /** Create a minimal client (no SDK). Parameter is the provider credential (e.g. OpenAI API key). */
   createClient: (providerCredential: string) => ProviderClient;
+  /** Alternative ids that resolve to this provider (e.g. ["vertex"] for google). */
+  aliases?: string[];
+  /** Inline SVG string for the provider icon; overrides built-in icons in UI components. */
+  icon?: string;
+}
+
+export function defineProvider(def: ProviderDefinition): ProviderDefinition {
+  return def;
+}
+
+export function resolveProviderId(
+  id: string,
+  providers: ProviderDefinition[],
+): ProviderDefinition | undefined {
+  return providers.find(
+    (p) => p.id === id || p.aliases?.includes(id),
+  );
 }

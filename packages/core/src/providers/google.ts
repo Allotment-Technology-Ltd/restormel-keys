@@ -53,8 +53,9 @@ function createClient(apiKey: string): ProviderClient {
 
 export const googleProvider: ProviderDefinition = {
   id: "google",
-  name: "Google",
+  name: "Google AI",
   models: [...GOOGLE_MODELS],
+  aliases: ["vertex", "google-ai", "gemini"],
   validateKey,
   estimateCost,
   createClient,

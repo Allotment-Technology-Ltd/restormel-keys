@@ -2,8 +2,8 @@ import { mount, unmount } from "svelte";
 import { KeyManager } from "@restormel/keys-svelte";
 import { defaultThemeCss } from "./theme-inline.js";
 import type { KeysInstance } from "@restormel/keys";
-import type { KeyConfig } from "@restormel/keys";
-import type { ProviderDefinition } from "@restormel/keys";
+import type { KeyConfig, KeyAddResult, KeyRemoveResult } from "@restormel/keys";
+import type { ProviderDefinition, ProviderValidationResult } from "@restormel/keys";
 
 export interface RkKeyManagerProps {
   keys: KeysInstance | null;
@@ -23,6 +23,7 @@ export class RkKeyManagerElement extends HTMLElement {
   private _keys: KeysInstance | null = null;
   private _userId = "";
   private _providers: ProviderDefinition[] = [];
+  private _onValidate: ((provider: string, rawCredential: string) => Promise<ProviderValidationResult>) | undefined;
 
   get keys(): KeysInstance | null {
     return this._keys;
@@ -45,6 +46,14 @@ export class RkKeyManagerElement extends HTMLElement {
   }
   set providers(v: ProviderDefinition[]) {
     this._providers = Array.isArray(v) ? v : [];
+    this._update();
+  }
+
+  get onValidate(): ((provider: string, rawCredential: string) => Promise<ProviderValidationResult>) | undefined {
+    return this._onValidate;
+  }
+  set onValidate(v: ((provider: string, rawCredential: string) => Promise<ProviderValidationResult>) | undefined) {
+    this._onValidate = v;
     this._update();
   }
 
@@ -87,23 +96,39 @@ export class RkKeyManagerElement extends HTMLElement {
         keys: this._keys,
         userId: this._userId,
         providers: this._providers,
-        onKeyAdded: (key: KeyConfig, apiKey?: string) => {
-          this.dispatchEvent(
-            new CustomEvent("rk-key-added", {
+        onValidate: this._onValidate,
+        onKeyAdded: (key: KeyConfig, apiKey?: string): Promise<KeyAddResult> => {
+          return new Promise((resolve) => {
+            const event = new CustomEvent("rk-key-added", {
               bubbles: true,
               composed: true,
-              detail: { key, apiKey },
-            })
-          );
+              detail: { key, apiKey, resolve },
+            });
+            const handled = this.dispatchEvent(event);
+            if (!handled) resolve({ ok: true });
+            const detail = (event as CustomEvent).detail;
+            if (detail._result) {
+              resolve(detail._result);
+            } else {
+              resolve({ ok: true });
+            }
+          });
         },
-        onKeyRemoved: (keyId: string) => {
-          this.dispatchEvent(
-            new CustomEvent("rk-key-removed", {
+        onKeyRemoved: (keyId: string): Promise<KeyRemoveResult> => {
+          return new Promise((resolve) => {
+            const event = new CustomEvent("rk-key-removed", {
               bubbles: true,
               composed: true,
-              detail: { keyId },
-            })
-          );
+              detail: { keyId, resolve },
+            });
+            this.dispatchEvent(event);
+            const detail = (event as CustomEvent).detail;
+            if (detail._result) {
+              resolve(detail._result);
+            } else {
+              resolve({ ok: true });
+            }
+          });
         },
       },
     });
