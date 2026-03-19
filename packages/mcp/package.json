@@ -24,11 +24,13 @@
     "access": "public"
   },
   "bin": {
-    "restormel-mcp": "./dist/cli.js"
+    "restormel-mcp": "bin/restormel-mcp.js"
   },
   "files": [
+    "bin",
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "main": "dist/index.js",

@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 ### Changed
 
+- **`@restormel/mcp` npm bin:** Executable is `bin/restormel-mcp.js` (imports `dist/cli.js`) so `npm publish` no longer strips `bin`; package includes `LICENSE`. README notes `npm login` / 401 vs misleading 404 on scoped publish.
+
 - **Release pipeline:** `@restormel/mcp` is built on every CI `test` job (with keys + keys-svelte) and in `scripts/quality.sh`. `prepublishOnly` on `@restormel/mcp` runs `build` before pack. README documents publish order and first-time scoped-package npm requirements.
 
 ### Added

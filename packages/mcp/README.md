@@ -50,6 +50,8 @@ restormel-mcp
 
 **Important:** The server speaks MCP on **stdout**. Do not enable tools that print to stdout. Diagnostics use **stderr** only.
 
+**Publish / npm login:** Publishing requires a logged-in npm user with access to the `@restormel` scope. If `npm whoami` returns **401**, run `npm login` (or set a valid `NPM_TOKEN`) before `pnpm publish`. A misleading **404** on `PUT …/@restormel%2fmcp` often means missing auth or no permission to create the package under the org.
+
 ## Environment variables
 
 | Variable | Purpose |
