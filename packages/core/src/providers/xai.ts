@@ -1,3 +1,7 @@
+/**
+ * xAI (Grok) provider adapter. Uses fetch(); no SDK.
+ * https://docs.x.ai/
+ */
 import type {
   ProviderClient,
   ProviderDefinition,
@@ -5,22 +9,24 @@ import type {
   ProviderValidationResult,
 } from "./types.js";
 
-const BASE_URL = "https://api.deepseek.com";
+const BASE_URL = "https://api.x.ai/v1";
 
-export const DEEPSEEK_MODELS = [
-  "deepseek-chat",
-  "deepseek-reasoner",
-  "deepseek-coder",
-  "deepseek-r1",
-  "deepseek-r1-distill-llama-70b",
+export const XAI_MODELS = [
+  "grok-3-fast",
+  "grok-3",
+  "grok-3-mini",
+  "grok-2-vision-1212",
+  "grok-2-1212",
+  "grok-2-mini",
 ] as const;
 
-const DEEPSEEK_PRICING: Record<string, { input: number; output: number }> = {
-  "deepseek-chat": { input: 0.27, output: 1.1 },
-  "deepseek-reasoner": { input: 0.55, output: 2.19 },
-  "deepseek-coder": { input: 0.14, output: 0.28 },
-  "deepseek-r1": { input: 0.55, output: 2.19 },
-  "deepseek-r1-distill-llama-70b": { input: 0.4, output: 0.4 },
+const XAI_PRICING: Record<string, { input: number; output: number }> = {
+  "grok-3-fast": { input: 0.2, output: 0.8 },
+  "grok-3": { input: 2, output: 10 },
+  "grok-3-mini": { input: 0.1, output: 0.4 },
+  "grok-2-vision-1212": { input: 2, output: 10 },
+  "grok-2-1212": { input: 2, output: 10 },
+  "grok-2-mini": { input: 0.1, output: 0.4 },
 };
 
 async function validateKey(
@@ -44,19 +50,19 @@ async function validateKey(
 }
 
 function estimateCost(modelId: string): ProviderCostEstimate | null {
-  const p = DEEPSEEK_PRICING[modelId];
+  const p = XAI_PRICING[modelId];
   if (!p) return null;
   return { id: modelId, inputPerMillion: p.input, outputPerMillion: p.output, unit: "USD" };
 }
 
 function createClient(_apiKey: string): ProviderClient {
-  return { provider: "deepseek", baseUrl: BASE_URL };
+  return { provider: "xai", baseUrl: BASE_URL };
 }
 
-export const deepseekProvider: ProviderDefinition = {
-  id: "deepseek",
-  name: "DeepSeek",
-  models: [...DEEPSEEK_MODELS],
+export const xaiProvider: ProviderDefinition = {
+  id: "xai",
+  name: "xAI (Grok)",
+  models: [...XAI_MODELS],
   validateKey,
   estimateCost,
   createClient,

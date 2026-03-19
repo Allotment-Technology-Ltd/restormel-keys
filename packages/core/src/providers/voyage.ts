@@ -1,3 +1,7 @@
+/**
+ * Voyage AI provider adapter (embeddings). Uses fetch(); no SDK.
+ * https://docs.voyageai.com/
+ */
 import type {
   ProviderClient,
   ProviderDefinition,
@@ -5,22 +9,14 @@ import type {
   ProviderValidationResult,
 } from "./types.js";
 
-const BASE_URL = "https://api.together.xyz";
+const BASE_URL = "https://api.voyageai.com";
 
-export const TOGETHER_MODELS = [
-  "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-  "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
-  "meta-llama/Llama-3.1-8B-Instruct-Turbo",
-  "meta-llama/Llama-3.1-70B-Instruct-Turbo",
-  "meta-llama/Llama-3.1-405B-Instruct-Turbo",
-  "mistralai/Mixtral-8x7B-Instruct-v0.1",
-  "mistralai/Mistral-7B-Instruct-v0.3",
-  "Qwen/Qwen2.5-72B-Instruct-Turbo",
-  "Qwen/Qwen2.5-7B-Instruct-Turbo",
-  "deepseek-ai/DeepSeek-V3",
-  "deepseek-ai/DeepSeek-R1",
-  "google/gemma-2-27b-it",
-  "NousResearch/Hermes-3-Llama-3.1-405B",
+export const VOYAGE_MODELS = [
+  "voyage-3",
+  "voyage-3-lite",
+  "voyage-large-2",
+  "voyage-large-2-instruct",
+  "voyage-code-2",
 ] as const;
 
 async function validateKey(
@@ -48,13 +44,13 @@ function estimateCost(_modelId: string): ProviderCostEstimate | null {
 }
 
 function createClient(_apiKey: string): ProviderClient {
-  return { provider: "together", baseUrl: BASE_URL };
+  return { provider: "voyage", baseUrl: BASE_URL };
 }
 
-export const togetherProvider: ProviderDefinition = {
-  id: "together",
-  name: "Together AI",
-  models: [...TOGETHER_MODELS],
+export const voyageProvider: ProviderDefinition = {
+  id: "voyage",
+  name: "Voyage AI",
+  models: [...VOYAGE_MODELS],
   validateKey,
   estimateCost,
   createClient,

@@ -12,7 +12,19 @@ import type {
 
 const BASE_URL = "https://api.portkey.ai/v1";
 
-export const PORTKEY_MODELS: string[] = [];
+// Portkey is a gateway; these are common model ids users can route to.
+export const PORTKEY_MODELS: string[] = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-3.5-turbo",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-haiku-20240307",
+  "gemini-2.0-flash-exp",
+  "gemini-1.5-pro",
+  "llama-3.3-70b-versatile",
+  "deepseek-chat",
+  "mistral-large-latest",
+];
 
 async function validateKey(
   apiKey: string,

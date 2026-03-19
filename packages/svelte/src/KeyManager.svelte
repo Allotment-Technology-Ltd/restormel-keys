@@ -27,6 +27,13 @@
      * Return { valid: true } or { valid: false, errors: [...] }.
      */
     onValidate?: (provider: string, rawCredential: string) => Promise<ProviderValidationResult>;
+    /**
+     * Revalidate an existing saved key (server-side). Called when the user clicks
+     * Revalidate in the key detail view. The host should re-validate using stored
+     * credential and return the result. Prefer this over overloading onValidate
+     * with an empty rawCredential sentinel.
+     */
+    onRevalidate?: (keyId: string, provider: string) => Promise<ProviderValidationResult>;
     providers?: ProviderDefinition[];
   }
 
@@ -36,6 +43,7 @@
     onKeyAdded,
     onKeyRemoved,
     onValidate,
+    onRevalidate,
     providers = [],
   }: Props = $props();
 
@@ -194,12 +202,13 @@
   }
 
   async function revalidateKey(keyId: string, provider: string) {
-    if (!onValidate) return;
+    const revalidateFn = onRevalidate ?? (onValidate ? (keyId: string, prov: string) => onValidate(prov, "") : null);
+    if (!revalidateFn) return;
     revalidatingId = keyId;
     announceLive = "Revalidating credential…";
     try {
-      await onValidate(provider, "");
-      announceLive = "Revalidation requested.";
+      const result = await revalidateFn(keyId, provider);
+      announceLive = result.valid ? "Revalidation succeeded." : (result.errors?.join(" ") ?? "Revalidation failed.");
     } catch {
       announceLive = "Revalidation failed.";
     } finally {
@@ -363,7 +372,7 @@
                   <p class="rk-error" role="alert">{removeError}</p>
                 {/if}
                 <div class="rk-detail-actions">
-                  {#if onValidate}
+                  {#if onRevalidate ?? onValidate}
                     <button
                       type="button"
                       class="rk-btn rk-btn-secondary"

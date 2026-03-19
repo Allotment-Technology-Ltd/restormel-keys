@@ -55,3 +55,16 @@ export function resolveProviderId(
     (p) => p.id === id || p.aliases?.includes(id),
   );
 }
+
+/**
+ * Return the canonical provider id for storage. Use when persisting key records
+ * so that alias-based ids (e.g. "vertex") are stored as the definition's id
+ * (e.g. "google"). If no provider matches, returns the original id.
+ */
+export function canonicalizeProviderId(
+  id: string,
+  providers: ProviderDefinition[],
+): string {
+  const def = resolveProviderId(id, providers);
+  return def?.id ?? id;
+}

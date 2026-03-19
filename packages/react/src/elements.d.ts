@@ -12,6 +12,7 @@ export interface RkKeyManagerElement extends HTMLElement {
   userId: string;
   providers: ProviderDefinition[];
   onValidate?: (provider: string, rawCredential: string) => Promise<ProviderValidationResult>;
+  onRevalidate?: (keyId: string, provider: string) => Promise<ProviderValidationResult>;
 }
 
 export interface RkModelSelectorElement extends HTMLElement {

@@ -13,6 +13,9 @@ export const MISTRAL_MODELS = [
   "mistral-small-latest",
   "codestral-latest",
   "open-mistral-nemo",
+  "pixtral-12b-2409",
+  "pixtral-large-latest",
+  "minstral-8b-2409",
 ] as const;
 
 const MISTRAL_PRICING: Record<string, { input: number; output: number }> = {
@@ -21,6 +24,9 @@ const MISTRAL_PRICING: Record<string, { input: number; output: number }> = {
   "mistral-small-latest": { input: 0.2, output: 0.6 },
   "codestral-latest": { input: 0.3, output: 0.9 },
   "open-mistral-nemo": { input: 0.15, output: 0.15 },
+  "pixtral-12b-2409": { input: 0.3, output: 0.3 },
+  "pixtral-large-latest": { input: 2, output: 6 },
+  "minstral-8b-2409": { input: 0.2, output: 0.2 },
 };
 
 async function validateKey(

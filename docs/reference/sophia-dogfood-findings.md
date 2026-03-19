@@ -146,6 +146,25 @@ Current semantics are now better documented, but future product work could make 
 
 ---
 
+## Follow-up after Sophia refactor (March 2026)
+
+After SOPHIA refactored to the new KeyManager contract (onValidate, async onKeyAdded/onKeyRemoved, KeyRecords, first-party providers, alias-aware resolution), the following were raised and addressed in Restormel:
+
+### Addressed in Restormel
+
+- **KeyRecord.updatedAt** — Added as a first-class field (ISO 8601) so hosts don't need to store it in `metadata.updatedAt`.
+- **Revalidate callback** — Added **`onRevalidate(keyId, provider)`** so revalidation is explicit instead of overloading `onValidate` with `rawCredential === ""`. KeyManager still falls back to `onValidate(provider, "")` when `onRevalidate` is not provided (backwards compat).
+- **Provider canonicalization for storage** — Added **`canonicalizeProviderId(id, providers)`** so hosts can persist a single canonical id (e.g. `google`) when the UI or upstream may use an alias (e.g. `vertex`).
+- **xAI and Voyage as first-party** — Added **xai** (Grok) and **voyage** (Voyage AI) provider definitions and icons. SOPHIA can drop custom definitions for these and use built-ins.
+- **Validate-then-persist** — Documented in `packages/core/README.md` §8: host save endpoint can skip second validation when client already used `onValidate`, or validate again and return `{ ok: false }` (and optionally delete the just-saved key) to keep UI consistent.
+
+### Remaining / host-side
+
+- **Canonical id vs stored id** — If a host (e.g. SOPHIA) historically stored `vertex` as the provider id, it may still need one alias-aware translation from Restormel's canonical `google` to the stored `vertex` when loading keys into the UI. Using `canonicalizeProviderId` when *saving* keeps new records consistent; existing data may need a one-time migration or a thin mapping layer when hydrating KeyRecords.
+- **Duplicate validation on persist** — If the host's save endpoint validates again on persist, the add flow can do two validation passes. Restormel documents the options (skip second validation, or validate and roll back on failure); eliminating duplication is a host responsibility (e.g. accept a `preValidated: true` flag from the client).
+
+---
+
 **Related docs:**
 
 - [sophia-dogfooding-plan.md](sophia-dogfooding-plan.md) — original dogfooding plan

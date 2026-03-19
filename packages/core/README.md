@@ -100,7 +100,33 @@ const { allowed, violations } = await evaluatePolicies({
 
 ### 7. Custom provider definitions
 
-Restormel ships first-party definitions for OpenAI, Anthropic, Google, Mistral, Groq, Together, DeepSeek, Fireworks, Cohere, Perplexity, Azure OpenAI, OpenRouter, and Portkey. If your app uses a provider not in that list (or needs stricter custody), define your own:
+Restormel ships first-party definitions for **15 providers**, each with an expanded model list so users get a **click-and-select** experience with minimal setup:
+
+- **OpenAI** — gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo, o1, o3-mini, etc.
+- **Anthropic** — Claude 3.5 Sonnet/Haiku, Claude 3 Opus/Sonnet/Haiku, Claude 4 family
+- **Google** — Gemini 2.5/2.0/1.5 Pro and Flash variants
+- **xAI (Grok)** — grok-3, grok-2, vision models
+- **Mistral** — mistral-large/medium/small, codestral, pixtral, minstral
+- **Groq** — Llama 3.3/3.2/3.1, Mixtral, Gemma2, Llama Guard
+- **DeepSeek** — deepseek-chat, reasoner, coder, r1
+- **Cohere** — Command R+, R, R7B, Command Light/A, Aya 23
+- **Perplexity** — sonar-pro, sonar, sonar-deep-research, sonar-reasoning-pro, sonar-small/medium-chat
+- **Together** — Llama 3.3/3.2/3.1, Mixtral, Qwen 2.5, DeepSeek V3/R1, Gemma 2, Hermes 3
+- **Fireworks** — Llama v3, Mixtral, Qwen 2.5, DeepSeek R1 distill, Code Llama, Falcon 2
+- **Voyage AI** — voyage-3, voyage-large-2, voyage-code-2 (embeddings)
+- **Azure OpenAI** — gpt-4o, gpt-4-turbo, gpt-35-turbo, o1, embeddings
+- **OpenRouter** — Curated list (openai/gpt-4o, anthropic/claude-3.5-sonnet, google/gemini-2.0-flash-exp, etc.)
+- **Portkey** — Common gateway-routed model ids
+
+**One import for all:** Use **`defaultProviders`** so you don’t have to list each provider manually:
+
+```ts
+import { createKeys, defaultProviders } from "@restormel/keys";
+
+const keys = createKeys(config, { providers: defaultProviders });
+```
+
+KeyManager and ModelSelector can then use `providers={defaultProviders}` (or the same array) for a full click-and-select UI. If your app uses a provider not in that list (or needs stricter custody), define your own:
 
 ```ts
 import { defineProvider } from "@restormel/keys";
@@ -136,7 +162,7 @@ const keys = createKeys(config, {
 });
 ```
 
-**Provider aliases:** Use the `aliases` field for normalisation (e.g. `google` has aliases `["vertex", "gemini"]`). The `resolveProviderId(id, providers)` helper finds a provider by id or alias.
+**Provider aliases:** Use the `aliases` field for normalisation (e.g. `google` has aliases `["vertex", "gemini"]`). The `resolveProviderId(id, providers)` helper finds a provider by id or alias. Use **`canonicalizeProviderId(id, providers)`** when persisting key records so that alias-based ids (e.g. `"vertex"`) are stored as the definition's canonical id (e.g. `"google"`); this avoids host-specific id mismatch when the UI shows one id and storage uses another.
 
 **Custom icons:** Set `icon` on your `ProviderDefinition` to an inline SVG string. UI components (`KeyManager`, `ModelSelector`) will render it instead of the built-in generic icon.
 
@@ -178,7 +204,11 @@ For apps where raw credentials should not go directly from the browser to provid
 
 The component awaits each host callback. On `{ ok: false, error }`, the error is shown inline and the form stays open. On `{ ok: true }`, the entry closes and the list refreshes.
 
-**KeyRecord metadata:** Pass keys as `KeyRecord[]` (extends `KeyConfig` with `id`, `status`, `validatedAt`, `lastError`, `fingerprint`, `metadata`) to display richer status in the list view. Supported statuses: `active`, `pending_validation`, `invalid`, `revoked`.
+**Revalidate:** Provide **`onRevalidate(keyId, provider)`** so the key detail view can re-check an existing key server-side (e.g. using stored credential). Prefer this over overloading `onValidate` with an empty-credential sentinel.
+
+**Validate-then-persist:** If you use `onValidate`, the component validates before calling `onKeyAdded`. Your save endpoint can **skip a second validation** and trust the client already validated, or validate again for defence-in-depth; if you validate again on persist and it fails, return `{ ok: false, error }` and optionally delete the just-saved key so the UI stays consistent.
+
+**KeyRecord metadata:** Pass keys as `KeyRecord[]` (extends `KeyConfig` with `id`, `status`, `validatedAt`, `updatedAt`, `lastError`, `fingerprint`, `metadata`) to display richer status in the list view. Supported statuses: `active`, `pending_validation`, `invalid`, `revoked`. Set `updatedAt` (ISO 8601) when the record was last updated so hosts don't need to tuck it into `metadata`.
 
 ## License
 

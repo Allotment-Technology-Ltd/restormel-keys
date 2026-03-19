@@ -47,8 +47,14 @@ export {
   PERPLEXITY_MODELS,
   azureOpenaiProvider,
   AZURE_OPENAI_MODELS,
+  xaiProvider,
+  XAI_MODELS,
+  voyageProvider,
+  VOYAGE_MODELS,
   defineProvider,
   resolveProviderId,
+  canonicalizeProviderId,
+  defaultProviders,
 } from "./providers/index.js";
 export type {
   ProviderDefinition,

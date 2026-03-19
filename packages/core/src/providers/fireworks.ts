@@ -9,8 +9,13 @@ const BASE_URL = "https://api.fireworks.ai/inference";
 
 export const FIREWORKS_MODELS = [
   "accounts/fireworks/models/llama-v3p3-70b-instruct",
+  "accounts/fireworks/models/llama-v3p1-8b-instruct",
   "accounts/fireworks/models/mixtral-8x7b-instruct",
   "accounts/fireworks/models/qwen2p5-72b-instruct",
+  "accounts/fireworks/models/qwen2-5-72b-instruct",
+  "accounts/fireworks/models/deepseek-r1-distill-qwen-1.5b",
+  "accounts/fireworks/models/code-llama-v2-34b-instruct",
+  "accounts/fireworks/models/falcon-2-11b-instruct",
 ] as const;
 
 async function validateKey(

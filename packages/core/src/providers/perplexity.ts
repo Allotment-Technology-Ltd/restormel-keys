@@ -11,6 +11,9 @@ export const PERPLEXITY_MODELS = [
   "sonar-pro",
   "sonar",
   "sonar-deep-research",
+  "sonar-reasoning-pro",
+  "sonar-small-chat",
+  "sonar-medium-chat",
 ] as const;
 
 async function validateKey(

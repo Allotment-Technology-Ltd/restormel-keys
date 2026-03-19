@@ -14,6 +14,11 @@ export const ANTHROPIC_MODELS = [
   "claude-sonnet-4",
   "claude-haiku-4.5",
   "claude-opus-4",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-haiku-20241022",
+  "claude-3-opus-20240229",
+  "claude-3-sonnet-20240229",
+  "claude-3-haiku-20240307",
 ] as const;
 
 /** Pricing per 1M tokens (USD). Input, output. */
@@ -21,6 +26,11 @@ const ANTHROPIC_PRICING: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4": { input: 3, output: 15 },
   "claude-haiku-4.5": { input: 0.25, output: 1.25 },
   "claude-opus-4": { input: 15, output: 75 },
+  "claude-3-5-sonnet-20241022": { input: 3, output: 15 },
+  "claude-3-5-haiku-20241022": { input: 0.8, output: 4 },
+  "claude-3-opus-20240229": { input: 15, output: 75 },
+  "claude-3-sonnet-20240229": { input: 3, output: 15 },
+  "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
 };
 
 async function validateKey(

@@ -18,6 +18,8 @@ export interface KeyRecord extends KeyConfig {
   id: string;
   status?: KeyStatus;
   validatedAt?: string;
+  /** ISO 8601; when the record was last updated (e.g. after revalidation or status change). */
+  updatedAt?: string;
   lastError?: string;
   fingerprint?: string;
   metadata?: Record<string, unknown>;

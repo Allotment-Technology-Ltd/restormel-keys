@@ -24,6 +24,7 @@ export class RkKeyManagerElement extends HTMLElement {
   private _userId = "";
   private _providers: ProviderDefinition[] = [];
   private _onValidate: ((provider: string, rawCredential: string) => Promise<ProviderValidationResult>) | undefined;
+  private _onRevalidate: ((keyId: string, provider: string) => Promise<ProviderValidationResult>) | undefined;
 
   get keys(): KeysInstance | null {
     return this._keys;
@@ -54,6 +55,14 @@ export class RkKeyManagerElement extends HTMLElement {
   }
   set onValidate(v: ((provider: string, rawCredential: string) => Promise<ProviderValidationResult>) | undefined) {
     this._onValidate = v;
+    this._update();
+  }
+
+  get onRevalidate(): ((keyId: string, provider: string) => Promise<ProviderValidationResult>) | undefined {
+    return this._onRevalidate;
+  }
+  set onRevalidate(v: ((keyId: string, provider: string) => Promise<ProviderValidationResult>) | undefined) {
+    this._onRevalidate = v;
     this._update();
   }
 
@@ -97,6 +106,7 @@ export class RkKeyManagerElement extends HTMLElement {
         userId: this._userId,
         providers: this._providers,
         onValidate: this._onValidate,
+        onRevalidate: this._onRevalidate,
         onKeyAdded: (key: KeyConfig, apiKey?: string): Promise<KeyAddResult> => {
           return new Promise((resolve) => {
             const event = new CustomEvent("rk-key-added", {

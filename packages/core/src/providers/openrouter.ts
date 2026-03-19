@@ -10,8 +10,27 @@ import type {
 
 const BASE_URL = "https://openrouter.ai/api/v1";
 
-// OpenRouter is an aggregator; model availability is dynamic. Keep this list minimal.
-export const OPENROUTER_MODELS: string[] = [];
+// OpenRouter is an aggregator; model ids are "provider/model". Curated list for click-and-select.
+export const OPENROUTER_MODELS: string[] = [
+  "openai/gpt-4o",
+  "openai/gpt-4o-mini",
+  "openai/gpt-3.5-turbo",
+  "anthropic/claude-3.5-sonnet",
+  "anthropic/claude-3-haiku",
+  "anthropic/claude-3-opus",
+  "google/gemini-2.0-flash-exp:free",
+  "google/gemini-pro-1.5",
+  "meta-llama/llama-3.3-70b-instruct",
+  "meta-llama/llama-3.1-8b-instruct",
+  "mistralai/mistral-large",
+  "mistralai/mixtral-8x7b-instruct",
+  "deepseek/deepseek-chat",
+  "deepseek/deepseek-coder",
+  "x-ai/grok-3-fast",
+  "cohere/command-r-plus",
+  "perplexity/sonar",
+  "qwen/qwen-2.5-72b-instruct",
+];
 
 async function validateKey(
   apiKey: string,

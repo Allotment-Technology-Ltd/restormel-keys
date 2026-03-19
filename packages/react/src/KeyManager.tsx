@@ -26,6 +26,11 @@ export interface KeyManagerProps {
    * provider.validateKey. Use for server-side validation.
    */
   onValidate?: (provider: string, rawCredential: string) => Promise<ProviderValidationResult>;
+  /**
+   * Revalidate an existing saved key (server-side). Prefer this over overloading
+   * onValidate with an empty rawCredential sentinel.
+   */
+  onRevalidate?: (keyId: string, provider: string) => Promise<ProviderValidationResult>;
 }
 
 export function KeyManager({
@@ -35,6 +40,7 @@ export function KeyManager({
   onKeyAdded,
   onKeyRemoved,
   onValidate,
+  onRevalidate,
 }: KeyManagerProps): React.ReactElement {
   const ref = useRef<RkKeyManagerElement>(null);
 
@@ -45,7 +51,8 @@ export function KeyManager({
     el.userId = userId;
     el.providers = providers;
     el.onValidate = onValidate;
-  }, [keys, userId, providers, onValidate]);
+    el.onRevalidate = onRevalidate;
+  }, [keys, userId, providers, onValidate, onRevalidate]);
 
   const onKeyAddedStable = useCallback(
     async (e: Event) => {

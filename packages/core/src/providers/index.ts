@@ -11,10 +11,13 @@ export { fireworksProvider, FIREWORKS_MODELS } from "./fireworks.js";
 export { cohereProvider, COHERE_MODELS } from "./cohere.js";
 export { perplexityProvider, PERPLEXITY_MODELS } from "./perplexity.js";
 export { azureOpenaiProvider, AZURE_OPENAI_MODELS } from "./azure-openai.js";
+export { xaiProvider, XAI_MODELS } from "./xai.js";
+export { voyageProvider, VOYAGE_MODELS } from "./voyage.js";
 export type {
   ProviderDefinition,
   ProviderValidationResult,
   ProviderCostEstimate,
   ProviderClient,
 } from "./types.js";
-export { defineProvider, resolveProviderId } from "./types.js";
+export { defineProvider, resolveProviderId, canonicalizeProviderId } from "./types.js";
+export { defaultProviders } from "./defaults.js";
