@@ -5,11 +5,13 @@ import type * as React from "react";
 import type { KeysInstance } from "@restormel/keys";
 import type { ProviderDefinition } from "@restormel/keys";
 import type { CostEstimateResult } from "@restormel/keys";
+import type { ProviderValidationResult } from "@restormel/keys";
 
 export interface RkKeyManagerElement extends HTMLElement {
   keys: KeysInstance | null;
   userId: string;
   providers: ProviderDefinition[];
+  onValidate?: (provider: string, rawCredential: string) => Promise<ProviderValidationResult>;
 }
 
 export interface RkModelSelectorElement extends HTMLElement {
