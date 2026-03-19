@@ -41,7 +41,7 @@
     </section>
   {/if}
 
-  <section class="section section-ci-secrets" aria-labelledby="ci-secrets-heading">
+  <section id="ci-secrets" class="section section-ci-secrets" aria-labelledby="ci-secrets-heading">
     <h2 id="ci-secrets-heading" class="section-title">Copy for CI (GitHub Secrets)</h2>
     <p class="section-desc">
       Copy these into your repo’s <strong>Settings → Secrets and variables → Actions</strong>. Use a staging project and key for CI — never point CI at production unless you accept that risk.

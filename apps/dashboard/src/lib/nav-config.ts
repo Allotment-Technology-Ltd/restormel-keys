@@ -16,6 +16,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: DASHBOARD_BASE + "/", label: "Overview" },
   { href: DASHBOARD_BASE + "/projects", label: "Projects" },
+  { href: DASHBOARD_BASE + "/copy-for-ci", label: "Copy for CI" },
   { href: DASHBOARD_BASE + "/access", label: "Access" },
   { href: DASHBOARD_BASE + "/integrations", label: "Provider Access" },
   { href: DASHBOARD_BASE + "/dev-tools", label: "Developer Tools" },
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
 const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/"]: "Overview",
   [DASHBOARD_BASE + "/projects"]: "Projects",
+  [DASHBOARD_BASE + "/copy-for-ci"]: "Copy for CI",
   [DASHBOARD_BASE + "/access"]: "Access",
   [DASHBOARD_BASE + "/integrations"]: "Provider Access",
   [DASHBOARD_BASE + "/dev-tools"]: "Developer Tools",
