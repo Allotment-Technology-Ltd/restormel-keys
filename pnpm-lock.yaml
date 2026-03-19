@@ -149,6 +149,16 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/aaif:
+    dependencies:
+      '@restormel/keys':
+        specifier: '>=0.1.0'
+        version: 0.2.5
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/cli:
     dependencies:
       '@restormel/doctor':
@@ -244,6 +254,16 @@ importers:
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.1(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.2))
+
+  packages/mcp:
+    dependencies:
+      '@restormel/keys':
+        specifier: '>=0.1.0'
+        version: 0.2.5
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
   packages/react:
     dependencies:
@@ -2158,6 +2178,9 @@ packages:
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
+
+  '@restormel/keys@0.2.5':
+    resolution: {integrity: sha512-p2xHfGjC+ibDRb3+lp96rdIiz1SCDHTdm/ygolrrIZZRIGJn7Oy+R2w5Gsn86xKbCL56yjmkH3Npqc6nSJsfMA==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -7201,6 +7224,8 @@ snapshots:
   '@react-email/text@0.1.6(react@18.3.1)':
     dependencies:
       react: 18.3.1
+
+  '@restormel/keys@0.2.5': {}
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
