@@ -8,6 +8,7 @@ Registry state changes with releases. From your project:
 
 ```bash
 npm view @restormel/keys version
+npm view @restormel/mcp version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/doctor version
 npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or name differs"
@@ -20,6 +21,7 @@ Headless resolution and doctor checks need only:
 | Package        | Purpose                                      |
 |----------------|----------------------------------------------|
 | `@restormel/keys` | Core: resolve, providers, config consumption |
+| `@restormel/mcp` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
 | `npx @restormel/doctor` | Local setup check (no UI packages required) |
 
 Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) **or** manually (see [Phase 1 walkthrough](../walkthrough/03-phase-1-install.md#step-13--manual-restormelconfigjson-no-cli)).

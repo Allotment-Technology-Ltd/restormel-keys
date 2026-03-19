@@ -21,3 +21,7 @@ export type {
 } from "./types.js";
 export { defineProvider, resolveProviderId, canonicalizeProviderId } from "./types.js";
 export { defaultProviders } from "./defaults.js";
+export {
+  CATALOG_DRIFT_SYNC_PROVIDER_IDS,
+  type CatalogDriftSyncProviderId,
+} from "./catalog-drift-scope.js";

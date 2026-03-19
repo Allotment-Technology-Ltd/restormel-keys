@@ -15,12 +15,24 @@ export type {
   ResolveErrorBody,
 } from "./types.js";
 
-export type { AllowedModelsCandidate, FilterAllowedModelsOptions } from "./client.js";
+export type {
+  AllowedModelsCandidate,
+  FilterAllowedModelsOptions,
+  FilteredModelEntry,
+  FilteredModelStatus,
+  GroupedModelForSelector,
+  GroupedProviderForSelector,
+} from "./client.js";
 
 export {
   resolve,
   evaluatePolicies,
   filterAllowedModels,
+  filterModelsByPolicy,
+  candidatesFromProviderDefinitions,
+  groupedModelsForModelSelector,
+  policyAvailabilityMapFromEntries,
+  filterProviderDefinitionsByAllowedPolicy,
   isPolicyBlocked,
   isNoRoute,
   isUsageLimitReached,

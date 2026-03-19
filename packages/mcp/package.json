@@ -1,8 +1,14 @@
 {
   "name": "@restormel/mcp",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "MCP tool definitions for Restormel — models, providers, cost, routing, entitlements, and docs.",
-  "keywords": ["mcp", "model-context-protocol", "ai", "restormel", "tools"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "restormel",
+    "tools"
+  ],
   "author": "Allotment Technology Ltd",
   "license": "MIT",
   "repository": {
@@ -10,7 +16,13 @@
     "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
     "directory": "packages/mcp"
   },
-  "files": ["dist"],
+  "bin": {
+    "restormel-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,6 +30,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/create-server.d.ts",
+      "import": "./dist/create-server.js"
     }
   },
   "scripts": {
@@ -27,15 +43,16 @@
   "peerDependencies": {
     "@restormel/keys": ">=0.1.0"
   },
-  "peerDependenciesMeta": {
-    "@restormel/keys": {
-      "optional": true
-    }
-  },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@restormel/keys": "workspace:*",
+    "zod": "^4.0.0"
   }
 }

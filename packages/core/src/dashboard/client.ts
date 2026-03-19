@@ -13,6 +13,7 @@ import type {
   PolicyViolation,
   RestormelApiError,
 } from "./types.js";
+import type { ProviderDefinition } from "../providers/types.js";
 
 const DEFAULT_BASE = "https://restormel.dev";
 
@@ -162,6 +163,40 @@ export interface FilterAllowedModelsOptions {
 export async function filterAllowedModels(
   options: FilterAllowedModelsOptions
 ): Promise<AllowedModelsCandidate[]> {
+  const detailed = await filterModelsByPolicy(options);
+  return detailed.filter((e) => e.status === "allowed").map((e) => ({
+    providerType: e.providerType,
+    modelId: e.modelId,
+  }));
+}
+
+/**
+ * Why a candidate is not selectable after policy evaluation.
+ * - `restormel_degraded`: Restormel unreachable or server-side failure (retry may help).
+ * - `unknown_or_unavailable`: Policy check failed in an ambiguous or client-error way (4xx, etc.).
+ */
+export type FilteredModelStatus =
+  | "allowed"
+  | "blocked_by_policy"
+  | "unknown_or_unavailable"
+  | "restormel_degraded";
+
+export interface FilteredModelEntry {
+  providerType: string;
+  modelId: string;
+  status: FilteredModelStatus;
+  violations?: PolicyViolation[];
+  httpStatus?: number;
+  message?: string;
+}
+
+/**
+ * Same as filterAllowedModels but returns per-model status for UX
+ * (allowed vs policy-blocked vs Restormel down).
+ */
+export async function filterModelsByPolicy(
+  options: FilterAllowedModelsOptions
+): Promise<FilteredModelEntry[]> {
   const { candidates, ...evalOpts } = options;
   if (candidates.length === 0) return [];
 
@@ -173,12 +208,162 @@ export async function filterAllowedModels(
           modelId: c.modelId,
           providerType: c.providerType,
         });
-        return result.allowed ? c : null;
-      } catch {
-        return null;
+        if (result.allowed) {
+          return {
+            providerType: c.providerType,
+            modelId: c.modelId,
+            status: "allowed" as const,
+          };
+        }
+        return {
+          providerType: c.providerType,
+          modelId: c.modelId,
+          status: "blocked_by_policy" as const,
+          violations: result.violations,
+          message: "Blocked by policy",
+        };
+      } catch (e: unknown) {
+        const err = e as Partial<RestormelApiError> & { status?: number };
+        const statusCode = typeof err.status === "number" ? err.status : undefined;
+        const msg = typeof err.message === "string" ? err.message : "Policy evaluation failed";
+        const isNetwork =
+          !statusCode ||
+          statusCode >= 500 ||
+          msg.toLowerCase().includes("fetch");
+        const status: FilteredModelStatus = isNetwork
+          ? "restormel_degraded"
+          : "unknown_or_unavailable";
+        return {
+          providerType: c.providerType,
+          modelId: c.modelId,
+          status,
+          httpStatus: statusCode,
+          message: msg,
+        };
       }
     })
   );
 
-  return results.filter((c): c is AllowedModelsCandidate => c !== null);
+  return results;
+}
+
+/** Build candidates from provider definitions (uses provider `id` as policy providerType). */
+export function candidatesFromProviderDefinitions(
+  providers: Array<{ id: string; models: string[] }>
+): AllowedModelsCandidate[] {
+  const out: AllowedModelsCandidate[] = [];
+  for (const p of providers) {
+    for (const modelId of p.models ?? []) {
+      out.push({ providerType: p.id, modelId });
+    }
+  }
+  return out;
+}
+
+/**
+ * Map policy filter results to ModelSelector availability keys (`providerId:modelId`).
+ */
+/** One model row for ModelSelector with policy/status metadata (host-rendered reasons). */
+export interface GroupedModelForSelector {
+  modelId: string;
+  status: FilteredModelStatus;
+  message?: string;
+  violations?: PolicyViolation[];
+}
+
+/** Provider bucket for ModelSelector: stable order from `sourceProviders`. */
+export interface GroupedProviderForSelector {
+  id: string;
+  name: string;
+  models: GroupedModelForSelector[];
+}
+
+/**
+ * Merge server-side policy results with the host’s provider list for ModelSelector.
+ * Models with no matching entry get `unknown_or_unavailable`.
+ */
+export function groupedModelsForModelSelector(
+  sourceProviders: Array<{ id: string; name: string; models: string[] }>,
+  entries: FilteredModelEntry[],
+  /** Map policy providerType → UI provider id if they differ (default: identity). */
+  providerTypeToId: (providerType: string) => string = (t) => t
+): GroupedProviderForSelector[] {
+  const byPair = new Map<string, FilteredModelEntry>();
+  for (const e of entries) {
+    byPair.set(`${providerTypeToId(e.providerType)}\0${e.modelId}`, e);
+  }
+  const out: GroupedProviderForSelector[] = [];
+  for (const p of sourceProviders) {
+    const models: GroupedModelForSelector[] = [];
+    for (const modelId of p.models ?? []) {
+      const e = byPair.get(`${p.id}\0${modelId}`);
+      if (e) {
+        models.push({
+          modelId,
+          status: e.status,
+          message: e.message,
+          violations: e.violations,
+        });
+      } else {
+        models.push({
+          modelId,
+          status: "unknown_or_unavailable",
+          message: "No policy result for this model",
+        });
+      }
+    }
+    if (models.length > 0) {
+      out.push({ id: p.id, name: p.name, models });
+    }
+  }
+  return out;
+}
+
+export function policyAvailabilityMapFromEntries(
+  entries: FilteredModelEntry[],
+  /** Map policy providerType → UI provider id if they differ (default: identity). */
+  providerTypeToId: (providerType: string) => string = (t) => t
+): Record<string, { available: boolean; reason?: string }> {
+  const map: Record<string, { available: boolean; reason?: string }> = {};
+  for (const e of entries) {
+    const id = providerTypeToId(e.providerType);
+    const key = `${id}:${e.modelId}`;
+    if (e.status === "allowed") {
+      map[key] = { available: true };
+    } else if (e.status === "blocked_by_policy") {
+      const v = e.violations?.[0]?.message ?? e.message ?? "Blocked by policy";
+      map[key] = { available: false, reason: `Policy: ${v}` };
+    } else if (e.status === "restormel_degraded") {
+      map[key] = {
+        available: false,
+        reason: e.message ?? "Restormel temporarily unavailable",
+      };
+    } else {
+      map[key] = {
+        available: false,
+        reason: e.message ?? "Model unavailable or policy check failed",
+      };
+    }
+  }
+  return map;
+}
+
+/**
+ * Full ProviderDefinition list for ModelSelector: only models policy marks `allowed`.
+ */
+export function filterProviderDefinitionsByAllowedPolicy(
+  sourceProviders: ProviderDefinition[],
+  entries: FilteredModelEntry[]
+): ProviderDefinition[] {
+  const allowed = new Set(
+    entries
+      .filter((e) => e.status === "allowed")
+      .map((e) => `${e.providerType}\0${e.modelId}`)
+  );
+  return sourceProviders
+    .map((p) => ({
+      ...p,
+      models: p.models.filter((m) => allowed.has(`${p.id}\0${m}`)),
+    }))
+    .filter((p) => p.models.length > 0);
 }

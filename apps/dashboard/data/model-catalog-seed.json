@@ -1,7 +1,7 @@
 {
   "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
   "source": "static",
-  "lastUpdated": "2025-03-16",
+  "lastUpdated": "2025-03-18",
   "models": [
     {
       "id": "gpt-4o",
@@ -176,7 +176,7 @@
       "replacementModelId": null,
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "anthropic", "providerModelId": "claude-haiku-4-5", "availabilityStatus": "available", "pricingRef": "anthropic-claude-haiku-4-5" }
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-haiku-4.5", "availabilityStatus": "available", "pricingRef": "anthropic-claude-haiku-4-5" }
       ]
     },
     {
@@ -243,6 +243,358 @@
       "sourceLastVerifiedAt": null,
       "variants": [
         { "providerIntegrationType": "google", "providerModelId": "gemini-2.5-flash", "availabilityStatus": "available", "pricingRef": "google-gemini-2-5-flash" }
+      ]
+    },
+    {
+      "id": "gpt-4o-audio-preview",
+      "canonicalName": "gpt-4o-audio-preview",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4o audio preview.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "audio"],
+      "capabilities": ["chat", "audio"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4o-audio-preview", "availabilityStatus": "available", "pricingRef": "openai-gpt-4o-audio-preview" }
+      ]
+    },
+    {
+      "id": "gpt-4.1",
+      "canonicalName": "gpt-4.1",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4.1.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4.1", "availabilityStatus": "available", "pricingRef": "openai-gpt-4-1" }
+      ]
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "canonicalName": "gpt-4.1-mini",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4.1 mini.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4.1-mini", "availabilityStatus": "available", "pricingRef": "openai-gpt-4-1-mini" }
+      ]
+    },
+    {
+      "id": "gpt-4-turbo",
+      "canonicalName": "gpt-4-turbo",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4 Turbo.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4-turbo", "availabilityStatus": "available", "pricingRef": "openai-gpt-4-turbo" }
+      ]
+    },
+    {
+      "id": "gpt-4-turbo-mini",
+      "canonicalName": "gpt-4-turbo-mini",
+      "family": "gpt-4",
+      "lifecycleState": "active",
+      "description": "GPT-4 Turbo mini.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-4-turbo-mini", "availabilityStatus": "available", "pricingRef": "openai-gpt-4-turbo-mini" }
+      ]
+    },
+    {
+      "id": "gpt-3.5-turbo",
+      "canonicalName": "gpt-3.5-turbo",
+      "family": "gpt-3.5",
+      "lifecycleState": "active",
+      "description": "GPT-3.5 Turbo.",
+      "contextWindow": 16385,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "gpt-3.5-turbo", "availabilityStatus": "available", "pricingRef": "openai-gpt-3-5-turbo" }
+      ]
+    },
+    {
+      "id": "o3-mini",
+      "canonicalName": "o3-mini",
+      "family": "o3",
+      "lifecycleState": "active",
+      "description": "o3 mini reasoning model.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 100000,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "reasoning"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "openai", "providerModelId": "o3-mini", "availabilityStatus": "available", "pricingRef": "openai-o3-mini" }
+      ]
+    },
+    {
+      "id": "claude-3-5-haiku",
+      "canonicalName": "claude-3-5-haiku",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude 3.5 Haiku.",
+      "contextWindow": 200000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-haiku-20241022", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-5-haiku" }
+      ]
+    },
+    {
+      "id": "claude-3-opus-20240229",
+      "canonicalName": "claude-3-opus-20240229",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude 3 Opus (dated).",
+      "contextWindow": 200000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-opus-20240229", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-opus" }
+      ]
+    },
+    {
+      "id": "claude-3-sonnet-20240229",
+      "canonicalName": "claude-3-sonnet-20240229",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude 3 Sonnet (dated).",
+      "contextWindow": 200000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-sonnet-20240229", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-sonnet" }
+      ]
+    },
+    {
+      "id": "claude-3-haiku-20240307",
+      "canonicalName": "claude-3-haiku-20240307",
+      "family": "claude",
+      "lifecycleState": "active",
+      "description": "Claude 3 Haiku (dated).",
+      "contextWindow": 200000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-haiku-20240307", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-haiku" }
+      ]
+    },
+    {
+      "id": "gemini-2.0-flash-exp",
+      "canonicalName": "gemini-2.0-flash-exp",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 2.0 Flash (experimental).",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-2.0-flash-exp", "availabilityStatus": "available", "pricingRef": "google-gemini-2-0-flash-exp" }
+      ]
+    },
+    {
+      "id": "gemini-1.5-pro",
+      "canonicalName": "gemini-1.5-pro",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 1.5 Pro.",
+      "contextWindow": 2000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-pro", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-pro" }
+      ]
+    },
+    {
+      "id": "gemini-1.5-flash",
+      "canonicalName": "gemini-1.5-flash",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 1.5 Flash.",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-flash" }
+      ]
+    },
+    {
+      "id": "gemini-1.5-flash-8b",
+      "canonicalName": "gemini-1.5-flash-8b",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 1.5 Flash 8B.",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash-8b", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-flash-8b" }
+      ]
+    },
+    {
+      "id": "gemini-1.0-pro",
+      "canonicalName": "gemini-1.0-pro",
+      "family": "gemini",
+      "lifecycleState": "active",
+      "description": "Gemini 1.0 Pro.",
+      "contextWindow": 32000,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.0-pro", "availabilityStatus": "available", "pricingRef": "google-gemini-1-0-pro" }
       ]
     }
   ]

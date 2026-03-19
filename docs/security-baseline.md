@@ -9,3 +9,5 @@ Canonical security baseline. BYOK-safe defaults. **Single source** for security 
 **Banned:** Plaintext keys in localStorage as normal; realistic secrets in docs/screenshots; “temporary” secret logging; broad admin without project scoping.
 
 **Rules (enforced):** No committed secrets; no raw key logging; no unsafe placeholders; redaction and data minimisation; trust-boundary thinking for sensitive changes.
+
+**MCP / local tooling:** `@restormel/mcp` reads provider and gateway credentials only from the **process environment** of the stdio server. Do not log `RESTORMEL_GATEWAY_KEY`, `OPENAI_API_KEY`, or other secrets; treat MCP host logs as untrusted. Prefer `RESTORMEL_MCP_<PROVIDER>_KEY` overrides only when conventional env names are insufficient.

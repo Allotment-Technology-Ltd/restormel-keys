@@ -7,8 +7,10 @@ export { default } from "./KeyManager.svelte";
 
 export type {
   KeyManagerProps,
+  KeyManagerHostStatus,
   ModelSelectorProps,
   ModelSelectorStatus,
+  ModelSelectorHostStatus,
   CostEstimatorProps,
 } from "./types.js";
 export { RESTORMEL_BACKEND_ERROR_MESSAGE } from "./types.js";

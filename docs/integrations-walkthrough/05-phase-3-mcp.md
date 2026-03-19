@@ -4,7 +4,7 @@
 > **Prerequisites:** [Phase 1](03-phase-1-choose-workflow.md) complete; you chose "In my agent or IDE" or want MCP  
 > **You'll need:** Understanding of [Model Context Protocol](https://modelcontextprotocol.io); optional: an MCP client (IDE or agent framework)
 
-This phase introduces the Restormel MCP tool surface. **Tool schemas** are defined in `@restormel/mcp`; a runtime MCP server is planned. You can consume the schemas now and wire a server when available.
+This phase introduces the Restormel MCP tool surface. **`@restormel/mcp`** includes **JSON tool schemas**, a **stdio MCP server** (`restormel-mcp`), and a **`createRestormelMcpServer()`** factory for custom transports.
 
 ---
 
@@ -24,19 +24,32 @@ See [MCP reference](/keys/docs/integrations/mcp) for full schema details.
 
 ---
 
-## Step 3.2 — Install the MCP package (schemas)
+## Step 3.2 — Install and run the MCP server
 
 ```bash
-pnpm add @restormel/mcp
+pnpm add @restormel/mcp @restormel/keys
 ```
 
-Import tool definitions:
+**Stdio server** (typical for IDEs):
+
+```json
+{
+  "mcpServers": {
+    "restormel": {
+      "command": "pnpm",
+      "args": ["exec", "restormel-mcp"]
+    }
+  }
+}
+```
+
+Import **schemas** or **embed** the server:
 
 ```ts
-import { ALL_TOOLS, modelsListTool } from "@restormel/mcp";
+import { ALL_TOOLS, createRestormelMcpServer } from "@restormel/mcp";
 ```
 
-Use these to build an MCP server that implements the tools (e.g. with `@modelcontextprotocol/sdk`). Implementation is out of scope for this walkthrough until the official server is released.
+See `packages/mcp/README.md` for environment variables (`RESTORMEL_MCP_CONFIG`, provider keys for `providers.validate`, optional `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY` for remote policy checks).
 
 ---
 
@@ -48,11 +61,11 @@ In the [Dashboard → Developer Tools → MCP](/keys/dashboard/dev-tools/mcp) ta
 - Available tools list
 - Recent calls and errors (when wired)
 
-For now this tab shows the tool list and links to the MCP setup guide.
+This tab lists tools and links to the MCP setup guide. **Connection status** depends on your local MCP client (Cursor, etc.) — the dashboard does not host the stdio server.
 
 ### How to test
 
-You have `@restormel/mcp` installed and can import `ALL_TOOLS`. If you build your own server, verify it appears in the Dashboard when connected.
+You have `@restormel/mcp` installed, can run `pnpm exec restormel-mcp`, and can import `ALL_TOOLS` or `createRestormelMcpServer`. Verify tools in your MCP client; use the Dashboard tab as a checklist, not a live connection meter.
 
 ---
 

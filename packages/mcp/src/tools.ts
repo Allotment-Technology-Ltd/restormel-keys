@@ -1,7 +1,9 @@
 /**
  * MCP tool schema definitions for Restormel.
  * These define the tool surface — name, description, and JSON Schema for inputs/outputs.
- * No runtime MCP server logic; this is the schema layer only.
+ *
+ * **Runtime:** The stdio MCP server (`restormel-mcp` / `pnpm exec restormel-mcp`) registers tools
+ * with Zod schemas that mirror this file; keep shapes aligned when changing either layer.
  */
 
 export type McpToolSchema = {

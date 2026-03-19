@@ -98,6 +98,13 @@ const { allowed, violations } = await evaluatePolicies({
 
 **Security:** Use the dashboard client **only on the server**. Never send the Gateway Key to the browser or expose it in client-side code. Pass the token from environment variables or a secure server session.
 
+**Batch policy filter (server-side allowed-models):** Use `filterModelsByPolicy` to evaluate many `(providerType, modelId)` pairs in parallel and get per-model status: `allowed`, `blocked_by_policy`, `restormel_degraded`, or `unknown_or_unavailable`. Helpers for UI:
+
+- `candidatesFromProviderDefinitions(providers)` — flatten `defaultProviders` (or a subset) into candidates.
+- `groupedModelsForModelSelector(sourceProviders, entries)` — grouped provider + model rows with status metadata for custom pickers.
+- `policyAvailabilityMapFromEntries(entries)` — map keyed `providerId:modelId` for `@restormel/keys-svelte` **ModelSelector** `policyAvailability` prop (policy-blocked rows skip resolve; allowed rows still resolve for BYOK).
+- `filterProviderDefinitionsByAllowedPolicy(sourceProviders, entries)` — strict allowlist: full `ProviderDefinition[]` with only policy-allowed models.
+
 ### 7. Custom provider definitions
 
 Restormel ships first-party definitions for **15 providers**, each with an expanded model list so users get a **click-and-select** experience with minimal setup:

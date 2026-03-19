@@ -12,6 +12,41 @@ Core integration is working in SOPHIA through Phase 5, including the real packag
 
 ---
 
+## Latest Sophia handoff (March 2026)
+
+### What is fixed in Sophia (host-side)
+
+- **BYOK add + Anthropic validation now works.**
+- **Models now appear in the Sophia UI.**
+- **Deploy wiring fix:** `deploy.yml` now passes `RESTORMEL_*` values to Cloud Run.
+- **BYOK spinner hardening:** `SettingsTab.svelte` now has timeout + visible retry path.
+- **Selector resilience fix:** Sophia fixed a local bug where one failed per-model check could break the whole allowed-model list.
+
+### What remains mostly Restormel-side (cross-consumer)
+
+1. **Svelte package reliability / publish quality**
+   - Sophia hit a production crash due to a malformed `@restormel/keys-svelte` publish path.
+   - **Update (March 2026):** Repo now has corrected `exports`, a **pack + external SvelteKit smoke** script (`scripts/smoke-keys-svelte-republish.sh`), CI job `keys-svelte-republish-smoke`, and publish workflow steps for `@restormel/keys-svelte`. **npm republish** still requires a maintainer tag push with `NPM_TOKEN`; consumers should verify with `npm view @restormel/keys-svelte version` after release.
+2. **Model/catalog alignment for existing providers**
+   - Valid key and working policy checks can still feel broken when seeded allowlists/examples and current model IDs drift.
+   - **Update (March 2026):** Hybrid governance: `pnpm run check:catalog-drift` enforces that dashboard `model-catalog-seed.json` covers every default model ID for **openai, anthropic, google** (`CATALOG_DRIFT_SYNC_PROVIDER_IDS`). See [catalog-governance.md](catalog-governance.md). Other vendors may still list more IDs in `@restormel/keys` than the seed until coverage expands.
+3. **First-class filtered-models contract**
+   - Host apps should not need fragile per-model evaluate loops.
+   - **Update (March 2026):** `@restormel/keys/dashboard` exports `filterModelsByPolicy`, status types, `groupedModelsForModelSelector`, `policyAvailabilityMapFromEntries`, and `filterProviderDefinitionsByAllowedPolicy` (see `packages/core/README.md`). Hosts can drop sequential evaluate loops in favour of one batch call + these helpers.
+4. **Stronger degraded/error contracts in packaged UI**
+   - Hosts still wrap loading/degraded/retry/empty/current-selection/auto-routing behavior.
+   - **Update (March 2026):** ModelSelector supports optional **`policyAvailability`**, **`retryNonce` / `onRetry`**, **`onStatusChange`** including **`degraded`** when no model is selectable, built-in **Retry** on load failure, and Restormel-oriented error copy. KeyManager exposes **`onStatusChange`** (`empty` | `list` | `entry`) and **`requireRemoveConfirm`** (default **true**). Hosts still own selection persistence and routing; wrapper surface is reduced for policy + availability + remove confirmation.
+
+### Important lesson from Sophia production
+
+- **Valid key != model selectable.** Integrators and users conflate this unless product/docs separate:
+  - credential validity
+  - model catalog support
+  - policy allowlist status
+- **Catalog/policy alignment currently matters more than adding more providers.**
+
+---
+
 ## Highest-priority improvements
 
 ### 1. Publish and support the UI packages as real consumer packages
@@ -138,11 +173,11 @@ Current semantics are now better documented, but future product work could make 
 
 ## Priority order for next work
 
-1. Make the UI packages cleanly consumable from npm.
-2. Improve KeyManager to await host persistence and display real async error states.
-3. Add richer key-status support and revalidation UX.
-4. Add first-class server-side validation integration guidance and helpers.
-5. Expand provider definitions/icons for real-world BYOK coverage.
+1. **Fix and republish `@restormel/keys-svelte` safely** (export correctness + external SvelteKit smoke test in dev/prod).
+2. **Expand and align model catalog for supported providers** (catalog, seeded allowlists, route examples, docs, and UI IDs stay current and consistent).
+3. **Add a first-class filtered-models/server-helper path** (remove fragile host-side per-model evaluate loops).
+4. **Improve component degraded/error contracts and docs** (built-in/loading/degraded/retry/empty expectations and host obligations).
+5. Then reassess how much wrapper logic host apps like Sophia still need.
 
 ---
 

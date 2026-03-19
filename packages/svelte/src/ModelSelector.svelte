@@ -1,20 +1,44 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import type { KeysInstance } from "@restormel/keys";
   import type { ProviderDefinition } from "@restormel/keys";
   import { NO_KEY_AVAILABLE } from "@restormel/keys";
   import { getProviderIcon } from "./icons.js";
-  import { RESTORMEL_BACKEND_ERROR_MESSAGE } from "./types.js";
+  import { RESTORMEL_BACKEND_ERROR_MESSAGE, type ModelSelectorHostStatus } from "./types.js";
 
   interface Props {
     keys: KeysInstance;
     providers: ProviderDefinition[];
     onSelect?: (modelId: string, providerId: string) => void;
-    onStatusChange?: (status: "loading" | "ready" | "error" | "empty", message?: string) => void;
+    /**
+     * Surface state for host banners and retry UX.
+     * `degraded` = loaded but no model is available (policy + credentials).
+     */
+    onStatusChange?: (status: ModelSelectorHostStatus, message?: string) => void;
     errorMessage?: string;
     emptyMessage?: string;
+    /**
+     * Optional server-built map (`providerId:modelId` → availability).
+     * When set, policy-blocked rows skip resolve; allowed rows still resolve for BYOK.
+     */
+    policyAvailability?: Record<string, { available: boolean; reason?: string }> | null;
+    /** Bump to reload availability from the host (e.g. after policy refresh). */
+    retryNonce?: number;
+    /** Called when the user activates in-component Retry (after internal reload). */
+    onRetry?: () => void;
   }
 
-  let { keys, providers, onSelect, onStatusChange, errorMessage, emptyMessage }: Props = $props();
+  let {
+    keys,
+    providers,
+    onSelect,
+    onStatusChange,
+    errorMessage,
+    emptyMessage,
+    policyAvailability = null,
+    retryNonce = 0,
+    onRetry,
+  }: Props = $props();
 
   interface ModelAvailability {
     modelId: string;
@@ -31,21 +55,20 @@
   let availabilityMap = $state<Record<string, { available: boolean; reason?: string }>>({});
   let loading = $state(true);
   let error = $state<string | null>(null);
-  type Status = "loading" | "ready" | "error" | "empty";
-  let lastStatus = $state<Status | null>(null);
+  let internalRetry = $state(0);
+  let lastStatus = $state<ModelSelectorHostStatus | null>(null);
 
-  function notifyStatus(status: Status, message?: string) {
-    if (lastStatus !== status || message !== undefined) {
-      lastStatus = status;
-      onStatusChange?.(status, message);
-    }
+  function notifyStatus(status: ModelSelectorHostStatus, message?: string) {
+    untrack(() => {
+      if (lastStatus !== status || message !== undefined) {
+        lastStatus = status;
+        onStatusChange?.(status, message);
+      }
+    });
   }
 
   const isEmpty = $derived(
     providers.length === 0 || providers.every((p) => !p.models?.length)
-  );
-  const status: Status = $derived(
-    error ? "error" : loading ? "loading" : isEmpty ? "empty" : "ready"
   );
 
   const groups = $derived((): Group[] => {
@@ -67,51 +90,94 @@
   $effect(() => {
     const k = keys;
     const pr = providers;
+    const pol = policyAvailability;
+    const _nonce = retryNonce;
+    const _internal = internalRetry;
+
+    let cancelled = false;
     loading = true;
     error = null;
+
     const entries: Array<{ key: string; p: ProviderDefinition; modelId: string }> = [];
     for (const p of pr) {
       for (const modelId of p.models) {
         entries.push({ key: `${p.id}:${modelId}`, p, modelId });
       }
     }
+
     if (entries.length === 0) {
       availabilityMap = {};
       loading = false;
       notifyStatus("empty", emptyMessage);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
+
+    notifyStatus("loading");
+
+    const map: Record<string, { available: boolean; reason?: string }> = {};
+    const toResolve: typeof entries = [];
+
+    for (const e of entries) {
+      const row = pol?.[e.key];
+      if (row && row.available === false) {
+        map[e.key] = { available: false, reason: row.reason };
+      } else {
+        toResolve.push(e);
+      }
+    }
+
     Promise.all(
-      entries.map(({ key, p, modelId }) =>
-        k.resolve(p.id, modelId)
-          .then(() => ({ key, available: true as const, reason: undefined }))
+      toResolve.map(({ key, p, modelId }) =>
+        k
+          .resolve(p.id, modelId)
+          .then(() => ({ key, available: true as const, reason: undefined as string | undefined }))
           .catch((err: Error) => ({
             key,
             available: false as const,
-            reason: err?.message === NO_KEY_AVAILABLE ? "No provider credential" : "Unavailable",
+            reason:
+              err?.message === NO_KEY_AVAILABLE ? "No provider credential" : "Unavailable",
           }))
       )
     )
       .then((results) => {
-        const map: Record<string, { available: boolean; reason?: string }> = {};
+        if (cancelled) return;
         for (const r of results) {
           map[r.key] = { available: r.available, reason: r.reason };
         }
         availabilityMap = map;
         loading = false;
-        notifyStatus("ready");
+        const anyAvailable = Object.values(map).some((v) => v.available);
+        if (anyAvailable) {
+          notifyStatus("ready");
+        } else {
+          notifyStatus(
+            "degraded",
+            "No models are available with current policy or credentials."
+          );
+        }
       })
       .catch((err) => {
+        if (cancelled) return;
         loading = false;
-        const msg =
-          errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE;
-        error = err?.message ?? msg;
-        notifyStatus("error", error);
+        const msg = errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE;
+        error = err instanceof Error ? err.message : msg;
+        notifyStatus("error", error ?? msg);
       });
+
+    return () => {
+      cancelled = true;
+    };
   });
 
   function handleSelect(modelId: string, providerId: string) {
     onSelect?.(modelId, providerId);
+  }
+
+  function handleRetry() {
+    internalRetry += 1;
+    onRetry?.();
   }
 </script>
 
@@ -121,7 +187,11 @@
   {:else if error}
     <div class="rk-model-error" role="alert" aria-live="assertive">
       <p class="rk-model-error-message">{errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE}</p>
-      <p class="rk-model-error-hint">Check RESTORMEL_* env and backend availability.{#if error && error !== (errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE)} {error}{/if}</p>
+      <p class="rk-model-error-hint">
+        Check RESTORMEL_* env and Restormel backend availability.{#if error && error !== (errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE)}
+          {error}{/if}
+      </p>
+      <button type="button" class="rk-model-retry" onclick={handleRetry}>Retry</button>
     </div>
   {:else if isEmpty}
     <p class="rk-model-empty" aria-live="polite">{emptyMessage ?? "No models configured."}</p>
@@ -135,7 +205,6 @@
           </div>
           <ul class="rk-model-list" role="list">
             {#each group.models as m}
-              {@const key = `${group.providerId}:${m.modelId}`}
               <li>
                 <button
                   type="button"
@@ -189,9 +258,25 @@
   }
 
   .rk-model-error-hint {
-    margin: 0;
+    margin: 0 0 0.75rem;
     font-size: 0.8125rem;
     color: var(--rk-text-muted);
+  }
+
+  .rk-model-retry {
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--rk-radius);
+    border: 1px solid var(--rk-border);
+    background: var(--rk-accent);
+    color: var(--rk-bg);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .rk-model-retry:focus-visible {
+    outline: none;
+    box-shadow: var(--rk-focus-ring);
   }
 
   .rk-model-empty {

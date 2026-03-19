@@ -60,3 +60,14 @@ jobs:
         run: pnpm --filter @restormel/keys-cli publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Test @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte test
+      - name: Build @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte run build
+      - name: Republish smoke (pack + external consumer build)
+        run: bash scripts/smoke-keys-svelte-republish.sh
+      - name: Publish @restormel/keys-svelte to npm
+        run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

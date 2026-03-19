@@ -4,6 +4,8 @@ Reference only. Canonical process: this doc and the scripts it describes.
 
 ## Overview
 
+**CI vs `@restormel/keys` defaults:** Which OpenAI/Anthropic/Google model strings from `defaultProviders` must appear in the JSON seed is defined in [catalog-governance.md](catalog-governance.md) (`pnpm run check:catalog-drift`).
+
 The dashboard model catalog is stored in Postgres (`models`, `provider_model_variants`). Data is populated by:
 
 1. **Static seed** — JSON file plus an ingestion script (maintainable, repeatable).

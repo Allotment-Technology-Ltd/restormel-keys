@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import type { KeysInstance } from "@restormel/keys";
   import type { KeyConfig, KeyRecord, KeyAddResult, KeyRemoveResult } from "@restormel/keys";
   import type { ProviderDefinition, ProviderValidationResult } from "@restormel/keys";
@@ -35,6 +36,9 @@
      */
     onRevalidate?: (keyId: string, provider: string) => Promise<ProviderValidationResult>;
     providers?: ProviderDefinition[];
+    onStatusChange?: (status: "empty" | "list" | "entry", message?: string) => void;
+    /** Require confirm() before remove (default true). */
+    requireRemoveConfirm?: boolean;
   }
 
   let {
@@ -45,6 +49,8 @@
     onValidate,
     onRevalidate,
     providers = [],
+    onStatusChange,
+    requireRemoveConfirm = true,
   }: Props = $props();
 
   type View = "empty" | "list" | "entry" | "detail";
@@ -66,6 +72,17 @@
   const showEmpty = $derived(keysList.length === 0 && view !== "entry");
   const showEntry = $derived(view === "entry");
   const showList = $derived(keysList.length > 0 && view !== "entry");
+
+  let lastKeyStatus = $state<"empty" | "list" | "entry" | null>(null);
+  $effect(() => {
+    const s = showEmpty ? "empty" : showEntry ? "entry" : "list";
+    untrack(() => {
+      if (lastKeyStatus !== s) {
+        lastKeyStatus = s;
+        onStatusChange?.(s);
+      }
+    });
+  });
 
   function maskKey(label?: string): string {
     if (label && /^[\w-]+$/.test(label)) return label;
@@ -178,6 +195,17 @@
   }
 
   async function removeKey(keyId: string) {
+    if (
+      requireRemoveConfirm &&
+      typeof globalThis !== "undefined" &&
+      "confirm" in globalThis &&
+      typeof (globalThis as unknown as { confirm: (m: string) => boolean }).confirm === "function"
+    ) {
+      const ok = (globalThis as unknown as { confirm: (m: string) => boolean }).confirm(
+        "Remove this provider credential? This cannot be undone."
+      );
+      if (!ok) return;
+    }
     removingId = keyId;
     removeError = null;
     announceLive = "Removing credential…";

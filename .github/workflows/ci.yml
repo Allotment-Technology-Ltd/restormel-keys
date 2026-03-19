@@ -131,6 +131,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test
         run: pnpm --filter @restormel/keys test
+      - name: Catalog drift (defaultProviders vs dashboard seed)
+        run: pnpm run check:catalog-drift
       - name: Build workspace (keys, keys-svelte) for dashboard
         run: |
           pnpm --filter @restormel/keys run build
@@ -141,6 +143,24 @@ jobs:
         run: pnpm --filter dashboard run build
       - name: Dashboard tests
         run: pnpm --filter dashboard run test
+
+  keys-svelte-republish-smoke:
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.code == 'true'
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Pack + demo-svelte build from tarballs
+        run: bash scripts/smoke-keys-svelte-republish.sh
 
   demo-next:
     runs-on: ubuntu-latest

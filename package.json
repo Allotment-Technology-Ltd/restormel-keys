@@ -15,7 +15,8 @@
     "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build",
     "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh"
     ,
-    "validate-registry": "node scripts/validate-registry.mjs"
+    "validate-registry": "node scripts/validate-registry.mjs",
+    "check:catalog-drift": "tsx scripts/check-catalog-drift.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

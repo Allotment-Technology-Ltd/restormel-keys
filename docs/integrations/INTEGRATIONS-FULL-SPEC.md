@@ -241,6 +241,8 @@ type AAIFResponse = {
 
 ## 9. MCP Tool Surface
 
+**Runtime:** `@restormel/mcp` ships a stdio MCP server (`restormel-mcp`) and `createRestormelMcpServer()` for custom transports. See `packages/mcp/README.md`.
+
 Tools:
 
 - `models.list`

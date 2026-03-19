@@ -192,41 +192,18 @@ The ModelSelector shows all models from the configured providers by default. If 
 
 Two approaches:
 
-**A) Server-side filtering (recommended):** Fetch the allowed models from Restormel's evaluate or catalog API, then pass them to the component.
+**A) Server-side filtering (recommended):** Use the **batch** dashboard helpers from `@restormel/keys/dashboard` (server only) instead of looping `evaluate` one model at a time:
 
-```ts
-// app/api/allowed-models/route.ts (Next.js) or equivalent
-export async function GET() {
-  const allModels = ['gpt-4o', 'gpt-4o-mini', 'claude-sonnet-4-20250514', 'gemini-2.5-pro'];
+- `candidatesFromProviderDefinitions(providers)` — build `(providerType, modelId)` pairs from your picker list.
+- `filterModelsByPolicy({ candidates, projectId, auth, ... })` — parallel evaluate with per-model status (`allowed`, `blocked_by_policy`, `restormel_degraded`, `unknown_or_unavailable`).
+- `policyAvailabilityMapFromEntries(entries)` — map keyed `providerId:modelId` for the Svelte **ModelSelector** `policyAvailability` prop. Policy-blocked rows are shown unavailable without an extra evaluate; rows marked allowed still run `keys.resolve` for BYOK.
+- `filterProviderDefinitionsByAllowedPolicy(providers, entries)` — if you prefer to **hide** non-allowed models entirely, pass the returned provider list to ModelSelector.
 
-  const allowed = [];
-  for (const model of allModels) {
-    const res = await fetch(
-      `https://restormel.dev/keys/dashboard/api/policies/evaluate`,
-      {
-        method: 'POST',
-        headers: {
-          // Use your Gateway Key from server-side env for policy evaluate
-          'Authorization': `Bearer ${process.env.RESTORMEL_GATEWAY_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: process.env.RESTORMEL_PROJECT_ID,
-          environmentId: 'production',
-          modelId: model,
-          providerType: 'openai', // evaluate per providerType if needed
-        }),
-      }
-    );
-    const result = await res.json();
-    if (result.data?.allowed) allowed.push(model);
-  }
+See `packages/core/README.md` § Dashboard API client.
 
-  return Response.json({ models: allowed });
-}
-```
+**Legacy sequential evaluate (avoid for large lists):** If you cannot use the batch helper yet, call evaluate per model in a server route — same security rules as below.
 
-Then in your client component, fetch `/api/allowed-models` and only configure the providers/models that are allowed.
+Then in your client component, fetch `/api/allowed-models` (or equivalent) and pass **`policyAvailability`** and/or a narrowed `providers` list to ModelSelector.
 
 > **Security**
 > Never call the policies API from the browser. Keep `RESTORMEL_GATEWAY_KEY` server-side only (e.g. in a route handler). Use a server proxy like `/api/allowed-models` and return only the filtered model IDs to the client.
@@ -371,7 +348,7 @@ Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). C
 
 - **Replace existing picker.** Phase 5 expects the app’s existing model picker to be **replaced** by the packaged ModelSelector (not only “embed alongside”). Use the routing inventory to find the current picker and swap it for the Restormel component.
 - **Model choice: request-scoped vs persisted.** Both are valid. **Request-scoped:** pass modelId/providerId per request (e.g. into resolve); no `POST /api/preferences`. **Persisted:** save selection to a preferences endpoint (e.g. `POST /api/preferences`) and load it on next visit. The walkthrough and prompts support either; choose per product needs.
-- **ModelSelector wrapper.** When allowed models come from the host’s API (e.g. `GET /api/allowed-models`), the packaged ModelSelector may need a **host wrapper** to provide: current-selection visibility, request-scoped auto routing, and **host-owned** loading/error/empty/retry states (the component does not yet fully own these when the list is fetched externally). See [sophia-dogfood-findings.md](../reference/sophia-dogfood-findings.md) §Phase 5 packaged path.
+- **ModelSelector host responsibilities.** Pass **`policyAvailability`** (from `policyAvailabilityMapFromEntries`) and use **`onStatusChange`** (`loading` | `ready` | `empty` | `error` | `degraded`), **`retryNonce` / `onRetry`** for reloads, and built-in **Retry** on load failure. You still own **current-selection visibility** and **request-scoped routing** (the component does not persist selection). See [sophia-dogfood-findings.md](../reference/sophia-dogfood-findings.md) §Phase 5 packaged path.
 - **Theming.** At minimum set `--rk-bg`, `--rk-text`, and `--rk-accent`. For a full pass, deliberately apply `--rk-*` tokens across **both** ModelSelector and KeyManager (and any Restormel UI) as a separate design task if visual consistency matters.
 - **Manual verification.** Phase 5 gate includes keyboard navigation and theming. Prefer an **in-browser manual check** (keyboard: Tab, Enter, Escape; render and theme). If browser/Playwright (or equivalent) is unavailable, document that verification is code/test only and add a manual verification step to the runbook for a human to run later.
 
@@ -394,7 +371,7 @@ Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). C
 >    - **Web Components:** Import `@restormel/keys-elements`, set `keys` and `providers` as properties on the `<rk-model-selector>` element.
 > 3. Wire `onSelect` (or `rk-model-selected`) to your backend. Either **request-scoped** (pass modelId/providerId per request; no preferences endpoint) or **persisted** (e.g. `POST /api/preferences`); both are valid — choose per product.
 > 4. If BYOK is needed: embed `KeyManager` with `onKeyAdded` and `onKeyRemoved` wired to your key API. Use server-side validation (no raw provider calls from browser). See `docs/reference/sophia-integration.md` KeyStorage pattern.
-> 5. If allowed models come from your API (e.g. `GET /api/allowed-models`): consider a **host wrapper** around ModelSelector for selected-state display and host-owned loading/error/empty/retry; see Phase 5 “Integration options” above.
+> 5. If allowed models come from your API: use **batch** `filterModelsByPolicy` + **`policyAvailability`** on ModelSelector; keep a thin wrapper only for **selected-state** and routing; see Phase 5 “Integration options” above.
 > 6. Add `--rk-*` CSS overrides (at least `--rk-bg`, `--rk-text`, `--rk-accent`). Optionally do a full `--rk-*` pass across ModelSelector and KeyManager for consistent theming.
 > 7. Handle all required states: loading, error (with retry), empty. These may live in your wrapper if the list is from your API.
 > 8. Verify: components render, selection fires callbacks, theme applies, keyboard navigation (Tab, Enter, Escape). Prefer in-browser manual check; if browser/Playwright is unavailable, document “code/test verified; manual a11y/visual check pending” and add a runbook step for later.

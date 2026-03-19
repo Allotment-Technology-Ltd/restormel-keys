@@ -11,8 +11,8 @@
 <section class="section" aria-labelledby="status-heading">
   <h2 id="status-heading" class="section-title">Connection status</h2>
   <EmptyState
-    title="No MCP connection configured"
-    description="Set up an MCP server to connect Restormel tools to your agent workflow."
+    title="MCP runs in your IDE or agent"
+    description="Install @restormel/mcp, add restormel-mcp to your MCP client config (stdio), and open this tab as a reference. The dashboard does not host the stdio server."
   >
     <a href="/keys/docs/integrations/mcp" class="btn-link">MCP setup guide</a>
   </EmptyState>

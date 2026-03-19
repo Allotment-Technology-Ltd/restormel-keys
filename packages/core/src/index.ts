@@ -55,7 +55,9 @@ export {
   resolveProviderId,
   canonicalizeProviderId,
   defaultProviders,
+  CATALOG_DRIFT_SYNC_PROVIDER_IDS,
 } from "./providers/index.js";
+export type { CatalogDriftSyncProviderId } from "./providers/index.js";
 export type {
   ProviderDefinition,
   ProviderValidationResult,

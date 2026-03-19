@@ -11,10 +11,12 @@
   agent workflow.
 </p>
 
-<h2 class="docs-h2">Status</h2>
+<h2 class="docs-h2">Runtime server</h2>
 <p class="docs-p">
-  MCP support is <strong>early</strong>. The tool schemas are defined; runtime server implementation
-  is coming in a future release.
+  <code class="inline-code">@restormel/mcp</code> ships a <strong>stdio MCP server</strong> you run locally
+  (Cursor, Claude Desktop, Codex, etc.). Install the package, then point your client at
+  <code class="inline-code">pnpm exec restormel-mcp</code> or <code class="inline-code">npx restormel-mcp</code>.
+  See the package <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/mcp#readme">README</a> for env vars and security notes.
 </p>
 
 <h2 class="docs-h2">Available tools</h2>
@@ -38,9 +40,14 @@
 
 <h2 class="docs-h2">Package</h2>
 <p class="docs-p">
-  Tool schemas are exported from <code class="inline-code">@restormel/mcp</code>:
+  Tool schemas and server factory are exported from <code class="inline-code">@restormel/mcp</code>:
 </p>
-<pre class="code-block"><code>import &#123; ALL_TOOLS, modelsListTool &#125; from "@restormel/mcp";</code></pre>
+<pre class="code-block"><code>import &#123; ALL_TOOLS, createRestormelMcpServer &#125; from "@restormel/mcp";
+// or: import &#123; createRestormelMcpServer &#125; from "@restormel/mcp/server";</code></pre>
+<p class="docs-p">
+  Programmatic hosts can call <code class="inline-code">createRestormelMcpServer()</code> and attach their own
+  transport from <code class="inline-code">@modelcontextprotocol/sdk</code>.
+</p>
 
 <h2 class="docs-h2">Next steps</h2>
 <ul class="docs-links">
