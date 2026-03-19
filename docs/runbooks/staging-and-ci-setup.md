@@ -1,0 +1,42 @@
+# Staging and CI setup — Restormel Keys
+
+**Public guide:** For the full step-by-step guide with **where to get** each value, **what to call it**, **where to save it**, and **how to rotate or replace it**, use the walkthrough:
+
+- **In-app:** [Staging and CI setup](/keys/docs/walkthrough/staging-and-ci-setup) (restormel.dev/keys/docs/walkthrough/staging-and-ci-setup)
+- **In repo:** [docs/walkthrough/12-staging-and-ci-setup.md](../walkthrough/12-staging-and-ci-setup.md)
+
+This runbook is a short **ops checklist** for anyone who has already read the guide and needs a reminder.
+
+---
+
+## Ops checklist
+
+### In Restormel Dashboard
+
+1. Create or use a **non-production** project or environment (dedicated staging project preferred).
+2. **Project → API Keys** → generate a key (`rk_...`) → that’s `RESTORMEL_GATEWAY_KEY_STAGING`.
+3. Copy **project ID** (UUID) and **environment ID** (staging) → `RESTORMEL_PROJECT_ID_STAGING`, `RESTORMEL_ENVIRONMENT_ID_STAGING`.
+4. (Optional) Note the **route ID** for smoke tests → `RESTORMEL_SMOKE_ROUTE_ID_STAGING`.
+5. (Optional) Pick a **blocked model + provider** for policy smoke → `RESTORMEL_SMOKE_BLOCKED_MODEL_ID_STAGING`, `RESTORMEL_SMOKE_BLOCKED_PROVIDER_TYPE_STAGING`.
+
+### In your app repo (e.g. GitHub)
+
+- **Path:** Settings → Secrets and variables → Actions → New repository secret.
+- Add the secrets with the names above (see walkthrough for exact names and rotate/replace steps).
+- In workflows: map to env (e.g. `RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY_STAGING }}`).
+
+### Nightly CI
+
+- In `nightly-gate-audit.yml` (or equivalent): add env from staging secrets; run `npx @restormel/validate`; optionally `pnpm run smoke:restormel` if staging is stable.
+
+### Post-deploy
+
+- **Safer:** Operator runs `pnpm run smoke:restormel` manually and checks dashboard.
+- **Automated:** Add optional post–health-check step in deploy; inject secrets; run smoke; don’t gate deploys until confident.
+
+### Rotate or replace
+
+- **Gateway Key:** Dashboard → API Keys → revoke old, generate new → update the secret value in GitHub/GCP. No code change.
+- **Project / environment / route / blocked model:** Update the corresponding secret with the new value. No code change.
+
+For full detail on each secret (where to get it, what to call it, where to save it, rotate/replace), use the [Staging and CI setup](../walkthrough/12-staging-and-ci-setup.md) walkthrough page.

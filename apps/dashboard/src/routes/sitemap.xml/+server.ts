@@ -17,6 +17,7 @@ const STATIC_PATHS = [
   "/keys/docs/walkthrough/phase-6-golive",
   "/keys/docs/walkthrough/migration-paths",
   "/keys/docs/walkthrough/verification-strategy",
+  "/keys/docs/walkthrough/staging-and-ci-setup",
   "/keys/docs/guides/provider-access-modes",
   "/keys/docs/guides/openrouter",
   "/keys/docs/guides/portkey",

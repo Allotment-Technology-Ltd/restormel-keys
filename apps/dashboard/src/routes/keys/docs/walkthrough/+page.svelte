@@ -28,6 +28,7 @@
     <li><a href="/keys/docs/walkthrough/phase-6-golive"><strong>Phase 6 — Go live</strong></a> — Parallel run, cutover, smoke test, legacy code removal.</li>
     <li><a href="/keys/docs/walkthrough/migration-paths"><strong>Migration paths</strong></a> — LiteLLM, Portkey, OpenRouter, custom.</li>
     <li><a href="/keys/docs/walkthrough/verification-strategy"><strong>Verification strategy</strong></a> — Dashboard, CLI, smoke tests; ongoing monitoring and CI.</li>
+    <li><a href="/keys/docs/walkthrough/staging-and-ci-setup"><strong>Staging and CI setup</strong></a> — Non-production project, secrets (where to get them, what to call them, where to save them, how to rotate); nightly and post-deploy.</li>
   </ol>
 
   <h2>Implementing with a coding agent</h2>

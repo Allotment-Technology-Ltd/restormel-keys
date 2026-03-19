@@ -11,6 +11,7 @@ export const WALKTHROUGH_PHASES = [
   { slug: "phase-6-golive", title: "Phase 6 — Go live", step: 7 },
   { slug: "migration-paths", title: "Migration paths", step: 8 },
   { slug: "verification-strategy", title: "Verification strategy", step: 9 },
+  { slug: "staging-and-ci-setup", title: "Staging and CI setup", step: 10 },
 ] as const;
 
 const BASE = "/keys/docs/walkthrough";

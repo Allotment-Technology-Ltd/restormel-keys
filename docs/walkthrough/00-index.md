@@ -32,6 +32,7 @@ The walkthrough is designed to work as:
 | `09-migration-paths.md` | Migration variants: custom, LiteLLM, Portkey, OpenRouter. Strangler pattern. Comparison table. Prompt: P11. | Migration guide |
 | `10-verification-strategy.md` | Dashboard checks, CLI checks, smoke tests, ongoing monitoring, CI integration. Prompt: P12. | Verification |
 | `11-prompt-index.md` | All 12 build-agent prompts collected with context doc references and execution order. | Prompt pack |
+| `12-staging-and-ci-setup.md` | **Staging and CI setup.** Non-production project/env, each secret (where to get it, what to call it, where to save it, rotate/replace), nightly and post-deploy. | Walkthrough page |
 | `../reference/npm-packages.md` | npm scope: headless vs UI, pnpm monorepos, verify before install. | Reference |
 
 ---
@@ -42,7 +43,7 @@ The walkthrough is designed to work as:
 
 ```
 00-walkthrough-ia.md → 02-phase-0 → 03-phase-1 → 04-phase-2 → 05-phase-3 →
-06-phase-4 → 07-phase-5 → 08-phase-6 → 09-migration-paths → 10-verification
+06-phase-4 → 07-phase-5 → 08-phase-6 → 09-migration-paths → 10-verification → 12-staging-and-ci-setup
 ```
 
 **For implementors (executing with a coding agent):**
