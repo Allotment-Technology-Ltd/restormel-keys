@@ -52,8 +52,11 @@ if [ ! -f "$KEYS_TGZ" ] || [ ! -f "$SV_TGZ" ]; then
 fi
 
 echo "[smoke-svelte] Verifying tarball contains dist artifacts..."
-tar -tzf "$SV_TGZ" | grep -q 'package/dist/index.js' || { echo "FAIL index.js missing in tarball"; exit 1; }
-tar -tzf "$SV_TGZ" | grep -q 'package/dist/keys-svelte.css' || { echo "FAIL keys-svelte.css missing in tarball"; exit 1; }
+TARBALL_LIST="$PACK_DIR/keys-svelte-tarball-files.txt"
+tar -tzf "$SV_TGZ" > "$TARBALL_LIST"
+grep -Fqx 'package/dist/index.js' "$TARBALL_LIST" || { echo "FAIL index.js missing in tarball"; exit 1; }
+grep -Fqx 'package/dist/index.d.ts' "$TARBALL_LIST" || { echo "FAIL index.d.ts missing in tarball"; exit 1; }
+grep -Fqx 'package/dist/keys-svelte.css' "$TARBALL_LIST" || { echo "FAIL keys-svelte.css missing in tarball"; exit 1; }
 
 echo "[smoke-svelte] Copying demo-svelte -> $DEMO_TMP ..."
 cp -R "$ROOT/apps/demo-svelte/." "$DEMO_TMP/"
