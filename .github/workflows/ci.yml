@@ -133,9 +133,10 @@ jobs:
         run: pnpm --filter @restormel/keys test
       - name: Catalog drift (defaultProviders vs dashboard seed)
         run: pnpm run check:catalog-drift
-      - name: Build workspace (keys, keys-svelte) for dashboard
+      - name: Build workspace (keys, mcp, keys-svelte) for dashboard
         run: |
           pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/mcp run build
           pnpm --filter @restormel/keys-svelte run build
       - name: Dashboard check (svelte-check)
         run: pnpm --filter dashboard run check

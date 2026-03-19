@@ -21,6 +21,7 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 | [@restormel/doctor](packages/doctor) | 0.1.4 | OSS CLI: setup and health checks (`restormel-doctor`) |
 | [@restormel/validate](packages/validate) | 0.1.4 | OSS CLI: credential/config validation (`restormel-validate`) |
 | [@restormel/keys-cli](packages/cli) | 0.1.2 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
+| [@restormel/mcp](packages/mcp) | 0.1.0 | MCP tools + stdio server (`restormel-mcp`) for agents/IDEs |
 
 *(Vue wrapper is not published.)*
 
@@ -84,4 +85,10 @@ See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
 
 ## Publish (Phase 2)
 
-To publish all packages: ensure each has `version`, `files`, README, and `pnpm run build`; run `pnpm -r publish --dry-run` from repo root; then tag `keys-v0.2.5` (or next `keys-v*`). **keys-cli** and **validate** use `pnpm publish` so `@restormel/keys` is `^semver` in the tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
+CI builds **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes MCP build).
+
+To publish all packages: bump versions as needed; ensure each has `version`, `files`, README, and a successful `pnpm run build`; then push git tag **`keys-v*`** (e.g. `keys-v0.2.6`). The [Publish workflow](.github/workflows/publish.yml) runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli → keys-svelte.
+
+**keys-cli**, **validate**, and **mcp** use **`pnpm publish`** so `@restormel/keys` becomes a semver range in the consumer tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
+
+**First publish of a new scoped name** (e.g. `@restormel/mcp` on npm): the `NPM_TOKEN` must have permission to create packages under the `@restormel` org; use an **automation** token with publish access. If the workflow returns **404** on publish, confirm org settings and token scope on npmjs.com.

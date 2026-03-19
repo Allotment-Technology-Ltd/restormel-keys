@@ -1,6 +1,9 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
+# Order: @restormel/keys (npm publish) → @restormel/mcp (pnpm publish; rewrites workspace:* on keys)
+#   → doctor → validate → keys-cli → keys-svelte. Keep mcp immediately after core keys.
 # pnpm version must match root package.json "packageManager" (9.0.0).
 # Provenance is omitted: npm only accepts provenance for public GitHub repos (private repo = 422).
+# First-time @restormel/* package: npm org must allow creating the package name; use automation token with publish.
 name: Publish
 on:
   push:

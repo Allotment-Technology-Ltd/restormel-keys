@@ -5,6 +5,9 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+echo "[quality] @restormel/mcp build..."
+pnpm --filter @restormel/mcp run build
+
 echo "[quality] Dashboard check (svelte-check)..."
 pnpm --filter dashboard run check
 

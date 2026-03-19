@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Changed
+
+- **Release pipeline:** `@restormel/mcp` is built on every CI `test` job (with keys + keys-svelte) and in `scripts/quality.sh`. `prepublishOnly` on `@restormel/mcp` runs `build` before pack. README documents publish order and first-time scoped-package npm requirements.
+
 ### Added
 
 - **`@restormel/mcp` runtime (v0.1.0).** Stdio MCP server via `restormel-mcp` / `pnpm exec restormel-mcp`; tools implemented with `@modelcontextprotocol/sdk` + Zod (`models.list`, `providers.validate`, `cost.estimate`, `routing.explain`, `entitlements.check`, `integration.generate`, `docs.search`). Exports `createRestormelMcpServer` and subpath `@restormel/mcp/server`. Dependencies: `@restormel/keys`, `zod` ^4. Optional env: `RESTORMEL_MCP_CONFIG`, `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY`, per-provider keys for validation. Package `README`, docs `/keys/docs/integrations/mcp`, integrations walkthrough Phase 3, and `STATUS.md` updated.

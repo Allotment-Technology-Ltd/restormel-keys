@@ -45,7 +45,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {
     "@restormel/keys": ">=0.1.0"
