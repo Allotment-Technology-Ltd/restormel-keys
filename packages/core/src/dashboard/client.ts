@@ -134,3 +134,51 @@ export function isPolicyBlockedError(err: unknown): err is ResolveError {
     (err as ResolveError).error === "policy_blocked"
   );
 }
+
+/** Candidate for policy check (providerType + modelId). */
+export interface AllowedModelsCandidate {
+  providerType: string;
+  modelId: string;
+}
+
+/** Options for filterAllowedModels. */
+export interface FilterAllowedModelsOptions {
+  baseUrl?: string;
+  projectId: string;
+  environmentId?: string;
+  routeId?: string;
+  auth: { type: "bearer"; token: string };
+  headers?: HeadersInit;
+  /** Candidates to check; returned list is the subset that policy allows. */
+  candidates: AllowedModelsCandidate[];
+}
+
+/**
+ * Batch policy check: evaluate which of the given (providerType, modelId) pairs are allowed.
+ * Calls evaluatePolicies in parallel for each candidate. Use this instead of building a
+ * custom allowed-models proxy that checks one model at a time.
+ * Server-side only; pass Gateway Key via auth.
+ */
+export async function filterAllowedModels(
+  options: FilterAllowedModelsOptions
+): Promise<AllowedModelsCandidate[]> {
+  const { candidates, ...evalOpts } = options;
+  if (candidates.length === 0) return [];
+
+  const results = await Promise.all(
+    candidates.map(async (c) => {
+      try {
+        const result = await evaluatePolicies({
+          ...evalOpts,
+          modelId: c.modelId,
+          providerType: c.providerType,
+        });
+        return result.allowed ? c : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return results.filter((c): c is AllowedModelsCandidate => c !== null);
+}

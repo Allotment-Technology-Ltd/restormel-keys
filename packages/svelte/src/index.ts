@@ -4,3 +4,11 @@ export { default as ModelSelector } from "./ModelSelector.svelte";
 export { default as CostEstimator } from "./CostEstimator.svelte";
 export { getProviderIcon, PROVIDER_ICONS, GENERIC_ICON } from "./icons.js";
 export { default } from "./KeyManager.svelte";
+
+export type {
+  KeyManagerProps,
+  ModelSelectorProps,
+  ModelSelectorStatus,
+  CostEstimatorProps,
+} from "./types.js";
+export { RESTORMEL_BACKEND_ERROR_MESSAGE } from "./types.js";

@@ -29,6 +29,8 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 Findings from the first real integration. See [docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md) for full context and workarounds.
 
+**Restormel-first strategy:** Production issues on Sophia should be treated in two layers: (1) Restormel does more heavy lifting (stronger contract, typings, component behavior, model filtering, diagnostics); (2) then simplify the host app and reassess what is truly app-specific. See [docs/reference/restormel-first-assessment.md](docs/reference/restormel-first-assessment.md).
+
 1. **Publish UI packages to npm.** `@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements` — installable from npm with release smoke tests. Currently 404.
 2. **KeyManager async persistence.** `onKeyAdded`/`onKeyRemoved` should accept promises; show loading/error states; close only on host success.
 3. **Richer key-status model.** `pending_validation`, `invalid`, `revoked`, `validated_at`, `last_error`, manual revalidate — so host apps can drop their own diagnostics UI.
@@ -37,6 +39,15 @@ Findings from the first real integration. See [docs/reference/sophia-dogfood-fin
 6. **KeyManager contract.** Host-driven add/remove flows (async result), richer item metadata prop.
 7. **Provider normalization.** Consistent `google` handling across UI, docs, and API helpers.
 8. **ModelSelector host control (Phase 5 packaged path).** Sophia uses wrapped ModelSelector in main flow; wrapper needed for current-selection visibility, request-scoped routing, host-owned loading/error/empty states, retry/disabled around allowed-models fetch. Make ModelSelector more host-controllable (selection visibility, loading/error/empty/retry/disabled) so hosts need thinner wrappers or none.
+
+### Restormel-first integration (recommended order, from assessment)
+
+Do these before over-rotating on host-app fixes:
+
+- **Stronger Svelte typings** — usable `.d.ts` for KeyManager and ModelSelector (not generic SvelteComponent).
+- **Richer packaged component APIs** — built-in loading/error/degraded/empty states so hosts need fewer wrappers.
+- **Model-filtering contract** — more complete contract so apps do not have to build custom allowed-models proxy for the common case.
+- **Diagnostics** — when Restormel is misconfigured or unavailable, failure should present as "Restormel backend/config issue" not "component broken"; clearer in component behavior and package/debug surface.
 
 ---
 

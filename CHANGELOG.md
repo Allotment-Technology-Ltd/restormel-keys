@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 ### Added
 
+- **Restormel-first assessment.** [docs/reference/restormel-first-assessment.md](docs/reference/restormel-first-assessment.md): canonical strategy for Sophia production issues — (1) Restormel does more heavy lifting (stronger typings, component APIs, model-filtering contract, diagnostics); (2) then simplify host app and reassess app-specific work. ROADMAP and STATUS updated with recommended order: stronger Svelte typings, richer component behavior, model-filtering contract, clearer failure attribution before over-rotating on host-app fixes.
+
 - **Restormel Integrations — developer enablement layer.** Marketing landing page at `/integrations` with hero, integration cards (CLI, MCP, AAIF), setup steps, philosophy section. Dashboard "Developer Tools" section at `/keys/dashboard/dev-tools` with overview + CLI, MCP, AAIF sub-pages. New packages: `@restormel/aaif` v0.0.1 (AAIFRequest/AAIFResponse types + runtime validation guards), `@restormel/mcp` v0.0.1 (MCP tool schema definitions for models.list, providers.validate, cost.estimate, routing.explain, entitlements.check, integration.generate, docs.search). CLI extended with `keys models list` and `keys routing explain` commands. Usage path selector ("In my app / terminal / agent") added to dashboard overview. Docs pages at `/keys/docs/integrations/` (overview, CLI, MCP, AAIF). New shared components: IntegrationCard, StatusBadge. Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
 
 ### Changed

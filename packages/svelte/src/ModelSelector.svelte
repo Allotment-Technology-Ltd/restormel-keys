@@ -3,14 +3,18 @@
   import type { ProviderDefinition } from "@restormel/keys";
   import { NO_KEY_AVAILABLE } from "@restormel/keys";
   import { getProviderIcon } from "./icons.js";
+  import { RESTORMEL_BACKEND_ERROR_MESSAGE } from "./types.js";
 
   interface Props {
     keys: KeysInstance;
     providers: ProviderDefinition[];
     onSelect?: (modelId: string, providerId: string) => void;
+    onStatusChange?: (status: "loading" | "ready" | "error" | "empty", message?: string) => void;
+    errorMessage?: string;
+    emptyMessage?: string;
   }
 
-  let { keys, providers, onSelect }: Props = $props();
+  let { keys, providers, onSelect, onStatusChange, errorMessage, emptyMessage }: Props = $props();
 
   interface ModelAvailability {
     modelId: string;
@@ -26,6 +30,23 @@
 
   let availabilityMap = $state<Record<string, { available: boolean; reason?: string }>>({});
   let loading = $state(true);
+  let error = $state<string | null>(null);
+  type Status = "loading" | "ready" | "error" | "empty";
+  let lastStatus = $state<Status | null>(null);
+
+  function notifyStatus(status: Status, message?: string) {
+    if (lastStatus !== status || message !== undefined) {
+      lastStatus = status;
+      onStatusChange?.(status, message);
+    }
+  }
+
+  const isEmpty = $derived(
+    providers.length === 0 || providers.every((p) => !p.models?.length)
+  );
+  const status: Status = $derived(
+    error ? "error" : loading ? "loading" : isEmpty ? "empty" : "ready"
+  );
 
   const groups = $derived((): Group[] => {
     return providers.map((p) => ({
@@ -47,6 +68,7 @@
     const k = keys;
     const pr = providers;
     loading = true;
+    error = null;
     const entries: Array<{ key: string; p: ProviderDefinition; modelId: string }> = [];
     for (const p of pr) {
       for (const modelId of p.models) {
@@ -56,6 +78,7 @@
     if (entries.length === 0) {
       availabilityMap = {};
       loading = false;
+      notifyStatus("empty", emptyMessage);
       return;
     }
     Promise.all(
@@ -68,14 +91,23 @@
             reason: err?.message === NO_KEY_AVAILABLE ? "No provider credential" : "Unavailable",
           }))
       )
-    ).then((results) => {
-      const map: Record<string, { available: boolean; reason?: string }> = {};
-      for (const r of results) {
-        map[r.key] = { available: r.available, reason: r.reason };
-      }
-      availabilityMap = map;
-      loading = false;
-    });
+    )
+      .then((results) => {
+        const map: Record<string, { available: boolean; reason?: string }> = {};
+        for (const r of results) {
+          map[r.key] = { available: r.available, reason: r.reason };
+        }
+        availabilityMap = map;
+        loading = false;
+        notifyStatus("ready");
+      })
+      .catch((err) => {
+        loading = false;
+        const msg =
+          errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE;
+        error = err?.message ?? msg;
+        notifyStatus("error", error);
+      });
   });
 
   function handleSelect(modelId: string, providerId: string) {
@@ -86,6 +118,13 @@
 <div class="rk-model-selector rk-dark" role="region" aria-label="Model selection">
   {#if loading}
     <p class="rk-model-loading" aria-live="polite">Loading availability…</p>
+  {:else if error}
+    <div class="rk-model-error" role="alert" aria-live="assertive">
+      <p class="rk-model-error-message">{errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE}</p>
+      <p class="rk-model-error-hint">Check RESTORMEL_* env and backend availability.{#if error && error !== (errorMessage ?? RESTORMEL_BACKEND_ERROR_MESSAGE)} {error}{/if}</p>
+    </div>
+  {:else if isEmpty}
+    <p class="rk-model-empty" aria-live="polite">{emptyMessage ?? "No models configured."}</p>
   {:else}
     <ul class="rk-model-groups" role="list">
       {#each groups() as group}
@@ -132,6 +171,30 @@
   }
 
   .rk-model-loading {
+    margin: 0;
+    color: var(--rk-text-muted);
+  }
+
+  .rk-model-error {
+    padding: 0.75rem;
+    background: var(--rk-bg-elevated);
+    border: 1px solid var(--rk-border);
+    border-radius: var(--rk-radius);
+  }
+
+  .rk-model-error-message {
+    margin: 0 0 0.25rem;
+    color: var(--rk-text);
+    font-weight: 500;
+  }
+
+  .rk-model-error-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--rk-text-muted);
+  }
+
+  .rk-model-empty {
     margin: 0;
     color: var(--rk-text-muted);
   }
