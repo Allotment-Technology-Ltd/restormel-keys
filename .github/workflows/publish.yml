@@ -35,6 +35,14 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Build @restormel/mcp
+        run: pnpm --filter @restormel/mcp run build
+      # pnpm publish rewrites workspace:* on @restormel/keys to semver
+      - name: Publish @restormel/mcp to npm
+        run: pnpm --filter @restormel/mcp publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Build @restormel/doctor
         run: pnpm --filter @restormel/doctor run build
       - name: Publish @restormel/doctor to npm

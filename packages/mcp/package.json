@@ -16,6 +16,13 @@
     "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
     "directory": "packages/mcp"
   },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "restormel-mcp": "./dist/cli.js"
   },
