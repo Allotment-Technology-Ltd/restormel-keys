@@ -34,6 +34,24 @@ Requires `models` and `provider_model_variants` tables (migration `004_control_p
 
 The script validates the seed file (required fields on models and variants), then upserts into `models` and `provider_model_variants`. Existing rows are updated; new rows are inserted. Variant IDs are derived as `{modelId}-{providerIntegrationType}`.
 
+## Provider-derived refresh (from `@restormel/keys`)
+
+If you want the catalog to stay aligned with the built-in provider adapters (so DeepSeek and the latest OpenAI/Anthropic model strings show up automatically), use:
+
+```bash
+pnpm run seed:catalog:from-keys
+```
+
+This derives candidate models/variants from `defaultProviders` in `@restormel/keys` and upserts them into the same tables. Existing richer metadata in `models` is preserved on conflict; this script mainly ensures the rows exist for all built-in provider model strings.
+
+## Weekly automation
+
+The repository includes a scheduled GitHub Action to keep the catalog aligned weekly:
+
+- Workflow: `.github/workflows/model-catalog-weekly.yml`
+- Command: `pnpm --filter dashboard seed:catalog:from-keys`
+- Requirements: set a Neon Postgres connection string in repo secrets as `DATABASE_URL`
+
 ## Seed file shape
 
 - `models`: array of model objects.

@@ -5,6 +5,9 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+echo "[quality] @restormel/aaif build..."
+pnpm --filter @restormel/aaif run build
+
 echo "[quality] @restormel/mcp build..."
 pnpm --filter @restormel/mcp run build
 

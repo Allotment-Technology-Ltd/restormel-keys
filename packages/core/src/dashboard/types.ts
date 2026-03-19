@@ -9,6 +9,19 @@ export interface ResolveOptions {
   projectId: string;
   environmentId: string;
   routeId?: string;
+  /** Stage-aware resolve: pick the active route bound to this stage/workload. */
+  stage?: string;
+  workload?: string;
+  /** Switch-aware resolve: caller can provide attempt number and previous failure context. */
+  attemptNumber?: number;
+  previousFailure?: { selectedOrderIndex?: number; selectedStepId?: string | null };
+  failureKind?: string;
+  /** Optional request context for simulation / cost-aware switching (if supported). */
+  estimatedInputTokens?: number;
+  estimatedInputChars?: number;
+  complexity?: string;
+  latencyPreference?: string;
+  maxCostUsd?: number;
   /** Auth: Bearer token (Gateway Key or session). Caller must provide; never hardcode. */
   auth: { type: "bearer"; token: string };
   /** Optional fetch init (e.g. custom headers). */
@@ -22,6 +35,9 @@ export interface ResolveSuccess {
     providerType?: string;
     modelId: string | null;
     explanation: string;
+    selectedStepId?: string | null;
+    selectedOrderIndex?: number | null;
+    switchReasonCode?: string | null;
   };
 }
 

@@ -208,6 +208,8 @@ Connect Restormel to your agent workflow.
 
 ## 8. AAIF Spec (Implementation)
 
+Implementation workflow runbook: [runbooks/aaif-implementation-workflow.md](../runbooks/aaif-implementation-workflow.md)
+
 ### Request
 
 ```typescript
@@ -217,10 +219,18 @@ type AAIFRequest = {
   constraints?: {
     maxCost?: number;
     latency?: "low" | "balanced" | "high";
+    tokens?: {
+      inputTokensM?: number;
+      outputTokensM?: number;
+    };
   };
   user?: {
     id: string;
     plan?: string;
+  };
+  routing?: {
+    model?: string;
+    provider?: string;
   };
 };
 ```
@@ -240,6 +250,8 @@ type AAIFResponse = {
 ```
 
 ## 9. MCP Tool Surface
+
+MCP implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md)
 
 **Runtime:** `@restormel/mcp` ships a stdio MCP server (`restormel-mcp`) and `createRestormelMcpServer()` for custom transports. See `packages/mcp/README.md`.
 

@@ -33,14 +33,14 @@
       />
       <IntegrationCard
         title="MCP"
-        description="Use Restormel inside agent workflows and IDEs."
+        description="Tool schemas for agents/IDEs: routing explain, cost estimates, and policy checks via stdio."
         status="early"
         cta="Set up MCP"
         href="/keys/docs/integrations/mcp"
       />
       <IntegrationCard
         title="AAIF"
-        description="Structured contract for predictable AI interactions."
+        description="Structured request/response contract with runtime routing + spend estimation via Keys."
         status="advanced"
         cta="Learn more"
         href="/keys/docs/integrations/aaif"

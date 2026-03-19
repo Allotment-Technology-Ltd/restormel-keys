@@ -27,9 +27,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     orderIndex?: number;
     providerPreference?: string | null;
     modelId?: string | null;
+    label?: string | null;
+    switchCriteria?: Record<string, unknown> | null;
+    retryPolicy?: Record<string, unknown> | null;
+    costPolicy?: Record<string, unknown> | null;
     conditionBlock?: Record<string, unknown> | null;
     fallbackOn?: string | null;
     timeoutMs?: number | null;
+    notes?: string | null;
     enabled?: boolean;
   };
   try {
@@ -68,6 +73,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     if (typeof body.modelId !== "string") return invalid("modelId must be a string or null");
     const model = await getModel(body.modelId.trim());
     if (!model) return invalid("modelId must be a known model ID from the model catalog");
+  }
+
+  if (body.label !== undefined) {
+    if (body.label !== null && typeof body.label !== "string") return invalid("label must be a string or null");
+  }
+
+  if (body.switchCriteria !== undefined) {
+    if (body.switchCriteria !== null && typeof body.switchCriteria !== "object") {
+      return invalid("switchCriteria must be an object or null");
+    }
+  }
+
+  if (body.retryPolicy !== undefined) {
+    if (body.retryPolicy !== null && typeof body.retryPolicy !== "object") {
+      return invalid("retryPolicy must be an object or null");
+    }
+  }
+
+  if (body.costPolicy !== undefined) {
+    if (body.costPolicy !== null && typeof body.costPolicy !== "object") {
+      return invalid("costPolicy must be an object or null");
+    }
+  }
+
+  if (body.notes !== undefined) {
+    if (body.notes !== null && typeof body.notes !== "string") return invalid("notes must be a string or null");
   }
 
   const step = await updateRouteStep(

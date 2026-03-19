@@ -1261,6 +1261,17 @@ export type RouteRecord = {
   defaultModelId: string | null;
   billingMode: string | null;
   routeMode: string | null;
+  /**
+   * Ingestion control-plane fields (optional / additive).
+   * When null, this route behaves like a legacy "generic" route.
+   */
+  stage?: string | null;
+  workload?: string | null;
+  /** Whether this route is enabled in the control plane. */
+  enabled?: boolean;
+  /** Draft/publish lifecycle placeholders (not yet full step snapshot versioning). */
+  version?: number;
+  publishedVersion?: number;
   status: string;
   createdBy: string | null;
   createdAt: number;
@@ -1273,9 +1284,19 @@ export type RouteStepRecord = {
   orderIndex: number;
   providerPreference: string | null;
   modelId: string | null;
+  /** Optional label for mixer-panel UIs. */
+  label?: string | null;
+  /** Switch criteria contract (stored JSON). */
+  switchCriteria?: Record<string, unknown> | null;
+  /** Retry policy contract (stored JSON). */
+  retryPolicy?: Record<string, unknown> | null;
+  /** Cost policy contract (stored JSON). */
+  costPolicy?: Record<string, unknown> | null;
   conditionBlock: Record<string, unknown> | null;
   fallbackOn: string | null;
   timeoutMs: number | null;
+  /** Optional notes field for operator UX. */
+  notes?: string | null;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1287,29 +1308,69 @@ const ROUTE_DEFAULT_STATUS = "active";
 export async function listRoutes(
   projectId: string,
   userId: string,
-  options?: { environmentId?: string }
+  options?: { environmentId?: string; workload?: string; stage?: string }
 ): Promise<RouteRecord[]> {
   const project = await getProject(projectId, userId);
   if (!project) return [];
   const sql = getSql();
   const envFilter = options?.environmentId;
-  const rows = envFilter
-    ? await sql`
-        SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
-               default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
-               status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
-        FROM routes
-        WHERE project_id = ${projectId} AND environment_id = ${envFilter}
-        ORDER BY created_at DESC
-      `
-    : await sql`
-        SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
-               default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
-               status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
-        FROM routes
-        WHERE project_id = ${projectId}
-        ORDER BY created_at DESC
-      `;
+  const workloadFilter = options?.workload;
+  const stageFilter = options?.stage;
+
+  // The SQL template tag supports parameter interpolation, but we keep the query as simple as possible
+  // by branching on which filters exist.
+  let rows;
+  if (envFilter && workloadFilter && stageFilter) {
+    rows = await sql`
+      SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+             default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+             stage, workload, enabled, version, published_version AS "publishedVersion",
+             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM routes
+      WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND workload = ${workloadFilter} AND stage = ${stageFilter}
+      ORDER BY created_at DESC
+    `;
+  } else if (envFilter && workloadFilter) {
+    rows = await sql`
+      SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+             default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+             stage, workload, enabled, version, published_version AS "publishedVersion",
+             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM routes
+      WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND workload = ${workloadFilter}
+      ORDER BY created_at DESC
+    `;
+  } else if (envFilter && stageFilter) {
+    rows = await sql`
+      SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+             default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+             stage, workload, enabled, version, published_version AS "publishedVersion",
+             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM routes
+      WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND stage = ${stageFilter}
+      ORDER BY created_at DESC
+    `;
+  } else if (envFilter) {
+    rows = await sql`
+      SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+             default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+             stage, workload, enabled, version, published_version AS "publishedVersion",
+             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM routes
+      WHERE project_id = ${projectId} AND environment_id = ${envFilter}
+      ORDER BY created_at DESC
+    `;
+  } else {
+    rows = await sql`
+      SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
+             default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+             stage, workload, enabled, version, published_version AS "publishedVersion",
+             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM routes
+      WHERE project_id = ${projectId}
+      ORDER BY created_at DESC
+    `;
+  }
   return rows.map((r) => mapRouteRow(r)) as RouteRecord[];
 }
 
@@ -1321,6 +1382,7 @@ export async function getRoute(id: string, projectId: string, userId: string): P
   const rows = await sql`
     SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
            default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
+           stage, workload, enabled, version, published_version AS "publishedVersion",
            status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
     FROM routes
     WHERE id = ${id} AND project_id = ${projectId}
@@ -1340,6 +1402,12 @@ function mapRouteRow(r: Record<string, unknown>): RouteRecord {
     defaultModelId: (r.defaultModelId as string) ?? null,
     billingMode: (r.billingMode as string) ?? null,
     routeMode: (r.routeMode as string) ?? null,
+    stage: (r.stage as string) ?? null,
+    workload: (r.workload as string) ?? null,
+    enabled: r.enabled !== false,
+    version: typeof r.version === "number" ? r.version : Number(r.version ?? 1),
+    publishedVersion:
+      typeof r.publishedVersion === "number" ? r.publishedVersion : Number(r.publishedVersion ?? 1),
     status: (r.status as string) ?? ROUTE_DEFAULT_STATUS,
     createdBy: (r.createdBy as string) ?? null,
     createdAt: Number(r.createdAt),
@@ -1356,6 +1424,11 @@ export async function createRoute(params: {
   defaultModelId?: string | null;
   billingMode?: string | null;
   routeMode?: string | null;
+  stage?: string | null;
+  workload?: string | null;
+  enabled?: boolean;
+  version?: number;
+  publishedVersion?: number;
   userId: string;
 }): Promise<RouteRecord | null> {
   const project = await getProject(params.projectId, params.userId);
@@ -1367,10 +1440,25 @@ export async function createRoute(params: {
   const now = Date.now();
   const name = params.name?.trim() || "Unnamed route";
   await sql`
-    INSERT INTO routes (id, project_id, environment_id, name, description, default_model_id, billing_mode, route_mode, status, created_by, created_at, updated_at)
-    VALUES (${id}, ${params.projectId}, ${params.environmentId}, ${name},
-            ${params.description?.trim() || null}, ${params.defaultModelId ?? null}, ${params.billingMode ?? null}, ${params.routeMode ?? null},
-            ${ROUTE_DEFAULT_STATUS}, ${params.userId}, ${now}, ${now})
+    INSERT INTO routes (
+      id, project_id, environment_id, name, description, default_model_id, billing_mode, route_mode,
+      stage, workload, enabled, version, published_version,
+      status, created_by, created_at, updated_at
+    )
+    VALUES (
+      ${id}, ${params.projectId}, ${params.environmentId}, ${name},
+      ${params.description?.trim() || null},
+      ${params.defaultModelId ?? null},
+      ${params.billingMode ?? null},
+      ${params.routeMode ?? null},
+      ${params.stage ?? null},
+      ${params.workload ?? null},
+      ${params.enabled ?? true},
+      ${params.version ?? 1},
+      ${params.publishedVersion ?? 1},
+      ${ROUTE_DEFAULT_STATUS},
+      ${params.userId}, ${now}, ${now}
+    )
   `;
   return getRoute(id, params.projectId, params.userId);
 }
@@ -1386,6 +1474,11 @@ export async function updateRoute(
     defaultModelId?: string | null;
     billingMode?: string | null;
     routeMode?: string | null;
+    stage?: string | null;
+    workload?: string | null;
+    enabled?: boolean;
+    version?: number;
+    publishedVersion?: number;
     status?: string;
   }
 ): Promise<RouteRecord | null> {
@@ -1397,12 +1490,28 @@ export async function updateRoute(
   const defaultModelId = updates.defaultModelId !== undefined ? updates.defaultModelId : existing.defaultModelId;
   const billingMode = updates.billingMode !== undefined ? updates.billingMode : existing.billingMode;
   const routeMode = updates.routeMode !== undefined ? updates.routeMode : existing.routeMode;
+  const stage = updates.stage !== undefined ? updates.stage : existing.stage;
+  const workload = updates.workload !== undefined ? updates.workload : existing.workload;
+  const enabled = updates.enabled !== undefined ? updates.enabled : (existing.enabled ?? true);
+  const version = updates.version !== undefined ? updates.version : (existing.version ?? 1);
+  const publishedVersion =
+    updates.publishedVersion !== undefined ? updates.publishedVersion : (existing.publishedVersion ?? 1);
   const status = updates.status ?? existing.status;
   const now = Date.now();
   await sql`
     UPDATE routes
-    SET name = ${name}, description = ${description}, default_model_id = ${defaultModelId},
-        billing_mode = ${billingMode}, route_mode = ${routeMode}, status = ${status}, updated_at = ${now}
+    SET name = ${name},
+        description = ${description},
+        default_model_id = ${defaultModelId},
+        billing_mode = ${billingMode},
+        route_mode = ${routeMode},
+        stage = ${stage},
+        workload = ${workload},
+        enabled = ${enabled},
+        version = ${version},
+        published_version = ${publishedVersion},
+        status = ${status},
+        updated_at = ${now}
     WHERE id = ${id} AND project_id = ${projectId}
   `;
   return getRoute(id, projectId, userId);
@@ -1428,7 +1537,10 @@ export async function listRouteSteps(routeId: string, projectId: string, userId:
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+           timeout_ms AS "timeoutMs", enabled,
+           label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
+           notes,
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps
     WHERE route_id = ${routeId}
     ORDER BY order_index ASC
@@ -1445,9 +1557,14 @@ function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
     orderIndex: Number(r.orderIndex),
     providerPreference: (r.providerPreference as string) ?? null,
     modelId: (r.modelId as string) ?? null,
+    label: (r.label as string) ?? null,
+    switchCriteria: (r.switchCriteria as Record<string, unknown>) ?? null,
+    retryPolicy: (r.retryPolicy as Record<string, unknown>) ?? null,
+    costPolicy: (r.costPolicy as Record<string, unknown>) ?? null,
     conditionBlock: (r.conditionBlock as Record<string, unknown>) ?? null,
     fallbackOn: (r.fallbackOn as string) ?? null,
     timeoutMs: r.timeoutMs != null ? Number(r.timeoutMs) : null,
+    notes: (r.notes as string) ?? null,
     enabled: r.enabled !== false,
     createdAt: new Date(createdAt).toISOString(),
     updatedAt: new Date(updatedAt).toISOString(),
@@ -1462,9 +1579,14 @@ export async function createRouteStep(params: {
   orderIndex: number;
   providerPreference?: string | null;
   modelId?: string | null;
+  label?: string | null;
+  switchCriteria?: Record<string, unknown> | null;
+  retryPolicy?: Record<string, unknown> | null;
+  costPolicy?: Record<string, unknown> | null;
   conditionBlock?: Record<string, unknown> | null;
   fallbackOn?: string | null;
   timeoutMs?: number | null;
+  notes?: string | null;
   enabled?: boolean;
 }): Promise<RouteStepRecord | null> {
   const route = await getRoute(params.routeId, params.projectId, params.userId);
@@ -1474,15 +1596,31 @@ export async function createRouteStep(params: {
   const enabled = params.enabled !== false;
   const now = Date.now();
   await sql`
-    INSERT INTO route_steps (id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on, timeout_ms, enabled, created_at, updated_at)
-    VALUES (${id}, ${params.routeId}, ${params.orderIndex},
-            ${params.providerPreference ?? null}, ${params.modelId ?? null},
-            ${params.conditionBlock ? JSON.stringify(params.conditionBlock) : null}, ${params.fallbackOn ?? null}, ${params.timeoutMs ?? null}, ${enabled}, ${now}, ${now})
+    INSERT INTO route_steps (
+      id, route_id, order_index, provider_preference, model_id,
+      condition_block, fallback_on, timeout_ms,
+      label, switch_criteria, retry_policy, cost_policy, notes,
+      enabled, created_at, updated_at
+    )
+    VALUES (
+      ${id}, ${params.routeId}, ${params.orderIndex},
+      ${params.providerPreference ?? null}, ${params.modelId ?? null},
+      ${params.conditionBlock ? JSON.stringify(params.conditionBlock) : null}, ${params.fallbackOn ?? null}, ${params.timeoutMs ?? null},
+      ${params.label ?? null},
+      ${params.switchCriteria ? JSON.stringify(params.switchCriteria) : null},
+      ${params.retryPolicy ? JSON.stringify(params.retryPolicy) : null},
+      ${params.costPolicy ? JSON.stringify(params.costPolicy) : null},
+      ${params.notes ?? null},
+      ${enabled}, ${now}, ${now}
+    )
   `;
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+           timeout_ms AS "timeoutMs", enabled,
+           label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
+           notes,
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${id}
   `;
   if (rows.length === 0) return null;
@@ -1499,9 +1637,14 @@ export async function updateRouteStep(
     orderIndex: number;
     providerPreference: string | null;
     modelId: string | null;
+    label: string | null;
+    switchCriteria: Record<string, unknown> | null;
+    retryPolicy: Record<string, unknown> | null;
+    costPolicy: Record<string, unknown> | null;
     conditionBlock: Record<string, unknown> | null;
     fallbackOn: string | null;
     timeoutMs: number | null;
+    notes: string | null;
     enabled: boolean;
   }>
 ): Promise<RouteStepRecord | null> {
@@ -1512,22 +1655,40 @@ export async function updateRouteStep(
   const orderIndex = updates.orderIndex !== undefined ? updates.orderIndex : step.orderIndex;
   const providerPreference = updates.providerPreference !== undefined ? updates.providerPreference : step.providerPreference;
   const modelId = updates.modelId !== undefined ? updates.modelId : step.modelId;
+  const label = updates.label !== undefined ? updates.label : step.label;
+  const switchCriteria = updates.switchCriteria !== undefined ? updates.switchCriteria : step.switchCriteria;
+  const retryPolicy = updates.retryPolicy !== undefined ? updates.retryPolicy : step.retryPolicy;
+  const costPolicy = updates.costPolicy !== undefined ? updates.costPolicy : step.costPolicy;
   const conditionBlock = updates.conditionBlock !== undefined ? updates.conditionBlock : step.conditionBlock;
   const fallbackOn = updates.fallbackOn !== undefined ? updates.fallbackOn : step.fallbackOn;
   const timeoutMs = updates.timeoutMs !== undefined ? updates.timeoutMs : step.timeoutMs;
+  const notes = updates.notes !== undefined ? updates.notes : step.notes;
   const enabled = updates.enabled !== undefined ? updates.enabled : step.enabled;
   const now = Date.now();
   await sql`
     UPDATE route_steps
-    SET order_index = ${orderIndex}, provider_preference = ${providerPreference}, model_id = ${modelId},
-        condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null}, fallback_on = ${fallbackOn}, timeout_ms = ${timeoutMs}, enabled = ${enabled},
+    SET order_index = ${orderIndex},
+        provider_preference = ${providerPreference},
+        model_id = ${modelId},
+        label = ${label},
+        switch_criteria = ${switchCriteria != null ? JSON.stringify(switchCriteria) : null},
+        retry_policy = ${retryPolicy != null ? JSON.stringify(retryPolicy) : null},
+        cost_policy = ${costPolicy != null ? JSON.stringify(costPolicy) : null},
+        notes = ${notes},
+        condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null},
+        fallback_on = ${fallbackOn},
+        timeout_ms = ${timeoutMs},
+        enabled = ${enabled},
         updated_at = ${now}
     WHERE id = ${stepId} AND route_id = ${routeId}
   `;
   const rows = await sql`
     SELECT id, route_id AS "routeId", order_index AS "orderIndex", provider_preference AS "providerPreference",
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
-           timeout_ms AS "timeoutMs", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+           timeout_ms AS "timeoutMs", enabled,
+           label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
+           notes,
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${stepId}
   `;
   if (rows.length === 0) return null;

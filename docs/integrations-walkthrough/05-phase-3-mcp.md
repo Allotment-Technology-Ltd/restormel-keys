@@ -76,3 +76,5 @@ You now have:
 - Clarity on the MCP tool surface.
 - `@restormel/mcp` installed and importable.
 - Dashboard MCP tab bookmarked for when the runtime is available.
+
+Implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md)

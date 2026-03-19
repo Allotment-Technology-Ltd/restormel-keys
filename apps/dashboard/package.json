@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "seed:catalog": "node scripts/ingest-model-catalog.mjs"
+    "seed:catalog": "node scripts/ingest-model-catalog.mjs",
+    "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs"
   },
   "devDependencies": {
     "vitest": "^4.1.0"

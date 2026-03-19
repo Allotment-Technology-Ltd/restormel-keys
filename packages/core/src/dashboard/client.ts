@@ -39,6 +39,16 @@ export async function resolve(options: ResolveOptions): Promise<ResolveResult> {
   const body = JSON.stringify({
     environmentId: options.environmentId,
     ...(options.routeId != null ? { routeId: options.routeId } : {}),
+    ...(options.stage != null ? { stage: options.stage } : {}),
+    ...(options.workload != null ? { workload: options.workload } : {}),
+    ...(options.attemptNumber != null ? { attemptNumber: options.attemptNumber } : {}),
+    ...(options.failureKind != null ? { failureKind: options.failureKind } : {}),
+    ...(options.previousFailure != null ? { previousFailure: options.previousFailure } : {}),
+    ...(options.estimatedInputTokens != null ? { estimatedInputTokens: options.estimatedInputTokens } : {}),
+    ...(options.estimatedInputChars != null ? { estimatedInputChars: options.estimatedInputChars } : {}),
+    ...(options.complexity != null ? { complexity: options.complexity } : {}),
+    ...(options.latencyPreference != null ? { latencyPreference: options.latencyPreference } : {}),
+    ...(options.maxCostUsd != null ? { maxCostUsd: options.maxCostUsd } : {}),
   });
 
   const res = await fetch(url, { method: "POST", headers, body });

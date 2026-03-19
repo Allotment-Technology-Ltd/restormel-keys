@@ -36,6 +36,21 @@
   </div>
 </section>
 
+<section class="section" aria-labelledby="mapping-heading">
+  <h2 id="mapping-heading" class="section-title">Core use-cases</h2>
+  <p class="docs-p">
+    Use AAIF to standardise how agents request work with explicit routing and spend constraints. The
+    runtime helper resolves <strong>provider/model</strong> and estimates cost via
+    <code class="inline-code">@restormel/keys</code>.
+  </p>
+  <ul class="docs-list">
+    <li><strong>Keys:</strong> `keys.resolve()` + `keys.estimateCost()` power routing and cost estimation.</li>
+    <li><strong>CLI:</strong> `keys routing explain` + `keys estimate` help debug the same decisions.</li>
+    <li><strong>Validate:</strong> gates provider credential health before runtime usage.</li>
+    <li><strong>Doctor:</strong> quick repo/config sanity checks (“is the catalog/routing wired?”).</li>
+  </ul>
+</section>
+
 <section class="section" aria-labelledby="logs-heading">
   <h2 id="logs-heading" class="section-title">Request logs</h2>
   <EmptyState

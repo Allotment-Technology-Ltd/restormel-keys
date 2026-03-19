@@ -15,20 +15,47 @@
       contextWindow: number | null;
       maxOutputTokens: number | null;
       editorialSummary: string | null;
+      strengths: string[] | null;
+      weaknesses: string[] | null;
+      recommendedFor: string[] | null;
+      avoidFor: string[] | null;
       deprecationDate: number | null;
       retirementDate: number | null;
+      variantsSummary: {
+        providerCount: number;
+        hasAvailableVariant: boolean;
+        hasPricingRef: boolean;
+        hasRateLimitRef: boolean;
+        availabilityStates: string[];
+      };
     }[];
     error: string | null;
   };
 
   let lifecycleFilter = $page.url.searchParams.get("lifecycleState") ?? "";
   let familyFilter = $page.url.searchParams.get("family") ?? "";
+  let q = $page.url.searchParams.get("q") ?? "";
+  let availabilityFilter = $page.url.searchParams.get("availability") ?? "";
+  let costFilter = $page.url.searchParams.get("cost") ?? "";
+  let rateLimitFilter = $page.url.searchParams.get("rateLimit") ?? "";
+  let contextFilter = $page.url.searchParams.get("context") ?? "";
+  let speedFilter = $page.url.searchParams.get("speed") ?? "";
+  let useCaseFilter = $page.url.searchParams.get("useCase") ?? "";
   let selectedId = $page.url.searchParams.get("detail") ?? "";
+  let filteredModels: typeof data.models = data.models;
+  let groupedModels: { family: string; items: typeof data.models }[] = [];
 
   function applyFilters() {
     const params = new URLSearchParams();
     if (lifecycleFilter) params.set("lifecycleState", lifecycleFilter);
     if (familyFilter) params.set("family", familyFilter);
+    if (q.trim()) params.set("q", q.trim());
+    if (availabilityFilter) params.set("availability", availabilityFilter);
+    if (costFilter) params.set("cost", costFilter);
+    if (rateLimitFilter) params.set("rateLimit", rateLimitFilter);
+    if (contextFilter) params.set("context", contextFilter);
+    if (speedFilter) params.set("speed", speedFilter);
+    if (useCaseFilter) params.set("useCase", useCaseFilter);
     goto(`${DASHBOARD_BASE}/models${params.toString() ? "?" + params.toString() : ""}`);
   }
 
@@ -54,6 +81,114 @@
     if (s === "preview" || s === "beta") return "preview";
     return "current";
   }
+
+  function speedTier(modelId: string): "fast" | "balanced" | "deep_reasoning" {
+    const id = modelId.toLowerCase();
+    if (id.includes("mini") || id.includes("nano") || id.includes("flash") || id.includes("haiku")) return "fast";
+    if (id.startsWith("o1") || id.startsWith("o3") || id.includes("reason")) return "deep_reasoning";
+    return "balanced";
+  }
+
+  function contextBucket(contextWindow: number | null): "small" | "medium" | "large" | "xlarge" | "unknown" {
+    if (contextWindow == null) return "unknown";
+    if (contextWindow < 64_000) return "small";
+    if (contextWindow < 200_000) return "medium";
+    if (contextWindow < 1_000_000) return "large";
+    return "xlarge";
+  }
+
+  function matchesUseCase(model: (typeof data.models)[number]): boolean {
+    if (!useCaseFilter.trim()) return true;
+    const needle = useCaseFilter.trim().toLowerCase();
+    const haystack = [
+      ...(model.recommendedFor ?? []),
+      ...(model.avoidFor ?? []),
+      ...(model.strengths ?? []),
+      ...(model.weaknesses ?? []),
+      model.description ?? "",
+      model.editorialSummary ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
+  }
+
+  function matchesText(model: (typeof data.models)[number]): boolean {
+    if (!q.trim()) return true;
+    const needle = q.trim().toLowerCase();
+    const haystack = [
+      model.id,
+      model.canonicalName,
+      model.family ?? "",
+      model.lifecycleState ?? "",
+      model.description ?? "",
+      model.editorialSummary ?? "",
+      ...(model.recommendedFor ?? []),
+      ...(model.avoidFor ?? []),
+      ...(model.strengths ?? []),
+      ...(model.weaknesses ?? []),
+      ...model.variantsSummary.availabilityStates,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
+  }
+
+  function matchesAvailability(model: (typeof data.models)[number]): boolean {
+    if (!availabilityFilter) return true;
+    if (availabilityFilter === "available") return model.variantsSummary.hasAvailableVariant;
+    if (availabilityFilter === "degraded") return !model.variantsSummary.hasAvailableVariant;
+    return true;
+  }
+
+  function matchesCost(model: (typeof data.models)[number]): boolean {
+    if (!costFilter) return true;
+    if (costFilter === "known") return model.variantsSummary.hasPricingRef;
+    if (costFilter === "unknown") return !model.variantsSummary.hasPricingRef;
+    return true;
+  }
+
+  function matchesRateLimit(model: (typeof data.models)[number]): boolean {
+    if (!rateLimitFilter) return true;
+    if (rateLimitFilter === "known") return model.variantsSummary.hasRateLimitRef;
+    if (rateLimitFilter === "unknown") return !model.variantsSummary.hasRateLimitRef;
+    return true;
+  }
+
+  function matchesContext(model: (typeof data.models)[number]): boolean {
+    if (!contextFilter) return true;
+    return contextBucket(model.contextWindow) === contextFilter;
+  }
+
+  function matchesSpeed(model: (typeof data.models)[number]): boolean {
+    if (!speedFilter) return true;
+    return speedTier(model.id) === speedFilter;
+  }
+
+  $: filteredModels = data.models.filter(
+    (m) =>
+      matchesText(m) &&
+      matchesUseCase(m) &&
+      matchesAvailability(m) &&
+      matchesCost(m) &&
+      matchesRateLimit(m) &&
+      matchesContext(m) &&
+      matchesSpeed(m)
+  );
+
+  $: groupedModels = groupByFamily(filteredModels);
+
+  function groupByFamily(models: typeof filteredModels) {
+    const map = new Map<string, typeof filteredModels>();
+    for (const model of models) {
+      const key = model.family?.trim() || "other";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(model);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([family, items]) => ({ family, items }));
+  }
 </script>
 
 <svelte:head>
@@ -62,7 +197,7 @@
 
 <h1 class="page-title">Model catalog</h1>
 <p class="page-desc">
-  Browse models by family and lifecycle. Each model can have multiple provider variants (e.g. OpenAI, Anthropic). Metadata may be placeholder until full ingestion is wired.
+  Find models by operational constraints and use case: availability, pricing/rate-limit metadata, context size, speed profile, and what each model is best or worst at.
 </p>
 
 {#if data.error}
@@ -85,11 +220,63 @@
         <label for="family">Family</label>
         <input id="family" type="text" bind:value={familyFilter} class="input" placeholder="e.g. gpt-4, claude" />
       </div>
+      <div class="form-row">
+        <label for="search">Search</label>
+        <input id="search" type="text" bind:value={q} class="input" placeholder="name, capabilities, good/bad for..." />
+      </div>
+      <div class="form-row">
+        <label for="availability">Availability</label>
+        <select id="availability" bind:value={availabilityFilter} class="input">
+          <option value="">Any</option>
+          <option value="available">At least one available provider</option>
+          <option value="degraded">No available providers</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="cost">Cost metadata</label>
+        <select id="cost" bind:value={costFilter} class="input">
+          <option value="">Any</option>
+          <option value="known">Known (pricingRef present)</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="rateLimit">Rate limiting metadata</label>
+        <select id="rateLimit" bind:value={rateLimitFilter} class="input">
+          <option value="">Any</option>
+          <option value="known">Known (rateLimitRef present)</option>
+          <option value="unknown">Unknown</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="context">Context size</label>
+        <select id="context" bind:value={contextFilter} class="input">
+          <option value="">Any</option>
+          <option value="small">&lt; 64k</option>
+          <option value="medium">64k - 199k</option>
+          <option value="large">200k - 999k</option>
+          <option value="xlarge">1M+</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="speed">Speed profile</label>
+        <select id="speed" bind:value={speedFilter} class="input">
+          <option value="">Any</option>
+          <option value="fast">Fast / lightweight</option>
+          <option value="balanced">Balanced</option>
+          <option value="deep_reasoning">Deep reasoning</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="useCase">Good/Bad for</label>
+        <input id="useCase" type="text" bind:value={useCaseFilter} class="input" placeholder="e.g. extraction, coding, latency" />
+      </div>
       <button type="submit" class="btn btn-primary">Apply</button>
+      <a class="btn btn-secondary" href={DASHBOARD_BASE + "/models"}>Clear</a>
     </form>
   </section>
 
-  {#if data.models.length === 0}
+  {#if filteredModels.length === 0}
     <EmptyState
       title="No models match"
       description="Try changing filters or ensure the model catalog has been populated."
@@ -98,31 +285,49 @@
     </EmptyState>
   {:else}
     <section class="section" aria-labelledby="list-heading">
-      <h2 id="list-heading" class="section-title">Models ({data.models.length})</h2>
-      <ul class="model-list">
-        {#each data.models as m}
-          <li class="model-row">
-            <button type="button" class="model-card" onclick={() => openDetail(m.id)}>
-              <span class="model-name">{m.canonicalName}</span>
-              <span class="model-meta">
-                {#if m.family}
-                  <span class="model-family">{m.family}</span>
+      <h2 id="list-heading" class="section-title">Models ({filteredModels.length})</h2>
+      {#each groupedModels as group}
+        <h3 class="group-title">{group.family}</h3>
+        <ul class="model-list">
+          {#each group.items as m}
+            <li class="model-row">
+              <button type="button" class="model-card" onclick={() => openDetail(m.id)}>
+                <span class="model-head">
+                  <span class="model-name">{m.canonicalName}</span>
+                  <span class="lifecycle-badge lifecycle-{lifecycleBadge(m.lifecycleState)}">
+                    {m.lifecycleState ?? "—"}
+                  </span>
+                </span>
+                <span class="model-meta">
+                  <span class="chip">availability: {m.variantsSummary.hasAvailableVariant ? "available" : "degraded"}</span>
+                  <span class="chip">providers: {m.variantsSummary.providerCount}</span>
+                  <span class="chip">cost: {m.variantsSummary.hasPricingRef ? "known" : "unknown"}</span>
+                  <span class="chip">rate limits: {m.variantsSummary.hasRateLimitRef ? "known" : "unknown"}</span>
+                  <span class="chip">speed: {speedTier(m.id)}</span>
+                </span>
+                {#if m.contextWindow != null || m.maxOutputTokens != null}
+                  <span class="model-capacity">
+                    {#if m.contextWindow != null}ctx: {m.contextWindow.toLocaleString()} ({contextBucket(m.contextWindow)}){/if}
+                    {#if m.contextWindow != null && m.maxOutputTokens != null} · {/if}
+                    {#if m.maxOutputTokens != null}max out: {m.maxOutputTokens.toLocaleString()}{/if}
+                  </span>
                 {/if}
-                <span class="lifecycle-badge lifecycle-{lifecycleBadge(m.lifecycleState)}">
-                  {m.lifecycleState ?? "—"}
-                </span>
-              </span>
-              {#if m.contextWindow != null || m.maxOutputTokens != null}
-                <span class="model-capacity">
-                  {#if m.contextWindow != null}ctx: {m.contextWindow.toLocaleString()}{/if}
-                  {#if m.contextWindow != null && m.maxOutputTokens != null} · {/if}
-                  {#if m.maxOutputTokens != null}max out: {m.maxOutputTokens.toLocaleString()}{/if}
-                </span>
-              {/if}
-            </button>
-          </li>
-        {/each}
-      </ul>
+                {#if m.recommendedFor?.length || m.avoidFor?.length}
+                  <span class="model-usage">
+                    {#if m.recommendedFor?.length}
+                      <strong>Good for:</strong> {m.recommendedFor.slice(0, 3).join(", ")}
+                    {/if}
+                    {#if m.avoidFor?.length}
+                      {#if m.recommendedFor?.length} · {/if}
+                      <strong>Bad for:</strong> {m.avoidFor.slice(0, 3).join(", ")}
+                    {/if}
+                  </span>
+                {/if}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/each}
     </section>
   {/if}
 {/if}
@@ -162,6 +367,13 @@
     font-weight: 600;
     color: var(--rm-text);
     margin: 0 0 var(--space-1);
+  }
+  .group-title {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .filter-form {
     display: flex;
@@ -230,6 +442,12 @@
     cursor: pointer;
     transition: background 0.15s;
   }
+  .model-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
   .model-card:hover {
     background: var(--rm-surface);
   }
@@ -241,10 +459,18 @@
   }
   .model-meta {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
     gap: var(--space-2);
     margin-top: var(--space-1);
     font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+  .chip {
+    border: 1px solid var(--rm-border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    background: var(--rm-bg);
     color: var(--rm-muted);
   }
   .model-family {
@@ -273,6 +499,13 @@
     font-size: var(--text-xs);
     color: var(--rm-dim);
     margin-top: var(--space-1);
+  }
+  .model-usage {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: 1.4;
   }
   .drawer-backdrop {
     position: fixed;

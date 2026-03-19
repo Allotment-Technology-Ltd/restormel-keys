@@ -45,7 +45,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: "Unauthorized or project not found" }, { status: 401 });
   }
 
-  let body: { environmentId?: string; routeId?: string };
+  let body: {
+    environmentId?: string;
+    routeId?: string;
+    stage?: string;
+    workload?: string;
+    attemptNumber?: number;
+    failureKind?: string;
+    previousFailure?: { selectedOrderIndex?: number; selectedStepId?: string };
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -91,8 +99,32 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   }
 
   const start = Date.now();
+  const attemptNumber =
+    typeof body.attemptNumber === "number" && Number.isInteger(body.attemptNumber) && body.attemptNumber >= 0
+      ? body.attemptNumber
+      : undefined;
+  const previousFailure =
+    body.previousFailure && typeof body.previousFailure === "object"
+      ? {
+          selectedOrderIndex:
+            typeof body.previousFailure.selectedOrderIndex === "number" &&
+            Number.isInteger(body.previousFailure.selectedOrderIndex)
+              ? body.previousFailure.selectedOrderIndex
+              : undefined,
+          selectedStepId:
+            typeof body.previousFailure.selectedStepId === "string"
+              ? body.previousFailure.selectedStepId.trim() || undefined
+              : undefined,
+        }
+      : undefined;
+
   const resolved = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
     routeId: typeof body.routeId === "string" ? body.routeId.trim() : undefined,
+    stage: typeof body.stage === "string" ? body.stage.trim() : undefined,
+    workload: typeof body.workload === "string" ? body.workload.trim() : undefined,
+    attemptNumber,
+    previousFailure,
+    failureKind: typeof body.failureKind === "string" ? body.failureKind.trim() : undefined,
   });
   const latencyMs = Date.now() - start;
 
@@ -174,6 +206,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       providerType: outProviderType,
       modelId: resolved.modelId,
       explanation: resolved.explanation,
+      selectedStepId: resolved.selectedStepId ?? null,
+      selectedOrderIndex: resolved.selectedOrderIndex ?? null,
+      switchReasonCode: resolved.switchReasonCode ?? null,
     },
   });
 };

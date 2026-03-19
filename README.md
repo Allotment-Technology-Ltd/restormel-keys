@@ -21,6 +21,7 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 | [@restormel/doctor](packages/doctor) | 0.1.4 | OSS CLI: setup and health checks (`restormel-doctor`) |
 | [@restormel/validate](packages/validate) | 0.1.4 | OSS CLI: credential/config validation (`restormel-validate`) |
 | [@restormel/keys-cli](packages/cli) | 0.1.2 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
+| [@restormel/aaif](packages/aaif) | 0.0.1 | AAIF contract + runtime helper (routing + cost estimation) |
 | [@restormel/mcp](packages/mcp) | 0.1.0 | MCP tools + stdio server (`restormel-mcp`) for agents/IDEs |
 
 *(Vue wrapper is not published.)*
@@ -85,9 +86,9 @@ See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
 
 ## Publish (Phase 2)
 
-CI builds **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes MCP build).
+CI builds **`@restormel/aaif`** and **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes AAIF + MCP build).
 
-To publish all packages: bump versions as needed; ensure each has `version`, `files`, README, and a successful `pnpm run build`; then push git tag **`keys-v*`** (e.g. `keys-v0.2.6`). The [Publish workflow](.github/workflows/publish.yml) runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli → keys-svelte.
+To publish all packages: bump versions as needed; ensure each has `version`, `files`, README, and a successful `pnpm run build`; then push git tag **`keys-v*`** (e.g. `keys-v0.2.6`). The [Publish workflow](.github/workflows/publish.yml) runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/aaif`** (`pnpm publish`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli → keys-svelte.
 
 **keys-cli**, **validate**, and **mcp** use **`pnpm publish`** so `@restormel/keys` becomes a semver range in the consumer tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
 

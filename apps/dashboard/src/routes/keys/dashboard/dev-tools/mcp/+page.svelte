@@ -18,6 +18,28 @@
   </EmptyState>
 </section>
 
+<section class="section" aria-labelledby="usecase-heading">
+  <h2 id="usecase-heading" class="section-title">Core use-cases</h2>
+  <p class="page-desc">
+    Use MCP when your agent workflow needs tool-based access to Restormel’s routing, pricing, and policy checks
+    from inside an IDE or automation runner.
+  </p>
+  <ul class="tool-list">
+    <li>
+      <strong>Routing explain</strong>
+      <span class="tool-desc"> — maps to `keys routing explain` for transparency.</span>
+    </li>
+    <li>
+      <strong>Cost estimate</strong>
+      <span class="tool-desc"> — maps to `keys estimate` using provider pricing.</span>
+    </li>
+    <li>
+      <strong>Validate + entitlements</strong>
+      <span class="tool-desc"> — aligns with `restormel validate` and plan policy checks.</span>
+    </li>
+  </ul>
+</section>
+
 <section class="section" aria-labelledby="tools-heading">
   <h2 id="tools-heading" class="section-title">Available tools</h2>
   <ul class="tool-list">

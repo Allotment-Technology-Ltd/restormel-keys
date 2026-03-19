@@ -5,12 +5,19 @@
   "keywords": ["aaif", "ai", "agent", "restormel", "interaction-format"],
   "author": "Allotment Technology Ltd",
   "license": "MIT",
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/aaif#readme",
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
     "directory": "packages/aaif"
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md", "LICENSE"],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,18 +29,17 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm run build",
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
     "@restormel/keys": ">=0.1.0"
   },
-  "peerDependenciesMeta": {
-    "@restormel/keys": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@types/node": "^25.5.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.0"
   },
   "engines": {
     "node": ">=18"

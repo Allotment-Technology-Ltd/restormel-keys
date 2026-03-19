@@ -18,14 +18,14 @@
   />
   <IntegrationCard
     title="MCP"
-    description="Use Restormel inside agent workflows and IDEs via Model Context Protocol."
+    description="Tool-based agent access: routing explain, pricing, and policy checks via stdio."
     status="early"
     cta="MCP details"
     href="{DASHBOARD_BASE}/dev-tools/mcp"
   />
   <IntegrationCard
     title="AAIF"
-    description="Structured request/response contract for predictable AI interactions."
+    description="Contract + runtime routing/spend estimation; your host provides final model output."
     status="advanced"
     cta="AAIF details"
     href="{DASHBOARD_BASE}/dev-tools/aaif"

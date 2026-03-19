@@ -23,6 +23,10 @@ export type ResolvedRouteResult = {
   steps: RouteStepRecord[];
   /** First enabled step that passes policy, or null if none or all blocked. */
   selectedStep: RouteStepRecord | null;
+  /** Machine-readable selected step details for stage-aware switch UIs. */
+  selectedStepId?: string | null;
+  selectedOrderIndex?: number | null;
+  switchReasonCode?: string | null;
   /** Provider type from selected step (provider_preference) or null. */
   providerType: string | null;
   /** Model id from selected step or route default. */
@@ -42,18 +46,37 @@ export async function resolveRouteForExecution(
   projectId: string,
   environmentId: string,
   userId: string,
-  options?: { routeId?: string }
+  options?: {
+    routeId?: string;
+    stage?: string | null;
+    workload?: string | null;
+    attemptNumber?: number;
+    previousFailure?: { selectedOrderIndex?: number | null; selectedStepId?: string | null };
+    failureKind?: string | null;
+  }
 ): Promise<ResolvedRouteResult | null> {
   const project = await getProject(projectId, userId);
   if (!project) return null;
 
   const workspaceId =
     project.workspaceId ?? (await getOrCreateDefaultWorkspace(project.userId)).id;
-  const routes = await listRoutes(projectId, userId, { environmentId });
-  const activeRoutes = routes.filter((r) => r.status === "active");
-  const route = options?.routeId
-    ? activeRoutes.find((r) => r.id === options.routeId || r.name === options.routeId) ?? activeRoutes[0]
-    : activeRoutes[0];
+  const routes = await listRoutes(projectId, userId, {
+    environmentId,
+    stage: options?.stage ?? undefined,
+    workload: options?.workload ?? undefined,
+  });
+  const activeRoutes = routes.filter((r) => r.status === "active" && (r.enabled ?? true));
+
+  const route =
+    options?.routeId
+      ? activeRoutes.find((r) => r.id === options.routeId || r.name === options.routeId) ?? activeRoutes[0]
+      : options?.stage
+        ? activeRoutes.find(
+            (r) =>
+              r.stage === options.stage &&
+              (options.workload ? r.workload === options.workload : true)
+          ) ?? null
+        : activeRoutes[0];
   if (!route) {
     return null;
   }
@@ -67,6 +90,11 @@ export async function resolveRouteForExecution(
     .slice()
     .sort((a, b) => a.orderIndex - b.orderIndex);
 
+  const attemptNumber = options?.attemptNumber ?? 0;
+  const startAfterOrderIndex = attemptNumber > 0
+    ? options?.previousFailure?.selectedOrderIndex ?? -1
+    : -1;
+
   const modelIds = [
     ...new Set([
       ...enabledSteps.map((s) => s.modelId).filter(Boolean),
@@ -79,6 +107,10 @@ export async function resolveRouteForExecution(
 
   const allViolations: PolicyViolation[] = [];
   for (const step of enabledSteps) {
+    // Minimal stage-aware switch behavior: on later attempts, skip steps at or before
+    // the previous selected orderIndex (if provided by the caller).
+    if (attemptNumber > 0 && step.orderIndex <= startAfterOrderIndex) continue;
+
     const providerType = step.providerPreference ?? null;
     const modelId = step.modelId ?? routeRecord.defaultModelId ?? null;
     const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
@@ -101,6 +133,12 @@ export async function resolveRouteForExecution(
         route: routeRecord,
         steps,
         selectedStep: step,
+        selectedStepId: step.id,
+        selectedOrderIndex: step.orderIndex,
+        switchReasonCode:
+          attemptNumber > 0
+            ? options?.failureKind ?? "switched_after_previous_failure"
+            : null,
         providerType,
         modelId,
         explanation,
@@ -112,6 +150,8 @@ export async function resolveRouteForExecution(
   const selectedStep = null;
   const providerType = null;
   const modelId = null;
+  const switchReasonCode =
+    attemptNumber > 0 && options?.failureKind ? options.failureKind : null;
   const explanation = enabledSteps.length > 0
     ? `route=${routeRecord.id} all_steps_blocked_by_policy`
     : `route=${routeRecord.id} no_enabled_step default_model=${routeRecord.defaultModelId ?? "—"}`;
@@ -123,6 +163,9 @@ export async function resolveRouteForExecution(
     route: routeRecord,
     steps,
     selectedStep,
+    selectedStepId: null,
+    selectedOrderIndex: null,
+    switchReasonCode,
     providerType,
     modelId,
     explanation,

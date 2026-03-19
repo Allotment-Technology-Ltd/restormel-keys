@@ -15,7 +15,7 @@
         "This page: /keys/docs/integrations-walkthrough/phase-4-aaif",
         "packages/aaif/src/types.ts",
       ],
-      prompt: `You are working in [your app repo]. Goal: Install @restormel/aaif and use the type guards. Steps: 1) Add @restormel/aaif. 2) Import AAIFRequest, AAIFResponse, isAAIFRequest, isAAIFResponse. 3) Create minimal valid AAIFRequest and AAIFResponse; pass to guards — both return true. 4) Document: "AAIF types and guards from @restormel/aaif; runtime TBD." DO NOT: Send real traffic to an AAIF endpoint.`,
+      prompt: `You are working in [your app repo]. Goal: Install @restormel/aaif and use the type guards. Steps: 1) Add @restormel/aaif. 2) Import AAIFRequest, AAIFResponse, isAAIFRequest, isAAIFResponse. 3) Create minimal valid AAIFRequest and AAIFResponse; pass to guards — both return true. 4) Document: "AAIF types, runtime guards, and runtime helper via executeAAIFRequest from @restormel/aaif." DO NOT: Send real traffic to an AI endpoint.`,
       gate: "Package installed; both guards return true for valid objects; docs updated.",
     },
   ];
@@ -35,10 +35,10 @@
     <strong>You'll need:</strong> TypeScript or JavaScript; optional: an app that calls AI APIs
   </p>
 
-  <p>This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed request and response shapes. Types and validation live in <code>@restormel/aaif</code>; runtime integration with routing is planned.</p>
+  <p>This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed request and response shapes. Types, validation, and a runtime helper (executeAAIFRequest) live in <code>@restormel/aaif</code>.</p>
 
   <h2>Step 4.1 — Request shape</h2>
-  <p><code>AAIFRequest</code>: <code>input</code>, <code>task?</code>, <code>constraints?</code>, <code>user?</code>.</p>
+  <p><code>AAIFRequest</code>: <code>input</code>, <code>task?</code>, <code>constraints?</code> (maxCost/latency/tokens), <code>user?</code>, and <code>routing?</code> (model/provider).</p>
 
   <h2>Step 4.2 — Response shape</h2>
   <p><code>AAIFResponse</code>: <code>output</code>, <code>provider</code>, <code>model</code>, <code>cost</code>, <code>routing.reason</code>.</p>

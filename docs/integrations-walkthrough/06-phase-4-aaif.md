@@ -4,7 +4,7 @@
 > **Prerequisites:** [Phase 0](02-phase-0-overview.md) read; you want a structured request/response contract  
 > **You'll need:** TypeScript or JavaScript; optional: an app that calls AI APIs
 
-This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed request and response shapes for predictable AI interactions. **Types and validation** live in `@restormel/aaif`; runtime integration with routing is planned.
+This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed request and response shapes for predictable AI interactions. **Types, validation, and runtime helper** live in `@restormel/aaif`.
 
 ---
 
@@ -14,8 +14,9 @@ This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed reques
 
 - `input: string`
 - `task?: "chat" | "completion" | "embedding"`
-- `constraints?: { maxCost?: number; latency?: "low" | "balanced" | "high" }`
+- `constraints?: { maxCost?: number; latency?: "low" | "balanced" | "high"; tokens?: { inputTokensM?: number; outputTokensM?: number } }`
 - `user?: { id: string; plan?: string }`
+- `routing?: { model?: string; provider?: string }`
 
 ---
 
@@ -42,7 +43,9 @@ import type { AAIFRequest, AAIFResponse } from "@restormel/aaif";
 import { isAAIFRequest, isAAIFResponse } from "@restormel/aaif";
 ```
 
-Use the type guards to validate incoming/outgoing payloads. When the AAIF runtime is available, you will send `AAIFRequest` to the service and receive `AAIFResponse`.
+Use the type guards to validate incoming/outgoing payloads. In this repo, the runtime helper is available as `executeAAIFRequest()` and integrates with `@restormel/keys` for routing + cost estimation.
+
+Implementation workflow runbook: [runbooks/aaif-implementation-workflow.md](../runbooks/aaif-implementation-workflow.md)
 
 ### How to test
 

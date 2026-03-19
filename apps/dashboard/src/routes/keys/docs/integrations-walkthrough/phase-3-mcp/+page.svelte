@@ -15,7 +15,7 @@
         "This page: /keys/docs/integrations-walkthrough/phase-3-mcp",
         "/keys/docs/integrations/mcp",
       ],
-      prompt: `You are working in [your repo or an agent/MCP server repo]. Goal: Install @restormel/mcp and confirm you can import the tool definitions. Steps: 1) Add @restormel/mcp. 2) Import ALL_TOOLS and modelsListTool; log length of ALL_TOOLS (7) and name of modelsListTool ("models.list"). 3) Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server TBD." DO NOT: Implement a full MCP server unless the task explicitly asks.`,
+      prompt: `You are working in [your repo or an agent/MCP server repo]. Goal: Install @restormel/mcp and confirm you can import the tool definitions. Steps: 1) Add @restormel/mcp. 2) Import ALL_TOOLS and modelsListTool; log length of ALL_TOOLS (7) and name of modelsListTool ("models.list"). 3) Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server via restormel-mcp stdio." DO NOT: Implement a full MCP server unless the task explicitly asks.`,
       gate: "Package installed; import works; docs mention MCP.",
     },
   ];
@@ -35,7 +35,7 @@
     <strong>You'll need:</strong> Understanding of <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>; optional: an MCP client
   </p>
 
-  <p>This phase introduces the Restormel MCP tool surface. <strong>Tool schemas</strong> are defined in <code>@restormel/mcp</code>; a runtime MCP server is planned. You can consume the schemas now and wire a server when available.</p>
+  <p>This phase introduces the Restormel MCP tool surface. <strong>Tool schemas</strong> are defined in <code>@restormel/mcp</code>; runtime is available via the stdio server binary <code>restormel-mcp</code> (and optional custom transports via <code>createRestormelMcpServer()</code>).</p>
 
   <h2>Step 3.1 — Understand the tool surface</h2>
   <p>Tools defined: <strong>models.list</strong>, <strong>providers.validate</strong>, <strong>cost.estimate</strong>, <strong>routing.explain</strong>, <strong>entitlements.check</strong>, <strong>integration.generate</strong>, <strong>docs.search</strong>. See <a href="/keys/docs/integrations/mcp">MCP reference</a> for full schema details.</p>
@@ -43,7 +43,7 @@
   <h2>Step 3.2 — Install the MCP package (schemas)</h2>
   <CodeBlock language="bash" code="pnpm add @restormel/mcp" label="CLI" />
   <CodeBlock language="typescript" code={`import { ALL_TOOLS, modelsListTool } from "@restormel/mcp";`} label="TypeScript" />
-  <p>Use these to build an MCP server (e.g. with @modelcontextprotocol/sdk). Implementation is out of scope until the official server is released.</p>
+  <p>Use these to build or customise an MCP server (e.g. with <code>@modelcontextprotocol/sdk</code>). You can also run the provided stdio server binary: <code>pnpm exec restormel-mcp</code>.</p>
 
   <h2>Step 3.3 — Dashboard</h2>
   <p>In <a href="/keys/dashboard/dev-tools/mcp">Dashboard → Developer Tools → MCP</a> you can see connection status, available tools, and recent calls when wired. For now the tab shows the tool list and links to the MCP setup guide.</p>

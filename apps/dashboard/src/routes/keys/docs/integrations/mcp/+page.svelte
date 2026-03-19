@@ -38,6 +38,21 @@
   </tbody>
 </table>
 
+<h2 class="docs-h2">How MCP maps to Restormel Keys</h2>
+<p class="docs-p">
+  MCP exposes Restormel’s core building blocks to agent workflows. These tools correspond to
+  the same primitives you can inspect with the CLI and validate with Doctor/Validate.
+</p>
+<ul class="docs-list">
+  <li><strong>`models.list`</strong> — same model inventory as `keys models list`.</li>
+  <li><strong>`providers.validate`</strong> — same credential health check as `keys validate`.</li>
+  <li><strong>`cost.estimate`</strong> — same pricing lookup as `keys estimate`.</li>
+  <li><strong>`routing.explain`</strong> — same static provider resolution as `keys routing explain` (policies require a configured project).</li>
+  <li><strong>`entitlements.check`</strong> — policy checks (local rules via `RESTORMEL_MCP_CONFIG` or remote evaluation via `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY`).</li>
+  <li><strong>`integration.generate`</strong> — scaffolding helper for a new integration.</li>
+  <li><strong>`docs.search`</strong> — offline documentation index search.</li>
+</ul>
+
 <h2 class="docs-h2">Package</h2>
 <p class="docs-p">
   Tool schemas and server factory are exported from <code class="inline-code">@restormel/mcp</code>:

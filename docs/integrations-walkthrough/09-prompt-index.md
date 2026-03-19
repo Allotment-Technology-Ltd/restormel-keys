@@ -147,7 +147,7 @@ Use this when implementing the Integrations walkthrough with a coding agent. Eac
 > **Steps:**
 > 1. Add `@restormel/mcp` as a dependency (or dev dependency if only building tool descriptors).
 > 2. In a small script or test file, import `ALL_TOOLS` and `modelsListTool` from "@restormel/mcp". Log the length of ALL_TOOLS (should be 7) and the name of modelsListTool (should be "models.list").
-> 3. Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server TBD. See [MCP setup](/keys/docs/integrations/mcp)."
+> 3. Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server via restormel-mcp stdio. See [MCP setup](/keys/docs/integrations/mcp)."
 >
 > **DO NOT:** Implement a full MCP server unless the task explicitly asks for it. This prompt is schema-only.
 
@@ -173,7 +173,7 @@ Use this when implementing the Integrations walkthrough with a coding agent. Eac
 > 1. Add `@restormel/aaif` as a dependency.
 > 2. Import `AAIFRequest`, `AAIFResponse`, `isAAIFRequest`, `isAAIFResponse` from "@restormel/aaif".
 > 3. Create a minimal valid object matching AAIFRequest (input, optional task). Pass it to isAAIFRequest; it must return true. Create a minimal valid AAIFResponse and pass to isAAIFResponse; it must return true.
-> 4. Document: "AAIF types and guards from @restormel/aaif; runtime integration TBD. See [AAIF overview](/keys/docs/integrations/aaif)."
+> 4. Document: "AAIF types, runtime guards, and runtime helper via executeAAIFRequest from @restormel/aaif. See [AAIF overview](/keys/docs/integrations/aaif)."
 >
 > **DO NOT:** Send real traffic to an AAIF endpoint (none is specified yet). This is types and validation only.
 

@@ -41,9 +41,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     orderIndex?: number;
     providerPreference?: string | null;
     modelId?: string | null;
+    label?: string | null;
+    switchCriteria?: Record<string, unknown> | null;
+    retryPolicy?: Record<string, unknown> | null;
+    costPolicy?: Record<string, unknown> | null;
     conditionBlock?: Record<string, unknown> | null;
     fallbackOn?: string | null;
     timeoutMs?: number | null;
+    notes?: string | null;
     enabled?: boolean;
   };
   try {
@@ -76,6 +81,30 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     return invalid(`fallbackOn must be one of: ${Array.from(FALLBACK_ON).join(", ")}`);
   }
 
+  const label = typeof body.label === "string" ? body.label.trim() : null;
+  let switchCriteria: Record<string, unknown> | null | undefined = undefined;
+  if (body.switchCriteria !== undefined) {
+    if (body.switchCriteria === null) switchCriteria = null;
+    else if (typeof body.switchCriteria === "object") switchCriteria = body.switchCriteria as Record<string, unknown>;
+    else return invalid("switchCriteria must be an object or null");
+  }
+
+  let retryPolicy: Record<string, unknown> | null | undefined = undefined;
+  if (body.retryPolicy !== undefined) {
+    if (body.retryPolicy === null) retryPolicy = null;
+    else if (typeof body.retryPolicy === "object") retryPolicy = body.retryPolicy as Record<string, unknown>;
+    else return invalid("retryPolicy must be an object or null");
+  }
+
+  let costPolicy: Record<string, unknown> | null | undefined = undefined;
+  if (body.costPolicy !== undefined) {
+    if (body.costPolicy === null) costPolicy = null;
+    else if (typeof body.costPolicy === "object") costPolicy = body.costPolicy as Record<string, unknown>;
+    else return invalid("costPolicy must be an object or null");
+  }
+
+  const notes = typeof body.notes === "string" ? body.notes.trim() : null;
+
   const existing = await listRouteSteps(params.routeId, scope.projectId, scope.userId);
   if (existing.some((s) => s.orderIndex === orderIndex)) {
     return json({ error: "duplicate_order_index" }, { status: 409 });
@@ -92,6 +121,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     fallbackOn,
     timeoutMs: body.timeoutMs ?? undefined,
     enabled: body.enabled,
+    label,
+    switchCriteria,
+    retryPolicy,
+    costPolicy,
+    notes,
   });
   if (!step) return json({ error: "route_not_found" }, { status: 404 });
   return json({ data: step }, { status: 201 });

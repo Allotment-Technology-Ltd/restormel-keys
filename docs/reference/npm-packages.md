@@ -8,6 +8,7 @@ Registry state changes with releases. From your project:
 
 ```bash
 npm view @restormel/keys version
+npm view @restormel/aaif version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/mcp version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/doctor version
 npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name differs"
@@ -21,6 +22,7 @@ Headless resolution and doctor checks need only:
 | Package        | Purpose                                      |
 |----------------|----------------------------------------------|
 | `@restormel/keys` | Core: resolve, providers, config consumption |
+| `@restormel/aaif` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts (requires host to supply output) |
 | `@restormel/mcp` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
 | `npx @restormel/doctor` | Local setup check (no UI packages required) |
 

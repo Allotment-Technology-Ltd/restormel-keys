@@ -13,7 +13,8 @@
 <h2 class="docs-h2">Status</h2>
 <p class="docs-p">
   AAIF is <strong>advanced</strong> — the type contract is defined and exported from
-  <code class="inline-code">@restormel/aaif</code>. Runtime integration with routing is planned.
+  <code class="inline-code">@restormel/aaif</code>. AAIF runtime helpers are available via
+  <code class="inline-code">executeAAIFRequest()</code>.
 </p>
 
 <h2 class="docs-h2">Request</h2>
@@ -23,10 +24,18 @@
   constraints?: &#123;
     maxCost?: number
     latency?: "low" | "balanced" | "high"
+    tokens?: &#123;
+      inputTokensM?: number
+      outputTokensM?: number
+    &#125;
   &#125;
   user?: &#123;
     id: string
     plan?: string
+  &#125;
+  routing?: &#123;
+    model?: string
+    provider?: string
   &#125;
 &#125;</code></pre>
 
@@ -42,7 +51,9 @@
 &#125;</code></pre>
 
 <h2 class="docs-h2">Package</h2>
-<p class="docs-p">Types and runtime guards are exported from <code class="inline-code">@restormel/aaif</code>:</p>
+<p class="docs-p">
+  Types, runtime guards, and the runtime helper are exported from <code class="inline-code">@restormel/aaif</code>:
+</p>
 <pre class="code-block"><code>import type &#123; AAIFRequest, AAIFResponse &#125; from "@restormel/aaif";
 import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code></pre>
 
@@ -50,8 +61,35 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
 <ul class="docs-list">
   <li><strong>Agent orchestration</strong> — standardise how agents request model completions with cost and latency constraints.</li>
   <li><strong>Routing transparency</strong> — responses include the routing reason so callers understand why a provider/model was chosen.</li>
-  <li><strong>Cost control</strong> — the <code class="inline-code">maxCost</code> constraint lets callers cap spending per request.</li>
+  <li><strong>Cost control</strong> — the <code class="inline-code">maxCost</code> constraint caps estimated spend per request.</li>
 </ul>
+
+<h2 class="docs-h2">When to choose AAIF vs MCP vs CLI</h2>
+<ul class="docs-list">
+  <li><strong>AAIF</strong> — your app/service wants a typed contract and runtime helper for routing + cost estimation.</li>
+  <li><strong>MCP</strong> — an agent or IDE wants to call Restormel tool surface (routing/cost/validation) via stdio.</li>
+  <li><strong>CLI</strong> — you need local, developer-friendly inspection and debugging without embedding into runtime code.</li>
+</ul>
+
+<h2 class="docs-h2">Runtime helper</h2>
+<p class="docs-p">
+  The AAIF runtime helper resolves <strong>provider/model</strong> and estimates cost via
+  <code class="inline-code">@restormel/keys</code>. Hosts can optionally provide the final model
+  output via the <code class="inline-code">generate</code> callback.
+</p>
+<pre class="code-block"><code>import &#123; executeAAIFRequest &#125; from "@restormel/aaif";
+import &#123; createKeys, openaiProvider &#125; from "@restormel/keys";
+
+const keys = createKeys(
+  &#123; routing: &#123; defaultProvider: "openai" &#125;, keys: [&#123; id: "k1", provider: "openai" &#125;] &#125;,
+  &#123; providers: [openaiProvider] &#125;
+);
+
+const res = await executeAAIFRequest(
+  &#123; input: "Summarise…", task: "chat", routing: &#123; model: "gpt-4o-mini" &#125; &#125;,
+  keys,
+  &#123; generate: async (ctx) => "output(cost=" + ctx.cost + ")" &#125;
+);</code></pre>
 
 <h2 class="docs-h2">Next steps</h2>
 <ul class="docs-links">
