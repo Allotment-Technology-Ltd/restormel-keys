@@ -48,6 +48,8 @@
   let selectedId = $page.url.searchParams.get("detail") ?? "";
   let filteredModels: typeof data.models = data.models;
   let groupedModels: { family: string; items: typeof data.models }[] = [];
+  let copiedModelId = "";
+  let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
   function applyFilters() {
     const params = new URLSearchParams();
@@ -91,6 +93,23 @@
     if (id.includes("mini") || id.includes("nano") || id.includes("flash") || id.includes("haiku")) return "fast";
     if (id.startsWith("o1") || id.startsWith("o3") || id.includes("reason")) return "deep_reasoning";
     return "balanced";
+  }
+
+  async function copyModelId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      copiedModelId = id;
+      if (copiedTimeout) clearTimeout(copiedTimeout);
+      copiedTimeout = setTimeout(() => {
+        copiedModelId = "";
+      }, 1500);
+    } catch {
+      // ignore clipboard failures
+    }
+  }
+
+  function useInRoute(id: string) {
+    goto(`${DASHBOARD_BASE}/routes?newRoute=true&model=${encodeURIComponent(id)}`);
   }
 
   function contextBucket(contextWindow: number | null): "small" | "medium" | "large" | "xlarge" | "unknown" {
@@ -310,12 +329,16 @@
             <li class="model-row">
               <button type="button" class="model-card" onclick={() => openDetail(m.id)}>
                 <span class="model-head">
-                  <span class="model-name">{m.canonicalName || m.id}</span>
+                  <span class="model-title-wrap">
+                    <span class="model-family-label">{m.family ?? "other"}</span>
+                    <span class="model-name">{m.canonicalName || m.id}</span>
+                  </span>
                   <span class="lifecycle-badge lifecycle-{lifecycleBadge(m.lifecycleState)}">
                     {m.lifecycleState ?? "—"}
                   </span>
                 </span>
                 <span class="model-meta">
+                  <span class="availability-dot {m.variantsSummary.hasAvailableVariant ? "availability-green" : "availability-grey"}" aria-hidden="true"></span>
                   <span class="chip">availability: {m.variantsSummary.hasAvailableVariant ? "available" : "degraded"}</span>
                   <span class="chip">providers: {m.variantsSummary.providerCount}</span>
                   <span class="chip">cost: {m.variantsSummary.hasPricingRef ? "known" : "unknown"}</span>
@@ -341,6 +364,19 @@
                   </span>
                 {/if}
               </button>
+              <div class="model-actions">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-inline"
+                  onclick={() => copyModelId(m.id)}
+                  title={copiedModelId === m.id ? "Copied!" : "Copy model ID"}
+                >
+                  {copiedModelId === m.id ? "Copied!" : "Copy"}
+                </button>
+                <button type="button" class="btn btn-secondary btn-inline" onclick={() => useInRoute(m.id)}>
+                  Use in route →
+                </button>
+              </div>
             </li>
           {/each}
         </ul>
@@ -459,6 +495,26 @@
     cursor: pointer;
     transition: background 0.15s;
   }
+  .model-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .btn-inline {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+  }
+  .model-title-wrap {
+    display: grid;
+    gap: 0.1rem;
+  }
+  .model-family-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--rm-dim);
+    font-weight: 500;
+  }
   .model-head {
     display: flex;
     align-items: center;
@@ -470,7 +526,7 @@
   }
   .model-name {
     font-weight: 600;
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--rm-text);
     display: block;
   }
@@ -489,6 +545,18 @@
     padding: 2px 8px;
     background: var(--rm-bg);
     color: var(--rm-muted);
+  }
+  .availability-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    margin-top: 0.35rem;
+  }
+  .availability-green {
+    background: #3ca067;
+  }
+  .availability-grey {
+    background: #8a8a8a;
   }
   .model-family {
     text-transform: lowercase;

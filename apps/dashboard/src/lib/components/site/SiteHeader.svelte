@@ -30,7 +30,7 @@
 
     <ul class="site-header-links">
       <li><a href="/keys" class:active={active === "keys"}>Keys</a></li>
-      <li><a href="/keys/docs" class:active={active === "docs"}>Docs</a></li>
+      <li><a href="/keys/docs" class:active={active === "docs"}>Documentation</a></li>
       <li><a href="/integrations" class:active={active === "integrations"}>Integrations</a></li>
       <li>
         <a
@@ -75,7 +75,7 @@
 
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <a href="/keys" class:active={active === "keys"} on:click={closeMobileMenu}>Keys</a>
-    <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Docs</a>
+    <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Documentation</a>
     <a href="/integrations" class:active={active === "integrations"} on:click={closeMobileMenu}>Integrations</a>
     <a
       href={portalUrl}

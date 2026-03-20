@@ -17,19 +17,9 @@
   }
 
   function initials(u: { uid: string; email?: string | null; name?: string | null }): string {
-    const name = (u.name?.trim() || u.email?.trim() || u.uid).trim();
-    if (!name) return "U";
-
-    if (name.includes("@")) {
-      const part = name.split("@")[0] ?? "";
-      const a = part.slice(0, 1).toUpperCase();
-      const b = part.slice(1, 2).toUpperCase();
-      return (a + b).trim() || "U";
-    }
-
-    const words = name.split(/\s+/).filter(Boolean);
-    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
+    const email = u.email?.trim();
+    if (!email) return "";
+    return email.slice(0, 1).toUpperCase();
   }
 
   function close() {
@@ -97,7 +87,13 @@
     on:keydown={onButtonKeyDown}
     bind:this={buttonEl}
   >
-    <span class="avatar" aria-hidden="true">{initials(user)}</span>
+    <span class="avatar" aria-hidden="true">
+      {#if initials(user)}
+        {initials(user)}
+      {:else}
+        <span class="avatar-icon">👤</span>
+      {/if}
+    </span>
     <span class="user-menu-caret" aria-hidden="true">▾</span>
   </button>
 
@@ -116,10 +112,6 @@
       <a class="user-menu-item" role="menuitem" href={DASHBOARD_BASE + "/billing"} on:click={close}>
         Subscription
       </a>
-      <a class="user-menu-item" role="menuitem" href="/keys/pricing" on:click={close}>
-        Pricing
-      </a>
-      <div class="user-menu-sep" aria-hidden="true"></div>
       <a
         class="user-menu-item user-menu-danger"
         role="menuitem"
@@ -175,6 +167,10 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+  .avatar-icon {
+    font-size: 0.95rem;
+    line-height: 1;
   }
 
   .user-menu-caret {

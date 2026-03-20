@@ -1,5 +1,13 @@
 import type { PageServerLoad } from "./$types";
-import { getProject, getProjectInWorkspace, getRouteWithSteps, getModelsLifecycleByIds } from "$lib/server/db";
+import {
+  getProject,
+  getProjectInWorkspace,
+  getRouteWithSteps,
+  getModelsLifecycleByIds,
+  listPolicies,
+  listPolicyBindingsByTarget,
+  listModels,
+} from "$lib/server/db";
 
 async function projectScope(
   locals: App.Locals,
@@ -51,11 +59,30 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       (m) => m.lifecycleState && deprecatedStates.has(m.lifecycleState.toLowerCase())
     );
     const project = await getProject(scope.projectId, scope.userId);
+    const workspaceId = project?.workspaceId ?? null;
+    const availablePolicies = workspaceId ? await listPolicies(workspaceId) : [];
+    const routePolicyBindings = workspaceId
+      ? await listPolicyBindingsByTarget("route", params.routeId, workspaceId)
+      : [];
+    const modelOptions = await listModels({ limit: 200 });
     return {
       project: project ? { id: project.id, name: project.name } : null,
       route: result.route,
       steps: result.steps,
       modelLifecycleWarnings,
+      availablePolicies: availablePolicies.map((p) => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        status: p.status,
+      })),
+      routePolicyBindings: routePolicyBindings.map((b) => ({
+        id: b.id,
+        policyId: b.policyId,
+        policyName: b.policy?.name ?? "Policy",
+        policyType: b.policy?.type ?? "unknown",
+      })),
+      modelOptions: modelOptions.map((m) => m.id),
       error: null,
     };
   } catch (e) {
@@ -65,6 +92,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       route: null,
       steps: [],
       modelLifecycleWarnings: [],
+      availablePolicies: [],
+      routePolicyBindings: [],
+      modelOptions: [],
       error: "Unable to load route",
     };
   }

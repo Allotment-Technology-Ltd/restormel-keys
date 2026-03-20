@@ -2,36 +2,27 @@
  * Nav config: canonical IA and topbar title.
  */
 import { describe, it, expect } from "vitest";
-import { NAV_ITEMS, topbarTitle } from "./nav-config";
+import { NAV_GROUPS, OVERVIEW_ITEM, topbarTitle } from "./nav-config";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
-describe("NAV_ITEMS", () => {
-  it("includes all canonical sections in order", () => {
-    const labels = NAV_ITEMS.map((item) => item.label);
-    expect(labels).toContain("Overview");
-    expect(labels).toContain("Projects");
-    expect(labels).toContain("Keys & Credentials");
-    expect(labels).toContain("Provider Access");
-    expect(labels).toContain("Developer Tools");
-    expect(labels).toContain("Models");
-    expect(labels).toContain("Healthcheck");
+describe("sidebar nav", () => {
+  it("keeps overview outside grouped sections", () => {
+    expect(OVERVIEW_ITEM.label).toBe("Overview");
+  });
+
+  it("contains expected grouped labels", () => {
+    const labels = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.label));
+    expect(labels).toContain("Providers");
     expect(labels).toContain("Routes");
     expect(labels).toContain("Policies");
+    expect(labels).toContain("Models");
     expect(labels).toContain("Analytics");
-    expect(labels).toContain("Logs & Traces");
+    expect(labels).toContain("Logs");
+    expect(labels).toContain("Healthcheck");
+    expect(labels).toContain("Access");
     expect(labels).toContain("Sandbox");
-    expect(labels).toContain("API portal");
-    expect(labels).toContain("Documentation");
-    expect(labels).toContain("Profile");
-  });
-
-  it("Overview is first", () => {
-    expect(NAV_ITEMS[0].label).toBe("Overview");
-  });
-
-  it("Documentation is marked external", () => {
-    const doc = NAV_ITEMS.find((item) => item.label === "Documentation");
-    expect(doc?.external).toBe(true);
+    expect(labels).toContain("CI / CD");
+    expect(labels).toContain("Dev Tools");
   });
 });
 

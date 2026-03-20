@@ -1,6 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
+import { listEnvironments, listProjects } from "$lib/server/db";
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
   const baseWithSlash = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE : DASHBOARD_BASE + "/";
@@ -33,5 +34,30 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     throw redirect(302, `${url.origin}${baseNorm}/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
-  return { user: locals.user, authError };
+  let projectContexts: {
+    id: string;
+    name: string;
+    environments: { id: string; name: string; type: string }[];
+  }[] = [];
+
+  if (locals.user) {
+    try {
+      const projects = await listProjects(locals.user.uid);
+      projectContexts = await Promise.all(
+        projects.map(async (project) => {
+          const environments = await listEnvironments(project.id, locals.user!.uid);
+          return {
+            id: project.id,
+            name: project.name,
+            environments: environments.map((env) => ({ id: env.id, name: env.name, type: env.type })),
+          };
+        })
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "unknown error";
+      console.error("[dashboard layout] project context load failed:", msg.slice(0, 120));
+    }
+  }
+
+  return { user: locals.user, authError, projectContexts };
 };

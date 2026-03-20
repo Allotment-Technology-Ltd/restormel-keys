@@ -22,13 +22,10 @@
   let saveError = "";
   let editStatus = data.policy?.status ?? "active";
 
-  let testProjectId = "";
-  let testEnvironmentId = "";
-  let testModelId = "";
-  let testProviderType = "openai";
-  let evaluateLoading = false;
-  let evaluateError = "";
-  let evaluateResult: { allowed: boolean; violations: { policyId: string; policyName: string; type: string; message: string }[] } | null = null;
+  let testModelInput = "";
+  let testSpendInput = "";
+  let testTokenInput = "";
+  let policyTestResult: { heading: string; detail: string; state: "ok" | "warn" } | null = null;
 
   let addTargetType: "workspace" | "project" | "environment" | "route" = "project";
   let addBindingProjectId = "";
@@ -39,12 +36,6 @@
 
   $: if (data.policy) editStatus = data.policy.status;
 
-  $: selectedProject = data.projects?.find((p) => p.id === testProjectId) ?? null;
-  $: envOptions = selectedProject?.environments ?? [];
-  $: routeOptions = selectedProject?.routes ?? [];
-  $: if (testProjectId && testEnvironmentId && envOptions.length && !envOptions.some((e) => e.id === testEnvironmentId)) {
-    testEnvironmentId = "";
-  }
   $: addProjectForBinding = data.projects?.find((p) => p.id === addBindingProjectId) ?? null;
   $: addEnvOptions = addProjectForBinding?.environments ?? [];
   $: addRouteOptions = addProjectForBinding?.routes ?? [];
@@ -66,41 +57,99 @@
     : addTargetType === "route" ? !!addBindingProjectId && !!addTargetId
     : false;
 
-  async function runEvaluate() {
-    if (!testProjectId.trim()) {
-      evaluateError = "Select a project.";
-      return;
-    }
-    evaluateLoading = true;
-    evaluateError = "";
-    evaluateResult = null;
-    try {
-      const res = await fetch(`${DASHBOARD_BASE}/api/policies/evaluate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          projectId: testProjectId,
-          environmentId: testEnvironmentId || undefined,
-          modelId: testModelId || undefined,
-          providerType: testProviderType || undefined,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        evaluateError = (json as { error?: string }).error ?? `Request failed (${res.status})`;
+  function asStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is string => typeof item === "string").map((item) => item.toLowerCase());
+  }
+
+  function runPolicyTest() {
+    if (!data.policy) return;
+    const rd = data.policy.ruleDefinition ?? {};
+    const policyType = data.policy.type;
+    const model = testModelInput.trim().toLowerCase();
+    const spend = Number(testSpendInput);
+    const tokens = Number(testTokenInput);
+
+    if (policyType === "model_allowlist" || policyType === "model_denylist") {
+      const items = [
+        ...asStringArray(rd.modelIds),
+        ...asStringArray(rd.models),
+        ...asStringArray(rd.allowlist),
+        ...asStringArray(rd.denylist),
+      ];
+      if (!model) {
+        policyTestResult = { heading: "Enter a model name", detail: "Type a model to test this rule.", state: "warn" };
         return;
       }
-      const d = (json as { data?: { allowed?: boolean; violations?: { policyId: string; policyName: string; type: string; message: string }[] } }).data;
-      evaluateResult = {
-        allowed: d?.allowed ?? true,
-        violations: Array.isArray(d?.violations) ? d.violations : [],
-      };
-    } catch (e) {
-      evaluateError = e instanceof Error ? e.message : "Request failed";
-    } finally {
-      evaluateLoading = false;
+      const hit = items.includes(model);
+      if (policyType === "model_allowlist") {
+        policyTestResult = hit
+          ? { heading: "Allowed", detail: `${testModelInput} is in the allowlist.`, state: "ok" }
+          : { heading: "Blocked", detail: `${testModelInput} is not in the allowlist.`, state: "warn" };
+      } else {
+        policyTestResult = hit
+          ? { heading: "Blocked", detail: `${testModelInput} is in the denylist.`, state: "warn" }
+          : { heading: "Allowed", detail: `${testModelInput} is not denied by this policy.`, state: "ok" };
+      }
+      return;
     }
+
+    if (policyType === "budget_cap") {
+      const cap = Number(rd.capUsd ?? rd.budgetCapUsd ?? rd.maxUsd ?? rd.limitUsd);
+      if (!Number.isFinite(spend)) {
+        policyTestResult = { heading: "Enter spend amount", detail: "Provide a USD value to test.", state: "warn" };
+        return;
+      }
+      if (!Number.isFinite(cap)) {
+        policyTestResult = { heading: "No cap configured", detail: "Rule definition has no budget cap value.", state: "warn" };
+        return;
+      }
+      policyTestResult =
+        spend <= cap
+          ? { heading: "Within budget", detail: `$${spend.toFixed(2)} is within cap $${cap.toFixed(2)}.`, state: "ok" }
+          : { heading: "Exceeds cap", detail: `$${spend.toFixed(2)} exceeds cap $${cap.toFixed(2)}.`, state: "warn" };
+      return;
+    }
+
+    if (policyType === "token_cap") {
+      const cap = Number(rd.capTokens ?? rd.tokenCap ?? rd.maxTokens ?? rd.limitTokens);
+      if (!Number.isFinite(tokens)) {
+        policyTestResult = { heading: "Enter token count", detail: "Provide a numeric token value to test.", state: "warn" };
+        return;
+      }
+      if (!Number.isFinite(cap)) {
+        policyTestResult = { heading: "No cap configured", detail: "Rule definition has no token cap value.", state: "warn" };
+        return;
+      }
+      policyTestResult =
+        tokens <= cap
+          ? { heading: "Within limit", detail: `${tokens} tokens is within cap ${cap}.`, state: "ok" }
+          : { heading: "Exceeds cap", detail: `${tokens} tokens exceeds cap ${cap}.`, state: "warn" };
+      return;
+    }
+
+    if (policyType === "deprecated_model_block") {
+      if (!model) {
+        policyTestResult = { heading: "Enter a model name", detail: "Type a model to test this rule.", state: "warn" };
+        return;
+      }
+      const deprecated = [
+        ...asStringArray(rd.modelIds),
+        ...asStringArray(rd.models),
+        ...asStringArray(rd.deprecatedModels),
+      ];
+      const flagged = deprecated.includes(model) || model.includes("deprecated") || model.includes("legacy");
+      policyTestResult = flagged
+        ? { heading: "Blocked", detail: `${testModelInput} is flagged as deprecated.`, state: "warn" }
+        : { heading: "Allowed", detail: `${testModelInput} is not flagged as deprecated.`, state: "ok" };
+      return;
+    }
+
+    policyTestResult = {
+      heading: "No tester available",
+      detail: `Client-side tester is not defined for policy type "${policyType}".`,
+      state: "warn",
+    };
   }
 
   async function addBinding() {
@@ -206,63 +255,35 @@
   <section class="section" aria-labelledby="test-heading">
     <h2 id="test-heading" class="section-title">Test policy</h2>
     <p class="section-desc">
-      Evaluate uses your current session and shows whether a given model/provider combination would pass all policies bound to the selected scope (including this one).
+      This panel evaluates this policy client-side against its current rule definition.
     </p>
-    <form class="test-form" onsubmit={(e) => { e.preventDefault(); runEvaluate(); }}>
-      <div class="form-row">
-        <label for="test-project">Project</label>
-        <select id="test-project" bind:value={testProjectId} class="input" required>
-          <option value="">Select project</option>
-          {#each data.projects ?? [] as p}
-            <option value={p.id}>{p.name}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="test-env">Environment</label>
-        <select id="test-env" bind:value={testEnvironmentId} class="input">
-          <option value="">Any</option>
-          {#each envOptions as env}
-            <option value={env.id}>{env.name}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="test-model">Model</label>
-        <select id="test-model" bind:value={testModelId} class="input">
-          <option value="">Any</option>
-          {#each data.models ?? [] as m}
-            <option value={m.id}>{m.canonicalName ?? m.id}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="form-row">
-        <label for="test-provider">Provider</label>
-        <select id="test-provider" bind:value={testProviderType} class="input">
-          <option value="openai">openai</option>
-          <option value="anthropic">anthropic</option>
-          <option value="google">google</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary" disabled={evaluateLoading}>
-        {evaluateLoading ? "Evaluating…" : "Evaluate"}
-      </button>
+    <form class="test-form" onsubmit={(e) => { e.preventDefault(); runPolicyTest(); }}>
+      {#if data.policy.type === "model_allowlist" || data.policy.type === "model_denylist" || data.policy.type === "deprecated_model_block"}
+        <div class="form-row">
+          <label for="test-model">Model name</label>
+          <input id="test-model" type="text" bind:value={testModelInput} class="input" placeholder="e.g. gpt-4o-mini" />
+        </div>
+      {:else if data.policy.type === "budget_cap"}
+        <div class="form-row">
+          <label for="test-spend">Spend amount (USD)</label>
+          <input id="test-spend" type="number" min="0" step="0.01" bind:value={testSpendInput} class="input" placeholder="e.g. 12.50" />
+        </div>
+      {:else if data.policy.type === "token_cap"}
+        <div class="form-row">
+          <label for="test-token">Token count</label>
+          <input id="test-token" type="number" min="0" step="1" bind:value={testTokenInput} class="input" placeholder="e.g. 12000" />
+        </div>
+      {:else}
+        <p class="muted">No interactive tester for this policy type yet.</p>
+      {/if}
+      <button type="submit" class="btn btn-primary">Run test</button>
     </form>
-    {#if evaluateError}
-      <p class="error-msg" role="alert">{evaluateError}</p>
-    {/if}
-    {#if evaluateResult}
+    {#if policyTestResult}
       <div class="evaluate-result" role="status">
-        <p class="evaluate-badge" class:allowed={evaluateResult.allowed} class:blocked={!evaluateResult.allowed}>
-          {evaluateResult.allowed ? "Allowed" : "Blocked"}
+        <p class="evaluate-badge" class:allowed={policyTestResult.state === "ok"} class:blocked={policyTestResult.state !== "ok"}>
+          {policyTestResult.heading}
         </p>
-        {#if evaluateResult.violations.length > 0}
-          <ul class="violations-list">
-            {#each evaluateResult.violations as v}
-              <li><strong>{v.type}</strong> — {v.message} <span class="muted">({v.policyName})</span></li>
-            {/each}
-          </ul>
-        {/if}
+        <p class="muted">{policyTestResult.detail}</p>
       </div>
     {/if}
   </section>

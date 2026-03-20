@@ -2,22 +2,39 @@
   import "../../../app.css";
   import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { NAV_ITEMS, topbarTitle } from "$lib/nav-config";
+  import { NAV_GROUPS, OVERVIEW_ITEM, topbarTitle } from "$lib/nav-config";
   import { onMount } from "svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
+  import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
+  $: projectContexts = $page.data.projectContexts ?? [];
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
+  const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
   let collapsed = false;
   let isPhone = false;
+  let navGroupsOpen: Record<string, boolean> = { build: true, monitor: true, developer: true };
 
   onMount(() => {
     collapsed = localStorage.getItem(STORAGE_KEY) === "true";
+    try {
+      const raw = localStorage.getItem(NAV_GROUPS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        navGroupsOpen = {
+          build: typeof parsed.build === "boolean" ? parsed.build : true,
+          monitor: typeof parsed.monitor === "boolean" ? parsed.monitor : true,
+          developer: typeof parsed.developer === "boolean" ? parsed.developer : true,
+        };
+      }
+    } catch {
+      navGroupsOpen = { build: true, monitor: true, developer: true };
+    }
 
     const media = window.matchMedia("(max-width: 767px)");
     const updatePhone = () => {
@@ -32,6 +49,15 @@
   function toggleSidebar() {
     collapsed = !collapsed;
     localStorage.setItem(STORAGE_KEY, String(collapsed));
+  }
+
+  function toggleNavGroup(groupId: "build" | "monitor" | "developer") {
+    navGroupsOpen = { ...navGroupsOpen, [groupId]: !navGroupsOpen[groupId] };
+    localStorage.setItem(NAV_GROUPS_STORAGE_KEY, JSON.stringify(navGroupsOpen));
+  }
+
+  function isActivePath(href: string): boolean {
+    return currentPath === href || (href !== DASHBOARD_BASE + "/" && currentPath.startsWith(href + "/"));
   }
 </script>
 
@@ -62,16 +88,33 @@
   <div class="shell" class:shell-collapsed={collapsed}>
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard">
-        {#each NAV_ITEMS as item}
-          {#if item.external}
-            <a
-              href={item.href}
-              class="nav-link"
-              target={item.openInNewTab === false ? undefined : "_blank"}
-              rel={item.openInNewTab === false ? undefined : "noopener noreferrer"}>{item.label}</a>
-          {:else}
-            <a href={item.href} class="nav-link" class:nav-link-active={currentPath === item.href || (item.href !== DASHBOARD_BASE + "/" && currentPath.startsWith(item.href + "/"))}>{item.label}</a>
-          {/if}
+        <a href={OVERVIEW_ITEM.href} class="nav-link nav-link-overview" class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}>
+          {OVERVIEW_ITEM.label}
+        </a>
+
+        <ProjectContextSwitcher projects={projectContexts} />
+
+        {#each NAV_GROUPS as group}
+          <section class="nav-group">
+            <button
+              type="button"
+              class="nav-group-header"
+              aria-expanded={navGroupsOpen[group.id]}
+              on:click={() => toggleNavGroup(group.id)}
+            >
+              <span>{group.label}</span>
+              <span aria-hidden="true">{navGroupsOpen[group.id] ? "▾" : "▸"}</span>
+            </button>
+            {#if navGroupsOpen[group.id]}
+              <div class="nav-group-links">
+                {#each group.items as item}
+                  <a href={item.href} class="nav-link" class:nav-link-active={isActivePath(item.href)}>
+                    {item.label}
+                  </a>
+                {/each}
+              </div>
+            {/if}
+          </section>
         {/each}
       </nav>
     </aside>
@@ -148,6 +191,34 @@
     flex-direction: column;
   }
   .nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .nav-link-overview {
+    margin-bottom: var(--space-1);
+  }
+  .nav-group {
+    margin-top: var(--space-1);
+  }
+  .nav-group-header {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--rm-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .nav-group-header:hover {
+    color: var(--rm-muted);
+  }
+  .nav-group-links {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);

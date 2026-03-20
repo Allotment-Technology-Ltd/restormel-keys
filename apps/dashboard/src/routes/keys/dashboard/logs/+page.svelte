@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
 
   export let data: {
     logs: {
@@ -13,9 +14,12 @@
       finalModelId: string | null;
       requestStatus: string;
       latencyMs: number;
+      ttftMs: number | null;
       inputTokens: number | null;
       outputTokens: number | null;
       estimatedCost: number | null;
+      fallbackCount: number | null;
+      errorCode: string | null;
       createdAt: number;
     }[];
     filter: { projectId: string | null; routeId: string | null; status: string | null } | null;
@@ -32,6 +36,12 @@
   let routeFilter = data.filter?.routeId ?? "";
   let statusFilter = data.filter?.status ?? "";
   let limitFilter = String(data.controls?.limit ?? 100);
+  let selectedLog: (typeof data.logs)[number] | null = null;
+  const LOGS_VISITED_KEY = "restormel_logs_visited";
+
+  onMount(() => {
+    localStorage.setItem(LOGS_VISITED_KEY, "true");
+  });
 
   function formatTime(ts: number): string {
     return new Date(ts).toLocaleString();
@@ -52,6 +62,29 @@
     if (limitFilter) params.set("limit", limitFilter);
     goto(`${DASHBOARD_BASE}/logs${params.toString() ? "?" + params.toString() : ""}`);
   }
+
+  function fixNoRouteHref(log: (typeof data.logs)[number]): string {
+    const params = new URLSearchParams();
+    params.set("newRoute", "true");
+    if (log.environmentId) params.set("env", log.environmentId);
+    return `${DASHBOARD_BASE}/routes?${params.toString()}`;
+  }
+
+  function policyChecks(log: (typeof data.logs)[number]): string[] {
+    const checks: string[] = [];
+    if (log.requestStatus === "policy_blocked") checks.push("policy_blocked");
+    if (log.errorCode?.toLowerCase().includes("policy")) checks.push(log.errorCode);
+    return checks;
+  }
+
+  function openLogDetail(log: (typeof data.logs)[number]) {
+    selectedLog = log;
+  }
+
+  function closeLogDetail() {
+    selectedLog = null;
+  }
+
 </script>
 
 <h1 class="page-title">Logs & Traces</h1>
@@ -125,17 +158,29 @@
 {:else}
   <ul class="log-list">
     {#each data.logs as log}
-      <li class="log-row">
-        <span class="log-time">{formatTime(log.createdAt)}</span>
-        <span class={`log-status ${statusClass(log.requestStatus)}`}>{log.requestStatus}</span>
-        <span class="log-provider">{log.providerType}</span>
-        <span class="log-model">{log.finalModelId ?? "—"}</span>
-        <span class="log-latency">{log.latencyMs} ms</span>
-        {#if log.inputTokens != null || log.outputTokens != null}
-          <span class="log-tokens">in: {log.inputTokens ?? "—"} out: {log.outputTokens ?? "—"}</span>
-        {/if}
-        {#if log.routeId}
-          <a href={DASHBOARD_BASE + "/projects/" + log.projectId + "/routes/" + log.routeId} class="log-link">Route</a>
+      <li
+        class="log-row-wrap"
+        class:log-row-no-route={log.requestStatus === "no_route"}
+      >
+        <button type="button" class="log-row" onclick={() => openLogDetail(log)}>
+          <span class="log-time">{formatTime(log.createdAt)}</span>
+          <span class={`log-status ${statusClass(log.requestStatus)}`}>{log.requestStatus}</span>
+          <span class="log-provider">{log.providerType}</span>
+          <span class="log-model">{log.finalModelId ?? "—"}</span>
+          <span class="log-latency">{log.latencyMs} ms</span>
+          {#if log.inputTokens != null || log.outputTokens != null}
+            <span class="log-tokens">in: {log.inputTokens ?? "—"} out: {log.outputTokens ?? "—"}</span>
+          {/if}
+          {#if log.routeId}
+            <span class="log-link">route: {log.routeId.slice(0, 8)}…</span>
+          {/if}
+        </button>
+        {#if log.requestStatus === "no_route"}
+          <a
+            href={fixNoRouteHref(log)}
+            class="log-fix-link"
+            onclick={(e) => e.stopPropagation()}
+          >Fix?</a>
         {/if}
       </li>
     {/each}
@@ -146,6 +191,71 @@
       <a href={DASHBOARD_BASE + "/routes"}>Fix no_route?</a> Check route coverage and ensure a published route matches your environment + stage.
     {/if}
   </p>
+{/if}
+
+{#if selectedLog}
+  <div class="detail-backdrop" role="presentation" onclick={closeLogDetail}></div>
+  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="request-detail-title">
+    <header class="detail-header">
+      <h2 id="request-detail-title">Request detail</h2>
+      <button type="button" class="detail-close" onclick={closeLogDetail} aria-label="Close request detail">
+        ×
+      </button>
+    </header>
+    <div class="detail-body">
+      <p><strong>Timestamp:</strong> {formatTime(selectedLog.createdAt)}</p>
+      <p>
+        <strong>Status:</strong>
+        <span class={`log-status ${statusClass(selectedLog.requestStatus)}`}>{selectedLog.requestStatus}</span>
+      </p>
+      <p><strong>Model requested:</strong> {selectedLog.finalModelId ?? "Unavailable in log record"}</p>
+      <p><strong>Provider resolved:</strong> {selectedLog.providerType}</p>
+      <p>
+        <strong>Route matched:</strong>
+        {#if selectedLog.routeId}
+          <a href={DASHBOARD_BASE + "/projects/" + selectedLog.projectId + "/routes/" + selectedLog.routeId}>
+            {selectedLog.routeId}
+          </a>
+        {:else}
+          No route matched
+        {/if}
+      </p>
+      <div>
+        <strong>Policy checks run:</strong>
+        {#if policyChecks(selectedLog).length > 0}
+          <ul>
+            {#each policyChecks(selectedLog) as check}
+              <li>{check}</li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="muted">No policy check metadata available for this request.</p>
+        {/if}
+      </div>
+      <p>
+        <strong>Latency breakdown:</strong>
+        total {selectedLog.latencyMs} ms
+        {#if selectedLog.ttftMs != null}
+          · resolve/TTFT {selectedLog.ttftMs} ms
+        {:else}
+          · resolve time unavailable
+        {/if}
+      </p>
+      <div>
+        <strong>Raw response metadata:</strong>
+        <pre>{JSON.stringify({
+          gatewayKeyId: selectedLog.gatewayKeyId,
+          errorCode: selectedLog.errorCode,
+          fallbackCount: selectedLog.fallbackCount,
+          inputTokens: selectedLog.inputTokens,
+          outputTokens: selectedLog.outputTokens,
+          estimatedCost: selectedLog.estimatedCost,
+          environmentId: selectedLog.environmentId,
+          projectId: selectedLog.projectId,
+        }, null, 2)}</pre>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <style>
@@ -187,7 +297,7 @@
     padding: 0;
     margin: 0;
   }
-  .log-row {
+  .log-row-wrap {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -195,6 +305,23 @@
     padding: var(--space-2) 0;
     border-bottom: 1px solid var(--rm-border);
     font-size: var(--text-sm);
+  }
+  .log-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    border: none;
+    background: transparent;
+    color: inherit;
+    width: 100%;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+  }
+  .log-row:focus-visible {
+    outline: 2px solid var(--rm-sage);
+    outline-offset: 2px;
   }
   .log-time {
     color: var(--rm-muted);
@@ -210,6 +337,16 @@
   .log-link {
     color: var(--rm-sage);
     font-size: var(--text-xs);
+  }
+  .log-fix-link {
+    color: #c08a1c;
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+  .log-row-no-route {
+    border-left: 4px solid #c08a1c;
+    background: color-mix(in oklab, #c08a1c 14%, transparent);
+    padding-left: var(--space-2);
   }
   .muted {
     font-size: var(--text-sm);
@@ -283,5 +420,75 @@
   .status-other {
     color: var(--rm-text);
     font-weight: 600;
+  }
+  .detail-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 40;
+  }
+  .detail-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(30rem, 100vw);
+    height: 100vh;
+    background: var(--rm-bg);
+    border-left: 1px solid var(--rm-border);
+    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.2);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--rm-border);
+  }
+  .detail-header h2 {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--rm-text);
+  }
+  .detail-close {
+    border: none;
+    background: transparent;
+    color: var(--rm-muted);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .detail-body {
+    padding: var(--space-4);
+    overflow: auto;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .detail-body p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .detail-body strong {
+    color: var(--rm-text);
+  }
+  .detail-body ul {
+    margin: var(--space-1) 0 0;
+    padding-left: 1.25rem;
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+  }
+  .detail-body pre {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    white-space: pre-wrap;
+    background: var(--rm-surface);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2);
+    color: var(--rm-text);
   }
 </style>

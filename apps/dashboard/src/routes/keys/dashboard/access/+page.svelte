@@ -19,8 +19,10 @@
   let createLabel = "";
   let newKey: { rawKey: string; keyPrefix: string; projectName: string } | null = null;
   let copied = false;
+  let copiedMaskedId: string | null = null;
   let revokingId: string | null = null;
   let keyLabels: Record<string, string> = {};
+  let listProjectFilter = "all";
 
   if (typeof localStorage !== "undefined") {
     try {
@@ -33,6 +35,10 @@
   $: selectedProjectId = data.projects.length && !selectedProjectId
     ? data.projects[0].id
     : selectedProjectId;
+  $: filteredKeys =
+    listProjectFilter === "all"
+      ? data.keys
+      : data.keys.filter((key) => key.projectId === listProjectFilter);
 
   async function createGatewayKey() {
     if (!selectedProjectId) return;
@@ -72,6 +78,18 @@
     setTimeout(() => (copied = false), 2000);
   }
 
+  async function copyMaskedId(key: KeyWithProject) {
+    try {
+      await navigator.clipboard.writeText(key.keyPrefix);
+      copiedMaskedId = key.id;
+      setTimeout(() => {
+        if (copiedMaskedId === key.id) copiedMaskedId = null;
+      }, 1500);
+    } catch {
+      // ignore clipboard errors
+    }
+  }
+
   async function revokeKey(key: KeyWithProject) {
     if (!confirm("Revoke this Gateway key? It will stop working immediately.")) return;
     revokingId = key.id;
@@ -101,8 +119,11 @@
 {:else}
   <section class="section" aria-labelledby="gateway-keys-heading">
     <h2 id="gateway-keys-heading" class="section-title">Gateway keys</h2>
-    <p class="section-desc">
-      A Gateway key lets you call the Restormel Cloud API. Each key belongs to one project. Copy the key when you create it; we won’t show the full key again. This is not a Provider credential — those are for connecting to AI providers and live under Provider Integrations.
+    <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View audit log →</a>
+    <p class="key-callout">
+      A Gateway key authenticates your app to Restormel. It is not a provider credential.
+      To connect OpenAI, Anthropic, or other providers, go to
+      <a href={DASHBOARD_BASE + "/integrations"}>Providers</a>.
     </p>
 
     {#if newKey}
@@ -159,8 +180,17 @@
       </form>
 
       {#if data.keys.length > 0}
+        <div class="key-filter">
+          <label for="key-project-filter">Project</label>
+          <select id="key-project-filter" bind:value={listProjectFilter} class="select">
+            <option value="all">All projects</option>
+            {#each data.projects as project}
+              <option value={project.id}>{project.name}</option>
+            {/each}
+          </select>
+        </div>
         <ul class="key-list">
-          {#each data.keys as k}
+          {#each filteredKeys as k}
             <li class="key-row">
               <span class="key-meta">
                 <code class="key-prefix">{k.keyPrefix}</code>
@@ -169,15 +199,29 @@
                 {/if}
                 <span class="key-project">{k.projectName}</span>
               </span>
-              <button
-                type="button"
-                class="btn btn-danger"
-                onclick={() => revokeKey(k)}
-                disabled={revokingId === k.id}
-                aria-label="Revoke Gateway key {k.keyPrefix}"
-              >
-                {revokingId === k.id ? "Revoking…" : "Revoke"}
-              </button>
+              <span class="key-actions">
+                <button
+                  type="button"
+                  class="btn btn-icon"
+                  onclick={() => copyMaskedId(k)}
+                  aria-label="Copy masked key identifier {k.keyPrefix}"
+                  title="Copy masked ID"
+                >
+                  📋
+                </button>
+                {#if copiedMaskedId === k.id}
+                  <span class="copied-hint">Copied masked ID</span>
+                {/if}
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  onclick={() => revokeKey(k)}
+                  disabled={revokingId === k.id}
+                  aria-label="Revoke Gateway key {k.keyPrefix}"
+                >
+                  {revokingId === k.id ? "Revoking…" : "Revoke"}
+                </button>
+              </span>
             </li>
           {/each}
         </ul>
@@ -209,13 +253,6 @@
     <a href="/keys/docs/guides/provider-access-modes" class="btn btn-secondary">Provider access modes</a>
   </section>
 
-  <section class="section" aria-labelledby="audit-heading">
-    <h2 id="audit-heading" class="section-title">Audit log</h2>
-    <p class="section-desc">
-      View who created or revoked keys and other changes in your workspace.
-    </p>
-    <a href={DASHBOARD_BASE + "/access/audit"} class="btn btn-secondary">View audit log</a>
-  </section>
 {/if}
 
 <style>
@@ -264,6 +301,32 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-3);
+  }
+  .audit-link {
+    display: inline-block;
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-sage);
+    text-decoration: none;
+  }
+  .audit-link:hover {
+    text-decoration: underline;
+  }
+  .key-callout {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-left: 4px solid var(--rm-sage);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+  .key-callout a {
+    color: var(--rm-sage);
+    font-weight: 500;
   }
   .new-key-box {
     background: var(--rm-surface-raised);
@@ -346,6 +409,32 @@
     justify-content: space-between;
     padding: var(--space-2) 0;
     border-bottom: 1px solid var(--rm-border);
+  }
+  .key-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .btn-icon {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--rm-muted);
+    line-height: 1;
+  }
+  .copied-hint {
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+  }
+  .key-filter {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
+  }
+  .key-filter label {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
   }
   .key-meta {
     display: flex;
