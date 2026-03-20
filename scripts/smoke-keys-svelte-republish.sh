@@ -52,19 +52,36 @@ if [ ! -f "$KEYS_TGZ" ] || [ ! -f "$SV_TGZ" ]; then
 fi
 
 echo "[smoke-svelte] Verifying tarball contains dist artifacts..."
-# Extract instead of `tar -tzf | grep`: listing to a pipe/file can hit "tar: stdout: write error"
-# in some CI environments (pipe closure, /tmp pressure). Extraction is deterministic.
+# Do not use the `tar` binary here: GitHub runners sometimes report "tar: stdout: write error"
+# even for -t / -x (stdin/stdout/pipe quirks). Python's tarfile reads the .tgz directly.
 SV_EXTRACT="$PACK_DIR/sv-tarball-extract"
 rm -rf "$SV_EXTRACT"
 mkdir -p "$SV_EXTRACT"
-tar -xzf "$SV_TGZ" -C "$SV_EXTRACT"
-for rel in "package/dist/index.js" "package/dist/index.d.ts" "package/dist/keys-svelte.css"; do
-  if [ ! -f "$SV_EXTRACT/$rel" ]; then
-    echo "[smoke-svelte] FAIL missing in tarball: $rel"
-    find "$SV_EXTRACT" -type f 2>/dev/null | head -30 || true
-    exit 1
-  fi
-done
+SV_TGZ="$SV_TGZ" SV_EXTRACT="$SV_EXTRACT" python3 <<'PY'
+import os, sys, tarfile
+sv = os.environ["SV_TGZ"]
+out = os.environ["SV_EXTRACT"]
+os.makedirs(out, exist_ok=True)
+try:
+    tf = tarfile.open(sv, "r:gz")
+except OSError as e:
+    print("[smoke-svelte] FAIL open tarball:", sv, e, file=sys.stderr)
+    sys.exit(1)
+with tf:
+    # Python 3.12+ prefers filter= for safer extraction; older Pythons omit it.
+    try:
+        tf.extractall(out, filter="data")
+    except TypeError:
+        tf.extractall(out)
+for rel in ("package/dist/index.js", "package/dist/index.d.ts", "package/dist/keys-svelte.css"):
+    path = os.path.join(out, rel)
+    if not os.path.isfile(path):
+        print("[smoke-svelte] FAIL missing in tarball:", rel, file=sys.stderr)
+        for root, _, files in os.walk(out):
+            for f in files[:40]:
+                print(os.path.join(root, f), file=sys.stderr)
+        sys.exit(1)
+PY
 
 echo "[smoke-svelte] Copying demo-svelte -> $DEMO_TMP ..."
 cp -R "$ROOT/apps/demo-svelte/." "$DEMO_TMP/"

@@ -6,7 +6,7 @@ Single record of meaningful repo changes.
 
 ### Fixed
 
-- **`scripts/smoke-keys-svelte-republish.sh`:** verify packed tarball by **extracting** `package/dist/*` instead of `tar -tzf` to a file — avoids flaky `tar: stdout: write error` / false “index.js missing” on some CI runners.
+- **`scripts/smoke-keys-svelte-republish.sh`:** verify the packed tarball with **Python `tarfile`** (no `tar` subprocess) — GNU `tar` on some GitHub runners still emitted `stdout: write error` even for `-x`/`-t`, causing false failures.
 
 ### Changed
 
