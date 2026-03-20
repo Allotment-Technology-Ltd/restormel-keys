@@ -1,9 +1,39 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
-import { getPolicy, updatePolicy, deletePolicy } from "$lib/server/db";
+import {
+  getPolicy,
+  updatePolicy,
+  deletePolicy,
+  getOrCreateDefaultWorkspace,
+  getProject,
+  listPolicyBindings,
+} from "$lib/server/db";
+
+async function gatewayPolicyScope(
+  locals: App.Locals
+): Promise<{ workspaceId: string; projectId: string; actorId: string } | null> {
+  if (!locals.user || locals.user.authType !== "gateway_key") return null;
+  const projectId = locals.user.projectIdForKey;
+  if (!projectId) return null;
+  const project = await getProject(projectId, locals.user.uid);
+  if (!project) return null;
+  const workspaceId = project.workspaceId ?? (await getOrCreateDefaultWorkspace(locals.user.uid)).id;
+  return { workspaceId, projectId, actorId: locals.user.uid };
+}
 
 export const GET: RequestHandler = async ({ params, locals }) => {
+  const gateway = await gatewayPolicyScope(locals);
+  if (gateway) {
+    const policy = await getPolicy(params.id, gateway.workspaceId);
+    if (!policy) return json({ error: "Not found" }, { status: 404 });
+    const bindings = await listPolicyBindings(policy.id, gateway.workspaceId);
+    const matchesProject = bindings.some(
+      (b) => b.targetType === "project" && b.targetId === gateway.projectId
+    );
+    if (!matchesProject) return json({ error: "Not found" }, { status: 404 });
+    return json({ data: policy });
+  }
   const ctx = await getWorkspaceAndActor(locals);
   if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
   const policy = await getPolicy(params.id, ctx.workspaceId);

@@ -12,6 +12,8 @@ vi.mock("$lib/server/integrations-auth", () => ({
 }));
 
 vi.mock("$lib/server/db", () => ({
+  getProject: vi.fn().mockResolvedValue({ id: "proj-1", workspaceId: "ws-1", userId: "u1" }),
+  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({ id: "ws-1" }),
   listPolicies: vi.fn().mockResolvedValue([]),
   getPolicy: vi.fn().mockResolvedValue(null),
   createPolicy: vi.fn().mockResolvedValue({

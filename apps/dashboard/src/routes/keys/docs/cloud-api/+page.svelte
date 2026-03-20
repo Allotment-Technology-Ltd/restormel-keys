@@ -110,6 +110,8 @@
   </div>
   <div class="callout">
     <strong>OpenAPI (stable URLs)</strong> —
+    <a href="/keys/docs/api/openapi">/keys/docs/api/openapi</a>,
+    <a href="/keys/dashboard/api/openapi">/keys/dashboard/api/openapi</a>,
     <a href="/keys/docs/api/openapi.yaml">/keys/docs/api/openapi.yaml</a> and
     <a href="/keys/dashboard/api/openapi.yaml">/keys/dashboard/api/openapi.yaml</a>
   </div>
