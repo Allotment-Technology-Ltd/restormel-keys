@@ -56,15 +56,45 @@ describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
 
   it("returns 200 with per-step estimate when resolved", async () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
+    const mockRoute = {
+      id: "route-1",
+      projectId: "p1",
+      environmentId: "env-1",
+      name: "Default",
+      description: null,
+      defaultModelId: "gpt-4o",
+      billingMode: null,
+      routeMode: null,
+      stage: "ingestion_grouping",
+      workload: "ingestion",
+      enabled: true,
+      version: 1,
+      publishedVersion: 1,
+      status: "active",
+      createdBy: "u1",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const mockStep = {
+      id: "s1",
+      routeId: "route-1",
+      orderIndex: 0,
+      providerPreference: "openai",
+      modelId: "gpt-4o",
+      conditionBlock: null,
+      fallbackOn: "error",
+      timeoutMs: null,
+      enabled: true,
+      createdAt: new Date(1).toISOString(),
+      updatedAt: new Date(1).toISOString(),
+    };
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
       workspaceId: "ws1",
       projectId: "p1",
       environmentId: "env-1",
-      route: { id: "route-1", name: "Default" },
-      steps: [
-        { id: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true },
-      ],
-      selectedStep: { id: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true },
+      route: mockRoute,
+      steps: [mockStep],
+      selectedStep: mockStep,
       selectedStepId: "s1",
       selectedOrderIndex: 0,
       switchReasonCode: null,
