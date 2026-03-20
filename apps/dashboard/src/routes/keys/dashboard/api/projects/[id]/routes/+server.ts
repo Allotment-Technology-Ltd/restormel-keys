@@ -63,6 +63,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       enabled?: boolean;
       version?: number;
       publishedVersion?: number;
+      updatedVia?: string;
+      changeSummary?: string;
     };
     try {
       body = (await request.json()) as typeof body;
@@ -109,6 +111,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       enabled: body.enabled,
       version: body.version,
       publishedVersion: body.publishedVersion,
+      updatedVia: typeof body.updatedVia === "string" ? body.updatedVia.trim() : locals.user.authType ?? "session",
+      changeSummary:
+        typeof body.changeSummary === "string" ? body.changeSummary.trim() : "Route created via API",
       userId: scope.userId,
     });
     if (!route) return json({ error: "Not found or environment not in project" }, { status: 404 });

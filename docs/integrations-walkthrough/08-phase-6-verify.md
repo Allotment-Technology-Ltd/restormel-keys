@@ -27,6 +27,16 @@ All three commands complete without errors.
 1. Open [Developer Tools](https://restormel.dev/keys/dashboard/dev-tools).
 2. Confirm the overview shows CLI, MCP, AAIF cards.
 3. Open the tab for your chosen surface (CLI, MCP, or AAIF) and confirm the content matches your setup (e.g. CLI tab shows install status and command list).
+4. For operator readiness, verify runtime APIs:
+   - `GET /api/projects/{projectId}/providers/health`
+   - `GET /api/projects/{projectId}/route-coverage`
+   - `GET /api/projects/{projectId}/readiness`
+   - `POST /api/projects/{projectId}/routes/{routeId}/recommend`
+5. For policy lifecycle parity, verify:
+   - `GET /api/policies/{id}/history`
+   - `POST /api/policies/{id}/publish`
+   - `POST /api/policies/{id}/rollback`
+   - `POST /api/policies/{id}/diff`
 
 ---
 

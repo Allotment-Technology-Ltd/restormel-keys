@@ -49,6 +49,12 @@ This runbook focuses on wiring the MCP server/tools so your agent workflow can:
 - `npx keys estimate <model> -i <inputTokensM> -o <outputTokensM>`
 - `npx keys routing explain <model>`
 
+## Operator workflow example
+1. Call `GET /api/projects/{projectId}/providers/health` and confirm each bound provider has `health=ok` or a clear remediation path.
+2. Call `GET /api/projects/{projectId}/route-coverage` to verify each required stage/workload tuple has an enabled route.
+3. Call `GET /api/projects/{projectId}/readiness` and resolve any `high` severity issues before rollout.
+4. Call `POST /api/projects/{projectId}/routes/{routeId}/recommend` to inspect non-breaking improvements before changing route order/policies.
+
 ## Production readiness checklist
 - Ensure your MCP client only enables tools that do not write to stdout (MCP protocol uses stdout for tool transport).
 - Handle tool error states in the agent workflow:

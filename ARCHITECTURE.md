@@ -25,6 +25,8 @@ Upstream or sibling products that integrate with Keys should use these contracts
 
 **Integrations layer:** `@restormel/aaif` (request/response types + runtime helper `executeAAIFRequest` for routing + cost estimation), `@restormel/mcp` (MCP tool schemas + stdio server `restormel-mcp` and `createRestormelMcpServer()`). Marketing at `/integrations` (top-level route, separate from `/keys/`, designed for future extraction). Dashboard "Developer Tools" at `/keys/dashboard/dev-tools`. Existing dashboard provider integrations relabelled to "Provider Access" (URL unchanged). Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
 
+**Operator APIs and provenance:** Dashboard runtime/control-plane now includes provider trust health, route coverage and readiness advisory APIs, route recommendation previews, and policy lifecycle parity (`history/publish/rollback/diff`). Route/policy write paths include provenance metadata (`updatedVia`, `updatedBy`, `updatedAt`, `changeSummary`, `contentHash`) for auditable sync and rollback workflows.
+
 **Extraction seams:** When Integrations moves to its own repo: (1) `src/routes/integrations/` lifts into a new SvelteKit app, (2) `packages/aaif/` and `packages/mcp/` move as-is, (3) dashboard dev-tools section stays in dashboard app (shared auth/shell), (4) shared components (`IntegrationCard`, `StatusBadge`) move with the marketing page or into a shared package.
 
 ---

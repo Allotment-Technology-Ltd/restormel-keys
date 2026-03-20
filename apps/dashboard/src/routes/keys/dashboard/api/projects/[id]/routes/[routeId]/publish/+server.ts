@@ -38,6 +38,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
     const published = await updateRoute(params.routeId, scope.projectId, scope.userId, {
       version: nextVersion,
       publishedVersion: nextVersion,
+      updatedVia: locals.user.authType ?? "session",
+      updatedBy: locals.user.uid,
+      changeSummary: `Published route version ${nextVersion}`,
     });
     if (!published) return json({ error: "route_not_found" }, { status: 404 });
 

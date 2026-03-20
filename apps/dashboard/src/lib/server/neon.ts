@@ -1287,6 +1287,10 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS published_version INTEGER DEFAULT 1`;
     await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS stage TEXT`;
     await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS workload TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS updated_via TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS updated_by TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS change_summary TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS content_hash TEXT`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS label TEXT`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS switch_criteria JSONB`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS retry_policy JSONB`;
@@ -1302,6 +1306,17 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
     `;
     await sql`ALTER TABLE route_steps ALTER COLUMN created_at SET NOT NULL`;
     await sql`ALTER TABLE route_steps ALTER COLUMN updated_at SET NOT NULL`;
+    await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS updated_at BIGINT`;
+    await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS updated_via TEXT`;
+    await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS updated_by TEXT`;
+    await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS change_summary TEXT`;
+    await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS content_hash TEXT`;
+    await sql`
+      UPDATE policies
+      SET updated_at = COALESCE(updated_at, created_at)
+      WHERE updated_at IS NULL
+    `;
+    await sql`ALTER TABLE policies ALTER COLUMN updated_at SET NOT NULL`;
     await sql`
       CREATE TABLE IF NOT EXISTS route_version_events (
         id TEXT PRIMARY KEY,
@@ -1325,6 +1340,29 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_route_version_events_project_route_version
       ON route_version_events(project_id, route_id, version)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS policy_version_events (
+        id TEXT PRIMARY KEY,
+        policy_id TEXT NOT NULL REFERENCES policies(id) ON DELETE CASCADE,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        actor_id TEXT,
+        actor_type TEXT,
+        summary TEXT,
+        policy_snapshot JSONB,
+        metadata JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_policy_version_events_policy_created
+      ON policy_version_events(policy_id, created_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_policy_version_events_workspace_policy_version
+      ON policy_version_events(workspace_id, policy_id, version)
     `;
   })();
   return ensuredIngestionRoutingSchema;
@@ -1352,6 +1390,10 @@ export type RouteRecord = {
   publishedVersion?: number;
   status: string;
   createdBy: string | null;
+  updatedVia?: string | null;
+  updatedBy?: string | null;
+  changeSummary?: string | null;
+  contentHash?: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -1381,6 +1423,9 @@ export type RouteStepRecord = {
 };
 
 const ROUTE_DEFAULT_STATUS = "active";
+function stableContentHash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value ?? null)).digest("hex");
+}
 
 /** List routes for a project; optional filter by environmentId. */
 export async function listRoutes(
@@ -1404,7 +1449,9 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
-             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+             status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+             change_summary AS "changeSummary", content_hash AS "contentHash",
+             created_at AS "createdAt", updated_at AS "updatedAt"
       FROM routes
       WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND workload = ${workloadFilter} AND stage = ${stageFilter}
       ORDER BY created_at DESC
@@ -1414,7 +1461,9 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
-             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+             status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+             change_summary AS "changeSummary", content_hash AS "contentHash",
+             created_at AS "createdAt", updated_at AS "updatedAt"
       FROM routes
       WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND workload = ${workloadFilter}
       ORDER BY created_at DESC
@@ -1424,7 +1473,9 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
-             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+             status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+             change_summary AS "changeSummary", content_hash AS "contentHash",
+             created_at AS "createdAt", updated_at AS "updatedAt"
       FROM routes
       WHERE project_id = ${projectId} AND environment_id = ${envFilter} AND stage = ${stageFilter}
       ORDER BY created_at DESC
@@ -1434,7 +1485,9 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
-             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+             status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+             change_summary AS "changeSummary", content_hash AS "contentHash",
+             created_at AS "createdAt", updated_at AS "updatedAt"
       FROM routes
       WHERE project_id = ${projectId} AND environment_id = ${envFilter}
       ORDER BY created_at DESC
@@ -1444,7 +1497,9 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
-             status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+             status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+             change_summary AS "changeSummary", content_hash AS "contentHash",
+             created_at AS "createdAt", updated_at AS "updatedAt"
       FROM routes
       WHERE project_id = ${projectId}
       ORDER BY created_at DESC
@@ -1463,7 +1518,9 @@ export async function getRoute(id: string, projectId: string, userId: string): P
     SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
            default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
            stage, workload, enabled, version, published_version AS "publishedVersion",
-           status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"
+           status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
+           change_summary AS "changeSummary", content_hash AS "contentHash",
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM routes
     WHERE id = ${id} AND project_id = ${projectId}
     LIMIT 1
@@ -1490,6 +1547,10 @@ function mapRouteRow(r: Record<string, unknown>): RouteRecord {
       typeof r.publishedVersion === "number" ? r.publishedVersion : Number(r.publishedVersion ?? 1),
     status: (r.status as string) ?? ROUTE_DEFAULT_STATUS,
     createdBy: (r.createdBy as string) ?? null,
+    updatedVia: (r.updatedVia as string) ?? null,
+    updatedBy: (r.updatedBy as string) ?? null,
+    changeSummary: (r.changeSummary as string) ?? null,
+    contentHash: (r.contentHash as string) ?? null,
     createdAt: Number(r.createdAt),
     updatedAt: Number(r.updatedAt),
   };
@@ -1509,6 +1570,8 @@ export async function createRoute(params: {
   enabled?: boolean;
   version?: number;
   publishedVersion?: number;
+  updatedVia?: string | null;
+  changeSummary?: string | null;
   userId: string;
 }): Promise<RouteRecord | null> {
   await ensureIngestionRoutingSchema();
@@ -1520,10 +1583,23 @@ export async function createRoute(params: {
   const id = crypto.randomUUID();
   const now = Date.now();
   const name = params.name?.trim() || "Unnamed route";
+  const contentHash = stableContentHash({
+    name,
+    description: params.description?.trim() || null,
+    defaultModelId: params.defaultModelId ?? null,
+    billingMode: params.billingMode ?? null,
+    routeMode: params.routeMode ?? null,
+    stage: params.stage ?? null,
+    workload: params.workload ?? null,
+    enabled: params.enabled ?? true,
+    version: params.version ?? 1,
+    publishedVersion: params.publishedVersion ?? 1,
+  });
   await sql`
     INSERT INTO routes (
       id, project_id, environment_id, name, description, default_model_id, billing_mode, route_mode,
       stage, workload, enabled, version, published_version,
+      updated_via, updated_by, change_summary, content_hash,
       status, created_by, created_at, updated_at
     )
     VALUES (
@@ -1537,6 +1613,10 @@ export async function createRoute(params: {
       ${params.enabled ?? true},
       ${params.version ?? 1},
       ${params.publishedVersion ?? 1},
+      ${params.updatedVia ?? "api"},
+      ${params.userId},
+      ${params.changeSummary ?? "Route created"},
+      ${contentHash},
       ${ROUTE_DEFAULT_STATUS},
       ${params.userId}, ${now}, ${now}
     )
@@ -1561,6 +1641,9 @@ export async function updateRoute(
     version?: number;
     publishedVersion?: number;
     status?: string;
+    updatedVia?: string | null;
+    updatedBy?: string | null;
+    changeSummary?: string | null;
   }
 ): Promise<RouteRecord | null> {
   await ensureIngestionRoutingSchema();
@@ -1580,6 +1663,19 @@ export async function updateRoute(
     updates.publishedVersion !== undefined ? updates.publishedVersion : (existing.publishedVersion ?? 1);
   const status = updates.status ?? existing.status;
   const now = Date.now();
+  const contentHash = stableContentHash({
+    name,
+    description,
+    defaultModelId,
+    billingMode,
+    routeMode,
+    stage,
+    workload,
+    enabled,
+    version,
+    publishedVersion,
+    status,
+  });
   await sql`
     UPDATE routes
     SET name = ${name},
@@ -1593,6 +1689,10 @@ export async function updateRoute(
         version = ${version},
         published_version = ${publishedVersion},
         status = ${status},
+        updated_via = ${updates.updatedVia ?? "api"},
+        updated_by = ${updates.updatedBy ?? userId},
+        change_summary = ${updates.changeSummary ?? "Route updated"},
+        content_hash = ${contentHash},
         updated_at = ${now}
     WHERE id = ${id} AND project_id = ${projectId}
   `;
@@ -1964,6 +2064,25 @@ export type PolicyRecord = {
   ruleDefinition: Record<string, unknown> | null;
   createdBy: string | null;
   createdAt: number;
+  updatedAt: number;
+  updatedVia: string | null;
+  updatedBy: string | null;
+  changeSummary: string | null;
+  contentHash: string | null;
+};
+
+export type PolicyVersionEventRecord = {
+  id: string;
+  policyId: string;
+  workspaceId: string;
+  version: number;
+  action: "publish" | "rollback" | "update";
+  actorId: string | null;
+  actorType: string | null;
+  summary: string | null;
+  policySnapshot: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: number;
 };
 
 export type PolicyBindingRecord = {
@@ -1984,10 +2103,13 @@ const POLICY_DEFAULT_STATUS = "active";
 
 /** List policies for workspace. */
 export async function listPolicies(workspaceId: string): Promise<PolicyRecord[]> {
+  await ensureIngestionRoutingSchema();
   const sql = getSql();
   const rows = await sql`
     SELECT id, workspace_id AS "workspaceId", name, type, status, rule_definition AS "ruleDefinition",
-           created_by AS "createdBy", created_at AS "createdAt"
+           created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt",
+           updated_via AS "updatedVia", updated_by AS "updatedBy", change_summary AS "changeSummary",
+           content_hash AS "contentHash"
     FROM policies
     WHERE workspace_id = ${workspaceId}
     ORDER BY created_at DESC
@@ -2001,15 +2123,23 @@ export async function listPolicies(workspaceId: string): Promise<PolicyRecord[]>
     ruleDefinition: r.ruleDefinition ?? null,
     createdBy: r.createdBy ?? null,
     createdAt: Number(r.createdAt),
+    updatedAt: Number(r.updatedAt ?? r.createdAt),
+    updatedVia: r.updatedVia ?? null,
+    updatedBy: r.updatedBy ?? null,
+    changeSummary: r.changeSummary ?? null,
+    contentHash: r.contentHash ?? null,
   })) as PolicyRecord[];
 }
 
 /** Get one policy. */
 export async function getPolicy(id: string, workspaceId: string): Promise<PolicyRecord | null> {
+  await ensureIngestionRoutingSchema();
   const sql = getSql();
   const rows = await sql`
     SELECT id, workspace_id AS "workspaceId", name, type, status, rule_definition AS "ruleDefinition",
-           created_by AS "createdBy", created_at AS "createdAt"
+           created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt",
+           updated_via AS "updatedVia", updated_by AS "updatedBy", change_summary AS "changeSummary",
+           content_hash AS "contentHash"
     FROM policies
     WHERE id = ${id} AND workspace_id = ${workspaceId}
     LIMIT 1
@@ -2025,6 +2155,11 @@ export async function getPolicy(id: string, workspaceId: string): Promise<Policy
     ruleDefinition: r.ruleDefinition ?? null,
     createdBy: r.createdBy ?? null,
     createdAt: Number(r.createdAt),
+    updatedAt: Number(r.updatedAt ?? r.createdAt),
+    updatedVia: r.updatedVia ?? null,
+    updatedBy: r.updatedBy ?? null,
+    changeSummary: r.changeSummary ?? null,
+    contentHash: r.contentHash ?? null,
   } as PolicyRecord;
 }
 
@@ -2037,16 +2172,29 @@ export async function createPolicy(params: {
   createdBy?: string;
   actorId: string;
   actorType: string;
+  updatedVia?: string;
+  changeSummary?: string;
 }): Promise<PolicyRecord> {
   const sql = getSql();
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   const status = POLICY_DEFAULT_STATUS;
   const name = params.name?.trim() || "Unnamed policy";
+  const contentHash = stableContentHash({
+    name,
+    type: params.type,
+    status,
+    ruleDefinition: params.ruleDefinition ?? null,
+  });
   await sql`
-    INSERT INTO policies (id, workspace_id, name, type, status, rule_definition, created_by, created_at)
+    INSERT INTO policies (
+      id, workspace_id, name, type, status, rule_definition, created_by, created_at,
+      updated_at, updated_via, updated_by, change_summary, content_hash
+    )
     VALUES (${id}, ${params.workspaceId}, ${name}, ${params.type}, ${status},
-            ${params.ruleDefinition ? JSON.stringify(params.ruleDefinition) : null}, ${params.createdBy ?? null}, ${createdAt})
+            ${params.ruleDefinition ? JSON.stringify(params.ruleDefinition) : null}, ${params.createdBy ?? null}, ${createdAt},
+            ${createdAt}, ${params.updatedVia ?? "api"}, ${params.actorId},
+            ${params.changeSummary ?? "Policy created"}, ${contentHash})
   `;
   try {
     await insertAuditEvent({
@@ -2071,7 +2219,15 @@ export async function createPolicy(params: {
 export async function updatePolicy(
   id: string,
   workspaceId: string,
-  updates: { name?: string; type?: string; status?: string; ruleDefinition?: Record<string, unknown> | null }
+  updates: {
+    name?: string;
+    type?: string;
+    status?: string;
+    ruleDefinition?: Record<string, unknown> | null;
+    updatedVia?: string | null;
+    updatedBy?: string | null;
+    changeSummary?: string | null;
+  }
 ): Promise<PolicyRecord | null> {
   const existing = await getPolicy(id, workspaceId);
   if (!existing) return null;
@@ -2080,11 +2236,103 @@ export async function updatePolicy(
   const type = updates.type ?? existing.type;
   const status = updates.status ?? existing.status;
   const ruleDefinition = updates.ruleDefinition !== undefined ? updates.ruleDefinition : existing.ruleDefinition;
+  const now = Date.now();
+  const contentHash = stableContentHash({ name, type, status, ruleDefinition });
   await sql`
-    UPDATE policies SET name = ${name}, type = ${type}, status = ${status}, rule_definition = ${ruleDefinition ? JSON.stringify(ruleDefinition) : null}
+    UPDATE policies
+    SET name = ${name},
+        type = ${type},
+        status = ${status},
+        rule_definition = ${ruleDefinition ? JSON.stringify(ruleDefinition) : null},
+        updated_at = ${now},
+        updated_via = ${updates.updatedVia ?? "api"},
+        updated_by = ${updates.updatedBy ?? null},
+        change_summary = ${updates.changeSummary ?? "Policy updated"},
+        content_hash = ${contentHash}
     WHERE id = ${id} AND workspace_id = ${workspaceId}
   `;
   return getPolicy(id, workspaceId);
+}
+
+export async function listPolicyVersionEvents(
+  policyId: string,
+  workspaceId: string,
+  limit = 50
+): Promise<PolicyVersionEventRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const policy = await getPolicy(policyId, workspaceId);
+  if (!policy) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, policy_id AS "policyId", workspace_id AS "workspaceId", version, action,
+           actor_id AS "actorId", actor_type AS "actorType", summary,
+           policy_snapshot AS "policySnapshot", metadata, created_at AS "createdAt"
+    FROM policy_version_events
+    WHERE policy_id = ${policyId} AND workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+    LIMIT ${Math.max(1, Math.min(200, limit))}
+  `;
+  return rows as PolicyVersionEventRecord[];
+}
+
+export async function getPolicyVersionEventByVersion(
+  policyId: string,
+  workspaceId: string,
+  version: number
+): Promise<PolicyVersionEventRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const policy = await getPolicy(policyId, workspaceId);
+  if (!policy) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, policy_id AS "policyId", workspace_id AS "workspaceId", version, action,
+           actor_id AS "actorId", actor_type AS "actorType", summary,
+           policy_snapshot AS "policySnapshot", metadata, created_at AS "createdAt"
+    FROM policy_version_events
+    WHERE policy_id = ${policyId} AND workspace_id = ${workspaceId} AND version = ${version}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  return rows.length ? (rows[0] as PolicyVersionEventRecord) : null;
+}
+
+export async function insertPolicyVersionEvent(params: {
+  policyId: string;
+  workspaceId: string;
+  version: number;
+  action: "publish" | "rollback" | "update";
+  actorId?: string | null;
+  actorType?: string | null;
+  summary?: string | null;
+  policySnapshot?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<PolicyVersionEventRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO policy_version_events (
+      id, policy_id, workspace_id, version, action, actor_id, actor_type, summary,
+      policy_snapshot, metadata, created_at
+    )
+    VALUES (
+      ${id}, ${params.policyId}, ${params.workspaceId}, ${params.version}, ${params.action},
+      ${params.actorId ?? null}, ${params.actorType ?? null}, ${params.summary ?? null},
+      ${params.policySnapshot ? JSON.stringify(params.policySnapshot) : null},
+      ${params.metadata ? JSON.stringify(params.metadata) : null},
+      ${createdAt}
+    )
+  `;
+  const rows = await sql`
+    SELECT id, policy_id AS "policyId", workspace_id AS "workspaceId", version, action,
+           actor_id AS "actorId", actor_type AS "actorType", summary,
+           policy_snapshot AS "policySnapshot", metadata, created_at AS "createdAt"
+    FROM policy_version_events
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  return rows[0] as PolicyVersionEventRecord;
 }
 
 /** Delete policy (cascade deletes bindings). */

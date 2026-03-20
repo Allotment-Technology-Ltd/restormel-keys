@@ -77,6 +77,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     const rolled = await updateRoute(params.routeId, scope.projectId, scope.userId, {
       version: targetVersion,
       publishedVersion: targetVersion,
+      updatedVia: locals.user.authType ?? "session",
+      updatedBy: locals.user.uid,
+      changeSummary: `Rolled back route to version ${targetVersion}`,
     });
     if (!rolled) return json({ error: "route_not_found" }, { status: 404 });
 

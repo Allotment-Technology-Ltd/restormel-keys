@@ -58,6 +58,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       previousFailure?: { selectedOrderIndex?: number; selectedStepId?: string };
       estimatedInputTokens?: number;
       estimatedInputChars?: number;
+      traceId?: string;
     };
     try {
       body = (await request.json()) as typeof body;
@@ -128,6 +129,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
     return json({
       data: {
+        contractVersion: "2026-03-20",
+        traceId: typeof body.traceId === "string" ? body.traceId : null,
+        routeId: resolved.route.id,
+        routeName: resolved.route.name,
+        providerType: resolved.providerType ?? null,
+        modelId: resolved.modelId ?? null,
+        switchReasonCode: resolved.switchReasonCode ?? null,
+        matchedCriteria: resolved.matchedCriteria ?? null,
+        fallbackCandidates: resolved.fallbackCandidates ?? [],
         selectedStepId,
         estimatedCostUsd: selectedEstimate?.estimatedCostUsd ?? null,
         perStepEstimates,
@@ -136,6 +146,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           attemptNumber,
           failureKind: typeof body.failureKind === "string" ? body.failureKind.trim() : null,
           selectedOrderIndex: resolved.selectedOrderIndex ?? null,
+        },
+        decisionMetadata: {
+          selectedStepId,
+          selectedOrderIndex: resolved.selectedOrderIndex ?? null,
+          providerType: resolved.providerType ?? null,
+          modelId: resolved.modelId ?? null,
+          switchReasonCode: resolved.switchReasonCode ?? null,
+          matchedCriteria: resolved.matchedCriteria ?? null,
+          fallbackCandidates: resolved.fallbackCandidates ?? [],
+          estimatedCostUsd: selectedEstimate?.estimatedCostUsd ?? null,
         },
       },
     });

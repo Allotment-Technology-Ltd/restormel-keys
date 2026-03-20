@@ -24,6 +24,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 - **Docs:** `/keys/docs/integrations/` with CLI quickstart, MCP setup, AAIF overview.
 - **Next:** AAIF routing integration, webhook/event stream support; MCP transport extras (e.g. HTTP) if demand emerges.
 - Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
+- **Operator API parity shipped:** provider trust health, route coverage/readiness APIs, route recommendation endpoint, policy lifecycle parity endpoints, and provenance fields for route/policy updates.
 
 ## Dogfood-driven priorities (from SOPHIA Phase 5)
 

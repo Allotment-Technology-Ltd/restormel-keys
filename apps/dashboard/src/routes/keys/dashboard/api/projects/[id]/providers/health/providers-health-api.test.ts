@@ -2,14 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("$lib/server/db", () => ({
   getProject: vi.fn().mockResolvedValue({ id: "p1", userId: "u1", workspaceId: "ws1" }),
+  getProjectById: vi.fn().mockResolvedValue({ id: "p1", userId: "u1", workspaceId: "ws1" }),
   getProjectInWorkspace: vi.fn().mockResolvedValue({ id: "p1", userId: "u1", workspaceId: "ws1" }),
   listProviderBindingsByProject: vi.fn().mockResolvedValue([]),
+  listRoutes: vi.fn().mockResolvedValue([]),
+  listRouteSteps: vi.fn().mockResolvedValue([]),
   listProviderIntegrations: vi.fn().mockResolvedValue([
     {
       id: "pi-1",
       providerType: "openai",
       displayName: "OpenAI",
       verificationStatus: "verified",
+      lastVerifiedAt: 1,
     },
   ]),
 }));
@@ -38,6 +42,7 @@ describe("GET /api/projects/[id]/providers/health", () => {
       providerType: "openai",
       verificationStatus: "verified",
       health: "ok",
+      confidence: "high",
     });
   });
 });

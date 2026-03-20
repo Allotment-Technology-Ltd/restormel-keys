@@ -4,6 +4,13 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- dashboard(api): add provider trust contract fields in `providers/health` with confidence, evidence, degradation reason, and route/step/model usage counts
+- dashboard(api): add `route-coverage`, `readiness`, and `routes/{routeId}/recommend` endpoints for operator preflight and remediation guidance
+- dashboard(api): normalize resolve/simulate metadata with `contractVersion`, `traceId`, stable `routeId`, and `decisionMetadata`
+- dashboard(api): add policy lifecycle parity endpoints (`history`, `publish`, `rollback`, `diff`) with `policy_version_events`
+- dashboard(db): add provenance fields (`updatedVia`, `updatedBy`, `changeSummary`, `contentHash`) for routes/policies plus migrations `014` and `015`
+- docs: update OpenAPI, cloud API docs, walkthrough verify steps, and MCP/AAIF runbooks with operator workflows
+
 ### Fixed
 
 - **`scripts/smoke-keys-svelte-republish.sh`:** verify the packed tarball with **Python `tarfile`** (no `tar` subprocess) — GNU `tar` on some GitHub runners still emitted `stdout: write error` even for `-x`/`-t`, causing false failures.

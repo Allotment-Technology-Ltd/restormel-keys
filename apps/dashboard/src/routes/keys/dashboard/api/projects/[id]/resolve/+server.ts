@@ -74,6 +74,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       estimatedInputTokens?: number;
       estimatedInputChars?: number;
       complexity?: string;
+      traceId?: string;
       constraints?: { maxCost?: number; latency?: string };
       previousFailure?: { selectedOrderIndex?: number; selectedStepId?: string };
     };
@@ -233,7 +234,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
     return json({
       data: {
-        routeId: resolved.route.name,
+        contractVersion: "2026-03-20",
+        traceId: typeof body.traceId === "string" ? body.traceId : null,
+        routeId: resolved.route.id,
+        routeName: resolved.route.name,
         providerType: outProviderType,
         modelId: resolved.modelId,
         explanation: resolved.explanation,
@@ -243,6 +247,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
         estimatedCostUsd,
         matchedCriteria: resolved.matchedCriteria ?? null,
         fallbackCandidates: resolved.fallbackCandidates ?? [],
+        decisionMetadata: {
+          selectedStepId: resolved.selectedStepId ?? null,
+          selectedOrderIndex: resolved.selectedOrderIndex ?? null,
+          switchReasonCode: resolved.switchReasonCode ?? null,
+          providerType: outProviderType ?? null,
+          modelId: resolved.modelId ?? null,
+          estimatedCostUsd,
+          matchedCriteria: resolved.matchedCriteria ?? null,
+          fallbackCandidates: resolved.fallbackCandidates ?? [],
+        },
       },
     });
   } catch (e) {

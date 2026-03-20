@@ -6,14 +6,23 @@ import {
   getProjectInWorkspace,
   listProviderBindingsByProject,
   listProviderIntegrations,
+  listRoutes,
+  listRouteSteps,
 } from "$lib/server/db";
 
 type ProviderHealth = "ok" | "warn" | "fail";
+type ProviderConfidence = "high" | "medium" | "low";
 
 function healthFromVerification(verificationStatus: string | null | undefined): ProviderHealth {
   if (verificationStatus === "verified") return "ok";
   if (verificationStatus === "pending") return "warn";
   return "fail";
+}
+
+function confidenceFromHealth(health: ProviderHealth): ProviderConfidence {
+  if (health === "ok") return "high";
+  if (health === "warn") return "medium";
+  return "low";
 }
 
 async function projectScope(
@@ -56,8 +65,27 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         displayName: string | null;
         verificationStatus: string | null;
         health: ProviderHealth;
+        confidence: ProviderConfidence;
+        lastVerifiedAt: number | null;
+        degradedReason: string | null;
+        evidence: string[];
+        boundRoutes: number;
+        boundSteps: number;
+        availableModels: number;
+        recommendedActions: string[];
       }
     >();
+
+    const routes = await listRoutes(scope.projectId, scope.userId);
+    const routeSteps = await Promise.all(routes.map((r) => listRouteSteps(r.id, scope.projectId, scope.userId)));
+    const allSteps = routeSteps.flat();
+    const stepsByProvider = new Map<string, typeof allSteps>();
+    for (const step of allSteps) {
+      if (!step.providerPreference) continue;
+      const arr = stepsByProvider.get(step.providerPreference) ?? [];
+      arr.push(step);
+      stepsByProvider.set(step.providerPreference, arr);
+    }
 
     for (const b of bindings) {
       const integration = b.integration;
@@ -70,6 +98,26 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         displayName: integration.displayName,
         verificationStatus: integration.verificationStatus ?? null,
         health: healthFromVerification(integration.verificationStatus),
+        confidence: confidenceFromHealth(healthFromVerification(integration.verificationStatus)),
+        lastVerifiedAt: integration.lastVerifiedAt ?? null,
+        degradedReason:
+          integration.verificationStatus === "failed"
+            ? "verification_failed"
+            : integration.verificationStatus === "pending"
+              ? "verification_pending"
+              : null,
+        evidence: [
+          integration.verificationStatus === "verified"
+            ? "integration_verified"
+            : "integration_unverified_or_pending",
+        ],
+        boundRoutes: 0,
+        boundSteps: 0,
+        availableModels: 0,
+        recommendedActions:
+          integration.verificationStatus === "verified"
+            ? []
+            : ["run provider verification", "confirm credential and region settings"],
       });
     }
 
@@ -83,8 +131,58 @@ export const GET: RequestHandler = async ({ params, locals }) => {
           displayName: integration.displayName,
           verificationStatus: integration.verificationStatus ?? null,
           health: healthFromVerification(integration.verificationStatus),
+          confidence: confidenceFromHealth(healthFromVerification(integration.verificationStatus)),
+          lastVerifiedAt: integration.lastVerifiedAt ?? null,
+          degradedReason:
+            integration.verificationStatus === "failed"
+              ? "verification_failed"
+              : integration.verificationStatus === "pending"
+                ? "verification_pending"
+                : null,
+          evidence: [
+            integration.verificationStatus === "verified"
+              ? "integration_verified"
+              : "integration_unverified_or_pending",
+          ],
+          boundRoutes: 0,
+          boundSteps: 0,
+          availableModels: 0,
+          recommendedActions:
+            integration.verificationStatus === "verified"
+              ? []
+              : ["run provider verification", "confirm credential and region settings"],
         });
       }
+    }
+
+    const stepsCountByProvider = new Map<string, number>();
+    const modelSetByProvider = new Map<string, Set<string>>();
+    for (const [providerType, steps] of stepsByProvider.entries()) {
+      stepsCountByProvider.set(providerType, steps.length);
+      modelSetByProvider.set(
+        providerType,
+        new Set(steps.map((s) => s.modelId).filter((m): m is string => typeof m === "string" && m.length > 0))
+      );
+    }
+
+    const routesCountByProvider = new Map<string, number>();
+    for (const route of routes) {
+      const steps = allSteps.filter((s) => s.routeId === route.id);
+      const seen = new Set<string>();
+      for (const step of steps) {
+        if (!step.providerPreference) continue;
+        seen.add(step.providerPreference);
+      }
+      for (const providerType of seen) {
+        routesCountByProvider.set(providerType, (routesCountByProvider.get(providerType) ?? 0) + 1);
+      }
+    }
+
+    for (const item of byIntegrationId.values()) {
+      const providerType = item.providerType;
+      item.boundSteps = stepsCountByProvider.get(providerType) ?? 0;
+      item.boundRoutes = routesCountByProvider.get(providerType) ?? 0;
+      item.availableModels = modelSetByProvider.get(providerType)?.size ?? 0;
     }
 
     return json({

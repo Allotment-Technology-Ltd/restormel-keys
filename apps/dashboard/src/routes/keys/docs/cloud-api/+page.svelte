@@ -10,10 +10,14 @@
 
   const resolveResponse = `{
   "data": {
-    "routeId": "ingestion-extract",
+    "contractVersion": "2026-03-20",
+    "traceId": "trace_123",
+    "routeId": "route_abc123",
+    "routeName": "ingestion-extract",
     "providerType": "anthropic",
     "modelId": "claude-3-5-sonnet",
-    "explanation": "route=... step=0 provider=anthropic model=claude-3-5-sonnet"
+    "explanation": "route=... step=0 provider=anthropic model=claude-3-5-sonnet",
+    "decisionMetadata": { "selectedStepId": "step_01", "switchReasonCode": null }
   }
 }`;
 
@@ -40,6 +44,10 @@
 
   const simulateResponse = `{
   "data": {
+    "contractVersion": "2026-03-20",
+    "traceId": "trace_123",
+    "routeId": "route_abc123",
+    "routeName": "ingestion-extract",
     "selectedStepId": "step_01",
     "estimatedCostUsd": 0.18,
     "perStepEstimates": [
@@ -50,7 +58,8 @@
       "attemptNumber": 0,
       "failureKind": null,
       "selectedOrderIndex": 0
-    }
+    },
+    "decisionMetadata": { "selectedStepId": "step_01" }
   }
 }`;
 </script>
@@ -105,7 +114,8 @@
   <p><strong>Response (200)</strong></p>
   <CodeBlock language="json" code={resolveResponse} />
   <ul>
-    <li><code>data.routeId</code>: the matched route name</li>
+    <li><code>data.routeId</code>: the matched route id (stable identifier)</li>
+    <li><code>data.routeName</code>: the matched route display name</li>
     <li><code>data.providerType</code>: the provider to call (e.g. <code>openai</code>, <code>anthropic</code>)</li>
     <li><code>data.modelId</code>: the model to use (may be <code>null</code>)</li>
     <li><code>data.explanation</code>: human-readable trace for debugging</li>
@@ -199,6 +209,14 @@
     <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/publish</code> — publish a new route version snapshot.</li>
     <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/rollback</code> — rollback to a previously published snapshot (optional <code>toVersion</code>).</li>
     <li><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/history</code> — list publish/rollback history events.</li>
+  </ul>
+
+  <h3>Operator advisory endpoints</h3>
+  <ul>
+    <li><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/route-coverage</code> — stage/workload coverage matrix and zero-enabled-step routes.</li>
+    <li><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/readiness</code> — status, issues, and recommendations before rollout.</li>
+    <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/recommend</code> — route diagnostics, recommendations, and diff preview.</li>
+    <li><code>GET /keys/dashboard/api/policies/{'{'}id{'}'}/history</code>, <code>POST /publish</code>, <code>POST /rollback</code>, <code>POST /diff</code> — policy lifecycle parity endpoints.</li>
   </ul>
 
   <h2>Where to use it</h2>

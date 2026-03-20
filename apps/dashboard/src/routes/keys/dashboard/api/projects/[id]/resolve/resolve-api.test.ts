@@ -143,10 +143,12 @@ describe("POST /api/projects/[id]/resolve", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.data).toMatchObject({
-      routeId: "Default",
+      routeId: "route-1",
+      routeName: "Default",
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),
+      contractVersion: "2026-03-20",
     });
     expect(insertRequestLog).toHaveBeenCalledWith(
       expect.objectContaining({

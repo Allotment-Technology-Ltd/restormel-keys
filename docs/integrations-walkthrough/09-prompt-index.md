@@ -25,6 +25,8 @@ Use this when implementing the Integrations walkthrough with a coding agent. Eac
 
 **MCP/AAIF schema-only:** I01 → I02 → I05 → I06 → I07 → I08.
 
+**Operator API path:** I01 → I02 → I05 → I06 → I08, then validate provider health, route coverage, readiness, recommendations, and policy lifecycle APIs.
+
 ---
 
 ## I01 — `integrations-overview-review`

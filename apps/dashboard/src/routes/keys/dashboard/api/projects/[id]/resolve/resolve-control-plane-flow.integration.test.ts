@@ -52,6 +52,7 @@ vi.mock("$lib/server/db", () => ({
   getProject: vi.fn(),
   getProjectInWorkspace: vi.fn(),
   getOrCreateDefaultWorkspace: vi.fn(),
+  getWorkspace: vi.fn().mockResolvedValue({ id: WORKSPACE_ID, plan: "free", planExpiresAt: null }),
   listRoutes: vi.fn(),
   getRouteWithSteps: vi.fn(),
   evaluatePolicies: vi.fn().mockResolvedValue([]),
@@ -107,7 +108,8 @@ describe("control-plane flow (integration)", () => {
 
     const data = await res.json();
     expect(data.data).toBeDefined();
-    expect(data.data.routeId).toBe(mockRoute.name);
+    expect(data.data.routeId).toBe(mockRoute.id);
+    expect(data.data.routeName).toBe(mockRoute.name);
     expect(data.data.providerType).toBe("openai");
     expect(data.data.modelId).toBe("gpt-4o");
     expect(data.data.explanation).toBeDefined();

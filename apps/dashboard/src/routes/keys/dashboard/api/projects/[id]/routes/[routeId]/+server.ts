@@ -53,6 +53,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     enabled?: boolean;
     version?: number;
     publishedVersion?: number;
+    updatedVia?: string;
+    changeSummary?: string;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -99,6 +101,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   ) {
     updates.publishedVersion = body.publishedVersion;
   }
+  updates.updatedVia = typeof body.updatedVia === "string" ? body.updatedVia.trim() : locals.user.authType ?? "session";
+  updates.updatedBy = locals.user.uid;
+  updates.changeSummary =
+    typeof body.changeSummary === "string" ? body.changeSummary.trim() : "Route updated via API";
 
   const route = await updateRoute(params.routeId, scope.projectId, scope.userId, updates);
   if (!route) return json({ error: "Not found" }, { status: 404 });

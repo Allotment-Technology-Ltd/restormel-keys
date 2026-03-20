@@ -275,7 +275,10 @@ paths:
                   data:
                     type: object
                     properties:
-                      routeId: { type: string, description: Matched route name }
+                      contractVersion: { type: string, example: "2026-03-20" }
+                      traceId: { type: string, nullable: true }
+                      routeId: { type: string, description: Matched route ID }
+                      routeName: { type: string, description: Matched route name }
                       providerType: { type: string, nullable: true }
                       modelId: { type: string, nullable: true }
                       explanation: { type: string }
@@ -297,6 +300,10 @@ paths:
                             providerType: { type: string, nullable: true }
                             modelId: { type: string, nullable: true }
                             enabled: { type: boolean }
+                      decisionMetadata:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
         "401":
           description: Unauthorized
           content:
@@ -555,6 +562,45 @@ paths:
       responses:
         "200":
           description: Simulation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      contractVersion: { type: string, example: "2026-03-20" }
+                      traceId: { type: string, nullable: true }
+                      routeId: { type: string }
+                      routeName: { type: string }
+                      providerType: { type: string, nullable: true }
+                      modelId: { type: string, nullable: true }
+                      switchReasonCode: { type: string, nullable: true }
+                      matchedCriteria:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
+                      fallbackCandidates:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                      selectedStepId: { type: string, nullable: true }
+                      estimatedCostUsd: { type: number, nullable: true }
+                      perStepEstimates:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                      wouldRun: { type: boolean }
+                      switchOutcomePreview:
+                        type: object
+                        additionalProperties: true
+                      decisionMetadata:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
         "400":
           description: Validation error
         "401":
@@ -748,6 +794,142 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/providers/health:
+    get:
+      summary: Provider health with trust metadata
+      operationId: getProvidersHealth
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Provider health summary
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /api/projects/{projectId}/route-coverage:
+    get:
+      summary: Route coverage matrix by stage/workload
+      operationId: getRouteCoverage
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Route coverage summary
+
+  /api/projects/{projectId}/readiness:
+    get:
+      summary: Project readiness advisory
+      operationId: getProjectReadiness
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Readiness summary with issues/recommendations
+
+  /api/projects/{projectId}/routes/{routeId}/recommend:
+    post:
+      summary: Recommend route improvements
+      operationId: recommendRouteChanges
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Route recommendations and diff preview
+
+  /api/policies/{id}/history:
+    get:
+      summary: Policy version history
+      operationId: listPolicyHistory
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy history list
+
+  /api/policies/{id}/publish:
+    post:
+      summary: Publish policy version
+      operationId: publishPolicy
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy published
+
+  /api/policies/{id}/rollback:
+    post:
+      summary: Roll back policy
+      operationId: rollbackPolicy
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy rolled back
+
+  /api/policies/{id}/diff:
+    post:
+      summary: Diff policy versions
+      operationId: diffPolicy
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Field-level policy diff
 
 components:
   securitySchemes:

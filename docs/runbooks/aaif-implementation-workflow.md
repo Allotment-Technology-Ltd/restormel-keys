@@ -68,6 +68,12 @@ Use CLI commands to ensure routing/cost decisions match what your runtime helper
 - No raw provider API keys are logged or included in errors.
 - The host supplies final `output` via `generate` (recommended) or consumes the default `output = request.input` placeholder.
 
+## Operator workflow example
+1. Validate provider trust and readiness first (`providers/health`, `route-coverage`, `readiness`).
+2. Send AAIF requests with `constraints.maxCost` and optional `constraints.tokens` for deterministic budget control.
+3. When costs/policies block decisions, inspect `resolve` and `simulate` `decisionMetadata` and route recommendations before policy changes.
+4. For policy changes, use policy `history/publish/rollback/diff` endpoints to keep an auditable lifecycle.
+
 ## References (related functionality)
 - `@restormel/keys`: routing + cost estimation primitives
 - `@restormel/validate`: provider configuration validation
