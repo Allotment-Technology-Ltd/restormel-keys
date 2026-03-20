@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import {
   getProject,
+  getProjectById,
   getProjectInWorkspace,
   listProviderBindingsByProject,
   listProviderIntegrations,
@@ -39,7 +40,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
     if (!scope) return json({ error: "Not found" }, { status: 404 });
 
     const bindings = await listProviderBindingsByProject(scope.projectId);
-    const project = await getProject(scope.projectId, scope.userId);
+    const project =
+      locals.user?.authType === "gateway_key"
+        ? await getProjectById(scope.projectId)
+        : await getProject(scope.projectId, scope.userId);
     const workspaceIntegrations = project?.workspaceId
       ? await listProviderIntegrations(project.workspaceId)
       : [];

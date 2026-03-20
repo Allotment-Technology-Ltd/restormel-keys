@@ -362,6 +362,26 @@ export async function getProject(projectId: string, userId: string): Promise<Pro
   } as Project;
 }
 
+/** Get project by id regardless of owner (use only after auth scope checks). */
+export async function getProjectById(projectId: string): Promise<Project | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
+    FROM projects
+    WHERE id = ${projectId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    name: r.name,
+    userId: r.userId,
+    workspaceId: r.workspaceId ?? null,
+    createdAt: Number(r.createdAt),
+  } as Project;
+}
+
 /** List environments for a project (caller must own project). */
 export async function listEnvironments(projectId: string, userId: string): Promise<Environment[]> {
   const project = await getProject(projectId, userId);
@@ -1252,6 +1272,64 @@ export async function listProviderModelVariants(modelId: string): Promise<Provid
 // Routes (project/environment-scoped; first-class backend objects)
 // ---------------------------------------------------------------------------
 
+let ensuredIngestionRoutingSchema: Promise<void> | null = null;
+
+/**
+ * Self-heal for older environments where migrations 012/013 were not applied yet.
+ * Keeps runtime routing endpoints operational instead of failing with undefined-column errors.
+ */
+async function ensureIngestionRoutingSchema(): Promise<void> {
+  if (ensuredIngestionRoutingSchema) return ensuredIngestionRoutingSchema;
+  ensuredIngestionRoutingSchema = (async () => {
+    const sql = getSql();
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS published_version INTEGER DEFAULT 1`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS stage TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS workload TEXT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS label TEXT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS switch_criteria JSONB`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS retry_policy JSONB`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS cost_policy JSONB`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS notes TEXT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS created_at BIGINT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS updated_at BIGINT`;
+    await sql`
+      UPDATE route_steps
+      SET created_at = COALESCE(created_at, EXTRACT(EPOCH FROM now())::BIGINT * 1000),
+          updated_at = COALESCE(updated_at, EXTRACT(EPOCH FROM now())::BIGINT * 1000)
+      WHERE created_at IS NULL OR updated_at IS NULL
+    `;
+    await sql`ALTER TABLE route_steps ALTER COLUMN created_at SET NOT NULL`;
+    await sql`ALTER TABLE route_steps ALTER COLUMN updated_at SET NOT NULL`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS route_version_events (
+        id TEXT PRIMARY KEY,
+        route_id TEXT NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        actor_id TEXT,
+        actor_type TEXT,
+        summary TEXT,
+        route_snapshot JSONB,
+        steps_snapshot JSONB,
+        metadata JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_route_version_events_route_created
+      ON route_version_events(route_id, created_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_route_version_events_project_route_version
+      ON route_version_events(project_id, route_id, version)
+    `;
+  })();
+  return ensuredIngestionRoutingSchema;
+}
+
 export type RouteRecord = {
   id: string;
   projectId: string;
@@ -1310,6 +1388,7 @@ export async function listRoutes(
   userId: string,
   options?: { environmentId?: string; workload?: string; stage?: string }
 ): Promise<RouteRecord[]> {
+  await ensureIngestionRoutingSchema();
   const project = await getProject(projectId, userId);
   if (!project) return [];
   const sql = getSql();
@@ -1376,6 +1455,7 @@ export async function listRoutes(
 
 /** Get one route; returns null if not in project. */
 export async function getRoute(id: string, projectId: string, userId: string): Promise<RouteRecord | null> {
+  await ensureIngestionRoutingSchema();
   const project = await getProject(projectId, userId);
   if (!project) return null;
   const sql = getSql();
@@ -1431,6 +1511,7 @@ export async function createRoute(params: {
   publishedVersion?: number;
   userId: string;
 }): Promise<RouteRecord | null> {
+  await ensureIngestionRoutingSchema();
   const project = await getProject(params.projectId, params.userId);
   if (!project) return null;
   const env = await getEnvironmentInProject(params.environmentId, params.projectId);
@@ -1482,6 +1563,7 @@ export async function updateRoute(
     status?: string;
   }
 ): Promise<RouteRecord | null> {
+  await ensureIngestionRoutingSchema();
   const existing = await getRoute(id, projectId, userId);
   if (!existing) return null;
   const sql = getSql();
@@ -1531,6 +1613,7 @@ export async function deleteRoute(id: string, projectId: string, userId: string)
 
 /** List steps for a route (caller must have access to route's project). */
 export async function listRouteSteps(routeId: string, projectId: string, userId: string): Promise<RouteStepRecord[]> {
+  await ensureIngestionRoutingSchema();
   const route = await getRoute(routeId, projectId, userId);
   if (!route) return [];
   const sql = getSql();
@@ -1589,6 +1672,7 @@ export async function createRouteStep(params: {
   notes?: string | null;
   enabled?: boolean;
 }): Promise<RouteStepRecord | null> {
+  await ensureIngestionRoutingSchema();
   const route = await getRoute(params.routeId, params.projectId, params.userId);
   if (!route) return null;
   const sql = getSql();
@@ -1648,6 +1732,7 @@ export async function updateRouteStep(
     enabled: boolean;
   }>
 ): Promise<RouteStepRecord | null> {
+  await ensureIngestionRoutingSchema();
   const steps = await listRouteSteps(routeId, projectId, userId);
   const step = steps.find((s) => s.id === stepId);
   if (!step) return null;
@@ -1751,6 +1836,7 @@ export async function insertRouteVersionEvent(params: {
   stepsSnapshot?: Record<string, unknown>[] | null;
   metadata?: Record<string, unknown> | null;
 }): Promise<RouteVersionEventRecord> {
+  await ensureIngestionRoutingSchema();
   const sql = getSql();
   const id = crypto.randomUUID();
   const createdAt = Date.now();
@@ -1785,6 +1871,7 @@ export async function listRouteVersionEvents(
   userId: string,
   limit = 50
 ): Promise<RouteVersionEventRecord[]> {
+  await ensureIngestionRoutingSchema();
   const route = await getRoute(routeId, projectId, userId);
   if (!route) return [];
   const sql = getSql();
@@ -1806,6 +1893,7 @@ export async function getRouteVersionEventByVersion(
   userId: string,
   version: number
 ): Promise<RouteVersionEventRecord | null> {
+  await ensureIngestionRoutingSchema();
   const route = await getRoute(routeId, projectId, userId);
   if (!route) return null;
   const sql = getSql();
@@ -1827,6 +1915,7 @@ export async function replaceRouteStepsFromSnapshot(params: {
   userId: string;
   stepsSnapshot: Record<string, unknown>[];
 }): Promise<RouteStepRecord[] | null> {
+  await ensureIngestionRoutingSchema();
   const route = await getRoute(params.routeId, params.projectId, params.userId);
   if (!route) return null;
   const sql = getSql();

@@ -9,6 +9,7 @@ export {
   listProjects,
   listProjectsByWorkspace,
   getProjectInWorkspace,
+  getProjectById,
   createProject,
   getProject,
   updateProject,
