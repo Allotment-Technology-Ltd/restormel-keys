@@ -19,12 +19,12 @@ npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or na
 
 Headless resolution and doctor checks need only:
 
-| Package        | Purpose                                      |
-|----------------|----------------------------------------------|
-| `@restormel/keys` | Core: resolve, providers, config consumption |
-| `@restormel/aaif` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts (requires host to supply output). **Check `npm view` first; if unavailable, use workspace/local path until publish completes.** |
-| `@restormel/mcp` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
-| `npx @restormel/doctor` | Local setup check (no UI packages required) |
+| Package | Availability | Purpose |
+|---|---|---|
+| `@restormel/keys` | `Published on npm` | Core: resolve, providers, config consumption |
+| `@restormel/aaif` | `Check npm view` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts |
+| `@restormel/mcp` | `Check npm view` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
+| `@restormel/doctor` | `Published on npm` | Local setup check (no UI packages required) |
 
 Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) **or** manually (see [Phase 1 walkthrough](../walkthrough/03-phase-1-install.md#step-13--manual-restormelconfigjson-no-cli)).
 
@@ -32,12 +32,24 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 
 ## UI and wrapper CLI (Phase 5 and onboarding)
 
-| Package                 | When needed                                      |
-|-------------------------|--------------------------------------------------|
-| `@restormel/keys-svelte`| SvelteKit embeddable components                  |
-| `@restormel/keys-react` | React / Next.js embeddable components            |
-| `@restormel/keys-elements` | Web components / Astro                        |
-| `@restormel/keys-cli`   | `keys init`, `keys add`, wrappers for doctor/validate |
+| Package | Availability | When needed |
+|---|---|---|
+| `@restormel/keys-svelte` | `Check npm view` | SvelteKit embeddable components |
+| `@restormel/keys-react` | `Check npm view` | React / Next.js embeddable components |
+| `@restormel/keys-elements` | `Check npm view` | Web components / Astro |
+| `@restormel/keys-cli` | `Published on npm` | `keys init`, `keys add`, wrappers for doctor/validate |
+
+## Availability truth table
+
+Use this as the canonical "what is available now" check:
+
+1. Run the `npm view` commands in this document.
+2. Mark each package as one of:
+   - `Published on npm`
+   - `Private preview`
+   - `Local package only`
+   - `Planned`
+3. Do not infer availability from roadmap phase labels alone.
 
 **Avoid `@restormel/keys-cli@0.1.0`** and **`@restormel/validate@0.1.3`** — broken `workspace:*` on `@restormel/keys`. Use **keys-cli ≥0.1.1**, **validate ≥0.1.4**, or manual config / doctor-only checks.
 

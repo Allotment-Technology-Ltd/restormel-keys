@@ -4,6 +4,8 @@
 **Date:** March 2026
 **Status:** Ready for implementation
 
+> **Current implementation note:** parts of this historical build-pack describe earlier multi-app plans. Canonical current-state architecture is in `ARCHITECTURE.md` and `STATUS.md` (single-app `apps/dashboard`; `apps/site` archived).
+
 ---
 
 ## Document suite

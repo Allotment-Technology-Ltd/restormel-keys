@@ -37,10 +37,16 @@ describe("GET /api/projects/[id]/providers/health", () => {
     const res = await GET(event());
     expect(res.status).toBe(200);
     const body = await res.json();
+    expect(body.data.status).toBe("ok");
     expect(body.data.providers).toHaveLength(1);
     expect(body.data.providers[0]).toMatchObject({
       providerType: "openai",
       verificationStatus: "verified",
+      status: "degraded",
+      reasonCode: "no_project_binding",
+      hasProjectBinding: false,
+      hasWorkspaceIntegration: true,
+      usableForSimulation: true,
       health: "ok",
       confidence: "high",
     });

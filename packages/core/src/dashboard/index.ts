@@ -20,6 +20,7 @@ export type {
   FilterAllowedModelsOptions,
   FilteredModelEntry,
   FilteredModelStatus,
+  PolicyAvailabilityMapEntry,
   GroupedModelForSelector,
   GroupedProviderForSelector,
 } from "./client.js";

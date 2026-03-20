@@ -12,6 +12,7 @@ import {
 
 type ProviderHealth = "ok" | "warn" | "fail";
 type ProviderConfidence = "high" | "medium" | "low";
+type ProviderStatus = "ready" | "degraded" | "blocked";
 
 function healthFromVerification(verificationStatus: string | null | undefined): ProviderHealth {
   if (verificationStatus === "verified") return "ok";
@@ -23,6 +24,48 @@ function confidenceFromHealth(health: ProviderHealth): ProviderConfidence {
   if (health === "ok") return "high";
   if (health === "warn") return "medium";
   return "low";
+}
+
+function statusFromProvider(args: {
+  verificationStatus: string | null | undefined;
+  hasProjectBinding: boolean;
+  hasWorkspaceIntegration: boolean;
+}): ProviderStatus {
+  if (!args.hasWorkspaceIntegration) return "blocked";
+  if (args.verificationStatus === "failed") return "blocked";
+  if (!args.hasProjectBinding) return "degraded";
+  if (args.verificationStatus === "verified") return "ready";
+  return "degraded";
+}
+
+function reasonCodeFromProvider(args: {
+  verificationStatus: string | null | undefined;
+  hasProjectBinding: boolean;
+  hasWorkspaceIntegration: boolean;
+}): string {
+  if (!args.hasWorkspaceIntegration) return "no_workspace_integration";
+  if (!args.hasProjectBinding) return "no_project_binding";
+  if (args.verificationStatus === "failed") return "verification_failed";
+  if (args.verificationStatus === "pending") return "verification_pending";
+  if (args.verificationStatus === "verified") return "verified";
+  return "verification_unknown";
+}
+
+function reasonFromCode(code: string): string {
+  switch (code) {
+    case "no_workspace_integration":
+      return "No workspace integration exists for this provider.";
+    case "no_project_binding":
+      return "Provider is integrated but not bound to this project.";
+    case "verification_failed":
+      return "Provider verification failed. Check provider credentials and configuration.";
+    case "verification_pending":
+      return "Provider verification is pending.";
+    case "verified":
+      return "Provider is verified and available for project use.";
+    default:
+      return "Provider state is unknown. Re-run verification to refresh status.";
+  }
 }
 
 async function projectScope(
@@ -64,6 +107,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         providerType: string;
         displayName: string | null;
         verificationStatus: string | null;
+        status: ProviderStatus;
+        reasonCode: string;
+        reason: string;
+        lastCheckedAt: number | null;
+        hasProjectBinding: boolean;
+        hasWorkspaceIntegration: boolean;
+        usableForResolve: boolean;
+        usableForSimulation: boolean;
+        modelsAvailableCount: number;
         health: ProviderHealth;
         confidence: ProviderConfidence;
         lastVerifiedAt: number | null;
@@ -97,6 +149,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         providerType: integration.providerType,
         displayName: integration.displayName,
         verificationStatus: integration.verificationStatus ?? null,
+        status: "degraded",
+        reasonCode: "verification_pending",
+        reason: "Provider verification is pending.",
+        lastCheckedAt: integration.lastVerifiedAt ?? null,
+        hasProjectBinding: true,
+        hasWorkspaceIntegration: true,
+        usableForResolve: false,
+        usableForSimulation: true,
+        modelsAvailableCount: 0,
         health: healthFromVerification(integration.verificationStatus),
         confidence: confidenceFromHealth(healthFromVerification(integration.verificationStatus)),
         lastVerifiedAt: integration.lastVerifiedAt ?? null,
@@ -130,6 +191,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
           providerType: integration.providerType,
           displayName: integration.displayName,
           verificationStatus: integration.verificationStatus ?? null,
+          status: "degraded",
+          reasonCode: "no_project_binding",
+          reason: "Provider is integrated but not bound to this project.",
+          lastCheckedAt: integration.lastVerifiedAt ?? null,
+          hasProjectBinding: false,
+          hasWorkspaceIntegration: true,
+          usableForResolve: false,
+          usableForSimulation: true,
+          modelsAvailableCount: 0,
           health: healthFromVerification(integration.verificationStatus),
           confidence: confidenceFromHealth(healthFromVerification(integration.verificationStatus)),
           lastVerifiedAt: integration.lastVerifiedAt ?? null,
@@ -183,11 +253,40 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       item.boundSteps = stepsCountByProvider.get(providerType) ?? 0;
       item.boundRoutes = routesCountByProvider.get(providerType) ?? 0;
       item.availableModels = modelSetByProvider.get(providerType)?.size ?? 0;
+      item.modelsAvailableCount = item.availableModels;
+      item.status = statusFromProvider({
+        verificationStatus: item.verificationStatus,
+        hasProjectBinding: item.hasProjectBinding,
+        hasWorkspaceIntegration: item.hasWorkspaceIntegration,
+      });
+      item.reasonCode = reasonCodeFromProvider({
+        verificationStatus: item.verificationStatus,
+        hasProjectBinding: item.hasProjectBinding,
+        hasWorkspaceIntegration: item.hasWorkspaceIntegration,
+      });
+      item.reason = reasonFromCode(item.reasonCode);
+      item.usableForResolve = item.status === "ready" && item.boundSteps > 0;
+      item.usableForSimulation = item.status !== "blocked";
+      item.lastCheckedAt = item.lastVerifiedAt ?? item.lastCheckedAt ?? null;
     }
 
+    const providers = [...byIntegrationId.values()];
     return json({
       data: {
-        providers: [...byIntegrationId.values()],
+        status: providers.length > 0 ? "ok" : "empty",
+        reasonCode:
+          providers.length > 0 ? null : "no_project_bindings_or_workspace_integrations",
+        reason:
+          providers.length > 0
+            ? null
+            : "No provider bindings or workspace integrations were found for this project.",
+        operatorMessage:
+          providers.length > 0
+            ? "Provider health loaded. Review provider status and reason fields for action."
+            : "No provider bindings or workspace integrations found. Bind and verify providers first.",
+        projectBindingsCount: bindings.length,
+        workspaceIntegrationsCount: workspaceIntegrations.length,
+        providers,
       },
     });
   } catch (e) {

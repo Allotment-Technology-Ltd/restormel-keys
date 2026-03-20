@@ -79,6 +79,10 @@
   -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
   -H "Content-Type: application/json" \\
   -d '{ "fromVersion": 1, "toVersion": 2 }' | jq '.data'`;
+
+  const policyListCurl = `curl -s \\
+  "https://restormel.dev/keys/dashboard/api/policies" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`;
 </script>
 
 <svelte:head>
@@ -197,6 +201,14 @@
     </thead>
     <tbody>
       <tr>
+        <td><code>GET /keys/dashboard/api/policies</code></td>
+        <td>List policies visible in your current auth scope (Gateway Key returns project-scoped policies).</td>
+      </tr>
+      <tr>
+        <td><code>GET /keys/dashboard/api/policies/{'{'}id{'}'}</code></td>
+        <td>Get one policy in current auth scope (used to validate lifecycle with real policy ids).</td>
+      </tr>
+      <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/routing-capabilities</code></td>
         <td>Returns workload + stage enums for route editors.</td>
       </tr>
@@ -206,7 +218,7 @@
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/providers/health</code></td>
-        <td>Provider integration verification/health summary for routing decisions.</td>
+        <td>Provider integration verification/health summary with operator status/reason and explicit empty-state metadata.</td>
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/switch-criteria-enums</code></td>
@@ -244,6 +256,12 @@
   </ul>
 
   <h3>Policy lifecycle examples</h3>
+  <p><strong>Discover policy ids (Gateway Key scoped)</strong></p>
+  <CodeBlock language="bash" code={policyListCurl} />
+  <p>
+    Use <code>GET /keys/dashboard/api/policies</code> to discover policy ids in your Gateway Key project scope,
+    then call lifecycle endpoints with a real id.
+  </p>
   <p><strong>History</strong></p>
   <CodeBlock language="bash" code={`curl -s "https://restormel.dev/keys/dashboard/api/policies/\${RESTORMEL_POLICY_ID}/history?limit=20" -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`} />
   <p><strong>Publish</strong></p>

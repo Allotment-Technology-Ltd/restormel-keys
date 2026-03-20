@@ -53,6 +53,59 @@ describe("GET /api/policies", () => {
     expect(body).toHaveProperty("data");
     expect(Array.isArray(body.data)).toBe(true);
   });
+
+  it("returns project-scoped policies for gateway key auth", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.listPolicies).mockResolvedValue([
+      {
+        id: "pol-1",
+        workspaceId: "ws-1",
+        name: "A",
+        type: "model_allowlist",
+        status: "active",
+        ruleDefinition: null,
+        createdBy: "u1",
+        createdAt: 1,
+        updatedAt: 1,
+        updatedVia: "api",
+        updatedBy: "u1",
+        changeSummary: "x",
+        contentHash: "h",
+      } as any,
+      {
+        id: "pol-2",
+        workspaceId: "ws-1",
+        name: "B",
+        type: "model_allowlist",
+        status: "active",
+        ruleDefinition: null,
+        createdBy: "u1",
+        createdAt: 1,
+        updatedAt: 1,
+        updatedVia: "api",
+        updatedBy: "u1",
+        changeSummary: "x",
+        contentHash: "h",
+      } as any,
+    ]);
+    vi.mocked(db.listPolicyBindings).mockImplementation(async (policyId: string) =>
+      policyId === "pol-1"
+        ? [{ id: "b1", policyId: "pol-1", targetType: "project", targetId: "proj-1", createdAt: 1 } as any]
+        : []
+    );
+    const { GET: handler } = await import("./+server");
+    const res = await handler(
+      mockEvent({
+        locals: {
+          user: { uid: "u1", authType: "gateway_key", projectIdForKey: "proj-1" },
+        },
+      }) as unknown as Parameters<typeof handler>[0]
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe("pol-1");
+  });
 });
 
 describe("POST /api/policies", () => {

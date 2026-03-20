@@ -325,6 +325,57 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
 
+  /api/policies:
+    get:
+      summary: List policies
+      operationId: listPolicies
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      responses:
+        "200":
+          description: Policies visible in current auth scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401":
+          description: Unauthorized
+
+  /api/policies/{id}:
+    get:
+      summary: Get policy
+      operationId: getPolicy
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy in current auth scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
   /api/policies/evaluate:
     post:
       summary: Evaluate policies
@@ -734,69 +785,6 @@ paths:
 
   /api/projects/{projectId}/providers/health:
     get:
-      summary: Provider integration health summary
-      operationId: providerHealth
-      tags: [Dashboard API]
-      security:
-        - gatewayKey: []
-      parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Provider health list
-        "401":
-          description: Unauthorized
-        "404":
-          description: Project not found
-        "409":
-          description: Duplicate orderIndex
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-    delete:
-      summary: Delete route step
-      operationId: deleteRouteStep
-      tags: [Dashboard API]
-      security:
-        - gatewayKey: []
-      parameters:
-        - name: projectId
-          in: path
-          required: true
-          schema: { type: string }
-        - name: routeId
-          in: path
-          required: true
-          schema: { type: string, description: Route internal ID (UUID) }
-        - name: stepId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Step deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-        "404":
-          description: Route not found
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-
-  /api/projects/{projectId}/providers/health:
-    get:
       summary: Provider health with trust metadata
       operationId: getProvidersHealth
       tags: [Dashboard API]
@@ -810,6 +798,35 @@ paths:
       responses:
         "200":
           description: Provider health summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string, enum: [ok, empty] }
+                      reasonCode: { type: string, nullable: true }
+                      reason: { type: string, nullable: true }
+                      operatorMessage: { type: string, nullable: true }
+                      projectBindingsCount: { type: integer }
+                      workspaceIntegrationsCount: { type: integer }
+                      providers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            providerType: { type: string }
+                            status: { type: string, enum: [ready, degraded, blocked] }
+                            reasonCode: { type: string }
+                            reason: { type: string }
+                            lastCheckedAt: { type: integer, nullable: true }
+                            hasProjectBinding: { type: boolean }
+                            hasWorkspaceIntegration: { type: boolean }
+                            usableForResolve: { type: boolean }
+                            usableForSimulation: { type: boolean }
+                            modelsAvailableCount: { type: integer }
         "401":
           description: Unauthorized
         "404":

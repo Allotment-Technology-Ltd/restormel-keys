@@ -329,12 +329,18 @@ export function groupedModelsForModelSelector(
   return out;
 }
 
+export interface PolicyAvailabilityMapEntry {
+  available: boolean;
+  reason?: string;
+  enforcement?: "hard" | "soft";
+}
+
 export function policyAvailabilityMapFromEntries(
   entries: FilteredModelEntry[],
   /** Map policy providerType → UI provider id if they differ (default: identity). */
   providerTypeToId: (providerType: string) => string = (t) => t
-): Record<string, { available: boolean; reason?: string }> {
-  const map: Record<string, { available: boolean; reason?: string }> = {};
+): Record<string, PolicyAvailabilityMapEntry> {
+  const map: Record<string, PolicyAvailabilityMapEntry> = {};
   for (const e of entries) {
     const id = providerTypeToId(e.providerType);
     const key = `${id}:${e.modelId}`;
@@ -342,16 +348,18 @@ export function policyAvailabilityMapFromEntries(
       map[key] = { available: true };
     } else if (e.status === "blocked_by_policy") {
       const v = e.violations?.[0]?.message ?? e.message ?? "Blocked by policy";
-      map[key] = { available: false, reason: `Policy: ${v}` };
+      map[key] = { available: false, reason: `Policy: ${v}`, enforcement: "hard" };
     } else if (e.status === "restormel_degraded") {
       map[key] = {
         available: false,
         reason: e.message ?? "Restormel temporarily unavailable",
+        enforcement: "soft",
       };
     } else {
       map[key] = {
         available: false,
         reason: e.message ?? "Model unavailable or policy check failed",
+        enforcement: "soft",
       };
     }
   }

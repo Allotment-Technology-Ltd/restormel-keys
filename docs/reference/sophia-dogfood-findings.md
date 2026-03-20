@@ -124,6 +124,18 @@ This is important and now mostly correct. Keep showing:
 
 That path works today.
 
+### Clarify route model semantics and resolve boundary
+
+Sophia validation highlighted two semantics that must be explicit in docs and operator UX:
+
+- **Shared generic routes vs dedicated stage-aware routes** accept different runtime context shapes.
+- **Resolve success != host execution success**; host runtime credential/capability checks still apply after resolve.
+
+Canonical guides:
+
+- [Choosing a route model](../guides/choosing-route-model.md)
+- [From resolve to execution](../guides/resolve-to-execution-contract.md)
+
 ### Add a real packaged KeyManager integration example
 
 ~~Not just a demo that stores directly through a toy endpoint.~~ **Resolved:** `packages/core/README.md` §8 now shows a full Next.js/React example with `onValidate` (server-side validation), `onKeyAdded` (async persistence with error handling), and `onKeyRemoved` (async removal). Documents `KeyRecord` metadata and all supported statuses.

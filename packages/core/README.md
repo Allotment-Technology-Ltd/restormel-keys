@@ -102,7 +102,7 @@ const { allowed, violations } = await evaluatePolicies({
 
 - `candidatesFromProviderDefinitions(providers)` — flatten `defaultProviders` (or a subset) into candidates.
 - `groupedModelsForModelSelector(sourceProviders, entries)` — grouped provider + model rows with status metadata for custom pickers.
-- `policyAvailabilityMapFromEntries(entries)` — map keyed `providerId:modelId` for `@restormel/keys-svelte` **ModelSelector** `policyAvailability` prop (policy-blocked rows skip resolve; allowed rows still resolve for BYOK).
+- `policyAvailabilityMapFromEntries(entries)` — map keyed `providerId:modelId` for `@restormel/keys-svelte` **ModelSelector** `policyAvailability` prop. Rows include `enforcement` (`hard` for policy blocks, `soft` for degraded/unknown checks) so transient failures do not permanently suppress resolve retries.
 - `filterProviderDefinitionsByAllowedPolicy(sourceProviders, entries)` — strict allowlist: full `ProviderDefinition[]` with only policy-allowed models.
 
 ### 7. Custom provider definitions

@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- dashboard(api): add Gateway Key scoped policy discovery on `GET /api/policies` and `GET /api/policies/{id}` for lifecycle validation with real policy ids
+- dashboard(api): extend `providers/health` with operator-readable status/reason semantics and explicit empty-state metadata
+- docs: add route model and resolve-to-execution semantic guides and link them from integrations walkthrough references
+- docs: add `docs/reference/sophia-revalidation-prompt.md` for a single-pass live operator re-validation run
 - dashboard(api): publish stable OpenAPI artifact URLs at `/keys/docs/api/openapi.yaml` and `/keys/dashboard/api/openapi.yaml`
 - dashboard(data): backfill provenance defaults for existing route/policy rows via migration `016` and runtime schema self-heal
 - docs(api): add policy lifecycle curl examples and public OpenAPI links on cloud API docs page

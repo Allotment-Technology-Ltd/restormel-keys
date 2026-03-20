@@ -67,3 +67,5 @@ Each phase page includes an **"Agent prompts"** section. It is collapsed by defa
 - [Keys walkthrough](/keys/docs/walkthrough) — Install, resolve, routes, policies, UI, go live
 - [Integrations full spec](../integrations/INTEGRATIONS-FULL-SPEC.md) — Product, UX, IA, component spec, build prompts
 - [Docs Integrations overview](/keys/docs/integrations) — CLI, MCP, AAIF reference pages
+- [Choosing a route model](../guides/choosing-route-model.md) — shared generic vs dedicated stage-aware routes
+- [From resolve to execution](../guides/resolve-to-execution-contract.md) — resolve guarantees vs host execution obligations

@@ -11,14 +11,14 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
 - **Phase 2 complete:** @restormel/keys-svelte (KeyManager, ModelSelector, CostEstimator), @restormel/keys-elements, @restormel/keys-react, CLI, Next.js/SvelteKit demos, SOPHIA runbook, a11y, publish.
-- **Phase 3 started:** Astro + Starlight marketing site (3.1) in apps/site — marketing layout, homepage “Restormel makes reasoning visible”, Starlight at /keys/docs/*, Cloudflare Pages. Next: 3.2 Keys landing, 3.3 Pricing, 3.4 dashboard per [docs/reference/09-prompt-pack-phase-3.md](docs/reference/09-prompt-pack-phase-3.md).
+- **Phase 3 in current architecture:** product surfaces are unified in `apps/dashboard` (Keys landing, docs, dashboard); `apps/site` is archived. Next: iterative UX + docs + control-plane quality improvements in the single-app layout.
 - **Experience unification (Phase A–D):** Dashboard logged-out UX and SSO, frontend brand shell and logo integration, journey fixes (pricing checkout, docs handoff, billing copy), docs/Zuplo same-link and documentation strategy, shared tokens package and drift check, UX contracts (nav/copy/state), reintegration seams documented in ARCHITECTURE.md.
 
 ## Integrations — Developer Enablement
 
 - **Marketing:** `/integrations` landing page (hero, integration cards, setup steps).
 - **Dashboard:** `/keys/dashboard/dev-tools` overview + CLI, MCP, AAIF sub-pages. Existing provider integrations relabelled to "Provider Access".
-- **Packages:** `@restormel/aaif` v0.0.1 (types, validation, runtime helper `executeAAIFRequest`), `@restormel/mcp` v0.1.0 (tool schemas + stdio server `restormel-mcp`, `createRestormelMcpServer()` — `models.list`, `cost.estimate`, `routing.explain`, etc.). For `@restormel/aaif`, verify npm availability before install and use workspace/local path as fallback if npm is not yet resolving.
+- **Packages:** `@restormel/aaif` (types, validation, runtime helper `executeAAIFRequest`), `@restormel/mcp` (tool schemas + stdio server `restormel-mcp`, `createRestormelMcpServer()`). Package availability is truth-sourced from [docs/reference/npm-packages.md](docs/reference/npm-packages.md) using `npm view` checks.
 - **CLI:** `keys models list` and `keys routing explain` commands added.
 - **Onboarding:** Usage path selector ("In my app / terminal / agent") on dashboard overview.
 - **Docs:** `/keys/docs/integrations/` with CLI quickstart, MCP setup, AAIF overview.
@@ -49,6 +49,7 @@ Do these before over-rotating on host-app fixes:
 - **Richer packaged component APIs** — built-in loading/error/degraded/empty states so hosts need fewer wrappers.
 - **Model-filtering contract** — more complete contract so apps do not have to build custom allowed-models proxy for the common case.
 - **Diagnostics** — when Restormel is misconfigured or unavailable, failure should present as "Restormel backend/config issue" not "component broken"; clearer in component behavior and package/debug surface.
+- **Semantic docs clarity** — keep route model categories and resolve-to-execution contract explicit to avoid host-side inference errors.
 
 ---
 

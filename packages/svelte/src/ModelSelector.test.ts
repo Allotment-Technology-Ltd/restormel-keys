@@ -48,4 +48,50 @@ describe("ModelSelector", () => {
     const el = document.querySelector(".rk-model-selector");
     expect(el).toHaveClass("rk-dark");
   });
+
+  it("still resolves when policy entry is soft-blocked", async () => {
+    const config = {
+      keys: [{ provider: "openai", id: "k1" }],
+      routing: { defaultProvider: "openai" },
+    };
+    const keys = createKeys(config, { providers });
+    render(ModelSelector, {
+      props: {
+        keys,
+        providers,
+        policyAvailability: {
+          "openai:gpt-4o": {
+            available: false,
+            reason: "Restormel temporarily unavailable",
+            enforcement: "soft",
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByRole("button", { name: "gpt-4o (available)" })).toBeInTheDocument();
+  });
+
+  it("keeps hard policy-blocked models unavailable", async () => {
+    const config = {
+      keys: [{ provider: "openai", id: "k1" }],
+      routing: { defaultProvider: "openai" },
+    };
+    const keys = createKeys(config, { providers });
+    render(ModelSelector, {
+      props: {
+        keys,
+        providers,
+        policyAvailability: {
+          "openai:gpt-4o": {
+            available: false,
+            reason: "Policy: blocked by test",
+            enforcement: "hard",
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByRole("button", { name: /gpt-4o \(Policy: blocked by test\)/i })).toBeDisabled();
+  });
 });

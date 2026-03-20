@@ -21,7 +21,10 @@
      * Optional server-built map (`providerId:modelId` → availability).
      * When set, policy-blocked rows skip resolve; allowed rows still resolve for BYOK.
      */
-    policyAvailability?: Record<string, { available: boolean; reason?: string }> | null;
+    policyAvailability?: Record<
+      string,
+      { available: boolean; reason?: string; enforcement?: "hard" | "soft" }
+    > | null;
     /** Bump to reload availability from the host (e.g. after policy refresh). */
     retryNonce?: number;
     /** Called when the user activates in-component Retry (after internal reload). */
@@ -122,7 +125,12 @@
     for (const e of entries) {
       const row = pol?.[e.key];
       if (row && row.available === false) {
-        map[e.key] = { available: false, reason: row.reason };
+        if (row.enforcement === "soft") {
+          // Soft policy states (e.g. transient degraded/unknown checks) still attempt local resolve.
+          toResolve.push(e);
+        } else {
+          map[e.key] = { available: false, reason: row.reason };
+        }
       } else {
         toResolve.push(e);
       }

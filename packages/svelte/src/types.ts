@@ -56,8 +56,15 @@ export interface ModelSelectorProps {
   errorMessage?: string;
   /** Override message when no providers/models (empty state). */
   emptyMessage?: string;
-  /** Server-built policy map (`providerId:modelId`); blocked rows skip resolve. */
-  policyAvailability?: Record<string, { available: boolean; reason?: string }> | null;
+  /**
+   * Server-built policy map (`providerId:modelId`).
+   * - available=false + enforcement="hard": skip resolve (policy-enforced block)
+   * - available=false + enforcement="soft": attempt resolve anyway (degraded/unknown preflight)
+   */
+  policyAvailability?: Record<
+    string,
+    { available: boolean; reason?: string; enforcement?: "hard" | "soft" }
+  > | null;
   /** Bump from host to force reload (e.g. after policy refresh). */
   retryNonce?: number;
   onRetry?: () => void;
