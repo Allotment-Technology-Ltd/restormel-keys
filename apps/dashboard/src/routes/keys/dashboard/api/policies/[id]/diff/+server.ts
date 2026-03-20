@@ -1,11 +1,30 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { getPolicy, getPolicyVersionEventByVersion } from "$lib/server/db";
-import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
+import {
+  getPolicy,
+  getPolicyVersionEventByVersion,
+  getOrCreateDefaultWorkspace,
+  getProject,
+} from "$lib/server/db";
+
+async function policyScope(locals: App.Locals): Promise<{ workspaceId: string; actorId: string; actorType: string } | null> {
+  if (!locals.user) return null;
+  if (locals.user.authType === "management_key") return null;
+  if (locals.user.authType === "gateway_key") {
+    const projectId = locals.user.projectIdForKey;
+    if (!projectId) return null;
+    const project = await getProject(projectId, locals.user.uid);
+    if (!project) return null;
+    const workspaceId = project.workspaceId ?? (await getOrCreateDefaultWorkspace(locals.user.uid)).id;
+    return { workspaceId, actorId: locals.user.uid, actorType: "gateway_key" };
+  }
+  const ws = await getOrCreateDefaultWorkspace(locals.user.uid);
+  return { workspaceId: ws.id, actorId: locals.user.uid, actorType: "user" };
+}
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   try {
-    const ctx = await getWorkspaceAndActor(locals);
+    const ctx = await policyScope(locals);
     if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
     const current = await getPolicy(params.id, ctx.workspaceId);
     if (!current) return json({ error: "Not found" }, { status: 404 });

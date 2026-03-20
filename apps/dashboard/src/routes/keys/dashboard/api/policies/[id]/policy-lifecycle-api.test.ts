@@ -5,6 +5,8 @@ vi.mock("$lib/server/integrations-auth", () => ({
 }));
 
 vi.mock("$lib/server/db", () => ({
+  getProject: vi.fn().mockResolvedValue({ id: "proj1", workspaceId: "ws1", userId: "u1" }),
+  getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({ id: "ws1" }),
   getPolicy: vi.fn().mockResolvedValue({
     id: "pol1",
     name: "Budget",
@@ -30,13 +32,17 @@ vi.mock("$lib/server/db", () => ({
 describe("Policy lifecycle endpoints", () => {
   it("returns history", async () => {
     const { GET } = await import("./history/+server");
-    const res = await GET({ params: { id: "pol1" }, url: new URL("https://x.test"), locals: {} } as any);
+    const res = await GET({
+      params: { id: "pol1" },
+      url: new URL("https://x.test"),
+      locals: { user: { uid: "u1" } },
+    } as any);
     expect(res.status).toBe(200);
   });
 
   it("publishes policy version", async () => {
     const { POST } = await import("./publish/+server");
-    const res = await POST({ params: { id: "pol1" }, locals: {} } as any);
+    const res = await POST({ params: { id: "pol1" }, locals: { user: { uid: "u1" } } } as any);
     expect(res.status).toBe(200);
   });
 
@@ -45,7 +51,7 @@ describe("Policy lifecycle endpoints", () => {
     const res = await POST({
       params: { id: "pol1" },
       request: new Request("https://x.test", { method: "POST", body: JSON.stringify({ toVersion: 1 }) }),
-      locals: {},
+      locals: { user: { uid: "u1" } },
     } as any);
     expect(res.status).toBe(200);
   });
@@ -55,7 +61,7 @@ describe("Policy lifecycle endpoints", () => {
     const res = await POST({
       params: { id: "pol1" },
       request: new Request("https://x.test", { method: "POST", body: JSON.stringify({ fromVersion: 1 }) }),
-      locals: {},
+      locals: { user: { uid: "u1" } },
     } as any);
     expect(res.status).toBe(200);
   });
