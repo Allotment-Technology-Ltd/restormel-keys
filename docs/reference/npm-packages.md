@@ -43,6 +43,11 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 
 If a package returns **404** from npm, use the **manual config** path and `@restormel/doctor` until that package is published (see repo [README](../../README.md#publish-phase-2) and release workflow).
 
+## Publishing (maintainers)
+
+- **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
+- **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
+
 ## pnpm monorepos
 
 Install into the **app package** that contains your app code (where `svelte.config.js` / `next.config.*` lives), not only the workspace root:

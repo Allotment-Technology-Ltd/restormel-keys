@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 ### Changed
 
+- **npm publish pipeline:** `@restormel/keys-svelte` is published **before** `@restormel/aaif` in `.github/workflows/publish.yml` so an aaif first-publish/permission failure no longer aborts the job before keys-svelte. Added manual workflows **Publish keys-svelte** and **Publish aaif** (`workflow_dispatch`) for one-off publishes without re-releasing `@restormel/keys`.
+
 - **`@restormel/mcp` version bump for next release:** package version set to `0.1.1` so the next publish does not collide with immutable npm `0.1.0`.
 
 - **`@restormel/mcp` npm bin:** Executable is `bin/restormel-mcp.js` (imports `dist/cli.js`) so `npm publish` no longer strips `bin`; package includes `LICENSE`. README notes `npm login` / 401 vs misleading 404 on scoped publish.

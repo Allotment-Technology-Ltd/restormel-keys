@@ -1,6 +1,8 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
-# Order: @restormel/keys (npm publish) → @restormel/aaif (pnpm publish) → @restormel/mcp (pnpm publish)
-#   → doctor → validate → keys-cli → keys-svelte. Keep mcp after core keys and aaif.
+# Order: @restormel/keys → @restormel/keys-svelte → @restormel/aaif → @restormel/mcp
+#   → doctor → validate → keys-cli.
+# keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
+# does not block publishing keys-svelte (previously aaif ran first and aborted the job).
 # pnpm version must match root package.json "packageManager" (9.0.0).
 # Provenance is omitted: npm only accepts provenance for public GitHub repos (private repo = 422).
 # First-time @restormel/* package: npm org must allow creating the package name; use automation token with publish.
@@ -35,6 +37,17 @@ jobs:
       - name: Publish @restormel/keys to npm
         working-directory: packages/core
         run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Test @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte test
+      - name: Build @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte run build
+      - name: Republish smoke (pack + external consumer build)
+        run: bash scripts/smoke-keys-svelte-republish.sh
+      - name: Publish @restormel/keys-svelte to npm
+        run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -76,16 +89,5 @@ jobs:
       # pnpm publish rewrites workspace:^ deps to semver; npm publish leaves workspace:* broken on consumers.
       - name: Publish @restormel/keys-cli to npm
         run: pnpm --filter @restormel/keys-cli publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Test @restormel/keys-svelte
-        run: pnpm --filter @restormel/keys-svelte test
-      - name: Build @restormel/keys-svelte
-        run: pnpm --filter @restormel/keys-svelte run build
-      - name: Republish smoke (pack + external consumer build)
-        run: bash scripts/smoke-keys-svelte-republish.sh
-      - name: Publish @restormel/keys-svelte to npm
-        run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

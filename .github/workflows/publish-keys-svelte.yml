@@ -1,0 +1,32 @@
+# One-off or recovery: publish @restormel/keys-svelte without re-publishing @restormel/keys
+# (main publish.yml would fail on "version already exists" for keys if re-run after a release).
+name: Publish keys-svelte
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte test
+      - name: Build @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte run build
+      - name: Republish smoke (pack + external consumer build)
+        run: bash scripts/smoke-keys-svelte-republish.sh
+      - name: Publish @restormel/keys-svelte to npm
+        run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

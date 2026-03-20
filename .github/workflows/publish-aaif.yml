@@ -1,0 +1,29 @@
+# One-off or recovery: publish @restormel/aaif without running the full release train.
+name: Publish aaif
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test @restormel/aaif
+        run: pnpm --filter @restormel/aaif run test
+      - name: Build @restormel/aaif
+        run: pnpm --filter @restormel/aaif run build
+      - name: Publish @restormel/aaif to npm
+        run: pnpm --filter @restormel/aaif publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
