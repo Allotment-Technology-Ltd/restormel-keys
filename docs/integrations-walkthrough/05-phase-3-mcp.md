@@ -6,6 +6,8 @@
 
 This phase introduces the Restormel MCP tool surface. **`@restormel/mcp`** includes **JSON tool schemas**, a **stdio MCP server** (`restormel-mcp`), and a **`createRestormelMcpServer()`** factory for custom transports.
 
+MCP is a **standalone integration layer**: you can keep your existing execution stack (OpenRouter, Portkey, bespoke proxy, direct provider APIs) and still use Restormel tools for model inventory, validation, routing explainability, and cost estimation.
+
 ---
 
 ## Step 3.1 — Understand the tool surface
@@ -51,6 +53,13 @@ import { ALL_TOOLS, createRestormelMcpServer } from "@restormel/mcp";
 
 See `packages/mcp/README.md` for environment variables (`RESTORMEL_MCP_CONFIG`, provider keys for `providers.validate`, optional `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY` for remote policy checks).
 
+### Context-specific quick starts
+
+- **Blank slate:** start with `models.list` -> `providers.validate` -> `cost.estimate`.
+- **OpenRouter stack:** keep OpenRouter execution; use MCP for preflight and explainability.
+- **Portkey stack:** keep Portkey execution; use MCP tools to standardise model/routing visibility across teams.
+- **Bespoke stack:** attach `createRestormelMcpServer()` to your own transport and wire only the tools you need.
+
 ---
 
 ## Step 3.3 — Connection status (Dashboard)
@@ -66,6 +75,12 @@ This tab lists tools and links to the MCP setup guide. **Connection status** dep
 ### How to test
 
 You have `@restormel/mcp` installed, can run `pnpm exec restormel-mcp`, and can import `ALL_TOOLS` or `createRestormelMcpServer`. Verify tools in your MCP client; use the Dashboard tab as a checklist, not a live connection meter.
+
+Minimum standalone acceptance:
+
+1. `models.list` returns a non-empty result.
+2. `providers.validate` returns expected valid/invalid state.
+3. `routing.explain` returns a machine-readable explanation your agent can surface.
 
 ---
 
