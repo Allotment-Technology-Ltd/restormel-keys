@@ -22,7 +22,7 @@ Headless resolution and doctor checks need only:
 | Package        | Purpose                                      |
 |----------------|----------------------------------------------|
 | `@restormel/keys` | Core: resolve, providers, config consumption |
-| `@restormel/aaif` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts (requires host to supply output) |
+| `@restormel/aaif` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts (requires host to supply output). **Check `npm view` first; if unavailable, use workspace/local path until publish completes.** |
 | `@restormel/mcp` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
 | `npx @restormel/doctor` | Local setup check (no UI packages required) |
 

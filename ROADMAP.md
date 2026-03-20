@@ -18,7 +18,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 - **Marketing:** `/integrations` landing page (hero, integration cards, setup steps).
 - **Dashboard:** `/keys/dashboard/dev-tools` overview + CLI, MCP, AAIF sub-pages. Existing provider integrations relabelled to "Provider Access".
-- **Packages:** `@restormel/aaif` v0.0.1 (types, validation, runtime helper `executeAAIFRequest`), `@restormel/mcp` v0.1.0 (tool schemas + stdio server `restormel-mcp`, `createRestormelMcpServer()` — `models.list`, `cost.estimate`, `routing.explain`, etc.).
+- **Packages:** `@restormel/aaif` v0.0.1 (types, validation, runtime helper `executeAAIFRequest`), `@restormel/mcp` v0.1.0 (tool schemas + stdio server `restormel-mcp`, `createRestormelMcpServer()` — `models.list`, `cost.estimate`, `routing.explain`, etc.). For `@restormel/aaif`, verify npm availability before install and use workspace/local path as fallback if npm is not yet resolving.
 - **CLI:** `keys models list` and `keys routing explain` commands added.
 - **Onboarding:** Usage path selector ("In my app / terminal / agent") on dashboard overview.
 - **Docs:** `/keys/docs/integrations/` with CLI quickstart, MCP setup, AAIF overview.

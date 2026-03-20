@@ -36,6 +36,7 @@ This phase introduces the Agent-to-Agent Interaction Format (AAIF): typed reques
 
 ```bash
 pnpm add @restormel/aaif
+# if npm returns 404, consume from workspace/local path until publish is completed
 ```
 
 ```ts

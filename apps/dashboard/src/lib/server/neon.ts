@@ -1724,6 +1724,144 @@ export async function getRouteWithSteps(
   return { route, steps };
 }
 
+export type RouteVersionEventRecord = {
+  id: string;
+  routeId: string;
+  projectId: string;
+  version: number;
+  action: "publish" | "rollback";
+  actorId: string | null;
+  actorType: string | null;
+  summary: string | null;
+  routeSnapshot: Record<string, unknown> | null;
+  stepsSnapshot: Record<string, unknown>[] | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: number;
+};
+
+export async function insertRouteVersionEvent(params: {
+  routeId: string;
+  projectId: string;
+  version: number;
+  action: "publish" | "rollback";
+  actorId?: string | null;
+  actorType?: string | null;
+  summary?: string | null;
+  routeSnapshot?: Record<string, unknown> | null;
+  stepsSnapshot?: Record<string, unknown>[] | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<RouteVersionEventRecord> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  await sql`
+    INSERT INTO route_version_events (
+      id, route_id, project_id, version, action, actor_id, actor_type, summary,
+      route_snapshot, steps_snapshot, metadata, created_at
+    )
+    VALUES (
+      ${id}, ${params.routeId}, ${params.projectId}, ${params.version}, ${params.action},
+      ${params.actorId ?? null}, ${params.actorType ?? null}, ${params.summary ?? null},
+      ${params.routeSnapshot ? JSON.stringify(params.routeSnapshot) : null},
+      ${params.stepsSnapshot ? JSON.stringify(params.stepsSnapshot) : null},
+      ${params.metadata ? JSON.stringify(params.metadata) : null},
+      ${createdAt}
+    )
+  `;
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", project_id AS "projectId", version, action, actor_id AS "actorId",
+           actor_type AS "actorType", summary, route_snapshot AS "routeSnapshot",
+           steps_snapshot AS "stepsSnapshot", metadata, created_at AS "createdAt"
+    FROM route_version_events
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  return rows[0] as RouteVersionEventRecord;
+}
+
+export async function listRouteVersionEvents(
+  routeId: string,
+  projectId: string,
+  userId: string,
+  limit = 50
+): Promise<RouteVersionEventRecord[]> {
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", project_id AS "projectId", version, action, actor_id AS "actorId",
+           actor_type AS "actorType", summary, route_snapshot AS "routeSnapshot",
+           steps_snapshot AS "stepsSnapshot", metadata, created_at AS "createdAt"
+    FROM route_version_events
+    WHERE route_id = ${routeId} AND project_id = ${projectId}
+    ORDER BY created_at DESC
+    LIMIT ${Math.max(1, Math.min(200, limit))}
+  `;
+  return rows as RouteVersionEventRecord[];
+}
+
+export async function getRouteVersionEventByVersion(
+  routeId: string,
+  projectId: string,
+  userId: string,
+  version: number
+): Promise<RouteVersionEventRecord | null> {
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", project_id AS "projectId", version, action, actor_id AS "actorId",
+           actor_type AS "actorType", summary, route_snapshot AS "routeSnapshot",
+           steps_snapshot AS "stepsSnapshot", metadata, created_at AS "createdAt"
+    FROM route_version_events
+    WHERE route_id = ${routeId} AND project_id = ${projectId} AND version = ${version}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  return rows.length ? (rows[0] as RouteVersionEventRecord) : null;
+}
+
+export async function replaceRouteStepsFromSnapshot(params: {
+  routeId: string;
+  projectId: string;
+  userId: string;
+  stepsSnapshot: Record<string, unknown>[];
+}): Promise<RouteStepRecord[] | null> {
+  const route = await getRoute(params.routeId, params.projectId, params.userId);
+  if (!route) return null;
+  const sql = getSql();
+  await sql`DELETE FROM route_steps WHERE route_id = ${params.routeId}`;
+  for (const raw of params.stepsSnapshot) {
+    const id = typeof raw.id === "string" ? raw.id : crypto.randomUUID();
+    const orderIndex = Number(raw.orderIndex ?? 0);
+    const enabled = raw.enabled !== false;
+    const now = Date.now();
+    await sql`
+      INSERT INTO route_steps (
+        id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on,
+        timeout_ms, enabled, label, switch_criteria, retry_policy, cost_policy, notes, created_at, updated_at
+      )
+      VALUES (
+        ${id}, ${params.routeId}, ${orderIndex},
+        ${typeof raw.providerPreference === "string" ? raw.providerPreference : null},
+        ${typeof raw.modelId === "string" ? raw.modelId : null},
+        ${raw.conditionBlock ? JSON.stringify(raw.conditionBlock) : null},
+        ${typeof raw.fallbackOn === "string" ? raw.fallbackOn : null},
+        ${typeof raw.timeoutMs === "number" ? raw.timeoutMs : null},
+        ${enabled},
+        ${typeof raw.label === "string" ? raw.label : null},
+        ${raw.switchCriteria ? JSON.stringify(raw.switchCriteria) : null},
+        ${raw.retryPolicy ? JSON.stringify(raw.retryPolicy) : null},
+        ${raw.costPolicy ? JSON.stringify(raw.costPolicy) : null},
+        ${typeof raw.notes === "string" ? raw.notes : null},
+        ${now},
+        ${now}
+      )
+    `;
+  }
+  return listRouteSteps(params.routeId, params.projectId, params.userId);
+}
+
 // ---------------------------------------------------------------------------
 // Policies (workspace-scoped; explicit rule shapes)
 // ---------------------------------------------------------------------------

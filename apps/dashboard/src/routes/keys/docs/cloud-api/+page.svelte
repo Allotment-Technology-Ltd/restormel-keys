@@ -30,11 +30,34 @@
     "violations": []
   }
 }`;
+
+  const simulateCurl = `curl -s -X POST \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/routes/\${RESTORMEL_ROUTE_ID}/simulate" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "environmentId": "prod", "stage": "ingestion_grouping", "workload": "ingestion", "estimatedInputTokens": 12000 }' \\
+  | jq '.data'`;
+
+  const simulateResponse = `{
+  "data": {
+    "selectedStepId": "step_01",
+    "estimatedCostUsd": 0.18,
+    "perStepEstimates": [
+      { "stepId": "step_01", "orderIndex": 0, "providerType": "anthropic", "modelId": "claude-sonnet-4", "estimatedCostUsd": 0.18, "wouldRun": true, "wouldBeSkippedBecause": null },
+      { "stepId": "step_02", "orderIndex": 1, "providerType": "openai", "modelId": "gpt-4.1", "estimatedCostUsd": 0.21, "wouldRun": false, "wouldBeSkippedBecause": "not_selected" }
+    ],
+    "switchOutcomePreview": {
+      "attemptNumber": 0,
+      "failureKind": null,
+      "selectedOrderIndex": 0
+    }
+  }
+}`;
 </script>
 
 <svelte:head>
   <title>Cloud API — Restormel Keys</title>
-  <meta name="description" content="Control-plane CRUD via the Zuplo gateway, and runtime operations via the Dashboard API. Resolve, policies, and steps docs included." />
+  <meta name="description" content="Control-plane CRUD via the Zuplo gateway, and runtime operations via the Dashboard API. Includes resolve, policy evaluation, stage routing metadata, and route simulation." />
 </svelte:head>
 
 <div class="doc-content">
@@ -97,7 +120,7 @@
       <tr><td>401</td><td><code>unauthorized</code></td><td>Gateway Key missing or invalid</td></tr>
       <tr><td>403</td><td><code>forbidden</code></td><td>Gateway Key project does not match <code>projectId</code></td></tr>
       <tr><td>404</td><td><code>no_route</code></td><td>No active route found for this environment / route name</td></tr>
-      <tr><td>422</td><td><code>no_key_available</code></td><td>Route exists but no step can resolve (blocked/disabled/misconfigured)</td></tr>
+      <tr><td>500</td><td><code>internal_error</code></td><td>Unexpected resolver/runtime failure; inspect logs and route configuration</td></tr>
     </tbody>
   </table>
 
@@ -116,6 +139,67 @@
   <CodeBlock language="bash" code={evaluateCurl} />
   <p><strong>Response</strong></p>
   <CodeBlock language="json" code={evaluateResponse} />
+
+  <h2>Ingestion routing control-plane (Dashboard API)</h2>
+  <p>
+    The Dashboard API now exposes route-level metadata and simulation surfaces used by ingestion routing UIs.
+    These endpoints are project-scoped and require a Gateway Key.
+  </p>
+
+  <h3>Route simulation</h3>
+  <p><strong>Endpoint</strong></p>
+  <CodeBlock language="text" code={`POST /keys/dashboard/api/projects/{projectId}/routes/{routeId}/simulate\nAuthorization: Bearer {RESTORMEL_GATEWAY_KEY}\nContent-Type: application/json`} />
+  <p><strong>Request body (example)</strong></p>
+  <CodeBlock language="json" code={`{ "environmentId": "prod", "stage": "ingestion_grouping", "workload": "ingestion", "estimatedInputTokens": 12000 }`} />
+  <p><strong>curl example</strong></p>
+  <CodeBlock language="bash" code={simulateCurl} />
+  <p><strong>Response (example)</strong></p>
+  <CodeBlock language="json" code={simulateResponse} />
+
+  <h3>Routing metadata endpoints</h3>
+  <table class="doc-table">
+    <thead>
+      <tr><th>Endpoint</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/routing-capabilities</code></td>
+        <td>Returns workload + stage enums for route editors.</td>
+      </tr>
+      <tr>
+        <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/models</code></td>
+        <td>Project-scoped model catalog list for selector controls.</td>
+      </tr>
+      <tr>
+        <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/providers/health</code></td>
+        <td>Provider integration verification/health summary for routing decisions.</td>
+      </tr>
+      <tr>
+        <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/switch-criteria-enums</code></td>
+        <td>Machine-readable switch-criteria enums for UI constraints.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Stage-aware resolve request fields</h3>
+  <p>
+    Resolve now accepts optional stage/switch context fields to support ingestion workflows:
+    <code>stage</code>, <code>workload</code>, <code>task</code>, <code>attemptNumber</code>,
+    <code>estimatedInputTokens</code>, <code>estimatedInputChars</code>, <code>complexity</code>,
+    <code>constraints</code>, <code>previousFailure</code>, and <code>failureKind</code>.
+  </p>
+  <p>
+    Resolve responses may include <code>selectedStepId</code>, <code>selectedOrderIndex</code>, and
+    <code>switchReasonCode</code> for operator/trace UX, plus machine-readable fields
+    <code>estimatedCostUsd</code>, <code>matchedCriteria</code>, and <code>fallbackCandidates</code>.
+  </p>
+
+  <h3>Route lifecycle endpoints</h3>
+  <ul>
+    <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/publish</code> — publish a new route version snapshot.</li>
+    <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/rollback</code> — rollback to a previously published snapshot (optional <code>toVersion</code>).</li>
+    <li><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/history</code> — list publish/rollback history events.</li>
+  </ul>
 
   <h2>Where to use it</h2>
   <ul>

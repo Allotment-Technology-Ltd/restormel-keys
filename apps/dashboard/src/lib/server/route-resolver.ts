@@ -33,6 +33,16 @@ export type ResolvedRouteResult = {
   modelId: string | null;
   /** Explanation for logging/audit. */
   explanation: string;
+  /** Criteria that matched on selected step (switchCriteria snapshot). */
+  matchedCriteria?: Record<string, unknown> | null;
+  /** Ordered candidates considered after selected step. */
+  fallbackCandidates?: Array<{
+    stepId: string;
+    orderIndex: number;
+    providerType: string | null;
+    modelId: string | null;
+    enabled: boolean;
+  }>;
   /** Set when there were enabled steps but all were blocked by policy (selectedStep is null). */
   policyViolations?: PolicyViolation[];
 };
@@ -138,10 +148,20 @@ export async function resolveRouteForExecution(
         switchReasonCode:
           attemptNumber > 0
             ? options?.failureKind ?? "switched_after_previous_failure"
-            : null,
+            : "initial_selection",
         providerType,
         modelId,
         explanation,
+        matchedCriteria: step.switchCriteria ?? null,
+        fallbackCandidates: enabledSteps
+          .filter((s) => s.orderIndex > step.orderIndex)
+          .map((s) => ({
+            stepId: s.id,
+            orderIndex: s.orderIndex,
+            providerType: s.providerPreference ?? null,
+            modelId: s.modelId ?? routeRecord.defaultModelId ?? null,
+            enabled: s.enabled,
+          })),
       };
     }
     allViolations.push(...violations);
@@ -169,6 +189,8 @@ export async function resolveRouteForExecution(
     providerType,
     modelId,
     explanation,
+    matchedCriteria: null,
+    fallbackCandidates: [],
     ...(enabledSteps.length > 0 ? { policyViolations: allViolations } : {}),
   };
 }

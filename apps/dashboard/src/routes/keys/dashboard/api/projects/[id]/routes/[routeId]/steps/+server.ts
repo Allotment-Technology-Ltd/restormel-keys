@@ -17,48 +17,54 @@ function invalid(detail: string) {
 
 /** GET: list steps for route (ordered by orderIndex). */
 export const GET: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
-  const scope = projectScope(locals, params.id);
-  if (!scope) return json({ error: "forbidden" }, { status: 403 });
+  try {
+    if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+    const scope = projectScope(locals, params.id);
+    if (!scope) return json({ error: "forbidden" }, { status: 403 });
 
-  const route = await getRoute(params.routeId, scope.projectId, scope.userId);
-  if (!route) return json({ error: "route_not_found" }, { status: 404 });
+    const route = await getRoute(params.routeId, scope.projectId, scope.userId);
+    if (!route) return json({ error: "route_not_found" }, { status: 404 });
 
-  const steps = await listRouteSteps(params.routeId, scope.projectId, scope.userId);
-  return json({ data: steps });
+    const steps = await listRouteSteps(params.routeId, scope.projectId, scope.userId);
+    return json({ data: steps });
+  } catch (e) {
+    console.error("[route.steps.get] internal error:", e);
+    return json({ error: "internal_error", detail: "route_steps_list_failed" }, { status: 500 });
+  }
 };
 
 /** POST: create step. Body: orderIndex, providerPreference?, modelId?, conditionBlock?, fallbackOn?, timeoutMs?, enabled?. */
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
-  const scope = projectScope(locals, params.id);
-  if (!scope) return json({ error: "forbidden" }, { status: 403 });
-
-  const route = await getRoute(params.routeId, scope.projectId, scope.userId);
-  if (!route) return json({ error: "route_not_found" }, { status: 404 });
-
-  let body: {
-    orderIndex?: number;
-    providerPreference?: string | null;
-    modelId?: string | null;
-    label?: string | null;
-    switchCriteria?: Record<string, unknown> | null;
-    retryPolicy?: Record<string, unknown> | null;
-    costPolicy?: Record<string, unknown> | null;
-    conditionBlock?: Record<string, unknown> | null;
-    fallbackOn?: string | null;
-    timeoutMs?: number | null;
-    notes?: string | null;
-    enabled?: boolean;
-  };
   try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+    const scope = projectScope(locals, params.id);
+    if (!scope) return json({ error: "forbidden" }, { status: 403 });
 
-  const orderIndex = typeof body.orderIndex === "number" && Number.isFinite(body.orderIndex) ? body.orderIndex : 0;
-  if (!Number.isInteger(orderIndex) || orderIndex < 0) return invalid("orderIndex must be an integer >= 0");
+    const route = await getRoute(params.routeId, scope.projectId, scope.userId);
+    if (!route) return json({ error: "route_not_found" }, { status: 404 });
+
+    let body: {
+      orderIndex?: number;
+      providerPreference?: string | null;
+      modelId?: string | null;
+      label?: string | null;
+      switchCriteria?: Record<string, unknown> | null;
+      retryPolicy?: Record<string, unknown> | null;
+      costPolicy?: Record<string, unknown> | null;
+      conditionBlock?: Record<string, unknown> | null;
+      fallbackOn?: string | null;
+      timeoutMs?: number | null;
+      notes?: string | null;
+      enabled?: boolean;
+    };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const orderIndex = typeof body.orderIndex === "number" && Number.isFinite(body.orderIndex) ? body.orderIndex : 0;
+    if (!Number.isInteger(orderIndex) || orderIndex < 0) return invalid("orderIndex must be an integer >= 0");
 
   const providerPreference = body.providerPreference ?? null;
   if (providerPreference !== null && typeof providerPreference !== "string") {
@@ -110,23 +116,27 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: "duplicate_order_index" }, { status: 409 });
   }
 
-  const step = await createRouteStep({
-    routeId: params.routeId,
-    projectId: scope.projectId,
-    userId: scope.userId,
-    orderIndex,
-    providerPreference,
-    modelId,
-    conditionBlock: body.conditionBlock ?? undefined,
-    fallbackOn,
-    timeoutMs: body.timeoutMs ?? undefined,
-    enabled: body.enabled,
-    label,
-    switchCriteria,
-    retryPolicy,
-    costPolicy,
-    notes,
-  });
-  if (!step) return json({ error: "route_not_found" }, { status: 404 });
-  return json({ data: step }, { status: 201 });
+    const step = await createRouteStep({
+      routeId: params.routeId,
+      projectId: scope.projectId,
+      userId: scope.userId,
+      orderIndex,
+      providerPreference,
+      modelId,
+      conditionBlock: body.conditionBlock ?? undefined,
+      fallbackOn,
+      timeoutMs: body.timeoutMs ?? undefined,
+      enabled: body.enabled,
+      label,
+      switchCriteria,
+      retryPolicy,
+      costPolicy,
+      notes,
+    });
+    if (!step) return json({ error: "route_not_found" }, { status: 404 });
+    return json({ data: step }, { status: 201 });
+  } catch (e) {
+    console.error("[route.steps.post] internal error:", e);
+    return json({ error: "internal_error", detail: "route_step_create_failed" }, { status: 500 });
+  }
 };

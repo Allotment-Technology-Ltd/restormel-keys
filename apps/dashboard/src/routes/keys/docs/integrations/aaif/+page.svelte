@@ -14,7 +14,8 @@
 <p class="docs-p">
   AAIF is <strong>advanced</strong> — the type contract is defined and exported from
   <code class="inline-code">@restormel/aaif</code>. AAIF runtime helpers are available via
-  <code class="inline-code">executeAAIFRequest()</code>.
+  <code class="inline-code">executeAAIFRequest()</code>. Before install, verify availability with
+  <code class="inline-code">npm view @restormel/aaif version</code>.
 </p>
 
 <h2 class="docs-h2">Request</h2>

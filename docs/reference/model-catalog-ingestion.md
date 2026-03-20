@@ -50,7 +50,7 @@ The repository includes a scheduled GitHub Action to keep the catalog aligned we
 
 - Workflow: `.github/workflows/model-catalog-weekly.yml`
 - Command: `pnpm --filter dashboard seed:catalog:from-keys`
-- Requirements: set a Neon Postgres connection string in repo secrets as `DATABASE_URL`
+- Requirements: set a Neon Postgres connection string in repo secrets as `DATABASE_URL` and ensure dashboard migrations (including control-plane tables) are already applied in that DB
 
 ## Seed file shape
 

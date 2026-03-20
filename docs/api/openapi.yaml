@@ -246,6 +246,24 @@ paths:
               properties:
                 environmentId: { type: string, description: Environment to resolve against (e.g. dev, prod) }
                 routeId: { type: string, description: Route name to evaluate; if omitted uses first active route for the environment }
+                stage: { type: string, description: Optional stage hint (for ingestion workloads) }
+                workload: { type: string, description: Optional workload hint (e.g. ingestion) }
+                task: { type: string, description: Optional task hint }
+                attemptNumber: { type: integer, minimum: 0 }
+                failureKind: { type: string, nullable: true }
+                estimatedInputTokens: { type: number, nullable: true }
+                estimatedInputChars: { type: number, nullable: true }
+                complexity: { type: string, nullable: true }
+                constraints:
+                  type: object
+                  properties:
+                    maxCost: { type: number, nullable: true }
+                    latency: { type: string, nullable: true }
+                previousFailure:
+                  type: object
+                  properties:
+                    selectedOrderIndex: { type: integer, nullable: true }
+                    selectedStepId: { type: string, nullable: true }
       responses:
         "200":
           description: Resolved provider/model decision
@@ -261,6 +279,24 @@ paths:
                       providerType: { type: string, nullable: true }
                       modelId: { type: string, nullable: true }
                       explanation: { type: string }
+                      selectedStepId: { type: string, nullable: true }
+                      selectedOrderIndex: { type: integer, nullable: true }
+                      switchReasonCode: { type: string, nullable: true }
+                      estimatedCostUsd: { type: number, nullable: true }
+                      matchedCriteria:
+                        type: object
+                        nullable: true
+                        additionalProperties: true
+                      fallbackCandidates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            stepId: { type: string }
+                            orderIndex: { type: integer }
+                            providerType: { type: string, nullable: true }
+                            modelId: { type: string, nullable: true }
+                            enabled: { type: boolean }
         "401":
           description: Unauthorized
           content:
@@ -276,8 +312,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
-        "422":
-          description: Route exists but no step can resolve
+        "500":
+          description: Internal resolve error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -479,6 +515,196 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/simulate:
+    post:
+      summary: Simulate route execution
+      operationId: simulateRoute
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId]
+              properties:
+                environmentId: { type: string }
+                stage: { type: string, nullable: true }
+                workload: { type: string, nullable: true }
+                attemptNumber: { type: integer, minimum: 0 }
+                failureKind: { type: string, nullable: true }
+                estimatedInputTokens: { type: number, nullable: true }
+                estimatedInputChars: { type: number, nullable: true }
+                previousFailure:
+                  type: object
+                  properties:
+                    selectedOrderIndex: { type: integer, nullable: true }
+                    selectedStepId: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Simulation result
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Route not found/no route
+
+  /api/projects/{projectId}/routes/{routeId}/publish:
+    post:
+      summary: Publish route version
+      operationId: publishRoute
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Route published
+        "401":
+          description: Unauthorized
+        "404":
+          description: Route not found
+
+  /api/projects/{projectId}/routes/{routeId}/rollback:
+    post:
+      summary: Roll back route to prior version snapshot
+      operationId: rollbackRoute
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                toVersion: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Route rolled back
+        "401":
+          description: Unauthorized
+        "404":
+          description: Route/version not found
+
+  /api/projects/{projectId}/routes/{routeId}/history:
+    get:
+      summary: List route version history
+      operationId: routeHistory
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        "200":
+          description: Route history
+        "401":
+          description: Unauthorized
+        "404":
+          description: Route not found
+
+  /api/projects/{projectId}/routing-capabilities:
+    get:
+      summary: List routing capability enums
+      operationId: routingCapabilities
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Routing capabilities for route editors
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project not found
+
+  /api/projects/{projectId}/switch-criteria-enums:
+    get:
+      summary: List switch criteria enums
+      operationId: switchCriteriaEnums
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Enum values for switch criteria builders
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project not found
+
+  /api/projects/{projectId}/providers/health:
+    get:
+      summary: Provider integration health summary
+      operationId: providerHealth
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Provider health list
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project not found
         "409":
           description: Duplicate orderIndex
           content:
@@ -566,9 +792,23 @@ components:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey]
         modelId: { type: string, nullable: true }
+        label: { type: string, nullable: true }
         fallbackOn:
           type: string
           enum: [error, rate_limit, no_key, policy_block, any]
+        switchCriteria:
+          type: object
+          nullable: true
+          additionalProperties: true
+        retryPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        costPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        notes: { type: string, nullable: true }
         enabled: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -582,9 +822,23 @@ components:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey]
         modelId: { type: string, nullable: true }
+        label: { type: string, nullable: true }
         fallbackOn:
           type: string
           enum: [error, rate_limit, no_key, policy_block, any]
+        switchCriteria:
+          type: object
+          nullable: true
+          additionalProperties: true
+        retryPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        costPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        notes: { type: string, nullable: true }
         enabled: { type: boolean, default: true }
 
     RouteStepPatch:
@@ -595,7 +849,21 @@ components:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey]
         modelId: { type: string, nullable: true }
+        label: { type: string, nullable: true }
         fallbackOn:
           type: string
           enum: [error, rate_limit, no_key, policy_block, any]
+        switchCriteria:
+          type: object
+          nullable: true
+          additionalProperties: true
+        retryPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        costPolicy:
+          type: object
+          nullable: true
+          additionalProperties: true
+        notes: { type: string, nullable: true }
         enabled: { type: boolean }
