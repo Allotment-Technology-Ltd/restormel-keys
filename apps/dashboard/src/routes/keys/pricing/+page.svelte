@@ -22,7 +22,7 @@
 
 <svelte:head>
   <title>Pricing — Restormel Keys</title>
-  <meta name="description" content="Restormel Keys pricing: Free (build/prototype) and Pro (£10/mo) for production limits and visibility. No hosted key custody. Library-first." />
+  <meta name="description" content="Restormel Keys pricing: Free (build/prototype) and Pro ($10/mo) for production limits and visibility. No hosted key custody. Library-first." />
 </svelte:head>
 
 <article class="pricing-page">
@@ -42,7 +42,7 @@
         <div class="tier-card">
           <h3 class="tier-name">Free</h3>
           <p class="tier-desc"><strong>Best for:</strong> experimenting and prototyping</p>
-          <p class="tier-price">£0</p>
+          <p class="tier-price">$0</p>
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
             <li>2 projects</li>
@@ -60,7 +60,7 @@
         <div class="tier-card">
           <h3 class="tier-name">Pro</h3>
           <p class="tier-desc"><strong>Best for:</strong> shipping real AI products</p>
-          <p class="tier-price">£10</p>
+          <p class="tier-price">$10</p>
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
             <li>Advanced routing controls</li>

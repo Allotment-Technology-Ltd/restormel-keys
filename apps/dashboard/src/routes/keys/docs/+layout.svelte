@@ -81,7 +81,17 @@
 
   <nav class="docs-nav" aria-label="Docs navigation">
     <a href="/keys" on:click={closeNavOnMobile}>Keys</a>
+    <div class="nav-section" aria-label="Concepts section">Concepts</div>
     <a href="/keys/docs" on:click={closeNavOnMobile}>Overview</a>
+    <a href="/keys/docs/how-it-fits-together" on:click={closeNavOnMobile}>How it fits together</a>
+    <div class="nav-divider" aria-hidden="true"></div>
+    <div class="nav-section" aria-label="Quickstart section">Quickstart</div>
+    <a href="/keys/docs/journeys/new-project" on:click={closeNavOnMobile}>New project</a>
+    <a href="/keys/docs/journeys/existing-stack" on:click={closeNavOnMobile}>Existing stack</a>
+    <a href="/keys/docs/journeys/byok-saas" on:click={closeNavOnMobile}>BYOK SaaS</a>
+    <a href="/keys/docs/journeys/agent-ide" on:click={closeNavOnMobile}>Agent/IDE path</a>
+    <a href="/keys/docs/journeys/platform-ops" on:click={closeNavOnMobile}>Platform ops</a>
+    <a href="/keys/docs/search" on:click={closeNavOnMobile}>Search</a>
     <a href="/keys/docs/walkthrough" on:click={closeNavOnMobile}>Walkthrough</a>
     <div class="nav-divider" aria-hidden="true"></div>
     <div class="nav-section" aria-label="Guides section">Guides</div>
@@ -97,7 +107,7 @@
     <a href="/keys/docs/integrations/cli" on:click={closeNavOnMobile}>CLI</a>
     <a href="/keys/docs/integrations/mcp" on:click={closeNavOnMobile}>MCP</a>
     <a href="/keys/docs/integrations/aaif" on:click={closeNavOnMobile}>AAIF</a>
-    <a href="/keys/docs/integrations-walkthrough" on:click={closeNavOnMobile}>Integrations walkthrough</a>
+    <a href="/keys/docs/integrations-walkthrough/" on:click={closeNavOnMobile}>Integrations walkthrough</a>
     <div class="nav-divider" aria-hidden="true"></div>
     <a href="/keys/docs/compatibility" on:click={closeNavOnMobile}>Compatibility</a>
     <a href="/keys/docs/cloud-api" on:click={closeNavOnMobile}>Cloud API</a>

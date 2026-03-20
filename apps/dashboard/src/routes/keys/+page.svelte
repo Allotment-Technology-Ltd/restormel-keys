@@ -70,10 +70,17 @@ export default function Settings() {
       <p class="hero-who">
         For AI SaaS builders and small teams that want one control layer across gateways and direct providers.
       </p>
+      <p class="hero-who"><strong>Launch offer:</strong> First 50 signups receive 12 months of Pro.</p>
       <div class="hero-ctas">
         <a href="/keys/docs/walkthrough/phase-0-inventory" class="btn btn-primary btn-cta-hero">Start the walkthrough</a>
         <a href="/keys/docs" class="btn btn-secondary">Docs</a>
         <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="hero-link" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+      </div>
+      <div class="intent-grid">
+        <a href="/keys/docs/journeys/new-project" class="intent-card"><strong>Starting a new project</strong><span>15-minute quickstart path.</span></a>
+        <a href="/keys/docs/journeys/existing-stack" class="intent-card"><strong>Adding control to existing stack</strong><span>Migration-first path.</span></a>
+        <a href="/keys/docs/journeys/byok-saas" class="intent-card"><strong>Adding BYOK to SaaS</strong><span>Embeddable key + model UX path.</span></a>
+        <a href="/keys/docs/journeys/agent-ide" class="intent-card"><strong>CLI/agent/IDE path</strong><span>MCP, CLI, AAIF.</span></a>
       </div>
     </div>
   </section>
@@ -213,15 +220,16 @@ export default function Settings() {
     <div class="container">
       <h2 id="pricing-heading" class="section-title">Pricing</h2>
       <p class="section-intro">Free to build. Upgrade to Pro when you’re ready to ship.</p>
+      <p class="section-intro"><strong>Early access:</strong> First 50 signups get 12 months of Pro included.</p>
       <div class="pricing-grid">
         <div class="pricing-card">
           <h3 class="pricing-tier">Free</h3>
-          <p class="pricing-price">£0</p>
+          <p class="pricing-price">$0</p>
           <p class="pricing-desc">Best for prototyping. 2 projects and 1,000 requests/month.</p>
         </div>
         <div class="pricing-card">
           <h3 class="pricing-tier">Pro</h3>
-          <p class="pricing-price">£10<span class="pricing-period">/mo</span></p>
+          <p class="pricing-price">$10<span class="pricing-period">/mo</span></p>
           <p class="pricing-desc">Best for production. Higher limits, visibility, and routing controls.</p>
         </div>
       </div>
@@ -301,6 +309,25 @@ export default function Settings() {
     flex-wrap: wrap;
     gap: var(--space-3);
   }
+  .intent-grid {
+    margin-top: var(--space-5);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: var(--space-3);
+    max-width: 64rem;
+  }
+  .intent-card {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-3);
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .intent-card strong { color: var(--rm-text); font-size: var(--text-sm); }
+  .intent-card span { color: var(--rm-muted); font-size: var(--text-xs); }
   .btn {
     display: inline-block;
     font-family: var(--rm-font-ui);

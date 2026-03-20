@@ -38,6 +38,10 @@
   const showMultiProvider = isFree && (data.usage?.providersConnected ?? 0) >= 2;
 </script>
 
+<svelte:head>
+  <title>Overview – Restormel Keys</title>
+</svelte:head>
+
 <h1 class="page-title">Overview</h1>
 <p class="page-desc">Your projects and quick stats.</p>
 
@@ -96,7 +100,7 @@
       <li class="step" class:step-done={true}><span class="step-label">Workspace</span> — Created when you signed in.</li>
       <li class="step" class:step-done={o?.hasProjects}>
         {#if o?.hasProjects}
-          <span class="step-label">Project</span> — Done.
+          <span class="step-label">Project</span> — Complete.
         {:else}
           <a href={DASHBOARD_BASE + "/projects"} class="step-action">Create a project</a>
         {/if}
@@ -108,14 +112,14 @@
       </li>
       <li class="step" class:step-done={o?.hasKeys}>
         {#if o?.hasKeys}
-          <span class="step-label">Gateway Key</span> — Done.
+          <span class="step-label">Gateway Key</span> — Complete.
         {:else}
           <a href={DASHBOARD_BASE + "/access"} class="step-action">Create a Gateway Key</a> (Access)
         {/if}
       </li>
       <li class="step" class:step-done={o?.hasIntegrations}>
         {#if o?.hasIntegrations}
-          <span class="step-label">Provider connection</span> — Done.
+          <span class="step-label">Provider connection</span> — Complete.
         {:else}
           <a href={DASHBOARD_BASE + "/integrations"} class="step-action">Configure provider access</a> (Provider Access)
         {/if}

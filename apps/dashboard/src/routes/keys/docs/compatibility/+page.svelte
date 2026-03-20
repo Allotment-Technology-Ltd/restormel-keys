@@ -57,7 +57,8 @@
 
   <h2>Start with Next.js</h2>
   <ol>
-    <li>Install: <code>pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements</code></li>
+    <li>Run <code>npm view @restormel/keys-react version</code> and <code>npm view @restormel/keys-elements version</code>. If either returns 404, use headless-only until published.</li>
+    <li>Install: <code>pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements</code> (only when available)</li>
     <li>Add a settings (or similar) page with KeyManager and your key storage.</li>
     <li>Use the core on the server for resolution and cost; use the React components on the client for UI.</li>
   </ol>

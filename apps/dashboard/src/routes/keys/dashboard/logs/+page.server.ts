@@ -15,21 +15,40 @@ export const load: PageServerLoad = async ({ url, locals }) => {
   const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT));
   const projectId = url.searchParams.get("projectId")?.trim() || undefined;
   const routeId = url.searchParams.get("routeId")?.trim() || undefined;
+  const status = url.searchParams.get("status")?.trim() || undefined;
   try {
-    const logs = await listRequestLogs(ctx.workspaceId, {
+    const rawLogs = await listRequestLogs(ctx.workspaceId, {
       limit,
       since,
       until,
       projectId,
       routeId,
     });
+    const logs = status ? rawLogs.filter((l) => l.requestStatus === status) : rawLogs;
+    const availableProjects = [...new Set(rawLogs.map((l) => l.projectId))];
+    const availableRoutes = [...new Set(rawLogs.map((l) => l.routeId).filter((r): r is string => Boolean(r)))];
+    const availableStatuses = [...new Set(rawLogs.map((l) => l.requestStatus))];
     return {
       logs,
-      filter: projectId != null || routeId != null ? { projectId: projectId ?? null, routeId: routeId ?? null } : null,
+      filter:
+        projectId != null || routeId != null || status != null
+          ? { projectId: projectId ?? null, routeId: routeId ?? null, status: status ?? null }
+          : null,
+      controls: {
+        availableProjects,
+        availableRoutes,
+        availableStatuses,
+        limit,
+      },
       error: null,
     };
   } catch (e) {
     console.error("[logs] load failed:", e);
-    return { logs: [], filter: null, error: "Unable to load request logs" };
+    return {
+      logs: [],
+      filter: null,
+      controls: { availableProjects: [], availableRoutes: [], availableStatuses: [], limit },
+      error: "Unable to load request logs",
+    };
   }
 };

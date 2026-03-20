@@ -46,7 +46,16 @@ export const POST: RequestHandler = async ({ params, locals }) => {
     // no-op
   }
 
-  return json({ data: { rawKey: result.rawKey, keyPrefix: result.keyPrefix, type: "gateway" as const } }, { status: 201 });
+  return json(
+    {
+      data: {
+        rawKey: result.rawKey,
+        keyPrefix: result.keyPrefix,
+        type: "gateway" as const,
+      },
+    },
+    { status: 201 }
+  );
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {

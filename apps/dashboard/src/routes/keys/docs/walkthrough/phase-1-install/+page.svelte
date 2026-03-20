@@ -104,9 +104,9 @@ DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or 
   <p><strong>Required:</strong> <code>@restormel/keys</code>. <strong>Phase 5 UI</strong> (<code>keys-svelte</code>, <code>keys-react</code>, <code>keys-elements</code>) — add when on npm. Verify with <code>npm view @restormel/keys-svelte version</code> before relying on install.</p>
   <p><strong>Headless / SvelteKit Phases 1–4:</strong></p>
   <CodeBlock language="bash" code="pnpm add @restormel/keys" />
-  <p><strong>Next.js + UI (Phase 5, when published):</strong></p>
+  <p><strong>Next.js + UI (Phase 5, only if npm view confirms packages):</strong></p>
   <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
-  <p><strong>SvelteKit + UI (Phase 5, when published):</strong></p>
+  <p><strong>SvelteKit + UI (Phase 5, only if npm view confirms packages):</strong></p>
   <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-svelte" />
   <div class="callout callout-tip">
     <strong>Tip</strong> — <a href="/keys/docs/compatibility">Framework compatibility</a>. Dogfooding: headless + doctor is enough until UI packages publish.

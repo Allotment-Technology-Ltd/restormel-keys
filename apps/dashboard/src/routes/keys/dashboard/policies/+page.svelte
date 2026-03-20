@@ -23,6 +23,15 @@
     "budget_cap",
     "token_cap",
   ];
+  const POLICY_TYPE_HELP: Record<string, string> = {
+    model_allowlist: "Allow only specific models for bound targets.",
+    model_denylist: "Block specific models for bound targets.",
+    provider_allowlist: "Allow only specific providers for bound targets.",
+    provider_denylist: "Block specific providers for bound targets.",
+    deprecated_model_block: "Automatically block models in deprecated lifecycle state.",
+    budget_cap: "Block requests when estimated spend exceeds configured cap.",
+    token_cap: "Block requests when input/output token usage exceeds configured cap.",
+  };
 
   let creating = false;
   let createError = "";
@@ -83,6 +92,7 @@
             <option value={t}>{t}</option>
           {/each}
         </select>
+        <p class="type-help">{POLICY_TYPE_HELP[createType]}</p>
       </div>
       <button type="submit" class="btn btn-primary" disabled={creating}>
         {creating ? "Creating…" : "Create policy"}
@@ -161,6 +171,12 @@
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
+  }
+  .type-help {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: 1.4;
   }
   .btn {
     padding: var(--space-2) var(--space-4);

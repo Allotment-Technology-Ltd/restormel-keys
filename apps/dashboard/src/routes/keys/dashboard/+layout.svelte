@@ -36,6 +36,7 @@
 </script>
 
 <svelte:head>
+  <title>{title ? `${title} – Restormel Keys` : "Dashboard – Restormel Keys"}</title>
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 

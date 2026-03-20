@@ -74,3 +74,22 @@ Classify findings clearly:
 - **Documentation parity gaps**
 
 Return a concise table: endpoint, expected, actual, classification, next action.
+
+## 6) UX and documentation parity checks
+
+Validate these surfaces are now live and coherent:
+
+- Dashboard overview titles load correctly in browser tabs.
+- Dashboard nav no longer exposes Lifecycle & Migrations as an active section.
+- Logs page has UI filters (project/route/status/limit) and colored status semantics.
+- Access page create-key flow clearly warns that full key is shown once and supports copy flow.
+- Docs include:
+  - `/keys/docs/how-it-fits-together`
+  - `/keys/docs/search`
+  - `/keys/docs/journeys/new-project`
+  - `/keys/docs/journeys/existing-stack`
+  - `/keys/docs/journeys/byok-saas`
+  - `/keys/docs/journeys/agent-ide`
+  - `/keys/docs/journeys/platform-ops`
+
+Classify any mismatch as runtime regression vs docs parity gap.

@@ -14,19 +14,22 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
+  // Get started
   { href: DASHBOARD_BASE + "/", label: "Overview" },
   { href: DASHBOARD_BASE + "/projects", label: "Projects" },
-  { href: DASHBOARD_BASE + "/copy-for-ci", label: "Copy for CI" },
-  { href: DASHBOARD_BASE + "/access", label: "Access" },
-  { href: DASHBOARD_BASE + "/integrations", label: "Provider Access" },
-  { href: DASHBOARD_BASE + "/dev-tools", label: "Developer Tools" },
-  { href: DASHBOARD_BASE + "/models", label: "Models" },
-  { href: DASHBOARD_BASE + "/healthcheck", label: "Healthcheck" },
+  // Configuration
   { href: DASHBOARD_BASE + "/routes", label: "Routes" },
   { href: DASHBOARD_BASE + "/policies", label: "Policies" },
+  { href: DASHBOARD_BASE + "/models", label: "Models" },
+  { href: DASHBOARD_BASE + "/integrations", label: "Provider Access" },
+  { href: DASHBOARD_BASE + "/access", label: "Keys & Credentials" },
+  // Operations
   { href: DASHBOARD_BASE + "/analytics", label: "Analytics" },
   { href: DASHBOARD_BASE + "/logs", label: "Logs & Traces" },
-  { href: DASHBOARD_BASE + "/lifecycle", label: "Lifecycle & Migrations" },
+  { href: DASHBOARD_BASE + "/healthcheck", label: "Healthcheck" },
+  // Tooling and CI
+  { href: DASHBOARD_BASE + "/dev-tools", label: "Developer Tools" },
+  { href: DASHBOARD_BASE + "/copy-for-ci", label: "Copy for CI" },
   { href: DASHBOARD_BASE + "/sandbox", label: "Sandbox" },
   { href: developerPortalUrl(), label: "API portal", external: true, openInNewTab: true },
   { href: "/keys/docs", label: "Documentation", external: true },
@@ -37,7 +40,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/"]: "Overview",
   [DASHBOARD_BASE + "/projects"]: "Projects",
   [DASHBOARD_BASE + "/copy-for-ci"]: "Copy for CI",
-  [DASHBOARD_BASE + "/access"]: "Access",
+  [DASHBOARD_BASE + "/access"]: "Keys & Credentials",
   [DASHBOARD_BASE + "/integrations"]: "Provider Access",
   [DASHBOARD_BASE + "/dev-tools"]: "Developer Tools",
   [DASHBOARD_BASE + "/models"]: "Models",
@@ -46,7 +49,6 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/policies"]: "Policies",
   [DASHBOARD_BASE + "/analytics"]: "Analytics",
   [DASHBOARD_BASE + "/logs"]: "Logs & Traces",
-  [DASHBOARD_BASE + "/lifecycle"]: "Lifecycle & Migrations",
   [DASHBOARD_BASE + "/sandbox"]: "Sandbox",
   [DASHBOARD_BASE + "/settings"]: "Profile",
 };

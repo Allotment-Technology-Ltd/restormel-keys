@@ -51,6 +51,8 @@ Use this as the canonical "what is available now" check:
    - `Planned`
 3. Do not infer availability from roadmap phase labels alone.
 
+For user-facing docs snippets, default to `@restormel/keys` unless the UI package has a confirmed `npm view` result.
+
 **Avoid `@restormel/keys-cli@0.1.0`** and **`@restormel/validate@0.1.3`** — broken `workspace:*` on `@restormel/keys`. Use **keys-cli ≥0.1.1**, **validate ≥0.1.4**, or manual config / doctor-only checks.
 
 If a package returns **404** from npm, use the **manual config** path and `@restormel/doctor` until that package is published (see repo [README](../../README.md#publish-phase-2) and release workflow).

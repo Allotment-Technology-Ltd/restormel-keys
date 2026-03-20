@@ -12,6 +12,30 @@
   <h1>Docs</h1>
   <p class="doc-tagline">Choose a provider access mode, then follow the walkthrough.</p>
 
+  <h2>What brings you here?</h2>
+  <div class="intent-grid">
+    <a class="intent-card" href="/keys/docs/journeys/new-project">
+      <strong>Starting a new project</strong>
+      <span>Get routing + first resolve in 15-20 minutes.</span>
+    </a>
+    <a class="intent-card" href="/keys/docs/journeys/existing-stack">
+      <strong>Adding control to an existing stack</strong>
+      <span>OpenRouter/Vercel/Portkey + Restormel control-plane path.</span>
+    </a>
+    <a class="intent-card" href="/keys/docs/journeys/byok-saas">
+      <strong>Adding BYOK to a SaaS</strong>
+      <span>KeyManager + policy-bounded model choice for end users.</span>
+    </a>
+    <a class="intent-card" href="/keys/docs/journeys/agent-ide">
+      <strong>CLI, agent, or IDE path</strong>
+      <span>Developer tooling path (CLI, MCP, AAIF).</span>
+    </a>
+    <a class="intent-card" href="/keys/docs/journeys/platform-ops">
+      <strong>Running platform operations</strong>
+      <span>Lifecycle, readiness, coverage, CI/CD, governance.</span>
+    </a>
+  </div>
+
   <p>
     <strong>Restormel Keys</strong> is a product in the <strong>Restormel</strong> platform. It’s designed to slot into your existing stack. It complements provider-access layers like <strong>OpenRouter</strong>, <strong>Vercel AI Gateway</strong>, and <strong>Portkey</strong>, and it also supports direct providers when you manage credentials in your own environment.
     This doc set covers install, framework choice, provider access modes, the <strong>Restormel Resolve</strong> API surface, and the Dashboard.
@@ -52,6 +76,7 @@
 
   <h2>Quick links</h2>
   <ul>
+    <li><a href="/keys/docs/how-it-fits-together">How it all fits together</a> — key types, API surfaces, and where each URL fits</li>
     <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
     <li><a href="/keys/docs/cloud-api">Cloud API</a> — API reference, gateway URL, and Developer Portal</li>
     <li><a href="/keys/docs/guides/openrouter">OpenRouter integration</a> — keep OpenRouter as your provider access layer</li>
@@ -119,5 +144,30 @@
   .doc-table code {
     font-family: var(--rm-font-ui);
     font-size: 0.9em;
+  }
+  .intent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-3);
+    margin: 0 0 var(--space-6);
+  }
+  .intent-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-3);
+    text-decoration: none;
+  }
+  .intent-card strong {
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+  }
+  .intent-card span {
+    color: var(--rm-muted);
+    font-size: var(--text-xs);
+    line-height: 1.4;
   }
 </style>

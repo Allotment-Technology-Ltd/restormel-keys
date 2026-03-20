@@ -40,7 +40,11 @@
   let rateLimitFilter = $page.url.searchParams.get("rateLimit") ?? "";
   let contextFilter = $page.url.searchParams.get("context") ?? "";
   let speedFilter = $page.url.searchParams.get("speed") ?? "";
-  let useCaseFilter = $page.url.searchParams.get("useCase") ?? "";
+  let useCaseFilter =
+    $page.url.searchParams.get("useCase") ??
+    $page.url.searchParams.get("goodFor") ??
+    $page.url.searchParams.get("badFor") ??
+    "";
   let selectedId = $page.url.searchParams.get("detail") ?? "";
   let filteredModels: typeof data.models = data.models;
   let groupedModels: { family: string; items: typeof data.models }[] = [];
@@ -113,6 +117,17 @@
     return haystack.includes(needle);
   }
 
+  function matchesLifecycle(model: (typeof data.models)[number]): boolean {
+    if (!lifecycleFilter) return true;
+    return (model.lifecycleState ?? "").toLowerCase() === lifecycleFilter.toLowerCase();
+  }
+
+  function matchesFamily(model: (typeof data.models)[number]): boolean {
+    if (!familyFilter.trim()) return true;
+    const needle = familyFilter.trim().toLowerCase();
+    return (model.family ?? "").toLowerCase().includes(needle);
+  }
+
   function matchesText(model: (typeof data.models)[number]): boolean {
     if (!q.trim()) return true;
     const needle = q.trim().toLowerCase();
@@ -167,6 +182,8 @@
 
   $: filteredModels = data.models.filter(
     (m) =>
+      matchesLifecycle(m) &&
+      matchesFamily(m) &&
       matchesText(m) &&
       matchesUseCase(m) &&
       matchesAvailability(m) &&
@@ -293,7 +310,7 @@
             <li class="model-row">
               <button type="button" class="model-card" onclick={() => openDetail(m.id)}>
                 <span class="model-head">
-                  <span class="model-name">{m.canonicalName}</span>
+                  <span class="model-name">{m.canonicalName || m.id}</span>
                   <span class="lifecycle-badge lifecycle-{lifecycleBadge(m.lifecycleState)}">
                     {m.lifecycleState ?? "—"}
                   </span>

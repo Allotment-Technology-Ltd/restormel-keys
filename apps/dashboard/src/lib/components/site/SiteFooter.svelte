@@ -28,7 +28,7 @@
       <a href="/" class="site-footer-logo">
         <img src="/restormel-lockup-nav.svg" alt="Restormel" style="height: 24px; width: auto;" />
       </a>
-      <p class="site-footer-tagline">Developer tools for AI</p>
+      <p class="site-footer-tagline">The missing layer for AI apps</p>
     </div>
   </div>
   <p class="site-footer-copy">restormel.dev</p>

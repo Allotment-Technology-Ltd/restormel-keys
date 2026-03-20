@@ -50,6 +50,7 @@ Do these before over-rotating on host-app fixes:
 - **Model-filtering contract** — more complete contract so apps do not have to build custom allowed-models proxy for the common case.
 - **Diagnostics** — when Restormel is misconfigured or unavailable, failure should present as "Restormel backend/config issue" not "component broken"; clearer in component behavior and package/debug surface.
 - **Semantic docs clarity** — keep route model categories and resolve-to-execution contract explicit to avoid host-side inference errors.
+- **Archetype entry routing** — route new users by intent (new project, existing stack, BYOK SaaS, agent/IDE, platform ops) before deep walkthrough phases.
 
 ---
 

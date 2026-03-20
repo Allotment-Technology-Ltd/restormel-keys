@@ -16,9 +16,19 @@
   let creating = false;
   let createError = "";
   let selectedProjectId = data.projects[0]?.id ?? "";
+  let createLabel = "";
   let newKey: { rawKey: string; keyPrefix: string; projectName: string } | null = null;
   let copied = false;
   let revokingId: string | null = null;
+  let keyLabels: Record<string, string> = {};
+
+  if (typeof localStorage !== "undefined") {
+    try {
+      keyLabels = JSON.parse(localStorage.getItem("rk_key_labels") ?? "{}");
+    } catch {
+      keyLabels = {};
+    }
+  }
 
   $: selectedProjectId = data.projects.length && !selectedProjectId
     ? data.projects[0].id
@@ -39,6 +49,11 @@
           keyPrefix: body.data.keyPrefix,
           projectName: project?.name ?? "Project",
         };
+        if (createLabel.trim()) {
+          keyLabels[body.data.keyPrefix] = createLabel.trim();
+          localStorage.setItem("rk_key_labels", JSON.stringify(keyLabels));
+        }
+        createLabel = "";
         await invalidateAll();
       } else {
         createError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
@@ -93,6 +108,7 @@
     {#if newKey}
       <div class="new-key-box" role="status" aria-live="polite">
         <p class="new-key-label">New key for {newKey.projectName} — copy now:</p>
+          <p class="new-key-warning">This is the only time the full key will be shown.</p>
         <code class="new-key-value">{newKey.rawKey}</code>
         <button type="button" class="btn btn-secondary" onclick={copyNewKey}>
           {copied ? "Copied" : "Copy"}
@@ -119,6 +135,8 @@
                 <option value={p.id}>{p.name}</option>
               {/each}
             </select>
+            <label for="access-key-label" class="sr-only">Key label</label>
+            <input id="access-key-label" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
             <button type="submit" class="btn btn-primary" disabled={creating}>
               {creating ? "Creating…" : "Create Gateway key"}
             </button>
@@ -133,6 +151,8 @@
             <option value={p.id}>{p.name}</option>
           {/each}
         </select>
+        <label for="access-key-label-2" class="sr-only">Key label</label>
+        <input id="access-key-label-2" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
         <button type="submit" class="btn btn-primary" disabled={creating}>
           {creating ? "Creating…" : "Create Gateway key"}
         </button>
@@ -144,6 +164,9 @@
             <li class="key-row">
               <span class="key-meta">
                 <code class="key-prefix">{k.keyPrefix}</code>
+                {#if keyLabels[k.keyPrefix]}
+                  <span class="key-project">{keyLabels[k.keyPrefix]}</span>
+                {/if}
                 <span class="key-project">{k.projectName}</span>
               </span>
               <button
@@ -253,6 +276,11 @@
     font-size: var(--text-xs);
     color: var(--rm-dim);
     margin: 0 0 var(--space-1);
+  }
+  .new-key-warning {
+    font-size: var(--text-xs);
+    color: var(--coral-alert);
+    margin: 0 0 var(--space-2);
   }
   .new-key-value {
     font-size: var(--text-sm);
