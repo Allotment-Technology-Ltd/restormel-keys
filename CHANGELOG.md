@@ -4,6 +4,9 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- dashboard(api): publish stable OpenAPI artifact URLs at `/keys/docs/api/openapi.yaml` and `/keys/dashboard/api/openapi.yaml`
+- dashboard(data): backfill provenance defaults for existing route/policy rows via migration `016` and runtime schema self-heal
+- docs(api): add policy lifecycle curl examples and public OpenAPI links on cloud API docs page
 - dashboard(api): add provider trust contract fields in `providers/health` with confidence, evidence, degradation reason, and route/step/model usage counts
 - dashboard(api): add `route-coverage`, `readiness`, and `routes/{routeId}/recommend` endpoints for operator preflight and remediation guidance
 - dashboard(api): normalize resolve/simulate metadata with `contractVersion`, `traceId`, stable `routeId`, and `decisionMetadata`

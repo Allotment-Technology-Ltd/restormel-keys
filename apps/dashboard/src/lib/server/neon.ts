@@ -1312,9 +1312,33 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS change_summary TEXT`;
     await sql`ALTER TABLE policies ADD COLUMN IF NOT EXISTS content_hash TEXT`;
     await sql`
+      UPDATE routes
+      SET
+        updated_via = COALESCE(updated_via, 'system'),
+        updated_by = COALESCE(updated_by, created_by, 'system'),
+        change_summary = COALESCE(change_summary, 'Backfilled provenance defaults'),
+        content_hash = COALESCE(content_hash, md5(COALESCE(id, '') || ':' || COALESCE(updated_at::text, '0')))
+      WHERE updated_via IS NULL
+         OR updated_by IS NULL
+         OR change_summary IS NULL
+         OR content_hash IS NULL
+    `;
+    await sql`
       UPDATE policies
       SET updated_at = COALESCE(updated_at, created_at)
       WHERE updated_at IS NULL
+    `;
+    await sql`
+      UPDATE policies
+      SET
+        updated_via = COALESCE(updated_via, 'system'),
+        updated_by = COALESCE(updated_by, created_by, 'system'),
+        change_summary = COALESCE(change_summary, 'Backfilled provenance defaults'),
+        content_hash = COALESCE(content_hash, md5(COALESCE(id, '') || ':' || COALESCE(updated_at::text, '0')))
+      WHERE updated_via IS NULL
+         OR updated_by IS NULL
+         OR change_summary IS NULL
+         OR content_hash IS NULL
     `;
     await sql`ALTER TABLE policies ALTER COLUMN updated_at SET NOT NULL`;
     await sql`

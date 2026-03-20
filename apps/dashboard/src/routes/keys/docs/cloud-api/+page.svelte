@@ -62,6 +62,23 @@
     "decisionMetadata": { "selectedStepId": "step_01" }
   }
 }`;
+
+  const policyPublishCurl = `curl -s -X POST \\
+  "https://restormel.dev/keys/dashboard/api/policies/\${RESTORMEL_POLICY_ID}/publish" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" | jq '.data'`;
+
+  const policyRollbackCurl = `curl -s -X POST \\
+  "https://restormel.dev/keys/dashboard/api/policies/\${RESTORMEL_POLICY_ID}/rollback" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "toVersion": 1 }' | jq '.data'`;
+
+  const policyDiffCurl = `curl -s -X POST \\
+  "https://restormel.dev/keys/dashboard/api/policies/\${RESTORMEL_POLICY_ID}/diff" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "fromVersion": 1, "toVersion": 2 }' | jq '.data'`;
 </script>
 
 <svelte:head>
@@ -90,6 +107,11 @@
   </ul>
   <div class="callout callout-security">
     <strong>Security</strong> — Never send a Gateway Key to the browser. Use it only server-side.
+  </div>
+  <div class="callout">
+    <strong>OpenAPI (stable URLs)</strong> —
+    <a href="/keys/docs/api/openapi.yaml">/keys/docs/api/openapi.yaml</a> and
+    <a href="/keys/dashboard/api/openapi.yaml">/keys/dashboard/api/openapi.yaml</a>
   </div>
 
   <h2>Resolve API (Dashboard API)</h2>
@@ -218,6 +240,16 @@
     <li><code>POST /keys/dashboard/api/projects/{'{'}projectId{'}'}/routes/{'{'}routeId{'}'}/recommend</code> — route diagnostics, recommendations, and diff preview.</li>
     <li><code>GET /keys/dashboard/api/policies/{'{'}id{'}'}/history</code>, <code>POST /publish</code>, <code>POST /rollback</code>, <code>POST /diff</code> — policy lifecycle parity endpoints.</li>
   </ul>
+
+  <h3>Policy lifecycle examples</h3>
+  <p><strong>History</strong></p>
+  <CodeBlock language="bash" code={`curl -s "https://restormel.dev/keys/dashboard/api/policies/\${RESTORMEL_POLICY_ID}/history?limit=20" -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`} />
+  <p><strong>Publish</strong></p>
+  <CodeBlock language="bash" code={policyPublishCurl} />
+  <p><strong>Rollback</strong></p>
+  <CodeBlock language="bash" code={policyRollbackCurl} />
+  <p><strong>Diff</strong></p>
+  <CodeBlock language="bash" code={policyDiffCurl} />
 
   <h2>Where to use it</h2>
   <ul>
