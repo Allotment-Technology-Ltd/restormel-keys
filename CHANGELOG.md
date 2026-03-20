@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+### Fixed
+
+- **`scripts/smoke-keys-svelte-republish.sh`:** verify packed tarball by **extracting** `package/dist/*` instead of `tar -tzf` to a file — avoids flaky `tar: stdout: write error` / false “index.js missing” on some CI runners.
+
 ### Changed
 
 - **npm publish pipeline:** `@restormel/keys-svelte` is published **before** `@restormel/aaif` in `.github/workflows/publish.yml` so an aaif first-publish/permission failure no longer aborts the job before keys-svelte. Added manual workflows **Publish keys-svelte** and **Publish aaif** (`workflow_dispatch`) for one-off publishes without re-releasing `@restormel/keys`.

@@ -52,11 +52,19 @@ if [ ! -f "$KEYS_TGZ" ] || [ ! -f "$SV_TGZ" ]; then
 fi
 
 echo "[smoke-svelte] Verifying tarball contains dist artifacts..."
-TARBALL_LIST="$PACK_DIR/keys-svelte-tarball-files.txt"
-tar -tzf "$SV_TGZ" > "$TARBALL_LIST"
-grep -Fqx 'package/dist/index.js' "$TARBALL_LIST" || { echo "FAIL index.js missing in tarball"; exit 1; }
-grep -Fqx 'package/dist/index.d.ts' "$TARBALL_LIST" || { echo "FAIL index.d.ts missing in tarball"; exit 1; }
-grep -Fqx 'package/dist/keys-svelte.css' "$TARBALL_LIST" || { echo "FAIL keys-svelte.css missing in tarball"; exit 1; }
+# Extract instead of `tar -tzf | grep`: listing to a pipe/file can hit "tar: stdout: write error"
+# in some CI environments (pipe closure, /tmp pressure). Extraction is deterministic.
+SV_EXTRACT="$PACK_DIR/sv-tarball-extract"
+rm -rf "$SV_EXTRACT"
+mkdir -p "$SV_EXTRACT"
+tar -xzf "$SV_TGZ" -C "$SV_EXTRACT"
+for rel in "package/dist/index.js" "package/dist/index.d.ts" "package/dist/keys-svelte.css"; do
+  if [ ! -f "$SV_EXTRACT/$rel" ]; then
+    echo "[smoke-svelte] FAIL missing in tarball: $rel"
+    find "$SV_EXTRACT" -type f 2>/dev/null | head -30 || true
+    exit 1
+  fi
+done
 
 echo "[smoke-svelte] Copying demo-svelte -> $DEMO_TMP ..."
 cp -R "$ROOT/apps/demo-svelte/." "$DEMO_TMP/"
