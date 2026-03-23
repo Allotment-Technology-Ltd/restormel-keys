@@ -95,6 +95,12 @@ const j = JSON.parse(fs.readFileSync(demo, "utf8"));
 j.dependencies = j.dependencies || {};
 j.dependencies["@restormel/keys"] = "file:$KEYS_TGZ";
 j.dependencies["@restormel/keys-svelte"] = "file:$SV_TGZ";
+// Packed keys-svelte declares @restormel/keys@<semver>; without this, pnpm resolves it from
+// the registry (fails in CI if unpublished or registry lags). Pin all graphs to the tarball.
+j.pnpm = j.pnpm || {};
+j.pnpm.overrides = Object.assign({}, j.pnpm.overrides, {
+  "@restormel/keys": "file:$KEYS_TGZ",
+});
 fs.writeFileSync(demo, JSON.stringify(j, null, 2) + "\n");
 NODER
 

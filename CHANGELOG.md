@@ -37,6 +37,7 @@ Single record of meaningful repo changes.
 ### Fixed
 
 - **`scripts/smoke-keys-svelte-republish.sh`:** verify the packed tarball with **Python `tarfile`** (no `tar` subprocess) — GNU `tar` on some GitHub runners still emitted `stdout: write error` even for `-x`/`-t`, causing false failures.
+- **`scripts/smoke-keys-svelte-republish.sh`:** add `pnpm.overrides` so `@restormel/keys` resolves from the packed tarball for nested `keys-svelte` deps (CI no longer requires `0.2.7` to exist on npm before the smoke runs).
 
 ### Changed
 
