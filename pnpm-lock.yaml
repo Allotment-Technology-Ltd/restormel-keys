@@ -177,7 +177,7 @@ importers:
         specifier: workspace:^0.1.4
         version: link:../doctor
       '@restormel/keys':
-        specifier: workspace:^0.2.5
+        specifier: workspace:^0.2.6
         version: link:../core
       '@restormel/validate':
         specifier: workspace:^0.1.4
