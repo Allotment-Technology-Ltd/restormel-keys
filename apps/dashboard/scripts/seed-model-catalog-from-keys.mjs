@@ -138,6 +138,7 @@ async function main() {
         id,
         model_id,
         provider_integration_type,
+        catalog_provider_id,
         provider_model_id,
         availability_status,
         pricing_ref,
@@ -148,6 +149,7 @@ async function main() {
         ${variantId},
         ${modelId},
         ${providerId},
+        ${providerId},
         ${modelId},
         ${"available"},
         NULL,
@@ -157,6 +159,7 @@ async function main() {
       )
       ON CONFLICT (id) DO UPDATE SET
         provider_model_id = provider_model_variants.provider_model_id,
+        catalog_provider_id = COALESCE(provider_model_variants.catalog_provider_id, EXCLUDED.catalog_provider_id),
         availability_status = COALESCE(provider_model_variants.availability_status, EXCLUDED.availability_status),
         pricing_ref = COALESCE(provider_model_variants.pricing_ref, EXCLUDED.pricing_ref),
         rate_limit_ref = COALESCE(provider_model_variants.rate_limit_ref, EXCLUDED.rate_limit_ref),

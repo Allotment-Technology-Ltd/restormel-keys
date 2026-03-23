@@ -1,14 +1,13 @@
 "use client";
 
 import { KeysProvider, KeyManager, ModelSelector, useKeysContext } from "@restormel/keys-react";
-import { openaiProvider, anthropicProvider } from "@restormel/keys";
+import type { ProviderDefinition } from "@restormel/keys";
 import type { KeyConfig } from "@restormel/keys";
 
 const DEMO_USER = "demo-user";
 const API = "/api/keys";
-const providers = [openaiProvider, anthropicProvider];
 
-function Inner({ refetch }: { refetch: () => void }) {
+function Inner({ refetch, providers }: { refetch: () => void; providers: ProviderDefinition[] }) {
   const { keys } = useKeysContext();
   return (
     <div data-testid="settings-client-content" style={{ padding: "1.5rem", maxWidth: "32rem" }}>
@@ -51,17 +50,35 @@ function Inner({ refetch }: { refetch: () => void }) {
 
 export function SettingsContentInner({
   keysList,
+  providers,
+  catalogSource,
+  catalogReason,
   refetch,
 }: {
   keysList: KeyConfig[];
+  providers: ProviderDefinition[];
+  catalogSource: "restormel" | "fallback";
+  catalogReason?: string;
   refetch: () => void;
 }) {
+  const defaultProvider = providers[0]?.id ?? "openai";
   return (
     <KeysProvider
-      config={{ keys: keysList, routing: { defaultProvider: "openai" } }}
+      config={{ keys: keysList, routing: { defaultProvider } }}
       options={{ providers }}
     >
-      <Inner refetch={refetch} />
+      {catalogSource === "fallback" ? (
+        <p
+          style={{
+            margin: "1rem 1.5rem 0",
+            fontSize: "0.85rem",
+            color: "#b8b8b8",
+          }}
+        >
+          Using fallback provider catalog{catalogReason ? ` (${catalogReason})` : ""}. Canonical feed unavailable.
+        </p>
+      ) : null}
+      <Inner refetch={refetch} providers={providers} />
     </KeysProvider>
   );
 }

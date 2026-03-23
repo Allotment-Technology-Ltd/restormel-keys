@@ -3,17 +3,15 @@ import {
   demoAuth,
   getStorage,
 } from "@/app/lib/keys-server";
+import { FALLBACK_PROVIDERS } from "@/app/lib/catalog";
 import { createResolveMiddleware } from "@restormel/keys/server";
-import { openaiProvider, anthropicProvider } from "@restormel/keys";
-
-const providers = [openaiProvider, anthropicProvider];
 
 export async function GET(req: Request) {
   const userId = await demoAuth.getUserId(req);
   if (!userId) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  const keys = createKeysForUser(userId, providers);
+  const keys = createKeysForUser(userId, FALLBACK_PROVIDERS);
   const storage = getStorage();
   const resolveMiddleware = createResolveMiddleware(keys, {
     auth: demoAuth,

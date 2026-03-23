@@ -27,6 +27,8 @@ Single record of meaningful repo changes.
 - docs: update OpenAPI, cloud API docs, walkthrough verify steps, and MCP/AAIF runbooks with operator workflows
 - dashboard(api): add canonical downstream catalog feed at `GET /keys/dashboard/api/catalog` (versioned contract with providers + models + validation metadata) and core helper `fetchCanonicalCatalogWithFallback()` for drop-in migration from local presets
 - cli: add `keys patch` one-command upgrade path that detects package manager, updates installed Restormel packages to latest, and verifies canonical catalog availability
+- dashboard(data): add `catalog_provider_id` support on provider model variants (migration `017`) so downstream provider mapping can use stable canonical ids
+- demo-next(byok): wire settings catalog to canonical Restormel feed with fallback + visibility when degraded; include Google provider in native key validation and resolve runtime paths
 
 ### Fixed
 

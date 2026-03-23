@@ -1,7 +1,7 @@
 import { createKeysHandler } from "@/app/lib/keys-server";
-import { openaiProvider, anthropicProvider } from "@restormel/keys";
+import { FALLBACK_PROVIDERS } from "@/app/lib/catalog";
 
-const handler = createKeysHandler([openaiProvider, anthropicProvider]);
+const handler = createKeysHandler(FALLBACK_PROVIDERS);
 
 export async function GET(req: Request) {
   return handler(req);

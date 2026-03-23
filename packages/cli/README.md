@@ -4,7 +4,7 @@ CLI for Restormel Keys: reduce setup friction for Next.js, React, SvelteKit, and
 
 ## Install
 
-Use current npm release (**≥0.1.1**; latest trains with core/doctor/validate). **v0.1.0** had broken deps.
+Use current npm release (**≥0.1.3** for `keys patch`; latest trains with core/doctor/validate). **v0.1.0** had broken deps.
 
 ```bash
 pnpm add -D @restormel/keys-cli

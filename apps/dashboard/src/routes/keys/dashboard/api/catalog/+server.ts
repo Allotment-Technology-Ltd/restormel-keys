@@ -60,13 +60,11 @@ export const GET: RequestHandler = async ({ url }) => {
   const providerModelCounts = new Map<string, number>();
   const uniqueModelProviderPairs = new Set<string>();
   for (const variant of variants) {
-    const key = `${variant.providerIntegrationType}\0${variant.modelId}`;
+    const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
+    const key = `${providerId}\0${variant.modelId}`;
     if (uniqueModelProviderPairs.has(key)) continue;
     uniqueModelProviderPairs.add(key);
-    providerModelCounts.set(
-      variant.providerIntegrationType,
-      (providerModelCounts.get(variant.providerIntegrationType) ?? 0) + 1
-    );
+    providerModelCounts.set(providerId, (providerModelCounts.get(providerId) ?? 0) + 1);
   }
 
   const providers = Array.from(providerModelCounts.entries())
@@ -87,7 +85,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
   const data = models.map((model) => {
     const modelVariants = variantsByModel.get(model.id) ?? [];
-    const providerTypes = Array.from(new Set(modelVariants.map((v) => v.providerIntegrationType))).sort();
+    const providerTypes = Array.from(
+      new Set(modelVariants.map((v) => v.catalogProviderId ?? v.providerIntegrationType))
+    ).sort();
     return {
       id: model.id,
       canonicalName: model.canonicalName,
@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ url }) => {
       providerTypes,
       variants: modelVariants.map((variant) => ({
         id: variant.id,
-        providerType: variant.providerIntegrationType,
+        providerType: variant.catalogProviderId ?? variant.providerIntegrationType,
         providerModelId: variant.providerModelId,
         availabilityStatus: variant.availabilityStatus,
       })),

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { openaiProvider, anthropicProvider } from "@restormel/keys";
+import { FALLBACK_PROVIDERS } from "@/app/lib/catalog";
 import { KeysProvider, useKeysContext } from "@restormel/keys-react";
 
 const KeyManager = dynamic(
@@ -18,7 +18,7 @@ function LazyKeyManagerInner() {
     <KeyManager
       keys={keys}
       userId={DEMO_USER}
-      providers={[openaiProvider, anthropicProvider]}
+        providers={FALLBACK_PROVIDERS}
       onKeyAdded={async (key, apiKey) => {
         await fetch(API, {
           method: "POST",
@@ -43,7 +43,7 @@ function LazyKeyManagerInner() {
 export function LazyKeyManager() {
   const config = { keys: [], routing: { defaultProvider: "openai" } };
   const options = {
-    providers: [openaiProvider, anthropicProvider],
+    providers: FALLBACK_PROVIDERS,
     getByokKeys: async () => {
       const r = await fetch(API, { headers: { "x-user-id": DEMO_USER } });
       const d = await r.json();

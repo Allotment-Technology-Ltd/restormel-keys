@@ -1081,6 +1081,7 @@ export type ProviderModelVariantRecord = {
   id: string;
   modelId: string;
   providerIntegrationType: string;
+  catalogProviderId: string | null;
   providerModelId: string;
   availabilityStatus: string | null;
   pricingRef: string | null;
@@ -1120,6 +1121,7 @@ function mapVariantRow(r: Record<string, unknown>): ProviderModelVariantRecord {
     id: r.id as string,
     modelId: r.modelId as string,
     providerIntegrationType: r.providerIntegrationType as string,
+    catalogProviderId: (r.catalogProviderId as string) ?? null,
     providerModelId: r.providerModelId as string,
     availabilityStatus: (r.availabilityStatus as string) ?? null,
     pricingRef: (r.pricingRef as string) ?? null,
@@ -1127,6 +1129,22 @@ function mapVariantRow(r: Record<string, unknown>): ProviderModelVariantRecord {
     metadata: (r.metadata as Record<string, unknown>) ?? null,
     sourceLastVerifiedAt: r.sourceLastVerifiedAt != null ? Number(r.sourceLastVerifiedAt) : null,
   };
+}
+
+let ensuredCatalogProviderIdColumn: Promise<void> | null = null;
+
+async function ensureCatalogProviderIdColumn(): Promise<void> {
+  if (ensuredCatalogProviderIdColumn) return ensuredCatalogProviderIdColumn;
+  ensuredCatalogProviderIdColumn = (async () => {
+    const sql = getSql();
+    await sql`ALTER TABLE provider_model_variants ADD COLUMN IF NOT EXISTS catalog_provider_id TEXT`;
+    await sql`
+      UPDATE provider_model_variants
+      SET catalog_provider_id = provider_integration_type
+      WHERE catalog_provider_id IS NULL
+    `;
+  })();
+  return ensuredCatalogProviderIdColumn;
 }
 
 export type ListModelsFilters = {
@@ -1255,9 +1273,11 @@ export async function getModelsLifecycleByIds(ids: string[]): Promise<ModelLifec
 
 /** List provider model variants for a model. */
 export async function listProviderModelVariants(modelId: string): Promise<ProviderModelVariantRecord[]> {
+  await ensureCatalogProviderIdColumn();
   const sql = getSql();
   const rows = await sql`
     SELECT id, model_id AS "modelId", provider_integration_type AS "providerIntegrationType",
+           catalog_provider_id AS "catalogProviderId",
            provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
            pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
            source_last_verified_at AS "sourceLastVerifiedAt"
@@ -1272,11 +1292,13 @@ export async function listProviderModelVariants(modelId: string): Promise<Provid
 export async function listProviderModelVariantsByModelIds(
   modelIds: string[]
 ): Promise<ProviderModelVariantRecord[]> {
+  await ensureCatalogProviderIdColumn();
   const sql = getSql();
   const uniqueModelIds = Array.from(new Set(modelIds.map((id) => id.trim()).filter(Boolean)));
   if (uniqueModelIds.length === 0) return [];
   const rows = await sql`
     SELECT id, model_id AS "modelId", provider_integration_type AS "providerIntegrationType",
+           catalog_provider_id AS "catalogProviderId",
            provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
            pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
            source_last_verified_at AS "sourceLastVerifiedAt"
