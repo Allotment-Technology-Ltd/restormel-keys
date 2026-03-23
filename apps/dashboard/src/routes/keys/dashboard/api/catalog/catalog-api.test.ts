@@ -67,4 +67,78 @@ describe("GET /api/catalog", () => {
       providerTypes: ["openai"],
     });
   });
+
+  it("filters deprecated/retired and unavailable variants by default", async () => {
+    const { listModels, listProviderModelVariantsByModelIds } = await import("$lib/server/db");
+    vi.mocked(listModels).mockResolvedValue([
+      { ...mockModel, id: "active-model", canonicalName: "active-model", lifecycleState: "active" } as never,
+      { ...mockModel, id: "deprecated-model", canonicalName: "deprecated-model", lifecycleState: "deprecated" } as never,
+      { ...mockModel, id: "retired-model", canonicalName: "retired-model", lifecycleState: "retired" } as never,
+      { ...mockModel, id: "active-no-available", canonicalName: "active-no-available", lifecycleState: "active" } as never,
+    ]);
+    vi.mocked(listProviderModelVariantsByModelIds).mockResolvedValue([
+      {
+        id: "v-active-1",
+        modelId: "active-model",
+        providerIntegrationType: "openai",
+        providerModelId: "active-model",
+        availabilityStatus: "available",
+      } as never,
+      {
+        id: "v-depr-1",
+        modelId: "deprecated-model",
+        providerIntegrationType: "openai",
+        providerModelId: "deprecated-model",
+        availabilityStatus: "available",
+      } as never,
+      {
+        id: "v-ret-1",
+        modelId: "retired-model",
+        providerIntegrationType: "openai",
+        providerModelId: "retired-model",
+        availabilityStatus: "available",
+      } as never,
+      {
+        id: "v-active-2",
+        modelId: "active-no-available",
+        providerIntegrationType: "openai",
+        providerModelId: "active-no-available",
+        availabilityStatus: "unavailable",
+      } as never,
+    ]);
+
+    const { GET: handler } = await import("./+server");
+    const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.map((m: { id: string }) => m.id)).toEqual(["active-model"]);
+    expect(body.providers.map((p: { id: string }) => p.id)).toEqual(["openai"]);
+  });
+
+  it("can include unhealthy models/variants for diagnostics", async () => {
+    const { listModels, listProviderModelVariantsByModelIds } = await import("$lib/server/db");
+    vi.mocked(listModels).mockResolvedValue([
+      { ...mockModel, id: "deprecated-model", canonicalName: "deprecated-model", lifecycleState: "deprecated" } as never,
+    ]);
+    vi.mocked(listProviderModelVariantsByModelIds).mockResolvedValue([
+      {
+        id: "v-depr-1",
+        modelId: "deprecated-model",
+        providerIntegrationType: "openai",
+        providerModelId: "deprecated-model",
+        availabilityStatus: "unavailable",
+      } as never,
+    ]);
+
+    const { GET: handler } = await import("./+server");
+    const res = await handler(
+      mockEvent({ url: new URL("http://localhost/api/catalog?includeUnhealthy=1") }) as unknown as Parameters<
+        typeof handler
+      >[0]
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.map((m: { id: string }) => m.id)).toEqual(["deprecated-model"]);
+    expect(body.data[0].variants[0].availabilityStatus).toBe("unavailable");
+  });
 });

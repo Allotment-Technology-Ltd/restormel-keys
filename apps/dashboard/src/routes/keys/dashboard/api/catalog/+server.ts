@@ -3,6 +3,8 @@ import type { RequestHandler } from "./$types";
 import { listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
 
 const CONTRACT_VERSION = "2026-03-20.catalog.v1";
+const NON_VIABLE_MODEL_STATES = new Set(["deprecated", "retired"]);
+const VIABLE_VARIANT_STATUSES = new Set(["available"]);
 
 type ProviderValidationMode = "native" | "openai_compatible" | "none";
 
@@ -37,6 +39,20 @@ function titleCaseProvider(providerType: string): string {
     .join(" ");
 }
 
+function normalizeValue(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function isViableModel(lifecycleState: string | null): boolean {
+  const normalized = normalizeValue(lifecycleState);
+  if (!normalized) return true;
+  return !NON_VIABLE_MODEL_STATES.has(normalized);
+}
+
+function isViableVariant(availabilityStatus: string | null): boolean {
+  return VIABLE_VARIANT_STATUSES.has(normalizeValue(availabilityStatus));
+}
+
 /** GET: canonical provider+model catalog for downstream BYOK UIs. Public read. */
 export const GET: RequestHandler = async ({ url }) => {
   const lifecycleState = url.searchParams.get("lifecycleState")?.trim() || undefined;
@@ -45,10 +61,17 @@ export const GET: RequestHandler = async ({ url }) => {
   const limit = limitParam != null ? Math.min(Math.max(1, parseInt(limitParam, 10) || 500), 1000) : 500;
   const offsetParam = url.searchParams.get("offset");
   const offset = offsetParam != null ? Math.max(0, parseInt(offsetParam, 10) || 0) : 0;
+  const includeUnhealthy =
+    url.searchParams.get("includeUnhealthy") === "1" ||
+    url.searchParams.get("includeUnhealthy")?.toLowerCase() === "true";
 
-  const models = await listModels({ lifecycleState, family, limit, offset });
+  const rawModels = await listModels({ lifecycleState, family, limit, offset });
+  const models = includeUnhealthy ? rawModels : rawModels.filter((model) => isViableModel(model.lifecycleState));
   const modelIds = models.map((m) => m.id);
-  const variants = await listProviderModelVariantsByModelIds(modelIds);
+  const rawVariants = await listProviderModelVariantsByModelIds(modelIds);
+  const variants = includeUnhealthy
+    ? rawVariants
+    : rawVariants.filter((variant) => isViableVariant(variant.availabilityStatus));
 
   const variantsByModel = new Map<string, typeof variants>();
   for (const variant of variants) {
@@ -101,7 +124,7 @@ export const GET: RequestHandler = async ({ url }) => {
         availabilityStatus: variant.availabilityStatus,
       })),
     };
-  });
+  }).filter((model) => includeUnhealthy || model.variants.length > 0);
 
   return json({
     contractVersion: CONTRACT_VERSION,
