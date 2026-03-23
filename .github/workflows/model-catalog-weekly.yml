@@ -26,6 +26,8 @@ jobs:
           cache: "pnpm"
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build core package (required by seed script)
+        run: pnpm -w --filter @restormel/keys run build
       - name: Refresh model catalog (provider-derived)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
