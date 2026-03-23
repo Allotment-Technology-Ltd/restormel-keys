@@ -139,3 +139,12 @@ export interface FetchCanonicalCatalogOptions {
   offset?: number;
   headers?: HeadersInit;
 }
+
+export interface FilterCanonicalCatalogOptions {
+  /** Keep deprecated/retired model rows when true. Default false. */
+  includeDeprecatedOrRetiredModels?: boolean;
+  /** Keep non-available variants when true. Default false. */
+  includeUnavailableVariants?: boolean;
+  /** Additional model ids to suppress even when otherwise "active". */
+  knownRetiredModelIds?: string[];
+}

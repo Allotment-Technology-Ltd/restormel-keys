@@ -37,6 +37,9 @@ npx @restormel/keys-cli patch
 
 This command detects your package manager, updates installed `@restormel/*` packages to latest patch-compatible versions, and verifies the canonical provider/model catalog endpoint (`/keys/dashboard/api/catalog`) when possible.
 
+- In **pnpm workspaces**, running from the workspace root uses a recursive upgrade (`pnpm up -r`) so you do not hit root add checks.
+- If you prefer a preview first, use `npx @restormel/keys-cli patch --dry-run`.
+
 ## Config and storage
 
 - **Config** (`restormel.config.json`): framework and provider list only — **no secrets**.

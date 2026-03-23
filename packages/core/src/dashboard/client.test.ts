@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchCanonicalCatalog,
   fetchCanonicalCatalogWithFallback,
+  filterCanonicalCatalogForViability,
   policyAvailabilityMapFromEntries,
 } from "./client.js";
 
@@ -98,5 +99,88 @@ describe("fetchCanonicalCatalog", () => {
     expect(result.source).toBe("fallback");
     expect(result.catalog.contractVersion).toBe("fallback.v1");
     expect(result.degradedReason).toContain("unavailable");
+  });
+});
+
+describe("filterCanonicalCatalogForViability", () => {
+  it("drops deprecated/retired and unavailable variants by default", () => {
+    const filtered = filterCanonicalCatalogForViability({
+      contractVersion: "2026-03-20.catalog.v1",
+      source: "restormel-keys",
+      generatedAt: "2026-03-20T00:00:00.000Z",
+      providers: [
+        { id: "openai", displayName: "OpenAI", modelCount: 3, validation: { mode: "native", requiresBaseUrl: false, requiresModel: true } },
+      ],
+      data: [
+        {
+          id: "gpt-4o",
+          canonicalName: "gpt-4o",
+          family: "gpt-4",
+          lifecycleState: "active",
+          providerTypes: ["openai"],
+          variants: [{ id: "v1", providerType: "openai", providerModelId: "gpt-4o", availabilityStatus: "available" }],
+        },
+        {
+          id: "deprecated-model",
+          canonicalName: "deprecated-model",
+          family: "legacy",
+          lifecycleState: "deprecated",
+          providerTypes: ["openai"],
+          variants: [{ id: "v2", providerType: "openai", providerModelId: "deprecated-model", availabilityStatus: "available" }],
+        },
+        {
+          id: "preview-model",
+          canonicalName: "preview-model",
+          family: "preview",
+          lifecycleState: "preview",
+          providerTypes: ["openai"],
+          variants: [{ id: "v3", providerType: "openai", providerModelId: "preview-model", availabilityStatus: "unavailable" }],
+        },
+      ],
+      paging: { limit: 500, offset: 0, count: 3 },
+    });
+
+    expect(filtered.data.map((m) => m.id)).toEqual(["gpt-4o"]);
+    expect(filtered.data[0]?.variants.map((v) => v.id)).toEqual(["v1"]);
+    expect(filtered.providers[0]?.modelCount).toBe(1);
+  });
+
+  it("supports explicit include overrides and retired id blocklist", () => {
+    const filtered = filterCanonicalCatalogForViability(
+      {
+        contractVersion: "2026-03-20.catalog.v1",
+        source: "restormel-keys",
+        generatedAt: "2026-03-20T00:00:00.000Z",
+        providers: [
+          { id: "openai", displayName: "OpenAI", modelCount: 2, validation: { mode: "native", requiresBaseUrl: false, requiresModel: true } },
+        ],
+        data: [
+          {
+            id: "retired-model",
+            canonicalName: "retired-model",
+            family: "legacy",
+            lifecycleState: "retired",
+            providerTypes: ["openai"],
+            variants: [{ id: "v4", providerType: "openai", providerModelId: "retired-model", availabilityStatus: "unavailable" }],
+          },
+          {
+            id: "still-good",
+            canonicalName: "still-good",
+            family: "gpt",
+            lifecycleState: "active",
+            providerTypes: ["openai"],
+            variants: [{ id: "v5", providerType: "openai", providerModelId: "still-good", availabilityStatus: "available" }],
+          },
+        ],
+        paging: { limit: 500, offset: 0, count: 2 },
+      },
+      {
+        includeDeprecatedOrRetiredModels: true,
+        includeUnavailableVariants: true,
+        knownRetiredModelIds: ["retired-model"],
+      }
+    );
+
+    expect(filtered.data.map((m) => m.id)).toEqual(["still-good"]);
   });
 });

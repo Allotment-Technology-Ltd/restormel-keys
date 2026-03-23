@@ -23,6 +23,10 @@ function detectPackageManager(cwd: string): PackageManager {
   return "npm";
 }
 
+function isPnpmWorkspaceRoot(cwd: string): boolean {
+  return existsSync(join(cwd, "pnpm-workspace.yaml"));
+}
+
 async function readPackageJson(cwd: string): Promise<Record<string, unknown> | null> {
   const pkgPath = join(cwd, "package.json");
   if (!existsSync(pkgPath)) return null;
@@ -59,7 +63,8 @@ async function updatePackages(
   cwd: string,
   pm: PackageManager,
   sections: Record<string, DependencySection>,
-  dryRun: boolean
+  dryRun: boolean,
+  opts: { workspaceRoot: boolean }
 ): Promise<number> {
   const prod = Object.entries(sections)
     .filter(([, section]) => section === "dependencies")
@@ -72,8 +77,21 @@ async function updatePackages(
 
   const steps: Array<{ cmd: string; args: string[]; label: string }> = [];
   if (pm === "pnpm") {
-    if (prod.length) steps.push({ cmd: "pnpm", args: ["add", ...prod], label: "dependencies" });
-    if (dev.length) steps.push({ cmd: "pnpm", args: ["add", "-D", ...dev], label: "devDependencies" });
+    if (opts.workspaceRoot) {
+      const targets = Array.from(
+        new Set((prod.length || dev.length ? [...prod, ...dev] : RESTORMEL_PACKAGES.map((name) => `${name}@latest`)))
+      );
+      if (targets.length) {
+        steps.push({
+          cmd: "pnpm",
+          args: ["up", "-r", ...targets],
+          label: "workspace dependencies",
+        });
+      }
+    } else {
+      if (prod.length) steps.push({ cmd: "pnpm", args: ["add", ...prod], label: "dependencies" });
+      if (dev.length) steps.push({ cmd: "pnpm", args: ["add", "-D", ...dev], label: "devDependencies" });
+    }
   } else if (pm === "yarn") {
     if (prod.length) steps.push({ cmd: "yarn", args: ["add", ...prod], label: "dependencies" });
     if (dev.length) steps.push({ cmd: "yarn", args: ["add", "-D", ...dev], label: "devDependencies" });
@@ -118,18 +136,26 @@ export function registerPatch(program: Command): void {
     .action(async (opts: { baseUrl: string; dryRun?: boolean; verifyCatalog?: boolean }) => {
       const cwd = process.cwd();
       const pm = detectPackageManager(cwd);
+      const workspaceRoot = pm === "pnpm" && isPnpmWorkspaceRoot(cwd);
       const pkg = await readPackageJson(cwd);
       const installed = collectInstalledRestormelPackages(pkg);
 
-      if (Object.keys(installed).length === 0) {
+      if (!workspaceRoot && Object.keys(installed).length === 0) {
         installed["@restormel/keys"] = "dependencies";
       }
 
       console.log(chalk.cyan("Restormel Keys — patch upgrade"));
       console.log(chalk.gray("Package manager:"), chalk.white(pm));
-      console.log(chalk.gray("Packages:"), chalk.white(Object.keys(installed).join(", ")));
+      if (workspaceRoot) {
+        console.log(chalk.gray("Scope:"), chalk.white("pnpm workspace root (recursive upgrade)"));
+      }
+      const packageSummary = Object.keys(installed);
+      console.log(
+        chalk.gray("Packages:"),
+        chalk.white(packageSummary.length ? packageSummary.join(", ") : workspaceRoot ? "(auto-detect in workspace)" : "@restormel/keys")
+      );
 
-      const code = await updatePackages(cwd, pm, installed, Boolean(opts.dryRun));
+      const code = await updatePackages(cwd, pm, installed, Boolean(opts.dryRun), { workspaceRoot });
       if (code !== 0) {
         console.error(chalk.red("Patch update failed. Fix package manager errors and retry."));
         process.exit(code);

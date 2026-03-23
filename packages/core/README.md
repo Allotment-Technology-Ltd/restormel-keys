@@ -103,6 +103,7 @@ const { allowed, violations } = await evaluatePolicies({
 ```ts
 import {
   fetchCanonicalCatalogWithFallback,
+  filterCanonicalCatalogForViability,
   type CanonicalCatalogResponse,
 } from "@restormel/keys/dashboard";
 
@@ -120,6 +121,10 @@ const { catalog, source, degradedReason } = await fetchCanonicalCatalogWithFallb
   fallback: () => localFallback,
 });
 
+const viableCatalog = filterCanonicalCatalogForViability(catalog, {
+  knownRetiredModelIds: ["claude-3-5-haiku-20241022"], // optional emergency override
+});
+
 // source === "restormel" when canonical feed is live
 // source === "fallback" when feed is unavailable
 // degradedReason explains the fallback trigger
@@ -130,7 +135,7 @@ The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contra
 For a low-touch upgrade across existing apps, run:
 
 ```bash
-npx @restormel/keys-cli patch
+npx @restormel/keys-cli@0.1.3 patch
 ```
 
 **Batch policy filter (server-side allowed-models):** Use `filterModelsByPolicy` to evaluate many `(providerType, modelId)` pairs in parallel and get per-model status: `allowed`, `blocked_by_policy`, `restormel_degraded`, or `unknown_or_unavailable`. Helpers for UI:

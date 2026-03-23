@@ -14,10 +14,13 @@ import type {
   RestormelApiError,
   CanonicalCatalogResponse,
   FetchCanonicalCatalogOptions,
+  FilterCanonicalCatalogOptions,
 } from "./types.js";
 import type { ProviderDefinition } from "../providers/types.js";
 
 const DEFAULT_BASE = "https://restormel.dev";
+const NON_VIABLE_LIFECYCLE_STATES = new Set(["deprecated", "retired"]);
+const VIABLE_VARIANT_STATUSES = new Set(["available"]);
 
 function getBaseUrl(baseUrl?: string): string {
   if (baseUrl) return baseUrl.replace(/\/$/, "");
@@ -25,6 +28,20 @@ function getBaseUrl(baseUrl?: string): string {
     return process.env.RESTORMEL_KEYS_BASE.replace(/\/$/, "");
   }
   return DEFAULT_BASE;
+}
+
+function normalizeCatalogValue(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function isViableLifecycleState(lifecycleState: string | null): boolean {
+  const normalized = normalizeCatalogValue(lifecycleState);
+  if (!normalized) return true;
+  return !NON_VIABLE_LIFECYCLE_STATES.has(normalized);
+}
+
+function isViableVariantStatus(availabilityStatus: string | null): boolean {
+  return VIABLE_VARIANT_STATUSES.has(normalizeCatalogValue(availabilityStatus));
 }
 
 /**
@@ -56,6 +73,66 @@ export async function fetchCanonicalCatalog(
     throw err;
   }
   return body as unknown as CanonicalCatalogResponse;
+}
+
+/**
+ * Filter canonical catalog data to the models/variants safe to render for BYOK selectors.
+ * Default behavior:
+ * - removes deprecated/retired models
+ * - keeps only variants marked `available`
+ * - drops models with no remaining variants
+ * - drops providers with no remaining models
+ */
+export function filterCanonicalCatalogForViability(
+  catalog: CanonicalCatalogResponse,
+  options: FilterCanonicalCatalogOptions = {}
+): CanonicalCatalogResponse {
+  const blockedModelIds = new Set((options.knownRetiredModelIds ?? []).map((id) => id.trim().toLowerCase()));
+  const includeDeprecatedOrRetiredModels = Boolean(options.includeDeprecatedOrRetiredModels);
+  const includeUnavailableVariants = Boolean(options.includeUnavailableVariants);
+
+  const data = catalog.data
+    .filter((model) => {
+      if (blockedModelIds.has(model.id.trim().toLowerCase())) return false;
+      if (includeDeprecatedOrRetiredModels) return true;
+      return isViableLifecycleState(model.lifecycleState);
+    })
+    .map((model) => {
+      const variants = includeUnavailableVariants
+        ? model.variants
+        : model.variants.filter((variant) => isViableVariantStatus(variant.availabilityStatus));
+      const providerTypes = Array.from(new Set(variants.map((variant) => variant.providerType))).sort();
+      return {
+        ...model,
+        variants,
+        providerTypes,
+      };
+    })
+    .filter((model) => includeUnavailableVariants || model.variants.length > 0);
+
+  const providerCounts = new Map<string, number>();
+  for (const model of data) {
+    for (const providerType of model.providerTypes) {
+      providerCounts.set(providerType, (providerCounts.get(providerType) ?? 0) + 1);
+    }
+  }
+
+  const providers = catalog.providers
+    .filter((provider) => providerCounts.has(provider.id))
+    .map((provider) => ({
+      ...provider,
+      modelCount: providerCounts.get(provider.id) ?? 0,
+    }));
+
+  return {
+    ...catalog,
+    providers,
+    data,
+    paging: {
+      ...catalog.paging,
+      count: data.length,
+    },
+  };
 }
 
 /**

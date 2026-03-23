@@ -38,3 +38,15 @@ Downstream products should not hardcode provider presets. Use Restormel as sourc
 4. Keep a local fallback only as resilience; mark fallback/degraded state in UI and telemetry.
 
 For existing host apps, the one-step path is `fetchCanonicalCatalogWithFallback()` from `@restormel/keys/dashboard`.
+
+### Viability guarantees
+
+Canonical catalog responses are viability-filtered by default:
+
+- models with `lifecycleState` of `deprecated` or `retired` are excluded
+- variants are included only when `availabilityStatus` is `available`
+- models with zero remaining variants are excluded
+
+Diagnostic override: `GET /keys/dashboard/api/catalog?includeUnhealthy=1` returns unhealthy rows for operator debugging.
+
+Downstream apps should still apply defense-in-depth filtering before UI render (for stale caches or fallback data). Use `filterCanonicalCatalogForViability()` from `@restormel/keys/dashboard` where possible.
