@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name("keys")
   .description("Restormel Keys CLI — init, add keys, validate, doctor, cost estimate, models, routing, patch")
-  .version("0.1.3");
+  .version("0.1.4");
 
 registerInit(program);
 registerAdd(program);

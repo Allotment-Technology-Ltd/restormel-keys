@@ -32,6 +32,7 @@ Single record of meaningful repo changes.
 - dashboard(api): enforce viable-only canonical catalog defaults (exclude deprecated/retired models and non-available variants) with `includeUnhealthy=1` diagnostics override
 - cli: harden `keys patch` for pnpm workspace roots by using recursive upgrades (`pnpm up -r`) instead of root `pnpm add`
 - dashboard(api): catalog contract `2026-03-23.catalog.v1` — optional `validation.defaultApiBaseUrl` for `openai_compatible` providers with `requiresBaseUrl: false` (known public OpenAI-compatible endpoint); core types updated
+- **npm:** `@restormel/keys@0.2.7`, `@restormel/keys-cli@0.1.4` — publish train for catalog `defaultApiBaseUrl` + CLI dependency on `^0.2.7`
 
 ### Fixed
 

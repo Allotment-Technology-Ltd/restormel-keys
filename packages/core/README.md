@@ -135,7 +135,7 @@ The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contra
 For a low-touch upgrade across existing apps, run:
 
 ```bash
-npx @restormel/keys-cli@0.1.3 patch
+npx @restormel/keys-cli@0.1.4 patch
 ```
 
 **Batch policy filter (server-side allowed-models):** Use `filterModelsByPolicy` to evaluate many `(providerType, modelId)` pairs in parallel and get per-model status: `allowed`, `blocked_by_policy`, `restormel_degraded`, or `unknown_or_unavailable`. Helpers for UI:
