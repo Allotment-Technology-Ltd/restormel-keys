@@ -59,7 +59,7 @@ describe("fetchCanonicalCatalog", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          contractVersion: "2026-03-20.catalog.v1",
+          contractVersion: "2026-03-23.catalog.v1",
           source: "restormel-keys",
           generatedAt: "2026-03-20T00:00:00.000Z",
           providers: [{ id: "openai", displayName: "OpenAI", modelCount: 1, validation: { mode: "native", requiresBaseUrl: false, requiresModel: true } }],
@@ -70,7 +70,7 @@ describe("fetchCanonicalCatalog", () => {
     );
 
     const catalog = await fetchCanonicalCatalog({ baseUrl: "https://example.test" });
-    expect(catalog.contractVersion).toBe("2026-03-20.catalog.v1");
+    expect(catalog.contractVersion).toBe("2026-03-23.catalog.v1");
     expect(catalog.providers[0]?.id).toBe("openai");
   });
 
@@ -105,7 +105,7 @@ describe("fetchCanonicalCatalog", () => {
 describe("filterCanonicalCatalogForViability", () => {
   it("drops deprecated/retired and unavailable variants by default", () => {
     const filtered = filterCanonicalCatalogForViability({
-      contractVersion: "2026-03-20.catalog.v1",
+      contractVersion: "2026-03-23.catalog.v1",
       source: "restormel-keys",
       generatedAt: "2026-03-20T00:00:00.000Z",
       providers: [
@@ -148,7 +148,7 @@ describe("filterCanonicalCatalogForViability", () => {
   it("supports explicit include overrides and retired id blocklist", () => {
     const filtered = filterCanonicalCatalogForViability(
       {
-        contractVersion: "2026-03-20.catalog.v1",
+        contractVersion: "2026-03-23.catalog.v1",
         source: "restormel-keys",
         generatedAt: "2026-03-20T00:00:00.000Z",
         providers: [

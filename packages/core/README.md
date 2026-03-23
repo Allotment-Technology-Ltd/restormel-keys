@@ -130,7 +130,7 @@ const viableCatalog = filterCanonicalCatalogForViability(catalog, {
 // degradedReason explains the fallback trigger
 ```
 
-The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata, and model variants. This is the canonical path for downstream BYOK UIs.
+The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), and model variants. This is the canonical path for downstream BYOK UIs.
 
 For a low-touch upgrade across existing apps, run:
 

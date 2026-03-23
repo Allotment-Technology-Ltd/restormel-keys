@@ -97,6 +97,12 @@ export interface CatalogProviderValidation {
   mode: "native" | "openai_compatible" | "none";
   requiresBaseUrl: boolean;
   requiresModel: boolean;
+  /**
+   * When `mode === "openai_compatible"` and `requiresBaseUrl === false`, the canonical public
+   * OpenAI-compatible API base (e.g. `https://api.together.xyz/v1`). Omitted when the host must
+   * supply a base URL (`requiresBaseUrl === true`, e.g. Azure/custom).
+   */
+  defaultApiBaseUrl?: string;
 }
 
 export interface CatalogProvider {

@@ -55,7 +55,7 @@ describe("GET /api/catalog", () => {
     const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.contractVersion).toBe("2026-03-20.catalog.v1");
+    expect(body.contractVersion).toBe("2026-03-23.catalog.v1");
     expect(Array.isArray(body.providers)).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.providers[0]).toMatchObject({
@@ -140,5 +140,31 @@ describe("GET /api/catalog", () => {
     const body = await res.json();
     expect(body.data.map((m: { id: string }) => m.id)).toEqual(["deprecated-model"]);
     expect(body.data[0].variants[0].availabilityStatus).toBe("unavailable");
+  });
+
+  it("includes defaultApiBaseUrl for openai_compatible providers with a known public endpoint", async () => {
+    const { listModels, listProviderModelVariantsByModelIds } = await import("$lib/server/db");
+    vi.mocked(listModels).mockResolvedValue([
+      { ...mockModel, id: "meta-llama/1", canonicalName: "meta-llama/1", lifecycleState: "active" } as never,
+    ]);
+    vi.mocked(listProviderModelVariantsByModelIds).mockResolvedValue([
+      {
+        id: "v-or-1",
+        modelId: "meta-llama/1",
+        providerIntegrationType: "openrouter",
+        providerModelId: "meta-llama/1",
+        availabilityStatus: "available",
+      } as never,
+    ]);
+
+    const { GET: handler } = await import("./+server");
+    const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const openrouter = body.providers.find((p: { id: string }) => p.id === "openrouter");
+    expect(openrouter).toBeDefined();
+    expect(openrouter.validation.mode).toBe("openai_compatible");
+    expect(openrouter.validation.requiresBaseUrl).toBe(false);
+    expect(openrouter.validation.defaultApiBaseUrl).toBe("https://openrouter.ai/api/v1");
   });
 });

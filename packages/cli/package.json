@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@restormel/doctor": "workspace:^0.1.4",
-    "@restormel/keys": "workspace:^0.2.6",
+    "@restormel/keys": "workspace:^0.2.7",
     "@restormel/validate": "workspace:^0.1.4",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",

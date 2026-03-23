@@ -2,11 +2,21 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
 
-const CONTRACT_VERSION = "2026-03-20.catalog.v1";
+const CONTRACT_VERSION = "2026-03-23.catalog.v1";
 const NON_VIABLE_MODEL_STATES = new Set(["deprecated", "retired"]);
 const VIABLE_VARIANT_STATUSES = new Set(["available"]);
 
 type ProviderValidationMode = "native" | "openai_compatible" | "none";
+
+/** Canonical public OpenAI-compatible bases (align with @restormel/keys provider adapters). */
+const OPENAI_COMPATIBLE_DEFAULT_BASE: Record<string, string> = {
+  openrouter: "https://openrouter.ai/api/v1",
+  vercel: "https://ai-gateway.vercel.sh/v1",
+  portkey: "https://api.portkey.ai/v1",
+  together: "https://api.together.xyz/v1",
+  fireworks: "https://api.fireworks.ai/inference/v1",
+  perplexity: "https://api.perplexity.ai",
+};
 
 const PROVIDER_META: Record<
   string,
@@ -94,15 +104,24 @@ export const GET: RequestHandler = async ({ url }) => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([providerType, modelCount]) => {
       const meta = PROVIDER_META[providerType];
+      const mode = meta?.validationMode ?? "openai_compatible";
+      const requiresBaseUrl = meta?.requiresBaseUrl ?? true;
+      const requiresModel = meta?.requiresModel ?? true;
+      const validation: {
+        mode: ProviderValidationMode;
+        requiresBaseUrl: boolean;
+        requiresModel: boolean;
+        defaultApiBaseUrl?: string;
+      } = { mode, requiresBaseUrl, requiresModel };
+      if (mode === "openai_compatible" && !requiresBaseUrl) {
+        const base = OPENAI_COMPATIBLE_DEFAULT_BASE[providerType];
+        if (base) validation.defaultApiBaseUrl = base;
+      }
       return {
         id: providerType,
         displayName: titleCaseProvider(providerType),
         modelCount,
-        validation: {
-          mode: meta?.validationMode ?? "openai_compatible",
-          requiresBaseUrl: meta?.requiresBaseUrl ?? true,
-          requiresModel: meta?.requiresModel ?? true,
-        },
+        validation,
       };
     });
 

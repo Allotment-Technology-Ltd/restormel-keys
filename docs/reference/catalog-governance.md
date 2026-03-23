@@ -26,7 +26,7 @@ Future work: automated import from provider docs or OpenRouter-style listings, w
 
 - `scripts/check-catalog-drift.ts` — drift implementation.  
 - `packages/core/README.md` — dashboard client and filtered-models helpers.
-- `GET /keys/dashboard/api/catalog` — canonical downstream contract for providers + models (`2026-03-20.catalog.v1`).
+- `GET /keys/dashboard/api/catalog` — canonical downstream contract for providers + models (`2026-03-23.catalog.v1`).
 
 ## Downstream contract (canonical)
 
@@ -50,3 +50,7 @@ Canonical catalog responses are viability-filtered by default:
 Diagnostic override: `GET /keys/dashboard/api/catalog?includeUnhealthy=1` returns unhealthy rows for operator debugging.
 
 Downstream apps should still apply defense-in-depth filtering before UI render (for stale caches or fallback data). Use `filterCanonicalCatalogForViability()` from `@restormel/keys/dashboard` where possible.
+
+### OpenAI-compatible base URLs
+
+When `validation.mode === "openai_compatible"` and `validation.requiresBaseUrl === false`, the catalog includes `validation.defaultApiBaseUrl` — the canonical public OpenAI-compatible API base for that provider (so hosts need not hardcode vendor maps). When `requiresBaseUrl === true` (e.g. Azure), the field is omitted and the user supplies the base URL.
