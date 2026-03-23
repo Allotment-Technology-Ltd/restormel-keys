@@ -1268,6 +1268,25 @@ export async function listProviderModelVariants(modelId: string): Promise<Provid
   return (rows as Record<string, unknown>[]).map(mapVariantRow);
 }
 
+/** List provider model variants for many models in one query. */
+export async function listProviderModelVariantsByModelIds(
+  modelIds: string[]
+): Promise<ProviderModelVariantRecord[]> {
+  const sql = getSql();
+  const uniqueModelIds = Array.from(new Set(modelIds.map((id) => id.trim()).filter(Boolean)));
+  if (uniqueModelIds.length === 0) return [];
+  const rows = await sql`
+    SELECT id, model_id AS "modelId", provider_integration_type AS "providerIntegrationType",
+           provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
+           pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
+           source_last_verified_at AS "sourceLastVerifiedAt"
+    FROM provider_model_variants
+    WHERE model_id = ANY(${uniqueModelIds})
+    ORDER BY model_id ASC, provider_integration_type ASC, provider_model_id ASC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapVariantRow);
+}
+
 // ---------------------------------------------------------------------------
 // Routes (project/environment-scoped; first-class backend objects)
 // ---------------------------------------------------------------------------

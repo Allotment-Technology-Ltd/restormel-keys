@@ -39,6 +39,7 @@ export {
   getModel,
   getModelsLifecycleByIds,
   listProviderModelVariants,
+  listProviderModelVariantsByModelIds,
   type ModelLifecycleInfo,
   getEnvironmentInProject,
   listRoutes,

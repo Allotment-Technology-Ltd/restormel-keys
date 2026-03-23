@@ -25,6 +25,8 @@ Single record of meaningful repo changes.
 - dashboard(api): add policy lifecycle parity endpoints (`history`, `publish`, `rollback`, `diff`) with `policy_version_events`
 - dashboard(db): add provenance fields (`updatedVia`, `updatedBy`, `changeSummary`, `contentHash`) for routes/policies plus migrations `014` and `015`
 - docs: update OpenAPI, cloud API docs, walkthrough verify steps, and MCP/AAIF runbooks with operator workflows
+- dashboard(api): add canonical downstream catalog feed at `GET /keys/dashboard/api/catalog` (versioned contract with providers + models + validation metadata) and core helper `fetchCanonicalCatalogWithFallback()` for drop-in migration from local presets
+- cli: add `keys patch` one-command upgrade path that detects package manager, updates installed Restormel packages to latest, and verifies canonical catalog availability
 
 ### Fixed
 

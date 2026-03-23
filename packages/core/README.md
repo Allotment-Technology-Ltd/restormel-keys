@@ -98,6 +98,41 @@ const { allowed, violations } = await evaluatePolicies({
 
 **Security:** Use the dashboard client **only on the server**. Never send the Gateway Key to the browser or expose it in client-side code. Pass the token from environment variables or a secure server session.
 
+**Canonical provider/model feed (for existing integrations):** replace local provider presets with `fetchCanonicalCatalog` from `@restormel/keys/dashboard`.
+
+```ts
+import {
+  fetchCanonicalCatalogWithFallback,
+  type CanonicalCatalogResponse,
+} from "@restormel/keys/dashboard";
+
+const localFallback: CanonicalCatalogResponse = {
+  contractVersion: "local-fallback.v1",
+  source: "restormel-keys",
+  generatedAt: new Date().toISOString(),
+  providers: [],
+  data: [],
+  paging: { limit: 0, offset: 0, count: 0 },
+};
+
+const { catalog, source, degradedReason } = await fetchCanonicalCatalogWithFallback({
+  baseUrl: process.env.RESTORMEL_KEYS_BASE, // optional; defaults to env / restormel.dev
+  fallback: () => localFallback,
+});
+
+// source === "restormel" when canonical feed is live
+// source === "fallback" when feed is unavailable
+// degradedReason explains the fallback trigger
+```
+
+The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata, and model variants. This is the canonical path for downstream BYOK UIs.
+
+For a low-touch upgrade across existing apps, run:
+
+```bash
+npx @restormel/keys-cli patch
+```
+
 **Batch policy filter (server-side allowed-models):** Use `filterModelsByPolicy` to evaluate many `(providerType, modelId)` pairs in parallel and get per-model status: `allowed`, `blocked_by_policy`, `restormel_degraded`, or `unknown_or_unavailable`. Helpers for UI:
 
 - `candidatesFromProviderDefinitions(providers)` — flatten `defaultProviders` (or a subset) into candidates.

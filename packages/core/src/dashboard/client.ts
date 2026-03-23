@@ -12,6 +12,8 @@ import type {
   EvaluateResult,
   PolicyViolation,
   RestormelApiError,
+  CanonicalCatalogResponse,
+  FetchCanonicalCatalogOptions,
 } from "./types.js";
 import type { ProviderDefinition } from "../providers/types.js";
 
@@ -23,6 +25,60 @@ function getBaseUrl(baseUrl?: string): string {
     return process.env.RESTORMEL_KEYS_BASE.replace(/\/$/, "");
   }
   return DEFAULT_BASE;
+}
+
+/**
+ * Fetch the canonical Restormel provider+model catalog for BYOK UIs.
+ * Use this as your source of truth instead of hardcoded provider/model presets.
+ */
+export async function fetchCanonicalCatalog(
+  options: FetchCanonicalCatalogOptions = {}
+): Promise<CanonicalCatalogResponse> {
+  const base = getBaseUrl(options.baseUrl);
+  const url = new URL(`${base}/keys/dashboard/api/catalog`);
+  if (options.lifecycleState) url.searchParams.set("lifecycleState", options.lifecycleState);
+  if (options.family) url.searchParams.set("family", options.family);
+  if (options.limit != null) url.searchParams.set("limit", String(options.limit));
+  if (options.offset != null) url.searchParams.set("offset", String(options.offset));
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: options.headers,
+  });
+  const body = (await res.json().catch(() => ({} as Record<string, unknown>))) as Record<string, unknown>;
+  if (!res.ok) {
+    const err = new Error(
+      typeof body.error === "string" ? body.error : `catalog HTTP ${res.status}`
+    ) as RestormelApiError;
+    err.status = res.status;
+    err.error = typeof body.error === "string" ? body.error : "unknown";
+    err.body = body;
+    throw err;
+  }
+  return body as unknown as CanonicalCatalogResponse;
+}
+
+/**
+ * Fetch catalog from Restormel and fall back to local presets if unavailable.
+ * This gives existing hosts a one-function migration path without losing UX resilience.
+ */
+export async function fetchCanonicalCatalogWithFallback(
+  options: FetchCanonicalCatalogOptions & {
+    fallback: () => CanonicalCatalogResponse | Promise<CanonicalCatalogResponse>;
+  }
+): Promise<{
+  catalog: CanonicalCatalogResponse;
+  source: "restormel" | "fallback";
+  degradedReason?: string;
+}> {
+  try {
+    const catalog = await fetchCanonicalCatalog(options);
+    return { catalog, source: "restormel" };
+  } catch (error) {
+    const catalog = await options.fallback();
+    const degradedReason = error instanceof Error ? error.message : "catalog_unavailable";
+    return { catalog, source: "fallback", degradedReason };
+  }
 }
 
 /**

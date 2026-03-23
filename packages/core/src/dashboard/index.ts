@@ -13,6 +13,12 @@ export type {
   PolicyViolation,
   RestormelApiError,
   ResolveErrorBody,
+  CatalogProviderValidation,
+  CatalogProvider,
+  CatalogVariant,
+  CatalogModel,
+  CanonicalCatalogResponse,
+  FetchCanonicalCatalogOptions,
 } from "./types.js";
 
 export type {
@@ -34,6 +40,8 @@ export {
   groupedModelsForModelSelector,
   policyAvailabilityMapFromEntries,
   filterProviderDefinitionsByAllowedPolicy,
+  fetchCanonicalCatalog,
+  fetchCanonicalCatalogWithFallback,
   isPolicyBlocked,
   isNoRoute,
   isUsageLimitReached,

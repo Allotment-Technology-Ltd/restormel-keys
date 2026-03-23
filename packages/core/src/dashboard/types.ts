@@ -92,3 +92,50 @@ export type RestormelApiError = Error & {
   violations?: PolicyViolation[];
   body?: unknown;
 };
+
+export interface CatalogProviderValidation {
+  mode: "native" | "openai_compatible" | "none";
+  requiresBaseUrl: boolean;
+  requiresModel: boolean;
+}
+
+export interface CatalogProvider {
+  id: string;
+  displayName: string;
+  modelCount: number;
+  validation: CatalogProviderValidation;
+}
+
+export interface CatalogVariant {
+  id: string;
+  providerType: string;
+  providerModelId: string;
+  availabilityStatus: string | null;
+}
+
+export interface CatalogModel {
+  id: string;
+  canonicalName: string;
+  family: string | null;
+  lifecycleState: string | null;
+  providerTypes: string[];
+  variants: CatalogVariant[];
+}
+
+export interface CanonicalCatalogResponse {
+  contractVersion: string;
+  source: "restormel-keys";
+  generatedAt: string;
+  providers: CatalogProvider[];
+  data: CatalogModel[];
+  paging: { limit: number; offset: number; count: number };
+}
+
+export interface FetchCanonicalCatalogOptions {
+  baseUrl?: string;
+  lifecycleState?: string;
+  family?: string;
+  limit?: number;
+  offset?: number;
+  headers?: HeadersInit;
+}

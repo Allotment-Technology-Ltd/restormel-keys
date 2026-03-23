@@ -26,3 +26,15 @@ Future work: automated import from provider docs or OpenRouter-style listings, w
 
 - `scripts/check-catalog-drift.ts` — drift implementation.  
 - `packages/core/README.md` — dashboard client and filtered-models helpers.
+- `GET /keys/dashboard/api/catalog` — canonical downstream contract for providers + models (`2026-03-20.catalog.v1`).
+
+## Downstream contract (canonical)
+
+Downstream products should not hardcode provider presets. Use Restormel as source of truth:
+
+1. Fetch `GET /keys/dashboard/api/catalog` server-side.
+2. Render provider + model selectors from `providers[]` and `data[]`.
+3. Use provider `validation.mode` metadata for validation shape selection (native vs openai_compatible).
+4. Keep a local fallback only as resilience; mark fallback/degraded state in UI and telemetry.
+
+For existing host apps, the one-step path is `fetchCanonicalCatalogWithFallback()` from `@restormel/keys/dashboard`.

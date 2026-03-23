@@ -27,6 +27,15 @@ npx @restormel/validate
 | `keys validate` | Wrapper for `restormel-validate` (exit 1 if invalid — CI-friendly) |
 | `keys doctor` | Wrapper for `restormel-doctor` (setup/health checks) |
 | `keys estimate <model> --input <n> --output <n>` | Cost estimate for a model |
+| `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
+
+### One-command patch upgrades
+
+```bash
+npx @restormel/keys-cli patch
+```
+
+This command detects your package manager, updates installed `@restormel/*` packages to latest patch-compatible versions, and verifies the canonical provider/model catalog endpoint (`/keys/dashboard/api/catalog`) when possible.
 
 ## Config and storage
 
