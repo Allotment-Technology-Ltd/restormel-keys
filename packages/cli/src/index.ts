@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @restormel/keys-cli — init, add keys, list, validate, doctor, estimate.
+ * @restormel/keys-cli — init, add keys, list, validate, doctor, estimate, catalog, patch.
  */
 import { Command } from "commander";
 import { registerInit } from "./commands/init.js";
@@ -13,11 +13,14 @@ import { registerSync } from "./commands/sync.js";
 import { registerModels } from "./commands/models.js";
 import { registerRouting } from "./commands/routing.js";
 import { registerPatch } from "./commands/patch.js";
+import { registerCatalog } from "./commands/catalog.js";
 
 const program = new Command();
 program
   .name("keys")
-  .description("Restormel Keys CLI — init, add keys, validate, doctor, cost estimate, models, routing, patch")
+  .description(
+    "Restormel Keys CLI — init, add keys, validate, doctor, cost estimate, models, routing, catalog, patch"
+  )
   .version("0.1.4");
 
 registerInit(program);
@@ -29,6 +32,7 @@ registerEstimate(program);
 registerSync(program);
 registerModels(program);
 registerRouting(program);
+registerCatalog(program);
 registerPatch(program);
 
 program.parse();

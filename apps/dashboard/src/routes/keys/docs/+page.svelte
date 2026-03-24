@@ -82,6 +82,7 @@
     <li><a href="/keys/docs/guides/openrouter">OpenRouter integration</a> — keep OpenRouter as your provider access layer</li>
     <li><a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway integration</a> — keep Vercel gateway auth and observability</li>
     <li><a href="/keys/docs/guides/portkey">Portkey integration</a> — keep Portkey as your gateway and route via Restormel</li>
+    <li><a href="/keys/docs/guides/canonical-catalog">Canonical model &amp; provider catalog</a> — public HTTP feed + npm helpers for up-to-date lists</li>
     <li><a href="/keys">Keys landing</a> — what Keys is, modes, comparison, pricing</li>
     <li><a href="/keys/pricing">Pricing</a> — tiers and FAQ</li>
     <li><a href="/keys/dashboard">Dashboard</a> — create projects and API keys</li>

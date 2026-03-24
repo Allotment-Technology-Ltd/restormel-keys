@@ -7,6 +7,11 @@
     { title: "OpenRouter guide", href: "/keys/docs/guides/openrouter", tags: "openrouter" },
     { title: "Vercel AI Gateway guide", href: "/keys/docs/guides/vercel-ai-gateway", tags: "vercel gateway" },
     { title: "Portkey guide", href: "/keys/docs/guides/portkey", tags: "portkey" },
+    {
+      title: "Canonical catalog",
+      href: "/keys/docs/guides/canonical-catalog",
+      tags: "models providers catalog feed api integration third party",
+    },
     { title: "Cloud API", href: "/keys/docs/cloud-api", tags: "api resolve policies routes" },
     { title: "Integrations overview", href: "/keys/docs/integrations", tags: "cli mcp aaif" },
     { title: "Compatibility", href: "/keys/docs/compatibility", tags: "next react svelte" },

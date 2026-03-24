@@ -49,6 +49,14 @@
 <p class="docs-p">Explain how Restormel would route a request for a given model.</p>
 <CodeBlock code="keys routing explain claude-3-5-sonnet" label="CLI" />
 
+<h3 class="docs-h3"><code>keys catalog fetch</code></h3>
+<p class="docs-p">
+  Fetch the public canonical provider + model catalog from Restormel (no Gateway Key). Uses <code>RESTORMEL_KEYS_BASE</code> or
+  <code>https://restormel.dev</code>. See <a href="/keys/docs/guides/canonical-catalog">Canonical catalog</a> for the full integration guide.
+</p>
+<CodeBlock code="keys catalog fetch" label="CLI" />
+<CodeBlock code="keys catalog fetch --json | jq .contractVersion" label="CLI" />
+
 <h2 class="docs-h2">Next steps</h2>
 <ul class="docs-links">
   <li><a href="/keys/docs/integrations/mcp">MCP setup</a> — connect to agent workflows</li>

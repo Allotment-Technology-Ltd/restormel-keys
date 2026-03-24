@@ -143,6 +143,8 @@ export interface FetchCanonicalCatalogOptions {
   family?: string;
   limit?: number;
   offset?: number;
+  /** When true, request `includeUnhealthy=1` (deprecated models, non-available variants). For operators only. */
+  includeUnhealthy?: boolean;
   headers?: HeadersInit;
 }
 

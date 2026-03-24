@@ -4,6 +4,9 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- docs(site): public guide **Canonical model & provider catalog** at `/keys/docs/guides/canonical-catalog` (curl, paging, npm, CLI) for third-party integrations
+- cli: **`keys catalog fetch`** — summary or JSON from public catalog endpoint; respects `RESTORMEL_KEYS_BASE`
+- core(dashboard client): **`includeUnhealthy`** option on `fetchCanonicalCatalog` → `includeUnhealthy=1` query param
 - dashboard(ui): optional **`RESTORMEL_DASHBOARD_UI_HIDDEN`** env (comma-separated section tokens) hides advanced areas from the in-browser dashboard nav and related shortcuts; **dashboard REST APIs unchanged** (docs: `apps/dashboard/README.md`, `ARCHITECTURE.md`)
 - dashboard(nav): remove lifecycle page from primary nav until implemented and regroup navigation by workflow stage
 - dashboard(analytics): harden analytics load path with request-log fallback aggregation to avoid user-facing hard failures

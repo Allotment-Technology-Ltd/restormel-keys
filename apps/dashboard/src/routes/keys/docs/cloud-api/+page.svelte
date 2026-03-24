@@ -2,6 +2,8 @@
   /** Cloud API doc */
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
 
+  const catalogCurl = `curl -sS "https://restormel.dev/keys/dashboard/api/catalog?limit=5" | jq '.contractVersion, .generatedAt'`;
+
   const resolveCurl = `curl -s -X POST \\
   "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/resolve" \\
   -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
@@ -119,6 +121,17 @@
     <a href="/keys/docs/api/openapi.yaml">/keys/docs/api/openapi.yaml</a> and
     <a href="/keys/dashboard/api/openapi.yaml">/keys/dashboard/api/openapi.yaml</a>
   </div>
+
+  <h2>Canonical catalog (Dashboard API, public)</h2>
+  <p>
+    <strong>No Gateway Key required.</strong> Returns versioned provider and model metadata for BYOK UIs and integrations.
+    Use <code>GET /keys/dashboard/api/catalog</code> with optional <code>limit</code>, <code>offset</code>, and <code>includeUnhealthy=1</code> (operators).
+  </p>
+  <CodeBlock language="bash" code={catalogCurl} />
+  <p>
+    Step-by-step for third parties:
+    <a href="/keys/docs/guides/canonical-catalog">Canonical model &amp; provider catalog</a>.
+  </p>
 
   <h2>Resolve API (Dashboard API)</h2>
   <p>

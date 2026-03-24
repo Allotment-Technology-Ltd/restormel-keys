@@ -28,6 +28,16 @@ npx @restormel/validate
 | `keys doctor` | Wrapper for `restormel-doctor` (setup/health checks) |
 | `keys estimate <model> --input <n> --output <n>` | Cost estimate for a model |
 | `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
+| `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`) |
+
+### Canonical catalog (public feed)
+
+Verify connectivity and inspect contract version (uses `RESTORMEL_KEYS_BASE` or `https://restormel.dev`):
+
+```bash
+npx @restormel/keys-cli catalog fetch
+npx @restormel/keys-cli catalog fetch --json | jq .contractVersion
+```
 
 ### One-command patch upgrades
 

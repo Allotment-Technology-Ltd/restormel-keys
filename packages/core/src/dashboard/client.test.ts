@@ -74,6 +74,31 @@ describe("fetchCanonicalCatalog", () => {
     expect(catalog.providers[0]?.id).toBe("openai");
   });
 
+  it("passes includeUnhealthy=1 when requested", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contractVersion: "2026-03-23.catalog.v1",
+        source: "restormel-keys",
+        generatedAt: "2026-03-20T00:00:00.000Z",
+        providers: [],
+        data: [],
+        paging: { limit: 10, offset: 0, count: 0 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchCanonicalCatalog({
+      baseUrl: "https://example.test",
+      limit: 10,
+      includeUnhealthy: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    const calledUrl = String(fetchMock.mock.calls[0]?.[0] ?? "");
+    expect(calledUrl).toContain("includeUnhealthy=1");
+  });
+
   it("uses fallback when canonical feed is unavailable", async () => {
     vi.stubGlobal(
       "fetch",

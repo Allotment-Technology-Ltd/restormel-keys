@@ -132,6 +132,10 @@ const viableCatalog = filterCanonicalCatalogForViability(catalog, {
 
 The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), and model variants. This is the canonical path for downstream BYOK UIs.
 
+**Options:** `fetchCanonicalCatalog({ limit, offset, lifecycleState, family, includeUnhealthy: true })` — the last maps to `includeUnhealthy=1` for deprecated models and non-available variants (operators only).
+
+**Public integration guide:** [Canonical model & provider catalog](https://restormel.dev/keys/docs/guides/canonical-catalog) (step-by-step for partners).
+
 For a low-touch upgrade across existing apps, run:
 
 ```bash

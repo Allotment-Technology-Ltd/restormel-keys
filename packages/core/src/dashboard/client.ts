@@ -57,6 +57,7 @@ export async function fetchCanonicalCatalog(
   if (options.family) url.searchParams.set("family", options.family);
   if (options.limit != null) url.searchParams.set("limit", String(options.limit));
   if (options.offset != null) url.searchParams.set("offset", String(options.offset));
+  if (options.includeUnhealthy) url.searchParams.set("includeUnhealthy", "1");
 
   const res = await fetch(url.toString(), {
     method: "GET",

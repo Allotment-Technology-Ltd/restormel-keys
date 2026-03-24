@@ -24,6 +24,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `/keys/dashboard/models` — **Models**: catalog (lifecycle, variants)
 - `/keys/dashboard/routes` — **Routes**: list routes across projects
 - `/keys/dashboard/policies` — **Policies**: list/create policies
+- `/keys/docs/guides/canonical-catalog` — **Canonical catalog guide**: public integration steps for provider/model feed (`GET /keys/dashboard/api/catalog`)
 - `/keys/dashboard/analytics` — **Analytics**: request count, latency, error rate, provider/model/route mix, spend placeholder
 - `/keys/dashboard/logs` — **Logs & Traces**: request logs (filter by project/route)
 - `/keys/dashboard/lifecycle` — **Lifecycle & Migrations**: placeholder and migration guidance

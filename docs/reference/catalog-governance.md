@@ -30,6 +30,8 @@ Future work: automated import from provider docs or OpenRouter-style listings, w
 
 ## Downstream contract (canonical)
 
+**Public integration guide (shareable):** [Canonical model & provider catalog](https://restormel.dev/keys/docs/guides/canonical-catalog) — step-by-step for third parties (curl, paging, npm, CLI).
+
 Downstream products should not hardcode provider presets. Use Restormel as source of truth:
 
 1. Fetch `GET /keys/dashboard/api/catalog` server-side.

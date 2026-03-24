@@ -100,6 +100,7 @@
     <a href="/keys/docs/guides/openrouter" on:click={closeNavOnMobile}>OpenRouter</a>
     <a href="/keys/docs/guides/vercel-ai-gateway" on:click={closeNavOnMobile}>Vercel AI Gateway</a>
     <a href="/keys/docs/guides/portkey" on:click={closeNavOnMobile}>Portkey</a>
+    <a href="/keys/docs/guides/canonical-catalog" on:click={closeNavOnMobile}>Canonical catalog</a>
     <a href="/keys/docs/guides/integration-vs-hosted-vault" on:click={closeNavOnMobile}>Integration vs key custody</a>
     <div class="nav-divider" aria-hidden="true"></div>
     <div class="nav-section" aria-label="Integrations section">Integrations</div>
