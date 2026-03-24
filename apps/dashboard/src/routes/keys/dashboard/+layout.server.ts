@@ -1,10 +1,21 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
+import { NAV_GROUPS } from "$lib/nav-config";
+import {
+  dashboardUiSectionLabel,
+  filterNavGroupsForDashboardUi,
+  parseDashboardUiHidden,
+  parseUiSectionHiddenParam,
+  pathnameToHiddenDashboardSection,
+} from "$lib/server/dashboard-ui-flags";
 import { listEnvironments, listProjects } from "$lib/server/db";
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
   const baseWithSlash = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE : DASHBOARD_BASE + "/";
+  const dashboardUiHiddenSet = parseDashboardUiHidden();
+  const dashboardUiHidden = [...dashboardUiHiddenSet];
+  const navGroupsForUi = filterNavGroupsForDashboardUi(NAV_GROUPS, dashboardUiHiddenSet);
 
   // Fix malformed redirect from Neon Auth: params appended as path (e.g. /keys/dashboard/state=...&error=...)
   const pathname = url.pathname;
@@ -27,12 +38,25 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
   // Redirect unauthenticated users from protected routes to login (Overview shows welcome instead).
   const baseNorm = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE.slice(0, -1) : DASHBOARD_BASE;
-  const protectedPaths = ["/projects", "/healthcheck", "/billing", "/settings", "/sandbox"];
   const pathAfterBase = pathname.slice(pathname.indexOf(baseNorm) + baseNorm.length) || "/";
+  const protectedPaths = ["/projects", "/healthcheck", "/billing", "/settings", "/sandbox"];
   const isProtected = protectedPaths.some((p) => pathAfterBase === p || pathAfterBase.startsWith(p + "/"));
   if (!locals.user && isProtected) {
     throw redirect(302, `${url.origin}${baseNorm}/login?redirect=${encodeURIComponent(pathname)}`);
   }
+
+  // Hide advanced dashboard sections from UI (nav + direct navigation). APIs stay available.
+  const gatedSection = pathnameToHiddenDashboardSection(pathname, dashboardUiHiddenSet);
+  if (locals.user && gatedSection) {
+    const target = new URL(`${baseNorm}/`, url.origin);
+    target.searchParams.set("ui-section-hidden", gatedSection);
+    throw redirect(302, target.toString());
+  }
+
+  const bannerSection = parseUiSectionHiddenParam(url.searchParams.get("ui-section-hidden"));
+  const dashboardUiHiddenBanner = bannerSection
+    ? { section: bannerSection, label: dashboardUiSectionLabel(bannerSection) }
+    : null;
 
   let projectContexts: {
     id: string;
@@ -59,5 +83,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     }
   }
 
-  return { user: locals.user, authError, projectContexts };
+  return {
+    user: locals.user,
+    authError,
+    projectContexts,
+    dashboardUiHidden,
+    navGroupsForUi,
+    dashboardUiHiddenBanner,
+  };
 };

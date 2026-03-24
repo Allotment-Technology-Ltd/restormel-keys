@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import ModeSelector from "$lib/components/dashboard/ModeSelector.svelte";
+  import { isDashboardHrefUiHidden } from "$lib/dashboard-ui-path-match";
   import {
     setUserStackChoice,
     syncUserModeFromStorage,
@@ -126,11 +128,14 @@
     ];
   }
 
-  $: checklist = checklistForMode(selectedMode, selectedStackChoice);
+  $: uiHidden = $page.data.dashboardUiHidden ?? [];
+  $: checklist = checklistForMode(selectedMode, selectedStackChoice).filter(
+    (item) => !isDashboardHrefUiHidden(item.href, uiHidden)
+  );
 
   async function startHere() {
     markCompleteAndHide();
-    await goto(checklist[0]?.href ?? "/keys/dashboard");
+    await goto(checklist[0]?.href ?? "/keys/docs");
   }
 </script>
 
@@ -167,11 +172,18 @@
         </div>
       {:else}
         <h2 id="onboarding-title" class="title">Your starting point</h2>
-        <ol class="checklist">
-          {#each checklist as item}
-            <li><a href={item.href}>{item.label}</a></li>
-          {/each}
-        </ol>
+        {#if checklist.length === 0}
+          <p class="checklist-fallback">
+            Advanced dashboard steps are hidden for this deployment. Continue in
+            <a href="/keys/docs">the docs</a> or use the REST API / CLI.
+          </p>
+        {:else}
+          <ol class="checklist">
+            {#each checklist as item}
+              <li><a href={item.href}>{item.label}</a></li>
+            {/each}
+          </ol>
+        {/if}
       {/if}
 
       <footer class="actions">
@@ -270,6 +282,22 @@
   }
 
   .checklist a:hover {
+    text-decoration: underline;
+  }
+
+  .checklist-fallback {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-normal);
+  }
+
+  .checklist-fallback a {
+    color: var(--rm-sage);
+    text-decoration: none;
+  }
+
+  .checklist-fallback a:hover {
     text-decoration: underline;
   }
 

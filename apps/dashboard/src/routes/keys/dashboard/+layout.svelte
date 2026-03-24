@@ -13,6 +13,9 @@
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
   $: projectContexts = $page.data.projectContexts ?? [];
+  $: navGroupsForLayout = $page.data.navGroupsForUi ?? NAV_GROUPS;
+  $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
+  $: projectsNavHidden = ($page.data.dashboardUiHidden ?? []).includes("projects");
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
@@ -92,9 +95,11 @@
           {OVERVIEW_ITEM.label}
         </a>
 
-        <ProjectContextSwitcher projects={projectContexts} />
+        {#if !projectsNavHidden}
+          <ProjectContextSwitcher projects={projectContexts} />
+        {/if}
 
-        {#each NAV_GROUPS as group}
+        {#each navGroupsForLayout as group}
           <section class="nav-group">
             <button
               type="button"
@@ -165,6 +170,20 @@
             </div>
           {/if}
         {:else}
+          {#if uiHiddenBanner}
+            <div class="ui-hidden-banner" role="status">
+              <p>
+                <strong>{uiHiddenBanner.label}</strong> is hidden in the dashboard UI for this deployment.
+              </p>
+              <p class="ui-hidden-banner-detail">
+                You can still manage it with the REST API, CLI, or automation. Remove it from
+                <code class="ui-hidden-code">RESTORMEL_DASHBOARD_UI_HIDDEN</code> to show this section again.
+              </p>
+              <p class="ui-hidden-banner-actions">
+                <a href={DASHBOARD_BASE + "/"} class="ui-hidden-dismiss">Dismiss</a>
+              </p>
+            </div>
+          {/if}
           <slot />
         {/if}
       </main>
@@ -405,5 +424,39 @@
   .mobile-gate-sep {
     color: var(--rm-dim);
     margin: 0 var(--space-2);
+  }
+
+  .ui-hidden-banner {
+    margin: 0 0 var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+  }
+  .ui-hidden-banner p {
+    margin: 0 0 var(--space-2);
+  }
+  .ui-hidden-banner p:last-child {
+    margin-bottom: 0;
+  }
+  .ui-hidden-banner-detail {
+    color: var(--rm-muted);
+    line-height: var(--leading-normal);
+  }
+  .ui-hidden-code {
+    font-size: 0.85em;
+  }
+  .ui-hidden-banner-actions {
+    margin-top: var(--space-2);
+  }
+  .ui-hidden-dismiss {
+    color: var(--rm-sage);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .ui-hidden-dismiss:hover {
+    text-decoration: underline;
   }
 </style>

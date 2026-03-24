@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { isDashboardHrefUiHidden } from "$lib/dashboard-ui-path-match";
 
   export let setup: {
     workspaceCreatedAt: number;
@@ -33,6 +35,13 @@
     return new Date(ts).toLocaleDateString(undefined, { dateStyle: "medium" });
   }
 
+  $: uiHidden = $page.data.dashboardUiHidden ?? [];
+
+  function hrefOrNull(href: string | null): string | null {
+    if (!href) return null;
+    return isDashboardHrefUiHidden(href, uiHidden) ? null : href;
+  }
+
   $: steps = [
     {
       id: "workspace",
@@ -45,42 +54,42 @@
       id: "project",
       label: "Project created",
       complete: (setup?.projectCount ?? 0) > 0,
-      href: DASHBOARD_BASE + "/projects",
+      href: hrefOrNull(DASHBOARD_BASE + "/projects"),
       completedAt: formatDate(setup?.projectCreatedAt ?? null),
     },
     {
       id: "provider",
       label: "Provider connected",
       complete: (setup?.integrationCount ?? 0) > 0,
-      href: DASHBOARD_BASE + "/integrations",
+      href: hrefOrNull(DASHBOARD_BASE + "/integrations"),
       completedAt: formatDate(setup?.providerConnectedAt ?? null),
     },
     {
       id: "gateway-key",
       label: "Gateway Key created",
       complete: (setup?.gatewayKeyCount ?? 0) > 0,
-      href: DASHBOARD_BASE + "/access",
+      href: hrefOrNull(DASHBOARD_BASE + "/access"),
       completedAt: null,
     },
     {
       id: "route",
       label: "Route created",
       complete: (setup?.routeCount ?? 0) > 0,
-      href: DASHBOARD_BASE + "/routes",
+      href: hrefOrNull(DASHBOARD_BASE + "/routes"),
       completedAt: formatDate(setup?.routeCreatedAt ?? null),
     },
     {
       id: "first-request",
       label: "First request received",
       complete: (setup?.requestCount ?? 0) > 0,
-      href: DASHBOARD_BASE + "/logs",
+      href: hrefOrNull(DASHBOARD_BASE + "/logs"),
       completedAt: formatDate(setup?.firstRequestAt ?? null),
     },
     {
       id: "logs-reviewed",
       label: "Logs reviewed",
       complete: logsVisited,
-      href: DASHBOARD_BASE + "/logs",
+      href: hrefOrNull(DASHBOARD_BASE + "/logs"),
       completedAt: null,
     },
   ];

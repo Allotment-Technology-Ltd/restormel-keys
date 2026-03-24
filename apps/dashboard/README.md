@@ -47,6 +47,20 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - **DATABASE_URL** — Neon Postgres connection string
 - **NEON_AUTH_BASE_URL** — Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env.
 
+### Dashboard UI feature flags (optional)
+
+Set **`RESTORMEL_DASHBOARD_UI_HIDDEN`** to a comma-separated list of sections to **hide from the dashboard UI** only (sidebar, onboarding quick links, setup checklist links, project context switcher when `projects` is listed). Signed-in users who open a hidden URL are redirected to Overview with a short notice. **REST API routes and CLI behaviour are unchanged** — use them for full control when the UI is simplified.
+
+Allowed tokens: `policies`, `routes`, `models`, `providers` (Integrations), `analytics`, `logs`, `healthcheck`, `sandbox`, `copy-for-ci`, `dev-tools`, `billing`, `projects`. The **Lifecycle** pages are grouped with **`models`** for hiding. Project route editors (`/projects/.../routes`) are grouped with **`routes`**.
+
+Example (minimal in-browser surface: overview + Access + Profile only):
+
+`RESTORMEL_DASHBOARD_UI_HIDDEN=policies,routes,models,providers,analytics,logs,healthcheck,sandbox,copy-for-ci,dev-tools,billing`
+
+**Caution:** including **`projects`** hides the project switcher and blocks project pages in the UI; use only when operators rely on the API for project lifecycle.
+
+Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
+
 Run migrations in `migrations/` (001_initial.sql through 016_provenance_backfill_defaults.sql as needed) against the Neon database.
 
 ## Terminology

@@ -25,6 +25,11 @@ declare global {
     interface PageData {
       user?: { uid: string; email?: string | null };
     }
+    interface LayoutData {
+      dashboardUiHidden?: import("$lib/dashboard-ui-sections").DashboardUiSection[];
+      navGroupsForUi?: import("$lib/nav-config").NavGroup[];
+      dashboardUiHiddenBanner?: { section: string; label: string } | null;
+    }
     // interface Error {}
     // interface Platform {}
   }

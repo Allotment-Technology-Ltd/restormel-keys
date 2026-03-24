@@ -27,7 +27,75 @@ Upstream or sibling products that integrate with Keys should use these contracts
 
 **Operator APIs and provenance:** Dashboard runtime/control-plane now includes provider trust health, route coverage and readiness advisory APIs, route recommendation previews, and policy lifecycle parity (`history/publish/rollback/diff`). Route/policy write paths include provenance metadata (`updatedVia`, `updatedBy`, `updatedAt`, `changeSummary`, `contentHash`) for auditable sync and rollback workflows.
 
+**Dashboard UI simplification:** Optional env **`RESTORMEL_DASHBOARD_UI_HIDDEN`** hides listed control-plane sections from the in-browser dashboard (nav, deep links, onboarding shortcuts); **HTTP APIs stay enabled** for operators and automation. See [apps/dashboard/README.md](apps/dashboard/README.md).
+
 **Extraction seams:** When Integrations moves to its own repo: (1) `src/routes/integrations/` lifts into a new SvelteKit app, (2) `packages/aaif/` and `packages/mcp/` move as-is, (3) dashboard dev-tools section stays in dashboard app (shared auth/shell), (4) shared components (`IntegrationCard`, `StatusBadge`) move with the marketing page or into a shared package.
+
+## Architecture diagrams (summary)
+
+```mermaid
+flowchart LR
+  subgraph UserSurfaces["User-facing surfaces"]
+    Docs["Docs + walkthrough (`/keys/docs`)"]
+    Dash["Dashboard (`/keys/dashboard`)"]
+    Integrations["Integrations marketing (`/integrations`)"]
+    DevTools["Developer Tools (`/keys/dashboard/dev-tools`)"]
+  end
+
+  subgraph CorePackages["Headless and integration packages"]
+    Keys["@restormel/keys (core)"]
+    AAIF["@restormel/aaif"]
+    MCP["@restormel/mcp"]
+    CLI["@restormel/keys-cli"]
+    UI["UI packages (Svelte / Elements / React)"]
+  end
+
+  subgraph DataAndControl["Control-plane / state surfaces"]
+    Catalog["Model catalog seed + drift checks"]
+    Routes["Routes, policies, steps"]
+    Prov["Provenance metadata + lifecycle history"]
+    Health["Provider trust health + readiness + coverage"]
+  end
+
+  Docs --> UI
+  Dash --> UI
+  Integrations --> AAIF
+  DevTools --> AAIF
+  DevTools --> MCP
+  DevTools --> CLI
+
+  UI --> Keys
+  AAIF --> Keys
+  CLI --> Keys
+
+  Keys --> Routes
+  Keys --> Health
+  Keys --> Catalog
+  Routes --> Prov
+```
+
+```mermaid
+sequenceDiagram
+  participant App as App / backend
+  participant Core as @restormel/keys core
+  participant Policy as Policies + entitlements
+  participant Health as Availability + trust health
+  participant Route as Route selector
+  participant Prov as Selected provider/model
+  participant Obs as Decision metadata + provenance
+
+  App->>Core: Execution request (task + constraints)
+  Core->>Policy: Evaluate policy + entitlement checks
+  Policy-->>Core: Allowed options / restrictions
+  Core->>Health: Read availability + trust signals
+  Health-->>Core: Current provider/model health
+  Core->>Route: Select route under constraints
+  Route-->>Core: Provider/model decision
+  Core->>Prov: Execute request
+  Prov-->>Core: Response / error
+  Core->>Obs: Emit trace + decision metadata
+  Core-->>App: Normalized response
+```
 
 ---
 

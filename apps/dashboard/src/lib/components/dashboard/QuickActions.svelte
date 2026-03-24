@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { onDestroy } from "svelte";
+  import { isDashboardHrefUiHidden } from "$lib/dashboard-ui-path-match";
   import { userMode } from "$lib/stores/user-mode";
   import type { UserMode } from "$lib/stores/user-mode";
 
@@ -38,7 +40,10 @@
     mode = value;
   });
 
-  $: actions = mode ? ACTIONS[mode] : ACTIONS.new_project;
+  $: uiHidden = $page.data.dashboardUiHidden ?? [];
+  $: actions = (mode ? ACTIONS[mode] : ACTIONS.new_project).filter(
+    (a) => !isDashboardHrefUiHidden(a.href, uiHidden)
+  );
 
   onDestroy(() => {
     unsubscribe();
@@ -60,7 +65,13 @@
     {:else}
       <ul>
         {#each projects as project}
-          <li><a href={"/keys/dashboard/projects/" + project.id}>{project.name}</a></li>
+          <li>
+            {#if isDashboardHrefUiHidden("/keys/dashboard/projects/" + project.id, uiHidden)}
+              <span>{project.name}</span>
+            {:else}
+              <a href={"/keys/dashboard/projects/" + project.id}>{project.name}</a>
+            {/if}
+          </li>
         {/each}
       </ul>
     {/if}
@@ -123,5 +134,9 @@
   }
   .projects a:hover {
     text-decoration: underline;
+  }
+  .projects li span {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
   }
 </style>

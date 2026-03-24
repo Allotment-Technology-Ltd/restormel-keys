@@ -4,6 +4,7 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- dashboard(ui): optional **`RESTORMEL_DASHBOARD_UI_HIDDEN`** env (comma-separated section tokens) hides advanced areas from the in-browser dashboard nav and related shortcuts; **dashboard REST APIs unchanged** (docs: `apps/dashboard/README.md`, `ARCHITECTURE.md`)
 - dashboard(nav): remove lifecycle page from primary nav until implemented and regroup navigation by workflow stage
 - dashboard(analytics): harden analytics load path with request-log fallback aggregation to avoid user-facing hard failures
 - dashboard(logs): add first-class logs filter controls (project/route/status/limit), status badges, and inline no_route guidance

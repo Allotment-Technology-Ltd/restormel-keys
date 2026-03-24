@@ -37,6 +37,7 @@
 - **Lifecycle & Migrations:** Placeholder page; migration recommendations note; model detail shows Migration section when deprecated/retired.
 - **Billing & Forecasting:** Placeholder.
 - **Onboarding:** Unauthenticated welcome explains order (workspace, project, key model, billing, Gateway Key, provider, route, first request, analytics). Signed-in Overview shows a "Get started" checklist when user has no projects, no Gateway Keys, or no provider integrations; steps link to Projects, Access, Integrations, Routes, Billing, Analytics, Logs, Docs.
+- **Dashboard UI hiding (optional):** Env **`RESTORMEL_DASHBOARD_UI_HIDDEN`** (comma-separated section tokens) removes matching areas from the sidebar and related overview/onboarding links; direct navigation to those paths redirects to Overview with a notice. **Does not disable dashboard REST APIs** — see [apps/dashboard/README.md](../../apps/dashboard/README.md).
 
 ---
 
