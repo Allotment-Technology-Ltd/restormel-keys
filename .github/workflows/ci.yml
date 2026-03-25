@@ -13,6 +13,10 @@ on:
         description: 'Run deploy-related checks (deploy is via Vercel)'
         type: boolean
         default: true
+      run_db_migrations:
+        description: 'Apply dashboard SQL migrations to production DB (requires secret)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +33,7 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
       repo: ${{ steps.filter.outputs.repo }}
       deploy: ${{ steps.filter.outputs.deploy }}
+      dashboard_migrations: ${{ steps.filter.outputs.dashboard_migrations }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -39,6 +44,7 @@ jobs:
               - 'packages/**'
               - 'apps/**'
               - 'examples/**'
+              - 'apps/dashboard/migrations/**'
             docs:
               - 'docs/**'
               - 'Docs/**'
@@ -60,6 +66,8 @@ jobs:
               - 'Dockerfile.dashboard'
               - 'Dockerfile.site'
               - '.dockerignore'
+            dashboard_migrations:
+              - 'apps/dashboard/migrations/**'
 
   bootstrap-checks:
     runs-on: ubuntu-latest
@@ -195,3 +203,28 @@ jobs:
       - name: E2E tests
         run: pnpm run test:e2e
         working-directory: apps/demo-next
+
+  apply-dashboard-migrations-prod:
+    name: Apply dashboard migrations (prod DB)
+    runs-on: ubuntu-latest
+    needs: [changes, test]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      (needs.changes.outputs.dashboard_migrations == 'true' || inputs.run_db_migrations == true)
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply dashboard migrations to production DB
+        env:
+          # Set this secret in repo settings: DATABASE_URL for the production Neon branch.
+          DASHBOARD_DATABASE_URL_PROD: ${{ secrets.DASHBOARD_DATABASE_URL_PROD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${DASHBOARD_DATABASE_URL_PROD:-}" ]]; then
+            echo "Missing secret: DASHBOARD_DATABASE_URL_PROD"
+            exit 1
+          fi
+          export DATABASE_URL="$DASHBOARD_DATABASE_URL_PROD"
+          bash scripts/apply-dashboard-migrations.sh
