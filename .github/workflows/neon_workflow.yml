@@ -5,7 +5,6 @@ on:
     types:
       - opened
       - reopened
-      - synchronize
       - closed
 
 concurrency:
@@ -16,27 +15,18 @@ jobs:
     name: Setup
     outputs:
       branch: ${{ steps.branch_name.outputs.current_branch }}
-      slug: ${{ steps.slug.outputs.branch_slug }}
     runs-on: ubuntu-latest
     steps:
       - name: Get branch name
         id: branch_name
         uses: tj-actions/branch-names@v8
-      - name: Slugify branch name for Neon
-        id: slug
-        run: |
-          raw="${{ steps.branch_name.outputs.current_branch }}"
-          # Lowercase, replace invalid chars with '-', trim to 40 chars
-          slug="$(echo "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//; s/-$//' | cut -c1-40)"
-          echo "branch_slug=$slug" >> "$GITHUB_OUTPUT"
 
   create_neon_branch:
     name: Create Neon Branch
     needs: setup
     if: |
       github.event_name == 'pull_request' && (
-      github.event.action == 'synchronize'
-      || github.event.action == 'opened'
+      github.event.action == 'opened'
       || github.event.action == 'reopened')
     runs-on: ubuntu-latest
     steps:
@@ -48,7 +38,7 @@ jobs:
         uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.slug }}
+          branch_name: preview-pr-${{ github.event.number }}
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
@@ -62,5 +52,5 @@ jobs:
         uses: neondatabase/delete-branch-action@v3
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.slug }}
+          branch: preview-pr-${{ github.event.number }}
           api_key: ${{ secrets.NEON_API_KEY }}

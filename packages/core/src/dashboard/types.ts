@@ -117,6 +117,13 @@ export interface CatalogVariant {
   providerType: string;
   providerModelId: string;
   availabilityStatus: string | null;
+  /** Aggregated reports from authenticated clients via POST .../catalog/observations (contract v4+). */
+  crowdObservations?: {
+    deprecatedReportCount: number;
+    retiredReportCount: number;
+    firstReportedAt: string | null;
+    lastReportedAt: string | null;
+  };
 }
 
 export interface CatalogModel {
@@ -132,6 +139,76 @@ export interface CanonicalCatalogResponse {
   contractVersion: string;
   source: "restormel-keys";
   generatedAt: string;
+  compatibility?: {
+    minCliVersion: string;
+    minCoreDashboardVersion: string;
+    docsUrl: string;
+  };
+  /**
+   * Credential-free signals: OpenRouter public model list metadata + vendor status pages (OpenAI, Anthropic).
+   * Present from contract `2026-03-25.catalog.v3` (extended in v4 with variant `crowdObservations`, v5 with `freshness`).
+   */
+  externalSignals?: {
+    /** Staleness SLO: use `allFresh` or per-signal `isFresh` to degrade UI when samples are too old. Contract v5+. */
+    freshness?: {
+      slo: {
+        openRouterModelsMaxAgeMs: number;
+        providerStatusMaxAgeMs: number;
+        openRouterEndpointHealthMaxAgeMs: number;
+      };
+      openRouterModels: { isFresh: boolean; ageMs: number; maxAgeMs: number };
+      providerStatus: {
+        openai: { isFresh: boolean; ageMs: number; maxAgeMs: number };
+        anthropic: { isFresh: boolean; ageMs: number; maxAgeMs: number };
+      };
+      openRouterEndpointHealth: {
+        isFresh: boolean;
+        maxAgeMs: number;
+        maxAgeMsThreshold: number;
+        staleModelIds?: string[];
+        modelCount: number;
+      };
+      allFresh: boolean;
+    };
+    openRouter: {
+      source: string;
+      ok: boolean;
+      modelCount: number;
+      fetchedAt: string;
+      endpointHealthByModel?: Record<
+        string,
+        {
+          providerModelId: string;
+          fetchedAt: string;
+          endpointCount: number;
+          statuses: string[];
+          uptimeLast30m: number | null;
+          latencyLast30m: { p50: number | null; p75: number | null; p90: number | null; p99: number | null } | null;
+          throughputLast30m: { p50: number | null; p75: number | null; p90: number | null; p99: number | null } | null;
+          error?: string;
+        }
+      >;
+      error?: string;
+    };
+    providerStatus: {
+      openai: {
+        statusUrl: string;
+        ok: boolean;
+        indicator: string | null;
+        description: string | null;
+        fetchedAt: string;
+        error?: string;
+      };
+      anthropic: {
+        statusUrl: string;
+        ok: boolean;
+        indicator: string | null;
+        description: string | null;
+        fetchedAt: string;
+        error?: string;
+      };
+    };
+  };
   providers: CatalogProvider[];
   data: CatalogModel[];
   paging: { limit: number; offset: number; count: number };
@@ -145,6 +222,21 @@ export interface FetchCanonicalCatalogOptions {
   offset?: number;
   /** When true, request `includeUnhealthy=1` (deprecated models, non-available variants). For operators only. */
   includeUnhealthy?: boolean;
+  /** When true, request `skipDefaultAllowlist=1` (include DB rows not in @restormel/keys defaultProviders). For operators only. */
+  skipDefaultAllowlist?: boolean;
+  headers?: HeadersInit;
+}
+
+/** POST /keys/dashboard/api/catalog/observations — authenticated crowd signal (server-side only). */
+export interface ReportCatalogModelObservationOptions {
+  baseUrl?: string;
+  auth: { type: "bearer"; token: string };
+  providerId: string;
+  providerModelId: string;
+  signal: "deprecated" | "retired";
+  providerHttpStatus?: number;
+  /** Short opaque code only (e.g. provider error type); never raw responses. */
+  providerErrorCode?: string;
   headers?: HeadersInit;
 }
 

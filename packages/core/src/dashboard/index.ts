@@ -20,6 +20,7 @@ export type {
   CanonicalCatalogResponse,
   FetchCanonicalCatalogOptions,
   FilterCanonicalCatalogOptions,
+  ReportCatalogModelObservationOptions,
 } from "./types.js";
 
 export type {
@@ -43,6 +44,7 @@ export {
   filterProviderDefinitionsByAllowedPolicy,
   fetchCanonicalCatalog,
   fetchCanonicalCatalogWithFallback,
+  reportCatalogModelObservation,
   filterCanonicalCatalogForViability,
   isPolicyBlocked,
   isNoRoute,

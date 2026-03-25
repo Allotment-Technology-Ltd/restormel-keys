@@ -15,6 +15,7 @@ import type {
   CanonicalCatalogResponse,
   FetchCanonicalCatalogOptions,
   FilterCanonicalCatalogOptions,
+  ReportCatalogModelObservationOptions,
 } from "./types.js";
 import type { ProviderDefinition } from "../providers/types.js";
 
@@ -58,6 +59,7 @@ export async function fetchCanonicalCatalog(
   if (options.limit != null) url.searchParams.set("limit", String(options.limit));
   if (options.offset != null) url.searchParams.set("offset", String(options.offset));
   if (options.includeUnhealthy) url.searchParams.set("includeUnhealthy", "1");
+  if (options.skipDefaultAllowlist) url.searchParams.set("skipDefaultAllowlist", "1");
 
   const res = await fetch(url.toString(), {
     method: "GET",
@@ -74,6 +76,48 @@ export async function fetchCanonicalCatalog(
     throw err;
   }
   return body as unknown as CanonicalCatalogResponse;
+}
+
+/**
+ * Report a crowd-observed provider signal (e.g. vendor returned deprecated). Requires Bearer auth.
+ * Server-side only; use Gateway Key or session token from your backend.
+ */
+export async function reportCatalogModelObservation(
+  options: ReportCatalogModelObservationOptions
+): Promise<{ ok: true; providerId: string; providerModelId: string; signal: string }> {
+  const base = getBaseUrl(options.baseUrl);
+  const url = `${base}/keys/dashboard/api/catalog/observations`;
+  const headers = new Headers(options.headers);
+  headers.set("Authorization", `Bearer ${options.auth.token}`);
+  headers.set("Content-Type", "application/json");
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      providerId: options.providerId,
+      providerModelId: options.providerModelId,
+      signal: options.signal,
+      ...(options.providerHttpStatus != null ? { providerHttpStatus: options.providerHttpStatus } : {}),
+      ...(options.providerErrorCode != null ? { providerErrorCode: options.providerErrorCode } : {}),
+    }),
+  });
+  const body = (await res.json().catch(() => ({} as Record<string, unknown>))) as Record<string, unknown>;
+  if (!res.ok) {
+    const err = new Error(
+      typeof body.error === "string" ? body.error : `observations HTTP ${res.status}`
+    ) as RestormelApiError;
+    err.status = res.status;
+    err.error = typeof body.error === "string" ? body.error : "unknown";
+    err.body = body;
+    throw err;
+  }
+  const data = body.data as { ok?: boolean; providerId?: string; providerModelId?: string; signal?: string };
+  return {
+    ok: true,
+    providerId: String(data.providerId ?? options.providerId),
+    providerModelId: String(data.providerModelId ?? options.providerModelId),
+    signal: String(data.signal ?? options.signal),
+  };
 }
 
 /**

@@ -53,7 +53,7 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
   </p>
 
   <div class="callout callout-tip">
-    <strong>Stable contract</strong> — Check <code>contractVersion</code> in every response (e.g. <code>2026-03-23.catalog.v1</code>). If it changes, re-validate your parser.
+    <strong>Stable contract</strong> — Check <code>contractVersion</code> in every response (e.g. <code>2026-03-25.catalog.v5</code>). If it changes, re-validate your parser. The catalog only exposes models that match <code>@restormel/keys</code> <code>defaultProviders</code> (current, maintained lists). Use <code>skipDefaultAllowlist=1</code> only for operator debugging.
   </div>
 
   <h2>Step 1 — Pick a base URL</h2>
@@ -69,6 +69,8 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
   <p>Successful JSON includes:</p>
   <ul>
     <li><code>contractVersion</code> — schema / semantics version</li>
+    <li><code>compatibility</code> — minimum recommended versions for CLI / <code>@restormel/keys</code> dashboard client, plus docs URL</li>
+    <li><code>externalSignals</code> — credential-free runtime signals (OpenAI/Anthropic status snapshots, OpenRouter public endpoint health summaries, plus <code>freshness</code> / <code>allFresh</code> for staleness SLO)</li>
     <li><code>generatedAt</code> — ISO timestamp for this payload</li>
     <li><code>providers[]</code> — <code>id</code>, <code>displayName</code>, <code>modelCount</code>, <code>validation</code> (<code>mode</code>, <code>requiresBaseUrl</code>, <code>requiresModel</code>, optional <code>defaultApiBaseUrl</code>)</li>
     <li><code>data[]</code> — models with <code>id</code>, <code>canonicalName</code>, <code>lifecycleState</code>, <code>providerTypes</code>, <code>variants[]</code> (<code>providerModelId</code> is what you send to the vendor API)</li>
@@ -81,7 +83,7 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
   <h2>Step 4 — Cache and refresh</h2>
   <ul>
     <li>Store the JSON (or your derived lists) in your backend cache, object store, or build artifact.</li>
-    <li>Refresh on a schedule (e.g. hourly/daily) and on deploy; compare <code>generatedAt</code> or track <code>contractVersion</code>.</li>
+    <li>Refresh on a schedule (e.g. hourly/daily) and on deploy; compare <code>generatedAt</code>, track <code>contractVersion</code>, and monitor <code>compatibility</code> for min-client upgrades.</li>
     <li>Keep a <strong>last-known-good</strong> snapshot if Restormel is unreachable — but treat the network result as authoritative when available.</li>
   </ul>
 

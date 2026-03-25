@@ -20,6 +20,10 @@ export function registerCatalog(program: Command): void {
     .option("--limit <n>", "Page size (1–1000, default 500)", "500")
     .option("--offset <n>", "Paging offset (default 0)", "0")
     .option("--include-unhealthy", "Include deprecated models and non-available variants (operator/debug)")
+    .option(
+      "--skip-allowlist",
+      "Include DB rows not in @restormel/keys defaultProviders (operator/debug; same as skipDefaultAllowlist=1)"
+    )
     .option("--json", "Print full JSON response to stdout")
     .action(
       async (opts: {
@@ -27,6 +31,7 @@ export function registerCatalog(program: Command): void {
         limit?: string;
         offset?: string;
         includeUnhealthy?: boolean;
+        skipAllowlist?: boolean;
         json?: boolean;
       }) => {
         const baseUrl = getBaseUrl(opts.baseUrl);
@@ -39,6 +44,7 @@ export function registerCatalog(program: Command): void {
             limit,
             offset,
             includeUnhealthy: Boolean(opts.includeUnhealthy),
+            skipDefaultAllowlist: Boolean(opts.skipAllowlist),
           });
 
           if (opts.json) {
@@ -50,6 +56,16 @@ export function registerCatalog(program: Command): void {
           console.log(chalk.gray("  base:"), baseUrl);
           console.log(chalk.gray("  contractVersion:"), catalog.contractVersion);
           console.log(chalk.gray("  generatedAt:"), catalog.generatedAt);
+          if (catalog.compatibility) {
+            console.log(chalk.gray("  min CLI version:"), catalog.compatibility.minCliVersion);
+            console.log(chalk.gray("  min @restormel/keys version:"), catalog.compatibility.minCoreDashboardVersion);
+            console.log(chalk.gray("  docs:"), catalog.compatibility.docsUrl);
+            console.log(
+              chalk.yellow(
+                "  upgrade hint: use `npx @restormel/keys-cli@latest catalog fetch` for the latest catalog contract support"
+              )
+            );
+          }
           console.log(
             chalk.gray("  page:"),
             `offset ${catalog.paging.offset}, limit ${catalog.paging.limit}, rows ${catalog.paging.count}`

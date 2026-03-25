@@ -4,9 +4,15 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- catalog(api): **default allowlist** — `GET /keys/dashboard/api/catalog` returns only `(providerId, providerModelId)` pairs from `@restormel/keys` `defaultProviders` (contract `2026-03-24.catalog.v2`); `skipDefaultAllowlist=1` for raw DB rows. Trimmed legacy OpenAI / Anthropic / Google model ids from defaults and seed.
+- catalog(api): **external runtime signals** — contract bumped to `2026-03-25.catalog.v3`; payload now includes `externalSignals` with credential-free provider status snapshots (OpenAI/Anthropic status pages) and OpenRouter public model endpoint health (`status`, `uptime_last_30m`, latency/throughput quantiles). OpenRouter variants are filtered against live public OpenRouter model IDs when snapshot fetch succeeds.
+- catalog(api): **crowd observations** — contract `2026-03-25.catalog.v4` adds optional per-variant `crowdObservations` (aggregated deprecated/retired report counts). Authenticated clients can `POST /keys/dashboard/api/catalog/observations` (Bearer Gateway Key, management key, or session) after observing vendor deprecation signals; `@restormel/keys/dashboard` adds `reportCatalogModelObservation()`.
+- catalog(api): **externalSignals freshness (v5)** — `externalSignals.freshness` adds `allFresh`, per-signal `isFresh` / `ageMs` / `maxAgeMs`, and SLO thresholds (`slo.*MaxAgeMs`) so UIs can degrade when OpenRouter or status samples exceed max age.
+- catalog(db): migration `018_catalog_allowlist_cleanup.sql` marks known stale direct-provider variants as `retired` and deprecates models with zero available variants.
 - docs(site): public guide **Canonical model & provider catalog** at `/keys/docs/guides/canonical-catalog` (curl, paging, npm, CLI) for third-party integrations
-- cli: **`keys catalog fetch`** — summary or JSON from public catalog endpoint; respects `RESTORMEL_KEYS_BASE`
-- core(dashboard client): **`includeUnhealthy`** option on `fetchCanonicalCatalog` → `includeUnhealthy=1` query param
+- cli: **`keys catalog fetch`** — summary or JSON from public catalog endpoint; respects `RESTORMEL_KEYS_BASE`; **`--skip-allowlist`** maps to `skipDefaultAllowlist=1`
+- catalog(api/cli): catalog payload includes `compatibility` (min CLI/core versions + docs URL), and CLI surfaces an explicit upgrade hint for downstream operators.
+- core(dashboard client): **`includeUnhealthy`** / **`skipDefaultAllowlist`** on `fetchCanonicalCatalog` → `includeUnhealthy=1` / `skipDefaultAllowlist=1` query params
 - dashboard(ui): optional **`RESTORMEL_DASHBOARD_UI_HIDDEN`** env (comma-separated section tokens) hides advanced areas from the in-browser dashboard nav and related shortcuts; **dashboard REST APIs unchanged** (docs: `apps/dashboard/README.md`, `ARCHITECTURE.md`)
 - dashboard(nav): remove lifecycle page from primary nav until implemented and regroup navigation by workflow stage
 - dashboard(analytics): harden analytics load path with request-log fallback aggregation to avoid user-facing hard failures
@@ -14,6 +20,7 @@ Single record of meaningful repo changes.
 - dashboard(access): improve key creation UX with optional label, explicit one-time key visibility warning, and copy-focused flow
 - dashboard(models): fix lifecycle/family/use-case filtering behavior (including `goodFor`/`badFor` query compatibility) and fallback name rendering
 - docs: add searchable docs entry route (`/keys/docs/search`), archetype journey landing guides, and canonical `/keys/docs/how-it-fits-together`
+- docs(release): clarify that npm publishing is tag-driven (`keys-v*`) and make release-readiness require explicit post-merge tagging when `packages/` changes
 - marketing: add intent-picker entry cards and launch-offer visibility on `/keys`; align pricing display to USD
 - site: align footer tagline with product positioning (“The missing layer for AI apps”)
 - dashboard(api): add Gateway Key scoped policy discovery on `GET /api/policies` and `GET /api/policies/{id}` for lifecycle validation with real policy ids

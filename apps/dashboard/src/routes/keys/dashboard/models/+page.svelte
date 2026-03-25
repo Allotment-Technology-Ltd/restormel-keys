@@ -23,17 +23,24 @@
       retirementDate: number | null;
       variantsSummary: {
         providerCount: number;
+        providerIds: string[];
+        variantCount: number;
+        allowlistAlignedVariantCount: number;
         hasAvailableVariant: boolean;
         hasPricingRef: boolean;
         hasRateLimitRef: boolean;
         availabilityStates: string[];
+        crowdDeprecatedReports: number;
+        crowdRetiredReports: number;
+        hasCrowdSignals: boolean;
       };
     }[];
+    availableProviders: string[];
     error: string | null;
   };
 
   let lifecycleFilter = $page.url.searchParams.get("lifecycleState") ?? "";
-  let familyFilter = $page.url.searchParams.get("family") ?? "";
+  let selectedProviders = $page.url.searchParams.getAll("provider");
   let q = $page.url.searchParams.get("q") ?? "";
   let availabilityFilter = $page.url.searchParams.get("availability") ?? "";
   let costFilter = $page.url.searchParams.get("cost") ?? "";
@@ -47,6 +54,7 @@
     "";
   let selectedId = $page.url.searchParams.get("detail") ?? "";
   let filteredModels: typeof data.models = data.models;
+  $: selectedModel = selectedId ? data.models.find((m) => m.id === selectedId) ?? null : null;
   let groupedModels: { family: string; items: typeof data.models }[] = [];
   let copiedModelId = "";
   let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +62,9 @@
   function applyFilters() {
     const params = new URLSearchParams();
     if (lifecycleFilter) params.set("lifecycleState", lifecycleFilter);
-    if (familyFilter) params.set("family", familyFilter);
+    for (const provider of selectedProviders) {
+      if (provider.trim()) params.append("provider", provider.trim());
+    }
     if (q.trim()) params.set("q", q.trim());
     if (availabilityFilter) params.set("availability", availabilityFilter);
     if (costFilter) params.set("cost", costFilter);
@@ -63,6 +73,20 @@
     if (speedFilter) params.set("speed", speedFilter);
     if (useCaseFilter) params.set("useCase", useCaseFilter);
     goto(`${DASHBOARD_BASE}/models${params.toString() ? "?" + params.toString() : ""}`);
+  }
+
+  function clearFilters() {
+    lifecycleFilter = "";
+    selectedProviders = [];
+    q = "";
+    availabilityFilter = "";
+    costFilter = "";
+    rateLimitFilter = "";
+    contextFilter = "";
+    speedFilter = "";
+    useCaseFilter = "";
+    selectedId = "";
+    goto(`${DASHBOARD_BASE}/models`);
   }
 
   function openDetail(id: string) {
@@ -141,10 +165,10 @@
     return (model.lifecycleState ?? "").toLowerCase() === lifecycleFilter.toLowerCase();
   }
 
-  function matchesFamily(model: (typeof data.models)[number]): boolean {
-    if (!familyFilter.trim()) return true;
-    const needle = familyFilter.trim().toLowerCase();
-    return (model.family ?? "").toLowerCase().includes(needle);
+  function matchesProviders(model: (typeof data.models)[number]): boolean {
+    if (selectedProviders.length === 0) return true;
+    const providers = new Set(model.variantsSummary.providerIds);
+    return selectedProviders.some((p) => providers.has(p.toLowerCase()));
   }
 
   function matchesText(model: (typeof data.models)[number]): boolean {
@@ -202,7 +226,7 @@
   $: filteredModels = data.models.filter(
     (m) =>
       matchesLifecycle(m) &&
-      matchesFamily(m) &&
+      matchesProviders(m) &&
       matchesText(m) &&
       matchesUseCase(m) &&
       matchesAvailability(m) &&
@@ -233,6 +257,12 @@
 
 <h1 class="page-title">Model catalog</h1>
 <p class="page-desc">
+  This list reflects the <strong>dashboard database</strong>: lifecycle, editorial fields, and per-provider variants. It is enriched with how each variant lines up with the
+  <strong>default active-model allowlist</strong> shipped in <code>@restormel/keys</code>, and with <strong>crowd-reported</strong> vendor deprecation/retirement signals aggregated from apps.
+  The public <a href="/keys/dashboard/api/catalog">canonical catalog API</a> merges the same rows with live provider signals (OpenRouter, status pages) and contract
+  <code>2026-03-25.catalog.v5</code>. See the <a href="/keys/docs/guides/canonical-catalog">canonical catalog guide</a> for integration details.
+</p>
+<p class="page-desc page-desc-secondary">
   Find models by operational constraints and use case: availability, pricing/rate-limit metadata, context size, speed profile, and what each model is best or worst at.
 </p>
 
@@ -253,8 +283,12 @@
         </select>
       </div>
       <div class="form-row">
-        <label for="family">Family</label>
-        <input id="family" type="text" bind:value={familyFilter} class="input" placeholder="e.g. gpt-4, claude" />
+        <label for="providers">Providers</label>
+        <select id="providers" bind:value={selectedProviders} class="input input-multi" multiple>
+          {#each data.availableProviders as providerId}
+            <option value={providerId}>{providerId}</option>
+          {/each}
+        </select>
       </div>
       <div class="form-row">
         <label for="search">Search</label>
@@ -308,7 +342,7 @@
         <input id="useCase" type="text" bind:value={useCaseFilter} class="input" placeholder="e.g. extraction, coding, latency" />
       </div>
       <button type="submit" class="btn btn-primary">Apply</button>
-      <a class="btn btn-secondary" href={DASHBOARD_BASE + "/models"}>Clear</a>
+      <button type="button" class="btn btn-secondary" onclick={clearFilters}>Clear</button>
     </form>
   </section>
 
@@ -317,7 +351,7 @@
       title="No models match"
       description="Try changing filters or ensure the model catalog has been populated."
     >
-      <a href={DASHBOARD_BASE + "/models"} class="btn btn-secondary">Clear filters</a>
+      <button type="button" class="btn btn-secondary" onclick={clearFilters}>Clear filters</button>
     </EmptyState>
   {:else}
     <section class="section" aria-labelledby="list-heading">
@@ -341,6 +375,16 @@
                   <span class="availability-dot {m.variantsSummary.hasAvailableVariant ? "availability-green" : "availability-grey"}" aria-hidden="true"></span>
                   <span class="chip">availability: {m.variantsSummary.hasAvailableVariant ? "available" : "degraded"}</span>
                   <span class="chip">providers: {m.variantsSummary.providerCount}</span>
+                  {#if m.variantsSummary.variantCount > 0}
+                    <span class="chip" title="Variants whose provider id + model id appear on the default allowlist in @restormel/keys">
+                      allowlist: {m.variantsSummary.allowlistAlignedVariantCount}/{m.variantsSummary.variantCount}
+                    </span>
+                  {/if}
+                  {#if m.variantsSummary.hasCrowdSignals}
+                    <span class="chip chip-crowd" title="Aggregated app reports for this model’s provider variants">
+                      crowd: dep {m.variantsSummary.crowdDeprecatedReports} · ret {m.variantsSummary.crowdRetiredReports}
+                    </span>
+                  {/if}
                   <span class="chip">cost: {m.variantsSummary.hasPricingRef ? "known" : "unknown"}</span>
                   <span class="chip">rate limits: {m.variantsSummary.hasRateLimitRef ? "known" : "unknown"}</span>
                   <span class="chip">speed: {speedTier(m.id)}</span>
@@ -394,7 +438,24 @@
     </div>
     <div class="drawer-body">
       <a href={DASHBOARD_BASE + "/models/" + selectedId} class="btn btn-secondary">Open full page</a>
-      <p class="muted">Full detail and provider variants on the model page.</p>
+      <p class="muted">Full detail, per-variant allowlist alignment, and crowd observation counts on the model page.</p>
+      {#if selectedModel && selectedModel.variantsSummary.variantCount > 0}
+        <p class="drawer-summary">
+          <span class="chip">
+            allowlist {selectedModel.variantsSummary.allowlistAlignedVariantCount}/{selectedModel.variantsSummary.variantCount}
+          </span>
+          {#if selectedModel.variantsSummary.hasCrowdSignals}
+            <span class="chip chip-crowd">
+              crowd dep {selectedModel.variantsSummary.crowdDeprecatedReports} · ret {selectedModel.variantsSummary.crowdRetiredReports}
+            </span>
+          {/if}
+        </p>
+      {/if}
+      <p class="muted drawer-links">
+        <a href="/keys/docs/guides/canonical-catalog">Canonical catalog guide</a>
+        ·
+        <a href="/keys/dashboard/api/catalog">Public catalog JSON</a>
+      </p>
     </div>
   </div>
 {/if}
@@ -410,7 +471,27 @@
   .page-desc {
     color: var(--rm-muted);
     font-size: var(--text-sm);
-    margin: 0 0 var(--space-4);
+    margin: 0 0 var(--space-2);
+    line-height: 1.5;
+  }
+  .page-desc-secondary {
+    margin-bottom: var(--space-4);
+  }
+  .drawer-summary {
+    margin: var(--space-3) 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .drawer-links {
+    margin-top: var(--space-3);
+  }
+  .drawer-links a {
+    color: var(--rm-sage);
+  }
+  .chip-crowd {
+    border-color: var(--coral-alert);
+    color: var(--rm-text);
   }
   .section {
     margin-bottom: var(--space-6);
@@ -452,6 +533,9 @@
     background: var(--rm-bg);
     color: var(--rm-text);
     min-width: 10rem;
+  }
+  .input-multi {
+    min-height: 7.5rem;
   }
   .btn {
     padding: var(--space-2) var(--space-4);

@@ -59,7 +59,7 @@ describe("fetchCanonicalCatalog", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          contractVersion: "2026-03-23.catalog.v1",
+          contractVersion: "2026-03-25.catalog.v5",
           source: "restormel-keys",
           generatedAt: "2026-03-20T00:00:00.000Z",
           providers: [{ id: "openai", displayName: "OpenAI", modelCount: 1, validation: { mode: "native", requiresBaseUrl: false, requiresModel: true } }],
@@ -70,7 +70,7 @@ describe("fetchCanonicalCatalog", () => {
     );
 
     const catalog = await fetchCanonicalCatalog({ baseUrl: "https://example.test" });
-    expect(catalog.contractVersion).toBe("2026-03-23.catalog.v1");
+    expect(catalog.contractVersion).toBe("2026-03-25.catalog.v5");
     expect(catalog.providers[0]?.id).toBe("openai");
   });
 
@@ -78,7 +78,7 @@ describe("fetchCanonicalCatalog", () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        contractVersion: "2026-03-23.catalog.v1",
+        contractVersion: "2026-03-25.catalog.v5",
         source: "restormel-keys",
         generatedAt: "2026-03-20T00:00:00.000Z",
         providers: [],
@@ -97,6 +97,29 @@ describe("fetchCanonicalCatalog", () => {
     expect(fetchMock).toHaveBeenCalled();
     const calledUrl = String(fetchMock.mock.calls[0]?.[0] ?? "");
     expect(calledUrl).toContain("includeUnhealthy=1");
+  });
+
+  it("passes skipDefaultAllowlist=1 when requested", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contractVersion: "2026-03-25.catalog.v5",
+        source: "restormel-keys",
+        generatedAt: "2026-03-20T00:00:00.000Z",
+        providers: [],
+        data: [],
+        paging: { limit: 10, offset: 0, count: 0 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchCanonicalCatalog({
+      baseUrl: "https://example.test",
+      skipDefaultAllowlist: true,
+    });
+
+    const calledUrl = String(fetchMock.mock.calls[0]?.[0] ?? "");
+    expect(calledUrl).toContain("skipDefaultAllowlist=1");
   });
 
   it("uses fallback when canonical feed is unavailable", async () => {
@@ -130,7 +153,7 @@ describe("fetchCanonicalCatalog", () => {
 describe("filterCanonicalCatalogForViability", () => {
   it("drops deprecated/retired and unavailable variants by default", () => {
     const filtered = filterCanonicalCatalogForViability({
-      contractVersion: "2026-03-23.catalog.v1",
+      contractVersion: "2026-03-25.catalog.v5",
       source: "restormel-keys",
       generatedAt: "2026-03-20T00:00:00.000Z",
       providers: [
@@ -173,7 +196,7 @@ describe("filterCanonicalCatalogForViability", () => {
   it("supports explicit include overrides and retired id blocklist", () => {
     const filtered = filterCanonicalCatalogForViability(
       {
-        contractVersion: "2026-03-23.catalog.v1",
+        contractVersion: "2026-03-25.catalog.v5",
         source: "restormel-keys",
         generatedAt: "2026-03-20T00:00:00.000Z",
         providers: [

@@ -1,8 +1,25 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
+import {
+  buildDefaultProviderModelAllowlist,
+  isProviderModelInDefaultAllowlist,
+} from "@restormel/keys";
+import {
+  buildExternalSignalsFreshness,
+  getOpenRouterEndpointHealthByModel,
+  loadCatalogExternalContext,
+} from "$lib/server/catalog-external-signals";
+import { listCatalogModelObservationsForPairs, listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
 
-const CONTRACT_VERSION = "2026-03-23.catalog.v1";
+/** Bump when response semantics change (e.g. default allowlist, externalSignals, crowd observations). */
+const CONTRACT_VERSION = "2026-03-25.catalog.v5";
+const CATALOG_COMPATIBILITY = {
+  minCliVersion: "0.1.4",
+  minCoreDashboardVersion: "0.2.7",
+  docsUrl: "https://restormel.dev/keys/docs/guides/canonical-catalog",
+} as const;
+
+const DEFAULT_PROVIDER_MODEL_ALLOWLIST = buildDefaultProviderModelAllowlist();
 const NON_VIABLE_MODEL_STATES = new Set(["deprecated", "retired"]);
 const VIABLE_VARIANT_STATUSES = new Set(["available"]);
 
@@ -74,14 +91,38 @@ export const GET: RequestHandler = async ({ url }) => {
   const includeUnhealthy =
     url.searchParams.get("includeUnhealthy") === "1" ||
     url.searchParams.get("includeUnhealthy")?.toLowerCase() === "true";
+  const skipDefaultAllowlist =
+    url.searchParams.get("skipDefaultAllowlist") === "1" ||
+    url.searchParams.get("skipDefaultAllowlist")?.toLowerCase() === "true";
 
-  const rawModels = await listModels({ lifecycleState, family, limit, offset });
+  const [rawModels, externalCtx] = await Promise.all([
+    listModels({ lifecycleState, family, limit, offset }),
+    loadCatalogExternalContext(),
+  ]);
   const models = includeUnhealthy ? rawModels : rawModels.filter((model) => isViableModel(model.lifecycleState));
   const modelIds = models.map((m) => m.id);
   const rawVariants = await listProviderModelVariantsByModelIds(modelIds);
-  const variants = includeUnhealthy
+  let variants = includeUnhealthy
     ? rawVariants
     : rawVariants.filter((variant) => isViableVariant(variant.availabilityStatus));
+  if (!skipDefaultAllowlist) {
+    variants = variants.filter((variant) => {
+      const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
+      return isProviderModelInDefaultAllowlist(
+        providerId,
+        variant.providerModelId,
+        DEFAULT_PROVIDER_MODEL_ALLOWLIST
+      );
+    });
+    const orListed = externalCtx.openRouterListedIds;
+    if (orListed) {
+      variants = variants.filter((variant) => {
+        const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
+        if (providerId !== "openrouter") return true;
+        return orListed.has(variant.providerModelId);
+      });
+    }
+  }
 
   const variantsByModel = new Map<string, typeof variants>();
   for (const variant of variants) {
@@ -125,6 +166,12 @@ export const GET: RequestHandler = async ({ url }) => {
       };
     });
 
+  const observationPairs = variants.map((v) => ({
+    catalogProviderId: v.catalogProviderId ?? v.providerIntegrationType,
+    providerModelId: v.providerModelId,
+  }));
+  const crowdByKey = await listCatalogModelObservationsForPairs(observationPairs);
+
   const data = models.map((model) => {
     const modelVariants = variantsByModel.get(model.id) ?? [];
     const providerTypes = Array.from(
@@ -136,19 +183,61 @@ export const GET: RequestHandler = async ({ url }) => {
       family: model.family,
       lifecycleState: model.lifecycleState,
       providerTypes,
-      variants: modelVariants.map((variant) => ({
-        id: variant.id,
-        providerType: variant.catalogProviderId ?? variant.providerIntegrationType,
-        providerModelId: variant.providerModelId,
-        availabilityStatus: variant.availabilityStatus,
-      })),
+      variants: modelVariants.map((variant) => {
+        const providerType = variant.catalogProviderId ?? variant.providerIntegrationType;
+        const obsKey = `${providerType}\t${variant.providerModelId}`;
+        const obs = crowdByKey.get(obsKey);
+        const crowdObservations =
+          obs && (obs.deprecatedReportCount > 0 || obs.retiredReportCount > 0)
+            ? {
+                deprecatedReportCount: obs.deprecatedReportCount,
+                retiredReportCount: obs.retiredReportCount,
+                firstReportedAt:
+                  obs.firstReportedAt != null ? new Date(obs.firstReportedAt).toISOString() : null,
+                lastReportedAt:
+                  obs.lastReportedAt != null ? new Date(obs.lastReportedAt).toISOString() : null,
+              }
+            : undefined;
+        return {
+          id: variant.id,
+          providerType,
+          providerModelId: variant.providerModelId,
+          availabilityStatus: variant.availabilityStatus,
+          ...(crowdObservations ? { crowdObservations } : {}),
+        };
+      }),
     };
   }).filter((model) => includeUnhealthy || model.variants.length > 0);
+
+  const openRouterModelIds = Array.from(
+    new Set(
+      variants
+        .filter((variant) => (variant.catalogProviderId ?? variant.providerIntegrationType) === "openrouter")
+        .map((variant) => variant.providerModelId)
+    )
+  );
+  const openRouterEndpointHealth = await getOpenRouterEndpointHealthByModel(openRouterModelIds);
+
+  const freshness = buildExternalSignalsFreshness({
+    openRouterModelsFetchedAt: externalCtx.payload.openRouter.fetchedAt,
+    openaiFetchedAt: externalCtx.payload.providerStatus.openai.fetchedAt,
+    anthropicFetchedAt: externalCtx.payload.providerStatus.anthropic.fetchedAt,
+    endpointHealthByModel: openRouterEndpointHealth,
+  });
 
   return json({
     contractVersion: CONTRACT_VERSION,
     source: "restormel-keys",
     generatedAt: new Date().toISOString(),
+    compatibility: CATALOG_COMPATIBILITY,
+    externalSignals: {
+      freshness,
+      ...externalCtx.payload,
+      openRouter: {
+        ...externalCtx.payload.openRouter,
+        endpointHealthByModel: openRouterEndpointHealth,
+      },
+    },
     providers,
     data,
     paging: { limit, offset, count: data.length },

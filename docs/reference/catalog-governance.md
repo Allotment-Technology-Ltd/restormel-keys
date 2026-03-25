@@ -26,7 +26,7 @@ Future work: automated import from provider docs or OpenRouter-style listings, w
 
 - `scripts/check-catalog-drift.ts` — drift implementation.  
 - `packages/core/README.md` — dashboard client and filtered-models helpers.
-- `GET /keys/dashboard/api/catalog` — canonical downstream contract for providers + models (`2026-03-23.catalog.v1`).
+- `GET /keys/dashboard/api/catalog` — canonical downstream contract for providers + models (`2026-03-25.catalog.v5`). **By default**, responses include only `(providerId, providerModelId)` pairs present in `@restormel/keys` `defaultProviders` (stale DB rows are dropped). Operators: `skipDefaultAllowlist=1` returns unfiltered rows (still subject to `includeUnhealthy` when unset). Responses include `compatibility` (`minCliVersion`, `minCoreDashboardVersion`), `externalSignals` (credential-free runtime signals: OpenAI/Anthropic status snapshots, OpenRouter public endpoint health metadata, **`externalSignals.freshness` staleness SLO**), and optional per-variant `crowdObservations` (aggregated reports from authenticated `POST /keys/dashboard/api/catalog/observations`).
 
 ## Downstream contract (canonical)
 

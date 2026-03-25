@@ -2,6 +2,8 @@ import {
   getOrCreateDefaultWorkspace,
   getWorkspace,
   downgradeWorkspaceIfProExpired,
+  getAuthUserSignupRank,
+  foundingPromoMaxUsers,
 } from "$lib/server/db";
 
 export type WorkspacePlan = "free" | "pro";
@@ -14,6 +16,8 @@ export type WorkspaceEntitlements = {
   monthlyRequestLimit: number;
   /** Pro access from founding promo until this time (ms); null if not time-limited Pro */
   foundingProExpiresAt: number | null;
+  /** True when user is inside founder cohort (first N users), always Pro regardless subscription. */
+  isFounderUser: boolean;
 };
 
 const FREE = {
@@ -35,12 +39,14 @@ export async function getWorkspaceEntitlements(locals: App.Locals): Promise<Work
   const plan = hydrated?.plan ?? ws.plan ?? "free";
   const expiresAt = hydrated?.planExpiresAt ?? ws.planExpiresAt ?? null;
   const now = Date.now();
+  const signupRank = await getAuthUserSignupRank(uid);
+  const founderCap = foundingPromoMaxUsers();
+  const isFounderUser = founderCap > 0 && signupRank != null && signupRank <= founderCap;
   const effectivePro =
-    plan === "pro" &&
-    (expiresAt == null || expiresAt <= 0 || expiresAt > now);
+    isFounderUser || (plan === "pro" && (expiresAt == null || expiresAt <= 0 || expiresAt > now));
   const tier = effectivePro ? PRO : FREE;
   const foundingProExpiresAt =
-    effectivePro && expiresAt != null && expiresAt > now ? expiresAt : null;
+    !isFounderUser && effectivePro && expiresAt != null && expiresAt > now ? expiresAt : null;
 
   return {
     workspaceId: ws.id,
@@ -48,5 +54,6 @@ export async function getWorkspaceEntitlements(locals: App.Locals): Promise<Work
     projectLimit: tier.projectLimit,
     monthlyRequestLimit: tier.monthlyRequestLimit,
     foundingProExpiresAt,
+    isFounderUser,
   };
 }

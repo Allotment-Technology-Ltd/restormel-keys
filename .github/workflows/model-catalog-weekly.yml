@@ -1,8 +1,8 @@
-name: Weekly model catalog refresh
+name: Daily model catalog refresh
 
 on:
   schedule:
-    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+    - cron: "0 9 * * *" # Every day 09:00 UTC
   workflow_dispatch: {}
 
 permissions:
