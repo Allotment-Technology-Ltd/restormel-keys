@@ -7,6 +7,7 @@ import {
   getProject,
   getOrCreateDefaultWorkspace,
   listRoutes,
+  getRoute,
   getRouteWithSteps,
   evaluatePolicies,
   getModelsLifecycleByIds,
@@ -47,8 +48,111 @@ export type ResolvedRouteResult = {
   policyViolations?: PolicyViolation[];
 };
 
+export type ResolveRouteFailureCode =
+  | "no_route"
+  | "route_unpublished"
+  | "route_disabled"
+  | "no_key_available";
+
+export type ResolveRouteFailure = {
+  code: ResolveRouteFailureCode;
+  routeId?: string;
+  message?: string;
+};
+
+export type ResolveRouteOutcome =
+  | { ok: true; result: ResolvedRouteResult }
+  | { ok: false; failure: ResolveRouteFailure };
+
+export function isRoutePublished(route: RouteRecord): boolean {
+  const v = route.version ?? 1;
+  const p = route.publishedVersion ?? 1;
+  return v === p;
+}
+
+function isNullStage(stage: string | null | undefined): boolean {
+  return stage == null || String(stage).trim() === "";
+}
+
+async function findRouteByIdOrName(
+  projectId: string,
+  userId: string,
+  routeIdOrName: string
+): Promise<RouteRecord | null> {
+  const trimmed = routeIdOrName.trim();
+  if (!trimmed) return null;
+  const byId = await getRoute(trimmed, projectId, userId);
+  if (byId) return byId;
+  const inProject = await listRoutes(projectId, userId);
+  return inProject.find((r) => r.name === trimmed) ?? null;
+}
+
+/** Failure ordering when routeId is explicit: wrong env / missing → no_route before lifecycle checks. */
+function classifyRouteForExplicitId(route: RouteRecord, environmentId: string): ResolveRouteFailure | null {
+  if (route.environmentId !== environmentId) {
+    return { code: "no_route", message: "Route is not bound to this environment" };
+  }
+  if (route.status !== "active") {
+    return { code: "route_disabled", routeId: route.id, message: "Route is not active" };
+  }
+  if (route.enabled === false) {
+    return { code: "route_disabled", routeId: route.id, message: "Route is disabled" };
+  }
+  if (!isRoutePublished(route)) {
+    return { code: "route_unpublished", routeId: route.id, message: "Route has no published version" };
+  }
+  return null;
+}
+
 /**
- * Resolve route and provider/model for a request. Uses first active route for the environment,
+ * Pick a published, active, enabled route for metadata-based discovery (no routeId).
+ * SOPHIA ingestion: dedicated `workload=ingestion` + `stage=ingestion_<sub>` then shared `workload=ingestion` + null stage.
+ */
+async function selectRouteForDiscovery(
+  projectId: string,
+  userId: string,
+  environmentId: string,
+  workload?: string | null,
+  stage?: string | null
+): Promise<RouteRecord | null> {
+  const wl = workload?.trim() || undefined;
+  const st = stage?.trim() || undefined;
+
+  const isSelectable = (r: RouteRecord) =>
+    r.status === "active" &&
+    (r.enabled ?? true) &&
+    isRoutePublished(r) &&
+    r.environmentId === environmentId;
+
+  if (wl && st) {
+    const dedicated = await listRoutes(projectId, userId, {
+      environmentId,
+      workload: wl,
+      stage: st,
+    });
+    const d = dedicated.find(isSelectable);
+    if (d) return d;
+    const forWorkload = await listRoutes(projectId, userId, { environmentId, workload: wl });
+    const shared = forWorkload.find((r) => isSelectable(r) && isNullStage(r.stage));
+    return shared ?? null;
+  }
+
+  if (wl && !st) {
+    const forWorkload = await listRoutes(projectId, userId, { environmentId, workload: wl });
+    return forWorkload.find((r) => isSelectable(r) && isNullStage(r.stage)) ?? null;
+  }
+
+  if (!wl && st) {
+    const forStage = await listRoutes(projectId, userId, { environmentId, stage: st });
+    return forStage.find(isSelectable) ?? null;
+  }
+
+  const allInEnv = await listRoutes(projectId, userId, { environmentId });
+  return allInEnv.find(isSelectable) ?? null;
+}
+
+/**
+ * Resolve route and provider/model for a request. Uses first matching published route for the environment,
  * then first enabled step. Provider = step.providerPreference, model = step.modelId ?? route.defaultModelId.
  * Caller must have already verified project access (e.g. gateway key or session).
  */
@@ -60,39 +164,50 @@ export async function resolveRouteForExecution(
     routeId?: string;
     stage?: string | null;
     workload?: string | null;
+    task?: string | null;
     attemptNumber?: number;
     previousFailure?: { selectedOrderIndex?: number | null; selectedStepId?: string | null };
     failureKind?: string | null;
   }
-): Promise<ResolvedRouteResult | null> {
+): Promise<ResolveRouteOutcome> {
   const project = await getProject(projectId, userId);
-  if (!project) return null;
+  if (!project) {
+    return { ok: false, failure: { code: "no_route", message: "Project not found" } };
+  }
 
   const workspaceId =
     project.workspaceId ?? (await getOrCreateDefaultWorkspace(project.userId)).id;
-  const routes = await listRoutes(projectId, userId, {
-    environmentId,
-    stage: options?.stage ?? undefined,
-    workload: options?.workload ?? undefined,
-  });
-  const activeRoutes = routes.filter((r) => r.status === "active" && (r.enabled ?? true));
 
-  const route =
-    options?.routeId
-      ? activeRoutes.find((r) => r.id === options.routeId || r.name === options.routeId) ?? activeRoutes[0]
-      : options?.stage
-        ? activeRoutes.find(
-            (r) =>
-              r.stage === options.stage &&
-              (options.workload ? r.workload === options.workload : true)
-          ) ?? null
-        : activeRoutes[0];
-  if (!route) {
-    return null;
+  const routeIdOpt = options?.routeId?.trim();
+
+  let route: RouteRecord | null = null;
+
+  if (routeIdOpt) {
+    route = await findRouteByIdOrName(projectId, userId, routeIdOpt);
+    if (!route) {
+      return { ok: false, failure: { code: "no_route", message: "No route matched routeId" } };
+    }
+    const life = classifyRouteForExplicitId(route, environmentId);
+    if (life) {
+      return { ok: false, failure: life };
+    }
+  } else {
+    route = await selectRouteForDiscovery(
+      projectId,
+      userId,
+      environmentId,
+      options?.workload ?? undefined,
+      options?.stage ?? undefined
+    );
+    if (!route) {
+      return { ok: false, failure: { code: "no_route", message: "No published route matched constraints" } };
+    }
   }
 
   const withSteps = await getRouteWithSteps(route.id, projectId, userId);
-  if (!withSteps) return null;
+  if (!withSteps) {
+    return { ok: false, failure: { code: "no_route", routeId: route.id, message: "Route not found" } };
+  }
 
   const { route: routeRecord, steps } = withSteps;
   const enabledSteps = steps
@@ -117,8 +232,6 @@ export async function resolveRouteForExecution(
 
   const allViolations: PolicyViolation[] = [];
   for (const step of enabledSteps) {
-    // Minimal stage-aware switch behavior: on later attempts, skip steps at or before
-    // the previous selected orderIndex (if provided by the caller).
     if (attemptNumber > 0 && step.orderIndex <= startAfterOrderIndex) continue;
 
     const providerType = step.providerPreference ?? null;
@@ -137,31 +250,34 @@ export async function resolveRouteForExecution(
     if (violations.length === 0) {
       const explanation = `route=${routeRecord.id} step=${step.orderIndex} provider=${providerType ?? "—"} model=${modelId ?? "—"}`;
       return {
-        workspaceId,
-        projectId,
-        environmentId,
-        route: routeRecord,
-        steps,
-        selectedStep: step,
-        selectedStepId: step.id,
-        selectedOrderIndex: step.orderIndex,
-        switchReasonCode:
-          attemptNumber > 0
-            ? options?.failureKind ?? "switched_after_previous_failure"
-            : "initial_selection",
-        providerType,
-        modelId,
-        explanation,
-        matchedCriteria: step.switchCriteria ?? null,
-        fallbackCandidates: enabledSteps
-          .filter((s) => s.orderIndex > step.orderIndex)
-          .map((s) => ({
-            stepId: s.id,
-            orderIndex: s.orderIndex,
-            providerType: s.providerPreference ?? null,
-            modelId: s.modelId ?? routeRecord.defaultModelId ?? null,
-            enabled: s.enabled,
-          })),
+        ok: true,
+        result: {
+          workspaceId,
+          projectId,
+          environmentId,
+          route: routeRecord,
+          steps,
+          selectedStep: step,
+          selectedStepId: step.id,
+          selectedOrderIndex: step.orderIndex,
+          switchReasonCode:
+            attemptNumber > 0
+              ? options?.failureKind ?? "switched_after_previous_failure"
+              : "initial_selection",
+          providerType,
+          modelId,
+          explanation,
+          matchedCriteria: step.switchCriteria ?? null,
+          fallbackCandidates: enabledSteps
+            .filter((s) => s.orderIndex > step.orderIndex)
+            .map((s) => ({
+              stepId: s.id,
+              orderIndex: s.orderIndex,
+              providerType: s.providerPreference ?? null,
+              modelId: s.modelId ?? routeRecord.defaultModelId ?? null,
+              enabled: s.enabled,
+            })),
+        },
       };
     }
     allViolations.push(...violations);
@@ -176,21 +292,96 @@ export async function resolveRouteForExecution(
     ? `route=${routeRecord.id} all_steps_blocked_by_policy`
     : `route=${routeRecord.id} no_enabled_step default_model=${routeRecord.defaultModelId ?? "—"}`;
 
+  if (enabledSteps.length > 0) {
+    return {
+      ok: true,
+      result: {
+        workspaceId,
+        projectId,
+        environmentId,
+        route: routeRecord,
+        steps,
+        selectedStep,
+        selectedStepId: null,
+        selectedOrderIndex: null,
+        switchReasonCode,
+        providerType,
+        modelId,
+        explanation,
+        matchedCriteria: null,
+        fallbackCandidates: [],
+        policyViolations: allViolations,
+      },
+    };
+  }
+
   return {
-    workspaceId,
-    projectId,
-    environmentId,
-    route: routeRecord,
-    steps,
-    selectedStep,
-    selectedStepId: null,
-    selectedOrderIndex: null,
-    switchReasonCode,
-    providerType,
-    modelId,
-    explanation,
-    matchedCriteria: null,
-    fallbackCandidates: [],
-    ...(enabledSteps.length > 0 ? { policyViolations: allViolations } : {}),
+    ok: false,
+    failure: {
+      code: "no_key_available",
+      routeId: routeRecord.id,
+      message: "No enabled route step available to resolve provider/model",
+    },
   };
+}
+
+export type ValidateBindingInput = {
+  environmentId: string;
+  workload?: string | null;
+  stage?: string | null;
+  task?: string | null;
+};
+
+/**
+ * Preflight: same eligibility as resolve (env, published, enabled, metadata match when provided).
+ * Does not run policy evaluation on steps.
+ */
+export async function validateRouteBinding(
+  projectId: string,
+  userId: string,
+  routeId: string,
+  input: ValidateBindingInput
+): Promise<{ ok: boolean; reasons: string[] }> {
+  const reasons: string[] = [];
+  const route = await findRouteByIdOrName(projectId, userId, routeId);
+  if (!route) {
+    return { ok: false, reasons: ["route_not_found"] };
+  }
+  if (route.environmentId !== input.environmentId.trim()) {
+    reasons.push("environment_mismatch");
+  }
+  if (route.status !== "active") {
+    reasons.push("route_inactive");
+  }
+  if (route.enabled === false) {
+    reasons.push("route_disabled");
+  }
+  if (!isRoutePublished(route)) {
+    reasons.push("route_unpublished");
+  }
+
+  const wl = input.workload?.trim();
+  const st = input.stage?.trim();
+  if (wl || st) {
+    if (wl && route.workload !== wl) {
+      reasons.push("workload_mismatch");
+    }
+    if (wl && st) {
+      const dedicatedMatch = route.workload === wl && route.stage === st;
+      const sharedFallbackMatch = route.workload === wl && isNullStage(route.stage);
+      if (!dedicatedMatch && !sharedFallbackMatch) {
+        reasons.push("ingestion_metadata_mismatch");
+      }
+    } else if (wl && !st) {
+      if (route.workload !== wl || !isNullStage(route.stage)) {
+        reasons.push("expected_shared_route_null_stage");
+      }
+    } else if (!wl && st) {
+      if (route.stage !== st) {
+        reasons.push("stage_mismatch");
+      }
+    }
+  }
+
+  return { ok: reasons.length === 0, reasons };
 }

@@ -1,7 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const { mockRouteRow } = vi.hoisted(() => ({
+  mockRouteRow: {
+    id: "r1",
+    name: "ingestion",
+    projectId: "p1",
+    environmentId: "env-1",
+    status: "active",
+    enabled: true,
+    version: 1,
+    publishedVersion: 1,
+    workload: null as string | null,
+    stage: null as string | null,
+  },
+}));
+
 vi.mock("$lib/server/db", () => ({
   getProject: vi.fn().mockResolvedValue({ id: "p1", userId: "u1", workspaceId: "ws1" }),
+  getRoute: vi.fn().mockResolvedValue(null),
   getOrCreateDefaultWorkspace: vi.fn().mockResolvedValue({
     id: "ws1",
     name: "Default",
@@ -11,11 +27,11 @@ vi.mock("$lib/server/db", () => ({
     plan: "free",
     planExpiresAt: null,
   }),
-  listRoutes: vi.fn().mockResolvedValue([{ id: "r1", name: "ingestion", status: "active" }]),
+  listRoutes: vi.fn().mockResolvedValue([mockRouteRow]),
   evaluatePolicies: vi.fn().mockResolvedValue([]),
   getModelsLifecycleByIds: vi.fn().mockResolvedValue([]),
   getRouteWithSteps: vi.fn().mockResolvedValue({
-    route: { id: "r1", name: "ingestion", defaultModelId: "gpt-4o" },
+    route: { id: "r1", name: "ingestion", defaultModelId: "gpt-4o", environmentId: "env-1", version: 1, publishedVersion: 1 },
     steps: [
       {
         id: "s2",
@@ -53,8 +69,10 @@ describe("resolveRouteForExecution", () => {
   it("selects the lowest orderIndex enabled step", async () => {
     const { resolveRouteForExecution } = await import("./route-resolver");
     const res = await resolveRouteForExecution("p1", "env-1", "u1");
-    expect(res?.selectedStep?.id).toBe("s1");
-    expect(res?.providerType).toBe("anthropic");
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error("expected ok");
+    expect(res.result.selectedStep?.id).toBe("s1");
+    expect(res.result.providerType).toBe("anthropic");
   });
 
   it("skips disabled steps", async () => {
@@ -93,6 +111,8 @@ describe("resolveRouteForExecution", () => {
 
     const { resolveRouteForExecution } = await import("./route-resolver");
     const res = await resolveRouteForExecution("p1", "env-1", "u1");
-    expect(res?.selectedStep?.id).toBe("s2");
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error("expected ok");
+    expect(res.result.selectedStep?.id).toBe("s2");
   });
 });

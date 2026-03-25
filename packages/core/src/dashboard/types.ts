@@ -12,6 +12,8 @@ export interface ResolveOptions {
   /** Stage-aware resolve: pick the active route bound to this stage/workload. */
   stage?: string;
   workload?: string;
+  /** Optional task hint for future switch criteria (passed through; not required for route selection). */
+  task?: string;
   /** Switch-aware resolve: caller can provide attempt number and previous failure context. */
   attemptNumber?: number;
   previousFailure?: { selectedOrderIndex?: number; selectedStepId?: string | null };
@@ -28,16 +30,34 @@ export interface ResolveOptions {
   headers?: HeadersInit;
 }
 
+/** Route metadata returned on resolve success (matches dashboard API `contractVersion` 2026-03-25+). */
+export interface RouteResolveMetadata {
+  id: string;
+  environmentId: string;
+  workload: string | null;
+  stage: string | null;
+  enabled: boolean | null;
+  version: number | null;
+  publishedVersion: number | null;
+}
+
 export interface ResolveSuccess {
   ok: true;
   data: {
+    contractVersion?: string;
     routeId: string;
+    routeName?: string;
+    route?: RouteResolveMetadata;
     providerType?: string;
     modelId: string | null;
     explanation: string;
     selectedStepId?: string | null;
     selectedOrderIndex?: number | null;
     switchReasonCode?: string | null;
+    estimatedCostUsd?: number | null;
+    matchedCriteria?: Record<string, unknown> | null;
+    fallbackCandidates?: unknown[];
+    decisionMetadata?: Record<string, unknown>;
   };
 }
 
@@ -53,6 +73,7 @@ export interface ResolveErrorBody {
   message?: string;
   violations?: PolicyViolation[];
   data?: Record<string, unknown>;
+  routeId?: string;
 }
 
 /** Discriminated error result: known error codes with optional body. */

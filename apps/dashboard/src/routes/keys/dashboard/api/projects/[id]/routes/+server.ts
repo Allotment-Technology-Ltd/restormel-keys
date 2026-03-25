@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { getProjectInWorkspace, listRoutes, createRoute } from "$lib/server/db";
+import { isRoutePublished } from "$lib/server/route-resolver";
 
 const INGESTION_WORKLOAD = "ingestion";
 const INGESTION_STAGES = new Set([
@@ -37,7 +38,11 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
     const environmentId = url.searchParams.get("environmentId")?.trim() || undefined;
     const workload = url.searchParams.get("workload")?.trim() || undefined;
     const stage = url.searchParams.get("stage")?.trim() || undefined;
-    const data = await listRoutes(scope.projectId, scope.userId, { environmentId, workload, stage });
+    const rows = await listRoutes(scope.projectId, scope.userId, { environmentId, workload, stage });
+    const data = rows.map((r) => ({
+      ...r,
+      isPublished: isRoutePublished(r),
+    }));
     return json({ data });
   } catch (e) {
     console.error("[routes.get] internal error:", e);

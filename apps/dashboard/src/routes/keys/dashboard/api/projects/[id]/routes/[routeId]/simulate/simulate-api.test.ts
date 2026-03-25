@@ -48,7 +48,10 @@ describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
 
   it("returns 404 when no route resolved", async () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
-    vi.mocked(resolveRouteForExecution).mockResolvedValue(null);
+    vi.mocked(resolveRouteForExecution).mockResolvedValue({
+      ok: false,
+      failure: { code: "no_route", message: "test" },
+    });
     const { POST } = await import("./+server");
     const res = await POST(mockEvent({ environmentId: "env-1" }));
     expect(res.status).toBe(404);
@@ -89,18 +92,21 @@ describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
       updatedAt: new Date(1).toISOString(),
     };
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
-      workspaceId: "ws1",
-      projectId: "p1",
-      environmentId: "env-1",
-      route: mockRoute,
-      steps: [mockStep],
-      selectedStep: mockStep,
-      selectedStepId: "s1",
-      selectedOrderIndex: 0,
-      switchReasonCode: null,
-      providerType: "openai",
-      modelId: "gpt-4o",
-      explanation: "ok",
+      ok: true,
+      result: {
+        workspaceId: "ws1",
+        projectId: "p1",
+        environmentId: "env-1",
+        route: mockRoute,
+        steps: [mockStep],
+        selectedStep: mockStep,
+        selectedStepId: "s1",
+        selectedOrderIndex: 0,
+        switchReasonCode: null,
+        providerType: "openai",
+        modelId: "gpt-4o",
+        explanation: "ok",
+      },
     });
     const { POST } = await import("./+server");
     const res = await POST(mockEvent({ environmentId: "env-1", estimatedInputTokens: 1000 }));

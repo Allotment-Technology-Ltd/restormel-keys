@@ -6,12 +6,66 @@
 
 A successful `POST /api/projects/{projectId}/resolve` guarantees that Restormel selected a route decision for the supplied context and returned machine-readable metadata:
 
+- `contractVersion` (e.g. `2026-03-25`)
 - `routeId`, `routeName`
+- `route` — `{ id, environmentId, workload, stage, enabled, version, publishedVersion }` for host-side checks without a second list call
 - `selectedStepId`, `selectedOrderIndex`
 - `providerType`, `modelId`
 - `switchReasonCode`
 - `matchedCriteria`, `fallbackCandidates`
 - `estimatedCostUsd` (when estimable)
+
+## Host runtime discovery (SOPHIA / ingestion)
+
+Hosts that should **not** store Restormel route UUIDs in environment variables can discover routes at runtime and then resolve by metadata.
+
+1. **List routes** — `GET /api/projects/{projectId}/routes?environmentId=...`  
+   Optionally filter with `workload` and `stage`. Each row includes `isPublished` (true when `version === publishedVersion`). Prefer routes that are published and enabled before calling resolve.
+
+2. **Ingestion naming convention**
+
+   - **Dedicated stage route:** `workload=ingestion`, `stage=ingestion_<substage>` where `<substage>` is one of: `extraction`, `relations`, `grouping`, `validation`, `json_repair` (embedding may use `ingestion_embedding` when applicable).
+   - **Shared fallback:** `workload=ingestion`, `stage` null or empty (same workload, no stage).
+
+3. **Resolve without `routeId`** — `POST .../resolve` with `environmentId`, and for stage-specific work also `workload` + `stage`. The server prefers a dedicated matching route, then a shared ingestion route for that workload.
+
+4. **Resolve with `routeId`** — Still supported (UUID or route **name**). That route wins; there is no fallback. If it is draft, disabled, or wrong environment, the API returns a **stable `error` string** (see walkthrough / OpenAPI).
+
+### Example resolve bodies
+
+Dedicated ingestion step (e.g. extraction):
+
+```json
+{
+  "environmentId": "production",
+  "workload": "ingestion",
+  "stage": "ingestion_extraction"
+}
+```
+
+Shared ingestion fallback:
+
+```json
+{
+  "environmentId": "production",
+  "workload": "ingestion"
+}
+```
+
+### Error handling for hosts
+
+Branch on JSON `error` (not only HTTP status). Typical mapping:
+
+| `error` | HTTP | Host action |
+|---------|------|-------------|
+| `unauthorized` | 401 | Fix Gateway Key / project scope |
+| `no_route` | 404 | No matching route; check list-routes filters and environment |
+| `route_unpublished` | 409 | Publish route or pick another route |
+| `route_disabled` | 403 | Enable route or pick another |
+| `policy_blocked` | 403 | Read `violations`; adjust policy or route steps |
+| `no_key_available` | 422 | Add/enable at least one route step |
+
+Canonical API tables: [OpenAPI spec](../api/openapi.yaml) (`POST .../resolve`). Optional preflight: `POST .../routes/{routeId}/validate-binding`.
 
 ## What `resolve` does not guarantee
 

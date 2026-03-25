@@ -89,7 +89,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           }
         : undefined;
 
-    const resolved = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
+    const outcome = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
       routeId: params.routeId,
       stage: typeof body.stage === "string" ? body.stage.trim() : undefined,
       workload: typeof body.workload === "string" ? body.workload.trim() : undefined,
@@ -98,7 +98,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       previousFailure,
     });
 
-    if (!resolved) return json({ error: "no_route" }, { status: 404 });
+    if (!outcome.ok) {
+      const st =
+        outcome.failure.code === "route_unpublished"
+          ? 409
+          : outcome.failure.code === "route_disabled"
+            ? 403
+            : outcome.failure.code === "no_key_available"
+              ? 422
+              : 404;
+      return json(
+        { error: outcome.failure.code, message: outcome.failure.message ?? outcome.failure.code },
+        { status: st }
+      );
+    }
+    const resolved = outcome.result;
 
     const selectedStepId = resolved.selectedStepId ?? null;
     const perStepEstimates = resolved.steps.map((s) => {
@@ -129,7 +143,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
     return json({
       data: {
-        contractVersion: "2026-03-20",
+        contractVersion: "2026-03-25",
         traceId: typeof body.traceId === "string" ? body.traceId : null,
         routeId: resolved.route.id,
         routeName: resolved.route.name,

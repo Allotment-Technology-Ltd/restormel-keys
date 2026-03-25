@@ -56,11 +56,16 @@ async function projectScope(
   return project ? { projectId, userId: locals.user.uid } : null;
 }
 
+const RESOLVE_CONTRACT_VERSION = "2026-03-25";
+
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   try {
     const scope = await projectScope(locals, params.id);
     if (!scope) {
-      return json({ error: "Unauthorized or project not found" }, { status: 401 });
+      return json(
+        { error: "unauthorized", message: "Unauthorized or project not found" },
+        { status: 401 }
+      );
     }
 
     let body: {
@@ -142,10 +147,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           }
         : undefined;
 
-    const resolved = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
+    const outcome = await resolveRouteForExecution(scope.projectId, environmentId, scope.userId, {
       routeId: typeof body.routeId === "string" ? body.routeId.trim() : undefined,
       stage: typeof body.stage === "string" ? body.stage.trim() : undefined,
       workload: typeof body.workload === "string" ? body.workload.trim() : undefined,
+      task: typeof body.task === "string" ? body.task.trim() : undefined,
       attemptNumber,
       previousFailure,
       failureKind: typeof body.failureKind === "string" ? body.failureKind.trim() : undefined,
@@ -154,7 +160,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
     const gatewayKeyId = locals.user?.authType === "gateway_key" ? locals.user.keyId ?? null : null;
 
-    if (!resolved) {
+    if (!outcome.ok) {
+      const { failure } = outcome;
+      const status =
+        failure.code === "route_unpublished"
+          ? 409
+          : failure.code === "route_disabled"
+            ? 403
+            : failure.code === "no_key_available"
+              ? 422
+              : 404;
       try {
         const project = await getProject(scope.projectId, scope.userId);
         const workspaceId =
@@ -163,20 +178,27 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           workspaceId,
           projectId: scope.projectId,
           environmentId,
+          routeId: failure.routeId,
           providerType: "none",
-          requestStatus: "no_route",
+          requestStatus: failure.code,
           latencyMs,
           gatewayKeyId,
-          metadata: { explanation: "no active route for environment" },
+          metadata: { explanation: failure.message ?? failure.code },
         });
       } catch (e) {
-        console.error("[resolve] insertRequestLog no_route:", e);
+        console.error("[resolve] insertRequestLog failure:", e);
       }
       return json(
-        { error: "no_route", message: "No active route found for this project and environment" },
-        { status: 404 }
+        {
+          error: failure.code,
+          message: failure.message ?? failure.code,
+          ...(failure.routeId ? { routeId: failure.routeId } : {}),
+        },
+        { status }
       );
     }
+
+    const resolved = outcome.result;
 
     if (resolved.policyViolations && resolved.policyViolations.length > 0) {
       try {
@@ -232,12 +254,23 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           : undefined,
     });
 
+    const routeMeta = {
+      id: resolved.route.id,
+      environmentId: resolved.route.environmentId,
+      workload: resolved.route.workload ?? null,
+      stage: resolved.route.stage ?? null,
+      enabled: resolved.route.enabled ?? null,
+      version: resolved.route.version ?? null,
+      publishedVersion: resolved.route.publishedVersion ?? null,
+    };
+
     return json({
       data: {
-        contractVersion: "2026-03-20",
+        contractVersion: RESOLVE_CONTRACT_VERSION,
         traceId: typeof body.traceId === "string" ? body.traceId : null,
         routeId: resolved.route.id,
         routeName: resolved.route.name,
+        route: routeMeta,
         providerType: outProviderType,
         modelId: resolved.modelId,
         explanation: resolved.explanation,
@@ -256,6 +289,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           estimatedCostUsd,
           matchedCriteria: resolved.matchedCriteria ?? null,
           fallbackCandidates: resolved.fallbackCandidates ?? [],
+          route: routeMeta,
         },
       },
     });
