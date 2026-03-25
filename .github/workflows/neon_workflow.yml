@@ -26,8 +26,18 @@ jobs:
         id: slug
         run: |
           raw="${{ steps.branch_name.outputs.current_branch }}"
-          # Lowercase, replace invalid chars with '-', trim to 40 chars
-          slug="$(echo "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//; s/-$//' | cut -c1-40)"
+          # Neon branch names are strict: lowercase alnum/hyphen and max length (40 chars total in this project policy).
+          # Reserve space for prefix "preview-pr-<pr-number>-", and trim slug to fit.
+          prefix="preview-pr-${{ github.event.number }}-"
+          max_total=40
+          max_slug=$((max_total - ${#prefix}))
+          if [ "$max_slug" -lt 6 ]; then
+            max_slug=6
+          fi
+          slug="$(echo "$raw" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//; s/-$//' | cut -c1-"$max_slug")"
+          if [ -z "$slug" ]; then
+            slug="branch"
+          fi
           echo "branch_slug=$slug" >> "$GITHUB_OUTPUT"
 
   create_neon_branch:
