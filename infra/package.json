@@ -10,8 +10,8 @@
     "up": "pulumi up"
   },
   "devDependencies": {
-    "@pulumi/gcp": "^9.15.0",
-    "@pulumi/pulumi": "^3.149.0",
+    "@pulumi/gcp": "^9.16.0",
+    "@pulumi/pulumi": "^3.227.0",
     "typescript": "^5.7.2"
   }
 }
