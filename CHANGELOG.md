@@ -12,6 +12,8 @@ Single record of meaningful repo changes.
 
 **Sophia / hosts:** No new env flags. Ensure a **Voyage provider integration** (BYOK key) exists in the workspace if execution requires a key; routing metadata uses `voyage` the same way as other direct providers. Re-show Voyage in admin UIs; use catalog model ids above for embedding steps.
 
+**Docker / Cloud Build:** Repo includes `vendor/.gitkeep` so `COPY vendor ./vendor` in custom dashboard Dockerfiles does not fail when the directory is otherwise empty (optional local `file:vendor/...` tarballs are gitignored).
+
 ## keys-v0.2.11 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.11`): Republish train after `keys-v0.2.10` partially completed — npm forbids re-tarring the same version (`E403` on `@restormel/doctor@0.1.6`). Bumps: `@restormel/keys@0.2.11` (no API change from 0.2.10), `@restormel/keys-svelte@0.1.4`, `@restormel/aaif@0.0.4`, `@restormel/mcp@0.1.4`, `@restormel/doctor@0.1.7`, `@restormel/validate@0.1.7`, `@restormel/keys-cli@0.1.7`. CI: publish **doctor** via `pnpm publish` (not bare `npm publish`); normalize CLI `bin` paths to `dist/...` (no `./`) per `npm pkg fix`.

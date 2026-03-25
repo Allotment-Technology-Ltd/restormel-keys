@@ -56,6 +56,8 @@ export PROJECT=YOUR_GCP_PROJECT_ID
 export REGION=europe-west2
 gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 docker build -f Dockerfile.dashboard -t ${REGION}-docker.pkg.dev/${PROJECT}/restormel-keys/dashboard:latest .
+
+If a custom Dockerfile uses `COPY vendor ./vendor`, the repo keeps `vendor/.gitkeep` so that step succeeds when no local tarballs are present.
 docker push ${REGION}-docker.pkg.dev/${PROJECT}/restormel-keys/dashboard:latest
 gcloud run deploy keys-dashboard \
   --image ${REGION}-docker.pkg.dev/${PROJECT}/restormel-keys/dashboard:latest \
