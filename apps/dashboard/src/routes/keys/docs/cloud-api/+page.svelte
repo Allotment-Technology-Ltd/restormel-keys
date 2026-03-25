@@ -12,7 +12,7 @@
 
   const resolveResponse = `{
   "data": {
-    "contractVersion": "2026-03-20",
+    "contractVersion": "2026-03-25",
     "traceId": "trace_123",
     "routeId": "route_abc123",
     "routeName": "ingestion-extract",
@@ -46,7 +46,7 @@
 
   const simulateResponse = `{
   "data": {
-    "contractVersion": "2026-03-20",
+    "contractVersion": "2026-03-25",
     "traceId": "trace_123",
     "routeId": "route_abc123",
     "routeName": "ingestion-extract",

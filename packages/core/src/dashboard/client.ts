@@ -313,6 +313,26 @@ export function isUsageLimitReached(result: ResolveResult): result is ResolveErr
   return !result.ok && result.error === "usage_limit_reached";
 }
 
+/** Type guard: resolve error `route_unpublished` (HTTP 409). */
+export function isRouteUnpublished(result: ResolveResult): result is ResolveError {
+  return !result.ok && result.error === "route_unpublished";
+}
+
+/** Type guard: resolve error `route_disabled` (HTTP 403). */
+export function isRouteDisabled(result: ResolveResult): result is ResolveError {
+  return !result.ok && result.error === "route_disabled";
+}
+
+/** Type guard: resolve error `no_key_available` (HTTP 422). */
+export function isNoKeyAvailable(result: ResolveResult): result is ResolveError {
+  return !result.ok && result.error === "no_key_available";
+}
+
+/** Type guard: resolve error `unauthorized` (HTTP 401). */
+export function isUnauthorizedResolve(result: ResolveResult): result is ResolveError {
+  return !result.ok && result.error === "unauthorized";
+}
+
 /** Check if an arbitrary error has policy_blocked shape (e.g. from catch). */
 export function isPolicyBlockedError(err: unknown): err is ResolveError {
   return (

@@ -18,30 +18,46 @@ Resolve is a **Dashboard API** runtime endpoint. Your backend calls it directly 
 - Path param: `projectId` (must match your Gateway Key’s project scope)
 - JSON body:
   - `environmentId` (required): environment name (e.g. `dev`, `prod`)
-  - `routeId` (optional): route name (if omitted, uses the first active route for the environment)
+  - `routeId` (optional): route UUID or route **name**; when set, only that route is considered (no fallback)
+  - `workload` / `stage` (optional): metadata-based discovery when `routeId` is omitted (see [Host runtime discovery](https://restormel.dev/keys/docs/guides/resolve-to-execution-contract))
+  - `task` (optional): reserved for future switch criteria
 
 ### Response (200)
 
 ```json
 {
   "data": {
-    "routeId": "Default",
+    "contractVersion": "2026-03-25",
+    "routeId": "…",
+    "routeName": "Default",
+    "route": {
+      "id": "…",
+      "environmentId": "production",
+      "workload": null,
+      "stage": null,
+      "enabled": true,
+      "version": 1,
+      "publishedVersion": 1
+    },
     "providerType": "openai",
     "modelId": "gpt-4o",
-    "explanation": "route=Default step=0 provider=openai model=gpt-4o"
+    "explanation": "route=… step=0 provider=openai model=gpt-4o"
   }
 }
 ```
 
 ### Errors
 
-- `401`: missing/invalid Gateway Key
-- `403`: Gateway Key is valid but not authorized for the requested project/workspace
-- `404`: no active route found
-- `422`: route exists but no enabled step can resolve
+Read JSON `error` for stable codes (see OpenAPI `docs/api/openapi.yaml`).
+
+- `401` + `unauthorized`: missing/invalid Gateway Key or project not in scope
+- `403` + `policy_blocked`: route matched; all enabled steps blocked (`violations` array)
+- `403` + `route_disabled`: explicit `routeId` is disabled or not active
+- `404` + `no_route`: no matching route or wrong environment for `routeId`
+- `409` + `route_unpublished`: explicit `routeId` is draft (`version` ≠ `publishedVersion`)
+- `422` + `no_key_available`: route matched but no enabled step to select
 
 ## Security
 
 - Call from your backend only (never from the browser).
 - Do not log or expose raw `rk_...` keys.
-

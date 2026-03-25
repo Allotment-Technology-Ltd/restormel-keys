@@ -5,10 +5,13 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
+
+    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-25` and return stable
+    machine-readable `error` codes with aligned HTTP statuses (see that operation).
 
 servers:
   - url: https://restormel-keys-gateway-main-bc13eba.zuplo.app
@@ -224,9 +227,81 @@ paths:
   # Server: https://restormel.dev/keys/dashboard
   # ---------------------------------------------------------------------------
 
+  /api/projects/{projectId}/routes:
+    get:
+      summary: List routes (host discovery)
+      description: |
+        Returns routes for the project. When `environmentId` is set, results are scoped to that environment.
+        Optional `workload` and `stage` narrow the list. Each item includes `isPublished` (`version === publishedVersion`)
+        so hosts can skip unpublished routes before calling resolve.
+      operationId: listProjectRoutes
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: environmentId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: workload
+          in: query
+          required: false
+          schema: { type: string }
+        - name: stage
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Route list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/RouteListEntry" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Project not found or not accessible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
   /api/projects/{projectId}/resolve:
     post:
       summary: Resolve (routing decision)
+      description: |
+        Selects a **published** route (`version === publishedVersion`), active, and enabled, then the first enabled step that passes policy.
+
+        **Precedence:** If `routeId` is set (route UUID or route **name**), only that route is considered; there is no fallback to other routes.
+        If `routeId` is omitted, selection uses `environmentId` plus optional `workload` / `stage`:
+        with both `workload` and `stage`, a dedicated route matching both is preferred, then a **shared** route with the same `workload` and null/empty `stage`.
+        With `workload` only (no `stage`), only shared routes (null `stage`) match.
+
+        **Stable error codes** (JSON `error` field; hosts should branch on these, not only HTTP status):
+        | HTTP | `error` | Meaning |
+        |------|---------|---------|
+        | 401 | `unauthorized` | Missing/invalid auth or project not in scope |
+        | 403 | `policy_blocked` | Route matched but every enabled step was blocked by policy (`violations` present) |
+        | 403 | `route_disabled` | Explicit `routeId` refers to a disabled or non-active route |
+        | 404 | `no_route` | No matching route, wrong environment for `routeId`, or discovery found nothing |
+        | 409 | `route_unpublished` | Explicit `routeId` exists but draft (`version` ≠ `publishedVersion`) |
+        | 422 | `no_key_available` | Route matched but there is no enabled step to select (configure steps) |
       operationId: resolveRoute
       tags: [Dashboard API]
       security:
@@ -245,10 +320,12 @@ paths:
               required: [environmentId]
               properties:
                 environmentId: { type: string, description: Environment to resolve against (e.g. dev, prod) }
-                routeId: { type: string, description: Route name to evaluate; if omitted uses first active route for the environment }
-                stage: { type: string, description: Optional stage hint (for ingestion workloads) }
+                routeId:
+                  type: string
+                  description: Optional. Route UUID or route name; when set, wins over discovery and does not fall back
+                stage: { type: string, description: Optional stage hint (e.g. ingestion_extraction for SOPHIA ingestion) }
                 workload: { type: string, description: Optional workload hint (e.g. ingestion) }
-                task: { type: string, description: Optional task hint }
+                task: { type: string, description: Optional task hint (reserved; passed through for future criteria) }
                 attemptNumber: { type: integer, minimum: 0 }
                 failureKind: { type: string, nullable: true }
                 estimatedInputTokens: { type: number, nullable: true }
@@ -275,10 +352,11 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-20" }
+                      contractVersion: { type: string, example: "2026-03-25" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string, description: Matched route ID }
                       routeName: { type: string, description: Matched route name }
+                      route: { $ref: "#/components/schemas/RouteResolveMetadata" }
                       providerType: { type: string, nullable: true }
                       modelId: { type: string, nullable: true }
                       explanation: { type: string }
@@ -305,17 +383,27 @@ paths:
                         nullable: true
                         additionalProperties: true
         "401":
-          description: Unauthorized
+          description: Unauthorized (`error` typically `unauthorized`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "403":
-          description: Forbidden
+          description: Forbidden — `policy_blocked` (violations) or `route_disabled`
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "404":
-          description: No route found
+          description: No route (`error` `no_route`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Route exists but unpublished (`error` `route_unpublished`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: No enabled step (`error` `no_key_available`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -621,7 +709,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-20" }
+                      contractVersion: { type: string, example: "2026-03-25" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string }
                       routeName: { type: string }
@@ -657,7 +745,11 @@ paths:
         "401":
           description: Unauthorized
         "404":
-          description: Route not found/no route
+          description: Route not found / no route (`error` `no_route`)
+        "409":
+          description: Route unpublished (`error` `route_unpublished`)
+        "422":
+          description: No enabled step (`error` `no_key_available`)
 
   /api/projects/{projectId}/routes/{routeId}/publish:
     post:
@@ -742,6 +834,65 @@ paths:
           description: Unauthorized
         "404":
           description: Route not found
+
+  /api/projects/{projectId}/routes/{routeId}/validate-binding:
+    post:
+      summary: Preflight route binding
+      description: |
+        Checks that the route exists and that `environmentId` / optional `workload` / `stage` align with route metadata
+        (including SOPHIA ingestion dedicated vs shared convention). Does not evaluate policies or steps.
+      operationId: validateRouteBinding
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route UUID or resolvable id in project scope }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId]
+              properties:
+                environmentId: { type: string }
+                workload: { type: string, nullable: true }
+                stage: { type: string, nullable: true }
+                task: { type: string, nullable: true, description: Reserved for future use }
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+                      reasons:
+                        type: array
+                        items: { type: string }
+        "400":
+          description: Invalid JSON or missing environmentId
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
 
   /api/projects/{projectId}/routing-capabilities:
     get:
@@ -964,9 +1115,54 @@ components:
     ErrorResponse:
       type: object
       properties:
-        error: { type: string }
+        error:
+          type: string
+          description: |
+            Machine-readable code. Resolve examples: `unauthorized`, `no_route`, `route_unpublished`, `route_disabled`,
+            `policy_blocked`, `no_key_available`.
         message: { type: string }
         detail: { type: string }
+        routeId: { type: string, description: Present when the error refers to a specific route }
+        violations:
+          type: array
+          description: Policy violations when `error` is `policy_blocked`
+          items:
+            type: object
+            additionalProperties: true
+    RouteResolveMetadata:
+      type: object
+      description: Route fields returned on successful resolve (`contractVersion` 2026-03-25+)
+      properties:
+        id: { type: string }
+        environmentId: { type: string }
+        workload: { type: string, nullable: true }
+        stage: { type: string, nullable: true }
+        enabled: { type: boolean, nullable: true }
+        version: { type: integer, nullable: true }
+        publishedVersion: { type: integer, nullable: true }
+    RouteListEntry:
+      allOf:
+        - type: object
+          properties:
+            id: { type: string }
+            projectId: { type: string }
+            environmentId: { type: string }
+            name: { type: string }
+            description: { type: string, nullable: true }
+            defaultModelId: { type: string, nullable: true }
+            billingMode: { type: string, nullable: true }
+            routeMode: { type: string, nullable: true }
+            stage: { type: string, nullable: true }
+            workload: { type: string, nullable: true }
+            enabled: { type: boolean, nullable: true }
+            version: { type: integer, nullable: true }
+            publishedVersion: { type: integer, nullable: true }
+            status: { type: string }
+            createdAt: { type: integer }
+            updatedAt: { type: integer }
+        - type: object
+          properties:
+            isPublished: { type: boolean, description: True when `version === publishedVersion` }
     Project:
       type: object
       properties:

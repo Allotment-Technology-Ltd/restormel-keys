@@ -70,8 +70,11 @@ The curl command returns HTTP 200 and a JSON body with `data.providerType`. If y
 - **404 Not Found** — your project ID is wrong. Check `$RESTORMEL_PROJECT_ID` against the dashboard.
 - **404 no_route** — your project has no active route for the `environmentId` you sent. Create a route for that environment in Phase 3.
 
+> **Resolve error codes (machine-readable)**  
+> Successful resolves use `contractVersion` `2026-03-25` and include a `route` object (`id`, `environmentId`, `workload`, `stage`, `enabled`, `version`, `publishedVersion`). On failure, read JSON `error`: `unauthorized` (401), `no_route` (404), `route_unpublished` (409), `route_disabled` (403), `policy_blocked` (403, with `violations`), `no_key_available` (422). See [From resolve to execution](/keys/docs/guides/resolve-to-execution-contract) for SOPHIA-style discovery (`GET .../routes` + `workload`/`stage` without hardcoded route IDs).
+
 > **If you see "no_key_available"**
-> Your route's steps point at providers that are not currently usable (for example: you have not configured steps yet, all steps are disabled, or the steps reference providers/models that can't be used). Create a route with at least one enabled step (Phase 3). If you only want Restormel to choose a route while you supply provider credentials in your own app, use local resolve (Step 2.6) instead of the dashboard resolve endpoint.
+> Your route matched but has no enabled step to select (for example: you have not configured steps yet or all steps are disabled). Create a route with at least one enabled step (Phase 3) and publish it. If you only want Restormel to choose a route while you supply provider credentials in your own app, use local resolve (Step 2.6) instead of the dashboard resolve endpoint.
 
 ---
 

@@ -20,6 +20,11 @@ const mockRoute = {
   defaultModelId: "gpt-4o",
   billingMode: null,
   routeMode: null,
+  workload: null as string | null,
+  stage: null as string | null,
+  enabled: true,
+  version: 1,
+  publishedVersion: 1,
   status: "active",
   createdBy: "u1",
   createdAt: 1,
@@ -108,7 +113,10 @@ describe("POST /api/projects/[id]/resolve", () => {
   it("returns 404 and logs when no route resolved", async () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
     const { insertRequestLog } = await import("$lib/server/db");
-    vi.mocked(resolveRouteForExecution).mockResolvedValue(null);
+    vi.mocked(resolveRouteForExecution).mockResolvedValue({
+      ok: false,
+      failure: { code: "no_route", message: "No published route matched constraints" },
+    });
 
     const POST = await getHandler();
     const res = await POST(mockEvent({ environmentId: "env-1" }));
@@ -127,15 +135,18 @@ describe("POST /api/projects/[id]/resolve", () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
     const { insertRequestLog } = await import("$lib/server/db");
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
-      workspaceId: "ws1",
-      projectId: "p1",
-      environmentId: "env-1",
-      route: mockRoute,
-      steps: [mockStep],
-      selectedStep: mockStep,
-      providerType: "openai",
-      modelId: "gpt-4o",
-      explanation: "route=route-1 step=0 provider=openai model=gpt-4o",
+      ok: true,
+      result: {
+        workspaceId: "ws1",
+        projectId: "p1",
+        environmentId: "env-1",
+        route: mockRoute,
+        steps: [mockStep],
+        selectedStep: mockStep,
+        providerType: "openai",
+        modelId: "gpt-4o",
+        explanation: "route=route-1 step=0 provider=openai model=gpt-4o",
+      },
     });
 
     const POST = await getHandler();
@@ -148,7 +159,7 @@ describe("POST /api/projects/[id]/resolve", () => {
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),
-      contractVersion: "2026-03-20",
+      contractVersion: "2026-03-25",
     });
     expect(insertRequestLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -167,16 +178,19 @@ describe("POST /api/projects/[id]/resolve", () => {
       { policyId: "pol-1", policyName: "Allowlist", type: "model_allowlist", message: "Model x is not in allowlist" },
     ];
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
-      workspaceId: "ws1",
-      projectId: "p1",
-      environmentId: "env-1",
-      route: mockRoute,
-      steps: [mockStep],
-      selectedStep: null,
-      providerType: null,
-      modelId: null,
-      explanation: "route=route-1 all_steps_blocked_by_policy",
-      policyViolations: violations,
+      ok: true,
+      result: {
+        workspaceId: "ws1",
+        projectId: "p1",
+        environmentId: "env-1",
+        route: mockRoute,
+        steps: [mockStep],
+        selectedStep: null,
+        providerType: null,
+        modelId: null,
+        explanation: "route=route-1 all_steps_blocked_by_policy",
+        policyViolations: violations,
+      },
     });
 
     const POST = await getHandler();
@@ -197,15 +211,18 @@ describe("POST /api/projects/[id]/resolve", () => {
   it("returns providerType vertex when resolver returns google", async () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
-      workspaceId: "ws1",
-      projectId: "p1",
-      environmentId: "env-1",
-      route: mockRoute,
-      steps: [{ ...mockStep, providerPreference: "google" }],
-      selectedStep: { ...mockStep, providerPreference: "google" },
-      providerType: "google",
-      modelId: "gpt-4o",
-      explanation: "route=route-1 step=0 provider=google model=gpt-4o",
+      ok: true,
+      result: {
+        workspaceId: "ws1",
+        projectId: "p1",
+        environmentId: "env-1",
+        route: mockRoute,
+        steps: [{ ...mockStep, providerPreference: "google" }],
+        selectedStep: { ...mockStep, providerPreference: "google" },
+        providerType: "google",
+        modelId: "gpt-4o",
+        explanation: "route=route-1 step=0 provider=google model=gpt-4o",
+      },
     });
 
     const POST = await getHandler();
