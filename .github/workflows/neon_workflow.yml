@@ -5,6 +5,7 @@ on:
     types:
       - opened
       - reopened
+      - synchronize
       - closed
 
 concurrency:
@@ -25,6 +26,7 @@ jobs:
     name: Create Neon Branch
     needs: setup
     if: |
+      github.actor != 'dependabot[bot]' &&
       github.event_name == 'pull_request' && (
       github.event.action == 'opened'
       || github.event.action == 'reopened')
@@ -42,13 +44,45 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
+  apply_dashboard_migrations:
+    name: Apply dashboard migrations (preview DB)
+    needs: setup
+    if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          # neonctl v2 requires Node >= 22.
+          node-version: '22'
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Resolve DATABASE_URL for Neon preview branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH_NAME: preview-pr-${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          # neonctl prints a connection string including password.
+          DATABASE_URL="$(npx --yes neonctl@v2 connection-string "$BRANCH_NAME" --project-id "$NEON_PROJECT_ID" --database-name neondb --role-name neondb_owner)"
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "Failed to resolve DATABASE_URL for $BRANCH_NAME"
+            exit 1
+          fi
+          echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
+        # npx uses NEON_API_KEY automatically if present.
+      - name: Apply dashboard migrations
+        run: bash scripts/apply-dashboard-migrations.sh
+
   delete_neon_branch:
     name: Delete Neon Branch
     needs: setup
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Delete Neon Branch
+        continue-on-error: true
         uses: neondatabase/delete-branch-action@v3
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
