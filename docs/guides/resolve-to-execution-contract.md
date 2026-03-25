@@ -67,6 +67,44 @@ Branch on JSON `error` (not only HTTP status). Typical mapping:
 
 Canonical API tables: [OpenAPI spec](../api/openapi.yaml) (`POST .../resolve`). Optional preflight: `POST .../routes/{routeId}/validate-binding`.
 
+### `@restormel/keys` (npm) — resolve, guards, validate-binding
+
+Use **`@restormel/keys@0.2.9`** or newer from npm (or a tarball built from this repo at that version). Replace legacy `file:vendor/...restormel-keys-0.2.5.tgz`-style pins once published or after you regenerate a vendor tarball from `packages/core`.
+
+```ts
+import {
+  resolve,
+  validateRouteBinding,
+  isRouteUnpublished,
+  isNoRoute,
+  isNoKeyAvailable,
+} from "@restormel/keys/dashboard";
+
+// Runtime resolve (metadata discovery — no routeId env secret)
+const r = await resolve({
+  auth: { type: "bearer", token: process.env.RESTORMEL_GATEWAY_KEY! },
+  projectId: process.env.RESTORMEL_PROJECT_ID!,
+  environmentId: "production",
+  workload: "ingestion",
+  stage: "ingestion_extraction",
+});
+
+// Admin preflight: optional thin wrapper before showing “bound OK” in UI
+const v = await validateRouteBinding({
+  auth: { type: "bearer", token: process.env.RESTORMEL_GATEWAY_KEY! },
+  projectId: process.env.RESTORMEL_PROJECT_ID!,
+  routeId: someRouteIdFromListRoutes,
+  environmentId: "production",
+  workload: "ingestion",
+  stage: "ingestion_extraction",
+});
+if (v.ok && !v.bindingOk) {
+  // v.reasons — e.g. environment_mismatch, route_unpublished, ingestion_metadata_mismatch
+}
+```
+
+`validateRouteBinding` does **not** evaluate policies or steps; it only checks route record metadata vs the binding you intend. For full execution readiness, still use `resolve` or operator tooling.
+
 ## What `resolve` does not guarantee
 
 `resolve` does **not** guarantee that your host runtime can execute the final provider call. Host-side failures can still happen due to:

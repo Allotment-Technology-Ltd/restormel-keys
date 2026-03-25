@@ -4,6 +4,8 @@ import {
   fetchCanonicalCatalogWithFallback,
   filterCanonicalCatalogForViability,
   policyAvailabilityMapFromEntries,
+  resolve,
+  validateRouteBinding,
 } from "./client.js";
 
 describe("policyAvailabilityMapFromEntries", () => {
@@ -230,5 +232,122 @@ describe("filterCanonicalCatalogForViability", () => {
     );
 
     expect(filtered.data.map((m) => m.id)).toEqual(["still-good"]);
+  });
+});
+
+describe("validateRouteBinding", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns bindingOk and reasons on 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { ok: true, reasons: [] } }),
+      })
+    );
+
+    const r = await validateRouteBinding({
+      baseUrl: "https://example.test",
+      projectId: "p1",
+      routeId: "route-1",
+      environmentId: "env-1",
+      auth: { type: "bearer", token: "rk_test" },
+    });
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.bindingOk).toBe(true);
+      expect(r.reasons).toEqual([]);
+    }
+  });
+
+  it("returns bindingOk false with reasons when server reports mismatch", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: { ok: false, reasons: ["environment_mismatch", "route_unpublished"] },
+        }),
+      })
+    );
+
+    const r = await validateRouteBinding({
+      baseUrl: "https://example.test",
+      projectId: "p1",
+      routeId: "route-1",
+      environmentId: "env-1",
+      workload: "ingestion",
+      stage: "ingestion_extraction",
+      auth: { type: "bearer", token: "rk_test" },
+    });
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.bindingOk).toBe(false);
+      expect(r.reasons).toEqual(["environment_mismatch", "route_unpublished"]);
+    }
+  });
+
+  it("returns ok false on HTTP error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: "unauthorized", message: "Unauthorized" }),
+      })
+    );
+
+    const r = await validateRouteBinding({
+      baseUrl: "https://example.test",
+      projectId: "p1",
+      routeId: "route-1",
+      environmentId: "env-1",
+      auth: { type: "bearer", token: "rk_test" },
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.status).toBe(401);
+      expect(r.error).toBe("unauthorized");
+    }
+  });
+});
+
+describe("resolve", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("includes task in JSON body when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          routeId: "r1",
+          modelId: "gpt-4o",
+          explanation: "ok",
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await resolve({
+      baseUrl: "https://example.test",
+      projectId: "p1",
+      environmentId: "env-1",
+      task: "extract_entities",
+      auth: { type: "bearer", token: "rk_test" },
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"));
+    expect(body.task).toBe("extract_entities");
   });
 });

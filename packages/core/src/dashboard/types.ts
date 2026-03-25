@@ -88,6 +88,36 @@ export interface ResolveError {
 
 export type ResolveResult = ResolveSuccess | ResolveError;
 
+/** POST .../routes/:routeId/validate-binding — server-side preflight only. */
+export interface ValidateRouteBindingOptions {
+  baseUrl?: string;
+  projectId: string;
+  routeId: string;
+  environmentId: string;
+  workload?: string | null;
+  stage?: string | null;
+  task?: string | null;
+  auth: { type: "bearer"; token: string };
+  headers?: HeadersInit;
+}
+
+export type ValidateRouteBindingSuccess = {
+  ok: true;
+  /** True when route metadata matches constraints (no structural reasons). */
+  bindingOk: boolean;
+  reasons: string[];
+};
+
+export type ValidateRouteBindingFailure = {
+  ok: false;
+  status: number;
+  error: string;
+  message?: string;
+  body?: unknown;
+};
+
+export type ValidateRouteBindingResult = ValidateRouteBindingSuccess | ValidateRouteBindingFailure;
+
 export interface EvaluateOptions {
   baseUrl?: string;
   projectId: string;

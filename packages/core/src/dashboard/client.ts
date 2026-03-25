@@ -8,6 +8,8 @@ import type {
   ResolveSuccess,
   ResolveError,
   ResolveErrorBody,
+  ValidateRouteBindingOptions,
+  ValidateRouteBindingResult,
   EvaluateOptions,
   EvaluateResult,
   PolicyViolation,
@@ -219,6 +221,7 @@ export async function resolve(options: ResolveOptions): Promise<ResolveResult> {
     ...(options.routeId != null ? { routeId: options.routeId } : {}),
     ...(options.stage != null ? { stage: options.stage } : {}),
     ...(options.workload != null ? { workload: options.workload } : {}),
+    ...(options.task != null ? { task: options.task } : {}),
     ...(options.attemptNumber != null ? { attemptNumber: options.attemptNumber } : {}),
     ...(options.failureKind != null ? { failureKind: options.failureKind } : {}),
     ...(options.previousFailure != null ? { previousFailure: options.previousFailure } : {}),
@@ -255,6 +258,54 @@ export async function resolve(options: ResolveOptions): Promise<ResolveResult> {
     violations: Array.isArray(errBody.violations) ? errBody.violations : undefined,
     body: errBody,
   } as ResolveError;
+}
+
+/**
+ * Call POST .../projects/:projectId/routes/:routeId/validate-binding.
+ * Preflight only: checks environment/workload/stage vs route metadata (not policy or steps).
+ * Does not throw on HTTP errors; returns `{ ok: false, ... }` like `resolve`.
+ */
+export async function validateRouteBinding(
+  options: ValidateRouteBindingOptions
+): Promise<ValidateRouteBindingResult> {
+  const base = getBaseUrl(options.baseUrl);
+  const url = `${base}/keys/dashboard/api/projects/${encodeURIComponent(options.projectId)}/routes/${encodeURIComponent(options.routeId)}/validate-binding`;
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${options.auth.token}`,
+    ...options.headers,
+  };
+  const body = JSON.stringify({
+    environmentId: options.environmentId,
+    ...(options.workload !== undefined ? { workload: options.workload } : {}),
+    ...(options.stage !== undefined ? { stage: options.stage } : {}),
+    ...(options.task !== undefined ? { task: options.task } : {}),
+  });
+
+  const res = await fetch(url, { method: "POST", headers, body });
+  const json = await res.json().catch(() => ({} as Record<string, unknown>));
+
+  if (res.ok) {
+    const data = json.data as { ok?: boolean; reasons?: string[] } | undefined;
+    if (data && typeof data.ok === "boolean" && Array.isArray(data.reasons)) {
+      return { ok: true, bindingOk: data.ok, reasons: data.reasons };
+    }
+    return {
+      ok: false,
+      status: res.status,
+      error: "unknown",
+      body: json,
+    };
+  }
+
+  const err = json as { error?: string; message?: string };
+  return {
+    ok: false,
+    status: res.status,
+    error: typeof err.error === "string" ? err.error : "unknown",
+    message: typeof err.message === "string" ? err.message : undefined,
+    body: json,
+  };
 }
 
 /**

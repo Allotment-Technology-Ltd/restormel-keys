@@ -9,6 +9,10 @@ export type {
   ResolveSuccess,
   ResolveError,
   ResolveResult,
+  ValidateRouteBindingOptions,
+  ValidateRouteBindingSuccess,
+  ValidateRouteBindingFailure,
+  ValidateRouteBindingResult,
   EvaluateOptions,
   EvaluateResult,
   PolicyViolation,
@@ -36,6 +40,7 @@ export type {
 
 export {
   resolve,
+  validateRouteBinding,
   evaluatePolicies,
   filterAllowedModels,
   filterModelsByPolicy,
