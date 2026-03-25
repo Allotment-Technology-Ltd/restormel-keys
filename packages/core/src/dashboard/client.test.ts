@@ -5,6 +5,7 @@ import {
   filterCanonicalCatalogForViability,
   policyAvailabilityMapFromEntries,
   resolve,
+  isResolveIncomplete,
   validateRouteBinding,
 } from "./client.js";
 
@@ -349,5 +350,24 @@ describe("resolve", () => {
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body ?? "{}"));
     expect(body.task).toBe("extract_entities");
+  });
+
+  it("isResolveIncomplete is true for resolve_incomplete errors", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({ error: "resolve_incomplete", message: "incomplete" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await resolve({
+      baseUrl: "https://example.test",
+      projectId: "p1",
+      environmentId: "env-1",
+      auth: { type: "bearer", token: "rk_test" },
+    });
+
+    expect(r.ok).toBe(false);
+    expect(isResolveIncomplete(r)).toBe(true);
   });
 });

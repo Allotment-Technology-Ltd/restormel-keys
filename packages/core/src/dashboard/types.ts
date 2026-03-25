@@ -30,7 +30,7 @@ export interface ResolveOptions {
   headers?: HeadersInit;
 }
 
-/** Route metadata returned on resolve success (matches dashboard API `contractVersion` 2026-03-25+). */
+/** Route metadata returned on resolve success (matches dashboard API `contractVersion` 2026-03-26+). */
 export interface RouteResolveMetadata {
   id: string;
   environmentId: string;
@@ -41,6 +41,16 @@ export interface RouteResolveMetadata {
   publishedVersion: number | null;
 }
 
+/** Enabled steps in route order on resolve/simulate success (`stepChain`). */
+export interface ResolveStepChainEntry {
+  stepId: string;
+  orderIndex: number;
+  providerType: string | null;
+  modelId: string | null;
+  enabled: boolean;
+  selected: boolean;
+}
+
 export interface ResolveSuccess {
   ok: true;
   data: {
@@ -48,7 +58,9 @@ export interface ResolveSuccess {
     routeId: string;
     routeName?: string;
     route?: RouteResolveMetadata;
+    /** Canonical API provider slug (e.g. `vertex` for Google/Vertex; not the persisted `google` step label). */
     providerType?: string;
+    /** Present and non-empty on HTTP 200 resolve success. */
     modelId: string | null;
     explanation: string;
     selectedStepId?: string | null;
@@ -57,6 +69,7 @@ export interface ResolveSuccess {
     estimatedCostUsd?: number | null;
     matchedCriteria?: Record<string, unknown> | null;
     fallbackCandidates?: unknown[];
+    stepChain?: ResolveStepChainEntry[];
     decisionMetadata?: Record<string, unknown>;
   };
 }
@@ -71,6 +84,8 @@ export interface PolicyViolation {
 export interface ResolveErrorBody {
   error: string;
   message?: string;
+  /** Operator-facing copy for some 422 errors (e.g. `resolve_incomplete`). */
+  userMessage?: string;
   violations?: PolicyViolation[];
   data?: Record<string, unknown>;
   routeId?: string;

@@ -21,3 +21,15 @@ When changes touch publishable packages under `packages/`, release readiness mus
 4. Post-merge tag push executed to trigger publish workflow.
 
 Without the `keys-v*` tag push, package changes do not reach npm.
+
+## API `contractVersion` bump policy
+
+Version strings in JSON are **not** semver for the whole product; they label specific payloads:
+
+| Surface | Field | When to bump |
+|--------|--------|----------------|
+| Resolve + simulate success | `data.contractVersion` | Any change to required success fields, semantics of `providerType` / `modelId`, `stepChain`, `fallbackCandidates`, or `decisionMetadata` shape |
+| Catalog | `contractVersion` | Any breaking or material change to catalog schema (document in changelog) |
+| Evaluate and other endpoints | Follow same rule when documented as stable | Bump when integrators must change parsing |
+
+**Process:** increment the constant in code (e.g. `RESOLVE_SIMULATE_CONTRACT_VERSION`), update `docs/api/openapi.yaml` examples, [resolve-to-execution-contract.md](guides/resolve-to-execution-contract.md), and `CHANGELOG.md`. For `@restormel/keys` types, bump `packages/core` and release with a `keys-v*` tag.

@@ -8,6 +8,7 @@ import {
   insertRouteVersionEvent,
   insertAuditEvent,
 } from "$lib/server/db";
+import { validateRouteStepsForPublish } from "$lib/server/route-publish-validation";
 
 async function projectScope(
   locals: App.Locals,
@@ -33,6 +34,18 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
     const routeWithSteps = await getRouteWithSteps(params.routeId, scope.projectId, scope.userId);
     if (!routeWithSteps) return json({ error: "route_not_found" }, { status: 404 });
+
+    const publishErrors = validateRouteStepsForPublish(routeWithSteps.route, routeWithSteps.steps);
+    if (publishErrors.length > 0) {
+      return json(
+        {
+          error: "publish_validation_failed",
+          message: "Route steps are not ready to publish (missing executable provider/model).",
+          errors: publishErrors,
+        },
+        { status: 400 }
+      );
+    }
 
     const nextVersion = Math.max(routeWithSteps.route.version ?? 1, (routeWithSteps.route.publishedVersion ?? 1)) + 1;
     const published = await updateRoute(params.routeId, scope.projectId, scope.userId, {

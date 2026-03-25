@@ -56,3 +56,8 @@ Downstream apps should still apply defense-in-depth filtering before UI render (
 ### OpenAI-compatible base URLs
 
 When `validation.mode === "openai_compatible"` and `validation.requiresBaseUrl === false`, the catalog includes `validation.defaultApiBaseUrl` — the canonical public OpenAI-compatible API base for that provider (so hosts need not hardcode vendor maps). When `requiresBaseUrl === true` (e.g. Azure), the field is omitted and the user supplies the base URL.
+
+### Align catalog ids with resolve `providerType`
+
+- Catalog variants and `providerTypes` on models use **integration / cost** ids (e.g. **`google`** for Vertex/Gemini), matching `@restormel/keys` `defaultProviders` and policy evaluation.
+- **`POST .../resolve`** and **`POST .../routes/{routeId}/simulate`** success payloads emit **`vertex`** as the canonical JSON `providerType` for that same provider. When mapping resolve output to catalog rows, treat `vertex` ↔ `google` as the same logical provider at the integration layer.

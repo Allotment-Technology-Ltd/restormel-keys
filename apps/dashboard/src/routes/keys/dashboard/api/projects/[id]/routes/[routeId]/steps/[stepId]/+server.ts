@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { deleteRouteStep, getModel, getRoute, listRouteSteps, updateRouteStep } from "$lib/server/db";
+import { normalizeProviderForStorage } from "$lib/server/canonical-provider";
 
 const PROVIDER_TYPES = new Set(["openai", "anthropic", "google", "openrouter", "vercel", "portkey"]);
 const FALLBACK_ON = new Set(["error", "rate_limit", "no_key", "policy_block", "any"]);
@@ -57,8 +58,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     if (body.providerPreference !== null && typeof body.providerPreference !== "string") {
       return invalid("providerPreference must be a string or null");
     }
-    if (typeof body.providerPreference === "string" && !PROVIDER_TYPES.has(body.providerPreference)) {
-      return invalid(`providerPreference must be one of: ${Array.from(PROVIDER_TYPES).join(", ")}`);
+    if (typeof body.providerPreference === "string") {
+      const normalized = normalizeProviderForStorage(body.providerPreference);
+      if (!normalized || !PROVIDER_TYPES.has(normalized)) {
+        return invalid(
+          `providerPreference must be one of: ${Array.from(PROVIDER_TYPES).join(", ")} (aliases: vertex → google)`
+        );
+      }
+      body.providerPreference = normalized;
     }
   }
 

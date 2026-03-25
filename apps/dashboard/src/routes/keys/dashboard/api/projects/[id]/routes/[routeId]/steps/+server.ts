@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { createRouteStep, getModel, getRoute, listRouteSteps } from "$lib/server/db";
+import { normalizeProviderForStorage } from "$lib/server/canonical-provider";
 
 const PROVIDER_TYPES = new Set(["openai", "anthropic", "google", "openrouter", "vercel", "portkey"]);
 const FALLBACK_ON = new Set(["error", "rate_limit", "no_key", "policy_block", "any"]);
@@ -66,12 +67,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     const orderIndex = typeof body.orderIndex === "number" && Number.isFinite(body.orderIndex) ? body.orderIndex : 0;
     if (!Number.isInteger(orderIndex) || orderIndex < 0) return invalid("orderIndex must be an integer >= 0");
 
-  const providerPreference = body.providerPreference ?? null;
+  let providerPreference = body.providerPreference ?? null;
   if (providerPreference !== null && typeof providerPreference !== "string") {
     return invalid("providerPreference must be a string or null");
   }
-  if (typeof providerPreference === "string" && !PROVIDER_TYPES.has(providerPreference)) {
-    return invalid(`providerPreference must be one of: ${Array.from(PROVIDER_TYPES).join(", ")}`);
+  if (typeof providerPreference === "string") {
+    const normalized = normalizeProviderForStorage(providerPreference);
+    if (!normalized || !PROVIDER_TYPES.has(normalized)) {
+      return invalid(
+        `providerPreference must be one of: ${Array.from(PROVIDER_TYPES).join(", ")} (aliases: vertex → google)`
+      );
+    }
+    providerPreference = normalized;
   }
 
   const modelId = body.modelId ?? null;

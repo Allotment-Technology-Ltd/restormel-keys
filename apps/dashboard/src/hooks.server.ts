@@ -4,6 +4,7 @@
  * Adds X-Session-Cookie for proxy when response sets cookie.
  */
 import type { Handle } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import { getSession } from "$lib/server/auth";
 import { upsertUser } from "$lib/server/db";
 import { getBearerToken } from "$lib/server/bearer";
@@ -62,6 +63,19 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   const response = await resolve(event);
+
+  /** Machine clients under the Gateway Key API tree should not receive HTML error pages. */
+  if (event.url.pathname.startsWith("/keys/dashboard/api")) {
+    const ct = response.headers.get("content-type") ?? "";
+    if (response.status >= 400 && ct.includes("text/html")) {
+      const status = response.status;
+      const body =
+        status === 404
+          ? { error: "not_found", message: "No matching API route" }
+          : { error: "internal_error", message: "Request failed" };
+      return json(body, { status });
+    }
+  }
 
   const setCookie = response.headers.get("Set-Cookie");
   if (setCookie) {

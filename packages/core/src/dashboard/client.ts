@@ -379,6 +379,11 @@ export function isNoKeyAvailable(result: ResolveResult): result is ResolveError 
   return !result.ok && result.error === "no_key_available";
 }
 
+/** Type guard: resolve error `resolve_incomplete` (HTTP 422) — step missing executable provider/model. */
+export function isResolveIncomplete(result: ResolveResult): result is ResolveError {
+  return !result.ok && result.error === "resolve_incomplete";
+}
+
 /** Type guard: resolve error `unauthorized` (HTTP 401). */
 export function isUnauthorizedResolve(result: ResolveResult): result is ResolveError {
   return !result.ok && result.error === "unauthorized";

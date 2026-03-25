@@ -15,6 +15,11 @@ import {
   type RouteStepRecord,
   type PolicyViolation,
 } from "$lib/server/db";
+import {
+  canonicalApiToPolicyProvider,
+  normalizeProviderToCanonicalApi,
+  isExecutableProviderModelPair,
+} from "$lib/server/canonical-provider";
 
 export type ResolvedRouteResult = {
   workspaceId: string;
@@ -44,6 +49,15 @@ export type ResolvedRouteResult = {
     modelId: string | null;
     enabled: boolean;
   }>;
+  /** All enabled steps in route order with canonical providerType/modelId (support, billing, forensics). */
+  stepChain?: Array<{
+    stepId: string;
+    orderIndex: number;
+    providerType: string | null;
+    modelId: string | null;
+    enabled: boolean;
+    selected: boolean;
+  }>;
   /** Set when there were enabled steps but all were blocked by policy (selectedStep is null). */
   policyViolations?: PolicyViolation[];
 };
@@ -52,7 +66,8 @@ export type ResolveRouteFailureCode =
   | "no_route"
   | "route_unpublished"
   | "route_disabled"
-  | "no_key_available";
+  | "no_key_available"
+  | "resolve_incomplete";
 
 export type ResolveRouteFailure = {
   code: ResolveRouteFailureCode;
@@ -231,11 +246,24 @@ export async function resolveRouteForExecution(
   );
 
   const allViolations: PolicyViolation[] = [];
+  let sawPolicyPassIncomplete = false;
+
+  const stepChainBase = enabledSteps.map((s) => ({
+    stepId: s.id,
+    orderIndex: s.orderIndex,
+    providerType: normalizeProviderToCanonicalApi(s.providerPreference),
+    modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
+    enabled: s.enabled,
+    selected: false,
+  }));
+
   for (const step of enabledSteps) {
     if (attemptNumber > 0 && step.orderIndex <= startAfterOrderIndex) continue;
 
-    const providerType = step.providerPreference ?? null;
     const modelId = step.modelId ?? routeRecord.defaultModelId ?? null;
+    const policyProvider =
+      canonicalApiToPolicyProvider(normalizeProviderToCanonicalApi(step.providerPreference)) ??
+      (step.providerPreference?.trim() ? step.providerPreference.trim() : undefined);
     const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
 
     const violations = await evaluatePolicies({
@@ -244,43 +272,85 @@ export async function resolveRouteForExecution(
       environmentId,
       routeId: routeRecord.id,
       modelId: modelId ?? undefined,
-      providerType: providerType ?? undefined,
+      providerType: policyProvider,
       modelLifecycleState: lifecycleState,
     });
-    if (violations.length === 0) {
-      const explanation = `route=${routeRecord.id} step=${step.orderIndex} provider=${providerType ?? "—"} model=${modelId ?? "—"}`;
-      return {
-        ok: true,
-        result: {
-          workspaceId,
-          projectId,
-          environmentId,
-          route: routeRecord,
-          steps,
-          selectedStep: step,
-          selectedStepId: step.id,
-          selectedOrderIndex: step.orderIndex,
-          switchReasonCode:
-            attemptNumber > 0
-              ? options?.failureKind ?? "switched_after_previous_failure"
-              : "initial_selection",
-          providerType,
-          modelId,
-          explanation,
-          matchedCriteria: step.switchCriteria ?? null,
-          fallbackCandidates: enabledSteps
-            .filter((s) => s.orderIndex > step.orderIndex)
-            .map((s) => ({
-              stepId: s.id,
-              orderIndex: s.orderIndex,
-              providerType: s.providerPreference ?? null,
-              modelId: s.modelId ?? routeRecord.defaultModelId ?? null,
-              enabled: s.enabled,
-            })),
-        },
-      };
+    if (violations.length > 0) {
+      allViolations.push(...violations);
+      continue;
     }
-    allViolations.push(...violations);
+
+    const exec = isExecutableProviderModelPair(step.providerPreference, modelId);
+    if (!exec.ok) {
+      sawPolicyPassIncomplete = true;
+      continue;
+    }
+
+    const canonicalProvider = exec.canonicalProvider;
+    const resolvedModelId = exec.modelId;
+    const explanation = `route=${routeRecord.id} step=${step.orderIndex} provider=${canonicalProvider} model=${resolvedModelId}`;
+    const stepChain = stepChainBase.map((row) => ({
+      ...row,
+      selected: row.stepId === step.id,
+    }));
+    return {
+      ok: true,
+      result: {
+        workspaceId,
+        projectId,
+        environmentId,
+        route: routeRecord,
+        steps,
+        selectedStep: step,
+        selectedStepId: step.id,
+        selectedOrderIndex: step.orderIndex,
+        switchReasonCode:
+          attemptNumber > 0
+            ? options?.failureKind ?? "switched_after_previous_failure"
+            : "initial_selection",
+        providerType: canonicalProvider,
+        modelId: resolvedModelId,
+        explanation,
+        matchedCriteria: step.switchCriteria ?? null,
+        stepChain,
+        fallbackCandidates: enabledSteps
+          .filter((s) => s.orderIndex > step.orderIndex)
+          .map((s) => ({
+            stepId: s.id,
+            orderIndex: s.orderIndex,
+            providerType: normalizeProviderToCanonicalApi(s.providerPreference),
+            modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
+            enabled: s.enabled,
+          })),
+      },
+    };
+  }
+
+  if (enabledSteps.length > 0 && sawPolicyPassIncomplete) {
+    return {
+      ok: false,
+      failure: {
+        code: "resolve_incomplete",
+        routeId: routeRecord.id,
+        message:
+          "A route step passed policy but has no executable providerType and modelId. Configure provider and model on the step or route default model.",
+      },
+    };
+  }
+
+  const allSkippedByAttempt =
+    enabledSteps.length > 0 &&
+    attemptNumber > 0 &&
+    enabledSteps.every((s) => s.orderIndex <= startAfterOrderIndex);
+  if (allSkippedByAttempt) {
+    return {
+      ok: false,
+      failure: {
+        code: "no_key_available",
+        routeId: routeRecord.id,
+        message: "No further steps to try after previous failure context",
+      },
+    };
   }
 
   const selectedStep = null;
@@ -310,6 +380,7 @@ export async function resolveRouteForExecution(
         explanation,
         matchedCriteria: null,
         fallbackCandidates: [],
+        stepChain: stepChainBase,
         policyViolations: allViolations,
       },
     };

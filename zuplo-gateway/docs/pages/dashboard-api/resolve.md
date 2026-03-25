@@ -27,7 +27,7 @@ Resolve is a **Dashboard API** runtime endpoint. Your backend calls it directly 
 ```json
 {
   "data": {
-    "contractVersion": "2026-03-25",
+    "contractVersion": "2026-03-26",
     "routeId": "…",
     "routeName": "Default",
     "route": {

@@ -159,7 +159,7 @@ describe("POST /api/projects/[id]/resolve", () => {
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),
-      contractVersion: "2026-03-25",
+      contractVersion: "2026-03-26",
     });
     expect(insertRequestLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -208,7 +208,33 @@ describe("POST /api/projects/[id]/resolve", () => {
     );
   });
 
-  it("returns providerType vertex when resolver returns google", async () => {
+  it("returns 422 resolve_incomplete when resolver reports incomplete step", async () => {
+    const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
+    const { insertRequestLog } = await import("$lib/server/db");
+    vi.mocked(resolveRouteForExecution).mockResolvedValue({
+      ok: false,
+      failure: {
+        code: "resolve_incomplete",
+        routeId: "route-1",
+        message: "A route step passed policy but has no executable providerType and modelId.",
+      },
+    });
+
+    const POST = await getHandler();
+    const res = await POST(mockEvent({ environmentId: "env-1" }));
+    expect(res.status).toBe(422);
+    const data = await res.json();
+    expect(data.error).toBe("resolve_incomplete");
+    expect(data.userMessage).toContain("provider");
+    expect(insertRequestLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestStatus: "resolve_incomplete",
+        providerType: "none",
+      })
+    );
+  });
+
+  it("returns providerType vertex when resolver returns google (normalized in payload)", async () => {
     const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
     vi.mocked(resolveRouteForExecution).mockResolvedValue({
       ok: true,

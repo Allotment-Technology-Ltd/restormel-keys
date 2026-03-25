@@ -13,6 +13,8 @@ import {
   aggregateRequestLogsToUsage,
 } from "$lib/server/db";
 import { resolveRouteForExecution } from "$lib/server/route-resolver";
+import { canonicalApiToPolicyProvider } from "$lib/server/canonical-provider";
+import { buildResolveSuccessData } from "$lib/server/resolve-response";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import { defaultProviders, estimateCost, type ProviderDefinition } from "@restormel/keys";
 
@@ -29,9 +31,9 @@ function estimateResolvedCostUsd(args: {
   estimatedInputTokens?: number;
 }): number | null {
   if (!args.modelId || !args.estimatedInputTokens || args.estimatedInputTokens <= 0) return null;
-  const providerType = args.providerType === "vertex" ? "google" : args.providerType;
-  const providers: ProviderDefinition[] = providerType
-    ? defaultProviders.filter((p) => p.id === providerType)
+  const forCost = canonicalApiToPolicyProvider(args.providerType ?? undefined) ?? args.providerType;
+  const providers: ProviderDefinition[] = forCost
+    ? defaultProviders.filter((p) => p.id === forCost)
     : defaultProviders;
   const est = estimateCost(args.modelId, providers);
   if (!est) return null;
@@ -55,8 +57,6 @@ async function projectScope(
   const project = await getProject(projectId, locals.user.uid);
   return project ? { projectId, userId: locals.user.uid } : null;
 }
-
-const RESOLVE_CONTRACT_VERSION = "2026-03-25";
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   try {
@@ -167,7 +167,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           ? 409
           : failure.code === "route_disabled"
             ? 403
-            : failure.code === "no_key_available"
+            : failure.code === "no_key_available" || failure.code === "resolve_incomplete"
               ? 422
               : 404;
       try {
@@ -192,6 +192,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
         {
           error: failure.code,
           message: failure.message ?? failure.code,
+          ...(failure.code === "resolve_incomplete"
+            ? {
+                userMessage:
+                  "This route step is missing a provider or model. Set provider and model on the step (or a route default model) in the dashboard.",
+              }
+            : {}),
           ...(failure.routeId ? { routeId: failure.routeId } : {}),
         },
         { status }
@@ -243,56 +249,22 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       console.error("[resolve] insertRequestLog resolved:", e);
     }
 
-    const outProviderType =
-      resolved.providerType === "google" ? "vertex" : resolved.providerType ?? undefined;
     const estimatedCostUsd = estimateResolvedCostUsd({
       modelId: resolved.modelId,
-      providerType: outProviderType ?? null,
+      providerType: resolved.providerType,
       estimatedInputTokens:
         typeof body.estimatedInputTokens === "number" && Number.isFinite(body.estimatedInputTokens)
           ? body.estimatedInputTokens
           : undefined,
     });
 
-    const routeMeta = {
-      id: resolved.route.id,
-      environmentId: resolved.route.environmentId,
-      workload: resolved.route.workload ?? null,
-      stage: resolved.route.stage ?? null,
-      enabled: resolved.route.enabled ?? null,
-      version: resolved.route.version ?? null,
-      publishedVersion: resolved.route.publishedVersion ?? null,
-    };
-
-    return json({
-      data: {
-        contractVersion: RESOLVE_CONTRACT_VERSION,
-        traceId: typeof body.traceId === "string" ? body.traceId : null,
-        routeId: resolved.route.id,
-        routeName: resolved.route.name,
-        route: routeMeta,
-        providerType: outProviderType,
-        modelId: resolved.modelId,
-        explanation: resolved.explanation,
-        selectedStepId: resolved.selectedStepId ?? null,
-        selectedOrderIndex: resolved.selectedOrderIndex ?? null,
-        switchReasonCode: resolved.switchReasonCode ?? null,
-        estimatedCostUsd,
-        matchedCriteria: resolved.matchedCriteria ?? null,
-        fallbackCandidates: resolved.fallbackCandidates ?? [],
-        decisionMetadata: {
-          selectedStepId: resolved.selectedStepId ?? null,
-          selectedOrderIndex: resolved.selectedOrderIndex ?? null,
-          switchReasonCode: resolved.switchReasonCode ?? null,
-          providerType: outProviderType ?? null,
-          modelId: resolved.modelId ?? null,
-          estimatedCostUsd,
-          matchedCriteria: resolved.matchedCriteria ?? null,
-          fallbackCandidates: resolved.fallbackCandidates ?? [],
-          route: routeMeta,
-        },
-      },
+    const data = buildResolveSuccessData({
+      resolved,
+      traceId: typeof body.traceId === "string" ? body.traceId : null,
+      estimatedCostUsd,
     });
+
+    return json({ data });
   } catch (e) {
     console.error("[resolve] internal error:", e);
     return json({ error: "internal_error", detail: "resolve_failed" }, { status: 500 });

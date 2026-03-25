@@ -2,6 +2,12 @@
 
 Single record of meaningful repo changes.
 
+## keys-v0.2.10 (2026-03-26)
+
+**npm publish** (tag `keys-v0.2.10`): `@restormel/keys@0.2.10` — dashboard types for resolve/simulate `contractVersion` `2026-03-26`, `stepChain` on success, `userMessage` / `resolve_incomplete` on errors, `isResolveIncomplete()` guard.
+
+**Dashboard** (deploy separately): executable resolve (422 `resolve_incomplete`), canonical `providerType` (`vertex` for Google), `stepChain` + normalized `fallbackCandidates`, simulate parity via shared success builder, publish-time step validation (400 `publish_validation_failed`), JSON error coercion for `/keys/dashboard/api` HTML failures, OpenAPI + docs updates.
+
 ## keys-v0.2.9 (2026-03-25)
 
 **npm publish** (tag `keys-v0.2.9`): `@restormel/keys@0.2.9` (`validateRouteBinding` on `@restormel/keys/dashboard`, optional `task` on `resolve()`, `RouteResolveMetadata` + type guards), `@restormel/keys-svelte@0.1.3`, `@restormel/aaif@0.0.3`, `@restormel/mcp@0.1.3`, `@restormel/doctor@0.1.6`, `@restormel/validate@0.1.6`, `@restormel/keys-cli@0.1.6` (version bumps so the publish train succeeds; no functional change required in those packages beyond dependency alignment).

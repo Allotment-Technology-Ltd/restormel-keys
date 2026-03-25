@@ -1,45 +1,44 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { resolveRouteForExecution } from "$lib/server/route-resolver";
+import { canonicalApiToPolicyProvider, normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
+import { buildResolveSuccessData } from "$lib/server/resolve-response";
 import { defaultProviders, estimateCost, type ProviderDefinition } from "@restormel/keys";
 import { getProjectInWorkspace } from "$lib/server/db";
 
-function projectIdAndUid(
+async function projectIdAndUid(
   locals: App.Locals,
   projectId: string
-): Promise<{ projectId: string; userId: string } | null> | null {
-  // For this endpoint we only need ownership to read routes/steps.
-  // We keep the auth logic aligned with the other control-plane endpoints.
+): Promise<{ projectId: string; userId: string } | null> {
   if (!locals.user) return null;
   if (locals.user.authType === "gateway_key") {
-    if (locals.user.projectIdForKey !== projectId) return Promise.resolve(null);
-    return Promise.resolve({ projectId, userId: locals.user.uid });
+    if (locals.user.projectIdForKey !== projectId) return null;
+    return { projectId, userId: locals.user.uid };
   }
   if (locals.user.authType === "management_key" && locals.user.workspaceId) {
-    return getProjectInWorkspace(projectId, locals.user.workspaceId).then((p) =>
-      p ? { projectId, userId: p.userId } : null
-    );
+    const project = await getProjectInWorkspace(projectId, locals.user.workspaceId);
+    return project ? { projectId, userId: project.userId } : null;
   }
-  return Promise.resolve({ projectId, userId: locals.user.uid });
+  return { projectId, userId: locals.user.uid };
 }
 
 function computeCostUsd(args: {
   modelId: string;
-  providerPreference: string | null;
+  canonicalProvider: string | null;
   estimatedInputTokens?: number;
 }): number | null {
-  const { modelId, providerPreference, estimatedInputTokens } = args;
+  const { modelId, canonicalProvider, estimatedInputTokens } = args;
   if (estimatedInputTokens == null || !Number.isFinite(estimatedInputTokens) || estimatedInputTokens <= 0) return null;
 
-  const providers: ProviderDefinition[] = providerPreference
-    ? defaultProviders.filter((p) => p.id === providerPreference)
+  const forCost = canonicalApiToPolicyProvider(canonicalProvider ?? undefined) ?? canonicalProvider ?? null;
+  const providers: ProviderDefinition[] = forCost
+    ? defaultProviders.filter((p) => p.id === forCost)
     : defaultProviders;
 
   const est = estimateCost(modelId, providers);
   if (!est || est.inputPerMillion == null || est.outputPerMillion == null) return null;
 
   const million = estimatedInputTokens / 1_000_000;
-  // Minimal approximation: treat input and output tokens as the same magnitude.
   return million * (est.inputPerMillion + est.outputPerMillion);
 }
 
@@ -104,31 +103,56 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
           ? 409
           : outcome.failure.code === "route_disabled"
             ? 403
-            : outcome.failure.code === "no_key_available"
+            : outcome.failure.code === "no_key_available" || outcome.failure.code === "resolve_incomplete"
               ? 422
               : 404;
       return json(
-        { error: outcome.failure.code, message: outcome.failure.message ?? outcome.failure.code },
+        {
+          error: outcome.failure.code,
+          message: outcome.failure.message ?? outcome.failure.code,
+          ...(outcome.failure.code === "resolve_incomplete"
+            ? {
+                userMessage:
+                  "This route step is missing a provider or model. Set provider and model on the step (or a route default model) in the dashboard.",
+              }
+            : {}),
+          ...(outcome.failure.routeId ? { routeId: outcome.failure.routeId } : {}),
+        },
         { status: st }
       );
     }
+
     const resolved = outcome.result;
+
+    if (resolved.policyViolations && resolved.policyViolations.length > 0) {
+      return json(
+        {
+          error: "policy_blocked",
+          message: "All route steps were blocked by policy",
+          violations: resolved.policyViolations,
+        },
+        { status: 403 }
+      );
+    }
 
     const selectedStepId = resolved.selectedStepId ?? null;
     const perStepEstimates = resolved.steps.map((s) => {
-      const costUsd = s.modelId
-        ? computeCostUsd({
-            modelId: s.modelId,
-            providerPreference: s.providerPreference ?? null,
-            estimatedInputTokens: body.estimatedInputTokens,
-          })
-        : null;
+      const canonical = normalizeProviderToCanonicalApi(s.providerPreference);
+      const mid = s.modelId ?? resolved.route.defaultModelId ?? null;
+      const costUsd =
+        mid && typeof mid === "string"
+          ? computeCostUsd({
+              modelId: mid,
+              canonicalProvider: canonical,
+              estimatedInputTokens: body.estimatedInputTokens,
+            })
+          : null;
 
       return {
         stepId: s.id,
         orderIndex: s.orderIndex,
-        providerType: s.providerPreference ?? null,
-        modelId: s.modelId ?? null,
+        providerType: canonical,
+        modelId: mid,
         estimatedCostUsd: costUsd,
         wouldRun: selectedStepId === s.id,
         wouldBeSkippedBecause: !s.enabled
@@ -140,36 +164,23 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     });
 
     const selectedEstimate = perStepEstimates.find((e) => e.stepId === selectedStepId);
+    const estimatedCostUsd = selectedEstimate?.estimatedCostUsd ?? null;
+
+    const base = buildResolveSuccessData({
+      resolved,
+      traceId: typeof body.traceId === "string" ? body.traceId : null,
+      estimatedCostUsd,
+    });
 
     return json({
       data: {
-        contractVersion: "2026-03-25",
-        traceId: typeof body.traceId === "string" ? body.traceId : null,
-        routeId: resolved.route.id,
-        routeName: resolved.route.name,
-        providerType: resolved.providerType ?? null,
-        modelId: resolved.modelId ?? null,
-        switchReasonCode: resolved.switchReasonCode ?? null,
-        matchedCriteria: resolved.matchedCriteria ?? null,
-        fallbackCandidates: resolved.fallbackCandidates ?? [],
-        selectedStepId,
-        estimatedCostUsd: selectedEstimate?.estimatedCostUsd ?? null,
+        ...base,
         perStepEstimates,
         wouldRun: selectedStepId != null,
         switchOutcomePreview: {
           attemptNumber,
           failureKind: typeof body.failureKind === "string" ? body.failureKind.trim() : null,
           selectedOrderIndex: resolved.selectedOrderIndex ?? null,
-        },
-        decisionMetadata: {
-          selectedStepId,
-          selectedOrderIndex: resolved.selectedOrderIndex ?? null,
-          providerType: resolved.providerType ?? null,
-          modelId: resolved.modelId ?? null,
-          switchReasonCode: resolved.switchReasonCode ?? null,
-          matchedCriteria: resolved.matchedCriteria ?? null,
-          fallbackCandidates: resolved.fallbackCandidates ?? [],
-          estimatedCostUsd: selectedEstimate?.estimatedCostUsd ?? null,
         },
       },
     });
@@ -178,4 +189,3 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: "internal_error", detail: "route_simulate_failed" }, { status: 500 });
   }
 };
-

@@ -6,6 +6,7 @@
 export type {
   ResolveOptions,
   RouteResolveMetadata,
+  ResolveStepChainEntry,
   ResolveSuccess,
   ResolveError,
   ResolveResult,
@@ -58,6 +59,7 @@ export {
   isRouteUnpublished,
   isRouteDisabled,
   isNoKeyAvailable,
+  isResolveIncomplete,
   isUnauthorizedResolve,
   isPolicyBlockedError,
 } from "./client.js";

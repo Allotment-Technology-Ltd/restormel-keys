@@ -115,4 +115,60 @@ describe("resolveRouteForExecution", () => {
     if (!res.ok) throw new Error("expected ok");
     expect(res.result.selectedStep?.id).toBe("s2");
   });
+
+  it("emits canonical vertex for stored google provider preference", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.getRouteWithSteps).mockResolvedValueOnce({
+      route: { id: "r1", name: "ingestion", defaultModelId: "gemini-pro", environmentId: "env-1", version: 1, publishedVersion: 1 },
+      steps: [
+        {
+          id: "sg",
+          routeId: "r1",
+          orderIndex: 0,
+          providerPreference: "google",
+          modelId: "gemini-pro",
+          conditionBlock: null,
+          fallbackOn: "error",
+          timeoutMs: null,
+          enabled: true,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+        },
+      ],
+    } as any);
+
+    const { resolveRouteForExecution } = await import("./route-resolver");
+    const res = await resolveRouteForExecution("p1", "env-1", "u1");
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error("expected ok");
+    expect(res.result.providerType).toBe("vertex");
+  });
+
+  it("returns resolve_incomplete when policy passes but step has no model", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.getRouteWithSteps).mockResolvedValueOnce({
+      route: { id: "r1", name: "ingestion", defaultModelId: null, environmentId: "env-1", version: 1, publishedVersion: 1 },
+      steps: [
+        {
+          id: "sb",
+          routeId: "r1",
+          orderIndex: 0,
+          providerPreference: "openai",
+          modelId: null,
+          conditionBlock: null,
+          fallbackOn: "error",
+          timeoutMs: null,
+          enabled: true,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+        },
+      ],
+    } as any);
+
+    const { resolveRouteForExecution } = await import("./route-resolver");
+    const res = await resolveRouteForExecution("p1", "env-1", "u1");
+    expect(res.ok).toBe(false);
+    if (res.ok) throw new Error("expected failure");
+    expect(res.failure.code).toBe("resolve_incomplete");
+  });
 });

@@ -5,13 +5,23 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
 
-    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-25` and return stable
+    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-26` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
+
+    **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
+    `application/json` for errors under `/api/...` (including unknown routes and many server failures).
+
+    **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
+    `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
+    `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `POST .../validate-binding`, `POST .../recommend`,
+    `GET .../models`, `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
+    `GET .../providers/health`, `GET .../provider-bindings`, `GET/POST /api/policies`, policy lifecycle routes, `POST .../policies/evaluate`,
+    `GET /api/models`, `GET /api/catalog`, `POST /api/catalog/observations`.
 
 servers:
   - url: https://restormel-keys-gateway-main-bc13eba.zuplo.app
@@ -302,6 +312,7 @@ paths:
         | 404 | `no_route` | No matching route, wrong environment for `routeId`, or discovery found nothing |
         | 409 | `route_unpublished` | Explicit `routeId` exists but draft (`version` ≠ `publishedVersion`) |
         | 422 | `no_key_available` | Route matched but there is no enabled step to select (configure steps) |
+        | 422 | `resolve_incomplete` | A step passed policy but is missing executable `providerType` + `modelId` |
       operationId: resolveRoute
       tags: [Dashboard API]
       security:
@@ -352,13 +363,13 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-25" }
+                      contractVersion: { type: string, example: "2026-03-26" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string, description: Matched route ID }
                       routeName: { type: string, description: Matched route name }
                       route: { $ref: "#/components/schemas/RouteResolveMetadata" }
-                      providerType: { type: string, nullable: true }
-                      modelId: { type: string, nullable: true }
+                      providerType: { type: string, description: Canonical API slug; e.g. vertex for Google }
+                      modelId: { type: string, description: Non-null on HTTP 200 success }
                       explanation: { type: string }
                       selectedStepId: { type: string, nullable: true }
                       selectedOrderIndex: { type: integer, nullable: true }
@@ -382,6 +393,10 @@ paths:
                         type: object
                         nullable: true
                         additionalProperties: true
+                      stepChain:
+                        type: array
+                        description: All enabled steps in order; exactly one row has selected true on success
+                        items: { $ref: "#/components/schemas/ResolveStepChainEntry" }
         "401":
           description: Unauthorized (`error` typically `unauthorized`)
           content:
@@ -403,7 +418,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "422":
-          description: No enabled step (`error` `no_key_available`)
+          description: No enabled step (`no_key_available`) or incomplete executable step (`resolve_incomplete`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -412,6 +427,131 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/models:
+    get:
+      summary: List models (catalog slice)
+      operationId: listModelsPublic
+      tags: [Dashboard API]
+      description: Public read; optional filters `lifecycleState`, `family`, `limit`, `offset`.
+      parameters:
+        - name: lifecycleState
+          in: query
+          schema: { type: string }
+        - name: family
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Model rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+
+  /api/catalog:
+    get:
+      summary: Canonical provider + model catalog
+      operationId: getCanonicalCatalog
+      tags: [Dashboard API]
+      description: Versioned feed (`contractVersion`); see docs/guides/canonical-catalog and catalog-governance.
+      parameters:
+        - name: lifecycleState
+          in: query
+          schema: { type: string }
+        - name: family
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+        - name: includeUnhealthy
+          in: query
+          schema: { type: string, enum: ["1"] }
+        - name: skipDefaultAllowlist
+          in: query
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: Catalog payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /api/catalog/observations:
+    post:
+      summary: Report catalog model observation (crowd signal)
+      operationId: postCatalogObservation
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Ack
+        "401":
+          description: Unauthorized
+
+  /api/projects/{projectId}/models:
+    get:
+      summary: List models (authenticated project scope)
+      operationId: listProjectModels
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lifecycleState
+          in: query
+          schema: { type: string }
+        - name: family
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Models for selectors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project not found
 
   /api/policies:
     get:
@@ -709,12 +849,12 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-25" }
+                      contractVersion: { type: string, example: "2026-03-26" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string }
                       routeName: { type: string }
-                      providerType: { type: string, nullable: true }
-                      modelId: { type: string, nullable: true }
+                      providerType: { type: string, description: Canonical API slug; e.g. vertex for Google }
+                      modelId: { type: string, description: Non-null when simulation would run }
                       switchReasonCode: { type: string, nullable: true }
                       matchedCriteria:
                         type: object
@@ -725,6 +865,9 @@ paths:
                         items:
                           type: object
                           additionalProperties: true
+                      stepChain:
+                        type: array
+                        items: { $ref: "#/components/schemas/ResolveStepChainEntry" }
                       selectedStepId: { type: string, nullable: true }
                       estimatedCostUsd: { type: number, nullable: true }
                       perStepEstimates:
@@ -744,12 +887,20 @@ paths:
           description: Validation error
         "401":
           description: Unauthorized
+        "403":
+          description: Forbidden — `policy_blocked` when every step blocked by policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
         "404":
           description: Route not found / no route (`error` `no_route`)
         "409":
           description: Route unpublished (`error` `route_unpublished`)
         "422":
-          description: No enabled step (`error` `no_key_available`)
+          description: `no_key_available` or `resolve_incomplete`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
 
   /api/projects/{projectId}/routes/{routeId}/publish:
     post:
@@ -770,6 +921,18 @@ paths:
       responses:
         "200":
           description: Route published
+        "400":
+          description: Validation failed — missing executable provider/model on enabled steps
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: publish_validation_failed }
+                  message: { type: string }
+                  errors:
+                    type: array
+                    items: { $ref: "#/components/schemas/RoutePublishFieldError" }
         "401":
           description: Unauthorized
         "404":
@@ -1119,8 +1282,9 @@ components:
           type: string
           description: |
             Machine-readable code. Resolve examples: `unauthorized`, `no_route`, `route_unpublished`, `route_disabled`,
-            `policy_blocked`, `no_key_available`.
+            `policy_blocked`, `no_key_available`, `resolve_incomplete`, `publish_validation_failed`.
         message: { type: string }
+        userMessage: { type: string, description: Operator hint for some 422 errors }
         detail: { type: string }
         routeId: { type: string, description: Present when the error refers to a specific route }
         violations:
@@ -1129,9 +1293,25 @@ components:
           items:
             type: object
             additionalProperties: true
+    ResolveStepChainEntry:
+      type: object
+      properties:
+        stepId: { type: string }
+        orderIndex: { type: integer }
+        providerType: { type: string, nullable: true }
+        modelId: { type: string, nullable: true }
+        enabled: { type: boolean }
+        selected: { type: boolean }
+    RoutePublishFieldError:
+      type: object
+      properties:
+        stepId: { type: string }
+        orderIndex: { type: integer }
+        field: { type: string }
+        message: { type: string }
     RouteResolveMetadata:
       type: object
-      description: Route fields returned on successful resolve (`contractVersion` 2026-03-25+)
+      description: Route fields returned on successful resolve (`contractVersion` 2026-03-26+)
       properties:
         id: { type: string }
         environmentId: { type: string }
