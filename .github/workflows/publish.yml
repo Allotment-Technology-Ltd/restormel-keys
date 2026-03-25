@@ -68,9 +68,10 @@ jobs:
 
       - name: Build @restormel/doctor
         run: pnpm --filter @restormel/doctor run build
+      # pnpm publish applies the same workspace dep rewrites as other packages; raw npm publish
+      # warned about bin name normalization for restormel-doctor.
       - name: Publish @restormel/doctor to npm
-        working-directory: packages/doctor
-        run: npm publish --access public
+        run: pnpm --filter @restormel/doctor publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## keys-v0.2.11 (2026-03-26)
+
+**npm publish** (tag `keys-v0.2.11`): Republish train after `keys-v0.2.10` partially completed — npm forbids re-tarring the same version (`E403` on `@restormel/doctor@0.1.6`). Bumps: `@restormel/keys@0.2.11` (no API change from 0.2.10), `@restormel/keys-svelte@0.1.4`, `@restormel/aaif@0.0.4`, `@restormel/mcp@0.1.4`, `@restormel/doctor@0.1.7`, `@restormel/validate@0.1.7`, `@restormel/keys-cli@0.1.7`. CI: publish **doctor** via `pnpm publish` (not bare `npm publish`); normalize CLI `bin` paths to `dist/...` (no `./`) per `npm pkg fix`.
+
 ## keys-v0.2.10 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.10`): `@restormel/keys@0.2.10` — dashboard types for resolve/simulate `contractVersion` `2026-03-26`, `stepChain` on success, `userMessage` / `resolve_incomplete` on errors, `isResolveIncomplete()` guard.

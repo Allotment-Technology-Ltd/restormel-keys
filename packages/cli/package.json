@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-cli",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "CLI for Restormel Keys: init, add keys, validate, doctor, cost estimate.",
   "keywords": [
     "restormel",
@@ -23,7 +23,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "keys": "./dist/index.js"
+    "keys": "dist/index.js"
   },
   "publishConfig": {
     "access": "public"
@@ -40,9 +40,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@restormel/doctor": "workspace:^0.1.4",
-    "@restormel/keys": "workspace:^0.2.7",
-    "@restormel/validate": "workspace:^0.1.4",
+    "@restormel/doctor": "workspace:^0.1.7",
+    "@restormel/keys": "workspace:^0.2.11",
+    "@restormel/validate": "workspace:^0.1.7",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "inquirer": "^9.2.23"
