@@ -18,8 +18,8 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 | [@restormel/keys-svelte](packages/svelte) | 0.1.0 | Svelte 5: KeyManager, ModelSelector, CostEstimator |
 | [@restormel/keys-elements](packages/elements) | 0.1.0 | Web Components: `<rk-key-manager>`, `<rk-model-selector>`, `<rk-cost-estimator>` |
 | [@restormel/keys-react](packages/react) | 0.1.0 | React 18+: KeyManager, ModelSelector, CostEstimator, hooks, KeysProvider |
-| [@restormel/doctor](packages/doctor) | 0.1.8 | OSS CLI: setup and health checks (`restormel-doctor`) |
-| [@restormel/validate](packages/validate) | 0.1.8 | OSS CLI: credential/config validation (`restormel-validate`) |
+| [@restormel/doctor](packages/doctor) | 0.1.9 | OSS CLI: setup and health checks (`restormel-doctor`) |
+| [@restormel/validate](packages/validate) | 0.1.9 | OSS CLI: credential/config validation (`restormel-validate`) |
 | [@restormel/keys-cli](packages/cli) | 0.1.2 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
 | [@restormel/aaif](packages/aaif) | 0.0.1 | AAIF contract + runtime helper (routing + cost estimation) |
 | [@restormel/mcp](packages/mcp) | 0.1.0 | MCP tools + stdio server (`restormel-mcp`) for agents/IDEs |

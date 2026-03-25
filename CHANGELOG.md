@@ -2,6 +2,12 @@
 
 Single record of meaningful repo changes.
 
+## keys-v0.2.13 (2026-03-26)
+
+**npm publish** (tag `keys-v0.2.13`): **Recovery / complete train** after a failed or partial `keys-v0.2.12` publish and/or dashboard image build (`COPY vendor ./vendor` missing path). Same product content as **0.2.12** (Voyage route steps, etc.) plus repo **`vendor/.gitkeep`** on the release commit. Versions: `@restormel/keys@0.2.13`, `keys-svelte@0.1.6`, `aaif@0.0.6`, `mcp@0.1.6`, `doctor@0.1.9`, `validate@0.1.9`, `keys-cli@0.1.9`.
+
+**If `keys-v0.2.12` already published some packages:** npm may have stopped mid-train; use this tag to finish. **Do not re-push tag `keys-v0.2.12`** (workflow is tag-triggered; use **`keys-v0.2.13`** only).
+
 ## keys-v0.2.12 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.12`): `@restormel/keys@0.2.12` (no new dashboard client surface beyond prior release). Train bumps: `keys-svelte@0.1.5`, `aaif@0.0.5`, `mcp@0.1.5`, `doctor@0.1.8`, `validate@0.1.8`, `keys-cli@0.1.8`.

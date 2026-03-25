@@ -1,6 +1,6 @@
 {
   "name": "@restormel/validate",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Restormel Validate — open-source CLI for credential and configuration validation.",
   "keywords": [
     "restormel",
@@ -41,7 +41,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@restormel/keys": "workspace:^0.2.12",
+    "@restormel/keys": "workspace:^0.2.13",
     "chalk": "^5.3.0",
     "commander": "^12.1.0"
   },
