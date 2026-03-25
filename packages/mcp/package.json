@@ -1,6 +1,6 @@
 {
   "name": "@restormel/mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "MCP tool definitions for Restormel — models, providers, cost, routing, entitlements, and docs.",
   "keywords": [
     "mcp",

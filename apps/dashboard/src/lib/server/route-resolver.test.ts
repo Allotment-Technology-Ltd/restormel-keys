@@ -171,4 +171,67 @@ describe("resolveRouteForExecution", () => {
     if (res.ok) throw new Error("expected failure");
     expect(res.failure.code).toBe("resolve_incomplete");
   });
+
+  it("selects voyage first in a mixed voyage → google → anthropic chain", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.getRouteWithSteps).mockResolvedValueOnce({
+      route: { id: "r1", name: "ingestion", defaultModelId: null, environmentId: "env-1", version: 1, publishedVersion: 1 },
+      steps: [
+        {
+          id: "sv",
+          routeId: "r1",
+          orderIndex: 0,
+          providerPreference: "voyage",
+          modelId: "voyage-3",
+          conditionBlock: null,
+          fallbackOn: "error",
+          timeoutMs: null,
+          enabled: true,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+        },
+        {
+          id: "sg",
+          routeId: "r1",
+          orderIndex: 1,
+          providerPreference: "google",
+          modelId: "gemini-1.5-flash",
+          conditionBlock: null,
+          fallbackOn: "error",
+          timeoutMs: null,
+          enabled: true,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+        },
+        {
+          id: "sa",
+          routeId: "r1",
+          orderIndex: 2,
+          providerPreference: "anthropic",
+          modelId: "claude-3-5-sonnet",
+          conditionBlock: null,
+          fallbackOn: "error",
+          timeoutMs: null,
+          enabled: true,
+          createdAt: new Date(1).toISOString(),
+          updatedAt: new Date(1).toISOString(),
+        },
+      ],
+    } as any);
+
+    const { resolveRouteForExecution } = await import("./route-resolver");
+    const res = await resolveRouteForExecution("p1", "env-1", "u1");
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error("expected ok");
+    expect(res.result.selectedStepId).toBe("sv");
+    expect(res.result.providerType).toBe("voyage");
+    expect(res.result.modelId).toBe("voyage-3");
+    const chain = res.result.stepChain ?? [];
+    expect(chain.map((c) => c.stepId)).toEqual(["sv", "sg", "sa"]);
+    expect(chain[0]?.selected).toBe(true);
+    const fallbacks = res.result.fallbackCandidates ?? [];
+    expect(fallbacks.map((f) => f.stepId)).toEqual(["sg", "sa"]);
+    expect(fallbacks[0]?.providerType).toBe("vertex");
+    expect(fallbacks[1]?.providerType).toBe("anthropic");
+  });
 });

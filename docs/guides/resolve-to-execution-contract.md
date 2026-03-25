@@ -19,7 +19,7 @@ A successful `POST /api/projects/{projectId}/resolve` guarantees that Restormel 
 
 | Persisted step label (dashboard / DB) | JSON `providerType` |
 |--------------------------------------|---------------------|
-| `openai`, `anthropic`, `openrouter`, `vercel`, `portkey` | same slug |
+| `openai`, `anthropic`, `openrouter`, `vercel`, `portkey`, `voyage` | same slug |
 | `google`, `vertex`, `vertex_ai`, … | `vertex` |
 
 Policy and cost estimation still use the `google` id internally where `@restormel/keys` `defaultProviders` expects it; hosts should key execution off **`vertex`** for Google/Vertex.
@@ -86,7 +86,7 @@ Canonical API tables: [OpenAPI spec](../api/openapi.yaml) (`POST .../resolve`). 
 
 ### `@restormel/keys` (npm) — resolve, guards, validate-binding
 
-Use **`@restormel/keys@0.2.11`** or newer from npm (or a tarball built from this repo at that version). Replace legacy `file:vendor/...restormel-keys-0.2.5.tgz`-style pins once published or after you regenerate a vendor tarball from `packages/core`.
+Use **`@restormel/keys@0.2.12`** or newer from npm (or a tarball built from this repo at that version). Replace legacy `file:vendor/...restormel-keys-0.2.5.tgz`-style pins once published or after you regenerate a vendor tarball from `packages/core`.
 
 ```ts
 import {

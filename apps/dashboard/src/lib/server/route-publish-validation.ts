@@ -39,7 +39,7 @@ export function validateRouteStepsForPublish(
           orderIndex: s.orderIndex,
           field: "providerPreference",
           message:
-            "Unknown or empty provider. Use openai, anthropic, google, vertex (alias for google), openrouter, vercel, or portkey.",
+            "Unknown or empty provider. Use openai, anthropic, google, vertex (alias for google), openrouter, vercel, portkey, or voyage.",
         });
       } else {
         errors.push({

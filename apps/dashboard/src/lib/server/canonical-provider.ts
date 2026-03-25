@@ -11,11 +11,26 @@ export const CANONICAL_PROVIDER_TYPES = [
   "openrouter",
   "vercel",
   "portkey",
+  "voyage",
 ] as const;
 
 export type CanonicalProviderType = (typeof CANONICAL_PROVIDER_TYPES)[number];
 
 const CANONICAL_SET = new Set<string>(CANONICAL_PROVIDER_TYPES);
+
+/**
+ * Allowed values for persisted `provider_preference` on route steps (after `normalizeProviderForStorage`).
+ * `vertex` inbound is stored as `google`; include `google` here for DB round-trips.
+ */
+export const ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS = new Set([
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "vercel",
+  "portkey",
+  "voyage",
+]);
 
 /** Normalize free-text / legacy labels to slug form before alias map. */
 function slugProviderInput(raw: string): string {

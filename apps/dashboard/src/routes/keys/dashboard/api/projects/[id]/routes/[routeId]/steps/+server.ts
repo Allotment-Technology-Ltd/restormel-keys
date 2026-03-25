@@ -1,9 +1,10 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { createRouteStep, getModel, getRoute, listRouteSteps } from "$lib/server/db";
-import { normalizeProviderForStorage } from "$lib/server/canonical-provider";
-
-const PROVIDER_TYPES = new Set(["openai", "anthropic", "google", "openrouter", "vercel", "portkey"]);
+import {
+  normalizeProviderForStorage,
+  ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS,
+} from "$lib/server/canonical-provider";
 const FALLBACK_ON = new Set(["error", "rate_limit", "no_key", "policy_block", "any"]);
 
 function projectScope(locals: App.Locals, projectId: string): { projectId: string; userId: string } | null {
@@ -73,9 +74,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   }
   if (typeof providerPreference === "string") {
     const normalized = normalizeProviderForStorage(providerPreference);
-    if (!normalized || !PROVIDER_TYPES.has(normalized)) {
+    if (!normalized || !ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS.has(normalized)) {
       return invalid(
-        `providerPreference must be one of: ${Array.from(PROVIDER_TYPES).join(", ")} (aliases: vertex → google)`
+        `providerPreference must be one of: ${[...ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS].sort().join(", ")} (aliases: vertex → google)`
       );
     }
     providerPreference = normalized;

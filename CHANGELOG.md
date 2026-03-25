@@ -2,6 +2,16 @@
 
 Single record of meaningful repo changes.
 
+## keys-v0.2.12 (2026-03-26)
+
+**npm publish** (tag `keys-v0.2.12`): `@restormel/keys@0.2.12` (no new dashboard client surface beyond prior release). Train bumps: `keys-svelte@0.1.5`, `aaif@0.0.5`, `mcp@0.1.5`, `doctor@0.1.8`, `validate@0.1.8`, `keys-cli@0.1.8`.
+
+**Dashboard / route API:** **`voyage`** is a first-class route-step `providerPreference` (create/patch/publish/resolve/simulate). Canonical JSON `providerType` for Voyage is **`voyage`**. **`model-catalog-seed.json`** adds Voyage embedding models (`voyage-3`, `voyage-3-lite`, `voyage-large-2`, `voyage-large-2-instruct`, `voyage-code-2`) so step `modelId` validation matches catalog rows. OpenAPI route-step enums updated.
+
+**Migration (operators):** After deploy, run catalog ingestion so Postgres has Voyage models: from `apps/dashboard`, `pnpm run seed:catalog` with `DATABASE_URL` (see `docs/reference/model-catalog-ingestion.md`). Until ingested, step APIs may reject unknown `modelId` for Voyage even when `providerPreference` is valid.
+
+**Sophia / hosts:** No new env flags. Ensure a **Voyage provider integration** (BYOK key) exists in the workspace if execution requires a key; routing metadata uses `voyage` the same way as other direct providers. Re-show Voyage in admin UIs; use catalog model ids above for embedding steps.
+
 ## keys-v0.2.11 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.11`): Republish train after `keys-v0.2.10` partially completed — npm forbids re-tarring the same version (`E403` on `@restormel/doctor@0.1.6`). Bumps: `@restormel/keys@0.2.11` (no API change from 0.2.10), `@restormel/keys-svelte@0.1.4`, `@restormel/aaif@0.0.4`, `@restormel/mcp@0.1.4`, `@restormel/doctor@0.1.7`, `@restormel/validate@0.1.7`, `@restormel/keys-cli@0.1.7`. CI: publish **doctor** via `pnpm publish` (not bare `npm publish`); normalize CLI `bin` paths to `dist/...` (no `./`) per `npm pkg fix`.

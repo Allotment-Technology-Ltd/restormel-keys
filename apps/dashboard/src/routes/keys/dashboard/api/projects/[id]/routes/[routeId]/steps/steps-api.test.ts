@@ -100,6 +100,36 @@ describe("Steps API", () => {
     expect(body.error).toBe("forbidden");
   });
 
+  it("POST accepts voyage with a catalog model id", async () => {
+    const db = await import("$lib/server/db");
+    vi.mocked(db.getModel).mockResolvedValueOnce({ id: "voyage-3" });
+    vi.mocked(db.createRouteStep).mockResolvedValueOnce({
+      id: "sv1",
+      routeId: "r1",
+      orderIndex: 2,
+      providerPreference: "voyage",
+      modelId: "voyage-3",
+      conditionBlock: null,
+      fallbackOn: "error",
+      timeoutMs: null,
+      enabled: true,
+      createdAt: new Date(1).toISOString(),
+      updatedAt: new Date(1).toISOString(),
+    });
+    const { POST } = await import("./+server");
+    const res = await POST(
+      mockEvent(
+        { id: "p1", routeId: "r1" },
+        { orderIndex: 2, providerPreference: "voyage", modelId: "voyage-3", fallbackOn: "error", enabled: true },
+        { user: { uid: "u1", authType: "gateway_key", projectIdForKey: "p1", keyId: "k1" } }
+      )
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.providerPreference).toBe("voyage");
+    expect(body.data.modelId).toBe("voyage-3");
+  });
+
   it("POST invalid providerPreference returns 400", async () => {
     const { POST } = await import("./+server");
     const res = await POST(

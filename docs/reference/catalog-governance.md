@@ -61,3 +61,4 @@ When `validation.mode === "openai_compatible"` and `validation.requiresBaseUrl =
 
 - Catalog variants and `providerTypes` on models use **integration / cost** ids (e.g. **`google`** for Vertex/Gemini), matching `@restormel/keys` `defaultProviders` and policy evaluation.
 - **`POST .../resolve`** and **`POST .../routes/{routeId}/simulate`** success payloads emit **`vertex`** as the canonical JSON `providerType` for that same provider. When mapping resolve output to catalog rows, treat `vertex` ↔ `google` as the same logical provider at the integration layer.
+- **Voyage embeddings:** route steps use persisted `voyage` and resolve/simulate emit canonical **`voyage`**. Catalog variants use `providerIntegrationType: "voyage"` for embedding models (`voyage-3`, etc.); ids align with `@restormel/keys` `voyageProvider.models`.

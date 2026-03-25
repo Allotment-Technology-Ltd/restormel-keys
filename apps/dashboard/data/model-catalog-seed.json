@@ -1,7 +1,7 @@
 {
   "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
   "source": "static",
-  "lastUpdated": "2026-03-24",
+  "lastUpdated": "2026-03-26",
   "models": [
     {
       "id": "gpt-4o",
@@ -441,6 +441,116 @@
       "sourceLastVerifiedAt": null,
       "variants": [
         { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash-8b", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-flash-8b" }
+      ]
+    },
+    {
+      "id": "voyage-3",
+      "canonicalName": "voyage-3",
+      "family": "voyage",
+      "lifecycleState": "active",
+      "description": "Voyage AI embedding model (voyage-3).",
+      "contextWindow": 32000,
+      "maxOutputTokens": 0,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["embedding"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "voyage", "providerModelId": "voyage-3", "availabilityStatus": "available", "pricingRef": null }
+      ]
+    },
+    {
+      "id": "voyage-3-lite",
+      "canonicalName": "voyage-3-lite",
+      "family": "voyage",
+      "lifecycleState": "active",
+      "description": "Voyage AI embedding model (voyage-3-lite).",
+      "contextWindow": 32000,
+      "maxOutputTokens": 0,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["embedding"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "voyage", "providerModelId": "voyage-3-lite", "availabilityStatus": "available", "pricingRef": null }
+      ]
+    },
+    {
+      "id": "voyage-large-2",
+      "canonicalName": "voyage-large-2",
+      "family": "voyage",
+      "lifecycleState": "active",
+      "description": "Voyage AI embedding model (voyage-large-2).",
+      "contextWindow": 16000,
+      "maxOutputTokens": 0,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["embedding"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "voyage", "providerModelId": "voyage-large-2", "availabilityStatus": "available", "pricingRef": null }
+      ]
+    },
+    {
+      "id": "voyage-large-2-instruct",
+      "canonicalName": "voyage-large-2-instruct",
+      "family": "voyage",
+      "lifecycleState": "active",
+      "description": "Voyage AI embedding model (voyage-large-2-instruct).",
+      "contextWindow": 16000,
+      "maxOutputTokens": 0,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["embedding"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "voyage", "providerModelId": "voyage-large-2-instruct", "availabilityStatus": "available", "pricingRef": null }
+      ]
+    },
+    {
+      "id": "voyage-code-2",
+      "canonicalName": "voyage-code-2",
+      "family": "voyage",
+      "lifecycleState": "active",
+      "description": "Voyage AI code embedding model (voyage-code-2).",
+      "contextWindow": 16000,
+      "maxOutputTokens": 0,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["embedding"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "voyage", "providerModelId": "voyage-code-2", "availabilityStatus": "available", "pricingRef": null }
       ]
     }
   ]
