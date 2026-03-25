@@ -44,11 +44,11 @@ pnpm run seed:catalog:from-keys
 
 This derives candidate models/variants from `defaultProviders` in `@restormel/keys` and upserts them into the same tables. Existing richer metadata in `models` is preserved on conflict; this script mainly ensures the rows exist for all built-in provider model strings.
 
-## Weekly automation
+## Daily automation
 
-The repository includes a scheduled GitHub Action to keep the catalog aligned weekly:
+The repository includes a scheduled GitHub Action to keep the catalog aligned daily:
 
-- Workflow: `.github/workflows/model-catalog-weekly.yml`
+- Workflow: `.github/workflows/model-catalog-weekly.yml` (runs daily)
 - Command: `pnpm --filter dashboard seed:catalog:from-keys`
 - Requirements: set a Neon Postgres connection string in repo secrets as `DATABASE_URL` and ensure dashboard migrations (including control-plane tables) are already applied in that DB
 

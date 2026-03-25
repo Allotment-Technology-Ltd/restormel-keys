@@ -1309,6 +1309,114 @@ export async function listProviderModelVariantsByModelIds(
   return (rows as Record<string, unknown>[]).map(mapVariantRow);
 }
 
+export type CatalogModelObservationRecord = {
+  catalogProviderId: string;
+  providerModelId: string;
+  deprecatedReportCount: number;
+  retiredReportCount: number;
+  firstReportedAt: number | null;
+  lastReportedAt: number | null;
+};
+
+/** Upsert aggregated crowd observation for a (provider, provider model id) pair. */
+export async function upsertCatalogModelObservation(params: {
+  catalogProviderId: string;
+  providerModelId: string;
+  signal: "deprecated" | "retired";
+  workspaceId: string | null;
+  providerHttpStatus?: number | null;
+  providerErrorCode?: string | null;
+}): Promise<void> {
+  const sql = getSql();
+  const now = Date.now();
+  const incDep = params.signal === "deprecated" ? 1 : 0;
+  const incRet = params.signal === "retired" ? 1 : 0;
+  const code =
+    typeof params.providerErrorCode === "string" ? params.providerErrorCode.trim().slice(0, 128) : null;
+  const http =
+    typeof params.providerHttpStatus === "number" && Number.isFinite(params.providerHttpStatus)
+      ? Math.trunc(params.providerHttpStatus)
+      : null;
+
+  await sql`
+    INSERT INTO catalog_model_observations (
+      catalog_provider_id,
+      provider_model_id,
+      deprecated_report_count,
+      retired_report_count,
+      first_reported_at,
+      last_reported_at,
+      last_report_workspace_id,
+      last_provider_http_status,
+      last_provider_error_code
+    ) VALUES (
+      ${params.catalogProviderId},
+      ${params.providerModelId},
+      ${incDep},
+      ${incRet},
+      ${now},
+      ${now},
+      ${params.workspaceId},
+      ${http},
+      ${code}
+    )
+    ON CONFLICT (catalog_provider_id, provider_model_id) DO UPDATE SET
+      deprecated_report_count = catalog_model_observations.deprecated_report_count + ${incDep},
+      retired_report_count = catalog_model_observations.retired_report_count + ${incRet},
+      first_reported_at = COALESCE(catalog_model_observations.first_reported_at, EXCLUDED.first_reported_at),
+      last_reported_at = EXCLUDED.last_reported_at,
+      last_report_workspace_id = EXCLUDED.last_report_workspace_id,
+      last_provider_http_status = EXCLUDED.last_provider_http_status,
+      last_provider_error_code = EXCLUDED.last_provider_error_code
+  `;
+}
+
+/** Load crowd observations for catalog merge (keyed by `providerId\\tproviderModelId`). */
+export async function listCatalogModelObservationsForPairs(
+  pairs: { catalogProviderId: string; providerModelId: string }[]
+): Promise<Map<string, CatalogModelObservationRecord>> {
+  const sql = getSql();
+  const unique = Array.from(
+    new Map(
+      pairs
+        .map((p) => ({
+          catalogProviderId: p.catalogProviderId.trim(),
+          providerModelId: p.providerModelId.trim(),
+        }))
+        .filter((p) => p.catalogProviderId.length > 0 && p.providerModelId.length > 0)
+        .map((p) => [`${p.catalogProviderId}\t${p.providerModelId}`, p] as const)
+    ).values()
+  );
+  if (unique.length === 0) return new Map();
+
+  const keys = unique.map((p) => `${p.catalogProviderId}\t${p.providerModelId}`);
+  const rows = await sql`
+    SELECT catalog_provider_id AS "catalogProviderId",
+           provider_model_id AS "providerModelId",
+           deprecated_report_count AS "deprecatedReportCount",
+           retired_report_count AS "retiredReportCount",
+           first_reported_at AS "firstReportedAt",
+           last_reported_at AS "lastReportedAt"
+    FROM catalog_model_observations
+    WHERE (catalog_provider_id || E'\t' || provider_model_id) = ANY(${keys})
+  `;
+
+  const out = new Map<string, CatalogModelObservationRecord>();
+  for (const r of rows as Record<string, unknown>[]) {
+    const cp = r.catalogProviderId as string;
+    const pm = r.providerModelId as string;
+    out.set(`${cp}\t${pm}`, {
+      catalogProviderId: cp,
+      providerModelId: pm,
+      deprecatedReportCount: Number(r.deprecatedReportCount ?? 0),
+      retiredReportCount: Number(r.retiredReportCount ?? 0),
+      firstReportedAt: r.firstReportedAt != null ? Number(r.firstReportedAt) : null,
+      lastReportedAt: r.lastReportedAt != null ? Number(r.lastReportedAt) : null,
+    });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Routes (project/environment-scoped; first-class backend objects)
 // ---------------------------------------------------------------------------

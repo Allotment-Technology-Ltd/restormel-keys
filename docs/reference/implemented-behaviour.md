@@ -30,7 +30,7 @@
 - **Access:** List/create/revoke Gateway Keys across projects (key prefix only in UI; raw key shown once on create).
 - **Provider Integrations:** List, create, connect providers; bindings to projects/environments; verification.
 - **Models:** Catalog (list, detail, lifecycle badges, source verification, migration section); seed/ingestion via `pnpm run seed:catalog`.
-- **Public catalog API:** `GET /keys/dashboard/api/catalog` (no auth) — versioned providers + models for downstream apps; user-facing steps at `/keys/docs/guides/canonical-catalog`.
+- **Public catalog API:** `GET /keys/dashboard/api/catalog` (no auth) — versioned providers + models for downstream apps; **default response filters to `@restormel/keys` default provider model lists** (drops stale DB-only rows). Query `skipDefaultAllowlist=1` for diagnostics. User-facing steps at `/keys/docs/guides/canonical-catalog`.
 - **Routes:** List routes; project → routes → route detail (steps, default model, lifecycle warnings for deprecated/retiring models).
 - **Policies:** List, create, detail; policy bindings (groundwork).
 - **Analytics:** Overview (request count, latency, error rate, spend placeholder); mix by provider, model, route; period selector (24h, 7d, 30d, 90d); recent requests; links to Logs and model catalog.

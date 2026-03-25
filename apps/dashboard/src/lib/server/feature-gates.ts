@@ -1,4 +1,5 @@
 import type { IntegrationsLocals } from "$lib/server/integrations-auth";
+import { foundingPromoMaxUsers, getAuthUserSignupRank, getWorkspace } from "$lib/server/db";
 
 export type ProFeature = "healthcheck" | "embedding";
 
@@ -31,7 +32,25 @@ export function isProFeatureEnabled(feature: ProFeature): boolean {
  * Placeholder for future billing-based entitlements. For now, this is purely env-gated.
  * We keep the signature local-aware so we can add workspace plan checks later.
  */
-export function hasProAccess(_locals: IntegrationsLocals, feature: ProFeature): boolean {
+export async function hasProAccess(locals: IntegrationsLocals, feature: ProFeature): Promise<boolean> {
+  const cap = foundingPromoMaxUsers();
+  if (cap > 0) {
+    try {
+      let founderSubjectUserId: string | null = null;
+      if (locals.user?.uid) {
+        founderSubjectUserId = locals.user.uid;
+      } else if (locals.user?.authType === "management_key" && locals.user.workspaceId) {
+        const workspace = await getWorkspace(locals.user.workspaceId);
+        founderSubjectUserId = workspace?.ownerUserId ?? null;
+      }
+      if (founderSubjectUserId) {
+        const rank = await getAuthUserSignupRank(founderSubjectUserId);
+        if (rank != null && rank <= cap) return true;
+      }
+    } catch {
+      // Ignore founder lookup failures and fall through to existing env gate behavior.
+    }
+  }
   return isProFeatureEnabled(feature);
 }
 

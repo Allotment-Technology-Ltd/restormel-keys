@@ -13,7 +13,7 @@ import { listProviderIntegrations, listPolicies, listModels, listProjectsByWorks
 export const GET: RequestHandler = async ({ locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
   if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
-  if (!hasProAccess(locals, "embedding")) {
+  if (!(await hasProAccess(locals, "embedding"))) {
     return json({ error: "Pro feature required" }, { status: 403 });
   }
 

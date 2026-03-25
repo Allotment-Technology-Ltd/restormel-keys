@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
     throw redirect(302, `${DASHBOARD_BASE}/login?redirect=${encodeURIComponent(url.pathname)}`);
   }
 
-  const pro = hasProAccess(locals, "healthcheck");
+  const pro = await hasProAccess(locals, "healthcheck");
 
   const projectId = url.searchParams.get("projectId");
   const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";

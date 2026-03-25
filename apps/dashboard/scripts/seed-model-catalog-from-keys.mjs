@@ -39,6 +39,10 @@ async function main() {
   }
 
   const sql = neon(url);
+  // Treat "derived-from-@restormel/keys sync" as a real verification timestamp for catalog freshness.
+  // This does not prove provider model availability on the wire; it marks when our curated adapter lists
+  // were last applied to the DB.
+  const nowMs = Date.now();
 
   // Fail fast with actionable guidance when the DB wasn't migrated yet.
   const [
@@ -121,12 +125,13 @@ async function main() {
         NULL,
         NULL,
         NULL,
-        NULL
+        ${nowMs}
       )
       ON CONFLICT (id) DO UPDATE SET
         canonical_name = EXCLUDED.canonical_name,
         family = COALESCE(models.family, EXCLUDED.family),
-        lifecycle_state = COALESCE(models.lifecycle_state, EXCLUDED.lifecycle_state)
+        lifecycle_state = COALESCE(models.lifecycle_state, EXCLUDED.lifecycle_state),
+        source_last_verified_at = EXCLUDED.source_last_verified_at
     `;
   }
 
@@ -155,7 +160,7 @@ async function main() {
         NULL,
         NULL,
         NULL,
-        NULL
+        ${nowMs}
       )
       ON CONFLICT (id) DO UPDATE SET
         provider_model_id = provider_model_variants.provider_model_id,
@@ -164,7 +169,7 @@ async function main() {
         pricing_ref = COALESCE(provider_model_variants.pricing_ref, EXCLUDED.pricing_ref),
         rate_limit_ref = COALESCE(provider_model_variants.rate_limit_ref, EXCLUDED.rate_limit_ref),
         metadata = COALESCE(provider_model_variants.metadata, EXCLUDED.metadata),
-        source_last_verified_at = COALESCE(provider_model_variants.source_last_verified_at, EXCLUDED.source_last_verified_at)
+        source_last_verified_at = EXCLUDED.source_last_verified_at
     `;
   }
 

@@ -130,9 +130,11 @@ const viableCatalog = filterCanonicalCatalogForViability(catalog, {
 // degradedReason explains the fallback trigger
 ```
 
-The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), and model variants. This is the canonical path for downstream BYOK UIs.
+The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), model variants, and `externalSignals.freshness` (contract v5+) with `allFresh` and per-signal `isFresh` / `ageMs` vs SLO `maxAgeMs` for degrading UI when runtime samples are stale.
 
 **Options:** `fetchCanonicalCatalog({ limit, offset, lifecycleState, family, includeUnhealthy: true })` — the last maps to `includeUnhealthy=1` for deprecated models and non-available variants (operators only).
+
+**Crowd observations (contract `2026-03-25.catalog.v4+`):** when your app calls a vendor and receives a clear deprecated/retired signal, report it server-side with `reportCatalogModelObservation` (Bearer Gateway Key, management key, or session). Aggregated counts surface on each catalog variant as `crowdObservations` so all downstream apps can see community-reported signals.
 
 **Public integration guide:** [Canonical model & provider catalog](https://restormel.dev/keys/docs/guides/canonical-catalog) (step-by-step for partners).
 
@@ -153,7 +155,7 @@ npx @restormel/keys-cli@0.1.4 patch
 
 Restormel ships first-party definitions for **15 providers**, each with an expanded model list so users get a **click-and-select** experience with minimal setup:
 
-- **OpenAI** — gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo, o1, o3-mini, etc.
+- **OpenAI** — gpt-4o family, gpt-4.1, o1 / o3-mini, etc. (legacy GPT-3.5 / GPT-4 Turbo ids removed from defaults)
 - **Anthropic** — Claude 3.5 Sonnet/Haiku, Claude 3 Opus/Sonnet/Haiku, Claude 4 family
 - **Google** — Gemini 2.5/2.0/1.5 Pro and Flash variants
 - **xAI (Grok)** — grok-3, grok-2, vision models

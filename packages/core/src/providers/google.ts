@@ -17,7 +17,6 @@ export const GOOGLE_MODELS = [
   "gemini-1.5-pro",
   "gemini-1.5-flash",
   "gemini-1.5-flash-8b",
-  "gemini-1.0-pro",
 ] as const;
 
 /** Pricing per 1M tokens (USD). Input, output. */
@@ -28,7 +27,6 @@ const GOOGLE_PRICING: Record<string, { input: number; output: number }> = {
   "gemini-1.5-pro": { input: 1.25, output: 5 },
   "gemini-1.5-flash": { input: 0.075, output: 0.3 },
   "gemini-1.5-flash-8b": { input: 0.0375, output: 0.15 },
-  "gemini-1.0-pro": { input: 0.5, output: 1.5 },
 };
 
 async function validateKey(

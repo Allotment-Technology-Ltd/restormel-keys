@@ -25,3 +25,7 @@ export {
   CATALOG_DRIFT_SYNC_PROVIDER_IDS,
   type CatalogDriftSyncProviderId,
 } from "./catalog-drift-scope.js";
+export {
+  buildDefaultProviderModelAllowlist,
+  isProviderModelInDefaultAllowlist,
+} from "./provider-model-allowlist.js";
