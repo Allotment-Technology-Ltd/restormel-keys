@@ -88,7 +88,17 @@ See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
 
 CI builds **`@restormel/aaif`** and **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes AAIF + MCP build).
 
-To publish all packages: bump versions as needed; ensure each has `version`, `files`, README, and a successful `pnpm run build`; then push git tag **`keys-v*`** (e.g. `keys-v0.2.6`). The [Publish workflow](.github/workflows/publish.yml) runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/aaif`** (`pnpm publish`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli → keys-svelte.
+Publishing is **tag-driven only**. The [Publish workflow](.github/workflows/publish.yml) runs only when a git tag matching **`keys-v*`** is pushed (for example `keys-v0.2.8`).
+
+Release process for npm packages:
+1. Bump versions for every package you intend to release.
+2. Ensure package quality checks pass (`pnpm run build` and relevant tests).
+3. Merge release-ready changes to `main`.
+4. Create and push a release tag: `git tag keys-vX.Y.Z && git push origin keys-vX.Y.Z`.
+
+If a PR changes any publishable package under `packages/` (for example `@restormel/keys`, `@restormel/keys-cli`, `@restormel/validate`, `@restormel/doctor`, `@restormel/mcp`, `@restormel/keys-svelte`, `@restormel/aaif`), you must include a release-tag follow-up in the rollout plan or those changes will not ship to npm.
+
+The publish train runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/keys-svelte`** (`pnpm publish`) → **`@restormel/aaif`** (`pnpm publish`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli.
 
 **keys-cli**, **validate**, and **mcp** use **`pnpm publish`** so `@restormel/keys` becomes a semver range in the consumer tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
 

@@ -20,6 +20,7 @@ Single record of meaningful repo changes.
 - dashboard(access): improve key creation UX with optional label, explicit one-time key visibility warning, and copy-focused flow
 - dashboard(models): fix lifecycle/family/use-case filtering behavior (including `goodFor`/`badFor` query compatibility) and fallback name rendering
 - docs: add searchable docs entry route (`/keys/docs/search`), archetype journey landing guides, and canonical `/keys/docs/how-it-fits-together`
+- docs(release): clarify that npm publishing is tag-driven (`keys-v*`) and make release-readiness require explicit post-merge tagging when `packages/` changes
 - marketing: add intent-picker entry cards and launch-offer visibility on `/keys`; align pricing display to USD
 - site: align footer tagline with product positioning (“The missing layer for AI apps”)
 - dashboard(api): add Gateway Key scoped policy discovery on `GET /api/policies` and `GET /api/policies/{id}` for lifecycle validation with real policy ids
