@@ -11,6 +11,10 @@ on:
         description: "Minimum branch age in hours before eligible for deletion"
         type: number
         default: 24
+      ignore_open_prs:
+        description: "When true, do not preserve branches for open PRs"
+        type: boolean
+        default: false
   schedule:
     - cron: "30 3 * * 1" # Weekly Monday 03:30 UTC
 
@@ -29,6 +33,7 @@ jobs:
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
           DRY_RUN: ${{ inputs.dry_run }}
           MIN_AGE_HOURS: ${{ inputs.min_age_hours }}
+          IGNORE_OPEN_PRS: ${{ inputs.ignore_open_prs }}
           REPO: ${{ github.repository }}
         run: |
           python <<'PY'
@@ -84,19 +89,23 @@ jobs:
 
           # Collect open PR numbers.
           open_prs = set()
-          gh_url = f"https://api.github.com/repos/{repo}/pulls?state=open&per_page=100"
-          prs = http_json(gh_url, headers=gh_headers)
-          for pr in prs:
-            num = pr.get("number")
-            if isinstance(num, int):
-              open_prs.add(num)
+          ignore_open_prs_raw = os.environ.get("IGNORE_OPEN_PRS", "false").strip().lower()
+          ignore_open_prs = ignore_open_prs_raw in ("true", "1", "yes")
+          if not ignore_open_prs:
+            gh_url = f"https://api.github.com/repos/{repo}/pulls?state=open&per_page=100"
+            prs = http_json(gh_url, headers=gh_headers)
+            for pr in prs:
+              num = pr.get("number")
+              if isinstance(num, int):
+                open_prs.add(num)
 
           # List Neon branches.
           neon_url = f"https://console.neon.tech/api/v2/projects/{project_id}/branches"
           neon_resp = http_json(neon_url, headers=neon_headers)
           branches = neon_resp.get("branches", [])
 
-          pattern = re.compile(r"^preview-pr-(\d+)-")
+          pattern_pr_named = re.compile(r"^preview-pr-(\d+)(?:-|$)")
+          pattern_preview_slash = re.compile(r"^preview/")
           now_ms = int(time.time() * 1000)
 
           candidates = []
@@ -104,11 +113,12 @@ jobs:
             name = b.get("name")
             if not isinstance(name, str):
               continue
-            m = pattern.match(name)
-            if not m:
+            m = pattern_pr_named.match(name)
+            is_preview_slash = bool(pattern_preview_slash.match(name))
+            if not m and not is_preview_slash:
               continue
-            pr_number = int(m.group(1))
-            if pr_number in open_prs:
+            pr_number = int(m.group(1)) if m else None
+            if pr_number is not None and pr_number in open_prs:
               continue
             created_at = b.get("created_at")
             created_ms = None
@@ -134,7 +144,8 @@ jobs:
           print(f"Open PR count: {len(open_prs)}")
           print(f"Stale preview branch candidates: {len(candidates)}")
           for c in candidates:
-            print(f"- {c['name']} (PR #{c['pr']}, created_at={c['created_at']})")
+            pr_label = f"PR #{c['pr']}" if c["pr"] is not None else "legacy preview"
+            print(f"- {c['name']} ({pr_label}, created_at={c['created_at']})")
 
           if dry_run:
             print("Dry run enabled; no branches deleted.")
