@@ -1,8 +1,15 @@
 {
   "name": "@restormel/keys-cli",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI for Restormel Keys: init, add keys, validate, doctor, cost estimate.",
-  "keywords": ["restormel", "keys", "byok", "cli", "openai", "anthropic"],
+  "keywords": [
+    "restormel",
+    "keys",
+    "byok",
+    "cli",
+    "openai",
+    "anthropic"
+  ],
   "author": "Allotment Technology Ltd",
   "license": "MIT",
   "repository": {
@@ -21,7 +28,11 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
