@@ -2,10 +2,14 @@
 
 Single record of meaningful repo changes.
 
+## keys-v0.2.9 (2026-03-25)
+
+**npm publish** (tag `keys-v0.2.9`): `@restormel/keys@0.2.9` (`validateRouteBinding` on `@restormel/keys/dashboard`, optional `task` on `resolve()`, `RouteResolveMetadata` + type guards), `@restormel/keys-svelte@0.1.3`, `@restormel/aaif@0.0.3`, `@restormel/mcp@0.1.3`, `@restormel/doctor@0.1.6`, `@restormel/validate@0.1.6`, `@restormel/keys-cli@0.1.6` (version bumps so the publish train succeeds; no functional change required in those packages beyond dependency alignment).
+
+**Dashboard** (deploy via your usual CI to Cloud Run / hosting): resolve discovery + stable errors (`contractVersion` `2026-03-25`, `route` metadata, `GET .../routes` + `isPublished`, `POST .../validate-binding`), OpenAPI 1.1.0, guides updated. Merge: PR #43 + core follow-up on `main`.
+
 ## Unreleased
 
-- core(npm): **`@restormel/keys@0.2.9`** — `validateRouteBinding()` on `@restormel/keys/dashboard` (thin client for `POST .../routes/:routeId/validate-binding`); `resolve()` body now includes optional `task`. SOPHIA: drop `file:vendor/...0.2.5.tgz` after publish or regenerate tarball from this version.
-- dashboard(api): **resolve discovery + stable errors** — `POST .../resolve` uses `contractVersion` `2026-03-25`, returns `route` metadata, enforces published (`version === publishedVersion`) / enabled / active selection, and emits stable `error` codes with aligned HTTP statuses (`no_route`, `route_unpublished`, `route_disabled`, `policy_blocked`, `no_key_available`, `unauthorized`). Discovery without `routeId`: dedicated `workload`+`stage` then shared `workload` with null `stage` for ingestion. `GET .../routes` adds `isPublished` per row. New `POST .../routes/{routeId}/validate-binding` preflight. OpenAPI 1.1.0 + guide [resolve-to-execution-contract](docs/guides/resolve-to-execution-contract.md). `@restormel/keys` dashboard types/guards extended (`RouteResolveMetadata`, `isRouteUnpublished`, etc.).
 - catalog(api): **default allowlist** — `GET /keys/dashboard/api/catalog` returns only `(providerId, providerModelId)` pairs from `@restormel/keys` `defaultProviders` (contract `2026-03-24.catalog.v2`); `skipDefaultAllowlist=1` for raw DB rows. Trimmed legacy OpenAI / Anthropic / Google model ids from defaults and seed.
 - catalog(api): **external runtime signals** — contract bumped to `2026-03-25.catalog.v3`; payload now includes `externalSignals` with credential-free provider status snapshots (OpenAI/Anthropic status pages) and OpenRouter public model endpoint health (`status`, `uptime_last_30m`, latency/throughput quantiles). OpenRouter variants are filtered against live public OpenRouter model IDs when snapshot fetch succeeds.
 - catalog(api): **crowd observations** — contract `2026-03-25.catalog.v4` adds optional per-variant `crowdObservations` (aggregated deprecated/retired report counts). Authenticated clients can `POST /keys/dashboard/api/catalog/observations` (Bearer Gateway Key, management key, or session) after observing vendor deprecation signals; `@restormel/keys/dashboard` adds `reportCatalogModelObservation()`.

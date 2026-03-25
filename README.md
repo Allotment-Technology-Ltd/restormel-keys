@@ -88,7 +88,7 @@ See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
 
 CI builds **`@restormel/aaif`** and **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes AAIF + MCP build).
 
-Publishing is **tag-driven only**. The [Publish workflow](.github/workflows/publish.yml) runs only when a git tag matching **`keys-v*`** is pushed (for example `keys-v0.2.8`).
+Publishing is **tag-driven only**. The [Publish workflow](.github/workflows/publish.yml) runs only when a git tag matching **`keys-v*`** is pushed (for example `keys-v0.2.9`).
 
 Release process for npm packages:
 1. Bump versions for every package you intend to release.

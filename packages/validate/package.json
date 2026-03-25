@@ -1,6 +1,6 @@
 {
   "name": "@restormel/validate",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Restormel Validate — open-source CLI for credential and configuration validation.",
   "keywords": [
     "restormel",
