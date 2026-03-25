@@ -59,6 +59,23 @@
   let copiedModelId = "";
   let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  $: selectedProvidersLabel =
+    selectedProviders.length === 0
+      ? "Any"
+      : selectedProviders.length === 1
+        ? selectedProviders[0]
+        : `${selectedProviders.length} selected`;
+
+  function toggleProvider(providerId: string) {
+    const normalized = providerId.trim().toLowerCase();
+    if (!normalized) return;
+    if (selectedProviders.includes(normalized)) {
+      selectedProviders = selectedProviders.filter((p) => p !== normalized);
+      return;
+    }
+    selectedProviders = [...selectedProviders, normalized].sort((a, b) => a.localeCompare(b));
+  }
+
   function applyFilters() {
     const params = new URLSearchParams();
     if (lifecycleFilter) params.set("lifecycleState", lifecycleFilter);
@@ -283,12 +300,29 @@
         </select>
       </div>
       <div class="form-row">
-        <label for="providers">Providers</label>
-        <select id="providers" bind:value={selectedProviders} class="input input-multi" multiple>
-          {#each data.availableProviders as providerId}
-            <option value={providerId}>{providerId}</option>
-          {/each}
-        </select>
+        <label for="providers-menu">Providers</label>
+        <details id="providers-menu" class="provider-menu">
+          <summary class="input provider-summary" aria-label="Select one or more providers">
+            {selectedProvidersLabel}
+          </summary>
+          <div class="provider-options" role="group" aria-label="Provider options">
+            {#each data.availableProviders as providerId}
+              <label class="provider-option">
+                <input
+                  type="checkbox"
+                  checked={selectedProviders.includes(providerId)}
+                  onchange={() => toggleProvider(providerId)}
+                />
+                <span>{providerId}</span>
+              </label>
+            {/each}
+            {#if selectedProviders.length > 0}
+              <button type="button" class="btn btn-secondary btn-inline" onclick={() => (selectedProviders = [])}>
+                Clear providers
+              </button>
+            {/if}
+          </div>
+        </details>
       </div>
       <div class="form-row">
         <label for="search">Search</label>
@@ -534,8 +568,53 @@
     color: var(--rm-text);
     min-width: 10rem;
   }
-  .input-multi {
-    min-height: 7.5rem;
+  .provider-menu {
+    position: relative;
+    min-width: 12rem;
+  }
+  .provider-summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 2.1rem;
+  }
+  .provider-summary::-webkit-details-marker {
+    display: none;
+  }
+  .provider-summary::after {
+    content: "▾";
+    color: var(--rm-dim);
+    margin-left: var(--space-2);
+    font-size: var(--text-xs);
+  }
+  .provider-menu[open] .provider-summary::after {
+    content: "▴";
+  }
+  .provider-options {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    max-height: 14rem;
+    overflow: auto;
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    padding: var(--space-2);
+    display: grid;
+    gap: var(--space-1);
+  }
+  .provider-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--rm-text);
   }
   .btn {
     padding: var(--space-2) var(--space-4);
