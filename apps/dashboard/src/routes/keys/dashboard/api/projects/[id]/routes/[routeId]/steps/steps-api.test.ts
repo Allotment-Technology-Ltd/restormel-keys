@@ -2,6 +2,7 @@
  * Steps API tests (mocked db).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ModelRecord } from "$lib/server/neon";
 
 const mockRoute = { id: "r1" };
 
@@ -102,7 +103,7 @@ describe("Steps API", () => {
 
   it("POST accepts voyage with a catalog model id", async () => {
     const db = await import("$lib/server/db");
-    vi.mocked(db.getModel).mockResolvedValueOnce({ id: "voyage-3" });
+    vi.mocked(db.getModel).mockResolvedValueOnce({ id: "voyage-3" } as ModelRecord);
     vi.mocked(db.createRouteStep).mockResolvedValueOnce({
       id: "sv1",
       routeId: "r1",
