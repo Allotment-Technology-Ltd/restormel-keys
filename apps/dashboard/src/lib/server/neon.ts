@@ -1338,37 +1338,47 @@ export async function upsertCatalogModelObservation(params: {
       ? Math.trunc(params.providerHttpStatus)
       : null;
 
-  await sql`
-    INSERT INTO catalog_model_observations (
-      catalog_provider_id,
-      provider_model_id,
-      deprecated_report_count,
-      retired_report_count,
-      first_reported_at,
-      last_reported_at,
-      last_report_workspace_id,
-      last_provider_http_status,
-      last_provider_error_code
-    ) VALUES (
-      ${params.catalogProviderId},
-      ${params.providerModelId},
-      ${incDep},
-      ${incRet},
-      ${now},
-      ${now},
-      ${params.workspaceId},
-      ${http},
-      ${code}
-    )
-    ON CONFLICT (catalog_provider_id, provider_model_id) DO UPDATE SET
-      deprecated_report_count = catalog_model_observations.deprecated_report_count + ${incDep},
-      retired_report_count = catalog_model_observations.retired_report_count + ${incRet},
-      first_reported_at = COALESCE(catalog_model_observations.first_reported_at, EXCLUDED.first_reported_at),
-      last_reported_at = EXCLUDED.last_reported_at,
-      last_report_workspace_id = EXCLUDED.last_report_workspace_id,
-      last_provider_http_status = EXCLUDED.last_provider_http_status,
-      last_provider_error_code = EXCLUDED.last_provider_error_code
-  `;
+  const isMissingSchema = (e: unknown): boolean => {
+    const code = (e as { code?: unknown } | null)?.code;
+    return code === "42P01" || code === "42703";
+  };
+  try {
+    await sql`
+      INSERT INTO catalog_model_observations (
+        catalog_provider_id,
+        provider_model_id,
+        deprecated_report_count,
+        retired_report_count,
+        first_reported_at,
+        last_reported_at,
+        last_report_workspace_id,
+        last_provider_http_status,
+        last_provider_error_code
+      ) VALUES (
+        ${params.catalogProviderId},
+        ${params.providerModelId},
+        ${incDep},
+        ${incRet},
+        ${now},
+        ${now},
+        ${params.workspaceId},
+        ${http},
+        ${code}
+      )
+      ON CONFLICT (catalog_provider_id, provider_model_id) DO UPDATE SET
+        deprecated_report_count = catalog_model_observations.deprecated_report_count + ${incDep},
+        retired_report_count = catalog_model_observations.retired_report_count + ${incRet},
+        first_reported_at = COALESCE(catalog_model_observations.first_reported_at, EXCLUDED.first_reported_at),
+        last_reported_at = EXCLUDED.last_reported_at,
+        last_report_workspace_id = EXCLUDED.last_report_workspace_id,
+        last_provider_http_status = EXCLUDED.last_provider_http_status,
+        last_provider_error_code = EXCLUDED.last_provider_error_code
+    `;
+  } catch (e) {
+    // If the observation table doesn't exist yet in this environment, treat as no-op.
+    if (isMissingSchema(e)) return;
+    throw e;
+  }
 }
 
 /** Load crowd observations for catalog merge (keyed by `providerId\\tproviderModelId`). */
@@ -1390,16 +1400,29 @@ export async function listCatalogModelObservationsForPairs(
   if (unique.length === 0) return new Map();
 
   const keys = unique.map((p) => `${p.catalogProviderId}\t${p.providerModelId}`);
-  const rows = await sql`
-    SELECT catalog_provider_id AS "catalogProviderId",
-           provider_model_id AS "providerModelId",
-           deprecated_report_count AS "deprecatedReportCount",
-           retired_report_count AS "retiredReportCount",
-           first_reported_at AS "firstReportedAt",
-           last_reported_at AS "lastReportedAt"
-    FROM catalog_model_observations
-    WHERE (catalog_provider_id || E'\t' || provider_model_id) = ANY(${keys})
-  `;
+  // Degrade gracefully when migrations haven't been applied yet (common in older envs).
+  // This keeps public catalog read paths working even if `catalog_model_observations` is missing.
+  const isMissingSchema = (e: unknown): boolean => {
+    const code = (e as { code?: unknown } | null)?.code;
+    return code === "42P01" || code === "42703";
+  };
+
+  let rows: unknown[] = [];
+  try {
+    rows = await sql`
+      SELECT catalog_provider_id AS "catalogProviderId",
+             provider_model_id AS "providerModelId",
+             deprecated_report_count AS "deprecatedReportCount",
+             retired_report_count AS "retiredReportCount",
+             first_reported_at AS "firstReportedAt",
+             last_reported_at AS "lastReportedAt"
+      FROM catalog_model_observations
+      WHERE (catalog_provider_id || E'\t' || provider_model_id) = ANY(${keys})
+    `;
+  } catch (e) {
+    if (isMissingSchema(e)) return new Map();
+    throw e;
+  }
 
   const out = new Map<string, CatalogModelObservationRecord>();
   for (const r of rows as Record<string, unknown>[]) {
