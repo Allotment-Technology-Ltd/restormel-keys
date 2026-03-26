@@ -78,7 +78,14 @@
   <ul>
     <li><a href="/keys/docs/how-it-fits-together">How it all fits together</a> — key types, API surfaces, and where each URL fits</li>
     <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
-    <li><a href="/keys/docs/cloud-api">Cloud API</a> — API reference, gateway URL, and Developer Portal</li>
+    <li>
+      <a href="/keys/docs/cloud-api">Cloud API</a> — Dashboard API (<code>rk_…</code>): resolve, routes, policies, catalog, <strong>project model index</strong>; Zuplo gateway (<code>zpka_…</code>); OpenAPI imports.
+      Integrator note (index <code>data</code> shape, validation errors):
+      <a
+        href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+        target="_blank"
+        rel="noopener noreferrer"><code>keys-catalog-sync.md</code></a>.
+    </li>
     <li><a href="/keys/docs/guides/openrouter">OpenRouter integration</a> — keep OpenRouter as your provider access layer</li>
     <li><a href="/keys/docs/guides/vercel-ai-gateway">Vercel AI Gateway integration</a> — keep Vercel gateway auth and observability</li>
     <li><a href="/keys/docs/guides/portkey">Portkey integration</a> — keep Portkey as your gateway and route via Restormel</li>

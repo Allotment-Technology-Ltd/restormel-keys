@@ -11,7 +11,8 @@
 |------|--------|
 | **`dogfood-issue-hint.yml`** | When a **`[Dogfood]`** issue is **opened** here, Actions posts a short comment with links to the implementation runbook and security notes. |
 | **`dogfood-agent-open-pr.yml`** + **`scripts/dogfood-agent-open-pr.mjs`** | **Optional.** Uses an LLM (OpenAI and/or Anthropic via **GitHub Actions secrets**) to propose edits and open a **draft PR** on **restormel-keys** only. Human review required before merge. |
-| **`dogfood-upstream-notify-consumer.yml`** | **Optional.** On **push** of a **`keys-v*`** tag (same family as the npm publish tag), opens a **tracking issue** on the **consumer** repo configured by variable **`DOGFOOD_NOTIFY_CONSUMER`** (e.g. SOPHIA). |
+| **`dogfood-upstream-notify-consumer.yml`** + **`scripts/sophia-release-notify-issue.mjs`** | **Optional.** On **push** of **`keys-v*`** or **`restormel-v*`** (notify **independent of npm publish**), opens a **SOPHIA backlog** issue (**`DOGFOOD_NOTIFY_CONSUMER`**) with **CHANGELOG** excerpt when the heading matches the tag, plus triage for **API, dashboard, docs**, and npm when relevant. |
+| **`dogfood-pr-comment-consumer.yml`** + **`scripts/dogfood-pr-notify-consumer.mjs`** | **Optional.** When a PR targeting **`main`** is **opened** or **merged**, posts a comment on the **original SOPHIA issue** linked from the relayed **`[Dogfood]`** ticket (same **`DOGFOOD_NOTIFY_CONSUMER`** + PAT as upstream notify). Merge comment links **CHANGELOG** / **`keys-v*`** for release follow-up. |
 
 **Docs and rules:** Runbook [docs/runbooks/restormel-dogfood-issue-implementation.md](../runbooks/restormel-dogfood-issue-implementation.md), Cursor rule `.cursor/rules/07-dogfood-github-issues.mdc`, and expanded sections in [github-dogfood-feedback.md](../github-dogfood-feedback.md) (including upstream notify and PAT notes).
 
@@ -22,15 +23,15 @@
 1. **Unchanged — SOPHIA → restormel-keys**  
    Label **`restormel-feedback`** on a SOPHIA issue still drives creation of a **`[Dogfood]`** issue on **restormel-keys** (existing relay). No change required on SOPHIA for that path unless your relay is not yet deployed.
 
-2. **New — restormel-keys → SOPHIA (after a keys release tag)**  
-   When **restormel-keys** maintainers push a **`keys-v*`** tag (and upstream notify is configured), SOPHIA may receive a **new issue**:
-   - **Title pattern:** `[Restormel Keys] Release keys-v…`
+2. **New — restormel-keys → SOPHIA (after a release-notify tag)**  
+   When **restormel-keys** maintainers push **`keys-v*`** or **`restormel-v*`** (and upstream notify is configured), SOPHIA may receive a **new issue**. This is **not conditional on npm publish** — triage **hosted product** (API, dashboard, gateway, docs) regardless.
+   - **Title pattern:** `[Restormel Keys] Release <tag> — SOPHIA backlog / triage` (e.g. **`keys-v…`** or **`restormel-v…`**)
    - **Label:** `restormel-upstream-release` (created automatically on first run if missing)
-   - **Body:** Links to the tag tree, **CHANGELOG** on that ref, upstream **`[Dogfood]`** search, and a short checklist (npm versions, host-app bumps, close linked threads). **No secrets** should appear in that body.
+   - **Body:** States scope vs npm; embedded **CHANGELOG** section when the heading matches **`## <tag>`**; **SOPHIA triage** table; links (**OpenAPI**, **keys-catalog-sync**, **resolve** guide, tree, CHANGELOG, **`[Dogfood]`** search); checklist. **No secrets** should appear in that body.
 
-3. **Not automatic**  
-   - No SOPHIA PR is opened by this workflow.  
-   - No automatic comment on old SOPHIA issues or on the original relay thread — unless you add that later.
+3. **Optional automation (PR loop)**  
+   - **`dogfood-pr-comment-consumer.yml`** can comment on the **original SOPHIA issue** when a **restormel-keys** PR is opened or merged to **`main`**, if **`DOGFOOD_NOTIFY_CONSUMER`** and the PAT are configured (see [github-dogfood-feedback.md](../github-dogfood-feedback.md)).  
+   - No SOPHIA PR is opened by Restormel automation; the host team still owns consumer-repo changes.
 
 ---
 
@@ -59,12 +60,12 @@
 
 1. Confirm **`DOGFOOD_NOTIFY_CONSUMER`** and PAT visibility on **restormel-keys** (see above).
 2. In **restormel-keys**: **Actions** → **Dogfood upstream — notify consumer** → **Run workflow**.
-3. Set **tag** to an **existing** `keys-v*` tag on the repo (e.g. latest published train).
+3. Set **tag** to an **existing** **`keys-v*`** or **`restormel-v*`** tag on the repo.
 4. Leave **force** unchecked first run (duplicate detection: skips if an issue with that tag in the title already exists on SOPHIA).
-5. On **SOPHIA**: open **Issues** and verify a new issue with title **`[Restormel Keys] Release <tag>`** and label **`restormel-upstream-release`**.
+5. On **SOPHIA**: open **Issues** and verify a new issue with title **`[Restormel Keys] Release <tag> — SOPHIA backlog / triage`** and label **`restormel-upstream-release`**.
 6. If the job skipped as duplicate, either use **force** = true on a manual run or pick a different tag string for a one-off test.
 
-**Alternative:** Push a new **`keys-v*`** tag to **restormel-keys** `main` (coordinated with release process); the same workflow runs on tag push.
+**Alternative:** Push a new **`keys-v*`** or **`restormel-v*`** tag; the workflow runs on tag push (no dependency on Publish completing).
 
 ### B) Relay (SOPHIA → restormel-keys) — regression check
 
@@ -98,4 +99,5 @@
 
 - [github-dogfood-feedback.md](../github-dogfood-feedback.md)  
 - [restormel-dogfood-issue-implementation.md](../runbooks/restormel-dogfood-issue-implementation.md)  
+- **Project model index / catalog (integrator contract):** [keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md)  
 - Workflows: `.github/workflows/dogfood-*.yml`

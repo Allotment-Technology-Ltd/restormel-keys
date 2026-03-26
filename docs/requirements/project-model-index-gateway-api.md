@@ -1,7 +1,7 @@
 # Requirements: Project model index — API mutations (Gateway Key)
 
-**Status:** **Implemented** (dashboard `+server` handlers, migration `020`, OpenAPI 1.3.0, Cloud API). **Audience:** Integrators + implementers.  
-**Canonical:** This file records the original FRs and semantics. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md), [docs/api/openapi.yaml](../api/openapi.yaml), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte).
+**Status:** **Implemented** (dashboard `+server` handlers, migration `020`, OpenAPI 1.3.1, Cloud API). **Audience:** Integrators + implementers.  
+**Canonical:** This file records the original FRs and semantics. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md), [docs/restormel-integration/keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md), [docs/api/openapi.yaml](../api/openapi.yaml), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte).
 
 ## Problem (historical)
 
@@ -12,7 +12,7 @@ Integrators called `GET /keys/dashboard/api/projects/{projectId}/models` for pic
 | Area | Detail |
 |------|--------|
 | **Storage** | `project_model_bindings` (`020_project_model_bindings.sql`); runtime self-heal in `neon.ts` if migration not yet applied. |
-| **GET** | Default: project bindings + nested `model` catalog row. `?source=catalog` = legacy global list (deprecated). |
+| **GET** | Default: project bindings in JSON **`data`** (array); no `data.bindings` key. Nested `model` catalog row per binding. `?source=catalog` = legacy global list (deprecated — prefer `GET /api/models`). |
 | **POST** | `{ "models": [{ "providerType", "modelId" }] }` — batch upsert, **idempotent** (re-add sets `enabled: true`). |
 | **PUT** | `{ "models": [{ "providerType", "modelId", "enabled"? }] }` — **replace** full allowlist (empty clears). |
 | **PATCH** | `.../models/{bindingId}` + `{ "enabled": boolean }` — soft disable / re-enable. |

@@ -69,7 +69,7 @@ Uses **SOPHIA write** access (identity / PAT / `gh`), **not** the restormel-keys
 | **`RESTORMEL_KEYS_ISSUE_TOKEN`** | SOPHIA Actions (or org secret → SOPHIA) | **Relay only:** create issues on **restormel-keys** |
 | **`gh` / GitHub MCP PAT** | Developer machine / Cursor | Create **SOPHIA** issues + label **`restormel-feedback`** |
 
-**Third token (opposite direction — optional):** see [Upstream → consumer notify](#upstream--consumer-notify-keys-v-tag) below (`DOGFOOD_NOTIFY_CONSUMER_TOKEN` on **restormel-keys**).
+**Third token (opposite direction — optional):** see [Upstream → consumer notify](#upstream--consumer-notify-release-tags) below (`DOGFOOD_NOTIFY_CONSUMER_TOKEN` on **restormel-keys**).
 
 **Canonical docs in this repo (restormel-keys)**
 
@@ -99,18 +99,18 @@ gh issue create --repo YOUR_ORG/restormel-keys \
 
 Use the same content rules as the issue form.
 
-## Upstream → consumer notify (keys-v tag)
+## Upstream → consumer notify (release tags)
 
-**Purpose:** When **restormel-keys** ships a **`keys-v*`** tag (same trigger family as [publish workflow](../.github/workflows/publish.yml)), optionally open a **tracking issue** on the consumer repo (e.g. **SOPHIA**) with links to the tag, **CHANGELOG**, and suggested follow-ups. This closes the loop **after** you merge and release — it does **not** open a PR on the consumer; the host team (or Cursor + MCP) drives dependency bumps and any SOPHIA PR.
+**Purpose:** When **restormel-keys** pushes a **release-notify** tag, optionally open a **SOPHIA backlog issue** with **CHANGELOG** excerpt (when present), links (**OpenAPI**, integrator docs, etc.), and a triage template. **This is intentionally not gated on npm publish:** the same **`keys-v*`** push starts [Publish](../.github/workflows/publish.yml), but the notify workflow is a **separate** Actions run — SOPHIA should still review **API, hosted dashboard, gateway, and docs** even if packages did not ship or Publish failed. For trains that matter to consumers **without** an npm release, push a **`restormel-v*`** tag on the target commit (same workflow). It does **not** open a PR on the consumer.
 
-**Why not GitHub “Releases” or deploy only?** This repo’s npm train is **tag-driven** (`keys-v*`). Using the **tag push** keeps the notify aligned with “a train was cut,” without depending on a GitHub Release object or a specific Cloud Run deploy job. If you later want **notify only after Publish workflow succeeds**, switch the workflow to `workflow_run` (completed + success) on **Publish** — not implemented in the default file to avoid coupling to workflow name changes.
+**Why tags?** Keeps a stable Git ref for links and CHANGELOG extraction without depending on a GitHub “Release” object or a specific deploy job.
 
 ### Trigger (implemented)
 
 | Event | Behaviour |
 |--------|-----------|
-| **Push** tag matching `keys-v*` | Runs on **restormel-keys** (not forks). |
-| **`workflow_dispatch`** | Inputs: **`tag`** (required), **`force`** (optional, skip duplicate detection). |
+| **Push** tag matching **`keys-v*`** or **`restormel-v*`** | Runs on **restormel-keys** (not forks). |
+| **`workflow_dispatch`** | Inputs: **`tag`** (required — must be an existing **`keys-v*`** or **`restormel-v*`** tag), **`force`** (optional, skip duplicate detection). |
 
 ### Configuration (restormel-keys repository)
 
@@ -126,26 +126,40 @@ Use the same content rules as the issue form.
 
 ### Issue title and body (automation contract)
 
-- **Title:** `[Restormel Keys] Release <tag>` (e.g. `[Restormel Keys] Release keys-v0.2.13`).
+- **Title:** `[Restormel Keys] Release <tag> — SOPHIA backlog / triage` (e.g. **`keys-v0.2.13`** or **`restormel-v0.1.0`**).
 - **Label (consumer):** `restormel-upstream-release` — the workflow **creates** the label on the consumer repo if missing.
-- **Body (stable sections):** Short explanation, table of links (**tag tree**, **CHANGELOG** on that ref, **upstream `[Dogfood]` issue search**), checklist for npm verification and host-app bumps, reminder **not** to post secrets in the thread.
+- **Body:** **`scripts/sophia-release-notify-issue.mjs`** builds the issue after **checkout of the tag** so the matching **`## <tag>`** section from **CHANGELOG.md** can be embedded. Includes an explicit note that triage applies **even when npm did not publish**. Stable sections: **SOPHIA-focused triage table**, links (**tree**, **CHANGELOG**, **OpenAPI**, **keys-catalog-sync**, **resolve** guide, **`[Dogfood]`** search), checklist. Reminder **not** to post secrets in the thread.
 
 **Duplicate guard:** Unless **`force`** is true (manual run only), the job searches the consumer repo for an **existing issue whose title contains the tag string**; if found, it **does not** create another.
 
 ### What this does *not* do
 
-- Does not wait for **npm publish** to finish (tag and [Publish](../.github/workflows/publish.yml) run together; npm may lag slightly — CHANGELOG on the tag is still correct).
-- Does not create a **PR** on SOPHIA or comment on the original relayed SOPHIA issue automatically (you can add that later with a second workflow and a stricter PAT / issue linking convention).
+- Does not wait for or require **npm publish** to succeed (notify and [Publish](../.github/workflows/publish.yml) are independent workflows on **`keys-v*`**; **`restormel-v*`** does not run Publish by default).
+- Does not create a **PR** on the consumer repo (SOPHIA still owns host-side bumps).
 - Does not replace **human** review of release notes or dependency impact.
 
-**Workflow file:** `.github/workflows/dogfood-upstream-notify-consumer.yml`.
+**Workflow file:** `.github/workflows/dogfood-upstream-notify-consumer.yml`. **Script:** `scripts/sophia-release-notify-issue.mjs`.
+
+## PR opened / merged → comment original consumer issue
+
+**Purpose:** When a pull request on **restormel-keys** targets **`main`** and the PR body includes **`Fixes` / `Closes` / `Addresses #N`** for an upstream **`[Dogfood]`** issue whose body contains the relay’s **`[View source issue](https://github.com/…/issues/…)`** link, Actions posts a short comment on that **consumer** issue:
+
+- On **PR opened** — link to the PR (work started).
+- On **merge to `main`** — link to the PR, merge commit, and **CHANGELOG.md** on **`main`** for release notes (plus reminder that **keys-v** version tags drive the npm train).
+
+**Configuration:** Same as [Upstream → consumer notify](#upstream--consumer-notify-release-tags): **`DOGFOOD_NOTIFY_CONSUMER`** (variable) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** or **`RESTORMEL_KEYS_ISSUE_TOKEN`** (PAT with **Issues: write** on the consumer repo, visible to **restormel-keys** Actions). If the variable is empty or the PAT is missing, the workflow skips.
+
+**Safety:** Does not run for **fork** PRs (`head` repo must equal this repo). No secrets in comment text.
+
+**Workflow file:** `.github/workflows/dogfood-pr-comment-consumer.yml`. **Script:** `scripts/dogfood-pr-notify-consumer.mjs`.
 
 ## After a relayed issue appears here
 
 - **Implementing the work:** [docs/runbooks/restormel-dogfood-issue-implementation.md](runbooks/restormel-dogfood-issue-implementation.md) — checklist, security, Cursor prompt, PR linkage.
 - **Automation:** New issues whose title contains **`[Dogfood]`** get a short GitHub comment from `.github/workflows/dogfood-issue-hint.yml` linking to that runbook.
 - **CI draft PR (optional):** `.github/workflows/dogfood-agent-open-pr.yml` runs `scripts/dogfood-agent-open-pr.mjs` with **`ANTHROPIC_API_KEY`** and/or **`OPENAI_API_KEY`** in **GitHub Actions secrets** (never commit). Manual **workflow_dispatch** or **scheduled** pickup: open **`[Dogfood]`** issues with label **`task`** (relay default), excluding **`dogfood-agent-pr`** / **`dogfood-agent-noop`** / **`dogfood-agent-skip`** — see runbook § *CI agent (draft PR)*. **Repository/org Actions settings** must allow **GitHub Actions to create and approve pull requests** or `POST /pulls` returns **403** (runbook § *GitHub must allow Actions to open pull requests*).
-- **Upstream → consumer ping (optional):** After a **`keys-v*`** tag, `.github/workflows/dogfood-upstream-notify-consumer.yml` can open an issue on the consumer repo — variable **`DOGFOOD_NOTIFY_CONSUMER`**, secret **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**. See [Upstream → consumer notify](#upstream--consumer-notify-keys-v-tag).
+- **Upstream → consumer ping (optional):** After a **`keys-v*`** or **`restormel-v*`** tag, `.github/workflows/dogfood-upstream-notify-consumer.yml` can open an issue on the consumer repo — variable **`DOGFOOD_NOTIFY_CONSUMER`**, secret **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**. Not dependent on npm publish. See [Upstream → consumer notify](#upstream--consumer-notify-release-tags).
+- **PR → consumer comment (optional):** On PR **opened** and on **merge to `main`**, `.github/workflows/dogfood-pr-comment-consumer.yml` comments on the **original consumer issue** when the PR references a relayed **`[Dogfood]`** issue — same variable/PAT as upstream notify. See [PR opened / merged → comment original consumer issue](#pr-opened--merged--comment-original-consumer-issue).
 - **Cursor:** Rule `.cursor/rules/07-dogfood-github-issues.mdc` reminds agents to follow the runbook.
 
 ## Related

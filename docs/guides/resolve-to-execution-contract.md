@@ -26,7 +26,17 @@ Policy and cost estimation still use the `google` id internally where `@restorme
 
 ### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 
-Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Use the **same canonical `providerType` vocabulary** as this table. **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), and [requirements spec](../requirements/project-model-index-gateway-api.md). Global catalog remains **`GET /api/models`** (unauthenticated).
+Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Use the **same canonical `providerType` vocabulary** as this table. **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), [requirements spec](../requirements/project-model-index-gateway-api.md), and [keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md). Global catalog remains **`GET /api/models`** (unauthenticated).
+
+### Project model index: response shape and validation errors
+
+**`GET` (default project index):** The API returns an object whose **`data`** property is the **array of binding rows** (`id`, `providerType`, `modelId`, `enabled`, nested `model`, etc.). There is **no** `data.bindings` field — read **`data`** as the list. Prefer **`GET /api/models`** for the full catalog; avoid legacy **`GET .../models?source=catalog`** on the project path for new integrations.
+
+**`POST` / `PUT`:** On validation failure the API responds with **HTTP 400**, **`error`: `project_models_validation_failed`**, and **`errors`**: an array of `{ index, field, code, message }` describing each bad row. Automated clients should branch on **`error`** and inspect **`errors[]`** (not only HTTP status). Schema: OpenAPI **`ProjectModelsValidationError`**.
+
+| `error` | HTTP | Caller action |
+|---------|------|----------------|
+| `project_models_validation_failed` | 400 | Parse **`errors[]`**; fix `providerType` / `modelId` (unknown model, wrong variant, etc.) and retry |
 
 ## Host runtime discovery (SOPHIA / ingestion)
 
@@ -85,6 +95,7 @@ Branch on JSON `error` (not only HTTP status). Typical mapping:
 | `policy_blocked` | 403 | Read `violations`; adjust policy or route steps |
 | `no_key_available` | 422 | Add/enable at least one route step, or adjust retry context |
 | `resolve_incomplete` | 422 | A step passed policy but has no executable provider/model; set provider + model on the step or `defaultModelId` on the route |
+| `project_models_validation_failed` | 400 | Project model index **`POST`/`PUT`**; parse **`errors[]`** per binding row (subsection **Project model index: response shape and validation errors** above; OpenAPI **`ProjectModelsValidationError`**) |
 
 Canonical API tables: [OpenAPI spec](../api/openapi.yaml) (`POST .../resolve`). Optional preflight: `POST .../routes/{routeId}/validate-binding`.
 

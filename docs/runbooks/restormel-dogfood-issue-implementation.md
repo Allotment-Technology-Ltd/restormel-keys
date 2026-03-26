@@ -52,8 +52,8 @@
 ## 5) After merge (optional but good practice)
 
 - Comment on the **restormel-keys** issue with the **merge commit** or **release** note.
-- If useful for the consumer team, add a short comment on the **source** (SOPHIA) issue linking to the PR or release — **no secrets**.
-- **Automated consumer ping:** When you ship a **`keys-v*`** tag, optional workflow **`.github/workflows/dogfood-upstream-notify-consumer.yml`** can open a tracking issue on the consumer repo (variable **`DOGFOOD_NOTIFY_CONSUMER`**, PAT secret **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**). Spec: [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md) § *Upstream → consumer notify*.
+- If useful for the consumer team, add a short comment on the **source** (SOPHIA) issue linking to the PR or release — **no secrets**. When **`DOGFOOD_NOTIFY_CONSUMER`** and the PAT are set, **`.github/workflows/dogfood-pr-comment-consumer.yml`** posts to the consumer issue automatically on PR **open** and on **merge to `main`** (if the PR body uses **Fixes/Closes/Addresses #N** and the upstream issue has the relay **`[View source issue](...)`** link).
+- **Automated consumer ping:** When you push **`keys-v*`** or **`restormel-v*`** (notify **independent of npm publish**), optional **`.github/workflows/dogfood-upstream-notify-consumer.yml`** + **`scripts/sophia-release-notify-issue.mjs`** can open a **SOPHIA backlog** issue with **CHANGELOG** excerpt and triage for API/dashboard/docs (variable **`DOGFOOD_NOTIFY_CONSUMER`**, PAT **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**). Spec: [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md) § *Upstream → consumer notify*.
 
 ---
 

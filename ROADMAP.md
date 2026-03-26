@@ -30,7 +30,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 Findings from the first real integration. See [docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md) for full context and workarounds.
 
-- **Project model index — Gateway Key API (shipped):** `POST`/`PUT`/`PATCH`/`DELETE` on `/keys/dashboard/api/projects/{projectId}/models` (+ binding id) with **`rk_`**; OpenAPI 1.3.0 + Cloud API curls. **Spec / FR traceability:** [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
+- **Project model index — Gateway Key API (shipped):** `POST`/`PUT`/`PATCH`/`DELETE` on `/keys/dashboard/api/projects/{projectId}/models` (+ binding id) with **`rk_`**; OpenAPI 1.3.1 + Cloud API curls. **Spec / FR traceability:** [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
 
 **Restormel-first strategy:** Production issues on Sophia should be treated in two layers: (1) Restormel does more heavy lifting (stronger contract, typings, component behavior, model filtering, diagnostics); (2) then simplify the host app and reassess what is truly app-specific. See [docs/reference/restormel-first-assessment.md](docs/reference/restormel-first-assessment.md).
 

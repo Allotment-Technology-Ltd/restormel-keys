@@ -1,0 +1,85 @@
+# When a PR targeting `main` references relayed `[Dogfood]` issues (Fixes/Closes/Addresses #N),
+# post a comment on the original consumer issue (e.g. SOPHIA) linked via `[View source issue](...)`
+# in the restormel-keys issue body — on PR **opened** and on **merge** to main.
+#
+# Reuses the same PAT / variable as upstream consumer notify:
+#   Variable: DOGFOOD_NOTIFY_CONSUMER = Owner/repo (e.g. Allotment-Technology-Ltd/sophia)
+#   Secret: DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN (Issues: write on consumer)
+#
+# Skips fork PRs. No secrets in comment bodies.
+name: Dogfood PR — comment consumer issue
+
+on:
+  pull_request:
+    types: [opened, closed]
+    branches:
+      - main
+
+concurrency:
+  group: dogfood-pr-comment-consumer-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: >-
+      github.event.repository.fork == false &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'opened' || (github.event.action == 'closed' && github.event.pull_request.merged == true))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+
+    steps:
+      - name: Skip (consumer not configured)
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER == '' }}
+        run: echo '::notice::Set DOGFOOD_NOTIFY_CONSUMER to enable consumer issue comments.'
+
+      - name: Resolve PAT presence
+        id: pat
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' }}
+        env:
+          T1: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN }}
+          T2: ${{ secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+        run: |
+          if [ -n "${T1}" ]; then
+            echo "has_pat=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "${T2}" ]; then
+            echo "has_pat=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pat=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (missing PAT)
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'false' }}
+        run: echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT (DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN with consumer Issues: write).'
+
+      - uses: actions/checkout@v4
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' }}
+
+      - name: Comment consumer (PR opened)
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' && github.event.action == 'opened' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONSUMER_PAT: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+          DOGFOOD_NOTIFY_CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HTML_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/dogfood-pr-notify-consumer.mjs opened
+
+      - name: Comment consumer (merged to main)
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONSUMER_PAT: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+          DOGFOOD_NOTIFY_CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HTML_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: node scripts/dogfood-pr-notify-consumer.mjs merged

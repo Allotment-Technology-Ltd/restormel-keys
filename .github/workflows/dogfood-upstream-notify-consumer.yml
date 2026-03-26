@@ -1,5 +1,7 @@
-# After a `keys-v*` tag lands on this repo, open a tracking issue on a consumer repo (e.g. SOPHIA)
-# with links to the tag, CHANGELOG, and suggested follow-ups. Does not open PRs on the consumer.
+# After a release notify tag lands on this repo, open a SOPHIA backlog issue on the consumer repo
+# with the matching CHANGELOG excerpt, SOPHIA-focused triage table, and links (OpenAPI, integrator docs).
+# Tags: `keys-v*` (same family as npm Publish) and `restormel-v*` (hosted product / API / dashboard without npm).
+# Runs on tag push only — not gated on Publish workflow success. Implemented by scripts/sophia-release-notify-issue.mjs.
 #
 # Configure (restormel-keys):
 #   Repository variable: DOGFOOD_NOTIFY_CONSUMER = Owner/repo (e.g. Allotment-Technology-Ltd/sophia)
@@ -17,10 +19,11 @@ on:
   push:
     tags:
       - 'keys-v*'
+      - 'restormel-v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name, e.g. keys-v0.2.13'
+        description: 'Git tag on this repo: keys-v* (npm train) or restormel-v* (API/dashboard/docs without npm), e.g. keys-v0.2.13'
         required: true
         type: string
       force:
@@ -69,83 +72,19 @@ jobs:
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'false' }}
         run: echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT secret found (set DOGFOOD_NOTIFY_CONSUMER_TOKEN or make RESTORMEL_KEYS_ISSUE_TOKEN visible to this repo).'
 
-      - name: Open consumer issue
+      - name: Checkout tag (for CHANGELOG excerpt)
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' }}
-        uses: actions/github-script@v7
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Open SOPHIA backlog issue
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' }}
         env:
           TAG: ${{ steps.meta.outputs.tag }}
           FORCE: ${{ steps.meta.outputs.force }}
-          CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
-        with:
-          github-token: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
-          script: |
-            const consumer = (process.env.CONSUMER || '').trim();
-            if (!consumer) {
-              core.notice('Skipping: set repository variable DOGFOOD_NOTIFY_CONSUMER (e.g. Org/sophia).');
-              return;
-            }
-            const slash = consumer.indexOf('/');
-            if (slash < 1 || slash === consumer.length - 1) {
-              core.setFailed('DOGFOOD_NOTIFY_CONSUMER must be owner/repo');
-              return;
-            }
-            const cOwner = consumer.slice(0, slash);
-            const cRepo = consumer.slice(slash + 1);
-            const tag = (process.env.TAG || '').trim();
-            if (!/^keys-v[0-9]/i.test(tag)) {
-              core.setFailed(`Unexpected tag: ${tag}`);
-              return;
-            }
-            const force = String(process.env.FORCE).toLowerCase() === 'true';
-            const upstreamOwner = context.repo.owner;
-            const upstreamRepo = context.repo.repo;
-            const title = `[Restormel Keys] Release ${tag}`;
-            if (!force) {
-              const q = `repo:${cOwner}/${cRepo} is:issue in:title ${tag}`;
-              const found = await github.rest.search.issuesAndPullRequests({ q, per_page: 5 });
-              if (found.data.total_count > 0) {
-                core.info(`Skip: found existing issue mentioning ${tag} in title.`);
-                return;
-              }
-            }
-            const changelogUrl = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/CHANGELOG.md`;
-            const treeUrl = `https://github.com/${upstreamOwner}/${upstreamRepo}/tree/${tag}`;
-            const dogfoodIssues = `https://github.com/${upstreamOwner}/${upstreamRepo}/issues?q=is%3Aissue+label%3Atask+%5BDogfood%5D`;
-            const body = [
-              '### Restormel Keys — release notification',
-              '',
-              'This issue was opened automatically from **' + `${upstreamOwner}/${upstreamRepo}` + '** when **`' + tag + '`** was pushed.',
-              '',
-              '| Link | URL |',
-              '|------|-----|',
-              '| **Tag (tree)** | ' + treeUrl + ' |',
-              '| **CHANGELOG** (source of truth) | ' + changelogUrl + ' |',
-              '| **Upstream `[Dogfood]` issues** | ' + dogfoodIssues + ' |',
-              '',
-              '**Suggested next steps (consumer team)**',
-              '- [ ] Confirm **npm** `@restormel/*` versions for this train (see CHANGELOG on the tag).',
-              '- [ ] Bump / verify the **host app** dependencies and integration notes.',
-              '- [ ] Close or update any **linked consumer threads** that were waiting on this release.',
-              '',
-              '_No API keys or credentials belong in this issue._',
-            ].join('\n');
-            const label = 'restormel-upstream-release';
-            try {
-              await github.rest.issues.createLabel({
-                owner: cOwner,
-                repo: cRepo,
-                name: label,
-                color: '1D76DB',
-                description: 'Auto-opened when restormel-keys ships a keys-v* tag',
-              });
-            } catch (e) {
-              if (e.status !== 422) core.warning(String(e));
-            }
-            await github.rest.issues.create({
-              owner: cOwner,
-              repo: cRepo,
-              title,
-              body,
-              labels: [label],
-            });
-            core.notice(`Created issue on ${consumer}: ${title}`);
+          DOGFOOD_NOTIFY_CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
+          CONSUMER_PAT: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/sophia-release-notify-issue.mjs CHANGELOG.md
