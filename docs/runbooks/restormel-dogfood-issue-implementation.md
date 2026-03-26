@@ -96,6 +96,8 @@ If the agent logs show **`403`** / `GitHub Actions is not permitted to create or
 
 Without this, pushes from the workflow may still succeed while **`POST .../pulls`** fails.
 
+If **`git push`** fails with **non-fast-forward** on `dogfood/agent-issue-…`, a previous run left the same branch name on the remote; the script now appends **`GITHUB_RUN_ID`** (or a local timestamp) so each run uses a fresh branch name.
+
 ### Manual run
 
 1. **Actions** → **Dogfood agent — draft PR** → **Run workflow**.
