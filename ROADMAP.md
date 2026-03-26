@@ -30,6 +30,8 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 Findings from the first real integration. See [docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md) for full context and workarounds.
 
+- **Project model index — Gateway Key mutations (queued spec):** Sophia and other integrators need `POST`/`DELETE` (or equivalent) on `/keys/dashboard/api/projects/{projectId}/models` with **`rk_`** auth, OpenAPI + Cloud API docs, and provider normalization spelled out — not dashboard-only configuration. **Canonical requirements:** [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
+
 **Restormel-first strategy:** Production issues on Sophia should be treated in two layers: (1) Restormel does more heavy lifting (stronger contract, typings, component behavior, model filtering, diagnostics); (2) then simplify the host app and reassess what is truly app-specific. See [docs/reference/restormel-first-assessment.md](docs/reference/restormel-first-assessment.md).
 
 1. **Publish UI packages to npm.** `@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements` — installable from npm with release smoke tests. Currently 404.

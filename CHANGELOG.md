@@ -38,6 +38,7 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
+- docs(requirements): **project model index Gateway API** — spec for machine-configurable project model bindings (`rk_`), OpenAPI/Cloud API deliverables, FR-1–FR-8; see [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
 - catalog(api): **default allowlist** — `GET /keys/dashboard/api/catalog` returns only `(providerId, providerModelId)` pairs from `@restormel/keys` `defaultProviders` (contract `2026-03-24.catalog.v2`); `skipDefaultAllowlist=1` for raw DB rows. Trimmed legacy OpenAI / Anthropic / Google model ids from defaults and seed.
 - catalog(api): **external runtime signals** — contract bumped to `2026-03-25.catalog.v3`; payload now includes `externalSignals` with credential-free provider status snapshots (OpenAI/Anthropic status pages) and OpenRouter public model endpoint health (`status`, `uptime_last_30m`, latency/throughput quantiles). OpenRouter variants are filtered against live public OpenRouter model IDs when snapshot fetch succeeds.
 - catalog(api): **crowd observations** — contract `2026-03-25.catalog.v4` adds optional per-variant `crowdObservations` (aggregated deprecated/retired report counts). Authenticated clients can `POST /keys/dashboard/api/catalog/observations` (Bearer Gateway Key, management key, or session) after observing vendor deprecation signals; `@restormel/keys/dashboard` adds `reportCatalogModelObservation()`.
