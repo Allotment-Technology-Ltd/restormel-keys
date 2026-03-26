@@ -17,8 +17,9 @@ on:
         type: boolean
         default: false
   schedule:
-    # Every 6 hours UTC; processes at most one queued issue per run (concurrency-limited).
-    - cron: '0 */6 * * *'
+    # GitHub allows down to every 5 minutes. Default below is aggressive — for **short-term testing** of
+    # `dogfood-agent-auto` pickup; restore production cadence with e.g. `0 */6 * * *` (every 6 hours UTC).
+    - cron: '*/5 * * * *'
 
 concurrency:
   group: dogfood-agent-open-pr

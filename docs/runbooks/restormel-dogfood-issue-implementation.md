@@ -95,7 +95,7 @@ Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** pl
 
 ### Scheduled (opt-in) pickup
 
-To queue **one** issue per run (every 6 hours UTC, concurrency-limited):
+To queue **one** issue per run on a **schedule** (cron is in `.github/workflows/dogfood-agent-open-pr.yml`; may be set to every few minutes for testing — restore a slower cadence for production), concurrency-limited:
 
 1. Ensure the relay issue has **`task`** (added by the consumer relay) and title **`[Dogfood]…`**.
 2. Add label **`dogfood-agent-auto`** (create it in the repo if needed). Do **not** add **`dogfood-agent-pr`** until a PR exists.
