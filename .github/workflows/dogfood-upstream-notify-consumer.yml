@@ -3,8 +3,12 @@
 #
 # Configure (restormel-keys):
 #   Repository variable: DOGFOOD_NOTIFY_CONSUMER = Owner/repo (e.g. Allotment-Technology-Ltd/sophia)
-#   Repository or organisation secret: DOGFOOD_NOTIFY_CONSUMER_TOKEN — fine-grained PAT with
-#     Issues: Read and write on the consumer repo only (not restormel-keys).
+#   PAT secret (either name — same token is OK if scopes cover both directions):
+#     - DOGFOOD_NOTIFY_CONSUMER_TOKEN (preferred name on this repo), or
+#     - RESTORMEL_KEYS_ISSUE_TOKEN (e.g. org secret shared with SOPHIA — must be visible to THIS repo too)
+#   The fine-grained PAT must allow Issues: Read and write on the CONSUMER repo (sophia).
+#   If the same PAT also has Issues on restormel-keys (typical for SOPHIA→keys relay), one token suffices;
+#   if it is scoped to restormel-keys ONLY, expand the PAT to include sophia or use a second PAT.
 #
 # Optional: run manually (Actions → this workflow) with input `tag` to backfill or retry.
 name: Dogfood upstream — notify consumer
@@ -48,18 +52,18 @@ jobs:
         run: echo '::notice::Dogfood upstream notify disabled. Set Actions variable DOGFOOD_NOTIFY_CONSUMER (e.g. Org/sophia).'
 
       - name: Skip notify (missing PAT)
-        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN == '' }}
-        run: echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but secret DOGFOOD_NOTIFY_CONSUMER_TOKEN is missing.'
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN == '' && secrets.RESTORMEL_KEYS_ISSUE_TOKEN == '' }}
+        run: echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT secret found (set DOGFOOD_NOTIFY_CONSUMER_TOKEN or make RESTORMEL_KEYS_ISSUE_TOKEN visible to this repo).'
 
       - name: Open consumer issue
-        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN != '' }}
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && (secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN != '' || secrets.RESTORMEL_KEYS_ISSUE_TOKEN != '') }}
         uses: actions/github-script@v7
         env:
           TAG: ${{ steps.meta.outputs.tag }}
           FORCE: ${{ steps.meta.outputs.force }}
           CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
         with:
-          github-token: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN }}
+          github-token: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
           script: |
             const consumer = (process.env.CONSUMER || '').trim();
             if (!consumer) {

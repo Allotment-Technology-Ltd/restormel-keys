@@ -115,7 +115,8 @@ Use the same content rules as the issue form.
 | Name | Type | Required | Purpose |
 |------|------|----------|---------|
 | **`DOGFOOD_NOTIFY_CONSUMER`** | Repository **variable** | Yes, to enable | Consumer repo as `Owner/repo` (e.g. `Allotment-Technology-Ltd/sophia`). If empty, the workflow **skips** with a notice. |
-| **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** | Repository or **organisation** secret | Yes, when enabled | Fine-grained PAT: **Issues: Read and write** on the **consumer repo only** (not restormel-keys). Same *class* of secret as the relay PAT, **opposite** direction. |
+| **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** | Repository or **organisation** secret | Yes, when enabled (unless you reuse the name below) | Fine-grained PAT: **Issues: Read and write** on the **consumer** repo (e.g. sophia). |
+| **`RESTORMEL_KEYS_ISSUE_TOKEN`** | Same PAT, **if** reused | Alternative to the row above | If your relay PAT already includes **both** repos (Issues on **restormel-keys** *and* **sophia**), **one token is enough**. The workflow accepts **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** or **`RESTORMEL_KEYS_ISSUE_TOKEN`** (first non-empty wins). The org secret must be **visible to restormel-keys** Actions, not only SOPHIA. If the PAT is scoped to **restormel-keys only**, it **cannot** open issues on sophia — extend the FG PAT to include **sophia** (Issues write) or create a second PAT. |
 
 **Org vs repo for these:** Organisation **secrets** are fine if you **scope** which repositories can read them (at least **restormel-keys**). That does **not** grant the consumer repo access to the token; only Actions in allowed repos can use it. **`OPENAI_API_KEY`** (org secret) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** (org or repo secret) are **unrelated** — the latter is a **GitHub** PAT for the Issues API, not an LLM key.
 
