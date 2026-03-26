@@ -30,7 +30,7 @@
    - **Body:** States scope vs npm; embedded **CHANGELOG** section when the heading matches **`## <tag>`**; **SOPHIA triage** table; links (**OpenAPI**, **keys-catalog-sync**, **resolve** guide, tree, CHANGELOG, **`[Dogfood]`** search); checklist. **No secrets** should appear in that body.
 
 3. **Optional automation (PR loop)**  
-   - **`dogfood-pr-comment-consumer.yml`** can comment on the **original SOPHIA issue** when a **restormel-keys** PR is opened or merged to **`main`**, if **`DOGFOOD_NOTIFY_CONSUMER`** and the PAT are configured (see [github-dogfood-feedback.md](../github-dogfood-feedback.md)).  
+   - **`dogfood-pr-comment-consumer.yml`** can comment on the **original SOPHIA issue** (e.g. **#74** linked from `[View source issue](…)` on the restormel-keys **`[Dogfood]`** issue) when a PR is **opened** or **merged to `main`** and the PR body includes **Fixes/Closes/Addresses #N**. Requires **`DOGFOOD_NOTIFY_CONSUMER`** + PAT on **restormel-keys** — same as upstream notify. **Merging alone does not create a *new* SOPHIA issue**; it only adds a **comment** on the existing relay source issue when configured.
    - No SOPHIA PR is opened by Restormel automation; the host team still owns consumer-repo changes.
 
 ---
@@ -39,7 +39,7 @@
 
 **On restormel-keys**
 
-- **Variable:** `DOGFOOD_NOTIFY_CONSUMER` = `Allotment-Technology-Ltd/sophia` (or your real `owner/repo`).
+- **Variable:** `DOGFOOD_NOTIFY_CONSUMER` = `Allotment-Technology-Ltd/sophia` (or your real `owner/repo`). **Same variable gates both:** (1) **release** backlog issues on SOPHIA when you push **`keys-v*`** / **`restormel-v*`**, and (2) **comments on the original SOPHIA issue** when a PR that **Fixes/Closes/Addresses** the restormel-keys **`[Dogfood]`** ticket is **opened** or **merged to `main`** (`dogfood-pr-comment-consumer.yml`). If it is **unset**, those jobs **skip** (Actions log shows *Set DOGFOOD_NOTIFY_CONSUMER…*) — **SOPHIA receives nothing** from that automation.
 - **Secret:** Either **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** or **`RESTORMEL_KEYS_ISSUE_TOKEN`** available to **restormel-keys** Actions, with a PAT that can open **issues on SOPHIA**.  
   - If you reuse **`RESTORMEL_KEYS_ISSUE_TOKEN`**, the org secret must be **allowed for the restormel-keys repository**, not only SOPHIA, and the PAT must include **Issues** on **sophia** (not only restormel-keys).
 
