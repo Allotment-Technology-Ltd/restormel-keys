@@ -1,0 +1,39 @@
+# When a relayed consumer issue lands in restormel-keys ([Dogfood] title), post a
+# checklist + Cursor prompt so maintainers/agents pick up work consistently.
+# Does not implement code — hints only. No secrets in the comment body.
+name: Dogfood issue — implementation hint
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  comment:
+    if: contains(github.event.issue.title, '[Dogfood]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const n = context.payload.issue.number;
+            const body = [
+              '### Dogfood issue — implementation workflow',
+              '',
+              'This issue was likely **relayed from a consumer repo** (e.g. SOPHIA). Next steps:',
+              '',
+              '1. **Security:** Do not copy secrets from the source body into code or PRs. See `docs/security-baseline.md`.',
+              '2. **Runbook:** Follow **[docs/runbooks/restormel-dogfood-issue-implementation.md](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/blob/main/docs/runbooks/restormel-dogfood-issue-implementation.md)** (triage → implement → PR → optional reply on source issue).',
+              '3. **Cursor:** Paste the agent prompt from that runbook (section *Cursor agent prompt*), replacing `N` with **' + n + '**.',
+              '',
+              'Relay policy: `docs/github-dogfood-feedback.md`.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: n,
+              body,
+            });

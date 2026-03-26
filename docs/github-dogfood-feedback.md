@@ -95,6 +95,12 @@ gh issue create --repo YOUR_ORG/restormel-keys \
 
 Use the same content rules as the issue form.
 
+## After a relayed issue appears here
+
+- **Implementing the work:** [docs/runbooks/restormel-dogfood-issue-implementation.md](runbooks/restormel-dogfood-issue-implementation.md) — checklist, security, Cursor prompt, PR linkage.
+- **Automation:** New issues whose title contains **`[Dogfood]`** get a short GitHub comment from `.github/workflows/dogfood-issue-hint.yml` linking to that runbook.
+- **Cursor:** Rule `.cursor/rules/07-dogfood-github-issues.mdc` reminds agents to follow the runbook.
+
 ## Related
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — how to work in this repo.

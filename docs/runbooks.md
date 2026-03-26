@@ -19,6 +19,7 @@ Early operational notes. **Single place** for procedures; expand when hosted com
 | [runbooks/zuplo-config-reference/](runbooks/zuplo-config-reference/README.md) | Reference `routes.oas.json` and `policies.json` for agent-driven or scripted Zuplo setup. |
 | [runbooks/aaif-implementation-workflow.md](runbooks/aaif-implementation-workflow.md) | Integrate AAIF runtime helper with `@restormel/keys` for routing + cost. |
 | [runbooks/mcp-implementation-workflow.md](runbooks/mcp-implementation-workflow.md) | Implement Restormel MCP tool surface (stdio server + agent workflow). |
+| [runbooks/restormel-dogfood-issue-implementation.md](runbooks/restormel-dogfood-issue-implementation.md) | **Dogfood relay:** triage and implement `[Dogfood]` issues from consumer repos; Cursor prompt; links to `github-dogfood-feedback.md`. |
 | [api/openapi.yaml](api/openapi.yaml) | Canonical OpenAPI spec for Keys cloud API; import into Zuplo Developer Portal for launch-ready docs. |
 | [zuplo-gateway/](../zuplo-gateway/README.md) | In-repo Zuplo project (config-as-code). Deploy with `pnpm run deploy` and `ZUPLO_API_KEY`; set `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo. |
 
