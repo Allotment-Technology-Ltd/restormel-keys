@@ -24,7 +24,7 @@ This directory is the **Zuplo API gateway** project for the **Restormel Keys con
 
 **Option B — CLI (deploy from this folder)**
 
-1. Install dependencies (includes Zuplo CLI): from this directory run `pnpm install` (or `npm install`). Node 20+ required.
+1. Install dependencies (includes Zuplo CLI): from this directory run `pnpm install --ignore-workspace` if this folder lives inside the Restormel Keys monorepo (otherwise plain `pnpm install`), or use `npm install`. Node 20+ required. The `--ignore-workspace` flag ensures this package’s own `pnpm-lock.yaml` is updated instead of only the repo root lockfile.
 2. Get an API key: Zuplo Portal → Settings → API Keys. Set `ZUPLO_API_KEY` in your environment (do not commit).
 3. Create project (if not already created):  
    `pnpm exec zuplo project create --name restormel-keys-gateway`  
@@ -55,7 +55,7 @@ Then run:
 
 ```bash
 cd zuplo-gateway
-pnpm install
+pnpm install --ignore-workspace
 # If this folder is not yet linked to your Zuplo project, run: pnpm exec zuplo link
 ./scripts/setup-from-cli.sh
 ```
