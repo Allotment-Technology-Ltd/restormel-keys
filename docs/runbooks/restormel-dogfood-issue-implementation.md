@@ -53,6 +53,7 @@
 
 - Comment on the **restormel-keys** issue with the **merge commit** or **release** note.
 - If useful for the consumer team, add a short comment on the **source** (SOPHIA) issue linking to the PR or release — **no secrets**.
+- **Automated consumer ping:** When you ship a **`keys-v*`** tag, optional workflow **`.github/workflows/dogfood-upstream-notify-consumer.yml`** can open a tracking issue on the consumer repo (variable **`DOGFOOD_NOTIFY_CONSUMER`**, PAT secret **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**). Spec: [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md) § *Upstream → consumer notify*.
 
 ---
 

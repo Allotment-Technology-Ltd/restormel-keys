@@ -8,6 +8,8 @@ Single record of meaningful repo changes.
 
 **Dogfood CI draft PR (optional):** [docs/runbooks/restormel-dogfood-issue-implementation.md](docs/runbooks/restormel-dogfood-issue-implementation.md) §6 — `scripts/dogfood-agent-open-pr.mjs` and `.github/workflows/dogfood-agent-open-pr.yml` (LLM → allowlisted paths → **draft** PR). Secrets: `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`. Scheduled pickup: labels `dogfood-agent-auto` + `task`.
 
+**Dogfood upstream → consumer notify (optional):** `.github/workflows/dogfood-upstream-notify-consumer.yml` — on **`keys-v*`** tag (or manual dispatch), opens a tracking issue on the consumer repo when **`DOGFOOD_NOTIFY_CONSUMER`** (variable) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** (PAT) are set. Spec: [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) § *Upstream → consumer notify*.
+
 ## keys-v0.2.13 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.13`): **Recovery / complete train** after a failed or partial `keys-v0.2.12` publish and/or dashboard image build (`COPY vendor ./vendor` missing path). Same product content as **0.2.12** (Voyage route steps, etc.) plus repo **`vendor/.gitkeep`** on the release commit. Versions: `@restormel/keys@0.2.13`, `keys-svelte@0.1.6`, `aaif@0.0.6`, `mcp@0.1.6`, `doctor@0.1.9`, `validate@0.1.9`, `keys-cli@0.1.9`.
