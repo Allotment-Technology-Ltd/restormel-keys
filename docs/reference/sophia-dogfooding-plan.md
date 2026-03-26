@@ -4,6 +4,8 @@
 
 **Goal:** SOPHIA uses Restormel Keys for (1) the **ingestion pipeline** with fallback routes and policies, and (2) **embedded UI** so end-users can select which models to use for philosophy queries.
 
+**Feedback to Restormel Keys (standard for trusted repos):** SOPHIA is treated as a **trusted** consumer. The **de facto** way to relay improvement requirements into the **restormel-keys** GitHub repo is **not** manual copy-paste: use the label **`restormel-feedback`** in SOPHIA with the GitHub Actions relay described in [restormel-dogfood-relay-consumer-pack.md](restormel-dogfood-relay-consumer-pack.md) (copy that file into the SOPHIA repo and complete setup once). Canonical policy: [github-dogfood-feedback.md](../github-dogfood-feedback.md).
+
 ---
 
 ## Scope

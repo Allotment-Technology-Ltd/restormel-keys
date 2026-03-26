@@ -1,0 +1,53 @@
+# Reference only — copy to CONSUMER repo as `.github/workflows/restormel-dogfood-relay.yml`
+# De facto standard for trusted consumer repos: see docs/github-dogfood-feedback.md and
+# docs/reference/restormel-dogfood-relay-consumer-pack.md (self-contained copy + agent prompt).
+# Replace YOUR_ORG and YOUR_REPO with the Restormel Keys GitHub repo (this repo).
+# Create a fine-grained PAT with Issues: write on that repo; store as RESTORMEL_KEYS_ISSUE_TOKEN in the consumer repo.
+
+name: Relay dogfood issue to Restormel Keys
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  relay:
+    if: github.event.label.name == 'restormel-feedback'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const body = [
+              'Relayed from a **dogfood** consumer repository.',
+              '',
+              '| Field | Value |',
+              '|--------|--------|',
+              `| Source repo | \`${{ github.repository }}\` |`,
+              `| Source issue | #${issue.number} |`,
+              '',
+              '### Source title',
+              '',
+              issue.title,
+              '',
+              '### Source body',
+              '',
+              issue.body || '_(empty)_',
+              '',
+              '---',
+              `[View source issue](${issue.html_url})`,
+            ].join('\n');
+            const rawTitle = `[Dogfood] ${issue.title}`;
+            const title = rawTitle.length > 256 ? rawTitle.slice(0, 253) + '...' : rawTitle;
+            await github.rest.issues.create({
+              owner: 'YOUR_ORG',
+              repo: 'YOUR_REPO',
+              title,
+              body,
+              labels: ['task'],
+            });
