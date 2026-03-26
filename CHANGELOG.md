@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-26)
 
+**Dependency security (pnpm):** Root `pnpm.overrides` extended so transitive deps meet patched versions for open Dependabot/npm advisories (`fastify`, `kysely`, `picomatch`, `yaml`). `pnpm-lock.yaml` refreshed; `pnpm audit` reports no known vulnerabilities.
+
 **Dogfood → GitHub:** [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) — **default for trusted consumer repos** is label relay (`restormel-feedback` + PAT secret). Self-contained copy for SOPHIA and other consumers: [docs/reference/restormel-dogfood-relay-consumer-pack.md](docs/reference/restormel-dogfood-relay-consumer-pack.md) (includes agent prompt). Issue form and reference workflow remain: [docs/reference/github-dogfood-relay-consumer-workflow.yml](docs/reference/github-dogfood-relay-consumer-workflow.yml). **SOPHIA plan** updated: [docs/reference/sophia-dogfooding-plan.md](docs/reference/sophia-dogfooding-plan.md).
 
 **Dogfood agent schedule:** `.github/workflows/dogfood-agent-open-pr.yml` cron set to **every 5 minutes** for short-term testing of `dogfood-agent-auto` pickup — restore `0 */6 * * *` (or similar) when done.
