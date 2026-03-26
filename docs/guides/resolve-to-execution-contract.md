@@ -28,7 +28,11 @@ Policy and cost estimation still use the `google` id internally where `@restorme
 
 `POST/PATCH .../routes/{routeId}/steps` accept only the **execution** provider slugs Keys can run through resolve today: **`openai`**, **`anthropic`**, **`google`** (inbound aliases such as `vertex` normalize to `google` in storage), **`openrouter`**, **`vercel`**, **`portkey`**, **`voyage`**. This list is **authoritative** and is the same set as the `providerPreference` enum in [openapi.yaml](../api/openapi.yaml) (`RouteStep`, `RouteStepCreate`, `RouteStepPatch`).
 
-It is **intentionally narrower** than the project model index: **`GET/POST .../projects/{projectId}/models`** may list extra providers (for example under **`bindingKind: registry`**) for host catalog merge. Those rows are not valid `providerPreference` values on route steps until Keys widens step validation and execution. Integrators that replace steps from a UI backed by the project index should map or restrict to the step enum so `POST .../steps` does not return **400** (e.g. “must be one of: …”).
+It is **intentionally narrower** than the project model index: **`GET/POST .../projects/{projectId}/models`** may list extra providers (for example under **`bindingKind: registry`**) for host catalog merge. Those rows are not valid `providerPreference` values on route steps until Keys widens step validation and execution. Integrators that replace steps from a UI backed by the project index should map or restrict to the step enum.
+
+**HTTP 400** for a disallowed slug uses **`error`: `route_step_provider_not_allowed`** with **`allowed`** (string array) and a **`detail`** hint — distinct from generic **`invalid_step_schema`**. Automations (e.g. SOPHIA save-routing) can branch on **`error`** to show “not routable on steps yet” vs other validation failures.
+
+**Aggregator pattern (Mistral-class, DeepSeek-class, etc.):** if the model is only reachable through OpenRouter, Portkey, or similar, persist the step as **`openrouter`** or **`portkey`** with the **Keys catalog `modelId`** for that path when it exists — not a first-party **`mistral`** / **`deepseek`** slug on the step until Keys adds native execution for that provider.
 
 ### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 

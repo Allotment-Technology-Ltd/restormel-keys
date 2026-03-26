@@ -77,7 +77,7 @@ Do not commit or log secrets.
 
 ## 6) Optional: CI agent (draft PR)
 
-Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** plus **`scripts/dogfood-agent-open-pr.mjs`**. The workflow calls an LLM (Anthropic or OpenAI), applies edits under a **strict path allowlist** (`docs/`, `apps/`, `packages/`, `scripts/`, `prompts/`, `e2e/` — not `.github/`, not this script), then **pushes a branch** and opens a **draft** PR. **Human review is mandatory** before merge.
+Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** plus **`scripts/dogfood-agent-open-pr.mjs`**. The workflow calls an LLM (Anthropic or OpenAI), applies edits under a **strict path allowlist** (`docs/`, `apps/`, `packages/`, `scripts/`, `prompts/`, `e2e/` — not `.github/`, not this script), then **pushes a branch** and opens a **draft** PR. **Human review is mandatory** before merge. The OpenAI path uses **`response_format: json_object`** so the model reply is valid JSON; the script also tolerates minor formatting issues (invisible chars, trailing commas). Anthropic returns plain text — the same extraction rules apply.
 
 ### One draft PR per dogfood agent pickup (canonical)
 

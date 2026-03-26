@@ -8,6 +8,10 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-27)
 
+**Dogfood #55 / route steps vs project index:** Steps **`POST`/`PATCH`** return **`error`: `route_step_provider_not_allowed`** (with **`allowed`**, **`detail`**) when `providerPreference` is not an execution slug — distinct from **`invalid_step_schema`**. OpenAPI **1.3.3** (`RouteStepProviderNotAllowedError`, step **400** `oneOf`, `providerPreference` descriptions: aggregator pattern). Guide: [resolve-to-execution-contract.md](docs/guides/resolve-to-execution-contract.md). Zuplo: [routes-steps.md](zuplo-gateway/docs/pages/dashboard-api/routes-steps.md).
+
+**Dogfood agent JSON parse:** `scripts/dogfood-agent-open-pr.mjs` — OpenAI **`response_format: json_object`**, stricter system prompt for escaped `content`, and more resilient extraction (invisible chars, trailing commas, `---` prefix, fence fallback) so Actions runs do not fail on malformed multi-file JSON.
+
 **Dogfood #53:** Route-step `providerPreference` documented as the **authoritative** narrow execution enum (OpenAPI descriptions on `RouteStep`, `RouteStepCreate`, `RouteStepPatch`), with an explicit note that the project model index — including **`registry`** bindings — may list additional provider slugs that are **not** valid on `POST/PATCH .../routes/{routeId}/steps` until Keys widens execution. Guide: [resolve-to-execution-contract.md](docs/guides/resolve-to-execution-contract.md) (*Route step providerPreference*). Developer portal: [zuplo-gateway/docs/pages/dashboard-api/routes-steps.md](zuplo-gateway/docs/pages/dashboard-api/routes-steps.md).
 
 **Dogfood PR consumer (manual):** `.github/workflows/dogfood-pr-comment-consumer-dispatch.yml` — **workflow_dispatch** to post the same consumer issue comment as the automatic PR workflow (e.g. after enabling **`DOGFOOD_NOTIFY_CONSUMER`** post-merge). Uses **`gh api …/pulls/N`** for **`head.repo.full_name`** (`gh pr view` JSON can omit **`nameWithOwner`** on merged PRs). Documented in `docs/github-dogfood-feedback.md`.

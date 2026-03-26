@@ -12,6 +12,8 @@
  *   DOGFOOD_DRY_RUN=1 — no git push / no PR; prints summary
  *   DOGFOOD_ANTHROPIC_MODEL, DOGFOOD_OPENAI_MODEL
  *   GITHUB_OUTPUT — set by Actions for step outputs
+ *
+ * OpenAI: chat completions use response_format json_object (requires a model that supports it, e.g. gpt-4o-mini).
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -72,27 +74,92 @@ function isAllowedRel(p) {
   return true;
 }
 
-function extractJsonObject(text) {
-  const t = text.trim();
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const inner = fence ? fence[1].trim() : t;
-  const start = inner.indexOf('{');
-  if (start === -1) throw new Error('No JSON object in model output');
+/**
+ * Find the end index of a balanced top-level `{ ... }` while respecting JSON string rules
+ * (so `}` inside "content" values does not truncate the object).
+ */
+function findBalancedJsonObjectEnd(s, start) {
   let depth = 0;
-  let end = -1;
-  for (let i = start; i < inner.length; i += 1) {
-    const c = inner[i];
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i += 1) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') escape = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
     if (c === '{') depth += 1;
     else if (c === '}') {
       depth -= 1;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
+      if (depth === 0) return i;
     }
   }
-  if (end === -1) throw new Error('Unbalanced JSON braces in model output');
-  return JSON.parse(inner.slice(start, end + 1));
+  return -1;
+}
+
+function stripInvisible(s) {
+  return String(s)
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+}
+
+/** Remove trailing commas before `}` or `]` (common invalid JSON from models). */
+function stripTrailingCommas(s) {
+  let out = s;
+  for (let i = 0; i < 12; i += 1) {
+    const next = out.replace(/,(\s*[}\]])/g, '$1');
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+function tryParseJsonObjectSlice(jsonSlice) {
+  const cleaned = stripInvisible(jsonSlice);
+  const attempts = [cleaned, stripTrailingCommas(cleaned)];
+  for (const slice of attempts) {
+    try {
+      return JSON.parse(slice);
+    } catch {
+      /* next */
+    }
+  }
+  return null;
+}
+
+function extractJsonObject(text) {
+  const t = stripInvisible(text.trim());
+  /** @type {string[]} */
+  const candidates = [];
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/im);
+  if (fence) candidates.push(stripInvisible(fence[1].trim()));
+  candidates.push(t);
+
+  for (const raw of candidates) {
+    const inner = raw.replace(/^\s*---\s*/m, '').trim();
+    const start = inner.indexOf('{');
+    if (start === -1) continue;
+    const end = findBalancedJsonObjectEnd(inner, start);
+    if (end === -1) continue;
+    const parsed = tryParseJsonObjectSlice(inner.slice(start, end + 1));
+    if (parsed && typeof parsed === 'object') return parsed;
+  }
+
+  const whole = tryParseJsonObjectSlice(t);
+  if (whole && typeof whole === 'object') return whole;
+
+  throw new Error(
+    'No parseable JSON object in model output (use JSON-escaped strings in "content"; OpenAI path uses response_format json_object)',
+  );
 }
 
 async function githubJson(method, pathname, body) {
@@ -170,6 +237,7 @@ async function callOpenAI(system, user) {
         { role: 'user', content: user },
       ],
       temperature: 0.2,
+      response_format: { type: 'json_object' },
     }),
   });
   const txt = await res.text();
@@ -210,8 +278,10 @@ async function run() {
 
   const system = [
     'You are a coding agent for the restormel-keys monorepo.',
-    'Respond with ONE JSON object only (no markdown fences). Shape:',
+    'Respond with ONE JSON object only. Shape:',
     '{"summary":"one line","files":[{"path":"relative/path","content":"full UTF-8 file contents"}]}',
+    'The entire reply must be valid JSON (OpenAI: json_object mode). No markdown fences unless the fenced block alone is valid JSON.',
+    'If files is non-empty, every "content" value must be JSON-safe: escape double quotes as \\", newlines as \\n, backslashes as \\\\.',
     'Rules:',
     '- Minimal, targeted changes only; no unrelated refactors.',
     '- Respect repository phase/bootstrap constraints (no large new product surfaces unless the issue clearly requires them).',
@@ -219,6 +289,7 @@ async function run() {
     '- Paths must be repo-relative and under these roots only: docs/, apps/, packages/, scripts/, prompts/, e2e/.',
     '- Never touch .github/, never add .env files, never modify scripts/dogfood-agent-open-pr.mjs.',
     '- Provide full file contents for each file (not diffs).',
+    '- Escape JSON properly inside string values: use \\" for double quotes and \\\\ for backslashes in file content.',
     '- If the issue is ambiguous, unsafe, or needs a human decision, return {"summary":"...","files":[]} with explanation in summary.',
   ].join('\n');
 
