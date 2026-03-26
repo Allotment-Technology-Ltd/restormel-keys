@@ -24,6 +24,12 @@ A successful `POST /api/projects/{projectId}/resolve` guarantees that Restormel 
 
 Policy and cost estimation still use the `google` id internally where `@restormel/keys` `defaultProviders` expects it; hosts should key execution off **`vertex`** for Google/Vertex.
 
+### Route step `providerPreference` (Steps API)
+
+`POST/PATCH .../routes/{routeId}/steps` accept only the **execution** provider slugs Keys can run through resolve today: **`openai`**, **`anthropic`**, **`google`** (inbound aliases such as `vertex` normalize to `google` in storage), **`openrouter`**, **`vercel`**, **`portkey`**, **`voyage`**. This list is **authoritative** and is the same set as the `providerPreference` enum in [openapi.yaml](../api/openapi.yaml) (`RouteStep`, `RouteStepCreate`, `RouteStepPatch`).
+
+It is **intentionally narrower** than the project model index: **`GET/POST .../projects/{projectId}/models`** may list extra providers (for example under **`bindingKind: registry`**) for host catalog merge. Those rows are not valid `providerPreference` values on route steps until Keys widens step validation and execution. Integrators that replace steps from a UI backed by the project index should map or restrict to the step enum so `POST .../steps` does not return **400** (e.g. “must be one of: …”).
+
 ### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 
 Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Rows may be **`bindingKind: execution`** (canonical `providerType` per this table, catalog-backed) or **`bindingKind: registry`** (opaque provider/model for host metadata when off-catalog). **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), [requirements spec](../requirements/project-model-index-gateway-api.md), and [keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md). Global catalog remains **`GET /api/models`** (unauthenticated).
