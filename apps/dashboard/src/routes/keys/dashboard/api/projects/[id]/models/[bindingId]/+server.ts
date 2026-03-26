@@ -34,6 +34,7 @@ async function toEntry(
   id: string;
   providerType: string;
   modelId: string;
+  bindingKind: "execution" | "registry";
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -46,6 +47,7 @@ async function toEntry(
     id: b.id,
     providerType: b.providerType,
     modelId: b.modelId,
+    bindingKind: b.bindingKind,
     enabled: b.enabled,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,

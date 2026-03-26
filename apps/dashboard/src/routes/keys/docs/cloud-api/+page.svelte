@@ -159,7 +159,8 @@
         <td>Dashboard API</td>
         <td>Gateway Key (<code>rk_...</code>)</td>
         <td>
-          Bindings in JSON <code>data</code> (array; not <code>data.bindings</code>) + nested catalog rows. Legacy
+          Bindings in JSON <code>data</code> (array; not <code>data.bindings</code>) including <code>bindingKind</code>
+          (<code>execution</code> vs <code>registry</code>) + nested catalog rows when known. Legacy
           <code>?source=catalog</code> deprecated — prefer <code>GET /api/models</code>. Batch writes: on failure,
           <code>project_models_validation_failed</code> + <code>errors[]</code>.
         </td>
@@ -168,7 +169,11 @@
         <td><code>POST .../models</code> (batch add), <code>PUT .../models</code> (replace allowlist)</td>
         <td>Dashboard API</td>
         <td>Gateway Key (<code>rk_...</code>)</td>
-        <td>Idempotent add per <code>providerType</code> + <code>modelId</code>; validates catalog + provider variant.</td>
+        <td>
+          Idempotent add per <code>providerType</code> + <code>modelId</code>. Optional <code>bindingKind</code>:
+          <code>execution</code> (default) = catalog + canonical provider + variants; <code>registry</code> = opaque strings
+          for host merge when off-catalog.
+        </td>
       </tr>
       <tr>
         <td><code>PATCH .../models/{'{'}bindingId{'}'}</code> (<code>enabled</code>), <code>DELETE .../models/{'{'}bindingId{'}'}</code></td>

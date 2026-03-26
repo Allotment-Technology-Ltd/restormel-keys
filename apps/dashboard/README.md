@@ -62,7 +62,7 @@ Example (minimal in-browser surface: overview + Access + Profile only):
 
 Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
 
-Run migrations in `migrations/` (001 through `020_project_model_bindings.sql` as needed) against the Neon database.
+Run migrations in `migrations/` (001 through `021_project_model_bindings_kind.sql` as needed) against the Neon database.
 
 ## Terminology
 

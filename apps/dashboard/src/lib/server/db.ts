@@ -47,6 +47,7 @@ export {
   deleteProjectModelBinding,
   replaceProjectModelBindings,
   type ProjectModelBindingRecord,
+  type ProjectModelBindingKind,
   upsertCatalogModelObservation,
   listCatalogModelObservationsForPairs,
   type CatalogModelObservationRecord,

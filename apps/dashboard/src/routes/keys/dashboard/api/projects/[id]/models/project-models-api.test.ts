@@ -73,15 +73,18 @@ describe("project models API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listProjectModelBindings.mockResolvedValue([]);
-    upsertProjectModelBinding.mockImplementation(async (projectId: string, pt: string, mid: string) => ({
-      id: "b1",
-      projectId,
-      providerType: pt,
-      modelId: mid,
-      enabled: true,
-      createdAt: new Date(1).toISOString(),
-      updatedAt: new Date(2).toISOString(),
-    }));
+    upsertProjectModelBinding.mockImplementation(
+      async (projectId: string, pt: string, mid: string, bindingKind: "execution" | "registry" = "execution") => ({
+        id: "b1",
+        projectId,
+        providerType: pt,
+        modelId: mid,
+        bindingKind,
+        enabled: true,
+        createdAt: new Date(1).toISOString(),
+        updatedAt: new Date(2).toISOString(),
+      })
+    );
     getProjectModelBinding.mockResolvedValue(null);
   });
 
@@ -118,6 +121,7 @@ describe("project models API", () => {
         projectId: "p1",
         providerType: "voyage",
         modelId: "voyage-3",
+        bindingKind: "execution" as const,
         enabled: true,
         createdAt: new Date(1).toISOString(),
         updatedAt: new Date(2).toISOString(),
@@ -137,8 +141,35 @@ describe("project models API", () => {
     );
     expect(res.status).toBe(200);
     expect(upsertProjectModelBinding).toHaveBeenCalledTimes(2);
-    expect(upsertProjectModelBinding).toHaveBeenCalledWith("p1", "voyage", "voyage-3");
-    expect(upsertProjectModelBinding).toHaveBeenCalledWith("p1", "vertex", "text-embedding-005");
+    expect(upsertProjectModelBinding).toHaveBeenCalledWith("p1", "voyage", "voyage-3", "execution");
+    expect(upsertProjectModelBinding).toHaveBeenCalledWith("p1", "vertex", "text-embedding-005", "execution");
+  });
+
+  it("POST accepts bindingKind registry without catalog model row", async () => {
+    const { POST } = await import("./+server");
+    listProjectModelBindings.mockResolvedValueOnce([]);
+    const res = await POST(
+      mockEvent("p1", {
+        method: "POST",
+        body: JSON.stringify({
+          models: [
+            {
+              providerType: "mistral",
+              modelId: "mistral-embed-not-in-keys-catalog",
+              bindingKind: "registry",
+            },
+          ],
+        }),
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(upsertProjectModelBinding).toHaveBeenCalledWith(
+      "p1",
+      "mistral",
+      "mistral-embed-not-in-keys-catalog",
+      "registry"
+    );
   });
 
   it("POST returns 400 with errors for unknown model", async () => {
@@ -170,7 +201,7 @@ describe("project models API", () => {
     );
     expect(res.status).toBe(200);
     expect(replaceProjectModelBindings).toHaveBeenCalledWith("p1", [
-      { canonicalProviderType: "voyage", modelId: "voyage-3", enabled: false },
+      { canonicalProviderType: "voyage", modelId: "voyage-3", enabled: false, bindingKind: "execution" },
     ]);
   });
 });
@@ -183,6 +214,7 @@ describe("project models binding API", () => {
       projectId: "p1",
       providerType: "voyage",
       modelId: "voyage-3",
+      bindingKind: "execution" as const,
       enabled: false,
       createdAt: new Date(1).toISOString(),
       updatedAt: new Date(2).toISOString(),
@@ -192,6 +224,7 @@ describe("project models binding API", () => {
       projectId: "p1",
       providerType: "voyage",
       modelId: "voyage-3",
+      bindingKind: "execution" as const,
       enabled: false,
       createdAt: new Date(1).toISOString(),
       updatedAt: new Date(2).toISOString(),

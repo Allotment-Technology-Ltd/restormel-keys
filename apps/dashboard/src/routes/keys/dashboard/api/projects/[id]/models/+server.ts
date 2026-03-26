@@ -10,7 +10,11 @@ import {
   upsertProjectModelBinding,
 } from "$lib/server/db";
 import type { ModelRecord } from "$lib/server/db";
-import { validateProjectModelBindingPair } from "$lib/server/project-model-index-validation";
+import {
+  parseBindingKind,
+  validateProjectModelBindingRow,
+  validationErrorField,
+} from "$lib/server/project-model-index-validation";
 
 async function projectScope(
   locals: App.Locals,
@@ -33,6 +37,7 @@ type ProjectModelIndexEntry = {
   id: string;
   providerType: string;
   modelId: string;
+  bindingKind: "execution" | "registry";
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -48,6 +53,7 @@ async function buildIndexEntries(projectId: string): Promise<ProjectModelIndexEn
       id: b.id,
       providerType: b.providerType,
       modelId: b.modelId,
+      bindingKind: b.bindingKind,
       enabled: b.enabled,
       createdAt: b.createdAt,
       updatedAt: b.updatedAt,
@@ -112,7 +118,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     }
 
     const errors: { index: number; field: string; code: string; message: string }[] = [];
-    const dedupe = new Map<string, { canonicalProvider: string; modelId: string }>();
+    const dedupe = new Map<
+      string,
+      { canonicalProvider: string; modelId: string; bindingKind: "execution" | "registry" }
+    >();
 
     for (let i = 0; i < body.models.length; i++) {
       const row = body.models[i];
@@ -120,19 +129,24 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
         errors.push({ index: i, field: "models", code: "validation_failed", message: "Each entry must be an object" });
         continue;
       }
-      const r = row as { providerType?: unknown; modelId?: unknown };
-      const v = await validateProjectModelBindingPair(r.providerType, r.modelId);
+      const r = row as { providerType?: unknown; modelId?: unknown; bindingKind?: unknown };
+      const kind = parseBindingKind(r.bindingKind);
+      const v = await validateProjectModelBindingRow(kind, r.providerType, r.modelId);
       if (!v.ok) {
         errors.push({
           index: i,
-          field: v.error.code === "unknown_model" ? "modelId" : "providerType",
+          field: validationErrorField(v.error.code, v.error.detail),
           code: v.error.code,
           message: v.error.detail,
         });
         continue;
       }
       const key = `${v.canonicalProvider}\0${v.modelId}`;
-      dedupe.set(key, { canonicalProvider: v.canonicalProvider, modelId: v.modelId });
+      dedupe.set(key, {
+        canonicalProvider: v.canonicalProvider,
+        modelId: v.modelId,
+        bindingKind: v.bindingKind,
+      });
     }
 
     if (errors.length > 0) {
@@ -147,7 +161,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     }
 
     for (const v of dedupe.values()) {
-      await upsertProjectModelBinding(scope.projectId, v.canonicalProvider, v.modelId);
+      await upsertProjectModelBinding(scope.projectId, v.canonicalProvider, v.modelId, v.bindingKind);
     }
 
     const data = await buildIndexEntries(scope.projectId);
@@ -176,8 +190,21 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     }
 
     const errors: { index: number; field: string; code: string; message: string }[] = [];
-    const items: { canonicalProviderType: string; modelId: string; enabled: boolean }[] = [];
-    const dedupe = new Map<string, { canonicalProviderType: string; modelId: string; enabled: boolean }>();
+    const items: {
+      canonicalProviderType: string;
+      modelId: string;
+      enabled: boolean;
+      bindingKind: "execution" | "registry";
+    }[] = [];
+    const dedupe = new Map<
+      string,
+      {
+        canonicalProviderType: string;
+        modelId: string;
+        enabled: boolean;
+        bindingKind: "execution" | "registry";
+      }
+    >();
 
     for (let i = 0; i < body.models.length; i++) {
       const row = body.models[i];
@@ -185,12 +212,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
         errors.push({ index: i, field: "models", code: "validation_failed", message: "Each entry must be an object" });
         continue;
       }
-      const r = row as { providerType?: unknown; modelId?: unknown; enabled?: unknown };
-      const v = await validateProjectModelBindingPair(r.providerType, r.modelId);
+      const r = row as { providerType?: unknown; modelId?: unknown; enabled?: unknown; bindingKind?: unknown };
+      const kind = parseBindingKind(r.bindingKind);
+      const v = await validateProjectModelBindingRow(kind, r.providerType, r.modelId);
       if (!v.ok) {
         errors.push({
           index: i,
-          field: v.error.code === "unknown_model" ? "modelId" : "providerType",
+          field: validationErrorField(v.error.code, v.error.detail),
           code: v.error.code,
           message: v.error.detail,
         });
@@ -198,7 +226,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
       }
       const enabled = r.enabled === false ? false : true;
       const key = `${v.canonicalProvider}\0${v.modelId}`;
-      dedupe.set(key, { canonicalProviderType: v.canonicalProvider, modelId: v.modelId, enabled });
+      dedupe.set(key, {
+        canonicalProviderType: v.canonicalProvider,
+        modelId: v.modelId,
+        enabled,
+        bindingKind: v.bindingKind,
+      });
     }
 
     if (errors.length > 0) {

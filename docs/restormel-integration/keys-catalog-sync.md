@@ -24,10 +24,15 @@ Do **not** rely on `GET /api/projects/{projectId}/models?source=catalog` for new
 For the default project index response (no `source=catalog`):
 
 - The binding list is the JSON array at **`data`**.
-- Each element is a **project model index entry**: `id`, canonical **`providerType`**, **`modelId`**, **`enabled`**, timestamps, and nested **`model`** (catalog row or `null` if the catalog row was removed).
+- Each element is a **project model index entry**: `id`, **`bindingKind`**, **`providerType`**, **`modelId`**, **`enabled`**, timestamps, and nested **`model`** (catalog row or `null` if off-catalog / registry-only / removed catalog row).
 - **`meta.source`** is `"project"` when listing bindings.
 
-**Contract note:** The API does **not** emit `data.bindings` or a top-level `bindings` field. Integrators that conceptually treat the list as “bindings” should read **`response.data`**. Request bodies for **`POST`** / **`PUT`** still use the key **`models`** (array of `{ providerType, modelId [, enabled] }`).
+**`bindingKind` (`execution` vs `registry`):**
+
+- **`execution`** (default on write): `providerType` must be a **canonical** resolve vocabulary value; `modelId` must exist in Keys **`models`** and pass variant checks when variants exist. Use for rows aligned with **`GET /api/models`**.
+- **`registry`**: arbitrary provider/model strings (length + sanity checks only) for host merge / pickers when Keys catalog does not yet list the pair. Nested **`model`** is usually **`null`**. Not a promise that resolve/routes execute that pair until catalog and runtime support exist.
+
+**Contract note:** The API does **not** emit `data.bindings` or a top-level `bindings` field. Integrators that conceptually treat the list as “bindings” should read **`response.data`**. Request bodies for **`POST`** / **`PUT`** use **`models`**: `{ providerType, modelId [, enabled] [, bindingKind] }`.
 
 Entries with **`enabled: false`** remain in **`data`**; picker UIs may exclude them so soft-disabled models do not appear in merge layers.
 
@@ -47,7 +52,7 @@ Schema: OpenAPI component **`ProjectModelsValidationError`**. The same shape is 
 
 ## Operators (Keys deploy)
 
-Apply Postgres migration **`020_project_model_bindings.sql`** to the dashboard database when rolling an image that serves the project model index. See [apps/dashboard/README.md](../../apps/dashboard/README.md).
+Apply Postgres migrations **`020_project_model_bindings.sql`** then **`021_project_model_bindings_kind.sql`** (drops FK from `model_id` to `models`, adds `binding_kind`) when rolling an image that serves the project model index. See [apps/dashboard/README.md](../../apps/dashboard/README.md).
 
 ---
 

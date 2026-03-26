@@ -1324,12 +1324,21 @@ async function ensureProjectModelBindingsSchema(): Promise<void> {
         id TEXT PRIMARY KEY,
         project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         provider_type TEXT NOT NULL,
-        model_id TEXT NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+        model_id TEXT NOT NULL,
         enabled BOOLEAN NOT NULL DEFAULT true,
+        binding_kind TEXT NOT NULL DEFAULT 'execution',
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL,
         CONSTRAINT uq_project_model_binding UNIQUE (project_id, provider_type, model_id)
       )
+    `;
+    await sql`
+      ALTER TABLE project_model_bindings
+      ADD COLUMN IF NOT EXISTS binding_kind TEXT NOT NULL DEFAULT 'execution'
+    `;
+    await sql`
+      ALTER TABLE project_model_bindings
+      DROP CONSTRAINT IF EXISTS project_model_bindings_model_id_fkey
     `;
     await sql`
       CREATE INDEX IF NOT EXISTS idx_project_model_bindings_project
@@ -1343,12 +1352,15 @@ async function ensureProjectModelBindingsSchema(): Promise<void> {
   return ensuredProjectModelBindingsSchema;
 }
 
+export type ProjectModelBindingKind = "execution" | "registry";
+
 export type ProjectModelBindingRecord = {
   id: string;
   projectId: string;
   providerType: string;
   modelId: string;
   enabled: boolean;
+  bindingKind: ProjectModelBindingKind;
   createdAt: string;
   updatedAt: string;
 };
@@ -1356,12 +1368,14 @@ export type ProjectModelBindingRecord = {
 function mapProjectModelBindingRow(r: Record<string, unknown>): ProjectModelBindingRecord {
   const ca = Number(r.createdAt ?? 0);
   const ua = Number(r.updatedAt ?? 0);
+  const bk = r.bindingKind === "registry" ? "registry" : "execution";
   return {
     id: r.id as string,
     projectId: r.projectId as string,
     providerType: r.providerType as string,
     modelId: r.modelId as string,
     enabled: r.enabled !== false,
+    bindingKind: bk,
     createdAt: new Date(ca).toISOString(),
     updatedAt: new Date(ua).toISOString(),
   };
@@ -1373,7 +1387,8 @@ export async function listProjectModelBindings(projectId: string): Promise<Proje
   const sql = getSql();
   const rows = await sql`
     SELECT id, project_id AS "projectId", provider_type AS "providerType",
-           model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+           model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM project_model_bindings
     WHERE project_id = ${projectId}
     ORDER BY provider_type ASC, model_id ASC
@@ -1389,7 +1404,8 @@ export async function getProjectModelBinding(
   const sql = getSql();
   const rows = await sql`
     SELECT id, project_id AS "projectId", provider_type AS "providerType",
-           model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+           model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+           created_at AS "createdAt", updated_at AS "updatedAt"
     FROM project_model_bindings
     WHERE id = ${bindingId} AND project_id = ${projectId}
     LIMIT 1
@@ -1399,25 +1415,28 @@ export async function getProjectModelBinding(
 }
 
 /**
- * Insert or update binding; on conflict re-enables and bumps updated_at (idempotent add).
+ * Insert or update binding; on conflict re-enables, updates binding_kind, and bumps updated_at (idempotent add).
  */
 export async function upsertProjectModelBinding(
   projectId: string,
   canonicalProviderType: string,
-  modelId: string
+  modelId: string,
+  bindingKind: ProjectModelBindingKind = "execution"
 ): Promise<ProjectModelBindingRecord> {
   await ensureProjectModelBindingsSchema();
   const sql = getSql();
   const now = Date.now();
   const newId = crypto.randomUUID();
   const rows = await sql`
-    INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, created_at, updated_at)
-    VALUES (${newId}, ${projectId}, ${canonicalProviderType}, ${modelId}, true, ${now}, ${now})
+    INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, binding_kind, created_at, updated_at)
+    VALUES (${newId}, ${projectId}, ${canonicalProviderType}, ${modelId}, true, ${bindingKind}, ${now}, ${now})
     ON CONFLICT (project_id, provider_type, model_id) DO UPDATE SET
       enabled = true,
+      binding_kind = ${bindingKind},
       updated_at = ${now}
     RETURNING id, project_id AS "projectId", provider_type AS "providerType",
-      model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+      model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+      created_at AS "createdAt", updated_at AS "updatedAt"
   `;
   return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
 }
@@ -1435,7 +1454,8 @@ export async function updateProjectModelBindingEnabled(
     SET enabled = ${enabled}, updated_at = ${now}
     WHERE id = ${bindingId} AND project_id = ${projectId}
     RETURNING id, project_id AS "projectId", provider_type AS "providerType",
-      model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+      model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+      created_at AS "createdAt", updated_at AS "updatedAt"
   `;
   if (rows.length === 0) return null;
   return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
@@ -1455,7 +1475,12 @@ export async function deleteProjectModelBinding(bindingId: string, projectId: st
 /** Replace all bindings for a project (declarative sync). */
 export async function replaceProjectModelBindings(
   projectId: string,
-  items: { canonicalProviderType: string; modelId: string; enabled: boolean }[]
+  items: {
+    canonicalProviderType: string;
+    modelId: string;
+    enabled: boolean;
+    bindingKind?: ProjectModelBindingKind;
+  }[]
 ): Promise<ProjectModelBindingRecord[]> {
   await ensureProjectModelBindingsSchema();
   const sql = getSql();
@@ -1464,11 +1489,13 @@ export async function replaceProjectModelBindings(
   const out: ProjectModelBindingRecord[] = [];
   for (const it of items) {
     const id = crypto.randomUUID();
+    const kind: ProjectModelBindingKind = it.bindingKind === "registry" ? "registry" : "execution";
     const rows = await sql`
-      INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, created_at, updated_at)
-      VALUES (${id}, ${projectId}, ${it.canonicalProviderType}, ${it.modelId}, ${it.enabled}, ${now}, ${now})
+      INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, binding_kind, created_at, updated_at)
+      VALUES (${id}, ${projectId}, ${it.canonicalProviderType}, ${it.modelId}, ${it.enabled}, ${kind}, ${now}, ${now})
       RETURNING id, project_id AS "projectId", provider_type AS "providerType",
-        model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+        model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+        created_at AS "createdAt", updated_at AS "updatedAt"
     `;
     out.push(mapProjectModelBindingRow(rows[0] as Record<string, unknown>));
   }

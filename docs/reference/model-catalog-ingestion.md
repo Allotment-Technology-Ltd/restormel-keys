@@ -30,7 +30,7 @@ From `apps/dashboard`:
 pnpm run seed:catalog
 ```
 
-Requires `models` and `provider_model_variants` tables (migration `004_control_plane_tables.sql`). Optional SQL seed `005_seed_model_catalog.sql` can be run first for minimal bootstrap; the script upserts over it. **Project model index** bindings reference `models.id` (`020_project_model_bindings.sql`); if you remove catalog rows, ensure no orphan bindings or use `ON DELETE` behaviour (cascade from `models`).
+Requires `models` and `provider_model_variants` tables (migration `004_control_plane_tables.sql`). Optional SQL seed `005_seed_model_catalog.sql` can be run first for minimal bootstrap; the script upserts over it. **Project model index** (`020` + `021_project_model_bindings_kind.sql`): **`bindingKind` `execution`** rows should match catalog ids; **`registry`** rows store arbitrary `model_id` strings (no FK to `models`). If you remove catalog rows, execution bindings may show nested `model: null` on `GET`.
 
 The script validates the seed file (required fields on models and variants), then upserts into `models` and `provider_model_variants`. Existing rows are updated; new rows are inserted. Variant IDs are derived as `{modelId}-{providerIntegrationType}`.
 

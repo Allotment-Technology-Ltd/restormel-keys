@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## restormel-v2026-03-27.1 (2026-03-27)
+
+**Hosted dashboard / API (no npm train).** Project model index: **`bindingKind`** per row — **`execution`** (default; canonical `providerType` + Keys catalog + variants) or **`registry`** (opaque provider/model strings for host merge when off-catalog; nested **`model`** often **`null`** on **`GET`**). Migration [021_project_model_bindings_kind.sql](apps/dashboard/migrations/021_project_model_bindings_kind.sql); runtime self-heal in [neon.ts](apps/dashboard/src/lib/server/neon.ts). OpenAPI **1.3.2**. Integrators: [keys-catalog-sync.md](docs/restormel-integration/keys-catalog-sync.md), [resolve-to-execution-contract.md](docs/guides/resolve-to-execution-contract.md). **Operators:** apply **`021`** on Neon when deploying. **SOPHIA:** send **`bindingKind: "registry"`** on `POST`/`PUT …/projects/{id}/models` for pairs not in Keys catalog (e.g. extra providers, Vertex embedding ids); keep **`execution`** when syncing from **`GET /api/models`**.
+
 ## Repo (2026-03-27)
 
 **Dogfood PR consumer (manual):** `.github/workflows/dogfood-pr-comment-consumer-dispatch.yml` — **workflow_dispatch** to post the same consumer issue comment as the automatic PR workflow (e.g. after enabling **`DOGFOOD_NOTIFY_CONSUMER`** post-merge). Uses **`gh api …/pulls/N`** for **`head.repo.full_name`** (`gh pr view` JSON can omit **`nameWithOwner`** on merged PRs). Documented in `docs/github-dogfood-feedback.md`.
