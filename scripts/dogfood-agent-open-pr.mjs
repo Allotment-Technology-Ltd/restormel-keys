@@ -108,7 +108,23 @@ async function githubJson(method, pathname, body) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const txt = await res.text();
-  if (!res.ok) die(`GitHub API ${method} ${pathname}: ${res.status} ${txt.slice(0, 500)}`);
+  if (!res.ok) {
+    if (res.status === 404 && method === 'GET') {
+      const m = pathname.match(/^\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)$/);
+      if (m) {
+        const [, o, r, n] = m;
+        die(
+          [
+            `GitHub API GET ${pathname}: 404 — no issue #${n} in ${o}/${r} (or token cannot see it).`,
+            '',
+            'Use the **[Dogfood] issue number on restormel-keys**, not the consumer (e.g. SOPHIA) source issue number.',
+            'Open the relayed ticket in this repo and copy N from: github.com/' + o + '/' + r + '/issues/<N>',
+          ].join('\n'),
+        );
+      }
+    }
+    die(`GitHub API ${method} ${pathname}: ${res.status} ${txt.slice(0, 500)}`);
+  }
   return txt ? JSON.parse(txt) : null;
 }
 

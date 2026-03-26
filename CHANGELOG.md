@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 **Dogfood agent schedule:** `.github/workflows/dogfood-agent-open-pr.yml` scheduled pickup now matches **SOPHIA relay** issues: label **`task`** + **`[Dogfood]`** title (no longer requires **`dogfood-agent-auto`**). Excludes **`dogfood-agent-pr`**, **`dogfood-agent-noop`**, **`dogfood-agent-skip`**. After a **noop** run, the workflow adds **`dogfood-agent-noop`** so cron does not retry in a loop. Docs: runbook §6, `docs/github-dogfood-feedback.md`, `docs/reference/restormel-dogfood-sophia-handover.md`, hint comment in `dogfood-issue-hint.yml`.
 
+**Dogfood agent issue 404:** Manual workflow must use the **restormel-keys** `[Dogfood]` issue number, not the consumer source number; `dogfood-agent-open-pr.mjs` now explains this on **GET …/issues/N** **404**. Runbook + workflow input description updated.
+
 **Dogfood agent branch names:** `dogfood-agent-open-pr.mjs` appends **`GITHUB_RUN_ID`** (or a local timestamp) to agent branch names so retries do not hit **non-fast-forward** when an earlier run already pushed `dogfood/agent-issue-<n>-<sha>`.
 
 **Dogfood agent PR creation:** If **`POST /pulls`** returns **403** (`GitHub Actions is not permitted to create or approve pull requests`), enable **Allow GitHub Actions to create and approve pull requests** under **Actions → General → Workflow permissions** (repo and/or org). Runbook §6 subsection *GitHub must allow Actions to open pull requests*. **`scripts/dogfood-agent-open-pr.mjs`** prefers **`GITHUB_REF_NAME`** for the PR base branch in Actions to avoid `origin/HEAD` symbolic-ref noise.
