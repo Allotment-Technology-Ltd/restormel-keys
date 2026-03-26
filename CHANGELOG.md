@@ -8,6 +8,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-27)
 
+**Dogfood #53:** Route-step `providerPreference` documented as the **authoritative** narrow execution enum (OpenAPI descriptions on `RouteStep`, `RouteStepCreate`, `RouteStepPatch`), with an explicit note that the project model index — including **`registry`** bindings — may list additional provider slugs that are **not** valid on `POST/PATCH .../routes/{routeId}/steps` until Keys widens execution. Guide: [resolve-to-execution-contract.md](docs/guides/resolve-to-execution-contract.md) (*Route step providerPreference*). Developer portal: [zuplo-gateway/docs/pages/dashboard-api/routes-steps.md](zuplo-gateway/docs/pages/dashboard-api/routes-steps.md).
+
 **Dogfood PR consumer (manual):** `.github/workflows/dogfood-pr-comment-consumer-dispatch.yml` — **workflow_dispatch** to post the same consumer issue comment as the automatic PR workflow (e.g. after enabling **`DOGFOOD_NOTIFY_CONSUMER`** post-merge). Uses **`gh api …/pulls/N`** for **`head.repo.full_name`** (`gh pr view` JSON can omit **`nameWithOwner`** on merged PRs). Documented in `docs/github-dogfood-feedback.md`.
 
 **Dogfood PR consumer CI:** When **`DOGFOOD_NOTIFY_CONSUMER`** is unset, `dogfood-pr-comment-consumer.yml` now emits a **warning** (not only a notice) so a green run is not mistaken for a posted SOPHIA comment.

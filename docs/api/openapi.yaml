@@ -1621,6 +1621,10 @@ components:
         providerPreference:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          description: |
+            **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
+            Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
+            This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1651,6 +1655,10 @@ components:
         providerPreference:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          description: |
+            **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
+            Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
+            This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1678,6 +1686,10 @@ components:
         providerPreference:
           type: string
           enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          description: |
+            **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
+            Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
+            This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
