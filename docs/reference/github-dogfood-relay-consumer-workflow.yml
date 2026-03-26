@@ -3,6 +3,10 @@
 # docs/reference/restormel-dogfood-relay-consumer-pack.md (self-contained copy + agent prompt).
 # Replace YOUR_ORG and YOUR_REPO with the Restormel Keys GitHub repo (this repo).
 # Create a fine-grained PAT with Issues: write on that repo; store as RESTORMEL_KEYS_ISSUE_TOKEN in the consumer repo.
+#
+# Optional fork guard (recommended for public consumer repos): replace YOUR_ORG/YOUR_CONSUMER_REPO
+# and use this job-level if instead of the single-label check only, e.g.
+#   if: github.event.label.name == 'restormel-feedback' && github.repository == 'YOUR_ORG/YOUR_CONSUMER_REPO'
 
 name: Relay dogfood issue to Restormel Keys
 

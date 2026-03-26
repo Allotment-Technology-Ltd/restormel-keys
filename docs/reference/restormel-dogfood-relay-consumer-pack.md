@@ -47,6 +47,14 @@ Create an issue label **exactly:** `restormel-feedback`
 
 Create `.github/workflows/restormel-dogfood-relay.yml` with the content below. Replace **`YOUR_ORG`** and **`YOUR_REPO`** with the GitHub owner and repository name of **restormel-keys** (not the consumer repo).
 
+**Fork guard (recommended):** If the consumer repo is public, constrain the job so **forks** do not run with a relay secret. Replace `YOUR_ORG/YOUR_CONSUMER_REPO` with the canonical consumer repository (e.g. `Allotment-Technology-Ltd/sophia`):
+
+```yaml
+    if: github.event.label.name == 'restormel-feedback' && github.repository == 'YOUR_ORG/YOUR_CONSUMER_REPO'
+```
+
+Use that line **instead of** the shorter `if:` below when you need the guard.
+
 ```yaml
 name: Relay dogfood issue to Restormel Keys
 

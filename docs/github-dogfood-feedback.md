@@ -21,6 +21,60 @@ For **trusted** projects (same org/operators, implicit trust), the **de facto st
 
 **Reference workflow (same content as the pack):** [docs/reference/github-dogfood-relay-consumer-workflow.yml](reference/github-dogfood-relay-consumer-workflow.yml).
 
+### Reference implementation: SOPHIA (`Allotment-Technology-Ltd/sophia`)
+
+The following is **what SOPHIA deployed** — it matches the pack and reference workflow above (with repo-specific names and a **fork guard**). Upstream backlog stays in **restormel-keys**; SOPHIA keeps the consumer-side thread and link-back.
+
+**Intent**
+
+- Improvement requests found while dogfooding Restormel Keys are tracked as **issues in SOPHIA**, then **mirrored** to **restormel-keys** without copy-paste.
+- **Upstream owns** the backlog item; SOPHIA keeps the consumer-side discussion and a link to the upstream issue.
+
+**Mechanism (relay)**
+
+1. Open an issue on `Allotment-Technology-Ltd/sophia` and apply the label **`restormel-feedback`** (exact name).
+2. GitHub Actions runs **`.github/workflows/restormel-dogfood-relay.yml`** on `issues: labeled`.
+3. The job uses a **fine-grained PAT** stored as **`RESTORMEL_KEYS_ISSUE_TOKEN`** (repository or org secret scoped to SOPHIA) with **Issues: Read and write** on **`restormel-keys` only**.
+4. It creates an issue on **`Allotment-Technology-Ltd/restormel-keys`**: title prefix **`[Dogfood]`**, body includes source repo, issue number, title/body copy, and a **link back** to the SOPHIA issue; upstream label **`task`** is applied.
+
+**Fork guard (recommended on public consumers)**
+
+- The workflow should only run when `github.repository` is the **canonical** consumer repo (e.g. `Allotment-Technology-Ltd/sophia`) so **forks** do not run the job or use the relay secret. See the optional `if:` line in [github-dogfood-relay-consumer-workflow.yml](reference/github-dogfood-relay-consumer-workflow.yml) and the consumer pack.
+
+**Safety / hygiene**
+
+- **No secrets** in labeled issues (the relay copies the body); redact before labeling.
+- **Relabeling** can create **duplicate** upstream issues — avoid unless intentional.
+
+**First hop (creating the SOPHIA issue)** — separate from the relay token
+
+Uses **SOPHIA write** access (identity / PAT / `gh`), **not** the restormel-keys-only relay PAT. These assets live **in the SOPHIA repo** (not duplicated here):
+
+| Asset (SOPHIA repo) | Role |
+|---------------------|------|
+| `docs/restormel-dogfood-relay.md` | Human doc; credentials table; optional org secret; `gh` examples |
+| `scripts/restormel/create_dogfood_issue.sh` + `pnpm restormel:dogfood-issue` | CLI wrapper (`tmp/…` + `gh issue create` with `--label restormel-feedback`) |
+| `.github/ISSUE_TEMPLATE/restormel-dogfood.yml` | Applies **`restormel-feedback`** on submit |
+| Cursor / GitHub MCP | Create or comment on SOPHIA issues when PAT scopes include SOPHIA issues write |
+| `.cursor/rules/restormel-dogfood-feedback-relay.mdc` | Agent: file via SOPHIA + label |
+| `.cursor/skills/restormel-dogfood-issue-relay/SKILL.md` | Agent skill |
+| `.cursor/mcp.json.example` | Example MCP merge for others |
+
+**Credentials (two tokens — do not mix)**
+
+| Secret / credential | Where | Purpose |
+|---------------------|--------|---------|
+| **`RESTORMEL_KEYS_ISSUE_TOKEN`** | SOPHIA Actions (or org secret → SOPHIA) | **Relay only:** create issues on **restormel-keys** |
+| **`gh` / GitHub MCP PAT** | Developer machine / Cursor | Create **SOPHIA** issues + label **`restormel-feedback`** |
+
+**Canonical docs in this repo (restormel-keys)**
+
+| Doc | Role |
+|-----|------|
+| This file | Operator narrative |
+| [restormel-dogfood-relay-consumer-pack.md](reference/restormel-dogfood-relay-consumer-pack.md) | Consumer copy pack |
+| [github-dogfood-relay-consumer-workflow.yml](reference/github-dogfood-relay-consumer-workflow.yml) | Reference workflow YAML |
+
 ## Fallbacks (optional)
 
 ### Open an issue here (manual)
