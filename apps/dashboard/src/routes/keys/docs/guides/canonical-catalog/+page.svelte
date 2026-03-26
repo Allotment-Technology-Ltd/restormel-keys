@@ -56,6 +56,22 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
     <strong>Stable contract</strong> — Check <code>contractVersion</code> in every response (e.g. <code>2026-03-25.catalog.v5</code>). If it changes, re-validate your parser. The catalog only exposes models that match <code>@restormel/keys</code> <code>defaultProviders</code> (current, maintained lists). Use <code>skipDefaultAllowlist=1</code> only for operator debugging.
   </div>
 
+  <h2>Global catalog vs project model index</h2>
+  <p class="doc-intro">
+    This page describes the <strong>public</strong> <code>GET …/api/catalog</code> feed (full tenant-wide model directory, no Gateway Key).
+    When you need the <strong>per-project allowlist</strong> Restormel stores for pickers and host merges (canonical <code>providerType</code> + <code>modelId</code> rows, optional <code>enabled</code>),
+    use the <strong>Dashboard API</strong> with a <strong>Gateway Key</strong>:
+    <code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/models</code> — response bindings are in JSON <code>data</code> (not <code>data.bindings</code>).
+    Prefer <code>GET …/api/models</code> for the legacy “global list” shape; avoid <code>?source=catalog</code> on the project path for new code.
+    Full matrix, curl examples, and validation errors (<code>project_models_validation_failed</code>): <a href="/keys/docs/cloud-api">Cloud API</a>.
+    Maintainer-facing contract summary:
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+      target="_blank"
+      rel="noopener noreferrer"><code>docs/restormel-integration/keys-catalog-sync.md</code></a>
+    in the repo.
+  </p>
+
   <h2>Step 1 — Pick a base URL</h2>
   <ul>
     <li><strong>Hosted:</strong> <code>https://restormel.dev</code> (or your own deployment hostname).</li>

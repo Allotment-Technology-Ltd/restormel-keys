@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.0
+  version: 1.3.1
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -20,8 +20,8 @@ info:
     `application/json` for errors under `/api/...` (including unknown routes and many server failures).
 
     **Project model index:** `GET/POST/PUT /api/projects/{projectId}/models`, `PATCH/DELETE .../models/{bindingId}` — project-scoped bindings
-    for selectors (canonical `providerType` + catalog `modelId`). **Global catalog** remains `GET /api/models`. Legacy: `GET .../models?source=catalog`
-    on the project path returns the global list (deprecated). Spec: `docs/requirements/project-model-index-gateway-api.md`.
+    for selectors (canonical `providerType` + catalog `modelId`). **Default `GET` response:** the binding rows are in JSON **`data`** (array); there is no `data.bindings` key — integrators should read `data`. **Global catalog** remains `GET /api/models`. Legacy: `GET .../models?source=catalog`
+    on the project path returns the global list (deprecated — prefer `GET /api/models`). **Batch validation errors:** `POST`/`PUT` may return **400** with `error: project_models_validation_failed` and `errors[]` (see schema `ProjectModelsValidationError`). Spec: `docs/requirements/project-model-index-gateway-api.md`, integrator note: `docs/restormel-integration/keys-catalog-sync.md`.
 
     **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
     `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
@@ -524,13 +524,15 @@ paths:
     get:
       summary: List project model index
       description: |
-        Default: returns **project bindings** (`data[]` entries with `id`, canonical `providerType`, `modelId`, `enabled`, timestamps, nested `model` catalog row or null).
+        Default: returns **project bindings** as the JSON array **`data`** (each entry: `id`, canonical `providerType`, `modelId`, `enabled`, timestamps, nested `model` catalog row or null). This **`data`** field is the stable integration point; the API does not use `data.bindings`.
 
-        **Query `source=catalog`:** returns the **global** model catalog (same as `GET /api/models`) for legacy callers; deprecated.
+        **Query `source=catalog`:** returns the **global** model catalog (same as `GET /api/models`) for legacy callers; **deprecated** — new clients should call **`GET /api/models`** for the global catalog instead of this query parameter.
 
         **Auth:** Gateway Key (`rk_...`) or session — **not** the Zuplo consumer key.
 
         **Provider types:** Canonical values and `google`/`vertex` aliases: `docs/guides/resolve-to-execution-contract.md`.
+
+        **Integrator reference:** `docs/restormel-integration/keys-catalog-sync.md`.
       operationId: listProjectModels
       tags: [Dashboard API]
       security:
@@ -584,6 +586,8 @@ paths:
       summary: Add models to project index (batch, idempotent)
       description: |
         Upserts bindings. Same canonical `providerType` + `modelId` re-sends **enabled: true** (idempotent). Validates model exists in catalog and provider variant when variants exist.
+
+        **400:** `error` is **`project_models_validation_failed`** with **`errors[]`** (per-row `index`, `field`, `code`, `message`) for automated callers — see `ProjectModelsValidationError` and `docs/restormel-integration/keys-catalog-sync.md`.
       operationId: addProjectModelBindings
       tags: [Dashboard API]
       security:
@@ -622,6 +626,8 @@ paths:
       summary: Replace project model allowlist (declarative)
       description: |
         Deletes all bindings for the project, then inserts the provided set. Use `enabled: false` to keep a row disabled. Empty `models` clears the index.
+
+        **400:** same validation envelope as `POST` — **`project_models_validation_failed`** + **`errors[]`** (`ProjectModelsValidationError`).
       operationId: replaceProjectModelBindings
       tags: [Dashboard API]
       security:

@@ -1,3 +1,6 @@
+# Neon preview branch naming:
+# - Primary: preview/<github.head_ref> (matches Vercel + Neon Git integration and existing branches).
+# - Legacy fallback: preview-pr-<number> (older runs of this workflow).
 name: Create/Delete Branch for Pull Request
 
 on:
@@ -37,10 +40,11 @@ jobs:
         run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
       - name: Create Neon Branch
         id: create_neon_branch
+        continue-on-error: true
         uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: preview-pr-${{ github.event.number }}
+          branch_name: preview/${{ github.head_ref }}
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
@@ -61,13 +65,37 @@ jobs:
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          BRANCH_NAME: preview-pr-${{ github.event.number }}
+          HEAD_PREVIEW: preview/${{ github.head_ref }}
+          LEGACY_PREVIEW: preview-pr-${{ github.event.number }}
         run: |
           set -euo pipefail
           # neonctl prints a connection string including password.
-          DATABASE_URL="$(npx --yes neonctl@v2 connection-string "$BRANCH_NAME" --project-id "$NEON_PROJECT_ID" --database-name neondb --role-name neondb_owner)"
-          if [[ -z "$DATABASE_URL" ]]; then
-            echo "Failed to resolve DATABASE_URL for $BRANCH_NAME"
+          resolve() {
+            npx --yes neonctl@v2 connection-string "$1" \
+              --project-id "$NEON_PROJECT_ID" \
+              --database-name neondb \
+              --role-name neondb_owner 2>/dev/null
+          }
+          set +e
+          DATABASE_URL="$(resolve "$HEAD_PREVIEW")"
+          rc=$?
+          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
+            echo "No branch '$HEAD_PREVIEW', trying legacy '$LEGACY_PREVIEW'"
+            DATABASE_URL="$(resolve "$LEGACY_PREVIEW")"
+            rc=$?
+            if [[ $rc -eq 0 && -n "$DATABASE_URL" ]]; then
+              echo "Using Neon branch: $LEGACY_PREVIEW"
+            fi
+          else
+            echo "Using Neon branch: $HEAD_PREVIEW"
+          fi
+          set -e
+          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
+            echo "Failed to resolve DATABASE_URL (tried $HEAD_PREVIEW and $LEGACY_PREVIEW)"
+            exit 1
+          fi
+          if [[ "$DATABASE_URL" != postgres* ]]; then
+            echo "Unexpected connection-string output"
             exit 1
           fi
           echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
@@ -81,7 +109,14 @@ jobs:
     if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - name: Delete Neon Branch
+      - name: Delete Neon Branch (preview/<head_ref>)
+        continue-on-error: true
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: preview/${{ github.head_ref }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Delete Neon Branch (legacy preview-pr-<n>)
         continue-on-error: true
         uses: neondatabase/delete-branch-action@v3
         with:

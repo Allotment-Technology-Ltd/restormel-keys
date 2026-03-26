@@ -6,7 +6,8 @@
 <h1 class="docs-h1">Integrations</h1>
 <p class="docs-intro">
   Restormel Integrations connects Restormel Keys to your development workflow. Choose the surface
-  that fits how you work.
+  that fits how you work. Server-side Dashboard API (resolve, catalog, <strong>project model index</strong>) lives under
+  <a href="/keys/docs/cloud-api">Cloud API</a> with your <code>rk_…</code> Gateway Key — not the CLI/MCP surfaces below.
 </p>
 
 <div class="integration-cards">

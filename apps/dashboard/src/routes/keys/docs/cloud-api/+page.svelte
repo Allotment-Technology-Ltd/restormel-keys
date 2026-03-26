@@ -143,6 +143,11 @@
     Hosts (e.g. Sophia) call this list to drive model pickers and to merge with a static catalog. Use the same
     <strong>canonical <code>providerType</code></strong> values as resolve and route steps (<code>google</code> vs <code>vertex</code> is spelled out in
     <a href="/keys/docs/guides/resolve-to-execution-contract">Resolve → execution contract</a>).
+    Integrator reference (stable <code>GET</code> <code>data</code> shape, <code>project_models_validation_failed</code>, global catalog vs index):
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+      >keys-catalog-sync.md</a
+    >.
   </p>
   <table class="doc-table">
     <thead>
@@ -153,7 +158,11 @@
         <td><code>GET .../projects/{'{'}projectId{'}'}/models</code></td>
         <td>Dashboard API</td>
         <td>Gateway Key (<code>rk_...</code>)</td>
-        <td>Project bindings + nested catalog rows. Optional legacy <code>?source=catalog</code> (deprecated; prefer <code>GET /api/models</code>).</td>
+        <td>
+          Bindings in JSON <code>data</code> (array; not <code>data.bindings</code>) + nested catalog rows. Legacy
+          <code>?source=catalog</code> deprecated — prefer <code>GET /api/models</code>. Batch writes: on failure,
+          <code>project_models_validation_failed</code> + <code>errors[]</code>.
+        </td>
       </tr>
       <tr>
         <td><code>POST .../models</code> (batch add), <code>PUT .../models</code> (replace allowlist)</td>

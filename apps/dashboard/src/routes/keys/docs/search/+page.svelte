@@ -10,9 +10,13 @@
     {
       title: "Canonical catalog",
       href: "/keys/docs/guides/canonical-catalog",
-      tags: "models providers catalog feed api integration third party",
+      tags: "models providers catalog feed api integration third party global",
     },
-    { title: "Cloud API", href: "/keys/docs/cloud-api", tags: "api resolve policies routes" },
+    {
+      title: "Cloud API",
+      href: "/keys/docs/cloud-api",
+      tags: "api resolve policies routes openapi gateway key models bindings project index allowlist ingestion picker",
+    },
     { title: "Integrations overview", href: "/keys/docs/integrations", tags: "cli mcp aaif" },
     { title: "Compatibility", href: "/keys/docs/compatibility", tags: "next react svelte" },
   ];
