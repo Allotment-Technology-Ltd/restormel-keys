@@ -10,8 +10,8 @@ This runbook turns the Zuplo Developer Portal into a production-ready API refere
 
 | Surface | Base URL | Auth | Used for |
 |---|---|---|---|
-| **Dashboard API** | `https://restormel.dev/keys/dashboard/api/...` | Gateway Key (`rk_...`) | Resolve, policies/evaluate, routes/steps (runtime operations) |
-| **Zuplo Gateway API** | `https://restormel-keys-gateway-main-bc13eba.zuplo.app/api/...` | Consumer key (`zpka_...`) | Projects + Gateway key CRUD (control-plane) |
+| **Dashboard API** | `https://restormel.dev/keys/dashboard/api/...` | Gateway Key (`rk_...`) | Resolve, policies/evaluate, routes/steps, **GET** `.../projects/{id}/models` (read-only project model index), catalog (runtime operations) |
+| **Zuplo Gateway API** | `https://restormel-keys-gateway-main-bc13eba.zuplo.app/api/...` | Consumer key (`zpka_...`) | Projects + Gateway key CRUD (control-plane) — **not** the project model index |
 
 The Developer Portal documents the **Zuplo Gateway API** and links out to the Dashboard API docs.
 

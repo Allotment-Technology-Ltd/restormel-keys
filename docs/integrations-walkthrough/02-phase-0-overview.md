@@ -10,7 +10,7 @@ This phase establishes what Restormel Integrations is, how it relates to Restorm
 
 ## Product model
 
-- **Restormel Keys** — Core. BYOK, routing, cost, entitlements. You use it from your app via the SDK and Cloud API.
+- **Restormel Keys** — Core. BYOK, routing, cost, entitlements. You use it from your app via the SDK and HTTP APIs (**Dashboard API** with Gateway Key for resolve/routes/models index; **Zuplo Gateway** with consumer key for project/key CRUD — see in-app Cloud API doc).
 - **Restormel Integrations** — Developer surfaces. Connects Keys to your **terminal** (CLI), **agent/IDE** (MCP), and **structured AI contracts** (AAIF).
 - **Future Restormel** — Graph, evaluation, reasoning (out of scope for this walkthrough).
 

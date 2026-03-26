@@ -5,10 +5,13 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.2.0
+  version: 1.2.1
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
+
+    **Two HTTP surfaces:** (1) **Zuplo Gateway** — control-plane CRUD (projects, keys); use **consumer key** (`zpka_...`, `apiKey` scheme).
+    (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index (read)**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
 
     **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-26` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
@@ -16,10 +19,14 @@ info:
     **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
     `application/json` for errors under `/api/...` (including unknown routes and many server failures).
 
+    **Project model index (`GET /api/projects/{projectId}/models`):** **Read-only** today (Gateway Key). There is **no** `POST`/`PATCH`/`DELETE`
+    on this path in the product API yet — configure the selectable index in the dashboard UI until machine mutations ship.
+    Planned contract: `docs/requirements/project-model-index-gateway-api.md`.
+
     **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
     `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
     `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `POST .../validate-binding`, `POST .../recommend`,
-    `GET .../models`, `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
+    `GET .../models` (read-only project index), `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
     `GET .../providers/health`, `GET .../provider-bindings`, `GET/POST /api/policies`, policy lifecycle routes, `POST .../policies/evaluate`,
     `GET /api/models`, `GET /api/catalog`, `POST /api/catalog/observations`.
 
@@ -515,7 +522,17 @@ paths:
 
   /api/projects/{projectId}/models:
     get:
-      summary: List models (authenticated project scope)
+      summary: List project model index (read-only)
+      description: |
+        Returns the **project-scoped model catalog** used for selectors and host-side merges (integrators often merge this with their own static catalog).
+
+        **Auth:** Gateway Key (`rk_...`) only — **not** the Zuplo consumer key. Call the **Dashboard API** base URL (see `servers`).
+
+        **Writes:** There is **no** HTTP mutation for this index in the API today. Adding or removing models for the project picker is done in the **dashboard UI**
+        (or future API per `docs/requirements/project-model-index-gateway-api.md`). This operation is **GET only** until that work ships.
+
+        **Provider types:** Align `providerType` / model ids with the resolve contract and route steps — canonical values and `google` vs `vertex` are documented in
+        `docs/guides/resolve-to-execution-contract.md`.
       operationId: listProjectModels
       tags: [Dashboard API]
       security:
@@ -1273,7 +1290,9 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Gateway Key
-      description: Gateway Key (rk_...) for Dashboard API calls. Send as Authorization Bearer token. Keep server-side only.
+      description: |
+        Gateway Key (`rk_...`) for Dashboard API calls (resolve, routes/steps, policies, **GET** project models index, catalog, etc.).
+        Send as `Authorization: Bearer <key>`. Server-side only. **Not** valid on Zuplo control-plane paths that expect a consumer key (`zpka_...`).
   schemas:
     ErrorResponse:
       type: object

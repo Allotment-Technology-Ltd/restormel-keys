@@ -85,6 +85,10 @@
   const policyListCurl = `curl -s \\
   "https://restormel.dev/keys/dashboard/api/policies" \\
   -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`;
+
+  const projectModelsListCurl = `curl -sS \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models?limit=50" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data | length'`;
 </script>
 
 <svelte:head>
@@ -103,7 +107,7 @@
   <p>Restormel Keys has two distinct HTTP surfaces:</p>
   <ul>
     <li>
-      <strong>Dashboard API (runtime operations)</strong> — resolve, policies/evaluate, routes/steps.
+      <strong>Dashboard API (runtime operations)</strong> — resolve, policies/evaluate, routes/steps, catalog, <strong>project model index (read)</strong>.
       Call <code>https://restormel.dev/keys/dashboard/api/...</code> with your <strong>Gateway Key</strong> (<code>rk_...</code>) from your backend.
     </li>
     <li>
@@ -111,6 +115,41 @@
       Call <code>https://restormel-keys-gateway-main-bc13eba.zuplo.app/api/...</code> with a <strong>consumer key</strong> (<code>zpka_...</code>).
     </li>
   </ul>
+
+  <h3>Matrix: project model index (picker / merge source)</h3>
+  <p>
+    Hosts (e.g. Sophia) call this list to drive model pickers and to merge with a static catalog. Use the same
+    <strong>canonical <code>providerType</code></strong> values as resolve and route steps (<code>google</code> vs <code>vertex</code> is spelled out in
+    <a href="/keys/docs/guides/resolve-to-execution-contract">Resolve → execution contract</a>).
+  </p>
+  <table class="doc-table">
+    <thead>
+      <tr><th>Operation</th><th>Surface</th><th>Credential</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>GET .../projects/{'{'}projectId{'}'}/models</code></td>
+        <td>Dashboard API</td>
+        <td>Gateway Key (<code>rk_...</code>)</td>
+        <td>Supported</td>
+      </tr>
+      <tr>
+        <td>Add / remove / replace models in the project index</td>
+        <td>—</td>
+        <td>—</td>
+        <td><strong>Not available over HTTP</strong> yet — use the dashboard UI. Planned Gateway Key mutations: requirements spec at <code>docs/requirements/project-model-index-gateway-api.md</code> in the Keys repository.</td>
+      </tr>
+      <tr>
+        <td>Same operations via Zuplo</td>
+        <td>Zuplo Gateway</td>
+        <td><code>zpka_...</code></td>
+        <td><strong>Not used</strong> for this index — do not assume consumer-key paths for project model bindings.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p><strong>List project models (curl)</strong></p>
+  <CodeBlock language="bash" code={projectModelsListCurl} />
+
   <div class="callout callout-security">
     <strong>Security</strong> — Never send a Gateway Key to the browser. Use it only server-side.
   </div>
@@ -227,7 +266,7 @@
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/models</code></td>
-        <td>Project-scoped model catalog list for selector controls.</td>
+        <td>Project-scoped model index for selectors and host-side merges (<strong>read-only</strong>; Gateway Key). Writes: dashboard UI only until the API spec ships.</td>
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/providers/health</code></td>

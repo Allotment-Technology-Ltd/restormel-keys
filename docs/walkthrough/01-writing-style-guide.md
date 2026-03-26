@@ -34,17 +34,20 @@ Use these terms exactly. Do not invent synonyms in any walkthrough page.
 | **ModelSelector** | The embeddable UI component that lets end-users choose a model | "Model picker," "model dropdown" |
 | **KeyManager** | The embeddable UI component that lets end-users manage their provider credentials | "Key panel," "BYOK settings" |
 | **Dashboard** | The web app at `/keys/dashboard` where you configure projects, routes, policies | "Admin," "portal," "console" |
-| **Cloud API** | The HTTP API exposed via the Zuplo gateway | "REST API," "hosted API" |
-| **Consumer key** | A Zuplo-issued key (format `zpka_…`) for calling the Cloud API through the gateway | "Zuplo key," "external key" |
+| **Dashboard API** | HTTP API on the dashboard host (`/keys/dashboard/api/…`) — resolve, routes/steps, policies, **GET** project models index, catalog, etc. | "Zuplo API," "the gateway" (wrong surface) |
+| **Cloud API** (product umbrella) | Documented HTTP access: **Dashboard API** (Gateway Key) **and** **Zuplo Gateway API** (consumer key). See in-app Cloud API page. | "REST API" without naming which surface |
+| **Zuplo Gateway API** | Control-plane CRUD at the Zuplo base URL (projects, keys) with a **consumer key** | "Dashboard API" |
+| **Consumer key** | A Zuplo-issued key (format `zpka_…`) for the **Zuplo Gateway** host | "Zuplo key," "external key" |
 
 ### When to use which credential (auth cheat-sheet)
 
 | Credential | Scope | Use for | Never use for |
 |------------|--------|---------|----------------|
-| **Gateway Key** (`RESTORMEL_GATEWAY_KEY`, format `rk_…`) | Project + environment | Resolve API and backend policy evaluate calls for that project | Browser/client-side code; unrelated projects |
-| **Session** (dashboard login) | User + workspace | Dashboard UI: routes, policies, keys, logs | Server-side automation from untrusted contexts |
+| **Gateway Key** (`RESTORMEL_GATEWAY_KEY`, format `rk_…`) | Project + environment | Resolve, policy evaluate, routes/steps, **GET** `…/projects/{id}/models` (project model index), catalog routes that require it | Browser/client-side code; unrelated projects; **not** valid as Zuplo consumer key |
+| **Consumer key** (`zpka_…`) | Zuplo-issued | **Zuplo Gateway** control-plane (projects, keys per portal docs) | Dashboard API / resolve / project model index |
+| **Session** (dashboard login) | User + workspace | Dashboard UI: routes, policies, keys, model index **edits** (until HTTP mutations exist), logs | Server-side automation from untrusted contexts |
 
-Use the Gateway Key in server-side env vars for resolve and evaluate calls. Never expose the Gateway Key in browser code.
+Use the Gateway Key in server-side env vars for resolve, evaluate, and **read** project models. Never expose the Gateway Key in browser code.
 
 ### Provider names
 

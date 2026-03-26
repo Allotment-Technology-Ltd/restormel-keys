@@ -49,9 +49,18 @@ Storing third-party API secrets remains on existing **BYOK / integration** flows
 |----|-------------|
 | **FR-8** | `PUT` or `PATCH` to **replace** the full project model allowlist from a JSON array for declarative sync. |
 
-## Documentation gap (why this spec exists)
+## Documentation status (gap closed for “what exists today”)
 
-**Would more documentation have made this easier?** Yes. If OpenAPI had listed all methods on `/projects/{projectId}/models` (**GET only vs GET+POST/…**), and the Cloud API page had a one-line matrix (“project model index: read = Dashboard; write = X or not supported”), integrators would not have had to infer from scattered docs or guess Zuplo vs Dashboard. **Documented write paths + auth key type** would have turned this into a small Sophia proxy task immediately.
+The following now state clearly that **`GET …/projects/{projectId}/models` is read-only**, uses the **Dashboard API + Gateway Key (`rk_`)**, is **not** on Zuplo consumer-key paths, and that **writes are UI-only** until this spec is implemented:
+
+- [docs/api/openapi.yaml](../api/openapi.yaml) — `info` inventory + `listProjectModels` description + `gatewayKey` scheme text
+- In-app **Cloud API** (`apps/dashboard/.../cloud-api/+page.svelte`) — matrix table, routing metadata row, list curl
+- [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md) — canonical `providerType` alignment for merge
+- [docs/walkthrough/01-writing-style-guide.md](../walkthrough/01-writing-style-guide.md) — glossary + auth cheat-sheet (`zpka_` vs `rk_`)
+- [docs/reference/implemented-behaviour.md](../reference/implemented-behaviour.md) — live vs not live
+- [docs/documentation-strategy.md](../documentation-strategy.md) — strategy bullet
+
+**Remaining gap (this spec):** machine **mutations** (`POST`/`DELETE`/replace) for the project model index — implementation + OpenAPI methods + curl examples for writes.
 
 ## Implementation checklist (for the building agent)
 

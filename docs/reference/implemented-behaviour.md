@@ -31,6 +31,7 @@
 - **Provider Integrations:** List, create, connect providers; bindings to projects/environments; verification.
 - **Models:** Catalog (list, detail, lifecycle badges, source verification, migration section); seed/ingestion via `pnpm run seed:catalog`.
 - **Public catalog API:** `GET /keys/dashboard/api/catalog` (no auth) — versioned providers + models for downstream apps; **default response filters to `@restormel/keys` default provider model lists** (drops stale DB-only rows). Query `skipDefaultAllowlist=1` for diagnostics. User-facing steps at `/keys/docs/guides/canonical-catalog`.
+- **Project model index API:** `GET /keys/dashboard/api/projects/{projectId}/models` with **Gateway Key** (`rk_...`) — project-scoped list for selectors and host-side merges (**read-only**). **No** `POST`/`PATCH`/`DELETE` on this path yet; changing the index is **dashboard UI** only until [docs/requirements/project-model-index-gateway-api.md](../requirements/project-model-index-gateway-api.md) is implemented. **Not** on Zuplo consumer-key paths. Matrix: in-app [Cloud API](https://restormel.dev/keys/docs/cloud-api); machine-readable [openapi.yaml](../api/openapi.yaml).
 - **Routes:** List routes; project → routes → route detail (steps, default model, lifecycle warnings for deprecated/retiring models).
 - **Policies:** List, create, detail; policy bindings (groundwork).
 - **Analytics:** Overview (request count, latency, error rate, spend placeholder); mix by provider, model, route; period selector (24h, 7d, 30d, 90d); recent requests; links to Logs and model catalog.
@@ -44,6 +45,7 @@
 
 ## What is not implemented (do not describe as live)
 
+- **HTTP mutations for the project model index** (add/remove/replace bindings via `rk_`) — spec only; do not document `POST .../models` as live.
 - Management keys / PATs, Service Accounts, OIDC (Access).
 - Restormel-managed billing (real charge; spend is placeholder from request_logs when `estimated_cost` is set).
 - Full route step editing UI (steps exist; create/update via API or future UI).
