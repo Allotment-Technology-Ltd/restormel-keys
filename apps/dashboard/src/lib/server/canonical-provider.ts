@@ -12,6 +12,9 @@ export const CANONICAL_PROVIDER_TYPES = [
   "vercel",
   "portkey",
   "voyage",
+  "mistral",
+  "deepseek",
+  "together",
 ] as const;
 
 export type CanonicalProviderType = (typeof CANONICAL_PROVIDER_TYPES)[number];
@@ -30,6 +33,9 @@ export const ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS = new Set([
   "vercel",
   "portkey",
   "voyage",
+  "mistral",
+  "deepseek",
+  "together",
 ]);
 
 /** Normalize free-text / legacy labels to slug form before alias map. */
