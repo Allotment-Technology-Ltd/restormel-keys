@@ -87,6 +87,15 @@ Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** pl
 | **`DOGFOOD_AGENT_PROVIDER`** | Optional repo **Variable** | `anthropic` or `openai` (defaults from which key is set). |
 | **`DOGFOOD_ANTHROPIC_MODEL`** / **`DOGFOOD_OPENAI_MODEL`** | Optional **Variables** | Override default models (see script header in `scripts/dogfood-agent-open-pr.mjs`). |
 
+### GitHub must allow Actions to open pull requests
+
+If the agent logs show **`403`** / `GitHub Actions is not permitted to create or approve pull requests`, the workflow’s `GITHUB_TOKEN` is blocked by **org or repository policy** (not missing secrets).
+
+1. **Repository:** **Settings** → **Actions** → **General** → **Workflow permissions** → choose **Read and write permissions**, then enable **Allow GitHub Actions to create and approve pull requests**.
+2. If an **organization** enforces stricter defaults: **Org** → **Settings** → **Actions** → **General** → allow the same for this repo (or add an org exception). See [GitHub Docs: workflow permissions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#configuring-the-default-github_token-permissions).
+
+Without this, pushes from the workflow may still succeed while **`POST .../pulls`** fails.
+
 ### Manual run
 
 1. **Actions** → **Dogfood agent — draft PR** → **Run workflow**.

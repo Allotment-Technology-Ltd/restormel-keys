@@ -246,12 +246,18 @@ async function run() {
     writes.push({ rel, content });
   }
 
+  // Prefer Actions env (avoids `git symbolic-ref origin/HEAD` noise/failure in shallow checkouts).
   let baseBranch = 'main';
-  try {
-    const sym = gitOut(['symbolic-ref', 'refs/remotes/origin/HEAD']);
-    baseBranch = sym.replace('refs/remotes/origin/', '') || 'main';
-  } catch {
-    baseBranch = 'main';
+  const refName = process.env.GITHUB_REF_NAME;
+  if (refName && /^[\w./-]+$/.test(refName) && !refName.includes('..')) {
+    baseBranch = refName;
+  } else {
+    try {
+      const sym = gitOut(['symbolic-ref', 'refs/remotes/origin/HEAD']);
+      baseBranch = sym.replace('refs/remotes/origin/', '') || 'main';
+    } catch {
+      baseBranch = 'main';
+    }
   }
 
   const shortSha = gitOut(['rev-parse', '--short', 'HEAD']).replace(/[^a-f0-9]/g, '').slice(0, 7) || 'local';
