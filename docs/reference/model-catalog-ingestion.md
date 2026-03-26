@@ -16,7 +16,7 @@ The dashboard model catalog is stored in Postgres (`models`, `provider_model_var
 | Source | Type | When | Notes |
 |--------|------|------|--------|
 | `apps/dashboard/data/model-catalog-seed.json` | Static | On demand via script | Single source of truth for seed. Edit to add/change models, lifecycle, capabilities, pricing refs. |
-| `pnpm run seed:catalog` | Script | Manual or CI | Reads the JSON above and upserts into Neon. Safe to run multiple times. |
+| `pnpm run seed:catalog` | Script | CI on `main` + PR preview + manual | Reads the JSON above and upserts into Neon. Safe to run multiple times. **Prod:** `.github/workflows/ci.yml` runs it after SQL migrations when `model-catalog-seed.json` or `ingest-model-catalog.mjs` changes (or via workflow_dispatch **Re-run model catalog JSON seed**). **PR previews:** `.github/workflows/neon_workflow.yml` runs it after migrations on the Neon preview branch. |
 | Provider APIs (e.g. OpenAI /models) | Dynamic | Future | Not implemented in Phase 00. When added, document here and prefer refresh path over one-off hacks. |
 
 Lifecycle fields (e.g. `sourceLastVerifiedAt`) are only as good as the seed or the future ingestion job; we do not fabricate verification dates.
@@ -33,6 +33,8 @@ pnpm run seed:catalog
 Requires `models` and `provider_model_variants` tables (migration `004_control_plane_tables.sql`). Optional SQL seed `005_seed_model_catalog.sql` can be run first for minimal bootstrap; the script upserts over it. **Project model index** (`020` + `021_project_model_bindings_kind.sql`): **`bindingKind` `execution`** rows should match catalog ids; **`registry`** rows store arbitrary `model_id` strings (no FK to `models`). If you remove catalog rows, execution bindings may show nested `model: null` on `GET`.
 
 The script validates the seed file (required fields on models and variants), then upserts into `models` and `provider_model_variants`. Existing rows are updated; new rows are inserted. Variant IDs are derived as `{modelId}-{providerIntegrationType}`.
+
+**Viability in APIs:** By default, `listModels` (and therefore **`GET /keys/dashboard/api/models`** and the model slice inside **`GET /keys/dashboard/api/catalog`**) omits rows with lifecycle **`deprecated`** or **`retired`** (when you are not filtering by `lifecycleState`) and omits rows whose **`retirement_date`** is in the past. Pass **`includeUnhealthy=1`** on those HTTP endpoints to include those rows (operators). The dashboard **Models** browser uses `includeUnhealthy` server-side so operators still see the full table.
 
 ## Provider-derived refresh (from `@restormel/keys`)
 

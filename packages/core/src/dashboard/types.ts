@@ -197,6 +197,12 @@ export interface CatalogModel {
   canonicalName: string;
   family: string | null;
   lifecycleState: string | null;
+  /** ISO 8601; present from catalog contract `2026-03-26.catalog.v6+` when set in DB. */
+  deprecationDate?: string | null;
+  /** ISO 8601; present from contract v6+ when set in DB. */
+  retirementDate?: string | null;
+  /** Catalog model id; present from contract v6+ when set in DB. */
+  replacementModelId?: string | null;
   providerTypes: string[];
   variants: CatalogVariant[];
 }

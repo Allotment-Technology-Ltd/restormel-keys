@@ -277,7 +277,7 @@
   This list reflects the <strong>dashboard database</strong>: lifecycle, editorial fields, and per-provider variants. It is enriched with how each variant lines up with the
   <strong>default active-model allowlist</strong> shipped in <code>@restormel/keys</code>, and with <strong>crowd-reported</strong> vendor deprecation/retirement signals aggregated from apps.
   The public <a href="/keys/dashboard/api/catalog">canonical catalog API</a> merges the same rows with live provider signals (OpenRouter, status pages) and contract
-  <code>2026-03-25.catalog.v5</code>. See the <a href="/keys/docs/guides/canonical-catalog">canonical catalog guide</a> for integration details.
+  <code>2026-03-26.catalog.v6</code>. See the <a href="/keys/docs/guides/canonical-catalog">canonical catalog guide</a> for integration details.
 </p>
 <p class="page-desc page-desc-secondary">
   Find models by operational constraints and use case: availability, pricing/rate-limit metadata, context size, speed profile, and what each model is best or worst at.

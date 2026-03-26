@@ -67,8 +67,19 @@ describe("GET /api/models", () => {
         family: "gpt-4",
         limit: 50,
         offset: 0,
+        includeUnhealthy: false,
       })
     );
+  });
+
+  it("passes includeUnhealthy when requested", async () => {
+    const { listModels } = await import("$lib/server/db");
+    const { GET: handler } = await import("./+server");
+    vi.mocked(listModels).mockResolvedValue([mockModel as never]);
+    const url = new URL("http://localhost/api/models");
+    url.searchParams.set("includeUnhealthy", "1");
+    await handler(mockEvent({ url }) as unknown as Parameters<typeof handler>[0]);
+    expect(listModels).toHaveBeenCalledWith(expect.objectContaining({ includeUnhealthy: true }));
   });
 
   it("clamps limit to 500", async () => {

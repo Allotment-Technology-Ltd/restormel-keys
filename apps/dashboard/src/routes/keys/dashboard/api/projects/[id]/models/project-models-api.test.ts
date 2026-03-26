@@ -38,13 +38,22 @@ const getProjectModelBinding = vi.fn();
 vi.mock("$lib/server/db", () => ({
   getProject: vi.fn().mockResolvedValue({ id: "p1", name: "P", userId: "u1" }),
   getProjectInWorkspace: vi.fn(),
-  getModel: vi.fn().mockImplementation((id: string) =>
-    id === "voyage-3" || id === "text-embedding-005" ? { ...minimalModel, id } : null
-  ),
+  getModel: vi.fn().mockImplementation((id: string) => {
+    if (id === "voyage-3" || id === "text-embedding-005") return { ...minimalModel, id };
+    if (id === "old-retired") return { ...minimalModel, id, lifecycleState: "retired" };
+    if (id === "var-bad") return { ...minimalModel, id: "var-bad", lifecycleState: "active" };
+    return null;
+  }),
   listModels: vi.fn().mockResolvedValue([]),
   listProviderModelVariants: vi.fn().mockImplementation((modelId: string) => {
-    if (modelId === "voyage-3") return [{ providerIntegrationType: "voyage" }];
-    if (modelId === "text-embedding-005") return [{ providerIntegrationType: "google" }];
+    if (modelId === "voyage-3")
+      return [{ providerIntegrationType: "voyage", availabilityStatus: "available" }];
+    if (modelId === "text-embedding-005")
+      return [{ providerIntegrationType: "google", availabilityStatus: "available" }];
+    if (modelId === "old-retired")
+      return [{ providerIntegrationType: "anthropic", availabilityStatus: "retired" }];
+    if (modelId === "var-bad")
+      return [{ providerIntegrationType: "anthropic", availabilityStatus: "retired" }];
     return [];
   }),
   listProjectModelBindings,
@@ -185,6 +194,35 @@ describe("project models API", () => {
     const body = await res.json();
     expect(body.error).toBe("project_models_validation_failed");
     expect(Array.isArray(body.errors)).toBe(true);
+  });
+
+  it("POST returns 400 for retired catalog model (execution binding)", async () => {
+    const { POST } = await import("./+server");
+    const res = await POST(
+      mockEvent("p1", {
+        method: "POST",
+        body: JSON.stringify({ models: [{ providerType: "anthropic", modelId: "old-retired" }] }),
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("project_models_validation_failed");
+    expect(body.errors?.[0]?.code).toBe("model_unavailable");
+  });
+
+  it("POST returns 400 when catalog variant is not available", async () => {
+    const { POST } = await import("./+server");
+    const res = await POST(
+      mockEvent("p1", {
+        method: "POST",
+        body: JSON.stringify({ models: [{ providerType: "anthropic", modelId: "var-bad" }] }),
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.errors?.[0]?.code).toBe("variant_unavailable");
   });
 
   it("PUT replaces allowlist", async () => {

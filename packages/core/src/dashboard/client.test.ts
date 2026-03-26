@@ -234,6 +234,32 @@ describe("filterCanonicalCatalogForViability", () => {
 
     expect(filtered.data.map((m) => m.id)).toEqual(["still-good"]);
   });
+
+  it("drops models with active lifecycle but past retirementDate (ISO)", () => {
+    const filtered = filterCanonicalCatalogForViability({
+      contractVersion: "2026-03-26.catalog.v6",
+      source: "restormel-keys",
+      generatedAt: "2026-03-20T00:00:00.000Z",
+      providers: [
+        { id: "openai", displayName: "OpenAI", modelCount: 1, validation: { mode: "native", requiresBaseUrl: false, requiresModel: true } },
+      ],
+      data: [
+        {
+          id: "stale-snapshot",
+          canonicalName: "stale-snapshot",
+          family: "gpt",
+          lifecycleState: "active",
+          retirementDate: "2020-01-01T00:00:00.000Z",
+          providerTypes: ["openai"],
+          variants: [
+            { id: "v1", providerType: "openai", providerModelId: "stale-snapshot", availabilityStatus: "available" },
+          ],
+        },
+      ],
+      paging: { limit: 500, offset: 0, count: 1 },
+    });
+    expect(filtered.data).toHaveLength(0);
+  });
 });
 
 describe("validateRouteBinding", () => {

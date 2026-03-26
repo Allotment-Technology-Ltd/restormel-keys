@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.5
+  version: 1.3.6
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -440,7 +440,11 @@ paths:
       summary: List models (catalog slice)
       operationId: listModelsPublic
       tags: [Dashboard API]
-      description: Public read; optional filters `lifecycleState`, `family`, `limit`, `offset`.
+      description: |
+        Public read; optional filters `lifecycleState`, `family`, `limit`, `offset`.
+
+        **Default viability:** omits models with lifecycle `deprecated` or `retired` (unless `lifecycleState` is set)
+        and omits models whose `retirement_date` is in the past. Use **`includeUnhealthy=1`** (or `true`) for the full DB slice (operators).
       parameters:
         - name: lifecycleState
           in: query
@@ -454,6 +458,10 @@ paths:
         - name: offset
           in: query
           schema: { type: integer, minimum: 0 }
+        - name: includeUnhealthy
+          in: query
+          description: When `1` or `true`, include deprecated/retired lifecycle and past-retirement models (operator diagnostics).
+          schema: { type: string, enum: ["1", "true"] }
       responses:
         "200":
           description: Model rows
@@ -471,7 +479,9 @@ paths:
       summary: Canonical provider + model catalog
       operationId: getCanonicalCatalog
       tags: [Dashboard API]
-      description: Versioned feed (`contractVersion`); see docs/guides/canonical-catalog and catalog-governance.
+      description: |
+        Versioned feed (`contractVersion`, currently `2026-03-26.catalog.v6`); see docs/guides/canonical-catalog and catalog-governance.
+        Each `data[]` model may include `deprecationDate`, `retirementDate` (ISO 8601), and `replacementModelId` when set in the database.
       parameters:
         - name: lifecycleState
           in: query
@@ -526,7 +536,7 @@ paths:
       description: |
         Default: returns **project bindings** as the JSON array **`data`** (each entry: `id`, `bindingKind`, `providerType`, `modelId`, `enabled`, timestamps, nested `model` catalog row or null). This **`data`** field is the stable integration point; the API does not use `data.bindings`.
 
-        **Query `source=catalog`:** returns the **global** model catalog (same as `GET /api/models`) for legacy callers; **deprecated** — new clients should call **`GET /api/models`** for the global catalog instead of this query parameter.
+        **Query `source=catalog`:** returns the **global** model catalog (same as `GET /api/models`) for legacy callers; **deprecated** — new clients should call **`GET /api/models`** for the global catalog instead of this query parameter. With `source=catalog`, **`includeUnhealthy=1`** matches `GET /api/models` (full catalog slice for operators).
 
         **Auth:** Gateway Key (`rk_...`) or session — **not** the Zuplo consumer key.
 
@@ -562,6 +572,10 @@ paths:
           in: query
           description: Only when `source=catalog`.
           schema: { type: integer }
+        - name: includeUnhealthy
+          in: query
+          description: Only when `source=catalog`; same semantics as `GET /api/models`.
+          schema: { type: string, enum: ["1", "true"] }
       responses:
         "200":
           description: Project index or legacy catalog

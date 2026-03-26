@@ -1152,16 +1152,24 @@ export type ListModelsFilters = {
   family?: string;
   limit?: number;
   offset?: number;
+  /**
+   * When false (default), exclude rows past `retirement_date` and (unless `lifecycleState` is set)
+   * rows whose lifecycle is deprecated/retired. Operators pass true for full catalog slices.
+   */
+  includeUnhealthy?: boolean;
 };
 
 /** List models (catalog). Optional filter by lifecycleState, family; pagination via limit/offset. */
 export async function listModels(filters: ListModelsFilters = {}): Promise<ModelRecord[]> {
   const sql = getSql();
-  const { lifecycleState, family, limit = 100, offset = 0 } = filters;
+  const { lifecycleState, family, limit = 100, offset = 0, includeUnhealthy = false } = filters;
   const safeLimit = Math.min(Math.max(1, limit), 500);
   const safeOffset = Math.max(0, offset);
+  const nowMs = Date.now();
+
   if (lifecycleState != null && lifecycleState !== "" && family != null && family !== "") {
-    const rows = await sql`
+    const rows = includeUnhealthy
+      ? await sql`
       SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
              description, modalities, capabilities, context_window AS "contextWindow",
              max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
@@ -1173,11 +1181,26 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
       WHERE lifecycle_state = ${lifecycleState} AND family = ${family}
       ORDER BY canonical_name ASC
       LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `
+      : await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE lifecycle_state = ${lifecycleState} AND family = ${family}
+        AND (retirement_date IS NULL OR retirement_date > ${nowMs})
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
     `;
     return (rows as Record<string, unknown>[]).map(mapModelRow);
   }
   if (lifecycleState != null && lifecycleState !== "") {
-    const rows = await sql`
+    const rows = includeUnhealthy
+      ? await sql`
       SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
              description, modalities, capabilities, context_window AS "contextWindow",
              max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
@@ -1189,11 +1212,26 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
       WHERE lifecycle_state = ${lifecycleState}
       ORDER BY canonical_name ASC
       LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `
+      : await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE lifecycle_state = ${lifecycleState}
+        AND (retirement_date IS NULL OR retirement_date > ${nowMs})
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
     `;
     return (rows as Record<string, unknown>[]).map(mapModelRow);
   }
   if (family != null && family !== "") {
-    const rows = await sql`
+    const rows = includeUnhealthy
+      ? await sql`
       SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
              description, modalities, capabilities, context_window AS "contextWindow",
              max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
@@ -1205,10 +1243,26 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
       WHERE family = ${family}
       ORDER BY canonical_name ASC
       LIMIT ${safeLimit} OFFSET ${safeOffset}
+    `
+      : await sql`
+      SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+             description, modalities, capabilities, context_window AS "contextWindow",
+             max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+             supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+             editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+             avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+      FROM models
+      WHERE family = ${family}
+        AND (retirement_date IS NULL OR retirement_date > ${nowMs})
+        AND (lifecycle_state IS NULL OR LOWER(TRIM(lifecycle_state)) NOT IN ('deprecated', 'retired'))
+      ORDER BY canonical_name ASC
+      LIMIT ${safeLimit} OFFSET ${safeOffset}
     `;
     return (rows as Record<string, unknown>[]).map(mapModelRow);
   }
-  const rows = await sql`
+  const rows = includeUnhealthy
+    ? await sql`
     SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
            description, modalities, capabilities, context_window AS "contextWindow",
            max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
@@ -1217,6 +1271,20 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
            avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
            replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
     FROM models
+    ORDER BY canonical_name ASC
+    LIMIT ${safeLimit} OFFSET ${safeOffset}
+  `
+    : await sql`
+    SELECT id, canonical_name AS "canonicalName", family, lifecycle_state AS "lifecycleState",
+           description, modalities, capabilities, context_window AS "contextWindow",
+           max_output_tokens AS "maxOutputTokens", supports_tools AS "supportsTools",
+           supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
+           editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
+           avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+    FROM models
+    WHERE (retirement_date IS NULL OR retirement_date > ${nowMs})
+      AND (lifecycle_state IS NULL OR LOWER(TRIM(lifecycle_state)) NOT IN ('deprecated', 'retired'))
     ORDER BY canonical_name ASC
     LIMIT ${safeLimit} OFFSET ${safeOffset}
   `;

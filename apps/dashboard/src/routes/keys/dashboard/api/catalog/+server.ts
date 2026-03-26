@@ -9,10 +9,14 @@ import {
   getOpenRouterEndpointHealthByModel,
   loadCatalogExternalContext,
 } from "$lib/server/catalog-external-signals";
+import {
+  epochMsToIsoOrNull,
+  isViableCatalogVariantAvailability,
+} from "$lib/server/catalog-viability";
 import { listCatalogModelObservationsForPairs, listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
 
 /** Bump when response semantics change (e.g. default allowlist, externalSignals, crowd observations). */
-const CONTRACT_VERSION = "2026-03-25.catalog.v5";
+const CONTRACT_VERSION = "2026-03-26.catalog.v6";
 const CATALOG_COMPATIBILITY = {
   minCliVersion: "0.1.4",
   minCoreDashboardVersion: "0.2.7",
@@ -20,8 +24,6 @@ const CATALOG_COMPATIBILITY = {
 } as const;
 
 const DEFAULT_PROVIDER_MODEL_ALLOWLIST = buildDefaultProviderModelAllowlist();
-const NON_VIABLE_MODEL_STATES = new Set(["deprecated", "retired"]);
-const VIABLE_VARIANT_STATUSES = new Set(["available"]);
 
 type ProviderValidationMode = "native" | "openai_compatible" | "none";
 
@@ -66,20 +68,6 @@ function titleCaseProvider(providerType: string): string {
     .join(" ");
 }
 
-function normalizeValue(value: string | null | undefined): string {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function isViableModel(lifecycleState: string | null): boolean {
-  const normalized = normalizeValue(lifecycleState);
-  if (!normalized) return true;
-  return !NON_VIABLE_MODEL_STATES.has(normalized);
-}
-
-function isViableVariant(availabilityStatus: string | null): boolean {
-  return VIABLE_VARIANT_STATUSES.has(normalizeValue(availabilityStatus));
-}
-
 /** GET: canonical provider+model catalog for downstream BYOK UIs. Public read. */
 export const GET: RequestHandler = async ({ url }) => {
   const lifecycleState = url.searchParams.get("lifecycleState")?.trim() || undefined;
@@ -96,15 +84,15 @@ export const GET: RequestHandler = async ({ url }) => {
     url.searchParams.get("skipDefaultAllowlist")?.toLowerCase() === "true";
 
   const [rawModels, externalCtx] = await Promise.all([
-    listModels({ lifecycleState, family, limit, offset }),
+    listModels({ lifecycleState, family, limit, offset, includeUnhealthy }),
     loadCatalogExternalContext(),
   ]);
-  const models = includeUnhealthy ? rawModels : rawModels.filter((model) => isViableModel(model.lifecycleState));
+  const models = rawModels;
   const modelIds = models.map((m) => m.id);
   const rawVariants = await listProviderModelVariantsByModelIds(modelIds);
   let variants = includeUnhealthy
     ? rawVariants
-    : rawVariants.filter((variant) => isViableVariant(variant.availabilityStatus));
+    : rawVariants.filter((variant) => isViableCatalogVariantAvailability(variant.availabilityStatus));
   if (!skipDefaultAllowlist) {
     variants = variants.filter((variant) => {
       const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
@@ -182,6 +170,9 @@ export const GET: RequestHandler = async ({ url }) => {
       canonicalName: model.canonicalName,
       family: model.family,
       lifecycleState: model.lifecycleState,
+      deprecationDate: epochMsToIsoOrNull(model.deprecationDate),
+      retirementDate: epochMsToIsoOrNull(model.retirementDate),
+      replacementModelId: model.replacementModelId,
       providerTypes,
       variants: modelVariants.map((variant) => {
         const providerType = variant.catalogProviderId ?? variant.providerIntegrationType;

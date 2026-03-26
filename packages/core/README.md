@@ -130,7 +130,7 @@ const viableCatalog = filterCanonicalCatalogForViability(catalog, {
 // degradedReason explains the fallback trigger
 ```
 
-The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), model variants, and `externalSignals.freshness` (contract v5+) with `allFresh` and per-signal `isFresh` / `ageMs` vs SLO `maxAgeMs` for degrading UI when runtime samples are stale.
+The endpoint is `GET /keys/dashboard/api/catalog` and returns a versioned contract (`contractVersion`), provider validation metadata (including optional `validation.defaultApiBaseUrl` when `mode === "openai_compatible"` and `requiresBaseUrl === false`), model variants, optional per-model `deprecationDate` / `retirementDate` (ISO) / `replacementModelId` (contract v6+), and `externalSignals.freshness` (contract v5+) with `allFresh` and per-signal `isFresh` / `ageMs` vs SLO `maxAgeMs` for degrading UI when runtime samples are stale.
 
 **Options:** `fetchCanonicalCatalog({ limit, offset, lifecycleState, family, includeUnhealthy: true })` — the last maps to `includeUnhealthy=1` for deprecated models and non-available variants (operators only).
 
