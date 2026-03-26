@@ -261,7 +261,9 @@ async function run() {
   }
 
   const shortSha = gitOut(['rev-parse', '--short', 'HEAD']).replace(/[^a-f0-9]/g, '').slice(0, 7) || 'local';
-  const branch = `dogfood/agent-issue-${issueNumber}-${shortSha}`;
+  // Unique per run: same issue + base SHA reused a fixed branch name and hit non-fast-forward on retry.
+  const runSuffix = (process.env.GITHUB_RUN_ID && String(process.env.GITHUB_RUN_ID).replace(/\D/g, '')) || `local-${Date.now()}`;
+  const branch = `dogfood/agent-issue-${issueNumber}-${shortSha}-${runSuffix}`;
 
   if (dry) {
     console.log(`[dry-run] Would create branch ${branch} and write:`);
