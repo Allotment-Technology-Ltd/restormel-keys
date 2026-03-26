@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.4
+  version: 1.3.5
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -1644,12 +1644,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
+          enum: [openai, anthropic, cohere, google, deepseek, groq, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
-            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **cohere**, **groq**, **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1679,12 +1679,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
+          enum: [openai, anthropic, cohere, google, deepseek, groq, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
-            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **cohere**, **groq**, **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1711,12 +1711,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
+          enum: [openai, anthropic, cohere, google, deepseek, groq, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
-            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **cohere**, **groq**, **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:

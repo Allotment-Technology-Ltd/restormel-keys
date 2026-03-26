@@ -15,6 +15,8 @@ export const CANONICAL_PROVIDER_TYPES = [
   "mistral",
   "deepseek",
   "together",
+  "cohere",
+  "groq",
 ] as const;
 
 export type CanonicalProviderType = (typeof CANONICAL_PROVIDER_TYPES)[number];
@@ -36,6 +38,8 @@ export const ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS = new Set([
   "mistral",
   "deepseek",
   "together",
+  "cohere",
+  "groq",
 ]);
 
 /** Normalize free-text / legacy labels to slug form before alias map. */
