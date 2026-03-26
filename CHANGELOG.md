@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-27)
 
+**Dogfood PR consumer (manual):** `.github/workflows/dogfood-pr-comment-consumer-dispatch.yml` — **workflow_dispatch** to post the same consumer issue comment as the automatic PR workflow (e.g. after enabling **`DOGFOOD_NOTIFY_CONSUMER`** post-merge). Documented in `docs/github-dogfood-feedback.md`.
+
 **Dogfood PR consumer CI:** When **`DOGFOOD_NOTIFY_CONSUMER`** is unset, `dogfood-pr-comment-consumer.yml` now emits a **warning** (not only a notice) so a green run is not mistaken for a posted SOPHIA comment.
 
 **SOPHIA handover:** [docs/reference/restormel-dogfood-sophia-handover.md](docs/reference/restormel-dogfood-sophia-handover.md) — clarify that **`DOGFOOD_NOTIFY_CONSUMER`** (and PAT) must be set on **restormel-keys** for **PR merge/open comments** on the consumer issue; if unset, `dogfood-pr-comment-consumer` skips and SOPHIA sees nothing from that job.

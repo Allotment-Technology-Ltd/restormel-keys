@@ -153,6 +153,8 @@ Use the same content rules as the issue form.
 
 **Workflow file:** `.github/workflows/dogfood-pr-comment-consumer.yml`. **Script:** `scripts/dogfood-pr-notify-consumer.mjs`.
 
+**Manual backfill:** If **`DOGFOOD_NOTIFY_CONSUMER`** was set **after** the PR merged (or you need the same comment again), run **Actions → Dogfood PR — notify consumer (manual)** (`.github/workflows/dogfood-pr-comment-consumer-dispatch.yml`) with the PR number and mode **merged** or **opened**.
+
 ## After a relayed issue appears here
 
 - **Implementing the work:** [docs/runbooks/restormel-dogfood-issue-implementation.md](runbooks/restormel-dogfood-issue-implementation.md) — checklist, security, Cursor prompt, PR linkage.

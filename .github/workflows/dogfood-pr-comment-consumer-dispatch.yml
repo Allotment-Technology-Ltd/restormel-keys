@@ -1,0 +1,103 @@
+# Backfill the same consumer issue comment as dogfood-pr-comment-consumer.yml when
+# DOGFOOD_NOTIFY_CONSUMER was enabled after merge, or to retry a failed notify.
+#
+# Actions → Dogfood PR — notify consumer (manual) → set PR number and mode.
+name: Dogfood PR — notify consumer (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'restormel-keys PR number (e.g. 52)'
+        required: true
+        type: string
+      mode:
+        description: 'merged = "merged to main" comment; opened = "PR opened" comment'
+        required: true
+        default: merged
+        type: choice
+        options:
+          - merged
+          - opened
+
+jobs:
+  notify:
+    if: github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+
+    steps:
+      - name: Skip (consumer not configured)
+        if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER == '' }}
+        run: |
+          echo '::warning::DOGFOOD_NOTIFY_CONSUMER is empty — no comment posted.'
+          exit 1
+
+      - name: Resolve PAT presence
+        id: pat
+        env:
+          T1: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN }}
+          T2: ${{ secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+        run: |
+          if [ -n "${T1}" ]; then
+            echo "has_pat=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "${T2}" ]; then
+            echo "has_pat=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pat=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (missing PAT)
+        if: ${{ steps.pat.outputs.has_pat == 'false' }}
+        run: |
+          echo '::warning::No DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN'
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Fetch PR and post to consumer issue
+        if: ${{ steps.pat.outputs.has_pat == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONSUMER_PAT: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
+          DOGFOOD_NOTIFY_CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
+        run: |
+          set -euo pipefail
+          N="${{ inputs.pr_number }}"
+          MODE="${{ inputs.mode }}"
+          REPO="${{ github.repository }}"
+          gh pr view "$N" --repo "$REPO" --json body,title,number,url,mergeCommit,state,baseRefName,headRepository > /tmp/pr.json
+          BASE=$(jq -r .baseRefName /tmp/pr.json)
+          if [[ "$BASE" != "main" ]]; then
+            echo "::error::PR #$N targets '$BASE' not main"
+            exit 1
+          fi
+          HEAD_REPO=$(jq -r '.headRepository.nameWithOwner // empty' /tmp/pr.json)
+          if [[ -z "$HEAD_REPO" || "$HEAD_REPO" != "$REPO" ]]; then
+            echo "::notice::Skipping: head repo is '${HEAD_REPO:-unknown}' (fork or unexpected)."
+            exit 0
+          fi
+          STATE=$(jq -r .state /tmp/pr.json)
+          export PR_NUMBER=$(jq -r .number /tmp/pr.json)
+          export PR_TITLE=$(jq -r .title /tmp/pr.json)
+          export PR_HTML_URL=$(jq -r .url /tmp/pr.json)
+          jq -r '.body // ""' /tmp/pr.json > /tmp/pr-body.txt
+          export PR_BODY="$(cat /tmp/pr-body.txt)"
+          if [[ "$MODE" == "merged" ]]; then
+            if [[ "$STATE" != "MERGED" ]]; then
+              echo "::error::PR #$N is $STATE; use mode=opened or merge the PR first"
+              exit 1
+            fi
+            MERGE_SHA=$(jq -r '.mergeCommit.oid // empty' /tmp/pr.json)
+            if [[ -z "$MERGE_SHA" || "$MERGE_SHA" == "null" ]]; then
+              echo "::error::No merge commit on PR"
+              exit 1
+            fi
+            export MERGE_COMMIT_SHA="$MERGE_SHA"
+            node scripts/dogfood-pr-notify-consumer.mjs merged
+          else
+            node scripts/dogfood-pr-notify-consumer.mjs opened
+          fi
