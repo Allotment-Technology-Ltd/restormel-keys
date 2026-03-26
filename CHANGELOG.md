@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-27)
 
+**Dogfood PR consumer CI:** When **`DOGFOOD_NOTIFY_CONSUMER`** is unset, `dogfood-pr-comment-consumer.yml` now emits a **warning** (not only a notice) so a green run is not mistaken for a posted SOPHIA comment.
+
 **SOPHIA handover:** [docs/reference/restormel-dogfood-sophia-handover.md](docs/reference/restormel-dogfood-sophia-handover.md) — clarify that **`DOGFOOD_NOTIFY_CONSUMER`** (and PAT) must be set on **restormel-keys** for **PR merge/open comments** on the consumer issue; if unset, `dogfood-pr-comment-consumer` skips and SOPHIA sees nothing from that job.
 
 **Neon PR previews:** `.github/workflows/neon_workflow.yml` now uses **`preview/<github.head_ref>`** for create/delete and resolves **`DATABASE_URL`** with **`preview/<head_ref>`** first, then legacy **`preview-pr-<n>`**, so CI matches Vercel/Neon Git branch names (e.g. `preview/dogfood/agent-issue-45-…`). Create step is **`continue-on-error`** when the branch already exists.

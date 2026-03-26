@@ -35,7 +35,9 @@ jobs:
     steps:
       - name: Skip (consumer not configured)
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER == '' }}
-        run: echo '::notice::Set DOGFOOD_NOTIFY_CONSUMER to enable consumer issue comments.'
+        run: |
+          echo '::warning::Dogfood PR → consumer issue comment was NOT posted. Repository Actions variable DOGFOOD_NOTIFY_CONSUMER is empty for this repo (check org variables include repository access).'
+          echo '::notice::Set VARIABLE DOGFOOD_NOTIFY_CONSUMER to consumer owner/repo (e.g. Allotment-Technology-Ltd/sophia) and add PAT secret DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN with Issues write on that repo. See docs/github-dogfood-feedback.md.'
 
       - name: Resolve PAT presence
         id: pat
