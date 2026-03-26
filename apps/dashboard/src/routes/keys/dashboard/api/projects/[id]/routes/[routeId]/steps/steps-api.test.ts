@@ -142,7 +142,9 @@ describe("Steps API", () => {
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("invalid_step_schema");
+    expect(body.error).toBe("route_step_provider_not_allowed");
+    expect(Array.isArray(body.allowed)).toBe(true);
+    expect(body.allowed).toContain("openai");
   });
 
   it("POST duplicate orderIndex returns 409", async () => {

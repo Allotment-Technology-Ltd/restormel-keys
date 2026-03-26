@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.2
+  version: 1.3.4
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -919,10 +919,15 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/RouteStep" }
         "400":
-          description: Validation error
+          description: |
+            Validation error (`invalid_step_schema`, unknown `modelId`, etc.) or **`route_step_provider_not_allowed`**
+            when `providerPreference` is not an allowed execution slug (includes **`allowed`** array for clients).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - $ref: "#/components/schemas/RouteStepProviderNotAllowedError"
         "403":
           description: Forbidden
           content:
@@ -974,10 +979,14 @@ paths:
                 properties:
                   data: { $ref: "#/components/schemas/RouteStep" }
         "400":
-          description: Validation error
+          description: |
+            Validation error or **`route_step_provider_not_allowed`** when `providerPreference` is not an allowed execution slug.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - $ref: "#/components/schemas/RouteStepProviderNotAllowedError"
         "403":
           description: Forbidden
           content:
@@ -1537,7 +1546,8 @@ components:
           type: string
           description: |
             Machine-readable code. Resolve examples: `unauthorized`, `no_route`, `route_unpublished`, `route_disabled`,
-            `policy_blocked`, `no_key_available`, `resolve_incomplete`, `publish_validation_failed`.
+            `policy_blocked`, `no_key_available`, `resolve_incomplete`, `publish_validation_failed`,
+            `route_step_provider_not_allowed` (route steps: disallowed `providerPreference` slug; body includes `allowed`).
         message: { type: string }
         userMessage: { type: string, description: Operator hint for some 422 errors }
         detail: { type: string }
@@ -1548,6 +1558,20 @@ components:
           items:
             type: object
             additionalProperties: true
+    RouteStepProviderNotAllowedError:
+      type: object
+      description: |
+        Returned when `providerPreference` is a string but not an allowed route-step execution slug (distinct from generic `invalid_step_schema`).
+        Prefer branching on **`error`**; use **`allowed`** for UX or automation. For providers not in **`allowed`**, use **`openrouter`** or **`portkey`** with a catalog **`modelId`** when the model is only available through an aggregator.
+      required: [error, detail, allowed]
+      properties:
+        error:
+          type: string
+          enum: [route_step_provider_not_allowed]
+        detail: { type: string }
+        allowed:
+          type: array
+          items: { type: string }
     ResolveStepChainEntry:
       type: object
       properties:
@@ -1620,11 +1644,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1654,11 +1679,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
@@ -1685,11 +1711,12 @@ components:
         orderIndex: { type: integer, minimum: 0 }
         providerPreference:
           type: string
-          enum: [openai, anthropic, google, openrouter, vercel, portkey, voyage]
+          enum: [openai, anthropic, google, deepseek, mistral, openrouter, portkey, together, vercel, voyage]
           description: |
             **Authoritative** allowed values for persisted route steps (Keys execution / resolve path).
             Inbound aliases for Google (`vertex`, etc.) normalize to `google` in storage; resolve responses use canonical `vertex` in `providerType`.
             This enum is **narrower** than `GET/POST .../projects/{projectId}/models`: the project model index may include **`registry`** bindings with arbitrary provider slugs that are valid for catalog merge metadata but **must not** be used here until Keys extends step execution for those providers.
+            **Aggregator-only models:** when the catalog exposes a model only under **`openrouter`** or **`portkey`**, use that `providerPreference` with the matching **`modelId`**. **mistral**, **deepseek**, and **together** are first-class when the catalog lists a variant for that integration.
         modelId: { type: string, nullable: true }
         label: { type: string, nullable: true }
         fallbackOn:
