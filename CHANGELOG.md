@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-27)
 
+**SOPHIA handover:** [docs/reference/restormel-dogfood-sophia-handover.md](docs/reference/restormel-dogfood-sophia-handover.md) — clarify that **`DOGFOOD_NOTIFY_CONSUMER`** (and PAT) must be set on **restormel-keys** for **PR merge/open comments** on the consumer issue; if unset, `dogfood-pr-comment-consumer` skips and SOPHIA sees nothing from that job.
+
 **Neon PR previews:** `.github/workflows/neon_workflow.yml` now uses **`preview/<github.head_ref>`** for create/delete and resolves **`DATABASE_URL`** with **`preview/<head_ref>`** first, then legacy **`preview-pr-<n>`**, so CI matches Vercel/Neon Git branch names (e.g. `preview/dogfood/agent-issue-45-…`). Create step is **`continue-on-error`** when the branch already exists.
 
 **Upstream → SOPHIA release backlog:** `dogfood-upstream-notify-consumer.yml` checks out the pushed tag and runs **`scripts/sophia-release-notify-issue.mjs`**, which opens a consumer issue titled **`[Restormel Keys] Release <tag> — SOPHIA backlog / triage`**, embeds the matching **CHANGELOG** `## <tag>` section when present, and adds triage for **API, hosted dashboard, and docs** explicitly **independent of npm publish**. Triggers: **`keys-v*`** (same push family as Publish, but separate workflow) and **`restormel-v*`** for consumer-visible commits **without** an npm train. Docs: `docs/github-dogfood-feedback.md`, `docs/reference/restormel-dogfood-sophia-handover.md`.
