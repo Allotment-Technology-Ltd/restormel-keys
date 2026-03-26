@@ -25,7 +25,7 @@ Request body shape is `RouteStepCreate` (see product OpenAPI for full schema). T
 
 - `orderIndex` (integer, >= 0, unique within route)
 - `enabled` (boolean)
-- `providerPreference` — **authoritative** enum for Keys execution: `openai`, `anthropic`, `google`, `deepseek`, `mistral`, `openrouter`, `portkey`, `together`, `vercel`, `voyage` (Google inbound aliases such as `vertex` normalize to `google`). This set is **narrower** than the project model index (`GET/POST .../models`): registry bindings may list other provider slugs for merge metadata; those values are **not** valid on route steps until Keys extends the Steps API. See product OpenAPI `RouteStepCreate` / `RouteStepPatch` and [From resolve to execution — route step providerPreference](https://restormel.dev/keys/docs/guides/resolve-to-execution-contract#route-step-providerpreference-steps-api).
+- `providerPreference` — **authoritative** enum for Keys execution: `openai`, `anthropic`, `cohere`, `google`, `deepseek`, `groq`, `mistral`, `openrouter`, `portkey`, `together`, `vercel`, `voyage` (Google inbound aliases such as `vertex` normalize to `google`). This set is **narrower** than the project model index (`GET/POST .../models`): registry bindings may list other provider slugs for merge metadata; those values are **not** valid on route steps until Keys extends the Steps API. See product OpenAPI `RouteStepCreate` / `RouteStepPatch` and [From resolve to execution — route step providerPreference](https://restormel.dev/keys/docs/guides/resolve-to-execution-contract#route-step-providerpreference-steps-api).
 - `modelId` (string)
 - `fallbackOn` (enum)
 

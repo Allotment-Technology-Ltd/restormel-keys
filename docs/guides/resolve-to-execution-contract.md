@@ -19,14 +19,14 @@ A successful `POST /api/projects/{projectId}/resolve` guarantees that Restormel 
 
 | Persisted step label (dashboard / DB) | JSON `providerType` |
 |--------------------------------------|---------------------|
-| `openai`, `anthropic`, `openrouter`, `vercel`, `portkey`, `voyage`, `mistral`, `deepseek`, `together` | same slug |
+| `openai`, `anthropic`, `openrouter`, `vercel`, `portkey`, `voyage`, `mistral`, `deepseek`, `together`, `cohere`, `groq` | same slug |
 | `google`, `vertex`, `vertex_ai`, … | `vertex` |
 
 Policy and cost estimation still use the `google` id internally where `@restormel/keys` `defaultProviders` expects it; hosts should key execution off **`vertex`** for Google/Vertex.
 
 ### Route step `providerPreference` (Steps API)
 
-`POST/PATCH .../routes/{routeId}/steps` accept only the **execution** provider slugs Keys can run through resolve today: **`openai`**, **`anthropic`**, **`google`** (inbound aliases such as `vertex` normalize to `google` in storage), **`openrouter`**, **`vercel`**, **`portkey`**, **`voyage`**, **`mistral`**, **`deepseek`**, **`together`**. This list is **authoritative** and is the same set as the `providerPreference` enum in [openapi.yaml](../api/openapi.yaml) (`RouteStep`, `RouteStepCreate`, `RouteStepPatch`).
+`POST/PATCH .../routes/{routeId}/steps` accept only the **execution** provider slugs Keys can run through resolve today: **`openai`**, **`anthropic`**, **`google`** (inbound aliases such as `vertex` normalize to `google` in storage), **`openrouter`**, **`vercel`**, **`portkey`**, **`voyage`**, **`mistral`**, **`deepseek`**, **`together`**, **`cohere`**, **`groq`**. This list is **authoritative** and is the same set as the `providerPreference` enum in [openapi.yaml](../api/openapi.yaml) (`RouteStep`, `RouteStepCreate`, `RouteStepPatch`).
 
 It is **intentionally narrower** than the project model index: **`GET/POST .../projects/{projectId}/models`** may list extra providers (for example under **`bindingKind: registry`**) for host catalog merge. Those rows are not valid `providerPreference` values on route steps until Keys widens step validation and execution. Integrators that replace steps from a UI backed by the project index should map or restrict to the step enum.
 
@@ -34,7 +34,7 @@ It is **intentionally narrower** than the project model index: **`GET/POST .../p
 
 **Aggregator pattern:** if the catalog lists a model **only** under **`openrouter`** or **`portkey`**, persist the step with that `providerPreference` and catalog **`modelId`**.
 
-**Catalog alignment:** first-party **mistral**, **deepseek**, and **together** models live in [model-catalog-seed.json](../../apps/dashboard/data/model-catalog-seed.json) with `providerIntegrationType` matching those slugs; **Together** catalog `id` values are prefixed with `together-` while `providerModelId` keeps the vendor string (e.g. `meta-llama/Llama-3.3-70B-Instruct-Turbo`).
+**Catalog alignment:** first-party **cohere**, **groq**, **mistral**, **deepseek**, and **together** models live in [model-catalog-seed.json](../../apps/dashboard/data/model-catalog-seed.json) with `providerIntegrationType` matching those slugs; **Together** catalog `id` values are prefixed with `together-` while `providerModelId` keeps the vendor string (e.g. `meta-llama/Llama-3.3-70B-Instruct-Turbo`).
 
 ### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 

@@ -1,7 +1,7 @@
 {
   "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
   "source": "static",
-  "lastUpdated": "2026-03-27",
+  "lastUpdated": "2026-03-28",
   "models": [
     {
       "id": "gpt-4o",
@@ -1123,6 +1123,336 @@
       "sourceLastVerifiedAt": null,
       "variants": [
         { "providerIntegrationType": "together", "providerModelId": "NousResearch/Hermes-3-Llama-3.1-405B", "availabilityStatus": "available", "pricingRef": null }
+      ]
+    },
+    {
+      "id": "command-r-plus",
+      "canonicalName": "command-r-plus",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Command R+.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "command-r-plus", "availabilityStatus": "available", "pricingRef": "cohere-command-r-plus" }
+      ]
+    },
+    {
+      "id": "command-r",
+      "canonicalName": "command-r",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Command R.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "command-r", "availabilityStatus": "available", "pricingRef": "cohere-command-r" }
+      ]
+    },
+    {
+      "id": "command-r7b",
+      "canonicalName": "command-r7b",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Command R7B.",
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "command-r7b", "availabilityStatus": "available", "pricingRef": "cohere-command-r7b" }
+      ]
+    },
+    {
+      "id": "command-light",
+      "canonicalName": "command-light",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Command Light.",
+      "contextWindow": 4096,
+      "maxOutputTokens": 4096,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "command-light", "availabilityStatus": "available", "pricingRef": "cohere-command-light" }
+      ]
+    },
+    {
+      "id": "command-a",
+      "canonicalName": "command-a",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Command A.",
+      "contextWindow": 256000,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "command-a", "availabilityStatus": "available", "pricingRef": "cohere-command-a" }
+      ]
+    },
+    {
+      "id": "aya-23-8b",
+      "canonicalName": "aya-23-8b",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Aya 23 8B.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 4096,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "aya-23-8b", "availabilityStatus": "available", "pricingRef": "cohere-aya-23-8b" }
+      ]
+    },
+    {
+      "id": "aya-23-35b",
+      "canonicalName": "aya-23-35b",
+      "family": "cohere",
+      "lifecycleState": "active",
+      "description": "Cohere Aya 23 35B.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 4096,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "cohere", "providerModelId": "aya-23-35b", "availabilityStatus": "available", "pricingRef": "cohere-aya-23-35b" }
+      ]
+    },
+    {
+      "id": "llama-3-3-70b-versatile",
+      "canonicalName": "llama-3.3-70b-versatile",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Meta Llama 3.3 70B on Groq.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-3.3-70b-versatile", "availabilityStatus": "available", "pricingRef": "groq-llama-3-3-70b-versatile" }
+      ]
+    },
+    {
+      "id": "llama-3-2-90b-vision-preview",
+      "canonicalName": "llama-3.2-90b-vision-preview",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Meta Llama 3.2 90B Vision (preview) on Groq.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-3.2-90b-vision-preview", "availabilityStatus": "available", "pricingRef": "groq-llama-3-2-90b-vision-preview" }
+      ]
+    },
+    {
+      "id": "llama-3-2-11b-vision-preview",
+      "canonicalName": "llama-3.2-11b-vision-preview",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Meta Llama 3.2 11B Vision (preview) on Groq.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-3.2-11b-vision-preview", "availabilityStatus": "available", "pricingRef": "groq-llama-3-2-11b-vision-preview" }
+      ]
+    },
+    {
+      "id": "llama-3-1-8b-instant",
+      "canonicalName": "llama-3.1-8b-instant",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Meta Llama 3.1 8B Instant on Groq.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-3.1-8b-instant", "availabilityStatus": "available", "pricingRef": "groq-llama-3-1-8b-instant" }
+      ]
+    },
+    {
+      "id": "llama-3-1-70b-versatile",
+      "canonicalName": "llama-3.1-70b-versatile",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Meta Llama 3.1 70B Versatile on Groq.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-3.1-70b-versatile", "availabilityStatus": "available", "pricingRef": "groq-llama-3-1-70b-versatile" }
+      ]
+    },
+    {
+      "id": "mixtral-8x7b-32768",
+      "canonicalName": "mixtral-8x7b-32768",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Mixtral 8x7B on Groq.",
+      "contextWindow": 32768,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "mixtral-8x7b-32768", "availabilityStatus": "available", "pricingRef": "groq-mixtral-8x7b-32768" }
+      ]
+    },
+    {
+      "id": "gemma2-9b-it",
+      "canonicalName": "gemma2-9b-it",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Google Gemma 2 9B IT on Groq.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "gemma2-9b-it", "availabilityStatus": "available", "pricingRef": "groq-gemma2-9b-it" }
+      ]
+    },
+    {
+      "id": "llama-guard-3-8b",
+      "canonicalName": "llama-guard-3-8b",
+      "family": "groq",
+      "lifecycleState": "active",
+      "description": "Llama Guard 3 8B on Groq.",
+      "contextWindow": 8192,
+      "maxOutputTokens": 8192,
+      "supportsTools": false,
+      "supportsStructuredOutput": false,
+      "supportsMcp": false,
+      "modalities": ["text"],
+      "capabilities": ["chat"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "groq", "providerModelId": "llama-guard-3-8b", "availabilityStatus": "available", "pricingRef": "groq-llama-guard-3-8b" }
       ]
     }
   ]

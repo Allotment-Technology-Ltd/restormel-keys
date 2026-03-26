@@ -42,7 +42,7 @@
   "enabled": true
 }`;
 
-  const providerPreferenceEnum = `openai | anthropic | google | deepseek | mistral | openrouter | portkey | together | vercel | voyage`;
+  const providerPreferenceEnum = `openai | anthropic | cohere | google | deepseek | groq | mistral | openrouter | portkey | together | vercel | voyage`;
   const fallbackOnEnum = `error | rate_limit | no_key | policy_block | any`;
 
   const createStepCurl = `curl -s -X POST \\
