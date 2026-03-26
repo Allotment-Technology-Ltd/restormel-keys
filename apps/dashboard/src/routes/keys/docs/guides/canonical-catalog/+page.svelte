@@ -53,7 +53,7 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
   </p>
 
   <div class="callout callout-tip">
-    <strong>Stable contract</strong> — Check <code>contractVersion</code> in every response (e.g. <code>2026-03-25.catalog.v5</code>). If it changes, re-validate your parser. The catalog only exposes models that match <code>@restormel/keys</code> <code>defaultProviders</code> (current, maintained lists). Use <code>skipDefaultAllowlist=1</code> only for operator debugging.
+    <strong>Stable contract</strong> — Check <code>contractVersion</code> in every response (e.g. <code>2026-03-26.catalog.v6</code>). If it changes, re-validate your parser. Each model may include <code>deprecationDate</code>, <code>retirementDate</code> (ISO 8601), and <code>replacementModelId</code> when set. The catalog only exposes models that match <code>@restormel/keys</code> <code>defaultProviders</code> (current, maintained lists). Use <code>skipDefaultAllowlist=1</code> only for operator debugging.
   </div>
 
   <h2>Global catalog vs project model index</h2>

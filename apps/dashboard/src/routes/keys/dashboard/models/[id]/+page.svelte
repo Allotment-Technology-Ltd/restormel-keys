@@ -72,7 +72,7 @@
     <p class="section-desc">
       This page shows <strong>database-backed</strong> catalog rows. The public feed at
       <a href="/keys/dashboard/api/catalog"><code>/keys/dashboard/api/catalog</code></a>
-      (contract <code>2026-03-25.catalog.v5</code>) merges these variants with the default allowlist in
+      (contract <code>2026-03-26.catalog.v6</code>) merges these variants with the default allowlist in
       <code>@restormel/keys</code>, crowd observations, and credential-free provider signals (OpenRouter, status pages).
       Read <a href="/keys/docs/guides/canonical-catalog">Canonical catalog</a> for how clients should consume upgrades and freshness.
     </p>

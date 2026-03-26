@@ -7,6 +7,7 @@ import {
   canonicalApiToPolicyProvider,
   normalizeProviderToCanonicalApi,
 } from "$lib/server/canonical-provider";
+import { isViableCatalogModel, isViableCatalogVariantAvailability } from "$lib/server/catalog-viability";
 import { getModel, listProviderModelVariants } from "$lib/server/db";
 import type { ProjectModelBindingKind } from "$lib/server/neon";
 
@@ -112,16 +113,34 @@ export async function validateProjectModelBindingPair(
   if (!model) {
     return { ok: false, error: { code: "unknown_model", detail: `Unknown model id: ${modelId}` } };
   }
+  if (!isViableCatalogModel(model)) {
+    return {
+      ok: false,
+      error: {
+        code: "model_unavailable",
+        detail: `Catalog model ${modelId} is deprecated, retired, or past its documented retirement date.`,
+      },
+    };
+  }
   const policyPt = canonicalApiToPolicyProvider(canonical) ?? canonical;
   const variants = await listProviderModelVariants(modelId);
   if (variants.length > 0) {
-    const match = variants.some((v) => v.providerIntegrationType === policyPt);
+    const match = variants.find((v) => v.providerIntegrationType === policyPt);
     if (!match) {
       return {
         ok: false,
         error: {
           code: "provider_model_mismatch",
           detail: `Model ${modelId} has no catalog variant for provider integration type ${policyPt}`,
+        },
+      };
+    }
+    if (!isViableCatalogVariantAvailability(match.availabilityStatus)) {
+      return {
+        ok: false,
+        error: {
+          code: "variant_unavailable",
+          detail: `Catalog variant for ${modelId} on ${policyPt} is not available (retired or unavailable at the provider).`,
         },
       };
     }
@@ -158,7 +177,13 @@ export async function validateProjectModelBindingRow(
 
 /** Map validation error to a request field hint for `errors[].field`. */
 export function validationErrorField(code: string, detail: string): "modelId" | "providerType" {
-  if (code === "unknown_model" || code === "provider_model_mismatch") return "modelId";
+  if (
+    code === "unknown_model" ||
+    code === "provider_model_mismatch" ||
+    code === "model_unavailable" ||
+    code === "variant_unavailable"
+  )
+    return "modelId";
   if (code === "validation_failed") {
     if (detail.includes("modelId")) return "modelId";
     if (detail.includes("providerType")) return "providerType";

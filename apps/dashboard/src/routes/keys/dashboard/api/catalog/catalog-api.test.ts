@@ -103,7 +103,7 @@ describe("GET /api/catalog", () => {
     const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.contractVersion).toBe("2026-03-25.catalog.v5");
+    expect(body.contractVersion).toBe("2026-03-26.catalog.v6");
     expect(body.compatibility).toMatchObject({
       minCliVersion: "0.1.4",
       minCoreDashboardVersion: "0.2.7",
@@ -141,10 +141,9 @@ describe("GET /api/catalog", () => {
       openRouterListedIds: null,
     }));
     const { listModels, listProviderModelVariantsByModelIds } = await import("$lib/server/db");
+    // listModels applies viability in production; mock matches that contract for default catalog GET.
     vi.mocked(listModels).mockResolvedValue([
       { ...mockModel, id: "gpt-4o", canonicalName: "gpt-4o", lifecycleState: "active" } as never,
-      { ...mockModel, id: "deprecated-model", canonicalName: "deprecated-model", lifecycleState: "deprecated" } as never,
-      { ...mockModel, id: "retired-model", canonicalName: "retired-model", lifecycleState: "retired" } as never,
       { ...mockModel, id: "gpt-4o-mini", canonicalName: "gpt-4o-mini", lifecycleState: "active" } as never,
     ]);
     vi.mocked(listProviderModelVariantsByModelIds).mockResolvedValue([

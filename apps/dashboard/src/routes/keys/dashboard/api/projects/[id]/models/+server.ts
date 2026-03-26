@@ -78,7 +78,10 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
       const lifecycleState = url.searchParams.get("lifecycleState")?.trim() || undefined;
       const limit = limitParam != null ? Math.min(Math.max(1, parseInt(limitParam, 10) || 100), 500) : 100;
       const offset = offsetParam != null ? Math.max(0, parseInt(offsetParam, 10) || 0) : 0;
-      const models = await listModels({ lifecycleState, family, limit, offset });
+      const includeUnhealthy =
+        url.searchParams.get("includeUnhealthy") === "1" ||
+        url.searchParams.get("includeUnhealthy")?.toLowerCase() === "true";
+      const models = await listModels({ lifecycleState, family, limit, offset, includeUnhealthy });
       return json({
         data: models,
         meta: {

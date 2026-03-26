@@ -17,6 +17,8 @@
 
 Do **not** rely on `GET /api/projects/{projectId}/models?source=catalog` for new code: it returns the global list for **legacy** callers only. Prefer **`GET /api/models`** for the global catalog so project paths stay semantically “index only.”
 
+**Default list viability:** **`GET /api/models`** (and the model slice in **`GET /api/catalog`**) omits models with lifecycle **`deprecated`** or **`retired`** (unless you set `lifecycleState`) and omits models whose **`retirement_date`** is in the past. Use **`?includeUnhealthy=1`** for the full operator slice. Legacy **`?source=catalog`** accepts the same flag. **`POST`/`PUT`** with **`bindingKind: execution`** rejects non-viable catalog models and non-**`available`** variants (`model_unavailable`, `variant_unavailable`).
+
 ---
 
 ## Stable JSON shape for the project index (`GET`)

@@ -102,6 +102,17 @@ jobs:
         # npx uses NEON_API_KEY automatically if present.
       - name: Apply dashboard migrations
         run: bash scripts/apply-dashboard-migrations.sh
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install workspace (dashboard catalog seed)
+        run: pnpm install --frozen-lockfile
+      - name: Ingest model catalog from JSON seed (preview DB)
+        run: pnpm --filter dashboard run seed:catalog
 
   delete_neon_branch:
     name: Delete Neon Branch

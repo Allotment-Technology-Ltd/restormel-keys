@@ -37,6 +37,13 @@ function normalizeCatalogValue(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
+function isPastIsoInstant(iso: string | null | undefined, nowMs: number): boolean {
+  if (iso == null || String(iso).trim() === "") return false;
+  const t = Date.parse(String(iso));
+  if (!Number.isFinite(t)) return false;
+  return t <= nowMs;
+}
+
 function isViableLifecycleState(lifecycleState: string | null): boolean {
   const normalized = normalizeCatalogValue(lifecycleState);
   if (!normalized) return true;
@@ -138,11 +145,14 @@ export function filterCanonicalCatalogForViability(
   const includeDeprecatedOrRetiredModels = Boolean(options.includeDeprecatedOrRetiredModels);
   const includeUnavailableVariants = Boolean(options.includeUnavailableVariants);
 
+  const nowMs = Date.now();
   const data = catalog.data
     .filter((model) => {
       if (blockedModelIds.has(model.id.trim().toLowerCase())) return false;
       if (includeDeprecatedOrRetiredModels) return true;
-      return isViableLifecycleState(model.lifecycleState);
+      if (!isViableLifecycleState(model.lifecycleState)) return false;
+      if (isPastIsoInstant(model.retirementDate, nowMs)) return false;
+      return true;
     })
     .map((model) => {
       const variants = includeUnavailableVariants

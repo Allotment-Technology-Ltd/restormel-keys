@@ -117,8 +117,8 @@
       "id": "claude-3-5-sonnet",
       "canonicalName": "claude-3-5-sonnet",
       "family": "claude",
-      "lifecycleState": "active",
-      "description": "Claude 3.5 Sonnet: balanced performance.",
+      "lifecycleState": "retired",
+      "description": "Claude 3.5 Sonnet: balanced performance. Snapshot IDs were retired by Anthropic in late 2025; use Claude Sonnet 4 or newer.",
       "contextWindow": 200000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -128,11 +128,11 @@
       "capabilities": ["chat", "tools"],
       "editorialSummary": null,
       "deprecationDate": null,
-      "retirementDate": null,
-      "replacementModelId": null,
+      "retirementDate": 1761696000000,
+      "replacementModelId": "claude-sonnet-4",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-sonnet-20241022", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-5-sonnet" }
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-sonnet-20241022", "availabilityStatus": "retired", "pricingRef": "anthropic-claude-3-5-sonnet" }
       ]
     },
     {
