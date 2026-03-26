@@ -28,6 +28,7 @@ jobs:
               '1. **Security:** Do not copy secrets from the source body into code or PRs. See `docs/security-baseline.md`.',
               '2. **Runbook:** Follow **[docs/runbooks/restormel-dogfood-issue-implementation.md](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/blob/main/docs/runbooks/restormel-dogfood-issue-implementation.md)** (triage → implement → PR → optional reply on source issue).',
               '3. **Cursor:** Paste the agent prompt from that runbook (section *Cursor agent prompt*), replacing `N` with **' + n + '**.',
+              '4. **CI draft PR (optional):** If **`ANTHROPIC_API_KEY`** or **`OPENAI_API_KEY`** is set in repo Actions secrets, **Dogfood agent — draft PR** will pick **`[Dogfood]`** + **`task`** issues on its schedule (oldest first). To skip automatic agent runs for this issue, add label **`dogfood-agent-skip`**. If the agent returns no edits, it adds **`dogfood-agent-noop`** (remove to retry).',
               '',
               'Relay policy: `docs/github-dogfood-feedback.md`.',
             ].join('\n');

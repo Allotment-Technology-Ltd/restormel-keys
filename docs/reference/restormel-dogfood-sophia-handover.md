@@ -79,9 +79,10 @@
 
 ### D) Optional — CI draft PR agent
 
-1. Ensure LLM secret(s) exist on **restormel-keys**.
-2. **Actions** → **Dogfood agent — draft PR** → run with an issue number; start with **dry run** if offered.
-3. Expect a **draft PR** on **restormel-keys** or a noop / failure with logs — still **human** merge.
+1. Ensure LLM secret(s) exist on **restormel-keys** (`ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`). Without them, the workflow cannot call the model.
+2. **Scheduled pickup:** Relay-created issues already have **`task`** and **`[Dogfood]`** in the title — **Dogfood agent — draft PR** cron selects the **oldest** matching issue (see runbook; **`dogfood-agent-skip`** opts out; **`dogfood-agent-noop`** stops repeat attempts after an empty plan).
+3. **Manual:** **Actions** → **Dogfood agent — draft PR** → enter the restormel-keys issue number; use **dry run** first if offered.
+4. Expect a **draft** PR or a noop comment — still **human** merge.
 
 ---
 

@@ -1,7 +1,9 @@
 # LLM-assisted dogfood automation: opens a **draft** PR from a `[Dogfood]` issue.
 # Requires repo secrets: ANTHROPIC_API_KEY and/or OPENAI_API_KEY (see docs).
-# Opt-in scheduled pickup: labels `dogfood-agent-auto` + `task` on an open `[Dogfood]` issue
-# without `dogfood-agent-pr`. Manual runs: Actions → this workflow → workflow_dispatch.
+# Scheduled pickup: open `[Dogfood]` issues with label `task` (relay default), not yet handled by
+# the agent (`dogfood-agent-pr` / `dogfood-agent-noop` / `dogfood-agent-skip`). Optional label
+# `dogfood-agent-auto` is no longer required — SOPHIA relay only applies `task`. Manual runs:
+# Actions → this workflow → workflow_dispatch.
 name: Dogfood agent — draft PR
 
 on:
@@ -45,18 +47,26 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'dogfood-agent-auto,task',
+              labels: 'task',
               sort: 'created',
               direction: 'asc',
-              per_page: 30,
+              per_page: 50,
             });
             const has = (issue, name) => issue.labels.some((l) => l.name === name);
             const candidate = data.find(
-              (i) => /\[dogfood\]/i.test(i.title) && !has(i, 'dogfood-agent-pr'),
+              (i) =>
+                /\[dogfood\]/i.test(i.title) &&
+                !has(i, 'dogfood-agent-pr') &&
+                !has(i, 'dogfood-agent-noop') &&
+                !has(i, 'dogfood-agent-skip'),
             );
             const n = candidate ? String(candidate.number) : '';
             core.setOutput('issue_number', n);
-            if (!n) core.info('No queued issue (labels dogfood-agent-auto + task, title [Dogfood], not dogfood-agent-pr).');
+            if (!n) {
+              core.info(
+                'No queued issue (need: label task, title [Dogfood], and not dogfood-agent-pr / dogfood-agent-noop / dogfood-agent-skip).',
+              );
+            }
 
       - name: Resolve issue number
         id: resolve
@@ -178,6 +188,37 @@ jobs:
               body: [
                 '🤖 Dogfood agent finished with **no file edits** (model returned an empty plan or deferred to a human).',
                 '',
+                'Label **`dogfood-agent-noop`** was added so the scheduler does not retry every few minutes. Remove that label if you want another agent pass.',
+                '',
                 `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               ].join('\n'),
+            });
+
+      - name: Label issue after noop (stop reschedule loop)
+        if: >-
+          success() &&
+          !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') &&
+          steps.run_agent.outputs.noop == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const n = parseInt('${{ steps.resolve.outputs.issue_number }}', 10);
+            try {
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: 'dogfood-agent-noop',
+                color: 'C5DEF5',
+                description: 'Dogfood CI agent returned no file edits; remove to allow another scheduled run',
+              });
+            } catch (e) {
+              if (e.status !== 422) core.warning(String(e));
+            }
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: n,
+              labels: ['dogfood-agent-noop'],
             });
