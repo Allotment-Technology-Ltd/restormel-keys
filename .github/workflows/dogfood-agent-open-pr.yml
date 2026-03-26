@@ -21,7 +21,7 @@ on:
   schedule:
     # GitHub allows down to every 5 minutes. Default below is aggressive — for **short-term testing** of
     # `dogfood-agent-auto` pickup; restore production cadence with e.g. `0 */6 * * *` (every 6 hours UTC).
-    - cron: '*/5 * * * *'
+    - cron: '*/1 * * * *'
 
 concurrency:
   group: dogfood-agent-open-pr
