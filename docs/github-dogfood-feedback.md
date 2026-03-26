@@ -23,6 +23,8 @@ For **trusted** projects (same org/operators, implicit trust), the **de facto st
 
 ### Reference implementation: SOPHIA (`Allotment-Technology-Ltd/sophia`)
 
+**Handover / test checklist (operators):** [docs/reference/restormel-dogfood-sophia-handover.md](reference/restormel-dogfood-sophia-handover.md) — what shipped on restormel-keys, what SOPHIA should expect, preconditions, suggested test order.
+
 The following is **what SOPHIA deployed** — it matches the pack and reference workflow above (with repo-specific names and a **fork guard**). Upstream backlog stays in **restormel-keys**; SOPHIA keeps the consumer-side thread and link-back.
 
 **Intent**

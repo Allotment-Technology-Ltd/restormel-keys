@@ -8,7 +8,7 @@ Single record of meaningful repo changes.
 
 **Dogfood CI draft PR (optional):** [docs/runbooks/restormel-dogfood-issue-implementation.md](docs/runbooks/restormel-dogfood-issue-implementation.md) §6 — `scripts/dogfood-agent-open-pr.mjs` and `.github/workflows/dogfood-agent-open-pr.yml` (LLM → allowlisted paths → **draft** PR). Secrets: `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`. Scheduled pickup: labels `dogfood-agent-auto` + `task`.
 
-**Dogfood upstream → consumer notify (optional):** `.github/workflows/dogfood-upstream-notify-consumer.yml` — on **`keys-v*`** tag (or manual dispatch), opens a tracking issue on the consumer repo when **`DOGFOOD_NOTIFY_CONSUMER`** (variable) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** (PAT) are set. Spec: [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) § *Upstream → consumer notify*.
+**Dogfood upstream → consumer notify (optional):** `.github/workflows/dogfood-upstream-notify-consumer.yml` — on **`keys-v*`** tag (or manual dispatch), opens a tracking issue on the consumer repo when **`DOGFOOD_NOTIFY_CONSUMER`** (variable) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** (PAT) are set. Spec: [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) § *Upstream → consumer notify*. **SOPHIA handover / test plan:** [docs/reference/restormel-dogfood-sophia-handover.md](docs/reference/restormel-dogfood-sophia-handover.md).
 
 ## keys-v0.2.13 (2026-03-26)
 
