@@ -4,7 +4,7 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-26)
 
-**Dependency security (pnpm):** Root `pnpm.overrides` extended so transitive deps meet patched versions for open Dependabot/npm advisories (`fastify`, `kysely`, `picomatch`, `yaml`). `pnpm-lock.yaml` refreshed; `pnpm audit` reports no known vulnerabilities.
+**Dependency security (pnpm):** Root `pnpm.overrides` extended so transitive deps meet patched versions for open Dependabot/npm advisories (`fastify`, `kysely`, `picomatch`, `yaml`). `pnpm-lock.yaml` refreshed; `pnpm audit` reports no known vulnerabilities. **`zuplo-gateway/`** is a separate install (not in the root workspace): its `package.json` overrides now pin `fastify` ≥5.8.3 and `picomatch` ≥2.3.2, with `zuplo-gateway/pnpm-lock.yaml` refreshed via `pnpm install --ignore-workspace` so GitHub Dependabot alerts on that manifest clear on the next scan.
 
 **Dogfood → GitHub:** [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) — **default for trusted consumer repos** is label relay (`restormel-feedback` + PAT secret). Self-contained copy for SOPHIA and other consumers: [docs/reference/restormel-dogfood-relay-consumer-pack.md](docs/reference/restormel-dogfood-relay-consumer-pack.md) (includes agent prompt). Issue form and reference workflow remain: [docs/reference/github-dogfood-relay-consumer-workflow.yml](docs/reference/github-dogfood-relay-consumer-workflow.yml). **SOPHIA plan** updated: [docs/reference/sophia-dogfooding-plan.md](docs/reference/sophia-dogfooding-plan.md).
 
