@@ -74,4 +74,34 @@ Do not commit or log secrets.
 
 ---
 
+## 6) Optional: CI agent (draft PR)
+
+Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** plus **`scripts/dogfood-agent-open-pr.mjs`**. The workflow calls an LLM (Anthropic or OpenAI), applies edits under a **strict path allowlist** (`docs/`, `apps/`, `packages/`, `scripts/`, `prompts/`, `e2e/` — not `.github/`, not this script), then **pushes a branch** and opens a **draft** PR. **Human review is mandatory** before merge.
+
+### Secrets and configuration (GitHub)
+
+| Secret / variable | Required | Purpose |
+|-------------------|----------|---------|
+| **`ANTHROPIC_API_KEY`** or **`OPENAI_API_KEY`** | One of the two | LLM API access (repository or org **Secrets**). Never commit. |
+| **`DOGFOOD_AGENT_PROVIDER`** | Optional repo **Variable** | `anthropic` or `openai` (defaults from which key is set). |
+| **`DOGFOOD_ANTHROPIC_MODEL`** / **`DOGFOOD_OPENAI_MODEL`** | Optional **Variables** | Override default models (see script header in `scripts/dogfood-agent-open-pr.mjs`). |
+
+### Manual run
+
+1. **Actions** → **Dogfood agent — draft PR** → **Run workflow**.
+2. Enter the **restormel-keys issue number**; optionally enable **dry run** (LLM only, no push/PR).
+3. Review the **draft** PR and CI; redact or fix anything unsafe before merge.
+
+### Scheduled (opt-in) pickup
+
+To queue **one** issue per run (every 6 hours UTC, concurrency-limited):
+
+1. Ensure the relay issue has **`task`** (added by the consumer relay) and title **`[Dogfood]…`**.
+2. Add label **`dogfood-agent-auto`** (create it in the repo if needed). Do **not** add **`dogfood-agent-pr`** until a PR exists.
+3. After a successful run, the workflow adds **`dogfood-agent-pr`**, removes **`dogfood-agent-auto`**, and comments with the draft PR link.
+
+**Safety:** Redact consumer issue bodies before relaying; the script **redacts common secret shapes** in the text sent to the provider, but that is **not** a guarantee — treat relay bodies as untrusted (see § Before you start).
+
+---
+
 *When a new `[Dogfood]` issue is opened, the workflow `.github/workflows/dogfood-issue-hint.yml` posts a short comment on the issue with a link to this runbook.*

@@ -1,0 +1,182 @@
+# LLM-assisted dogfood automation: opens a **draft** PR from a `[Dogfood]` issue.
+# Requires repo secrets: ANTHROPIC_API_KEY and/or OPENAI_API_KEY (see docs).
+# Opt-in scheduled pickup: labels `dogfood-agent-auto` + `task` on an open `[Dogfood]` issue
+# without `dogfood-agent-pr`. Manual runs: Actions → this workflow → workflow_dispatch.
+name: Dogfood agent — draft PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: restormel-keys issue number
+        required: true
+        type: string
+      dry_run:
+        description: Run LLM only (no git push / no PR)
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Every 6 hours UTC; processes at most one queued issue per run (concurrency-limited).
+    - cron: '0 */6 * * *'
+
+concurrency:
+  group: dogfood-agent-open-pr
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  agent:
+    if: github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick issue (schedule only)
+        id: pick
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dogfood-agent-auto,task',
+              sort: 'created',
+              direction: 'asc',
+              per_page: 30,
+            });
+            const has = (issue, name) => issue.labels.some((l) => l.name === name);
+            const candidate = data.find(
+              (i) => /\[dogfood\]/i.test(i.title) && !has(i, 'dogfood-agent-pr'),
+            );
+            const n = candidate ? String(candidate.number) : '';
+            core.setOutput('issue_number', n);
+            if (!n) core.info('No queued issue (labels dogfood-agent-auto + task, title [Dogfood], not dogfood-agent-pr).');
+
+      - name: Resolve issue number
+        id: resolve
+        env:
+          DISPATCH_ISSUE: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || '' }}
+          PICK_ISSUE: ${{ steps.pick.outputs.issue_number }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "issue_number=${DISPATCH_ISSUE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "issue_number=${PICK_ISSUE}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip when schedule has no candidate
+        if: github.event_name == 'schedule' && steps.resolve.outputs.issue_number == ''
+        run: echo 'Nothing to do.'
+
+      - uses: actions/checkout@v4
+        if: ${{ !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') }}
+        with:
+          fetch-depth: 0
+
+      - name: Run dogfood agent
+        id: run_agent
+        if: ${{ !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DOGFOOD_ISSUE_NUMBER: ${{ steps.resolve.outputs.issue_number }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DOGFOOD_AGENT_PROVIDER: ${{ vars.DOGFOOD_AGENT_PROVIDER }}
+          DOGFOOD_ANTHROPIC_MODEL: ${{ vars.DOGFOOD_ANTHROPIC_MODEL }}
+          DOGFOOD_OPENAI_MODEL: ${{ vars.DOGFOOD_OPENAI_MODEL }}
+          DOGFOOD_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+        run: node scripts/dogfood-agent-open-pr.mjs
+
+      - name: Comment PR link on issue
+        if: >-
+          success() &&
+          !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') &&
+          steps.run_agent.outputs.noop == 'false' &&
+          steps.run_agent.outputs.dry_run != 'true' &&
+          steps.run_agent.outputs.pr_url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = parseInt('${{ steps.resolve.outputs.issue_number }}', 10);
+            const url = '${{ steps.run_agent.outputs.pr_url }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: n,
+              body: [
+                '🤖 Opened **draft** PR (CI dogfood agent):',
+                url,
+                '',
+                'Human review required before merge (security, behaviour, CI).',
+              ].join('\n'),
+            });
+
+      - name: Label issue after PR
+        if: >-
+          success() &&
+          !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') &&
+          steps.run_agent.outputs.noop == 'false' &&
+          steps.run_agent.outputs.dry_run != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const n = parseInt('${{ steps.resolve.outputs.issue_number }}', 10);
+            const ensure = async (name, color) => {
+              try {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name,
+                  color,
+                  description: 'Dogfood CI agent',
+                });
+              } catch (e) {
+                if (e.status !== 422) core.warning(String(e));
+              }
+            };
+            await ensure('dogfood-agent-pr', '0E8A16');
+            await ensure('dogfood-agent-auto', 'FBCA04');
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: n,
+              labels: ['dogfood-agent-pr'],
+            });
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: n,
+                name: 'dogfood-agent-auto',
+              });
+            } catch (e) {
+              core.info('removeLabel dogfood-agent-auto: ' + String(e));
+            }
+
+      - name: Comment when agent made no file edits
+        if: >-
+          success() &&
+          !(github.event_name == 'schedule' && steps.resolve.outputs.issue_number == '') &&
+          steps.run_agent.outputs.noop == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = parseInt('${{ steps.resolve.outputs.issue_number }}', 10);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: n,
+              body: [
+                '🤖 Dogfood agent finished with **no file edits** (model returned an empty plan or deferred to a human).',
+                '',
+                `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ].join('\n'),
+            });
