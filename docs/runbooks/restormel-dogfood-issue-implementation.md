@@ -67,8 +67,8 @@ Work in repo restormel-keys. Implement GitHub issue #N (title starts with [Dogfo
 1) Run: gh issue view N --repo Allotment-Technology-Ltd/restormel-keys
 2) Read the linked source issue for context only; do not copy any secrets into the codebase or PR.
 3) Follow docs/runbooks/restormel-dogfood-issue-implementation.md, docs/security-baseline.md, and .cursor/rules (bootstrap gate, doc governance, quality/testing).
-4) Make the minimal code/doc change, add tests if appropriate, run scripts/check-secrets.sh and relevant tests.
-5) Open a PR that addresses #N (Fixes or Addresses in the description).
+4) If issue #N already has an open draft PR from branch dogfood/agent-issue-N-…, check out that branch and push additional commits there (one PR per pickup — see runbook §6). Otherwise make the minimal change and open a PR that addresses #N (Fixes or Addresses in the description).
+5) Add tests if appropriate; run scripts/check-secrets.sh and relevant tests.
 
 Do not commit or log secrets.
 ```
@@ -78,6 +78,12 @@ Do not commit or log secrets.
 ## 6) Optional: CI agent (draft PR)
 
 Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** plus **`scripts/dogfood-agent-open-pr.mjs`**. The workflow calls an LLM (Anthropic or OpenAI), applies edits under a **strict path allowlist** (`docs/`, `apps/`, `packages/`, `scripts/`, `prompts/`, `e2e/` — not `.github/`, not this script), then **pushes a branch** and opens a **draft** PR. **Human review is mandatory** before merge.
+
+### One draft PR per dogfood agent pickup (canonical)
+
+When the agent opens a draft PR from **`dogfood/agent-issue-<n>-…`**, **stack all further work for that same `[Dogfood]` issue** on **that branch** (push additional commits to the same remote branch) so **one** draft PR holds the full change set for human review. **Do not** use a separate **`fix/…`** (or other) branch for the same issue in parallel unless the draft PR was **explicitly abandoned** — then note why on the issue and link any replacement PR.
+
+**Allowlist caveat:** Edits under **`.github/`** (workflows, etc.) are **outside** the agent allowlist; they still need a **human** commit path. Prefer **cherry-pick or push those commits onto the same `dogfood/agent-issue-…` branch** when possible so review stays on one PR; if a tiny follow-up PR is unavoidable, merge it before or with the dogfood PR and keep the issue thread coherent.
 
 ### Secrets and configuration (GitHub)
 
