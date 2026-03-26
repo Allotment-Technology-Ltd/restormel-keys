@@ -4,13 +4,15 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-26)
 
+**Dogfood agent schedule:** `.github/workflows/dogfood-agent-open-pr.yml` scheduled pickup now matches **SOPHIA relay** issues: label **`task`** + **`[Dogfood]`** title (no longer requires **`dogfood-agent-auto`**). Excludes **`dogfood-agent-pr`**, **`dogfood-agent-noop`**, **`dogfood-agent-skip`**. After a **noop** run, the workflow adds **`dogfood-agent-noop`** so cron does not retry in a loop. Docs: runbook §6, `docs/github-dogfood-feedback.md`, `docs/reference/restormel-dogfood-sophia-handover.md`, hint comment in `dogfood-issue-hint.yml`.
+
 **Dependency security (pnpm):** Root `pnpm.overrides` extended so transitive deps meet patched versions for open Dependabot/npm advisories (`fastify`, `kysely`, `picomatch`, `yaml`). `pnpm-lock.yaml` refreshed; `pnpm audit` reports no known vulnerabilities. **`zuplo-gateway/`** is a separate install (not in the root workspace): its `package.json` overrides now pin `fastify` ≥5.8.3 and `picomatch` ≥2.3.2, with `zuplo-gateway/pnpm-lock.yaml` refreshed via `pnpm install --ignore-workspace` so GitHub Dependabot alerts on that manifest clear on the next scan.
 
 **Dogfood → GitHub:** [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) — **default for trusted consumer repos** is label relay (`restormel-feedback` + PAT secret). Self-contained copy for SOPHIA and other consumers: [docs/reference/restormel-dogfood-relay-consumer-pack.md](docs/reference/restormel-dogfood-relay-consumer-pack.md) (includes agent prompt). Issue form and reference workflow remain: [docs/reference/github-dogfood-relay-consumer-workflow.yml](docs/reference/github-dogfood-relay-consumer-workflow.yml). **SOPHIA plan** updated: [docs/reference/sophia-dogfooding-plan.md](docs/reference/sophia-dogfooding-plan.md).
 
-**Dogfood agent schedule:** `.github/workflows/dogfood-agent-open-pr.yml` cron set to **every 5 minutes** for short-term testing of `dogfood-agent-auto` pickup — restore `0 */6 * * *` (or similar) when done.
+**Dogfood agent cron:** `.github/workflows/dogfood-agent-open-pr.yml` may still be **every 5 minutes** for short-term testing — restore `0 */6 * * *` (or similar) when done.
 
-**Dogfood CI draft PR (optional):** [docs/runbooks/restormel-dogfood-issue-implementation.md](docs/runbooks/restormel-dogfood-issue-implementation.md) §6 — `scripts/dogfood-agent-open-pr.mjs` and `.github/workflows/dogfood-agent-open-pr.yml` (LLM → allowlisted paths → **draft** PR). Secrets: `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`. Scheduled pickup: labels `dogfood-agent-auto` + `task`.
+**Dogfood CI draft PR (optional):** [docs/runbooks/restormel-dogfood-issue-implementation.md](docs/runbooks/restormel-dogfood-issue-implementation.md) §6 — `scripts/dogfood-agent-open-pr.mjs` and `.github/workflows/dogfood-agent-open-pr.yml` (LLM → allowlisted paths → **draft** PR). Secrets: `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`.
 
 **Dogfood upstream → consumer notify (optional):** `.github/workflows/dogfood-upstream-notify-consumer.yml` — on **`keys-v*`** tag (or manual dispatch), opens a tracking issue on the consumer repo when **`DOGFOOD_NOTIFY_CONSUMER`** (variable) and **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`** (PAT) are set. Spec: [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) § *Upstream → consumer notify*. **SOPHIA handover / test plan:** [docs/reference/restormel-dogfood-sophia-handover.md](docs/reference/restormel-dogfood-sophia-handover.md).
 

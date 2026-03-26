@@ -93,13 +93,17 @@ Fully automated pickup uses **`.github/workflows/dogfood-agent-open-pr.yml`** pl
 2. Enter the **restormel-keys issue number**; optionally enable **dry run** (LLM only, no push/PR).
 3. Review the **draft** PR and CI; redact or fix anything unsafe before merge.
 
-### Scheduled (opt-in) pickup
+### Scheduled pickup (relay-friendly)
 
-To queue **one** issue per run on a **schedule** (cron is in `.github/workflows/dogfood-agent-open-pr.yml`; may be set to every few minutes for testing — restore a slower cadence for production), concurrency-limited:
+On each cron tick (see `.github/workflows/dogfood-agent-open-pr.yml`; may be every few minutes during testing — restore a slower cadence for production), the workflow picks **at most one** open issue that has:
 
-1. Ensure the relay issue has **`task`** (added by the consumer relay) and title **`[Dogfood]…`**.
-2. Add label **`dogfood-agent-auto`** (create it in the repo if needed). Do **not** add **`dogfood-agent-pr`** until a PR exists.
-3. After a successful run, the workflow adds **`dogfood-agent-pr`**, removes **`dogfood-agent-auto`**, and comments with the draft PR link.
+- Label **`task`** (applied automatically by the consumer relay, e.g. SOPHIA → restormel-keys), and  
+- Title **`[Dogfood]…`**, and  
+- **None** of: **`dogfood-agent-pr`** (PR already opened), **`dogfood-agent-noop`** (agent returned no file edits — remove this label to allow a retry), **`dogfood-agent-skip`** (opt out of automatic agent runs for this issue).
+
+You **do not** need **`dogfood-agent-auto`** anymore for relayed issues; that label was previously required and caused SOPHIA-raised tickets to sit indefinitely unless someone added it manually.
+
+After a successful run, the workflow adds **`dogfood-agent-pr`** and comments with the draft PR link. If the model proposes **no** file changes, the workflow comments and adds **`dogfood-agent-noop`** so the scheduler does not retry in a tight loop.
 
 **Safety:** Redact consumer issue bodies before relaying; the script **redacts common secret shapes** in the text sent to the provider, but that is **not** a guarantee — treat relay bodies as untrusted (see § Before you start).
 
