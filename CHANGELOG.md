@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-03-26)
+
+**Dogfood → GitHub:** [docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md) — **default for trusted consumer repos** is label relay (`restormel-feedback` + PAT secret). Self-contained copy for SOPHIA and other consumers: [docs/reference/restormel-dogfood-relay-consumer-pack.md](docs/reference/restormel-dogfood-relay-consumer-pack.md) (includes agent prompt). Issue form and reference workflow remain: [docs/reference/github-dogfood-relay-consumer-workflow.yml](docs/reference/github-dogfood-relay-consumer-workflow.yml). **SOPHIA plan** updated: [docs/reference/sophia-dogfooding-plan.md](docs/reference/sophia-dogfooding-plan.md).
+
 ## keys-v0.2.13 (2026-03-26)
 
 **npm publish** (tag `keys-v0.2.13`): **Recovery / complete train** after a failed or partial `keys-v0.2.12` publish and/or dashboard image build (`COPY vendor ./vendor` missing path). Same product content as **0.2.12** (Voyage route steps, etc.) plus repo **`vendor/.gitkeep`** on the release commit. Versions: `@restormel/keys@0.2.13`, `keys-svelte@0.1.6`, `aaif@0.0.6`, `mcp@0.1.6`, `doctor@0.1.9`, `validate@0.1.9`, `keys-cli@0.1.9`.
@@ -38,8 +42,7 @@ Single record of meaningful repo changes.
 
 ## Unreleased
 
-- docs: **project model index contract** — OpenAPI `1.2.1` (`info` + `listProjectModels` + `gatewayKey` scheme), in-app Cloud API matrix + list curl, resolve contract cross-link, walkthrough glossary/auth cheat-sheet (`rk_` vs `zpka_`), [implemented-behaviour.md](docs/reference/implemented-behaviour.md), [documentation-strategy.md](docs/documentation-strategy.md), Zuplo portal runbook table; requirements doc now tracks **remaining** gap (HTTP mutations only).
-- docs(requirements): **project model index Gateway API** — spec for machine-configurable project model bindings (`rk_`), OpenAPI/Cloud API deliverables, FR-1–FR-8; see [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
+- **Project model index (Dashboard API):** migration `020_project_model_bindings.sql`; `GET/POST/PUT /keys/dashboard/api/projects/{id}/models`, `PATCH/DELETE .../models/{bindingId}`; Gateway Key + session scoped to project; canonical `providerType` + catalog validation (`project-model-index-validation.ts`); idempotent `POST`; `PUT` full replace (FR-8); legacy `GET ?source=catalog` deprecated. OpenAPI **1.3.0**, Cloud API curls, [requirements spec](docs/requirements/project-model-index-gateway-api.md) marked **implemented**. Vitest: `project-models-api.test.ts`.
 - catalog(api): **default allowlist** — `GET /keys/dashboard/api/catalog` returns only `(providerId, providerModelId)` pairs from `@restormel/keys` `defaultProviders` (contract `2026-03-24.catalog.v2`); `skipDefaultAllowlist=1` for raw DB rows. Trimmed legacy OpenAI / Anthropic / Google model ids from defaults and seed.
 - catalog(api): **external runtime signals** — contract bumped to `2026-03-25.catalog.v3`; payload now includes `externalSignals` with credential-free provider status snapshots (OpenAI/Anthropic status pages) and OpenRouter public model endpoint health (`status`, `uptime_last_30m`, latency/throughput quantiles). OpenRouter variants are filtered against live public OpenRouter model IDs when snapshot fetch succeeds.
 - catalog(api): **crowd observations** — contract `2026-03-25.catalog.v4` adds optional per-variant `crowdObservations` (aggregated deprecated/retired report counts). Authenticated clients can `POST /keys/dashboard/api/catalog/observations` (Bearer Gateway Key, management key, or session) after observing vendor deprecation signals; `@restormel/keys/dashboard` adds `reportCatalogModelObservation()`.

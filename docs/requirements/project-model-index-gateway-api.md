@@ -1,71 +1,54 @@
 # Requirements: Project model index — API mutations (Gateway Key)
 
-**Status:** Draft (not implemented). **Audience:** Building agents / implementers.  
-**Canonical:** This file owns this feature spec. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md) (canonical `providerType`), [docs/api/openapi.yaml](../api/openapi.yaml) (`GET /api/projects/{projectId}/models` today), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte) (Cloud API doc).
+**Status:** **Implemented** (dashboard `+server` handlers, migration `020`, OpenAPI 1.3.0, Cloud API). **Audience:** Integrators + implementers.  
+**Canonical:** This file records the original FRs and semantics. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md), [docs/api/openapi.yaml](../api/openapi.yaml), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte).
 
-## Problem
+## Problem (historical)
 
-Integrators (e.g. Sophia) call `GET /keys/dashboard/api/projects/{projectId}/models` to drive model pickers. That surface is effectively **read-only** in public docs. There is no documented, **`rk_` Gateway Key–authenticated** way to add or remove models from the project’s selectable index. Operators are pushed to the dashboard (or unclear control-plane paths), which blocks automation, CI, and “configure from Sophia admin/API.”
+Integrators called `GET /keys/dashboard/api/projects/{projectId}/models` for pickers but had no Gateway Key path to mutate the index without the browser.
 
-Sophia merges that response with a static catalog and only supplements non-Voyage embeddings when Google / Vertex already appear in the project model set — so the **missing capability is upstream**, not a Sophia bug.
+## Shipped behaviour (summary)
 
-## Goals
+| Area | Detail |
+|------|--------|
+| **Storage** | `project_model_bindings` (`020_project_model_bindings.sql`); runtime self-heal in `neon.ts` if migration not yet applied. |
+| **GET** | Default: project bindings + nested `model` catalog row. `?source=catalog` = legacy global list (deprecated). |
+| **POST** | `{ "models": [{ "providerType", "modelId" }] }` — batch upsert, **idempotent** (re-add sets `enabled: true`). |
+| **PUT** | `{ "models": [{ "providerType", "modelId", "enabled"? }] }` — **replace** full allowlist (empty clears). |
+| **PATCH** | `.../models/{bindingId}` + `{ "enabled": boolean }` — soft disable / re-enable. |
+| **DELETE** | `.../models/{bindingId}` — hard remove. |
+| **Auth** | Gateway Key (project-scoped) + session/management patterns matching other project APIs. Cross-project key → **403**. |
+| **Validation** | Canonical `providerType`; `getModel` + variant check when variants exist (`project-model-index-validation.ts`). Errors: `project_models_validation_failed` + `errors[]`. |
+| **FR-3** | Idempotent add: **200**, upsert without error. |
 
-1. **Machine configuration:** Create / update / remove project model bindings via HTTP + JSON, same operational style as routes/steps.
-2. **Single story for Sophia:** Prefer **Dashboard API + Gateway Key (`rk_`)** for these mutations so Sophia does not need a second secret unless unavoidable.
-3. **Contract clarity:** Every new path appears in **published OpenAPI** and **Cloud API** docs with auth, errors, and examples.
+## Functional requirements (traceability)
 
-## Functional requirements
+| ID | Status |
+|----|--------|
+| FR-1 | Done — batch `POST`. |
+| FR-2 | Done — `DELETE` hard, `PATCH` soft `enabled`. |
+| FR-3 | Done — upsert re-enables. |
+| FR-4 | Done — `403` cross-project Gateway Key. |
+| FR-5 | Done — synchronous Postgres; `GET` reflects writes immediately. |
+| FR-6 | Done — JSON shape + 400/401/403/404. |
+| FR-7 | Done — resolve guide + OpenAPI enums. |
+| FR-8 | Done — `PUT` replace. |
 
-| ID | Requirement |
-|----|-------------|
-| **FR-1** | Add one or more models to the project index: at minimum `{ providerType, modelId }` per row (names aligned with existing resolve/route fields: `openai`, `anthropic`, `google`, `voyage`, etc.). Support **batch** in one request if that fits existing patterns. |
-| **FR-2** | Remove or disable a binding — choose one model: **hard delete** vs **soft `enabled: false`**; **document semantics** in OpenAPI and Cloud API. |
-| **FR-3** | **Idempotency:** Re-adding the same `providerType` + `modelId` must not error (or return a stable 200 / 409 with clear code — **document which**). |
-| **FR-4** | **Authorization:** Gateway Key may only mutate the project bound to the key; **reject cross-project `projectId` tampering** (mirror policies/evaluate rules). |
-| **FR-5** | **Read-after-write:** After a successful mutation, `GET …/projects/{projectId}/models` must include the change (same consistency guarantees as the rest of the dashboard API; if eventually consistent, **document lag**). |
-| **FR-6** | **Errors:** Reuse existing dashboard JSON error shape (`error`, `detail`, optional `errors[]`) and HTTP codes (400 validation, 401, 403, 404 unknown model/provider if validated against canonical catalog). |
-| **FR-7** | **Provider normalization:** Document **canonical `providerType` values and aliases** (e.g. `vertex` vs `google`) so integrators’ merge logic matches resolve. Sophia already normalizes some Vertex spellings in `ingestionModelCatalogMerge.ts`; **Keys must document the source of truth** (see resolve contract guide + OpenAPI enums). |
+## Non-goals (unchanged)
 
-## Non-goals (explicit)
+BYOK / integration secrets stay on existing flows; this index is for selector/merge metadata only.
 
-Storing third-party API secrets remains on existing **BYOK / integration** flows. This feature is the **project model index** used for selectors and merge, unless you intentionally unify “enable provider + register models” in one API — if so, **document that**.
+## Documentation / OpenAPI
 
-## Documentation / OpenAPI (part of the deliverable)
-
-- Add paths under `/keys/dashboard/api` to **OpenAPI** (`docs/api/openapi.yaml`); keep in sync with any `/keys/docs/...` published bundle if applicable.
-- **Cloud API doc:** Table row for mutations on project models; state clearly **Dashboard API + `rk_`** vs **Zuplo + `zpka_`** if any operation stays on Zuplo.
-- **curl** examples: add, remove, list.
+Delivered: OpenAPI paths + schemas (`ProjectModelIndexEntry`, batch/replace requests, validation error), Cloud API matrix + curl blocks.
 
 ## Acceptance criteria
 
-- From a backend with only **`RESTORMEL_GATEWAY_KEY`** + **`RESTORMEL_PROJECT_ID`**, an integrator can add **`google` + `text-embedding-005`** (or **`vertex` + same id**, per canonical choice documented) and see it on **`GET …/models`** without using the browser dashboard.
-- OpenAPI lists the new methods and schemas.
-- **Tests (automated or manual notes):** forbidden cross-project mutation; validation errors for unknown provider/model if enforced.
+Met: integrator with `RESTORMEL_GATEWAY_KEY` + `RESTORMEL_PROJECT_ID` can `POST` `vertex` + `text-embedding-005` and see rows on `GET`; OpenAPI + tests cover cross-project and validation failures.
 
-## Optional stretch (IaC-friendly)
+## Implementation checklist
 
-| ID | Requirement |
-|----|-------------|
-| **FR-8** | `PUT` or `PATCH` to **replace** the full project model allowlist from a JSON array for declarative sync. |
-
-## Documentation status (gap closed for “what exists today”)
-
-The following now state clearly that **`GET …/projects/{projectId}/models` is read-only**, uses the **Dashboard API + Gateway Key (`rk_`)**, is **not** on Zuplo consumer-key paths, and that **writes are UI-only** until this spec is implemented:
-
-- [docs/api/openapi.yaml](../api/openapi.yaml) — `info` inventory + `listProjectModels` description + `gatewayKey` scheme text
-- In-app **Cloud API** (`apps/dashboard/.../cloud-api/+page.svelte`) — matrix table, routing metadata row, list curl
-- [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md) — canonical `providerType` alignment for merge
-- [docs/walkthrough/01-writing-style-guide.md](../walkthrough/01-writing-style-guide.md) — glossary + auth cheat-sheet (`zpka_` vs `rk_`)
-- [docs/reference/implemented-behaviour.md](../reference/implemented-behaviour.md) — live vs not live
-- [docs/documentation-strategy.md](../documentation-strategy.md) — strategy bullet
-
-**Remaining gap (this spec):** machine **mutations** (`POST`/`DELETE`/replace) for the project model index — implementation + OpenAPI methods + curl examples for writes.
-
-## Implementation checklist (for the building agent)
-
-- [ ] DB / control-plane: schema for project–model bindings (if not already present); migrations.
-- [ ] `+server.ts` handlers + shared validation (catalog / canonical provider).
-- [ ] Gateway Key auth + project scope (FR-4).
-- [ ] OpenAPI + Cloud API page + walkthrough cross-links if user-facing.
-- [ ] Vitest (or integration tests) for idempotency, 403 cross-project, validation errors.
+- [x] DB migration + neon CRUD
+- [x] `+server.ts` + validation
+- [x] Gateway Key scope
+- [x] OpenAPI + Cloud API + Vitest

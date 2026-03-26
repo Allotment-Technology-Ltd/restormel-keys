@@ -5,13 +5,13 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.2.1
+  version: 1.3.0
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
 
     **Two HTTP surfaces:** (1) **Zuplo Gateway** — control-plane CRUD (projects, keys); use **consumer key** (`zpka_...`, `apiKey` scheme).
-    (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index (read)**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
+    (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
 
     **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-26` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
@@ -19,14 +19,14 @@ info:
     **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
     `application/json` for errors under `/api/...` (including unknown routes and many server failures).
 
-    **Project model index (`GET /api/projects/{projectId}/models`):** **Read-only** today (Gateway Key). There is **no** `POST`/`PATCH`/`DELETE`
-    on this path in the product API yet — configure the selectable index in the dashboard UI until machine mutations ship.
-    Planned contract: `docs/requirements/project-model-index-gateway-api.md`.
+    **Project model index:** `GET/POST/PUT /api/projects/{projectId}/models`, `PATCH/DELETE .../models/{bindingId}` — project-scoped bindings
+    for selectors (canonical `providerType` + catalog `modelId`). **Global catalog** remains `GET /api/models`. Legacy: `GET .../models?source=catalog`
+    on the project path returns the global list (deprecated). Spec: `docs/requirements/project-model-index-gateway-api.md`.
 
     **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
     `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
     `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `POST .../validate-binding`, `POST .../recommend`,
-    `GET .../models` (read-only project index), `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
+    `GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`, `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
     `GET .../providers/health`, `GET .../provider-bindings`, `GET/POST /api/policies`, policy lifecycle routes, `POST .../policies/evaluate`,
     `GET /api/models`, `GET /api/catalog`, `POST /api/catalog/observations`.
 
@@ -522,17 +522,15 @@ paths:
 
   /api/projects/{projectId}/models:
     get:
-      summary: List project model index (read-only)
+      summary: List project model index
       description: |
-        Returns the **project-scoped model catalog** used for selectors and host-side merges (integrators often merge this with their own static catalog).
+        Default: returns **project bindings** (`data[]` entries with `id`, canonical `providerType`, `modelId`, `enabled`, timestamps, nested `model` catalog row or null).
 
-        **Auth:** Gateway Key (`rk_...`) only — **not** the Zuplo consumer key. Call the **Dashboard API** base URL (see `servers`).
+        **Query `source=catalog`:** returns the **global** model catalog (same as `GET /api/models`) for legacy callers; deprecated.
 
-        **Writes:** There is **no** HTTP mutation for this index in the API today. Adding or removing models for the project picker is done in the **dashboard UI**
-        (or future API per `docs/requirements/project-model-index-gateway-api.md`). This operation is **GET only** until that work ships.
+        **Auth:** Gateway Key (`rk_...`) or session — **not** the Zuplo consumer key.
 
-        **Provider types:** Align `providerType` / model ids with the resolve contract and route steps — canonical values and `google` vs `vertex` are documented in
-        `docs/guides/resolve-to-execution-contract.md`.
+        **Provider types:** Canonical values and `google`/`vertex` aliases: `docs/guides/resolve-to-execution-contract.md`.
       operationId: listProjectModels
       tags: [Dashboard API]
       security:
@@ -542,21 +540,29 @@ paths:
           in: path
           required: true
           schema: { type: string }
+        - name: source
+          in: query
+          description: Omit or `project` for bindings; `catalog` for legacy global list (deprecated).
+          schema: { type: string, enum: [project, catalog] }
         - name: lifecycleState
           in: query
+          description: Only when `source=catalog`.
           schema: { type: string }
         - name: family
           in: query
+          description: Only when `source=catalog`.
           schema: { type: string }
         - name: limit
           in: query
+          description: Only when `source=catalog`.
           schema: { type: integer }
         - name: offset
           in: query
+          description: Only when `source=catalog`.
           schema: { type: integer }
       responses:
         "200":
-          description: Models for selectors
+          description: Project index or legacy catalog
           content:
             application/json:
               schema:
@@ -564,11 +570,169 @@ paths:
                 properties:
                   data:
                     type: array
-                    items: { type: object, additionalProperties: true }
+                    items: { $ref: "#/components/schemas/ProjectModelIndexEntry" }
+                  meta:
+                    type: object
+                    properties:
+                      source: { type: string, enum: [project, catalog] }
+                      deprecation: { type: string }
         "401":
           description: Unauthorized
+        "403":
+          description: Forbidden (e.g. Gateway Key for another project)
+    post:
+      summary: Add models to project index (batch, idempotent)
+      description: |
+        Upserts bindings. Same canonical `providerType` + `modelId` re-sends **enabled: true** (idempotent). Validates model exists in catalog and provider variant when variants exist.
+      operationId: addProjectModelBindings
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectModelBatchAddRequest" }
+      responses:
+        "200":
+          description: Full project index after add
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProjectModelIndexEntry" }
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectModelsValidationError" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+    put:
+      summary: Replace project model allowlist (declarative)
+      description: |
+        Deletes all bindings for the project, then inserts the provided set. Use `enabled: false` to keep a row disabled. Empty `models` clears the index.
+      operationId: replaceProjectModelBindings
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectModelReplaceRequest" }
+      responses:
+        "200":
+          description: New index
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProjectModelIndexEntry" }
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectModelsValidationError" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /api/projects/{projectId}/models/{bindingId}:
+    patch:
+      summary: Enable or disable a project model binding
+      operationId: patchProjectModelBinding
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: bindingId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: Updated binding
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ProjectModelIndexEntry" }
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
         "404":
-          description: Project not found
+          description: Binding not found
+    delete:
+      summary: Remove a project model binding (hard delete)
+      operationId: deleteProjectModelBinding
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: bindingId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted: { type: boolean }
+                      id: { type: string }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Binding not found
 
   /api/policies:
     get:
@@ -1291,9 +1455,66 @@ components:
       scheme: bearer
       bearerFormat: Gateway Key
       description: |
-        Gateway Key (`rk_...`) for Dashboard API calls (resolve, routes/steps, policies, **GET** project models index, catalog, etc.).
+        Gateway Key (`rk_...`) for Dashboard API calls (resolve, routes/steps, policies, project model index, catalog, etc.).
         Send as `Authorization: Bearer <key>`. Server-side only. **Not** valid on Zuplo control-plane paths that expect a consumer key (`zpka_...`).
   schemas:
+    ProjectModelIndexEntry:
+      type: object
+      description: One binding in the project model index (canonical providerType for JSON/resolve alignment).
+      properties:
+        id: { type: string }
+        providerType:
+          type: string
+          enum: [openai, anthropic, vertex, openrouter, vercel, portkey, voyage]
+        modelId: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        model:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Full catalog row when the model still exists
+    ProjectModelBatchAddRequest:
+      type: object
+      required: [models]
+      properties:
+        models:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [providerType, modelId]
+            properties:
+              providerType: { type: string }
+              modelId: { type: string }
+    ProjectModelReplaceRequest:
+      type: object
+      required: [models]
+      properties:
+        models:
+          type: array
+          items:
+            type: object
+            required: [providerType, modelId]
+            properties:
+              providerType: { type: string }
+              modelId: { type: string }
+              enabled: { type: boolean, default: true }
+    ProjectModelsValidationError:
+      type: object
+      properties:
+        error: { type: string, example: project_models_validation_failed }
+        detail: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
     ErrorResponse:
       type: object
       properties:

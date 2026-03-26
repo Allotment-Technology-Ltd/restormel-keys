@@ -1309,6 +1309,172 @@ export async function listProviderModelVariantsByModelIds(
   return (rows as Record<string, unknown>[]).map(mapVariantRow);
 }
 
+// ---------------------------------------------------------------------------
+// Project model index (per-project bindings for selectors / host merges)
+// ---------------------------------------------------------------------------
+
+let ensuredProjectModelBindingsSchema: Promise<void> | null = null;
+
+async function ensureProjectModelBindingsSchema(): Promise<void> {
+  if (ensuredProjectModelBindingsSchema) return ensuredProjectModelBindingsSchema;
+  ensuredProjectModelBindingsSchema = (async () => {
+    const sql = getSql();
+    await sql`
+      CREATE TABLE IF NOT EXISTS project_model_bindings (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        provider_type TEXT NOT NULL,
+        model_id TEXT NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+        enabled BOOLEAN NOT NULL DEFAULT true,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT uq_project_model_binding UNIQUE (project_id, provider_type, model_id)
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_project_model_bindings_project
+      ON project_model_bindings(project_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_project_model_bindings_project_enabled
+      ON project_model_bindings(project_id, enabled)
+    `;
+  })();
+  return ensuredProjectModelBindingsSchema;
+}
+
+export type ProjectModelBindingRecord = {
+  id: string;
+  projectId: string;
+  providerType: string;
+  modelId: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function mapProjectModelBindingRow(r: Record<string, unknown>): ProjectModelBindingRecord {
+  const ca = Number(r.createdAt ?? 0);
+  const ua = Number(r.updatedAt ?? 0);
+  return {
+    id: r.id as string,
+    projectId: r.projectId as string,
+    providerType: r.providerType as string,
+    modelId: r.modelId as string,
+    enabled: r.enabled !== false,
+    createdAt: new Date(ca).toISOString(),
+    updatedAt: new Date(ua).toISOString(),
+  };
+}
+
+/** List all bindings for a project (enabled and disabled). */
+export async function listProjectModelBindings(projectId: string): Promise<ProjectModelBindingRecord[]> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", provider_type AS "providerType",
+           model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM project_model_bindings
+    WHERE project_id = ${projectId}
+    ORDER BY provider_type ASC, model_id ASC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapProjectModelBindingRow);
+}
+
+export async function getProjectModelBinding(
+  bindingId: string,
+  projectId: string
+): Promise<ProjectModelBindingRecord | null> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", provider_type AS "providerType",
+           model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+    FROM project_model_bindings
+    WHERE id = ${bindingId} AND project_id = ${projectId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
+}
+
+/**
+ * Insert or update binding; on conflict re-enables and bumps updated_at (idempotent add).
+ */
+export async function upsertProjectModelBinding(
+  projectId: string,
+  canonicalProviderType: string,
+  modelId: string
+): Promise<ProjectModelBindingRecord> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const newId = crypto.randomUUID();
+  const rows = await sql`
+    INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, created_at, updated_at)
+    VALUES (${newId}, ${projectId}, ${canonicalProviderType}, ${modelId}, true, ${now}, ${now})
+    ON CONFLICT (project_id, provider_type, model_id) DO UPDATE SET
+      enabled = true,
+      updated_at = ${now}
+    RETURNING id, project_id AS "projectId", provider_type AS "providerType",
+      model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+  `;
+  return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
+}
+
+export async function updateProjectModelBindingEnabled(
+  bindingId: string,
+  projectId: string,
+  enabled: boolean
+): Promise<ProjectModelBindingRecord | null> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    UPDATE project_model_bindings
+    SET enabled = ${enabled}, updated_at = ${now}
+    WHERE id = ${bindingId} AND project_id = ${projectId}
+    RETURNING id, project_id AS "projectId", provider_type AS "providerType",
+      model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+  `;
+  if (rows.length === 0) return null;
+  return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
+}
+
+export async function deleteProjectModelBinding(bindingId: string, projectId: string): Promise<boolean> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM project_model_bindings
+    WHERE id = ${bindingId} AND project_id = ${projectId}
+    RETURNING id
+  `;
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/** Replace all bindings for a project (declarative sync). */
+export async function replaceProjectModelBindings(
+  projectId: string,
+  items: { canonicalProviderType: string; modelId: string; enabled: boolean }[]
+): Promise<ProjectModelBindingRecord[]> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  await sql`DELETE FROM project_model_bindings WHERE project_id = ${projectId}`;
+  const now = Date.now();
+  const out: ProjectModelBindingRecord[] = [];
+  for (const it of items) {
+    const id = crypto.randomUUID();
+    const rows = await sql`
+      INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, created_at, updated_at)
+      VALUES (${id}, ${projectId}, ${it.canonicalProviderType}, ${it.modelId}, ${it.enabled}, ${now}, ${now})
+      RETURNING id, project_id AS "projectId", provider_type AS "providerType",
+        model_id AS "modelId", enabled, created_at AS "createdAt", updated_at AS "updatedAt"
+    `;
+    out.push(mapProjectModelBindingRow(rows[0] as Record<string, unknown>));
+  }
+  return out;
+}
+
 export type CatalogModelObservationRecord = {
   catalogProviderId: string;
   providerModelId: string;

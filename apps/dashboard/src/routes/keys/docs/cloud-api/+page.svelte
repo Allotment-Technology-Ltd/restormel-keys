@@ -87,8 +87,30 @@
   -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data'`;
 
   const projectModelsListCurl = `curl -sS \\
-  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models?limit=50" \\
-  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.data | length'`;
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.meta.source, (.data | length)'`;
+
+  const projectModelsAddCurl = `curl -sS -X POST \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"models":[{"providerType":"vertex","modelId":"text-embedding-005"}]}' | jq '.data'`;
+
+  const projectModelsReplaceCurl = `curl -sS -X PUT \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"models":[{"providerType":"vertex","modelId":"text-embedding-005","enabled":true}]}' | jq '.data'`;
+
+  const projectModelsPatchCurl = `curl -sS -X PATCH \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models/\${RESTORMEL_BINDING_ID}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"enabled":false}' | jq '.data'`;
+
+  const projectModelsDeleteCurl = `curl -sS -X DELETE \\
+  "https://restormel.dev/keys/dashboard/api/projects/\${RESTORMEL_PROJECT_ID}/models/\${RESTORMEL_BINDING_ID}" \\
+  -H "Authorization: Bearer \${RESTORMEL_GATEWAY_KEY}" | jq '.'`;
 </script>
 
 <svelte:head>
@@ -107,7 +129,7 @@
   <p>Restormel Keys has two distinct HTTP surfaces:</p>
   <ul>
     <li>
-      <strong>Dashboard API (runtime operations)</strong> — resolve, policies/evaluate, routes/steps, catalog, <strong>project model index (read)</strong>.
+      <strong>Dashboard API (runtime operations)</strong> — resolve, policies/evaluate, routes/steps, catalog, <strong>project model index (read + write)</strong>.
       Call <code>https://restormel.dev/keys/dashboard/api/...</code> with your <strong>Gateway Key</strong> (<code>rk_...</code>) from your backend.
     </li>
     <li>
@@ -131,13 +153,19 @@
         <td><code>GET .../projects/{'{'}projectId{'}'}/models</code></td>
         <td>Dashboard API</td>
         <td>Gateway Key (<code>rk_...</code>)</td>
-        <td>Supported</td>
+        <td>Project bindings + nested catalog rows. Optional legacy <code>?source=catalog</code> (deprecated; prefer <code>GET /api/models</code>).</td>
       </tr>
       <tr>
-        <td>Add / remove / replace models in the project index</td>
-        <td>—</td>
-        <td>—</td>
-        <td><strong>Not available over HTTP</strong> yet — use the dashboard UI. Planned Gateway Key mutations: requirements spec at <code>docs/requirements/project-model-index-gateway-api.md</code> in the Keys repository.</td>
+        <td><code>POST .../models</code> (batch add), <code>PUT .../models</code> (replace allowlist)</td>
+        <td>Dashboard API</td>
+        <td>Gateway Key (<code>rk_...</code>)</td>
+        <td>Idempotent add per <code>providerType</code> + <code>modelId</code>; validates catalog + provider variant.</td>
+      </tr>
+      <tr>
+        <td><code>PATCH .../models/{'{'}bindingId{'}'}</code> (<code>enabled</code>), <code>DELETE .../models/{'{'}bindingId{'}'}</code></td>
+        <td>Dashboard API</td>
+        <td>Gateway Key (<code>rk_...</code>)</td>
+        <td>Soft-disable vs hard-remove. Binding id from <code>GET</code>.</td>
       </tr>
       <tr>
         <td>Same operations via Zuplo</td>
@@ -147,8 +175,16 @@
       </tr>
     </tbody>
   </table>
-  <p><strong>List project models (curl)</strong></p>
+  <p><strong>Project model index (curl)</strong></p>
+  <p>List bindings (default):</p>
   <CodeBlock language="bash" code={projectModelsListCurl} />
+  <p>Add (batch):</p>
+  <CodeBlock language="bash" code={projectModelsAddCurl} />
+  <p>Replace full allowlist (declarative sync):</p>
+  <CodeBlock language="bash" code={projectModelsReplaceCurl} />
+  <p>Disable one binding / delete one binding (set <code>RESTORMEL_BINDING_ID</code> from <code>GET</code>):</p>
+  <CodeBlock language="bash" code={projectModelsPatchCurl} />
+  <CodeBlock language="bash" code={projectModelsDeleteCurl} />
 
   <div class="callout callout-security">
     <strong>Security</strong> — Never send a Gateway Key to the browser. Use it only server-side.
@@ -266,7 +302,7 @@
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/models</code></td>
-        <td>Project-scoped model index for selectors and host-side merges (<strong>read-only</strong>; Gateway Key). Writes: dashboard UI only until the API spec ships.</td>
+        <td>Project model index: <code>GET/POST/PUT</code>; per-row <code>PATCH</code>/<code>DELETE</code> under <code>.../models/{'{'}bindingId{'}'}</code> (Gateway Key).</td>
       </tr>
       <tr>
         <td><code>GET /keys/dashboard/api/projects/{'{'}projectId{'}'}/providers/health</code></td>

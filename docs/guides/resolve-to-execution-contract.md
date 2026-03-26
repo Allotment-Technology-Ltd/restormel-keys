@@ -24,9 +24,9 @@ A successful `POST /api/projects/{projectId}/resolve` guarantees that Restormel 
 
 Policy and cost estimation still use the `google` id internally where `@restormel/keys` `defaultProviders` expects it; hosts should key execution off **`vertex`** for Google/Vertex.
 
-### Project model index (`GET .../models`)
+### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 
-Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Use the **same canonical `providerType` vocabulary** as this table when interpreting or displaying rows — do not assume Zuplo consumer-key APIs expose this index, and do not assume **write** APIs exist yet (read-only today; see in-app **Cloud API** doc and [docs/requirements/project-model-index-gateway-api.md](../requirements/project-model-index-gateway-api.md)).
+Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Use the **same canonical `providerType` vocabulary** as this table. **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), and [requirements spec](../requirements/project-model-index-gateway-api.md). Global catalog remains **`GET /api/models`** (unauthenticated).
 
 ## Host runtime discovery (SOPHIA / ingestion)
 
