@@ -101,8 +101,9 @@ If **`git push`** fails with **non-fast-forward** on `dogfood/agent-issue-…`, 
 ### Manual run
 
 1. **Actions** → **Dogfood agent — draft PR** → **Run workflow**.
-2. Enter the **restormel-keys issue number**; optionally enable **dry run** (LLM only, no push/PR).
-3. Review the **draft** PR and CI; redact or fix anything unsafe before merge.
+2. Enter the **restormel-keys** issue number (the **`[Dogfood] …`** ticket in **this** repo). **Do not** use the consumer repo issue number from SOPHIA — that returns **404**. The relay body usually links to the source issue; the number you need is on **restormel-keys** (`…/restormel-keys/issues/N`).
+3. Optionally enable **dry run** (LLM only, no push/PR).
+4. Review the **draft** PR and CI; redact or fix anything unsafe before merge.
 
 ### Scheduled pickup (relay-friendly)
 

@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: restormel-keys issue number
+        description: '[Dogfood] issue # on THIS repo (not SOPHIA/consumer #)'
         required: true
         type: string
       dry_run:
