@@ -54,7 +54,8 @@ jobs:
 
       - name: Skip (missing PAT)
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'false' }}
-        run: echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT (DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN with consumer Issues: write).'
+        run: |
+          echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT. Set DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN (Issues write on consumer repo).'
 
       - uses: actions/checkout@v4
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' }}
