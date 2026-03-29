@@ -3,7 +3,7 @@ import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
 import {
   listEnvironments,
   listPolicies,
-  listPolicyBindings,
+  listPolicyBindingsForWorkspace,
   listProjectsByWorkspace,
   listRoutes,
 } from "$lib/server/db";
@@ -32,11 +32,11 @@ export const load: PageServerLoad = async ({ locals }) => {
       })
     );
 
-    const bindingsByPolicy = Object.fromEntries(
-      await Promise.all(
-        policies.map(async (policy) => [policy.id, await listPolicyBindings(policy.id, ctx.workspaceId)])
-      )
-    );
+    const allBindings = await listPolicyBindingsForWorkspace(ctx.workspaceId);
+    const bindingsByPolicy = Object.fromEntries(policies.map((policy) => [policy.id, [] as typeof allBindings]));
+    for (const binding of allBindings) {
+      (bindingsByPolicy[binding.policyId] ??= []).push(binding);
+    }
 
     return {
       policies,

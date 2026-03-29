@@ -3,13 +3,12 @@ import {
   getOrCreateDefaultWorkspace,
   listEnvironments,
   listPolicies,
-  listPolicyBindings,
+  listPolicyBindingsForWorkspace,
   listProjects,
   listRequestLogs,
   listRoutes,
   listModels,
   listProviderModelVariants,
-  listRouteSteps,
 } from "$lib/server/db";
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -38,12 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
             listEnvironments(project.id, userId),
             listRoutes(project.id, userId),
           ]);
-          const routeStepsByRoute = Object.fromEntries(
-            await Promise.all(
-              routes.map(async (route) => [route.id, await listRouteSteps(route.id, project.id, userId)])
-            )
-          );
-          return { projectId: project.id, environments, routes, routeStepsByRoute };
+          return { projectId: project.id, environments, routes };
         })
       ),
       listPolicies(workspace.id),
@@ -51,11 +45,11 @@ export const load: PageServerLoad = async ({ locals }) => {
       listModels({ limit: 250 }),
     ]);
 
-    const policyBindingsByPolicy = Object.fromEntries(
-      await Promise.all(
-        policies.map(async (policy) => [policy.id, await listPolicyBindings(policy.id, workspace.id)])
-      )
-    );
+    const allPolicyBindings = await listPolicyBindingsForWorkspace(workspace.id);
+    const policyBindingsByPolicy = Object.fromEntries(policies.map((policy) => [policy.id, [] as typeof allPolicyBindings]));
+    for (const binding of allPolicyBindings) {
+      (policyBindingsByPolicy[binding.policyId] ??= []).push(binding);
+    }
 
     const modelVariantRows = await Promise.all(modelRows.map((model) => listProviderModelVariants(model.id)));
     const models = modelRows.map((model, idx) => {
@@ -85,7 +79,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         {
           environments: detail.environments,
           routes: detail.routes,
-          routeStepsByRoute: detail.routeStepsByRoute,
+          routeStepsByRoute: {},
         },
       ])
     );

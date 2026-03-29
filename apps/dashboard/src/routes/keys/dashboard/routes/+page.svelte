@@ -74,6 +74,8 @@
   let fallbackModelIds = ["", "", ""];
   let selectedPolicyIds: string[] = [];
   let modelSearch = "";
+  let lazyRouteStepsByProject: Record<string, Record<string, { id: string; orderIndex: number; providerPreference: string | null; modelId: string | null }[]>> = {};
+  let loadingStepProjects = new Set<string>();
 
   const unsubscribe = activeProject.subscribe((value) => {
     selection = value;
@@ -97,6 +99,10 @@
     }
   });
 
+  $: if (selectedProjectId) {
+    void loadRouteStepsForProject(selectedProjectId);
+  }
+
   onDestroy(() => {
     unsubscribe();
   });
@@ -108,7 +114,10 @@
   $: selectedProject = data.projects.find((project) => project.id === selectedProjectId) ?? null;
   $: selectedEnvironments = data.routesByProject[selectedProjectId]?.environments ?? [];
   $: selectedRoutes = data.routesByProject[selectedProjectId]?.routes ?? [];
-  $: selectedRouteStepsByRoute = data.routesByProject[selectedProjectId]?.routeStepsByRoute ?? {};
+  $: selectedRouteStepsByRoute =
+    lazyRouteStepsByProject[selectedProjectId] ??
+    data.routesByProject[selectedProjectId]?.routeStepsByRoute ??
+    {};
   $: duplicateRouteNames = new Set(
     Object.entries(
       selectedRoutes.reduce((acc, route) => {
@@ -239,6 +248,34 @@
     const second = steps[1];
     const secondText = `${second.providerPreference ?? "provider"} ${second.modelId ?? "model"}`;
     return `Uses ${firstText}, falls back to ${secondText}`;
+  }
+
+  async function loadRouteStepsForProject(projectId: string): Promise<void> {
+    if (!projectId) return;
+    if (lazyRouteStepsByProject[projectId]) return;
+    if (loadingStepProjects.has(projectId)) return;
+    const routes = data.routesByProject[projectId]?.routes ?? [];
+    if (routes.length === 0) {
+      lazyRouteStepsByProject = { ...lazyRouteStepsByProject, [projectId]: {} };
+      return;
+    }
+    loadingStepProjects = new Set([...loadingStepProjects, projectId]);
+    try {
+      const res = await fetch(`/keys/dashboard/api/projects/${projectId}/route-steps`);
+      const body = await res.json().catch(() => ({}));
+      const stepMap = res.ok && body?.data && typeof body.data === "object" ? body.data : {};
+      lazyRouteStepsByProject = {
+        ...lazyRouteStepsByProject,
+        [projectId]: stepMap,
+      };
+    } catch {
+      // Keep summaries in fallback mode if steps fail to load.
+      lazyRouteStepsByProject = { ...lazyRouteStepsByProject, [projectId]: {} };
+    } finally {
+      const next = new Set(loadingStepProjects);
+      next.delete(projectId);
+      loadingStepProjects = next;
+    }
   }
 
   async function submitWizard() {

@@ -1,14 +1,13 @@
 import type { PageServerLoad } from "./$types";
 import {
   listProjects,
-  listApiKeys,
+  countApiKeysByWorkspace,
   listProviderIntegrations,
   getOrCreateDefaultWorkspace,
   aggregateRequestLogsToUsage,
   listRoutes,
   listRequestLogs,
-  listPolicies,
-  listPolicyBindings,
+  listPolicyBindingsForWorkspace,
 } from "$lib/server/db";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 
@@ -41,24 +40,12 @@ export const load: PageServerLoad = async ({ locals }) => {
       listProjects(locals.user.uid),
       getWorkspaceEntitlements(locals),
     ]);
-    let hasKeys = false;
-    let totalGatewayKeys = 0;
-    for (const p of projects) {
-      const keys = await listApiKeys(p.id, locals.user!.uid);
-      totalGatewayKeys += keys.length;
-      if (keys.length > 0) {
-        hasKeys = true;
-      }
-    }
+    const totalGatewayKeys = await countApiKeysByWorkspace(workspace.id);
+    const hasKeys = totalGatewayKeys > 0;
 
     const integrations = await listProviderIntegrations(workspace.id);
-    const policies = await listPolicies(workspace.id);
-    const policyBindings = await Promise.all(
-      policies.map((policy) => listPolicyBindings(policy.id, workspace.id))
-    );
-    const hasAnyRoutePolicyBinding = policyBindings.some((bindings) =>
-      bindings.some((binding) => binding.targetType === "route")
-    );
+    const policyBindings = await listPolicyBindingsForWorkspace(workspace.id);
+    const hasAnyRoutePolicyBinding = policyBindings.some((binding) => binding.targetType === "route");
     const hasIntegrations = integrations.length > 0;
 
     const routesByProject = await Promise.all(

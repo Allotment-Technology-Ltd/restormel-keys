@@ -521,6 +521,19 @@ export async function listApiKeys(projectId: string, userId: string): Promise<Ap
   })) as ApiKeyRecord[];
 }
 
+/** Return total Gateway keys in a workspace (fast path for dashboard summaries). */
+export async function countApiKeysByWorkspace(workspaceId: string): Promise<number> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT COUNT(*)::bigint AS "total"
+    FROM api_keys k
+    INNER JOIN projects p ON p.id = k.project_id
+    WHERE p.workspace_id = ${workspaceId}
+  `;
+  const total = (rows?.[0] as { total?: string | number } | undefined)?.total;
+  return Number(total ?? 0);
+}
+
 /**
  * Create Gateway key. Returns { rawKey, keyPrefix } once; caller must show to user. Store only prefix + hash.
  */
@@ -2188,6 +2201,27 @@ export async function listRouteSteps(routeId: string, projectId: string, userId:
   return rows.map((r) => mapRouteStepRow(r)) as RouteStepRecord[];
 }
 
+/** List all route steps for a project in one query (ordered by route, then orderIndex). */
+export async function listRouteStepsByProject(projectId: string, userId: string): Promise<RouteStepRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const project = await getProject(projectId, userId);
+  if (!project) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT rs.id, rs.route_id AS "routeId", rs.order_index AS "orderIndex", rs.provider_preference AS "providerPreference",
+           rs.model_id AS "modelId", rs.condition_block AS "conditionBlock", rs.fallback_on AS "fallbackOn",
+           rs.timeout_ms AS "timeoutMs", rs.enabled,
+           rs.label, rs.switch_criteria AS "switchCriteria", rs.retry_policy AS "retryPolicy", rs.cost_policy AS "costPolicy",
+           rs.notes,
+           rs.created_at AS "createdAt", rs.updated_at AS "updatedAt"
+    FROM route_steps rs
+    INNER JOIN routes r ON r.id = rs.route_id
+    WHERE r.project_id = ${projectId}
+    ORDER BY rs.route_id ASC, rs.order_index ASC
+  `;
+  return rows.map((r) => mapRouteStepRow(r)) as RouteStepRecord[];
+}
+
 function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
   const createdAt = Number(r.createdAt ?? 0);
   const updatedAt = Number(r.updatedAt ?? 0);
@@ -2812,6 +2846,25 @@ export async function listPolicyBindings(policyId: string, workspaceId: string):
     FROM policy_bindings
     WHERE policy_id = ${policyId}
     ORDER BY created_at ASC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    policyId: r.policyId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    createdAt: Number(r.createdAt),
+  })) as PolicyBindingRecord[];
+}
+
+/** List all bindings for policies in a workspace in one query. */
+export async function listPolicyBindingsForWorkspace(workspaceId: string): Promise<PolicyBindingRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT pb.id, pb.policy_id AS "policyId", pb.target_type AS "targetType", pb.target_id AS "targetId", pb.created_at AS "createdAt"
+    FROM policy_bindings pb
+    INNER JOIN policies p ON pb.policy_id = p.id
+    WHERE p.workspace_id = ${workspaceId}
+    ORDER BY pb.created_at ASC
   `;
   return rows.map((r) => ({
     id: r.id,

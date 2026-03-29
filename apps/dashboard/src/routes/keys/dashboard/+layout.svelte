@@ -88,9 +88,9 @@
 {:else if isAuthRoute}
   <slot />
 {:else}
-  <div class="shell" class:shell-collapsed={collapsed}>
+  <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="hover">
     <aside class="sidebar" aria-label="Dashboard navigation">
-      <nav class="nav" aria-label="Dashboard">
+      <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
         <a href={OVERVIEW_ITEM.href} class="nav-link nav-link-overview" class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}>
           {OVERVIEW_ITEM.label}
         </a>
@@ -156,7 +156,7 @@
           <span class="topbar-title">{title}</span>
         </div>
       </header>
-      <main class="main">
+      <main class="main" data-sveltekit-preload-data="hover">
         {#if !user && !isAuthRoute}
           {#if authError === "session-verifier-not-found"}
             <div class="auth-error" role="alert">
