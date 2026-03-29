@@ -71,8 +71,8 @@
   <p class="error-msg" role="alert">{data.error ?? "Project not found."}</p>
   <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
 {:else}
-  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
-  <h1 class="page-title">Routes · {data.project.name}</h1>
+  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Rules</a></p>
+  <h1 class="page-title">Rules · {data.project.name}</h1>
   <p class="page-desc">
     Routes define how requests are handled in this project: primary model, fallback behaviour, and billing. Each route belongs to one environment.
   </p>

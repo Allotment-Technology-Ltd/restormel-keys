@@ -16,7 +16,8 @@
   --rm-sage: var(--signal-teal);
   --rm-sage-bg: var(--signal-teal-10);
   --rm-font-display: var(--font-sans);
-  --rm-font-ui: var(--font-mono);
+  --rm-font-ui: var(--font-sans);
+  --rm-font-mono: var(--font-mono);
   --rm-radius: var(--radius-base);
   --rm-container-narrow: 56rem;
   --rm-container-max: 72rem;
@@ -39,6 +40,12 @@ body {
   font-family: var(--rm-font-ui);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
+}
+
+code,
+pre,
+.font-mono {
+  font-family: var(--rm-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
 }
 
 a {
@@ -73,4 +80,24 @@ button {
   border-radius: 0;
   background: transparent;
   white-space: pre;
+}
+
+.status-success {
+  color: var(--signal-teal);
+  border-color: color-mix(in oklab, var(--signal-teal) 45%, var(--rm-border));
+}
+
+.status-warning {
+  color: var(--amber-insight);
+  border-color: color-mix(in oklab, var(--amber-insight) 45%, var(--rm-border));
+}
+
+.status-error {
+  color: var(--coral-alert);
+  border-color: color-mix(in oklab, var(--coral-alert) 45%, var(--rm-border));
+}
+
+.status-muted {
+  color: var(--rm-dim);
+  border-color: var(--rm-border);
 }

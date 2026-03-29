@@ -22,30 +22,30 @@ export const OVERVIEW_ITEM: NavItem = { href: DASHBOARD_BASE + "/", label: "Over
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "build",
-    label: "Build",
+    label: "Set Up",
     items: [
-      { href: DASHBOARD_BASE + "/integrations", label: "Providers" },
-      { href: DASHBOARD_BASE + "/routes", label: "Routes" },
-      { href: DASHBOARD_BASE + "/policies", label: "Policies" },
-      { href: DASHBOARD_BASE + "/models", label: "Models" },
+      { href: DASHBOARD_BASE + "/integrations", label: "Connections" },
+      { href: DASHBOARD_BASE + "/routes", label: "Rules" },
+      { href: DASHBOARD_BASE + "/policies", label: "Guard Rails" },
+      { href: DASHBOARD_BASE + "/models", label: "Model Catalog" },
     ],
   },
   {
     id: "monitor",
     label: "Monitor",
     items: [
-      { href: DASHBOARD_BASE + "/analytics", label: "Analytics" },
+      { href: DASHBOARD_BASE + "/analytics", label: "Usage & Analytics" },
       { href: DASHBOARD_BASE + "/logs", label: "Logs" },
-      { href: DASHBOARD_BASE + "/healthcheck", label: "Healthcheck" },
+      { href: DASHBOARD_BASE + "/healthcheck", label: "System Health" },
     ],
   },
   {
     id: "developer",
-    label: "Developer",
+    label: "Advanced",
     items: [
-      { href: DASHBOARD_BASE + "/access", label: "Access" },
-      { href: DASHBOARD_BASE + "/sandbox", label: "Sandbox" },
-      { href: DASHBOARD_BASE + "/copy-for-ci", label: "CI / CD" },
+      { href: DASHBOARD_BASE + "/access", label: "API Keys" },
+      { href: DASHBOARD_BASE + "/sandbox", label: "Test & Preview" },
+      { href: DASHBOARD_BASE + "/copy-for-ci", label: "GitHub Setup" },
       { href: DASHBOARD_BASE + "/dev-tools", label: "Dev Tools" },
     ],
   },
@@ -54,17 +54,17 @@ export const NAV_GROUPS: NavGroup[] = [
 const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/"]: "Overview",
   [DASHBOARD_BASE + "/projects"]: "Projects",
-  [DASHBOARD_BASE + "/copy-for-ci"]: "CI / CD",
-  [DASHBOARD_BASE + "/access"]: "Access",
-  [DASHBOARD_BASE + "/integrations"]: "Providers",
+  [DASHBOARD_BASE + "/copy-for-ci"]: "GitHub Setup",
+  [DASHBOARD_BASE + "/access"]: "API Keys",
+  [DASHBOARD_BASE + "/integrations"]: "Connections",
   [DASHBOARD_BASE + "/dev-tools"]: "Dev Tools",
-  [DASHBOARD_BASE + "/models"]: "Models",
-  [DASHBOARD_BASE + "/healthcheck"]: "Healthcheck",
-  [DASHBOARD_BASE + "/routes"]: "Routes",
-  [DASHBOARD_BASE + "/policies"]: "Policies",
-  [DASHBOARD_BASE + "/analytics"]: "Analytics",
+  [DASHBOARD_BASE + "/models"]: "Model Catalog",
+  [DASHBOARD_BASE + "/healthcheck"]: "System Health",
+  [DASHBOARD_BASE + "/routes"]: "Rules",
+  [DASHBOARD_BASE + "/policies"]: "Guard Rails",
+  [DASHBOARD_BASE + "/analytics"]: "Usage & Analytics",
   [DASHBOARD_BASE + "/logs"]: "Logs",
-  [DASHBOARD_BASE + "/sandbox"]: "Sandbox",
+  [DASHBOARD_BASE + "/sandbox"]: "Test & Preview",
   [DASHBOARD_BASE + "/settings"]: "Profile",
 };
 
@@ -75,7 +75,7 @@ export function topbarTitle(pathname: string): string {
     return "Project";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/integrations/") && pathname !== DASHBOARD_BASE + "/integrations") {
-    return "Providers";
+    return "Connection";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/dev-tools/") && pathname !== DASHBOARD_BASE + "/dev-tools") {
     return "Dev Tools";
@@ -84,11 +84,11 @@ export function topbarTitle(pathname: string): string {
     return "Model";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname.includes("/routes")) {
-    if (pathname.endsWith("/routes")) return "Routes";
-    return "Route";
+    if (pathname.endsWith("/routes")) return "Rules";
+    return "Rule";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/policies/") && pathname !== DASHBOARD_BASE + "/policies") {
-    return "Policy";
+    return "Guard Rail";
   }
   return "";
 }

@@ -36,6 +36,13 @@
     return new Date(ts).toLocaleString();
   }
 
+  function integrationTone(status: string): "success" | "warning" | "error" | "muted" {
+    if (status === "active") return "success";
+    if (status === "paused") return "warning";
+    if (status === "revoked") return "error";
+    return "muted";
+  }
+
   async function verify() {
     if (!data.integration) return;
     verifying = true;
@@ -159,9 +166,9 @@
   <section class="section" aria-labelledby="status-heading">
     <h2 id="status-heading" class="section-title">Status & verification</h2>
     <p class="section-desc">
-      Status: <strong>{data.integration.status}</strong>
+      Status: <strong class={`status-${integrationTone(data.integration.status)}`}>{data.integration.status}</strong>
       {#if data.integration.verificationStatus}
-        · Verification: {data.integration.verificationStatus}
+        · Verification: <span class={`status-${integrationTone(data.integration.verificationStatus)}`}>{data.integration.verificationStatus}</span>
       {/if}
       {#if data.integration.hasCredential}
         · Credential reference is set

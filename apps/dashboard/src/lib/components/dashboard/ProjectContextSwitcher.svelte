@@ -129,11 +129,11 @@
     justify-content: space-between;
     gap: var(--space-2);
     border: 1px solid var(--rm-border);
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
+    background: color-mix(in oklab, var(--rm-surface-raised) 60%, transparent);
+    color: var(--rm-muted);
     border-radius: var(--rm-radius);
     padding: var(--space-2) var(--space-3);
-    font-size: var(--text-xs);
+    font-size: 0.68rem;
     cursor: pointer;
     text-align: left;
   }
@@ -153,7 +153,7 @@
   }
   .project-group h3 {
     margin: var(--space-2) var(--space-1);
-    font-size: var(--text-xs);
+    font-size: 0.68rem;
     color: var(--rm-dim);
     font-weight: 600;
   }
@@ -172,7 +172,7 @@
     color: var(--rm-muted);
     border-radius: var(--rm-radius);
     padding: var(--space-2);
-    font-size: var(--text-xs);
+    font-size: 0.7rem;
     cursor: pointer;
   }
   .menu-item:hover {

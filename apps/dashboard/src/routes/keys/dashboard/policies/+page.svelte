@@ -36,24 +36,26 @@
     error: string | null;
   };
 
-  const POLICY_TYPES = [
-    "model_allowlist",
-    "model_denylist",
-    "provider_allowlist",
-    "provider_denylist",
-    "deprecated_model_block",
-    "budget_cap",
-    "token_cap",
-  ];
-  const POLICY_TYPE_HELP: Record<string, string> = {
-    model_allowlist: "Allow only specific models for bound targets.",
-    model_denylist: "Block specific models for bound targets.",
-    provider_allowlist: "Allow only specific providers for bound targets.",
-    provider_denylist: "Block specific providers for bound targets.",
-    deprecated_model_block: "Automatically block models in deprecated lifecycle state.",
-    budget_cap: "Block requests when estimated spend exceeds configured cap.",
-    token_cap: "Block requests when input/output token usage exceeds configured cap.",
-  };
+  const POLICY_TEMPLATES = [
+    {
+      id: "model_allowlist",
+      icon: "🛡",
+      title: "Restrict which models can be used",
+      subtitle: "model_allowlist",
+    },
+    {
+      id: "deprecated_model_block",
+      icon: "🕒",
+      title: "Block outdated models",
+      subtitle: "deprecated_model_block",
+    },
+    {
+      id: "budget_cap",
+      icon: "$",
+      title: "Set a cost or token limit",
+      subtitle: "budget_cap",
+    },
+  ] as const;
 
   let creating = false;
   let createError = "";
@@ -101,6 +103,13 @@
 
   function boundCount(policyId: string): number {
     return data.bindingsByPolicy[policyId]?.length ?? 0;
+  }
+
+  function policyTone(status: string): "success" | "warning" | "error" | "muted" {
+    if (status === "active") return "success";
+    if (status === "paused") return "warning";
+    if (status === "revoked") return "error";
+    return "muted";
   }
 
   function coverageSummary() {
@@ -202,9 +211,9 @@
   }
 </script>
 
-<h1 class="page-title">Policies</h1>
+<h1 class="page-title">Guard Rails</h1>
 <p class="page-desc">
-  Policies control model and provider allowlists/denylists, deprecated-model blocks, and budget or token caps. Bind policies to workspace, project, environment, or route. Canonical nouns: policy, policy binding, rule definition.
+  Guard rails are limits and rules that control which AI models can be used and how much they can cost. Apply them to your projects or individual rules.
 </p>
 
 {#if data.error}
@@ -218,7 +227,7 @@
   </section>
 
   <section class="section" aria-labelledby="create-heading">
-    <h2 id="create-heading" class="section-title">Create policy</h2>
+    <h2 id="create-heading" class="section-title">Create guard rail</h2>
     <p class="section-desc">Add a policy. Set the type (e.g. model_allowlist, deprecated_model_block); you can edit the rule definition on the policy detail page.</p>
     {#if createError}
       <p class="error-msg" role="alert">{createError}</p>
@@ -229,23 +238,31 @@
         <input id="name" type="text" bind:value={createName} class="input" placeholder="e.g. Production allowlist" required />
       </div>
       <div class="form-row">
-        <label for="type">Type</label>
-        <select id="type" bind:value={createType} class="input">
-          {#each POLICY_TYPES as t}
-            <option value={t}>{t}</option>
+        <p class="template-label">Template</p>
+        <div class="template-grid">
+          {#each POLICY_TEMPLATES as t}
+            <button
+              type="button"
+              class="template-card"
+              class:template-card-active={createType === t.id}
+              onclick={() => (createType = t.id)}
+            >
+              <span class="template-icon" aria-hidden="true">{t.icon}</span>
+              <span class="template-title">{t.title}</span>
+              <span class="template-subtitle">{t.subtitle}</span>
+            </button>
           {/each}
-        </select>
-        <p class="type-help">{POLICY_TYPE_HELP[createType]}</p>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary" disabled={creating}>
-        {creating ? "Creating…" : "Create policy"}
+        {creating ? "Creating…" : "Create guard rail"}
       </button>
     </form>
 
     {#if createdPolicyId}
       <div class="bind-step">
-        <h3>Bind this policy</h3>
-        <p class="section-desc">Choose where this policy should apply.</p>
+        <h3>Apply this guard rail</h3>
+        <p class="section-desc">Choose where this guard rail should apply.</p>
         <ul class="bind-target-list">
           {#each bindTargets as target}
             <li>
@@ -274,13 +291,13 @@
   </section>
 
   <section class="section" aria-labelledby="list-heading">
-    <h2 id="list-heading" class="section-title">Policies ({data.policies.length})</h2>
+    <h2 id="list-heading" class="section-title">Guard Rails ({data.policies.length})</h2>
     {#if data.policies.length === 0}
       <EmptyState
-        title="No policies yet"
-        description="Create a policy above. Then open it to set rule definition and bind it to targets (project, route, etc.)."
+        title="No guard rails yet"
+        description="Create a guard rail above. Then open it to set the rule definition and apply it to targets (project, rule, etc.)."
       >
-        <a href="#create-heading" class="btn btn-primary">Create policy</a>
+        <a href="#create-heading" class="btn btn-primary">Create guard rail</a>
       </EmptyState>
     {:else}
       <ul class="policy-list">
@@ -290,8 +307,12 @@
               <span class="policy-name">{p.name}</span>
               <span class="policy-meta-row">
                 <span class={`type-badge ${TYPE_BADGE_CLASS[p.type] ?? "badge-default"}`}>{p.type}</span>
-                <span class="policy-meta">{p.status}</span>
-                <span class="policy-meta">Bound to {boundCount(p.id)} targets</span>
+                <span class={`policy-meta status-${policyTone(p.status)}`}>{p.status}</span>
+                {#if boundCount(p.id) === 0}
+                  <span class="policy-meta policy-meta-amber">Not applied to any rules yet — apply it →</span>
+                {:else}
+                  <span class="policy-meta">Applied to {boundCount(p.id)} rule(s)</span>
+                {/if}
               </span>
             </a>
           </li>
@@ -366,6 +387,43 @@
     color: var(--rm-dim);
     line-height: 1.4;
   }
+  .template-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .template-label {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--rm-text);
+  }
+  .template-card {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    color: var(--rm-muted);
+    padding: var(--space-2);
+    text-align: left;
+    display: grid;
+    gap: 0.2rem;
+  }
+  .template-card-active {
+    border-color: var(--rm-sage);
+    color: var(--rm-text);
+  }
+  .template-icon {
+    font-size: var(--text-sm);
+  }
+  .template-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--rm-text);
+  }
+  .template-subtitle {
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+  }
   .btn {
     padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
@@ -413,6 +471,13 @@
   .policy-meta {
     font-size: var(--text-xs);
     color: var(--rm-muted);
+  }
+  .policy-meta-amber {
+    color: var(--amber-insight);
+    text-decoration: none;
+  }
+  .policy-meta-amber:hover {
+    text-decoration: underline;
   }
   .type-badge {
     font-size: var(--text-xs);

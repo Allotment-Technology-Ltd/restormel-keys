@@ -215,9 +215,9 @@
 
 {#if data.error || !data.policy}
   <p class="error-msg" role="alert">{data.error ?? "Policy not found."}</p>
-  <p><a href={DASHBOARD_BASE + "/policies"} class="back-link">← Back to Policies</a></p>
+  <p><a href={DASHBOARD_BASE + "/policies"} class="back-link">← Back to Guard Rails</a></p>
 {:else}
-  <p><a href={DASHBOARD_BASE + "/policies"} class="back-link">← Back to Policies</a></p>
+  <p><a href={DASHBOARD_BASE + "/policies"} class="back-link">← Back to Guard Rails</a></p>
   <h1 class="page-title">{data.policy.name}</h1>
   <p class="page-desc">
     Type: <strong>{data.policy.type}</strong>. Rule definition and bindings determine where this policy applies.

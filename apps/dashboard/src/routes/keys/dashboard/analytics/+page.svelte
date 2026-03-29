@@ -101,7 +101,7 @@
   <title>Analytics – Restormel</title>
 </svelte:head>
 
-<h1 class="page-title">Analytics</h1>
+<h1 class="page-title">Usage & Analytics</h1>
 <p class="page-desc">
   Request counts, latency, error rate, and usage by provider, model, and route. Data from request logs ({periodLabel()}).
 </p>

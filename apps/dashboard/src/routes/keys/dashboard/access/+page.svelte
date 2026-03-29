@@ -91,7 +91,7 @@
   }
 
   async function revokeKey(key: KeyWithProject) {
-    if (!confirm("Revoke this Gateway key? It will stop working immediately.")) return;
+    if (!confirm("Revoke this API key? It will stop working immediately.")) return;
     revokingId = key.id;
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${key.projectId}/keys`, {
@@ -106,9 +106,9 @@
   }
 </script>
 
-<h1 class="page-title">Access</h1>
+<h1 class="page-title">API Keys</h1>
 <p class="page-desc">
-  Gateway keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate — see Provider Integrations.
+  API keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate - see Connections.
 </p>
 <p class="page-desc page-desc-secondary">
   <strong>API portal</strong> (Zuplo): Gateway API reference, Try it, and your Zuplo consumer key (<code class="inline-code">zpka_…</code>) — <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">open API portal</a>. Use the portal nav or logo to return to Keys, Docs, or this dashboard.
@@ -118,12 +118,12 @@
   <p class="error-msg" role="alert">{data.error}</p>
 {:else}
   <section class="section" aria-labelledby="gateway-keys-heading">
-    <h2 id="gateway-keys-heading" class="section-title">Gateway keys</h2>
-    <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View audit log →</a>
+    <h2 id="gateway-keys-heading" class="section-title">Your API Keys</h2>
+    <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View key history →</a>
     <p class="key-callout">
-      A Gateway key authenticates your app to Restormel. It is not a provider credential.
+      An API key authenticates your app to Restormel. It is not a provider credential.
       To connect OpenAI, Anthropic, or other providers, go to
-      <a href={DASHBOARD_BASE + "/integrations"}>Providers</a>.
+      <a href={DASHBOARD_BASE + "/integrations"}>Connections</a>.
     </p>
 
     {#if newKey}
@@ -143,8 +143,8 @@
 
     {#if data.keys.length === 0 && !newKey}
       <EmptyState
-        title="No Gateway keys yet"
-        description="Create a Gateway key to use the Cloud API. Choose a project and create a key; copy it when shown — we won’t show it again."
+        title="No API keys yet"
+        description="Create an API key to use the Cloud API. Choose a project and create a key; copy it when shown - we will not show it again."
       >
         {#if data.projects.length === 0}
           <a href={DASHBOARD_BASE + "/projects"} class="btn btn-primary">Create a project first</a>
@@ -159,7 +159,7 @@
             <label for="access-key-label" class="sr-only">Key label</label>
             <input id="access-key-label" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
             <button type="submit" class="btn btn-primary" disabled={creating}>
-              {creating ? "Creating…" : "Create Gateway key"}
+              {creating ? "Creating…" : "Create API Key"}
             </button>
           </form>
         {/if}
@@ -175,7 +175,7 @@
         <label for="access-key-label-2" class="sr-only">Key label</label>
         <input id="access-key-label-2" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
         <button type="submit" class="btn btn-primary" disabled={creating}>
-          {creating ? "Creating…" : "Create Gateway key"}
+          {creating ? "Creating…" : "Create API Key"}
         </button>
       </form>
 
@@ -217,7 +217,7 @@
                   class="btn btn-danger"
                   onclick={() => revokeKey(k)}
                   disabled={revokingId === k.id}
-                  aria-label="Revoke Gateway key {k.keyPrefix}"
+                  aria-label="Revoke API key {k.keyPrefix}"
                 >
                   {revokingId === k.id ? "Revoking…" : "Revoke"}
                 </button>
@@ -248,7 +248,7 @@
   <section class="section" aria-labelledby="provider-creds-heading">
     <h2 id="provider-creds-heading" class="section-title">Provider credentials</h2>
     <p class="section-desc">
-      Provider credentials (OpenAI, Anthropic, etc.) are separate from Gateway keys. By default, keep provider credentials in your own env vars or secret manager — not pasted into Restormel. See Provider access modes for the decision tree.
+      Provider credentials (OpenAI, Anthropic, etc.) are separate from API keys. By default, keep provider credentials in your own env vars or secret manager - not pasted into Restormel. See Provider access modes for the decision tree.
     </p>
     <a href="/keys/docs/guides/provider-access-modes" class="btn btn-secondary">Provider access modes</a>
   </section>
@@ -346,6 +346,7 @@
     margin: 0 0 var(--space-2);
   }
   .new-key-value {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     font-size: var(--text-sm);
     word-break: break-all;
     display: block;
@@ -442,6 +443,7 @@
     gap: var(--space-3);
   }
   .key-prefix {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     font-size: var(--text-sm);
     color: var(--rm-muted);
   }

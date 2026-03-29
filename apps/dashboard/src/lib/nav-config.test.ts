@@ -12,16 +12,16 @@ describe("sidebar nav", () => {
 
   it("contains expected grouped labels", () => {
     const labels = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.label));
-    expect(labels).toContain("Providers");
-    expect(labels).toContain("Routes");
-    expect(labels).toContain("Policies");
-    expect(labels).toContain("Models");
-    expect(labels).toContain("Analytics");
+    expect(labels).toContain("Connections");
+    expect(labels).toContain("Rules");
+    expect(labels).toContain("Guard Rails");
+    expect(labels).toContain("Model Catalog");
+    expect(labels).toContain("Usage & Analytics");
     expect(labels).toContain("Logs");
-    expect(labels).toContain("Healthcheck");
-    expect(labels).toContain("Access");
-    expect(labels).toContain("Sandbox");
-    expect(labels).toContain("CI / CD");
+    expect(labels).toContain("System Health");
+    expect(labels).toContain("API Keys");
+    expect(labels).toContain("Test & Preview");
+    expect(labels).toContain("GitHub Setup");
     expect(labels).toContain("Dev Tools");
   });
 });

@@ -37,20 +37,31 @@
   }
 </script>
 
-<h1 class="page-title">Healthcheck</h1>
+<h1 class="page-title">System Health</h1>
 <p class="page-desc">
-  One view across Doctor (readiness) and Validate (credential/config checks). This page is <strong>Pro</strong>.
+  Health checks verify your providers are reachable and your configuration is valid before requests are made.
 </p>
 
 {#if !data.pro}
   <div class="pro-gate" role="note" aria-label="Pro feature">
-    <p class="pro-title">Pro feature</p>
-    <p class="pro-desc">
-      Healthcheck is available on Pro and above. You can still use the open-source CLIs: <code>restormel-doctor</code> and <code>restormel-validate</code>.
-    </p>
+    <p class="pro-title">Pro feature preview</p>
+    <p class="pro-desc">Unlock provider reachability checks and configuration validation before production traffic.</p>
+    <div class="health-preview">
+      <table>
+        <thead>
+          <tr><th>Provider</th><th>Status</th><th>Last checked</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>OpenAI</td><td><span class="status-success">Reachable</span></td><td>2m ago</td></tr>
+          <tr><td>Anthropic</td><td><span class="status-success">Reachable</span></td><td>5m ago</td></tr>
+          <tr><td>Portkey</td><td><span class="status-error">Unreachable</span></td><td>1m ago</td></tr>
+        </tbody>
+      </table>
+    </div>
     <p class="pro-actions">
-      <a class="btn btn-primary" href={DASHBOARD_BASE + "/billing"}>Upgrade</a>
+      <a class="btn btn-primary" href={DASHBOARD_BASE + "/billing"}>Upgrade to Pro</a>
       <a class="btn btn-secondary" href="/keys/docs/walkthrough/verification-strategy">See verification strategy</a>
+      <a class="btn btn-secondary" href="/keys/docs/integrations/cli">Run checks via CLI (free) →</a>
     </p>
   </div>
 {:else}
@@ -217,6 +228,32 @@
     background: color-mix(in oklab, var(--rm-primary) 8%, var(--rm-surface));
     padding: var(--space-4);
     margin: 0 0 var(--space-8);
+  }
+  .health-preview {
+    opacity: 0.6;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface);
+    margin: 0 0 var(--space-3);
+    overflow: hidden;
+  }
+  .health-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .health-preview th,
+  .health-preview td {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--rm-border);
+    color: var(--rm-muted);
+    text-align: left;
+  }
+  .health-preview th {
+    color: var(--rm-dim);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
   .pro-title { margin: 0 0 var(--space-2); font-weight: 700; color: var(--rm-text); }
   .pro-desc { margin: 0 0 var(--space-3); color: var(--rm-muted); }

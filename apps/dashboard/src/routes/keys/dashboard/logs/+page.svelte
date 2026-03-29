@@ -37,10 +37,14 @@
   let statusFilter = data.filter?.status ?? "";
   let limitFilter = String(data.controls?.limit ?? 100);
   let selectedLog: (typeof data.logs)[number] | null = null;
+  let expandedFixLogId: string | null = null;
   const LOGS_VISITED_KEY = "restormel_logs_visited";
+  const LOGS_BANNER_DISMISSED_KEY = "rk_logs_banner_dismissed";
+  let showGatewayBanner = true;
 
   onMount(() => {
     localStorage.setItem(LOGS_VISITED_KEY, "true");
+    showGatewayBanner = localStorage.getItem(LOGS_BANNER_DISMISSED_KEY) !== "true";
   });
 
   function formatTime(ts: number): string {
@@ -67,7 +71,17 @@
     const params = new URLSearchParams();
     params.set("newRoute", "true");
     if (log.environmentId) params.set("env", log.environmentId);
+    if (log.finalModelId) params.set("model", log.finalModelId);
     return `${DASHBOARD_BASE}/routes?${params.toString()}`;
+  }
+
+  function toggleFixPanel(logId: string) {
+    expandedFixLogId = expandedFixLogId === logId ? null : logId;
+  }
+
+  function dismissGatewayBanner() {
+    showGatewayBanner = false;
+    localStorage.setItem(LOGS_BANNER_DISMISSED_KEY, "true");
   }
 
   function policyChecks(log: (typeof data.logs)[number]): string[] {
@@ -89,11 +103,16 @@
 
 <h1 class="page-title">Logs & Traces</h1>
 <p class="page-desc">
-  Request logs captured by Restormel (from the Dashboard API execution path). Filter by project or route via query params. For analytics summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Analytics</a>.
+  Request logs captured by Restormel (from the Dashboard API execution path). Filter by project or rule via query params. For summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Usage & Analytics</a>.
 </p>
-<p class="notice">
-  <strong>Note:</strong> This page shows Restormel request logs. If your execution layer is OpenRouter/Portkey/Vercel and traffic doesn’t flow through Restormel, import gateway logs/usage exports via <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.
-</p>
+{#if showGatewayBanner}
+  <div class="notice notice-info" role="status">
+    <div>
+      <strong>ℹ Gateway logs note:</strong> This page shows Restormel request logs. If your execution layer is OpenRouter/Portkey/Vercel and traffic does not flow through Restormel, import gateway logs/usage exports via <a href={DASHBOARD_BASE + "/integrations"}>Connections</a>.
+    </div>
+    <button type="button" class="notice-dismiss" aria-label="Dismiss info banner" onclick={dismissGatewayBanner}>×</button>
+  </div>
+{/if}
 <form class="filter-bar" onsubmit={(e) => { e.preventDefault(); applyFilters(); }} aria-label="Log filters">
   <label>
     Project
@@ -107,7 +126,7 @@
   <label>
     Route
     <select bind:value={routeFilter}>
-      <option value="">Any</option>
+      <option value="">All rules</option>
       {#each data.controls.availableRoutes as r}
         <option value={r}>{r.slice(0, 8)}…</option>
       {/each}
@@ -118,7 +137,7 @@
     <select bind:value={statusFilter}>
       <option value="">Any</option>
       {#each data.controls.availableStatuses as s}
-        <option value={s}>{s}</option>
+        <option value={s}>{s === "no_route" ? "No matching rule" : s}</option>
       {/each}
     </select>
   </label>
@@ -154,7 +173,7 @@
   <p class="error-msg" role="alert">{data.error}</p>
 {:else if data.logs.length === 0}
   <p class="empty-msg">No request logs in the last 7 days. Traffic through resolved routes will appear here.</p>
-  <p><a href={DASHBOARD_BASE + "/analytics"}>Analytics</a> · <a href={DASHBOARD_BASE + "/routes"}>Routes</a></p>
+  <p><a href={DASHBOARD_BASE + "/analytics"}>Usage & Analytics</a> · <a href={DASHBOARD_BASE + "/routes"}>Rules</a></p>
 {:else}
   <ul class="log-list">
     {#each data.logs as log}
@@ -176,11 +195,17 @@
           {/if}
         </button>
         {#if log.requestStatus === "no_route"}
-          <a
-            href={fixNoRouteHref(log)}
-            class="log-fix-link"
-            onclick={(e) => e.stopPropagation()}
-          >Fix?</a>
+          <button type="button" class="log-fix-link" onclick={() => toggleFixPanel(log.id)}>Fix?</button>
+        {/if}
+        {#if log.requestStatus === "no_route" && expandedFixLogId === log.id}
+          <div class="no-route-fix-panel">
+            <p>This request did not match any rule. The model requested was: <strong>{log.finalModelId ?? "unknown"}</strong>.</p>
+            <p>
+              <a href={fixNoRouteHref(log)}>Create a rule for this →</a>
+              <span class="dot">·</span>
+              <a href="/keys/docs/walkthrough/phase-2-resolve">Learn why this happens →</a>
+            </p>
+          </div>
         {/if}
       </li>
     {/each}
@@ -283,6 +308,23 @@
     color: var(--rm-muted);
     line-height: var(--leading-relaxed);
   }
+  .notice-info {
+    border-left-color: var(--path-blue);
+    background: color-mix(in oklab, var(--path-blue) 12%, var(--rm-surface));
+    color: var(--rm-text);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .notice-dismiss {
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: transparent;
+    color: var(--rm-muted);
+    line-height: 1;
+    padding: 0.1rem 0.4rem;
+  }
   .notice a { color: var(--rm-sage); font-weight: 500; }
   .error-msg {
     color: var(--coral-alert);
@@ -324,6 +366,7 @@
     outline-offset: 2px;
   }
   .log-time {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     color: var(--rm-muted);
     white-space: nowrap;
   }
@@ -331,6 +374,7 @@
     color: var(--rm-text);
   }
   .log-latency, .log-tokens {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     color: var(--rm-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -342,16 +386,41 @@
     color: #c08a1c;
     font-size: var(--text-xs);
     font-weight: 600;
+    border: none;
+    background: transparent;
+    padding: 0;
   }
   .log-row-no-route {
     border-left: 4px solid #c08a1c;
     background: color-mix(in oklab, #c08a1c 14%, transparent);
     padding-left: var(--space-2);
   }
+  .no-route-fix-panel {
+    width: 100%;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface);
+    padding: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .no-route-fix-panel p {
+    margin: 0 0 var(--space-1);
+  }
+  .no-route-fix-panel p:last-child {
+    margin-bottom: 0;
+  }
+  .no-route-fix-panel a {
+    color: var(--rm-sage);
+  }
   .muted {
     font-size: var(--text-sm);
     color: var(--rm-dim);
     margin-top: var(--space-4);
+  }
+  .dot {
+    color: var(--rm-dim);
+    margin: 0 var(--space-1);
   }
   .filter-msg {
     font-size: var(--text-sm);
@@ -406,19 +475,19 @@
     color: var(--rm-muted);
   }
   .status-resolved {
-    color: #2e8f57;
+    color: var(--signal-teal);
     font-weight: 600;
   }
   .status-policy {
-    color: #b86b00;
+    color: var(--amber-insight);
     font-weight: 600;
   }
   .status-no-route {
-    color: #c95c5c;
+    color: var(--coral-alert);
     font-weight: 600;
   }
   .status-other {
-    color: var(--rm-text);
+    color: var(--rm-dim);
     font-weight: 600;
   }
   .detail-backdrop {

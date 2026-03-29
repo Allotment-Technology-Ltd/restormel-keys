@@ -9,6 +9,7 @@ import {
   listRoutes,
   listModels,
   listProviderModelVariants,
+  listRouteSteps,
 } from "$lib/server/db";
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -37,7 +38,12 @@ export const load: PageServerLoad = async ({ locals }) => {
             listEnvironments(project.id, userId),
             listRoutes(project.id, userId),
           ]);
-          return { projectId: project.id, environments, routes };
+          const routeStepsByRoute = Object.fromEntries(
+            await Promise.all(
+              routes.map(async (route) => [route.id, await listRouteSteps(route.id, project.id, userId)])
+            )
+          );
+          return { projectId: project.id, environments, routes, routeStepsByRoute };
         })
       ),
       listPolicies(workspace.id),
@@ -79,6 +85,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         {
           environments: detail.environments,
           routes: detail.routes,
+          routeStepsByRoute: detail.routeStepsByRoute,
         },
       ])
     );

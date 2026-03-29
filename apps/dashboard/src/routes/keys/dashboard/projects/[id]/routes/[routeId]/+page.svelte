@@ -75,6 +75,13 @@
     expandedStepId = null;
     editingStepId = null;
   }
+  $: orderedSteps = [...data.steps].sort((a, b) => a.orderIndex - b.orderIndex);
+  $: summarySteps = orderedSteps.length
+    ? orderedSteps
+        .map((step) => `${step.providerPreference ?? "provider"} ${step.modelId ?? "model"}`)
+        .join(" → ")
+    : "no providers configured yet";
+  $: summaryTimeoutMs = orderedSteps.find((step) => step.timeoutMs != null)?.timeoutMs ?? 12000;
 
   async function saveRoute() {
     if (!data.project || !data.route) return;
@@ -368,15 +375,16 @@
 
 {#if data.error || !data.route || !data.project}
   <p class="error-msg" role="alert">{data.error ?? "Route not found."}</p>
-  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
+  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Rules</a></p>
 {:else}
   <p>
-    <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/routes"} class="back-link">← Routes · {data.project.name}</a>
+    <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/routes"} class="back-link">← Rules · {data.project.name}</a>
   </p>
   <h1 class="page-title">{data.route.name}</h1>
   <p class="page-desc">
-    Route status, billing mode, and fallback behaviour. Steps define the resolution order and fallback chain.
+    Rule status, billing mode, and fallback behaviour. Steps define the resolution order and fallback chain.
   </p>
+  <p class="plain-summary">This rule sends requests to {summarySteps}, with a {summaryTimeoutMs}ms timeout.</p>
 
   {#if data.modelLifecycleWarnings?.length > 0}
     <div class="lifecycle-warning" role="alert">
@@ -414,7 +422,7 @@
         </select>
       </div>
       <div class="form-row">
-        <label for="billing">Billing mode</label>
+        <label for="billing">Who pays for this route?</label>
         <select id="billing" bind:value={editBillingMode} class="input">
           <option value="">—</option>
           <option value="pass_through">Pass through</option>
@@ -422,7 +430,7 @@
         </select>
       </div>
       <div class="form-row">
-        <label for="routeMode">Route mode (fallback behaviour)</label>
+        <label for="routeMode">What happens if this fails?</label>
         <select id="routeMode" bind:value={editRouteMode} class="input">
           <option value="">—</option>
           <option value="single">Single</option>
@@ -442,7 +450,7 @@
   </section>
 
   <section class="section" aria-labelledby="fallback-heading">
-    <h2 id="fallback-heading" class="section-title">Fallback / steps</h2>
+    <h2 id="fallback-heading" class="section-title">Provider steps & fallback order</h2>
     <p class="section-desc">
       Steps define the resolution order. If a step fails or times out, the next step is used (fallback).
     </p>
@@ -475,7 +483,7 @@
         </datalist>
       </div>
       <div class="form-row compact">
-        <label for="step-fallback">Fallback on</label>
+        <label for="step-fallback">Trigger fallback when:</label>
         <select id="step-fallback" bind:value={stepFallbackOn} class="input">
           <option value="error">error</option>
           <option value="rate_limit">rate_limit</option>
@@ -485,7 +493,7 @@
         </select>
       </div>
       <div class="form-row compact">
-        <label for="step-timeout">Timeout (ms)</label>
+        <label for="step-timeout">Give up after (ms)</label>
         <input id="step-timeout" class="input" bind:value={stepTimeoutMs} />
       </div>
       <button type="submit" class="btn btn-secondary" disabled={creatingStep}>
@@ -585,7 +593,7 @@
                     />
                   </div>
                   <div class="form-row compact">
-                    <label for="edit-step-fallback">Fallback on</label>
+                    <label for="edit-step-fallback">Trigger fallback when:</label>
                     <select id="edit-step-fallback" bind:value={editingFallbackOn} class="input">
                       <option value="error">error</option>
                       <option value="rate_limit">rate_limit</option>
@@ -595,7 +603,7 @@
                     </select>
                   </div>
                   <div class="form-row compact">
-                    <label for="edit-step-timeout">Timeout (ms)</label>
+                    <label for="edit-step-timeout">Give up after (ms)</label>
                     <input id="edit-step-timeout" class="input" bind:value={editingTimeoutMs} />
                   </div>
                   <label class="checkbox-field">
@@ -620,8 +628,8 @@
   </section>
 
   <section class="section" aria-labelledby="policies-heading">
-    <h2 id="policies-heading" class="section-title">Policies for this route</h2>
-    <p class="section-desc">Bind existing policies or create and bind a policy without leaving this page.</p>
+    <h2 id="policies-heading" class="section-title">Guard Rails for this rule</h2>
+    <p class="section-desc">Apply existing guard rails or create and apply one without leaving this page.</p>
     {#if policyError}
       <p class="error-msg" role="alert">{policyError}</p>
     {/if}
@@ -636,7 +644,7 @@
         </select>
       </div>
       <button type="submit" class="btn btn-secondary" disabled={!selectedPolicyId || bindingPolicy}>
-        {bindingPolicy ? "Binding…" : "Bind policy"}
+        {bindingPolicy ? "Applying…" : "Apply guard rail"}
       </button>
     </form>
 
@@ -708,6 +716,15 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
+  }
+  .plain-summary {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    padding: var(--space-2) var(--space-3);
   }
   .section {
     margin-bottom: var(--space-6);

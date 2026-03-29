@@ -55,15 +55,15 @@ export function filterNavGroupsForDashboardUi(groups: NavGroup[], hidden: Set<Da
 }
 
 const SECTION_LABELS: Record<DashboardUiSection, string> = {
-  policies: "Policies",
-  routes: "Routes",
-  models: "Models",
-  providers: "Providers",
-  analytics: "Analytics",
+  policies: "Guard Rails",
+  routes: "Rules",
+  models: "Model Catalog",
+  providers: "Connections",
+  analytics: "Usage & Analytics",
   logs: "Logs",
-  healthcheck: "Healthcheck",
-  sandbox: "Sandbox",
-  "copy-for-ci": "CI / CD",
+  healthcheck: "System Health",
+  sandbox: "Test & Preview",
+  "copy-for-ci": "GitHub Setup",
   "dev-tools": "Dev Tools",
   billing: "Billing",
   projects: "Projects",

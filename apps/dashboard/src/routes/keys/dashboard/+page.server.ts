@@ -7,6 +7,8 @@ import {
   aggregateRequestLogsToUsage,
   listRoutes,
   listRequestLogs,
+  listPolicies,
+  listPolicyBindings,
 } from "$lib/server/db";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 
@@ -27,6 +29,10 @@ export const load: PageServerLoad = async ({ locals }) => {
       usage: null,
       setup: null,
       livePulse: null,
+      contextSignals: {
+        noRouteCount24h: 0,
+        hasAnyRoutePolicyBinding: true,
+      },
     };
   }
   try {
@@ -46,6 +52,13 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
 
     const integrations = await listProviderIntegrations(workspace.id);
+    const policies = await listPolicies(workspace.id);
+    const policyBindings = await Promise.all(
+      policies.map((policy) => listPolicyBindings(policy.id, workspace.id))
+    );
+    const hasAnyRoutePolicyBinding = policyBindings.some((bindings) =>
+      bindings.some((binding) => binding.targetType === "route")
+    );
     const hasIntegrations = integrations.length > 0;
 
     const routesByProject = await Promise.all(
@@ -64,6 +77,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       until: now,
       limit: 500,
     });
+    const noRouteCount24h = allLogs24h.filter((log) => log.requestStatus === "no_route").length;
     const anyLogs = await listRequestLogs(workspace.id, { limit: 1 });
 
     let usedThisMonth: number | null = null;
@@ -207,6 +221,10 @@ export const load: PageServerLoad = async ({ locals }) => {
         firstRequestAt,
       },
       livePulse,
+      contextSignals: {
+        noRouteCount24h,
+        hasAnyRoutePolicyBinding,
+      },
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -219,6 +237,10 @@ export const load: PageServerLoad = async ({ locals }) => {
       usage: null,
       setup: null,
       livePulse: null,
+      contextSignals: {
+        noRouteCount24h: 0,
+        hasAnyRoutePolicyBinding: true,
+      },
     };
   }
 };

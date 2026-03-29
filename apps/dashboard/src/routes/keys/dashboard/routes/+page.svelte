@@ -38,6 +38,15 @@
       {
         environments: EnvironmentRecord[];
         routes: RouteRecord[];
+        routeStepsByRoute: Record<
+          string,
+          {
+            id: string;
+            orderIndex: number;
+            providerPreference: string | null;
+            modelId: string | null;
+          }[]
+        >;
       }
     >;
     routeRequestCount24h: Record<string, number>;
@@ -99,6 +108,17 @@
   $: selectedProject = data.projects.find((project) => project.id === selectedProjectId) ?? null;
   $: selectedEnvironments = data.routesByProject[selectedProjectId]?.environments ?? [];
   $: selectedRoutes = data.routesByProject[selectedProjectId]?.routes ?? [];
+  $: selectedRouteStepsByRoute = data.routesByProject[selectedProjectId]?.routeStepsByRoute ?? {};
+  $: duplicateRouteNames = new Set(
+    Object.entries(
+      selectedRoutes.reduce((acc, route) => {
+        acc[route.name] = (acc[route.name] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    )
+      .filter(([, count]) => count > 1)
+      .map(([name]) => name)
+  );
   $: if (!routeEnvironmentId && selectedEnvironments[0]) routeEnvironmentId = selectedEnvironments[0].id;
   $: filteredModels = data.models.filter((model) =>
     modelSearch.trim()
@@ -197,17 +217,28 @@
   }
 
   function modeLabel(mode: string | null): string {
-    return mode === "fallback_chain" ? "Fallback chain" : "Single";
+    return mode === "fallback_chain" ? "With fallback" : "1 provider";
   }
 
   function billingLabel(mode: string | null): string {
     if (mode === "metered") return "Metered";
-    if (mode === "pass_through") return "Pass-through";
+    if (mode === "pass_through") return "Direct pass-through";
     return "—";
   }
 
   function envForRoute(route: RouteRecord): EnvironmentRecord | null {
     return selectedEnvironments.find((env) => env.id === route.environmentId) ?? null;
+  }
+
+  function routeSummary(route: RouteRecord): string {
+    const steps = [...(selectedRouteStepsByRoute[route.id] ?? [])].sort((a, b) => a.orderIndex - b.orderIndex);
+    if (steps.length === 0) return "No providers configured yet - edit to add steps";
+    const first = steps[0];
+    const firstText = `${first.providerPreference ?? "provider"} ${first.modelId ?? "model"}`;
+    if (steps.length === 1) return `Uses ${firstText}`;
+    const second = steps[1];
+    const secondText = `${second.providerPreference ?? "provider"} ${second.modelId ?? "model"}`;
+    return `Uses ${firstText}, falls back to ${secondText}`;
   }
 
   async function submitWizard() {
@@ -297,39 +328,53 @@
   }
 </script>
 
-<h1 class="page-title">Routes</h1>
-<p class="page-desc">Manage routes for the active project context.</p>
+<h1 class="page-title">AI Request Rules</h1>
+<p class="page-desc">Manage rules for the active project context.</p>
 
 {#if data.error}
   <p class="error-msg" role="alert">{data.error}</p>
 {:else if data.projects.length === 0}
-  <EmptyState title="No projects yet" description="Create a project before defining routes.">
+  <EmptyState title="No projects yet" description="Create a project before defining rules.">
     <a href="/keys/dashboard/projects" class="btn btn-primary">Go to projects</a>
   </EmptyState>
 {:else}
   <section class="routes-head">
     <div>
       <h2>{selectedProject?.name ?? "Project"}</h2>
-      <p>{selectedRoutes.length} routes</p>
+      <p>{selectedRoutes.length} rules</p>
     </div>
-    <button type="button" class="btn btn-primary" on:click={openWizard}>New route</button>
+    <button type="button" class="btn btn-primary" on:click={openWizard}>New rule</button>
   </section>
 
   {#if selectedRoutes.length === 0}
-    <p class="muted">No routes for this project yet.</p>
+    <p class="muted">No rules for this project yet.</p>
   {:else}
     <ul class="route-cards">
       {#each selectedRoutes as route}
         <li class="route-card">
           <a href={`/keys/dashboard/projects/${selectedProjectId}/routes/${route.id}`}>
-            <h3>{route.name}</h3>
+            <h3>
+              {route.name}
+              {#if duplicateRouteNames.has(route.name)}
+                <span class="dup-warning" title="This name is shared by multiple rules — consider renaming for clarity.">⚠</span>
+              {/if}
+            </h3>
+            <p class="route-summary">{routeSummary(route)}</p>
             <div class="badge-row">
               <span class={`badge env-${envForRoute(route)?.type ?? "unknown"}`}>
                 {envForRoute(route)?.type ?? "env"}
               </span>
               <span class="badge">{modeLabel(route.routeMode)}</span>
               <span class="badge">{billingLabel(route.billingMode)}</span>
-              <span class="badge">{route.status}</span>
+              {#if route.status === "active"}
+                <span class="badge badge-active">● Active</span>
+              {:else if route.status === "paused"}
+                <span class="badge status-warning">Paused</span>
+              {:else if route.status === "inactive" || route.status === "draft"}
+                <span class="badge status-muted">{route.status}</span>
+              {:else}
+                <span class="badge status-muted">{route.status}</span>
+              {/if}
               <span class="badge">{(data.routeRequestCount24h[route.id] ?? 0).toLocaleString()} req/24h</span>
             </div>
           </a>
@@ -526,6 +571,11 @@
     color: var(--rm-text);
     font-size: var(--text-base);
   }
+  .route-summary {
+    margin: 0;
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+  }
   .badge-row {
     display: flex;
     flex-wrap: wrap;
@@ -539,11 +589,22 @@
     padding: 0.1rem 0.45rem;
     background: var(--rm-surface);
   }
+  .badge-active {
+    color: var(--signal-teal);
+    border-color: color-mix(in oklab, var(--signal-teal) 55%, var(--rm-border));
+  }
   .env-dev {
     border-color: color-mix(in oklab, #5ea8ff 45%, var(--rm-border));
+    opacity: 0.8;
   }
   .env-prod {
     border-color: color-mix(in oklab, #44a676 45%, var(--rm-border));
+    opacity: 0.8;
+  }
+  .dup-warning {
+    margin-left: var(--space-1);
+    color: var(--amber-insight);
+    font-size: var(--text-xs);
   }
   .overlay {
     position: fixed;

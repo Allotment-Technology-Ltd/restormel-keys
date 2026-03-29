@@ -242,11 +242,11 @@
 </script>
 
 <main class="sandbox" aria-labelledby="sandbox-heading">
-  <h1 id="sandbox-heading" class="page-title">Sandbox</h1>
+  <h1 id="sandbox-heading" class="page-title">Test & Preview</h1>
   <p class="page-desc">
     Validate keys quickly or preview embeddable components in a mock settings page.
   </p>
-  <div class="tab-row" role="tablist" aria-label="Sandbox tabs">
+  <div class="tab-row" role="tablist" aria-label="Test and preview tabs">
     <button
       type="button"
       role="tab"
@@ -617,7 +617,7 @@
     margin-bottom: var(--space-3);
   }
   .code-block {
-    font-family: var(--rm-font-ui);
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     font-size: var(--text-sm);
     padding: var(--space-2) var(--space-3);
     background: var(--rm-surface);
@@ -671,7 +671,7 @@
     font-size: var(--text-sm);
   }
   .snippet-install code {
-    font-family: var(--rm-font-ui);
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     padding: 0.15em 0.4em;
     background: var(--rm-surface);
     border-radius: var(--rm-radius);
@@ -718,7 +718,7 @@
     min-width: 5rem;
   }
   .validate-mask {
-    font-family: var(--rm-font-ui);
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
     color: var(--rm-muted);
   }
   .validate-status {

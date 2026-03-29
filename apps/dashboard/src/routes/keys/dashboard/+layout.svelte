@@ -21,7 +21,7 @@
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
   let collapsed = false;
   let isPhone = false;
-  let navGroupsOpen: Record<string, boolean> = { build: true, monitor: true, developer: true };
+  let navGroupsOpen: Record<string, boolean> = { build: true, monitor: true, developer: false };
 
   onMount(() => {
     collapsed = localStorage.getItem(STORAGE_KEY) === "true";
@@ -32,11 +32,11 @@
         navGroupsOpen = {
           build: typeof parsed.build === "boolean" ? parsed.build : true,
           monitor: typeof parsed.monitor === "boolean" ? parsed.monitor : true,
-          developer: typeof parsed.developer === "boolean" ? parsed.developer : true,
+          developer: typeof parsed.developer === "boolean" ? parsed.developer : false,
         };
       }
     } catch {
-      navGroupsOpen = { build: true, monitor: true, developer: true };
+      navGroupsOpen = { build: true, monitor: true, developer: false };
     }
 
     const media = window.matchMedia("(max-width: 767px)");
@@ -107,7 +107,12 @@
               aria-expanded={navGroupsOpen[group.id]}
               on:click={() => toggleNavGroup(group.id)}
             >
-              <span>{group.label}</span>
+              <span class="nav-group-label">
+                {#if group.id === "developer"}
+                  <span aria-hidden="true">⚙</span>
+                {/if}
+                <span>{group.label}</span>
+              </span>
               <span aria-hidden="true">{navGroupsOpen[group.id] ? "▾" : "▸"}</span>
             </button>
             {#if navGroupsOpen[group.id]}
@@ -122,19 +127,32 @@
           </section>
         {/each}
       </nav>
+      <div class="sidebar-footer">
+        <button
+          type="button"
+          class="sidebar-nav-toggle"
+          aria-pressed={collapsed}
+          aria-label={collapsed ? "Expand dashboard navigation" : "Collapse dashboard navigation"}
+          on:click={toggleSidebar}
+        >
+          ◀ {collapsed ? "Expand nav" : "Collapse nav"}
+        </button>
+      </div>
     </aside>
     <div class="main-wrap">
       <header class="topbar">
         <div class="topbar-left">
-          <button
-            type="button"
-            class="topbar-nav-toggle"
-            aria-pressed={collapsed}
-            aria-label={collapsed ? "Expand dashboard navigation" : "Collapse dashboard navigation"}
-            on:click={toggleSidebar}
-          >
-            {collapsed ? "Expand nav" : "Collapse nav"}
-          </button>
+          {#if collapsed}
+            <button
+              type="button"
+              class="topbar-nav-toggle"
+              aria-pressed={collapsed}
+              aria-label="Expand dashboard navigation"
+              on:click={toggleSidebar}
+            >
+              ▶ Expand nav
+            </button>
+          {/if}
           <span class="topbar-title">{title}</span>
         </div>
       </header>
@@ -151,14 +169,14 @@
           {:else}
             <div class="welcome" role="region" aria-labelledby="welcome-heading">
               <h1 id="welcome-heading" class="welcome-title">Restormel Keys Dashboard</h1>
-              <p class="welcome-intro">Control your AI access from one place: create a workspace and project, create a Gateway Key to call the API, connect providers, define routes, and track usage.</p>
+              <p class="welcome-intro">Control your AI access from one place: create a workspace and project, create an API Key to call the API, connect providers, define rules, and track usage.</p>
               <ol class="welcome-checklist" aria-label="Get started">
                 <li><strong>Sign in</strong> with GitHub (button above).</li>
                 <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
-                <li><strong>Key model:</strong> A <strong>Gateway Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
+                <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
                 <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create a Gateway Key</strong> (Access), <strong>connect a provider</strong> (Integrations), then <strong>create a route</strong> (Routes).</li>
-                <li><strong>First request</strong> → then <strong>Analytics</strong> and Logs.</li>
+                <li><strong>Create an API Key</strong> (API Keys), <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules).</li>
+                <li><strong>First request</strong> → then <strong>Usage & Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
@@ -213,6 +231,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    flex: 1;
+    min-height: 0;
   }
   .nav-link-overview {
     margin-bottom: var(--space-1);
@@ -233,6 +253,11 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     cursor: pointer;
+  }
+  .nav-group-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
   }
   .nav-group-header:hover {
     color: var(--rm-muted);
@@ -298,6 +323,25 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: var(--space-3) var(--space-3) 0;
+  }
+  .sidebar-nav-toggle {
+    width: 100%;
+    border: 1px solid var(--rm-border);
+    background: var(--rm-bg);
+    color: var(--rm-muted);
+    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-2);
+    font-size: var(--text-xs);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .sidebar-nav-toggle:hover {
+    background: var(--rm-surface);
+    color: var(--rm-text);
+  }
   .main {
     flex: 1;
     padding: var(--space-6);
@@ -308,23 +352,6 @@
     padding: 0;
     border-right: 0;
     overflow: hidden;
-  }
-  .btn {
-    display: inline-block;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--rm-radius);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
-  .btn-primary:hover {
-    filter: brightness(1.1);
-    text-decoration: none;
   }
   .auth-error {
     margin: 0 0 var(--space-4);
