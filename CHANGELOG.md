@@ -2,6 +2,24 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-03-29)
+
+**Dashboard UX overhaul (hosted app):** Delivered a full plain-language and operator-clarity pass across the Keys dashboard, including:
+
+- **Navigation and copy:** sidebar/group labels and page headings shifted from technical wording to user-facing wording (Connections, Rules, Guard Rails, API Keys, System Health, Usage & Analytics, GitHub Setup).
+- **Typography and readability:** proportional UI font as default; monospace constrained to code/identifier surfaces.
+- **Sidebar ergonomics:** Advanced section collapsed by default, collapse control moved to sidebar footer, project switcher visual weight reduced.
+- **Overview actions:** setup checklist replaced by a dynamic “What to do next” card with progress bar; empty-state Recent activity and contextual quick actions added.
+- **Connections flow:** populated-state disclosure (`<details>`) plus a 3-step inline “Add a connection” wizard while preserving existing submission contracts.
+- **Rules and Guard Rails clarity:** plain-language route summaries/tags, duplicate-name warning, route detail relabeling, guard-rail template cards that still bind to technical policy types.
+- **Logs and System Health guidance:** inline `no_route` fix panel, dismissible persisted info banner (`rk_logs_banner_dismissed`), richer Pro preview gate for System Health, and improved filter labels.
+- **Billing information architecture:** new Subscription & Billing two-card layout with entitlement-aware CTA behavior.
+- **Status semantics:** success/warning/error/muted color normalization across key dashboard status surfaces.
+
+**Scope constraints kept:** no URL slug changes, no backend contract/type identifier changes, and no API behavior rewrites.
+
+**Operational verification:** merged via [PR #66](https://github.com/Allotment-Technology-Ltd/restormel-keys/pull/66) (`362bd267bb5f61b2d57b34d27cc4d3c3fa76d2c4`), CI green on `main`, production deployment successful.
+
 ## restormel-v2026-03-27.1 (2026-03-27)
 
 **Hosted dashboard / API (no npm train).** Project model index: **`bindingKind`** per row — **`execution`** (default; canonical `providerType` + Keys catalog + variants) or **`registry`** (opaque provider/model strings for host merge when off-catalog; nested **`model`** often **`null`** on **`GET`**). Migration [021_project_model_bindings_kind.sql](apps/dashboard/migrations/021_project_model_bindings_kind.sql); runtime self-heal in [neon.ts](apps/dashboard/src/lib/server/neon.ts). OpenAPI **1.3.2**. Integrators: [keys-catalog-sync.md](docs/restormel-integration/keys-catalog-sync.md), [resolve-to-execution-contract.md](docs/guides/resolve-to-execution-contract.md). **Operators:** apply **`021`** on Neon when deploying. **SOPHIA:** send **`bindingKind: "registry"`** on `POST`/`PUT …/projects/{id}/models` for pairs not in Keys catalog (e.g. extra providers, Vertex embedding ids); keep **`execution`** when syncing from **`GET /api/models`**.
