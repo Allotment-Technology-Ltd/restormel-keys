@@ -57,12 +57,14 @@ function validatePayload(payload: FeedbackBody): {
   else if (title.length > 200) errors.title = "Title must be 200 characters or fewer.";
   if (!description) errors.description = "Description is required.";
   else if (description.length > 2000) errors.description = "Description must be 2000 characters or fewer.";
-  if (category !== "bug" && category !== "question" && category !== "feature") {
+  const isCategory =
+    category === "bug" || category === "question" || category === "feature";
+  if (!isCategory) {
     errors.category = "Category must be one of bug, question, or feature.";
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { title, description, category } };
+  return { ok: true, value: { title, description, category: category as FeedbackCategory } };
 }
 
 export const POST: RequestHandler = async ({ locals, request }) => {

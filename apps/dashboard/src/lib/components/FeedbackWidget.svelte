@@ -101,7 +101,7 @@
 
 {#if $feedbackWidgetOpen}
   <div class="feedback-backdrop" aria-hidden="true"></div>
-  <aside class="feedback-drawer" role="dialog" aria-label="Send feedback" bind:this={drawerEl}>
+  <div class="feedback-drawer" role="dialog" aria-label="Send feedback" bind:this={drawerEl}>
     <button type="button" class="close-btn" aria-label="Close feedback drawer" on:click={closeDrawer}>×</button>
     <h2 class="title">Send feedback</h2>
 
@@ -171,7 +171,7 @@
         </button>
       </form>
     {/if}
-  </aside>
+  </div>
 {/if}
 
 <style>
