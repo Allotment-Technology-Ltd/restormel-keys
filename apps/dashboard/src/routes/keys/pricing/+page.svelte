@@ -57,7 +57,8 @@
           <a href="/keys/docs" class="btn btn-secondary">Get started for free</a>
         </div>
 
-        <div class="tier-card">
+        <div class="tier-card tier-card-pro">
+          <p class="pro-badge">Most popular</p>
           <h3 class="tier-name">Pro</h3>
           <p class="tier-desc"><strong>Best for:</strong> shipping real AI products</p>
           <p class="tier-price">$10</p>
@@ -72,7 +73,7 @@
           </ul>
           <button
             type="button"
-            class="btn btn-primary"
+            class="btn btn-primary btn-upgrade-pro"
             data-paddle-checkout
             data-tier="pro"
             data-billing-period="monthly"
@@ -169,9 +170,27 @@
     border-radius: var(--radius-md);
     padding: var(--space-6);
   }
-  .tier-card:nth-child(2) {
+  .tier-card-pro {
     border-color: color-mix(in oklab, var(--rm-sage) 55%, var(--rm-border));
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--rm-sage) 20%, transparent);
+    background: color-mix(in oklab, var(--rm-surface-raised) 90%, var(--rm-sage) 10%);
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--rm-sage) 20%, transparent),
+      0 14px 28px rgba(0, 0, 0, 0.16);
+  }
+  .pro-badge {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0 var(--space-3);
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--rm-sage) 70%, transparent);
+    background: color-mix(in oklab, var(--rm-sage) 16%, transparent);
+    color: var(--rm-text);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
   .tier-name {
     font-family: var(--rm-font-ui);
@@ -215,6 +234,30 @@
     color: var(--rm-dim);
     margin: var(--space-3) 0 0;
     line-height: var(--leading-normal);
+  }
+  .btn-upgrade-pro {
+    width: 100%;
+    min-height: calc(var(--button-height-md) + var(--space-3));
+    padding: var(--space-3) var(--space-5);
+    border: 1px solid var(--rm-sage);
+    border-radius: var(--rm-radius);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.01em;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--rm-sage) 18%, transparent);
+    transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  .btn-upgrade-pro:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--rm-sage) 24%, transparent),
+      0 8px 18px rgba(0, 0, 0, 0.18);
+  }
+  .btn-upgrade-pro:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--rm-sage) 70%, white);
+    outline-offset: 2px;
   }
   .tiers-anchor {
     font-size: var(--text-sm);
