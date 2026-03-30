@@ -1,15 +1,70 @@
 <script lang="ts">
   /** Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages. */
+  import { onMount } from "svelte";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import { getVariant } from "$lib/posthog";
+  import VariantA from "$lib/components/landing/VariantA.svelte";
+  import VariantB from "$lib/components/landing/VariantB.svelte";
+
+  let variant = "control";
+
+  onMount(() => {
+    let attempts = 0;
+    const check = () => {
+      const v = getVariant();
+      if (v !== "control" || attempts >= 10) {
+        variant = v;
+        return;
+      }
+      attempts++;
+      setTimeout(check, 200);
+    };
+    check();
+  });
 
   const pkgKeys = "@restormel/keys";
-  const pkgReact = "@restormel/keys-react";
-  const serverCode = `// app/api/chat/route.ts (Next.js App Router)
+  const pkgSvelte = "@restormel/keys-svelte";
+
+  const svelteServerCode = `// src/routes/api/chat/+server.ts (SvelteKit)
 import { createResolveMiddleware } from "${pkgKeys}";
 
 const resolve = createResolveMiddleware({
-  // Provider access stays in your stack (env vars, secret manager, or a gateway like OpenRouter/Portkey/Vercel AI Gateway).
-  // Restormel resolves routing + policy; you decide how to supply provider access.
+  providers: ["openai", "anthropic"],
+});
+
+export async function POST({ request }) {
+  const { model, messages } = await request.json();
+  const { provider } = await resolve(model);
+
+  const apiKey =
+    provider.type === "openai" ? import.meta.env.OPENAI_API_KEY :
+    provider.type === "anthropic" ? import.meta.env.ANTHROPIC_API_KEY :
+    undefined;
+  if (!apiKey) return new Response("Missing provider access", { status: 500 });
+
+  const res = await fetch(provider.chatUrl, {
+    method: "POST",
+    headers: { "Authorization": \`Bearer \${apiKey}\` },
+    body: JSON.stringify({ model, messages }),
+  });
+  return new Response(JSON.stringify(await res.json()));
+}`;
+
+  const svelteUiCode = `<!-- src/routes/settings/+page.svelte -->
+<script>
+  import { KeyManager } from "${pkgSvelte}";
+<\/script>
+
+<KeyManager
+  keys={keys}
+  onKeyAdded={handleAdd}
+  userId={user.id}
+/>`;
+
+  const nextServerCode = `// app/api/chat/route.ts (Next.js App Router)
+import { createResolveMiddleware } from "${pkgKeys}";
+
+const resolve = createResolveMiddleware({
   providers: ["openai", "anthropic"],
 });
 
@@ -17,7 +72,6 @@ export async function POST(req: Request) {
   const { model, messages } = await req.json();
   const { provider } = await resolve(model);
 
-  // Example: builder-managed direct provider mode (keys live in your env/secrets manager).
   const apiKey =
     provider.type === "openai" ? process.env.OPENAI_API_KEY :
     provider.type === "anthropic" ? process.env.ANTHROPIC_API_KEY :
@@ -32,18 +86,15 @@ export async function POST(req: Request) {
   return Response.json(await res.json());
 }`;
 
-  const uiCode = `// app/settings/page.tsx
-import { KeyManager } from "${pkgReact}";
+  const nextUiCode = `// React UI components (@restormel/keys-react) are in active development.
+// Use the headless core (@restormel/keys) for server-side routing today.
+// Build your own settings UI or use @restormel/keys-elements (Web Components) when available.`;
 
-export default function Settings() {
-  return (
-    <KeyManager
-      keys={keys}
-      onKeyAdded={handleAdd}
-      userId={user.id}
-    />
-  );
-}`;
+  let activeFramework: "sveltekit" | "nextjs" = "sveltekit";
+  $: serverCode = activeFramework === "sveltekit" ? svelteServerCode : nextServerCode;
+  $: uiCode = activeFramework === "sveltekit" ? svelteUiCode : nextUiCode;
+  $: uiLabel = activeFramework === "sveltekit" ? "Svelte Component" : "React (coming soon)";
+  $: uiLang = activeFramework === "sveltekit" ? "svelte" : "ts";
 </script>
 
 <svelte:head>
@@ -55,35 +106,11 @@ export default function Settings() {
 </svelte:head>
 
 <article class="keys-page">
-  <section class="section section-hero" aria-labelledby="hero-heading">
-    <div class="container">
-      <h1 id="hero-heading" class="hero-headline">The missing layer for AI apps</h1>
-      <p class="hero-subhead">
-        Add BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers.
-      </p>
-      <p class="hero-who">
-        No proxy. No infrastructure. No migration.
-      </p>
-      <p class="hero-who">
-        <strong>Restormel Keys</strong> is a product in the <strong>Restormel</strong> platform.
-      </p>
-      <p class="hero-who">
-        For AI SaaS builders and small teams that want one control layer across gateways and direct providers.
-      </p>
-      <p class="hero-who"><strong>Launch offer:</strong> First 50 signups receive 12 months of Pro.</p>
-      <div class="hero-ctas">
-        <a href="/keys/docs/walkthrough/phase-0-inventory" class="btn btn-primary btn-cta-hero">Start the walkthrough</a>
-        <a href="/keys/docs" class="btn btn-secondary">Docs</a>
-        <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" class="hero-link" target="_blank" rel="noopener noreferrer">View on GitHub</a>
-      </div>
-      <div class="intent-grid">
-        <a href="/keys/docs/journeys/new-project" class="intent-card"><strong>Starting a new project</strong><span>15-minute quickstart path.</span></a>
-        <a href="/keys/docs/journeys/existing-stack" class="intent-card"><strong>Adding control to existing stack</strong><span>Migration-first path.</span></a>
-        <a href="/keys/docs/journeys/byok-saas" class="intent-card"><strong>Adding BYOK to SaaS</strong><span>Embeddable key + model UX path.</span></a>
-        <a href="/keys/docs/journeys/agent-ide" class="intent-card"><strong>CLI/agent/IDE path</strong><span>MCP, CLI, AAIF.</span></a>
-      </div>
-    </div>
-  </section>
+  {#if variant === "test"}
+    <VariantB />
+  {:else}
+    <VariantA />
+  {/if}
 
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
@@ -136,14 +163,32 @@ export default function Settings() {
     <div class="container">
       <h2 id="code-heading" class="section-title">Add it to your stack</h2>
       <p class="section-intro">One route handler and, if you want end-user model choice, one settings page. Works with your existing gateway or direct provider keys.</p>
+
+      <div class="code-framework-tabs" role="tablist" aria-label="Framework">
+        <button
+          type="button"
+          class="code-fw-tab"
+          role="tab"
+          aria-selected={activeFramework === "sveltekit"}
+          on:click={() => (activeFramework = "sveltekit")}
+        >SvelteKit</button>
+        <button
+          type="button"
+          class="code-fw-tab"
+          role="tab"
+          aria-selected={activeFramework === "nextjs"}
+          on:click={() => (activeFramework = "nextjs")}
+        >Next.js / React</button>
+      </div>
+
       <div class="code-split">
         <div class="code-pane">
           <span class="code-label">Server</span>
           <CodeBlock language="ts" code={serverCode} />
         </div>
         <div class="code-pane">
-          <span class="code-label">React / Next.js</span>
-          <CodeBlock language="tsx" code={uiCode} />
+          <span class="code-label">{uiLabel}</span>
+          <CodeBlock language={uiLang} code={uiCode} />
         </div>
       </div>
     </div>
@@ -153,12 +198,12 @@ export default function Settings() {
     <div class="container">
       <h2 id="frameworks-heading" class="section-title">Fits your framework</h2>
       <p class="frameworks-copy">
-        <strong>Next.js</strong> App Router is the primary path. <strong>React</strong>: wrapper components plus hooks. <strong>SvelteKit</strong>: native Svelte 5 components. <strong>Web Components</strong> for Astro, vanilla HTML, or any framework. Same API; no Docker, Redis, or proxy.
+        <strong>SvelteKit</strong> is the primary path with native Svelte 5 components. <strong>Next.js / React</strong>: headless core today — React UI components in active development. <strong>Web Components</strong> for Astro, vanilla HTML, or any framework. Same API; no Docker, Redis, or proxy.
       </p>
       <ul class="framework-list" aria-label="Supported frameworks">
+        <li><span class="fw-pill fw-pill-active">SvelteKit</span></li>
         <li><span class="fw-pill">Next.js</span></li>
         <li><span class="fw-pill">React</span></li>
-        <li><span class="fw-pill">SvelteKit</span></li>
         <li><span class="fw-pill">Vue</span></li>
         <li><span class="fw-pill">Astro</span></li>
       </ul>
@@ -278,56 +323,6 @@ export default function Settings() {
     line-height: var(--leading-relaxed);
     max-width: var(--rm-container-narrow);
   }
-  .section-hero {
-    padding-top: var(--space-8);
-    padding-bottom: var(--space-12);
-  }
-  .hero-headline {
-    font-family: var(--rm-font-display);
-    font-size: clamp(2.25rem, 6vw, 3.5rem);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-tight);
-    color: var(--rm-text);
-    margin: 0 0 var(--space-3);
-  }
-  .hero-subhead {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-lg);
-    color: var(--rm-muted);
-    margin: 0 0 var(--space-2);
-    max-width: 65ch;
-    line-height: var(--leading-relaxed);
-  }
-  .hero-who {
-    font-size: var(--text-sm);
-    color: var(--rm-dim);
-    margin: 0 0 var(--space-8);
-    max-width: 65ch;
-  }
-  .hero-ctas {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-  .intent-grid {
-    margin-top: var(--space-5);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: var(--space-3);
-    max-width: 64rem;
-  }
-  .intent-card {
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    background: var(--rm-surface-raised);
-    padding: var(--space-3);
-    text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .intent-card strong { color: var(--rm-text); font-size: var(--text-sm); }
-  .intent-card span { color: var(--rm-muted); font-size: var(--text-xs); }
   .btn {
     display: inline-block;
     font-family: var(--rm-font-ui);
@@ -345,37 +340,6 @@ export default function Settings() {
   }
   .btn-primary:hover {
     filter: brightness(1.1);
-  }
-  .btn-cta-hero {
-    padding: var(--space-4) var(--space-8);
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    min-width: 16rem;
-    text-align: center;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-  }
-  .btn-cta-hero:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  }
-  .btn-secondary {
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
-    border: 1px solid var(--rm-border);
-  }
-  .btn-secondary:hover {
-    border-color: var(--rm-sage);
-    color: var(--rm-sage);
-  }
-  .hero-link {
-    align-self: center;
-    font-size: var(--text-sm);
-    color: var(--rm-dim);
-    padding: var(--space-2) 0;
-  }
-  .hero-link:hover {
-    color: var(--rm-sage);
-    text-decoration: none;
   }
   .section-subtitle {
     margin: var(--space-8) 0 var(--space-3);
@@ -410,25 +374,6 @@ export default function Settings() {
   @media (max-width: 760px) {
     .two-layer {
       grid-template-columns: 1fr;
-    }
-  }
-  @media (max-width: 480px) {
-    .hero-ctas {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .btn-cta-hero {
-      min-width: 0;
-      width: 100%;
-      padding: var(--space-3) var(--space-4);
-      font-size: var(--text-base);
-    }
-    .btn-secondary {
-      width: 100%;
-      text-align: center;
-    }
-    .hero-link {
-      align-self: flex-start;
     }
   }
   .modes-grid {
@@ -615,5 +560,35 @@ export default function Settings() {
   .cta-sub {
     color: var(--rm-muted);
     margin: 0 0 var(--space-6);
+  }
+  .code-framework-tabs {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0 0 var(--space-4);
+  }
+  .code-fw-tab {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-4);
+    background: var(--rm-surface-raised);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    color: var(--rm-muted);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .code-fw-tab:hover {
+    color: var(--rm-text);
+    border-color: var(--rm-sage);
+  }
+  .code-fw-tab[aria-selected="true"] {
+    background: var(--rm-sage);
+    color: var(--rm-bg);
+    border-color: var(--rm-sage);
+  }
+  .fw-pill-active {
+    background: var(--rm-sage);
+    color: var(--rm-bg);
+    border-color: var(--rm-sage);
   }
 </style>

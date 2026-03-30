@@ -3,6 +3,12 @@ node_modules/
 # Prefer pnpm; avoid accidental npm lockfile in workspace apps
 apps/dashboard/package-lock.json
 
+# Repomix (local repo packs for LLMs; do not commit)
+*-snapshot.xml
+repomix-output.xml
+repomix-output.md
+repomix-output.txt
+
 # Build and tooling
 dist/
 build/
