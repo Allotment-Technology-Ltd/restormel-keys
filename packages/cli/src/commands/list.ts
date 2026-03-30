@@ -8,8 +8,7 @@ export function registerList(program: Command): void {
     .command("list")
     .description("Show provider credentials (local, masked)")
     .action(async () => {
-      const cwd = process.cwd();
-      const store = await readStore(cwd);
+      const store = await readStore();
       if (store.keys.length === 0) {
         console.log(chalk.gray("No provider credentials found. Use keys add <provider> to add one."));
         return;

@@ -40,8 +40,8 @@ jobs:
       dashboard_migrations: ${{ steps.filter.outputs.dashboard_migrations }}
       model_catalog_seed: ${{ steps.filter.outputs.model_catalog_seed }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
         id: filter
         with:
           filters: |
@@ -82,7 +82,7 @@ jobs:
     if: needs.changes.outputs.repo == 'true' || needs.changes.outputs.docs == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: check-repo-hygiene.sh
         run: bash scripts/check-repo-hygiene.sh
       - name: review-docs.sh
@@ -97,7 +97,7 @@ jobs:
     if: needs.changes.outputs.docs == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Review docs
         run: bash scripts/review-docs.sh
       - name: Docs update checklist
@@ -108,20 +108,20 @@ jobs:
     if: needs.changes.outputs.code == 'true' || needs.changes.outputs.repo == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: TruffleHog
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@6171fa9f6676edf21e15bba41f049b18399d7372
         with:
           path: ./
           extra_args: --only-verified
@@ -135,11 +135,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -171,11 +171,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -189,11 +189,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -232,7 +232,7 @@ jobs:
            needs.changes.outputs.model_catalog_seed == 'true'))
       )
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Install Postgres client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Apply dashboard migrations to production DB
@@ -247,10 +247,10 @@ jobs:
           fi
           export DATABASE_URL="$DASHBOARD_DATABASE_URL_PROD"
           bash scripts/apply-dashboard-migrations.sh
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'

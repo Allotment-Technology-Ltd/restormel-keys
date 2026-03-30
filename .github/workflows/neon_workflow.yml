@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Get branch name
         id: branch_name
-        uses: tj-actions/branch-names@v9
+        uses: tj-actions/branch-names@5250492686b253f06fa55861556d1027b067aeb5
 
   create_neon_branch:
     name: Create Neon Branch
@@ -41,7 +41,7 @@ jobs:
       - name: Create Neon Branch
         id: create_neon_branch
         continue-on-error: true
-        uses: neondatabase/create-branch-action@v6
+        uses: neondatabase/create-branch-action@72ed4f69a12b6be9c16aebfad893f6a21e9aba8b
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch_name: preview/${{ github.head_ref }}
@@ -54,8 +54,8 @@ jobs:
     if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           # neonctl v2 requires Node >= 22.
           node-version: '22'
@@ -102,10 +102,10 @@ jobs:
         # npx uses NEON_API_KEY automatically if present.
       - name: Apply dashboard migrations
         run: bash scripts/apply-dashboard-migrations.sh
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
         with:
           version: 9.0.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -122,14 +122,14 @@ jobs:
     steps:
       - name: Delete Neon Branch (preview/<head_ref>)
         continue-on-error: true
-        uses: neondatabase/delete-branch-action@v3
+        uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: preview/${{ github.head_ref }}
           api_key: ${{ secrets.NEON_API_KEY }}
       - name: Delete Neon Branch (legacy preview-pr-<n>)
         continue-on-error: true
-        uses: neondatabase/delete-branch-action@v3
+        uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: preview-pr-${{ github.event.number }}

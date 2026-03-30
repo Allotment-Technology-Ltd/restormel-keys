@@ -134,7 +134,7 @@ function writeOutput(report: ValidateReport, format: OutputFormat): void {
 
 async function runValidate(cfg: RetryConfig): Promise<ValidateReport> {
   const cwd = process.cwd();
-  const store = await readStore(cwd);
+  const store = await readStore();
   const checks: ValidateCheck[] = [];
 
   if (store.keys.length === 0) {

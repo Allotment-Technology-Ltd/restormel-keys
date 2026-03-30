@@ -3,7 +3,7 @@
  */
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
-import { join } from "path";
+import { resolve, sep } from "path";
 
 export const CONFIG_FILENAME = "restormel.config.json";
 
@@ -17,8 +17,22 @@ const DEFAULT_CONFIG: RestormelConfig = {
   providers: [],
 };
 
-export async function readConfig(cwd: string): Promise<RestormelConfig | null> {
-  const path = join(cwd, CONFIG_FILENAME);
+function resolveInProject(...segments: string[]): string {
+  const base = resolve(process.cwd());
+  const target = resolve(base, ...segments);
+  if (target !== base && !target.startsWith(`${base}${sep}`)) {
+    throw new Error("Path escapes project root");
+  }
+  return target;
+}
+
+export async function readConfig(): Promise<RestormelConfig | null> {
+  let path: string;
+  try {
+    path = resolveInProject(CONFIG_FILENAME);
+  } catch {
+    return null;
+  }
   if (!existsSync(path)) return null;
   try {
     const raw = await readFile(path, "utf-8");

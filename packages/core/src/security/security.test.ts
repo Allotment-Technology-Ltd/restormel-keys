@@ -59,8 +59,8 @@ describe("hashApiKey – determinism", () => {
 
 describe("maskApiKey – masking", () => {
   it("returns first 8 + ... + last 4", () => {
-    const key = "sk-rk-abcdefgh1234567890wxyz";
-    expect(maskApiKey(key)).toBe("sk-rk-ab...wxyz");
+    const key = "demo-key-abcdefgh1234567890wxyz";
+    expect(maskApiKey(key)).toBe("demo-key...wxyz");
   });
 
   it("short key returns masked placeholder", () => {

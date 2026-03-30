@@ -25,8 +25,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "20"
       - name: Dry-run report (manual)
@@ -39,12 +39,17 @@ jobs:
         env:
           PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          INPUT_REDEPLOY: ${{ inputs.redeploy }}
           CANONICAL_PRO_MONTHLY_GBP_MINOR: "1000"
           CANONICAL_PRO_ANNUAL_GBP_MINOR: "19200"
           USD_ROUNDING_CENTS: "100"
           USD_MIN_DRIFT_CENTS: "100"
         run: |
-          if [ "${{ inputs.redeploy }}" = "true" ]; then
+          if [[ "$INPUT_REDEPLOY" != "true" && "$INPUT_REDEPLOY" != "false" ]]; then
+            echo "::error::Invalid redeploy flag: $INPUT_REDEPLOY"
+            exit 1
+          fi
+          if [ "$INPUT_REDEPLOY" = "true" ]; then
             node scripts/sync-paddle-usd-prices.mjs --apply --redeploy
           else
             node scripts/sync-paddle-usd-prices.mjs --apply

@@ -18,6 +18,8 @@ WORKDIR /app
 COPY --from=build /app/apps/dashboard/build ./
 COPY --from=build /app/apps/dashboard/package.json ./package.json
 RUN npm install --omit=dev
+RUN addgroup -S restormel && adduser -S restormel -G restormel && chown -R restormel:restormel /app
+USER restormel
 ENV PORT=8080
 # Cloud Run sets PORT at runtime
 CMD ["node", "index.js"]

@@ -102,9 +102,18 @@ const config: ZudokuConfig = {
             label: "My consumer key (zpka_...)",
             authorizeRequest: async (request) => {
               if (!cachedKey) {
-                const req = new Request("https://restormel.dev/keys/dashboard/api/consumer-key");
+                const consumerKeyUrl = new URL("/keys/dashboard/api/consumer-key", RESTORMEL_SITE).toString();
+                const req = new Request(consumerKeyUrl);
                 const signed = context.authentication?.signRequest ? context.authentication.signRequest(req) : req;
-                const res = await fetch(signed);
+                const signedUrl = new URL(signed.url);
+                const expectedUrl = new URL(consumerKeyUrl);
+                if (signedUrl.origin !== expectedUrl.origin || signedUrl.pathname !== expectedUrl.pathname) {
+                  throw new Error("Invalid consumer key endpoint");
+                }
+                const res = await fetch(consumerKeyUrl, {
+                  method: signed.method,
+                  headers: signed.headers,
+                });
                 const json = (await res.json().catch(() => ({}))) as any;
                 if (!res.ok) throw new Error(json?.error ?? "Unable to load consumer key");
                 if (typeof json?.key !== "string" || !json.key.startsWith("zpka_")) {

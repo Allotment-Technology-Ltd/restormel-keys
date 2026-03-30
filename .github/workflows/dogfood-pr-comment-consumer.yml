@@ -59,7 +59,7 @@ jobs:
         run: |
           echo '::warning::DOGFOOD_NOTIFY_CONSUMER is set but no PAT. Set DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN (Issues write on consumer repo).'
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         if: ${{ vars.DOGFOOD_NOTIFY_CONSUMER != '' && steps.pat.outputs.has_pat == 'true' }}
 
       - name: Comment consumer (PR opened)

@@ -47,8 +47,7 @@ export function registerAdd(program: Command): void {
         process.exit(1);
       }
 
-      const cwd = process.cwd();
-      const store = await readStore(cwd);
+      const store = await readStore();
       const id = `key-${providerId}-${Date.now()}`;
       const masked = maskApiKey(apiKey.trim());
       store.keys.push({
@@ -57,7 +56,7 @@ export function registerAdd(program: Command): void {
         apiKey: apiKey.trim(),
         mask: masked,
       });
-      await writeStore(cwd, store);
+      await writeStore(store);
       console.log(chalk.green("Key added:"), providerId, chalk.gray(`(${masked})`));
     });
 }

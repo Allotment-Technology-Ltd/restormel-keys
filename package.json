@@ -12,6 +12,7 @@
     "check-token-drift": "bash scripts/check-token-drift.sh",
     "bootstrap-paddle": "tsx scripts/bootstrap-paddle.ts",
     "sync-paddle-usd-prices": "node scripts/sync-paddle-usd-prices.mjs",
+    "setup-posthog-keys": "node scripts/setup-posthog-restormel-keys.mjs",
     "quality": "bash scripts/quality.sh",
     "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build",
     "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh"

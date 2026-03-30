@@ -11,12 +11,16 @@ const cwd = "/tmp/test-cwd";
 
 describe("store", () => {
   beforeEach(() => {
+    vi.spyOn(process, "cwd").mockReturnValue(cwd);
     vi.mocked(existsSync).mockReturnValue(false);
   });
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
 
   it("readStore returns empty when file missing", async () => {
-    const r = await readStore(cwd);
+    const r = await readStore();
     expect(r.keys).toEqual([]);
   });
 
@@ -25,7 +29,7 @@ describe("store", () => {
     vi.mocked(readFile).mockResolvedValue(
       JSON.stringify({ keys: [{ id: "k1", provider: "openai", apiKey: "sk-secret", mask: "sk-...ret" }] })
     );
-    const r = await readStore(cwd);
+    const r = await readStore();
     expect(r.keys).toHaveLength(1);
     expect(r.keys[0].provider).toBe("openai");
   });

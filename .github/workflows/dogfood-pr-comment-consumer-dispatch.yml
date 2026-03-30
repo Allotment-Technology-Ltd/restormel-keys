@@ -56,7 +56,7 @@ jobs:
           echo '::warning::No DOGFOOD_NOTIFY_CONSUMER_TOKEN or RESTORMEL_KEYS_ISSUE_TOKEN'
           exit 1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Fetch PR and post to consumer issue
         if: ${{ steps.pat.outputs.has_pat == 'true' }}
@@ -64,11 +64,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONSUMER_PAT: ${{ secrets.DOGFOOD_NOTIFY_CONSUMER_TOKEN || secrets.RESTORMEL_KEYS_ISSUE_TOKEN }}
           DOGFOOD_NOTIFY_CONSUMER: ${{ vars.DOGFOOD_NOTIFY_CONSUMER }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_MODE: ${{ inputs.mode }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          N="${{ inputs.pr_number }}"
-          MODE="${{ inputs.mode }}"
-          REPO="${{ github.repository }}"
+          N="${INPUT_PR_NUMBER}"
+          MODE="${INPUT_MODE}"
+          if [[ ! "$N" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid PR number input"
+            exit 1
+          fi
+          if [[ "$MODE" != "merged" && "$MODE" != "opened" ]]; then
+            echo "::error::Invalid mode input"
+            exit 1
+          fi
           # Use REST API — gh pr view JSON often has empty headRepository.nameWithOwner after merge.
           gh api "repos/${REPO}/pulls/${N}" > /tmp/pr.json
           BASE=$(jq -r .base.ref /tmp/pr.json)

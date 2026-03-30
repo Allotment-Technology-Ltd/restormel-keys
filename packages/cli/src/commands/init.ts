@@ -9,9 +9,8 @@ export function registerInit(program: Command): void {
     .command("init")
     .description("Detect framework, prompt providers/storage, generate config, suggest packages")
     .action(async () => {
-      const cwd = process.cwd();
-      const detected = await detectFramework(cwd);
-      const existing = await readConfig(cwd);
+      const detected = await detectFramework();
+      const existing = await readConfig();
 
       console.log(chalk.cyan("Restormel Keys — init"));
       console.log("");
@@ -31,7 +30,7 @@ export function registerInit(program: Command): void {
         framework: detected.id,
         providers: existing?.providers ?? [],
       };
-      await writeConfig(cwd, config);
+      await writeConfig(config);
       console.log(chalk.green("Wrote"), CONFIG_FILENAME);
       console.log(chalk.gray("Next: keys add <provider> to add keys, keys doctor to check setup."));
     });

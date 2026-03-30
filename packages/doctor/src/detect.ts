@@ -4,7 +4,7 @@
  */
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
-import { join } from "path";
+import { resolve, sep } from "path";
 
 export type FrameworkId = "next" | "react" | "sveltekit" | "astro" | "none";
 
@@ -24,6 +24,15 @@ const NEXT_APP_ROUTER_MARKERS = ["app/layout.tsx", "app/layout.js", "app/page.ts
 
 const CORE = ["@restormel/keys"] as const;
 
+function resolveInProject(...segments: string[]): string {
+  const base = resolve(process.cwd());
+  const target = resolve(base, ...segments);
+  if (target !== base && !target.startsWith(`${base}${sep}`)) {
+    throw new Error("Path escapes project root");
+  }
+  return target;
+}
+
 function withPackages(
   id: FrameworkId,
   name: string,
@@ -39,8 +48,19 @@ function withPackages(
   };
 }
 
-export async function detectFramework(cwd: string): Promise<DetectedFramework> {
-  const pkgPath = join(cwd, "package.json");
+export async function detectFramework(): Promise<DetectedFramework> {
+  let pkgPath: string;
+  try {
+    pkgPath = resolveInProject("package.json");
+  } catch {
+    return {
+      id: "none",
+      name: "None",
+      corePackages: [],
+      optionalUiPackages: [],
+      packagePaths: [],
+    };
+  }
   if (!existsSync(pkgPath)) {
     return {
       id: "none",
@@ -66,7 +86,13 @@ export async function detectFramework(cwd: string): Promise<DetectedFramework> {
   const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
   if (deps["next"]) {
-    const hasAppRouter = NEXT_APP_ROUTER_MARKERS.some((m) => existsSync(join(cwd, m)));
+    const hasAppRouter = NEXT_APP_ROUTER_MARKERS.some((m) => {
+      try {
+        return existsSync(resolveInProject(m));
+      } catch {
+        return false;
+      }
+    });
     return withPackages("next", hasAppRouter ? "Next.js (App Router)" : "Next.js", {
       hasAppRouter,
       optionalUi: ["@restormel/keys-react", "@restormel/keys-elements"],

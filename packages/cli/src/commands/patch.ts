@@ -2,7 +2,6 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { spawn } from "node:child_process";
 
 type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
@@ -16,22 +15,22 @@ const RESTORMEL_PACKAGES = [
   "@restormel/keys-cli",
 ] as const;
 
-function detectPackageManager(cwd: string): PackageManager {
-  if (existsSync(join(cwd, "pnpm-lock.yaml"))) return "pnpm";
-  if (existsSync(join(cwd, "yarn.lock"))) return "yarn";
-  if (existsSync(join(cwd, "bun.lockb")) || existsSync(join(cwd, "bun.lock"))) return "bun";
+function detectPackageManager(): PackageManager {
+  const has = (name: string): boolean => existsSync(name);
+  if (has("pnpm-lock.yaml")) return "pnpm";
+  if (has("yarn.lock")) return "yarn";
+  if (has("bun.lockb") || has("bun.lock")) return "bun";
   return "npm";
 }
 
-function isPnpmWorkspaceRoot(cwd: string): boolean {
-  return existsSync(join(cwd, "pnpm-workspace.yaml"));
+function isPnpmWorkspaceRoot(): boolean {
+  return existsSync("pnpm-workspace.yaml");
 }
 
-async function readPackageJson(cwd: string): Promise<Record<string, unknown> | null> {
-  const pkgPath = join(cwd, "package.json");
-  if (!existsSync(pkgPath)) return null;
+async function readPackageJson(): Promise<Record<string, unknown> | null> {
+  if (!existsSync("package.json")) return null;
   try {
-    return JSON.parse(await readFile(pkgPath, "utf-8")) as Record<string, unknown>;
+    return JSON.parse(await readFile("package.json", "utf-8")) as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -112,10 +111,10 @@ async function updatePackages(
   return 0;
 }
 
-async function verifyCatalog(baseUrl: string): Promise<{ ok: boolean; details: string }> {
-  const normalized = baseUrl.replace(/\/$/, "");
+async function verifyCatalog(): Promise<{ ok: boolean; details: string }> {
+  const endpoint = new URL("/keys/dashboard/api/catalog?limit=1", "https://restormel.dev");
   try {
-    const res = await fetch(`${normalized}/keys/dashboard/api/catalog?limit=1`);
+    const res = await fetch(endpoint);
     if (!res.ok) return { ok: false, details: `HTTP ${res.status}` };
     const body = (await res.json()) as { contractVersion?: string; providers?: unknown[] };
     const contract = body.contractVersion ?? "unknown";
@@ -130,14 +129,13 @@ export function registerPatch(program: Command): void {
   program
     .command("patch")
     .description("Apply latest Restormel package patch updates with minimal manual steps")
-    .option("--base-url <url>", "Restormel base URL to verify catalog endpoint", process.env.RESTORMEL_KEYS_BASE ?? "https://restormel.dev")
     .option("--dry-run", "Print upgrade commands without running them")
     .option("--no-verify-catalog", "Skip catalog endpoint verification")
-    .action(async (opts: { baseUrl: string; dryRun?: boolean; verifyCatalog?: boolean }) => {
+    .action(async (opts: { dryRun?: boolean; verifyCatalog?: boolean }) => {
       const cwd = process.cwd();
-      const pm = detectPackageManager(cwd);
-      const workspaceRoot = pm === "pnpm" && isPnpmWorkspaceRoot(cwd);
-      const pkg = await readPackageJson(cwd);
+      const pm = detectPackageManager();
+      const workspaceRoot = pm === "pnpm" && isPnpmWorkspaceRoot();
+      const pkg = await readPackageJson();
       const installed = collectInstalledRestormelPackages(pkg);
 
       if (!workspaceRoot && Object.keys(installed).length === 0) {
@@ -162,7 +160,7 @@ export function registerPatch(program: Command): void {
       }
 
       if (!opts.dryRun && opts.verifyCatalog !== false) {
-        const verify = await verifyCatalog(opts.baseUrl);
+        const verify = await verifyCatalog();
         if (verify.ok) {
           console.log(chalk.green("Catalog check passed:"), chalk.white(verify.details));
         } else {
