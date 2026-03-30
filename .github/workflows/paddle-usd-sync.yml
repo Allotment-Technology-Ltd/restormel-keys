@@ -18,6 +18,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  VERCEL_ORG_ID: team_y9JfrBNvlCGPnDO59ppuPpAU
+  VERCEL_PROJECT_ID: prj_ckFMpwWIVSuDUolzUKaLHCQMb2ek
 
 jobs:
   sync:
