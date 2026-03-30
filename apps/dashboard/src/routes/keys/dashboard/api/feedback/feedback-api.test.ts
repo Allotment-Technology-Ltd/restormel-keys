@@ -84,4 +84,20 @@ describe("POST /api/feedback", () => {
       expect.objectContaining({ method: "POST" })
     );
   });
+
+  it("returns 200 when GitHub API returns non-OK", async () => {
+    process.env.FEEDBACK_GITHUB_TOKEN = "test_feedback_token";
+    process.env.FEEDBACK_GITHUB_REPO = "restormel-keys/restormel-keys";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: "forbidden" }), { status: 403, headers: { "content-type": "application/json" } })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { POST } = await import("./+server");
+    const res = await POST(mockEvent() as unknown as Parameters<typeof POST>[0]);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
 });

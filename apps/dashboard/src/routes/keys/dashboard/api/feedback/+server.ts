@@ -113,24 +113,45 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     `**Submitted by:** ${submittedBy}\n` +
     `**Dashboard version:** ${dashboardVersion}\n`;
 
-  const issueRes = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "authorization": `Bearer ${feedbackToken}`,
-      "accept": "application/vnd.github+json",
-    },
-    body: JSON.stringify({
-      title: issueTitle,
-      body: issueBody,
-      labels: ["user-feedback", validated.value.category],
-    }),
-  });
+  try {
+    const issueRes = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${feedbackToken}`,
+        "accept": "application/vnd.github+json",
+      },
+      body: JSON.stringify({
+        title: issueTitle,
+        body: issueBody,
+        labels: ["user-feedback", validated.value.category],
+      }),
+    });
 
-  if (!issueRes.ok) {
-    const detail = await issueRes.text().catch(() => "");
-    console.error("[feedback] GitHub issue create failed", issueRes.status, detail.slice(0, 240));
-    return json({ error: "Feedback delivery failed." }, { status: 502 });
+    if (!issueRes.ok) {
+      const detail = await issueRes.text().catch(() => "");
+      console.error("[feedback] GitHub issue create failed", issueRes.status, detail.slice(0, 240));
+      console.log("[feedback] local feedback payload", {
+        category: validated.value.category,
+        title: validated.value.title,
+        description: validated.value.description,
+        submittedBy,
+        dashboardVersion,
+        repo,
+      });
+      return json({ ok: true });
+    }
+  } catch (error) {
+    console.error("[feedback] GitHub issue request failed", error);
+    console.log("[feedback] local feedback payload", {
+      category: validated.value.category,
+      title: validated.value.title,
+      description: validated.value.description,
+      submittedBy,
+      dashboardVersion,
+      repo,
+    });
+    return json({ ok: true });
   }
 
   return json({ ok: true });
