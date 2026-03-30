@@ -6,6 +6,8 @@
   import { onMount } from "svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
+  import FeedbackWidget from "$lib/components/FeedbackWidget.svelte";
+  import { openFeedbackWidget } from "$lib/stores/feedback-widget";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
@@ -127,6 +129,16 @@
           </section>
         {/each}
       </nav>
+      {#if user}
+        <div class="feedback-nav-wrap">
+          <button type="button" class="feedback-nav-btn" on:click={openFeedbackWidget}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="feedback-icon">
+              <path d="M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 16.5H10l-4.6 3.9c-.5.4-1.2 0-1.2-.7v-3.2H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5Zm0 1a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h.8a.5.5 0 0 1 .5.5v2.6L9.4 15.7a.5.5 0 0 1 .3-.1h9.3a.5.5 0 0 0 .5-.5V6a.5.5 0 0 0-.5-.5H5Z" />
+            </svg>
+            <span>Feedback</span>
+          </button>
+        </div>
+      {/if}
       <div class="sidebar-footer">
         <button
           type="button"
@@ -207,6 +219,9 @@
       </main>
     </div>
   </div>
+  {#if user}
+    <FeedbackWidget />
+  {/if}
 {/if}
 
 <style>
@@ -324,8 +339,37 @@
     white-space: nowrap;
   }
   .sidebar-footer {
+    margin-top: var(--space-2);
+    padding: var(--space-3) var(--space-3) 0;
+  }
+  .feedback-nav-wrap {
     margin-top: auto;
     padding: var(--space-3) var(--space-3) 0;
+  }
+  .feedback-nav-btn {
+    width: 100%;
+    border: 1px dashed var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: transparent;
+    color: var(--rm-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    text-align: left;
+  }
+  .feedback-nav-btn:hover {
+    color: var(--rm-text);
+    border-color: var(--rm-muted);
+    background: var(--rm-surface);
+  }
+  .feedback-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: currentColor;
+    flex: 0 0 auto;
   }
   .sidebar-nav-toggle {
     width: 100%;

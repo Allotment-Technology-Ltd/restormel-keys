@@ -40,12 +40,13 @@
 
     <div class="hero-ctas">
       <a
-        href="/keys/dashboard"
+        href="/keys/dashboard/login"
         class="btn btn-primary btn-cta-hero"
         on:click={trackSignupClick}
       >
         Start free — first 50 signups get 12 months of Pro
       </a>
+      <a href="/keys/docs" class="hero-docs-link">Browse the docs →</a>
     </div>
   </div>
 </section>
@@ -132,7 +133,7 @@
     font-weight: var(--font-medium);
   }
   .btn-primary {
-    background: var(--rm-sage);
+    background: var(--path-blue);
     color: var(--rm-bg);
   }
   .btn-primary:hover {
@@ -149,6 +150,17 @@
   .btn-cta-hero:hover {
     filter: brightness(1.1);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+  .hero-docs-link {
+    display: inline-block;
+    margin-top: var(--space-2);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    text-decoration: none;
+  }
+  .hero-docs-link:hover {
+    color: var(--rm-text);
+    text-decoration: underline;
   }
   @media (max-width: 480px) {
     .hero-ctas {

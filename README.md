@@ -55,7 +55,7 @@ pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
 
 Use `KeysProvider`, `KeyManager`, `ModelSelector` in a client component; fetch keys from your API and pass config. See [apps/demo-next](apps/demo-next) (Next.js) or [apps/demo-svelte](apps/demo-svelte) (SvelteKit) for full examples.
 
-**With Svelte (Phase 5 UI — when `@restormel/keys-svelte` is on npm):**
+**With Svelte:**
 
 ```bash
 pnpm add @restormel/keys @restormel/keys-svelte

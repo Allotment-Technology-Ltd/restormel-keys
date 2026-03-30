@@ -4,6 +4,8 @@ import type { RequestHandler } from "./$types";
 export const GET: RequestHandler = async () => {
   const dbUrl = process.env.DATABASE_URL;
   const neonAuthUrl = process.env.NEON_AUTH_BASE_URL;
+  const feedbackToken = process.env.FEEDBACK_GITHUB_TOKEN;
+  const feedbackRepo = process.env.FEEDBACK_GITHUB_REPO ?? "restormel-keys/restormel-keys";
 
   let dbStatus = "not_configured";
   if (dbUrl) {
@@ -22,5 +24,7 @@ export const GET: RequestHandler = async () => {
     service: "keys-dashboard",
     db: dbStatus,
     neonAuth: neonAuthUrl ? "configured" : "not_configured",
+    feedbackGitHubToken: feedbackToken ? "configured" : "not_configured",
+    feedbackGitHubRepo: feedbackRepo,
   });
 };

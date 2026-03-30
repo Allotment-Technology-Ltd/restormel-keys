@@ -24,9 +24,13 @@
 
   const pkgKeys = "@restormel/keys";
   const pkgSvelte = "@restormel/keys-svelte";
+  const pkgReact = "@restormel/keys-react";
+  const pkgElements = "@restormel/keys-elements";
 
-  const svelteServerCode = `// src/routes/api/chat/+server.ts (SvelteKit)
+  const svelteInstall = `pnpm add ${pkgKeys} ${pkgSvelte}`;
+  const svelteCode = `// src/routes/api/chat/+server.ts (SvelteKit)
 import { createResolveMiddleware } from "${pkgKeys}";
+import { KeyManager } from "${pkgSvelte}";
 
 const resolve = createResolveMiddleware({
   providers: ["openai", "anthropic"],
@@ -48,53 +52,47 @@ export async function POST({ request }) {
     body: JSON.stringify({ model, messages }),
   });
   return new Response(JSON.stringify(await res.json()));
-}`;
+}
 
-  const svelteUiCode = `<!-- src/routes/settings/+page.svelte -->
-<script>
-  import { KeyManager } from "${pkgSvelte}";
+// src/routes/settings/+page.svelte
+<script lang="ts">
+  const user = { id: "u_123" };
+  const keys = {} as unknown;
 <\/script>
 
 <KeyManager
   keys={keys}
-  onKeyAdded={handleAdd}
   userId={user.id}
+  onKeyAdded={(event) => console.log("added", event.detail)}
 />`;
 
-  const nextServerCode = `// app/api/chat/route.ts (Next.js App Router)
-import { createResolveMiddleware } from "${pkgKeys}";
+  const nextInstall = `pnpm add ${pkgKeys} ${pkgReact} ${pkgElements}`;
+  const nextCode = `"use client";
+import { createKeys } from "${pkgKeys}";
+import { KeysProvider, KeyManager } from "${pkgReact}";
 
-const resolve = createResolveMiddleware({
-  providers: ["openai", "anthropic"],
-});
+const keys = createKeys({ routing: { defaultProvider: "openai" } });
 
-export async function POST(req: Request) {
-  const { model, messages } = await req.json();
-  const { provider } = await resolve(model);
-
-  const apiKey =
-    provider.type === "openai" ? process.env.OPENAI_API_KEY :
-    provider.type === "anthropic" ? process.env.ANTHROPIC_API_KEY :
-    undefined;
-  if (!apiKey) return new Response("Missing provider access", { status: 500 });
-
-  const res = await fetch(provider.chatUrl, {
-    method: "POST",
-    headers: { "Authorization": \`Bearer \${apiKey}\` },
-    body: JSON.stringify({ model, messages }),
-  });
-  return Response.json(await res.json());
+export function SettingsKeyManager() {
+  return (
+    <KeysProvider keys={keys}>
+      <KeyManager userId="user_123" />
+    </KeysProvider>
+  );
 }`;
 
-  const nextUiCode = `// React UI components (@restormel/keys-react) are in active development.
-// Use the headless core (@restormel/keys) for server-side routing today.
-// Build your own settings UI or use @restormel/keys-elements (Web Components) when available.`;
+  const headlessInstall = `pnpm add ${pkgKeys}`;
+  const headlessCode = `import { createKeys, openaiProvider, anthropicProvider } from "${pkgKeys}";
 
-  let activeFramework: "sveltekit" | "nextjs" = "sveltekit";
-  $: serverCode = activeFramework === "sveltekit" ? svelteServerCode : nextServerCode;
-  $: uiCode = activeFramework === "sveltekit" ? svelteUiCode : nextUiCode;
-  $: uiLabel = activeFramework === "sveltekit" ? "Svelte Component" : "React (coming soon)";
-  $: uiLang = activeFramework === "sveltekit" ? "svelte" : "ts";
+const keys = createKeys(
+  { routing: { defaultProvider: "openai" } },
+  { providers: [openaiProvider, anthropicProvider] }
+);
+
+const resolved = await keys.resolve("gpt-4o-mini");
+const estimate = keys.estimateCost("gpt-4o-mini", { inputTokens: 1200, outputTokens: 350 });
+
+console.log(resolved.provider.type, estimate.totalUsd);`;
 </script>
 
 <svelte:head>
@@ -111,6 +109,34 @@ export async function POST(req: Request) {
   {:else}
     <VariantA />
   {/if}
+
+  <section class="section section-intents section-alt" aria-labelledby="intent-heading">
+    <div class="container">
+      <h2 id="intent-heading" class="section-title">What brings you here?</h2>
+      <div class="intent-grid">
+        <a class="intent-card" href="/keys/docs/walkthrough">
+          <strong>Starting a new project</strong>
+          <span>Get routing + first resolve in 15-20 minutes.</span>
+        </a>
+        <a class="intent-card" href="/keys/docs/walkthrough/migration-paths">
+          <strong>Adding control to an existing stack</strong>
+          <span>OpenRouter/Vercel/Portkey + Restormel control-plane path.</span>
+        </a>
+        <a class="intent-card" href="/keys/docs/walkthrough/phase-5-ui">
+          <strong>Adding BYOK to a SaaS</strong>
+          <span>KeyManager + policy-bounded model choice for end users.</span>
+        </a>
+        <a class="intent-card" href="/keys/docs/integrations">
+          <strong>CLI, agent, or IDE path</strong>
+          <span>Developer tooling path (CLI, MCP, AAIF).</span>
+        </a>
+        <a class="intent-card" href="/keys/docs/walkthrough/verification-strategy">
+          <strong>Running platform operations</strong>
+          <span>Lifecycle, readiness, coverage, CI/CD, governance.</span>
+        </a>
+      </div>
+    </div>
+  </section>
 
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
@@ -162,33 +188,52 @@ export async function POST(req: Request) {
   <section class="section section-code section-alt" aria-labelledby="code-heading">
     <div class="container">
       <h2 id="code-heading" class="section-title">Add it to your stack</h2>
-      <p class="section-intro">One route handler and, if you want end-user model choice, one settings page. Works with your existing gateway or direct provider keys.</p>
+      <p class="section-intro">Choose your integration path. Tabs are CSS-only, so this section renders cleanly without client JavaScript.</p>
 
-      <div class="code-framework-tabs" role="tablist" aria-label="Framework">
-        <button
-          type="button"
-          class="code-fw-tab"
-          role="tab"
-          aria-selected={activeFramework === "sveltekit"}
-          on:click={() => (activeFramework = "sveltekit")}
-        >SvelteKit</button>
-        <button
-          type="button"
-          class="code-fw-tab"
-          role="tab"
-          aria-selected={activeFramework === "nextjs"}
-          on:click={() => (activeFramework = "nextjs")}
-        >Next.js / React</button>
-      </div>
+      <div class="code-tabs">
+        <input id="tab-sveltekit" class="code-tab-input" type="radio" name="framework-tab" checked />
+        <input id="tab-nextjs" class="code-tab-input" type="radio" name="framework-tab" />
+        <input id="tab-headless" class="code-tab-input" type="radio" name="framework-tab" />
 
-      <div class="code-split">
-        <div class="code-pane">
-          <span class="code-label">Server</span>
-          <CodeBlock language="ts" code={serverCode} />
+        <div class="code-framework-tabs" role="tablist" aria-label="Framework snippets">
+          <label class="code-fw-tab code-fw-tab-sveltekit" for="tab-sveltekit" role="tab">SvelteKit</label>
+          <label class="code-fw-tab code-fw-tab-nextjs" for="tab-nextjs" role="tab">Next.js / React</label>
+          <label class="code-fw-tab code-fw-tab-headless" for="tab-headless" role="tab">Headless (any framework)</label>
         </div>
-        <div class="code-pane">
-          <span class="code-label">{uiLabel}</span>
-          <CodeBlock language={uiLang} code={uiCode} />
+
+        <div class="code-tab-panels">
+          <section class="code-tab-panel panel-sveltekit" aria-label="SvelteKit example">
+            <div class="code-pane">
+              <span class="code-label">Install</span>
+              <CodeBlock language="bash" code={svelteInstall} />
+            </div>
+            <div class="code-pane">
+              <span class="code-label">Example</span>
+              <CodeBlock language="ts" code={svelteCode} />
+            </div>
+          </section>
+
+          <section class="code-tab-panel panel-nextjs" aria-label="Next.js and React example">
+            <div class="code-pane">
+              <span class="code-label">Install</span>
+              <CodeBlock language="bash" code={nextInstall} />
+            </div>
+            <div class="code-pane">
+              <span class="code-label">Example</span>
+              <CodeBlock language="tsx" code={nextCode} />
+            </div>
+          </section>
+
+          <section class="code-tab-panel panel-headless" aria-label="Headless core example">
+            <div class="code-pane">
+              <span class="code-label">Install</span>
+              <CodeBlock language="bash" code={headlessInstall} />
+            </div>
+            <div class="code-pane">
+              <span class="code-label">Example</span>
+              <CodeBlock language="ts" code={headlessCode} />
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -198,7 +243,7 @@ export async function POST(req: Request) {
     <div class="container">
       <h2 id="frameworks-heading" class="section-title">Fits your framework</h2>
       <p class="frameworks-copy">
-        <strong>SvelteKit</strong> is the primary path with native Svelte 5 components. <strong>Next.js / React</strong>: headless core today — React UI components in active development. <strong>Web Components</strong> for Astro, vanilla HTML, or any framework. Same API; no Docker, Redis, or proxy.
+        <strong>SvelteKit</strong>, <strong>Next.js / React</strong>, and <strong>Web Components</strong> are supported package paths. You can also run fully headless in any framework with <code>@restormel/keys</code>. Same API; no Docker, Redis, or proxy.
       </p>
       <ul class="framework-list" aria-label="Supported frameworks">
         <li><span class="fw-pill fw-pill-active">SvelteKit</span></li>
@@ -563,10 +608,38 @@ export async function POST(req: Request) {
   }
   .code-framework-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-1);
     margin: 0 0 var(--space-4);
   }
+  .code-tab-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .code-tab-panels {
+    display: block;
+  }
+  .code-tab-panel {
+    display: none;
+  }
+  #tab-sveltekit:checked ~ .code-tab-panels .panel-sveltekit,
+  #tab-nextjs:checked ~ .code-tab-panels .panel-nextjs,
+  #tab-headless:checked ~ .code-tab-panels .panel-headless {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  @media (max-width: 900px) {
+    #tab-sveltekit:checked ~ .code-tab-panels .panel-sveltekit,
+    #tab-nextjs:checked ~ .code-tab-panels .panel-nextjs,
+    #tab-headless:checked ~ .code-tab-panels .panel-headless {
+      grid-template-columns: 1fr;
+    }
+  }
   .code-fw-tab {
+    display: inline-flex;
+    align-items: center;
     font-family: var(--rm-font-ui);
     font-size: var(--text-sm);
     padding: var(--space-2) var(--space-4);
@@ -581,7 +654,9 @@ export async function POST(req: Request) {
     color: var(--rm-text);
     border-color: var(--rm-sage);
   }
-  .code-fw-tab[aria-selected="true"] {
+  #tab-sveltekit:checked ~ .code-framework-tabs .code-fw-tab-sveltekit,
+  #tab-nextjs:checked ~ .code-framework-tabs .code-fw-tab-nextjs,
+  #tab-headless:checked ~ .code-framework-tabs .code-fw-tab-headless {
     background: var(--rm-sage);
     color: var(--rm-bg);
     border-color: var(--rm-sage);
@@ -590,5 +665,39 @@ export async function POST(req: Request) {
     background: var(--rm-sage);
     color: var(--rm-bg);
     border-color: var(--rm-sage);
+  }
+  .intent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .intent-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-3);
+    text-decoration: none;
+  }
+  .intent-card strong {
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+  }
+  .intent-card span {
+    color: var(--rm-muted);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+  }
+  @media (max-width: 960px) {
+    .intent-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .intent-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

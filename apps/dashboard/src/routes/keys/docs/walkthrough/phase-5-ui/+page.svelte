@@ -101,10 +101,6 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
 
   <p>This phase puts Restormel's embeddable components into your app so end-users can select models and (optionally) manage their own provider credentials. By the end, your app shows a ModelSelector filtered by your policies and optionally a KeyManager for BYOK, both wired to your backend.</p>
 
-  <div class="callout callout-note">
-    <strong>Package availability</strong> — The UI packages (<code>@restormel/keys-svelte</code>, <code>@restormel/keys-react</code>, <code>@restormel/keys-elements</code>) may not be published to npm yet and can return <strong>404</strong> from <code>npm view</code>. Before following the install steps below, verify: <code>npm view @restormel/keys-svelte version</code> (and the same for <code>keys-react</code>, <code>keys-elements</code>). If any return 404, use the <strong>headless path</strong> until they are published: keep <code>@restormel/keys</code> only, implement a server-side allowed-models proxy (e.g. <code>GET /api/allowed-models</code>) backed by Restormel evaluate, and use your own model picker UI (or copy patterns from the repo demos). See <strong>docs/reference/npm-packages.md</strong> in the repo for verify-before-install and 404 handling.
-  </div>
-
   <WalkthroughStep stepId="5.1" title="Step 5.1 — Decide what to embed" defaultOpen={true} {phaseSlug}>
   <p>Not every app needs every component. Use this decision matrix:</p>
   <table class="doc-table">

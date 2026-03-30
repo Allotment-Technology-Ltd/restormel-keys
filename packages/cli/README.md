@@ -25,7 +25,7 @@ npx @restormel/validate
 | `keys add <provider>` | Prompt for API key, validate, store (openai \| anthropic \| google) |
 | `keys list` | Show stored keys (masked) |
 | `keys validate` | Wrapper for `restormel-validate` (exit 1 if invalid — CI-friendly) |
-| `keys doctor` | Wrapper for `restormel-doctor` (setup/health checks) |
+| `keys doctor [--report]` | Wrapper for `restormel-doctor` (setup/health checks); `--report` prints a pre-filled GitHub issue URL when checks fail |
 | `keys estimate <model> --input <n> --output <n>` | Cost estimate for a model |
 | `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
