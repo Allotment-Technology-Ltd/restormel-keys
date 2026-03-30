@@ -126,3 +126,27 @@ To disable checkout quickly:
 - Unset `PUBLIC_PADDLE_CLIENT_TOKEN` (pricing page will not initialize Paddle).
 - Or remove/blank `PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP` (button will show an error on click).
 
+## 8. GBP-anchored USD automation
+
+To keep USD aligned with FX while GBP remains canonical, run:
+
+```bash
+# report only
+node scripts/sync-paddle-usd-prices.mjs
+
+# apply: create/reuse USD Paddle prices, update Vercel prod env
+PADDLE_API_KEY="<paddle_api_key_placeholder>" \
+VERCEL_TOKEN="<vercel_token_placeholder>" \
+node scripts/sync-paddle-usd-prices.mjs --apply --redeploy
+```
+
+What it does:
+
+- Uses canonical GBP minor units (`CANONICAL_PRO_MONTHLY_GBP_MINOR`, `CANONICAL_PRO_ANNUAL_GBP_MINOR`).
+- Fetches GBP→USD rate (default `frankfurter.app`) and applies rounding policy.
+- Creates new USD prices when drift exceeds threshold.
+- Updates Vercel production vars:
+  - `PADDLE_PRICE_KEYS_PRO_MONTHLY_USD`
+  - `PADDLE_PRICE_KEYS_PRO_ANNUAL_USD`
+- Optional production redeploy (`--redeploy`) so pricing UI picks new IDs.
+

@@ -1,0 +1,59 @@
+# Keep USD Paddle prices aligned to canonical GBP pricing.
+# GBP is the source of truth; USD is derived via FX and rounding policy.
+name: Paddle USD FX sync
+
+on:
+  schedule:
+    - cron: "17 7 * * 1" # Mondays at 07:17 UTC
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply changes (create price IDs + update Vercel env)"
+        type: boolean
+        default: false
+      redeploy:
+        description: "Redeploy production after env update"
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+      - name: Dry-run report (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.apply != true
+        env:
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+        run: node scripts/sync-paddle-usd-prices.mjs
+      - name: Apply sync + redeploy (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        env:
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CANONICAL_PRO_MONTHLY_GBP_MINOR: "1000"
+          CANONICAL_PRO_ANNUAL_GBP_MINOR: "19200"
+          USD_ROUNDING_CENTS: "100"
+          USD_MIN_DRIFT_CENTS: "100"
+        run: |
+          if [ "${{ inputs.redeploy }}" = "true" ]; then
+            node scripts/sync-paddle-usd-prices.mjs --apply --redeploy
+          else
+            node scripts/sync-paddle-usd-prices.mjs --apply
+          fi
+      - name: Apply sync + redeploy (scheduled)
+        if: github.event_name == 'schedule'
+        env:
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CANONICAL_PRO_MONTHLY_GBP_MINOR: "1000"
+          CANONICAL_PRO_ANNUAL_GBP_MINOR: "19200"
+          USD_ROUNDING_CENTS: "100"
+          USD_MIN_DRIFT_CENTS: "100"
+        run: node scripts/sync-paddle-usd-prices.mjs --apply --redeploy

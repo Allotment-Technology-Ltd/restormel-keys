@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-03-30)
 
+**Paddle USD FX automation (GBP canonical):** Added [scripts/sync-paddle-usd-prices.mjs](scripts/sync-paddle-usd-prices.mjs) to derive USD Pro prices from canonical GBP minor units using FX + rounding, create new Paddle USD prices when drift exceeds threshold, update Vercel production USD price env vars, and optionally redeploy. Scheduled/manual workflow: [paddle-usd-sync.yml](.github/workflows/paddle-usd-sync.yml). Runbook updated: [docs/runbooks/paddle-go-live.md](docs/runbooks/paddle-go-live.md).
+
+## Repo (2026-03-30)
+
 **npm publish train — `@restormel/keys-elements` and `@restormel/keys-react`:** [publish.yml](.github/workflows/publish.yml) now tests, builds, and publishes both packages after `keys-svelte` and before `aaif`. Standalone recovery workflows: [publish-keys-elements.yml](.github/workflows/publish-keys-elements.yml), [publish-keys-react.yml](.github/workflows/publish-keys-react.yml). [ci.yml](.github/workflows/ci.yml) test job builds the full keys → svelte → elements → react chain before dashboard check. Local preflight: [scripts/verify-ui-packages.sh](scripts/verify-ui-packages.sh). README publish-order line updated.
 
 ## Repo (2026-03-29)
