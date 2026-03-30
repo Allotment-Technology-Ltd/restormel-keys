@@ -1,6 +1,6 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
-# Order: @restormel/keys → @restormel/keys-svelte → @restormel/aaif → @restormel/mcp
-#   → doctor → validate → keys-cli.
+# Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
+#   → @restormel/aaif → @restormel/mcp → doctor → validate → keys-cli.
 # keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
 # does not block publishing keys-svelte (previously aaif ran first and aborted the job).
 # pnpm version must match root package.json "packageManager" (9.0.0).
@@ -48,6 +48,26 @@ jobs:
         run: bash scripts/smoke-keys-svelte-republish.sh
       - name: Publish @restormel/keys-svelte to npm
         run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # --- @restormel/keys-elements (Web Components — depends on keys + keys-svelte) ---
+      - name: Test @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements test
+      - name: Build @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements run build
+      - name: Publish @restormel/keys-elements to npm
+        run: pnpm --filter @restormel/keys-elements publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # --- @restormel/keys-react (React wrappers — depends on keys + keys-elements; peer react ≥18) ---
+      - name: Test @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react test
+      - name: Build @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react run build
+      - name: Publish @restormel/keys-react to npm
+        run: pnpm --filter @restormel/keys-react publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

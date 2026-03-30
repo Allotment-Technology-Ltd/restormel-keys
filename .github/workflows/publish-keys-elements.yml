@@ -1,0 +1,33 @@
+# One-off or recovery: publish @restormel/keys-elements without running the full release train.
+name: Publish keys-elements
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build dependencies (keys, keys-svelte)
+        run: |
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/keys-svelte run build
+      - name: Test @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements test
+      - name: Build @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements run build
+      - name: Publish @restormel/keys-elements to npm
+        run: pnpm --filter @restormel/keys-elements publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

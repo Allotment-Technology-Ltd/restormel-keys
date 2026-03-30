@@ -98,7 +98,7 @@ Release process for npm packages:
 
 If a PR changes any publishable package under `packages/` (for example `@restormel/keys`, `@restormel/keys-cli`, `@restormel/validate`, `@restormel/doctor`, `@restormel/mcp`, `@restormel/keys-svelte`, `@restormel/aaif`), you must include a release-tag follow-up in the rollout plan or those changes will not ship to npm.
 
-The publish train runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/keys-svelte`** (`pnpm publish`) → **`@restormel/aaif`** (`pnpm publish`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli.
+The publish train runs in this order: **`@restormel/keys`** (`npm publish` from `packages/core`) → **`@restormel/keys-svelte`** (`pnpm publish`) → **`@restormel/keys-elements`** (`pnpm publish`) → **`@restormel/keys-react`** (`pnpm publish`) → **`@restormel/aaif`** (`pnpm publish`) → **`@restormel/mcp`** (`pnpm publish`, rewrites `workspace:*` on keys) → doctor → validate → keys-cli.
 
 **keys-cli**, **validate**, and **mcp** use **`pnpm publish`** so `@restormel/keys` becomes a semver range in the consumer tarball (not `workspace:*`). Do not publish the Vue wrapper. Test files are not included in `files` and stay in the repo.
 

@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-03-30)
+
+**npm publish train — `@restormel/keys-elements` and `@restormel/keys-react`:** [publish.yml](.github/workflows/publish.yml) now tests, builds, and publishes both packages after `keys-svelte` and before `aaif`. Standalone recovery workflows: [publish-keys-elements.yml](.github/workflows/publish-keys-elements.yml), [publish-keys-react.yml](.github/workflows/publish-keys-react.yml). [ci.yml](.github/workflows/ci.yml) test job builds the full keys → svelte → elements → react chain before dashboard check. Local preflight: [scripts/verify-ui-packages.sh](scripts/verify-ui-packages.sh). README publish-order line updated.
+
 ## Repo (2026-03-29)
 
 **Dashboard UX overhaul (hosted app):** Delivered a full plain-language and operator-clarity pass across the Keys dashboard, including:
