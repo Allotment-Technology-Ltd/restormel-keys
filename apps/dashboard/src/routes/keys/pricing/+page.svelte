@@ -9,19 +9,20 @@
     paddleToken: string;
     proPriceIdMonthlyGbp: string;
     proPriceIdMonthlyUsd: string;
+    proMonthlyPriceDisplayGbp: string;
+    proMonthlyPriceDisplayUsd: string;
   };
   let billingCurrency: "gbp" | "usd" = "gbp";
-  const proPriceMonthly = {
-    gbp: "£10",
-    usd: "$24",
-  } as const;
   $: canUseGbp = Boolean(data.proPriceIdMonthlyGbp);
   $: canUseUsd = Boolean(data.proPriceIdMonthlyUsd);
   $: selectedPriceId =
     billingCurrency === "usd"
       ? (data.proPriceIdMonthlyUsd || data.proPriceIdMonthlyGbp)
       : (data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd);
-  $: priceDisplay = billingCurrency === "usd" ? proPriceMonthly.usd : proPriceMonthly.gbp;
+  $: priceDisplay =
+    billingCurrency === "usd"
+      ? data.proMonthlyPriceDisplayUsd
+      : data.proMonthlyPriceDisplayGbp;
   $: checkoutCurrencyLabel = billingCurrency === "usd" ? "USD" : "GBP";
 
   function selectBillingCurrency(next: "gbp" | "usd") {
@@ -106,7 +107,7 @@
             </button>
           </div>
           <p class="tier-price">{priceDisplay}</p>
-          <p class="tier-period">/ month</p>
+          <p class="tier-period">/ month + tax</p>
           <ul class="tier-list">
             <li>Advanced routing controls</li>
             <li>Usage insights + cost tracking</li>
@@ -131,7 +132,7 @@
           >
             Upgrade to Pro ({checkoutCurrencyLabel})
           </button>
-          <p class="tier-hint">Opens Paddle checkout in {checkoutCurrencyLabel}. You’ll finish setup in the dashboard.</p>
+          <p class="tier-hint">Opens Paddle checkout in {checkoutCurrencyLabel}. Taxes are calculated at checkout.</p>
         </div>
       </div>
       <p class="tiers-anchor">Most developers start on Free and upgrade when they deploy.</p>
