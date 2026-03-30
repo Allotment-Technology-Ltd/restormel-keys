@@ -68,7 +68,7 @@ describe("POST /api/feedback", () => {
 
   it("returns 200 and calls GitHub API when valid and token configured", async () => {
     process.env.FEEDBACK_GITHUB_TOKEN = "test_feedback_token";
-    process.env.FEEDBACK_GITHUB_REPO = "restormel-keys/restormel-keys";
+    process.env.FEEDBACK_GITHUB_REPO = "Allotment-Technology-Ltd/restormel-keys";
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ id: 123 }), { status: 201, headers: { "content-type": "application/json" } })
     );
@@ -80,14 +80,14 @@ describe("POST /api/feedback", () => {
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.github.com/repos/restormel-keys/restormel-keys/issues",
+      "https://api.github.com/repos/Allotment-Technology-Ltd/restormel-keys/issues",
       expect.objectContaining({ method: "POST" })
     );
   });
 
   it("returns 200 when GitHub API returns non-OK", async () => {
     process.env.FEEDBACK_GITHUB_TOKEN = "test_feedback_token";
-    process.env.FEEDBACK_GITHUB_REPO = "restormel-keys/restormel-keys";
+    process.env.FEEDBACK_GITHUB_REPO = "Allotment-Technology-Ltd/restormel-keys";
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: "forbidden" }), { status: 403, headers: { "content-type": "application/json" } })
     );
@@ -99,5 +99,18 @@ describe("POST /api/feedback", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
+  });
+
+  it("returns 200 when repo format is invalid", async () => {
+    process.env.FEEDBACK_GITHUB_TOKEN = "test_feedback_token";
+    process.env.FEEDBACK_GITHUB_REPO = "invalid-format";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { POST } = await import("./+server");
+    const res = await POST(mockEvent() as unknown as Parameters<typeof POST>[0]);
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

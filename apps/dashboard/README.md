@@ -50,7 +50,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 | `DATABASE_URL` | Yes | Neon Postgres connection string |
 | `NEON_AUTH_BASE_URL` | Yes | Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env. |
 | `FEEDBACK_GITHUB_TOKEN` | Optional | GitHub PAT with `issues:write` for feedback issue creation from `/keys/dashboard/api/feedback`. If unset, feedback is logged locally and API still returns `200`. |
-| `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `restormel-keys/restormel-keys`. |
+| `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `Allotment-Technology-Ltd/restormel-keys`. |
 
 ### Dashboard UI feature flags (optional)
 

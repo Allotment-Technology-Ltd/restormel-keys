@@ -5,7 +5,7 @@ export const GET: RequestHandler = async () => {
   const dbUrl = process.env.DATABASE_URL;
   const neonAuthUrl = process.env.NEON_AUTH_BASE_URL;
   const feedbackToken = process.env.FEEDBACK_GITHUB_TOKEN;
-  const feedbackRepo = process.env.FEEDBACK_GITHUB_REPO ?? "restormel-keys/restormel-keys";
+  const feedbackRepo = process.env.FEEDBACK_GITHUB_REPO ?? "Allotment-Technology-Ltd/restormel-keys";
 
   let dbStatus = "not_configured";
   if (dbUrl) {

@@ -10,7 +10,7 @@ type FeedbackBody = {
   category?: unknown;
 };
 
-const FEEDBACK_GITHUB_REPO = "restormel-keys/restormel-keys";
+const FEEDBACK_GITHUB_REPO = "Allotment-Technology-Ltd/restormel-keys";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
 const sessionSubmissions = new Map<string, number[]>();
@@ -91,6 +91,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
   const feedbackToken = (process.env.FEEDBACK_GITHUB_TOKEN ?? "").trim();
   const repo = (process.env.FEEDBACK_GITHUB_REPO ?? FEEDBACK_GITHUB_REPO).trim();
+  if (!repo.includes("/")) {
+    console.error("[feedback] FEEDBACK_GITHUB_REPO must be owner/repo format.", { repo });
+    return json({ ok: true });
+  }
   const submittedBy = (locals.user.email ?? "").trim() || "anonymous";
 
   if (!feedbackToken) {
@@ -120,6 +124,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         "content-type": "application/json",
         "authorization": `Bearer ${feedbackToken}`,
         "accept": "application/vnd.github+json",
+        "x-github-api-version": "2022-11-28",
+        "user-agent": "restormel-keys-dashboard-feedback",
       },
       body: JSON.stringify({
         title: issueTitle,
