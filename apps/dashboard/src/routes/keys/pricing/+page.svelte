@@ -4,7 +4,31 @@
   import { initPaddleCheckout } from "$lib/paddle-checkout";
   import { browser } from "$app/environment";
 
-  export let data: { dashboardUrl: string; paddleToken: string; proPriceIdMonthlyGbp: string };
+  export let data: {
+    dashboardUrl: string;
+    paddleToken: string;
+    proPriceIdMonthlyGbp: string;
+    proPriceIdMonthlyUsd: string;
+  };
+  let billingCurrency: "gbp" | "usd" = "gbp";
+  const proPriceMonthly = {
+    gbp: "£10",
+    usd: "$24",
+  } as const;
+  $: canUseGbp = Boolean(data.proPriceIdMonthlyGbp);
+  $: canUseUsd = Boolean(data.proPriceIdMonthlyUsd);
+  $: selectedPriceId =
+    billingCurrency === "usd"
+      ? (data.proPriceIdMonthlyUsd || data.proPriceIdMonthlyGbp)
+      : (data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd);
+  $: priceDisplay = billingCurrency === "usd" ? proPriceMonthly.usd : proPriceMonthly.gbp;
+  $: checkoutCurrencyLabel = billingCurrency === "usd" ? "USD" : "GBP";
+
+  function selectBillingCurrency(next: "gbp" | "usd") {
+    if (next === "usd" && !canUseUsd) return;
+    if (next === "gbp" && !canUseGbp) return;
+    billingCurrency = next;
+  }
 
   onMount(() => {
     if (browser && data.paddleToken) {
@@ -61,7 +85,27 @@
           <p class="pro-badge">Most popular</p>
           <h3 class="tier-name">Pro</h3>
           <p class="tier-desc"><strong>Best for:</strong> shipping real AI products</p>
-          <p class="tier-price">$10</p>
+          <div class="currency-switch" role="group" aria-label="Billing currency">
+            <button
+              type="button"
+              class="currency-option"
+              aria-pressed={billingCurrency === "gbp"}
+              disabled={!canUseGbp}
+              onclick={() => selectBillingCurrency("gbp")}
+            >
+              GBP
+            </button>
+            <button
+              type="button"
+              class="currency-option"
+              aria-pressed={billingCurrency === "usd"}
+              disabled={!canUseUsd}
+              onclick={() => selectBillingCurrency("usd")}
+            >
+              USD
+            </button>
+          </div>
+          <p class="tier-price">{priceDisplay}</p>
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
             <li>Advanced routing controls</li>
@@ -77,12 +121,17 @@
             data-paddle-checkout
             data-tier="pro"
             data-billing-period="monthly"
-            data-price-id={data.proPriceIdMonthlyGbp}
-            onclick={() => window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "pro" })}
+            data-price-id={selectedPriceId}
+            onclick={() =>
+              window.rmCapture?.("upgrade_clicked", {
+                surface: "keys_pricing",
+                tier: "pro",
+                currency: checkoutCurrencyLabel,
+              })}
           >
-            Upgrade to Pro
+            Upgrade to Pro ({checkoutCurrencyLabel})
           </button>
-          <p class="tier-hint">Opens Paddle checkout. You’ll finish setup in the dashboard.</p>
+          <p class="tier-hint">Opens Paddle checkout in {checkoutCurrencyLabel}. You’ll finish setup in the dashboard.</p>
         </div>
       </div>
       <p class="tiers-anchor">Most developers start on Free and upgrade when they deploy.</p>
@@ -191,6 +240,38 @@
     font-weight: var(--font-semibold);
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+  .currency-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
+    padding: 0.2rem;
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface);
+  }
+  .currency-option {
+    min-width: 3.3rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: calc(var(--rm-radius) - 2px);
+    background: transparent;
+    color: var(--rm-muted);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .currency-option[aria-pressed="true"] {
+    background: var(--rm-sage);
+    color: var(--rm-bg);
+    border-color: var(--rm-sage);
+  }
+  .currency-option:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .tier-name {
     font-family: var(--rm-font-ui);

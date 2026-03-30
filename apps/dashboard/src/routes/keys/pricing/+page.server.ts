@@ -10,6 +10,7 @@ export const load: PageServerLoad = async ({ url }) => {
     process.env.PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP ??
     process.env.PADDLE_PRICE_KEYS_PRO_MONTHLY ??
     "";
+  const proPriceIdMonthlyUsd = process.env.PADDLE_PRICE_KEYS_PRO_MONTHLY_USD ?? "";
 
-  return { dashboardUrl, paddleToken, proPriceIdMonthlyGbp };
+  return { dashboardUrl, paddleToken, proPriceIdMonthlyGbp, proPriceIdMonthlyUsd };
 };

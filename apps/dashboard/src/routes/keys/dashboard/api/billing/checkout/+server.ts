@@ -6,6 +6,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { createCheckoutTransaction } from "$lib/server/billing/paddle";
+import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
   const uid = locals.user?.uid;
@@ -32,6 +33,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
   const origin = url.origin;
   const successUrl = `${origin}${DASHBOARD_BASE}?billing=success`;
   const cancelUrl = `${origin}/keys/pricing`;
+  const workspace = await getOrCreateDefaultWorkspace(uid);
 
   try {
     const result = await createCheckoutTransaction({
@@ -39,7 +41,12 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
       customerEmail: email,
       successUrl,
       cancelUrl,
-      customData: { uid, tier: body.tier ?? null, billingPeriod: body.billingPeriod ?? null },
+      customData: {
+        uid,
+        workspaceId: workspace.id,
+        tier: body.tier ?? null,
+        billingPeriod: body.billingPeriod ?? null,
+      },
     });
 
     return json({

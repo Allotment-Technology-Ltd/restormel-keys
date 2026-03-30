@@ -266,6 +266,80 @@ export async function setWorkspacePlan(params: {
   }
 }
 
+export async function findWorkspaceByPaddleSubscriptionId(subscriptionId: string): Promise<Workspace | null> {
+  const id = subscriptionId.trim();
+  if (!id) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan,
+           plan_expires_at AS "planExpiresAt"
+    FROM workspaces
+    WHERE paddle_subscription_id = ${id}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return rowToWorkspace({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    ownerUserId: r.ownerUserId,
+    createdAt: r.createdAt,
+    plan: r.plan,
+    planExpiresAt: r.planExpiresAt,
+  });
+}
+
+export async function findWorkspaceByPaddleCustomerId(customerId: string): Promise<Workspace | null> {
+  const id = customerId.trim();
+  if (!id) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, slug, owner_user_id AS "ownerUserId", created_at AS "createdAt", plan,
+           plan_expires_at AS "planExpiresAt"
+    FROM workspaces
+    WHERE paddle_customer_id = ${id}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return rowToWorkspace({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    ownerUserId: r.ownerUserId,
+    createdAt: r.createdAt,
+    plan: r.plan,
+    planExpiresAt: r.planExpiresAt,
+  });
+}
+
+export async function applyPaddleLifecycleUpdate(params: {
+  workspaceId: string;
+  plan: "free" | "pro";
+  paddleCustomerId?: string | null;
+  paddleTransactionId?: string | null;
+  paddleSubscriptionId?: string | null;
+  paddleSubscriptionStatus?: string | null;
+  markPlanEndedNow?: boolean;
+}): Promise<void> {
+  const sql = getSql();
+  const now = Date.now();
+  const planEndedAt = params.markPlanEndedNow ? now : null;
+  await sql`
+    UPDATE workspaces
+    SET plan = ${params.plan},
+        plan_updated_at = ${now},
+        plan_expires_at = ${params.plan === "pro" ? null : null},
+        plan_ended_at = ${params.plan === "pro" ? null : planEndedAt},
+        paddle_customer_id = COALESCE(${params.paddleCustomerId ?? null}, paddle_customer_id),
+        paddle_transaction_id = COALESCE(${params.paddleTransactionId ?? null}, paddle_transaction_id),
+        paddle_subscription_id = COALESCE(${params.paddleSubscriptionId ?? null}, paddle_subscription_id),
+        paddle_subscription_status = COALESCE(${params.paddleSubscriptionStatus ?? null}, paddle_subscription_status)
+    WHERE id = ${params.workspaceId}
+  `;
+}
+
 /** List projects for user (ownership via user_id; projects belong to user's workspace). */
 export async function listProjects(userId: string): Promise<Project[]> {
   const sql = getSql();

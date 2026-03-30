@@ -1,6 +1,6 @@
 /**
- * POST /api/billing/webhook — Paddle webhook (Phase 3 C2/C3).
- * Verifies paddle-signature, parses event, acks. No persistence in Phase 3 gate.
+ * POST /api/billing/webhook — Paddle webhook lifecycle automation.
+ * Verifies signature, parses event payloads, and keeps workspace plan/subscription state in sync.
  */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
@@ -9,44 +9,169 @@ import {
   parsePaddleWebhook,
   type PaddleWebhookEvent,
 } from "$lib/server/billing/paddle";
-import { getOrCreateDefaultWorkspace, setWorkspacePlan } from "$lib/server/db";
+import {
+  getOrCreateDefaultWorkspace,
+  findWorkspaceByPaddleSubscriptionId,
+  findWorkspaceByPaddleCustomerId,
+  applyPaddleLifecycleUpdate,
+} from "$lib/server/db";
 
 function asString(x: unknown): string | null {
   return typeof x === "string" && x.trim() ? x.trim() : null;
 }
 
-function getCustomData(event: PaddleWebhookEvent): Record<string, unknown> {
-  const data = event.data ?? {};
+function asRecord(x: unknown): Record<string, unknown> {
+  return x && typeof x === "object" ? (x as Record<string, unknown>) : {};
+}
+
+function normalizeStatus(x: unknown): string | null {
+  const s = asString(x);
+  return s ? s.toLowerCase() : null;
+}
+
+function extractRefs(event: PaddleWebhookEvent): {
+  custom: Record<string, unknown>;
+  transactionId: string | null;
+  subscriptionId: string | null;
+  customerId: string | null;
+  status: string | null;
+} {
+  const data = asRecord(event.data);
+  const subscription = asRecord(data.subscription);
+  const customer = asRecord(data.customer);
+  const transaction = asRecord(data.transaction);
+
   const custom =
-    (data.custom_data as Record<string, unknown> | undefined) ??
-    (data.customData as Record<string, unknown> | undefined) ??
-    {};
-  return custom && typeof custom === "object" ? custom : {};
+    asRecord(data.custom_data).uid || asRecord(data.custom_data).workspaceId
+      ? asRecord(data.custom_data)
+      : asRecord(data.customData);
+
+  const transactionId =
+    asString(data.id) ?? asString(data.transaction_id) ?? asString(transaction.id);
+  const subscriptionId =
+    asString(data.subscription_id) ?? asString(subscription.id) ?? asString(transaction.subscription_id);
+  const customerId =
+    asString(data.customer_id) ?? asString(customer.id) ?? asString(transaction.customer_id);
+  const status =
+    normalizeStatus(data.subscription_status) ??
+    normalizeStatus(subscription.status) ??
+    normalizeStatus(data.status);
+
+  return { custom, transactionId, subscriptionId, customerId, status };
+}
+
+async function resolveWorkspaceId(input: {
+  custom: Record<string, unknown>;
+  subscriptionId: string | null;
+  customerId: string | null;
+}): Promise<string | null> {
+  if (input.subscriptionId) {
+    const ws = await findWorkspaceByPaddleSubscriptionId(input.subscriptionId);
+    if (ws) return ws.id;
+  }
+  if (input.customerId) {
+    const ws = await findWorkspaceByPaddleCustomerId(input.customerId);
+    if (ws) return ws.id;
+  }
+  const workspaceId = asString(input.custom.workspaceId);
+  if (workspaceId) return workspaceId;
+  const uid = asString(input.custom.uid);
+  if (!uid) return null;
+  const ws = await getOrCreateDefaultWorkspace(uid);
+  return ws.id;
 }
 
 async function handleWebhookEvent(event: PaddleWebhookEvent): Promise<{ ok: boolean; message: string }> {
   const type = (event.event_type ?? "").toLowerCase();
   if (!type) return { ok: true, message: "ignored" };
 
-  // Minimal v1 billing: treat a completed checkout as Pro activation for the user's workspace.
-  // We use custom_data from checkout creation (uid, tier, billingPeriod).
-  if (type === "transaction.completed" || type === "checkout.completed") {
-    const custom = getCustomData(event);
-    const uid = asString(custom.uid);
-    const tier = asString(custom.tier)?.toLowerCase();
-    const transactionId = asString((event.data as any)?.id) ?? asString((event.data as any)?.transaction_id);
+  const refs = extractRefs(event);
+  const tier = asString(refs.custom.tier)?.toLowerCase();
+  const workspaceId = await resolveWorkspaceId({
+    custom: refs.custom,
+    subscriptionId: refs.subscriptionId,
+    customerId: refs.customerId,
+  });
+  if (!workspaceId) return { ok: true, message: "workspace_unresolved" };
 
-    if (uid && tier === "pro") {
-      const ws = await getOrCreateDefaultWorkspace(uid);
-      await setWorkspacePlan({
-        workspaceId: ws.id,
+  const activationEvents = new Set([
+    "transaction.completed",
+    "transaction.paid",
+    "checkout.completed",
+    "subscription.created",
+    "subscription.activated",
+    "subscription.trialing",
+    "subscription.resumed",
+  ]);
+  const downgradeEvents = new Set([
+    "subscription.canceled",
+    "subscription.cancelled",
+    "subscription.past_due",
+    "subscription.paused",
+  ]);
+  const isActivation = activationEvents.has(type);
+  const isDowngrade = downgradeEvents.has(type);
+
+  if (isActivation) {
+    if (tier && tier !== "pro") return { ok: true, message: "ignored_non_pro_tier" };
+    await applyPaddleLifecycleUpdate({
+      workspaceId,
+      plan: "pro",
+      paddleCustomerId: refs.customerId,
+      paddleTransactionId: refs.transactionId,
+      paddleSubscriptionId: refs.subscriptionId,
+      paddleSubscriptionStatus: refs.status ?? "active",
+      markPlanEndedNow: false,
+    });
+    return { ok: true, message: "pro_activated" };
+  }
+
+  if (isDowngrade) {
+    const statusFromType = type.split(".")[1] ?? "canceled";
+    await applyPaddleLifecycleUpdate({
+      workspaceId,
+      plan: "free",
+      paddleCustomerId: refs.customerId,
+      paddleSubscriptionId: refs.subscriptionId,
+      paddleSubscriptionStatus: refs.status ?? statusFromType,
+      markPlanEndedNow: true,
+    });
+    return { ok: true, message: "pro_downgraded" };
+  }
+
+  if (type === "subscription.updated") {
+    const status = refs.status;
+    if (status === "active" || status === "trialing") {
+      await applyPaddleLifecycleUpdate({
+        workspaceId,
         plan: "pro",
-        planExpiresAt: null,
-        paddleTransactionId: transactionId,
-        paddleSubscriptionStatus: "active",
+        paddleCustomerId: refs.customerId,
+        paddleSubscriptionId: refs.subscriptionId,
+        paddleSubscriptionStatus: status,
+        markPlanEndedNow: false,
       });
-      return { ok: true, message: "plan_updated" };
+      return { ok: true, message: "subscription_active" };
     }
+    if (status === "canceled" || status === "cancelled" || status === "past_due" || status === "paused") {
+      await applyPaddleLifecycleUpdate({
+        workspaceId,
+        plan: "free",
+        paddleCustomerId: refs.customerId,
+        paddleSubscriptionId: refs.subscriptionId,
+        paddleSubscriptionStatus: status,
+        markPlanEndedNow: true,
+      });
+      return { ok: true, message: "subscription_downgraded" };
+    }
+    await applyPaddleLifecycleUpdate({
+      workspaceId,
+      plan: "pro",
+      paddleCustomerId: refs.customerId,
+      paddleSubscriptionId: refs.subscriptionId,
+      paddleSubscriptionStatus: status ?? "active",
+      markPlanEndedNow: false,
+    });
+    return { ok: true, message: "subscription_updated" };
   }
 
   return { ok: true, message: "received" };
