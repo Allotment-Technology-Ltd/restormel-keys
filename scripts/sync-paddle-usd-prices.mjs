@@ -123,8 +123,31 @@ function runVercel(args, input) {
   }
 }
 
+function runVercelAllowFailure(args, input) {
+  const full = ["vercel", ...args];
+  const res = spawnSync("npx", full, {
+    cwd: ROOT,
+    input,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...(VERCEL_TOKEN ? { VERCEL_TOKEN } : {}),
+    },
+  });
+  return {
+    status: res.status ?? 1,
+    output: `${res.stderr || ""}\n${res.stdout || ""}`,
+  };
+}
+
 function setVercelEnv(name, value) {
-  runVercel(["env", "rm", name, "production", "--yes", ...(VERCEL_TOKEN ? ["--token", VERCEL_TOKEN] : [])], "");
+  const rm = runVercelAllowFailure(
+    ["env", "rm", name, "production", "--yes", ...(VERCEL_TOKEN ? ["--token", VERCEL_TOKEN] : [])],
+    "",
+  );
+  if (rm.status !== 0 && !rm.output.toLowerCase().includes("environment variable was not found")) {
+    throw new Error(`Failed removing ${name} before update:\n${rm.output}`);
+  }
   runVercel(["env", "add", name, "production", ...(VERCEL_TOKEN ? ["--token", VERCEL_TOKEN] : [])], String(value));
 }
 
