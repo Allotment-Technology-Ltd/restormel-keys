@@ -12,7 +12,8 @@
  */
 
 const APPLY = process.argv.includes("--apply");
-const HOST = (process.env.POSTHOG_HOST || "https://us.posthog.com").replace(/\/+$/, "");
+/** EU Cloud REST API; override POSTHOG_HOST for US (https://us.posthog.com). */
+const HOST = (process.env.POSTHOG_HOST || "https://eu.posthog.com").replace(/\/+$/, "");
 const API_KEY = (process.env.POSTHOG_API_KEY || "").trim();
 const PROJECT_ID = (process.env.POSTHOG_PROJECT_ID || "").trim();
 
