@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { page } from "$app/stores";
+  import { invalidateAll } from "$app/navigation";
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import {
     activeProject,
@@ -76,6 +78,8 @@
   let modelSearch = "";
   let lazyRouteStepsByProject: Record<string, Record<string, { id: string; orderIndex: number; providerPreference: string | null; modelId: string | null }[]>> = {};
   let loadingStepProjects = new Set<string>();
+  let deletingRouteId: string | null = null;
+  let deleteRouteError = "";
 
   const unsubscribe = activeProject.subscribe((value) => {
     selection = value;
@@ -363,6 +367,38 @@
       // ignore clipboard failures
     }
   }
+
+  async function deleteRouteRecord(route: RouteRecord) {
+    if (!selectedProjectId) return;
+    deleteRouteError = "";
+    if (
+      !confirm(
+        `Delete rule "${route.name}"? Traffic that matched this rule will no longer resolve until you add another rule. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    deletingRouteId = route.id;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${selectedProjectId}/routes/${route.id}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const nextLazy = { ...lazyRouteStepsByProject };
+        delete nextLazy[selectedProjectId];
+        lazyRouteStepsByProject = nextLazy;
+        await invalidateAll();
+      } else {
+        deleteRouteError =
+          (body as { error?: string }).error ?? `Delete failed (${res.status})`;
+      }
+    } catch (e) {
+      deleteRouteError = e instanceof Error ? e.message : "Delete failed";
+    } finally {
+      deletingRouteId = null;
+    }
+  }
 </script>
 
 <h1 class="page-title">AI Request Rules</h1>
@@ -383,13 +419,16 @@
     <button type="button" class="btn btn-primary" on:click={openWizard}>New rule</button>
   </section>
 
+  {#if deleteRouteError}
+    <p class="error-msg" role="alert">{deleteRouteError}</p>
+  {/if}
   {#if selectedRoutes.length === 0}
     <p class="muted">No rules for this project yet.</p>
   {:else}
     <ul class="route-cards">
       {#each selectedRoutes as route}
         <li class="route-card">
-          <a href={`/keys/dashboard/projects/${selectedProjectId}/routes/${route.id}`}>
+          <a class="route-card-main" href={`${DASHBOARD_BASE}/projects/${selectedProjectId}/routes/${route.id}`}>
             <h3>
               {route.name}
               {#if duplicateRouteNames.has(route.name)}
@@ -415,6 +454,17 @@
               <span class="badge">{(data.routeRequestCount24h[route.id] ?? 0).toLocaleString()} req/24h</span>
             </div>
           </a>
+          <div class="route-card-actions">
+            <button
+              type="button"
+              class="btn-delete-rule"
+              disabled={deletingRouteId === route.id}
+              aria-label="Delete rule {route.name}"
+              on:click|stopPropagation={() => deleteRouteRecord(route)}
+            >
+              {deletingRouteId === route.id ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </li>
       {/each}
     </ul>
@@ -593,17 +643,43 @@
     gap: var(--space-2);
   }
   .route-card {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
   }
-  .route-card a {
+  .route-card-main {
+    flex: 1;
+    min-width: 0;
     display: grid;
     gap: var(--space-2);
     padding: var(--space-3);
     text-decoration: none;
   }
-  .route-card h3 {
+  .route-card-actions {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  }
+  .btn-delete-rule {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--coral-alert);
+    cursor: pointer;
+  }
+  .btn-delete-rule:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-delete-rule:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--coral-alert) 40%, var(--rm-border));
+  }
+  .route-card-main h3 {
     margin: 0;
     color: var(--rm-text);
     font-size: var(--text-base);

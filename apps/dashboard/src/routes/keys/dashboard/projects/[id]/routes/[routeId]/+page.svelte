@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { invalidateAll } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -64,6 +64,7 @@
   let createPolicyName = "";
   let createPolicyType = "model_allowlist";
   let unbindingId: string | null = null;
+  let deletingThisRoute = false;
 
   $: if (data.route) {
     editName = data.route.name;
@@ -352,6 +353,34 @@
       policyError = e instanceof Error ? e.message : "Request failed";
     } finally {
       creatingAndBindingPolicy = false;
+    }
+  }
+
+  async function deleteEntireRoute() {
+    if (!data.project || !data.route) return;
+    if (
+      !confirm(
+        `Delete rule "${data.route.name}" permanently? Matched traffic will return no_route until you add another rule. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    deletingThisRoute = true;
+    saveError = "";
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await goto(`${DASHBOARD_BASE}/routes`);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        saveError = (body as { error?: string }).error ?? `Delete failed (${res.status})`;
+      }
+    } catch (e) {
+      saveError = e instanceof Error ? e.message : "Delete failed";
+    } finally {
+      deletingThisRoute = false;
     }
   }
 
@@ -691,6 +720,16 @@
     {/if}
   </section>
 
+  <section class="section danger-zone" aria-labelledby="delete-rule-heading">
+    <h2 id="delete-rule-heading" class="section-title">Delete rule</h2>
+    <p class="section-desc">
+      Remove this rule from the project. API keys and other rules are unchanged.
+    </p>
+    <button type="button" class="btn btn-danger" disabled={deletingThisRoute} onclick={() => deleteEntireRoute()}>
+      {deletingThisRoute ? "Deleting…" : "Delete this rule"}
+    </button>
+  </section>
+
   <section class="section">
     <h2 class="section-title">Logs</h2>
     <p class="section-desc">Request and trace logs for this route.</p>
@@ -739,6 +778,12 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-3);
+  }
+  .danger-zone {
+    border: 1px solid color-mix(in oklab, var(--coral-alert) 35%, var(--rm-border));
+    border-radius: var(--rm-radius);
+    padding: var(--space-4);
+    background: color-mix(in oklab, var(--coral-alert) 6%, var(--rm-surface));
   }
   .config-form {
     max-width: 28rem;

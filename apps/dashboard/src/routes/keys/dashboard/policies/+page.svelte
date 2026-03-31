@@ -65,6 +65,8 @@
   let bindingSelection = new Set<string>();
   let saveBindingsLoading = false;
   let saveBindingsError = "";
+  let deletingPolicyId: string | null = null;
+  let deletePolicyError = "";
 
   const TYPE_BADGE_CLASS: Record<string, string> = {
     model_allowlist: "badge-blue",
@@ -181,6 +183,27 @@
     saveBindingsError = "";
   }
 
+  async function deletePolicyRecord(policy: (typeof data.policies)[number]) {
+    deletePolicyError = "";
+    const bindings = boundCount(policy.id);
+    const message =
+      bindings > 0
+        ? `Delete guard rail "${policy.name}"? It is applied to ${bindings} target(s). This cannot be undone.`
+        : `Delete guard rail "${policy.name}"? This cannot be undone.`;
+    if (!confirm(message)) return;
+    deletingPolicyId = policy.id;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/policies/${policy.id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) await invalidateAll();
+      else deletePolicyError = (body as { error?: string }).error ?? `Delete failed (${res.status})`;
+    } catch (e) {
+      deletePolicyError = e instanceof Error ? e.message : "Delete failed";
+    } finally {
+      deletingPolicyId = null;
+    }
+  }
+
   async function saveBindings() {
     if (!createdPolicyId || bindingSelection.size === 0) {
       skipBindingStep();
@@ -219,6 +242,9 @@
 {#if data.error}
   <p class="error-msg" role="alert">{data.error}</p>
 {:else}
+  {#if deletePolicyError}
+    <p class="error-msg" role="alert">{deletePolicyError}</p>
+  {/if}
   {@const summary = coverageSummary()}
   <section class="section coverage" aria-label="Policy coverage">
     <p>
@@ -315,6 +341,15 @@
                 {/if}
               </span>
             </a>
+            <button
+              type="button"
+              class="btn-delete-policy"
+              disabled={deletingPolicyId === p.id}
+              aria-label="Delete guard rail {p.name}"
+              onclick={() => deletePolicyRecord(p)}
+            >
+              {deletingPolicyId === p.id ? "Deleting…" : "Delete"}
+            </button>
           </li>
         {/each}
       </ul>
@@ -444,9 +479,14 @@
     margin: 0;
   }
   .policy-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     border-bottom: 1px solid var(--rm-border);
   }
   .policy-link {
+    flex: 1;
+    min-width: 0;
     display: block;
     padding: var(--space-3) 0;
     text-decoration: none;
@@ -454,6 +494,24 @@
   }
   .policy-link:hover {
     background: var(--rm-surface-raised);
+  }
+  .btn-delete-policy {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--coral-alert);
+    cursor: pointer;
+    margin: var(--space-2) 0;
+  }
+  .btn-delete-policy:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-delete-policy:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--coral-alert) 40%, var(--rm-border));
   }
   .policy-name {
     font-weight: 600;

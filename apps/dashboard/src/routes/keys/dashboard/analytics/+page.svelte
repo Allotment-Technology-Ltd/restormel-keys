@@ -35,24 +35,19 @@
     error: string | null;
   };
 
-  const totalRequests = $derived(
-    data.aggregates.reduce((s, a) => s + a.requestCount, 0)
+  /** Legacy `$:` (not `$derived`) — dashboard uses `compilerOptions.runes: false`. */
+  $: totalRequests = data.aggregates.reduce((s, a) => s + a.requestCount, 0);
+  $: totalLatencyWeighted = data.aggregates.reduce(
+    (s, a) => s + a.requestCount * (a.avgLatencyMs ?? 0),
+    0
   );
-  const totalLatencyWeighted = $derived(
-    data.aggregates.reduce((s, a) => s + a.requestCount * (a.avgLatencyMs ?? 0), 0)
+  $: avgLatencyMs = totalRequests > 0 ? Math.round(totalLatencyWeighted / totalRequests) : null;
+  $: totalErrorWeighted = data.aggregates.reduce(
+    (s, a) => s + a.requestCount * (a.errorRate ?? 0),
+    0
   );
-  const avgLatencyMs = $derived(
-    totalRequests > 0 ? Math.round(totalLatencyWeighted / totalRequests) : null
-  );
-  const totalErrorWeighted = $derived(
-    data.aggregates.reduce((s, a) => s + a.requestCount * (a.errorRate ?? 0), 0)
-  );
-  const errorRate = $derived(
-    totalRequests > 0 ? totalErrorWeighted / totalRequests : 0
-  );
-  const totalSpend = $derived(
-    data.aggregates.reduce((s, a) => s + (a.estimatedCost ?? 0), 0)
-  );
+  $: errorRate = totalRequests > 0 ? totalErrorWeighted / totalRequests : 0;
+  $: totalSpend = data.aggregates.reduce((s, a) => s + (a.estimatedCost ?? 0), 0);
 
   function providerMix(): { name: string; count: number }[] {
     const byProvider: Record<string, number> = {};

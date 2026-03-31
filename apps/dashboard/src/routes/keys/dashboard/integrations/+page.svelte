@@ -213,17 +213,15 @@
       {/if}
       <div class="wizard-row">
         <p class="wizard-step">Step 2</p>
-        <p class="wizard-title">Display name</p>
         <div class="form-row">
-          <label for="display-name">Display name</label>
+          <label for="display-name" class="wizard-title">Display name</label>
           <input id="display-name" type="text" bind:value={displayName} class="input" placeholder="e.g. Production OpenAI" />
         </div>
       </div>
       <div class="wizard-row">
         <p class="wizard-step">Step 3</p>
-        <p class="wizard-title">Credential reference</p>
         <div class="form-row">
-          <label for="credential-ref">Credential reference</label>
+          <label for="credential-ref" class="wizard-title">Credential reference</label>
           <input id="credential-ref" type="text" bind:value={credentialRef} class="input" placeholder="e.g. sm://prod/openai" autocomplete="off" />
           <p class="helper">This is a reference ID from your secrets manager - never paste raw API keys here.</p>
         </div>
@@ -319,6 +317,10 @@
     font-size: var(--text-sm);
     font-weight: 600;
   }
+  label.wizard-title {
+    display: block;
+    cursor: pointer;
+  }
   .provider-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -341,7 +343,7 @@
     font-size: var(--text-xs);
     color: var(--rm-dim);
   }
-  .form-row label {
+  .form-row label:not(.wizard-title) {
     display: block;
     font-size: var(--text-sm);
     font-weight: 500;

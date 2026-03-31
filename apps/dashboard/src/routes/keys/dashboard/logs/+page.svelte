@@ -198,12 +198,29 @@
           <button type="button" class="log-fix-link" onclick={() => toggleFixPanel(log.id)}>Fix?</button>
         {/if}
         {#if log.requestStatus === "no_route" && expandedFixLogId === log.id}
-          <div class="no-route-fix-panel">
-            <p>This request did not match any rule. The model requested was: <strong>{log.finalModelId ?? "unknown"}</strong>.</p>
+          <div class="no-route-fix-panel" role="region" aria-label="Suggested fix for no matching rule">
             <p>
-              <a href={fixNoRouteHref(log)}>Create a rule for this →</a>
-              <span class="dot">·</span>
-              <a href="/keys/docs/walkthrough/phase-2-resolve">Learn why this happens →</a>
+              This request did not match any rule. The model requested was:
+              <strong>{log.finalModelId ?? "unknown"}</strong>.
+            </p>
+            <p class="fix-panel-lead">
+              <strong>Automated fix:</strong> Open the new-rule wizard with this request’s environment and model
+              pre-filled. Nothing is saved until you finish the wizard.
+            </p>
+            <div class="fix-panel-actions">
+              <button type="button" class="btn-fix-approve" onclick={() => { expandedFixLogId = null; void goto(fixNoRouteHref(log)); }}>
+                Approve — open wizard
+              </button>
+              <button type="button" class="btn-fix-reject" onclick={() => (expandedFixLogId = null)}>Not now</button>
+              <a
+                href={DASHBOARD_BASE + "/routes"}
+                class="btn-fix-diy"
+                onclick={() => {
+                  expandedFixLogId = null;
+                }}>I’ll fix it myself →</a>
+            </div>
+            <p class="fix-panel-docs">
+              <a href="/keys/docs/walkthrough/phase-2-resolve">Why no_route happens →</a>
             </p>
           </div>
         {/if}
@@ -394,6 +411,55 @@
     border-left: 4px solid #c08a1c;
     background: color-mix(in oklab, #c08a1c 14%, transparent);
     padding-left: var(--space-2);
+  }
+  .fix-panel-lead {
+    margin: var(--space-2) 0;
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+  }
+  .fix-panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .btn-fix-approve {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--rm-radius);
+    border: none;
+    background: var(--rm-sage);
+    color: var(--rm-bg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-fix-approve:hover {
+    filter: brightness(1.05);
+  }
+  .btn-fix-reject {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+  .btn-fix-diy {
+    font-size: var(--text-sm);
+    color: var(--rm-sage);
+    text-decoration: none;
+  }
+  .btn-fix-diy:hover {
+    text-decoration: underline;
+  }
+  .fix-panel-docs {
+    margin: 0;
+    font-size: var(--text-xs);
+  }
+  .fix-panel-docs a {
+    color: var(--rm-sage);
   }
   .no-route-fix-panel {
     width: 100%;
