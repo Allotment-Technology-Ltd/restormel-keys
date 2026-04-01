@@ -21,7 +21,26 @@ export const DOC_INDEX: DocIndexEntry[] = [
   {
     title: "MCP (Model Context Protocol)",
     url: "/keys/docs/integrations/mcp",
-    keywords: ["mcp", "model context protocol", "tools", "agent", "ide", "cursor", "claude"],
+    keywords: [
+      "mcp",
+      "model context protocol",
+      "tools",
+      "agent",
+      "ide",
+      "cursor",
+      "claude",
+      "restormel_evaluate_url",
+      "restormel_control_plane_url",
+      "gateway key",
+      "policy evaluate",
+      "server-side",
+    ],
+    section: "mcp",
+  },
+  {
+    title: "MCP implementation workflow (runbook)",
+    url: "https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/mcp-implementation-workflow.md",
+    keywords: ["mcp", "runbook", "restormel_evaluate_url", "control plane", "entitlements", "stdio", "environment"],
     section: "mcp",
   },
   {

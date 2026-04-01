@@ -15,7 +15,7 @@
         "This page: /keys/docs/integrations-walkthrough/phase-3-mcp",
         "/keys/docs/integrations/mcp",
       ],
-      prompt: `You are working in [your repo or an agent/MCP server repo]. Goal: Install @restormel/mcp and confirm you can import the tool definitions. Steps: 1) Add @restormel/mcp. 2) Import ALL_TOOLS and modelsListTool; log length of ALL_TOOLS (7) and name of modelsListTool ("models.list"). 3) Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server via restormel-mcp stdio." DO NOT: Implement a full MCP server unless the task explicitly asks.`,
+      prompt: `You are working in [your repo or an agent/MCP server repo]. Goal: Install @restormel/mcp and confirm you can import the tool definitions. Steps: 1) Add @restormel/mcp. 2) Import ALL_TOOLS and modelsListTool; log ALL_TOOLS.length and modelsListTool.name ("models.list"). 3) Document: "Restormel MCP tool schemas from @restormel/mcp; runtime server via restormel-mcp stdio; server-side env for cloud: RESTORMEL_EVALUATE_URL (full …/policies/evaluate) + RESTORMEL_GATEWAY_KEY vs RESTORMEL_CONTROL_PLANE_URL (dashboard base …/keys/dashboard) for routes.* / policies.* — see runbook mcp-implementation-workflow.md." DO NOT: Implement a full MCP server unless the task explicitly asks.`,
       gate: "Package installed; import works; docs mention MCP.",
     },
   ];
@@ -38,7 +38,11 @@
   <p>This phase introduces the Restormel MCP tool surface. <strong>Tool schemas</strong> are defined in <code>@restormel/mcp</code>; runtime is available via the stdio server binary <code>restormel-mcp</code> (and optional custom transports via <code>createRestormelMcpServer()</code>).</p>
 
   <h2>Step 3.1 — Understand the tool surface</h2>
-  <p>Tools defined: <strong>models.list</strong>, <strong>providers.validate</strong>, <strong>cost.estimate</strong>, <strong>routing.explain</strong>, <strong>entitlements.check</strong>, <strong>integration.generate</strong>, <strong>docs.search</strong>. See <a href="/keys/docs/integrations/mcp">MCP reference</a> for full schema details.</p>
+  <p>
+    Core tools include <strong>models.list</strong>, <strong>providers.validate</strong>, <strong>cost.estimate</strong>, <strong>routing.explain</strong>, <strong>entitlements.check</strong>, <strong>integration.generate</strong>, <strong>docs.search</strong>, plus rollout helpers (control-plane CRUD, bootstrap, BYOK contracts, <strong>readiness.check</strong>, etc.). See
+    <a href="/keys/docs/integrations/mcp">MCP reference</a> and the repo runbook
+    <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/mcp-implementation-workflow.md">mcp-implementation-workflow.md</a> for the <strong>server-side env journey</strong> (evaluate URL vs control-plane base).
+  </p>
 
   <h2>Step 3.2 — Install the MCP package (schemas)</h2>
   <CodeBlock language="bash" code="pnpm add @restormel/mcp" label="CLI" />

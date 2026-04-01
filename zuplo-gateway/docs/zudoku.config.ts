@@ -52,6 +52,7 @@ const config: ZudokuConfig = {
         { type: "doc", file: "introduction" },
         { type: "doc", file: "how-it-fits-together" },
         { type: "doc", file: "authentication-guide" },
+        { type: "doc", file: "integrations-mcp" },
       ],
     },
     {

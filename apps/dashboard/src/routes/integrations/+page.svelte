@@ -33,7 +33,7 @@
       />
       <IntegrationCard
         title="MCP"
-        description="Tool schemas for agents/IDEs: routing explain, cost estimates, and policy checks via stdio."
+        description="Agent and IDE tools over stdio: routing, cost, live policy evaluate, and optional control-plane automation — with clear server-only env wiring."
         status="early"
         cta="Set up MCP"
         href="/keys/docs/integrations/mcp"

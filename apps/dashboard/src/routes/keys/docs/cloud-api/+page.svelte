@@ -272,8 +272,11 @@
   <p><strong>Request body</strong></p>
   <CodeBlock language="json" code={`{ "projectId": "...", "environmentId": "prod", "modelId": "gpt-4o", "providerType": "openai" }`} />
   <p>
-    When authenticating with a Gateway Key, the server enforces that <code>projectId</code> matches the key’s bound project.
-    Never trust client-supplied <code>projectId</code> for cross-project evaluation.
+    When authenticating with a Gateway Key, you may omit <code>projectId</code>; the server evaluates in the key’s bound project (this matches <code>@restormel/mcp</code> <code>entitlements.check</code> when <code>RESTORMEL_EVALUATE_URL</code> points here). If you send <code>projectId</code>, it must match the key’s project.
+    Never use a client-supplied <code>projectId</code> to evaluate across projects.
+  </p>
+  <p>
+    <strong>MCP:</strong> Set <code>RESTORMEL_EVALUATE_URL</code> to the full URL of this endpoint (hosted: <code>https://restormel.dev/keys/dashboard/api/policies/evaluate</code>) and <code>RESTORMEL_GATEWAY_KEY</code> to your Gateway Key. Route/policy tools from MCP use a different base; see <a href="/keys/docs/integrations/mcp">MCP</a> and the runbook <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/mcp-implementation-workflow.md">mcp-implementation-workflow.md</a>.
   </p>
   <p><strong>curl example</strong></p>
   <CodeBlock language="bash" code={evaluateCurl} />

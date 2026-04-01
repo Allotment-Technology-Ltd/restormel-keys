@@ -20,6 +20,8 @@ The Restormel Keys API has two distinct surfaces. Use the right one for your tas
 **Auth**: Gateway Key (`rk_...`) — created in the [Restormel dashboard](https://restormel.dev/keys/dashboard)  
 **Use for**: Resolve, policy evaluate, route steps (runtime operations)
 
+**Agents / MCP:** If you use `@restormel/mcp` in Cursor or other MCP hosts, see [MCP & agent setup](/integrations-mcp) for how **`RESTORMEL_EVALUATE_URL`** (full evaluate URL) differs from **`RESTORMEL_CONTROL_PLANE_URL`** (dashboard app base for `/api/projects/…`).
+
 > Not sure which to use? If you're integrating Restormel Keys into your app, you almost certainly want the **Dashboard API**. See [Dashboard API Overview](/dashboard-api/overview).
 
 ## Authentication

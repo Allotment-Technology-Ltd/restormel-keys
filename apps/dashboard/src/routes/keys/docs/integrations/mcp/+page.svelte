@@ -19,6 +19,26 @@
   See the package <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/mcp#readme">README</a> for env vars and security notes.
 </p>
 
+<h2 id="server-side-environment-policy-evaluate-vs-control-plane" class="docs-h2">Server-side environment (policy evaluate vs control-plane)</h2>
+<p class="docs-p">
+  Configure credentials in the <strong>MCP host process environment</strong> (not in the browser). Do not commit Gateway keys; do not log them. Summary of the two cloud bases:
+</p>
+<ul class="docs-list">
+  <li>
+    <strong>Live policy checks</strong> (<code>entitlements.check</code>): set <code class="inline-code">RESTORMEL_EVALUATE_URL</code> to the full Dashboard API URL
+    <code class="inline-code">https://restormel.dev/keys/dashboard/api/policies/evaluate</code> (self-host: same path on your host) and <code class="inline-code">RESTORMEL_GATEWAY_KEY</code> to your project Gateway Key (<code>rk_…</code>).
+    Details: <a href="/keys/docs/cloud-api">Cloud API</a> (Policy evaluate section).
+  </li>
+  <li>
+    <strong>Route and policy MCP tools</strong> (<code>routes.*</code>, <code>policies.*</code>, <code>fallback_chain.set</code>): set <code class="inline-code">RESTORMEL_CONTROL_PLANE_URL</code> to the dashboard app base
+    <code class="inline-code">https://restormel.dev/keys/dashboard</code> (no trailing slash; paths append <code class="inline-code">/api/projects/…</code>) and <code class="inline-code">RESTORMEL_SERVER_TOKEN</code> (or gateway key) for Bearer auth.
+    This is <strong>not</strong> the same string as <code class="inline-code">RESTORMEL_EVALUATE_URL</code>.
+  </li>
+</ul>
+<p class="docs-p">
+  Canonical checklist and operator notes: <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/mcp-implementation-workflow.md">MCP implementation workflow</a> (repo runbook). API portal mirror: open the Restormel API portal → <em>MCP &amp; agent setup</em>.
+</p>
+
 <h2 class="docs-h2">Available tools</h2>
 <table class="tools-table">
   <thead>
@@ -80,6 +100,7 @@
 
 <h2 class="docs-h2">Next steps</h2>
 <ul class="docs-links">
+  <li><a href="/keys/docs/cloud-api">Cloud API</a> — policy evaluate and resolve (same surfaces MCP uses)</li>
   <li><a href="/keys/docs/integrations/cli">CLI quickstart</a> — terminal-based tools</li>
   <li><a href="/keys/docs/integrations/aaif">AAIF overview</a> — structured AI interaction contract</li>
   <li><a href="/keys/docs/integrations">All integrations</a></li>

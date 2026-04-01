@@ -251,7 +251,7 @@ type AAIFResponse = {
 
 ## 9. MCP Tool Surface
 
-MCP implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md)
+MCP implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md) — includes **server-side env journey** (policy evaluate URL vs control-plane base, Gateway Key, trust boundaries).
 
 **Runtime:** `@restormel/mcp` ships a stdio MCP server (`restormel-mcp`) and `createRestormelMcpServer()` for custom transports. See `packages/mcp/README.md`.
 

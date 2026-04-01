@@ -34,6 +34,8 @@ The following tools are defined (name, description, input/output schema):
 
 See [MCP reference](/keys/docs/integrations/mcp) for full schema details.
 
+**Server-side rollout (agents/IDEs):** To call live policies or control-plane APIs from MCP, configure the stdio server environment with the correct URLs — **`RESTORMEL_EVALUATE_URL`** (full `…/keys/dashboard/api/policies/evaluate`) plus **`RESTORMEL_GATEWAY_KEY`** is separate from **`RESTORMEL_CONTROL_PLANE_URL`** (dashboard app base `…/keys/dashboard` for `/api/projects/…` tools). Checklist: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md), in-product [Cloud API](/keys/docs/cloud-api), API portal *MCP & agent setup*.
+
 ---
 
 ## Step 3.2 — Install and run the MCP server

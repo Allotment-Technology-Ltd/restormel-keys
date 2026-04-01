@@ -8,6 +8,39 @@
   frameworks, and automation pipelines.
 </p>
 
+<section class="section" aria-labelledby="env-heading">
+  <h2 id="env-heading" class="section-title">Server-side environment</h2>
+  <p class="page-desc">
+    MCP reads credentials from the <strong>stdio server process</strong> (your IDE or agent host). For production-style
+    rollout, set env vars there — never in the browser. Full checklist:
+    <a href="/keys/docs/integrations/mcp#server-side-environment-policy-evaluate-vs-control-plane" class="btn-link"
+      >MCP docs — policy evaluate vs control-plane</a
+    >
+    ·
+    <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/mcp-implementation-workflow.md" class="btn-link"
+      >Runbook (GitHub)</a
+    >
+    ·
+    <a href="/keys/docs/cloud-api" class="btn-link">Cloud API</a>
+  </p>
+  <ul class="tool-list">
+    <li>
+      <span class="tool-desc"
+        ><strong>Policy evaluate</strong> — <code class="tool-name">RESTORMEL_EVALUATE_URL</code> = full URL to
+        <code class="tool-name">…/keys/dashboard/api/policies/evaluate</code> + <code class="tool-name">RESTORMEL_GATEWAY_KEY</code>
+        (<code>rk_…</code>).</span
+      >
+    </li>
+    <li>
+      <span class="tool-desc"
+        ><strong>Control-plane MCP tools</strong> — <code class="tool-name">RESTORMEL_CONTROL_PLANE_URL</code> =
+        <code class="tool-name">https://restormel.dev/keys/dashboard</code> (no trailing slash) +
+        <code class="tool-name">RESTORMEL_SERVER_TOKEN</code> or gateway key.</span
+      >
+    </li>
+  </ul>
+</section>
+
 <section class="section" aria-labelledby="status-heading">
   <h2 id="status-heading" class="section-title">Connection status</h2>
   <EmptyState
@@ -66,6 +99,18 @@
     <li>
       <code class="tool-name">integration.generate</code>
       <span class="tool-desc">Generate integration configuration</span>
+    </li>
+    <li>
+      <code class="tool-name">integration.bootstrap_nextjs</code>
+      <span class="tool-desc">Next.js server resolver + admin KeyManager contract</span>
+    </li>
+    <li>
+      <code class="tool-name">routes.* / policies.* / fallback_chain.set</code>
+      <span class="tool-desc">Control-plane CRUD (server token + control-plane base URL)</span>
+    </li>
+    <li>
+      <code class="tool-name">byok.* / policy.simulate / catalog.* / readiness.check</code>
+      <span class="tool-desc">Contracts, simulation, catalog checks, CI readiness</span>
     </li>
     <li>
       <code class="tool-name">docs.search</code>

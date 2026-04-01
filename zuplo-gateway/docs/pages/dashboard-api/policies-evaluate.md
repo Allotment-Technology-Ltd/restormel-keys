@@ -25,6 +25,8 @@ This is a **Dashboard API** runtime endpoint used to test whether a model/provid
 }
 ```
 
+With a **Gateway Key**, you may **omit `projectId`**; evaluation runs in the key’s bound project (useful for `@restormel/mcp` `entitlements.check` when `RESTORMEL_EVALUATE_URL` points at this endpoint). If you send `projectId`, it **must** match the key’s project.
+
 ### Response (200)
 
 ```json
@@ -46,4 +48,8 @@ This is a **Dashboard API** runtime endpoint used to test whether a model/provid
 
 - Policy evaluate is a **control** endpoint — it does not execute provider requests.
 - For observability/tracing of provider execution, use your existing observability stack (gateway logs, app logs, tracing).
+
+## MCP and agents
+
+To wire **Model Context Protocol** (`@restormel/mcp`) `entitlements.check` against this endpoint, set **`RESTORMEL_EVALUATE_URL`** to the **full** URL of this route (hosted: `https://restormel.dev/keys/dashboard/api/policies/evaluate`) and **`RESTORMEL_GATEWAY_KEY`** to your project Gateway Key. Control-plane MCP tools use a **different** base URL; see [MCP & agent setup](/integrations-mcp) and the product runbook (repo: `docs/runbooks/mcp-implementation-workflow.md`).
 
