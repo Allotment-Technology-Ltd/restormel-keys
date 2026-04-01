@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { getIntegrationsWalkthroughPrevNext } from "$lib/docs-integrations-walkthrough-nav";
   import AgentPromptsSection from "$lib/components/walkthrough/AgentPromptsSection.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
@@ -36,6 +37,13 @@
   <h2>Step 5.1 — Developer Tools in the Dashboard</h2>
   <p>In the Dashboard sidebar, open <strong>Developer Tools</strong>. You see an overview with cards for CLI, MCP, AAIF and tabs: CLI (install + commands), MCP (connection + tools), AAIF (schema + logs when wired).</p>
 
+  <h2>Step 5.1b — Gateway keys and Connect CLI</h2>
+  <p>
+    Open <a href={DASHBOARD_BASE + "/access"}>Gateway keys</a> to create keys, use <strong>Copy .env snippet</strong>,
+    or run <code>npx @restormel/keys-cli login</code> and approve on
+    <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>. Never commit secrets.
+  </p>
+
   <h2>Step 5.2 — Usage path and quick links</h2>
   <p>On the Dashboard <strong>Overview</strong> page, the usage path selector shows your chosen workflow and links to SDK docs, CLI quickstart, or MCP setup, plus Developer tools and "Change."</p>
 
@@ -49,7 +57,10 @@
   />
 
   <h2>Checkpoint</h2>
-  <p>You now have Developer Tools and usage path in use and doc links saved.</p>
+  <p>
+    You now have Developer Tools and usage path in use, Gateway keys / Connect CLI bookmarked when you need them, and
+    doc links saved.
+  </p>
 
   <WalkthroughPhaseNav {prev} {next} {stepOf} />
 </div>
@@ -62,4 +73,5 @@
   .doc-content h2 { font-size: var(--text-xl); margin: var(--space-6) 0 var(--space-3); }
   .doc-content p { color: var(--rm-muted); line-height: var(--leading-relaxed); margin: 0 0 var(--space-4); }
   .doc-content a { color: var(--rm-sage); }
+  .doc-content code { font-family: "JetBrains Mono", monospace; font-size: var(--text-sm); }
 </style>

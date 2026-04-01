@@ -33,6 +33,7 @@ export function isProFeatureEnabled(feature: ProFeature): boolean {
  * We keep the signature local-aware so we can add workspace plan checks later.
  */
 export async function hasProAccess(locals: IntegrationsLocals, feature: ProFeature): Promise<boolean> {
+  if (locals.user?.isServiceAdmin) return true;
   const cap = foundingPromoMaxUsers();
   if (cap > 0) {
     try {

@@ -24,6 +24,7 @@
       <tr><td>I01</td><td>integrations-overview-review</td><td><a href="/keys/docs/integrations-walkthrough/phase-0-overview">Phase 0</a></td><td>0</td></tr>
       <tr><td>I02</td><td>choose-workflow-persist</td><td><a href="/keys/docs/integrations-walkthrough/phase-1-choose-workflow">Phase 1</a></td><td>1</td></tr>
       <tr><td>I03</td><td>cli-install-doctor</td><td><a href="/keys/docs/integrations-walkthrough/phase-2-cli">Phase 2</a></td><td>2</td></tr>
+      <tr><td>I03b</td><td>cli-device-login-env</td><td><a href="/keys/docs/integrations-walkthrough/phase-2-cli">Phase 2</a></td><td>2</td></tr>
       <tr><td>I04</td><td>cli-models-routing</td><td><a href="/keys/docs/integrations-walkthrough/phase-2-cli">Phase 2</a></td><td>2</td></tr>
       <tr><td>I05</td><td>mcp-schemas-install</td><td><a href="/keys/docs/integrations-walkthrough/phase-3-mcp">Phase 3</a></td><td>3</td></tr>
       <tr><td>I06</td><td>aaif-types-install</td><td><a href="/keys/docs/integrations-walkthrough/phase-4-aaif">Phase 4</a></td><td>4</td></tr>
@@ -34,8 +35,8 @@
 
   <h2>Recommended sequences</h2>
   <ul>
-    <li><strong>Full:</strong> I01 → I02 → I03 → I04 → I05 → I06 → I07 → I08</li>
-    <li><strong>CLI-only:</strong> I01 → I02 → I03 → I04 → I07 → I08</li>
+    <li><strong>Full:</strong> I01 → I02 → I03 → I03b → I04 → I05 → I06 → I07 → I08</li>
+    <li><strong>CLI-only:</strong> I01 → I02 → I03 → I03b → I04 → I07 → I08</li>
     <li><strong>MCP/AAIF schema-only:</strong> I01 → I02 → I05 → I06 → I07 → I08</li>
   </ul>
 

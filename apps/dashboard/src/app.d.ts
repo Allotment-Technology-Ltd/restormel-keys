@@ -14,6 +14,8 @@ declare global {
         email?: string | null;
         /** When set, request was authenticated via Bearer key (Gateway or Management), not session. */
         authType?: "session" | "gateway_key" | "management_key";
+        /** Service operator (Allotment): plan limits and Pro gates waived; not end-customer RBAC. */
+        isServiceAdmin?: boolean;
         /** Only set when authType === "gateway_key": restricts API access to this project. */
         projectIdForKey?: string;
         /** Set when authType is gateway_key or management_key (key id, for audit). */

@@ -9,14 +9,21 @@ import { getSession } from "$lib/server/auth";
 import { upsertUser } from "$lib/server/db";
 import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
+import { resolveServiceAdminStatus } from "$lib/server/service-admin";
 
 export const handle: Handle = async ({ event, resolve }) => {
   try {
     const { data: session } = await getSession(event.request, event.url.host);
     if (session?.user) {
+      const isServiceAdmin = await resolveServiceAdminStatus(
+        session.user.id,
+        session.user.role ?? null
+      );
       event.locals.user = {
         uid: session.user.id,
         email: session.user.email ?? null,
+        authType: "session",
+        isServiceAdmin,
       };
       try {
         await upsertUser(session.user.id, session.user.email ?? null);

@@ -24,11 +24,33 @@ Then run via `npx keys` or `pnpm exec keys`.
 
 ### You'll see
 
-`keys --help` shows: init, add, list, validate, doctor, estimate, sync, models, routing.
+`keys --help` shows: init, login, add, list, validate, doctor, estimate, sync, models, routing, catalog, patch.
 
 ---
 
-## Step 2.2 — Run doctor
+## Step 2.2 — Link your project (device login, optional)
+
+If you want a Gateway key in your terminal without copying from the browser by hand:
+
+1. Run `npx @restormel/keys-cli login` (requires a current CLI release with `login`).
+2. Open the printed URL while signed in to the Dashboard.
+3. Enter the **user code** and pick a **project**. Restormel creates a **new Gateway key** and delivers it to your terminal once (same revocation model as keys you create in the dashboard).
+
+Optional: append lines to a file:
+
+```bash
+npx @restormel/keys-cli login --write-env .env.local
+```
+
+**Alternative:** In the Dashboard, go to **Gateway keys** (`/keys/dashboard/access`), create a key, then use **Copy .env snippet** for `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, and `RESTORMEL_KEYS_BASE`.
+
+### You'll see
+
+The CLI prints a verification URL and user code; after you authorize in **Connect CLI**, the terminal shows the env block (and optionally writes your chosen file).
+
+---
+
+## Step 2.3 — Run doctor
 
 From your app directory (where `restormel.config.json` lives, or repo root):
 
@@ -44,7 +66,7 @@ Doctor checks framework, `@restormel/keys`, and config. Exit 0 means the local s
 
 ---
 
-## Step 2.3 — Validate (optional)
+## Step 2.4 — Validate (optional)
 
 If you have provider credentials in the local key store:
 
@@ -56,7 +78,7 @@ This checks key validity (masked output). Skip if you use gateway-backed provide
 
 ---
 
-## Step 2.4 — Models list
+## Step 2.5 — Models list
 
 List available models across configured providers:
 
@@ -76,7 +98,7 @@ A list of providers and their models with pricing hints.
 
 ---
 
-## Step 2.5 — Routing explain
+## Step 2.6 — Routing explain
 
 Explain how Restormel would route a request for a given model:
 
@@ -96,6 +118,7 @@ Steps: which provider was found for the model, cost lookup, resolution result.
 You now have:
 
 - CLI installed (global or dev dependency).
+- Optional: device login or **Copy .env snippet** so your app has `RESTORMEL_GATEWAY_KEY` and `RESTORMEL_PROJECT_ID`.
 - Doctor passing.
 - `keys models list` and `keys routing explain` working for your setup.
 - Optional: validate run for local credentials.

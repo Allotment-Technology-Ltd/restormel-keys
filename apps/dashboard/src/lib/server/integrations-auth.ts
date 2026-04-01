@@ -11,6 +11,7 @@ export type IntegrationsLocals = {
     projectIdForKey?: string;
     keyId?: string;
     workspaceId?: string;
+    isServiceAdmin?: boolean;
   };
 };
 

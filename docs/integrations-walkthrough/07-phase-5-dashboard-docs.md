@@ -21,6 +21,15 @@ Use this as your home for Integrations status and quick links.
 
 ---
 
+## Step 5.1b — Gateway keys and Connect CLI
+
+For backend integration, open **Gateway keys** in the sidebar (`/keys/dashboard/access`):
+
+- **Create Gateway key** and use **Copy .env snippet** to paste `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, and `RESTORMEL_KEYS_BASE` into a local env file (never commit secrets).
+- Or run `npx @restormel/keys-cli login` in your terminal and complete approval on **Connect CLI** (`/keys/dashboard/cli/connect`) — this mints a new Gateway key and delivers it once to your machine.
+
+---
+
 ## Step 5.2 — Usage path and quick links
 
 On the Dashboard **Overview** page, the usage path selector shows your chosen workflow and links to:
@@ -50,5 +59,6 @@ Bookmark or link others to:
 You now have:
 
 - Developer Tools section and tabs in use.
+- Gateway keys page and Connect CLI bookmarked when you use terminal linking or env snippets.
 - Usage path and quick links visible on Overview.
 - Doc links saved for your team or agent.

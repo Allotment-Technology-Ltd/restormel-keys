@@ -13,15 +13,16 @@ Use this when implementing the Integrations walkthrough with a coding agent. Eac
 | I01 | `integrations-overview-review` | [Phase 0](02-phase-0-overview.md) | 0 |
 | I02 | `choose-workflow-persist` | [Phase 1](03-phase-1-choose-workflow.md) | 1 |
 | I03 | `cli-install-doctor` | [Phase 2](04-phase-2-cli.md) | 2 |
+| I03b | `cli-device-login-env` | [Phase 2](04-phase-2-cli.md) | 2 |
 | I04 | `cli-models-routing` | [Phase 2](04-phase-2-cli.md) | 2 |
 | I05 | `mcp-schemas-install` | [Phase 3](05-phase-3-mcp.md) | 3 |
 | I06 | `aaif-types-install` | [Phase 4](06-phase-4-aaif.md) | 4 |
 | I07 | `dashboard-docs-links` | [Phase 5](07-phase-5-dashboard-docs.md) | 5 |
 | I08 | `verify-and-document` | [Phase 6](08-phase-6-verify.md) | 6 |
 
-**Recommended sequence (full):** I01 → I02 → I03 → I04 → I05 → I06 → I07 → I08.
+**Recommended sequence (full):** I01 → I02 → I03 → I03b → I04 → I05 → I06 → I07 → I08.
 
-**CLI-only path:** I01 → I02 → I03 → I04 → I07 → I08.
+**CLI-only path:** I01 → I02 → I03 → I03b → I04 → I07 → I08.
 
 **MCP/AAIF schema-only:** I01 → I02 → I05 → I06 → I07 → I08.
 
@@ -106,12 +107,36 @@ Use this when implementing the Integrations walkthrough with a coding agent. Eac
 
 ---
 
+## I03b — `cli-device-login-env`
+
+**Phase:** 2  **Source:** [04-phase-2-cli.md](04-phase-2-cli.md)
+
+**Context docs:**
+- This repo: `docs/integrations-walkthrough/04-phase-2-cli.md` (Step 2.2)
+- Dashboard: Gateway keys (`/keys/dashboard/access`), Connect CLI (`/keys/dashboard/cli/connect`)
+
+**Prompt:**
+
+> You are working in [your app repo].
+>
+> **Goal:** Obtain `RESTORMEL_GATEWAY_KEY` and `RESTORMEL_PROJECT_ID` locally without pasting raw keys into chat or README.
+>
+> **Steps:**
+> 1. Choose one path: (A) Run `npx @restormel/keys-cli login --write-env .env.local` and complete **Connect CLI** in the browser while signed in. (B) Dashboard → **Gateway keys** → create key → **Copy .env snippet** → paste into `.env.local` (or your secret manager).
+> 2. Ensure `.env.local` is gitignored.
+>
+> **DO NOT:** Commit `.env.local` or any file containing raw Gateway keys. Paste raw keys into issues, PRs, or agent transcripts.
+
+**Gate:** Local env (or secret store) has `RESTORMEL_GATEWAY_KEY` and `RESTORMEL_PROJECT_ID`; nothing committed.
+
+---
+
 ## I04 — `cli-models-routing`
 
 **Phase:** 2  **Source:** [04-phase-2-cli.md](04-phase-2-cli.md)
 
 **Context docs:**
-- This repo: `docs/integrations-walkthrough/04-phase-2-cli.md` (Steps 2.4–2.5)
+- This repo: `docs/integrations-walkthrough/04-phase-2-cli.md` (Steps 2.5–2.6)
 - This repo: `packages/core` defaultProviders (for models list)
 
 **Prompt:**

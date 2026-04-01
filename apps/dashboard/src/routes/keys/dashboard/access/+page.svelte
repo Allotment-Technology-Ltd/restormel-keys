@@ -4,6 +4,7 @@
   import { invalidateAll } from "$app/navigation";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import type { KeyWithProject } from "./+page.server";
+  import { gatewayKeyEnvSnippet } from "$lib/env-snippet";
 
   export let data: {
     signedIn: boolean;
@@ -11,14 +12,16 @@
     keys: KeyWithProject[];
     workspaceId: string | null;
     error: string | null;
+    keysBaseUrl: string;
   };
 
   let creating = false;
   let createError = "";
   let selectedProjectId = data.projects[0]?.id ?? "";
   let createLabel = "";
-  let newKey: { rawKey: string; keyPrefix: string; projectName: string } | null = null;
+  let newKey: { rawKey: string; keyPrefix: string; projectName: string; projectId: string } | null = null;
   let copied = false;
+  let copiedEnv = false;
   let copiedMaskedId: string | null = null;
   let revokingId: string | null = null;
   let keyLabels: Record<string, string> = {};
@@ -46,7 +49,10 @@
     createError = "";
     newKey = null;
     try {
-      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${selectedProjectId}/keys`, { method: "POST" });
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${selectedProjectId}/keys`, {
+        method: "POST",
+        credentials: "include",
+      });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data) {
         const project = data.projects.find((p) => p.id === selectedProjectId);
@@ -54,6 +60,7 @@
           rawKey: body.data.rawKey,
           keyPrefix: body.data.keyPrefix,
           projectName: project?.name ?? "Project",
+          projectId: selectedProjectId,
         };
         if (createLabel.trim()) {
           keyLabels[body.data.keyPrefix] = createLabel.trim();
@@ -78,6 +85,14 @@
     setTimeout(() => (copied = false), 2000);
   }
 
+  function copyEnvSnippet() {
+    if (!newKey) return;
+    const text = gatewayKeyEnvSnippet(newKey.rawKey, newKey.projectId, data.keysBaseUrl);
+    navigator.clipboard.writeText(text);
+    copiedEnv = true;
+    setTimeout(() => (copiedEnv = false), 2000);
+  }
+
   async function copyMaskedId(key: KeyWithProject) {
     try {
       await navigator.clipboard.writeText(key.keyPrefix);
@@ -91,13 +106,14 @@
   }
 
   async function revokeKey(key: KeyWithProject) {
-    if (!confirm("Revoke this API key? It will stop working immediately.")) return;
+    if (!confirm("Revoke this Gateway key? It will stop working immediately.")) return;
     revokingId = key.id;
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${key.projectId}/keys`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyId: key.id }),
+        credentials: "include",
       });
       if (res.ok) await invalidateAll();
     } finally {
@@ -106,9 +122,9 @@
   }
 </script>
 
-<h1 class="page-title">API Keys</h1>
+<h1 class="page-title">Gateway keys</h1>
 <p class="page-desc">
-  API keys are your backend credentials for all Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate - see Connections.
+  Gateway keys are your backend credentials for Restormel Keys programmatic access (Resolve, policy evaluate, and routes/steps APIs). Dashboard access is via GitHub sign-in. Provider credentials are separate — see Connections.
 </p>
 <p class="page-desc page-desc-secondary">
   <strong>API portal</strong> (Zuplo): Gateway API reference, Try it, and your Zuplo consumer key (<code class="inline-code">zpka_…</code>) — <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">open API portal</a>. Use the portal nav or logo to return to Keys, Docs, or this dashboard.
@@ -118,12 +134,17 @@
   <p class="error-msg" role="alert">{data.error}</p>
 {:else}
   <section class="section" aria-labelledby="gateway-keys-heading">
-    <h2 id="gateway-keys-heading" class="section-title">Your API Keys</h2>
+    <h2 id="gateway-keys-heading" class="section-title">Your Gateway keys</h2>
     <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View key history →</a>
     <p class="key-callout">
-      An API key authenticates your app to Restormel. It is not a provider credential.
+      A Gateway key authenticates your app to Restormel. It is not a provider credential.
       To connect OpenAI, Anthropic, or other providers, go to
       <a href={DASHBOARD_BASE + "/integrations"}>Connections</a>.
+    </p>
+    <p class="cli-hint">
+      <strong>Terminal setup:</strong>
+      run <code class="inline-code">npx @restormel/keys-cli login</code> and approve in
+      <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>, or copy an env snippet after creating a key below.
     </p>
 
     {#if newKey}
@@ -131,9 +152,14 @@
         <p class="new-key-label">New key for {newKey.projectName} — copy now:</p>
           <p class="new-key-warning">This is the only time the full key will be shown.</p>
         <code class="new-key-value">{newKey.rawKey}</code>
-        <button type="button" class="btn btn-secondary" onclick={copyNewKey}>
-          {copied ? "Copied" : "Copy"}
-        </button>
+        <div class="new-key-actions">
+          <button type="button" class="btn btn-secondary" onclick={copyNewKey}>
+            {copied ? "Copied key" : "Copy key only"}
+          </button>
+          <button type="button" class="btn btn-secondary" onclick={copyEnvSnippet}>
+            {copiedEnv ? "Copied" : "Copy .env snippet"}
+          </button>
+        </div>
       </div>
     {/if}
 
@@ -143,8 +169,8 @@
 
     {#if data.keys.length === 0 && !newKey}
       <EmptyState
-        title="No API keys yet"
-        description="Create an API key to use the Cloud API. Choose a project and create a key; copy it when shown - we will not show it again."
+        title="No Gateway keys yet"
+        description="Create a Gateway key to use the Cloud API. Choose a project and create a key; copy it when shown — we will not show it again."
       >
         {#if data.projects.length === 0}
           <a href={DASHBOARD_BASE + "/projects"} class="btn btn-primary">Create a project first</a>
@@ -159,7 +185,7 @@
             <label for="access-key-label" class="sr-only">Key label</label>
             <input id="access-key-label" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
             <button type="submit" class="btn btn-primary" disabled={creating}>
-              {creating ? "Creating…" : "Create API Key"}
+              {creating ? "Creating…" : "Create Gateway key"}
             </button>
           </form>
         {/if}
@@ -175,7 +201,7 @@
         <label for="access-key-label-2" class="sr-only">Key label</label>
         <input id="access-key-label-2" bind:value={createLabel} class="select" placeholder="Key label (optional)" />
         <button type="submit" class="btn btn-primary" disabled={creating}>
-          {creating ? "Creating…" : "Create API Key"}
+          {creating ? "Creating…" : "Create Gateway key"}
         </button>
       </form>
 
@@ -217,7 +243,7 @@
                   class="btn btn-danger"
                   onclick={() => revokeKey(k)}
                   disabled={revokingId === k.id}
-                  aria-label="Revoke API key {k.keyPrefix}"
+                  aria-label="Revoke Gateway key {k.keyPrefix}"
                 >
                   {revokingId === k.id ? "Revoking…" : "Revoke"}
                 </button>
@@ -328,7 +354,26 @@
     color: var(--rm-sage);
     font-weight: 500;
   }
-  .new-key-box {
+  .cli-hint {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: 1.45;
+  }
+  .cli-hint a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .new-key-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+    .new-key-box {
     background: var(--rm-surface-raised);
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);

@@ -12,7 +12,7 @@ export type KeyWithProject = {
   projectName: string;
 };
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) {
     return {
       signedIn: false,
@@ -20,6 +20,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       keys: [] as KeyWithProject[],
       workspaceId: null as string | null,
       error: null as string | null,
+      keysBaseUrl: url.origin,
     };
   }
   try {
@@ -43,6 +44,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       keys: keysByProject,
       workspaceId: workspace.id,
       error: null,
+      keysBaseUrl: url.origin,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -53,6 +55,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       keys: [] as KeyWithProject[],
       workspaceId: null,
       error: "Unable to load access data",
+      keysBaseUrl: url.origin,
     };
   }
 };

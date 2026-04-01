@@ -75,7 +75,7 @@
     { id: "workspace", label: "Workspace is ready", done: Boolean(data.setup?.workspaceCreatedAt), href: null, cta: "" },
     { id: "projects", label: "Create your first project", done: (data.setup?.projectCount ?? 0) > 0, href: DASHBOARD_BASE + "/projects", cta: "Open Projects" },
     { id: "connections", label: "Add your first connection", done: (data.setup?.integrationCount ?? 0) > 0, href: DASHBOARD_BASE + "/integrations", cta: "Open Connections" },
-    { id: "api-keys", label: "Create an API key", done: (data.setup?.gatewayKeyCount ?? 0) > 0, href: DASHBOARD_BASE + "/access", cta: "Open API Keys" },
+    { id: "api-keys", label: "Create a Gateway key", done: (data.setup?.gatewayKeyCount ?? 0) > 0, href: DASHBOARD_BASE + "/access", cta: "Open Gateway keys" },
     { id: "rules", label: "Create a rule", done: (data.setup?.routeCount ?? 0) > 0, href: DASHBOARD_BASE + "/routes", cta: "Open Rules" },
     { id: "first-request", label: "Run your first request", done: (data.setup?.requestCount ?? 0) > 0, href: DASHBOARD_BASE + "/sandbox", cta: "Try a test request" },
     { id: "logs", label: "Review logs once", done: logsVisited, href: DASHBOARD_BASE + "/logs", cta: "Open Logs" },
@@ -117,6 +117,12 @@
           {#if nextStep.href}
             <a class="btn btn-primary" href={nextStep.href}>{nextStep.cta}</a>
           {/if}
+          {#if nextStep.id === "api-keys"}
+            <p class="next-step-alt">
+              Or from your terminal: <code class="next-step-code">npx @restormel/keys-cli login</code> then
+              <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>.
+            </p>
+          {/if}
         </div>
       {/if}
       <div class="setup-progress-wrap">
@@ -155,6 +161,11 @@
   <div class="overview-right">
     <section class="panel">
       <h2 class="panel-title">Quick actions</h2>
+      <p class="quick-links">
+        <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>
+        <span class="quick-links-sep">·</span>
+        <a href={DASHBOARD_BASE + "/access"}>Gateway keys &amp; env snippet</a>
+      </p>
       {#if data.contextSignals.noRouteCount24h > 0}
         <div class="signal signal-warn">
           ⚠ {data.contextSignals.noRouteCount24h} requests failed to match a rule — <a href={DASHBOARD_BASE + "/logs"}>fix routing</a>
@@ -261,6 +272,33 @@
   .btn-primary {
     background: var(--rm-sage);
     color: var(--rm-bg);
+  }
+  .next-step-alt {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    line-height: 1.45;
+  }
+  .next-step-alt a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .next-step-code {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: 0.85em;
+  }
+  .quick-links {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+  .quick-links a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .quick-links-sep {
+    margin: 0 var(--space-2);
+    color: var(--rm-dim);
   }
   .setup-progress-label {
     color: var(--rm-muted);

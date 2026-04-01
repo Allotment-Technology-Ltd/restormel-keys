@@ -19,7 +19,7 @@ describe("sidebar nav", () => {
     expect(labels).toContain("Usage & Analytics");
     expect(labels).toContain("Logs");
     expect(labels).toContain("System Health");
-    expect(labels).toContain("API Keys");
+    expect(labels).toContain("Gateway keys");
     expect(labels).toContain("Test & Preview");
     expect(labels).toContain("GitHub Setup");
     expect(labels).toContain("Dev Tools");
@@ -45,5 +45,9 @@ describe("topbarTitle", () => {
 
   it("returns empty string for unknown path", () => {
     expect(topbarTitle(DASHBOARD_BASE + "/unknown")).toBe("");
+  });
+
+  it("returns Connect CLI for cli connect path", () => {
+    expect(topbarTitle(DASHBOARD_BASE + "/cli/connect")).toBe("Connect CLI");
   });
 });

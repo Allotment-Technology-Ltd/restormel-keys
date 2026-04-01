@@ -187,7 +187,7 @@
                 <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
                 <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
                 <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create an API Key</strong> (API Keys), <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules).</li>
+                <li><strong>Create a Gateway key</strong> (Gateway keys), <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules).</li>
                 <li><strong>First request</strong> → then <strong>Usage & Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">

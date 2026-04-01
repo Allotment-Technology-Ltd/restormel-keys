@@ -609,12 +609,12 @@ export async function countApiKeysByWorkspace(workspaceId: string): Promise<numb
 }
 
 /**
- * Create Gateway key. Returns { rawKey, keyPrefix } once; caller must show to user. Store only prefix + hash.
+ * Create Gateway key. Returns { rawKey, keyPrefix, keyId } once; caller must show rawKey to user. Store only prefix + hash in api_keys.
  */
 export async function createApiKey(
   projectId: string,
   userId: string
-): Promise<{ rawKey: string; keyPrefix: string } | null> {
+): Promise<{ rawKey: string; keyPrefix: string; keyId: string } | null> {
   const project = await getProject(projectId, userId);
   if (!project) return null;
   const rawKey = KEY_PREFIX + randomBytes(24).toString("base64url");
@@ -643,7 +643,7 @@ export async function createApiKey(
       console.error("[audit] insertAuditEvent after create:", msg.slice(0, 80));
     }
   }
-  return { rawKey, keyPrefix };
+  return { rawKey, keyPrefix, keyId: id };
 }
 
 /** Revoke (delete) Gateway key */

@@ -17,7 +17,10 @@
 |------|---------|-------------------|
 | **Restormel Integrations** | The developer enablement layer: CLI, MCP, AAIF | "Integrations product," "dev tools" (ambiguous) |
 | **Restormel Keys** | Core: BYOK, routing, cost, entitlements | "Core," "Keys product" (without "Restormel") |
-| **CLI** | `@restormel/keys-cli`: terminal commands (doctor, validate, models list, routing explain) | "keys-cli" (use "CLI" in prose) |
+| **CLI** | `@restormel/keys-cli`: terminal commands (login, doctor, validate, models list, routing explain, catalog, patch) | "keys-cli" (use "CLI" in prose) |
+| **Device login** | `keys login`: browser-approved CLI session that mints a **Gateway key** once (OAuth-style device flow) | "OAuth" alone (ambiguous) |
+| **Connect CLI** | Dashboard page at `/keys/dashboard/cli/connect` where you approve a CLI device login | "CLI callback," "auth page" (too vague) |
+| **Env snippet** | One copy-paste block: `RESTORMEL_GATEWAY_KEY`, `RESTORMEL_PROJECT_ID`, `RESTORMEL_KEYS_BASE` | "Export" (ambiguous) |
 | **MCP** | Model Context Protocol; tool schemas and (when available) runtime server | "MCP server" (until runtime exists, we have schemas only) |
 | **AAIF** | Agent-to-Agent Interaction Format; request/response types and validation | "AAIF API" (contract first) |
 | **Developer Tools** | Dashboard section at `/keys/dashboard/dev-tools` (CLI, MCP, AAIF tabs) | "Integrations dashboard" (that's the marketing page) |

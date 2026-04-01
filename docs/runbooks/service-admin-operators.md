@@ -1,0 +1,36 @@
+# Service admin operators (Allotment)
+
+Internal Restormel Keys operators can bypass **subscription-style limits** (project count, monthly resolve quota) and **Pro dashboard gates** (e.g. System Health) so dogfooding is not blocked by Free tier caps.
+
+## What gets waived
+
+- **Entitlements:** High caps (999 projects, 10M monthly requests on the resolve path) and effective **Pro** plan for limit checks.
+- **Pro features:** `hasProAccess` returns true (healthcheck, embedding gates).
+
+This does **not** add customer-facing “admin” for tenant workspaces. It is only for trusted operator accounts.
+
+## How to grant
+
+Use **one** of these (first match wins in code):
+
+1. **Neon Auth / Better Auth `role`** — If `get-session` returns `user.role` as `admin`, `superadmin`, `service_admin`, or `operator` (case-insensitive), the session is treated as a service admin. Aligns with marking a user **Admin** in the Neon Auth console when that value is exposed on the session payload.
+
+2. **Environment allowlist** — Set `RESTORMEL_SERVICE_ADMIN_USER_IDS` to a comma-separated list of Better Auth user IDs (same `id` as in the `"user"` / session user). Useful for Vercel without a DB migration.
+
+3. **Database** — After migration **`023_service_admins.sql`**:
+
+   ```sql
+   INSERT INTO service_admins (user_id, note, created_at)
+   VALUES ('<better-auth-user-id>', 'Allotment operator', EXTRACT(EPOCH FROM NOW()) * 1000);
+   ```
+
+## Verify
+
+- Open **Subscription & Billing**: you should see **Pro (operator)** and the operator banner.
+- Create more than two projects (Free cap) without a Paddle subscription.
+- **System Health** should not be blocked by Pro env gates.
+
+## Rollback
+
+- Remove env entries, delete `service_admins` rows, or clear Neon Auth admin role.
+- Redeploy or restart so `resolveServiceAdminStatus` re-evaluates.

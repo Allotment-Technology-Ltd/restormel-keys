@@ -43,7 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "developer",
     label: "Advanced",
     items: [
-      { href: DASHBOARD_BASE + "/access", label: "API Keys" },
+      { href: DASHBOARD_BASE + "/access", label: "Gateway keys" },
       { href: DASHBOARD_BASE + "/sandbox", label: "Test & Preview" },
       { href: DASHBOARD_BASE + "/copy-for-ci", label: "GitHub Setup" },
       { href: DASHBOARD_BASE + "/dev-tools", label: "Dev Tools" },
@@ -55,9 +55,10 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/"]: "Overview",
   [DASHBOARD_BASE + "/projects"]: "Projects",
   [DASHBOARD_BASE + "/copy-for-ci"]: "GitHub Setup",
-  [DASHBOARD_BASE + "/access"]: "API Keys",
+  [DASHBOARD_BASE + "/access"]: "Gateway keys",
   [DASHBOARD_BASE + "/integrations"]: "Connections",
   [DASHBOARD_BASE + "/dev-tools"]: "Dev Tools",
+  [DASHBOARD_BASE + "/cli/connect"]: "Connect CLI",
   [DASHBOARD_BASE + "/models"]: "Model Catalog",
   [DASHBOARD_BASE + "/healthcheck"]: "System Health",
   [DASHBOARD_BASE + "/routes"]: "Rules",
@@ -89,6 +90,9 @@ export function topbarTitle(pathname: string): string {
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/policies/") && pathname !== DASHBOARD_BASE + "/policies") {
     return "Guard Rail";
+  }
+  if (pathname.startsWith(DASHBOARD_BASE + "/cli/")) {
+    return "Connect CLI";
   }
   return "";
 }

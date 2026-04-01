@@ -39,10 +39,10 @@ The walkthrough is designed to work as:
 |-------|--------|-------------|
 | 0 | [What is Restormel Integrations?](02-phase-0-overview.md) | Product model, when to use, relation to Keys |
 | 1 | [Choose your workflow](03-phase-1-choose-workflow.md) | In my app / terminal / agent — and persist choice |
-| 2 | [CLI](04-phase-2-cli.md) | Install CLI, doctor, validate, models list, routing explain |
+| 2 | [CLI](04-phase-2-cli.md) | Install CLI, optional device login or env snippet, doctor, validate, models list, routing explain |
 | 3 | [MCP](05-phase-3-mcp.md) | Tool surface, setup, connection (when runtime exists) |
 | 4 | [AAIF](06-phase-4-aaif.md) | Request/response types, validation, when to use |
-| 5 | [Dashboard & docs](07-phase-5-dashboard-docs.md) | Developer Tools section, usage path, doc links |
+| 5 | [Dashboard & docs](07-phase-5-dashboard-docs.md) | Developer Tools, Gateway keys / Connect CLI, usage path, doc links |
 | 6 | [Verify and go live](08-phase-6-verify.md) | CLI doctor, dashboard checks, smoke, agent prompts |
 | — | [Prompt index](09-prompt-index.md) | All agent prompts in one place for sequential execution |
 

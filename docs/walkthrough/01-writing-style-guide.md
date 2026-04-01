@@ -25,6 +25,7 @@ Use these terms exactly. Do not invent synonyms in any walkthrough page.
 | **Project** | A container for routes, policies, keys, and usage within a workspace | "App," "service," "instance" |
 | **Environment** | A deployment context within a project (e.g. production, staging) | "Stage," "slot," "config" |
 | **Gateway Key** | The key your backend uses to authenticate to the Restormel API (format `rk_…`) | "API key" (ambiguous), "backend key," "server key" |
+| **Connect CLI** | Dashboard route `/keys/dashboard/cli/connect` where you approve **`keys login`** from the terminal | "CLI OAuth page" (vague) |
 | **Provider credential** | An AI provider API key stored in Restormel (e.g. an OpenAI key) | "BYOK key," "user key," "secret" |
 | **Route** | A named routing configuration within a project; contains steps and a route mode | "Endpoint," "path," "chain" |
 | **Step** | One entry in a route's fallback chain; specifies a provider preference and optional model | "Stage," "tier," "level" |
@@ -48,6 +49,8 @@ Use these terms exactly. Do not invent synonyms in any walkthrough page.
 | **Session** (dashboard login) | User + workspace | Dashboard UI: routes, policies, keys, model index **edits** (until HTTP mutations exist), logs | Server-side automation from untrusted contexts |
 
 Use the Gateway Key in server-side env vars for resolve, evaluate, and **read** project models. Never expose the Gateway Key in browser code.
+
+To get a Gateway key into a local project, use **Copy .env snippet** on **Gateway keys** (`/keys/dashboard/access`) or run **`keys login`** (device-style flow) and complete **Connect CLI**. See the [Integrations walkthrough Phase 2](/keys/docs/integrations-walkthrough/phase-2-cli).
 
 ### Provider names
 

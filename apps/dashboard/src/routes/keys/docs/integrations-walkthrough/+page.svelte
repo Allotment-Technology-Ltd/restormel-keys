@@ -20,10 +20,10 @@
   <ol class="walkthrough-steps">
     <li><a href="/keys/docs/integrations-walkthrough/phase-0-overview"><strong>Phase 0 — What is Restormel Integrations?</strong></a> — Product model, when to use CLI/MCP/AAIF, relation to Keys.</li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-1-choose-workflow"><strong>Phase 1 — Choose your workflow</strong></a> — In my app / terminal / agent; persist selection.</li>
-    <li><a href="/keys/docs/integrations-walkthrough/phase-2-cli"><strong>Phase 2 — CLI</strong></a> — Install CLI, doctor, validate, models list, routing explain.</li>
+    <li><a href="/keys/docs/integrations-walkthrough/phase-2-cli"><strong>Phase 2 — CLI</strong></a> — Install CLI, optional device login or env snippet, doctor, validate, models list, routing explain.</li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-3-mcp"><strong>Phase 3 — MCP</strong></a> — Tool surface, schemas, connection (when runtime exists).</li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-4-aaif"><strong>Phase 4 — AAIF</strong></a> — Request/response types, validation, when to use.</li>
-    <li><a href="/keys/docs/integrations-walkthrough/phase-5-dashboard-docs"><strong>Phase 5 — Dashboard & docs</strong></a> — Developer Tools section, usage path, doc links.</li>
+    <li><a href="/keys/docs/integrations-walkthrough/phase-5-dashboard-docs"><strong>Phase 5 — Dashboard & docs</strong></a> — Developer Tools, Gateway keys / Connect CLI, usage path, doc links.</li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-6-verify"><strong>Phase 6 — Verify and go live</strong></a> — CLI doctor, dashboard checks, checklist.</li>
     <li><a href="/keys/docs/integrations-walkthrough/prompt-index"><strong>Prompt index</strong></a> — All agent prompts in one place for sequential execution.</li>
   </ol>

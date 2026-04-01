@@ -16,7 +16,13 @@ function getSessionUrl(): string {
   return base ? `${base}/get-session` : "";
 }
 
-export type SessionUser = { id: string; email?: string | null; name?: string | null };
+export type SessionUser = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  /** Neon Auth / Better Auth may expose operator role (e.g. "admin") for dashboard users. */
+  role?: string | null;
+};
 
 const LOCAL_COOKIE_PREFIX = "rksecure-";
 

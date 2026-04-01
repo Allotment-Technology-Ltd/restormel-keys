@@ -4,25 +4,36 @@
       plan: "free" | "pro";
       projectLimit: number;
       monthlyRequestLimit: number;
+      isServiceAdmin?: boolean;
     } | null;
     invoices: Array<{ id: string; amount: string; issuedAt: string }>;
   };
 
   $: isPro = data.entitlements?.plan === "pro";
+  $: isOp = data.entitlements?.isServiceAdmin === true;
 </script>
 
 <h1 class="page-title">Subscription & Billing</h1>
 <p class="page-desc">View your current plan, usage limits, and invoice history.</p>
 
+{#if isOp}
+  <p class="operator-banner" role="status">
+    You are signed in as a <strong>service operator</strong>. Subscription limits are waived for internal testing; this
+    is not end-customer billing.
+  </p>
+{/if}
+
 <section class="grid" aria-label="Billing overview">
   <article class="card">
     <h2>Current plan</h2>
-    <p class="plan">{isPro ? "Pro" : "Free"}</p>
+    <p class="plan">{isOp ? "Pro (operator)" : isPro ? "Pro" : "Free"}</p>
     <ul>
       <li>Projects: {data.entitlements?.projectLimit ?? 0}</li>
       <li>Monthly requests: {(data.entitlements?.monthlyRequestLimit ?? 0).toLocaleString()}</li>
     </ul>
-    {#if isPro}
+    {#if isOp}
+      <p class="muted small">No subscription required for operator accounts.</p>
+    {:else if isPro}
       <a class="btn btn-primary" href="/keys/dashboard/billing">Manage subscription</a>
     {:else}
       <a class="btn btn-primary" href="/keys/pricing">Upgrade to Pro</a>
@@ -40,7 +51,7 @@
         {/each}
       </ul>
     {/if}
-    {#if isPro}
+    {#if isPro && !isOp}
       <a class="btn btn-secondary" href="/keys/dashboard/billing">Open Paddle billing portal</a>
     {/if}
   </article>
@@ -58,6 +69,20 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
+  }
+  .operator-banner {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .muted.small {
+    font-size: var(--text-xs);
+    margin: var(--space-2) 0 0;
   }
   .grid {
     display: grid;

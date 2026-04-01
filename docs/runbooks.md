@@ -16,6 +16,7 @@ Early operational notes. **Single place** for procedures; expand when hosted com
 | [runbooks/zuplo-launch-cli.md](runbooks/zuplo-launch-cli.md) | **Single-path launch:** CLI execution order (main then working-copy), launch-checklist script, portal-only steps. |
 | [runbooks/staging-and-ci-setup.md](runbooks/staging-and-ci-setup.md) | **Staging and CI:** Non-production Restormel project/env, Gateway Key, GitHub Actions secrets, nightly validate/smoke, post-deploy options; phased minimum setup. |
 | [runbooks/neon-user-subscription-view.md](runbooks/neon-user-subscription-view.md) | **Neon: user subscription view.** Subscription level, renewal/expiry, plan_ended_at; view `user_subscription_overview` in Neon Console (workspaces only, no user table). |
+| [runbooks/service-admin-operators.md](runbooks/service-admin-operators.md) | **Service operators:** waive subscription limits and Pro UI gates for Allotment dogfood (Neon Auth admin role, `RESTORMEL_SERVICE_ADMIN_USER_IDS`, or `service_admins` table). |
 | [runbooks/zuplo-config-reference/](runbooks/zuplo-config-reference/README.md) | Reference `routes.oas.json` and `policies.json` for agent-driven or scripted Zuplo setup. |
 | [runbooks/aaif-implementation-workflow.md](runbooks/aaif-implementation-workflow.md) | Integrate AAIF runtime helper with `@restormel/keys` for routing + cost. |
 | [runbooks/mcp-implementation-workflow.md](runbooks/mcp-implementation-workflow.md) | Implement Restormel MCP tool surface (stdio server + agent workflow). |

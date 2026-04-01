@@ -18,6 +18,8 @@ export type WorkspaceEntitlements = {
   foundingProExpiresAt: number | null;
   /** True when user is inside founder cohort (first N users), always Pro regardless subscription. */
   isFounderUser: boolean;
+  /** Internal operator: subscription-style limits waived (dogfooding). */
+  isServiceAdmin: boolean;
 };
 
 const FREE = {
@@ -30,9 +32,16 @@ const PRO = {
   monthlyRequestLimit: 100_000,
 };
 
+/** Internal operators: high caps so resolve/project APIs do not throttle dogfood traffic. */
+const SERVICE_ADMIN = {
+  projectLimit: 999,
+  monthlyRequestLimit: 10_000_000,
+};
+
 export async function getWorkspaceEntitlements(locals: App.Locals): Promise<WorkspaceEntitlements | null> {
   const uid = locals.user?.uid;
   if (!uid) return null;
+  const isServiceAdmin = locals.user?.isServiceAdmin === true;
   const ws = await getOrCreateDefaultWorkspace(uid);
   await downgradeWorkspaceIfProExpired(ws.id);
   const hydrated = await getWorkspace(ws.id);
@@ -43,10 +52,12 @@ export async function getWorkspaceEntitlements(locals: App.Locals): Promise<Work
   const founderCap = foundingPromoMaxUsers();
   const isFounderUser = founderCap > 0 && signupRank != null && signupRank <= founderCap;
   const effectivePro =
-    isFounderUser || (plan === "pro" && (expiresAt == null || expiresAt <= 0 || expiresAt > now));
-  const tier = effectivePro ? PRO : FREE;
+    isServiceAdmin ||
+    isFounderUser ||
+    (plan === "pro" && (expiresAt == null || expiresAt <= 0 || expiresAt > now));
+  const tier = isServiceAdmin ? SERVICE_ADMIN : effectivePro ? PRO : FREE;
   const foundingProExpiresAt =
-    !isFounderUser && effectivePro && expiresAt != null && expiresAt > now ? expiresAt : null;
+    !isFounderUser && !isServiceAdmin && effectivePro && expiresAt != null && expiresAt > now ? expiresAt : null;
 
   return {
     workspaceId: ws.id,
@@ -55,5 +66,6 @@ export async function getWorkspaceEntitlements(locals: App.Locals): Promise<Work
     monthlyRequestLimit: tier.monthlyRequestLimit,
     foundingProExpiresAt,
     isFounderUser,
+    isServiceAdmin,
   };
 }

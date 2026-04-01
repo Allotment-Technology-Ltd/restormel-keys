@@ -27,6 +27,7 @@ npx @restormel/validate
 | `keys validate` | Wrapper for `restormel-validate` (exit 1 if invalid — CI-friendly) |
 | `keys doctor [--report]` | Wrapper for `restormel-doctor` (setup/health checks); `--report` prints a pre-filled GitHub issue URL when checks fail |
 | `keys estimate <model> --input <n> --output <n>` | Cost estimate for a model |
+| `keys login` | Device login: browser-approved Gateway key in the terminal (OAuth-style device flow) |
 | `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
 

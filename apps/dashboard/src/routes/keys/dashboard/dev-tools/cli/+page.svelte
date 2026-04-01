@@ -26,7 +26,16 @@
     <li><code class="inline-code">keys estimate &lt;model&gt;</code> — cost estimate for a model</li>
     <li><code class="inline-code">keys models list</code> — list available models across providers</li>
     <li><code class="inline-code">keys routing explain &lt;model&gt;</code> — explain routing decisions</li>
+    <li><code class="inline-code">keys login</code> — device authorization: link this machine to a project (new Gateway key in your terminal)</li>
   </ul>
+</section>
+
+<section class="section" aria-labelledby="device-login-heading">
+  <h2 id="device-login-heading" class="section-title">Connect from your terminal</h2>
+  <p class="help-text">
+    Run <code class="inline-code">npx @restormel/keys-cli login</code> in your project directory. Open the printed URL, enter the user code, and pick a project. A new Gateway key is created and written to your env file (or printed).
+  </p>
+  <a href="/keys/dashboard/cli/connect" class="btn-link">Open Connect CLI (after running login)</a>
 </section>
 
 <section class="section" aria-labelledby="activity-heading">
