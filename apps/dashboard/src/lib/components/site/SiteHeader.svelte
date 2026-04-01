@@ -4,7 +4,7 @@
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { page } from "$app/stores";
 
-  export let active: "keys" | "docs" | "integrations" | "dashboard" | null = null;
+  export let active: "keys" | "docs" | "use-cases" | "integrations" | "dashboard" | null = null;
   $: portalUrl = developerPortalUrl();
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
@@ -31,6 +31,7 @@
     <ul class="site-header-links">
       <li><a href="/keys" class:active={active === "keys"}>Keys</a></li>
       <li><a href="/keys/docs" class:active={active === "docs"}>Documentation</a></li>
+      <li><a href="/keys/use-cases" class:active={active === "use-cases"}>Use cases</a></li>
       <li><a href="/integrations" class:active={active === "integrations"}>Integrations</a></li>
       <li>
         <a
@@ -76,6 +77,7 @@
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <a href="/keys" class:active={active === "keys"} on:click={closeMobileMenu}>Keys</a>
     <a href="/keys/docs" class:active={active === "docs"} on:click={closeMobileMenu}>Documentation</a>
+    <a href="/keys/use-cases" class:active={active === "use-cases"} on:click={closeMobileMenu}>Use cases</a>
     <a href="/integrations" class:active={active === "integrations"} on:click={closeMobileMenu}>Integrations</a>
     <a
       href={portalUrl}

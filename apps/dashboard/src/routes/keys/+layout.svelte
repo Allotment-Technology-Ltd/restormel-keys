@@ -12,6 +12,8 @@
       ? "keys"
       : pathname.startsWith("/keys/docs")
         ? "docs"
+        : pathname.startsWith("/keys/use-cases")
+          ? "use-cases"
         : pathname.startsWith("/keys/dashboard")
           ? "dashboard"
           : pathname.startsWith("/keys/pricing")
@@ -55,7 +57,7 @@
 
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <SiteHeader active={navActive as "keys" | "docs" | "dashboard" | null} {user} />
+  <SiteHeader active={navActive as "keys" | "docs" | "use-cases" | "dashboard" | null} {user} />
   <main id="main-content" class="marketing-main">
     <slot />
   </main>
