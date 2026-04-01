@@ -6,6 +6,8 @@ Single record of meaningful repo changes.
 
 **`@restormel/mcp` production rollout primitives:** Added control-plane write tools (`routes.list/create/update/delete`, `policies.list/create/update/delete`, `fallback_chain.set`), integration bootstrap (`integration.bootstrap_nextjs`), BYOK contract generators (`byok.schema.generate`, `byok.api_contract.generate`), rollout simulation (`policy.simulate`), catalog guardrails (`catalog.sync_check`, `catalog.deprecation_alerts`), and CI-friendly aggregate checks (`readiness.check`) with machine-readable stable codes. Updated MCP package/docs surfaces to document server-only token requirements and masked key handling constraints.
 
+**Package publish recovery path:** Added one-off workflow [publish-mcp.yml](.github/workflows/publish-mcp.yml) and bumped `@restormel/mcp` to `0.1.8` so changed MCP releases can be re-published via GitHub Actions `NPM_TOKEN` without running the full release train.
+
 ## Repo (2026-03-30)
 
 **Paddle USD FX automation (GBP canonical):** Added [scripts/sync-paddle-usd-prices.mjs](scripts/sync-paddle-usd-prices.mjs) to derive USD Pro prices from canonical GBP minor units using FX + rounding, create new Paddle USD prices when drift exceeds threshold, update Vercel production USD price env vars, and optionally redeploy. Scheduled/manual workflow: [paddle-usd-sync.yml](.github/workflows/paddle-usd-sync.yml). Runbook updated: [docs/runbooks/paddle-go-live.md](docs/runbooks/paddle-go-live.md).

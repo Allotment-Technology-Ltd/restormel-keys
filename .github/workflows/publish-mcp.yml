@@ -1,0 +1,29 @@
+# One-off or recovery: publish @restormel/mcp without running the full release train.
+name: Publish mcp
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build @restormel/mcp
+        run: pnpm --filter @restormel/mcp run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Publish @restormel/mcp to npm
+        run: pnpm --filter @restormel/mcp publish --access public --no-git-checks
