@@ -19,6 +19,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys
+        run: pnpm --filter @restormel/keys run build
       - name: Build @restormel/mcp
         run: pnpm --filter @restormel/mcp run build
       - name: Configure npm auth
