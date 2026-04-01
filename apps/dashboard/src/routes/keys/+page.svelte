@@ -138,6 +138,27 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
     </div>
   </section>
 
+  <section class="section" aria-labelledby="use-cases-heading">
+    <div class="container">
+      <h2 id="use-cases-heading" class="section-title">Built in real products</h2>
+      <p class="section-intro">
+        See how different teams use Restormel Keys in production: a fast setup for privacy-sensitive extraction at PLOT, and a deeper multi-workload
+        integration at Sophia.
+      </p>
+      <div class="use-cases-grid">
+        <a class="use-case-card" href="/keys/use-cases#plot-title">
+          <strong>PLOT (Plotbudget)</strong>
+          <span>Policy-driven extraction routing with fallback chains and server-only key handling.</span>
+        </a>
+        <a class="use-case-card" href="/keys/use-cases#sophia-title">
+          <strong>Sophia</strong>
+          <span>Resolve + policy + catalog workflows across multi-pass analysis, ingestion, and BYOK surfaces.</span>
+        </a>
+      </div>
+      <p class="use-cases-cta"><a href="/keys/use-cases">Read full use cases →</a></p>
+    </div>
+  </section>
+
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
       <h2 id="why-heading" class="section-title">AI infrastructure is solved. Product logic isn’t.</h2>
@@ -690,9 +711,39 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
     font-size: var(--text-xs);
     line-height: 1.4;
   }
+  .use-cases-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .use-case-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    padding: var(--space-4);
+    text-decoration: none;
+  }
+  .use-case-card strong {
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+  }
+  .use-case-card span {
+    color: var(--rm-muted);
+    font-size: var(--text-xs);
+    line-height: 1.45;
+  }
+  .use-cases-cta {
+    margin: var(--space-3) 0 0;
+  }
   @media (max-width: 960px) {
     .intent-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .use-cases-grid {
+      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 640px) {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { goto, invalidateAll } from "$app/navigation";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -10,11 +11,69 @@
 
   let copiedId: string | null = null;
   const KEYS_BASE_DEFAULT = "https://restormel.dev";
+  let editingName = "";
+  let renaming = false;
+  let deleting = false;
+  let actionError = "";
+
+  $: editingName = data.project?.name ?? "";
 
   function copyToClipboard(value: string, id: string) {
     navigator.clipboard.writeText(value);
     copiedId = id;
     setTimeout(() => (copiedId = null), 2000);
+  }
+
+  async function renameProject() {
+    if (!data.project) return;
+    const nextName = editingName.trim();
+    if (!nextName) {
+      actionError = "Project name cannot be empty.";
+      return;
+    }
+    renaming = true;
+    actionError = "";
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${data.project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nextName }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+        actionError = err.detail || err.error || `Rename failed (${res.status})`;
+        return;
+      }
+      await invalidateAll();
+    } catch (e) {
+      actionError = e instanceof Error ? e.message : "Rename failed";
+    } finally {
+      renaming = false;
+    }
+  }
+
+  async function deleteCurrentProject() {
+    if (!data.project) return;
+    if (!confirm(`Delete project "${data.project.name}"? This action cannot be undone.`)) return;
+    deleting = true;
+    actionError = "";
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${data.project.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+        actionError = err.detail || err.error || `Delete failed (${res.status})`;
+        return;
+      }
+      await goto(DASHBOARD_BASE + "/projects");
+    } catch (e) {
+      actionError = e instanceof Error ? e.message : "Delete failed";
+    } finally {
+      deleting = false;
+    }
   }
 </script>
 
@@ -25,6 +84,31 @@
 {:else}
   <h1 class="page-title">{data.project.name}</h1>
   <p class="page-desc">Project detail. Gateway keys are scoped to this project.</p>
+  {#if actionError}
+    <p class="error" role="alert">{actionError}</p>
+  {/if}
+
+  <section class="section">
+    <h2 class="section-title">Project settings</h2>
+    <p class="section-desc">Rename or delete this project. Deleting a project also removes its associated Gateway keys.</p>
+    <div class="project-settings-row">
+      <label class="visually-hidden" for="project-rename-input">Project name</label>
+      <input
+        id="project-rename-input"
+        type="text"
+        bind:value={editingName}
+        class="project-name-input"
+        aria-label="Project name"
+        disabled={renaming || deleting}
+      />
+      <button class="btn btn-secondary btn-sm" onclick={renameProject} disabled={renaming || deleting || !editingName.trim()}>
+        {renaming ? "Saving..." : "Save name"}
+      </button>
+      <button class="btn btn-danger btn-sm" onclick={deleteCurrentProject} disabled={renaming || deleting}>
+        {deleting ? "Deleting..." : "Delete project"}
+      </button>
+    </div>
+  </section>
 
   {#if data.environments?.length > 0}
     <section class="section">
@@ -184,6 +268,21 @@
     color: var(--coral-alert);
     font-size: var(--text-sm);
   }
+  .project-settings-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+  .project-name-input {
+    min-width: 14rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface);
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+  }
 
   .section-ci-secrets {
     background: color-mix(in oklab, var(--rm-surface-raised, var(--rm-surface)) 90%, black 10%);
@@ -262,5 +361,21 @@
   }
   .btn-secondary:hover {
     opacity: 0.9;
+  }
+  .btn-danger {
+    background: color-mix(in oklab, var(--coral-alert) 90%, black 10%);
+    color: white;
+    border: 1px solid color-mix(in oklab, var(--coral-alert) 70%, black 30%);
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

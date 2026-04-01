@@ -12,6 +12,7 @@
         <li><a href="/keys/docs">Docs</a></li>
         <li><a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a></li>
         <li><a href="/keys/pricing">Pricing</a></li>
+        <li><a href="/keys/use-cases">Use cases</a></li>
         <li><a href={DASHBOARD_BASE}>Dashboard</a></li>
       </ul>
     </div>

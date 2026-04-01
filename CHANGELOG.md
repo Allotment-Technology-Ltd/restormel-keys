@@ -10,6 +10,8 @@ Single record of meaningful repo changes.
 
 **MCP docs — server-side user journey:** Documented `RESTORMEL_EVALUATE_URL` (full Dashboard API policy evaluate URL) vs `RESTORMEL_CONTROL_PLANE_URL` (dashboard app base for `/api/projects/…` MCP tools) across [docs/runbooks/mcp-implementation-workflow.md](docs/runbooks/mcp-implementation-workflow.md), [docs/security-baseline.md](docs/security-baseline.md), [ARCHITECTURE.md](ARCHITECTURE.md), [STATUS.md](STATUS.md), `packages/mcp/README.md`, in-app docs (integrations MCP, Cloud API, Developer Tools MCP), integrations walkthrough Phase 3, `/integrations` marketing copy, Zuplo portal (`integrations-mcp`, policies-evaluate, introduction), and MCP `docs.search` index keywords.
 
+**Public use-cases marketing page (`/keys/use-cases`):** Added a dedicated Restormel Keys testimonials/use-cases page with two real product narratives (**PLOT** and **Sophia**), including implementation outcomes and links to each product surface. Added discoverability links from the Keys landing page and site footer, and included the new route in [sitemap.xml](apps/dashboard/src/routes/sitemap.xml/+server.ts) for indexing.
+
 ## Repo (2026-03-30)
 
 **Paddle USD FX automation (GBP canonical):** Added [scripts/sync-paddle-usd-prices.mjs](scripts/sync-paddle-usd-prices.mjs) to derive USD Pro prices from canonical GBP minor units using FX + rounding, create new Paddle USD prices when drift exceeds threshold, update Vercel production USD price env vars, and optionally redeploy. Scheduled/manual workflow: [paddle-usd-sync.yml](.github/workflows/paddle-usd-sync.yml). Runbook updated: [docs/runbooks/paddle-go-live.md](docs/runbooks/paddle-go-live.md).
