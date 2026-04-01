@@ -4,6 +4,8 @@
 > **Prerequisites:** [Phase 1](03-phase-1-choose-workflow.md) complete; you chose "In my agent or IDE" or want MCP  
 > **You'll need:** Understanding of [Model Context Protocol](https://modelcontextprotocol.io); optional: an MCP client (IDE or agent framework)
 
+**Canonical env vocabulary:** [Environment vocabulary (canonical)](../guides/restormel-environment-vocabulary.md) — official `RESTORMEL_*` names (evaluate URL vs control-plane base; Gateway key vs server token). Use this to avoid duplicate or ambiguous names in implementations.
+
 This phase introduces the Restormel MCP tool surface. **`@restormel/mcp`** includes **JSON tool schemas**, a **stdio MCP server** (`restormel-mcp`), and a **`createRestormelMcpServer()`** factory for custom transports.
 
 MCP is a **standalone integration layer**: you can keep your existing execution stack (OpenRouter, Portkey, bespoke proxy, direct provider APIs) and still use Restormel tools for model inventory, validation, routing explainability, and cost estimation.

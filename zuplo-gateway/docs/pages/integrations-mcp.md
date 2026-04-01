@@ -4,6 +4,8 @@ description: Wire MCP (Model Context Protocol) to Restormel Keys — policy eval
 
 # MCP & agent setup
 
+**Canonical variable names** (do not invent synonyms): repo `docs/guides/restormel-environment-vocabulary.md` or in-product [Environment vocabulary](https://restormel.dev/keys/docs/guides/environment-vocabulary).
+
 Agents and IDEs run **`@restormel/mcp`** as a **local stdio server**. Credentials live in **that process environment only** — same trust model as a backend worker: never expose Gateway keys in the browser or client bundles.
 
 ## Two URL shapes (do not mix them up)

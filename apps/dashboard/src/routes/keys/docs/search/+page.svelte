@@ -3,6 +3,11 @@
     { title: "Docs overview", href: "/keys/docs", tags: "overview intro" },
     { title: "Walkthrough", href: "/keys/docs/walkthrough", tags: "phase migration" },
     { title: "Integrations walkthrough", href: "/keys/docs/integrations-walkthrough", tags: "cli mcp aaif" },
+    {
+      title: "Environment vocabulary",
+      href: "/keys/docs/guides/environment-vocabulary",
+      tags: "env RESTORMEL_GATEWAY_KEY RESTORMEL_SERVER_TOKEN RESTORMEL_EVALUATE_URL RESTORMEL_CONTROL_PLANE_URL RESTORMEL_KEYS_BASE CI staging secrets plot mcp",
+    },
     { title: "Provider access modes", href: "/keys/docs/guides/provider-access-modes", tags: "gateway byok direct" },
     { title: "OpenRouter guide", href: "/keys/docs/guides/openrouter", tags: "openrouter" },
     { title: "Vercel AI Gateway guide", href: "/keys/docs/guides/vercel-ai-gateway", tags: "vercel gateway" },

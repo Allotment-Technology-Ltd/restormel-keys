@@ -54,6 +54,8 @@ restormel-mcp
 
 ## Environment variables
 
+**Canonical naming (read this first):** [docs/guides/restormel-environment-vocabulary.md](../../docs/guides/restormel-environment-vocabulary.md) — official names for `RESTORMEL_GATEWAY_KEY` vs `RESTORMEL_SERVER_TOKEN`, and for the three URL roles (`RESTORMEL_KEYS_BASE`, `RESTORMEL_CONTROL_PLANE_URL`, `RESTORMEL_EVALUATE_URL`). Do not introduce alternate env names for the same key or URL in docs or generators.
+
 | Variable | Purpose |
 |----------|---------|
 | `RESTORMEL_MCP_CONFIG` | Optional path to JSON `KeysConfig` for local entitlement rules (see `@restormel/keys`). |

@@ -4,6 +4,8 @@ This guide walks you through setting up a **non-production** Restormel target an
 
 **Principle:** Do not point CI at your main production environment unless you explicitly accept that risk. Use a dedicated staging project or at least a staging environment inside your project.
 
+**Canonical names:** GitHub secret names like `RESTORMEL_GATEWAY_KEY_STAGING` are a storage convention; runtime env should use the standard names in [Environment vocabulary (canonical)](../guides/restormel-environment-vocabulary.md) (`RESTORMEL_GATEWAY_KEY`, `RESTORMEL_EVALUATE_URL`, etc.). Do not invent alternate names for the same key or URL.
+
 ---
 
 ## Order of operations

@@ -251,7 +251,7 @@ type AAIFResponse = {
 
 ## 9. MCP Tool Surface
 
-MCP implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md) — includes **server-side env journey** (policy evaluate URL vs control-plane base, Gateway Key, trust boundaries).
+**Canonical env names:** [guides/restormel-environment-vocabulary.md](../guides/restormel-environment-vocabulary.md) — do not duplicate or rename `RESTORMEL_*` variables elsewhere. MCP implementation workflow runbook: [runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md) — checklist and verification (links to vocabulary for definitions).
 
 **Runtime:** `@restormel/mcp` ships a stdio MCP server (`restormel-mcp`) and `createRestormelMcpServer()` for custom transports. See `packages/mcp/README.md`.
 

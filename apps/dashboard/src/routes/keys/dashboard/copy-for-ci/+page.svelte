@@ -14,7 +14,8 @@
 
 <h1 class="page-title">Copy for CI (GitHub Secrets)</h1>
 <p class="page-desc">
-  Copy project ID, environment ID, and get a Gateway key to paste into your repo’s <strong>Settings → Secrets and variables → Actions</strong>. Use a <strong>staging</strong> project for CI — never production.
+  Open a project to <strong>create a Gateway key on the same page</strong> as “Copy for CI”, pick <strong>which environment</strong> (Development vs Production) your CI should use, then <strong>copy the full snippet</strong> in one click. Paste into your repo’s
+  <strong>Settings → Secrets and variables → Actions</strong>. Prefer a non-production project for CI.
 </p>
 
 {#if data.error}
@@ -24,12 +25,12 @@
 {#if data.projects.length === 0}
   <EmptyState
     title="No projects yet"
-    description="Create a project first. Then open it to copy project ID, environment ID, and create a Gateway key for CI."
+    description="Create a project first. On the project page you can create a Gateway key, choose the CI environment, and copy a complete .env-style snippet."
   >
     <a href={DASHBOARD_BASE + "/projects"} class="btn btn-primary">Create a project</a>
   </EmptyState>
 {:else}
-  <p class="choose-desc">Choose your staging project to open its <strong>Copy for CI</strong> section (project ID, environment ID, Gateway key instructions):</p>
+  <p class="choose-desc">Choose your CI/staging project — the next page has Gateway key creation, environment selection, and <strong>Copy full CI snippet</strong>:</p>
   <ul class="project-list">
     {#each data.projects as p}
       <li>

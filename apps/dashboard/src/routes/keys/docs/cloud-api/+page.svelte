@@ -265,7 +265,11 @@
   </table>
 
   <h2>Policy evaluate (Dashboard API)</h2>
-  <p>Use policy evaluate to test whether a model/provider combination is allowed by active policies without executing a full resolve.</p>
+  <p>
+    Use policy evaluate to test whether a model/provider combination is allowed by active policies without executing a full resolve. In env vars, the full URL of this endpoint is always
+    <code>RESTORMEL_EVALUATE_URL</code> (not the control-plane base or site origin alone) — see
+    <a href="/keys/docs/guides/environment-vocabulary">Environment vocabulary</a>.
+  </p>
   <p><strong>Endpoint</strong></p>
   <CodeBlock language="text" code={`POST /keys/dashboard/api/policies/evaluate\nAuthorization: Bearer {RESTORMEL_GATEWAY_KEY}\nContent-Type: application/json`} />
 

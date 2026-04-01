@@ -10,6 +10,10 @@
   Use these tools to query models, estimate costs, explain routing, manage control-plane resources, and more — directly from your
   agent workflow.
 </p>
+<p class="docs-p">
+  <strong>Canonical env names:</strong>
+  <a href="/keys/docs/guides/environment-vocabulary">Environment vocabulary</a> — use these <code class="inline-code">RESTORMEL_*</code> names everywhere (apps, CI, wizards). Gateway key and server token are the same secret; evaluate URL, control-plane base, and site origin are three different strings.
+</p>
 
 <h2 class="docs-h2">Runtime server</h2>
 <p class="docs-p">

@@ -47,27 +47,23 @@ This runbook focuses on wiring the MCP server/tools so your agent workflow can:
 
 MCP reads **only** the **stdio server process environment** (your IDE/agent host). Treat that env as **server-side**: never commit keys, never expose Gateway keys to the browser, and assume MCP host logs are untrusted. Canonical security rules: [docs/security-baseline.md](../security-baseline.md).
 
+**Canonical names** for every `RESTORMEL_*` variable and URL role (Gateway key vs server token, `KEYS_BASE` vs control plane vs evaluate): **[docs/guides/restormel-environment-vocabulary.md](../guides/restormel-environment-vocabulary.md)** (in-product: [Environment vocabulary](https://restormel.dev/keys/docs/guides/environment-vocabulary)). Other docs should link there instead of inventing alternate names.
+
 Restormel exposes **two different URL bases** MCP tools may call. Do not confuse them.
 
 ### A) Policy evaluation (`entitlements.check` → Dashboard API)
 
 Use this when you want `entitlements.check` to hit **live project policies** instead of local `RESTORMEL_MCP_CONFIG` rules.
 
-| Variable | Value (hosted) | Notes |
-|----------|----------------|--------|
-| `RESTORMEL_EVALUATE_URL` | `https://restormel.dev/keys/dashboard/api/policies/evaluate` | **Full URL** to `POST` (self-host: `https://<host>/keys/dashboard/api/policies/evaluate`). |
-| `RESTORMEL_GATEWAY_KEY` | `rk_…` | Project **Gateway Key** from the dashboard. Sent as `Authorization: Bearer …`. Never log the raw value. |
+Set **`RESTORMEL_EVALUATE_URL`** to the **full** `POST` URL (hosted: `https://restormel.dev/keys/dashboard/api/policies/evaluate`) and **`RESTORMEL_GATEWAY_KEY`** to the project Gateway key (`rk_…`). Never log the raw key.
 
 The MCP server posts a small JSON body (e.g. `{ "modelId": "<feature>" }`). With **Gateway Key** auth, the API evaluates in the **key’s bound project**; you may omit `projectId` in the body or must match the key’s project if you send it. API reference: in-product [Cloud API](https://restormel.dev/keys/docs/cloud-api) (Policy evaluate), typed client `evaluatePolicies` in `@restormel/keys/dashboard`, and the **Restormel API portal** doc *Policies evaluate* (Dashboard API).
 
 ### B) Control-plane route/policy tools (`routes.*`, `policies.*`, `fallback_chain.set`)
 
-These tools call REST paths under **`/api/projects/...`** on the **dashboard app** origin. Set the base so that `{RESTORMEL_CONTROL_PLANE_URL}/api/projects/{projectId}/…` is a valid URL.
+These tools call REST paths under **`/api/projects/...`** on the **dashboard app** origin. Set **`RESTORMEL_CONTROL_PLANE_URL`** so that `{RESTORMEL_CONTROL_PLANE_URL}/api/projects/{projectId}/…` is valid (hosted: `https://restormel.dev/keys/dashboard`, **no trailing slash**).
 
-| Variable | Value (hosted) | Notes |
-|----------|----------------|--------|
-| `RESTORMEL_CONTROL_PLANE_URL` | `https://restormel.dev/keys/dashboard` | **No trailing slash.** Not the same string as `RESTORMEL_EVALUATE_URL` (that one includes `/api/policies/evaluate`). |
-| `RESTORMEL_SERVER_TOKEN` | `rk_…` (recommended) | Preferred name for “server-only” automation. `RESTORMEL_GATEWAY_KEY` is accepted as a fallback token for the same Bearer header. |
+Set **`RESTORMEL_SERVER_TOKEN`** to the **same value** as the Gateway key unless you use a separate management token; **`RESTORMEL_GATEWAY_KEY`** is accepted as a fallback for the same Bearer header. See the vocabulary doc for why two names exist.
 
 **Trust:** control-plane responses must not contain raw provider secrets; MCP surfaces `serverOnlyToken: true` on write-tool results to remind operators these calls require server credentials.
 
