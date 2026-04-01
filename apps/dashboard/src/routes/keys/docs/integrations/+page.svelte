@@ -19,7 +19,7 @@
 
   <a href="/keys/docs/integrations/mcp" class="integration-card">
     <h2 class="card-title">MCP</h2>
-    <p class="card-desc">Use Restormel inside agent workflows and IDEs via Model Context Protocol.</p>
+    <p class="card-desc">Use Restormel inside agent workflows and IDEs via Model Context Protocol, including control-plane CRUD and CI readiness checks.</p>
     <span class="card-link">MCP setup &rarr;</span>
   </a>
 

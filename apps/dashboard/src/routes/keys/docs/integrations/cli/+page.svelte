@@ -58,6 +58,10 @@
 <CodeBlock code="keys catalog fetch --json | jq .contractVersion" label="CLI" />
 
 <h2 class="docs-h2">Next steps</h2>
+<p class="docs-p">
+  For CI/CD rollouts, pair CLI checks with MCP <code>readiness.check</code> to enforce model/catalog/policy
+  guardrails in a single machine-readable step.
+</p>
 <ul class="docs-links">
   <li><a href="/keys/docs/integrations/mcp">MCP setup</a> — connect to agent workflows</li>
   <li><a href="/keys/docs/integrations/aaif">AAIF overview</a> — structured AI interaction contract</li>

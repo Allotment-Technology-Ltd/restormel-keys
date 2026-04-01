@@ -263,6 +263,16 @@ Tools:
 - `routing.explain`
 - `entitlements.check`
 - `integration.generate`
+- `integration.bootstrap_nextjs`
+- `routes.list/create/update/delete`
+- `policies.list/create/update/delete`
+- `fallback_chain.set`
+- `byok.schema.generate`
+- `byok.api_contract.generate`
+- `policy.simulate`
+- `catalog.sync_check`
+- `catalog.deprecation_alerts`
+- `readiness.check`
 - `docs.search`
 
 ## 10. CLI Commands

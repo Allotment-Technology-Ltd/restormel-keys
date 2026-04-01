@@ -7,7 +7,7 @@
 <p class="docs-intro">
   The Restormel MCP package exposes tools that agents and IDEs can call via the
   <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>.
-  Use these tools to query models, estimate costs, explain routing, and more — directly from your
+  Use these tools to query models, estimate costs, explain routing, manage control-plane resources, and more — directly from your
   agent workflow.
 </p>
 
@@ -34,6 +34,16 @@
     <tr><td><code>routing.explain</code></td><td>Explain routing decisions for a given request</td></tr>
     <tr><td><code>entitlements.check</code></td><td>Check plan entitlements and feature access</td></tr>
     <tr><td><code>integration.generate</code></td><td>Generate integration configuration for a stack</td></tr>
+    <tr><td><code>integration.bootstrap_nextjs</code></td><td>Generate Next.js server resolver + admin KeyManager wiring contract</td></tr>
+    <tr><td><code>routes.list/create/update/delete</code></td><td>Project route CRUD in the control plane (server token required)</td></tr>
+    <tr><td><code>policies.list/create/update/delete</code></td><td>Project policy CRUD in the control plane (server token required)</td></tr>
+    <tr><td><code>fallback_chain.set</code></td><td>Set primary + fallback model chain for a route</td></tr>
+    <tr><td><code>byok.schema.generate</code></td><td>Generate DB schema templates for global and user BYOK scope</td></tr>
+    <tr><td><code>byok.api_contract.generate</code></td><td>Generate validate/add/remove/revalidate endpoint contracts</td></tr>
+    <tr><td><code>policy.simulate</code></td><td>Batch policy simulation with expected allow/deny assertions</td></tr>
+    <tr><td><code>catalog.sync_check</code></td><td>Check model references against current catalog</td></tr>
+    <tr><td><code>catalog.deprecation_alerts</code></td><td>Return deprecation/retirement alerts for referenced models</td></tr>
+    <tr><td><code>readiness.check</code></td><td>Run CI-friendly readiness checks with stable error codes</td></tr>
     <tr><td><code>docs.search</code></td><td>Search Restormel documentation</td></tr>
   </tbody>
 </table>
@@ -50,6 +60,10 @@
   <li><strong>`routing.explain`</strong> — same static provider resolution as `keys routing explain` (policies require a configured project).</li>
   <li><strong>`entitlements.check`</strong> — policy checks (local rules via `RESTORMEL_MCP_CONFIG` or remote evaluation via `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY`).</li>
   <li><strong>`integration.generate`</strong> — scaffolding helper for a new integration.</li>
+  <li><strong>`integration.bootstrap_nextjs`</strong> — project-scoped server bootstrap contract for Next.js.</li>
+  <li><strong>`routes.*` / `policies.*` / `fallback_chain.set`</strong> — control-plane write tools for operational rollout.</li>
+  <li><strong>`byok.*` / `policy.simulate`</strong> — key lifecycle contract generation + deployment scenario simulation.</li>
+  <li><strong>`catalog.*` / `readiness.check`</strong> — model lifecycle guardrails and CI gating outputs.</li>
   <li><strong>`docs.search`</strong> — offline documentation index search.</li>
 </ul>
 

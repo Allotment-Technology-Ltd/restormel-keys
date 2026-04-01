@@ -1,6 +1,6 @@
 # @restormel/mcp
 
-**Model Context Protocol** tools for Restormel Keys: model catalog, cost estimates, routing explain, provider validation, entitlements, integration scaffolds, and offline docs search.
+**Model Context Protocol** tools for Restormel Keys: model catalog, cost estimates, routing explain, provider validation, entitlements, control-plane CRUD, integration bootstrap, BYOK contracts, simulation, and offline docs search.
 
 ## Install
 
@@ -61,8 +61,12 @@ restormel-mcp
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, … | Conventional names also accepted for validation. |
 | `RESTORMEL_EVALUATE_URL` | Optional full URL to `POST` policy evaluation (e.g. dashboard `.../api/policies/evaluate`). |
 | `RESTORMEL_GATEWAY_KEY` | Bearer token for that endpoint (never log this value). |
+| `RESTORMEL_CONTROL_PLANE_URL` | Base URL for control-plane CRUD tools (`routes.*`, `policies.*`, `fallback_chain.set`). |
+| `RESTORMEL_SERVER_TOKEN` | Preferred server-only token for control-plane and admin operations. |
 
 If `RESTORMEL_EVALUATE_URL` and `RESTORMEL_GATEWAY_KEY` are both set, `entitlements.check` calls the remote endpoint with `{ modelId: <feature> }`. Otherwise it uses local rules from `RESTORMEL_MCP_CONFIG` or a permissive default.
+
+For control-plane write tools, set both `RESTORMEL_CONTROL_PLANE_URL` and `RESTORMEL_SERVER_TOKEN`. `RESTORMEL_GATEWAY_KEY` is accepted as a fallback token, but `RESTORMEL_SERVER_TOKEN` is recommended so server-only credentials are clearly separated.
 
 ## Programmatic use
 
@@ -88,5 +92,6 @@ import { ALL_TOOLS } from "@restormel/mcp";
 
 - Do not commit real API keys or gateway keys.
 - This package does **not** log raw credentials. Errors are generic when validation or HTTP calls fail.
+- Key lifecycle helpers only emit masked metadata + fingerprints in generated contracts/templates (never raw key values).
 
 See repo `docs/security-baseline.md` for the full baseline.

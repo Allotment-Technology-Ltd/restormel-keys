@@ -234,6 +234,260 @@ export const docsSearchTool: McpToolSchema = {
   },
 };
 
+export const routesListTool: McpToolSchema = {
+  name: "routes.list",
+  description: "List configured project routes from the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Project ID in the Restormel control plane." },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const routesCreateTool: McpToolSchema = {
+  name: "routes.create",
+  description: "Create a route in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      name: { type: "string" },
+      primaryModel: { type: "string" },
+      fallbackModels: { type: "array", items: { type: "string" } },
+      enabled: { type: "boolean" },
+    },
+    required: ["projectId", "name", "primaryModel"],
+    additionalProperties: false,
+  },
+};
+
+export const routesUpdateTool: McpToolSchema = {
+  name: "routes.update",
+  description: "Update a route in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+      name: { type: "string" },
+      primaryModel: { type: "string" },
+      fallbackModels: { type: "array", items: { type: "string" } },
+      enabled: { type: "boolean" },
+    },
+    required: ["projectId", "routeId"],
+    additionalProperties: false,
+  },
+};
+
+export const routesDeleteTool: McpToolSchema = {
+  name: "routes.delete",
+  description: "Delete a route in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+    },
+    required: ["projectId", "routeId"],
+    additionalProperties: false,
+  },
+};
+
+export const policiesListTool: McpToolSchema = {
+  name: "policies.list",
+  description: "List configured project policies from the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const policiesCreateTool: McpToolSchema = {
+  name: "policies.create",
+  description: "Create a policy in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      name: { type: "string" },
+      effect: { type: "string", enum: ["allow", "deny"] },
+      roles: { type: "array", items: { type: "string" } },
+      plans: { type: "array", items: { type: "string" } },
+      models: { type: "array", items: { type: "string" } },
+      enabled: { type: "boolean" },
+    },
+    required: ["projectId", "name", "effect"],
+    additionalProperties: false,
+  },
+};
+
+export const policiesUpdateTool: McpToolSchema = {
+  name: "policies.update",
+  description: "Update a policy in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      policyId: { type: "string" },
+      name: { type: "string" },
+      effect: { type: "string", enum: ["allow", "deny"] },
+      roles: { type: "array", items: { type: "string" } },
+      plans: { type: "array", items: { type: "string" } },
+      models: { type: "array", items: { type: "string" } },
+      enabled: { type: "boolean" },
+    },
+    required: ["projectId", "policyId"],
+    additionalProperties: false,
+  },
+};
+
+export const policiesDeleteTool: McpToolSchema = {
+  name: "policies.delete",
+  description: "Delete a policy in the Restormel control plane.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      policyId: { type: "string" },
+    },
+    required: ["projectId", "policyId"],
+    additionalProperties: false,
+  },
+};
+
+export const fallbackChainSetTool: McpToolSchema = {
+  name: "fallback_chain.set",
+  description: "Set primary and fallback models for a route in one call.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+      primaryModel: { type: "string" },
+      fallbackModels: { type: "array", items: { type: "string" } },
+    },
+    required: ["projectId", "routeId", "primaryModel"],
+    additionalProperties: false,
+  },
+};
+
+export const integrationBootstrapNextjsTool: McpToolSchema = {
+  name: "integration.bootstrap_nextjs",
+  description: "Generate Next.js server resolver boilerplate and admin-only key wiring contract.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Optional project ID used in examples." },
+      includeAppRouter: { type: "boolean", description: "Include App Router examples. Default true." },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const byokSchemaGenerateTool: McpToolSchema = {
+  name: "byok.schema.generate",
+  description: "Generate DB schema templates for admin-global and future per-user BYOK models.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      db: { type: "string", enum: ["postgres"], description: "Template target database." },
+      includeUserScope: { type: "boolean", description: "Include per-user BYOK table template." },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const byokApiContractGenerateTool: McpToolSchema = {
+  name: "byok.api_contract.generate",
+  description: "Generate API endpoint contract templates for BYOK validate/add/remove/revalidate flows.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      basePath: { type: "string", description: "Base API path. Default /api/admin/byok." },
+      includeUserScope: { type: "boolean", description: "Include future per-user endpoint variants." },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const policySimulateTool: McpToolSchema = {
+  name: "policy.simulate",
+  description: "Simulate batch allow/deny decisions and fallback selection for policy scenarios.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      cases: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            userRole: { type: "string" },
+            plan: { type: "string" },
+            modelCandidates: { type: "array", items: { type: "string" } },
+            expectedAllow: { type: "boolean" },
+            expectedSelectedModel: { type: "string" },
+          },
+          required: ["id", "userRole", "plan", "modelCandidates", "expectedAllow"],
+          additionalProperties: false,
+        },
+      },
+      allowRoles: { type: "array", items: { type: "string" } },
+      allowPlans: { type: "array", items: { type: "string" } },
+      deniedModels: { type: "array", items: { type: "string" } },
+    },
+    required: ["cases"],
+    additionalProperties: false,
+  },
+};
+
+export const catalogSyncCheckTool: McpToolSchema = {
+  name: "catalog.sync_check",
+  description: "Check whether referenced models exist in the currently known Restormel model catalog.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      referencedModels: { type: "array", items: { type: "string" } },
+    },
+    required: ["referencedModels"],
+    additionalProperties: false,
+  },
+};
+
+export const catalogDeprecationAlertsTool: McpToolSchema = {
+  name: "catalog.deprecation_alerts",
+  description: "Report deprecation/retirement alerts for referenced models.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      models: { type: "array", items: { type: "string" } },
+    },
+    required: ["models"],
+    additionalProperties: false,
+  },
+};
+
+export const readinessCheckTool: McpToolSchema = {
+  name: "readiness.check",
+  description: "Run CI-friendly readiness checks with stable error codes and machine-readable output.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      providers: { type: "array", items: { type: "string" } },
+      referencedModels: { type: "array", items: { type: "string" } },
+      strict: { type: "boolean", description: "When true, warnings are treated as failures." },
+    },
+    additionalProperties: false,
+  },
+};
+
 export const ALL_TOOLS: McpToolSchema[] = [
   modelsListTool,
   providersValidateTool,
@@ -242,4 +496,20 @@ export const ALL_TOOLS: McpToolSchema[] = [
   entitlementsCheckTool,
   integrationGenerateTool,
   docsSearchTool,
+  routesListTool,
+  routesCreateTool,
+  routesUpdateTool,
+  routesDeleteTool,
+  policiesListTool,
+  policiesCreateTool,
+  policiesUpdateTool,
+  policiesDeleteTool,
+  fallbackChainSetTool,
+  integrationBootstrapNextjsTool,
+  byokSchemaGenerateTool,
+  byokApiContractGenerateTool,
+  policySimulateTool,
+  catalogSyncCheckTool,
+  catalogDeprecationAlertsTool,
+  readinessCheckTool,
 ];

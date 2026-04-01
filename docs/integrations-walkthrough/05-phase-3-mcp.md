@@ -20,6 +20,16 @@ The following tools are defined (name, description, input/output schema):
 - **routing.explain** — Explain routing decisions for a request
 - **entitlements.check** — Check plan entitlements and feature access
 - **integration.generate** — Generate integration configuration for a stack
+- **integration.bootstrap_nextjs** — Generate Next.js server resolver + admin key contract
+- **routes.list/create/update/delete** — Manage control-plane routes
+- **policies.list/create/update/delete** — Manage control-plane policies
+- **fallback_chain.set** — Set one primary + fallback chain in one call
+- **byok.schema.generate** — Generate BYOK DB schema templates
+- **byok.api_contract.generate** — Generate BYOK endpoint contracts
+- **policy.simulate** — Run batch policy simulations for rollout scenarios
+- **catalog.sync_check** — Validate model references against catalog
+- **catalog.deprecation_alerts** — Detect deprecated/retiring model references
+- **readiness.check** — Run CI-friendly predeploy checks with stable codes
 - **docs.search** — Search Restormel documentation
 
 See [MCP reference](/keys/docs/integrations/mcp) for full schema details.
