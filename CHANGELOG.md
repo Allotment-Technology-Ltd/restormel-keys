@@ -20,6 +20,8 @@ Single record of meaningful repo changes.
 
 **Use-cases page — flow diagrams:** Added token-only inline SVG diagrams for the operating-model strip (horizontal), PLOT (vertical extraction stack), and Sophia (fan-in from multiple server routes). Project Cursor skills: [.cursor/skills/restormel-product-flow-diagrams](.cursor/skills/restormel-product-flow-diagrams/SKILL.md), [.cursor/skills/restormel-use-cases-page](.cursor/skills/restormel-use-cases-page/SKILL.md).
 
+**Cursor Agent Skills discovery:** Symlinked project skills under [.agents/skills/](.agents/skills/) to match [Cursor’s dual discovery paths](https://cursor.com/docs/context/skills) (`.cursor/skills/` and `.agents/skills/`). Added always-on rule [.cursor/rules/08-project-skills.mdc](.cursor/rules/08-project-skills.mdc) so agents read matching `SKILL.md` when tasks align with skill descriptions.
+
 ## Repo (2026-03-30)
 
 **Paddle USD FX automation (GBP canonical):** Added [scripts/sync-paddle-usd-prices.mjs](scripts/sync-paddle-usd-prices.mjs) to derive USD Pro prices from canonical GBP minor units using FX + rounding, create new Paddle USD prices when drift exceeds threshold, update Vercel production USD price env vars, and optionally redeploy. Scheduled/manual workflow: [paddle-usd-sync.yml](.github/workflows/paddle-usd-sync.yml). Runbook updated: [docs/runbooks/paddle-go-live.md](docs/runbooks/paddle-go-live.md).
