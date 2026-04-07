@@ -111,7 +111,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -136,7 +136,7 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -172,7 +172,7 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -190,7 +190,7 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -247,7 +247,7 @@ jobs:
           fi
           export DATABASE_URL="$DASHBOARD_DATABASE_URL_PROD"
           bash scripts/apply-dashboard-migrations.sh
-      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
