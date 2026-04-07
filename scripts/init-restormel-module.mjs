@@ -3,7 +3,7 @@
  * Scaffold a new Restormel module from platform/template-restormel-module.
  *
  * Usage:
- *   node scripts/init-restormel-module.mjs --out <dir> --slug <kebab> --title "<name>" [--path <url-segment>] [--keys-repo <path-to-restormel-keys>]
+ *   node scripts/init-restormel-module.mjs --out <dir> --slug <kebab> --title "<name>" [--path <url-segment>] [--platform-repo <path-to-restormel-platform>]
  *
  * @see docs/restormel-module-default-stack.md
  * @see docs/template-restormel-module-repo.md
@@ -23,14 +23,22 @@ const PLACEHOLDER_TITLE = "__MODULE_TITLE__";
 const PLACEHOLDER_PATH = "__MODULE_PATH__";
 
 function parseArgs(argv) {
-  const out = { keysRepo: null, urlPath: null, help: false };
+  const out = { platformRepo: null, urlPath: null, help: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") out.dir = argv[++i];
     else if (a === "--slug") out.slug = argv[++i];
     else if (a === "--title") out.title = argv[++i];
     else if (a === "--path") out.urlPath = argv[++i];
-    else if (a === "--keys-repo") out.keysRepo = argv[++i];
+    else if (a === "--platform-repo") out.platformRepo = argv[++i];
+    else if (a === "--keys-repo") {
+      console.error(
+        "Removed: --keys-repo (restormel-keys no longer vendors platform/packages/tokens).\n" +
+          "  Omit the flag to use @restormel/keys-tokens from npm (^0.1.0 in the template).\n" +
+          "  Or pass --platform-repo <path-to-restormel-platform-clone> for file:…/packages/tokens."
+      );
+      process.exit(1);
+    }
     else if (a === "--help" || a === "-h") out.help = true;
     else {
       console.error(`Unknown arg: ${a}`);
@@ -53,7 +61,17 @@ function copyRecursive(src, dest) {
     if (ent.name === ".DS_Store") continue;
     const s = path.join(src, ent.name);
     const d = path.join(dest, ent.name);
-    if (ent.isDirectory()) copyRecursive(s, d);
+    if (ent.isSymbolicLink()) {
+      const linkTarget = fs.readlinkSync(s);
+      const resolved = path.resolve(path.dirname(s), linkTarget);
+      if (!fs.existsSync(resolved)) {
+        console.warn(`Skip broken symlink: ${s} -> ${linkTarget}`);
+        continue;
+      }
+      const st = fs.statSync(resolved);
+      if (st.isDirectory()) copyRecursive(resolved, d);
+      else fs.copyFileSync(resolved, d);
+    } else if (ent.isDirectory()) copyRecursive(s, d);
     else fs.copyFileSync(s, d);
   }
 }
@@ -104,15 +122,15 @@ if (args.help) {
   console.log(`init-restormel-module — scaffold from platform/template-restormel-module
 
 Usage:
-  node scripts/init-restormel-module.mjs --out <dir> --slug <kebab> --title "<name>" [--path <url-segment>] [--keys-repo <path-to-restormel-keys>]
+  node scripts/init-restormel-module.mjs --out <dir> --slug <kebab> --title "<name>" [--path <url-segment>] [--platform-repo <path-to-restormel-platform>]
 
 Examples:
   node scripts/init-restormel-module.mjs --out ../restormel-testing --slug testing --title "Restormel Testing"
-  node scripts/init-restormel-module.mjs --out ../restormel-testing --slug testing --title "Restormel Testing" --keys-repo ..
+  node scripts/init-restormel-module.mjs --out ../restormel-mymodule --slug mymodule --title "Restormel MyModule" --platform-repo ../restormel-platform
 
 Options:
-  --path       Public URL segment (default: same as --slug)
-  --keys-repo  restormel-keys repo root; pins @restormel/keys-tokens to file:… relative to apps/web
+  --path            Public URL segment (default: same as --slug)
+  --platform-repo   Clone of restormel-platform; pins @restormel/keys-tokens to file:…/packages/tokens relative to apps/web (offline / pre-publish token work). Default template uses npm ^0.1.0 when omitted.
 `);
   process.exit(0);
 }
@@ -157,12 +175,14 @@ if (fs.existsSync(envExample)) {
   fs.renameSync(envExample, envTarget);
 }
 
-if (args.keysRepo) {
-  const keysRoot = path.resolve(args.keysRepo);
-  const tokensPath = path.join(keysRoot, "platform", "packages", "tokens");
+if (args.platformRepo) {
+  const platformRoot = path.resolve(args.platformRepo);
+  const tokensPath = path.join(platformRoot, "packages", "tokens");
   const tokensPkg = path.join(tokensPath, "package.json");
   if (!fs.existsSync(tokensPkg)) {
-    console.error(`No tokens package at ${tokensPath}`);
+    console.error(
+      `No tokens package at ${tokensPath} (expected restormel-platform clone with packages/tokens/package.json)`
+    );
     process.exit(1);
   }
   const webDir = path.join(outDir, "apps", "web");

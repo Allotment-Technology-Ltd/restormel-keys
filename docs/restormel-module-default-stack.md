@@ -64,7 +64,7 @@ If a module must run on **Cloudflare Workers** or similar, document **adapter**,
 ## Scaffold and GitHub template (implemented)
 
 - **Template files:** [platform/template-restormel-module/](../platform/template-restormel-module/) — SvelteKit `apps/web`, pnpm workspace, `vercel.json`, CI workflow, vendored `.github/actions`, `.cursor` rules, `env.example` (renamed to `.env.example` by the init script).
-- **Init script:** `pnpm run init-module -- --out <dir> --slug <kebab> --title "<name>" [--path <segment>] [--keys-repo <path-to-keys>]` (runs [scripts/init-restormel-module.mjs](../scripts/init-restormel-module.mjs)).
+- **Init script:** `pnpm run init-module -- --out <dir> --slug <kebab> --title "<name>" [--path <segment>] [--platform-repo <path-to-restormel-platform>]` (runs [scripts/init-restormel-module.mjs](../scripts/init-restormel-module.mjs)). Default: **`@restormel/keys-tokens` `^0.1.0`** from npm; **`--platform-repo`** pins **`file:`** to `packages/tokens` for local platform work.
 - **How to publish as a GitHub Template repo:** [template-restormel-module-repo.md](./template-restormel-module-repo.md).
 
 ## What the GitHub repo template should include

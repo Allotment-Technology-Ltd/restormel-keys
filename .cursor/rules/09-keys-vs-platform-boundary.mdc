@@ -1,0 +1,30 @@
+---
+description: When to change restormel-keys vs restormel-platform (suite vs Keys product)
+globs:
+alwaysApply: true
+---
+
+# Keys repo vs restormel-platform boundary
+
+**restormel-keys** = Restormel **Keys** product: `@restormel/keys` core, dashboard app, integrations packages (`aaif`, `mcp`), Keys docs, dogfood workflows, publish train **`keys-v*`**.
+
+**restormel-platform** (separate GitHub repo) = **Suite-wide** assets: **`@restormel/keys-tokens`** (source + npm publish via **`tokens-v*`**), default **GitHub composite actions** for Restormel TS repos, **cursor-template**, **template-restormel-module** sources.
+
+## Put work in **restormel-platform** when
+
+- Changing **token values** or adding **shared CSS** under the tokens package (`base.css`, `semantic-rm.css`, `semantic-rk.css`) or **`contracts.ts`**.
+- Adding or changing **suite-default** composite actions meant for **all** Restormel modules (pnpm install, JS security scan pattern).
+- Updating the **canonical Cursor rules template** or **module scaffold** for **new** repos (not Keys-only conventions).
+
+Then: publish a new **`@restormel/keys-tokens`** version if needed and **bump** the dashboard dependency in **restormel-keys**. Keep [docs/design-tokens.css](docs/design-tokens.css) aligned with token changes (doc mirror).
+
+## Keep work in **restormel-keys** when
+
+- Anything **Keys-specific**: routes under `/keys`, Gateway keys, Neon dashboard schema, policies/routes UI, **`@restormel/keys`** API, **`keys-v*`** publish, dogfood, Zuplo/docs copy for Keys.
+- **Vendored** [platform/](platform/) in this repo is a **mirror** for composites + template sources: if you change something that should be suite-wide, **apply the same change in restormel-platform** (or open a follow-up) so GitHub Template / other repos do not drift.
+
+## Quick check
+
+Ask: *Would **Restormel Testing** (or another module) copy this unchanged?* **Yes** → **platform** (then consume via npm or template). **No** → **keys**.
+
+If unsure, **default to keys** for product behavior, but **stop before duplicating token definitions** in this repo — tokens ship only from **restormel-platform** + npm.

@@ -22,7 +22,7 @@ Canonical **default stack:** [docs/restormel-module-default-stack.md](../docs/re
 
 **GitHub:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). **Module template:** [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template).
 
-**Source in Keys:** [template-restormel-module/](template-restormel-module/) — [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init:** `pnpm run init-module -- …` from Keys root.
+**Source in Keys:** [template-restormel-module/](template-restormel-module/) — [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init:** `pnpm run init-module -- …` from Keys root (npm tokens by default; optional **`--platform-repo`** for `file:` to **restormel-platform** `packages/tokens`). Template ships **09-suite-vs-platform-boundary** + **restormel-suite-vs-platform** skill for Cursor.
 
 ## Secrets (CI)
 
