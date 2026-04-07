@@ -18,5 +18,9 @@ if (!fs.existsSync(src)) {
   process.exit(1);
 }
 
+if (fs.existsSync(dest)) {
+  fs.rmSync(dest, { recursive: true, force: true });
+}
+
 fs.cpSync(src, dest, { recursive: true });
 console.log(`[vercel-copy-build-output] Copied ${src} -> ${dest}`);

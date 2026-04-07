@@ -113,15 +113,15 @@ If **`git push`** fails with **non-fast-forward** on `dogfood/agent-issue-…`, 
 
 ### Scheduled pickup (relay-friendly)
 
-On each cron tick (see `.github/workflows/dogfood-agent-open-pr.yml`; may be every few minutes during testing — restore a slower cadence for production), the workflow picks **at most one** open issue that has:
+On each cron tick (see `.github/workflows/dogfood-agent-open-pr.yml`; production default is every 6 hours UTC, with faster intervals only for short-term debugging), the workflow picks **at most one** open issue that has:
 
 - Label **`task`** (applied automatically by the consumer relay, e.g. SOPHIA → restormel-keys), and  
 - Title **`[Dogfood]…`**, and  
-- **None** of: **`dogfood-agent-pr`** (PR already opened), **`dogfood-agent-noop`** (agent returned no file edits — remove this label to allow a retry), **`dogfood-agent-skip`** (opt out of automatic agent runs for this issue).
+- **None** of: **`dogfood-agent-pr`** (PR already opened), **`dogfood-agent-noop`** (agent returned no file edits — remove this label to allow a retry), **`dogfood-agent-skip`** (opt out of automatic agent runs for this issue), **`dogfood-agent-error`** (agent run failed; remove after fixing root cause to retry).
 
 You **do not** need **`dogfood-agent-auto`** anymore for relayed issues; that label was previously required and caused SOPHIA-raised tickets to sit indefinitely unless someone added it manually.
 
-After a successful run, the workflow adds **`dogfood-agent-pr`** and comments with the draft PR link. If the model proposes **no** file changes, the workflow comments and adds **`dogfood-agent-noop`** so the scheduler does not retry in a tight loop.
+After a successful run, the workflow adds **`dogfood-agent-pr`** and comments with the draft PR link. If the model proposes **no** file changes, the workflow comments and adds **`dogfood-agent-noop`** so the scheduler does not retry in a tight loop. If the run fails before creating a PR, the workflow adds **`dogfood-agent-error`** and comments with the run URL so the issue stops being retried until someone clears that label.
 
 **Safety:** Redact consumer issue bodies before relaying; the script **redacts common secret shapes** in the text sent to the provider, but that is **not** a guarantee — treat relay bodies as untrusted (see § Before you start).
 
