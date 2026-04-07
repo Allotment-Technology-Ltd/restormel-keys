@@ -1,0 +1,38 @@
+# Publish @restormel/keys-tokens to npm on tag tokens-v* (e.g. tokens-v0.1.1).
+# pnpm version must match platform/package.json "packageManager" (9.0.0).
+# Provenance: omitted for private repos per Keys publish workflow notes.
+name: Publish tokens
+on:
+  push:
+    tags:
+      - "tokens-v*"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Publish @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens publish --access public --no-git-checks

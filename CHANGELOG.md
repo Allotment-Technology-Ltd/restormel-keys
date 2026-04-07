@@ -2,6 +2,12 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-07)
+
+**Module scaffold + GitHub template source:** [platform/template-restormel-module/](platform/template-restormel-module/) (SvelteKit `apps/web`, pnpm, Vercel, CI, composites, `.cursor` rules); [scripts/init-restormel-module.mjs](scripts/init-restormel-module.mjs) and root `pnpm run init-module`; [docs/template-restormel-module-repo.md](docs/template-restormel-module-repo.md) (GitHub Template repository steps, `--keys-repo` + `realpath` for `file:` tokens). [restormel-module-default-stack.md](docs/restormel-module-default-stack.md) updated.
+
+**Suite platform (`platform/`) and new modules:** Moved `@restormel/keys-tokens` to [platform/packages/tokens](platform/packages/tokens); [pnpm-workspace.yaml](pnpm-workspace.yaml) includes `platform/packages/*`; mirrored **composite actions** in [.github/actions/](.github/actions/) and [platform/.github/actions/](platform/.github/actions/); [ci.yml](.github/workflows/ci.yml) refactored; [platform/.github/workflows/publish-tokens.yml](platform/.github/workflows/publish-tokens.yml) on tag `tokens-v*`; Cursor [platform/cursor-template/](platform/cursor-template/) + [platform/docs/cursor-init.md](platform/docs/cursor-init.md); [docs/platform-inventory.md](docs/platform-inventory.md), [docs/platform-modularization.md](docs/platform-modularization.md). **New module default stack:** [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md) (SvelteKit default, Next/Python variants, template checklist, initiation prompt); links from [AGENTS.md](AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md), [docs/00-master-index.md](docs/00-master-index.md). Integrations extraction and dashboard-only repo **deferred** per [docs/platform-modularization.md](docs/platform-modularization.md).
+
 ## Repo (2026-04-01)
 
 **Docs — canonical environment vocabulary:** [docs/guides/restormel-environment-vocabulary.md](docs/guides/restormel-environment-vocabulary.md) is the **single source of truth** for `RESTORMEL_*` naming (Gateway key vs `RESTORMEL_SERVER_TOKEN`, three URL roles, CI `*_STAGING`). In-product [/keys/docs/guides/environment-vocabulary](/keys/docs/guides/environment-vocabulary); docs nav, search, sitemap; cross-links from MCP, Cloud API, security baseline, MCP README, integrations walkthrough Phase 3, staging/CI walkthrough, Zuplo *MCP & agent setup*; [mcp-implementation-workflow.md](docs/runbooks/mcp-implementation-workflow.md) defers duplicate tables to the vocabulary doc; [STATUS.md](STATUS.md) updated.

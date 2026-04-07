@@ -1,8 +1,15 @@
 {
   "name": "@restormel/keys-tokens",
   "version": "0.1.0",
-  "description": "Canonical design tokens for Restormel Keys (base + semantic rm/rk).",
+  "description": "Canonical design tokens for Restormel (base + semantic rm/rk). Published from restormel-platform.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-platform.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/contracts.d.ts",

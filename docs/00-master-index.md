@@ -32,6 +32,10 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | — | `DESIGN-SPECIFICATION.md` | Design principles, foundation, components, graph patterns, page layouts, usage guidelines, accessibility. |
 | — | `COMPONENT-INVENTORY.md` | Full component inventory (atoms, molecules, organisms, graph components). |
 | — | `design-tokens.css` | Reference implementation of DESIGN-TOKENS.md as CSS custom properties. |
+| — | `platform-modularization.md` | Suite **platform** subtree (`platform/`), optional split to **restormel-platform**, token publish `tokens-v*`; deferred extractions (Integrations app, dashboard-only repo). |
+| — | `platform-inventory.md` | Frozen reference: npm tags, CI path filters, Vercel build, OIDC issuer URL, token package path. |
+| — | `restormel-module-default-stack.md` | **New modules:** canonical pnpm/Node/SvelteKit/Vercel/Neon/Actions defaults; Next and Python variants; GitHub template checklist; initiation prompt for agents. |
+| — | `template-restormel-module-repo.md` | **New modules:** `platform/template-restormel-module/` + `pnpm run init-module`; GitHub Template repository setup and placeholder table. |
 
 ### Walkthrough (public integration docs)
 

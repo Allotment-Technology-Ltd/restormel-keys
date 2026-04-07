@@ -1,0 +1,10 @@
+{
+  "name": "restormel-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Restormel suite platform: design tokens, reusable CI actions, Cursor template. Push this directory as its own git repo when splitting.",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

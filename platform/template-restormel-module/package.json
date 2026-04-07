@@ -1,0 +1,15 @@
+{
+  "name": "__ROOT_PKG_NAME__",
+  "version": "0.0.0",
+  "private": true,
+  "description": "__MODULE_TITLE__ — Restormel suite module (SvelteKit + pnpm).",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "pnpm --filter __APP_PKG_NAME__ run check",
+    "build": "pnpm --filter __APP_PKG_NAME__ run build",
+    "dev": "pnpm --filter __APP_PKG_NAME__ run dev"
+  }
+}

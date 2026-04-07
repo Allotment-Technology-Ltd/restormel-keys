@@ -1,6 +1,7 @@
 # Single CI/CD workflow: path-filter, docs, security, test, demo-next. Site and dashboard deploy via Vercel (no Cloudflare).
 # One workflow run per push/PR; jobs skip when their paths unchanged.
 # pnpm version must match root package.json "packageManager" (9.0.0).
+# PNPM install + JS security steps use composite actions under .github/actions/ (mirrored in platform/.github/actions/ for restormel-platform split).
 name: CI/CD
 on:
   push:
@@ -47,6 +48,7 @@ jobs:
           filters: |
             code:
               - 'packages/**'
+              - 'platform/**'
               - 'apps/**'
               - 'examples/**'
               - 'apps/dashboard/migrations/**'
@@ -62,6 +64,7 @@ jobs:
             repo:
               - 'scripts/**'
               - '.github/**'
+              - 'platform/**'
               - 'package.json'
               - 'pnpm-workspace.yaml'
               - 'tsconfig.json'
@@ -111,22 +114,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: TruffleHog
-        uses: trufflesecurity/trufflehog@bff3d2670b362bbb4a0bcdeffea146cbc2ad3abd
-        with:
-          path: ./
-          extra_args: --only-verified
-      - name: pnpm audit
-        run: pnpm audit --audit-level critical
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+      - name: Security scan
+        uses: ./.github/actions/js-security-scan
       - name: Type check
         run: pnpm --filter @restormel/keys typecheck
 
@@ -136,15 +127,8 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
       - name: Test
         run: pnpm --filter @restormel/keys test
       - name: Catalog drift (defaultProviders vs dashboard seed)
@@ -172,15 +156,8 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
       - name: Pack + demo-svelte build from tarballs
         run: bash scripts/smoke-keys-svelte-republish.sh
 
@@ -190,15 +167,8 @@ jobs:
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
       - name: Build workspace (keys, svelte, elements, react) for demo-next
         run: |
           pnpm --filter @restormel/keys run build
@@ -247,15 +217,8 @@ jobs:
           fi
           export DATABASE_URL="$DASHBOARD_DATABASE_URL_PROD"
           bash scripts/apply-dashboard-migrations.sh
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          version: 9.0.0
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install workspace (dashboard seed deps)
-        run: pnpm install --frozen-lockfile
+      - name: PNPM install (dashboard seed deps)
+        uses: ./.github/actions/pnpm-workspace-install
       - name: Ingest model catalog from JSON seed (prod)
         env:
           DASHBOARD_DATABASE_URL_PROD: ${{ secrets.DASHBOARD_DATABASE_URL_PROD }}

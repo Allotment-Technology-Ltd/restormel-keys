@@ -18,7 +18,8 @@
     "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh"
     ,
     "validate-registry": "node scripts/validate-registry.mjs",
-    "check:catalog-drift": "tsx scripts/check-catalog-drift.ts"
+    "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
+    "init-module": "node scripts/init-restormel-module.mjs"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

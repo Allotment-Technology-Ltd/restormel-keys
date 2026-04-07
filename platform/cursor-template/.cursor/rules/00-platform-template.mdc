@@ -1,0 +1,11 @@
+---
+description: Restormel platform template — adapt paths and add product-specific rules
+globs:
+alwaysApply: true
+---
+
+# Platform template root
+
+- This rule file marks a repo bootstrapped from **restormel-platform** `cursor-template/`.
+- **Adapt** references to scripts and docs to your product layout (e.g. `scripts/check-secrets.sh` may not exist until you add or symlink hygiene scripts).
+- Add **product-specific** `.mdc` rules (release process, domain boundaries) alongside these suite-wide defaults.
