@@ -1,8 +1,8 @@
 /**
  * Dashboard: Restormel design system (docs/design-system-index.md).
- * Canonical tokens from docs/design-tokens.css; --rm-* are Keys aliases.
+ * Base tokens from published @restormel/keys-tokens; --rm-* below are Keys aliases.
  */
-@import "../../../docs/design-tokens.css";
+@import "@restormel/keys-tokens/base.css";
 
 :root {
   /* Keys marketing/dashboard aliases (04-design-and-site.md) */

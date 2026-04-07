@@ -5,14 +5,14 @@
 ## Repository
 
 - **Root package:** `restormel-keys` ([package.json](../package.json)); **pnpm** `9.0.0`; Node `>=18` (dashboard engines: Node 20).
-- **Workspaces:** [pnpm-workspace.yaml](../pnpm-workspace.yaml) — `packages/*`, `apps/*`, `examples/*`, `infra`, and **`platform/packages/*`** (design tokens live under [platform/packages/tokens](../platform/packages/tokens)).
+- **Workspaces:** [pnpm-workspace.yaml](../pnpm-workspace.yaml) — `packages/*`, `apps/*`, `examples/*`, `infra`. **`@restormel/keys-tokens`** is a **registry** dependency on `apps/dashboard` (not a workspace path).
 
 ## npm publish (Keys libraries)
 
 - **Workflow:** [.github/workflows/publish.yml](../.github/workflows/publish.yml).
 - **Trigger:** Git tag `keys-v*` (e.g. `keys-v0.2.0`).
 - **Order:** `@restormel/keys` ([packages/core](../packages/core)) → `keys-svelte` → `keys-elements` → `keys-react` → `@restormel/aaif` → `@restormel/mcp` → doctor → validate → CLI.
-- **Design tokens:** `@restormel/keys-tokens` is published from the **`restormel-platform`** subtree on tag `tokens-v*` (see [platform/.github/workflows/publish-tokens.yml](../platform/.github/workflows/publish-tokens.yml)). Keys consumes tokens via the workspace path until you switch to a registry version.
+- **Design tokens:** `@restormel/keys-tokens` is published from **[restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)** on tag `tokens-v*`. **restormel-keys** consumes it from **npm** on the dashboard app.
 
 ## Primary app (dashboard)
 
@@ -34,7 +34,7 @@
 ## Design system
 
 - **Canonical index:** [design-system-index.md](./design-system-index.md).
-- **Token package:** `@restormel/keys-tokens` — source in **`platform/packages/tokens`** (CSS + `contracts.ts`).
+- **Token package:** `@restormel/keys-tokens` — npm + source in **restormel-platform** `packages/tokens`.
 
 ## Integrations extraction (deferred)
 

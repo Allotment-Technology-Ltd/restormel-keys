@@ -44,7 +44,7 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 
 - **Reference implementation:** [design-tokens.css](./design-tokens.css) — CSS custom properties that implement DESIGN-TOKENS.md. Use this file (or equivalent values) in site, dashboard, and packages so the whole product shares one visual language.
 - **Keys-specific aliases:** The marketing/site layer uses `--rm-*` and embeddable components use `--rk-*`; these are documented in [04-design-and-site.md](./04-design-and-site.md) and must map to the canonical tokens so that changing the design system updates the whole product.
-- **Shared tokens package:** [platform/packages/tokens](../platform/packages/tokens) provides `base.css`, `semantic-rm.css`, `semantic-rk.css`, and `contracts.ts` (typed semantic keys for tooling). Consumers can import from `@restormel/keys-tokens` or continue using docs/design-tokens.css plus local aliases. Suite layout: [docs/platform-modularization.md](./platform-modularization.md).
+- **Shared tokens package:** **`@restormel/keys-tokens`** on npm provides `base.css`, `semantic-rm.css`, `semantic-rk.css`, and `contracts.ts` (typed semantic keys for tooling). The dashboard imports from the package; [docs/design-tokens.css](./design-tokens.css) remains the human-readable reference—keep it aligned when token values change (source repo: [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)). Suite layout: [docs/platform-modularization.md](./platform-modularization.md).
 - **Drift check:** Run `pnpm run check-token-drift` (or `scripts/check-token-drift.sh`) to verify `--rk-*` parity between packages/svelte and packages/elements. Fix any drift before committing.
 
 ## Where the design system applies

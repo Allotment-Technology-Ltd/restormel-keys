@@ -6,8 +6,8 @@
 
 ## Done (Phase 1–2 baseline)
 
-- **`platform/`** subtree: `@restormel/keys-tokens`, reusable GitHub composite actions (mirrored under `platform/.github/actions/`), Cursor template under `platform/cursor-template/`, token publish workflow on tag `tokens-v*` when this tree is its own repo.
-- **Keys monorepo** includes `platform/packages/*` in [pnpm-workspace.yaml](../pnpm-workspace.yaml) and uses local composites in [.github/workflows/ci.yml](../.github/workflows/ci.yml).
+- **`platform/`** subtree: reusable GitHub composite actions (mirrored under `platform/.github/actions/`), Cursor template under `platform/cursor-template/`, module template under `platform/template-restormel-module/`. **`@restormel/keys-tokens`** is published from **[restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)**; Keys consumes it from **npm**.
+- **Keys monorepo** uses local composites in [.github/workflows/ci.yml](../.github/workflows/ci.yml) and consumes **`@restormel/keys-tokens`** from npm on the dashboard.
 - **Inventory:** [platform-inventory.md](./platform-inventory.md).
 
 ## Deferred (Phase 3)
@@ -28,4 +28,4 @@ Splitting **only** `apps/dashboard` into its own repo requires **all** runtime d
 
 **Publish `@restormel/keys-tokens` to npm:** add **`NPM_TOKEN`** to that repo’s Actions secrets and push tag **`tokens-v0.1.x`** (workflow `publish-tokens.yml`).
 
-**Consume from Keys without duplicating `platform/` in git:** remove `platform/packages/*` from [pnpm-workspace.yaml](../pnpm-workspace.yaml), add `"@restormel/keys-tokens": "^x.y.z"` where needed, and optionally point CI at `uses: Allotment-Technology-Ltd/restormel-platform/.github/actions/...@vX` (pin ref).
+**Keys consumption (done):** [pnpm-workspace.yaml](../pnpm-workspace.yaml) has no `platform/packages/*`; dashboard depends on **`@restormel/keys-tokens`** from npm. Optionally point CI at `uses: Allotment-Technology-Ltd/restormel-platform/.github/actions/...@vX` (pin ref).

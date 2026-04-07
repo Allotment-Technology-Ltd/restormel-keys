@@ -7,7 +7,7 @@
 | Repo | Purpose |
 |------|---------|
 | [Allotment-Technology-Ltd/restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) | Tokens, composite actions, `publish-tokens.yml`, cursor template, raw `template-restormel-module/` sources. |
-| [Allotment-Technology-Ltd/restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template) | **Template repository** (`is_template`): runnable **example** module (`example` / `example-web` / `restormel-example`) with **vendored** `packages/tokens` until `@restormel/keys-tokens` is on npm. Use **Use this template**. |
+| [Allotment-Technology-Ltd/restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template) | **Template repository** (`is_template`): runnable **example** module. May still **vendor** `packages/tokens` or switch to **`@restormel/keys-tokens`** from npm (`^0.1.0`) like **restormel-keys** `apps/dashboard`. Use **Use this template**. |
 
 ## Source tree
 

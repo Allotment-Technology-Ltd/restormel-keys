@@ -8,15 +8,14 @@ Coding agents and humans: this is the **Restormel Keys** monorepo (headless `@re
 
 ## Design tokens
 
-- **`@restormel/keys-tokens`** source: [platform/packages/tokens](platform/packages/tokens) (suite **platform** subtree). Canonical design docs: [docs/design-system-index.md](docs/design-system-index.md).
-- When `platform/` is split to **restormel-platform**, consume tokens from npm at a pinned semver; see [docs/platform-modularization.md](docs/platform-modularization.md).
+- **`@restormel/keys-tokens`** — consumed from **npm** (`^0.1.0` on `apps/dashboard`). Source and publish: [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). Human-readable mirror: [docs/design-tokens.css](docs/design-tokens.css). Index: [docs/design-system-index.md](docs/design-system-index.md).
 
 ## CI / CD
 
 - Main workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml) (path filters, dashboard build, migrations job with `DASHBOARD_DATABASE_URL_PROD` when enabled).
 - **Composites:** [.github/actions/pnpm-workspace-install](.github/actions/pnpm-workspace-install), [.github/actions/js-security-scan](.github/actions/js-security-scan) — kept in sync with [platform/.github/actions/](platform/.github/actions/) for extraction.
 - Library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
-- Token-only publish (after platform repo exists): tag **`tokens-v*`** in the platform repo → `platform/.github/workflows/publish-tokens.yml`.
+- Token-only publish: tag **`tokens-v*`** on **[restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)** (workflow `publish-tokens.yml` in that repo).
 
 ## Cursor skills and rules
 

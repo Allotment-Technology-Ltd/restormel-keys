@@ -1,6 +1,5 @@
 packages:
   - "packages/*"
-  - "platform/packages/*"
   - "apps/*"
   - "examples/*"
   - "infra"

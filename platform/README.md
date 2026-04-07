@@ -1,22 +1,16 @@
 # Restormel platform
 
-Suite-wide **design tokens** (`@restormel/keys-tokens`), **reusable GitHub Actions** (composite actions), and a **Cursor / agent template** for new Restormel product repos.
+Suite-wide **design tokens** (`@restormel/keys-tokens` on npm), **reusable GitHub Actions** (composite actions), and a **Cursor / agent template** for new Restormel product repos.
 
 ## Layout in the Keys monorepo
 
-This tree is vendored at **`platform/`** inside [restormel-keys](https://github.com/Allotment-Technology-Ltd/restormel-keys) so pnpm can resolve `@restormel/keys-tokens` via workspace. To split:
-
-1. Create a new GitHub repo (e.g. `restormel-platform`).
-2. Copy **only** the contents of `platform/` to the new repo root (or `git subtree split`).
-3. Tag releases for tokens: `tokens-v0.1.0` (see `.github/workflows/publish-tokens.yml`).
-4. In **restormel-keys**, remove `platform/packages/*` from [pnpm-workspace.yaml](../pnpm-workspace.yaml) and add a **semver** dependency on `@restormel/keys-tokens` in consuming packages.
-5. Point CI composites at `uses: Allotment-Technology-Ltd/restormel-platform/.github/actions/...@vX` (pin tags or SHAs).
+This tree is vendored at **`platform/`** inside [restormel-keys](https://github.com/Allotment-Technology-Ltd/restormel-keys) for **actions, cursor template, and module template sources**. **Token source and publish** live in [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform); **restormel-keys** consumes **`@restormel/keys-tokens` from npm** (see `apps/dashboard/package.json`).
 
 ## Tokens package
 
-- **Path:** `packages/tokens`
-- **Name:** `@restormel/keys-tokens`
-- **Publish:** Push tag `tokens-v*` with `NPM_TOKEN` configured in repo secrets.
+- **npm:** [`@restormel/keys-tokens`](https://www.npmjs.com/package/@restormel/keys-tokens)
+- **Source repo:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) (`packages/tokens`)
+- **Publish:** Push tag `tokens-v*` with `NPM_TOKEN` on that repo.
 
 ## Cursor / agents
 
@@ -24,14 +18,14 @@ See [docs/cursor-init.md](./docs/cursor-init.md) and [cursor-template/](./cursor
 
 ## New Restormel modules
 
-Canonical **default stack** (SvelteKit, pnpm, Vercel, Neon, GitHub Actions, token package, Next/Python variants): [docs/restormel-module-default-stack.md](../docs/restormel-module-default-stack.md) in the Keys repo (or copy into platform when split).
+Canonical **default stack:** [docs/restormel-module-default-stack.md](../docs/restormel-module-default-stack.md).
 
-**GitHub:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) (this subtree, pushed). **Module template (Use this template):** [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template).
+**GitHub:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). **Module template:** [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template).
 
-**Source in Keys:** [template-restormel-module/](template-restormel-module/) — see [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init script** (from Keys root): `pnpm run init-module -- …`.
+**Source in Keys:** [template-restormel-module/](template-restormel-module/) — [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init:** `pnpm run init-module -- …` from Keys root.
 
 ## Secrets (CI)
 
-- **npm publish:** `NPM_TOKEN` with publish permission for `@restormel/*`.
+npm publish uses **`NPM_TOKEN`** on **restormel-platform** only (not in this folder’s workflows for tokens).
 
-No live credentials belong in this repo; see [docs/security-baseline.md](../docs/security-baseline.md) in the Keys repo.
+No live credentials in repo; see [docs/security-baseline.md](../docs/security-baseline.md).

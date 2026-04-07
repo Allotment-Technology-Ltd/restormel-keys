@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-08)
+
+**`@restormel/keys-tokens` from npm:** Dashboard depends on **`^0.1.0`** from the registry; [apps/dashboard/src/app.css](apps/dashboard/src/app.css) imports `@restormel/keys-tokens/base.css`. Removed **`platform/packages/tokens`** and `platform/packages/*` workspace entry; token source remains [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). Docs: [AGENTS.md](AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md), [docs/design-system-index.md](docs/design-system-index.md), [platform/README.md](platform/README.md).
+
 ## Repo (2026-04-07)
 
 **GitHub:** Created [Allotment-Technology-Ltd/restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) (export of `platform/`) and [Allotment-Technology-Ltd/restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template) as a **template repository** (example slug + vendored `packages/tokens`). Docs: [template-restormel-module-repo.md](docs/template-restormel-module-repo.md), [platform-modularization.md](docs/platform-modularization.md).

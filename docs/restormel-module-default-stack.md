@@ -29,7 +29,7 @@
 | **E2E (optional)** | **Playwright** | Chromium-first; align with [apps/demo-next](../apps/demo-next) pattern if you ship a browser UI. |
 | **Unit / component tests** | **Vitest** | Matches dashboard app. |
 | **Analytics (optional)** | **PostHog** | Only if the module needs product analytics; use env-based config, no secrets in repo. |
-| **Design tokens** | **`@restormel/keys-tokens`** | From workspace `platform/packages/tokens` or npm after [platform split](./platform-modularization.md). |
+| **Design tokens** | **`@restormel/keys-tokens`** | From **npm** (publish from [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)); see [platform-modularization.md](./platform-modularization.md). |
 | **Secrets** | **GitHub Actions secrets + host env** | Never commit credentials; follow [security-baseline.md](./security-baseline.md). |
 
 ## Variant A — Next.js (React) module

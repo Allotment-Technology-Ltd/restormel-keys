@@ -23,6 +23,7 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
+    "@restormel/keys-tokens": "^0.1.0",
     "@neondatabase/neon-js": "0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
     "@restormel/keys": "workspace:*",
