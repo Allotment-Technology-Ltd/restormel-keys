@@ -2,6 +2,13 @@
 
 **Status:** Reference. Companion to [restormel-module-default-stack.md](./restormel-module-default-stack.md).
 
+## Live GitHub repositories
+
+| Repo | Purpose |
+|------|---------|
+| [Allotment-Technology-Ltd/restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) | Tokens, composite actions, `publish-tokens.yml`, cursor template, raw `template-restormel-module/` sources. |
+| [Allotment-Technology-Ltd/restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template) | **Template repository** (`is_template`): runnable **example** module (`example` / `example-web` / `restormel-example`) with **vendored** `packages/tokens` until `@restormel/keys-tokens` is on npm. Use **Use this template**. |
+
 ## Source tree
 
 Canonical template files live under **[platform/template-restormel-module/](../platform/template-restormel-module/)** in the Keys monorepo (SvelteKit app in `apps/web`, pnpm workspace, Vercel config, vendored GitHub composite actions, `.cursor` rules).
@@ -34,23 +41,17 @@ Root [package.json](../package.json) exposes: `"init-module": "node scripts/init
 
 ## Option B — GitHub “Template repository”
 
-1. Create a **new empty** GitHub repository (e.g. `restormel-module-template`).
-2. Copy **only** the contents of `platform/template-restormel-module/` to that repo’s root (not the whole Keys monorepo).
-3. Replace every placeholder string in all files:
+**Preferred:** open [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template) and click **Use this template**. The repo is already flagged as a template and includes a working **example** rename set plus vendored tokens.
+
+**Manual / placeholder workflow:** copy [platform/template-restormel-module/](../platform/template-restormel-module/) into a new repo and replace placeholders (or run **Option A**), then enable **Template repository** under **Settings → General**.
 
 | Placeholder | Example |
 |-------------|---------|
 | `__MODULE_SLUG__` | `testing` |
 | `__MODULE_TITLE__` | `Restormel Testing` |
 | `__MODULE_PATH__` | `testing` (URL segment) |
-| `__ROOT_PKG_NAME__` | `restormel-testing` (root `package.json` `name`) |
-| `__APP_PKG_NAME__` | `testing-web` (`apps/web` `name`; must match `pnpm --filter` in `vercel.json` and root scripts) |
-
-4. Rename `env.example` → `.env.example` if you use that convention.
-5. Commit and push.
-6. On GitHub: **Settings → General → Template repository** → enable **Template repository**.
-
-New modules use **Use this template**, then `pnpm install` and connect Vercel.
+| `__ROOT_PKG_NAME__` | `restormel-testing` |
+| `__APP_PKG_NAME__` | `testing-web` |
 
 ## Updating the template
 

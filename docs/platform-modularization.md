@@ -22,10 +22,10 @@ Follow the seam described in [ARCHITECTURE.md](../ARCHITECTURE.md) (Integrations
 
 Splitting **only** `apps/dashboard` into its own repo requires **all** runtime dependencies to be **published semver** packages (no `workspace:*` to unpublished packages) and a clear owner for SQL migrations. Treat as a **late** phase.
 
-## Splitting `platform/` to GitHub
+## `platform/` on GitHub (done)
 
-1. Create `restormel-platform` (or your chosen name) on GitHub.
-2. Push the contents of **`platform/`** as the new repo root (`git subtree split` or copy).
-3. Run `pnpm install` at the new repo root and commit **`pnpm-lock.yaml`**.
-4. Configure **`NPM_TOKEN`** and tag **`tokens-v0.1.x`** to publish `@restormel/keys-tokens`.
-5. In **restormel-keys**, remove `platform/packages/*` from the workspace, add `"@restormel/keys-tokens": "^x.y.z"` where needed, and optionally switch CI to `uses: <org>/restormel-platform/.github/actions/...@vX`.
+**Canonical remote:** [Allotment-Technology-Ltd/restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) (contents of this monorepo’s **`platform/`** folder).
+
+**Publish `@restormel/keys-tokens` to npm:** add **`NPM_TOKEN`** to that repo’s Actions secrets and push tag **`tokens-v0.1.x`** (workflow `publish-tokens.yml`).
+
+**Consume from Keys without duplicating `platform/` in git:** remove `platform/packages/*` from [pnpm-workspace.yaml](../pnpm-workspace.yaml), add `"@restormel/keys-tokens": "^x.y.z"` where needed, and optionally point CI at `uses: Allotment-Technology-Ltd/restormel-platform/.github/actions/...@vX` (pin ref).

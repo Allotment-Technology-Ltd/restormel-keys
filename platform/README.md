@@ -26,7 +26,9 @@ See [docs/cursor-init.md](./docs/cursor-init.md) and [cursor-template/](./cursor
 
 Canonical **default stack** (SvelteKit, pnpm, Vercel, Neon, GitHub Actions, token package, Next/Python variants): [docs/restormel-module-default-stack.md](../docs/restormel-module-default-stack.md) in the Keys repo (or copy into platform when split).
 
-**GitHub Template source:** [template-restormel-module/](template-restormel-module/) — copy to a new GitHub repo and enable *Template repository* (see [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md)). **Init script** (from Keys root): `pnpm run init-module -- …`.
+**GitHub:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform) (this subtree, pushed). **Module template (Use this template):** [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template).
+
+**Source in Keys:** [template-restormel-module/](template-restormel-module/) — see [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init script** (from Keys root): `pnpm run init-module -- …`.
 
 ## Secrets (CI)
 
