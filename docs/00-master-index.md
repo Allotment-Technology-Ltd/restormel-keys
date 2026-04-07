@@ -36,6 +36,7 @@ This build pack contains everything needed to take Restormel Keys from concept t
 | — | `platform-inventory.md` | Frozen reference: npm tags, CI path filters, Vercel build, OIDC issuer URL, token package path. |
 | — | `restormel-module-default-stack.md` | **New modules:** canonical pnpm/Node/SvelteKit/Vercel/Neon/Actions defaults; Next and Python variants; GitHub template checklist; initiation prompt for agents. |
 | — | `template-restormel-module-repo.md` | **New modules:** `platform/template-restormel-module/` + `pnpm run init-module`; GitHub Template repository setup and placeholder table. |
+| — | `restormel-suite-chatgpt-project-brief.md` | **ChatGPT Projects / external assistants:** single file to re-sync daily; points to canonical architecture and suite boundaries (does not replace linked docs). |
 
 ### Walkthrough (public integration docs)
 

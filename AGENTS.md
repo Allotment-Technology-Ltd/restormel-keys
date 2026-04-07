@@ -2,6 +2,8 @@
 
 Coding agents and humans: this is the **Restormel Keys** monorepo (headless `@restormel/keys`, dashboard app, integrations packages, docs).
 
+**ChatGPT Projects / external assistants:** single re-sync file — [docs/restormel-suite-chatgpt-project-brief.md](docs/restormel-suite-chatgpt-project-brief.md).
+
 ## Security and secrets
 
 - Follow [.cursor/rules/02-security-baseline.mdc](.cursor/rules/02-security-baseline.mdc) and [docs/security-baseline.md](docs/security-baseline.md). Never commit credentials or realistic secret placeholders.
