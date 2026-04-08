@@ -9,6 +9,7 @@
     { "path": "./packages/testing-report" },
     { "path": "./packages/testing-runner" },
     { "path": "./packages/testing-cli" },
-    { "path": "./packages/testing-github-action" }
+    { "path": "./packages/testing-github-action" },
+    { "path": "./packages/testing-runs-server" }
   ]
 }

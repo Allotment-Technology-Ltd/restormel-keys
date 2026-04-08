@@ -36,6 +36,7 @@ export type {
 } from "./acceptance.js";
 export { aggregateAcceptanceCriterionResults } from "./acceptance.js";
 export type { EnvironmentProfile } from "./environment.js";
+export type { LlmBudget } from "./llm-budget.js";
 export type {
   AfterAgentPhase,
   ExecutionMode,

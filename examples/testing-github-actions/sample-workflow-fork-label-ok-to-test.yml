@@ -1,0 +1,78 @@
+# Example: fork PRs run only when a maintainer adds the `ok-to-test` label.
+# Same-repo PRs always run. Requires org policy: external contributors cannot add labels they don't have permission for.
+#
+# Copy into .github/workflows/ and adjust install paths, suite id, and config_path.
+name: Restormel Testing (fork label gate)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+        with:
+          version: 9
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install and build
+        run: |
+          pnpm install
+          pnpm run build:testing-packages
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+
+      - name: Serve testing-basic-web (integration)
+        run: |
+          (cd examples/testing-basic-web && pnpm exec serve . -l 4173) &
+          SERVE_PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null
+          echo "SERVE_PID=$SERVE_PID" >> "$GITHUB_ENV"
+
+      # Same-repo PR: always run. Fork PR: only if label `ok-to-test` is present.
+      - name: Run Restormel Testing
+        uses: ./packages/testing-github-action
+        with:
+          suite: web-critical
+          environment: local
+          config_path: examples/testing-basic-web/restormel-testing.yaml
+          working_directory: .
+          commit_sha: ${{ github.sha }}
+          pr_number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          fork_pr_policy: require_label
+          is_fork_pr: ${{ github.event.pull_request.head.repo.fork }}
+          fork_pr_required_label: ok-to-test
+          fork_pr_label_present: ${{ contains(join(github.event.pull_request.labels.*.name, ','), 'ok-to-test') }}
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -n "${SERVE_PID:-}" ]; then kill "${SERVE_PID}" 2>/dev/null || true; fi
+
+      # Neutral exit variant: use fork_pr_policy: sandbox_only instead of require_label if your
+      # branch protection treats exit 78 as "skipped" rather than "success".
+
+      - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397e0af7b84c454d082b2
+        if: always()
+        with:
+          name: restormel-testing-run
+          path: .restormel-testing/runs/

@@ -1,5 +1,13 @@
 # @restormel/testing-config
 
+## 0.1.6
+
+### Patch Changes
+
+- Publish JSON Schema draft **`schema/restormel-testing-config.v1.schema.json`** (editor hints; strict validation remains in TypeScript).
+- Validate **`llm_budget`** / **`llmBudget`** on suites and goals; **`max_wall_clock_ms`** is **suite-only** (error on goals). Schema defs **`llmBudget`** and **`llmBudgetGoal`**.
+- Validate **`egress_allow_hosts`** / **`egressAllowHosts`** on environments (string array). JSON Schema notes runner **context egress** (not only agent `navigate`).
+
 ## 0.1.5
 
 ### Patch Changes

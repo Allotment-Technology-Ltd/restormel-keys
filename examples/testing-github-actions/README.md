@@ -2,9 +2,13 @@
 
 ## Restormel / Testing composite action
 
+**Next.js quickstart (local dev server):** [`../nextjs-playwright/README.md`](../nextjs-playwright/README.md) — two-goal observe-only `web-critical` suite on `http://127.0.0.1:3040`.
+
 The action lives at [`../../packages/testing-github-action`](../../packages/testing-github-action) in this repository. Point `uses:` at that path (or at your published fork) **after** a step that installs dependencies and builds TypeScript packages, and **after** installing Playwright browsers if you run browser goals.
 
 See [`sample-workflow.yml`](./sample-workflow.yml) for a full `pull_request` example. It runs against [`restormel-testing.ci-example.yaml`](./restormel-testing.ci-example.yaml) (public `example.com` smoke) so the job can pass without a preview server; swap in your real config for production use.
+
+**Fork PR + maintainer label (`ok-to-test`):** [`sample-workflow-fork-label-ok-to-test.yml`](./sample-workflow-fork-label-ok-to-test.yml) — `fork_pr_label_present` via `contains(join(github.event.pull_request.labels.*.name, ','), 'ok-to-test')`, with `testing-basic-web` served on port 4173 (same pattern as monorepo CI).
 
 ## Fork pull requests (safe defaults)
 

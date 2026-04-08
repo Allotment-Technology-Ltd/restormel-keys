@@ -25,6 +25,10 @@ export interface KeysModelMeta {
   invocationCount?: number;
   /** Populated by the keys-adapter: Keys path vs documented env fallback. */
   resolutionSource?: "keys" | "env_fallback";
+  /** Sum of provider-reported prompt tokens when the API returned `usage` (OpenAI-compatible). */
+  promptTokens?: number;
+  /** Sum of provider-reported completion tokens. */
+  completionTokens?: number;
 }
 
 export interface CostEstimate {
@@ -32,12 +36,29 @@ export interface CostEstimate {
   currency?: string;
   total?: number;
   /**
-   * MVP rough scale only — **not** billing-grade or provider-reported usage.
-   * Prefer `RunRecord.judgeInvocationCount` for a factual rubric call count.
+   * Aggregated from OpenAI-compatible `usage` on chat completions when present.
+   * Not all providers return usage; see `usageSource` and `tokenEstimate`.
+   */
+  tokenUsage?: {
+    prompt?: number;
+    completion?: number;
+    total?: number;
+  };
+  /** How `tokenUsage` / `tokenEstimate` should be interpreted for this run. */
+  usageSource?: "provider" | "estimate" | "mixed";
+  /**
+   * MVP rough scale only — **not** billing-grade when provider usage is missing.
+   * Used as fallback for calls without `usage` in the response body.
    */
   tokenEstimate?: {
     input?: number;
     output?: number;
+  };
+  /** Suite runner accounting (wall clock and LLM counters). */
+  suiteExecution?: {
+    wallClockMs: number;
+    llmCompletions: number;
+    acAgentRounds: number;
   };
 }
 

@@ -67,7 +67,7 @@ When using **`execution_mode: agent`**, treat **`success_criteria`** (optionally
 
 ## Suites stay small
 
-- One suite = one **environment** + a **short list** of critical journeys (MVP: roughly 5–8 goals for a “web-critical” style suite).
+- One suite = one **environment** + a **short list** of critical journeys (MVP: often **5–8 goals** for a broad “web-critical” suite in real apps). **CI smoke** may use **fewer goals** with **richer multi-field** `success_criteria` per goal (observe-only) to preserve coverage with less navigation churn — see [checklists/adopter-appendix-b-parity/v1.md](checklists/adopter-appendix-b-parity/v1.md).
 - Do not mix unrelated products or unrelated environments in the same suite.
 
 ## Environments, fixtures, cleanup

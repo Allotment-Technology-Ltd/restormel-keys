@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-config",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Load and validate restormel-testing.yaml / JSON workspace config.",
   "license": "MIT",
   "repository": {
@@ -25,7 +25,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "scripts": {
     "build": "tsc -b tsconfig.json",

@@ -269,7 +269,7 @@ suites:
       expect(r.config.suites.some((s) => s.id === "web-critical")).toBe(true);
       expect(r.config.defaults?.retryPolicy?.maxRetries).toBe(1);
       expect(r.config.suites[0]?.defaultTimeoutMs).toBe(30_000);
-      expect(r.config.suites[0]?.goals.map((g) => g.id)).toEqual(["home-welcome", "hero-heading-exact"]);
+      expect(r.config.suites[0]?.goals.map((g) => g.id)).toEqual(["home-shell", "about-shell"]);
     }
   });
 
@@ -279,6 +279,39 @@ suites:
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.errors.some((e) => e.code === "io")).toBe(true);
+  });
+
+  it("accepts environments egress_allow_hosts", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: {
+        local: {
+          base_url: "https://app.example.com",
+          egress_allow_hosts: ["api.example.com", "https://cdn.example.net/path"],
+        },
+      },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.config.environments.local?.egressAllowHosts).toEqual([
+        "api.example.com",
+        "https://cdn.example.net/path",
+      ]);
+    }
   });
 
   it("accepts adapter_hooks and preconditions (runner executes them unless RESTORMEL_TESTING_SKIP_SHELL_HOOKS=1)", () => {
@@ -628,5 +661,67 @@ suites:
       ],
     });
     expect(r.ok).toBe(false);
+  });
+
+  it("accepts suite llm_budget and maps to TestSuite.llmBudget", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          llm_budget: {
+            max_rounds: 20,
+            max_wall_clock_ms: 120_000,
+            max_completions: 50,
+          },
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const su = resolveSuite(r.config, "s1");
+    expect(su.ok).toBe(true);
+    if (!su.ok) return;
+    expect(su.suite.llmBudget).toEqual({
+      maxRounds: 20,
+      maxWallClockMs: 120_000,
+      maxCompletions: 50,
+    });
+  });
+
+  it("rejects goal llm_budget.max_wall_clock_ms (suite-only)", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              success_criteria: { url_matches: "/" },
+              llm_budget: { max_wall_clock_ms: 1 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => e.code === "forbidden" && e.path.includes("max_wall_clock_ms"))).toBe(true);
+    }
   });
 });

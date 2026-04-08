@@ -1,0 +1,51 @@
+# Maintainer: create an immutable semver Git tag for the composite at packages/testing-github-action/
+# Consumers pin: owner/repo/packages/testing-github-action@testing-action-v1.2.3
+# See docs/testing/github-action-semver.md
+name: Tag Testing composite action (semver)
+
+on:
+  workflow_dispatch:
+    inputs:
+      semver:
+        description: "Semver MAJOR.MINOR.PATCH (no v). Creates annotated tag testing-action-vMAJOR.MINOR.PATCH."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-testing-action-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Validate semver
+        env:
+          SEMVER: ${{ inputs.semver }}
+        run: |
+          if ! printf '%s' "$SEMVER" | grep -qxE '[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::Input semver must be MAJOR.MINOR.PATCH (digits only, e.g. 1.0.0)"
+            exit 1
+          fi
+
+      - name: Create and push annotated tag
+        env:
+          SEMVER: ${{ inputs.semver }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TAG="testing-action-v${SEMVER}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "::error::Tag ${TAG} already exists on remote"
+            exit 1
+          fi
+          git tag -a "$TAG" -m "Testing composite action release ${TAG}"
+          git push origin "refs/tags/${TAG}"

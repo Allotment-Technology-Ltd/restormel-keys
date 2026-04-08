@@ -20,6 +20,7 @@ import { runAcShapedJudgeRubric } from "./ac-judge.js";
 import { runAcPostCheck } from "./ac-post-checks.js";
 import { evaluateBrowserSuccessCriteria } from "./evaluate-criteria.js";
 import { judgeLogicalRefForCriteria } from "./judge-ref.js";
+import { installBrowserEgressRouteBlockForSession } from "./egress-browser-context.js";
 import { goalEntryUrl, type RunBrowserGoalOptions, type RunBrowserGoalResult } from "./browser-goal.js";
 import { runMissionExecutorCommand } from "./shell-hooks.js";
 import { runGoalAttempts, type AttemptOutcome } from "./retries.js";
@@ -42,14 +43,21 @@ function aggregateStepVerdicts(steps: AcSequenceStepResult[]): Verdict {
   return v;
 }
 
-function toKeysModelMeta(model: ResolvedModel, invocations: number): KeysModelMeta {
-  return {
+function toKeysModelMeta(
+  model: ResolvedModel,
+  invocations: number,
+  tokens?: { prompt?: number; completion?: number },
+): KeysModelMeta {
+  const m: KeysModelMeta = {
     logicalRef: model.meta.logicalRef,
     provider: model.meta.provider,
     model: model.meta.model,
     resolutionSource: model.meta.resolutionSource,
     invocationCount: invocations,
   };
+  if (tokens?.prompt !== undefined) m.promptTokens = tokens.prompt;
+  if (tokens?.completion !== undefined) m.completionTokens = tokens.completion;
+  return m;
 }
 
 function refForAgent(goal: TestGoal, resolvedKeys: Record<string, string>): string | undefined {
@@ -155,7 +163,7 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
   warnings.push(...agentResolve.warnings);
 
   const sessionFactory = options.createBrowserSession ?? createPlaywrightTestingSession;
-  const maxRounds = cfg.builtInAgent.maxRoundsPerCriterion ?? 12;
+  const maxRounds = goal.llmBudget?.maxRounds ?? cfg.builtInAgent.maxRoundsPerCriterion ?? 12;
 
   let lastSteps: AcSequenceStepResult[] = [];
 
@@ -192,8 +200,11 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
 
       const steps: AcSequenceStepResult[] = [];
       let chatInvocations = 0;
+      let agentPromptSum = 0;
+      let agentCompletionSum = 0;
 
       try {
+        await installBrowserEgressRouteBlockForSession(session, options.baseUrl, options.egressAllowHosts);
         const entryUrl = goalEntryUrl(options.baseUrl, goal.startPath);
         await withTimeout(
           session.navigate(entryUrl, { timeoutMs: options.timeoutMs, waitUntil: "load" }),
@@ -273,6 +284,8 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
               runBuiltInAcAgentLoop(session.page, ac, agentModel, options.baseUrl, {
                 maxRounds,
                 instructions: cfg.builtInAgent.instructions,
+                egressAllowHosts: options.egressAllowHosts,
+                suiteLlmBudget: options.suiteLlmBudget,
               }),
               perAcBudget,
               "ac_agent_loop",
@@ -292,6 +305,10 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
 
           chatInvocations += agentOut.roundsUsed;
           agentRounds = agentOut.roundsUsed;
+          if (agentOut.aggregatedTokenUsage) {
+            agentPromptSum += agentOut.aggregatedTokenUsage.promptTokens;
+            agentCompletionSum += agentOut.aggregatedTokenUsage.completionTokens;
+          }
           if (!agentOut.ok) {
             stepVerdict = worstVerdict(stepVerdict, "failed");
             notes.push(`agent: ${agentOut.summary}`);
@@ -308,10 +325,18 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
                 warnings.push(...jr.warnings);
               }
             }
-            const det = await evaluateBrowserSuccessCriteria(session.page, scMap, { judgeModel: judgeM });
+            const det = await evaluateBrowserSuccessCriteria(session.page, scMap, {
+              judgeModel: judgeM,
+              suiteLlmBudget: options.suiteLlmBudget,
+            });
             if (det.judgeModelInvocations && det.judgeModelInvocations > 0) {
               if (judgeM) {
-                keysModelMetaFragments.push(toKeysModelMeta(judgeM, det.judgeModelInvocations));
+                keysModelMetaFragments.push(
+                  toKeysModelMeta(judgeM, det.judgeModelInvocations, {
+                    prompt: det.judgePromptTokens,
+                    completion: det.judgeCompletionTokens,
+                  }),
+                );
               }
             }
             stepVerdict = worstVerdict(stepVerdict, det.verdict);
@@ -335,9 +360,16 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
                 notes.push(`criterion_rubrics resolve: ${rr.error.message}`);
               } else {
                 warnings.push(...rr.warnings);
-                const jr = await runAcShapedJudgeRubric(session.page, rub, rr.model, { id: ac.id, text: ac.text });
+                const jr = await runAcShapedJudgeRubric(session.page, rub, rr.model, { id: ac.id, text: ac.text }, {
+                  suiteLlmBudget: options.suiteLlmBudget,
+                });
                 if (jr.judgeModelInvocations && jr.judgeModelInvocations > 0) {
-                  keysModelMetaFragments.push(toKeysModelMeta(rr.model, jr.judgeModelInvocations));
+                  keysModelMetaFragments.push(
+                    toKeysModelMeta(rr.model, jr.judgeModelInvocations, {
+                      prompt: jr.judgePromptTokens,
+                      completion: jr.judgeCompletionTokens,
+                    }),
+                  );
                 }
                 stepVerdict = worstVerdict(stepVerdict, jr.verdict);
                 if (jr.verdict !== "passed") notes.push(`judge: ${jr.summary}`);
@@ -396,7 +428,12 @@ export async function runAcSequenceBrowserGoal(options: RunAcSequenceBrowserGoal
         allTraces.push(...mapped);
 
         if (chatInvocations > 0) {
-          keysModelMetaFragments.push(toKeysModelMeta(agentModel, chatInvocations));
+          keysModelMetaFragments.push(
+            toKeysModelMeta(agentModel, chatInvocations, {
+              prompt: agentPromptSum > 0 ? agentPromptSum : undefined,
+              completion: agentCompletionSum > 0 ? agentCompletionSum : undefined,
+            }),
+          );
         }
 
         lastSteps = steps;

@@ -1,4 +1,5 @@
 import type { AcceptanceCriterionDefinition } from "./acceptance.js";
+import type { LlmBudget } from "./llm-budget.js";
 import type { ArtifactPolicy, RetryPolicy } from "./policies.js";
 import type { TestGoal } from "./goal.js";
 
@@ -23,4 +24,6 @@ export interface TestSuite {
   /** Default per-goal timeout (ms) when not overridden by the runner. */
   defaultTimeoutMs?: number;
   artifactPolicy?: ArtifactPolicy;
+  /** Suite-wide LLM / wall-clock caps. YAML: `llm_budget` / `llmBudget`. */
+  llmBudget?: LlmBudget;
 }

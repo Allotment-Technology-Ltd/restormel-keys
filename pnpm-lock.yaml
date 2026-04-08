@@ -35,7 +35,7 @@ importers:
     dependencies:
       '@neondatabase/neon-js':
         specifier: 0.2.0-beta.1
-        version: 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.0.2
@@ -161,6 +161,34 @@ importers:
         version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
   apps/site: {}
+
+  examples/nextjs-playwright:
+    dependencies:
+      next:
+        specifier: 14.2.18
+        version: 14.2.18(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@restormel/testing-cli':
+        specifier: workspace:*
+        version: link:../../packages/testing-cli
+      '@types/node':
+        specifier: ^20.17.0
+        version: 20.19.39
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.28)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   examples/testing-basic-web:
     devDependencies:
@@ -336,7 +364,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.0.0
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: ^18.3.0
         version: 18.3.28
@@ -527,6 +555,31 @@ importers:
       playwright:
         specifier: ^1.49.0
         version: 1.58.2
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/testing-runs-server:
+    dependencies:
+      '@neondatabase/serverless':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@restormel/testing-config':
+        specifier: workspace:*
+        version: link:../testing-config
+      '@restormel/testing-core':
+        specifier: workspace:*
+        version: link:../testing-core
+      '@restormel/testing-keys-adapter':
+        specifier: workspace:*
+        version: link:../testing-keys-adapter
+      '@restormel/testing-report':
+        specifier: workspace:*
+        version: link:../testing-report
+      '@restormel/testing-runner':
+        specifier: workspace:*
+        version: link:../testing-runner
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -1284,13 +1337,28 @@ packages:
     resolution: {integrity: sha512-I5sbpSIAHiB+b6UttofhrN/UJXII+4tZPAq1qugzwCwLIL8EZLV7F/JyHUrEIiGgQpEXzpnjlJ+zwcEhheGvCw==}
     engines: {node: '>=19.0.0'}
 
+  '@next/env@14.2.18':
+    resolution: {integrity: sha512-2vWLOUwIPgoqMJKG6dt35fVXVhgM09tw4tK3/Q34GFXDrfiHlG7iS33VA4ggnjWxjiz9KV5xzfsQzJX6vGAekA==}
+
   '@next/env@16.2.1':
     resolution: {integrity: sha512-n8P/HCkIWW+gVal2Z8XqXJ6aB3J0tuM29OcHpCsobWlChH/SITBs1DFBk/HajgrwDkqqBXPbuUuzgDvUekREPg==}
+
+  '@next/swc-darwin-arm64@14.2.18':
+    resolution: {integrity: sha512-tOBlDHCjGdyLf0ube/rDUs6VtwNOajaWV+5FV/ajPgrvHeisllEdymY/oDgv2cx561+gJksfMUtqf8crug7sbA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
 
   '@next/swc-darwin-arm64@16.2.1':
     resolution: {integrity: sha512-BwZ8w8YTaSEr2HIuXLMLxIdElNMPvY9fLqb20LX9A9OMGtJilhHLbCL3ggyd0TwjmMcTxi0XXt+ur1vWUoxj2Q==}
     engines: {node: '>= 10'}
     cpu: [arm64]
+    os: [darwin]
+
+  '@next/swc-darwin-x64@14.2.18':
+    resolution: {integrity: sha512-uJCEjutt5VeJ30jjrHV1VIHCsbMYnEqytQgvREx+DjURd/fmKy15NaVK4aR/u98S1LGTnjq35lRTnRyygglxoA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
     os: [darwin]
 
   '@next/swc-darwin-x64@16.2.1':
@@ -1299,8 +1367,20 @@ packages:
     cpu: [x64]
     os: [darwin]
 
+  '@next/swc-linux-arm64-gnu@14.2.18':
+    resolution: {integrity: sha512-IL6rU8vnBB+BAm6YSWZewc+qvdL1EaA+VhLQ6tlUc0xp+kkdxQrVqAnh8Zek1ccKHlTDFRyAft0e60gteYmQ4A==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+
   '@next/swc-linux-arm64-gnu@16.2.1':
     resolution: {integrity: sha512-uLn+0BK+C31LTVbQ/QU+UaVrV0rRSJQ8RfniQAHPghDdgE+SlroYqcmFnO5iNjNfVWCyKZHYrs3Nl0mUzWxbBw==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@next/swc-linux-arm64-musl@14.2.18':
+    resolution: {integrity: sha512-RCaENbIZqKKqTlL8KNd+AZV/yAdCsovblOpYFp0OJ7ZxgLNbV5w23CUU1G5On+0fgafrsGcW+GdMKdFjaRwyYA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -1311,8 +1391,20 @@ packages:
     cpu: [arm64]
     os: [linux]
 
+  '@next/swc-linux-x64-gnu@14.2.18':
+    resolution: {integrity: sha512-3kmv8DlyhPRCEBM1Vavn8NjyXtMeQ49ID0Olr/Sut7pgzaQTo4h01S7Z8YNE0VtbowyuAL26ibcz0ka6xCTH5g==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
   '@next/swc-linux-x64-gnu@16.2.1':
     resolution: {integrity: sha512-HQm7SrHRELJ30T1TSmT706IWovFFSRGxfgUkyWJZF/RKBMdbdRWJuFrcpDdE5vy9UXjFOx6L3mRdqH04Mmx0hg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@next/swc-linux-x64-musl@14.2.18':
+    resolution: {integrity: sha512-mliTfa8seVSpTbVEcKEXGjC18+TDII8ykW4a36au97spm9XMPqQTpdGPNBJ9RySSFw9/hLuaCMByluQIAnkzlw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -1323,10 +1415,28 @@ packages:
     cpu: [x64]
     os: [linux]
 
+  '@next/swc-win32-arm64-msvc@14.2.18':
+    resolution: {integrity: sha512-J5g0UFPbAjKYmqS3Cy7l2fetFmWMY9Oao32eUsBPYohts26BdrMUyfCJnZFQkX9npYaHNDOWqZ6uV9hSDPw9NA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+
   '@next/swc-win32-arm64-msvc@16.2.1':
     resolution: {integrity: sha512-IXdNgiDHaSk0ZUJ+xp0OQTdTgnpx1RCfRTalhn3cjOP+IddTMINwA7DXZrwTmGDO8SUr5q2hdP/du4DcrB1GxA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
+    os: [win32]
+
+  '@next/swc-win32-ia32-msvc@14.2.18':
+    resolution: {integrity: sha512-Ynxuk4ZgIpdcN7d16ivJdjsDG1+3hTvK24Pp8DiDmIa2+A4CfhJSEHHVndCHok6rnLUzAZD+/UOKESQgTsAZGg==}
+    engines: {node: '>= 10'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@next/swc-win32-x64-msvc@14.2.18':
+    resolution: {integrity: sha512-dtRGMhiU9TN5nyhwzce+7c/4CCeykYS+ipY/4mIrGzJ71+7zNo55ZxCB7cAVuNqdwtYniFNR2c9OFQ6UdFIMcg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
     os: [win32]
 
   '@next/swc-win32-x64-msvc@16.2.1':
@@ -2758,8 +2868,14 @@ packages:
       svelte: ^5.0.0
       vite: ^6.0.0
 
+  '@swc/counter@0.1.3':
+    resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
+
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
+
+  '@swc/helpers@0.5.5':
+    resolution: {integrity: sha512-KGYxvIOXcceOAbEk4bi/dVLEK9z8sZ0uBB3Il5b1rhfClSpcX0yfRO0KmTkqR2cnQDymwLB+25ZyMzICg/cm/A==}
 
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
@@ -2949,6 +3065,11 @@ packages:
 
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
+
+  '@types/react-dom@18.3.7':
+    resolution: {integrity: sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ==}
+    peerDependencies:
+      '@types/react': ^18.0.0
 
   '@types/react@18.3.28':
     resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
@@ -3429,6 +3550,10 @@ packages:
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
+
+  busboy@1.6.0:
+    resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
+    engines: {node: '>=10.16.0'}
 
   bytes@3.0.0:
     resolution: {integrity: sha512-pMhOfFDPiv9t5jjIXkHosWmkSyQbvsgEVNkz0ERHbuLh2T/7j4Mqqpz523Fe8MVY89KC6Sh/QfS2sM+SjgFDcw==}
@@ -4751,6 +4876,25 @@ packages:
       react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
       react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
 
+  next@14.2.18:
+    resolution: {integrity: sha512-H9qbjDuGivUDEnK6wa+p2XKO+iMzgVgyr9Zp/4Iv29lKa+DYaxJGjOeEA+5VOvJh/M7HLiskehInSa0cWxVXUw==}
+    engines: {node: '>=18.17.0'}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+    hasBin: true
+    peerDependencies:
+      '@opentelemetry/api': ^1.1.0
+      '@playwright/test': ^1.41.2
+      react: ^18.2.0
+      react-dom: ^18.2.0
+      sass: ^1.3.0
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
+      '@playwright/test':
+        optional: true
+      sass:
+        optional: true
+
   next@16.2.1:
     resolution: {integrity: sha512-VaChzNL7o9rbfdt60HUj8tev4m6d7iC1igAy157526+cJlXOQu5LzsBXNT+xaJnTP/k+utSX5vMv7m0G+zKH+Q==}
     engines: {node: '>=20.9.0'}
@@ -5632,6 +5776,10 @@ packages:
   std-env@4.0.0:
     resolution: {integrity: sha512-zUMPtQ/HBY3/50VbpkupYHbRroTRZJPRLvreamgErJVys0ceuzMkD44J/QjqhHjOzK42GQ3QZIeFG1OYfOtKqQ==}
 
+  streamsearch@1.1.0:
+    resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
+    engines: {node: '>=10.0.0'}
+
   streamx@2.25.0:
     resolution: {integrity: sha512-0nQuG6jf1w+wddNEEXCF4nTg3LtufWINB5eFEN+5TNZW7KWJp6x87+JFL43vaAUPyCfH1wID+mNVyW6OHtFamg==}
 
@@ -5682,6 +5830,19 @@ packages:
 
   stubborn-utils@1.0.2:
     resolution: {integrity: sha512-zOh9jPYI+xrNOyisSelgym4tolKTJCQd5GBhK0+0xJvcYDcwlOoxF/rnFKQ2KRZknXSG9jWAp66fwP6AxN9STg==}
+
+  styled-jsx@5.1.1:
+    resolution: {integrity: sha512-pW7uC1l4mBZ8ugbiZrcIsiIvVx1UmTfw7UkC3Um2tmfUq9Bhk8IiyEIPl6F8agHgjzku6j0xQEZbfA5uSgSaCw==}
+    engines: {node: '>= 12.0.0'}
+    peerDependencies:
+      '@babel/core': '*'
+      babel-plugin-macros: '*'
+      react: '>= 16.8.0 || 17.x.x || ^18.0.0-0'
+    peerDependenciesMeta:
+      '@babel/core':
+        optional: true
+      babel-plugin-macros:
+        optional: true
 
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
@@ -6490,7 +6651,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  ? '@daveyplate/better-auth-ui@3.3.9(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@captchafox/react@1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@hookform/resolvers@5.2.2(react-hook-form@7.71.2(react@18.3.1)))(@instantdb/react@0.22.158(react@18.3.1))(@marsidev/react-turnstile@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-avatar@1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-checkbox@1.3.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-context@1.1.3(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-dialog@1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-dropdown-menu@2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-label@2.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-primitive@2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-select@2.2.6(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-separator@1.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-slot@1.2.4(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-tabs@1.1.13(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-use-callback-ref@1.1.1(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-use-layout-effect@1.1.1(@types/react@18.3.28)(react@18.3.1))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(class-variance-authority@0.7.1)(clsx@2.1.1)(input-otp@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(lucide-react@0.555.0(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-hook-form@7.71.2(react@18.3.1))(react@18.3.1)(sonner@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(tailwind-merge@3.5.0)(tailwindcss@4.2.1)(zod@4.3.6)'
+  ? '@daveyplate/better-auth-ui@3.3.9(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@captchafox/react@1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@hookform/resolvers@5.2.2(react-hook-form@7.71.2(react@18.3.1)))(@instantdb/react@0.22.158(react@18.3.1))(@marsidev/react-turnstile@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-avatar@1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-checkbox@1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-context@1.1.3(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-dialog@1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-dropdown-menu@2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-label@2.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-primitive@2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-select@2.2.6(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-separator@1.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-slot@1.2.4(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-tabs@1.1.13(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-use-callback-ref@1.1.1(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-use-layout-effect@1.1.1(@types/react@18.3.28)(react@18.3.1))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(class-variance-authority@0.7.1)(clsx@2.1.1)(input-otp@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(lucide-react@0.555.0(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-hook-form@7.71.2(react@18.3.1))(react@18.3.1)(sonner@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(tailwind-merge@3.5.0)(tailwindcss@4.2.1)(zod@4.3.6)'
   : dependencies:
       '@better-auth/passkey': 1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0)
       '@better-fetch/fetch': 1.1.21
@@ -6501,17 +6662,17 @@ snapshots:
       '@instantdb/react': 0.22.158(react@18.3.1)
       '@marsidev/react-turnstile': 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@noble/hashes': 2.0.1
-      '@radix-ui/react-avatar': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-checkbox': 1.3.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-avatar': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-context': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-dialog': 1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-dropdown-menu': 2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-label': 2.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-select': 2.2.6(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-separator': 1.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dialog': 1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dropdown-menu': 2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-label': 2.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-select': 2.2.6(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-separator': 1.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.4(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-tabs': 1.1.13(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-tabs': 1.1.13(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@react-email/components': 1.0.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -6533,7 +6694,7 @@ snapshots:
       tailwind-merge: 3.5.0
       tailwindcss: 4.2.1
       ua-parser-js: 2.0.9
-      vaul: 1.1.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      vaul: 1.1.2(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod: 4.3.6
     transitivePeerDependencies:
       - '@types/react'
@@ -6982,25 +7143,25 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ? '@neondatabase/auth-ui@0.1.0-alpha.11(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)'
+  ? '@neondatabase/auth-ui@0.1.0-alpha.11(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)'
   : dependencies:
       '@captchafox/react': 1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@daveyplate/better-auth-ui': 3.3.9(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@captchafox/react@1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@hookform/resolvers@5.2.2(react-hook-form@7.71.2(react@18.3.1)))(@instantdb/react@0.22.158(react@18.3.1))(@marsidev/react-turnstile@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-avatar@1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-checkbox@1.3.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-context@1.1.3(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-dialog@1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-dropdown-menu@2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-label@2.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-primitive@2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-select@2.2.6(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-separator@1.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-slot@1.2.4(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-tabs@1.1.13(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-use-callback-ref@1.1.1(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-use-layout-effect@1.1.1(@types/react@18.3.28)(react@18.3.1))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(class-variance-authority@0.7.1)(clsx@2.1.1)(input-otp@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(lucide-react@0.555.0(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-hook-form@7.71.2(react@18.3.1))(react@18.3.1)(sonner@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(tailwind-merge@3.5.0)(tailwindcss@4.2.1)(zod@4.3.6)
+      '@daveyplate/better-auth-ui': 3.3.9(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@captchafox/react@1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@hookform/resolvers@5.2.2(react-hook-form@7.71.2(react@18.3.1)))(@instantdb/react@0.22.158(react@18.3.1))(@marsidev/react-turnstile@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-avatar@1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-checkbox@1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-context@1.1.3(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-dialog@1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-dropdown-menu@2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-label@2.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-primitive@2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-select@2.2.6(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-separator@1.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-slot@1.2.4(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-tabs@1.1.13(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@radix-ui/react-use-callback-ref@1.1.1(@types/react@18.3.28)(react@18.3.1))(@radix-ui/react-use-layout-effect@1.1.1(@types/react@18.3.28)(react@18.3.1))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(class-variance-authority@0.7.1)(clsx@2.1.1)(input-otp@1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(lucide-react@0.555.0(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-hook-form@7.71.2(react@18.3.1))(react@18.3.1)(sonner@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(tailwind-merge@3.5.0)(tailwindcss@4.2.1)(zod@4.3.6)
       '@hcaptcha/react-hcaptcha': 1.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hookform/resolvers': 5.2.2(react-hook-form@7.71.2(react@18.3.1))
       '@marsidev/react-turnstile': 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@neondatabase/auth': 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
-      '@radix-ui/react-avatar': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-checkbox': 1.3.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@neondatabase/auth': 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+      '@radix-ui/react-avatar': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-context': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-dialog': 1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-dropdown-menu': 2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-label': 2.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-select': 2.2.6(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-separator': 1.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dialog': 1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dropdown-menu': 2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-label': 2.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-select': 2.2.6(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-separator': 1.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.4(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-tabs': 1.1.13(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-tabs': 1.1.13(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@wojtekmaj/react-recaptcha-v3': 0.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -7019,7 +7180,7 @@ snapshots:
       tailwindcss: 4.2.1
       tw-animate-css: 1.4.0
       ua-parser-js: 2.0.9
-      vaul: 1.1.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      vaul: 1.1.2(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod: 4.3.6
     transitivePeerDependencies:
       - '@better-auth/passkey'
@@ -7032,9 +7193,9 @@ snapshots:
       - '@types/react-dom'
       - better-auth
 
-  ? '@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))'
+  ? '@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))'
   : dependencies:
-      '@neondatabase/auth-ui': 0.1.0-alpha.11(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@neondatabase/auth-ui': 0.1.0-alpha.11(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@neondatabase/auth@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@supabase/auth-js': 2.79.0
       better-auth: 1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       jose: 6.1.2
@@ -7068,9 +7229,9 @@ snapshots:
       - vitest
       - vue
 
-  ? '@neondatabase/neon-js@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))'
+  ? '@neondatabase/neon-js@0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))'
   : dependencies:
-      '@neondatabase/auth': 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+      '@neondatabase/auth': 0.2.0-beta.1(@better-auth/passkey@1.5.5(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.6))(jose@6.2.1)(kysely@0.28.14)(nanostores@1.2.0))(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(better-call@1.1.7(zod@4.3.6))(nanostores@1.2.0))(@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.4.9(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@instantdb/react@0.22.158(react@18.3.1))(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.90.21(react@18.3.1))(@triplit/client@1.0.50(typescript@5.9.3))(@triplit/react@1.0.51(react@18.3.1)(typescript@5.9.3))(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.53.12)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@neondatabase/postgrest-js': 0.1.0-alpha.2
       '@supabase/postgres-meta': 0.93.1
       meow: 14.0.0
@@ -7114,27 +7275,56 @@ snapshots:
       '@types/node': 22.19.15
       '@types/pg': 8.20.0
 
+  '@next/env@14.2.18': {}
+
   '@next/env@16.2.1': {}
 
+  '@next/swc-darwin-arm64@14.2.18':
+    optional: true
+
   '@next/swc-darwin-arm64@16.2.1':
+    optional: true
+
+  '@next/swc-darwin-x64@14.2.18':
     optional: true
 
   '@next/swc-darwin-x64@16.2.1':
     optional: true
 
+  '@next/swc-linux-arm64-gnu@14.2.18':
+    optional: true
+
   '@next/swc-linux-arm64-gnu@16.2.1':
+    optional: true
+
+  '@next/swc-linux-arm64-musl@14.2.18':
     optional: true
 
   '@next/swc-linux-arm64-musl@16.2.1':
     optional: true
 
+  '@next/swc-linux-x64-gnu@14.2.18':
+    optional: true
+
   '@next/swc-linux-x64-gnu@16.2.1':
+    optional: true
+
+  '@next/swc-linux-x64-musl@14.2.18':
     optional: true
 
   '@next/swc-linux-x64-musl@16.2.1':
     optional: true
 
+  '@next/swc-win32-arm64-msvc@14.2.18':
+    optional: true
+
   '@next/swc-win32-arm64-msvc@16.2.1':
+    optional: true
+
+  '@next/swc-win32-ia32-msvc@14.2.18':
+    optional: true
+
+  '@next/swc-win32-x64-msvc@14.2.18':
     optional: true
 
   '@next/swc-win32-x64-msvc@16.2.1':
@@ -7903,18 +8093,19 @@ snapshots:
 
   '@radix-ui/primitive@1.1.3': {}
 
-  '@radix-ui/react-arrow@1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-arrow@1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-avatar@1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-avatar@1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-context': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-is-hydrated': 0.1.0(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -7922,14 +8113,15 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-checkbox@1.3.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-checkbox@1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-presence': 1.1.5(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-presence': 1.1.5(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-previous': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-size': 1.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -7937,17 +8129,19 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-collection@1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-collection@1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.3(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-compose-refs@1.1.2(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -7967,18 +8161,18 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-dialog@1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-dialog@1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-focus-guards': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-focus-scope': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-focus-scope': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-portal': 1.1.9(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-presence': 1.1.5(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-portal': 1.1.9(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-presence': 1.1.5(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.3(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       aria-hidden: 1.2.6
@@ -7987,6 +8181,7 @@ snapshots:
       react-remove-scroll: 2.7.2(@types/react@18.3.28)(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-direction@1.1.1(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -7994,31 +8189,33 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-dismissable-layer@1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-dismissable-layer@1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-escape-keydown': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-dropdown-menu@2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-dropdown-menu@2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-menu': 2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-menu': 2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-focus-guards@1.1.3(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -8026,15 +8223,16 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-focus-scope@1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-focus-scope@1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-id@1.1.1(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -8043,30 +8241,31 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-label@2.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-label@2.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-menu@2.1.16(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-menu@2.1.16(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
-      '@radix-ui/react-collection': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-collection': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-direction': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-focus-guards': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-focus-scope': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-focus-scope': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-popper': 1.2.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-portal': 1.1.9(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-presence': 1.1.5(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-roving-focus': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-popper': 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-portal': 1.1.9(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-presence': 1.1.5(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-roving-focus': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.3(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       aria-hidden: 1.2.6
@@ -8075,14 +8274,15 @@ snapshots:
       react-remove-scroll: 2.7.2(@types/react@18.3.28)(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-popper@1.2.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-popper@1.2.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@floating-ui/react-dom': 2.1.8(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-arrow': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-arrow': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-rect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -8092,17 +8292,19 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-portal@1.1.9(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-portal@1.1.9(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-presence@1.1.5(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-presence@1.1.5(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
@@ -8110,74 +8312,80 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-primitive@2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-primitive@2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-slot': 1.2.3(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-primitive@2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-primitive@2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/react-slot': 1.2.4(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-roving-focus@1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-roving-focus@1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
-      '@radix-ui/react-collection': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-collection': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-direction': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-select@2.2.6(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-select@2.2.6(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/number': 1.1.1
       '@radix-ui/primitive': 1.1.3
-      '@radix-ui/react-collection': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-collection': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-compose-refs': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-direction': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-focus-guards': 1.1.3(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-focus-scope': 1.1.7(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-focus-scope': 1.1.7(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-popper': 1.2.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-portal': 1.1.9(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-popper': 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-portal': 1.1.9(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-slot': 1.2.3(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-layout-effect': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-use-previous': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-visually-hidden': 1.2.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-visually-hidden': 1.2.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       aria-hidden: 1.2.6
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-remove-scroll: 2.7.2(@types/react@18.3.28)(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
-  '@radix-ui/react-separator@1.1.8(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-separator@1.1.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.4(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-slot@1.2.3(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -8193,20 +8401,21 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-tabs@1.1.13(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-tabs@1.1.13(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
       '@radix-ui/react-context': 1.1.2(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-direction': 1.1.1(@types/react@18.3.28)(react@18.3.1)
       '@radix-ui/react-id': 1.1.1(@types/react@18.3.28)(react@18.3.1)
-      '@radix-ui/react-presence': 1.1.5(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@radix-ui/react-roving-focus': 1.1.11(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-presence': 1.1.5(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-roving-focus': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@18.3.28)(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/react-use-callback-ref@1.1.1(@types/react@18.3.28)(react@18.3.1)':
     dependencies:
@@ -8269,13 +8478,14 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.28
 
-  '@radix-ui/react-visually-hidden@1.2.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@radix-ui/react-visually-hidden@1.2.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.3(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@radix-ui/rect@1.1.1': {}
 
@@ -8773,8 +8983,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@swc/counter@0.1.3': {}
+
   '@swc/helpers@0.5.15':
     dependencies:
+      tslib: 2.8.1
+
+  '@swc/helpers@0.5.5':
+    dependencies:
+      '@swc/counter': 0.1.3
       tslib: 2.8.1
 
   '@szmarczak/http-timer@4.0.6':
@@ -8808,7 +9025,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@testing-library/dom': 10.4.1
@@ -8816,6 +9033,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     optionalDependencies:
       '@types/react': 18.3.28
+      '@types/react-dom': 18.3.7(@types/react@18.3.28)
 
   '@testing-library/svelte-core@1.0.0(svelte@5.53.12)':
     dependencies:
@@ -8998,6 +9216,10 @@ snapshots:
   '@types/qs@6.15.0': {}
 
   '@types/range-parser@1.2.7': {}
+
+  '@types/react-dom@18.3.7(@types/react@18.3.28)':
+    dependencies:
+      '@types/react': 18.3.28
 
   '@types/react@18.3.28':
     dependencies:
@@ -9479,6 +9701,10 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
+
+  busboy@1.6.0:
+    dependencies:
+      streamsearch: 1.1.0
 
   bytes@3.0.0: {}
 
@@ -10789,6 +11015,33 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
+  next@14.2.18(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      '@next/env': 14.2.18
+      '@swc/helpers': 0.5.5
+      busboy: 1.6.0
+      caniuse-lite: 1.0.30001780
+      graceful-fs: 4.2.11
+      postcss: 8.4.31
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      styled-jsx: 5.1.1(react@18.3.1)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 14.2.18
+      '@next/swc-darwin-x64': 14.2.18
+      '@next/swc-linux-arm64-gnu': 14.2.18
+      '@next/swc-linux-arm64-musl': 14.2.18
+      '@next/swc-linux-x64-gnu': 14.2.18
+      '@next/swc-linux-x64-musl': 14.2.18
+      '@next/swc-win32-arm64-msvc': 14.2.18
+      '@next/swc-win32-ia32-msvc': 14.2.18
+      '@next/swc-win32-x64-msvc': 14.2.18
+      '@opentelemetry/api': 1.9.0
+      '@playwright/test': 1.58.2
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+
   next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@next/env': 16.2.1
@@ -11825,6 +12078,8 @@ snapshots:
 
   std-env@4.0.0: {}
 
+  streamsearch@1.1.0: {}
+
   streamx@2.25.0:
     dependencies:
       events-universal: 1.0.1
@@ -11879,6 +12134,11 @@ snapshots:
       stubborn-utils: 1.0.2
 
   stubborn-utils@1.0.2: {}
+
+  styled-jsx@5.1.1(react@18.3.1):
+    dependencies:
+      client-only: 0.0.1
+      react: 18.3.1
 
   styled-jsx@5.1.6(react@18.3.1):
     dependencies:
@@ -12161,9 +12421,9 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vaul@1.1.2(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  vaul@1.1.2(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@radix-ui/react-dialog': 1.1.15(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@radix-ui/react-dialog': 1.1.15(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:

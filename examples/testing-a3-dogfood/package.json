@@ -1,0 +1,6 @@
+{
+  "name": "example-a3-dogfood",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BYOK / judge_rubric smoke config for GitHub Environment secrets (A3 dogfood workflow only)."
+}

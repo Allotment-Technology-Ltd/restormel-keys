@@ -605,7 +605,7 @@ That is the architecture most likely to let the product ship quickly without cre
 
 Internal sources:
 - `restormel_testing_chatgpt_project_setup.md`
-- `restormel-agentic-testing-requirements.md`
+- [restormel-testing-agentic-product-requirements.md](restormel-testing-agentic-product-requirements.md)
 - `repomix-output.md`
 
 External official sources consulted on 2026-04-07:

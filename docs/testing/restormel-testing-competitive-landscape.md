@@ -523,4 +523,4 @@ Official product/docs sources reviewed on 2026-04-07:
 
 Internal context used:
 - `restormel_testing_chatgpt_project_setup.md`
-- `restormel-agentic-testing-requirements.md`
+- [restormel-testing-agentic-product-requirements.md](restormel-testing-agentic-product-requirements.md)

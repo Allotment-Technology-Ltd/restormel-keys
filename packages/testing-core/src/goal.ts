@@ -1,4 +1,5 @@
 import type { AcSequenceConfig } from "./ac-sequence.js";
+import type { LlmBudget } from "./llm-budget.js";
 import type { SuccessCriteria } from "./success-criteria.js";
 
 export type GoalType = "browser" | "performance" | "native";
@@ -68,4 +69,6 @@ export interface TestGoal {
    * YAML: `acceptance_criterion_ids` / `acceptanceCriterionIds`.
    */
   acceptanceCriterionIds?: string[];
+  /** Optional caps on LLM calls / AC rounds for this goal. YAML: `llm_budget` / `llmBudget`. */
+  llmBudget?: LlmBudget;
 }
