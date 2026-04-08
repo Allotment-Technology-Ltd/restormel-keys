@@ -1,6 +1,8 @@
 # Neon preview branch naming:
-# - Primary: preview/<github.head_ref> (matches Vercel + Neon Git integration and existing branches).
-# - Legacy fallback: preview-pr-<number> (older runs of this workflow).
+# - Primary: preview/<github.head_ref> (matches Vercel + Neon Git integration when create succeeds).
+# - Fallback: preview-pr-<number> (used when head_ref branch is missing or create fails).
+# - If the Neon project hits its branch limit, preview migrations + catalog seed are skipped (job succeeds);
+#   delete stale preview/* branches or run "Prune stale Neon preview branches", or upgrade the Neon plan.
 name: Create/Delete Branch for Pull Request
 
 on:
@@ -61,57 +63,133 @@ jobs:
           node-version: '22'
       - name: Install Postgres client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Resolve DATABASE_URL for Neon preview branch
+      # Create + resolve in one step: head_ref-based names sometimes fail to create (API/plan);
+      # we verify with branches list and fall back to preview-pr-<n> before resolving DATABASE_URL.
+      - name: Prepare Neon preview branch and DATABASE_URL
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
           HEAD_PREVIEW: preview/${{ github.head_ref }}
-          LEGACY_PREVIEW: preview-pr-${{ github.event.number }}
+          PR_PREVIEW: preview-pr-${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          # neonctl prints a connection string including password.
-          resolve() {
-            npx --yes neonctl@v2 connection-string "$1" \
-              --project-id "$NEON_PROJECT_ID" \
-              --database-name neondb \
-              --role-name neondb_owner 2>/dev/null
+          EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')
+
+          list_json() {
+            npx --yes neonctl@v2 branches list --project-id "$NEON_PROJECT_ID" -o json
           }
-          set +e
-          DATABASE_URL="$(resolve "$HEAD_PREVIEW")"
-          rc=$?
-          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
-            echo "No branch '$HEAD_PREVIEW', trying legacy '$LEGACY_PREVIEW'"
-            DATABASE_URL="$(resolve "$LEGACY_PREVIEW")"
+
+          branch_exists() {
+            export WANT="$1"
+            list_json | node -e "
+              const want = process.env.WANT;
+              const j = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+              const arr = Array.isArray(j) ? j : [];
+              process.exit(arr.some((b) => b.name === want) ? 0 : 1);
+            "
+          }
+
+          BRANCH_LIMIT_HIT=0
+          try_create() {
+            local name="$1"
+            echo ">>> neonctl branches create --name $name ..."
+            set +e
+            local out rc
+            out=$(npx --yes neonctl@v2 branches create \
+              --name "$name" \
+              --project-id "$NEON_PROJECT_ID" \
+              --expires-at "$EXPIRES_AT" 2>&1)
             rc=$?
-            if [[ $rc -eq 0 && -n "$DATABASE_URL" ]]; then
-              echo "Using Neon branch: $LEGACY_PREVIEW"
+            set -e
+            echo "$out"
+            if echo "$out" | grep -qiE 'branches limit exceeded|branch limit exceeded'; then
+              BRANCH_LIMIT_HIT=1
             fi
+            return "$rc"
+          }
+
+          CHOSEN=""
+          if branch_exists "$HEAD_PREVIEW"; then
+            CHOSEN="$HEAD_PREVIEW"
+            echo "Neon branch already present: $CHOSEN"
           else
-            echo "Using Neon branch: $HEAD_PREVIEW"
+            try_create "$HEAD_PREVIEW" || true
+            if branch_exists "$HEAD_PREVIEW"; then
+              CHOSEN="$HEAD_PREVIEW"
+            fi
           fi
-          set -e
-          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
-            echo "Failed to resolve DATABASE_URL (tried $HEAD_PREVIEW and $LEGACY_PREVIEW)"
+
+          if [[ -z "$CHOSEN" ]]; then
+            echo "Primary preview branch missing; trying $PR_PREVIEW"
+            if branch_exists "$PR_PREVIEW"; then
+              CHOSEN="$PR_PREVIEW"
+            else
+              try_create "$PR_PREVIEW" || true
+              if branch_exists "$PR_PREVIEW"; then
+                CHOSEN="$PR_PREVIEW"
+              fi
+            fi
+          fi
+
+          if [[ -z "$CHOSEN" ]]; then
+            if [[ "$BRANCH_LIMIT_HIT" == "1" ]]; then
+              echo "::warning title=Neon branch limit::This Neon project has reached its branch limit, so preview DB migrations and catalog seed were skipped. Remove stale preview branches in the Neon console, run the **Prune stale Neon preview branches** workflow, or increase the limit on your Neon plan."
+              echo "SKIP_PREVIEW_DB=1" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "ERROR: Could not create or find preview branch (tried $HEAD_PREVIEW and $PR_PREVIEW)."
+            list_json | node -e "const j=JSON.parse(require('fs').readFileSync(0,'utf8')); (Array.isArray(j)?j:[]).forEach((b)=>console.log(b.name));" || true
             exit 1
           fi
-          if [[ "$DATABASE_URL" != postgres* ]]; then
-            echo "Unexpected connection-string output"
+
+          echo "SKIP_PREVIEW_DB=0" >> "$GITHUB_ENV"
+          echo "Using Neon preview branch: $CHOSEN"
+          echo "NEON_PREVIEW_BRANCH=$CHOSEN" >> "$GITHUB_ENV"
+
+          pick_uri() {
+            echo "$1" | grep -E '^postgresql://' | head -1 | tr -d '\r' || true
+          }
+          DATABASE_URL=""
+          for attempt in $(seq 1 30); do
+            raw=$(npx --yes neonctl@v2 connection-string "$CHOSEN" \
+              --project-id "$NEON_PROJECT_ID" 2>&1 || true)
+            DATABASE_URL=$(pick_uri "$raw")
+            if [[ -n "$DATABASE_URL" ]]; then
+              echo "Resolved DATABASE_URL (attempt $attempt)"
+              break
+            fi
+            if [[ "$attempt" == "1" || "$attempt" == "8" || "$attempt" == "16" ]]; then
+              echo "Still resolving connection string (attempt $attempt). First 400 chars (errors only, no URI):"
+              echo "$raw" | head -c 400
+              echo
+            fi
+            sleep 5
+          done
+
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "Failed to obtain connection string for $CHOSEN"
             exit 1
           fi
+
           echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
         # npx uses NEON_API_KEY automatically if present.
       - name: Apply dashboard migrations
+        if: env.SKIP_PREVIEW_DB != '1'
         run: bash scripts/apply-dashboard-migrations.sh
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        if: env.SKIP_PREVIEW_DB != '1'
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        if: env.SKIP_PREVIEW_DB != '1'
         with:
           node-version: '20'
           cache: 'pnpm'
       - name: Install workspace (dashboard catalog seed)
+        if: env.SKIP_PREVIEW_DB != '1'
         run: pnpm install --frozen-lockfile
       - name: Ingest model catalog from JSON seed (preview DB)
+        if: env.SKIP_PREVIEW_DB != '1'
         run: pnpm --filter dashboard run seed:catalog
 
   delete_neon_branch:
@@ -132,5 +210,5 @@ jobs:
         uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: preview-pr-${{ github.event.number }}
+          branch: preview-pr-${{ github.event.pull_request.number }}
           api_key: ${{ secrets.NEON_API_KEY }}

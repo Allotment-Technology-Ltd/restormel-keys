@@ -6,14 +6,24 @@
 <footer class="site-footer">
   <div class="site-footer-inner">
     <div class="site-footer-col">
-      <span class="site-footer-title">Product</span>
-      <ul class="site-footer-links" aria-label="Product">
+      <span class="site-footer-title">Products</span>
+      <ul class="site-footer-links" aria-label="Products">
+        <li><a href="/">Restormel</a></li>
         <li><a href="/keys">Keys</a></li>
-        <li><a href="/keys/docs">Docs</a></li>
+        <li><a href="/testing">Testing</a></li>
+        <li><a href="/integrations">Integrations</a></li>
+        <li><a href="/keys/docs">Keys documentation</a></li>
+        <li><a href="/testing/docs">Testing documentation</a></li>
+        <li><a href={DASHBOARD_BASE}>Keys dashboard</a></li>
+        <li><a href="/testing/dashboard">Testing dashboard</a></li>
+      </ul>
+    </div>
+    <div class="site-footer-col">
+      <span class="site-footer-title">Keys</span>
+      <ul class="site-footer-links" aria-label="Keys">
         <li><a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a></li>
         <li><a href="/keys/pricing">Pricing</a></li>
         <li><a href="/keys/use-cases">Use cases</a></li>
-        <li><a href={DASHBOARD_BASE}>Dashboard</a></li>
       </ul>
     </div>
     <div class="site-footer-col">
@@ -29,7 +39,7 @@
       <a href="/" class="site-footer-logo">
         <img src="/restormel-lockup-nav.svg" alt="Restormel" style="height: 24px; width: auto;" />
       </a>
-      <p class="site-footer-tagline">The missing layer for AI apps</p>
+      <p class="site-footer-tagline">Keys, Testing, and integrations for production AI teams</p>
     </div>
   </div>
   <p class="site-footer-copy">restormel.dev</p>
@@ -46,9 +56,15 @@
     max-width: var(--rm-container-max);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: repeat(3, auto) 1fr;
     gap: var(--space-10);
     align-items: start;
+  }
+  @media (max-width: 900px) {
+    .site-footer-inner {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-8);
+    }
   }
   @media (max-width: 640px) {
     .site-footer-inner {
@@ -109,4 +125,3 @@
     text-align: center;
   }
 </style>
-
