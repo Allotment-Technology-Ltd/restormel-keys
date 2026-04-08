@@ -1,5 +1,17 @@
 # @restormel/testing-cli
 
+## 0.1.3
+
+### Patch Changes
+
+- **`run --ac <ids>`** to filter goals by **`acceptance_criterion_ids`**.
+
+## 0.1.2
+
+### Patch Changes
+
+- `testing doctor`: Keys resolve probe uses bootstrap ref `ref:restormel-keys:llm/primary`; clearer hints for HTTP 404 vs 401/403.
+
 ## 0.1.1
 
 ### Patch Changes

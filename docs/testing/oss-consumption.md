@@ -1,6 +1,6 @@
 # Consuming Restormel / Testing outside this monorepo
 
-**Published line:** `@restormel/testing-*` **v0.1.1+** on npm — use **`pnpm add -D @restormel/testing-cli@^0.1.1`** or the meta-package **`pnpm add -D @restormel/testing-bundle@^0.1.1`** (pulls CLI + browser adaptor dependency; still run Playwright browser install as below). Pin the same semver line across peer packages if you depend on them directly.
+**Published line:** `@restormel/testing-*` **v0.1.3+** on npm — use **`pnpm add -D @restormel/testing-cli@^0.1.3`** or the meta-package **`pnpm add -D @restormel/testing-bundle@^0.1.3`** (pulls CLI + browser adaptor dependency; still run Playwright browser install as below). Pin the same semver line across peer packages if you depend on them directly.
 
 **Plotbudget.com / Plot dogfooding:** consume the CLI from npm in the Plot app repo; keep `restormel-testing.yaml` in git and mirror CI with the composite action or `testing run` in Actions. Deterministic MVP goals do not require Restormel Keys in CI; see [plotbudget-testing-adoption-feedback.md](plotbudget-testing-adoption-feedback.md) and the dashboard guide [Keys in CI (checklist)](https://restormel.dev/testing/docs/guides/keys-ci-checklist).
 
@@ -25,7 +25,7 @@ Other `@restormel/testing-*` packages are for advanced or workspace-style consum
 ## Option B — Published npm packages (registry)
 
 ```bash
-pnpm add -D @restormel/testing-cli@^0.1.1
+pnpm add -D @restormel/testing-cli@^0.1.3
 pnpm exec testing validate --config restormel-testing.yaml
 ```
 
@@ -36,7 +36,7 @@ Use the same **minor** line across `@restormel/testing-*` packages when you depe
 - Install **Playwright Chromium** for browser goals:  
   `pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium`
 - **Keys:** keep provider material in **CI secrets** or env — never in YAML. You only need `RESTORMEL_KEYS_*` (or OpenAI fallback) when running **`judge_rubric`** or other Keys-backed resolution; deterministic DOM goals do not use Keys in CI.
-- **Hosted provider keys (Restormel dashboard):** you can store an encrypted provider API key under **Connections** and use the **Restormel Testing** dashboard page for `RESTORMEL_PROJECT_ID` and environment IDs. Resolve may return an inline key for the runner (`RESTORMEL_HOSTED_INLINE`); still use a Gateway key as `RESTORMEL_KEYS_API_TOKEN`. Canonical walkthrough: [keys-testing-onboarding.md](../keys-testing-onboarding.md).
+- **Hosted provider keys (Restormel dashboard):** you can store an encrypted provider API key under **Connections** and use the **Restormel Testing** dashboard page for `RESTORMEL_PROJECT_ID` and environment IDs. Resolve may return an inline key for the runner (`RESTORMEL_HOSTED_INLINE`); still use a Gateway key as `RESTORMEL_GATEWAY_KEY` (compatibility alias: `RESTORMEL_KEYS_API_TOKEN`). Canonical walkthrough: [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 - **Lighthouse paths** in `structured_checks` (`lighthouse:*` / `lh:*`) pull **`lighthouse`** and **`chrome-launcher`** via `@restormel/testing-runner`. They launch an extra headless Chrome; use `RESTORMEL_TESTING_SKIP_LIGHTHOUSE=1` to disable in slim jobs.
 
 See [config-reference-mvp.md](config-reference-mvp.md) for env variable names.

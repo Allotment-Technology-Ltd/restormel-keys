@@ -210,6 +210,37 @@ describe("guards reject malformed payloads", () => {
 
   it("isGoalRunRecord", () => {
     expect(isGoalRunRecord({ goalId: "g", verdict: "passed" })).toBe(false);
+    expect(
+      isGoalRunRecord({
+        goalId: "g",
+        verdict: "passed",
+        reasonCode: "OK",
+        summary: "s",
+        retriesUsed: 0,
+        evidenceRefs: [],
+        acSequenceSteps: [
+          {
+            criterionId: "ac1",
+            verdict: "passed",
+            reasonCode: "AC_STEP_OK",
+            summary: "ok",
+            agentRoundsUsed: 1,
+            evidenceRefs: [],
+          },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      isGoalRunRecord({
+        goalId: "g",
+        verdict: "passed",
+        reasonCode: "OK",
+        summary: "s",
+        retriesUsed: 0,
+        evidenceRefs: [],
+        acSequenceSteps: [{ bad: true }],
+      }),
+    ).toBe(false);
   });
 
   it("isTraceEvent", () => {

@@ -1,5 +1,23 @@
 # @restormel/testing-runner
 
+## 0.1.4
+
+### Patch Changes
+
+- **`execution_mode: ac_sequence`**: built-in multi-turn LLM browser agent walks suite acceptance criteria in order; optional per-AC **`criterion_success`**, **`criterion_rubrics`** (AC-shaped judge JSON with `ac_id`), and **`post_checks`** (HTTP, DOM role+name, `db_shell`). Wired from **`runSuiteFromConfig`** with `--ac` / goal id filtering of criteria. Env per step: **`RESTORMEL_TESTING_AC_ID`**, **`RESTORMEL_TESTING_AC_TEXT`**, **`RESTORMEL_TESTING_AC_INDEX`**, plus existing run/base/goal vars.
+
+## 0.1.3
+
+### Patch Changes
+
+- Roll up acceptance criteria into **`RunRecord.acceptanceResults`**; **`acceptanceCriterionIds`** run option and mission env **`RESTORMEL_TESTING_ACCEPTANCE_CRITERIA_JSON`** / **`RESTORMEL_TESTING_USER_STORY`**.
+
+## 0.1.2
+
+### Patch Changes
+
+- Run `mission_executor` with documented env for `execution_mode: agent`, then evaluate post-mission criteria in the browser (`after_agent.start_path` overrides navigation when set). `RESTORMEL_TESTING_SKIP_MISSION_EXECUTOR=1` skips the executor only.
+
 ## 0.1.1
 
 ### Patch Changes

@@ -250,4 +250,154 @@ suites:
     expect(res.ok).toBe(false);
     expect(res.errors.join(" ")).toMatch(/target_url|Invalid/i);
   });
+
+  it("execution_mode agent: runs mission_executor then evaluates post-mission criteria", async () => {
+    const yaml = `
+schema_version: "1"
+environments:
+  local:
+    base_url: https://example.com
+suites:
+  - id: suite-a
+    environment: local
+    goals:
+      - id: g-agent
+        type: browser
+        description: Agent goal smoke test
+        execution_mode: agent
+        mission: "noop mission for test"
+        mission_executor: 'node -e "process.exit(0)"'
+        success_criteria:
+          text_present:
+            - Hello
+`;
+    const config = loadConfig(yaml);
+    const res = await runSuiteFromConfig({
+      config,
+      suiteId: "suite-a",
+      createBrowserSession: async () => createMockBrowserSession(createPageMock({ bodyText: "Hello world" })),
+    });
+    expect(res.ok).toBe(true);
+    expect(res.run?.verdict).toBe("passed");
+    expect(res.run?.goalRuns[0]?.verdict).toBe("passed");
+  });
+
+  it("acceptance criteria roll up from goals linked via acceptance_criterion_ids", async () => {
+    const yaml = `
+schema_version: "1"
+environments:
+  local:
+    base_url: https://example.com
+suites:
+  - id: suite-a
+    environment: local
+    acceptance_criteria:
+      - id: ac-1
+        text: First outcome
+      - id: ac-2
+        text: Second outcome
+    goals:
+      - id: g1
+        type: browser
+        description: d1
+        acceptance_criterion_ids: [ac-1]
+        success_criteria:
+          text_present:
+            - Hello
+      - id: g2
+        type: browser
+        description: d2
+        acceptance_criterion_ids: [ac-2]
+        success_criteria:
+          text_present:
+            - Missing
+`;
+    const config = loadConfig(yaml);
+    const res = await runSuiteFromConfig({
+      config,
+      suiteId: "suite-a",
+      createBrowserSession: async () => createMockBrowserSession(createPageMock({ bodyText: "Hello world" })),
+    });
+    expect(res.ok).toBe(true);
+    expect(res.run?.acceptanceResults).toHaveLength(2);
+    const byId = new Map(res.run!.acceptanceResults!.map((a) => [a.id, a]));
+    expect(byId.get("ac-1")?.verdict).toBe("passed");
+    expect(byId.get("ac-2")?.verdict).toBe("failed");
+  });
+
+  it("acceptanceCriterionIds filter runs only mapped goals and marks other ACs skipped", async () => {
+    const yaml = `
+schema_version: "1"
+environments:
+  local:
+    base_url: https://example.com
+suites:
+  - id: suite-a
+    environment: local
+    acceptance_criteria:
+      - id: ac-1
+        text: First
+      - id: ac-2
+        text: Second
+    goals:
+      - id: g1
+        type: browser
+        description: d1
+        acceptance_criterion_ids: [ac-1]
+        success_criteria:
+          text_present:
+            - Hello
+      - id: g2
+        type: browser
+        description: d2
+        acceptance_criterion_ids: [ac-2]
+        success_criteria:
+          text_present:
+            - Nope
+`;
+    const config = loadConfig(yaml);
+    const res = await runSuiteFromConfig({
+      config,
+      suiteId: "suite-a",
+      acceptanceCriterionIds: ["ac-1"],
+      createBrowserSession: async () => createMockBrowserSession(createPageMock({ bodyText: "Hello world" })),
+    });
+    expect(res.ok).toBe(true);
+    expect(res.run?.goalRuns).toHaveLength(1);
+    expect(res.run?.goalRuns[0]?.goalId).toBe("g1");
+    const byId = new Map(res.run!.acceptanceResults!.map((a) => [a.id, a]));
+    expect(byId.get("ac-1")?.verdict).toBe("passed");
+    expect(byId.get("ac-2")?.verdict).toBe("skipped");
+  });
+
+  it("execution_mode agent: mission_executor non-zero → MISSION_EXECUTOR_FAILED", async () => {
+    const yaml = `
+schema_version: "1"
+environments:
+  local:
+    base_url: https://example.com
+suites:
+  - id: suite-a
+    environment: local
+    goals:
+      - id: g-agent
+        type: browser
+        description: Agent mission executor failure test
+        execution_mode: agent
+        mission: "fail executor"
+        mission_executor: 'node -e "process.exit(3)"'
+        success_criteria:
+          text_present:
+            - Hello
+`;
+    const config = loadConfig(yaml);
+    const res = await runSuiteFromConfig({
+      config,
+      suiteId: "suite-a",
+      createBrowserSession: async () => createMockBrowserSession(createPageMock({ bodyText: "Hello world" })),
+    });
+    expect(res.ok).toBe(true);
+    expect(res.run?.verdict).toBe("failed");
+    expect(res.run?.goalRuns[0]?.reasonCode).toBe("MISSION_EXECUTOR_FAILED");
+  });
 });

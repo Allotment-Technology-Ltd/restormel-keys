@@ -19,6 +19,7 @@ describe("parseArgs", () => {
       headless: true,
       trigger: "local",
       goalIds: undefined,
+      acceptanceCriterionIds: undefined,
       json: false,
     });
   });
@@ -36,6 +37,25 @@ describe("parseArgs", () => {
       headless: true,
       trigger: "local",
       goalIds: ["a", "b"],
+      acceptanceCriterionIds: undefined,
+      json: false,
+    });
+  });
+
+  it("parses run --ac comma-separated", () => {
+    expect(parseArgs(["run", "--suite", "s", "--ac", "ac-1,ac-2", "-c", "x.yaml"])).toEqual({
+      kind: "run",
+      suites: ["s"],
+      config: "x.yaml",
+      environmentId: undefined,
+      targetUrl: undefined,
+      commitSha: undefined,
+      repository: undefined,
+      artifactDir: undefined,
+      headless: true,
+      trigger: "local",
+      goalIds: undefined,
+      acceptanceCriterionIds: ["ac-1", "ac-2"],
       json: false,
     });
   });
@@ -62,6 +82,7 @@ describe("parseArgs", () => {
       headless: true,
       trigger: "local",
       goalIds: undefined,
+      acceptanceCriterionIds: undefined,
       json: false,
     });
   });

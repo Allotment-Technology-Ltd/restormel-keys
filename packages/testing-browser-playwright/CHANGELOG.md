@@ -1,5 +1,17 @@
 # @restormel/testing-browser-playwright
 
+## 0.1.3
+
+### Patch Changes
+
+- Version align with **0.1.3** testing line.
+
+## 0.1.2
+
+### Patch Changes
+
+- Version align with Testing **0.1.2** publish train (no adaptor code changes).
+
 ## 0.1.1
 
 ### Patch Changes

@@ -53,6 +53,47 @@ Self-host: replace host; keep the same **path suffixes** after origin.
 
 ---
 
+## Testing runner (`POST …/v1/testing/resolve-model`)
+
+The **Restormel Testing** CLI and `@restormel/testing-keys-adapter` call the Keys HTTP resolve endpoint with a **Gateway key** (`rk_…`) as `Authorization: Bearer`, on the **same origin** as the public site (hosted: typically `RESTORMEL_KEYS_BASE`).
+
+**Prefer these names** in new `.env` files, CI snippets, and docs:
+
+| Canonical | Role |
+|-----------|------|
+| `RESTORMEL_KEYS_BASE` | Site origin (scheme + host, no path); base for `…/v1/testing/resolve-model` |
+| `RESTORMEL_GATEWAY_KEY` | Bearer token for that request (same secret as elsewhere) |
+| `RESTORMEL_PROJECT_ID` | Project UUID (from the **Restormel Testing** hub) |
+
+**Compatibility aliases** (older Testing docs and snippets; same values as the row above):
+
+| Alias | Same as |
+|-------|---------|
+| `RESTORMEL_KEYS_API_BASE_URL` | `RESTORMEL_KEYS_BASE` |
+| `RESTORMEL_KEYS_API_TOKEN` | `RESTORMEL_GATEWAY_KEY` |
+
+**Precedence in `@restormel/testing-keys-adapter`:** Base URL is `RESTORMEL_KEYS_API_BASE_URL` if set, otherwise `RESTORMEL_KEYS_BASE`. Bearer token resolution: optional `RESTORMEL_KEYS_API_TOKEN_ENV` names a custom env var and is tried first; then `RESTORMEL_KEYS_API_TOKEN`; then `RESTORMEL_GATEWAY_KEY`; then `RESTORMEL_SERVER_TOKEN`.
+
+Trust boundaries (browser vs automation) at a glance:
+
+```mermaid
+flowchart LR
+  subgraph human [Human in browser]
+    Dash[Keys_dashboard]
+  end
+  subgraph automation [CI_or_runner]
+    GW[Gateway_key_rk]
+    Resolve[POST_v1_testing_resolve_model]
+  end
+  Dash -->|session_cookie| ControlPlane[RESTORMEL_CONTROL_PLANE_URL]
+  GW -->|Bearer| Resolve
+  Resolve -->|same_origin_as| KeysBase[RESTORMEL_KEYS_BASE]
+```
+
+End-to-end checklist: [keys-testing-onboarding.md](../keys-testing-onboarding.md).
+
+---
+
 ## CI and GitHub Actions (`*_STAGING`)
 
 Repository secrets are often named:

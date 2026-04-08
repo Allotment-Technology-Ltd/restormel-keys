@@ -3,6 +3,8 @@
  */
 export { runBrowserGoal } from "./browser-goal.js";
 export type { RunBrowserGoalOptions, RunBrowserGoalResult } from "./browser-goal.js";
+export { runAcSequenceBrowserGoal } from "./run-ac-sequence-goal.js";
+export type { RunAcSequenceBrowserGoalOptions } from "./run-ac-sequence-goal.js";
 export { evaluateBrowserSuccessCriteria } from "./evaluate-criteria.js";
 export type { CriteriaEvaluation } from "./evaluate-criteria.js";
 export { runGoalAttempts } from "./retries.js";

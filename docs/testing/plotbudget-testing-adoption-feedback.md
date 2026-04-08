@@ -8,6 +8,8 @@
 
 **Update (Keys + Testing hosted path):** Teams that want `judge_rubric` without manual env archaeology can add **encrypted** provider keys under dashboard **Connections**, use **Restormel Testing** (`/keys/dashboard/testing`) for `RESTORMEL_PROJECT_ID` and snippets, and run `testing doctor` (it reminds you if `RESTORMEL_PROJECT_ID` is missing when Keys URL is set). Walkthrough: [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 
+**Update (Plotbudget P0–P3, in-repo):** **P0** — **`execution_mode: agent`** + **`mission`** / **`mission_executor`** (delegate model; runner runs shell then post-mission browser + criteria). **P1** — `testing doctor` Keys probe uses bootstrap ref **`ref:restormel-keys:llm/primary`** (avoids 404s from unbound `doctor/probe`-style refs). **P2** — documented that **`judge_rubric`** is **post-navigation** (and how agent missions change that story): [writing-good-goals.md](writing-good-goals.md), [config-reference-mvp.md](config-reference-mvp.md). **P3** — post-mission deterministic **`success_criteria`** / hooks via the same schema after **`mission_executor`** exits 0: [agent-missions.md](agent-missions.md).
+
 ## What would have made adoption smoother
 
 ### Executable `adapter_hooks` or a first-class “guard” goal type

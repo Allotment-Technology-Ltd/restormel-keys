@@ -27,7 +27,7 @@ This note summarises what shipped in response to **Plotbudget-class adoption fee
 
 ## Install and run (quick pointers)
 
-- **npm:** `pnpm add -D @restormel/testing-bundle@^0.1.1` (or pin CLI + peers per [oss-consumption.md](oss-consumption.md)).
+- **npm:** `pnpm add -D @restormel/testing-bundle@^0.1.3` (or pin CLI + peers per [oss-consumption.md](oss-consumption.md)).
 - **Playwright:** install Chromium for the browser adaptor (see oss-consumption).
 - **CI:** prefer `**@restormel/testing-github-action`** or `pnpm exec testing run` — not an unsupported HTTP “runs” poller; see [HTTP runs vs Action](https://restormel.dev/testing/docs/guides/http-runs-and-actions).
 - **Forks / secrets:** [Fork PRs and workflow triggers](https://restormel.dev/testing/docs/guides/ci-security).

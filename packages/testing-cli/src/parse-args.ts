@@ -16,6 +16,8 @@ export type ParsedCli =
       headless: boolean;
       trigger: "local" | "ci";
       goalIds?: string[];
+      /** Filter goals by suite `acceptance_criterion_ids` (comma-separated). */
+      acceptanceCriterionIds?: string[];
       json: boolean;
     }
   | { kind: "report"; path: string }
@@ -88,6 +90,7 @@ function parseRunArgs(args: string[]): ParsedCli {
   let headless = true;
   let trigger: "local" | "ci" = "local";
   const goalIds: string[] = [];
+  const acceptanceCriterionIds: string[] = [];
   let json = false;
 
   for (let i = 0; i < args.length; i++) {
@@ -119,6 +122,17 @@ function parseRunArgs(args: string[]): ParsedCli {
       for (const part of v.split(",")) {
         const id = part.trim();
         if (id.length > 0) goalIds.push(id);
+      }
+      continue;
+    }
+    if (a === "--ac") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --ac requires a value" };
+      }
+      for (const part of v.split(",")) {
+        const id = part.trim();
+        if (id.length > 0) acceptanceCriterionIds.push(id);
       }
       continue;
     }
@@ -204,6 +218,7 @@ function parseRunArgs(args: string[]): ParsedCli {
     headless,
     trigger,
     goalIds: goalIds.length > 0 ? goalIds : undefined,
+    acceptanceCriterionIds: acceptanceCriterionIds.length > 0 ? acceptanceCriterionIds : undefined,
     json,
   };
 }

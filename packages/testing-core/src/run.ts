@@ -1,3 +1,5 @@
+import type { AcSequenceStepResult } from "./ac-sequence.js";
+import type { AcceptanceCriterionDefinition, AcceptanceCriterionResult } from "./acceptance.js";
 import type { Verdict } from "./verdict.js";
 
 export type RunTrigger = "local" | "ci";
@@ -43,6 +45,10 @@ export interface CostEstimate {
 export interface SuiteReportSlice {
   id: string;
   description?: string;
+  /** Echo of suite `user_story` for human reports. */
+  userStory?: string;
+  /** Echo of suite `acceptance_criteria` definitions (id + text only). */
+  acceptanceCriteria?: AcceptanceCriterionDefinition[];
   tags?: string[];
   environmentId: string;
   goalCount: number;
@@ -57,6 +63,10 @@ export interface GoalRunRecord {
   retriesUsed: number;
   /** Paths or ids relative to the run artefact root. */
   evidenceRefs: string[];
+  /** Copied from config for acceptance-criterion roll-up. */
+  acceptanceCriterionIds?: string[];
+  /** Populated by `execution_mode: ac_sequence` goals — one entry per suite criterion attempted. */
+  acSequenceSteps?: AcSequenceStepResult[];
 }
 
 export interface RunRecord {
@@ -78,6 +88,10 @@ export interface RunRecord {
    */
   judgeInvocationCount?: number;
   costEstimate?: CostEstimate;
+  /**
+   * When the suite declares `acceptance_criteria`, rolled up from goals via `acceptance_criterion_ids`.
+   */
+  acceptanceResults?: AcceptanceCriterionResult[];
 }
 
 export type TraceEventKind =

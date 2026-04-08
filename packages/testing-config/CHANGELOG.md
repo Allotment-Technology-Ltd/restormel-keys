@@ -1,5 +1,23 @@
 # @restormel/testing-config
 
+## 0.1.4
+
+### Patch Changes
+
+- Validate **`execution_mode: ac_sequence`** (browser only): required suite **`acceptance_criteria`**, **`ac_sequence`** block (`built_in_agent`, optional `criterion_executor`, `criterion_success`, `criterion_rubrics`, `post_checks`). Optional empty top-level **`success_criteria`** for this mode. Default **`acceptance_criterion_ids`** to all suite criterion ids when omitted.
+
+## 0.1.3
+
+### Patch Changes
+
+- Validate **`user_story`**, **`acceptance_criteria`** (`{ id, text }[]`), and per-goal **`acceptance_criterion_ids`** (must reference suite ids).
+
+## 0.1.2
+
+### Patch Changes
+
+- Validate `execution_mode: agent` browser goals (`mission`, `mission_executor`, optional `mission_constraints`, `after_agent`); forbid agent-only fields on observe goals.
+
 ## 0.1.1
 
 ### Patch Changes

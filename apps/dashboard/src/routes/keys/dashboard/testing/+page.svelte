@@ -6,12 +6,16 @@
     environments: Array<{ id: string; name: string; type: string }>;
     gatewayKeys: Array<{ id: string; keyPrefix: string }>;
     controlPlaneHint: string;
+    keysApiBaseUrl: string;
     loadError?: string;
   };
 
+  $: resolveModelUrl =
+    data.keysApiBaseUrl ? `${data.keysApiBaseUrl.replace(/\/$/, "")}/v1/testing/resolve-model` : "";
+
   $: envSnippet =
-    data.testingProject != null
-      ? `RESTORMEL_KEYS_API_BASE_URL=https://your-site.example
+    data.testingProject != null && data.keysApiBaseUrl
+      ? `RESTORMEL_KEYS_API_BASE_URL=${data.keysApiBaseUrl.replace(/\/$/, "")}
 RESTORMEL_KEYS_API_TOKEN=rk_…your_gateway_key
 RESTORMEL_PROJECT_ID=${data.testingProject.id}`
       : "";
@@ -55,7 +59,7 @@ RESTORMEL_PROJECT_ID=${data.testingProject.id}`
       <p class="hint">{data.controlPlaneHint}</p>
       <pre class="snippet" role="region" aria-label="Example environment block">{envSnippet}</pre>
       <p class="muted">
-        Resolve URL for the Testing runner: <code class="mono">…/v1/testing/resolve-model</code> on the same origin as <code class="mono">RESTORMEL_KEYS_API_BASE_URL</code>.
+        Resolve endpoint for the Testing runner: <code class="mono">{resolveModelUrl}</code> (same origin as <code class="mono">RESTORMEL_KEYS_API_BASE_URL</code>).
       </p>
     </section>
 

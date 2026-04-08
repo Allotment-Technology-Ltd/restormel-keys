@@ -1,5 +1,17 @@
 # @restormel/testing-bundle
 
+## 0.1.3
+
+### Patch Changes
+
+- Version align with **0.1.3** testing line.
+
+## 0.1.2
+
+### Patch Changes
+
+- Version align with `@restormel/testing-cli` **0.1.2** and browser adaptor **0.1.2**.
+
 ## 0.1.1
 
 ### Patch Changes

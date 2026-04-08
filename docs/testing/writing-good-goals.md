@@ -3,6 +3,10 @@
 **Audience:** Humans and coding agents authoring `restormel-testing.yaml` in a product repo.  
 **Canonical config:** `restormel-testing.yaml` (YAML; JSON also supported by the loader).
 
+## Suite-level user story and acceptance criteria (optional)
+
+You can declare a **`user_story`** and ordered **`acceptance_criteria`** (`id` + plain-language `text`) on the **suite**, then link each **goal** to those ids with **`acceptance_criterion_ids`**. The runner rolls results up into **`run.json` / `report.json`** and human summaries so PM/QA-facing language stays next to automation. Filter a run with **`testing run --ac ac-001,ac-002`**. Example: [examples/testing-business-acceptance/restormel-testing.yaml](../../examples/testing-business-acceptance/restormel-testing.yaml).
+
 ## What a goal is
 
 A **goal** is one **user-visible outcome** you care about in a **single environment** (e.g. local, preview). It is **not** a script that clicks through the app for its own sake.
@@ -47,6 +51,14 @@ Do **not** use a judge when:
 
 **`judge_rubric`** may use **`model_ref`** with **Keys-backed** logical refs (opaque `ref:restormel-keys:…`); never put API keys in YAML.
 
+### `judge_rubric` sees the page **after** navigation
+
+In default **`observe`** mode, the judge runs on the DOM **after** the runner opens `base_url` + optional `start_path`. It does **not** see steps that never happened in the runner (no hidden click path in YAML). If the rubric must reflect a **post-interaction** screen, either keep that state reachable from a single navigation (e.g. deep link + storage state) or use **`execution_mode: agent`** so your **`mission_executor`** performs the journey, then run deterministic checks and/or **`judge_rubric`** on the result — see [agent-missions.md](agent-missions.md).
+
+### After an agent mission: prefer deterministic gates
+
+When using **`execution_mode: agent`**, treat **`success_criteria`** (optionally under **`after_agent`**) as the contract for “mission succeeded”: URL, text, DOM signals, **`structured_checks`**, **`any_of`**, and only then **`judge_rubric`** when needed.
+
 ## Keep goals small and named clearly
 
 - **`id`:** stable, kebab-case, describes the journey (`auth-login-session`, not `test1`).
@@ -76,6 +88,7 @@ If you cannot answer quickly:
 
 ## Further reading
 
+- [Agent missions](agent-missions.md) — delegate executor + post-mission criteria.  
 - [Agent prompt pack](agent-prompts/README.md) — copy-paste prompts for coding agents.  
 - [MVP spec — test definition model](restormel-testing-mvp-spec.md#7-test-definition-model).  
 - Example config: [`examples/testing-basic-web/restormel-testing.yaml`](../examples/testing-basic-web/restormel-testing.yaml).

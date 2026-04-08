@@ -1,8 +1,15 @@
 import type {
+  AcceptanceCriterionDefinition,
+  AcSequenceBuiltInAgent,
+  AcSequenceConfig,
+  AcSequencePostCheck,
+  AfterAgentPhase,
   ArtifactPolicy,
   EnvironmentProfile,
+  ExecutionMode,
   GoalType,
   JudgeRubric,
+  MissionConstraints,
   RetryPolicy,
   StructuredCheck,
   SuccessCriteria,
@@ -288,7 +295,65 @@ function parseJudgeRubric(raw: unknown, path: string, errors: ConfigError[]): Ju
   return rubric;
 }
 
-function parseSuccessCriteria(raw: unknown, path: string, errors: ConfigError[]): SuccessCriteria | undefined {
+function parseMissionConstraints(raw: unknown, path: string, errors: ConfigError[]): MissionConstraints | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isPlainObject(raw)) {
+    errors.push(err(path, "type", "mission_constraints must be an object"));
+    return undefined;
+  }
+  const out: MissionConstraints = {};
+  const maxDur = pickKey(raw, "max_duration_ms", "maxDurationMs");
+  if (maxDur !== undefined && maxDur !== null) {
+    const n = asPosInt(maxDur, `${path}.max_duration_ms`, "max_duration_ms", errors);
+    if (n !== undefined) out.maxDurationMs = n;
+  }
+  const ua = pickKey(raw, "url_allowlist", "urlAllowlist");
+  if (ua !== undefined && ua !== null) {
+    if (!Array.isArray(ua) || !ua.every((x) => typeof x === "string")) {
+      errors.push(err(`${path}.url_allowlist`, "type", "url_allowlist must be string[]"));
+      return undefined;
+    }
+    out.urlAllowlist = ua as string[];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parseAfterAgent(raw: unknown, path: string, errors: ConfigError[]): AfterAgentPhase | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isPlainObject(raw)) {
+    errors.push(err(path, "type", "after_agent must be an object"));
+    return undefined;
+  }
+  const out: AfterAgentPhase = {};
+  const sp = pickKey(raw, "start_path", "startPath");
+  if (sp !== undefined && sp !== null) {
+    const s = asString(sp, `${path}.start_path`, "start_path", errors);
+    if (s) {
+      if (s.includes("..")) {
+        errors.push(err(`${path}.start_path`, "unsafe", "start_path must not contain '..'"));
+      } else {
+        out.startPath = s;
+      }
+    }
+  }
+  const scr = pickKey(raw, "success_criteria", "successCriteria");
+  if (scr !== undefined && scr !== null) {
+    const sc = parseSuccessCriteria(scr, `${path}.success_criteria`, errors);
+    if (sc) out.successCriteria = sc;
+  }
+  if (out.startPath === undefined && out.successCriteria === undefined) {
+    errors.push(err(path, "empty", "after_agent must include start_path and/or success_criteria"));
+    return undefined;
+  }
+  return out;
+}
+
+function parseSuccessCriteria(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+  opts?: { allowEmpty?: boolean },
+): SuccessCriteria | undefined {
   if (!isPlainObject(raw)) {
     errors.push(err(path, "type", "success_criteria must be an object"));
     return undefined;
@@ -385,6 +450,9 @@ function parseSuccessCriteria(raw: unknown, path: string, errors: ConfigError[])
     out.judgeRubric != null;
 
   if (!hasAny) {
+    if (opts?.allowEmpty) {
+      return {};
+    }
     errors.push(
       err(
         path,
@@ -397,7 +465,337 @@ function parseSuccessCriteria(raw: unknown, path: string, errors: ConfigError[])
   return out;
 }
 
-function parseGoal(raw: unknown, path: string, errors: ConfigError[]): TestGoal | undefined {
+function parseAcSequencePostCheck(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+  allowedAcIds: Set<string>,
+): AcSequencePostCheck | undefined {
+  if (!isPlainObject(raw)) {
+    errors.push(err(path, "type", "post_checks entry must be an object"));
+    return undefined;
+  }
+  const acId = asString(pickKey(raw, "ac_id", "acId"), `${path}.ac_id`, "ac_id", errors);
+  if (!acId) return undefined;
+  if (!allowedAcIds.has(acId)) {
+    errors.push(
+      err(`${path}.ac_id`, "unknown_ac_id", `post_checks ac_id "${acId}" is not a suite acceptance_criteria id`),
+    );
+    return undefined;
+  }
+
+  let http: AcSequencePostCheck["http"];
+  const httpRaw = pickKey(raw, "http", "http");
+  if (httpRaw !== undefined && httpRaw !== null) {
+    if (!isPlainObject(httpRaw)) {
+      errors.push(err(`${path}.http`, "type", "post_checks.http must be an object"));
+      return undefined;
+    }
+    const url = asString(pickKey(httpRaw, "url", "url"), `${path}.http.url`, "url", errors);
+    if (!url) return undefined;
+    http = { url };
+    const method = pickKey(httpRaw, "method", "method");
+    if (method !== undefined && method !== null) {
+      if (typeof method !== "string") {
+        errors.push(err(`${path}.http.method`, "type", "method must be a string"));
+        return undefined;
+      }
+      http.method = method;
+    }
+    const expectStatus = pickKey(httpRaw, "expect_status", "expectStatus");
+    if (expectStatus !== undefined && expectStatus !== null) {
+      if (!Array.isArray(expectStatus) || !expectStatus.every((x) => typeof x === "number" && Number.isInteger(x))) {
+        errors.push(err(`${path}.http.expect_status`, "type", "expect_status must be number[]"));
+        return undefined;
+      }
+      http.expectStatus = expectStatus as number[];
+    }
+    const headers = pickKey(httpRaw, "headers", "headers");
+    if (headers !== undefined && headers !== null) {
+      if (!isPlainObject(headers)) {
+        errors.push(err(`${path}.http.headers`, "type", "headers must be an object"));
+        return undefined;
+      }
+      const h: Record<string, string> = {};
+      for (const [k, v] of Object.entries(headers)) {
+        if (typeof v !== "string") {
+          errors.push(err(`${path}.http.headers`, "type", "headers values must be strings"));
+          return undefined;
+        }
+        h[k] = v;
+      }
+      http.headers = h;
+    }
+    const body = pickKey(httpRaw, "body", "body");
+    if (body !== undefined && body !== null) {
+      if (typeof body !== "string") {
+        errors.push(err(`${path}.http.body`, "type", "body must be a string"));
+        return undefined;
+      }
+      http.body = body;
+    }
+  }
+
+  let domRoleName: AcSequencePostCheck["domRoleName"];
+  const domRaw = pickKey(raw, "dom_role_name", "domRoleName");
+  if (domRaw !== undefined && domRaw !== null) {
+    if (!isPlainObject(domRaw)) {
+      errors.push(err(`${path}.dom_role_name`, "type", "dom_role_name must be an object"));
+      return undefined;
+    }
+    const role = asString(pickKey(domRaw, "role", "role"), `${path}.dom_role_name.role`, "role", errors);
+    if (!role) return undefined;
+    domRoleName = { role };
+    const name = pickKey(domRaw, "name", "name");
+    if (name !== undefined && name !== null) {
+      if (typeof name !== "string") {
+        errors.push(err(`${path}.dom_role_name.name`, "type", "name must be a string"));
+        return undefined;
+      }
+      domRoleName.name = name;
+    }
+    const ev = pickKey(domRaw, "expect_visible", "expectVisible");
+    if (ev !== undefined && ev !== null) {
+      if (typeof ev !== "boolean") {
+        errors.push(err(`${path}.dom_role_name.expect_visible`, "type", "expect_visible must be a boolean"));
+        return undefined;
+      }
+      domRoleName.expectVisible = ev;
+    }
+  }
+
+  let dbShell: string | undefined;
+  const dbs = pickKey(raw, "db_shell", "dbShell");
+  if (dbs !== undefined && dbs !== null) {
+    if (typeof dbs !== "string") {
+      errors.push(err(`${path}.db_shell`, "type", "db_shell must be a string"));
+      return undefined;
+    }
+    const t = dbs.trim();
+    if (t.length > 0) dbShell = t;
+  }
+
+  if (http === undefined && domRoleName === undefined && dbShell === undefined) {
+    errors.push(
+      err(
+        path,
+        "post_check_empty",
+        "post_checks entry must include at least one of: http, dom_role_name, db_shell",
+      ),
+    );
+    return undefined;
+  }
+
+  const out: AcSequencePostCheck = { acId };
+  if (http !== undefined) out.http = http;
+  if (domRoleName !== undefined) out.domRoleName = domRoleName;
+  if (dbShell !== undefined) out.dbShell = dbShell;
+  return out;
+}
+
+function parseAcSequence(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+  allowedAcIds: Set<string>,
+): AcSequenceConfig | undefined {
+  if (!isPlainObject(raw)) {
+    errors.push(err(path, "type", "ac_sequence must be an object"));
+    return undefined;
+  }
+  const agentRaw = pickKey(raw, "built_in_agent", "builtInAgent");
+  if (agentRaw === undefined || agentRaw === null || !isPlainObject(agentRaw)) {
+    errors.push(err(`${path}.built_in_agent`, "required", "ac_sequence.built_in_agent is required"));
+    return undefined;
+  }
+  const builtInAgent: AcSequenceBuiltInAgent = {};
+  const mr = pickKey(agentRaw, "model_ref", "modelRef");
+  if (mr !== undefined && mr !== null) {
+    const s = asString(mr, `${path}.built_in_agent.model_ref`, "model_ref", errors);
+    if (s) builtInAgent.modelRef = s;
+  }
+  const maxRounds = asNonNegInt(
+    pickKey(agentRaw, "max_rounds_per_criterion", "maxRoundsPerCriterion"),
+    `${path}.built_in_agent.max_rounds_per_criterion`,
+    "max_rounds_per_criterion",
+    errors,
+  );
+  if (maxRounds !== undefined) builtInAgent.maxRoundsPerCriterion = maxRounds;
+  const instr = pickKey(agentRaw, "instructions", "instructions");
+  if (instr !== undefined && instr !== null) {
+    if (typeof instr !== "string") {
+      errors.push(err(`${path}.built_in_agent.instructions`, "type", "instructions must be a string"));
+      return undefined;
+    }
+    if (instr.trim() !== "") builtInAgent.instructions = instr;
+  }
+
+  let criterionExecutor: string | undefined;
+  const ceRaw = pickKey(raw, "criterion_executor", "criterionExecutor");
+  if (ceRaw !== undefined && ceRaw !== null) {
+    const s = asString(ceRaw, `${path}.criterion_executor`, "criterion_executor", errors);
+    if (!s) return undefined;
+    criterionExecutor = s;
+  }
+  let criterionSuccess: AcSequenceConfig["criterionSuccess"];
+  const csRaw = pickKey(raw, "criterion_success", "criterionSuccess");
+  if (csRaw !== undefined && csRaw !== null) {
+    if (!isPlainObject(csRaw)) {
+      errors.push(err(`${path}.criterion_success`, "type", "criterion_success must be an object"));
+      return undefined;
+    }
+    criterionSuccess = {};
+    for (const [k, v] of Object.entries(csRaw)) {
+      if (!allowedAcIds.has(k)) {
+        errors.push(
+          err(
+            `${path}.criterion_success`,
+            "unknown_ac_id",
+            `criterion_success key "${k}" is not a suite acceptance_criteria id`,
+          ),
+        );
+        return undefined;
+      }
+      const sc = parseSuccessCriteria(v, `${path}.criterion_success.${k}`, errors);
+      if (!sc) return undefined;
+      criterionSuccess[k] = sc;
+    }
+  }
+
+  let criterionRubrics: AcSequenceConfig["criterionRubrics"];
+  const crRaw = pickKey(raw, "criterion_rubrics", "criterionRubrics");
+  if (crRaw !== undefined && crRaw !== null) {
+    if (!isPlainObject(crRaw)) {
+      errors.push(err(`${path}.criterion_rubrics`, "type", "criterion_rubrics must be an object"));
+      return undefined;
+    }
+    criterionRubrics = {};
+    for (const [k, v] of Object.entries(crRaw)) {
+      if (!allowedAcIds.has(k)) {
+        errors.push(
+          err(
+            `${path}.criterion_rubrics`,
+            "unknown_ac_id",
+            `criterion_rubrics key "${k}" is not a suite acceptance_criteria id`,
+          ),
+        );
+        return undefined;
+      }
+      const rub = parseJudgeRubric(v, `${path}.criterion_rubrics.${k}`, errors);
+      if (!rub) return undefined;
+      criterionRubrics[k] = rub;
+    }
+  }
+
+  let postChecks: AcSequencePostCheck[] | undefined;
+  const pcRaw = pickKey(raw, "post_checks", "postChecks");
+  if (pcRaw !== undefined && pcRaw !== null) {
+    if (!Array.isArray(pcRaw)) {
+      errors.push(err(`${path}.post_checks`, "type", "post_checks must be an array"));
+      return undefined;
+    }
+    const list: AcSequencePostCheck[] = [];
+    for (let i = 0; i < pcRaw.length; i++) {
+      const p = parseAcSequencePostCheck(pcRaw[i], `${path}.post_checks[${i}]`, errors, allowedAcIds);
+      if (!p) return undefined;
+      list.push(p);
+    }
+    postChecks = list;
+  }
+
+  const out: AcSequenceConfig = { builtInAgent };
+  if (criterionExecutor !== undefined) out.criterionExecutor = criterionExecutor;
+  if (criterionSuccess) out.criterionSuccess = criterionSuccess;
+  if (criterionRubrics) out.criterionRubrics = criterionRubrics;
+  if (postChecks) out.postChecks = postChecks;
+  return out;
+}
+
+function parseSuiteAcceptanceCriteria(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+): { list: AcceptanceCriterionDefinition[]; idSet: Set<string> } | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) {
+    errors.push(err(path, "type", "acceptance_criteria must be an array of { id, text }"));
+    return undefined;
+  }
+  if (raw.length === 0) {
+    errors.push(err(path, "empty", "acceptance_criteria must not be an empty array"));
+    return undefined;
+  }
+  const list: AcceptanceCriterionDefinition[] = [];
+  const idSet = new Set<string>();
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    if (!isPlainObject(item)) {
+      errors.push(err(`${path}[${i}]`, "type", "each acceptance_criteria entry must be an object"));
+      return undefined;
+    }
+    const cid = asString(pickKey(item, "id", "id"), `${path}[${i}].id`, "id", errors);
+    const text = asString(pickKey(item, "text", "text"), `${path}[${i}].text`, "text", errors);
+    if (!cid || !text) return undefined;
+    if (idSet.has(cid)) {
+      errors.push(err(`${path}[${i}].id`, "duplicate", `Duplicate acceptance criterion id "${cid}"`));
+      return undefined;
+    }
+    idSet.add(cid);
+    list.push({ id: cid, text });
+  }
+  return { list, idSet };
+}
+
+/** Returns false if validation errors were added for this field. */
+function addOptionalAcceptanceCriterionIds(
+  goal: TestGoal,
+  raw: Record<string, unknown>,
+  path: string,
+  errors: ConfigError[],
+  allowedAcIds: Set<string> | undefined,
+): boolean {
+  const acRaw = pickKey(raw, "acceptance_criterion_ids", "acceptanceCriterionIds");
+  if (acRaw === undefined || acRaw === null) return true;
+  if (!Array.isArray(acRaw) || !acRaw.every((x) => typeof x === "string")) {
+    errors.push(err(`${path}.acceptance_criterion_ids`, "type", "acceptance_criterion_ids must be string[]"));
+    return false;
+  }
+  const ids = (acRaw as string[]).map((s) => s.trim()).filter((s) => s.length > 0);
+  if (ids.length === 0) return true;
+  if (allowedAcIds === undefined) {
+    errors.push(
+      err(
+        `${path}.acceptance_criterion_ids`,
+        "requires_suite_ac",
+        "acceptance_criterion_ids requires suite-level acceptance_criteria",
+      ),
+    );
+    return false;
+  }
+  for (let i = 0; i < ids.length; i++) {
+    const cid = ids[i]!;
+    if (!allowedAcIds.has(cid)) {
+      errors.push(
+        err(
+          `${path}.acceptance_criterion_ids`,
+          "unknown_ac_id",
+          `Unknown acceptance criterion id "${cid}" (not in suite acceptance_criteria)`,
+        ),
+      );
+      return false;
+    }
+  }
+  goal.acceptanceCriterionIds = ids;
+  return true;
+}
+
+function parseGoal(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+  allowedAcIds: Set<string> | undefined,
+  orderedAcIds: string[],
+): TestGoal | undefined {
   if (!isPlainObject(raw)) {
     errors.push(err(path, "type", "goal must be an object"));
     return undefined;
@@ -416,6 +814,252 @@ function parseGoal(raw: unknown, path: string, errors: ConfigError[]): TestGoal 
     return undefined;
   }
   const type = typeRaw as GoalType;
+
+  const emRaw = pickKey(raw, "execution_mode", "executionMode");
+  let executionMode: ExecutionMode = "observe";
+  if (emRaw !== undefined && emRaw !== null) {
+    if (emRaw !== "observe" && emRaw !== "agent" && emRaw !== "ac_sequence") {
+      errors.push(
+        err(
+          `${path}.execution_mode`,
+          "enum",
+          `execution_mode must be observe, agent, or ac_sequence (got ${JSON.stringify(emRaw)})`,
+        ),
+      );
+      return undefined;
+    }
+    executionMode = emRaw as ExecutionMode;
+  }
+
+  const acSeqKey = pickKey(raw, "ac_sequence", "acSequence");
+  if (acSeqKey != null && executionMode !== "ac_sequence") {
+    errors.push(
+      err(
+        `${path}.ac_sequence`,
+        "forbidden",
+        "ac_sequence is only allowed when execution_mode is ac_sequence",
+      ),
+    );
+    return undefined;
+  }
+
+  const missionRaw = pickKey(raw, "mission", "mission");
+  const missionExecRaw = pickKey(raw, "mission_executor", "missionExecutor");
+  const missionConstraintsRaw = pickKey(raw, "mission_constraints", "missionConstraints");
+
+  if (executionMode === "agent") {
+    if (type !== "browser") {
+      errors.push(
+        err(`${path}.execution_mode`, "agent_browser_only", "execution_mode: agent is only valid for type: browser"),
+      );
+      return undefined;
+    }
+    const afterAgentKey = pickKey(raw, "after_agent", "afterAgent");
+    let afterAgent: AfterAgentPhase | undefined;
+    if (afterAgentKey !== undefined && afterAgentKey !== null) {
+      afterAgent = parseAfterAgent(afterAgentKey, `${path}.after_agent`, errors);
+      if (!afterAgent) return undefined;
+    }
+    const mission = asString(missionRaw, `${path}.mission`, "mission", errors);
+    const missionExecutor = asString(missionExecRaw, `${path}.mission_executor`, "mission_executor", errors);
+    if (!mission || !missionExecutor) return undefined;
+    const missionConstraints = parseMissionConstraints(
+      missionConstraintsRaw,
+      `${path}.mission_constraints`,
+      errors,
+    );
+    if (missionConstraintsRaw != null && missionConstraints === undefined) return undefined;
+
+    const scRaw = pickKey(raw, "success_criteria", "successCriteria");
+    let successCriteria: SuccessCriteria | undefined;
+    if (afterAgent?.successCriteria) {
+      successCriteria = afterAgent.successCriteria;
+    } else {
+      successCriteria = parseSuccessCriteria(scRaw, `${path}.success_criteria`, errors);
+    }
+    if (!id || !description || !successCriteria) return undefined;
+
+    const goal: TestGoal = {
+      id,
+      type,
+      description,
+      successCriteria,
+      executionMode: "agent",
+      mission,
+      missionExecutor,
+    };
+    if (missionConstraints) goal.missionConstraints = missionConstraints;
+    if (afterAgent?.startPath !== undefined) {
+      goal.afterAgent = { startPath: afterAgent.startPath };
+    }
+    const startPathRaw = pickKey(raw, "start_path", "startPath");
+    if (startPathRaw !== undefined && startPathRaw !== null) {
+      const sp = asString(startPathRaw, `${path}.start_path`, "start_path", errors);
+      if (sp) {
+        if (sp.includes("..")) {
+          errors.push(err(`${path}.start_path`, "unsafe", "start_path must not contain '..'"));
+        } else {
+          goal.startPath = sp;
+        }
+      }
+    }
+    const pre = pickKey(raw, "preconditions", "preconditions");
+    if (pre !== undefined && pre !== null) {
+      if (!Array.isArray(pre) || !pre.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.preconditions`, "type", "preconditions must be string[]"));
+        return undefined;
+      }
+      goal.preconditions = pre as string[];
+    }
+    const clean = pickKey(raw, "cleanup", "cleanup");
+    if (clean !== undefined && clean !== null) {
+      if (!Array.isArray(clean) || !clean.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.cleanup`, "type", "cleanup must be string[]"));
+        return undefined;
+      }
+      goal.cleanup = clean as string[];
+    }
+    const ex = pickKey(raw, "exclusive_with", "exclusiveWith");
+    if (ex !== undefined && ex !== null) {
+      if (!Array.isArray(ex) || !ex.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.exclusive_with`, "type", "exclusive_with must be string[]"));
+        return undefined;
+      }
+      goal.exclusiveWith = ex as string[];
+    }
+    const tags = pickKey(raw, "tags", "tags");
+    if (tags !== undefined && tags !== null) {
+      if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
+        return undefined;
+      }
+      goal.tags = tags as string[];
+    }
+    if (!addOptionalAcceptanceCriterionIds(goal, raw, path, errors, allowedAcIds)) return undefined;
+    return goal;
+  }
+
+  if (executionMode === "ac_sequence") {
+    if (type !== "browser") {
+      errors.push(
+        err(
+          `${path}.execution_mode`,
+          "ac_sequence_browser_only",
+          "execution_mode: ac_sequence is only valid for type: browser",
+        ),
+      );
+      return undefined;
+    }
+    if (!allowedAcIds || orderedAcIds.length === 0) {
+      errors.push(
+        err(
+          `${path}.execution_mode`,
+          "requires_suite_ac",
+          "execution_mode: ac_sequence requires suite-level acceptance_criteria",
+        ),
+      );
+      return undefined;
+    }
+    if (acSeqKey === undefined || acSeqKey === null) {
+      errors.push(
+        err(`${path}.ac_sequence`, "required", "execution_mode: ac_sequence requires an ac_sequence block"),
+      );
+      return undefined;
+    }
+    const acSequence = parseAcSequence(acSeqKey, `${path}.ac_sequence`, errors, allowedAcIds);
+    if (!acSequence) return undefined;
+
+    const scRawAc = pickKey(raw, "success_criteria", "successCriteria");
+    let successCriteriaAc: SuccessCriteria;
+    if (scRawAc === undefined || scRawAc === null) {
+      successCriteriaAc = {};
+    } else {
+      const p = parseSuccessCriteria(scRawAc, `${path}.success_criteria`, errors, { allowEmpty: true });
+      if (!p) return undefined;
+      successCriteriaAc = p;
+    }
+
+    if (!id || !description) return undefined;
+
+    const goalAc: TestGoal = {
+      id,
+      type,
+      description,
+      successCriteria: successCriteriaAc,
+      executionMode: "ac_sequence",
+      acSequence,
+    };
+    const startPathRawAc = pickKey(raw, "start_path", "startPath");
+    if (startPathRawAc !== undefined && startPathRawAc !== null) {
+      const sp = asString(startPathRawAc, `${path}.start_path`, "start_path", errors);
+      if (sp) {
+        if (sp.includes("..")) {
+          errors.push(err(`${path}.start_path`, "unsafe", "start_path must not contain '..'"));
+        } else {
+          goalAc.startPath = sp;
+        }
+      }
+    }
+    const preAc = pickKey(raw, "preconditions", "preconditions");
+    if (preAc !== undefined && preAc !== null) {
+      if (!Array.isArray(preAc) || !preAc.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.preconditions`, "type", "preconditions must be string[]"));
+        return undefined;
+      }
+      goalAc.preconditions = preAc as string[];
+    }
+    const cleanAc = pickKey(raw, "cleanup", "cleanup");
+    if (cleanAc !== undefined && cleanAc !== null) {
+      if (!Array.isArray(cleanAc) || !cleanAc.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.cleanup`, "type", "cleanup must be string[]"));
+        return undefined;
+      }
+      goalAc.cleanup = cleanAc as string[];
+    }
+    const exAc = pickKey(raw, "exclusive_with", "exclusiveWith");
+    if (exAc !== undefined && exAc !== null) {
+      if (!Array.isArray(exAc) || !exAc.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.exclusive_with`, "type", "exclusive_with must be string[]"));
+        return undefined;
+      }
+      goalAc.exclusiveWith = exAc as string[];
+    }
+    const tagsAc = pickKey(raw, "tags", "tags");
+    if (tagsAc !== undefined && tagsAc !== null) {
+      if (!Array.isArray(tagsAc) || !tagsAc.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
+        return undefined;
+      }
+      goalAc.tags = tagsAc as string[];
+    }
+    if (!addOptionalAcceptanceCriterionIds(goalAc, raw, path, errors, allowedAcIds)) return undefined;
+    if (goalAc.acceptanceCriterionIds === undefined || goalAc.acceptanceCriterionIds.length === 0) {
+      goalAc.acceptanceCriterionIds = [...orderedAcIds];
+    }
+    return goalAc;
+  }
+
+  if (missionRaw != null || missionExecRaw != null || missionConstraintsRaw != null) {
+    errors.push(
+      err(
+        `${path}.mission`,
+        "forbidden",
+        "mission, mission_executor, and mission_constraints are only allowed when execution_mode is agent",
+      ),
+    );
+    return undefined;
+  }
+  if (pickKey(raw, "after_agent", "afterAgent") != null) {
+    errors.push(
+      err(
+        `${path}.after_agent`,
+        "forbidden",
+        "after_agent is only allowed when execution_mode is agent",
+      ),
+    );
+    return undefined;
+  }
+
   const scRaw = pickKey(raw, "success_criteria", "successCriteria");
   const successCriteria = parseSuccessCriteria(scRaw, `${path}.success_criteria`, errors);
   if (!id || !description || !successCriteria) return undefined;
@@ -456,15 +1100,16 @@ function parseGoal(raw: unknown, path: string, errors: ConfigError[]): TestGoal 
     }
     goal.exclusiveWith = ex as string[];
   }
-  const tags = pickKey(raw, "tags", "tags");
-  if (tags !== undefined && tags !== null) {
-    if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
-      errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
-      return undefined;
+    const tags = pickKey(raw, "tags", "tags");
+    if (tags !== undefined && tags !== null) {
+      if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
+        errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
+        return undefined;
+      }
+      goal.tags = tags as string[];
     }
-    goal.tags = tags as string[];
-  }
-  return goal;
+    if (!addOptionalAcceptanceCriterionIds(goal, raw, path, errors, allowedAcIds)) return undefined;
+    return goal;
 }
 
 function parseSuite(
@@ -491,6 +1136,18 @@ function parseSuite(
     );
     return undefined;
   }
+
+  const acParsed = parseSuiteAcceptanceCriteria(
+    pickKey(raw, "acceptance_criteria", "acceptanceCriteria"),
+    `${path}.acceptance_criteria`,
+    errors,
+  );
+  if (pickKey(raw, "acceptance_criteria", "acceptanceCriteria") != null && acParsed === undefined) {
+    return undefined;
+  }
+  const allowedAcIds = acParsed?.idSet;
+  const orderedAcIds = acParsed?.list.map((c) => c.id) ?? [];
+
   const goalsRaw = pickKey(raw, "goals", "goals");
   if (!Array.isArray(goalsRaw) || goalsRaw.length === 0) {
     errors.push(err(`${path}.goals`, "required", `Suite "${id}" must declare a non-empty goals array`));
@@ -498,7 +1155,7 @@ function parseSuite(
   }
   const goals: TestGoal[] = [];
   goalsRaw.forEach((g, gi) => {
-    const goal = parseGoal(g, `${path}.goals[${gi}]`, errors);
+    const goal = parseGoal(g, `${path}.goals[${gi}]`, errors, allowedAcIds, orderedAcIds);
     if (goal) goals.push(goal);
   });
   if (goals.length !== goalsRaw.length) return undefined;
@@ -509,6 +1166,13 @@ function parseSuite(
     const d = asString(desc, `${path}.description`, "description", errors);
     if (d) suite.description = d;
   }
+  const us = pickKey(raw, "user_story", "userStory");
+  if (us !== undefined && us !== null) {
+    const story = asString(us, `${path}.user_story`, "user_story", errors);
+    if (!story) return undefined;
+    suite.userStory = story;
+  }
+  if (acParsed) suite.acceptanceCriteria = acParsed.list;
   const tags = pickKey(raw, "tags", "tags");
   if (tags !== undefined && tags !== null) {
     if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
