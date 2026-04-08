@@ -71,16 +71,17 @@ jobs:
         run: |
           set +e
           EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')
-          npx --yes neonctl@v2 branches create \
+          create_out=$(npx --yes neonctl@v2 branches create \
             --name "$HEAD_PREVIEW" \
             --project-id "$NEON_PROJECT_ID" \
-            --expires-at "$EXPIRES_AT"
+            --expires-at "$EXPIRES_AT" 2>&1)
           rc=$?
           set -e
+          echo "$create_out"
           if [[ $rc -eq 0 ]]; then
             echo "Created Neon branch $HEAD_PREVIEW (expires $EXPIRES_AT)"
           else
-            echo "Neon branches create exited $rc — assuming branch already exists or transient error; resolve step will verify"
+            echo "Neon branches create exited $rc — branch may already exist; continuing"
           fi
       - name: Resolve DATABASE_URL for Neon preview branch
         env:
@@ -90,33 +91,41 @@ jobs:
           LEGACY_PREVIEW: preview-pr-${{ github.event.number }}
         run: |
           set -euo pipefail
-          # neonctl prints a connection string including password.
-          resolve() {
+          # Do not pass --database-name / --role-name unless required: wrong names fail even when
+          # the branch exists. neonctl picks the sole role+database when unambiguous.
+          # New branches may need a short wait before the read-write endpoint is usable.
+          resolve_raw() {
             npx --yes neonctl@v2 connection-string "$1" \
-              --project-id "$NEON_PROJECT_ID" \
-              --database-name neondb \
-              --role-name neondb_owner 2>/dev/null
+              --project-id "$NEON_PROJECT_ID" 2>&1
           }
-          set +e
-          DATABASE_URL="$(resolve "$HEAD_PREVIEW")"
-          rc=$?
-          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
-            echo "No branch '$HEAD_PREVIEW', trying legacy '$LEGACY_PREVIEW'"
-            DATABASE_URL="$(resolve "$LEGACY_PREVIEW")"
-            rc=$?
-            if [[ $rc -eq 0 && -n "$DATABASE_URL" ]]; then
-              echo "Using Neon branch: $LEGACY_PREVIEW"
-            fi
-          else
-            echo "Using Neon branch: $HEAD_PREVIEW"
-          fi
-          set -e
-          if [[ $rc -ne 0 || -z "$DATABASE_URL" ]]; then
-            echo "Failed to resolve DATABASE_URL (tried $HEAD_PREVIEW and $LEGACY_PREVIEW)"
-            exit 1
-          fi
-          if [[ "$DATABASE_URL" != postgres* ]]; then
-            echo "Unexpected connection-string output"
+          pick_uri() {
+            echo "$1" | grep -E '^postgresql://' | head -1 | tr -d '\r' || true
+          }
+          DATABASE_URL=""
+          used_branch=""
+          for branch in "$HEAD_PREVIEW" "$LEGACY_PREVIEW"; do
+            for attempt in $(seq 1 30); do
+              raw=$(resolve_raw "$branch" || true)
+              DATABASE_URL=$(pick_uri "$raw")
+              if [[ -n "$DATABASE_URL" ]]; then
+                used_branch="$branch"
+                echo "Using Neon branch: $used_branch (attempt $attempt)"
+                break 2
+              fi
+              if [[ "$attempt" == "1" || "$attempt" == "8" || "$attempt" == "16" ]]; then
+                echo "Still resolving '$branch' (attempt $attempt). First 400 chars of neonctl output (no secret if error text only):"
+                echo "$raw" | head -c 400
+                echo
+              fi
+              sleep 5
+            done
+          done
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "Failed to resolve DATABASE_URL after retries (tried $HEAD_PREVIEW and $LEGACY_PREVIEW)"
+            echo "Branch names in project (debug):"
+            npx --yes neonctl@v2 branches list --project-id "$NEON_PROJECT_ID" -o json \
+              | node -e "const j=JSON.parse(require('fs').readFileSync(0,'utf8')); (Array.isArray(j)?j:[]).forEach(b=>console.log(b.name||''));" \
+              || true
             exit 1
           fi
           echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
