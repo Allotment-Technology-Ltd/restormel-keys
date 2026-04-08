@@ -165,8 +165,8 @@ importers:
   apps/testing-web:
     dependencies:
       '@restormel/keys-tokens':
-        specifier: workspace:*
-        version: link:../../packages/keys-tokens
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@sveltejs/adapter-vercel':
         specifier: ^6.3.3
@@ -2417,6 +2417,9 @@ packages:
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
+
+  '@restormel/keys-tokens@0.1.0':
+    resolution: {integrity: sha512-ymmwwdOvCNY7wBcmA2p2yIV7xNLSKRJ6e5YhhfPWTdhq9gksHjAcb8VkG1zuvW3n16js9OK3vODoSNBVlrj5sg==}
 
   '@restormel/keys@0.2.5':
     resolution: {integrity: sha512-p2xHfGjC+ibDRb3+lp96rdIiz1SCDHTdm/ygolrrIZZRIGJn7Oy+R2w5Gsn86xKbCL56yjmkH3Npqc6nSJsfMA==}
@@ -8031,6 +8034,8 @@ snapshots:
   '@react-email/text@0.1.6(react@18.3.1)':
     dependencies:
       react: 18.3.1
+
+  '@restormel/keys-tokens@0.1.0': {}
 
   '@restormel/keys@0.2.5': {}
 

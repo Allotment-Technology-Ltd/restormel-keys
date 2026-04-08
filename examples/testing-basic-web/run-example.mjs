@@ -1,6 +1,6 @@
 /**
  * One-shot demo: static server on :4173, then validate + run web-critical.
- * Run from repo root after: pnpm install && pnpm run build:testing-packages
+ * Run from repo root after: pnpm install && pnpm run build:packages
  * and once: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
  *
  * Usage (from this directory):

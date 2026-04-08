@@ -10,7 +10,7 @@ Prerequisites in your workflow (before this action):
 
 1. Checkout the repository.
 2. Install Node (20+) and pnpm (or your package manager).
-3. `pnpm install` and `pnpm run build:testing-packages` so `packages/testing-github-action/dist/` exists.
+3. `pnpm install` and `pnpm run build:packages` so `packages/github-action/dist/` exists.
 4. `pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium` (or equivalent) for browser goals.
 
 **Keys / `judge_rubric` (optional):** pass through env (never log values), e.g.:
@@ -26,7 +26,7 @@ Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with expl
 Then:
 
 ```yaml
-- uses: ./packages/testing-github-action
+- uses: ./packages/github-action
   with:
     suite: web-critical
     environment: local
@@ -79,4 +79,4 @@ This MVP surfaces results via **step summary** Markdown and exit codes, not the 
 
 ## See also
 
-- [`examples/testing-github-actions/README.md`](../../examples/testing-github-actions/README.md)
+- [`examples/github-actions/README.md`](../../examples/github-actions/README.md)

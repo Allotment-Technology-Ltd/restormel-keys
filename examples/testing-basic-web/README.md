@@ -18,7 +18,7 @@ Config file name: **`restormel-testing.yaml`** (hyphenated — matches the CLI d
 From the **repository root**:
 
 1. Install dependencies: `pnpm install`
-2. Build TypeScript packages: `pnpm run build:testing-packages`
+2. Build TypeScript packages: `pnpm run build:packages`
 3. Install Playwright Chromium once (runner uses `@restormel/testing-browser-playwright`):
 
    ```bash
@@ -30,7 +30,7 @@ From the **repository root**:
 **Terminal A — static server** (must listen on **4173** to match `environments.local.base_url`):
 
 ```bash
-cd examples/testing-basic-web
+cd examples/basic-web
 pnpm install
 pnpm start
 ```
@@ -38,7 +38,7 @@ pnpm start
 **Terminal B — validate and run goals:**
 
 ```bash
-cd examples/testing-basic-web
+cd examples/basic-web
 pnpm validate
 pnpm run:web-critical
 ```
@@ -58,7 +58,7 @@ pnpm exec testing report .restormel-testing/runs/<run-folder>
 Starts `serve`, waits for **4173**, then runs **validate** + **run** (kills the server when finished):
 
 ```bash
-cd examples/testing-basic-web
+cd examples/basic-web
 pnpm run demo
 ```
 

@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
   },
-  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/testing-github-action#readme",
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-testing/tree/main/packages/testing-github-action#readme",
   "publishConfig": {
     "access": "public"
   },
