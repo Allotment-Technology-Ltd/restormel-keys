@@ -1,6 +1,6 @@
 # AGENTS.md — restormel-keys
 
-Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK, dashboard), **Testing** (`@restormel/testing-*`, `apps/testing-web`), **design tokens** (`packages/keys-tokens`), integrations, and docs.
+Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK, dashboard), **Testing** (`@restormel/testing-*`, marketing/docs under `apps/dashboard/src/routes/testing/`), **design tokens** (`packages/keys-tokens`), integrations, and docs.
 
 **ChatGPT Projects / external assistants:** single re-sync file — [docs/restormel-suite-chatgpt-project-brief.md](docs/restormel-suite-chatgpt-project-brief.md).
 
@@ -10,7 +10,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 
 ## Design tokens
 
-- **`@restormel/keys-tokens`** — source in **[`packages/keys-tokens`](packages/keys-tokens)** (`workspace:*` in `apps/dashboard` and `apps/testing-web`). Publish with tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml). Human-readable mirror: [docs/design-tokens.css](docs/design-tokens.css). Index: [docs/design-system-index.md](docs/design-system-index.md).
+- **`@restormel/keys-tokens`** — source in **[`packages/keys-tokens`](packages/keys-tokens)** (`workspace:*` in `apps/dashboard`). Publish with tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml). Human-readable mirror: [docs/design-tokens.css](docs/design-tokens.css). Index: [docs/design-system-index.md](docs/design-system-index.md).
 
 ## Where to implement (single product repo)
 

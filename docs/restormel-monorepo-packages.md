@@ -15,8 +15,7 @@ End users consume **published npm packages**; this document is for contributors.
 | `packages/doctor`, `validate` | `@restormel/doctor`, `@restormel/validate` | OSS tooling |
 | `packages/aaif`, `mcp` | `@restormel/aaif`, `@restormel/mcp` | Contracts / MCP |
 | `packages/testing-core` … `testing-github-action` | `@restormel/testing-*` | Goal-based testing runner, CLI, composite Action; publish tag **`testing-v*`** (or workflow dispatch) |
-| `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app |
-| `apps/testing-web` | `testing-web` (private) | Testing docs / marketing SvelteKit app (`/testing` base path) |
+| `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app; Testing marketing/docs at **`/testing`** (`src/routes/testing/`) |
 | `platform/` | (mostly non-published) | Cursor template, module scaffold mirror, shared composite copies |
 
 ## @restormel/testing-* dependency graph
@@ -53,7 +52,7 @@ flowchart BT
 
 - **Testing TypeScript:** `pnpm run build:testing-packages` (`tsconfig.testing-packages.json`)
 - **Testing unit tests:** `pnpm run test:testing`
-- **Testing web:** `pnpm --filter testing-web run check` / `build`
+- **Testing in dashboard (svelte-check):** `pnpm --filter dashboard run check` (already part of `check:dashboard`; included in `check:testing` via `typecheck:testing-dashboard`)
 - **Full testing gate:** `pnpm run check:testing`
 
 ## Historical repos

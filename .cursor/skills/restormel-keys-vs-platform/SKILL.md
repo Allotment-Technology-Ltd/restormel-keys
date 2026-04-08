@@ -14,7 +14,7 @@ description: >-
 
 | Location | Role |
 |----------|------|
-| **`packages/keys-tokens`**, **`packages/*`**, **`apps/*`**, **`docs/`** | Product: Keys, Testing (`@restormel/testing-*`), tokens **source**, dashboard, testing-web |
+| **`packages/keys-tokens`**, **`packages/*`**, **`apps/*`**, **`docs/`** | Product: Keys, Testing (`@restormel/testing-*`), tokens **source**, dashboard (incl. `/testing` routes) |
 | **`platform/`** | Vendored **template** + composite **mirror** for repos scaffolded from the module template |
 
 ## Agent workflow

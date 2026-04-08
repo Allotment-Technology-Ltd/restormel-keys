@@ -6,7 +6,7 @@ alwaysApply: true
 
 # This repo vs `platform/` mirror
 
-**restormel-keys** (this repository) is the **single canonical** home for Restormel **product** code: `@restormel/keys`, `@restormel/testing-*`, **`@restormel/keys-tokens`** (under `packages/keys-tokens`), dashboard (`apps/dashboard`), Testing web (`apps/testing-web`), Zuplo gateway sources, and publish trains **`keys-v*`**, **`tokens-v*`**, **`testing-v*`**.
+**restormel-keys** (this repository) is the **single canonical** home for Restormel **product** code: `@restormel/keys`, `@restormel/testing-*`, **`@restormel/keys-tokens`** (under `packages/keys-tokens`), dashboard (`apps/dashboard`, including Testing routes at `/testing`), Zuplo gateway sources, and publish trains **`keys-v*`**, **`tokens-v*`**, **`testing-v*`**.
 
 **`platform/`** in this repo is a **vendored mirror**: Cursor/module **templates**, and copies of **GitHub composite actions** used when scaffolding *other* repositories. If you change something that must stay aligned with those external scaffolds, update **`platform/`** alongside the root [`.github/actions/`](.github/actions/) copies so they do not drift.
 

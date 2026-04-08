@@ -1,3 +1,8 @@
+interface ImportMetaEnv {
+  readonly PUBLIC_GITHUB_REPO_URL?: string;
+  readonly PUBLIC_SUITE_TESTING_URL?: string;
+}
+
 declare global {
   interface Window {
     posthog?: {

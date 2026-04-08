@@ -159,10 +159,6 @@ jobs:
         run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
       - name: Test @restormel/testing-*
         run: pnpm run test:testing
-      - name: testing-web check
-        run: pnpm --filter testing-web run check
-      - name: testing-web build
-        run: pnpm --filter testing-web run build
       - name: Serve testing-basic-web and run web-critical (integration)
         run: |
           (cd examples/testing-basic-web && pnpm exec serve . -l 4173) &

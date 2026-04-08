@@ -18,9 +18,9 @@
     "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh",
     "build:testing-packages": "tsc -b tsconfig.testing-packages.json",
     "typecheck:testing-packages": "tsc -b tsconfig.testing-packages.json",
-    "typecheck:testing-web": "pnpm --filter testing-web run check",
+    "typecheck:testing-dashboard": "pnpm --filter dashboard run check",
     "test:testing": "vitest run --config vitest.testing.config.ts",
-    "check:testing": "pnpm run typecheck:testing-packages && pnpm run test:testing && pnpm run typecheck:testing-web",
+    "check:testing": "pnpm run typecheck:testing-packages && pnpm run test:testing && pnpm run typecheck:testing-dashboard",
     "validate-registry": "node scripts/validate-registry.mjs",
     "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
     "init-module": "node scripts/init-restormel-module.mjs"

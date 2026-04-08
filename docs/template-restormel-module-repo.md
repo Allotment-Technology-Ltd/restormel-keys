@@ -52,7 +52,7 @@ Root [package.json](../package.json) exposes: `"init-module": "node scripts/init
 | `__MODULE_TITLE__` | `Restormel Testing` |
 | `__MODULE_PATH__` | `testing` (URL segment) |
 | `__ROOT_PKG_NAME__` | `restormel-testing` |
-| `__APP_PKG_NAME__` | `testing-web` |
+| `__APP_PKG_NAME__` | `web` |
 
 ## Updating the template
 

@@ -1,13 +1,9 @@
 # Vercel — Restormel monorepo
 
-## Dashboard (Keys)
+## Single project (dashboard)
 
 - **Root** [`vercel.json`](../vercel.json): `pnpm --filter dashboard build` (Build Output API via [`scripts/vercel-copy-build-output.mjs`](../scripts/vercel-copy-build-output.mjs)).
 - **Vercel project:** connect the **GitHub repo root** (no subfolder). Custom domain **`restormel.dev`** stays on this project.
-
-## Testing marketing/docs app (second project, same repo)
-
-Use a **separate Vercel project** pointing at **this repository** with a **Root Directory** override so install/build run from the monorepo root.
 
 ### Dashboard checklist (create or verify)
 
@@ -18,26 +14,15 @@ Use a **separate Vercel project** pointing at **this repository** with a **Root 
 | **Install Command** | *(default)* `pnpm install` (from [`vercel.json`](../vercel.json)) |
 | **Build Command** | `pnpm --filter dashboard build` |
 
-### Testing-web checklist (new project)
+## Testing marketing and docs on the same deployment
 
-| Setting | Value |
-|--------|--------|
-| **Root Directory** | `apps/testing-web` |
-| **Framework Preset** | Other |
-| **Install Command** | `cd ../.. && pnpm install` |
-| **Build Command** | `cd ../.. && pnpm --filter @restormel/keys-tokens run build && pnpm run build:testing-packages && pnpm --filter testing-web run build` |
+**Restormel Testing** UI lives in the dashboard SvelteKit app under [`apps/dashboard/src/routes/testing/`](../apps/dashboard/src/routes/testing/) (URLs such as **`/testing`** and **`/testing/docs/...`**). There is **no** separate Vercel project or second `adapter-vercel` output for Testing.
 
-These match [`apps/testing-web/vercel.json`](../apps/testing-web/vercel.json). After the first deploy, attach a hostname (e.g. preview or `testing.restormel.dev`) or keep the `*.vercel.app` URL for rewrites from the dashboard project.
+Optional public env (see [`apps/dashboard/src/lib/testing/site.ts`](../apps/dashboard/src/lib/testing/site.ts)):
 
-**CLI (optional):** from `apps/testing-web`, after `npm i -g vercel`, run `vercel link` and ensure the linked project’s root directory in the dashboard is `apps/testing-web`.
-
-## Single-origin `/testing` on `restormel.dev`
-
-Serving **dashboard** and **testing-web** from one hostname without a second deployment requires either merging into **one SvelteKit app** or a **composed Build Output** (non-trivial). Until then, common patterns are:
-
-1. **Two Vercel projects**, same GitHub repo, different root directories (`/` → dashboard, `apps/testing-web` → testing).
-2. **Rewrites** on the primary project to proxy `/testing` to the testing deployment URL (see historical [docs/testing/vercel-suite-routing.md](testing/vercel-suite-routing.md) concepts).
+- `PUBLIC_GITHUB_REPO_URL` — repo links in docs
+- `PUBLIC_SUITE_TESTING_URL` — canonical Testing suite URL (defaults to `https://restormel.dev/testing`)
 
 ## Tokens
 
-`@restormel/keys-tokens` is a **workspace** package (`packages/keys-tokens`). Dashboard and `testing-web` use `workspace:*`; production npm consumers use published versions.
+`@restormel/keys-tokens` is a **workspace** package (`packages/keys-tokens`). The dashboard uses `workspace:*`; production npm consumers use published versions.
