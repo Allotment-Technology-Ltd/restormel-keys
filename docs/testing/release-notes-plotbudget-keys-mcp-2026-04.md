@@ -1,12 +1,12 @@
 # Restormel Keys + Testing + MCP — PlotBudget handoff (April 2026)
 
-**Audience:** PlotBudget engineers and agents integrating **Restormel Keys**, **Restormel Testing**, and **`@restormel/mcp`**.
+**Audience:** PlotBudget engineers and agents integrating **Restormel Keys**, **Restormel Testing**, and `**@restormel/mcp`**.
 
 ---
 
 ## 1. Restormel Testing packages (`@restormel/testing-*`)
 
-If you are not already on a single aligned line, target **`^0.1.5`** across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers). Full upgrade table and feature delta: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)**.
+If you are not already on a single aligned line, target `**^0.1.5**` across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers). Full upgrade table and feature delta: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)**.
 
 **Keys env (CLI / CI / judges):** Prefer canonical names:
 
@@ -26,19 +26,21 @@ Compatibility aliases `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN`
 
 **New tools (control plane + Testing):**
 
-| Tool | Use |
-|------|-----|
-| `testing.hub_snapshot` | One call: Testing project context, environment UUIDs, masked Gateway key prefixes, suggested `RESTORMEL_*` snippet (placeholders). |
-| `project.environments.list` | `GET …/environments` — use ids for `RESTORMEL_ENVIRONMENT_ID` in CI. |
-| `project.gateway_keys.list` | Masked Gateway keys for a project. |
-| `project.gateway_keys.create` | Creates a new `rk_…`. **Response includes `rawKey` once** — store in secrets immediately; never log or commit. |
-| `project.gateway_keys.delete` | Revoke a key by id. |
 
-**Also:** `testing.journey` accepts focus **`billing`**; suggested tool lists in journey phases were refreshed.
+| Tool                          | Use                                                                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `testing.hub_snapshot`        | One call: Testing project context, environment UUIDs, masked Gateway key prefixes, suggested `RESTORMEL_*` snippet (placeholders). |
+| `project.environments.list`   | `GET …/environments` — use ids for `RESTORMEL_ENVIRONMENT_ID` in CI.                                                               |
+| `project.gateway_keys.list`   | Masked Gateway keys for a project.                                                                                                 |
+| `project.gateway_keys.create` | Creates a new `rk_…`. **Response includes `rawKey` once** — store in secrets immediately; never log or commit.                     |
+| `project.gateway_keys.delete` | Revoke a key by id.                                                                                                                |
+
+
+**Also:** `testing.journey` accepts focus `**billing`**; suggested tool lists in journey phases were refreshed.
 
 **Env (unchanged split):**
 
-- **Control plane** (`projects.*`, `routes.*`, `policies.*`, new project/env/key tools): `RESTORMEL_CONTROL_PLANE_URL` + `RESTORMEL_SERVER_TOKEN` or `RESTORMEL_GATEWAY_KEY`.
+- **Control plane** (`projects.`*, `routes.*`, `policies.*`, new project/env/key tools): `RESTORMEL_CONTROL_PLANE_URL` + `RESTORMEL_SERVER_TOKEN` or `RESTORMEL_GATEWAY_KEY`.
 - **Resolve probe:** `RESTORMEL_KEYS_BASE` + same Gateway bearer family as the CLI.
 
 Runbook: [mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md) § D.

@@ -15,6 +15,9 @@
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
+  $: isTestingHub =
+    currentPath === DASHBOARD_BASE + "/testing" ||
+    currentPath.startsWith(DASHBOARD_BASE + "/testing/");
   $: projectContexts = $page.data.projectContexts ?? [];
   $: navGroupsForLayout = $page.data.navGroupsForUi ?? NAV_GROUPS;
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
@@ -169,6 +172,17 @@
           {/if}
           <span class="topbar-title">{title}</span>
         </div>
+        <nav class="topbar-product-nav" aria-label="Product and related docs">
+          {#if isTestingHub}
+            <span class="topbar-product-pill" title="You are in the Restormel Testing hub">Testing hub</span>
+            <a href="/testing/docs" class="topbar-product-link">Testing docs</a>
+            <a href="/keys" class="topbar-product-link">Keys</a>
+          {:else}
+            <span class="topbar-product-pill" title="Restormel Keys control plane">Keys</span>
+            <a href="/keys/docs" class="topbar-product-link">Keys docs</a>
+            <a href={DASHBOARD_BASE + "/testing"} class="topbar-product-link">Testing hub</a>
+          {/if}
+        </nav>
       </header>
       <main class="main" data-sveltekit-preload-data="hover">
         {#if !user && !isAuthRoute}
@@ -312,7 +326,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-6);
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-6);
   }
   .topbar-left {
     display: flex;
@@ -340,6 +356,35 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar-product-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+  }
+  .topbar-product-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--rm-radius);
+    background: color-mix(in oklab, var(--rm-sage) 14%, transparent);
+    color: var(--rm-text);
+    font-weight: var(--font-medium);
+    border: 1px solid var(--rm-border);
+  }
+  .topbar-product-link {
+    color: var(--rm-muted);
+    text-decoration: none;
+    padding: var(--space-1) 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .topbar-product-link:hover {
+    color: var(--rm-sage);
+    text-decoration: none;
   }
   .sidebar-footer {
     margin-top: var(--space-2);

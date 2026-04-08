@@ -1,3 +1,5 @@
+import type { DocsNavBlock } from "$lib/keys/docs-nav.js";
+
 /**
  * Restormel Testing — docs information architecture (suite-aligned with Keys).
  *
@@ -138,3 +140,24 @@ export const allWalkthroughPaths: string[] = [
   ...walkthroughCorePhases.map((p) => p.path),
   ...walkthroughExtendedPhases.map((p) => p.path),
 ];
+
+/** Sidebar blocks for the shared in-app docs shell component. */
+export function testingDocsShellNav(testingBase: string): DocsNavBlock[] {
+  const blocks: DocsNavBlock[] = [{ kind: "link", href: testingBase, label: "Testing" }];
+  for (const section of docsNav) {
+    blocks.push({
+      kind: "section",
+      label: section.label,
+      ariaLabel: `${section.label} section`,
+      items: section.items.map((it) => ({
+        href: `${testingBase}${it.path}`,
+        label: it.title,
+      })),
+    });
+    blocks.push({ kind: "divider" });
+  }
+  if (blocks.length > 1 && blocks[blocks.length - 1].kind === "divider") {
+    blocks.pop();
+  }
+  return blocks;
+}

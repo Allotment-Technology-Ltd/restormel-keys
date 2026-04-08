@@ -3,36 +3,39 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { page } from "$app/stores";
+  import {
+    developerLinks,
+    isIntegrationsActive,
+    isKeysPillarActive,
+    isLinkActive,
+    isTestingPillarActive,
+    keysPillarLinks,
+    testingPillarLinks,
+  } from "$lib/site-nav";
 
   $: portalUrl = developerPortalUrl();
+  $: devLinks = developerLinks(portalUrl);
 
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
   export let user: { uid: string; email?: string | null; name?: string | null } | null = null;
 
   let mobileOpen = false;
-  let docsOpen = false;
-  let dashOpen = false;
+  let keysOpen = false;
+  let testingOpen = false;
+  let developersOpen = false;
 
   $: path = $page.url.pathname.replace(/\/$/, "") || "/";
   $: if ($page.url.pathname) {
     mobileOpen = false;
-    docsOpen = false;
-    dashOpen = false;
+    keysOpen = false;
+    testingOpen = false;
+    developersOpen = false;
   }
 
-  $: activeKeysProduct =
-    path.startsWith("/keys") && !path.startsWith("/keys/docs") && !path.startsWith("/keys/dashboard");
-  $: activeKeysDocs = path.startsWith("/keys/docs");
-  $: activeUseCases = path.startsWith("/keys/use-cases");
-  $: activeTestingProduct =
-    path.startsWith("/testing") && !path.startsWith("/testing/docs") && !path.startsWith("/testing/dashboard");
-  $: activeTestingDocs = path.startsWith("/testing/docs");
-  $: activeIntegrations = path.startsWith("/integrations");
-  $: activeKeysDashboard = path.startsWith("/keys/dashboard");
-  $: activeTestingDashboard = path.startsWith("/testing/dashboard");
-  $: docsSectionActive = activeKeysDocs || activeTestingDocs;
-  $: dashSectionActive = activeKeysDashboard || activeTestingDashboard;
+  $: keysPillarOn = isKeysPillarActive(path);
+  $: testingPillarOn = isTestingPillarActive(path);
+  $: integrationsOn = isIntegrationsActive(path);
 
   function toggleMobileMenu() {
     mobileOpen = !mobileOpen;
@@ -40,6 +43,34 @@
 
   function closeMobileMenu() {
     mobileOpen = false;
+  }
+
+  function onKeysToggle(e: Event) {
+    const el = e.currentTarget as HTMLDetailsElement;
+    if (el.open) {
+      testingOpen = false;
+      developersOpen = false;
+    }
+  }
+
+  function onTestingToggle(e: Event) {
+    const el = e.currentTarget as HTMLDetailsElement;
+    if (el.open) {
+      keysOpen = false;
+      developersOpen = false;
+    }
+  }
+
+  function onDevelopersToggle(e: Event) {
+    const el = e.currentTarget as HTMLDetailsElement;
+    if (el.open) {
+      keysOpen = false;
+      testingOpen = false;
+    }
+  }
+
+  function linkActive(href: string): boolean {
+    return isLinkActive(path, href);
   }
 </script>
 
@@ -50,42 +81,44 @@
     </a>
 
     <ul class="site-header-links">
-      <li>
-        <a href="/keys" class:active={activeKeysProduct}>Keys</a>
-      </li>
-      <li>
-        <a href="/testing" class:active={activeTestingProduct}>Testing</a>
-      </li>
-      <li>
-        <a href="/integrations" class:active={activeIntegrations}>Integrations</a>
+      <li class="nav-dropdown-wrap">
+        <details class="nav-details" bind:open={keysOpen} on:toggle={onKeysToggle}>
+          <summary class="nav-summary" class:nav-summary-active={keysPillarOn}>Keys</summary>
+          <div class="nav-dropdown-panel" role="group" aria-label="Keys">
+            {#each keysPillarLinks as item}
+              <a href={item.href} class:active={linkActive(item.href)}>{item.label}</a>
+            {/each}
+          </div>
+        </details>
       </li>
       <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={docsOpen}>
-          <summary class="nav-summary" class:nav-summary-active={docsSectionActive}>Documentation</summary>
-          <div class="nav-dropdown-panel" role="group" aria-label="Documentation">
-            <a href="/keys/docs" class:active={activeKeysDocs}>Keys documentation</a>
-            <a href="/testing/docs" class:active={activeTestingDocs}>Testing documentation</a>
+        <details class="nav-details" bind:open={testingOpen} on:toggle={onTestingToggle}>
+          <summary class="nav-summary" class:nav-summary-active={testingPillarOn}>Testing</summary>
+          <div class="nav-dropdown-panel" role="group" aria-label="Testing">
+            {#each testingPillarLinks as item}
+              <a href={item.href} class:active={linkActive(item.href)}>{item.label}</a>
+            {/each}
           </div>
         </details>
       </li>
       <li>
-        <a href="/keys/use-cases" class:active={activeUseCases}>Use cases</a>
-      </li>
-      <li>
-        <a
-          href={portalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Opens in a new tab"
-          aria-label="API portal, opens in new tab"
-        >API portal</a>
+        <a href="/integrations" class:active={integrationsOn}>Integrations</a>
       </li>
       <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={dashOpen}>
-          <summary class="nav-summary" class:nav-summary-active={dashSectionActive}>Dashboard</summary>
-          <div class="nav-dropdown-panel" role="group" aria-label="Dashboard">
-            <a href={DASHBOARD_BASE} class:active={activeKeysDashboard}>Keys dashboard</a>
-            <a href="/testing/dashboard" class:active={activeTestingDashboard}>Testing dashboard</a>
+        <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
+          <summary class="nav-summary">Developers</summary>
+          <div class="nav-dropdown-panel" role="group" aria-label="Developers">
+            {#each devLinks as item}
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Opens in a new tab"
+                aria-label={item.ariaLabel ?? `${item.label}, opens in new tab`}
+              >
+                {item.label}
+              </a>
+            {/each}
           </div>
         </details>
       </li>
@@ -117,27 +150,31 @@
   </nav>
 
   {#if mobileOpen}
-    <div class="site-header-mobile-backdrop" aria-hidden="true" on:click={closeMobileMenu}></div>
+    <button type="button" class="site-header-mobile-backdrop" aria-label="Close menu" on:click={closeMobileMenu}
+    ></button>
   {/if}
 
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
-    <a href="/keys" class:active={activeKeysProduct} on:click={closeMobileMenu}>Keys</a>
-    <a href="/testing" class:active={activeTestingProduct} on:click={closeMobileMenu}>Testing</a>
-    <a href="/integrations" class:active={activeIntegrations} on:click={closeMobileMenu}>Integrations</a>
-    <span class="site-header-mobile-heading" role="presentation">Documentation</span>
-    <a href="/keys/docs" class:active={activeKeysDocs} on:click={closeMobileMenu}>Keys documentation</a>
-    <a href="/testing/docs" class:active={activeTestingDocs} on:click={closeMobileMenu}>Testing documentation</a>
-    <a href="/keys/use-cases" class:active={activeUseCases} on:click={closeMobileMenu}>Use cases</a>
-    <a
-      href={portalUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="Opens in a new tab"
-      aria-label="API portal, opens in new tab"
-      on:click={closeMobileMenu}>API portal</a>
-    <span class="site-header-mobile-heading" role="presentation">Dashboard</span>
-    <a href={DASHBOARD_BASE} class:active={activeKeysDashboard} on:click={closeMobileMenu}>Keys dashboard</a>
-    <a href="/testing/dashboard" class:active={activeTestingDashboard} on:click={closeMobileMenu}>Testing dashboard</a>
+    <span class="site-header-mobile-heading" role="presentation">Keys</span>
+    {#each keysPillarLinks as item}
+      <a href={item.href} class:active={linkActive(item.href)} on:click={closeMobileMenu}>{item.label}</a>
+    {/each}
+    <span class="site-header-mobile-heading" role="presentation">Testing</span>
+    {#each testingPillarLinks as item}
+      <a href={item.href} class:active={linkActive(item.href)} on:click={closeMobileMenu}>{item.label}</a>
+    {/each}
+    <span class="site-header-mobile-heading" role="presentation">Integrations</span>
+    <a href="/integrations" class:active={integrationsOn} on:click={closeMobileMenu}>Overview</a>
+    <span class="site-header-mobile-heading" role="presentation">Developers</span>
+    {#each devLinks as item}
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Opens in a new tab"
+        aria-label={item.ariaLabel ?? `${item.label}, opens in new tab`}
+        on:click={closeMobileMenu}>{item.label}</a>
+    {/each}
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
       <a href="/keys/pricing" on:click={closeMobileMenu}>Pricing</a>
@@ -334,8 +371,12 @@
   .site-header-mobile-backdrop {
     position: fixed;
     inset: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
     background: rgba(0, 0, 0, 0.45);
     z-index: calc(var(--z-modal) - 1);
+    cursor: pointer;
   }
   .site-header-mobile-menu {
     display: none;

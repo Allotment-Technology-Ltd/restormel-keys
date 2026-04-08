@@ -1,8 +1,5 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { page } from "$app/stores";
-
-  $: user = $page.data.user;
 </script>
 
 <svelte:head>
@@ -13,17 +10,16 @@
 <div class="stub">
   <h1 class="title">Testing dashboard</h1>
   <p class="lead">
-    A full Testing dashboard (runs, projects, and suite management) is not part of the MVP. Use the CLI, GitHub
-    Action, and docs below in the meantime.
+    When you are signed in, this URL sends you to the <strong>Restormel Testing hub</strong> inside the Keys
+    dashboard (project IDs, snippets, and setup). A dedicated Testing-only console is not part of the MVP yet;
+    use the CLI, GitHub Action, and docs in the meantime.
   </p>
   <ul class="actions">
     <li><a class="btn btn-primary" href="/testing/docs">Browse Testing documentation</a></li>
     <li><a class="btn btn-ghost" href="/testing">Testing overview</a></li>
-    {#if user}
-      <li><a class="btn btn-ghost" href={DASHBOARD_BASE}>Open Keys dashboard</a></li>
-    {:else}
-      <li><a class="btn btn-ghost" href={DASHBOARD_BASE + "/login"}>Sign in for Keys dashboard</a></li>
-    {/if}
+    <li>
+      <a class="btn btn-ghost" href={DASHBOARD_BASE + "/login"}>Sign in to open Testing hub</a>
+    </li>
   </ul>
 </div>
 

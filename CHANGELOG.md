@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-04-08)
 
+**Platform IA (dashboard app):** Module-first marketing header and footer (Keys | Testing | Integrations | Developers); [`site-nav.ts`](apps/dashboard/src/lib/site-nav.ts) + single-open dropdowns; shared [`DocsShell`](apps/dashboard/src/lib/components/docs/DocsShell.svelte) for `/keys/docs` and `/testing/docs` ([`keys/docs-nav.ts`](apps/dashboard/src/lib/keys/docs-nav.ts), [`testingDocsShellNav`](apps/dashboard/src/lib/testing/docs-nav.ts)); cross-links between Keys and Testing docs; dashboard topbar product context; **`/testing/dashboard`** redirects signed-in users to **`/keys/dashboard/testing`** ([docs/documentation-strategy.md](docs/documentation-strategy.md) Testing hub row).
+
 **PlotBudget handoff doc:** [docs/testing/release-notes-plotbudget-keys-mcp-2026-04.md](docs/testing/release-notes-plotbudget-keys-mcp-2026-04.md) — Testing **0.1.5** pointer, MCP **0.1.10**, canonical `RESTORMEL_*` env, CI snippet.
 
 **MCP + dashboard progressive UX:** `@restormel/mcp` **0.1.10** adds **`project.environments.list`**, **`testing.hub_snapshot`**, **`project.gateway_keys.list` / `.create` / `.delete`**, plus **`testing.journey`** focus **`billing`**; runbook § D; dashboard **`GET /api/projects/{id}/environments`**. Earlier **0.1.9**: **`projects.list`**, **`project_models.list`**, **`testing.journey`**, **`testing.ci_env_template`**, **`testing.resolve_probe`**. Keys dashboard: **`DashboardJourneyBanner`** (per-route next-step hints: billing, settings, lifecycle, dev-tools/cli & aaif, …); MCP dev-tools page lists full tool surface.
