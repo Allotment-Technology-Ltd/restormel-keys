@@ -1,6 +1,8 @@
 # Neon preview branch naming:
 # - Primary: preview/<github.head_ref> (matches Vercel + Neon Git integration when create succeeds).
-# - Fallback: preview-pr-<number> (always createable; used when head_ref branch is missing or create fails).
+# - Fallback: preview-pr-<number> (used when head_ref branch is missing or create fails).
+# - If the Neon project hits its branch limit, preview migrations + catalog seed are skipped (job succeeds);
+#   delete stale preview/* branches or run "Prune stale Neon preview branches", or upgrade the Neon plan.
 name: Create/Delete Branch for Pull Request
 
 on:
@@ -87,6 +89,7 @@ jobs:
             "
           }
 
+          BRANCH_LIMIT_HIT=0
           try_create() {
             local name="$1"
             echo ">>> neonctl branches create --name $name ..."
@@ -99,6 +102,9 @@ jobs:
             rc=$?
             set -e
             echo "$out"
+            if echo "$out" | grep -qiE 'branches limit exceeded|branch limit exceeded'; then
+              BRANCH_LIMIT_HIT=1
+            fi
             return "$rc"
           }
 
@@ -126,11 +132,17 @@ jobs:
           fi
 
           if [[ -z "$CHOSEN" ]]; then
+            if [[ "$BRANCH_LIMIT_HIT" == "1" ]]; then
+              echo "::warning title=Neon branch limit::This Neon project has reached its branch limit, so preview DB migrations and catalog seed were skipped. Remove stale preview branches in the Neon console, run the **Prune stale Neon preview branches** workflow, or increase the limit on your Neon plan."
+              echo "SKIP_PREVIEW_DB=1" >> "$GITHUB_ENV"
+              exit 0
+            fi
             echo "ERROR: Could not create or find preview branch (tried $HEAD_PREVIEW and $PR_PREVIEW)."
             list_json | node -e "const j=JSON.parse(require('fs').readFileSync(0,'utf8')); (Array.isArray(j)?j:[]).forEach((b)=>console.log(b.name));" || true
             exit 1
           fi
 
+          echo "SKIP_PREVIEW_DB=0" >> "$GITHUB_ENV"
           echo "Using Neon preview branch: $CHOSEN"
           echo "NEON_PREVIEW_BRANCH=$CHOSEN" >> "$GITHUB_ENV"
 
@@ -162,17 +174,22 @@ jobs:
           echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
         # npx uses NEON_API_KEY automatically if present.
       - name: Apply dashboard migrations
+        if: env.SKIP_PREVIEW_DB != '1'
         run: bash scripts/apply-dashboard-migrations.sh
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        if: env.SKIP_PREVIEW_DB != '1'
         with:
           version: 9.0.0
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        if: env.SKIP_PREVIEW_DB != '1'
         with:
           node-version: '20'
           cache: 'pnpm'
       - name: Install workspace (dashboard catalog seed)
+        if: env.SKIP_PREVIEW_DB != '1'
         run: pnpm install --frozen-lockfile
       - name: Ingest model catalog from JSON seed (preview DB)
+        if: env.SKIP_PREVIEW_DB != '1'
         run: pnpm --filter dashboard run seed:catalog
 
   delete_neon_branch:
