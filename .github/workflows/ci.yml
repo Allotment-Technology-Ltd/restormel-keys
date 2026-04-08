@@ -1,4 +1,5 @@
-# Single CI/CD workflow: path-filter, docs, security, test, demo-next (demo-next only when apps/demo-next changes, or workflow_dispatch). Site and dashboard deploy via Vercel (no Cloudflare).
+# Single CI/CD workflow: path-filter, docs, security, test. Site and dashboard deploy via Vercel (no Cloudflare).
+# Next.js sample app: apps/demo-next — run build + E2E locally; not part of CI (keeps main pipeline fast).
 # One workflow run per push/PR; jobs skip when their paths unchanged.
 # pnpm version must match root package.json "packageManager" (9.0.0).
 # PNPM install + JS security steps use composite actions under .github/actions/ (mirrored in platform/.github/actions/ for restormel-platform split).
@@ -22,10 +23,6 @@ on:
         description: 'Re-run model catalog JSON seed on production DB (requires DASHBOARD_DATABASE_URL_PROD)'
         type: boolean
         default: false
-      run_demo_next:
-        description: 'Run apps/demo-next build + E2E (push/PR already skip when apps/demo-next is unchanged)'
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -44,7 +41,6 @@ jobs:
       deploy: ${{ steps.filter.outputs.deploy }}
       dashboard_migrations: ${{ steps.filter.outputs.dashboard_migrations }}
       model_catalog_seed: ${{ steps.filter.outputs.model_catalog_seed }}
-      demo_next: ${{ steps.filter.outputs.demo_next }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
@@ -84,8 +80,6 @@ jobs:
             model_catalog_seed:
               - 'apps/dashboard/data/model-catalog-seed.json'
               - 'apps/dashboard/scripts/ingest-model-catalog.mjs'
-            demo_next:
-              - 'apps/demo-next/**'
 
   bootstrap-checks:
     runs-on: ubuntu-latest
@@ -191,31 +185,6 @@ jobs:
         uses: ./.github/actions/pnpm-workspace-install
       - name: Pack + demo-svelte build from tarballs
         run: bash scripts/smoke-keys-svelte-republish.sh
-
-  demo-next:
-    runs-on: ubuntu-latest
-    if: |
-      needs.changes.outputs.demo_next == 'true' ||
-      (github.event_name == 'workflow_dispatch' && inputs.run_demo_next)
-    needs: [changes]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: PNPM install
-        uses: ./.github/actions/pnpm-workspace-install
-      - name: Build workspace (keys, svelte, elements, react) for demo-next
-        run: |
-          pnpm --filter @restormel/keys run build
-          pnpm --filter @restormel/keys-svelte run build
-          pnpm --filter @restormel/keys-elements run build
-          pnpm --filter @restormel/keys-react run build
-      - name: Build demo-next
-        run: pnpm --filter demo-next run build
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-        working-directory: apps/demo-next
-      - name: E2E tests
-        run: pnpm run test:e2e
-        working-directory: apps/demo-next
 
   apply-dashboard-migrations-prod:
     name: Apply dashboard migrations + catalog seed (prod DB)

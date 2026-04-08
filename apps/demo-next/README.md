@@ -39,4 +39,17 @@ Playwright tests cover: home and settings route, API (GET/POST /api/keys, GET /a
 
 ## CI
 
-The **demo-next** job in `.github/workflows/ci.yml` runs on code changes: it builds the workspace and the demo app, installs Playwright Chromium, and runs the E2E suite.
+This app is **not** built or E2E-tested in the main repo **CI/CD** workflow (that keeps pushes fast). To verify after changing Keys packages or this demo:
+
+```bash
+# from repo root
+pnpm install
+pnpm --filter @restormel/keys run build
+pnpm --filter @restormel/keys-svelte run build
+pnpm --filter @restormel/keys-elements run build
+pnpm --filter @restormel/keys-react run build
+pnpm --filter demo-next run build
+cd apps/demo-next && pnpm exec playwright install chromium && pnpm run test:e2e
+```
+
+Get the source by cloning [restormel-keys](https://github.com/Allotment-Technology-Ltd/restormel-keys) and opening `apps/demo-next`.

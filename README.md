@@ -66,7 +66,7 @@ const cost = keys.estimateCost("gpt-4o-mini");
 pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
 ```
 
-Use `KeysProvider`, `KeyManager`, `ModelSelector` in a client component; fetch keys from your API and pass config. See [apps/demo-next](apps/demo-next) (Next.js) or [apps/demo-svelte](apps/demo-svelte) (SvelteKit) for full examples.
+Use `KeysProvider`, `KeyManager`, `ModelSelector` in a client component; fetch keys from your API and pass config. See [apps/demo-next](apps/demo-next) (Next.js — clone the repo and run locally; not run in CI) or [apps/demo-svelte](apps/demo-svelte) (SvelteKit) for full examples.
 
 **With Svelte:**
 
