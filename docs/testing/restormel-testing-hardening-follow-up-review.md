@@ -8,12 +8,12 @@
 - **Docs truth:** MVP spec matches **inline** composite Action; architecture/brief state single-URL + criteria execution honestly.
 - **Keys wiring:** `keysAdapterOptionsFromProcessEnv()` used by **CLI** and **GitHub Action**; documented env table + `.env.example`.
 - **CLI:** `--goal`, `doctor`, `--json` on `validate` / `run`; help updated.
-- **Config honesty:** non-empty `adapter_hooks`, `preconditions`, `cleanup` **fail validate**.
+- **Config honesty (superseded):** hooks were later **implemented** in the runner; see [config-reference-mvp.md](config-reference-mvp.md). This bullet reflected the pre-implementation MVP.
 - **Session:** `auth_mode: storage_state` + `auth_ref` resolves Playwright `storageState` path.
 - **Judge hardening:** smaller default sample (`main` → `body`), optional `context_selector`, redacted error snippets.
 - **Reports:** `report.json` includes optional `reproduction`; `RunRecord.costEstimate` heuristic when judge invocations > 0.
 - **CI:** `basic-web-integration` job; sample workflow uploads artefacts.
-- **OSS:** `docs/oss-consumption.md` describes git pin vs future npm.
+- **OSS:** `docs/testing/oss-consumption.md` describes git pin vs future npm.
 
 ## Remaining gaps — addressed (2026-04-07 follow-up)
 

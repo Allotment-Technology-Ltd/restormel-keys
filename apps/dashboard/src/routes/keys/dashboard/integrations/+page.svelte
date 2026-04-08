@@ -20,9 +20,15 @@
   let otherProviderType = "";
   let displayName = "";
   let credentialRef = "";
+  /** One-time hosted API key; encrypted at rest when server is configured. Cleared after successful submit. */
+  let apiKey = "";
 
   $: effectiveProviderType = providerType === "other" ? otherProviderType.trim() : providerType;
-  $: canConnect = Boolean(effectiveProviderType && displayName.trim() && credentialRef.trim());
+  $: canConnect = Boolean(
+    effectiveProviderType &&
+      displayName.trim() &&
+      (credentialRef.trim() || apiKey.trim())
+  );
 
   function jumpToForm() {
     document.getElementById("connect-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -71,12 +77,18 @@
           providerType: type,
           displayName: displayName.trim() || undefined,
           credentialRef: credentialRef.trim() || undefined,
+          apiKey: apiKey.trim() || undefined,
         }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data?.id) {
+        apiKey = "";
         await invalidateAll();
         window.location.href = `${DASHBOARD_BASE}/integrations/${body.data.id}`;
+      } else if ((body as { error?: string }).error === "server_misconfigured") {
+        connectError =
+          (body as { message?: string }).message ??
+          "Hosted API key storage is not configured on this deployment. Use a credential reference or contact your admin.";
       } else {
         connectError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
       }
@@ -102,7 +114,10 @@
 
 <h1 class="page-title">Connect a Provider</h1>
 <p class="page-desc">
-  Connect your provider setup (gateway-backed or direct) to Restormel so rules and guard rails can reference it. Connections store references and metadata only - do not paste raw secrets here.
+  Connect your provider so Restormel Testing and routing can resolve models. Use <strong>Hosted API key</strong> for a key encrypted at rest (recommended for judge flows), or <strong>Credential reference</strong> for a non-secret vault label only — not both required.
+</p>
+<p class="page-desc">
+  After you save a connection, open <a href={DASHBOARD_BASE + "/testing"}>Restormel Testing</a> for project and environment IDs and env snippets.
 </p>
 
 {#if data.error}
@@ -189,7 +204,9 @@
 
   <section class="section" aria-labelledby="connect-heading">
     <h2 id="connect-heading" class="section-title">Add a connection</h2>
-    <p class="section-desc">Step 1 pick provider, Step 2 name it, Step 3 add your credential reference. Submission logic is unchanged.</p>
+    <p class="section-desc">
+      Step 1 pick provider, Step 2 name it, Step 3 paste a hosted API key <em>or</em> a vault reference (non-secret label).
+    </p>
     {#if connectError}
       <p class="error-msg" role="alert">{connectError}</p>
     {/if}
@@ -219,11 +236,28 @@
         </div>
       </div>
       <div class="wizard-row">
-        <p class="wizard-step">Step 3</p>
+        <p class="wizard-step">Step 3a</p>
         <div class="form-row">
-          <label for="credential-ref" class="wizard-title">Credential reference</label>
+          <label for="api-key" class="wizard-title">Hosted API key (optional)</label>
+          <input
+            id="api-key"
+            type="password"
+            bind:value={apiKey}
+            class="input"
+            placeholder="Paste once — never shown again after save"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+          <p class="helper">Encrypted at rest when the deployment is configured. Leave blank if you only use a vault reference below.</p>
+        </div>
+      </div>
+      <div class="wizard-row">
+        <p class="wizard-step">Step 3b</p>
+        <div class="form-row">
+          <label for="credential-ref" class="wizard-title">Credential reference (optional)</label>
           <input id="credential-ref" type="text" bind:value={credentialRef} class="input" placeholder="e.g. sm://prod/openai" autocomplete="off" />
-          <p class="helper">This is a reference ID from your secrets manager - never paste raw API keys here.</p>
+          <p class="helper">Non-secret label from your secrets manager. Use when you are not storing a hosted key in Restormel.</p>
         </div>
       </div>
       {#if canConnect}
@@ -251,10 +285,12 @@
                 {#if int.verificationStatus}
                   · {int.verificationStatus}
                 {/if}
-                {#if int.hasCredential}
+                {#if int.credentialMasked}
+                  · {int.credentialMasked}
+                {:else if int.hasCredential}
                   · credential set
                 {:else}
-                  · no credential ref
+                  · no credential
                 {/if}
               </span>
               <span class="int-verified">Last verified: {formatLastVerified(int.lastVerifiedAt)}</span>

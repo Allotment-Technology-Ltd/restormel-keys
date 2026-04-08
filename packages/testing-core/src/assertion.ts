@@ -1,16 +1,22 @@
-import type { JudgeRubric, StructuredCheck } from "./success-criteria.js";
+import type { JudgeRubric, StructuredCheck, SuccessCriteria } from "./success-criteria.js";
 
 /**
  * One atomic expectation (for traces, reports, or normalised criteria).
  * Config YAML may use the flatter `SuccessCriteria` shape instead.
  */
 export type Assertion =
+  | AnyOfAssertion
   | UrlAssertion
   | DomAssertion
   | TextPresentAssertion
   | TextAbsentAssertion
   | StructuredAssertion
   | JudgeAssertion;
+
+export interface AnyOfAssertion {
+  kind: "any_of";
+  branches: SuccessCriteria[];
+}
 
 export interface UrlAssertion {
   kind: "url";

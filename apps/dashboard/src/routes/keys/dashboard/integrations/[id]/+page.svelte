@@ -155,12 +155,12 @@
 
 {#if data.error || !data.integration}
   <p class="error-msg" role="alert">{data.error ?? "Integration not found."}</p>
-  <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Provider Integrations</a></p>
+  <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Connections</a></p>
 {:else}
   <p><a href={DASHBOARD_BASE + "/integrations"} class="back-link">← Back to Integrations</a></p>
   <h1 class="page-title">{data.integration.displayName || data.integration.providerType}</h1>
   <p class="page-desc">
-    {data.integration.providerType} integration. Restormel stores references/metadata only; no raw secrets are shown or stored here.
+    {data.integration.providerType} integration. Hosted keys are encrypted at rest; only masked labels are shown. Raw secrets are never displayed after save.
   </p>
 
   <section class="section" aria-labelledby="status-heading">
@@ -170,10 +170,12 @@
       {#if data.integration.verificationStatus}
         · Verification: <span class={`status-${integrationTone(data.integration.verificationStatus)}`}>{data.integration.verificationStatus}</span>
       {/if}
-      {#if data.integration.hasCredential}
-        · Credential reference is set
+      {#if data.integration.credentialMasked}
+        · {data.integration.credentialMasked}
+      {:else if data.integration.hasCredential}
+        · Credential reference or hosted key is set
       {:else}
-        · No credential reference
+        · No credential configured
       {/if}
     </p>
     <p class="verified-row">

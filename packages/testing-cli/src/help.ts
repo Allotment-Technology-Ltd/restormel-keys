@@ -22,6 +22,7 @@ Examples:
   ${program} validate --config restormel-testing.yaml
   ${program} validate --config restormel-testing.yaml --json
   ${program} run --suite web-critical --config restormel-testing.yaml
+  ${program} run --suites ci-smoke,web-critical --config restormel-testing.yaml
   ${program} run --suite web-critical --goal smoke,login --config restormel-testing.yaml
   ${program} report .restormel-testing/runs/run-2026-04-07
   ${program} doctor --config restormel-testing.yaml
@@ -31,7 +32,15 @@ Environment (Keys / judges — values never printed):
   RESTORMEL_KEYS_API_TOKEN_ENV    Name of env var with Keys API bearer (default RESTORMEL_KEYS_API_TOKEN)
   RESTORMEL_TESTING_OPENAI_FALLBACK   Set to 1 for documented OPENAI_API_KEY fallback when Keys unset
 
-See docs/config-reference-mvp.md for supported YAML, CLI --json behaviour, and judge_rubric notes.
+Shell hooks (adapter_hooks, preconditions, cleanup):
+  RESTORMEL_TESTING_SKIP_SHELL_HOOKS=1   Skip all shell hooks
+  RESTORMEL_TESTING_SHELL_HOOK_TIMEOUT_MS   Per-hook timeout ms (default 120000)
+
+Lighthouse structured_checks (see docs):
+  RESTORMEL_TESTING_SKIP_LIGHTHOUSE=1   Skip Lighthouse checks (indeterminate)
+  RESTORMEL_TESTING_LIGHTHOUSE_TIMEOUT_MS   One run timeout ms (default 180000)
+
+See docs/testing/config-reference-mvp.md for supported YAML, CLI --json behaviour, vitals, Lighthouse paths, and judge_rubric notes.
 `);
 }
 
@@ -70,14 +79,15 @@ Options:
   }
 
   if (t === "run") {
-    console.log(`${program} run --suite <name> [options]
+    console.log(`${program} run --suite <name> … [options]
 
-Run a suite. Writes JSON artefacts under --artifact-dir (default: timestamped dir under .restormel-testing/runs/).
+Run one or more suites. Use --suite repeatedly or --suites a,b,c. Writes JSON artefacts under --artifact-dir (default: timestamped dir under .restormel-testing/runs/); multiple suites use one base dir and per-suite subfolders.
 
 Exit codes: 0 passed, 1 suite failed or indeterminate, 2 config or usage error.
 
 Options:
-      --suite <name>        Suite id from the config (required)
+      --suite <name>        Suite id (repeatable for multiple suites)
+      --suites <a,b,c>      Comma-separated suite ids (alternative to multiple --suite)
       --goal <ids>          Comma-separated goal ids (subset of suite; repeatable)
   -c, --config <path>       Config file (default: restormel-testing.yaml)
       --environment, --env <id>  Environment id (default: suite's environment)
@@ -95,7 +105,7 @@ Options:
   if (t === "doctor") {
     console.log(`${program} doctor [options]
 
-Check Node 20+, optional config readability, Playwright Chromium install, and whether Keys-related env vars are set (names only).
+Check Node 20+, optional config readability, Playwright Chromium install, Keys-related env hints (including whether RESTORMEL_PROJECT_ID is set when RESTORMEL_KEYS_API_BASE_URL is set), and (when Keys URL + token are set) a single POST to the resolve endpoint (HTTP status only; body not printed).
 
 Options:
   -c, --config <path>   If set, file must exist and be readable

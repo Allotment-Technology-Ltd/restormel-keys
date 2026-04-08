@@ -29,6 +29,11 @@ const mockIntegration = {
 vi.mock("$lib/server/db", () => ({
   listProviderIntegrations: vi.fn().mockResolvedValue([]),
   createProviderIntegration: vi.fn().mockResolvedValue(mockIntegration),
+  getWorkspace: vi.fn(),
+}));
+
+vi.mock("$lib/server/testing-bootstrap", () => ({
+  bootstrapRestormelTestingIntegration: vi.fn().mockResolvedValue(undefined),
 }));
 
 function mockEvent(overrides: Record<string, unknown> = {}) {
@@ -88,5 +93,23 @@ describe("POST /api/integrations", () => {
       }) as unknown as Parameters<typeof handler>[0]
     );
     expect(res.status).toBe(400);
+  });
+
+  it("accepts apiKey in body for hosted credential flow", async () => {
+    const { POST: handler } = await import("./+server");
+    const res = await handler(
+      mockEvent({
+        request: new Request("http://localhost/api/integrations", {
+          method: "POST",
+          body: JSON.stringify({
+            providerType: "openai",
+            displayName: "Prod",
+            apiKey: "sk-test-placeholder-not-real",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }),
+      }) as unknown as Parameters<typeof handler>[0]
+    );
+    expect(res.status).toBe(201);
   });
 });

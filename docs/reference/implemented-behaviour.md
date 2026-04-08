@@ -11,11 +11,11 @@
 | Concept | Term used | Notes |
 |--------|-----------|--------|
 | Credential for app → Restormel | **Gateway Key** | Created under Access; format `rk_...`. Do not use "API key" for this in user-facing copy. |
-| Credential for Restormel → provider | **Provider credential** | Stored in Provider Integrations. Optional; user can use Gateway Key only or both. |
+| Credential for Restormel → provider | **Provider credential** | Stored under **Connections** (encrypted at rest for hosted API keys when configured, or a non-secret vault **credential reference**). Optional; user can use Gateway Key only or both. |
 | Account boundary | **Workspace** | One default per user; created on first sign-in. |
 | App/product boundary | **Project** | Contains Gateway keys, routes, usage. |
 | Dev/staging/prod | **Environment** | Per project. |
-| Upstream connection | **Provider integration** | OpenAI, Anthropic, Google, etc.; managed under Provider Integrations. |
+| Upstream connection | **Provider integration** | OpenAI, Anthropic, Google, etc.; managed under **Connections** (`/keys/dashboard/integrations`). |
 | Model selection and fallbacks | **Route** | Per project/environment; default model, steps, billing mode. |
 | Catalog | **Models** | Canonical models and provider variants; lifecycle, deprecation, replacement. |
 | Summaries | **Analytics** | Request count, latency, error rate, provider/model/route mix, spend placeholder. |
@@ -28,7 +28,8 @@
 - **Auth:** Sign in with GitHub (Neon Auth). Workspace created on first use.
 - **Projects:** List, create, detail. Environments per project.
 - **Access:** List/create/revoke Gateway Keys across projects (key prefix only in UI; raw key shown once on create).
-- **Provider Integrations:** List, create, connect providers; bindings to projects/environments; verification.
+- **Connections:** List, create, connect providers; optional one-time **hosted API key** (AES-256-GCM at rest with `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY`) or vault **credential reference**; masked labels in list/detail; bindings to projects/environments; verification.
+- **Restormel Testing:** Hub at `/keys/dashboard/testing` — auto-provisioned **Restormel Testing** project per workspace (dev/prod environments), model bindings seeded from connected providers; copy-ready `RESTORMEL_*` snippets. See [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 - **Models:** Catalog (list, detail, lifecycle badges, source verification, migration section); seed/ingestion via `pnpm run seed:catalog`.
 - **Public catalog API:** `GET /keys/dashboard/api/catalog` (no auth) — versioned providers + models for downstream apps; **default response filters to `@restormel/keys` default provider model lists** (drops stale DB-only rows). Query `skipDefaultAllowlist=1` for diagnostics. User-facing steps at `/keys/docs/guides/canonical-catalog`.
 - **Project model index API:** `GET/POST/PUT /keys/dashboard/api/projects/{projectId}/models` and `PATCH/DELETE .../models/{bindingId}` with **Gateway Key** (`rk_...`) or session — project bindings (canonical `providerType` + catalog `modelId`), nested catalog `model` on `GET`. **POST** batch add (idempotent), **PUT** replace allowlist, **PATCH** `enabled`, **DELETE** hard-remove. Validates catalog + provider variants. Legacy: `GET .../models?source=catalog` (deprecated; prefer `GET /keys/dashboard/api/models`). **Not** on Zuplo consumer-key paths. [Cloud API](https://restormel.dev/keys/docs/cloud-api); [openapi.yaml](../api/openapi.yaml); [requirements spec](../requirements/project-model-index-gateway-api.md).
@@ -38,7 +39,7 @@
 - **Logs & Traces:** Request logs; filter by project/route; cross-link from Analytics.
 - **Lifecycle & Migrations:** Placeholder page; migration recommendations note; model detail shows Migration section when deprecated/retired.
 - **Billing & Forecasting:** Placeholder.
-- **Onboarding:** Unauthenticated welcome explains order (workspace, project, key model, billing, Gateway Key, provider, route, first request, analytics). Signed-in Overview shows a "Get started" checklist when user has no projects, no Gateway Keys, or no provider integrations; steps link to Projects, Access, Integrations, Routes, Billing, Analytics, Logs, Docs.
+- **Onboarding:** Unauthenticated welcome explains order (workspace, project, key model, billing, Gateway Key, provider, route, first request, analytics). Signed-in Overview shows a "Get started" checklist when user has no projects, no Gateway Keys, or no provider integrations; steps link to Projects, Access, Connections, Routes, Billing, Analytics, Logs, Docs. For Restormel Testing + judge flows, follow [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 - **Dashboard UI hiding (optional):** Env **`RESTORMEL_DASHBOARD_UI_HIDDEN`** (comma-separated section tokens) removes matching areas from the sidebar and related overview/onboarding links; direct navigation to those paths redirects to Overview with a notice. **Does not disable dashboard REST APIs** — see [apps/dashboard/README.md](../../apps/dashboard/README.md).
 
 ---

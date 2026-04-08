@@ -40,14 +40,17 @@
 
   <h3>Keys and credentials (BYOK-first)</h3>
   <p>
-    Restormel Keys is BYOK-first. We do not want to take custody of raw secrets as a core product feature.
+    Restormel Keys is BYOK-first. You can keep provider material entirely in your gateway or secret store, or optionally use
+    <strong>Connections</strong> to store provider API keys <strong>encrypted at rest</strong> when your deployment operator configures
+    encryption.
   </p>
   <ul>
     <li><strong>Gateway Keys</strong> (used to call Restormel APIs) are stored as a prefix + hash; we do not store raw values.</li>
     <li>
-      <strong>Provider credentials</strong> (OpenAI/Anthropic/etc.) should typically live in your own secret store or your
-      existing gateway vendor. If you choose to enter provider credentials into the Dashboard, treat them as sensitive and
-      rotate them as needed; we mask sensitive values in the UI and avoid logging raw secrets.
+      <strong>Provider credentials</strong> (OpenAI/Anthropic/etc.): if you add a <strong>hosted API key</strong> in the Dashboard, we store
+      ciphertext (not plaintext) where encryption is enabled; the UI shows masked labels only and does not display the full secret after
+      save. You may instead enter a <strong>credential reference</strong> (non-secret label) if you keep the real secret elsewhere. Rotate
+      or revoke from Connections when your security policy requires it.
     </li>
   </ul>
 

@@ -44,6 +44,18 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Initial navigation URL: `base_url` with optional per-goal `start_path`. */
+export function goalEntryUrl(baseUrl: string, startPath?: string): string {
+  if (startPath === undefined || startPath.trim() === "") {
+    return baseUrl;
+  }
+  try {
+    return new URL(startPath.trim(), baseUrl).href;
+  } catch {
+    return baseUrl;
+  }
+}
+
 function toKeysModelMeta(model: ResolvedModel, invocations: number): KeysModelMeta {
   return {
     logicalRef: model.meta.logicalRef,
@@ -146,16 +158,17 @@ export async function runBrowserGoal(options: RunBrowserGoalOptions): Promise<Ru
       }
 
       try {
+        const entryUrl = goalEntryUrl(options.baseUrl, goal.startPath);
         await withTimeout(
-          session.navigate(options.baseUrl, { timeoutMs: options.timeoutMs, waitUntil: "load" }),
+          session.navigate(entryUrl, { timeoutMs: options.timeoutMs, waitUntil: "load" }),
           options.timeoutMs + 2000,
           "navigation",
         );
 
         pushTrace({
           kind: "observation",
-          summary: `Navigated to ${options.baseUrl}`,
-          metadata: { phase: "post_navigate", attemptIndex },
+          summary: `Navigated to ${entryUrl}`,
+          metadata: { phase: "post_navigate", attemptIndex, baseUrl: options.baseUrl, startPath: goal.startPath },
         });
 
         const evalResult = await withTimeout(

@@ -5,6 +5,11 @@
  */
 import { neon } from "@neondatabase/serverless";
 import { randomBytes, createHash } from "crypto";
+import {
+  decryptProviderSecret,
+  encryptProviderSecret,
+  secretDisplaySuffix,
+} from "$lib/server/credential-crypto";
 
 const KEY_PREFIX = "rk_";
 
@@ -25,6 +30,8 @@ export type Project = {
   userId: string;
   workspaceId: string | null;
   createdAt: number;
+  /** Auto-provisioned Restormel Testing project (one per workspace convention). */
+  isRestormelTesting?: boolean;
 };
 
 export type Environment = {
@@ -341,59 +348,93 @@ export async function applyPaddleLifecycleUpdate(params: {
 }
 
 /** List projects for user (ownership via user_id; projects belong to user's workspace). */
-export async function listProjects(userId: string): Promise<Project[]> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
-    FROM projects
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-  `;
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    userId: r.userId,
-    workspaceId: r.workspaceId ?? null,
-    createdAt: Number(r.createdAt),
-  })) as Project[];
-}
-
-/** List projects in a workspace (for Management key scope). */
-export async function listProjectsByWorkspace(workspaceId: string): Promise<Project[]> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
-    FROM projects
-    WHERE workspace_id = ${workspaceId}
-    ORDER BY created_at DESC
-  `;
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    userId: r.userId,
-    workspaceId: r.workspaceId ?? null,
-    createdAt: Number(r.createdAt),
-  })) as Project[];
-}
-
-/** Get project if it belongs to the given workspace (for Management key scope). */
-export async function getProjectInWorkspace(projectId: string, workspaceId: string): Promise<Project | null> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
-    FROM projects
-    WHERE id = ${projectId} AND workspace_id = ${workspaceId}
-    LIMIT 1
-  `;
-  if (rows.length === 0) return null;
-  const r = rows[0];
+function mapProjectRow(r: {
+  id: string;
+  name: string;
+  userId: string;
+  workspaceId: string | null;
+  createdAt: number | bigint;
+  isRestormelTesting?: boolean | null;
+}): Project {
   return {
     id: r.id,
     name: r.name,
     userId: r.userId,
     workspaceId: r.workspaceId ?? null,
     createdAt: Number(r.createdAt),
-  } as Project;
+    isRestormelTesting: r.isRestormelTesting === true,
+  };
+}
+
+export async function listProjects(userId: string): Promise<Project[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
+    FROM projects
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) =>
+    mapProjectRow(
+      r as {
+        id: string;
+        name: string;
+        userId: string;
+        workspaceId: string | null;
+        createdAt: number | bigint;
+        isRestormelTesting?: boolean | null;
+      },
+    ),
+  );
+}
+
+/** List projects in a workspace (for Management key scope). */
+export async function listProjectsByWorkspace(workspaceId: string): Promise<Project[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
+    FROM projects
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) =>
+    mapProjectRow(
+      r as {
+        id: string;
+        name: string;
+        userId: string;
+        workspaceId: string | null;
+        createdAt: number | bigint;
+        isRestormelTesting?: boolean | null;
+      },
+    ),
+  );
+}
+
+/** Get project if it belongs to the given workspace (for Management key scope). */
+export async function getProjectInWorkspace(projectId: string, workspaceId: string): Promise<Project | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
+    FROM projects
+    WHERE id = ${projectId} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return mapProjectRow(
+    r as {
+      id: string;
+      name: string;
+      userId: string;
+      workspaceId: string | null;
+      createdAt: number | bigint;
+      isRestormelTesting?: boolean | null;
+    },
+  );
 }
 
 /** Create project under user's default workspace; seeds dev and prod environments. */
@@ -414,46 +455,96 @@ export async function createProject(userId: string, name: string): Promise<Proje
       (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
       (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
   `;
-  return { id, name: projectName, userId, workspaceId: workspace.id, createdAt };
+  return {
+    id,
+    name: projectName,
+    userId,
+    workspaceId: workspace.id,
+    createdAt,
+    isRestormelTesting: false,
+  };
+}
+
+const RESTORMEL_TESTING_PROJECT_NAME = "Restormel Testing";
+
+/** Ensures a workspace-scoped Restormel Testing project exists (dev/prod envs, flagged row). Idempotent. */
+export async function ensureRestormelTestingProject(userId: string): Promise<Project> {
+  const sql = getSql();
+  const workspace = await getOrCreateDefaultWorkspace(userId);
+  const existing = await sql`
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
+    FROM projects
+    WHERE workspace_id = ${workspace.id} AND COALESCE(is_restormel_testing, false) = true
+    LIMIT 1
+  `;
+  if (existing.length > 0) {
+    const p = await getProject((existing[0] as { id: string }).id, userId);
+    if (p) return p;
+  }
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const envCreatedAt = Date.now();
+  await sql`
+    INSERT INTO projects (id, name, user_id, workspace_id, created_at, is_restormel_testing)
+    VALUES (${id}, ${RESTORMEL_TESTING_PROJECT_NAME}, ${userId}, ${workspace.id}, ${createdAt}, true)
+  `;
+  await sql`
+    INSERT INTO environments (id, project_id, name, type, created_at)
+    VALUES
+      (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
+      (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
+  `;
+  const out = await getProject(id, userId);
+  if (!out) throw new Error("Restormel Testing project not found after create");
+  return out;
 }
 
 /** Get project; returns null if not found or not owner */
 export async function getProject(projectId: string, userId: string): Promise<Project | null> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
     FROM projects
     WHERE id = ${projectId} AND user_id = ${userId}
   `;
   if (rows.length === 0) return null;
   const r = rows[0];
-  return {
-    id: r.id,
-    name: r.name,
-    userId: r.userId,
-    workspaceId: r.workspaceId ?? null,
-    createdAt: Number(r.createdAt),
-  } as Project;
+  return mapProjectRow(
+    r as {
+      id: string;
+      name: string;
+      userId: string;
+      workspaceId: string | null;
+      createdAt: number | bigint;
+      isRestormelTesting?: boolean | null;
+    },
+  );
 }
 
 /** Get project by id regardless of owner (use only after auth scope checks). */
 export async function getProjectById(projectId: string): Promise<Project | null> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt"
+    SELECT id, name, user_id AS "userId", workspace_id AS "workspaceId", created_at AS "createdAt",
+           COALESCE(is_restormel_testing, false) AS "isRestormelTesting"
     FROM projects
     WHERE id = ${projectId}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
   const r = rows[0];
-  return {
-    id: r.id,
-    name: r.name,
-    userId: r.userId,
-    workspaceId: r.workspaceId ?? null,
-    createdAt: Number(r.createdAt),
-  } as Project;
+  return mapProjectRow(
+    r as {
+      id: string;
+      name: string;
+      userId: string;
+      workspaceId: string | null;
+      createdAt: number | bigint;
+      isRestormelTesting?: boolean | null;
+    },
+  );
 }
 
 /** List environments for a project (caller must own project). */
@@ -760,12 +851,17 @@ export type ProviderIntegrationRecord = {
   displayName: string | null;
   status: string;
   verificationStatus: string | null;
+  /** Legacy non-secret label only; never an API key. */
   credentialRef: string | null;
   createdBy: string | null;
   createdAt: number;
   lastVerifiedAt: number | null;
   metadata: Record<string, unknown> | null;
   region: string | null;
+  /** True when ciphertext columns are set (encryption version greater than 0). */
+  hasEncryptedCredential?: boolean;
+  /** e.g. "openai ••••abcd" for UI; never the raw secret. */
+  credentialMasked?: string | null;
 };
 
 export type ProviderBindingRecord = {
@@ -780,6 +876,34 @@ export type ProviderBindingRecord = {
 
 const PROVIDER_INTEGRATION_DEFAULT_STATUS = "active";
 
+function mapProviderIntegrationPublic(r: Record<string, unknown>): ProviderIntegrationRecord {
+  const encVer = Number(r.credentialEncryptionVersion ?? 0);
+  const hasEnc = encVer > 0 && Boolean(r.credentialCiphertext);
+  const suffix = (r.secretDisplaySuffix as string | null | undefined) ?? null;
+  const masked =
+    hasEnc && suffix
+      ? `${String(r.providerType)} ••••${suffix}`
+      : hasEnc
+        ? `${String(r.providerType)} (saved)`
+        : null;
+  return {
+    id: r.id as string,
+    workspaceId: r.workspaceId as string,
+    providerType: r.providerType as string,
+    displayName: (r.displayName as string | null) ?? null,
+    status: (r.status as string) ?? PROVIDER_INTEGRATION_DEFAULT_STATUS,
+    verificationStatus: (r.verificationStatus as string | null) ?? null,
+    credentialRef: hasEnc ? null : ((r.credentialRef as string | null) ?? null),
+    createdBy: (r.createdBy as string | null) ?? null,
+    createdAt: Number(r.createdAt),
+    lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
+    metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+    region: (r.region as string | null) ?? null,
+    hasEncryptedCredential: hasEnc,
+    credentialMasked: masked,
+  };
+}
+
 /** List provider integrations for a workspace. */
 export async function listProviderIntegrations(workspaceId: string): Promise<ProviderIntegrationRecord[]> {
   const sql = getSql();
@@ -787,25 +911,15 @@ export async function listProviderIntegrations(workspaceId: string): Promise<Pro
     SELECT id, workspace_id AS "workspaceId", provider_type AS "providerType", display_name AS "displayName",
            status, verification_status AS "verificationStatus", credential_ref AS "credentialRef",
            created_by AS "createdBy", created_at AS "createdAt", last_verified_at AS "lastVerifiedAt",
-           metadata, region
+           metadata, region,
+           credential_ciphertext AS "credentialCiphertext",
+           credential_encryption_version AS "credentialEncryptionVersion",
+           secret_display_suffix AS "secretDisplaySuffix"
     FROM provider_integrations
     WHERE workspace_id = ${workspaceId}
     ORDER BY created_at DESC
   `;
-  return rows.map((r) => ({
-    id: r.id,
-    workspaceId: r.workspaceId,
-    providerType: r.providerType,
-    displayName: r.displayName ?? null,
-    status: r.status ?? PROVIDER_INTEGRATION_DEFAULT_STATUS,
-    verificationStatus: r.verificationStatus ?? null,
-    credentialRef: r.credentialRef ?? null,
-    createdBy: r.createdBy ?? null,
-    createdAt: Number(r.createdAt),
-    lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
-    metadata: r.metadata ?? null,
-    region: r.region ?? null,
-  })) as ProviderIntegrationRecord[];
+  return rows.map((r) => mapProviderIntegrationPublic(r as Record<string, unknown>));
 }
 
 /** Get one provider integration; returns null if not in workspace. */
@@ -818,35 +932,26 @@ export async function getProviderIntegration(
     SELECT id, workspace_id AS "workspaceId", provider_type AS "providerType", display_name AS "displayName",
            status, verification_status AS "verificationStatus", credential_ref AS "credentialRef",
            created_by AS "createdBy", created_at AS "createdAt", last_verified_at AS "lastVerifiedAt",
-           metadata, region
+           metadata, region,
+           credential_ciphertext AS "credentialCiphertext",
+           credential_encryption_version AS "credentialEncryptionVersion",
+           secret_display_suffix AS "secretDisplaySuffix"
     FROM provider_integrations
     WHERE id = ${id} AND workspace_id = ${workspaceId}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const r = rows[0];
-  return {
-    id: r.id,
-    workspaceId: r.workspaceId,
-    providerType: r.providerType,
-    displayName: r.displayName ?? null,
-    status: r.status ?? PROVIDER_INTEGRATION_DEFAULT_STATUS,
-    verificationStatus: r.verificationStatus ?? null,
-    credentialRef: r.credentialRef ?? null,
-    createdBy: r.createdBy ?? null,
-    createdAt: Number(r.createdAt),
-    lastVerifiedAt: r.lastVerifiedAt != null ? Number(r.lastVerifiedAt) : null,
-    metadata: r.metadata ?? null,
-    region: r.region ?? null,
-  } as ProviderIntegrationRecord;
+  return mapProviderIntegrationPublic(rows[0] as Record<string, unknown>);
 }
 
-/** Create provider integration. credentialRef only; no raw secrets. */
+/** Create provider integration. Use apiKey for encrypted at-rest storage; credentialRef for non-secret labels only. */
 export async function createProviderIntegration(params: {
   workspaceId: string;
   providerType: string;
   displayName?: string;
   credentialRef?: string;
+  /** Raw provider API key; encrypted with RESTORMEL_CREDENTIALS_ENCRYPTION_KEY. */
+  apiKey?: string;
   createdBy?: string;
   actorId: string;
   actorType: string;
@@ -856,10 +961,31 @@ export async function createProviderIntegration(params: {
   const createdAt = Date.now();
   const status = PROVIDER_INTEGRATION_DEFAULT_STATUS;
   const displayName = params.displayName?.trim() || null;
-  const credentialRef = params.credentialRef?.trim() || null;
+  let credentialRef: string | null = params.credentialRef?.trim() || null;
+  let ciphertext: string | null = null;
+  let iv: string | null = null;
+  let authTag: string | null = null;
+  let encVersion = 0;
+  let secretSuffix: string | null = null;
+
+  if (params.apiKey !== undefined && params.apiKey.trim() !== "") {
+    const enc = encryptProviderSecret(params.apiKey.trim());
+    if (!enc.ok) {
+      throw new Error(enc.error);
+    }
+    ciphertext = enc.payload.ciphertextB64;
+    iv = enc.payload.ivB64;
+    authTag = enc.payload.authTagB64;
+    encVersion = enc.payload.encryptionVersion;
+    secretSuffix = secretDisplaySuffix(params.apiKey.trim());
+    credentialRef = null;
+  }
+
   await sql`
-    INSERT INTO provider_integrations (id, workspace_id, provider_type, display_name, status, credential_ref, created_by, created_at)
-    VALUES (${id}, ${params.workspaceId}, ${params.providerType}, ${displayName}, ${status}, ${credentialRef}, ${params.createdBy ?? null}, ${createdAt})
+    INSERT INTO provider_integrations (id, workspace_id, provider_type, display_name, status, credential_ref, created_by, created_at,
+      credential_ciphertext, credential_iv, credential_auth_tag, credential_encryption_version, secret_display_suffix)
+    VALUES (${id}, ${params.workspaceId}, ${params.providerType}, ${displayName}, ${status}, ${credentialRef}, ${params.createdBy ?? null}, ${createdAt},
+      ${ciphertext}, ${iv}, ${authTag}, ${encVersion}, ${secretSuffix})
   `;
   try {
     await insertAuditEvent({
@@ -878,6 +1004,39 @@ export async function createProviderIntegration(params: {
   const out = await getProviderIntegration(id, params.workspaceId);
   if (!out) throw new Error("Provider integration not found after insert");
   return out;
+}
+
+/** Internal: load ciphertext row for decrypt (resolve path). Not for API responses. */
+export async function getProviderIntegrationSecretRow(
+  id: string,
+  workspaceId: string
+): Promise<{
+  providerType: string;
+  credentialCiphertext: string | null;
+  credentialIv: string | null;
+  credentialAuthTag: string | null;
+  credentialEncryptionVersion: number;
+} | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT provider_type AS "providerType",
+           credential_ciphertext AS "credentialCiphertext",
+           credential_iv AS "credentialIv",
+           credential_auth_tag AS "credentialAuthTag",
+           COALESCE(credential_encryption_version, 0) AS "credentialEncryptionVersion"
+    FROM provider_integrations
+    WHERE id = ${id} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0] as Record<string, unknown>;
+  return {
+    providerType: r.providerType as string,
+    credentialCiphertext: (r.credentialCiphertext as string | null) ?? null,
+    credentialIv: (r.credentialIv as string | null) ?? null,
+    credentialAuthTag: (r.credentialAuthTag as string | null) ?? null,
+    credentialEncryptionVersion: Number(r.credentialEncryptionVersion ?? 0),
+  };
 }
 
 /** Update provider integration (display name, status, verification). No raw credential. */
@@ -1503,6 +1662,9 @@ async function ensureProjectModelBindingsSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_project_model_bindings_project_enabled
       ON project_model_bindings(project_id, enabled)
     `;
+    await sql`
+      ALTER TABLE project_model_bindings ADD COLUMN IF NOT EXISTS keys_logical_ref TEXT
+    `;
   })();
   return ensuredProjectModelBindingsSchema;
 }
@@ -1518,6 +1680,8 @@ export type ProjectModelBindingRecord = {
   bindingKind: ProjectModelBindingKind;
   createdAt: string;
   updatedAt: string;
+  /** Maps ref:restormel-keys:… for Testing resolve. */
+  keysLogicalRef?: string | null;
 };
 
 function mapProjectModelBindingRow(r: Record<string, unknown>): ProjectModelBindingRecord {
@@ -1533,6 +1697,7 @@ function mapProjectModelBindingRow(r: Record<string, unknown>): ProjectModelBind
     bindingKind: bk,
     createdAt: new Date(ca).toISOString(),
     updatedAt: new Date(ua).toISOString(),
+    keysLogicalRef: (r.keysLogicalRef as string | null | undefined) ?? null,
   };
 }
 
@@ -1543,7 +1708,8 @@ export async function listProjectModelBindings(projectId: string): Promise<Proje
   const rows = await sql`
     SELECT id, project_id AS "projectId", provider_type AS "providerType",
            model_id AS "modelId", enabled, binding_kind AS "bindingKind",
-           created_at AS "createdAt", updated_at AS "updatedAt"
+           created_at AS "createdAt", updated_at AS "updatedAt",
+           keys_logical_ref AS "keysLogicalRef"
     FROM project_model_bindings
     WHERE project_id = ${projectId}
     ORDER BY provider_type ASC, model_id ASC
@@ -1560,7 +1726,8 @@ export async function getProjectModelBinding(
   const rows = await sql`
     SELECT id, project_id AS "projectId", provider_type AS "providerType",
            model_id AS "modelId", enabled, binding_kind AS "bindingKind",
-           created_at AS "createdAt", updated_at AS "updatedAt"
+           created_at AS "createdAt", updated_at AS "updatedAt",
+           keys_logical_ref AS "keysLogicalRef"
     FROM project_model_bindings
     WHERE id = ${bindingId} AND project_id = ${projectId}
     LIMIT 1
@@ -1576,23 +1743,47 @@ export async function upsertProjectModelBinding(
   projectId: string,
   canonicalProviderType: string,
   modelId: string,
-  bindingKind: ProjectModelBindingKind = "execution"
+  bindingKind: ProjectModelBindingKind = "execution",
+  keysLogicalRef?: string | null
 ): Promise<ProjectModelBindingRecord> {
   await ensureProjectModelBindingsSchema();
   const sql = getSql();
   const now = Date.now();
   const newId = crypto.randomUUID();
+  const lr = keysLogicalRef?.trim() || null;
   const rows = await sql`
-    INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, binding_kind, created_at, updated_at)
-    VALUES (${newId}, ${projectId}, ${canonicalProviderType}, ${modelId}, true, ${bindingKind}, ${now}, ${now})
+    INSERT INTO project_model_bindings (id, project_id, provider_type, model_id, enabled, binding_kind, created_at, updated_at, keys_logical_ref)
+    VALUES (${newId}, ${projectId}, ${canonicalProviderType}, ${modelId}, true, ${bindingKind}, ${now}, ${now}, ${lr})
     ON CONFLICT (project_id, provider_type, model_id) DO UPDATE SET
       enabled = true,
       binding_kind = ${bindingKind},
+      keys_logical_ref = COALESCE(EXCLUDED.keys_logical_ref, project_model_bindings.keys_logical_ref),
       updated_at = ${now}
     RETURNING id, project_id AS "projectId", provider_type AS "providerType",
       model_id AS "modelId", enabled, binding_kind AS "bindingKind",
-      created_at AS "createdAt", updated_at AS "updatedAt"
+      created_at AS "createdAt", updated_at AS "updatedAt",
+      keys_logical_ref AS "keysLogicalRef"
   `;
+  return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
+}
+
+/** Lookup by Restormel Testing logical ref (e.g. ref:restormel-keys:llm/primary). */
+export async function getProjectModelBindingByLogicalRef(
+  projectId: string,
+  keysLogicalRef: string
+): Promise<ProjectModelBindingRecord | null> {
+  await ensureProjectModelBindingsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, project_id AS "projectId", provider_type AS "providerType",
+           model_id AS "modelId", enabled, binding_kind AS "bindingKind",
+           created_at AS "createdAt", updated_at AS "updatedAt",
+           keys_logical_ref AS "keysLogicalRef"
+    FROM project_model_bindings
+    WHERE project_id = ${projectId} AND keys_logical_ref = ${keysLogicalRef} AND enabled = true
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
   return mapProjectModelBindingRow(rows[0] as Record<string, unknown>);
 }
 

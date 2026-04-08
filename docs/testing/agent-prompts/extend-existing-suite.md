@@ -12,7 +12,7 @@ Add a **small number** of new goals to an existing config **without** breaking n
 ## What the coding agent should inspect first
 
 - **`restormel-testing.yaml`** / **`restormel-testing.json`** end-to-end.
-- Existing **`suites[].id`**, **`goals[].id`**, **`environments`**, **`timeouts`**, **`retries`** (ignore non-empty **`adapter_hooks`** / **preconditions** / **cleanup** — they fail validate in MVP).
+- Existing **`suites[].id`**, **`goals[].id`**, **`environments`**, **`timeouts`**, **`retries`**, and any **`adapter_hooks`** / **`preconditions`** / **`cleanup`** (runner executes them — do not remove unless asked).
 - Related **routes/tests/docs** for the new journey only.
 - [`docs/writing-good-goals.md`](../writing-good-goals.md) for criteria style.
 
@@ -30,11 +30,11 @@ Task:
 - Add only the new goals (or one new suite) the user described—default to adding goals inside the existing suite they name (e.g. web-critical).
 - Reuse the same environment conventions and success_criteria patterns already present in the file.
 - Prefer deterministic success criteria consistent with existing goals.
-- Do not add preconditions, cleanup, or non-empty adapter_hooks (MVP validate rejects them).
+- Do not add preconditions, cleanup, or new adapter_hooks unless the user asked for YAML-local shell setup.
 
 Allowed to modify:
 - restormel-testing.yaml and/or restormel-testing.json
-- scripts/testing/* only for unrelated user-requested helpers — do not declare new adapter_hooks in YAML
+- scripts/testing/* only for unrelated user-requested helpers — do not declare new adapter_hooks in YAML unless the user asked
 
 Do not:
 - Redesign the top-level schema, rename existing suite/goal ids, or reformat unrelated sections “for cleanliness” without cause.
@@ -42,7 +42,7 @@ Do not:
 - Change application source outside Testing config/scripts.
 - Remove or weaken existing goals.
 - Introduce secrets into YAML.
-- Add preconditions, cleanup, or executable adapter_hooks entries.
+- Add preconditions, cleanup, or executable adapter_hooks entries without an explicit user request.
 
 Deliverables:
 1. List of new goal ids and one-line outcome descriptions.

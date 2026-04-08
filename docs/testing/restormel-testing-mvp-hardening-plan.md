@@ -68,7 +68,7 @@
 
 | # | Task | Acceptance criteria |
 |---|------|---------------------|
-| 3.1 | **Preconditions / cleanup / adapter_hooks:** choose **A** implement minimal executor (shell commands from `adapter_hooks` map, keyed by hook id) **B** `validate` **error** if non-empty hooks/preconditions/cleanup **C** warn-only. Recommendation: **B or minimal A** — avoid silent no-op. | YAML + tests in `packages/config` / `packages/runner`. |
+| 3.1 | **Preconditions / cleanup / adapter_hooks:** choose **A** implement minimal executor (shell commands from `adapter_hooks` map, keyed by hook id) **B** `validate` **error** if non-empty hooks/preconditions/cleanup **C** warn-only. Recommendation: **B or minimal A** — avoid silent no-op. **Status:** minimal **A** implemented in `packages/testing-runner` + `packages/testing-config` (see [config-reference-mvp.md](config-reference-mvp.md)). | YAML + tests in `packages/config` / `packages/runner`. |
 | 3.2 | **Auth/session for Plot:** smallest credible story — e.g. `storageStatePath` env or config key + Playwright `storageState` in browser session factory **or** document “manual cookie injection” for MVP. | One worked example in docs; no full IAM. |
 
 **Defer:** Full `auth_mode` matrix, Keys session exchange, multi-tenant fixtures.

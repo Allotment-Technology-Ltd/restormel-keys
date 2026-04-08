@@ -13,6 +13,12 @@
       <li><strong>Node.js</strong> — 20.x (engines field on the web app matches the Restormel module default).</li>
       <li><strong>pnpm</strong> — 9.x workspaces for authoring; consumers may use other managers once packages publish.</li>
       <li><strong>Browser automation</strong> — Playwright (MVP default adaptor).</li>
+      <li>
+        <strong>Goal types</strong> — <code>browser</code> is the primary path; <code>performance</code> uses the same navigation contract and
+        supports in-page Web Vitals checks plus optional Lighthouse category paths in <code>structured_checks</code> (see
+        <a href="{base}/docs/guides/performance-goals">Performance goals</a>). <code>native</code> (Maestro / Appium-style) is not supported yet
+        (<a href="{base}/docs/architecture">Architecture</a>).
+      </li>
       <li><strong>CI</strong> — GitHub Actions first; other runners supported via CLI invocation.</li>
     </ul>
     <p>For Keys compatibility (frameworks, gateways, providers), see Keys’ own compatibility and integration guides.</p>

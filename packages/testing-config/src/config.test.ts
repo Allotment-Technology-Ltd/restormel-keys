@@ -281,7 +281,7 @@ suites:
     expect(r.errors.some((e) => e.code === "io")).toBe(true);
   });
 
-  it("rejects non-empty adapter_hooks (MVP runner does not execute them)", () => {
+  it("accepts adapter_hooks and preconditions (runner executes them unless RESTORMEL_TESTING_SKIP_SHELL_HOOKS=1)", () => {
     const r = validateConfigDocument({
       schema_version: "1",
       environments: { local: { base_url: "https://example.com" } },
@@ -295,19 +295,17 @@ suites:
               id: "g1",
               type: "browser",
               description: "d",
+              preconditions: ["echo precondition"],
               success_criteria: { url_matches: "/" },
             },
           ],
         },
       ],
     });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.errors.some((e) => e.code === "unsupported_mvp" && e.path === "adapter_hooks")).toBe(true);
-    }
+    expect(r.ok).toBe(true);
   });
 
-  it("rejects goal preconditions (MVP runner does not execute them)", () => {
+  it("rejects any_of with fewer than two branches", () => {
     const r = validateConfigDocument({
       schema_version: "1",
       environments: { local: { base_url: "https://example.com" } },
@@ -320,18 +318,38 @@ suites:
               id: "g1",
               type: "browser",
               description: "d",
-              preconditions: ["seed-db"],
-              success_criteria: { url_matches: "/" },
+              success_criteria: {
+                any_of: [{ url_matches: "/" }],
+              },
             },
           ],
         },
       ],
     });
     expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.errors.some((e) => e.code === "unsupported_mvp" && e.path.includes("preconditions"))).toBe(
-        true,
-      );
-    }
+  });
+
+  it("accepts any_of with two branches", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              success_criteria: {
+                any_of: [{ dom_signals: ["#a"] }, { dom_signals: ["#b"] }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
   });
 });

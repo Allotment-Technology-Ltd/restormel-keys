@@ -3,14 +3,14 @@ import type { KeysHttpResolveResponseBody, KeysResolutionTransport, KeysTranspor
 function isResolveBody(x: unknown): x is KeysHttpResolveResponseBody {
   if (x === null || typeof x !== "object") return false;
   const o = x as Record<string, unknown>;
-  return (
-    typeof o.provider === "string" &&
-    typeof o.model === "string" &&
-    typeof o.secretEnvVar === "string" &&
-    o.provider.length > 0 &&
-    o.model.length > 0 &&
-    o.secretEnvVar.length > 0
-  );
+  if (typeof o.provider !== "string" || typeof o.model !== "string" || typeof o.secretEnvVar !== "string") {
+    return false;
+  }
+  if (!o.provider || !o.model || !o.secretEnvVar) return false;
+  if (o.secretEnvVar === "RESTORMEL_HOSTED_INLINE") {
+    return typeof o.inlineApiKey === "string" && o.inlineApiKey.length > 0;
+  }
+  return true;
 }
 
 /**
@@ -71,6 +71,7 @@ export function createHttpKeysTransport(options: {
         model: body.model,
         secretEnvVar: body.secretEnvVar,
         baseUrl: typeof body.baseUrl === "string" ? body.baseUrl : undefined,
+        inlineApiKey: typeof body.inlineApiKey === "string" ? body.inlineApiKey : undefined,
       };
     },
   };

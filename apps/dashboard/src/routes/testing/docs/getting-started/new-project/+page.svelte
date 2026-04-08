@@ -35,8 +35,8 @@
     <pre>pnpm exec testing init{"\n"}pnpm exec testing doctor --config restormel-testing.yaml{"\n"}pnpm exec testing validate --config restormel-testing.yaml</pre>
     <p>
       The snippet assumes this monorepo after <code>pnpm install</code> and <code>pnpm run build:testing-packages</code>. For install from npm once
-      published, see <a href={`${githubRepoUrl}/blob/main/docs/oss-consumption.md`} rel="noopener noreferrer"
-        ><code>docs/oss-consumption.md</code></a>.
+      published, see <a href={`${githubRepoUrl}/blob/main/docs/testing/oss-consumption.md`} rel="noopener noreferrer"
+        ><code>docs/testing/oss-consumption.md</code></a>.
     </p>
   </div>
 </DocArticle>

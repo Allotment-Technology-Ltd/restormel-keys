@@ -20,7 +20,8 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `/keys/dashboard/projects/[id]/routes` — Routes for project
 - `/keys/dashboard/projects/[id]/routes/[routeId]` — Route detail (steps, default model, lifecycle warnings)
 - `/keys/dashboard/access` — **Access**: list/create/revoke Gateway Keys (across projects)
-- `/keys/dashboard/integrations` — **Provider Integrations**: connect OpenAI, Anthropic, Google, etc.
+- `/keys/dashboard/integrations` — **Connections**: connect providers; optional **hosted API key** (encrypted at rest) or vault **credential reference**
+- `/keys/dashboard/testing` — **Restormel Testing**: project/environment IDs, Gateway key reminder, copy-ready `RESTORMEL_*` snippets ([keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md))
 - `/keys/dashboard/models` — **Models**: catalog (lifecycle, variants)
 - `/keys/dashboard/routes` — **Routes**: list routes across projects
 - `/keys/dashboard/policies` — **Policies**: list/create policies
@@ -52,6 +53,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 | `FEEDBACK_GITHUB_TOKEN` | Optional | GitHub PAT with `issues:write` for feedback issue creation from `/keys/dashboard/api/feedback`. If unset, feedback is logged locally and API still returns `200`. |
 | `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `Allotment-Technology-Ltd/restormel-keys`. |
 | `RESTORMEL_SERVICE_ADMIN_USER_IDS` | Optional | Comma-separated Better Auth user IDs for **service operators**: subscription-style limits and Pro UI gates waived. See [docs/runbooks/service-admin-operators.md](../../docs/runbooks/service-admin-operators.md). Also supports Neon Auth `user.role` (`admin`, `operator`, …) and `service_admins` table. |
+| `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` | Optional | **Required** to store **hosted API keys** under Connections (32-byte key, base64-encoded). If unset, POST with `apiKey` returns **503** `server_misconfigured`. See [docs/security-baseline.md](../../docs/security-baseline.md). |
 
 ### Dashboard UI feature flags (optional)
 
@@ -67,9 +69,9 @@ Example (minimal in-browser surface: overview + Access + Profile only):
 
 Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
 
-Run migrations in `migrations/` (001 through `021_project_model_bindings_kind.sql` as needed) against the Neon database.
+Run migrations in `migrations/` (001 through `026` as needed) against the Neon database. Provider credential encryption and Testing project flags: `024`–`026`.
 
 ## Terminology
 
 - **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
-- **Provider credential** — Your OpenAI/Anthropic/Google etc. key. In v1, prefer gateway-backed access (OpenRouter/Vercel AI Gateway/Portkey) or keep provider keys in your own env/secret manager; Restormel stays the control layer.
+- **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_KEYS_API_TOKEN`. See [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).

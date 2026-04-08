@@ -259,9 +259,9 @@
     <h2 id="dashboard-access-heading" class="section-title">Dashboard access</h2>
     <p class="section-desc">
       {#if data.signedIn}
-        You’re signed in. Use the dashboard to configure projects, routes, policies, and integrations.
+        You’re signed in. Use the dashboard to configure projects, routes, policies, and connections.
       {:else}
-        Sign in with GitHub to configure projects, routes, policies, and integrations in the dashboard UI.
+        Sign in with GitHub to configure projects, routes, policies, and connections in the dashboard UI.
       {/if}
     </p>
     {#if data.signedIn}
@@ -274,7 +274,9 @@
   <section class="section" aria-labelledby="provider-creds-heading">
     <h2 id="provider-creds-heading" class="section-title">Provider credentials</h2>
     <p class="section-desc">
-      Provider credentials (OpenAI, Anthropic, etc.) are separate from API keys. By default, keep provider credentials in your own env vars or secret manager - not pasted into Restormel. See Provider access modes for the decision tree.
+      Provider credentials (OpenAI, Anthropic, etc.) are separate from Gateway keys. Keep them in your env or secret manager, use a vault
+      <strong>reference</strong> in Connections, or (when encryption is enabled on this deployment) store a <strong>hosted API key</strong>
+      encrypted at rest for flows like Restormel Testing resolve. See Provider access modes for the decision tree.
     </p>
     <a href="/keys/docs/guides/provider-access-modes" class="btn btn-secondary">Provider access modes</a>
   </section>

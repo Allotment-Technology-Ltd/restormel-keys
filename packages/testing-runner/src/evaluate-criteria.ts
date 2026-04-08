@@ -1,6 +1,7 @@
 import type { Page } from "playwright";
 import type { JudgeRubric, SuccessCriteria, Verdict } from "@restormel/testing-core";
 import type { ResolvedModel } from "@restormel/testing-keys-adapter";
+import { evaluateLighthouseStructuredCheck, parseLighthouseStructuredPath } from "./lighthouse-structured-check.js";
 
 export interface CriteriaEvaluation {
   verdict: Verdict;
@@ -29,6 +30,34 @@ export async function evaluateBrowserSuccessCriteria(
     judgeModel?: ResolvedModel;
   },
 ): Promise<CriteriaEvaluation> {
+  if (criteria.anyOf !== undefined && criteria.anyOf.length > 0) {
+    const failures: CriteriaEvaluation[] = [];
+    for (let i = 0; i < criteria.anyOf.length; i++) {
+      const branch = criteria.anyOf[i]!;
+      const r = await evaluateBrowserSuccessCriteria(page, branch, options);
+      if (r.verdict === "passed") {
+        return {
+          verdict: "passed",
+          reasonCode: "ANY_OF_BRANCH_PASSED",
+          summary: `any_of: branch ${i + 1} satisfied (${r.reasonCode})`,
+        };
+      }
+      failures.push(r);
+    }
+    if (failures.every((f) => f.verdict === "failed")) {
+      return {
+        verdict: "failed",
+        reasonCode: "ANY_OF_ALL_FAILED",
+        summary: `any_of: all ${failures.length} branches failed`,
+      };
+    }
+    return {
+      verdict: "indeterminate",
+      reasonCode: "ANY_OF_NONE_PASSED",
+      summary: `any_of: no branch passed (${failures.map((f) => f.reasonCode).join(", ")})`,
+    };
+  }
+
   const url = page.url();
 
   if (criteria.urlMatches !== undefined) {
@@ -96,24 +125,8 @@ export async function evaluateBrowserSuccessCriteria(
 
   if (criteria.structuredChecks !== undefined && criteria.structuredChecks.length > 0) {
     for (const check of criteria.structuredChecks) {
-      const parsed = parseStructuredPath(check.path);
-      if (!parsed) {
-        return {
-          verdict: "indeterminate",
-          reasonCode: "STRUCTURED_PATH_UNKNOWN",
-          summary: `Unsupported structured check path ${JSON.stringify(truncate(check.path, 120))}`,
-        };
-      }
-      if (parsed.kind === "css") {
-        const text = await page.locator(parsed.selector).first().innerText().catch(() => "");
-        if (!structuredExpectOk(text, check.expect)) {
-          return {
-            verdict: "failed",
-            reasonCode: "STRUCTURED_MISMATCH",
-            summary: `Structured check ${check.id ?? parsed.selector} did not match expected value`,
-          };
-        }
-      }
+      const vit = await evaluateVitalOrCssCheck(page, check);
+      if (vit) return vit;
     }
   }
 
@@ -142,6 +155,7 @@ export async function evaluateBrowserSuccessCriteria(
 
 function hasAnyCriterion(c: SuccessCriteria): boolean {
   return (
+    (c.anyOf != null && c.anyOf.length > 0) ||
     c.urlMatches != null ||
     (c.domSignals != null && c.domSignals.length > 0) ||
     (c.textPresent != null && c.textPresent.length > 0) ||
@@ -149,6 +163,147 @@ function hasAnyCriterion(c: SuccessCriteria): boolean {
     (c.structuredChecks != null && c.structuredChecks.length > 0) ||
     c.judgeRubric != null
   );
+}
+
+async function evaluateVitalOrCssCheck(page: Page, check: { path: string; id?: string; expect?: unknown }): Promise<CriteriaEvaluation | null> {
+  const path = check.path.trim();
+  const vital = parseVitalPath(path);
+  if (vital) {
+    return evaluateVitalCheck(page, vital, check);
+  }
+  const pl = path.toLowerCase();
+  const lhCats = parseLighthouseStructuredPath(path);
+  if (lhCats !== null) {
+    return evaluateLighthouseStructuredCheck(page.url(), check, lhCats);
+  }
+  if (pl.startsWith("lighthouse:") || pl.startsWith("lh:")) {
+    return {
+      verdict: "indeterminate",
+      reasonCode: "LIGHTHOUSE_PATH_UNKNOWN",
+      summary: `Unknown Lighthouse structured check path ${JSON.stringify(truncate(check.path, 120))}`,
+    };
+  }
+  const parsed = parseStructuredPath(path);
+  if (!parsed) {
+    return {
+      verdict: "indeterminate",
+      reasonCode: "STRUCTURED_PATH_UNKNOWN",
+      summary: `Unsupported structured check path ${JSON.stringify(truncate(check.path, 120))}`,
+    };
+  }
+  if (parsed.kind === "css") {
+    const text = await page.locator(parsed.selector).first().innerText().catch(() => "");
+    if (!structuredExpectOk(text, check.expect)) {
+      return {
+        verdict: "failed",
+        reasonCode: "STRUCTURED_MISMATCH",
+        summary: `Structured check ${check.id ?? parsed.selector} did not match expected value`,
+      };
+    }
+  }
+  return null;
+}
+
+type VitalKind = "lcp" | "fcp" | "cls";
+
+function parseVitalPath(path: string): VitalKind | null {
+  const p = path.toLowerCase();
+  if (p === "vital:lcp" || p === "web_vitals:lcp") return "lcp";
+  if (p === "vital:fcp" || p === "web_vitals:fcp") return "fcp";
+  if (p === "vital:cls" || p === "web_vitals:cls") return "cls";
+  return null;
+}
+
+async function evaluateVitalCheck(
+  page: Page,
+  kind: VitalKind,
+  check: { id?: string; expect?: unknown },
+): Promise<CriteriaEvaluation> {
+  const maxMs =
+    typeof check.expect === "number" && Number.isFinite(check.expect) ? check.expect : kind === "cls" ? 0.1 : 2500;
+  const label = check.id ?? `vital:${kind}`;
+
+  try {
+    if (kind === "lcp") {
+      const ms = await page.evaluate(() => {
+        const entries = (
+          performance.getEntriesByType as (t: string) => Array<{
+            startTime: number;
+            renderTime?: number;
+            loadTime?: number;
+          }>
+        )("largest-contentful-paint");
+        const last = entries[entries.length - 1];
+        if (!last) return null;
+        const t = last.renderTime ?? last.loadTime ?? last.startTime;
+        return typeof t === "number" && t > 0 ? t : null;
+      });
+      if (ms == null) {
+        return {
+          verdict: "indeterminate",
+          reasonCode: "VITAL_LCP_MISSING",
+          summary: `${label}: no LCP entry (try waiting for load)`,
+        };
+      }
+      if (ms > maxMs) {
+        return {
+          verdict: "failed",
+          reasonCode: "VITAL_LCP_SLOW",
+          summary: `${label}: LCP ${Math.round(ms)}ms exceeds max ${maxMs}ms`,
+        };
+      }
+      return { verdict: "passed", reasonCode: "VITAL_LCP_OK", summary: `${label}: LCP ${Math.round(ms)}ms` };
+    }
+
+    if (kind === "fcp") {
+      const ms = await page.evaluate(() => {
+        const entries = performance.getEntriesByName("first-contentful-paint");
+        const e = entries[0];
+        return e && typeof e.startTime === "number" ? e.startTime : null;
+      });
+      if (ms == null) {
+        return {
+          verdict: "indeterminate",
+          reasonCode: "VITAL_FCP_MISSING",
+          summary: `${label}: no FCP entry`,
+        };
+      }
+      if (ms > maxMs) {
+        return {
+          verdict: "failed",
+          reasonCode: "VITAL_FCP_SLOW",
+          summary: `${label}: FCP ${Math.round(ms)}ms exceeds max ${maxMs}ms`,
+        };
+      }
+      return { verdict: "passed", reasonCode: "VITAL_FCP_OK", summary: `${label}: FCP ${Math.round(ms)}ms` };
+    }
+
+    const cls = await page.evaluate(() => {
+      const entries = (performance.getEntriesByType as (t: string) => Array<{ value?: number; hadRecentInput?: boolean }>)(
+        "layout-shift",
+      );
+      let score = 0;
+      for (const e of entries) {
+        if (e.hadRecentInput === true) continue;
+        score += e.value ?? 0;
+      }
+      return score;
+    });
+    if (cls > maxMs) {
+      return {
+        verdict: "failed",
+        reasonCode: "VITAL_CLS_HIGH",
+        summary: `${label}: CLS ${cls.toFixed(3)} exceeds max ${maxMs}`,
+      };
+    }
+    return { verdict: "passed", reasonCode: "VITAL_CLS_OK", summary: `${label}: CLS ${cls.toFixed(3)}` };
+  } catch (e) {
+    return {
+      verdict: "indeterminate",
+      reasonCode: "VITAL_EVAL_ERROR",
+      summary: `${label}: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
 }
 
 function parseStructuredPath(path: string): { kind: "css"; selector: string } | null {

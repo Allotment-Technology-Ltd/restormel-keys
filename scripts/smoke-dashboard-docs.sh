@@ -33,8 +33,14 @@ for i in $(seq 1 30); do
 done
 
 FAILED=0
-for path in "/keys/docs" "/keys/docs/walkthrough/phase-0-inventory" \
-  "/keys/docs/walkthrough/phase-2-resolve" "/keys/docs/walkthrough/phase-3-routes"; do
+for path in "/keys/docs" "/keys/docs/guides/keys-testing-onboarding" "/keys/docs/walkthrough/phase-0-inventory" \
+  "/keys/docs/walkthrough/phase-2-resolve" "/keys/docs/walkthrough/phase-3-routes" \
+  "/testing" "/testing/docs" "/testing/docs/guides/plot-dogfooding" \
+  "/testing/docs/guides/ci" "/testing/docs/architecture" "/testing/docs/compatibility" \
+  "/testing/docs/guides/ci-security" "/testing/docs/guides/http-runs-and-actions" \
+  "/testing/docs/guides/performance-goals" "/testing/docs/getting-started/existing-stack" \
+  "/testing/docs/guides/keys-ci-checklist" \
+  "/testing/docs/guides/keys-dashboard-onboarding"; do
   CODE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE}${path}" 2>/dev/null || echo "000")
   if [ "$CODE" = "000" ] || [ "${CODE#5}" != "$CODE" ]; then
     echo "[smoke] FAIL ${path} → ${CODE}"

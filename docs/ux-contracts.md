@@ -23,7 +23,7 @@ Site, docs, and dashboard are one app at restormel.dev (dashboard at `/keys/dash
 
 - **Marketing (site):** Nav links → Keys, Docs, Pricing, GitHub, Dashboard. Footer → same + Dashboard.
 - **Docs (in-app):** Sidebar → Overview, Framework compatibility, Cloud API; Product → Dashboard, Sign in.
-- **Dashboard:** Sidebar → Overview, Projects, Access, Provider Integrations, Models, Routes, Policies, Analytics, Logs & Traces, Lifecycle & Migrations, Sandbox, Documentation, Profile; topbar → Sign in (when logged out) or account menu (avatar) when signed in.
+- **Dashboard:** Sidebar groups include **Set Up** (Connections, Restormel Testing, Rules, Guard Rails, Model Catalog), **Monitor**, **Advanced** (Gateway keys, Test & Preview, GitHub Setup, Dev Tools), plus Overview and Profile; topbar → Sign in (when logged out) or account menu (avatar) when signed in. **Connections** = `/keys/dashboard/integrations` (provider integrations; hosted encrypted keys and/or vault references).
 
 Shared nav schema: site nav, docs sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md) (SSO and same links).
 
@@ -36,11 +36,12 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 | Term           | Use for |
 |----------------|---------|
 | **Gateway Key**      | The credential your app, CLI, or SDK uses to authenticate to Restormel (Cloud API). Created in the dashboard (Access); format `rk_...`. Not the same as a provider credential. |
-| **Provider credential** | Your OpenAI, Anthropic, Google, or other provider API key. Stored in Restormel (Provider Integrations) so Restormel can route requests on your behalf. Optional; you can use Gateway Key only or both. |
+| **Provider credential** | Your OpenAI, Anthropic, Google, or other provider API key. Under **Connections**, stored **encrypted at rest** (hosted key) or as a **non-secret vault reference**; list/API responses are **masked** only. Optional; you can use Gateway Key only or both. |
 | **Workspace**        | Top-level account boundary; one default workspace per user, created when you sign in. |
 | **Project**          | Container for Gateway keys, routes, and usage. One per app or product. |
 | **Environment**      | Dev, staging, prod (or similar) within a project. |
-| **Provider integration** | A connected provider (OpenAI, Anthropic, etc.) and its credential reference; managed under Provider Integrations. |
+| **Provider integration** | A connected provider (OpenAI, Anthropic, etc.) with hosted encrypted key and/or credential reference; managed under **Connections**. |
+| **Restormel Testing** (dashboard) | Hub at `/keys/dashboard/testing` for the auto-provisioned Testing **project**, environment IDs, and env snippets (with Gateway keys for CLI/CI). |
 | **Route**            | Per-project/environment: which model(s), fallbacks, and billing mode. |
 | **Models**           | The model catalog (canonical models and provider variants). |
 | **Analytics**        | Request count, latency, error rate, usage by provider/model/route. |

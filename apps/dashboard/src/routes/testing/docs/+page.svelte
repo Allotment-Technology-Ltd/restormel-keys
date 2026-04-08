@@ -1,6 +1,6 @@
 <script lang="ts">
   import { testingBase as base } from "$lib/testing/paths.js";
-  import { githubRepoUrl, keysDocsUrl, keysHomeUrl } from "$lib/testing/site.js";
+  import { githubRepoUrl, keysDocsUrl, keysHomeUrl, keysTestingOnboardingUrl } from "$lib/testing/site.js";
 
   const journeys = [
     {
@@ -36,13 +36,32 @@
     { href: `${base}/docs/guides/config`, label: "Configuration", hint: "`restormel-testing.yaml`" },
     { href: `${base}/docs/guides/test-definition`, label: "Test definition", hint: "Suites, goals, success criteria" },
     { href: `${base}/docs/integrations/keys`, label: "Keys integration", hint: "BYOK seam" },
+    {
+      href: keysTestingOnboardingUrl,
+      label: "Keys + Testing onboarding",
+      hint: "Connections, Testing hub, CLI env",
+    },
+    { href: `${base}/docs/guides/keys-dashboard-onboarding`, label: "Keys + Testing (from Testing docs)", hint: "Links into Keys dashboard" },
     { href: `${base}/docs/guides/ci`, label: "CI guide", hint: "GitHub Actions" },
+    {
+      href: `${base}/docs/getting-started/existing-stack`,
+      label: "Existing stack (monorepo recipe)",
+      hint: "pnpm, Playwright, storage state",
+    },
+    { href: `${base}/docs/guides/keys-ci-checklist`, label: "Keys in CI", hint: "When RESTORMEL_KEYS_* is required" },
+    { href: `${base}/docs/guides/ci-security`, label: "Fork PRs & triggers", hint: "pull_request vs pull_request_target" },
+    { href: `${base}/docs/guides/http-runs-and-actions`, label: "HTTP runs vs Action", hint: "No /v1/runs in MVP" },
+    { href: `${base}/docs/guides/performance-goals`, label: "Performance goals", hint: "Vitals + Lighthouse paths" },
     { href: `${base}/docs/architecture`, label: "Architecture", hint: "Packages and boundaries" },
     { href: `${base}/docs/guides/plot-dogfooding`, label: "Plot dogfooding", hint: "First real suite" },
     { href: `${base}/docs/examples`, label: "Examples", hint: "Reference layouts" },
     { href: keysDocsUrl, label: "Keys docs (canonical)", hint: "Env vocabulary, resolve API" },
     { href: keysHomeUrl, label: "Restormel Keys", hint: "Suite product home" },
-    { href: `${githubRepoUrl}/tree/main/docs`, label: "Repo docs folder", hint: "Markdown specs today" },
+    {
+      href: `${githubRepoUrl}/tree/main/docs/testing`,
+      label: "Repo Testing docs",
+      hint: "Markdown specs (canonical drafts)",
+    },
   ];
 </script>
 
@@ -82,7 +101,8 @@
     <ul class="docs-home__components" role="list">
       <li>
         <strong>CLI</strong> — <code>init</code>, <code>validate</code> (with optional <code>--json</code>),
-        <code>run</code> (optional <code>--goal</code>, <code>--json</code>), <code>report</code>, <code>doctor</code>.
+        <code>run</code> (repeatable <code>--suite</code> or <code>--suites</code>, optional <code>--goal</code>, <code>--json</code>),
+        <code>report</code>, <code>doctor</code>.
       </li>
       <li>
         <strong>Runner</strong> — orchestrates goals, retries, verdicts (<code>passed</code> / <code>failed</code> /
@@ -92,7 +112,9 @@
         <strong>Browser adaptor</strong> — Playwright-backed execution for MVP (substrate, not the product headline).
       </li>
       <li>
-        <strong>Keys adaptor</strong> — resolves logical model references; aligns test execution with your Keys project.
+        <strong>Keys adaptor</strong> — resolves logical model references; aligns test execution with your Keys project. Optional
+        <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">hosted provider keys</a> in Keys reduce CI env archaeology for
+        <code>judge_rubric</code>.
       </li>
       <li>
         <strong>Reporting</strong> — <code>report.json</code>, Markdown summaries, GitHub step-summary Markdown, JUnit, plus a

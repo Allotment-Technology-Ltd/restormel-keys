@@ -61,7 +61,7 @@ Do **not** use a judge when:
 ## Environments, fixtures, cleanup
 
 - **`environments.*.base_url`** must be a safe `http`/`https` URL (no credentials in the URL).
-- **MVP runner:** do not use **`preconditions`**, **`cleanup`**, or non-empty **`adapter_hooks`** in YAML — validation rejects them. Document setup in README or CI instead.
+- **Shell hooks:** **`preconditions`**, **`cleanup`**, and **`adapter_hooks`** are **executed** by the runner (shell). Prefer documenting setup in README or CI for first suites; use YAML hooks only when you want co-located guards or teardown. See [config-reference-mvp.md](config-reference-mvp.md) for skip/timeout env vars.
 - Document assumptions (“needs seeded user X”, “preview deploy URL set in CI”) in README or comments near the suite, not only in chat.
 
 ## Vague goal smell test

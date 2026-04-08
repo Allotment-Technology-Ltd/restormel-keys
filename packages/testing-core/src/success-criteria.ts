@@ -25,6 +25,11 @@ export interface JudgeRubric {
  * See `successCriteriaToAssertions` to normalise to `Assertion[]`.
  */
 export interface SuccessCriteria {
+  /**
+   * At least two alternative criteria bundles; the goal passes if **any** branch passes.
+   * When set, no other keys may appear at this level (use nested objects inside each branch).
+   */
+  anyOf?: SuccessCriteria[];
   urlMatches?: string | string[];
   domSignals?: string[];
   textPresent?: string[];

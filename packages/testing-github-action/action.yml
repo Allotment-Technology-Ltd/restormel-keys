@@ -12,8 +12,16 @@ branding:
 
 inputs:
   suite:
-    description: Suite id from your restormel-testing config (required).
-    required: true
+    description: >
+      Single suite id when `suites` is empty. When `suites` is non-empty, this input is ignored.
+    required: false
+    default: ""
+  suites:
+    description: >
+      Comma-separated suite ids. When non-empty, runs each suite in sequence; artefacts go under
+      per-suite subfolders of the artefact directory (avoids overwriting when running multiple suites in one step).
+    required: false
+    default: ""
   environment:
     description: Environment id to run against (omit to use the suite default).
     required: false
@@ -85,6 +93,7 @@ runs:
       env:
         RESTORMEL_TESTING_ACTION_MAIN_JS: ${{ github.action_path }}/dist/main.js
         RESTORMEL_TESTING_SUITE: ${{ inputs.suite }}
+        RESTORMEL_TESTING_SUITES: ${{ inputs.suites }}
         RESTORMEL_TESTING_ENVIRONMENT: ${{ inputs.environment }}
         RESTORMEL_TESTING_TARGET_URL: ${{ inputs.target_url }}
         RESTORMEL_TESTING_COMMIT_SHA: ${{ inputs.commit_sha }}

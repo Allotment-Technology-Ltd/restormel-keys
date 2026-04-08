@@ -2,7 +2,7 @@
 
 Use this when moving from **git / workspace consumption** to **published packages** on the npm registry under the `@restormel` scope.
 
-**This repo (maintainer snapshot):** packages are at **`0.1.0`**, **`private` removed**, **`publishConfig.access: public`**, **`repository` / `license` / `bugs` / `homepage`** set, Changesets consumed for the first bump, **`NPM_TOKEN`** wired in Actions. After merge, run [**Publish npm**](../.github/workflows/publish-npm.yml) (workflow dispatch) or publish a **GitHub Release** `v0.1.0` to upload tarballs.
+**This repo (maintainer snapshot):** packages are at **`0.1.0`**, **`private` removed**, **`publishConfig.access: public`**, **`repository` / `license` / `bugs` / `homepage`** set, Changesets consumed for the first bump, **`NPM_TOKEN`** wired in Actions. After merge, run [**Publish Testing packages**](../.github/workflows/publish-testing.yml) (`workflow_dispatch`) or push a tag **`testing-v*`** to upload tarballs.
 
 ## 1. Registry and access
 
@@ -63,9 +63,9 @@ Publishing `@restormel/testing-github-action` is **not** the same as “Action m
 
 ## 7. CI workflow (in repo)
 
-[`.github/workflows/publish-npm.yml`](../.github/workflows/publish-npm.yml) publishes when:
+[`.github/workflows/publish-testing.yml`](../.github/workflows/publish-testing.yml) publishes when:
 
-- A **GitHub Release** is published (checks out the release tag), or
+- A git tag matching **`testing-v*`** is pushed, or
 - **`workflow_dispatch`** runs manually (optional **dry run** checkbox).
 
 **Secret:** set **`NPM_TOKEN`** under *Settings → Secrets and variables → Actions* (granular automation/publish token). The job fails fast if the secret is missing.

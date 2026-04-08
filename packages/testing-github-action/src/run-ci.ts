@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { sanitizePathSegment } from "@restormel/testing-core";
 import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
 import { buildGithubStepSummaryMarkdown, writeRunReportBundle } from "@restormel/testing-report";
 import { runLocalSuite } from "@restormel/testing-runner";
@@ -68,11 +69,20 @@ export async function runCiFromEnv(): Promise<number> {
   const root = join(workspace, wd);
   process.chdir(root);
 
-  const suite = getenv("RESTORMEL_TESTING_SUITE");
-  if (!suite) {
-    console.error("RESTORMEL_TESTING_SUITE is required when the action runs the suite.");
+  const suitesCsv = getenv("RESTORMEL_TESTING_SUITES")?.trim();
+  const suiteSingle = getenv("RESTORMEL_TESTING_SUITE")?.trim();
+  const suiteList: string[] = suitesCsv
+    ? suitesCsv
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+    : suiteSingle
+      ? [suiteSingle]
+      : [];
+  if (suiteList.length === 0) {
+    console.error("Set `suite` or comma-separated `suites` input when the action runs.");
     appendSummary("## Restormel Testing");
-    appendSummary("**Error:** `suite` input is required.");
+    appendSummary("**Error:** `suite` or `suites` is required.");
     appendOutput({ verdict: "error", run_id: "", skipped: "false" });
     return EXIT_USAGE;
   }
@@ -92,78 +102,105 @@ export async function runCiFromEnv(): Promise<number> {
     );
   }
 
-  const artifactDir =
+  const baseArtifactDir =
     getenv("RESTORMEL_TESTING_ARTIFACT_DIR") ??
     join(workspace, ".restormel-testing", "runs", `gha-${process.env.GITHUB_RUN_ID ?? "local"}-${process.env.GITHUB_RUN_ATTEMPT ?? "0"}`);
 
-  mkdirSync(artifactDir, { recursive: true });
+  mkdirSync(baseArtifactDir, { recursive: true });
 
   const keysAdapterOptions = keysAdapterOptionsFromProcessEnv();
-
-  const result = await runLocalSuite({
-    configPath,
-    suiteId: suite,
-    environmentId,
-    targetUrlOverride: targetUrl,
-    commitSha,
-    repository,
-    trigger: "ci",
-    artifactDir,
-    headless: true,
-    keysAdapterOptions,
-  });
-
-  if (!result.ok || result.run === undefined) {
-    appendSummary("## Restormel Testing");
-    appendSummary("");
-    appendSummary("**Verdict:** error (config or runner failure)");
-    appendSummary("");
-    appendSummary("```text");
-    appendSummary(result.errors.join("\n") || "(no message)");
-    appendSummary("```");
-    appendOutput({ verdict: "error", run_id: "", skipped: "false" });
-    for (const w of result.warnings) console.warn(w);
-    return EXIT_USAGE;
-  }
-
-  const run = result.run;
-
   const repoHint = repository ?? "org/repo";
-  let reproduce = `testing run --suite ${suite} --config ${configPath} --ci`;
-  if (environmentId !== undefined) reproduce += ` --environment ${environmentId}`;
-  if (targetUrl !== undefined) reproduce += ` --target-url '${targetUrl.replace(/'/g, "'\\''")}'`;
-  reproduce += ` --commit-sha <sha> --repository ${repoHint}`;
 
-  await writeRunReportBundle(artifactDir, {
-    run,
-    traces: result.traces,
-    warnings: result.warnings.length > 0 ? result.warnings : undefined,
-    suite: result.suiteMeta,
-    reproduction: {
-      report_command: `testing report ${artifactDir}`,
-      notes: reproduce,
-    },
-  });
+  let lastRunId = "";
+  let aggregateVerdict: "passed" | "failed" | "indeterminate" = "passed";
 
-  const summaryMd = buildGithubStepSummaryMarkdown({
-    run,
-    suite: result.suiteMeta,
-    warnings: result.warnings.length > 0 ? result.warnings : undefined,
-    ciContext: { prNumber, targetUrl },
-    reproduceCommand: reproduce,
-    artifactDirHint: artifactDir,
-  });
+  for (let i = 0; i < suiteList.length; i++) {
+    const suite = suiteList[i]!;
+    const safe = sanitizePathSegment(suite) || `suite-${i}`;
+    const artifactDir = join(baseArtifactDir, safe);
+    mkdirSync(artifactDir, { recursive: true });
 
-  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-  if (summaryPath) {
-    appendFileSync(summaryPath, `${summaryMd}\n`, "utf8");
+    const result = await runLocalSuite({
+      configPath,
+      suiteId: suite,
+      environmentId,
+      targetUrlOverride: targetUrl,
+      commitSha,
+      repository,
+      trigger: "ci",
+      artifactDir,
+      headless: true,
+      keysAdapterOptions,
+    });
+
+    if (!result.ok || result.run === undefined) {
+      appendSummary("## Restormel Testing");
+      appendSummary("");
+      appendSummary(`**Suite:** \`${suite}\` — error (config or runner failure)`);
+      appendSummary("");
+      appendSummary("```text");
+      appendSummary(result.errors.join("\n") || "(no message)");
+      appendSummary("```");
+      appendOutput({ verdict: "error", run_id: "", skipped: "false" });
+      for (const w of result.warnings) console.warn(w);
+      return EXIT_USAGE;
+    }
+
+    const run = result.run;
+    lastRunId = run.id;
+    if (run.verdict === "failed") {
+      aggregateVerdict = "failed";
+    } else if (run.verdict === "indeterminate" && aggregateVerdict === "passed") {
+      aggregateVerdict = "indeterminate";
+    }
+
+    let reproduce = `testing run --suite ${suite} --config ${configPath} --ci`;
+    if (environmentId !== undefined) reproduce += ` --environment ${environmentId}`;
+    if (targetUrl !== undefined) reproduce += ` --target-url '${targetUrl.replace(/'/g, "'\\''")}'`;
+    reproduce += ` --commit-sha <sha> --repository ${repoHint}`;
+
+    await writeRunReportBundle(artifactDir, {
+      run,
+      traces: result.traces,
+      warnings: result.warnings.length > 0 ? result.warnings : undefined,
+      suite: result.suiteMeta,
+      reproduction: {
+        report_command: `testing report ${artifactDir}`,
+        notes: reproduce,
+      },
+    });
+
+    const summaryMd = buildGithubStepSummaryMarkdown({
+      run,
+      suite: result.suiteMeta,
+      warnings: result.warnings.length > 0 ? result.warnings : undefined,
+      ciContext: { prNumber, targetUrl },
+      reproduceCommand: reproduce,
+      artifactDirHint: artifactDir,
+    });
+
+    const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+    if (summaryPath) {
+      appendFileSync(summaryPath, suiteList.length > 1 ? `### Suite \`${suite}\`\n\n${summaryMd}\n\n` : `${summaryMd}\n`, "utf8");
+    }
+
+    for (const w of result.warnings) console.warn(w);
   }
 
-  appendOutput({ verdict: run.verdict, run_id: run.id, skipped: "false" });
+  if (suiteList.length > 1) {
+    const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+    if (summaryPath) {
+      appendFileSync(
+        summaryPath,
+        `\n---\n\n**Multi-suite:** ${suiteList.length} suite(s). Base artefact dir: \`${baseArtifactDir}\`. Aggregate verdict: **${aggregateVerdict}**.\n`,
+        "utf8",
+      );
+    }
+  }
 
-  for (const w of result.warnings) console.warn(w);
+  appendOutput({ verdict: aggregateVerdict, run_id: lastRunId, skipped: "false" });
 
-  if (run.verdict !== "passed") {
+  if (aggregateVerdict !== "passed") {
     return EXIT_FAILED;
   }
   return EXIT_OK;

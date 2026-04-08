@@ -1,6 +1,6 @@
 import { access, constants, mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { resolvePathUnderRoot } from "@restormel/testing-core";
+import { resolvePathUnderRoot, sanitizePathSegment } from "@restormel/testing-core";
 import { formatConfigErrors, loadConfigFromFile } from "@restormel/testing-config";
 import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
 import {
@@ -88,8 +88,7 @@ function defaultArtifactDir(): string {
   return join(process.cwd(), ".restormel-testing", "runs", `run-${slug}`);
 }
 
-async function cmdRun(opts: {
-  suite: string;
+type RunCliOpts = {
   config: string;
   environmentId?: string;
   targetUrl?: string;
@@ -100,26 +99,18 @@ async function cmdRun(opts: {
   trigger: "local" | "ci";
   goalIds?: string[];
   json: boolean;
-}): Promise<number> {
-  const cwd = process.cwd();
-  let artifactDir: string;
-  if (opts.artifactDir !== undefined) {
-    const ar = resolvePathUnderRoot(cwd, opts.artifactDir);
-    if (!ar.ok) {
-      console.error(ar.reason);
-      return EXIT_USAGE;
-    }
-    artifactDir = ar.path;
-  } else {
-    artifactDir = defaultArtifactDir();
-  }
+};
+
+async function cmdRunOneSuite(
+  suiteId: string,
+  artifactDir: string,
+  opts: RunCliOpts,
+): Promise<{ code: number; run?: import("@restormel/testing-core").RunRecord; artifactDir: string }> {
   await mkdir(artifactDir, { recursive: true });
-
   const keysAdapterOptions = keysAdapterOptionsFromProcessEnv();
-
   const result = await runLocalSuite({
     configPath: opts.config,
-    suiteId: opts.suite,
+    suiteId,
     environmentId: opts.environmentId,
     targetUrlOverride: opts.targetUrl,
     commitSha: opts.commitSha,
@@ -143,6 +134,7 @@ async function cmdRun(opts: {
         JSON.stringify(
           {
             ok: false,
+            suite_id: suiteId,
             errors: result.errors,
             artifact_dir: artifactDir,
             partial_artifacts: [PRE_RUN_FAILURE_JSON],
@@ -152,21 +144,21 @@ async function cmdRun(opts: {
         ),
       );
     } else {
-      console.error(result.errors.join("\n"));
+      console.error(`[${suiteId}] ${result.errors.join("\n")}`);
       console.error(`Partial artefacts: ${artifactDir} (${PRE_RUN_FAILURE_JSON})`);
     }
     for (const w of result.warnings) console.warn(w);
-    return EXIT_USAGE;
+    return { code: EXIT_USAGE, artifactDir };
   }
 
   const run = result.run;
   if (!run) {
     console.error("Internal error: missing run record.");
-    return EXIT_FAILED;
+    return { code: EXIT_FAILED, artifactDir };
   }
 
   const program = programLabel();
-  let reproduceRun = `${program} run --suite ${opts.suite} --config ${opts.config}`;
+  let reproduceRun = `${program} run --suite ${suiteId} --config ${opts.config}`;
   if (opts.environmentId !== undefined) reproduceRun += ` --environment ${opts.environmentId}`;
   if (opts.goalIds !== undefined && opts.goalIds.length > 0) {
     reproduceRun += ` --goal ${opts.goalIds.join(",")}`;
@@ -201,6 +193,7 @@ async function cmdRun(opts: {
       ),
     );
   } else {
+    console.log(`\n=== Suite ${suiteId} ===`);
     console.log(formatRunSummary(run));
     console.log(
       `\nArtefacts: ${artifactDir}\n  (run.json, traces.json, report.json, summary.md, github-summary.md, junit.xml)`,
@@ -208,9 +201,106 @@ async function cmdRun(opts: {
   }
 
   if (run.verdict !== "passed") {
-    return EXIT_FAILED;
+    return { code: EXIT_FAILED, run, artifactDir };
   }
-  return EXIT_OK;
+  return { code: EXIT_OK, run, artifactDir };
+}
+
+async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> {
+  const cwd = process.cwd();
+  const { suites, ...rest } = opts;
+
+  if (suites.length === 1) {
+    let artifactDir: string;
+    if (opts.artifactDir !== undefined) {
+      const ar = resolvePathUnderRoot(cwd, opts.artifactDir);
+      if (!ar.ok) {
+        console.error(ar.reason);
+        return EXIT_USAGE;
+      }
+      artifactDir = ar.path;
+    } else {
+      artifactDir = defaultArtifactDir();
+    }
+    const one = await cmdRunOneSuite(suites[0]!, artifactDir, rest);
+    return one.code;
+  }
+
+  let baseDir: string;
+  if (opts.artifactDir !== undefined) {
+    const ar = resolvePathUnderRoot(cwd, opts.artifactDir);
+    if (!ar.ok) {
+      console.error(ar.reason);
+      return EXIT_USAGE;
+    }
+    baseDir = ar.path;
+  } else {
+    baseDir = defaultArtifactDir();
+  }
+  await mkdir(baseDir, { recursive: true });
+
+  const program = programLabel();
+  const rows: {
+    suite_id: string;
+    verdict: string;
+    run_id: string;
+    artifact_dir: string;
+  }[] = [];
+  let worst = EXIT_OK;
+
+  for (let i = 0; i < suites.length; i++) {
+    const suiteId = suites[i]!;
+    const safe = sanitizePathSegment(suiteId) || `suite-${i}`;
+    const subDir = join(baseDir, safe);
+    const r = await cmdRunOneSuite(suiteId, subDir, { ...rest, json: false });
+    if (r.code === EXIT_USAGE) {
+      if (opts.json) {
+        console.log(
+          JSON.stringify(
+            {
+              ok: false,
+              multi: true,
+              base_artifact_dir: baseDir,
+              failed_at: suiteId,
+            },
+            null,
+            2,
+          ),
+        );
+      }
+      return EXIT_USAGE;
+    }
+    if (r.run) {
+      rows.push({
+        suite_id: r.run.suiteId,
+        verdict: r.run.verdict,
+        run_id: r.run.id,
+        artifact_dir: subDir,
+      });
+    }
+    if (r.code !== EXIT_OK) worst = EXIT_FAILED;
+  }
+
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: worst === EXIT_OK,
+          multi: true,
+          verdict: worst === EXIT_OK ? "passed" : "failed",
+          base_artifact_dir: baseDir,
+          suites: rows,
+        },
+        null,
+        2,
+      ),
+    );
+  } else {
+    console.log(`\nMulti-suite run complete (${suites.length} suites). Base: ${baseDir}`);
+    console.log(`Re-run: ${program} run ${suites.map((s) => `--suite ${s}`).join(" ")} --config ${opts.config}`);
+  }
+
+  return worst;
 }
 
 async function cmdReport(opts: { path: string }): Promise<number> {
@@ -263,7 +353,8 @@ export async function runCli(argv: string[]): Promise<number> {
   }
 
   if (parsed.kind === "run") {
-    return cmdRun(parsed);
+    const { suites, ...rest } = parsed;
+    return cmdRun({ suites, ...rest });
   }
 
   if (parsed.kind === "report") {

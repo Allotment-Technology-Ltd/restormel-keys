@@ -184,7 +184,7 @@ Expected: `"anthropic"` (or your second step's provider).
 Re-enable (or re-create) the first step after testing.
 
 > **Pitfall**
-> If you want route resolution to depend on which platform keys are present in your app’s environment, use local resolve (Phase 2, Step 2.6) and implement `getPlatformKey`. The dashboard does not accept raw provider API keys today; it uses Provider Integrations (credential references).
+> If you want route resolution to depend on which platform keys are present in your app’s environment, use local resolve (Phase 2, Step 2.6) and implement `getPlatformKey`. Under **Connections** (`/keys/dashboard/integrations`), you can store a **hosted API key** (encrypted at rest when the deployment is configured) or a **non-secret credential reference** (vault label). The dashboard never echoes a full secret after save; see [keys-testing-onboarding.md](../keys-testing-onboarding.md) for the Keys + Testing path.
 
 
 ---

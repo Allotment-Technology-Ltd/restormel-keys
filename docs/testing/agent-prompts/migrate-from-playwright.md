@@ -30,7 +30,7 @@ Task:
 - For type (B) only: propose Restormel Testing goals (id, description, type: browser, success_criteria) that capture the user outcome, not every click.
 - Preserve valuable deterministic checks inside success_criteria where they belong (url_matches, text_present, dom_signals)—do not replace a clear DOM check with a judge unless the user explicitly wants semantic grading.
 - Create or update restormel-testing.yaml (or .json) with the new goals; align environments base_url with Playwright baseURL where appropriate (http/https only, no secrets in URL).
-- Document setup in README or CI; do not add adapter_hooks / preconditions / cleanup (MVP validate rejects them).
+- Document setup in README or CI by default; add adapter_hooks / preconditions / cleanup only if the user wants shell hooks in YAML (runner executes them).
 
 Allowed to modify:
 - restormel-testing.yaml and/or restormel-testing.json

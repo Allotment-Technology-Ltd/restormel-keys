@@ -1,5 +1,6 @@
 <script lang="ts">
   import { testingBase as base } from "$lib/testing/paths.js";
+  import { githubRepoUrl, keysTestingOnboardingUrl } from "$lib/testing/site.js";
   import DocArticle from "$lib/testing/components/docs/DocArticle.svelte";
   import WalkthroughAgentPrompts from "$lib/testing/components/docs/WalkthroughAgentPrompts.svelte";
 </script>
@@ -14,9 +15,12 @@
       <ul>
         <li>Use opaque refs in YAML—never commit raw provider keys.</li>
         <li>
-          Set Testing’s Keys env vars for judges (<code>RESTORMEL_KEYS_API_BASE_URL</code>, token per
-          <code>RESTORMEL_KEYS_API_TOKEN</code> / <code>RESTORMEL_KEYS_API_TOKEN_ENV</code>) or the documented OpenAI fallback; full
-          table in repo <code>docs/config-reference-mvp.md</code>. Gateway vocabulary remains in Keys docs.
+          Set Testing’s Keys env vars for judges (<code>RESTORMEL_KEYS_API_BASE_URL</code>, Gateway token
+          <code>RESTORMEL_KEYS_API_TOKEN</code> / <code>RESTORMEL_KEYS_API_TOKEN_ENV</code>, usually <code>RESTORMEL_PROJECT_ID</code>) or the
+          documented OpenAI fallback; full table in
+          <a href={`${githubRepoUrl}/blob/main/docs/testing/config-reference-mvp.md`} rel="noopener noreferrer"
+            ><code>docs/testing/config-reference-mvp.md</code></a
+          >. Dashboard setup: <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Keys + Testing onboarding</a>.
         </li>
         <li>Confirm resolve behaviour matches how your app uses Keys in a non-production environment first.</li>
       </ul>

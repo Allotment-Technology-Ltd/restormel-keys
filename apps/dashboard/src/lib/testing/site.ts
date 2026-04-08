@@ -21,3 +21,5 @@ export const testingSuiteUrl =
 
 export const keysHomeUrl = "https://restormel.dev/keys";
 export const keysDocsUrl = "https://restormel.dev/keys/docs";
+/** In-product guide: Connections, Restormel Testing hub, CLI env (same origin as Keys when deployed together). */
+export const keysTestingOnboardingUrl = `${keysDocsUrl}/guides/keys-testing-onboarding`;

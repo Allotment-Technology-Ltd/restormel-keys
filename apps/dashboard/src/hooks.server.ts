@@ -72,7 +72,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
 
   /** Machine clients under the Gateway Key API tree should not receive HTML error pages. */
-  if (event.url.pathname.startsWith("/keys/dashboard/api")) {
+  if (event.url.pathname.startsWith("/keys/dashboard/api") || event.url.pathname.startsWith("/v1/")) {
     const ct = response.headers.get("content-type") ?? "";
     if (response.status >= 400 && ct.includes("text/html")) {
       const status = response.status;

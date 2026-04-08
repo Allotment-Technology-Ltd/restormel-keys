@@ -8,6 +8,11 @@
       href: "/keys/docs/guides/environment-vocabulary",
       tags: "env RESTORMEL_GATEWAY_KEY RESTORMEL_SERVER_TOKEN RESTORMEL_EVALUATE_URL RESTORMEL_CONTROL_PLANE_URL RESTORMEL_KEYS_BASE CI staging secrets plot mcp",
     },
+    {
+      title: "Keys + Testing onboarding",
+      href: "/keys/docs/guides/keys-testing-onboarding",
+      tags: "testing restormel judge_rubric resolve connections hosted credentials RESTORMEL_PROJECT_ID doctor cli",
+    },
     { title: "Provider access modes", href: "/keys/docs/guides/provider-access-modes", tags: "gateway byok direct" },
     { title: "OpenRouter guide", href: "/keys/docs/guides/openrouter", tags: "openrouter" },
     { title: "Vercel AI Gateway guide", href: "/keys/docs/guides/vercel-ai-gateway", tags: "vercel gateway" },

@@ -44,11 +44,18 @@
     <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>. Never commit secrets.
   </p>
 
+  <h2>Step 5.1c — Connections and Restormel Testing</h2>
+  <p>
+    Open <a href={DASHBOARD_BASE + "/integrations"}>Connections</a> for provider integrations (optional hosted encrypted API keys or vault
+    references). For Restormel Testing, open <a href={DASHBOARD_BASE + "/testing"}>Restormel Testing</a> for project/environment IDs and env
+    snippets. Guide: <a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a>.
+  </p>
+
   <h2>Step 5.2 — Usage path and quick links</h2>
   <p>On the Dashboard <strong>Overview</strong> page, the usage path selector shows your chosen workflow and links to SDK docs, CLI quickstart, or MCP setup, plus Developer tools and "Change."</p>
 
   <h2>Step 5.3 — Doc links</h2>
-  <p>Bookmark: <a href="/keys/docs/integrations">Integrations overview</a>, <a href="/keys/docs/integrations-walkthrough">Integrations walkthrough</a>, <a href="/keys/docs/integrations/cli">CLI quickstart</a>, <a href="/keys/docs/integrations/mcp">MCP setup</a>, <a href="/keys/docs/integrations/aaif">AAIF overview</a>.</p>
+  <p>Bookmark: <a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a>, <a href="/keys/docs/integrations">Integrations overview</a>, <a href="/keys/docs/integrations-walkthrough">Integrations walkthrough</a>, <a href="/keys/docs/integrations/cli">CLI quickstart</a>, <a href="/keys/docs/integrations/mcp">MCP setup</a>, <a href="/keys/docs/integrations/aaif">AAIF overview</a>.</p>
 
   <AgentPromptsSection
     intro="Optional. Use if a coding agent should add Integrations section and links to your docs."

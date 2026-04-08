@@ -9,6 +9,7 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 ## Phase 01 — Implementation (current)
 
+- **Keys + Testing seamless path (shipped in repo):** hosted provider credentials (AES-256-GCM at rest, masked API/UI), `POST /v1/testing/resolve-model` decrypt path for logical refs, auto-provisioned **Restormel Testing** project + model bindings, dashboard **Restormel Testing** hub and Connections UX, CLI `doctor` hint for `RESTORMEL_PROJECT_ID`. Canonical onboarding: [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md).
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
 - **Phase 2 complete:** @restormel/keys-svelte (KeyManager, ModelSelector, CostEstimator), @restormel/keys-elements, @restormel/keys-react, CLI, Next.js/SvelteKit demos, SOPHIA runbook, a11y, publish.
 - **Phase 3 in current architecture:** product surfaces are unified in `apps/dashboard` (Keys landing, docs, dashboard); `apps/site` is archived. Next: iterative UX + docs + control-plane quality improvements in the single-app layout.

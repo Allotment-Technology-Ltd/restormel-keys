@@ -96,6 +96,7 @@
     <div class="nav-divider" aria-hidden="true"></div>
     <div class="nav-section" aria-label="Guides section">Guides</div>
     <a href="/keys/docs/guides/environment-vocabulary" on:click={closeNavOnMobile}>Environment vocabulary</a>
+    <a href="/keys/docs/guides/keys-testing-onboarding" on:click={closeNavOnMobile}>Keys + Testing onboarding</a>
     <a href="/keys/docs/guides/provider-access-modes" on:click={closeNavOnMobile}>Provider access modes</a>
     <a href="/keys/docs/reference/cli" on:click={closeNavOnMobile}>CLI options</a>
     <a href="/keys/docs/guides/openrouter" on:click={closeNavOnMobile}>OpenRouter</a>

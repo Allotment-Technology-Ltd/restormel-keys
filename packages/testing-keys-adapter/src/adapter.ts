@@ -64,6 +64,21 @@ export async function resolveModel(
   if (transport) {
     const tr = await transport.resolve(logicalRef);
     if (tr.ok) {
+      if (tr.inlineApiKey !== undefined && tr.inlineApiKey !== "") {
+        return {
+          ok: true,
+          warnings,
+          model: buildResolved(
+            logicalRef,
+            tr.provider,
+            tr.model,
+            tr.model,
+            tr.inlineApiKey,
+            "keys",
+            tr.baseUrl,
+          ),
+        };
+      }
       const mat = readSecretFromEnv(tr.secretEnvVar);
       if (!mat.ok) {
         return fail("keys_missing_secret_binding", `Keys resolved model but ${mat.message}`);

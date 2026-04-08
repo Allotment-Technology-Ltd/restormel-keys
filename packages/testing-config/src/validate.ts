@@ -293,6 +293,34 @@ function parseSuccessCriteria(raw: unknown, path: string, errors: ConfigError[])
     errors.push(err(path, "type", "success_criteria must be an object"));
     return undefined;
   }
+  const anyOfRaw = pickKey(raw, "any_of", "anyOf");
+  if (anyOfRaw !== undefined && anyOfRaw !== null) {
+    const otherKeys = Object.keys(raw).filter((k) => k !== "any_of" && k !== "anyOf");
+    if (otherKeys.length > 0) {
+      errors.push(
+        err(
+          path,
+          "any_of_exclusive",
+          `When any_of is set, no other success_criteria keys are allowed at the same level (found: ${otherKeys.join(", ")})`,
+        ),
+      );
+      return undefined;
+    }
+    if (!Array.isArray(anyOfRaw) || anyOfRaw.length < 2) {
+      errors.push(
+        err(`${path}.any_of`, "any_of_length", "any_of must be an array with at least two alternative criteria objects"),
+      );
+      return undefined;
+    }
+    const branches: SuccessCriteria[] = [];
+    for (let i = 0; i < anyOfRaw.length; i++) {
+      const b = parseSuccessCriteria(anyOfRaw[i], `${path}.any_of[${i}]`, errors);
+      if (!b) return undefined;
+      branches.push(b);
+    }
+    return { anyOf: branches };
+  }
+
   const out: SuccessCriteria = {};
   const urlMatches = pickKey(raw, "url_matches", "urlMatches");
   if (urlMatches !== undefined && urlMatches !== null) {
@@ -361,7 +389,7 @@ function parseSuccessCriteria(raw: unknown, path: string, errors: ConfigError[])
       err(
         path,
         "success_criteria_empty",
-        "success_criteria must include at least one of: url_matches, dom_signals, text_present, text_absent, structured_checks, judge_rubric",
+        "success_criteria must include at least one of: any_of, url_matches, dom_signals, text_present, text_absent, structured_checks, judge_rubric",
       ),
     );
     return undefined;
@@ -393,6 +421,17 @@ function parseGoal(raw: unknown, path: string, errors: ConfigError[]): TestGoal 
   if (!id || !description || !successCriteria) return undefined;
 
   const goal: TestGoal = { id, type, description, successCriteria };
+  const startPathRaw = pickKey(raw, "start_path", "startPath");
+  if (startPathRaw !== undefined && startPathRaw !== null) {
+    const sp = asString(startPathRaw, `${path}.start_path`, "start_path", errors);
+    if (sp) {
+      if (sp.includes("..")) {
+        errors.push(err(`${path}.start_path`, "unsafe", "start_path must not contain '..'"));
+      } else {
+        goal.startPath = sp;
+      }
+    }
+  }
   const pre = pickKey(raw, "preconditions", "preconditions");
   if (pre !== undefined && pre !== null) {
     if (!Array.isArray(pre) || !pre.every((x) => typeof x === "string")) {
@@ -622,7 +661,6 @@ export function validateConfigDocument(raw: unknown): { ok: true; config: Restor
     targetUrlOverrides,
   };
 
-  validateMvpRunnerRestrictions(config, errors);
   if (errors.length > 0) {
     return { ok: false, errors };
   }
@@ -631,44 +669,10 @@ export function validateConfigDocument(raw: unknown): { ok: true; config: Restor
 }
 
 /**
- * Preconditions, cleanup, and adapter_hooks are not executed by the current runner.
- * Reject non-empty values so repos do not rely on silent no-ops.
+ * Reserved for future policy checks (e.g. schema_version gates). Shell hooks are executed when not skipped via env; see runner docs.
  */
-export function validateMvpRunnerRestrictions(config: RestormelTestingConfig, errors: ConfigError[]): void {
-  if (Object.keys(config.adapterHooks).length > 0) {
-    errors.push(
-      err(
-        "adapter_hooks",
-        "unsupported_mvp",
-        "This MVP runner does not execute adapter_hooks. Remove all entries or use adapter_hooks: {}.",
-      ),
-    );
-  }
-  for (let si = 0; si < config.suites.length; si++) {
-    const suite = config.suites[si]!;
-    for (let gi = 0; gi < suite.goals.length; gi++) {
-      const goal = suite.goals[gi]!;
-      const base = `suites[${si}].goals[${gi}]`;
-      if (goal.preconditions !== undefined && goal.preconditions.length > 0) {
-        errors.push(
-          err(
-            `${base}.preconditions`,
-            "unsupported_mvp",
-            `Goal "${goal.id}": preconditions are not executed in this MVP runner. Remove the preconditions array.`,
-          ),
-        );
-      }
-      if (goal.cleanup !== undefined && goal.cleanup.length > 0) {
-        errors.push(
-          err(
-            `${base}.cleanup`,
-            "unsupported_mvp",
-            `Goal "${goal.id}": cleanup is not executed in this MVP runner. Remove the cleanup array.`,
-          ),
-        );
-      }
-    }
-  }
+export function validateMvpRunnerRestrictions(_config: RestormelTestingConfig, _errors: ConfigError[]): void {
+  /* no-op: adapter_hooks, preconditions, and cleanup are supported by the runner */
 }
 
 function parseStringMap(

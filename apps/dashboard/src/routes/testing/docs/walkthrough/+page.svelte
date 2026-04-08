@@ -1,6 +1,6 @@
 <script lang="ts">
   import { testingBase as base } from "$lib/testing/paths.js";
-  import { keysDocsUrl, keysHomeUrl } from "$lib/testing/site.js";
+  import { githubRepoUrl, keysDocsUrl, keysHomeUrl, keysTestingOnboardingUrl } from "$lib/testing/site.js";
   import { walkthroughCorePhases, walkthroughExtendedPhases } from "$lib/testing/docs-nav.js";
 </script>
 
@@ -18,7 +18,7 @@
     This is the primary onboarding path. It takes you through inventory, install, Keys-backed resolution, your first goal,
     a local suite run, and GitHub Actions—using the same run contract everywhere. Keep
     <a href="{base}/docs/guides/config">Configuration</a>, <a href="{base}/docs/guides/test-definition">Test definition</a>,
-    and <a href="{base}/docs/integrations/keys">Keys integration</a> open beside you.
+    and <a href="{base}/docs/integrations/keys">Keys integration</a> (or <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Keys + Testing onboarding</a>) open beside you.
   </p>
 
   <h2 class="h2">Before you begin</h2>
@@ -90,12 +90,14 @@
     <li>
       <strong>Canonical env and API names</strong> — Keys vocabulary in
       <a href={keysDocsUrl} rel="noopener noreferrer">Keys documentation</a>; Testing CLI judge env (<code>RESTORMEL_KEYS_*</code>,
-      optional OpenAI fallback) is summarised in <a href="{base}/docs/integrations/keys">Keys integration</a> and repo
-      <code>docs/config-reference-mvp.md</code>.
+      optional OpenAI fallback) is summarised in <a href="{base}/docs/integrations/keys">Keys integration</a> and
+      <a href={`${githubRepoUrl}/blob/main/docs/testing/config-reference-mvp.md`} rel="noopener noreferrer"
+        ><code>docs/testing/config-reference-mvp.md</code></a
+      >.
     </li>
     <li>
-      <strong>CI secrets</strong> — GitHub Actions (or your runner) holds gateway/control-plane material; Testing only
-      consumes what Keys needs through your chosen pattern.
+      <strong>CI secrets</strong> — GitHub Actions (or your runner) holds Gateway keys and project IDs; provider keys may live in Keys
+      (<strong>Connections</strong>, encrypted) per <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Keys + Testing onboarding</a>.
     </li>
   </ul>
 

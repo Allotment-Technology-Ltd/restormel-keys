@@ -1,5 +1,6 @@
 import { access, constants } from "node:fs/promises";
 import { resolvePathUnderRoot } from "@restormel/testing-core";
+import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
 import { chromium } from "playwright";
 
 /**
@@ -41,15 +42,49 @@ export async function runDoctor(opts: { config?: string }): Promise<number> {
   }
 
   const keysBase = process.env.RESTORMEL_KEYS_API_BASE_URL?.trim();
+  const projectId = process.env.RESTORMEL_PROJECT_ID?.trim();
   const fallback = process.env.RESTORMEL_TESTING_OPENAI_FALLBACK?.trim() === "1";
   if (keysBase) {
     console.log("doctor: RESTORMEL_KEYS_API_BASE_URL is set (value not shown)");
+    if (projectId) {
+      console.log("doctor: RESTORMEL_PROJECT_ID is set (value not shown)");
+    } else {
+      console.log(
+        "doctor: RESTORMEL_PROJECT_ID not set — use the Restormel Testing page in the Keys dashboard to copy your project id",
+      );
+    }
   } else if (fallback) {
     console.log("doctor: RESTORMEL_TESTING_OPENAI_FALLBACK=1 (OpenAI env fallback may be used for judges)");
   } else {
     console.log(
       "doctor: Keys HTTP not set — goals with judge_rubric need RESTORMEL_KEYS_API_BASE_URL or RESTORMEL_TESTING_OPENAI_FALLBACK=1",
     );
+  }
+
+  const adapterOpts = keysAdapterOptionsFromProcessEnv();
+  if (adapterOpts?.keysApiBaseUrl) {
+    const tokenVar = adapterOpts.keysApiTokenEnvVar ?? "RESTORMEL_KEYS_API_TOKEN";
+    const token = process.env[tokenVar]?.trim();
+    if (!token) {
+      console.log(`doctor: Keys probe skipped — ${tokenVar} not set`);
+    } else {
+      const root = adapterOpts.keysApiBaseUrl.replace(/\/?$/, "");
+      const url = `${root}/v1/testing/resolve-model`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ logicalRef: "ref:restormel-keys:doctor/probe" }),
+        });
+        console.log(`doctor: Keys resolve POST → HTTP ${res.status} (response body not printed)`);
+      } catch (e) {
+        console.error(`doctor: Keys resolve probe failed: ${e instanceof Error ? e.message : String(e)}`);
+        return 2;
+      }
+    }
   }
 
   return 0;

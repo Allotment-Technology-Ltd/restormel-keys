@@ -4,6 +4,11 @@
 
   const journeys = [
     {
+      href: `${base}/docs/getting-started/existing-stack`,
+      title: "Monorepo with Playwright already",
+      blurb: "pnpm workspaces, global setup, storage state—add Testing without rewiring E2E.",
+    },
+    {
       href: `${base}/docs/journeys/new-project`,
       title: "First run in your repo",
       blurb: "Install the CLI, add a suite config, and run goals locally.",

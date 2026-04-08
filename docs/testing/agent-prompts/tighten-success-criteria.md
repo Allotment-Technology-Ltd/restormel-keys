@@ -41,7 +41,7 @@ Allowed to modify:
 Do not:
 - Rewrite unrelated application code.
 - Add broad new judge rubrics.
-- Add preconditions, cleanup, or adapter_hooks to YAML.
+- Add preconditions, cleanup, or adapter_hooks to YAML unless the user explicitly asked for shell setup there.
 
 Deliverables:
 1. Per-goal summary: what changed and why.

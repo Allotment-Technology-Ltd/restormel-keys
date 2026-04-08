@@ -5,7 +5,7 @@
   let {
     title,
     description,
-    stub = true,
+    stub = false,
     children,
   }: {
     title: string;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { testingBase as base } from "$lib/testing/paths.js";
+  import { keysTestingOnboardingUrl } from "$lib/testing/site.js";
   import DocArticle from "$lib/testing/components/docs/DocArticle.svelte";
 </script>
 
@@ -21,8 +22,9 @@
       <li><strong>Providers / gateways</strong> — unchanged; Keys stays the control layer for resolve policy.</li>
     </ul>
     <p>
-      Canonical env and key vocabulary for Keys lives in <strong>Keys docs</strong>—link from
-      <a href="{base}/docs/integrations/keys">Keys integration</a>.
+      Canonical env and key vocabulary for Keys lives in <strong>Keys docs</strong>—start at
+      <a href="{base}/docs/integrations/keys">Keys integration</a> or the full dashboard journey
+      <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Keys + Testing onboarding</a>.
     </p>
   </div>
 </DocArticle>

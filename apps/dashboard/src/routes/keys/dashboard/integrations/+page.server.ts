@@ -11,6 +11,7 @@ export type IntegrationSummary = {
   status: string;
   verificationStatus: string | null;
   hasCredential: boolean;
+  credentialMasked: string | null;
   createdAt: number;
   lastVerifiedAt: number | null;
 };
@@ -29,7 +30,8 @@ export const load: PageServerLoad = async ({ locals }) => {
       displayName: r.displayName ?? null,
       status: r.status,
       verificationStatus: r.verificationStatus ?? null,
-      hasCredential: !!r.credentialRef,
+      hasCredential: Boolean(r.credentialRef || r.hasEncryptedCredential),
+      credentialMasked: r.credentialMasked ?? null,
       createdAt: r.createdAt,
       lastVerifiedAt: r.lastVerifiedAt ?? null,
     }));

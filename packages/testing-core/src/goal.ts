@@ -10,6 +10,11 @@ export interface TestGoal {
   type: GoalType;
   description: string;
   successCriteria: SuccessCriteria;
+  /**
+   * Path relative to environment `base_url` for the initial navigation (e.g. `/login`, `dashboard/`).
+   * Resolved with `new URL(startPath, baseUrl)`.
+   */
+  startPath?: string;
   preconditions?: HookRef[];
   cleanup?: HookRef[];
   exclusiveWith?: string[];

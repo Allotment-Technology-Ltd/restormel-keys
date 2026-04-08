@@ -90,11 +90,11 @@ The tool:
 - loads config
 - resolves environment (and optional Playwright `storage_state` for `auth_mode: storage_state`)
 - resolves model/provider via Restormel / Keys when `judge_rubric` or Keys env is configured
-- runs browser-backed goals (navigate to `base_url`, evaluate `success_criteria`)
+- runs browser-backed goals (navigate to `base_url` plus optional per-goal `start_path`, evaluate `success_criteria`)
 - prints a structured result summary (or `--json` machine output)
 - stores local artefacts
 
-**Note:** `preconditions`, `cleanup`, and `adapter_hooks` are **rejected at validate** in the current MVP runner — they are not silently ignored.
+**Note:** `preconditions`, `cleanup`, and `adapter_hooks` are **executed** by the runner (shell commands, with opt-out via `RESTORMEL_TESTING_SKIP_SHELL_HOOKS=1`). See [config-reference-mvp.md](config-reference-mvp.md).
 
 Implementation plan: [restormel-testing-mvp-hardening-plan.md](restormel-testing-mvp-hardening-plan.md).
 
@@ -109,7 +109,7 @@ The composite Action (MVP):
 - fails the step when the suite verdict is `failed` or `indeterminate`
 - defaults to **skipping** browser runs on **fork** PRs when `fork_pr_policy: skip` (exit **0** when skipped — branch protection should account for “skipped” vs “ran”)
 
-Set `RESTORMEL_KEYS_API_BASE_URL` / token env in workflow **env** when using `judge_rubric`. See `docs/config-reference-mvp.md`.
+Set `RESTORMEL_KEYS_API_BASE_URL`, Gateway token (`RESTORMEL_KEYS_API_TOKEN`), and usually `RESTORMEL_PROJECT_ID` in workflow **env** when using `judge_rubric`. Use the **Restormel Testing** page in the Keys dashboard for project/environment IDs if you use hosted credentials. See [config-reference-mvp.md](config-reference-mvp.md) and [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 
 ## Journey 3 — Reproduce a failed CI run locally
 A failed PR links to a run summary containing:

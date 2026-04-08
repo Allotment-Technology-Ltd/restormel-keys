@@ -11,6 +11,11 @@ export interface KeysHttpResolveResponseBody {
   secretEnvVar: string;
   /** Optional OpenAI-compatible API base URL. */
   baseUrl?: string;
+  /**
+   * When present (hosted Keys with encrypted Connections), use this value instead of reading secretEnvVar.
+   * Never log or persist; TLS only.
+   */
+  inlineApiKey?: string;
 }
 
 export interface ResolvedModel {
@@ -57,6 +62,7 @@ export type KeysTransportResolution =
       model: string;
       secretEnvVar: string;
       baseUrl?: string;
+      inlineApiKey?: string;
     }
   | { ok: false; code: string; message: string; cause?: unknown };
 

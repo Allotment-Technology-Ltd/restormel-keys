@@ -25,6 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Set Up",
     items: [
       { href: DASHBOARD_BASE + "/integrations", label: "Connections" },
+      { href: DASHBOARD_BASE + "/testing", label: "Restormel Testing" },
       { href: DASHBOARD_BASE + "/routes", label: "Rules" },
       { href: DASHBOARD_BASE + "/policies", label: "Guard Rails" },
       { href: DASHBOARD_BASE + "/models", label: "Model Catalog" },
@@ -57,6 +58,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/copy-for-ci"]: "GitHub Setup",
   [DASHBOARD_BASE + "/access"]: "Gateway keys",
   [DASHBOARD_BASE + "/integrations"]: "Connections",
+  [DASHBOARD_BASE + "/testing"]: "Restormel Testing",
   [DASHBOARD_BASE + "/dev-tools"]: "Dev Tools",
   [DASHBOARD_BASE + "/cli/connect"]: "Connect CLI",
   [DASHBOARD_BASE + "/models"]: "Model Catalog",

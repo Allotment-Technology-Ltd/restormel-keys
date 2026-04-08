@@ -31,6 +31,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@restormel/testing-core": "workspace:*",
     "@restormel/testing-keys-adapter": "workspace:*",
     "@restormel/testing-report": "workspace:*",
     "@restormel/testing-runner": "workspace:*"

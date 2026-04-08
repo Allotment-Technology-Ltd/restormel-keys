@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Bootstrap a **small first suite** (e.g. `web-critical`) in the user’s repo: critical journeys, minimal goals, valid `restormel-testing.yaml` (no YAML hooks in MVP).
+Bootstrap a **small first suite** (e.g. `web-critical`) in the user’s repo: critical journeys, minimal goals, valid `restormel-testing.yaml`. Prefer deterministic criteria; add shell hooks only when the user explicitly wants setup/teardown in YAML.
 
 ## When to use it
 
@@ -32,25 +32,25 @@ Before editing:
 1. Map the repo structure (app root, framework, how the app is run locally).
 2. List existing routes/pages or navigation paths for critical user journeys.
 3. Skim existing Playwright/Cypress/E2E tests and CI workflows for hints only—do not rewrite them.
-4. If no config exists, plan a minimal file at the repo root named restormel-testing.yaml (preferred) matching the MVP model: schema_version, keys (logical refs only), environments, suites, goals with success_criteria. Omit adapter_hooks or use `{}` only — non-empty adapter_hooks, preconditions, and cleanup fail validate in the current MVP runner.
+4. If no config exists, plan a minimal file at the repo root named restormel-testing.yaml (preferred) matching the MVP model: schema_version, keys (logical refs only), environments, suites, goals with success_criteria. Omit `adapter_hooks` / `preconditions` / `cleanup` unless the user asked for them — the runner **executes** them (shell); keep commands minimal and safe.
 
 Task:
 - Propose 2–5 critical user journeys (one outcome per goal).
 - Create or replace only the Restormel Testing config file(s) needed: restormel-testing.yaml (or .json if the project already uses JSON).
 - Add one initial suite (suggest id: web-critical) with environment id local (base_url must be http/https only).
 - Prefer deterministic success criteria: url_matches, text_present/text_absent, dom_signals. Use judge_rubric only where the outcome is genuinely semantic and cannot be asserted deterministically.
-- Do not add adapter_hooks, preconditions, or cleanup entries (they are rejected by validate). Use external setup docs or CI steps instead.
+- Do not add adapter_hooks, preconditions, or cleanup unless the user asked for YAML-local setup — otherwise document setup in README or CI. When you do add hooks, use short, idempotent shell and document required env vars.
 
 Allowed to modify:
 - restormel-testing.yaml and/or restormel-testing.json (repo root unless user specifies another path)
-- scripts/testing/* only if the user explicitly asked for non-YAML helpers (do not wire them via adapter_hooks)
+- scripts/testing/* only if the user explicitly asked for non-YAML helpers (you may reference them from adapter_hooks only when the user wants hooks)
 - .github/workflows/* ONLY if the user asked to wire CI or an existing workflow clearly needs a single new job/step for `testing validate` / `testing run`
 
 Do not:
 - Refactor or “improve” unrelated application code, styles, or dependencies.
 - Delete or rewrite existing Playwright/unit tests.
 - Add raw API keys or secrets; use placeholder ref:restormel-keys:… slots only if judges are needed.
-- Invent features not expressible in the current Restormel Testing YAML schema (stick to suites, goals, success_criteria, environments, timeouts, retries — no preconditions, cleanup, or non-empty adapter_hooks).
+- Invent features not expressible in the current Restormel Testing YAML schema (stick to suites, goals, success_criteria, environments, timeouts, retries, optional shell hooks documented in config-reference-mvp.md).
 
 Deliverables:
 1. Short list of chosen journeys and why they are critical.

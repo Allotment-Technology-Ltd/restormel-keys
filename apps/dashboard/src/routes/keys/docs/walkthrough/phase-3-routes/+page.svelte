@@ -251,7 +251,7 @@ DO NOT: Create routes/steps yet. Change any application code. Paste secrets.`,
   <h3>How to test</h3>
   <p>After removing or disabling the first step's credential, call resolve again. Expected: <code>"anthropic"</code> (or your second step's provider). Re-enable (or re-create) the first step after testing.</p>
   <div class="callout callout-pitfall">
-    <strong>Pitfall</strong> — If you want route resolution to depend on which platform keys are present in your app's environment, use local resolve (Phase 2, Step 2.6) and implement <code>getPlatformKey</code>. The dashboard does not accept raw provider API keys today; it uses Provider Integrations (credential references).
+    <strong>Pitfall</strong> — If you want route resolution to depend on which platform keys are present in your app's environment, use local resolve (Phase 2, Step 2.6) and implement <code>getPlatformKey</code>. Under <strong>Connections</strong>, you can store a <strong>hosted API key</strong> (encrypted at rest when configured) or a <strong>vault reference</strong> only; the UI never echoes full secrets after save. See <a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a> for the Testing-oriented path.
   </div>
   </WalkthroughStep>
 

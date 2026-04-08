@@ -19,7 +19,9 @@
         — sample workflow using the composite action.
       </li>
       <li>
-        <a href={`${githubRepoUrl}/blob/main/docs/oss-consumption.md`} rel="noopener noreferrer"><code>docs/oss-consumption.md</code></a>
+        <a href={`${githubRepoUrl}/blob/main/docs/testing/oss-consumption.md`} rel="noopener noreferrer"
+          ><code>docs/testing/oss-consumption.md</code></a
+        >
         — using the CLI and action from another repository.
       </li>
     </ul>

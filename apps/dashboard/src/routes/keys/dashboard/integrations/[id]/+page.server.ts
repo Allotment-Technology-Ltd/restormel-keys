@@ -15,6 +15,8 @@ export type IntegrationDetail = {
   status: string;
   verificationStatus: string | null;
   hasCredential: boolean;
+  /** Masked label when an encrypted API key is stored; never raw secret. */
+  credentialMasked: string | null;
   lastVerifiedAt: number | null;
   createdAt: number;
 };
@@ -51,7 +53,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       displayName: integration.displayName ?? null,
       status: integration.status,
       verificationStatus: integration.verificationStatus ?? null,
-      hasCredential: !!integration.credentialRef,
+      hasCredential: Boolean(integration.credentialRef || integration.hasEncryptedCredential),
+      credentialMasked: integration.credentialMasked ?? null,
       lastVerifiedAt: integration.lastVerifiedAt ?? null,
       createdAt: integration.createdAt,
     };

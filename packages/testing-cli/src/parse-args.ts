@@ -5,7 +5,8 @@ export type ParsedCli =
   | { kind: "validate"; config: string; json: boolean }
   | {
       kind: "run";
-      suite: string;
+      /** One or more suite ids (`--suite` repeatable or `--suites a,b`). */
+      suites: string[];
       config: string;
       environmentId?: string;
       targetUrl?: string;
@@ -77,7 +78,7 @@ function parseValidateArgs(args: string[]): ParsedCli {
 }
 
 function parseRunArgs(args: string[]): ParsedCli {
-  let suite: string | undefined;
+  const suites: string[] = [];
   let config = "restormel-testing.yaml";
   let environmentId: string | undefined;
   let targetUrl: string | undefined;
@@ -96,7 +97,18 @@ function parseRunArgs(args: string[]): ParsedCli {
       if (!v || v.startsWith("-")) {
         return { kind: "error", message: "run: --suite requires a value" };
       }
-      suite = v;
+      suites.push(v);
+      continue;
+    }
+    if (a === "--suites") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --suites requires a comma-separated list" };
+      }
+      for (const part of v.split(",")) {
+        const id = part.trim();
+        if (id.length > 0) suites.push(id);
+      }
       continue;
     }
     if (a === "--goal") {
@@ -176,13 +188,13 @@ function parseRunArgs(args: string[]): ParsedCli {
     return { kind: "error", message: `run: unexpected argument: ${a}` };
   }
 
-  if (!suite) {
-    return { kind: "error", message: "run: --suite <name> is required" };
+  if (suites.length === 0) {
+    return { kind: "error", message: "run: provide --suite <name> (repeatable) or --suites a,b,c" };
   }
 
   return {
     kind: "run",
-    suite,
+    suites,
     config,
     environmentId,
     targetUrl,

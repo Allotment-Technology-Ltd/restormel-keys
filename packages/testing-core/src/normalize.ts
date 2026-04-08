@@ -4,6 +4,10 @@ import type { SuccessCriteria } from "./success-criteria.js";
 /** Flattens repo-config `SuccessCriteria` into discrete assertions for runners or traces. */
 export function successCriteriaToAssertions(criteria: SuccessCriteria): Assertion[] {
   const out: Assertion[] = [];
+  if (criteria.anyOf !== undefined && criteria.anyOf.length > 0) {
+    out.push({ kind: "any_of", branches: [...criteria.anyOf] });
+    return out;
+  }
   if (criteria.urlMatches != null) {
     const patterns = Array.isArray(criteria.urlMatches)
       ? criteria.urlMatches

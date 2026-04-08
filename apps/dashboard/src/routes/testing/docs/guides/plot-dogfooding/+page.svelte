@@ -22,8 +22,18 @@
       keep the suite in the product repo.
     </p>
     <p>
-      Reference material: repo <code>docs/restormel-testing-mvp-spec.md</code> (Plot MVP target journeys). Runnable minimal layout:
-      <a href={`${githubRepoUrl}/tree/main/examples/testing-basic-web`} rel="noopener noreferrer"><code>examples/testing-basic-web/</code></a> ·
+      Monorepo layout, Playwright install, and auth storage patterns for an existing app are spelled out in
+      <a href="{base}/docs/getting-started/existing-stack">Existing stack</a> (same ideas as a team-local
+      <code>E2E-TEST-APPROACH.md</code>).
+    </p>
+    <p>
+      Reference material:
+      <a href={`${githubRepoUrl}/blob/main/docs/testing/restormel-testing-mvp-spec.md`} rel="noopener noreferrer"
+        ><code>docs/testing/restormel-testing-mvp-spec.md</code></a
+      >
+      (Plot MVP target journeys). Runnable minimal layout:
+      <a href={`${githubRepoUrl}/tree/main/examples/testing-basic-web`} rel="noopener noreferrer"><code>examples/testing-basic-web/</code></a>
+      ·
       <a href="{base}/docs/examples">Examples</a> index.
     </p>
   </div>

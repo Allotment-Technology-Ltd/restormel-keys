@@ -27,7 +27,7 @@ Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, z
 ## 3. Agent-readability
 
 - **Structure:** Consistent heading hierarchy (e.g. H1 → H2 → H3), predictable section patterns, and canonical file paths so agents can resolve references.
-- **Naming:** Same product terms everywhere: Workspace, Project, Environment, Gateway Key, Provider credential, Provider integration, Route, Models, Analytics, Logs & Traces, Dashboard, Sign in, Cloud API (umbrella), Dashboard API, Zuplo Gateway API, Zuplo gateway, backend key (Gateway Key), consumer key.
+- **Naming:** Same product terms everywhere: Workspace, Project, Environment, Gateway Key, Provider credential, **Connections** (UI for provider integrations), Provider integration, **Restormel Testing** (dashboard hub for Testing project IDs/snippets), Route, Models, Analytics, Logs & Traces, Dashboard, Sign in, Cloud API (umbrella), Dashboard API, Zuplo Gateway API, Zuplo gateway, backend key (Gateway Key), consumer key.
 - **Cross-references:** Use stable paths or anchors; avoid duplicate or contradictory truths. One canonical source per topic (see [.cursor/rules/01-doc-governance.mdc](../.cursor/rules/01-doc-governance.mdc)).
 - **Runbooks:** Use the same terminology and link to dashboard/docs with the compulsory URLs. Ensure runbooks are discoverable from the main doc index and the Svelte docs so “Cloud API” and “gateway setup” feel part of the same journey.
 

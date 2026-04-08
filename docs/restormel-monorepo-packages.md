@@ -14,8 +14,8 @@ End users consume **published npm packages**; this document is for contributors.
 | `packages/cli` (Keys) | `@restormel/keys-cli` | Keys CLI wrapper |
 | `packages/doctor`, `validate` | `@restormel/doctor`, `@restormel/validate` | OSS tooling |
 | `packages/aaif`, `mcp` | `@restormel/aaif`, `@restormel/mcp` | Contracts / MCP |
-| `packages/testing-core` … `testing-github-action` | `@restormel/testing-*` | Goal-based testing runner, CLI, composite Action; publish tag **`testing-v*`** (or workflow dispatch) |
-| `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app; Testing marketing/docs at **`/testing`** (`src/routes/testing/`) |
+| `packages/testing-core` … `testing-github-action`, `packages/restormel-testing` | `@restormel/testing-*`, `@restormel/testing-bundle` | Goal-based testing runner, CLI, optional meta-package (`testing-bundle`), composite Action; publish tag **`testing-v*`** (or workflow dispatch) |
+| `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app (**Connections**, **Restormel Testing** hub, encrypted provider credentials); Testing marketing/docs at **`/testing`** (`src/routes/testing/`) |
 | `platform/` | (mostly non-published) | Cursor template, module scaffold mirror, shared composite copies |
 
 ## @restormel/testing-* dependency graph
@@ -29,7 +29,11 @@ flowchart BT
   testing_report["@restormel/testing-report"]
   testing_runner["@restormel/testing-runner"]
   testing_cli["@restormel/testing-cli"]
+  testing_bundle["@restormel/testing-bundle"]
   testing_action["@restormel/testing-github-action"]
+
+  testing_bundle --> testing_cli
+  testing_bundle --> testing_browser
 
   testing_config --> testing_core
   testing_keys_adapter --> testing_core
@@ -47,6 +51,10 @@ flowchart BT
   testing_action --> testing_report
   testing_action --> testing_keys_adapter
 ```
+
+`@restormel/testing-bundle` is a thin **meta-package** (CLI + browser adaptor dependency) for consumers who want one `pnpm add -D` line; it contains no runtime code.
+
+**Keys adapter:** `@restormel/testing-keys-adapter` calls `POST …/v1/testing/resolve-model` with the Gateway bearer; the response may include an **inline** provider key when the Keys deployment stores encrypted credentials for the binding (`RESTORMEL_HOSTED_INLINE`). See [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 
 ## Build / test commands (root)
 

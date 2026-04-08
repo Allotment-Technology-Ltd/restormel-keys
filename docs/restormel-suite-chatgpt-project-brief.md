@@ -35,6 +35,7 @@
 | Design system entry (tokens, alignment, drift checks) | [`docs/design-system-index.md`](./design-system-index.md) |
 | Frozen CI/hosting snapshot (reference, not live config) | [`docs/platform-inventory.md`](./platform-inventory.md) |
 | Security / redaction | [`docs/security-baseline.md`](./security-baseline.md) |
+| Keys + Restormel Testing onboarding | [`docs/keys-testing-onboarding.md`](./keys-testing-onboarding.md) |
 | Human + agent index for keys repo | [`AGENTS.md`](../AGENTS.md) |
 
 **Raw URLs (for link-based project sources):** replace `main` if you pin a branch/tag.

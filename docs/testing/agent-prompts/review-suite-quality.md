@@ -13,7 +13,7 @@ Have a coding agent **audit** an existing suite for **ambiguity**, **overreach**
 ## What the coding agent should inspect first
 
 - **`restormel-testing.yaml`** / **`.json`** (full file).
-- Any **`adapter_hooks`**, **`preconditions`**, or **`cleanup`** (must be empty/absent for MVP validate).
+- Any **`adapter_hooks`**, **`preconditions`**, or **`cleanup`** — the runner **executes** these as shell; review for safety, idempotence, secrets in commands, and whether CI should own setup instead.
 - **CI** references to `testing` / `restormel-testing`.
 - Relevant **app routes** or README only as needed to validate whether goals match real product language.
 - [`docs/writing-good-goals.md`](../writing-good-goals.md).
@@ -25,7 +25,7 @@ You are reviewing the quality of the Restormel / Testing configuration in this r
 
 Before editing:
 1. Read restormel-testing.yaml or restormel-testing.json completely.
-2. Flag non-empty adapter_hooks, preconditions, or cleanup as validate failures.
+2. Review non-empty adapter_hooks, preconditions, and cleanup for shell safety, timeouts, and team expectations (they run in CI).
 3. Skim CI workflow steps that run testing validate or testing run.
 4. Optionally spot-check a few routes or UI strings mentioned in goals if the repo is available—do not refactor the app.
 
@@ -36,7 +36,7 @@ Review dimensions (report explicitly on each):
 - Flake risk (brittle selectors, missing waits implied by criteria, retry/timeouts masking issues)
 - Missing environment assumptions (auth, seed data, feature flags, non-local URLs)
 - Coupling to internal implementation details instead of user-visible outcomes
-- Illegal MVP fields (non-empty hooks / preconditions / cleanup)
+- Risky or redundant shell hooks (duplicate CI work, prod URLs, missing guards)
 - Suite sizing and naming consistency
 
 Task:

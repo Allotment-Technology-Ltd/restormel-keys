@@ -9,7 +9,7 @@ describe("parseArgs", () => {
   it("parses run with required suite", () => {
     expect(parseArgs(["run", "--suite", "web", "--config", "foo.yaml"])).toEqual({
       kind: "run",
-      suite: "web",
+      suites: ["web"],
       config: "foo.yaml",
       environmentId: undefined,
       targetUrl: undefined,
@@ -26,7 +26,7 @@ describe("parseArgs", () => {
   it("parses run --goal comma-separated", () => {
     expect(parseArgs(["run", "--suite", "s", "--goal", "a,b", "-c", "x.yaml"])).toEqual({
       kind: "run",
-      suite: "s",
+      suites: ["s"],
       config: "x.yaml",
       environmentId: undefined,
       targetUrl: undefined,
@@ -46,6 +46,24 @@ describe("parseArgs", () => {
     if (p.kind === "error") {
       expect(p.message).toMatch(/suite/);
     }
+  });
+
+  it("parses multiple --suite and --suites", () => {
+    const p = parseArgs(["run", "--suite", "a", "--suite", "b", "--suites", "c,d", "-c", "x.yaml"]);
+    expect(p).toEqual({
+      kind: "run",
+      suites: ["a", "b", "c", "d"],
+      config: "x.yaml",
+      environmentId: undefined,
+      targetUrl: undefined,
+      commitSha: undefined,
+      repository: undefined,
+      artifactDir: undefined,
+      headless: true,
+      trigger: "local",
+      goalIds: undefined,
+      json: false,
+    });
   });
 
   it("parses validate with default config path", () => {

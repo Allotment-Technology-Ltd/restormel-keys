@@ -30,6 +30,10 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 - Skills: `.cursor/skills/` with symlinks under `.agents/skills/` per [.cursor/rules/08-project-skills.mdc](.cursor/rules/08-project-skills.mdc). **Keys vs platform:** [.cursor/skills/restormel-keys-vs-platform/SKILL.md](.cursor/skills/restormel-keys-vs-platform/SKILL.md).
 - New Restormel **product** repos: start from [platform/cursor-template/](platform/cursor-template/) and [platform/docs/cursor-init.md](platform/docs/cursor-init.md).
 
+## Keys + Restormel Testing
+
+- End-to-end onboarding (Connections, encrypted provider keys, Testing hub, CLI env): [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md); in-product [/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding).
+
 ## Inventory
 
 - Frozen reference facts: [docs/platform-inventory.md](docs/platform-inventory.md).
