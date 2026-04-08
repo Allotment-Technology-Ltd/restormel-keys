@@ -109,7 +109,7 @@ The composite Action (MVP):
 - fails the step when the suite verdict is `failed` or `indeterminate`
 - defaults to **skipping** browser runs on **fork** PRs when `fork_pr_policy: skip` (exit **0** when skipped — branch protection should account for “skipped” vs “ran”)
 
-Set `RESTORMEL_KEYS_API_BASE_URL`, Gateway token (`RESTORMEL_KEYS_API_TOKEN`), and usually `RESTORMEL_PROJECT_ID` in workflow **env** when using `judge_rubric`. Use the **Restormel Testing** page in the Keys dashboard for project/environment IDs if you use hosted credentials. See [config-reference-mvp.md](config-reference-mvp.md) and [keys-testing-onboarding.md](../keys-testing-onboarding.md).
+Set `RESTORMEL_KEYS_BASE`, `RESTORMEL_GATEWAY_KEY`, and usually `RESTORMEL_PROJECT_ID` in workflow **env** when using `judge_rubric` (compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` — same values). Use the **Restormel Testing** page in the Keys dashboard for project/environment IDs if you use hosted credentials. See [config-reference-mvp.md](config-reference-mvp.md), [restormel-environment-vocabulary.md](../guides/restormel-environment-vocabulary.md), and [keys-testing-onboarding.md](../keys-testing-onboarding.md).
 
 ## Journey 3 — Reproduce a failed CI run locally
 A failed PR links to a run summary containing:

@@ -17,7 +17,7 @@ Saving a connection triggers provisioning of the **Restormel Testing** project, 
 
 ## 3. Gateway key
 
-Create a **Gateway key** (`rk_…`) under **Gateway keys** for the Restormel Testing project (or reuse an existing key scoped to that project). The CLI and `POST /v1/testing/resolve-model` use this token, not the raw provider key.
+Create a **Gateway key** (`rk_…`) under **Gateway keys** (sidebar: **Set Up** → **Gateway keys**) for the Restormel Testing project (or reuse an existing key scoped to that project). The CLI and `POST /v1/testing/resolve-model` use this token, not the raw provider key.
 
 ## 4. Restormel Testing hub
 
@@ -26,11 +26,13 @@ Open **Restormel Testing** (`/keys/dashboard/testing`) for:
 - **Project ID** and **environment IDs** for your CI and local `.env`.
 - Copy-ready `RESTORMEL_*` names consistent with [restormel-environment-vocabulary.md](guides/restormel-environment-vocabulary.md).
 
-Set at minimum:
+Set at minimum (canonical names — see [restormel-environment-vocabulary.md](guides/restormel-environment-vocabulary.md) § Testing runner):
 
-- `RESTORMEL_KEYS_API_BASE_URL` — site origin that serves the Keys API (same host as the dashboard deployment unless documented otherwise).
-- `RESTORMEL_KEYS_API_TOKEN` — your Gateway key.
+- `RESTORMEL_KEYS_BASE` — site origin that serves the Keys HTTP API (scheme + host, no path; same host as the dashboard deployment unless documented otherwise).
+- `RESTORMEL_GATEWAY_KEY` — your Gateway key (`rk_…`).
 - `RESTORMEL_PROJECT_ID` — from the Testing hub.
+
+**Compatibility:** `@restormel/testing-keys-adapter` and `testing doctor` also accept `RESTORMEL_KEYS_API_BASE_URL` and `RESTORMEL_KEYS_API_TOKEN` with the **same values** as `RESTORMEL_KEYS_BASE` and `RESTORMEL_GATEWAY_KEY` respectively (see vocabulary doc for precedence).
 
 ## 5. CLI verification
 
@@ -40,11 +42,11 @@ Install `@restormel/testing-cli` (see [testing/oss-consumption.md](testing/oss-c
 pnpm exec testing doctor
 ```
 
-With Keys URL and token set, `doctor` performs a single resolve probe (HTTP status only). It also reminds you to set `RESTORMEL_PROJECT_ID` when the Keys base URL is configured.
+With `RESTORMEL_KEYS_BASE` (or `RESTORMEL_KEYS_API_BASE_URL`) and a Gateway token set, `doctor` performs a single resolve probe (HTTP status only). It also reminds you to set `RESTORMEL_PROJECT_ID` when the Keys base URL is configured.
 
 ## 6. Security notes
 
-- Never commit real keys. Use CI secrets for `RESTORMEL_KEYS_API_TOKEN` and provider material.
+- Never commit real keys. Use CI secrets for `RESTORMEL_GATEWAY_KEY` (or the compatibility alias `RESTORMEL_KEYS_API_TOKEN`) and provider material.
 - Hosted provider keys are a high-trust data class; see [security-baseline.md](security-baseline.md) and [threat-model-starter.md](threat-model-starter.md).
 
 ## Related

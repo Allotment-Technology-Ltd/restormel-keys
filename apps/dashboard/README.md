@@ -74,4 +74,4 @@ Run migrations in `migrations/` (001 through `026` as needed) against the Neon d
 ## Terminology
 
 - **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
-- **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_KEYS_API_TOKEN`. See [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
+- **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_GATEWAY_KEY` (alias `RESTORMEL_KEYS_API_TOKEN`). See [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).

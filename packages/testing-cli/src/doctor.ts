@@ -1,6 +1,6 @@
 import { access, constants } from "node:fs/promises";
 import { resolvePathUnderRoot } from "@restormel/testing-core";
-import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
+import { keysAdapterOptionsFromProcessEnv, keysHttpBearerFromProcessEnv } from "@restormel/testing-keys-adapter";
 import { chromium } from "playwright";
 
 /**
@@ -41,11 +41,16 @@ export async function runDoctor(opts: { config?: string }): Promise<number> {
     return 2;
   }
 
-  const keysBase = process.env.RESTORMEL_KEYS_API_BASE_URL?.trim();
+  const adapterOpts = keysAdapterOptionsFromProcessEnv();
+  const keysBaseForHint =
+    process.env.RESTORMEL_KEYS_API_BASE_URL?.trim() || process.env.RESTORMEL_KEYS_BASE?.trim();
   const projectId = process.env.RESTORMEL_PROJECT_ID?.trim();
   const fallback = process.env.RESTORMEL_TESTING_OPENAI_FALLBACK?.trim() === "1";
-  if (keysBase) {
-    console.log("doctor: RESTORMEL_KEYS_API_BASE_URL is set (value not shown)");
+  if (keysBaseForHint) {
+    const baseVar = process.env.RESTORMEL_KEYS_API_BASE_URL?.trim()
+      ? "RESTORMEL_KEYS_API_BASE_URL"
+      : "RESTORMEL_KEYS_BASE";
+    console.log(`doctor: ${baseVar} is set (value not shown)`);
     if (projectId) {
       console.log("doctor: RESTORMEL_PROJECT_ID is set (value not shown)");
     } else {
@@ -57,19 +62,21 @@ export async function runDoctor(opts: { config?: string }): Promise<number> {
     console.log("doctor: RESTORMEL_TESTING_OPENAI_FALLBACK=1 (OpenAI env fallback may be used for judges)");
   } else {
     console.log(
-      "doctor: Keys HTTP not set — goals with judge_rubric need RESTORMEL_KEYS_API_BASE_URL or RESTORMEL_TESTING_OPENAI_FALLBACK=1",
+      "doctor: Keys HTTP not set — goals with judge_rubric need RESTORMEL_KEYS_BASE (or RESTORMEL_KEYS_API_BASE_URL) or RESTORMEL_TESTING_OPENAI_FALLBACK=1",
     );
   }
 
-  const adapterOpts = keysAdapterOptionsFromProcessEnv();
   if (adapterOpts?.keysApiBaseUrl) {
-    const tokenVar = adapterOpts.keysApiTokenEnvVar ?? "RESTORMEL_KEYS_API_TOKEN";
-    const token = process.env[tokenVar]?.trim();
+    const token = keysHttpBearerFromProcessEnv(adapterOpts.keysApiTokenEnvVar);
     if (!token) {
-      console.log(`doctor: Keys probe skipped — ${tokenVar} not set`);
+      console.log(
+        "doctor: Keys probe skipped — set RESTORMEL_GATEWAY_KEY or RESTORMEL_KEYS_API_TOKEN (or RESTORMEL_KEYS_API_TOKEN_ENV)",
+      );
     } else {
       const root = adapterOpts.keysApiBaseUrl.replace(/\/?$/, "");
       const url = `${root}/v1/testing/resolve-model`;
+      /** Bootstrap ref that exists for Testing projects (unlike ad-hoc `doctor/probe`-style strings with no binding). */
+      const probeRef = "ref:restormel-keys:llm/primary";
       try {
         const res = await fetch(url, {
           method: "POST",
@@ -77,9 +84,16 @@ export async function runDoctor(opts: { config?: string }): Promise<number> {
             "content-type": "application/json",
             authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ logicalRef: "ref:restormel-keys:doctor/probe" }),
+          body: JSON.stringify({ logicalRef: probeRef }),
         });
-        console.log(`doctor: Keys resolve POST → HTTP ${res.status} (response body not printed)`);
+        console.log(`doctor: Keys resolve POST (${probeRef}) → HTTP ${res.status} (response body not printed)`);
+        if (res.status === 404) {
+          console.log(
+            "doctor: HTTP 404 often means unknown logical ref or project/token mismatch — confirm RESTORMEL_PROJECT_ID and that the gateway key is for the same project as your judge bindings.",
+          );
+        } else if (res.status === 401 || res.status === 403) {
+          console.log("doctor: HTTP 401/403 — check the gateway token variable and key scope.");
+        }
       } catch (e) {
         console.error(`doctor: Keys resolve probe failed: ${e instanceof Error ? e.message : String(e)}`);
         return 2;

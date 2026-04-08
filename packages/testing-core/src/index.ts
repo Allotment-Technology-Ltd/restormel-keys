@@ -21,8 +21,29 @@ export type {
   TextPresentAssertion,
   UrlAssertion,
 } from "./assertion.js";
+export type {
+  AcSequenceBuiltInAgent,
+  AcSequenceConfig,
+  AcSequencePostCheck,
+  AcSequencePostCheckDomRoleName,
+  AcSequencePostCheckHttp,
+  AcSequenceStepResult,
+} from "./ac-sequence.js";
+export type {
+  AcceptanceCriterionDefinition,
+  AcceptanceCriterionResult,
+  AcceptanceCriterionVerdict,
+} from "./acceptance.js";
+export { aggregateAcceptanceCriterionResults } from "./acceptance.js";
 export type { EnvironmentProfile } from "./environment.js";
-export type { GoalType, HookRef, TestGoal } from "./goal.js";
+export type {
+  AfterAgentPhase,
+  ExecutionMode,
+  GoalType,
+  HookRef,
+  MissionConstraints,
+  TestGoal,
+} from "./goal.js";
 export type { ArtifactPolicy, RetryPolicy } from "./policies.js";
 export type {
   ArtifactRef,

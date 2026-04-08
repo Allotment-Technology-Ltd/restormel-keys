@@ -1,5 +1,23 @@
 # @restormel/testing-report
 
+## 0.1.4
+
+### Patch Changes
+
+- Version align with **0.1.4** testing line (reports unchanged; consumers stay on one semver line).
+
+## 0.1.3
+
+### Patch Changes
+
+- Markdown / GitHub / JSON reports include user story, acceptance criteria table, and **`acceptance_results`**.
+
+## 0.1.2
+
+### Patch Changes
+
+- Version align with Testing **0.1.2** publish train (no report code changes).
+
 ## 0.1.1
 
 ### Patch Changes

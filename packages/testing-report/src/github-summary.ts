@@ -1,6 +1,10 @@
 import type { RunRecord, SuiteReportSlice } from "@restormel/testing-core";
 import { inferFailureBucket } from "./failure-bucket.js";
 
+function mdEscapeOneLine(s: string): string {
+  return s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
 export interface GithubSummaryContext {
   run: RunRecord;
   suite?: SuiteReportSlice;
@@ -35,6 +39,19 @@ export function buildGithubStepSummaryMarkdown(ctx: GithubSummaryContext): strin
   lines.push(`*Execution: inline in this job (no hosted orchestration).*`);
   lines.push("");
 
+  if (run.acceptanceResults !== undefined && run.acceptanceResults.length > 0) {
+    const badAc = run.acceptanceResults.filter((a) => a.verdict !== "passed" && a.verdict !== "skipped");
+    if (badAc.length > 0) {
+      lines.push(`### Acceptance criteria (needs attention)`);
+      lines.push("");
+      for (const a of badAc) {
+        lines.push(`- **\`${a.id}\`** — ${a.verdict} — ${mdEscapeOneLine(a.text)}`);
+        if (a.summary) lines.push(`  - ${mdEscapeOneLine(a.summary)}`);
+      }
+      lines.push("");
+    }
+  }
+
   const failed = run.goalRuns.filter((g) => g.verdict !== "passed");
   if (failed.length > 0) {
     lines.push(`### Needs attention`);
@@ -61,6 +78,13 @@ export function buildGithubStepSummaryMarkdown(ctx: GithubSummaryContext): strin
     lines.push(`| ${g.goalId} | ${g.verdict} | ${bucket} |`);
   }
   lines.push("");
+
+  if (suite?.userStory !== undefined && suite.userStory.trim() !== "") {
+    lines.push(`### User story`);
+    lines.push("");
+    lines.push(mdEscapeOneLine(suite.userStory.trim()));
+    lines.push("");
+  }
 
   if (suite?.description) {
     lines.push(`### Suite note`);

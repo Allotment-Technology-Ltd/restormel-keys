@@ -1,5 +1,23 @@
 # @restormel/testing-core
 
+## 0.1.4
+
+### Patch Changes
+
+- `execution_mode: ac_sequence`; `TestGoal.acSequence` and `GoalRunRecord.acSequenceSteps`. **`aggregateAcceptanceCriterionResults`** prefers per-step outcomes when `acSequenceSteps` is present.
+
+## 0.1.3
+
+### Patch Changes
+
+- Suite **`userStory`** + **`acceptanceCriteria`**; goal **`acceptanceCriterionIds`**; **`aggregateAcceptanceCriterionResults`**; **`RunRecord.acceptanceResults`** and **`GoalRunRecord.acceptanceCriterionIds`** for BA-style reporting.
+
+## 0.1.2
+
+### Patch Changes
+
+- `TestGoal`: `execution_mode` (`observe` | `agent`), `mission`, `mission_executor`, `mission_constraints`, `after_agent` for delegate-style agent missions (runner executes shell, then post-mission browser checks).
+
 ## 0.1.1
 
 ### Patch Changes

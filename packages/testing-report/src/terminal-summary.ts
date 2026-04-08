@@ -26,6 +26,12 @@ export function formatRunSummaryLines(run: RunRecord): string[] {
       lines.push(`      ${g.summary}`);
     }
   }
+  if (run.acceptanceResults !== undefined && run.acceptanceResults.length > 0) {
+    lines.push("  acceptance criteria:");
+    for (const a of run.acceptanceResults) {
+      lines.push(`    - ${a.id}: ${a.verdict}${a.summary ? ` — ${a.summary}` : ""}`);
+    }
+  }
   if (run.keysModelMeta !== undefined && run.keysModelMeta.length > 0) {
     lines.push("  keys models (no secrets):");
     for (const m of run.keysModelMeta) {

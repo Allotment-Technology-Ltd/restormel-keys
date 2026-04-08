@@ -1,4 +1,5 @@
 import type { KeysModelAdapterOptions, KeysAdapterError, ModelResolutionResult, ResolvedModel } from "./types.js";
+import { keysHttpBearerFromProcessEnv } from "./env-from-process.js";
 import { createHttpKeysTransport } from "./transport-http.js";
 import { readSecretFromEnv } from "./materialize.js";
 
@@ -55,9 +56,7 @@ export async function resolveModel(
     (options.keysApiBaseUrl
       ? createHttpKeysTransport({
           baseUrl: options.keysApiBaseUrl,
-          getKeysApiToken: options.keysApiTokenEnvVar
-            ? () => process.env[options.keysApiTokenEnvVar!]
-            : undefined,
+          getKeysApiToken: () => keysHttpBearerFromProcessEnv(options.keysApiTokenEnvVar),
         })
       : undefined);
 

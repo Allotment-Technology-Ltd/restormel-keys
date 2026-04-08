@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-core",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "description": "Contracts, run/verdict types, and shared primitives (scaffold).",
   "license": "MIT",
   "repository": {

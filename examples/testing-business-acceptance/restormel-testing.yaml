@@ -1,0 +1,36 @@
+# Example: suite-level user story + acceptance criteria (stable ids) linked to goals.
+# See docs/testing/config-reference-mvp.md and docs/testing/agent-missions.md.
+schema_version: "1"
+
+environments:
+  local:
+    base_url: https://example.com
+
+suites:
+  - id: household-planning-story
+    environment: local
+    description: Plotbudget-style golden example (mapping only; replace URLs/criteria for a real app).
+    user_story: >-
+      As a user, I want to create a project with a phase, a task, and a supply item
+      so I can plan household work with materials tracked.
+    acceptance_criteria:
+      - id: ac-001-create-project
+        text: I can create a project.
+      - id: ac-002-add-phase
+        text: I can add a phase to the project.
+      - id: ac-003-add-task
+        text: I can add a task to the phase.
+      - id: ac-004-add-supply
+        text: I can add a supply item to the task.
+    goals:
+      - id: example-home-visible
+        type: browser
+        description: Automation mapping — replace with real journeys that evidence each AC.
+        acceptance_criterion_ids:
+          - ac-001-create-project
+          - ac-002-add-phase
+          - ac-003-add-task
+          - ac-004-add-supply
+        success_criteria:
+          text_present:
+            - Example Domain

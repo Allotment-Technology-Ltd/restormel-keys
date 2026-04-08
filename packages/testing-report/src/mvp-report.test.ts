@@ -97,6 +97,34 @@ describe("buildMvpJsonReport", () => {
     expect(doc.artifact_files.traces_json).toBe(TRACES_JSON);
   });
 
+  it("includes acceptance_results when run carries roll-up", () => {
+    const doc = buildMvpJsonReport({
+      run: {
+        ...sampleRun,
+        acceptanceResults: [
+          {
+            id: "ac-1",
+            text: "Do thing",
+            verdict: "passed",
+            evidenceRefs: [],
+            coveredByGoalIds: ["g1"],
+          },
+        ],
+      },
+      suite: {
+        id: "suite-a",
+        environmentId: "local",
+        goalCount: 2,
+        userStory: "As a user…",
+        acceptanceCriteria: [{ id: "ac-1", text: "Do thing" }],
+      },
+    });
+    expect(doc.acceptance_results).toHaveLength(1);
+    expect(doc.acceptance_results?.[0]?.verdict).toBe("passed");
+    expect(doc.suite?.user_story).toMatch(/As a user/);
+    expect(doc.suite?.acceptance_criteria).toHaveLength(1);
+  });
+
   it("includes reproduction when provided", () => {
     const doc = buildMvpJsonReport({
       run: sampleRun,

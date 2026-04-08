@@ -16,6 +16,8 @@ export interface RunLocalSuiteOptions {
    */
   targetUrlOverride?: string;
   goalIds?: string[];
+  /** Run only goals whose `acceptance_criterion_ids` intersect this set. */
+  acceptanceCriterionIds?: string[];
   trigger?: RunTrigger;
   commitSha?: string;
   repository?: string;
@@ -38,6 +40,7 @@ export interface RunSuiteExecutionOptions {
   environmentId?: string;
   targetUrlOverride?: string;
   goalIds?: string[];
+  acceptanceCriterionIds?: string[];
   trigger?: RunTrigger;
   commitSha?: string;
   repository?: string;

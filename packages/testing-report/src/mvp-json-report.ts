@@ -1,4 +1,10 @@
-import type { KeysModelMeta, RunRecord, SuiteReportSlice, Verdict } from "@restormel/testing-core";
+import type {
+  AcceptanceCriterionResult,
+  KeysModelMeta,
+  RunRecord,
+  SuiteReportSlice,
+  Verdict,
+} from "@restormel/testing-core";
 import { inferFailureBucket, type FailureBucket } from "./failure-bucket.js";
 import {
   GITHUB_SUMMARY_MD,
@@ -34,10 +40,20 @@ export interface MvpJsonReportV1 {
   suite?: {
     id: string;
     description?: string;
+    user_story?: string;
+    acceptance_criteria?: { id: string; text: string }[];
     tags?: string[];
     environment_id: string;
     goal_count: number;
   };
+  acceptance_results?: {
+    id: string;
+    text: string;
+    verdict: AcceptanceCriterionResult["verdict"];
+    summary?: string;
+    evidence_refs: string[];
+    covered_by_goal_ids: string[];
+  }[];
   verdict_summary: {
     overall: Verdict;
     passed: number;
@@ -121,10 +137,26 @@ export function buildMvpJsonReport(input: {
     doc.suite = {
       id: suite.id,
       description: suite.description,
+      user_story: suite.userStory,
+      acceptance_criteria:
+        suite.acceptanceCriteria !== undefined && suite.acceptanceCriteria.length > 0
+          ? suite.acceptanceCriteria.map((c) => ({ id: c.id, text: c.text }))
+          : undefined,
       tags: suite.tags !== undefined && suite.tags.length > 0 ? [...suite.tags] : undefined,
       environment_id: suite.environmentId,
       goal_count: suite.goalCount,
     };
+  }
+
+  if (run.acceptanceResults !== undefined && run.acceptanceResults.length > 0) {
+    doc.acceptance_results = run.acceptanceResults.map((r) => ({
+      id: r.id,
+      text: r.text,
+      verdict: r.verdict,
+      summary: r.summary,
+      evidence_refs: [...r.evidenceRefs],
+      covered_by_goal_ids: [...r.coveredByGoalIds],
+    }));
   }
 
   if (run.keysModelMeta !== undefined && run.keysModelMeta.length > 0) {

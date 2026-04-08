@@ -1,12 +1,33 @@
+import type { AcSequenceStepResult } from "./ac-sequence.js";
 import type { GoalRunRecord } from "./run.js";
 import type { Report } from "./report.js";
 import type { RunRecord } from "./run.js";
 import type { TraceEvent } from "./run.js";
 import { isVerdict } from "./verdict.js";
 
+function isAcSequenceStepResult(value: unknown): value is AcSequenceStepResult {
+  if (value === null || typeof value !== "object") return false;
+  const s = value as Record<string, unknown>;
+  return (
+    typeof s.criterionId === "string" &&
+    isVerdict(s.verdict) &&
+    typeof s.reasonCode === "string" &&
+    typeof s.summary === "string" &&
+    typeof s.agentRoundsUsed === "number" &&
+    Array.isArray(s.evidenceRefs) &&
+    s.evidenceRefs.every((x) => typeof x === "string")
+  );
+}
+
 export function isGoalRunRecord(value: unknown): value is GoalRunRecord {
   if (value === null || typeof value !== "object") return false;
   const g = value as Record<string, unknown>;
+  const acOk =
+    g.acceptanceCriterionIds === undefined ||
+    (Array.isArray(g.acceptanceCriterionIds) && g.acceptanceCriterionIds.every((x) => typeof x === "string"));
+  const seqOk =
+    g.acSequenceSteps === undefined ||
+    (Array.isArray(g.acSequenceSteps) && g.acSequenceSteps.every(isAcSequenceStepResult));
   return (
     typeof g.goalId === "string" &&
     isVerdict(g.verdict) &&
@@ -14,7 +35,9 @@ export function isGoalRunRecord(value: unknown): value is GoalRunRecord {
     typeof g.summary === "string" &&
     typeof g.retriesUsed === "number" &&
     Array.isArray(g.evidenceRefs) &&
-    g.evidenceRefs.every((x) => typeof x === "string")
+    g.evidenceRefs.every((x) => typeof x === "string") &&
+    acOk &&
+    seqOk
   );
 }
 

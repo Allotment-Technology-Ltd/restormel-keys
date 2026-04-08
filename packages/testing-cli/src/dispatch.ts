@@ -98,6 +98,7 @@ type RunCliOpts = {
   headless: boolean;
   trigger: "local" | "ci";
   goalIds?: string[];
+  acceptanceCriterionIds?: string[];
   json: boolean;
 };
 
@@ -119,6 +120,7 @@ async function cmdRunOneSuite(
     artifactDir,
     headless: opts.headless,
     goalIds: opts.goalIds,
+    acceptanceCriterionIds: opts.acceptanceCriterionIds,
     keysAdapterOptions,
   });
 
@@ -162,6 +164,9 @@ async function cmdRunOneSuite(
   if (opts.environmentId !== undefined) reproduceRun += ` --environment ${opts.environmentId}`;
   if (opts.goalIds !== undefined && opts.goalIds.length > 0) {
     reproduceRun += ` --goal ${opts.goalIds.join(",")}`;
+  }
+  if (opts.acceptanceCriterionIds !== undefined && opts.acceptanceCriterionIds.length > 0) {
+    reproduceRun += ` --ac ${opts.acceptanceCriterionIds.join(",")}`;
   }
 
   await writeRunReportBundle(artifactDir, {

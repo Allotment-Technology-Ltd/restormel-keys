@@ -28,8 +28,9 @@ Examples:
   ${program} doctor --config restormel-testing.yaml
 
 Environment (Keys / judges — values never printed):
-  RESTORMEL_KEYS_API_BASE_URL     Keys HTTP API origin (optional)
-  RESTORMEL_KEYS_API_TOKEN_ENV    Name of env var with Keys API bearer (default RESTORMEL_KEYS_API_TOKEN)
+  RESTORMEL_KEYS_BASE             Canonical site origin for Keys HTTP resolve (optional; alias: RESTORMEL_KEYS_API_BASE_URL)
+  RESTORMEL_GATEWAY_KEY           Canonical bearer for resolve (optional; alias: RESTORMEL_KEYS_API_TOKEN)
+  RESTORMEL_KEYS_API_TOKEN_ENV    Name of env var with Keys HTTP bearer (default RESTORMEL_KEYS_API_TOKEN)
   RESTORMEL_TESTING_OPENAI_FALLBACK   Set to 1 for documented OPENAI_API_KEY fallback when Keys unset
 
 Shell hooks (adapter_hooks, preconditions, cleanup):
@@ -89,6 +90,7 @@ Options:
       --suite <name>        Suite id (repeatable for multiple suites)
       --suites <a,b,c>      Comma-separated suite ids (alternative to multiple --suite)
       --goal <ids>          Comma-separated goal ids (subset of suite; repeatable)
+      --ac <ids>            Comma-separated acceptance_criteria ids (goals must list them in acceptance_criterion_ids)
   -c, --config <path>       Config file (default: restormel-testing.yaml)
       --environment, --env <id>  Environment id (default: suite's environment)
       --target-url <url>    Override base URL (e.g. preview deploy; no credentials in URL)
@@ -105,7 +107,7 @@ Options:
   if (t === "doctor") {
     console.log(`${program} doctor [options]
 
-Check Node 20+, optional config readability, Playwright Chromium install, Keys-related env hints (including whether RESTORMEL_PROJECT_ID is set when RESTORMEL_KEYS_API_BASE_URL is set), and (when Keys URL + token are set) a single POST to the resolve endpoint (HTTP status only; body not printed).
+Check Node 20+, optional config readability, Playwright Chromium install, Keys-related env hints (including whether RESTORMEL_PROJECT_ID is set when RESTORMEL_KEYS_BASE or RESTORMEL_KEYS_API_BASE_URL is set), and (when Keys URL + token are set) a single POST to the resolve endpoint using bootstrap ref ref:restormel-keys:llm/primary (HTTP status only; body not printed).
 
 Options:
   -c, --config <path>   If set, file must exist and be readable

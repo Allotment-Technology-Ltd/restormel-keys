@@ -3,7 +3,7 @@
  */
 export const testingKeysAdapterPackage = "@restormel/testing-keys-adapter" as const;
 
-export { keysAdapterOptionsFromProcessEnv } from "./env-from-process.js";
+export { keysAdapterOptionsFromProcessEnv, keysHttpBearerFromProcessEnv } from "./env-from-process.js";
 export { resolveModel } from "./adapter.js";
 export { readSecretFromEnv } from "./materialize.js";
 export { createHttpKeysTransport } from "./transport-http.js";

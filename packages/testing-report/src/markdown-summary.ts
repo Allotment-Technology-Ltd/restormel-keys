@@ -46,11 +46,32 @@ export function buildMarkdownSummary(opts: MarkdownSummaryOptions): string {
     if (suite.description) lines.push(suite.description);
     else lines.push(`_(no description)_`);
     lines.push("");
+    if (suite.userStory !== undefined && suite.userStory.trim() !== "") {
+      lines.push(`### User story`);
+      lines.push("");
+      lines.push(suite.userStory.trim());
+      lines.push("");
+    }
     if (suite.tags !== undefined && suite.tags.length > 0) {
       lines.push(`**Tags:** ${suite.tags.map((t) => `\`${t}\``).join(", ")}`);
       lines.push("");
     }
     lines.push(`**Goals in run:** ${suite.goalCount}`);
+    lines.push("");
+  }
+
+  if (run.acceptanceResults !== undefined && run.acceptanceResults.length > 0) {
+    lines.push(`## Acceptance criteria`);
+    lines.push("");
+    lines.push(`| AC id | Criterion | Result | Evidence | Covered by goals |`);
+    lines.push(`|-------|-----------|--------|----------|------------------|`);
+    for (const a of run.acceptanceResults) {
+      const ev = a.evidenceRefs.length ? a.evidenceRefs.join(", ") : "—";
+      const gids = a.coveredByGoalIds.length ? a.coveredByGoalIds.map((g) => `\`${g}\``).join(", ") : "—";
+      lines.push(
+        `| \`${mdEscapeCell(a.id)}\` | ${mdEscapeCell(a.text)} | **${a.verdict}** | ${mdEscapeCell(ev)} | ${gids} |`,
+      );
+    }
     lines.push("");
   }
 

@@ -352,4 +352,281 @@ suites:
     });
     expect(r.ok).toBe(true);
   });
+
+  it("accepts execution_mode agent with mission and mission_executor", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "Agent checkout flow",
+              execution_mode: "agent",
+              mission: "Complete checkout",
+              mission_executor: "pnpm run agent:checkout",
+              success_criteria: { url_matches: "/done" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const g = r.config.suites[0]?.goals[0];
+      expect(g?.executionMode).toBe("agent");
+      expect(g?.mission).toBe("Complete checkout");
+    }
+  });
+
+  it("allows after_agent.success_criteria without top-level success_criteria for agent goals", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              execution_mode: "agent",
+              mission: "m",
+              mission_executor: "true",
+              after_agent: {
+                start_path: "/app",
+                success_criteria: { text_present: ["Done"] },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("accepts execution_mode ac_sequence with ac_sequence block and auto acceptance_criterion_ids", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          acceptance_criteria: [
+            { id: "ac-1", text: "First" },
+            { id: "ac-2", text: "Second" },
+          ],
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "Walk ACs",
+              execution_mode: "ac_sequence",
+              ac_sequence: {
+                built_in_agent: { max_rounds_per_criterion: 4 },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const g = r.config.suites[0]?.goals[0];
+      expect(g?.executionMode).toBe("ac_sequence");
+      expect(g?.acceptanceCriterionIds).toEqual(["ac-1", "ac-2"]);
+      expect(g?.acSequence?.builtInAgent.maxRoundsPerCriterion).toBe(4);
+    }
+  });
+
+  it("rejects ac_sequence without suite acceptance_criteria", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              execution_mode: "ac_sequence",
+              ac_sequence: { built_in_agent: {} },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects ac_sequence block when execution_mode is observe", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          acceptance_criteria: [{ id: "ac-1", text: "t" }],
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              success_criteria: { url_matches: "/" },
+              ac_sequence: { built_in_agent: {} },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects mission_executor on observe browser goals", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              mission_executor: "true",
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects after_agent on observe goals", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              after_agent: { start_path: "/x" },
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("loads examples/testing-business-acceptance/restormel-testing.yaml", async () => {
+    const p = join(repoRoot, "examples/testing-business-acceptance/restormel-testing.yaml");
+    const r = await loadConfigFromFile(p, { allowedRoot: repoRoot });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const s = r.config.suites.find((x) => x.id === "household-planning-story");
+      expect(s?.userStory).toMatch(/household work/);
+      expect(s?.acceptanceCriteria?.map((c) => c.id)).toEqual([
+        "ac-001-create-project",
+        "ac-002-add-phase",
+        "ac-003-add-task",
+        "ac-004-add-supply",
+      ]);
+      expect(s?.goals[0]?.acceptanceCriterionIds?.length).toBe(4);
+    }
+  });
+
+  it("rejects acceptance_criterion_ids when suite has no acceptance_criteria", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              acceptance_criterion_ids: ["ac-1"],
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects unknown acceptance_criterion id on goal", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          acceptance_criteria: [{ id: "ac-1", text: "t" }],
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              acceptance_criterion_ids: ["ac-999"],
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects duplicate acceptance_criteria ids", () => {
+    const r = validateConfigDocument({
+      schema_version: "1",
+      environments: { local: { base_url: "https://example.com" } },
+      suites: [
+        {
+          id: "s1",
+          environment: "local",
+          acceptance_criteria: [
+            { id: "ac-1", text: "a" },
+            { id: "ac-1", text: "b" },
+          ],
+          goals: [
+            {
+              id: "g1",
+              type: "browser",
+              description: "d",
+              acceptance_criterion_ids: ["ac-1"],
+              success_criteria: { url_matches: "/" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
 });
