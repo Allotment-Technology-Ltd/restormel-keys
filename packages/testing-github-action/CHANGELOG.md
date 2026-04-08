@@ -1,5 +1,11 @@
 # @restormel/testing-github-action
 
+## 0.1.1
+
+### Patch Changes
+
+- Republish aligned with `main` after the 2026-04-08 Keys + Testing and runner work (registry `0.1.0` predated that commit train).
+
 ## 0.1.0
 
 ### Minor Changes

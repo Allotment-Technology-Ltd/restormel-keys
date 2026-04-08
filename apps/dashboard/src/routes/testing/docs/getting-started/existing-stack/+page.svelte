@@ -26,7 +26,7 @@
     <ol>
       <li>
         <strong>Workspace root</strong> — from the repo root, add
-        <code>pnpm add -D @restormel/testing-cli@^0.1.0</code> (or add to the workspace package that runs CI). Pin the same minor line
+        <code>pnpm add -D @restormel/testing-cli@^0.1.1</code> (or add to the workspace package that runs CI). Pin the same minor line
         across <code>@restormel/testing-*</code> if you depend on more than the CLI.
       </li>
       <li>

@@ -54,5 +54,6 @@ For **MVP parity** with deterministic Plotbudget-style adoption, the largest pro
 
 ## In-repo doc surfaces
 
+- **Plot engineers — what shipped (April 2026):** [release-notes-plot-engineers-2026-04.md](release-notes-plot-engineers-2026-04.md) (before/after, doc map, links to live `/testing/docs`).
 - Dashboard: [Keys in CI (checklist)](https://restormel.dev/testing/docs/guides/keys-ci-checklist), [Configuration](https://restormel.dev/testing/docs/guides/config), [Test definition](https://restormel.dev/testing/docs/guides/test-definition), [Performance goals](https://restormel.dev/testing/docs/guides/performance-goals).
 - This file: single place to cite Plotbudget feedback without duplicating full narrative in multiple canonical docs.

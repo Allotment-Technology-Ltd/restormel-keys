@@ -18,7 +18,7 @@
     </ul>
     <p>
       Rules: explicit success criteria, Keys-backed execution where models are involved, same runs locally and in CI. For
-      Plotbudget.com and other apps off the registry, add <code>@restormel/testing-cli@^0.1.0</code> as a dev dependency and
+      Plotbudget.com and other apps off the registry, add <code>@restormel/testing-cli@^0.1.1</code> as a dev dependency and
       keep the suite in the product repo.
     </p>
     <p>

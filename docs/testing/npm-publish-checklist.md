@@ -2,7 +2,7 @@
 
 Use this when moving from **git / workspace consumption** to **published packages** on the npm registry under the `@restormel` scope.
 
-**This repo (maintainer snapshot):** packages are at **`0.1.0`**, **`private` removed**, **`publishConfig.access: public`**, **`repository` / `license` / `bugs` / `homepage`** set, Changesets consumed for the first bump, **`NPM_TOKEN`** wired in Actions. After merge, run [**Publish Testing packages**](../.github/workflows/publish-testing.yml) (`workflow_dispatch`) or push a tag **`testing-v*`** to upload tarballs.
+**This repo (maintainer snapshot):** packages are at **`0.1.1`** (patch after first **`0.1.0`** train), **`private` removed**, **`publishConfig.access: public`**, **`repository` / `license` / `bugs` / `homepage`** set, **`NPM_TOKEN`** wired in Actions. After merge, run [**Publish Testing packages**](../.github/workflows/publish-testing.yml) (`workflow_dispatch`) or push a tag **`testing-v*`** (e.g. **`testing-v0.1.1`**) to upload tarballs.
 
 ## 1. Registry and access
 
@@ -57,7 +57,7 @@ Publishing `@restormel/testing-github-action` is **not** the same as “Action m
 
 ## 6. Post-publish
 
-- **First release:** `0.1.0` — install snippet `pnpm add -D @restormel/testing-cli@^0.1.0` (documented in **README** and **oss-consumption.md**).
+- **Current line:** `0.1.1` — install snippet `pnpm add -D @restormel/testing-cli@^0.1.1` or `@restormel/testing-bundle@^0.1.1` (documented in **oss-consumption.md**).
 - Smoke-test from a **blank repo**: install CLI, `init`, `validate`, `doctor`, run against `examples/testing-basic-web` or equivalent.
 - **Plotbudget.com:** add the CLI devDependency, wire CI with the composite action or `testing run`, and keep suite config in the Plot repo.
 

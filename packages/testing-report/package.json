@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-report",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Run artefacts (JSON) and terminal-friendly summaries for Restormel / Testing.",
   "license": "MIT",
   "repository": {

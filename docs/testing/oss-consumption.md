@@ -1,6 +1,6 @@
 # Consuming Restormel / Testing outside this monorepo
 
-**Published line:** `@restormel/testing-*` **v0.1.0+** on npm — use **`pnpm add -D @restormel/testing-cli@^0.1.0`** or the meta-package **`pnpm add -D @restormel/testing-bundle@^0.1.0`** (pulls CLI + browser adaptor dependency; still run Playwright browser install as below). Pin the same semver line across peer packages if you depend on them directly.
+**Published line:** `@restormel/testing-*` **v0.1.1+** on npm — use **`pnpm add -D @restormel/testing-cli@^0.1.1`** or the meta-package **`pnpm add -D @restormel/testing-bundle@^0.1.1`** (pulls CLI + browser adaptor dependency; still run Playwright browser install as below). Pin the same semver line across peer packages if you depend on them directly.
 
 **Plotbudget.com / Plot dogfooding:** consume the CLI from npm in the Plot app repo; keep `restormel-testing.yaml` in git and mirror CI with the composite action or `testing run` in Actions. Deterministic MVP goals do not require Restormel Keys in CI; see [plotbudget-testing-adoption-feedback.md](plotbudget-testing-adoption-feedback.md) and the dashboard guide [Keys in CI (checklist)](https://restormel.dev/testing/docs/guides/keys-ci-checklist).
 
@@ -25,7 +25,7 @@ Other `@restormel/testing-*` packages are for advanced or workspace-style consum
 ## Option B — Published npm packages (registry)
 
 ```bash
-pnpm add -D @restormel/testing-cli@^0.1.0
+pnpm add -D @restormel/testing-cli@^0.1.1
 pnpm exec testing validate --config restormel-testing.yaml
 ```
 
