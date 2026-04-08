@@ -1,5 +1,11 @@
 # @restormel/testing-bundle
 
+## 0.1.5
+
+### Patch Changes
+
+- **0.1.5** publish train: meta-package depends on CLI + browser adaptor **0.1.5**.
+
 ## 0.1.4
 
 ### Patch Changes
