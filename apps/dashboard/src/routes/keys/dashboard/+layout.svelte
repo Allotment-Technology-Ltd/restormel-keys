@@ -98,7 +98,12 @@
   <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="hover">
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
-        <a href={OVERVIEW_ITEM.href} class="nav-link nav-link-overview" class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}>
+        <a
+          href={OVERVIEW_ITEM.href}
+          class="nav-link nav-link-overview"
+          class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}
+          aria-current={isActivePath(OVERVIEW_ITEM.href) ? "page" : undefined}
+        >
           {OVERVIEW_ITEM.label}
         </a>
 
@@ -107,11 +112,13 @@
         {/if}
 
         {#each navGroupsForLayout as group}
-          <section class="nav-group">
+          <section class="nav-group" aria-labelledby={`nav-group-label-${group.id}`}>
             <button
               type="button"
               class="nav-group-header"
+              id={`nav-group-label-${group.id}`}
               aria-expanded={navGroupsOpen[group.id]}
+              aria-controls={`nav-group-links-${group.id}`}
               on:click={() => toggleNavGroup(group.id)}
             >
               <span class="nav-group-label">
@@ -123,9 +130,14 @@
               <span aria-hidden="true">{navGroupsOpen[group.id] ? "▾" : "▸"}</span>
             </button>
             {#if navGroupsOpen[group.id]}
-              <div class="nav-group-links">
+              <div class="nav-group-links" id={`nav-group-links-${group.id}`} role="group" aria-label={group.label}>
                 {#each group.items as item}
-                  <a href={item.href} class="nav-link" class:nav-link-active={isActivePath(item.href)}>
+                  <a
+                    href={item.href}
+                    class="nav-link"
+                    class:nav-link-active={isActivePath(item.href)}
+                    aria-current={isActivePath(item.href) ? "page" : undefined}
+                  >
                     {item.label}
                   </a>
                 {/each}
@@ -281,6 +293,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-4);
+    min-height: 44px;
     font-size: var(--text-xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -301,6 +314,9 @@
   }
   .nav-link {
     padding: var(--space-2) var(--space-4);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     color: var(--rm-muted);
     font-size: var(--text-sm);
   }

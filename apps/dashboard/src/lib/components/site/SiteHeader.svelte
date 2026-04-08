@@ -72,7 +72,16 @@
   function linkActive(href: string): boolean {
     return isLinkActive(path, href);
   }
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && mobileOpen) {
+      e.preventDefault();
+      mobileOpen = false;
+    }
+  }
 </script>
+
+<svelte:window on:keydown={onWindowKeydown} />
 
 <header class="site-header">
   <nav class="site-header-inner" aria-label="Main">
@@ -83,31 +92,84 @@
     <ul class="site-header-links">
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={keysOpen} on:toggle={onKeysToggle}>
-          <summary class="nav-summary" class:nav-summary-active={keysPillarOn}>Keys</summary>
-          <div class="nav-dropdown-panel" role="group" aria-label="Keys">
+          <summary
+            id="site-nav-summary-keys"
+            class="nav-summary"
+            class:nav-summary-active={keysPillarOn}
+            aria-controls="site-nav-panel-keys"
+          >
+            Keys
+          </summary>
+          <div
+            id="site-nav-panel-keys"
+            class="nav-dropdown-panel"
+            role="region"
+            aria-labelledby="site-nav-summary-keys"
+          >
             {#each keysPillarLinks as item}
-              <a href={item.href} class:active={linkActive(item.href)}>{item.label}</a>
+              <a
+                href={item.href}
+                class:active={linkActive(item.href)}
+                aria-current={linkActive(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
             {/each}
           </div>
         </details>
       </li>
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={testingOpen} on:toggle={onTestingToggle}>
-          <summary class="nav-summary" class:nav-summary-active={testingPillarOn}>Testing</summary>
-          <div class="nav-dropdown-panel" role="group" aria-label="Testing">
+          <summary
+            id="site-nav-summary-testing"
+            class="nav-summary"
+            class:nav-summary-active={testingPillarOn}
+            aria-controls="site-nav-panel-testing"
+          >
+            Testing
+          </summary>
+          <div
+            id="site-nav-panel-testing"
+            class="nav-dropdown-panel"
+            role="region"
+            aria-labelledby="site-nav-summary-testing"
+          >
             {#each testingPillarLinks as item}
-              <a href={item.href} class:active={linkActive(item.href)}>{item.label}</a>
+              <a
+                href={item.href}
+                class:active={linkActive(item.href)}
+                aria-current={linkActive(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
             {/each}
           </div>
         </details>
       </li>
       <li>
-        <a href="/integrations" class:active={integrationsOn}>Integrations</a>
+        <a
+          href="/integrations"
+          class:active={integrationsOn}
+          aria-current={integrationsOn ? "page" : undefined}
+        >
+          Integrations
+        </a>
       </li>
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
-          <summary class="nav-summary">Developers</summary>
-          <div class="nav-dropdown-panel" role="group" aria-label="Developers">
+          <summary
+            id="site-nav-summary-developers"
+            class="nav-summary"
+            aria-controls="site-nav-panel-developers"
+          >
+            Developers
+          </summary>
+          <div
+            id="site-nav-panel-developers"
+            class="nav-dropdown-panel"
+            role="region"
+            aria-labelledby="site-nav-summary-developers"
+          >
             {#each devLinks as item}
               <a
                 href={item.href}
@@ -157,14 +219,26 @@
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
     <span class="site-header-mobile-heading" role="presentation">Keys</span>
     {#each keysPillarLinks as item}
-      <a href={item.href} class:active={linkActive(item.href)} on:click={closeMobileMenu}>{item.label}</a>
+      <a
+        href={item.href}
+        class:active={linkActive(item.href)}
+        aria-current={linkActive(item.href) ? "page" : undefined}
+        on:click={closeMobileMenu}>{item.label}</a>
     {/each}
     <span class="site-header-mobile-heading" role="presentation">Testing</span>
     {#each testingPillarLinks as item}
-      <a href={item.href} class:active={linkActive(item.href)} on:click={closeMobileMenu}>{item.label}</a>
+      <a
+        href={item.href}
+        class:active={linkActive(item.href)}
+        aria-current={linkActive(item.href) ? "page" : undefined}
+        on:click={closeMobileMenu}>{item.label}</a>
     {/each}
     <span class="site-header-mobile-heading" role="presentation">Integrations</span>
-    <a href="/integrations" class:active={integrationsOn} on:click={closeMobileMenu}>Overview</a>
+    <a
+      href="/integrations"
+      class:active={integrationsOn}
+      aria-current={integrationsOn ? "page" : undefined}
+      on:click={closeMobileMenu}>Overview</a>
     <span class="site-header-mobile-heading" role="presentation">Developers</span>
     {#each devLinks as item}
       <a
@@ -240,7 +314,10 @@
     font-size: var(--text-sm);
     color: var(--rm-muted);
     text-decoration: none;
-    padding: var(--space-2) 0;
+    padding: var(--space-2) var(--space-1);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
     transition: color 0.15s ease;
   }
   .site-header-links > li > a:hover {
@@ -262,7 +339,10 @@
     font-size: var(--text-sm);
     color: var(--rm-muted);
     cursor: pointer;
-    padding: var(--space-2) 0;
+    padding: var(--space-2) var(--space-1);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     transition: color 0.15s ease;
   }
   .nav-summary::-webkit-details-marker {
@@ -302,6 +382,9 @@
     text-decoration: none;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   .nav-dropdown-panel a:hover {
     background: var(--rm-sage-bg);

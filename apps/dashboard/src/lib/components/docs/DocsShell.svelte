@@ -54,7 +54,16 @@
   function closeNavOnMobile() {
     if (isMobile) collapsed = true;
   }
+
+  function onDocsWindowKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && isMobile && !collapsed) {
+      e.preventDefault();
+      collapsed = true;
+    }
+  }
 </script>
+
+<svelte:window on:keydown={onDocsWindowKeydown} />
 
 <div class="docs-shell" class:docs-shell-collapsed={collapsed}>
   {#if isMobile && !collapsed}
@@ -67,17 +76,19 @@
         <a
           href={block.href}
           class:active={isNavActive(block.href)}
+          aria-current={isNavActive(block.href) ? "page" : undefined}
           {...block.external ? { target: "_blank", rel: "noopener noreferrer" } : {}}
           on:click={closeNavOnMobile}
         >
           {block.label}
         </a>
       {:else if block.kind === "section"}
-        <div class="nav-section" aria-label={block.ariaLabel ?? `${block.label} section`}>{block.label}</div>
+        <h2 class="nav-section">{block.label}</h2>
         {#each block.items as item}
           <a
             href={item.href}
             class:active={isNavActive(item.href)}
+            aria-current={isNavActive(item.href) ? "page" : undefined}
             on:click={closeNavOnMobile}
           >
             {item.label}
@@ -94,6 +105,7 @@
         <a
           href={fl.href}
           class:active={isNavActive(fl.href)}
+          aria-current={isNavActive(fl.href) ? "page" : undefined}
           {...fl.external ? { target: "_blank", rel: "noopener noreferrer" } : {}}
           on:click={closeNavOnMobile}
         >
@@ -172,7 +184,10 @@
     color: var(--rm-muted);
     text-decoration: none;
     border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-1);
+    padding: var(--space-2) var(--space-1);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   .docs-nav a:hover {
     color: var(--rm-sage);
@@ -188,10 +203,12 @@
   }
   .nav-section {
     font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--rm-dim);
     margin: var(--space-1) 0;
+    line-height: var(--leading-normal);
   }
   .docs-main {
     flex: 1;
