@@ -3,6 +3,14 @@
 **Status:** Internal architecture note  
 **Date:** 2026-04-07
 
+## 0. Current state (monorepo)
+
+**Testing** code, packages, and docs live in **[restormel-keys](https://github.com/Allotment-Technology-Ltd/restormel-keys)**. The standalone **restormel-testing** GitHub repo is **archived**. **Production** uses **one Vercel project** for **`restormel.dev`**; **`/testing`** is part of the **dashboard** app, not a second deployment. **Canonical:** [`docs/monorepo-vercel.md`](../monorepo-vercel.md) · reference stub [`vercel-suite-routing.md`](./vercel-suite-routing.md).
+
+Sections below keep the original multi-repo narrative for history; read them as **in-monorepo** package and routing boundaries today.
+
+---
+
 ## 1. Executive summary
 
 Restormel / Testing should have:
@@ -55,7 +63,7 @@ Use **one root domain** with product-specific paths:
 - `restormel.dev/keys`
 - `restormel.dev/testing`
 
-**Vercel wiring (canonical):** [vercel-suite-routing.md](./vercel-suite-routing.md) — apex on Keys, rewrites for `/testing`, Testing app `base: /testing`.
+**Vercel wiring (canonical):** [monorepo-vercel.md](../monorepo-vercel.md) — one project, dashboard build; Testing routes under **`/testing`** in the same app ([vercel-suite-routing.md](./vercel-suite-routing.md) is a short reference + history).
 
 If auth is shared later, unify through origin-level session strategy or edge-auth routing. But do not make Testing’s first release depend on deep cross-product auth coupling.
 

@@ -1,61 +1,19 @@
-# Vercel: `restormel.dev` + separate Testing project
+# Vercel and `/testing` (reference)
 
-**Canonical** operational steps for serving **Restormel Testing** at `https://restormel.dev/testing` while **Restormel Keys** keeps the apex domain on its own Vercel project.
+**Canonical deployment documentation:** [`docs/monorepo-vercel.md`](../monorepo-vercel.md) — **one** Vercel project on the **restormel-keys** repo root, **`restormel.dev`** on that project, dashboard build via root [`vercel.json`](../../vercel.json).
 
-## Constraints
+**Testing** marketing and docs URLs (`/testing`, `/testing/docs/…`) are served from the **same** SvelteKit deployment as Keys — routes live under [`apps/dashboard/src/routes/testing/`](../../apps/dashboard/src/routes/testing/). There is **no** separate “restormel-testing” Vercel project and **no** `vercel.json` **rewrites** to another `*.vercel.app` origin.
 
-- One **hostname** (e.g. `restormel.dev`) attaches to **one** Vercel project.
-- Path-based URLs (`/testing`, `/keys`) are **routing**, not separate domain records.
+This filename is kept so links from the archived **restormel-testing** repository still resolve to accurate guidance.
 
-## Model
+## Historical note
 
-| Piece | Vercel project | Custom domain | Role |
-|--------|----------------|---------------|------|
-| Keys | `restormel-keys` | `restormel.dev` (and `www` if used) | Public origin; serves Keys routes; **rewrites** `/testing` to Testing |
-| Testing | `restormel-testing` | **None** on apex (optional: assign only `*.vercel.app` / preview aliases) | Standalone deploy; reached in production via Keys rewrites |
+Previously, Testing could be deployed as its **own** Vercel project, with Keys **rewriting** `/testing` to that deployment’s URL. That **two-project** model is **retired** after consolidating into **restormel-keys**.
 
-## 1. Restormel Keys repository — `vercel.json` rewrites
+## Skipping needless Vercel builds
 
-In **[restormel-keys](https://github.com/Allotment-Technology-Ltd/restormel-keys)** (or whichever repo backs the Keys Vercel project), merge **`rewrites`** into the existing `vercel.json` so traffic under `/testing` is proxied to this app’s **production deployment URL**.
+Configured on the monorepo root — see **Skipping needless builds** in [`docs/monorepo-vercel.md`](../monorepo-vercel.md) (`ignoreCommand` + [`scripts/vercel-ignore-dashboard.sh`](../../scripts/vercel-ignore-dashboard.sh)).
 
-1. In the **restormel-testing** Vercel project, open **Deployments → Production** and copy the deployment URL (form `https://<project-name>.vercel.app` or your team’s default).
-2. Use that origin **only** (scheme + host, no path), e.g. `https://restormel-testing.vercel.app`, in both destinations:
+## Subdomain alternative
 
-```json
-{
-  "rewrites": [
-    {
-      "source": "/testing",
-      "destination": "https://restormel-testing.vercel.app/testing"
-    },
-    {
-      "source": "/testing/:path*",
-      "destination": "https://restormel-testing.vercel.app/testing/:path*"
-    }
-  ]
-}
-```
-
-Replace `https://restormel-testing.vercel.app` with your **actual** Testing production deployment origin from the Vercel dashboard.
-
-Merge with existing `rewrites` / `headers` / `build` keys; do not remove Keys’ own routes.
-
-**After deploy:** Browsers only see `restormel.dev`; the Testing project still builds and deploys independently.
-
-## 2. Restormel Testing repository — app base path
-
-This repo’s SvelteKit app sets **`kit.paths.base`** to **`/testing`** so asset and navigation URLs match the public path. See [`apps/web/svelte.config.js`](../apps/web/svelte.config.js).
-
-**Direct visits** to the Testing project URL must include the base path, e.g. `https://<testing-project>.vercel.app/testing`.
-
-Optional: set **`PUBLIC_SUITE_TESTING_URL`** at build time (see [`.env.example`](../.env.example)) if the canonical URL is not `https://restormel.dev/testing` (e.g. fork or subdomain experiments).
-
-## 3. Operational checklist
-
-- [ ] Keys production deploy includes the rewrites and succeeds.
-- [ ] Testing production URL is stable; if the Vercel project name or team URL changes, update Keys’ `vercel.json` destinations.
-- [ ] Smoke-test: `https://restormel.dev/testing`, docs under `/testing/docs`, and static assets load (no 404 on `/_app` or module paths under `/testing`).
-
-## Alternative (no rewrites)
-
-Assign **`testing.restormel.dev`** (or similar) **only** to the Testing Vercel project. Then you do **not** use `/testing` as the public path; adjust app `base`, DNS, and in-app URLs accordingly.
+If you ever split hosting again (e.g. **`testing.restormel.dev`** on a dedicated project), adjust SvelteKit **`base`**, DNS, and public URLs accordingly — see the checklist spirit in [`monorepo-vercel.md`](../monorepo-vercel.md).
