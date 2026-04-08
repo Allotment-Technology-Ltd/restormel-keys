@@ -1,7 +1,8 @@
 /**
- * Restormel Testing marketing/docs — scoped under `.marketing-page` so we do not override
- * global dashboard typography on `/keys/*` routes.
+ * Shared marketing/docs shell: webfonts, semantic token aliases, layout primitives.
+ * Import from /keys, /testing, /integrations, and suite landing layouts only (not dashboard).
  */
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "@restormel/keys-tokens/semantic-rm.css";
 
 .marketing-page {
