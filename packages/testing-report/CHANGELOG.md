@@ -1,5 +1,11 @@
 # @restormel/testing-report
 
+## 0.1.4
+
+### Patch Changes
+
+- Version align with **0.1.4** testing line (reports unchanged; consumers stay on one semver line).
+
 ## 0.1.3
 
 ### Patch Changes

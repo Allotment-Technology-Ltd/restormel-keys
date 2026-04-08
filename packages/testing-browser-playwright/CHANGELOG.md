@@ -1,5 +1,11 @@
 # @restormel/testing-browser-playwright
 
+## 0.1.4
+
+### Patch Changes
+
+- Version align with **0.1.4** testing line.
+
 ## 0.1.3
 
 ### Patch Changes

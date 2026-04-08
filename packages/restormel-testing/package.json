@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-bundle",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Meta-package: depends on @restormel/testing-cli and browser adaptor so consumers can add one devDependency line.",
   "license": "MIT",
   "repository": {

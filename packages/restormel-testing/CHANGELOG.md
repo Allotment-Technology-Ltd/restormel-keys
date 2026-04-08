@@ -1,5 +1,11 @@
 # @restormel/testing-bundle
 
+## 0.1.4
+
+### Patch Changes
+
+- Version align with **0.1.4** testing line (pulls CLI + browser adaptor at **0.1.4**).
+
 ## 0.1.3
 
 ### Patch Changes
