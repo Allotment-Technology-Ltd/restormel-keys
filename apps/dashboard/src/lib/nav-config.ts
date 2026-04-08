@@ -25,6 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Set Up",
     items: [
       { href: DASHBOARD_BASE + "/integrations", label: "Connections" },
+      { href: DASHBOARD_BASE + "/access", label: "Gateway keys" },
       { href: DASHBOARD_BASE + "/testing", label: "Restormel Testing" },
       { href: DASHBOARD_BASE + "/routes", label: "Rules" },
       { href: DASHBOARD_BASE + "/policies", label: "Guard Rails" },
@@ -44,7 +45,6 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "developer",
     label: "Advanced",
     items: [
-      { href: DASHBOARD_BASE + "/access", label: "Gateway keys" },
       { href: DASHBOARD_BASE + "/sandbox", label: "Test & Preview" },
       { href: DASHBOARD_BASE + "/copy-for-ci", label: "GitHub Setup" },
       { href: DASHBOARD_BASE + "/dev-tools", label: "Dev Tools" },

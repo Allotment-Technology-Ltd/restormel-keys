@@ -1,35 +1,53 @@
 <script lang="ts">
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { developerPortalUrl } from "$lib/developer-portal-url";
+  import {
+    developerLinks,
+    keysPillarLinks,
+    testingPillarLinks,
+  } from "$lib/site-nav";
+
+  $: portalUrl = developerPortalUrl();
+  $: devLinks = developerLinks(portalUrl);
 </script>
 
 <footer class="site-footer">
   <div class="site-footer-inner">
     <div class="site-footer-col">
-      <span class="site-footer-title">Products</span>
-      <ul class="site-footer-links" aria-label="Products">
-        <li><a href="/">Restormel</a></li>
-        <li><a href="/keys">Keys</a></li>
-        <li><a href="/testing">Testing</a></li>
-        <li><a href="/integrations">Integrations</a></li>
-        <li><a href="/keys/docs">Keys documentation</a></li>
-        <li><a href="/testing/docs">Testing documentation</a></li>
-        <li><a href={DASHBOARD_BASE}>Keys dashboard</a></li>
-        <li><a href="/testing/dashboard">Testing dashboard</a></li>
-      </ul>
-    </div>
-    <div class="site-footer-col">
       <span class="site-footer-title">Keys</span>
       <ul class="site-footer-links" aria-label="Keys">
-        <li><a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a></li>
-        <li><a href="/keys/pricing">Pricing</a></li>
-        <li><a href="/keys/use-cases">Use cases</a></li>
+        <li><a href="/">Restormel home</a></li>
+        {#each keysPillarLinks as item}
+          <li><a href={item.href}>{item.label}</a></li>
+        {/each}
       </ul>
     </div>
     <div class="site-footer-col">
-      <span class="site-footer-title">Resources</span>
-      <ul class="site-footer-links" aria-label="Resources">
-        <li><a href="https://github.com/Allotment-Technology-Ltd/restormel-keys" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      <span class="site-footer-title">Testing</span>
+      <ul class="site-footer-links" aria-label="Testing">
+        {#each testingPillarLinks as item}
+          <li><a href={item.href}>{item.label}</a></li>
+        {/each}
+      </ul>
+    </div>
+    <div class="site-footer-col">
+      <span class="site-footer-title">Integrations</span>
+      <ul class="site-footer-links" aria-label="Integrations">
+        <li><a href="/integrations">Overview</a></li>
+      </ul>
+    </div>
+    <div class="site-footer-col">
+      <span class="site-footer-title">Developers</span>
+      <ul class="site-footer-links" aria-label="Developers">
+        {#each devLinks as item}
+          <li>
+            <a href={item.href} target="_blank" rel="noopener noreferrer">{item.label}</a>
+          </li>
+        {/each}
+      </ul>
+    </div>
+    <div class="site-footer-col">
+      <span class="site-footer-title">Legal &amp; resources</span>
+      <ul class="site-footer-links" aria-label="Legal and resources">
         <li><a href="/keys/terms">Terms</a></li>
         <li><a href="/keys/privacy">Privacy</a></li>
         <li><a href="/keys/refund-policy">Refund policy</a></li>
@@ -56,19 +74,12 @@
     max-width: var(--rm-container-max);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(3, auto) 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
     gap: var(--space-10);
     align-items: start;
   }
-  @media (max-width: 900px) {
-    .site-footer-inner {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-8);
-    }
-  }
   @media (max-width: 640px) {
     .site-footer-inner {
-      grid-template-columns: 1fr;
       gap: var(--space-6);
     }
   }
@@ -101,12 +112,11 @@
     text-decoration: none;
   }
   .site-footer-brand {
-    text-align: right;
-  }
-  @media (max-width: 640px) {
-    .site-footer-brand {
-      text-align: left;
-    }
+    grid-column: 1 / -1;
+    text-align: center;
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--rm-border);
+    margin-top: var(--space-2);
   }
   .site-footer-logo {
     display: inline-flex;

@@ -3,7 +3,7 @@
 **Audience:** Engineers adopting Restormel Testing in Plot-style repos (deterministic browser goals, CI-first, optional Keys for rubrics).  
 **Status:** Reference (communication aid). Canonical behaviour and env names live in the linked docs below.
 
-**Newer train:** For **v0.1.4** (business acceptance roll-up, **`execution_mode: agent`**, optional **`ac_sequence`**, reporting), use the focused handoff: **[release-notes-plot-engineers-0.1.4.md](release-notes-plot-engineers-0.1.4.md)**.
+**Newer train:** For **v0.1.5** (full npm line: BA roll-up, **`execution_mode: agent`**, optional **`ac_sequence`**, reporting, CLI + keys-adapter env parity), use **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)**.
 
 This note summarises what shipped in response to **Plotbudget-class adoption feedback** ([plotbudget-testing-adoption-feedback.md](plotbudget-testing-adoption-feedback.md)) and related follow-up (Keys + Testing integration, docs, packaging). It is **not** a substitute for the spec: use [config-reference-mvp.md](config-reference-mvp.md) when writing YAML.
 
@@ -29,7 +29,7 @@ This note summarises what shipped in response to **Plotbudget-class adoption fee
 
 ## Install and run (quick pointers)
 
-- **npm:** `pnpm add -D @restormel/testing-bundle@^0.1.4` (or pin CLI + peers per [oss-consumption.md](oss-consumption.md)).
+- **npm:** `pnpm add -D @restormel/testing-bundle@^0.1.5` (or pin CLI + peers per [oss-consumption.md](oss-consumption.md)).
 - **Playwright:** install Chromium for the browser adaptor (see oss-consumption).
 - **CI:** prefer `**@restormel/testing-github-action`** or `pnpm exec testing run` — not an unsupported HTTP “runs” poller; see [HTTP runs vs Action](https://restormel.dev/testing/docs/guides/http-runs-and-actions).
 - **Forks / secrets:** [Fork PRs and workflow triggers](https://restormel.dev/testing/docs/guides/ci-security).

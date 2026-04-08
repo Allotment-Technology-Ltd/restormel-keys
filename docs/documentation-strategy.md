@@ -21,8 +21,11 @@ Every surface—marketing nav, docs header/sidebar, dashboard, runbooks, and ref
 |--------|-------------------------|
 | Dashboard | `https://restormel.dev/keys/dashboard`     |
 | Sign in   | `https://restormel.dev/keys/dashboard/login` |
+| Testing hub | `https://restormel.dev/keys/dashboard/testing` |
 
 Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, zuplo-launch-cli.md), and any phase/reference doc that points to the product. Site, docs, and dashboard are served from one app at restormel.dev (dashboard at `/keys/dashboard`, docs at `/keys/docs`).
+
+**Testing hub entry:** Prefer the **Testing hub** URL above in copy and automation. The marketing route `https://restormel.dev/testing/dashboard` **redirects signed-in users** to the Testing hub; anonymous users see a short stub with sign-in.
 
 ## 3. Agent-readability
 

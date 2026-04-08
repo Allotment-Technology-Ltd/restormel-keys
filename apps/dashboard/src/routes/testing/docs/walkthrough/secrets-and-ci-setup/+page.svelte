@@ -14,7 +14,7 @@
         Parallels the Keys <strong>Staging and CI setup</strong> topic: name secrets consistently, document where each
         value comes from, and separate nightly from per-PR jobs if cost or flake demands it. Keys dashboard naming lives in
         <a href="https://restormel.dev/keys/docs" rel="noopener noreferrer">Keys docs</a>; for what the Testing runner reads from
-        the job environment (e.g. <code>RESTORMEL_KEYS_API_TOKEN</code>), see
+        the job environment (e.g. <code>RESTORMEL_GATEWAY_KEY</code>), see
         <a href="{base}/docs/integrations/keys">Keys integration</a>.
       </p>
       <p>

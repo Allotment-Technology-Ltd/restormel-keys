@@ -7,6 +7,7 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
   import FeedbackWidget from "$lib/components/FeedbackWidget.svelte";
+  import DashboardJourneyBanner from "$lib/components/dashboard/DashboardJourneyBanner.svelte";
   import { openFeedbackWidget } from "$lib/stores/feedback-widget";
 
   $: user = $page.data.user;
@@ -14,10 +15,14 @@
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
+  $: isTestingHub =
+    currentPath === DASHBOARD_BASE + "/testing" ||
+    currentPath.startsWith(DASHBOARD_BASE + "/testing/");
   $: projectContexts = $page.data.projectContexts ?? [];
   $: navGroupsForLayout = $page.data.navGroupsForUi ?? NAV_GROUPS;
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
   $: projectsNavHidden = ($page.data.dashboardUiHidden ?? []).includes("projects");
+  $: journeySignals = $page.data.journeySignals ?? null;
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
@@ -93,7 +98,12 @@
   <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="hover">
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
-        <a href={OVERVIEW_ITEM.href} class="nav-link nav-link-overview" class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}>
+        <a
+          href={OVERVIEW_ITEM.href}
+          class="nav-link nav-link-overview"
+          class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}
+          aria-current={isActivePath(OVERVIEW_ITEM.href) ? "page" : undefined}
+        >
           {OVERVIEW_ITEM.label}
         </a>
 
@@ -102,11 +112,13 @@
         {/if}
 
         {#each navGroupsForLayout as group}
-          <section class="nav-group">
+          <section class="nav-group" aria-labelledby={`nav-group-label-${group.id}`}>
             <button
               type="button"
               class="nav-group-header"
+              id={`nav-group-label-${group.id}`}
               aria-expanded={navGroupsOpen[group.id]}
+              aria-controls={`nav-group-links-${group.id}`}
               on:click={() => toggleNavGroup(group.id)}
             >
               <span class="nav-group-label">
@@ -118,9 +130,14 @@
               <span aria-hidden="true">{navGroupsOpen[group.id] ? "▾" : "▸"}</span>
             </button>
             {#if navGroupsOpen[group.id]}
-              <div class="nav-group-links">
+              <div class="nav-group-links" id={`nav-group-links-${group.id}`} role="group" aria-label={group.label}>
                 {#each group.items as item}
-                  <a href={item.href} class="nav-link" class:nav-link-active={isActivePath(item.href)}>
+                  <a
+                    href={item.href}
+                    class="nav-link"
+                    class:nav-link-active={isActivePath(item.href)}
+                    aria-current={isActivePath(item.href) ? "page" : undefined}
+                  >
                     {item.label}
                   </a>
                 {/each}
@@ -167,6 +184,17 @@
           {/if}
           <span class="topbar-title">{title}</span>
         </div>
+        <nav class="topbar-product-nav" aria-label="Product and related docs">
+          {#if isTestingHub}
+            <span class="topbar-product-pill" title="You are in the Restormel Testing hub">Testing hub</span>
+            <a href="/testing/docs" class="topbar-product-link">Testing docs</a>
+            <a href="/keys" class="topbar-product-link">Keys</a>
+          {:else}
+            <span class="topbar-product-pill" title="Restormel Keys control plane">Keys</span>
+            <a href="/keys/docs" class="topbar-product-link">Keys docs</a>
+            <a href={DASHBOARD_BASE + "/testing"} class="topbar-product-link">Testing hub</a>
+          {/if}
+        </nav>
       </header>
       <main class="main" data-sveltekit-preload-data="hover">
         {#if !user && !isAuthRoute}
@@ -187,8 +215,8 @@
                 <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
                 <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
                 <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create a Gateway key</strong> (Gateway keys), <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules).</li>
-                <li><strong>First request</strong> → then <strong>Usage & Analytics</strong> and Logs.</li>
+                <li><strong>Create a Gateway key</strong>, <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules) for live traffic — or use <strong>Restormel Testing</strong> for CI without rules first.</li>
+                <li><strong>First request</strong> (sandbox) → then <strong>Usage & Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
@@ -214,6 +242,7 @@
               </p>
             </div>
           {/if}
+          <DashboardJourneyBanner {currentPath} {user} {journeySignals} />
           <slot />
         {/if}
       </main>
@@ -264,6 +293,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-4);
+    min-height: 44px;
     font-size: var(--text-xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -284,6 +314,9 @@
   }
   .nav-link {
     padding: var(--space-2) var(--space-4);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     color: var(--rm-muted);
     font-size: var(--text-sm);
   }
@@ -309,7 +342,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-6);
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-6);
   }
   .topbar-left {
     display: flex;
@@ -337,6 +372,35 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar-product-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+  }
+  .topbar-product-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--rm-radius);
+    background: color-mix(in oklab, var(--rm-sage) 14%, transparent);
+    color: var(--rm-text);
+    font-weight: var(--font-medium);
+    border: 1px solid var(--rm-border);
+  }
+  .topbar-product-link {
+    color: var(--rm-muted);
+    text-decoration: none;
+    padding: var(--space-1) 0;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .topbar-product-link:hover {
+    color: var(--rm-sage);
+    text-decoration: none;
   }
   .sidebar-footer {
     margin-top: var(--space-2);

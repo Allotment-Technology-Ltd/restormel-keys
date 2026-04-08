@@ -19,7 +19,7 @@
       <li><a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Guide (canonical)</a> — full checklist.</li>
       <li><a href="https://restormel.dev/keys/dashboard/integrations" rel="noopener noreferrer">Connections</a> — add providers.</li>
       <li><a href="https://restormel.dev/keys/dashboard/testing" rel="noopener noreferrer">Restormel Testing</a> — copy <code>RESTORMEL_PROJECT_ID</code> and environment IDs.</li>
-      <li><a href="https://restormel.dev/keys/dashboard/access" rel="noopener noreferrer">Gateway keys</a> — <code>rk_…</code> for <code>RESTORMEL_KEYS_API_TOKEN</code>.</li>
+      <li><a href="https://restormel.dev/keys/dashboard/access" rel="noopener noreferrer">Gateway keys</a> — <code>rk_…</code> for <code>RESTORMEL_GATEWAY_KEY</code> (alias <code>RESTORMEL_KEYS_API_TOKEN</code>).</li>
     </ul>
     <p>
       Testing-specific env and resolve behaviour: <a href="{base}/docs/integrations/keys">Keys integration</a> ·

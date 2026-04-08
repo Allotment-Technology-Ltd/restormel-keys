@@ -36,6 +36,8 @@ declare global {
       dashboardUiHidden?: import("$lib/dashboard-ui-sections").DashboardUiSection[];
       navGroupsForUi?: import("$lib/nav-config").NavGroup[];
       dashboardUiHiddenBanner?: { section: string; label: string } | null;
+      /** Integration + Gateway key counts for contextual “next step” hints (Keys dashboard). */
+      journeySignals?: { integrationCount: number; gatewayKeyCount: number } | null;
     }
     // interface Error {}
     // interface Platform {}

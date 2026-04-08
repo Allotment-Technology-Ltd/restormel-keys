@@ -264,6 +264,14 @@ Tools:
 - `entitlements.check`
 - `integration.generate`
 - `integration.bootstrap_nextjs`
+- `projects.list`
+- `project_models.list`
+- `project.environments.list`
+- `project.gateway_keys.list` / `project.gateway_keys.create` / `project.gateway_keys.delete`
+- `testing.journey`
+- `testing.ci_env_template`
+- `testing.resolve_probe`
+- `testing.hub_snapshot`
 - `routes.list/create/update/delete`
 - `policies.list/create/update/delete`
 - `fallback_chain.set`

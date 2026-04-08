@@ -1,6 +1,6 @@
 # @restormel/mcp
 
-**Model Context Protocol** tools for Restormel Keys: model catalog, cost estimates, routing explain, provider validation, entitlements, control-plane CRUD, integration bootstrap, BYOK contracts, simulation, and offline docs search.
+**Model Context Protocol** tools for Restormel Keys and Restormel Testing: model catalog, cost estimates, routing explain, provider validation, entitlements, **projects + model bindings + environments + Gateway keys (read/write)**, **Testing hub snapshot + journey + CI env template + resolve probe**, control-plane route/policy CRUD, integration bootstrap, BYOK contracts, simulation, and offline docs search.
 
 ## Install
 
@@ -63,12 +63,16 @@ restormel-mcp
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, … | Conventional names also accepted for validation. |
 | `RESTORMEL_EVALUATE_URL` | Optional **full** URL for `POST` policy evaluation on the **Dashboard API**. Hosted example: `https://restormel.dev/keys/dashboard/api/policies/evaluate`. Self-host: `https://<host>/keys/dashboard/api/policies/evaluate`. |
 | `RESTORMEL_GATEWAY_KEY` | Project Gateway Key (`rk_…`) for `Authorization: Bearer` to the evaluate URL (never log this value). |
-| `RESTORMEL_CONTROL_PLANE_URL` | Base URL for MCP control-plane tools (`routes.*`, `policies.*`, `fallback_chain.set`). Must be the dashboard app origin **without** a trailing slash, such that `{base}/api/projects/...` is valid. Hosted: `https://restormel.dev/keys/dashboard`. **Not** the same value as `RESTORMEL_EVALUATE_URL`. |
+| `RESTORMEL_CONTROL_PLANE_URL` | Base URL for MCP control-plane tools (`projects.list`, `project_models.list`, `routes.*`, `policies.*`, `fallback_chain.set`). Must be the dashboard app origin **without** a trailing slash, such that `{base}/api/projects/...` is valid. Hosted: `https://restormel.dev/keys/dashboard`. **Not** the same value as `RESTORMEL_EVALUATE_URL`. |
 | `RESTORMEL_SERVER_TOKEN` | Preferred server-only Bearer token for control-plane calls (typically the same Gateway Key). `RESTORMEL_GATEWAY_KEY` is accepted as a fallback. |
 
 If `RESTORMEL_EVALUATE_URL` and `RESTORMEL_GATEWAY_KEY` are both set, `entitlements.check` calls the remote endpoint with `{ modelId: <feature> }`. Otherwise it uses local rules from `RESTORMEL_MCP_CONFIG` or a permissive default.
 
-For control-plane write tools, set `RESTORMEL_CONTROL_PLANE_URL` and `RESTORMEL_SERVER_TOKEN` (or gateway key fallback). See repo runbook [docs/runbooks/mcp-implementation-workflow.md](../../docs/runbooks/mcp-implementation-workflow.md) for the full server-side journey (evaluate vs control-plane bases, trust boundaries, and links to Cloud API / dashboard docs).
+For control-plane tools (read and write: `projects.list`, `project_models.list`, `routes.*`, `policies.*`, …), set `RESTORMEL_CONTROL_PLANE_URL` and `RESTORMEL_SERVER_TOKEN` (or gateway key fallback).
+
+For **Restormel Testing** HTTP resolve checks (`testing.resolve_probe`), set **`RESTORMEL_KEYS_BASE`** (site origin) and the same bearer you use for the CLI (**`RESTORMEL_GATEWAY_KEY`** or compatibility aliases — see vocabulary doc § Testing runner).
+
+See repo runbook [docs/runbooks/mcp-implementation-workflow.md](../../docs/runbooks/mcp-implementation-workflow.md) for the full server-side journey (evaluate vs control-plane bases, trust boundaries, and links to Cloud API / dashboard docs).
 
 ## Programmatic use
 

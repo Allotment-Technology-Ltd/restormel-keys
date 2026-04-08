@@ -1,10 +1,17 @@
 # @restormel/testing-github-action
 
+## 0.1.5
+
+### Patch Changes
+
+- **0.1.5** publish train: full `@restormel/testing-*` line aligned on npm.
+
 ## 0.1.4
 
 ### Patch Changes
 
 - Version align with **0.1.4** testing line.
+- README: workflow example uses **`RESTORMEL_KEYS_BASE`** / **`RESTORMEL_GATEWAY_KEY`** (with compatibility note for `RESTORMEL_KEYS_API_*`).
 
 ## 0.1.3
 

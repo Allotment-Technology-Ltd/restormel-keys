@@ -1,5 +1,11 @@
 # @restormel/testing-browser-playwright
 
+## 0.1.5
+
+### Patch Changes
+
+- **0.1.5** publish train: full `@restormel/testing-*` line aligned on npm.
+
 ## 0.1.4
 
 ### Patch Changes

@@ -84,6 +84,32 @@
   $: setupTotalCount = setupSteps.length;
   $: nextStep = setupSteps.find((step) => !step.done) ?? null;
   $: allSetupDone = setupDoneCount === setupTotalCount;
+
+  $: testingCiSteps = [
+    {
+      id: "t-conn",
+      label: "Add a connection (hosted key or vault ref)",
+      done: (data.setup?.integrationCount ?? 0) > 0,
+      href: DASHBOARD_BASE + "/integrations",
+      cta: "Open Connections",
+    },
+    {
+      id: "t-gw",
+      label: "Create a Gateway key for the Testing project",
+      done: (data.setup?.gatewayKeyCount ?? 0) > 0,
+      href: DASHBOARD_BASE + "/access",
+      cta: "Open Gateway keys",
+    },
+    {
+      id: "t-hub",
+      label: "Copy RESTORMEL_* env from Restormel Testing hub",
+      done:
+        (data.setup?.integrationCount ?? 0) > 0 && (data.setup?.gatewayKeyCount ?? 0) > 0,
+      href: DASHBOARD_BASE + "/testing",
+      cta: "Open Restormel Testing",
+    },
+  ];
+  $: testingCiDone = testingCiSteps.filter((s) => s.done).length;
 </script>
 
 <svelte:head>
@@ -145,6 +171,27 @@
         </ul>
       {/if}
     </section>
+
+    <section class="panel testing-ci-panel">
+      <h2 class="panel-title">Restormel Testing in CI</h2>
+      <p class="testing-ci-lede">
+        If you use <code class="testing-ci-code">@restormel/testing-cli</code> with <code class="testing-ci-code">judge_rubric</code>, you do <strong>not</strong> need Rules or a sandbox request first. Finish the three steps below, then run
+        <code class="testing-ci-code">pnpm exec testing doctor</code> locally.
+        <a class="testing-ci-doc" href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a>
+      </p>
+      <ul class="testing-ci-list">
+        {#each testingCiSteps as step}
+          <li class="testing-ci-item">
+            <span class={step.done ? "step-done" : "step-open"}>{step.done ? "✓" : "○"}</span>
+            <span class="testing-ci-label">{step.label}</span>
+            {#if step.href}
+              <a class="testing-ci-cta" href={step.href}>{step.cta}</a>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+      <p class="testing-ci-foot">{testingCiDone} of {testingCiSteps.length} ready · canonical env: <code class="testing-ci-code">RESTORMEL_KEYS_BASE</code>, <code class="testing-ci-code">RESTORMEL_GATEWAY_KEY</code>, <code class="testing-ci-code">RESTORMEL_PROJECT_ID</code></p>
+    </section>
   </div>
   <div class="overview-center">
     <section class="panel">
@@ -164,7 +211,9 @@
       <p class="quick-links">
         <a href={DASHBOARD_BASE + "/cli/connect"}>Connect CLI</a>
         <span class="quick-links-sep">·</span>
-        <a href={DASHBOARD_BASE + "/access"}>Gateway keys &amp; env snippet</a>
+        <a href={DASHBOARD_BASE + "/access"}>Gateway keys</a>
+        <span class="quick-links-sep">·</span>
+        <a href={DASHBOARD_BASE + "/testing"}>Restormel Testing hub</a>
       </p>
       {#if data.contextSignals.noRouteCount24h > 0}
         <div class="signal signal-warn">
@@ -385,5 +434,54 @@
   .projects a {
     color: var(--rm-sage);
     text-decoration: none;
+  }
+  .testing-ci-panel {
+    margin-top: var(--space-4);
+  }
+  .testing-ci-lede {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    line-height: 1.5;
+  }
+  .testing-ci-code {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: 0.85em;
+  }
+  .testing-ci-doc {
+    display: inline-block;
+    margin-left: var(--space-1);
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  .testing-ci-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .testing-ci-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--rm-muted);
+  }
+  .testing-ci-label {
+    min-width: 0;
+  }
+  .testing-ci-cta {
+    color: var(--rm-sage);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .testing-ci-foot {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: 1.45;
   }
 </style>

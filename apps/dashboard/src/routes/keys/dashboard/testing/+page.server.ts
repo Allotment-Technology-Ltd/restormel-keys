@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       gatewayKeys: keys,
       keysApiBaseUrl,
       controlPlaneHint:
-        "Copy the block below: RESTORMEL_KEYS_API_BASE_URL is this deployment’s origin (no path). Use a Gateway key as RESTORMEL_KEYS_API_TOKEN.",
+        "Copy the block below: RESTORMEL_KEYS_BASE is this deployment’s origin (scheme + host, no path). Use a Gateway key as RESTORMEL_GATEWAY_KEY (alias RESTORMEL_KEYS_API_* still works).",
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
