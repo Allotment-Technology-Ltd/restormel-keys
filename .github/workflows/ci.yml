@@ -1,4 +1,4 @@
-# Single CI/CD workflow: path-filter, docs, security, test, demo-next. Site and dashboard deploy via Vercel (no Cloudflare).
+# Single CI/CD workflow: path-filter, docs, security, test, demo-next (demo-next only when apps/demo-next changes, or workflow_dispatch). Site and dashboard deploy via Vercel (no Cloudflare).
 # One workflow run per push/PR; jobs skip when their paths unchanged.
 # pnpm version must match root package.json "packageManager" (9.0.0).
 # PNPM install + JS security steps use composite actions under .github/actions/ (mirrored in platform/.github/actions/ for restormel-platform split).
@@ -22,6 +22,10 @@ on:
         description: 'Re-run model catalog JSON seed on production DB (requires DASHBOARD_DATABASE_URL_PROD)'
         type: boolean
         default: false
+      run_demo_next:
+        description: 'Run apps/demo-next build + E2E (push/PR already skip when apps/demo-next is unchanged)'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -40,6 +44,7 @@ jobs:
       deploy: ${{ steps.filter.outputs.deploy }}
       dashboard_migrations: ${{ steps.filter.outputs.dashboard_migrations }}
       model_catalog_seed: ${{ steps.filter.outputs.model_catalog_seed }}
+      demo_next: ${{ steps.filter.outputs.demo_next }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
@@ -79,6 +84,8 @@ jobs:
             model_catalog_seed:
               - 'apps/dashboard/data/model-catalog-seed.json'
               - 'apps/dashboard/scripts/ingest-model-catalog.mjs'
+            demo_next:
+              - 'apps/demo-next/**'
 
   bootstrap-checks:
     runs-on: ubuntu-latest
@@ -185,7 +192,9 @@ jobs:
 
   demo-next:
     runs-on: ubuntu-latest
-    if: needs.changes.outputs.code == 'true'
+    if: |
+      needs.changes.outputs.demo_next == 'true' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_demo_next)
     needs: [changes]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
