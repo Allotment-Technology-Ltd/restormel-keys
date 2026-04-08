@@ -26,7 +26,7 @@ suites:
   - id: web-critical
     description: >
       Two browser goals, observe-only: home shell (URL, copy, landmarks, hero h1) and secondary
-      route (/about.html). Maps to Appendix B parity “deterministic stability” without agent steps.
+      about page (`serve` maps `about.html` to `/about`). Maps to Appendix B parity “deterministic stability” without agent steps.
     environment: local
     goals:
       - id: home-shell
@@ -48,10 +48,10 @@ suites:
               expect: "basic-web"
       - id: about-shell
         type: browser
-        description: Secondary HTML route — URL, copy, main landmark, about heading (observe-only).
-        start_path: /about.html
+        description: Secondary route — `about.html` on disk; `serve` canonicalises to `/about` (observe-only).
+        start_path: /about
         success_criteria:
-          url_matches: "/about.html"
+          url_matches: "/about"
           text_present:
             - about-basic-web
           dom_signals:

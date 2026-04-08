@@ -9,7 +9,7 @@ There is **no** Plot dependency and no build step for the app itself.
 | Goal | What it proves |
 |------|----------------|
 | `home-shell` | **Home:** `/` loads; copy includes `basic-web`, `runner-ready`, port **4173**, “About this demo”; **`main`** + **`nav`**; `main h1` text is **`basic-web`**. |
-| `about-shell` | **Secondary route:** `/about.html` loads; **`about-basic-web`** copy; **`main`**; `main h1` matches. |
+| `about-shell` | **Secondary route:** `about.html` is served at **`/about`** (`serve` redirects `/about.html` → `/about`); **`about-basic-web`** copy; **`main`**; `main h1` matches. |
 
 All criteria are **deterministic** (no `judge_rubric` / `ac_sequence`). Same surface area as a longer multi-goal suite, **fewer navigations** — see [docs/testing/checklists/adopter-appendix-b-parity/v1.md](../../docs/testing/checklists/adopter-appendix-b-parity/v1.md).
 
@@ -69,7 +69,7 @@ pnpm run demo
 
 | Script | Command |
 |--------|---------|
-| `pnpm start` | `serve . -l 4173` |
+| `pnpm start` | `serve -l 4173 .` |
 | `pnpm validate` | `testing validate --config restormel-testing.yaml` (run from this dir with CLI on `PATH`) |
 | `pnpm run:web-critical` | `testing run --suite web-critical --config restormel-testing.yaml` |
 | `pnpm demo` | `node run-example.mjs` |

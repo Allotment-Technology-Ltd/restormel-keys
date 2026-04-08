@@ -63,7 +63,7 @@ function runPnpmExec(args) {
   });
 }
 
-const serve = spawn("pnpm", ["exec", "serve", ".", "-l", "4173"], {
+const serve = spawn("pnpm", ["exec", "serve", "-l", "4173", "."], {
   cwd,
   stdio: "inherit",
   shell,
