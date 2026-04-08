@@ -1,0 +1,41 @@
+{
+  "name": "@restormel/testing-github-action",
+  "version": "0.1.0",
+  "description": "GitHub Action entrypoint for Restormel / Testing (inline runner MVP).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/testing-github-action"
+  },
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/testing-github-action#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "files": [
+    "dist",
+    "action.yml"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "node -e \"process.exit(0);\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/testing-keys-adapter": "workspace:*",
+    "@restormel/testing-report": "workspace:*",
+    "@restormel/testing-runner": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,6 +1,6 @@
 # AGENTS.md — restormel-keys
 
-Coding agents and humans: this is the **Restormel Keys** monorepo (headless `@restormel/keys`, dashboard app, integrations packages, docs).
+Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK, dashboard), **Testing** (`@restormel/testing-*`, `apps/testing-web`), **design tokens** (`packages/keys-tokens`), integrations, and docs.
 
 **ChatGPT Projects / external assistants:** single re-sync file — [docs/restormel-suite-chatgpt-project-brief.md](docs/restormel-suite-chatgpt-project-brief.md).
 
@@ -10,18 +10,20 @@ Coding agents and humans: this is the **Restormel Keys** monorepo (headless `@re
 
 ## Design tokens
 
-- **`@restormel/keys-tokens`** — consumed from **npm** (`^0.1.0` on `apps/dashboard`). Source and publish: [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). Human-readable mirror: [docs/design-tokens.css](docs/design-tokens.css). Index: [docs/design-system-index.md](docs/design-system-index.md).
+- **`@restormel/keys-tokens`** — source in **[`packages/keys-tokens`](packages/keys-tokens)** (`workspace:*` in `apps/dashboard` and `apps/testing-web`). Publish with tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml). Human-readable mirror: [docs/design-tokens.css](docs/design-tokens.css). Index: [docs/design-system-index.md](docs/design-system-index.md).
 
-## Keys vs restormel-platform (where to implement)
+## Where to implement (single product repo)
 
-- Cursor rule: [.cursor/rules/09-keys-vs-platform-boundary.mdc](.cursor/rules/09-keys-vs-platform-boundary.mdc) — suite-wide tokens, default composites, and module/cursor **templates** → **restormel-platform**; Keys product and **`keys-v*`** packages → **restormel-keys**. Quick test: *Would another Restormel module reuse it unchanged?*
+- Cursor rule: [.cursor/rules/09-keys-vs-platform-boundary.mdc](.cursor/rules/09-keys-vs-platform-boundary.mdc) — suite-wide **templates** and vendored composites under [platform/](platform/); product code and all publishable packages live **in this repo**.
+- Package map: [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md).
 
 ## CI / CD
 
-- Main workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml) (path filters, dashboard build, migrations job with `DASHBOARD_DATABASE_URL_PROD` when enabled).
-- **Composites:** [.github/actions/pnpm-workspace-install](.github/actions/pnpm-workspace-install), [.github/actions/js-security-scan](.github/actions/js-security-scan) — kept in sync with [platform/.github/actions/](platform/.github/actions/) for extraction.
-- Library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
-- Token-only publish: tag **`tokens-v*`** on **[restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)** (workflow `publish-tokens.yml` in that repo).
+- Main workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml) (path filters, dashboard build, **Testing** build/test/integration, migrations job with `DASHBOARD_DATABASE_URL_PROD` when enabled).
+- **Composites:** [.github/actions/pnpm-workspace-install](.github/actions/pnpm-workspace-install), [.github/actions/js-security-scan](.github/actions/js-security-scan) — mirrored under [platform/.github/actions/](platform/.github/actions/) for template extraction.
+- Keys library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
+- Tokens publish: tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml).
+- Testing packages publish: tag **`testing-v*`** or workflow dispatch → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
 
 ## Cursor skills and rules
 

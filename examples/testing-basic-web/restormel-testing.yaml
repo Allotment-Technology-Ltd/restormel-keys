@@ -1,0 +1,47 @@
+# Minimal runnable example — serve this directory on port 4173, then run the CLI from here.
+# Filename is restormel-testing.yaml (hyphen); some docs abbreviate as restormel.testing.yaml.
+schema_version: "1"
+
+# No judge_rubric in these goals — keys can stay empty for deterministic-only runs.
+keys: {}
+
+defaults:
+  retry_policy:
+    max_retries: 1
+    backoff_ms: 400
+  default_timeout_ms: 30000
+  artifact_policy:
+    screenshots: on_failure
+    browser_trace: on_failure
+    console: true
+
+environments:
+  local:
+    base_url: http://127.0.0.1:4173
+    auth_mode: none
+
+suites:
+  - id: web-critical
+    description: Two browser goals against the static basic-web page (happy path + structured assertion).
+    environment: local
+    goals:
+      - id: home-welcome
+        type: browser
+        description: Happy path — visitor sees the hero title and runner-ready copy on /
+        success_criteria:
+          url_matches: "/"
+          text_present:
+            - basic-web
+            - runner-ready
+      - id: hero-heading-exact
+        type: browser
+        description: Meaningful assertion — main landmark visible and hero h1 text matches exactly
+        success_criteria:
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: hero_h1_text
+              path: "css:main h1"
+              expect: "basic-web"
+
+target_url_overrides: {}

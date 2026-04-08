@@ -1,0 +1,44 @@
+/**
+ * Semantic --rk-* tokens for embeddable components (Svelte, Elements).
+ * Requires base.css to be loaded first. Host apps can override --rk-*.
+ * Must stay in parity with packages/svelte/src/theme.css and packages/elements theme-inline.
+ * See docs/design-system-index.md.
+ */
+@import "./base.css";
+
+.rk-dark,
+:where(.rk-keys) {
+  --rk-bg: var(--ink);
+  --rk-bg-elevated: var(--charcoal);
+  --rk-bg-hover: var(--elevated);
+  --rk-border: var(--slate);
+  --rk-text: var(--paper);
+  --rk-text-muted: var(--mist);
+  --rk-accent: var(--path-blue);
+  --rk-accent-hover: var(--path-blue-hover);
+  --rk-danger: var(--coral-alert);
+  --rk-danger-hover: var(--coral-alert-hover);
+  --rk-success: var(--signal-teal);
+  --rk-amber: var(--amber-insight);
+  --rk-focus-ring: var(--focus-ring);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}
+
+.rk-light {
+  --rk-bg: #f8f9fa;
+  --rk-bg-elevated: #ffffff;
+  --rk-bg-hover: #e9ecef;
+  --rk-border: #dee2e6;
+  --rk-text: #212529;
+  --rk-text-muted: #868e96;
+  --rk-accent: var(--path-blue-active);
+  --rk-accent-hover: var(--path-blue);
+  --rk-danger: var(--coral-alert-active);
+  --rk-danger-hover: var(--coral-alert);
+  --rk-success: var(--signal-teal-active);
+  --rk-amber: var(--amber-insight-active);
+  --rk-focus-ring: 0 0 0 2px rgba(61, 122, 230, 0.5);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}

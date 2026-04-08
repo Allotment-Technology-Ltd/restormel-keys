@@ -150,6 +150,32 @@ jobs:
       - name: Dashboard tests
         run: pnpm --filter dashboard run test
 
+      # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
+      - name: Build @restormel/keys-tokens (workspace)
+        run: pnpm --filter @restormel/keys-tokens run build
+      - name: Build testing TypeScript packages
+        run: pnpm run build:testing-packages
+      - name: Install Playwright Chromium (testing)
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+      - name: Test @restormel/testing-*
+        run: pnpm run test:testing
+      - name: testing-web check
+        run: pnpm --filter testing-web run check
+      - name: testing-web build
+        run: pnpm --filter testing-web run build
+      - name: Serve testing-basic-web and run web-critical (integration)
+        run: |
+          (cd examples/testing-basic-web && pnpm exec serve . -l 4173) &
+          SERVE_PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null
+          node packages/testing-cli/dist/bin/testing.js validate --config examples/testing-basic-web/restormel-testing.yaml
+          node packages/testing-cli/dist/bin/testing.js run --suite web-critical --config examples/testing-basic-web/restormel-testing.yaml
+          kill $SERVE_PID
+
   keys-svelte-republish-smoke:
     runs-on: ubuntu-latest
     if: needs.changes.outputs.code == 'true'

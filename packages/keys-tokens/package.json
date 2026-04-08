@@ -1,0 +1,38 @@
+{
+  "name": "@restormel/keys-tokens",
+  "version": "0.1.0",
+  "description": "Canonical design tokens for Restormel (base + semantic rm/rk). Source lives in this monorepo; published to npm.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/keys-tokens"
+  },
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/keys-tokens#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/contracts.d.ts",
+      "import": "./dist/contracts.js",
+      "default": "./dist/contracts.js"
+    },
+    "./base.css": "./src/base.css",
+    "./semantic-rm.css": "./src/semantic-rm.css",
+    "./semantic-rk.css": "./src/semantic-rk.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,68 @@
+# Publish @restormel/testing-* packages to npm (tag testing-v* or manual dispatch).
+# Does not publish Keys packages. Use tag keys-v* → publish.yml for Keys train.
+name: Publish Testing packages
+on:
+  push:
+    tags:
+      - "testing-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run publish --dry-run only."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-testing-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TESTING_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+
+      - name: Build @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens run build
+
+      - name: Build testing packages
+        run: pnpm run build:testing-packages
+
+      - name: Install Playwright Chromium (browser-playwright tests)
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+
+      - name: Test @restormel/testing-*
+        run: pnpm run test:testing
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            exit 1
+          fi
+          printf '%s\n' "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          EXTRA=""
+          if [ "${TESTING_PUBLISH_DRY_RUN}" = "true" ]; then
+            EXTRA="--dry-run"
+            echo "Dry run only."
+          fi
+          pnpm publish -r --access public --no-git-checks --filter "@restormel/testing-*" ${EXTRA}

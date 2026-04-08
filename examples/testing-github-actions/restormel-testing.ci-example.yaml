@@ -1,0 +1,18 @@
+# Minimal config for CI demos: public https://example.com only (no secrets).
+# Used by sample-workflow.yml — replace with your real suite in production.
+schema_version: "1"
+
+environments:
+  ci:
+    base_url: https://example.com
+
+suites:
+  - id: ci-smoke
+    environment: ci
+    goals:
+      - id: example-public-page
+        type: browser
+        description: Public page smoke (replace with your app journeys)
+        success_criteria:
+          text_present:
+            - Example Domain

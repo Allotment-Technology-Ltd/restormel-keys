@@ -1,0 +1,275 @@
+export type ParsedCli =
+  | { kind: "help"; topic?: string }
+  | { kind: "version" }
+  | { kind: "init"; config: string; print: boolean; force: boolean }
+  | { kind: "validate"; config: string; json: boolean }
+  | {
+      kind: "run";
+      suite: string;
+      config: string;
+      environmentId?: string;
+      targetUrl?: string;
+      commitSha?: string;
+      repository?: string;
+      artifactDir?: string;
+      headless: boolean;
+      trigger: "local" | "ci";
+      goalIds?: string[];
+      json: boolean;
+    }
+  | { kind: "report"; path: string }
+  | { kind: "doctor"; config?: string }
+  | { kind: "error"; message: string };
+
+function parseInitArgs(args: string[]): ParsedCli {
+  let config = "restormel-testing.yaml";
+  let print = false;
+  let force = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--print") {
+      print = true;
+      continue;
+    }
+    if (a === "--force") {
+      force = true;
+      continue;
+    }
+    if (a === "--config" || a === "-c") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "init: --config requires a file path" };
+      }
+      config = v;
+      continue;
+    }
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "init" };
+    }
+    return { kind: "error", message: `init: unexpected argument: ${a}` };
+  }
+  return { kind: "init", config, print, force };
+}
+
+function parseValidateArgs(args: string[]): ParsedCli {
+  let config = "restormel-testing.yaml";
+  let json = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--json") {
+      json = true;
+      continue;
+    }
+    if (a === "--config" || a === "-c") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "validate: --config requires a file path" };
+      }
+      config = v;
+      continue;
+    }
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "validate" };
+    }
+    return { kind: "error", message: `validate: unexpected argument: ${a}` };
+  }
+  return { kind: "validate", config, json };
+}
+
+function parseRunArgs(args: string[]): ParsedCli {
+  let suite: string | undefined;
+  let config = "restormel-testing.yaml";
+  let environmentId: string | undefined;
+  let targetUrl: string | undefined;
+  let commitSha: string | undefined;
+  let repository: string | undefined;
+  let artifactDir: string | undefined;
+  let headless = true;
+  let trigger: "local" | "ci" = "local";
+  const goalIds: string[] = [];
+  let json = false;
+
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--suite") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --suite requires a value" };
+      }
+      suite = v;
+      continue;
+    }
+    if (a === "--goal") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --goal requires a value" };
+      }
+      for (const part of v.split(",")) {
+        const id = part.trim();
+        if (id.length > 0) goalIds.push(id);
+      }
+      continue;
+    }
+    if (a === "--environment" || a === "--env") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --environment requires a value" };
+      }
+      environmentId = v;
+      continue;
+    }
+    if (a === "--target-url") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --target-url requires a value" };
+      }
+      targetUrl = v;
+      continue;
+    }
+    if (a === "--commit-sha") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --commit-sha requires a value" };
+      }
+      commitSha = v;
+      continue;
+    }
+    if (a === "--repository") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --repository requires a value" };
+      }
+      repository = v;
+      continue;
+    }
+    if (a === "--config" || a === "-c") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --config requires a file path" };
+      }
+      config = v;
+      continue;
+    }
+    if (a === "--artifact-dir") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "run: --artifact-dir requires a directory path" };
+      }
+      artifactDir = v;
+      continue;
+    }
+    if (a === "--headed") {
+      headless = false;
+      continue;
+    }
+    if (a === "--ci") {
+      trigger = "ci";
+      continue;
+    }
+    if (a === "--json") {
+      json = true;
+      continue;
+    }
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "run" };
+    }
+    return { kind: "error", message: `run: unexpected argument: ${a}` };
+  }
+
+  if (!suite) {
+    return { kind: "error", message: "run: --suite <name> is required" };
+  }
+
+  return {
+    kind: "run",
+    suite,
+    config,
+    environmentId,
+    targetUrl,
+    commitSha,
+    repository,
+    artifactDir,
+    headless,
+    trigger,
+    goalIds: goalIds.length > 0 ? goalIds : undefined,
+    json,
+  };
+}
+
+function parseReportArgs(args: string[]): ParsedCli {
+  const rest = [...args];
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === "-h" || rest[i] === "--help") {
+      return { kind: "help", topic: "report" };
+    }
+  }
+  const pos = rest.filter((a) => !a.startsWith("-"));
+  if (pos.length === 0) {
+    return { kind: "error", message: "report: requires a path to a run directory or run.json" };
+  }
+  if (pos.length > 1) {
+    return { kind: "error", message: "report: too many arguments" };
+  }
+  return { kind: "report", path: pos[0]! };
+}
+
+function parseDoctorArgs(args: string[]): ParsedCli {
+  let config: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--config" || a === "-c") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "doctor: --config requires a file path" };
+      }
+      config = v;
+      continue;
+    }
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "doctor" };
+    }
+    return { kind: "error", message: `doctor: unexpected argument: ${a}` };
+  }
+  return { kind: "doctor", config };
+}
+
+/**
+ * Parse argv with `process.argv.slice(2)` (no `node`, no executable).
+ */
+export function parseArgs(argv: string[]): ParsedCli {
+  if (argv.length === 0) {
+    return { kind: "help" };
+  }
+
+  const first = argv[0];
+  if (first === "-h" || first === "--help") {
+    return { kind: "help", topic: argv[1] };
+  }
+  if (first === "--version" || first === "-v") {
+    return { kind: "version" };
+  }
+
+  if (first === "help") {
+    return { kind: "help", topic: argv[1] };
+  }
+
+  const rest = argv.slice(1);
+
+  if (first === "init") {
+    return parseInitArgs(rest);
+  }
+  if (first === "validate") {
+    return parseValidateArgs(rest);
+  }
+  if (first === "run") {
+    return parseRunArgs(rest);
+  }
+  if (first === "report") {
+    return parseReportArgs(rest);
+  }
+  if (first === "doctor") {
+    return parseDoctorArgs(rest);
+  }
+
+  return { kind: "error", message: `Unknown command: ${first}` };
+}

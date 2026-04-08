@@ -8,9 +8,9 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "vite dev",
-    "precheck": "pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
+    "precheck": "pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
     "build": "vite build && node ../../scripts/vercel-copy-build-output.mjs",
-    "prebuild": "pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
+    "prebuild": "pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
@@ -23,7 +23,7 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
-    "@restormel/keys-tokens": "^0.1.0",
+    "@restormel/keys-tokens": "workspace:*",
     "@neondatabase/neon-js": "0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
     "@restormel/keys": "workspace:*",

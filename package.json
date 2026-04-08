@@ -2,7 +2,7 @@
   "name": "restormel-keys",
   "version": "0.0.0",
   "private": true,
-  "description": "Library-first BYOK and provider-routing product.",
+  "description": "Restormel monorepo: Keys (BYOK), Testing runner/CLI, design tokens, dashboard, and integrations.",
   "scripts": {
     "review-docs": "bash scripts/review-docs.sh",
     "docs-checklist": "bash scripts/docs-update-checklist.sh",
@@ -15,14 +15,21 @@
     "setup-posthog-keys": "node scripts/setup-posthog-restormel-keys.mjs",
     "quality": "bash scripts/quality.sh",
     "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build",
-    "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh"
-    ,
+    "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh",
+    "build:testing-packages": "tsc -b tsconfig.testing-packages.json",
+    "typecheck:testing-packages": "tsc -b tsconfig.testing-packages.json",
+    "typecheck:testing-web": "pnpm --filter testing-web run check",
+    "test:testing": "vitest run --config vitest.testing.config.ts",
+    "check:testing": "pnpm run typecheck:testing-packages && pnpm run test:testing && pnpm run typecheck:testing-web",
     "validate-registry": "node scripts/validate-registry.mjs",
     "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
     "init-module": "node scripts/init-restormel-module.mjs"
   },
   "devDependencies": {
-    "tsx": "^4.19.0"
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=18"

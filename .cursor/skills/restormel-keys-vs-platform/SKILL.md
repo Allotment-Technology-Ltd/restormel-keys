@@ -1,31 +1,28 @@
 ---
 name: restormel-keys-vs-platform
 description: >-
-  Decides whether work belongs in restormel-keys (Keys product) or restormel-platform (suite-wide npm tokens,
-  GitHub composite actions, cursor-template, template-restormel-module). Use when changing design tokens or
-  @restormel/keys-tokens, adding --rm-* CSS variables, publishing keys-tokens, editing suite-default CI composites,
-  scaffolding new Restormel modules, syncing platform/ mirror vs canonical platform repo, or when unsure “Keys only
-  vs shared across modules”.
+  Decides whether work belongs in repo-root packages/apps vs the vendored platform/ mirror (templates, scaffold
+  composites). Use when changing design tokens or @restormel/keys-tokens, editing suite-default CI composites for
+  templates, scaffolding new external Restormel modules, or when unsure “product vs template mirror”.
 ---
 
-# Restormel Keys vs restormel-platform
+# Restormel monorepo vs `platform/` mirror
 
-**Canonical boundary:** read [.cursor/rules/09-keys-vs-platform-boundary.mdc](../../rules/09-keys-vs-platform-boundary.mdc) and [AGENTS.md](../../../AGENTS.md) (*Keys vs restormel-platform*).
+**Canonical boundary:** read [.cursor/rules/09-keys-vs-platform-boundary.mdc](../../rules/09-keys-vs-platform-boundary.mdc) and [AGENTS.md](../../../AGENTS.md).
 
-## Repos
+## Layout
 
-| Repo | Role |
-|------|------|
-| **restormel-keys** (this workspace) | Keys product: `@restormel/keys`, dashboard, `aaif`, `mcp`, Keys docs, dogfood, publish **`keys-v*`** |
-| **[restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform)** | Suite-wide: **`@restormel/keys-tokens`** (publish tag **`tokens-v*`**), default composites, **cursor-template**, **template-restormel-module** sources |
+| Location | Role |
+|----------|------|
+| **`packages/keys-tokens`**, **`packages/*`**, **`apps/*`**, **`docs/`** | Product: Keys, Testing (`@restormel/testing-*`), tokens **source**, dashboard, testing-web |
+| **`platform/`** | Vendored **template** + composite **mirror** for repos scaffolded from the module template |
 
 ## Agent workflow
 
-1. **Quick check:** *Would Restormel Testing (or another module) reuse this unchanged?* **Yes** → implement in **restormel-platform** (or open an issue/PR there). **No** → **restormel-keys**.
-2. **Tokens:** Do **not** add or edit token **source** in restormel-keys. Edit the tokens package in **restormel-platform**, publish a new npm version, then bump **`apps/dashboard`** dependency on `@restormel/keys-tokens` and align [docs/design-tokens.css](../../../docs/design-tokens.css) if values changed.
-3. **Vendored `platform/` in keys:** Composites and template sources are a **mirror**. Suite-wide changes should be reflected in **restormel-platform** so the template repo and other modules do not drift.
-4. **If the user opened the wrong repo:** Say so clearly; do not duplicate token definitions in keys.
+1. **Tokens:** Edit **`packages/keys-tokens`**. Publish with tag **`tokens-v*`** (see `.github/workflows/publish-keys-tokens.yml`). Keep [docs/design-tokens.css](../../../docs/design-tokens.css) aligned when values change.
+2. **Templates / external scaffold parity:** If a change must apply to **new repos** cut from the template, update **`platform/template-restormel-module/`** (and `platform/.github/actions/` if composites are part of that story) alongside root `.github/actions/` where they are duplicated.
+3. **Do not** treat a separate **restormel-platform** GitHub repo as canonical for tokens; this repo owns **`@restormel/keys-tokens`** source.
 
 ## Security
 
-No secrets in skills or commits. Token publish uses GitHub Actions secrets in the **platform** repo, not hard-coded credentials.
+No secrets in skills or commits. Publishing uses repository **NPM_TOKEN** (or OIDC if you adopt it), never hard-coded credentials.

@@ -1,0 +1,69 @@
+# Example: run Restormel / Testing on pull requests with fork-safe defaults.
+# Adjust paths, suite id, Node/pnpm versions, and Playwright install to match your repo.
+name: Restormel Testing (example)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Optional: match the Restormel module template (see repo .github/workflows/ci.yml).
+# env:
+#   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      # If you use this repo’s composite install action:
+      # - uses: ./.github/actions/pnpm-workspace-install
+      # Otherwise install Node 20 + pnpm 9 yourself, then:
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
+        with:
+          version: 9
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install and build
+        run: |
+          pnpm install
+          pnpm run build:testing-packages
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+
+      - name: Validate richer example config (optional)
+        run: pnpm exec testing validate --config restormel-testing.yaml
+        working-directory: examples/testing-basic-web
+
+      # Uses a tiny public-URL config so this workflow can pass without a preview server.
+      # Swap in your config_path / suite / target_url for real projects.
+      - name: Run Restormel Testing
+        uses: ./packages/testing-github-action
+        with:
+          suite: ci-smoke
+          environment: ci
+          # Optional: override base URL (e.g. Vercel preview). Must not embed credentials.
+          # target_url: ${{ steps.deploy.outputs.url }}
+          commit_sha: ${{ github.sha }}
+          pr_number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          config_path: examples/testing-github-actions/restormel-testing.ci-example.yaml
+          working_directory: .
+          fork_pr_policy: skip
+          is_fork_pr: ${{ github.event.pull_request.head.repo.fork }}
+
+      - name: Upload run artefacts
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397e0af7b84c454d082b2
+        if: always()
+        with:
+          name: restormel-testing-run
+          path: .restormel-testing/runs/

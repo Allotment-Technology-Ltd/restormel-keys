@@ -24,7 +24,20 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 | [@restormel/aaif](packages/aaif) | 0.0.1 | AAIF contract + runtime helper (routing + cost estimation) |
 | [@restormel/mcp](packages/mcp) | 0.1.0 | MCP tools + stdio server (`restormel-mcp`) for agents/IDEs |
 
+**Restormel Testing** (goal-based runner, CLI, composite Action) — see [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md):
+
+| Package | Description |
+|---------|-------------|
+| [@restormel/testing-core](packages/testing-core) | Schemas, verdict model, run contract |
+| [@restormel/testing-config](packages/testing-config) | Config load + MVP validation |
+| [@restormel/testing-runner](packages/testing-runner) | Suite execution |
+| [@restormel/testing-cli](packages/testing-cli) | `testing` / `restormel-testing` CLI |
+| [@restormel/testing-github-action](packages/testing-github-action) | Composite GitHub Action |
+| … | (`testing-report`, `testing-keys-adapter`, `testing-browser-playwright`) |
+
 *(Vue wrapper is not published.)*
+
+**Monorepo / Vercel / publish tags:** [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md) · [docs/monorepo-vercel.md](docs/monorepo-vercel.md)
 
 ---
 

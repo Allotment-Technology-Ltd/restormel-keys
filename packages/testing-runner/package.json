@@ -1,0 +1,47 @@
+{
+  "name": "@restormel/testing-runner",
+  "version": "0.1.0",
+  "description": "Suite execution: browser goals, Keys-backed judges, retries, artefacts.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/testing-runner"
+  },
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/testing-runner#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/testing-browser-playwright": "workspace:*",
+    "@restormel/testing-config": "workspace:*",
+    "@restormel/testing-core": "workspace:*",
+    "@restormel/testing-keys-adapter": "workspace:*",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

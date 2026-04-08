@@ -1,0 +1,44 @@
+{
+  "name": "@restormel/testing-cli",
+  "version": "0.1.0",
+  "description": "Restormel / Testing CLI (init, validate, run, report).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/testing-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/testing-cli#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "bin": {
+    "testing": "./dist/bin/testing.js",
+    "restormel-testing": "./dist/bin/testing.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/testing-core": "workspace:*",
+    "@restormel/testing-config": "workspace:*",
+    "@restormel/testing-keys-adapter": "workspace:*",
+    "@restormel/testing-report": "workspace:*",
+    "@restormel/testing-runner": "workspace:*",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

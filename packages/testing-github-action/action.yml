@@ -1,0 +1,99 @@
+name: Restormel Testing
+description: >
+  Run a Restormel / Testing browser suite inline in the job (MVP): load repo config,
+  execute the runner, write run.json / traces under .restormel-testing/runs/, append a
+  GitHub step summary, and fail the step on failed or indeterminate verdicts.
+  No hosted control plane — polling inputs are reserved for a future orchestration mode.
+author: Restormel
+
+branding:
+  icon: check-square
+  color: gray-dark
+
+inputs:
+  suite:
+    description: Suite id from your restormel-testing config (required).
+    required: true
+  environment:
+    description: Environment id to run against (omit to use the suite default).
+    required: false
+    default: ""
+  target_url:
+    description: >
+      Optional base URL override for the chosen environment (e.g. Vercel preview).
+      Must be https (or http for local). Do not embed credentials in the URL.
+    required: false
+    default: ""
+  commit_sha:
+    description: Commit recorded on the run (defaults to GITHUB_SHA when unset).
+    required: false
+    default: ""
+  pr_number:
+    description: Pull request number for the step summary only (optional).
+    required: false
+    default: ""
+  repository:
+    description: Repository slug recorded on the run (defaults to GITHUB_REPOSITORY when unset).
+    required: false
+    default: ""
+  config_path:
+    description: Path to restormel-testing.yaml (or .json) relative to working_directory.
+    required: false
+    default: restormel-testing.yaml
+  working_directory:
+    description: Subdirectory of the repository to run from (relative to GITHUB_WORKSPACE).
+    required: false
+    default: "."
+  fork_pr_policy:
+    description: >
+      skip (default) — do not run browser suites when is_fork_pr is true (safe when secrets
+      or private previews are required). run — execute anyway (you must use only public URLs
+      and expect secrets to be unavailable on fork workflows).
+    required: false
+    default: skip
+  is_fork_pr:
+    description: >
+      Set to the string 'true' when github.event.pull_request.head.repo.fork is true.
+      Ignored outside pull_request workflows.
+    required: false
+    default: "false"
+  poll_interval_seconds:
+    description: Reserved for a future hosted runner; ignored for inline MVP execution.
+    required: false
+    default: "30"
+  timeout_minutes:
+    description: Reserved for future use; prefer job defaults.timeout-minutes or workflow timeout.
+    required: false
+    default: "60"
+
+outputs:
+  verdict:
+    description: passed, failed, indeterminate, skipped (fork policy), or error
+    value: ${{ steps.exec.outputs.verdict }}
+  run_id:
+    description: Run record id when the suite executed; empty when skipped or error before run
+    value: ${{ steps.exec.outputs.run_id }}
+  skipped:
+    description: "true" when the fork PR policy skipped execution
+    value: ${{ steps.exec.outputs.skipped }}
+
+runs:
+  using: composite
+  steps:
+    - id: exec
+      shell: bash
+      env:
+        RESTORMEL_TESTING_ACTION_MAIN_JS: ${{ github.action_path }}/dist/main.js
+        RESTORMEL_TESTING_SUITE: ${{ inputs.suite }}
+        RESTORMEL_TESTING_ENVIRONMENT: ${{ inputs.environment }}
+        RESTORMEL_TESTING_TARGET_URL: ${{ inputs.target_url }}
+        RESTORMEL_TESTING_COMMIT_SHA: ${{ inputs.commit_sha }}
+        RESTORMEL_TESTING_PR_NUMBER: ${{ inputs.pr_number }}
+        RESTORMEL_TESTING_REPOSITORY: ${{ inputs.repository }}
+        RESTORMEL_TESTING_CONFIG: ${{ inputs.config_path }}
+        RESTORMEL_TESTING_WORKING_DIRECTORY: ${{ inputs.working_directory }}
+        RESTORMEL_TESTING_FORK_PR_POLICY: ${{ inputs.fork_pr_policy }}
+        RESTORMEL_TESTING_IS_FORK_PR: ${{ inputs.is_fork_pr }}
+        RESTORMEL_TESTING_POLL_INTERVAL_SECONDS: ${{ inputs.poll_interval_seconds }}
+        RESTORMEL_TESTING_TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
+      run: node "$RESTORMEL_TESTING_ACTION_MAIN_JS"

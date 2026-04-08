@@ -1,30 +1,26 @@
 ---
-description: When to change restormel-keys vs restormel-platform (suite vs Keys product)
+description: Restormel monorepo — product code vs vendored platform template mirror
 globs:
 alwaysApply: true
 ---
 
-# Keys repo vs restormel-platform boundary
+# This repo vs `platform/` mirror
 
-**restormel-keys** = Restormel **Keys** product: `@restormel/keys` core, dashboard app, integrations packages (`aaif`, `mcp`), Keys docs, dogfood workflows, publish train **`keys-v*`**.
+**restormel-keys** (this repository) is the **single canonical** home for Restormel **product** code: `@restormel/keys`, `@restormel/testing-*`, **`@restormel/keys-tokens`** (under `packages/keys-tokens`), dashboard (`apps/dashboard`), Testing web (`apps/testing-web`), Zuplo gateway sources, and publish trains **`keys-v*`**, **`tokens-v*`**, **`testing-v*`**.
 
-**restormel-platform** (separate GitHub repo) = **Suite-wide** assets: **`@restormel/keys-tokens`** (source + npm publish via **`tokens-v*`**), default **GitHub composite actions** for Restormel TS repos, **cursor-template**, **template-restormel-module** sources.
+**`platform/`** in this repo is a **vendored mirror**: Cursor/module **templates**, and copies of **GitHub composite actions** used when scaffolding *other* repositories. If you change something that must stay aligned with those external scaffolds, update **`platform/`** alongside the root [`.github/actions/`](.github/actions/) copies so they do not drift.
 
-## Put work in **restormel-platform** when
+## Put work in **`platform/`** when
 
-- Changing **token values** or adding **shared CSS** under the tokens package (`base.css`, `semantic-rm.css`, `semantic-rk.css`) or **`contracts.ts`**.
-- Adding or changing **suite-default** composite actions meant for **all** Restormel modules (pnpm install, JS security scan pattern).
-- Updating the **canonical Cursor rules template** or **module scaffold** for **new** repos (not Keys-only conventions).
+- Updating the **module scaffold** or **Cursor baseline** intended to be copied into *new* non-Keys repos (`platform/template-restormel-module/`, `platform/cursor-template/` when present).
+- Changing **suite-default** composite action *sources* that you also want mirrored for template consumers (`platform/.github/actions/`).
 
-Then: publish a new **`@restormel/keys-tokens`** version if needed and **bump** the dashboard dependency in **restormel-keys**. Keep [docs/design-tokens.css](docs/design-tokens.css) aligned with token changes (doc mirror).
+## Keep work at **repo root** (`packages/`, `apps/`, `docs/`) when
 
-## Keep work in **restormel-keys** when
-
-- Anything **Keys-specific**: routes under `/keys`, Gateway keys, Neon dashboard schema, policies/routes UI, **`@restormel/keys`** API, **`keys-v*`** publish, dogfood, Zuplo/docs copy for Keys.
-- **Vendored** [platform/](platform/) in this repo is a **mirror** for composites + template sources: if you change something that should be suite-wide, **apply the same change in restormel-platform** (or open a follow-up) so GitHub Template / other repos do not drift.
+- Anything **Keys-specific** or **Testing-specific**: APIs, dashboard schema, runner, CLI, tokens **values** and contracts, marketing apps, dogfood workflows.
 
 ## Quick check
 
-Ask: *Would **Restormel Testing** (or another module) copy this unchanged?* **Yes** → **platform** (then consume via npm or template). **No** → **keys**.
+Ask: *Is this only for copying into a brand-new external repo template?* **Yes** → update **`platform/`** (and keep root composites in sync if applicable). **No** → implement under **`packages/`** / **`apps/`** / **`docs/`**.
 
-If unsure, **default to keys** for product behavior, but **stop before duplicating token definitions** in this repo — tokens ship only from **restormel-platform** + npm.
+**Do not** point contributors at a separate **restormel-platform** GitHub repo as the authority for tokens; **`packages/keys-tokens`** is the source of truth here.
