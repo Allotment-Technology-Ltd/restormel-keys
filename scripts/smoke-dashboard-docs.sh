@@ -16,7 +16,7 @@ if [ ! -d "apps/dashboard/.svelte-kit/output" ]; then
 fi
 
 echo "[smoke] Starting dashboard preview on port ${PREVIEW_PORT}..."
-pnpm --filter dashboard run preview &
+(cd apps/dashboard && pnpm exec vite preview --port "${PREVIEW_PORT}" --strictPort) &
 PREV_PID=$!
 trap 'kill $PREV_PID 2>/dev/null || true' EXIT
 

@@ -1,18 +1,9 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
   import { githubRepoUrl } from "$lib/testing/site.js";
 
-  let {
-    title,
-    description,
-    stub = false,
-    children,
-  }: {
-    title: string;
-    description?: string;
-    stub?: boolean;
-    children?: Snippet;
-  } = $props();
+  export let title: string;
+  export let description: string | undefined = undefined;
+  export let stub = false;
 </script>
 
 <svelte:head>
@@ -31,9 +22,7 @@
   {#if description}
     <p class="doc-lede">{description}</p>
   {/if}
-  {#if children}
-    {@render children()}
-  {/if}
+  <slot />
 </article>
 
 <style>

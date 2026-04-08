@@ -1,8 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
-
   /** Collapsed by default — same UX contract as Keys walkthrough phase pages. */
-  let { children }: { children: Snippet } = $props();
 </script>
 
 <details class="agent-prompts">
@@ -12,7 +9,7 @@
       Optional: use these with a coding agent to implement this phase in your repo in a safe, gated sequence. Expand only
       when you need them.
     </p>
-    {@render children()}
+    <slot />
   </div>
 </details>
 
