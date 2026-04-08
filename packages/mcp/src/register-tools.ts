@@ -14,6 +14,7 @@ import {
 import { searchDocs } from "./docs-index.js";
 import { credentialEnvHint, resolveProviderCredential } from "./provider-env.js";
 import { getMcpKeysConfig } from "./mcp-config.js";
+import { getJourneyPhases, testingCiEnvTemplateLines } from "./journey-data.js";
 
 function findProviderForModel(modelId: string, providers: ProviderDefinition[]): ProviderDefinition | undefined {
   return providers.find((p) => p.models.includes(modelId));
@@ -347,6 +348,166 @@ const readinessCheckOutput = {
   checks: z.array(z.object({ name: z.string(), status: z.enum(["pass", "warn", "fail"]), detail: z.string() })),
 };
 
+const projectsListInput = {};
+const projectsListOutput = {
+  projects: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      isRestormelTesting: z.boolean().optional(),
+    }),
+  ),
+  serverOnlyToken: z.boolean(),
+};
+
+const projectModelsListInput = {
+  projectId: z.string().describe("Restormel project UUID (from projects.list or the dashboard)."),
+};
+const projectModelsListOutput = {
+  projectId: z.string(),
+  bindings: z.array(
+    z.object({
+      id: z.string(),
+      providerType: z.string(),
+      modelId: z.string(),
+      bindingKind: z.string(),
+      enabled: z.boolean(),
+    }),
+  ),
+  meta: z
+    .object({
+      source: z.string().optional(),
+    })
+    .optional(),
+  serverOnlyToken: z.boolean(),
+};
+
+const projectEnvironmentsListInput = {
+  projectId: z.string().describe("Restormel project UUID."),
+};
+const projectEnvironmentsListOutput = {
+  projectId: z.string(),
+  environments: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      type: z.string(),
+    }),
+  ),
+  serverOnlyToken: z.boolean(),
+};
+
+const testingHubSnapshotInput = {
+  projectId: z
+    .string()
+    .optional()
+    .describe("When set, use this project id; otherwise prefer the Restormel Testing project from projects.list."),
+};
+const testingHubSnapshotOutput = {
+  projectId: z.string(),
+  projectName: z.string(),
+  isRestormelTesting: z.boolean().optional(),
+  environments: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
+  gatewayKeys: z.array(z.object({ id: z.string(), keyPrefix: z.string() })),
+  suggestedEnvSnippet: z.string(),
+  keysBaseOrigin: z.string(),
+  docUrls: z.array(z.string()),
+  serverOnlyToken: z.boolean(),
+};
+
+const projectGatewayKeysListInput = {
+  projectId: z.string().describe("Restormel project UUID."),
+};
+const projectGatewayKeysListOutput = {
+  projectId: z.string(),
+  keys: z.array(z.object({ id: z.string(), keyPrefix: z.string() })),
+  serverOnlyToken: z.boolean(),
+};
+
+const projectGatewayKeysCreateInput = {
+  projectId: z.string().describe("Restormel project UUID."),
+};
+const projectGatewayKeysCreateOutput = {
+  projectId: z.string(),
+  keyPrefix: z.string(),
+  rawKey: z.string(),
+  securityNote: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const projectGatewayKeysDeleteInput = {
+  projectId: z.string(),
+  keyId: z.string().describe("Gateway key id from list."),
+};
+const projectGatewayKeysDeleteOutput = {
+  projectId: z.string(),
+  keyId: z.string(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const testingJourneyInput = {
+  focus: z
+    .enum([
+      "all",
+      "testing_ci",
+      "keys_routing",
+      "guardrails",
+      "observability",
+      "developer",
+      "integrations",
+      "billing",
+    ])
+    .optional()
+    .describe(
+      "Journey slice: all (default), testing_ci, keys_routing, guardrails, observability, developer, integrations, billing.",
+    ),
+};
+const journeyStepSchema = z.object({
+  title: z.string(),
+  detail: z.string(),
+  dashboardHref: z.string().optional(),
+  docsHref: z.string().optional(),
+  suggestedMcpTools: z.array(z.string()).optional(),
+});
+const journeyPhaseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  goal: z.string(),
+  steps: z.array(journeyStepSchema),
+});
+const testingJourneyOutput = {
+  focus: z.string(),
+  phases: z.array(journeyPhaseSchema),
+};
+
+const testingCiEnvTemplateInput = {
+  keysBasePlaceholder: z
+    .string()
+    .optional()
+    .describe("Site origin for RESTORMEL_KEYS_BASE in the snippet (no secrets). Default example host."),
+};
+
+const testingCiEnvTemplateOutput = {
+  snippet: z.string(),
+  variableNames: z.array(z.string()),
+  docUrls: z.array(z.string()),
+};
+
+const testingResolveProbeInput = {
+  logicalRef: z
+    .string()
+    .optional()
+    .describe('Logical ref to POST to /v1/testing/resolve-model (default ref:restormel-keys:llm/primary).'),
+};
+
+const testingResolveProbeOutput = {
+  httpStatus: z.number(),
+  logicalRef: z.string(),
+  ok: z.boolean(),
+  note: z.string(),
+};
+
 type EntitlementToolResult = {
   feature: string;
   entitled: boolean;
@@ -538,6 +699,69 @@ async function controlPlaneRequest<T>(method: string, path: string, body?: Recor
   }
   const data = (await res.json()) as T;
   return data;
+}
+
+/** GET without forcing JSON Content-Type (some stacks are picky on GET). */
+async function controlPlaneGet<T>(path: string): Promise<T> {
+  const { baseUrl, token } = getControlPlaneConfig();
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Control-plane request failed (GET ${path}): HTTP ${res.status}.`);
+  }
+  return (await res.json()) as T;
+}
+
+function siteOriginForEnvSnippet(): string {
+  const cp = process.env.RESTORMEL_CONTROL_PLANE_URL?.trim();
+  if (!cp) return "https://restormel.dev";
+  try {
+    return new URL(cp).origin;
+  } catch {
+    return "https://restormel.dev";
+  }
+}
+
+async function controlPlaneDeleteWithBody(path: string, body: Record<string, unknown>): Promise<void> {
+  const { baseUrl, token } = getControlPlaneConfig();
+  const res = await fetch(`${baseUrl}${path}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`Control-plane request failed (DELETE ${path}): HTTP ${res.status}.`);
+  }
+}
+
+function keysHttpBearerFromEnv(): string | undefined {
+  const custom = process.env.RESTORMEL_KEYS_API_TOKEN_ENV?.trim();
+  if (custom) {
+    const v = process.env[custom]?.trim();
+    if (v) return v;
+  }
+  return (
+    process.env.RESTORMEL_KEYS_API_TOKEN?.trim() ||
+    process.env.RESTORMEL_GATEWAY_KEY?.trim() ||
+    process.env.RESTORMEL_SERVER_TOKEN?.trim()
+  );
+}
+
+function getKeysHttpForResolve(): { baseUrl: string; token: string } {
+  const baseUrl =
+    process.env.RESTORMEL_KEYS_API_BASE_URL?.trim() || process.env.RESTORMEL_KEYS_BASE?.trim();
+  const token = keysHttpBearerFromEnv();
+  if (!baseUrl || !token) {
+    throw new Error(
+      "Keys HTTP resolve requires RESTORMEL_KEYS_BASE (or RESTORMEL_KEYS_API_BASE_URL) and a bearer token (RESTORMEL_GATEWAY_KEY, RESTORMEL_KEYS_API_TOKEN, RESTORMEL_SERVER_TOKEN, or RESTORMEL_KEYS_API_TOKEN_ENV target). See docs/guides/restormel-environment-vocabulary.md § Testing runner.",
+    );
+  }
+  return { baseUrl: baseUrl.replace(/\/+$/, ""), token };
 }
 
 function nowIso(): string {
@@ -1426,6 +1650,350 @@ ${includeAppRouter ? "// Use this only in server actions / route handlers. Never
       const errorCodes = [...errors.map((e) => e.code), ...warnings.map((w) => w.code)];
 
       const structuredContent = { status, exitCode, errorCodes, errors, warnings, checks };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "projects.list",
+    {
+      description:
+        "List Restormel projects visible to the configured Gateway/management token (control plane). Read-only.",
+      inputSchema: projectsListInput,
+      outputSchema: projectsListOutput,
+    },
+    async () => {
+      const payload = await controlPlaneGet<{ data?: unknown[] }>("/api/projects");
+      const raw = Array.isArray(payload.data) ? payload.data : [];
+      const projects = raw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return {
+          id: String(o.id ?? ""),
+          name: String(o.name ?? ""),
+          isRestormelTesting: typeof o.isRestormelTesting === "boolean" ? o.isRestormelTesting : undefined,
+        };
+      });
+      const structuredContent = { projects, serverOnlyToken: SERVER_ONLY_MARKER };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "project_models.list",
+    {
+      description:
+        "List model bindings for a project (execution/registry index from the control plane). Read-only.",
+      inputSchema: projectModelsListInput,
+      outputSchema: projectModelsListOutput,
+    },
+    async (args: { projectId: string }) => {
+      const payload = await controlPlaneGet<{ data?: unknown[]; meta?: { source?: string } }>(
+        `/api/projects/${encodeURIComponent(args.projectId)}/models`,
+      );
+      const raw = Array.isArray(payload.data) ? payload.data : [];
+      const bindings = raw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return {
+          id: String(o.id ?? ""),
+          providerType: String(o.providerType ?? ""),
+          modelId: String(o.modelId ?? ""),
+          bindingKind: String(o.bindingKind ?? ""),
+          enabled: Boolean(o.enabled ?? false),
+        };
+      });
+      const structuredContent = {
+        projectId: args.projectId,
+        bindings,
+        meta: payload.meta,
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "project.environments.list",
+    {
+      description:
+        "List project environments (dev/prod) for RESTORMEL_ENVIRONMENT_ID. Control-plane read; same token as projects.list.",
+      inputSchema: projectEnvironmentsListInput,
+      outputSchema: projectEnvironmentsListOutput,
+    },
+    async (args: { projectId: string }) => {
+      const payload = await controlPlaneGet<{ data?: unknown[] }>(
+        `/api/projects/${encodeURIComponent(args.projectId)}/environments`,
+      );
+      const raw = Array.isArray(payload.data) ? payload.data : [];
+      const environments = raw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return {
+          id: String(o.id ?? ""),
+          name: String(o.name ?? ""),
+          type: String(o.type ?? ""),
+        };
+      });
+      const structuredContent = {
+        projectId: args.projectId,
+        environments,
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "testing.hub_snapshot",
+    {
+      description:
+        "One-shot read for Restormel Testing setup: project + environment ids + masked gateway keys + suggested RESTORMEL_* snippet (placeholders). Picks Testing project when projectId omitted.",
+      inputSchema: testingHubSnapshotInput,
+      outputSchema: testingHubSnapshotOutput,
+    },
+    async (args: { projectId?: string }) => {
+      let projectId = args.projectId?.trim();
+      let projectName = "";
+      let isRestormelTesting: boolean | undefined;
+
+      if (projectId) {
+        const one = await controlPlaneGet<{ data?: Record<string, unknown> }>(
+          `/api/projects/${encodeURIComponent(projectId)}`,
+        );
+        const d = one.data;
+        if (!d || typeof d !== "object") {
+          throw new Error(`Project not found: ${projectId}`);
+        }
+        projectName = String(d.name ?? "");
+        isRestormelTesting = typeof d.isRestormelTesting === "boolean" ? d.isRestormelTesting : undefined;
+      } else {
+        const payload = await controlPlaneGet<{ data?: unknown[] }>("/api/projects");
+        const raw = Array.isArray(payload.data) ? payload.data : [];
+        const rows = raw.map((row) => {
+          const o = (row ?? {}) as Record<string, unknown>;
+          return {
+            id: String(o.id ?? ""),
+            name: String(o.name ?? ""),
+            isRestormelTesting: typeof o.isRestormelTesting === "boolean" ? o.isRestormelTesting : false,
+          };
+        });
+        const testing = rows.find((p) => p.isRestormelTesting);
+        const pick = testing ?? rows[0];
+        if (!pick?.id) {
+          throw new Error("No projects visible to this token. Set projectId explicitly.");
+        }
+        projectId = pick.id;
+        projectName = pick.name;
+        isRestormelTesting = pick.isRestormelTesting;
+      }
+
+      const envPayload = await controlPlaneGet<{ data?: unknown[] }>(
+        `/api/projects/${encodeURIComponent(projectId!)}/environments`,
+      );
+      const envRaw = Array.isArray(envPayload.data) ? envPayload.data : [];
+      const environments = envRaw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return { id: String(o.id ?? ""), name: String(o.name ?? ""), type: String(o.type ?? "") };
+      });
+
+      const keysPayload = await controlPlaneGet<{ data?: unknown[] }>(
+        `/api/projects/${encodeURIComponent(projectId!)}/keys`,
+      );
+      const keysRaw = Array.isArray(keysPayload.data) ? keysPayload.data : [];
+      const gatewayKeys = keysRaw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return { id: String(o.id ?? ""), keyPrefix: String(o.keyPrefix ?? "") };
+      });
+
+      const keysBaseOrigin = siteOriginForEnvSnippet();
+      const { lines, docUrls } = testingCiEnvTemplateLines(keysBaseOrigin);
+      const suggestedEnvSnippet = lines.join("\n");
+
+      const structuredContent = {
+        projectId: projectId!,
+        projectName,
+        isRestormelTesting,
+        environments,
+        gatewayKeys,
+        suggestedEnvSnippet,
+        keysBaseOrigin,
+        docUrls,
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "project.gateway_keys.list",
+    {
+      description: "List Gateway keys for a project (id + prefix only). Control-plane read.",
+      inputSchema: projectGatewayKeysListInput,
+      outputSchema: projectGatewayKeysListOutput,
+    },
+    async (args: { projectId: string }) => {
+      const payload = await controlPlaneGet<{ data?: unknown[] }>(
+        `/api/projects/${encodeURIComponent(args.projectId)}/keys`,
+      );
+      const raw = Array.isArray(payload.data) ? payload.data : [];
+      const keys = raw.map((row) => {
+        const o = (row ?? {}) as Record<string, unknown>;
+        return { id: String(o.id ?? ""), keyPrefix: String(o.keyPrefix ?? "") };
+      });
+      const structuredContent = { projectId: args.projectId, keys, serverOnlyToken: SERVER_ONLY_MARKER };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "project.gateway_keys.create",
+    {
+      description:
+        "Create a Gateway key. Returns rawKey once — secret; never log or commit; add to CI/env immediately. Control-plane write.",
+      inputSchema: projectGatewayKeysCreateInput,
+      outputSchema: projectGatewayKeysCreateOutput,
+    },
+    async (args: { projectId: string }) => {
+      const { baseUrl, token } = getControlPlaneConfig();
+      const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(args.projectId)}/keys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: "{}",
+      });
+      if (!res.ok) {
+        throw new Error(`Control-plane key create failed: HTTP ${res.status}.`);
+      }
+      const payload = (await res.json()) as { data?: Record<string, unknown> };
+      const d = payload.data ?? {};
+      const rawKey = String(d.rawKey ?? "");
+      const keyPrefix = String(d.keyPrefix ?? "");
+      const structuredContent = {
+        projectId: args.projectId,
+        keyPrefix,
+        rawKey,
+        securityNote:
+          "rawKey is shown once. Store in a secret manager or CI secret; do not paste into chat logs or committed files.",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "project.gateway_keys.delete",
+    {
+      description: "Delete/revoke a Gateway key by id for a project. Control-plane write.",
+      inputSchema: projectGatewayKeysDeleteInput,
+      outputSchema: projectGatewayKeysDeleteOutput,
+    },
+    async (args: { projectId: string; keyId: string }) => {
+      await controlPlaneDeleteWithBody(`/api/projects/${encodeURIComponent(args.projectId)}/keys`, {
+        keyId: args.keyId,
+      });
+      const structuredContent = {
+        projectId: args.projectId,
+        keyId: args.keyId,
+        status: "deleted",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "testing.journey",
+    {
+      description:
+        "Return a structured Keys + Restormel Testing onboarding map: dashboard links, docs URLs, and suggested MCP tool names for the next step. No secrets; safe for agents.",
+      inputSchema: testingJourneyInput,
+      outputSchema: testingJourneyOutput,
+    },
+    async (args: { focus?: string }) => {
+      const structuredContent = getJourneyPhases(args.focus ?? "all");
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "testing.ci_env_template",
+    {
+      description:
+        "Print a canonical RESTORMEL_* env block for Restormel Testing CLI / CI (placeholders only; no secret values).",
+      inputSchema: testingCiEnvTemplateInput,
+      outputSchema: testingCiEnvTemplateOutput,
+    },
+    async (args: { keysBasePlaceholder?: string }) => {
+      const { lines, variableNames, docUrls } = testingCiEnvTemplateLines(args.keysBasePlaceholder ?? "");
+      const structuredContent = {
+        snippet: lines.join("\n"),
+        variableNames,
+        docUrls,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "testing.resolve_probe",
+    {
+      description:
+        "POST once to Keys /v1/testing/resolve-model with the configured bearer token. Returns HTTP status only (response body is not echoed). Use to verify Gateway key + base URL.",
+      inputSchema: testingResolveProbeInput,
+      outputSchema: testingResolveProbeOutput,
+    },
+    async (args: { logicalRef?: string }) => {
+      const logicalRef = args.logicalRef?.trim() || "ref:restormel-keys:llm/primary";
+      const { baseUrl, token } = getKeysHttpForResolve();
+      const url = `${baseUrl}/v1/testing/resolve-model`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ logicalRef }),
+      });
+      const ok = res.status >= 200 && res.status < 300;
+      const structuredContent = {
+        httpStatus: res.status,
+        logicalRef,
+        ok,
+        note: ok
+          ? "2xx from resolve-model (body omitted)."
+          : `Non-success HTTP ${res.status}. Confirm RESTORMEL_PROJECT_ID on the request context, logical ref bindings, and key scope. Body not logged.`,
+      };
       return {
         content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
         structuredContent,

@@ -9,7 +9,13 @@ import {
   parseUiSectionHiddenParam,
   pathnameToHiddenDashboardSection,
 } from "$lib/server/dashboard-ui-flags";
-import { listEnvironments, listProjects } from "$lib/server/db";
+import {
+  countApiKeysByWorkspace,
+  getOrCreateDefaultWorkspace,
+  listEnvironments,
+  listProjects,
+  listProviderIntegrations,
+} from "$lib/server/db";
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
   const baseWithSlash = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE : DASHBOARD_BASE + "/";
@@ -64,6 +70,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     environments: { id: string; name: string; type: string }[];
   }[] = [];
 
+  let journeySignals: { integrationCount: number; gatewayKeyCount: number } | null = null;
+
   if (locals.user) {
     try {
       const projects = await listProjects(locals.user.uid);
@@ -81,12 +89,25 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
       const msg = error instanceof Error ? error.message : "unknown error";
       console.error("[dashboard layout] project context load failed:", msg.slice(0, 120));
     }
+
+    try {
+      const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
+      const [integrations, gatewayKeyCount] = await Promise.all([
+        listProviderIntegrations(workspace.id),
+        countApiKeysByWorkspace(workspace.id),
+      ]);
+      journeySignals = { integrationCount: integrations.length, gatewayKeyCount };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "unknown error";
+      console.error("[dashboard layout] journey signals load failed:", msg.slice(0, 120));
+    }
   }
 
   return {
     user: locals.user,
     authError,
     projectContexts,
+    journeySignals,
     dashboardUiHidden,
     navGroupsForUi,
     dashboardUiHiddenBanner,

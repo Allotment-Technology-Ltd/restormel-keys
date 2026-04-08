@@ -32,7 +32,7 @@
         <strong>Keys</strong> — logical slots such as <code>ref:restormel-keys:llm/primary</code> (illustrative); never paste raw
         provider secrets into this file. You may store encrypted provider keys in the Keys dashboard (<strong>Connections</strong>) and use
         <a href="{base}/docs/guides/keys-dashboard-onboarding">Keys + Testing (dashboard)</a> for project IDs and env—CI still uses a Gateway
-        key as <code>RESTORMEL_KEYS_API_TOKEN</code>.
+        key as <code>RESTORMEL_GATEWAY_KEY</code> (alias <code>RESTORMEL_KEYS_API_TOKEN</code>).
       </li>
     </ul>
     <pre>restormel-testing validate --config restormel-testing.yaml{"\n"}restormel-testing run --suite web-critical --config restormel-testing.yaml{"\n"}restormel-testing run --suites ci-smoke,web-critical --config restormel-testing.yaml</pre>

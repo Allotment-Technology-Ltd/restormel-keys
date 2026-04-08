@@ -3,8 +3,8 @@
   import { githubRepoUrl, keysDocsUrl, keysTestingOnboardingUrl } from "$lib/testing/site.js";
   import DocArticle from "$lib/testing/components/docs/DocArticle.svelte";
 
-  const keysEnvYamlSnippet = `RESTORMEL_KEYS_API_BASE_URL: \${{ secrets.RESTORMEL_KEYS_API_BASE_URL }}
-RESTORMEL_KEYS_API_TOKEN: \${{ secrets.RESTORMEL_KEYS_API_TOKEN }}
+  const keysEnvYamlSnippet = `RESTORMEL_KEYS_BASE: \${{ secrets.RESTORMEL_KEYS_BASE }}
+RESTORMEL_GATEWAY_KEY: \${{ secrets.RESTORMEL_GATEWAY_KEY }}
 RESTORMEL_PROJECT_ID: \${{ secrets.RESTORMEL_PROJECT_ID }}`;
 </script>
 
@@ -33,7 +33,10 @@ RESTORMEL_PROJECT_ID: \${{ secrets.RESTORMEL_PROJECT_ID }}`;
       <li>Any goal uses <code>judge_rubric</code> and you want model execution through Keys (recommended long term).</li>
       <li>You rely on logical model refs in YAML that resolve via the Keys HTTP API (see config reference).</li>
     </ul>
-    <p>Typical GitHub Actions env (never log values; use secrets). <code>RESTORMEL_KEYS_API_TOKEN</code> is a Gateway key (<code>rk_…</code>), not a provider secret:</p>
+    <p>
+      Typical GitHub Actions <code>env</code> (never log values; use secrets). <code>RESTORMEL_GATEWAY_KEY</code> is a Gateway key (<code>rk_…</code>), not a provider secret. Name your repository secrets however you like; map them to these
+      <strong>runtime</strong> names. Compatibility: <code>RESTORMEL_KEYS_API_BASE_URL</code> / <code>RESTORMEL_KEYS_API_TOKEN</code> work the same if your workflow already uses them.
+    </p>
     <pre>{keysEnvYamlSnippet}</pre>
     <p>
       Optional escape hatch (team policy only): <code>RESTORMEL_TESTING_OPENAI_FALLBACK=1</code> and <code>OPENAI_API_KEY</code>. Prefer Keys
@@ -75,7 +78,7 @@ RESTORMEL_PROJECT_ID: \${{ secrets.RESTORMEL_PROJECT_ID }}`;
     </ul>
 
     <p>
-      <strong>CLI <code>doctor</code>:</strong> run <code>testing doctor</code> to check Node, Playwright, Keys env hints, and (when URL + token are set) a single resolve probe (HTTP status only). It also flags a missing <code>RESTORMEL_PROJECT_ID</code> when <code>RESTORMEL_KEYS_API_BASE_URL</code> is set.
+      <strong>CLI <code>doctor</code>:</strong> run <code>testing doctor</code> to check Node, Playwright, Keys env hints, and (when URL + token are set) a single resolve probe (HTTP status only). It also flags a missing <code>RESTORMEL_PROJECT_ID</code> when <code>RESTORMEL_KEYS_BASE</code> (or <code>RESTORMEL_KEYS_API_BASE_URL</code>) is set.
     </p>
   </div>
 </DocArticle>

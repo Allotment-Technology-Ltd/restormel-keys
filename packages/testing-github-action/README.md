@@ -21,12 +21,12 @@ Prerequisites in your workflow (before this action):
 
 ```yaml
 env:
-  RESTORMEL_KEYS_API_BASE_URL: ${{ secrets.RESTORMEL_KEYS_API_BASE_URL }}
-  RESTORMEL_KEYS_API_TOKEN: ${{ secrets.RESTORMEL_KEYS_API_TOKEN }}
+  RESTORMEL_KEYS_BASE: ${{ secrets.RESTORMEL_KEYS_BASE }}
+  RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY }}
   RESTORMEL_PROJECT_ID: ${{ secrets.RESTORMEL_PROJECT_ID }} # from Keys dashboard → Restormel Testing
 ```
 
-Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
+Name repository secrets as you prefer; map them to these **runtime** names. Compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` (same values) still work. Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
 
 Then:
 

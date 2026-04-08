@@ -183,6 +183,15 @@
               <li><a href={item.href}>{item.label}</a></li>
             {/each}
           </ol>
+          <p class="testing-ci-hint">
+            <strong>Restormel Testing in CI?</strong> Use
+            <a href="/keys/dashboard/integrations">Connections</a> →
+            <a href="/keys/dashboard/access">Gateway keys</a> →
+            <a href="/keys/dashboard/testing">Restormel Testing hub</a> (copy <code>RESTORMEL_KEYS_BASE</code>,
+            <code>RESTORMEL_GATEWAY_KEY</code>,
+            <code>RESTORMEL_PROJECT_ID</code>). Then <code>pnpm exec testing doctor</code>.
+            <a href="/keys/docs/guides/keys-testing-onboarding">Full guide</a>
+          </p>
         {/if}
       {/if}
 
@@ -299,6 +308,32 @@
 
   .checklist-fallback a:hover {
     text-decoration: underline;
+  }
+
+  .testing-ci-hint {
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface-raised);
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    line-height: 1.5;
+  }
+
+  .testing-ci-hint a {
+    color: var(--rm-sage);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .testing-ci-hint a:hover {
+    text-decoration: underline;
+  }
+
+  .testing-ci-hint code {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: 0.9em;
   }
 
   .actions {

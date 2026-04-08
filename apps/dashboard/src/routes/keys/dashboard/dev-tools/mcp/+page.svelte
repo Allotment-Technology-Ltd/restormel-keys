@@ -38,6 +38,14 @@
         <code class="tool-name">RESTORMEL_SERVER_TOKEN</code> or gateway key.</span
       >
     </li>
+    <li>
+      <span class="tool-desc"
+        ><strong>Keys HTTP resolve (Testing)</strong> — <code class="tool-name">RESTORMEL_KEYS_BASE</code> (site origin) +
+        bearer (<code class="tool-name">RESTORMEL_GATEWAY_KEY</code> or aliases) for
+        <code class="tool-name">testing.resolve_probe</code>. See
+        <a href="/keys/docs/guides/environment-vocabulary" class="btn-link">environment vocabulary</a>.</span
+      >
+    </li>
   </ul>
 </section>
 
@@ -103,6 +111,38 @@
     <li>
       <code class="tool-name">integration.bootstrap_nextjs</code>
       <span class="tool-desc">Next.js server resolver + admin KeyManager contract</span>
+    </li>
+    <li>
+      <code class="tool-name">projects.list</code>
+      <span class="tool-desc">List projects for the control-plane token (pick <code>projectId</code>)</span>
+    </li>
+    <li>
+      <code class="tool-name">project_models.list</code>
+      <span class="tool-desc">List model bindings for a project (read-only)</span>
+    </li>
+    <li>
+      <code class="tool-name">testing.journey</code>
+      <span class="tool-desc">Structured onboarding map: dashboard URLs, docs, suggested MCP tools</span>
+    </li>
+    <li>
+      <code class="tool-name">testing.ci_env_template</code>
+      <span class="tool-desc">Canonical <code>RESTORMEL_*</code> snippet for Testing CLI/CI (placeholders only)</span>
+    </li>
+    <li>
+      <code class="tool-name">testing.resolve_probe</code>
+      <span class="tool-desc">Single POST to <code>/v1/testing/resolve-model</code>; HTTP status only</span>
+    </li>
+    <li>
+      <code class="tool-name">testing.hub_snapshot</code>
+      <span class="tool-desc">Project + environment IDs + masked Gateway keys + suggested <code>RESTORMEL_*</code> snippet</span>
+    </li>
+    <li>
+      <code class="tool-name">project.environments.list</code>
+      <span class="tool-desc">Environment UUIDs for <code>RESTORMEL_ENVIRONMENT_ID</code> in CI</span>
+    </li>
+    <li>
+      <code class="tool-name">project.gateway_keys.list | .create | .delete</code>
+      <span class="tool-desc">Manage <code>rk_…</code> keys via control plane (<strong>.create</strong> returns raw key once — treat as secret)</span>
     </li>
     <li>
       <code class="tool-name">routes.* / policies.* / fallback_chain.set</code>

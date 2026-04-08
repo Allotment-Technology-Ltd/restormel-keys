@@ -71,13 +71,23 @@ Set **`RESTORMEL_SERVER_TOKEN`** to the **same value** as the Gateway key unless
 
 No separate cloud URL: `readiness.check`, `catalog.sync_check`, `catalog.deprecation_alerts`, `policy.simulate`, `byok.*`, and `integration.bootstrap_nextjs` run **locally** in the MCP process (provider env for validation, generated contracts only).
 
+### D) Projects, model index, environments, Gateway keys, and Restormel Testing (agents)
+
+- **`projects.list`** and **`project_models.list`** use the **same** `RESTORMEL_CONTROL_PLANE_URL` + `RESTORMEL_SERVER_TOKEN` (or gateway key) as `routes.*` / `policies.*`. They call `GET /api/projects` and `GET /api/projects/{id}/models` (read-only).
+- **`project.environments.list`** calls `GET /api/projects/{id}/environments` (read-only; environment UUIDs for `RESTORMEL_ENVIRONMENT_ID`).
+- **`project.gateway_keys.list`**, **`project.gateway_keys.create`**, **`project.gateway_keys.delete`** call the dashboard keys API (`GET`/`POST`/`DELETE` under `/api/projects/{id}/keys`). **`.create` returns `rawKey` once** — same handling as the dashboard: store in a secret manager immediately; never log.
+- **`testing.hub_snapshot`** composes `GET /api/projects`, optional `GET /api/projects/{id}`, plus environments + masked keys + a suggested canonical `RESTORMEL_*` snippet (placeholders only). Picks the Restormel Testing project when `projectId` is omitted.
+- **`testing.journey`** and **`testing.ci_env_template`** are **offline** structured guides (dashboard URLs, doc links, canonical env names — no HTTP), except **`testing.journey`** only returns JSON.
+- **`testing.resolve_probe`** performs a single `POST` to **`{RESTORMEL_KEYS_BASE}/v1/testing/resolve-model`** with the Testing bearer token (same precedence as the CLI: `RESTORMEL_GATEWAY_KEY` and aliases — see [environment vocabulary](../guides/restormel-environment-vocabulary.md) § Testing runner). Returns **HTTP status only**; response body is not echoed.
+
 ### Journey checklist (copy for onboarding)
 
 1. Create a **Gateway Key** in the dashboard for the target project (`rk_…`).
 2. For **live policy checks** in MCP: set `RESTORMEL_EVALUATE_URL` to the full evaluate URL above and `RESTORMEL_GATEWAY_KEY` to that key.
-3. For **route/policy CRUD** from MCP: set `RESTORMEL_CONTROL_PLANE_URL` to `https://restormel.dev/keys/dashboard` (or your self-host equivalent) and `RESTORMEL_SERVER_TOKEN` (or gateway key) for Bearer auth.
-4. For **provider validation** and **readiness**: set normal provider env vars (`OPENAI_API_KEY`, etc.) in the same MCP host environment.
-5. Re-open or restart the MCP client so the stdio server picks up new env vars.
+3. For **project list, model bindings, route/policy CRUD** from MCP: set `RESTORMEL_CONTROL_PLANE_URL` to `https://restormel.dev/keys/dashboard` (or your self-host equivalent) and `RESTORMEL_SERVER_TOKEN` (or gateway key) for Bearer auth.
+4. For **Restormel Testing resolve checks** from MCP: set `RESTORMEL_KEYS_BASE` and the same Gateway bearer as for `testing doctor` / CI.
+5. For **provider validation** and **readiness**: set normal provider env vars (`OPENAI_API_KEY`, etc.) in the same MCP host environment.
+6. Re-open or restart the MCP client so the stdio server picks up new env vars.
 
 **Where this is documented in-product:** [MCP integration doc](https://restormel.dev/keys/docs/integrations/mcp), [Developer Tools → MCP](https://restormel.dev/keys/dashboard/dev-tools/mcp), [Cloud API](https://restormel.dev/keys/docs/cloud-api). **Package:** `packages/mcp/README.md`.
 

@@ -16,7 +16,7 @@
   <div class="callout callout-tip">
     <strong>Goal:</strong> Run <code class="inline-code">judge_rubric</code> and Keys-backed resolve from the Testing CLI without hand-rolling env from scattered docs. Use
     <strong>Connections</strong> for encrypted hosted provider keys (when the deployment is configured), <strong>Gateway keys</strong> for
-    <code class="inline-code">RESTORMEL_KEYS_API_TOKEN</code>, and the <strong>Restormel Testing</strong> dashboard page for
+    <code class="inline-code">RESTORMEL_GATEWAY_KEY</code> (alias <code class="inline-code">RESTORMEL_KEYS_API_TOKEN</code>), and the <strong>Restormel Testing</strong> dashboard page for
     <code class="inline-code">RESTORMEL_PROJECT_ID</code> and environment IDs.
   </div>
 

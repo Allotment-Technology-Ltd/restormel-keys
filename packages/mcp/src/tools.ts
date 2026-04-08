@@ -474,6 +474,152 @@ export const catalogDeprecationAlertsTool: McpToolSchema = {
   },
 };
 
+export const projectsListTool: McpToolSchema = {
+  name: "projects.list",
+  description:
+    "List Restormel projects for the configured control-plane token (read-only). Use before routes/policies CRUD to pick projectId.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  },
+};
+
+export const projectModelsListTool: McpToolSchema = {
+  name: "project_models.list",
+  description:
+    "List model bindings (execution/registry) for a project via the control plane (read-only). Pair with projects.list.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Restormel project UUID." },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const testingJourneyTool: McpToolSchema = {
+  name: "testing.journey",
+  description:
+    "Structured Keys + Restormel Testing onboarding: dashboard URLs, docs links, suggested MCP tools for the next step. No network calls.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      focus: {
+        type: "string",
+        description:
+          "Optional slice: all | testing_ci | keys_routing | guardrails | observability | developer | integrations | billing",
+      },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const testingCiEnvTemplateTool: McpToolSchema = {
+  name: "testing.ci_env_template",
+  description:
+    "Canonical RESTORMEL_* env snippet for Testing CLI/CI with placeholders only (no secret values).",
+  inputSchema: {
+    type: "object",
+    properties: {
+      keysBasePlaceholder: {
+        type: "string",
+        description: "Example RESTORMEL_KEYS_BASE origin (scheme + host, no path).",
+      },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const testingResolveProbeTool: McpToolSchema = {
+  name: "testing.resolve_probe",
+  description:
+    "Single POST to Keys /v1/testing/resolve-model; returns HTTP status only (body not echoed). Verifies RESTORMEL_KEYS_BASE + bearer.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      logicalRef: {
+        type: "string",
+        description: "Optional logical ref (default ref:restormel-keys:llm/primary).",
+      },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const projectEnvironmentsListTool: McpToolSchema = {
+  name: "project.environments.list",
+  description:
+    "List environments (dev/prod slots) for a project via the control plane. Read-only; use ids for RESTORMEL_ENVIRONMENT_ID in CI.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Restormel project UUID." },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const testingHubSnapshotTool: McpToolSchema = {
+  name: "testing.hub_snapshot",
+  description:
+    "Read-only bundle for Restormel Testing: picks the Testing project (or explicit projectId), lists environments and masked Gateway keys, suggests canonical RESTORMEL_* env lines (placeholders). Requires control-plane URL + token.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: {
+        type: "string",
+        description: "Optional. When set, use this project; otherwise prefer isRestormelTesting from projects.list.",
+      },
+    },
+    additionalProperties: false,
+  },
+};
+
+export const projectGatewayKeysListTool: McpToolSchema = {
+  name: "project.gateway_keys.list",
+  description:
+    "List Gateway keys for a project (masked prefixes only; no secret values). Control plane read.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Restormel project UUID." },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const projectGatewayKeysCreateTool: McpToolSchema = {
+  name: "project.gateway_keys.create",
+  description:
+    "Create a new Gateway key (rk_…) for a project. Response includes rawKey ONCE — treat as a secret; never log it or commit it; store in a vault/CI secret immediately. Control-plane write.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Restormel project UUID." },
+    },
+    required: ["projectId"],
+    additionalProperties: false,
+  },
+};
+
+export const projectGatewayKeysDeleteTool: McpToolSchema = {
+  name: "project.gateway_keys.delete",
+  description: "Revoke/delete a Gateway key by id for a project. Control-plane write.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Restormel project UUID." },
+      keyId: { type: "string", description: "Gateway key row id from project.gateway_keys.list." },
+    },
+    required: ["projectId", "keyId"],
+    additionalProperties: false,
+  },
+};
+
 export const readinessCheckTool: McpToolSchema = {
   name: "readiness.check",
   description: "Run CI-friendly readiness checks with stable error codes and machine-readable output.",
@@ -496,6 +642,16 @@ export const ALL_TOOLS: McpToolSchema[] = [
   entitlementsCheckTool,
   integrationGenerateTool,
   docsSearchTool,
+  projectsListTool,
+  projectModelsListTool,
+  testingJourneyTool,
+  testingCiEnvTemplateTool,
+  testingResolveProbeTool,
+  projectEnvironmentsListTool,
+  testingHubSnapshotTool,
+  projectGatewayKeysListTool,
+  projectGatewayKeysCreateTool,
+  projectGatewayKeysDeleteTool,
   routesListTool,
   routesCreateTool,
   routesUpdateTool,

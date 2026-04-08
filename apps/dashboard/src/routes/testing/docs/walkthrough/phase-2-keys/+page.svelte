@@ -15,8 +15,8 @@
       <ul>
         <li>Use opaque refs in YAML—never commit raw provider keys.</li>
         <li>
-          Set Testing’s Keys env vars for judges (<code>RESTORMEL_KEYS_API_BASE_URL</code>, Gateway token
-          <code>RESTORMEL_KEYS_API_TOKEN</code> / <code>RESTORMEL_KEYS_API_TOKEN_ENV</code>, usually <code>RESTORMEL_PROJECT_ID</code>) or the
+          Set Testing’s Keys env vars for judges (<code>RESTORMEL_KEYS_BASE</code>, <code>RESTORMEL_GATEWAY_KEY</code> — aliases
+          <code>RESTORMEL_KEYS_API_BASE_URL</code> / <code>RESTORMEL_KEYS_API_TOKEN</code> — optional <code>RESTORMEL_KEYS_API_TOKEN_ENV</code>, usually <code>RESTORMEL_PROJECT_ID</code>) or the
           documented OpenAI fallback; full table in
           <a href={`${githubRepoUrl}/blob/main/docs/testing/config-reference-mvp.md`} rel="noopener noreferrer"
             ><code>docs/testing/config-reference-mvp.md</code></a

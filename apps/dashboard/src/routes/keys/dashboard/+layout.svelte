@@ -7,6 +7,7 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
   import FeedbackWidget from "$lib/components/FeedbackWidget.svelte";
+  import DashboardJourneyBanner from "$lib/components/dashboard/DashboardJourneyBanner.svelte";
   import { openFeedbackWidget } from "$lib/stores/feedback-widget";
 
   $: user = $page.data.user;
@@ -18,6 +19,7 @@
   $: navGroupsForLayout = $page.data.navGroupsForUi ?? NAV_GROUPS;
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
   $: projectsNavHidden = ($page.data.dashboardUiHidden ?? []).includes("projects");
+  $: journeySignals = $page.data.journeySignals ?? null;
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
@@ -187,8 +189,8 @@
                 <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
                 <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
                 <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create a Gateway key</strong> (Gateway keys), <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules).</li>
-                <li><strong>First request</strong> → then <strong>Usage & Analytics</strong> and Logs.</li>
+                <li><strong>Create a Gateway key</strong>, <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules) for live traffic — or use <strong>Restormel Testing</strong> for CI without rules first.</li>
+                <li><strong>First request</strong> (sandbox) → then <strong>Usage & Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
@@ -214,6 +216,7 @@
               </p>
             </div>
           {/if}
+          <DashboardJourneyBanner {currentPath} {user} {journeySignals} />
           <slot />
         {/if}
       </main>

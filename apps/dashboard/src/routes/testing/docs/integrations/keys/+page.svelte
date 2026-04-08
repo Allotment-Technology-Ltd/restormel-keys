@@ -35,8 +35,8 @@
       >):
     </p>
     <ul>
-      <li><code>RESTORMEL_KEYS_API_BASE_URL</code> — Keys API origin.</li>
-      <li><code>RESTORMEL_KEYS_API_TOKEN</code> — Gateway key bearer (or set <code>RESTORMEL_KEYS_API_TOKEN_ENV</code> to another var name).</li>
+      <li><code>RESTORMEL_KEYS_BASE</code> — site origin for Keys HTTP resolve (alias: <code>RESTORMEL_KEYS_API_BASE_URL</code>).</li>
+      <li><code>RESTORMEL_GATEWAY_KEY</code> — Gateway key bearer (alias: <code>RESTORMEL_KEYS_API_TOKEN</code>; or <code>RESTORMEL_KEYS_API_TOKEN_ENV</code> for a custom var name).</li>
       <li><code>RESTORMEL_PROJECT_ID</code> — project UUID (Restormel Testing hub in the Keys dashboard).</li>
       <li>
         <code>RESTORMEL_TESTING_OPENAI_FALLBACK=1</code> — opt-in use of <code>OPENAI_API_KEY</code> when Keys is unset or resolution

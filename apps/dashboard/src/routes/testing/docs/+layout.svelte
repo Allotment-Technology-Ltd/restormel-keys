@@ -44,6 +44,17 @@
   </aside>
 
   <div class="docs-main">
+    <aside class="docs-keys-cta" aria-label="Keys and Testing setup">
+      <strong>Using Restormel Keys?</strong>
+      Canonical setup for hosted credentials + CI env:
+      <a href="https://restormel.dev/keys/docs/guides/keys-testing-onboarding" rel="noopener noreferrer"
+        >Keys + Testing onboarding</a
+      >
+      · Dashboard hub:
+      <a href="https://restormel.dev/keys/dashboard/testing" rel="noopener noreferrer">Restormel Testing</a>
+      · Agents: MCP tools <code>testing.journey</code>, <code>testing.ci_env_template</code>,
+      <code>testing.resolve_probe</code>.
+    </aside>
     <slot />
   </div>
 </div>
@@ -148,5 +159,26 @@
     .docs-main {
       max-width: none;
     }
+  }
+
+  .docs-keys-cta {
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+    margin: 0 0 var(--space-6);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-2);
+  }
+
+  .docs-keys-cta a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+
+  .docs-keys-cta code {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: 0.88em;
   }
 </style>

@@ -15,8 +15,8 @@
 
   $: envSnippet =
     data.testingProject != null && data.keysApiBaseUrl
-      ? `RESTORMEL_KEYS_API_BASE_URL=${data.keysApiBaseUrl.replace(/\/$/, "")}
-RESTORMEL_KEYS_API_TOKEN=rk_…your_gateway_key
+      ? `RESTORMEL_KEYS_BASE=${data.keysApiBaseUrl.replace(/\/$/, "")}
+RESTORMEL_GATEWAY_KEY=rk_…your_gateway_key
 RESTORMEL_PROJECT_ID=${data.testingProject.id}`
       : "";
 </script>
@@ -30,7 +30,7 @@ RESTORMEL_PROJECT_ID=${data.testingProject.id}`
   <p class="lede">
     This workspace includes a <strong>Restormel Testing</strong> project with Development and Production environments. Add provider API keys under
     <a href={DASHBOARD_BASE + "/integrations"}>Connections</a> — they are encrypted at rest — then use a
-    <a href={DASHBOARD_BASE + "/access"}>Gateway key</a> with the Testing CLI so <code>judge_rubric</code> and resolve can use your models.
+    <a href={DASHBOARD_BASE + "/access"}>Gateway key</a> with the Testing CLI so <code>judge_rubric</code> and resolve can use your models. (<code>RESTORMEL_KEYS_API_BASE_URL</code> / <code>RESTORMEL_KEYS_API_TOKEN</code> are the same values if you already use those names.)
   </p>
 
   {#if data.loadError}
@@ -59,7 +59,7 @@ RESTORMEL_PROJECT_ID=${data.testingProject.id}`
       <p class="hint">{data.controlPlaneHint}</p>
       <pre class="snippet" role="region" aria-label="Example environment block">{envSnippet}</pre>
       <p class="muted">
-        Resolve endpoint for the Testing runner: <code class="mono">{resolveModelUrl}</code> (same origin as <code class="mono">RESTORMEL_KEYS_API_BASE_URL</code>).
+        Resolve endpoint for the Testing runner: <code class="mono">{resolveModelUrl}</code> (same origin as <code class="mono">RESTORMEL_KEYS_BASE</code>).
       </p>
     </section>
 

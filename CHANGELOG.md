@@ -4,6 +4,10 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-04-08)
 
+**PlotBudget handoff doc:** [docs/testing/release-notes-plotbudget-keys-mcp-2026-04.md](docs/testing/release-notes-plotbudget-keys-mcp-2026-04.md) — Testing **0.1.5** pointer, MCP **0.1.10**, canonical `RESTORMEL_*` env, CI snippet.
+
+**MCP + dashboard progressive UX:** `@restormel/mcp` **0.1.10** adds **`project.environments.list`**, **`testing.hub_snapshot`**, **`project.gateway_keys.list` / `.create` / `.delete`**, plus **`testing.journey`** focus **`billing`**; runbook § D; dashboard **`GET /api/projects/{id}/environments`**. Earlier **0.1.9**: **`projects.list`**, **`project_models.list`**, **`testing.journey`**, **`testing.ci_env_template`**, **`testing.resolve_probe`**. Keys dashboard: **`DashboardJourneyBanner`** (per-route next-step hints: billing, settings, lifecycle, dev-tools/cli & aaif, …); MCP dev-tools page lists full tool surface.
+
 **Keys + Testing onboarding simplification:** Canonical env for the Testing runner is **`RESTORMEL_KEYS_BASE`** + **`RESTORMEL_GATEWAY_KEY`** (+ **`RESTORMEL_PROJECT_ID`**); `RESTORMEL_KEYS_API_*` remain compatibility aliases in `@restormel/testing-keys-adapter` and `testing doctor`. Docs: [docs/guides/restormel-environment-vocabulary.md](docs/guides/restormel-environment-vocabulary.md) § Testing runner, [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md), [docs/testing/config-reference-mvp.md](docs/testing/config-reference-mvp.md); dashboard **Gateway keys** moved under **Set Up** next to **Restormel Testing**; Testing hub snippet and overview checklist include a **Restormel Testing in CI** path; first-run onboarding adds optional **Restormel Testing in CI** goal with deep links.
 
 **`@restormel/testing-*` npm `0.1.5`:** Republish the **full** line at **0.1.5** (tag **`testing-v0.1.5`**) so **`@restormel/testing-cli`** and **`@restormel/testing-keys-adapter`** match peers; partial **0.1.4** npm state from **`testing-v0.1.4`** superseded for new installs. Plot handoff: [docs/testing/release-notes-plot-engineers-0.1.5.md](docs/testing/release-notes-plot-engineers-0.1.5.md).
