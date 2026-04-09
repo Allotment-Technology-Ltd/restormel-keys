@@ -12,6 +12,13 @@ on:
         description: "If true, run publish --dry-run only (no npm upload)."
         type: boolean
         default: false
+      package_scope:
+        description: "Which packages to upload (push tags always publish all three)."
+        type: choice
+        default: all
+        options:
+          - all
+          - observability
 
 permissions:
   contents: read
@@ -28,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PLATFORM_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      PLATFORM_PACKAGE_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.package_scope || 'all' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
@@ -65,6 +73,11 @@ jobs:
             EXTRA="--dry-run"
             echo "Dry run only."
           fi
-          pnpm --filter @restormel/contracts publish --access public --no-git-checks ${EXTRA}
-          pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
-          pnpm --filter @restormel/graph-reasoning-extensions publish --access public --no-git-checks ${EXTRA}
+          SCOPE="${PLATFORM_PACKAGE_SCOPE:-all}"
+          if [ "${SCOPE}" = "all" ]; then
+            pnpm --filter @restormel/contracts publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/graph-reasoning-extensions publish --access public --no-git-checks ${EXTRA}
+          else
+            pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
+          fi

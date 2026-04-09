@@ -86,6 +86,7 @@ If a package returns **404** from npm, use the **manual config** path and `@rest
 - **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
 - **Graph packages:** push git tag `graph-v*` (e.g. `graph-v0.1.0`) → workflow **Publish Graph packages** (`.github/workflows/publish-graph.yml`) publishes `@restormel/graph-core` then `@restormel/ui-graph-svelte`. **Pre-flight:** `bash scripts/smoke-graph-packages-consumer.sh` (also runs in CI).
 - **Platform packages (Phase 1):** push git tag `platform-v*` → workflow **Publish Restormel platform packages** (`.github/workflows/publish-restormel-platform.yml`) publishes `@restormel/contracts`, `@restormel/observability`, `@restormel/graph-reasoning-extensions` in that order. **Local:** `pnpm run build:platform-packages` and `pnpm run test:platform-packages`.
+- **Platform single-package (recovery):** same workflow → **Run workflow** → set **`package_scope`** to **`observability`** when you must republish only `@restormel/observability` without re-uploading the other platform packages (after a version bump in `packages/observability`).
 - **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
 
 ## pnpm monorepos
