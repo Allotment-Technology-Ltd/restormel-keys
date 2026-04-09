@@ -5,6 +5,8 @@
   import { page } from "$app/stores";
   import {
     developerLinks,
+    graphPillarLinks,
+    isGraphPillarActive,
     isIntegrationsActive,
     isKeysPillarActive,
     isLinkActive,
@@ -23,6 +25,7 @@
   let mobileOpen = false;
   let keysOpen = false;
   let testingOpen = false;
+  let graphOpen = false;
   let developersOpen = false;
 
   $: path = $page.url.pathname.replace(/\/$/, "") || "/";
@@ -30,11 +33,13 @@
     mobileOpen = false;
     keysOpen = false;
     testingOpen = false;
+    graphOpen = false;
     developersOpen = false;
   }
 
   $: keysPillarOn = isKeysPillarActive(path);
   $: testingPillarOn = isTestingPillarActive(path);
+  $: graphPillarOn = isGraphPillarActive(path);
   $: integrationsOn = isIntegrationsActive(path);
 
   function toggleMobileMenu() {
@@ -49,6 +54,7 @@
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
       testingOpen = false;
+      graphOpen = false;
       developersOpen = false;
     }
   }
@@ -57,6 +63,16 @@
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
       keysOpen = false;
+      graphOpen = false;
+      developersOpen = false;
+    }
+  }
+
+  function onGraphToggle(e: Event) {
+    const el = e.currentTarget as HTMLDetailsElement;
+    if (el.open) {
+      keysOpen = false;
+      testingOpen = false;
       developersOpen = false;
     }
   }
@@ -66,6 +82,7 @@
     if (el.open) {
       keysOpen = false;
       testingOpen = false;
+      graphOpen = false;
     }
   }
 
@@ -139,6 +156,38 @@
                 href={item.href}
                 class:active={linkActive(item.href)}
                 aria-current={linkActive(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            {/each}
+          </div>
+        </details>
+      </li>
+      <li class="nav-dropdown-wrap">
+        <details class="nav-details" bind:open={graphOpen} on:toggle={onGraphToggle}>
+          <summary
+            id="site-nav-summary-graph"
+            class="nav-summary"
+            class:nav-summary-active={graphPillarOn}
+            aria-controls="site-nav-panel-graph"
+          >
+            Graph
+          </summary>
+          <div
+            id="site-nav-panel-graph"
+            class="nav-dropdown-panel"
+            role="region"
+            aria-labelledby="site-nav-summary-graph"
+          >
+            {#each graphPillarLinks as item}
+              <a
+                href={item.href}
+                class:active={linkActive(item.href)}
+                aria-current={linkActive(item.href) ? "page" : undefined}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener noreferrer" : undefined}
+                title={item.external ? "Opens in a new tab" : undefined}
+                aria-label={item.external ? item.ariaLabel : undefined}
               >
                 {item.label}
               </a>
@@ -231,6 +280,18 @@
         href={item.href}
         class:active={linkActive(item.href)}
         aria-current={linkActive(item.href) ? "page" : undefined}
+        on:click={closeMobileMenu}>{item.label}</a>
+    {/each}
+    <span class="site-header-mobile-heading" role="presentation">Graph</span>
+    {#each graphPillarLinks as item}
+      <a
+        href={item.href}
+        class:active={linkActive(item.href)}
+        aria-current={linkActive(item.href) ? "page" : undefined}
+        target={item.external ? "_blank" : undefined}
+        rel={item.external ? "noopener noreferrer" : undefined}
+        title={item.external ? "Opens in a new tab" : undefined}
+        aria-label={item.external ? item.ariaLabel : undefined}
         on:click={closeMobileMenu}>{item.label}</a>
     {/each}
     <span class="site-header-mobile-heading" role="presentation">Integrations</span>

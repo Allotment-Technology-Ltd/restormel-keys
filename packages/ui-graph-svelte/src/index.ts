@@ -6,3 +6,4 @@ export {
   type GraphCanvasNodeSemanticStyle,
   type GraphCanvasNodeShape,
 } from "./lib/semanticStyles";
+export type { GraphCanvasProps, NodeDetailProps } from "./types";

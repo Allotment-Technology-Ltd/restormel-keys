@@ -14,7 +14,7 @@
     "sync-paddle-usd-prices": "node scripts/sync-paddle-usd-prices.mjs",
     "setup-posthog-keys": "node scripts/setup-posthog-restormel-keys.mjs",
     "quality": "bash scripts/quality.sh",
-    "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build && node scripts/check-testing-dashboard-doc-routes.mjs",
+    "check:dashboard": "pnpm --filter dashboard run check && pnpm --filter dashboard run build && node scripts/check-testing-dashboard-doc-routes.mjs && node scripts/check-graph-dashboard-doc-routes.mjs",
     "smoke:dashboard": "bash scripts/smoke-dashboard-docs.sh",
     "build:testing-packages": "tsc -b tsconfig.testing-packages.json",
     "typecheck:testing-packages": "tsc -b tsconfig.testing-packages.json",

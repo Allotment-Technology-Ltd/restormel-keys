@@ -11,6 +11,15 @@ Svelte 5 implementation of the Restormel Graph canvas (`GraphCanvas`, optional `
 
 There is **no** `@restormel/contracts` dependency.
 
+## TypeScript
+
+- **`dist` component typings** use `Component<GraphRendererProps>` for **`GraphCanvas`** and **`Component<NodeDetailProps>`** for **`NodeDetail`**, so callbacks such as **`onJumpToReferences?: (nodeId: string) => void`** are explicit under strict **`svelte-check`**.
+- Re-exported aliases: **`GraphCanvasProps`** (same as **`GraphRendererProps`** from **`@restormel/graph-core/viewModel`**), **`NodeDetailProps`**.
+
+```ts
+import type { GraphCanvasProps } from "@restormel/ui-graph-svelte";
+```
+
 ## Install (workspace / monorepo)
 
 ```bash
@@ -22,6 +31,8 @@ Build `@restormel/graph-core` before consuming subpath imports in dev toolchains
 ## CSS variables
 
 The canvas uses SOPHIA design tokens as CSS variables (for example `--color-bg`, `--color-sage`, `--color-text`, `--radius-md`, `--font-ui`, `--text-meta`). Host apps should load a compatible token sheet. The demo app mirrors SOPHIA’s `design-tokens.css` under `apps/restormel-graph-demo/src/lib/graph-demo-tokens.css`.
+
+**`@restormel/ui-graph-svelte/styles.css`:** optional; ships **component-scoped** rules from the library build. It does **not** define `:root` palette variables. If the host already loads the same token names as SOPHIA’s `design-tokens.css`, importing `styles.css` is **not** required for colours (see **[docs/restormel-graph-sophia-consumer.md](../../docs/restormel-graph-sophia-consumer.md)** §3).
 
 ## Usage
 

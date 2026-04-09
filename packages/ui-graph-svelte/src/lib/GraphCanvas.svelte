@@ -3,7 +3,8 @@
 		GraphEdge,
 		GraphGhostEdge,
 		GraphGhostNode,
-		GraphNode
+		GraphNode,
+		GraphRendererProps
 	} from '@restormel/graph-core/viewModel';
 	import { computeLayout, type LayoutPosition } from '@restormel/graph-core/layout';
 	import { formatTraceTag, getNodeTraceLabel } from '@restormel/graph-core/trace';
@@ -14,33 +15,11 @@
 	} from './semanticStyles';
 	import NodeDetail from './NodeDetail.svelte';
 
-	interface Props {
-		nodes: GraphNode[];
-		edges: GraphEdge[];
-		ghostNodes?: GraphGhostNode[];
-		ghostEdges?: GraphGhostEdge[];
-		showGhostLayer?: boolean;
-		showInlineDetail?: boolean;
-		showStatusChip?: boolean;
-		showViewportControls?: boolean;
-		viewportCommand?: { type: 'fit' | 'reset-layout'; nonce: number } | null;
+	/** Aligned with Contract v0 `GraphRendererProps` (semantic style maps use co-located canvas types). */
+	type Props = Omit<GraphRendererProps, 'nodeSemanticStyles' | 'edgeSemanticStyles'> & {
 		nodeSemanticStyles?: Record<string, GraphCanvasNodeSemanticStyle>;
 		edgeSemanticStyles?: Record<string, GraphCanvasEdgeSemanticStyle>;
-		width?: number;
-		height?: number;
-		isFullscreen?: boolean;
-		onToggleFullscreen?: () => void;
-		pinnedNodeIds?: string[];
-		pathNodeIds?: string[];
-		pathEdges?: Array<{ from: string; to: string }>;
-		focusNodeIds?: string[];
-		focusEdgeIds?: string[];
-		dimOutOfScope?: boolean;
-		selectedNodeId?: string | null;
-		onSelectedNodeChange?: (nodeId: string | null) => void;
-		onNodeSelect?: (nodeId: string) => void;
-		onJumpToReferences?: (nodeId: string) => void;
-	}
+	};
 
 	let {
 		nodes = [],

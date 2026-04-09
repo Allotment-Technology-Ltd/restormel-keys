@@ -33,6 +33,17 @@ export const testingPillarLinks: SiteNavLink[] = [
   { href: "/testing/dashboard", label: "Testing dashboard" },
 ];
 
+export const graphPillarLinks: SiteNavLink[] = [
+  { href: "/graph", label: "Overview" },
+  { href: "/graph/docs", label: "Documentation" },
+  {
+    href: `${GITHUB_REPO_URL}/tree/main/apps/restormel-graph-demo`,
+    label: "Example app",
+    external: true,
+    ariaLabel: "restormel-graph-demo source on GitHub, opens in new tab",
+  },
+];
+
 /** Developers bucket — API portal URL filled in by consumer (Zuplo). */
 export function developerLinks(portalUrl: string): SiteNavLink[] {
   return [
@@ -60,6 +71,10 @@ export function isTestingPillarActive(path: string): boolean {
   return normalizePath(path).startsWith("/testing");
 }
 
+export function isGraphPillarActive(path: string): boolean {
+  return normalizePath(path).startsWith("/graph");
+}
+
 export function isIntegrationsActive(path: string): boolean {
   const p = normalizePath(path);
   return p === "/integrations" || p.startsWith("/integrations/");
@@ -71,5 +86,6 @@ export function isLinkActive(path: string, href: string): boolean {
   const h = normalizePath(href);
   if (h === "/keys") return p === "/keys";
   if (h === "/testing") return p === "/testing";
+  if (h === "/graph") return p === "/graph";
   return p === h || p.startsWith(h + "/");
 }

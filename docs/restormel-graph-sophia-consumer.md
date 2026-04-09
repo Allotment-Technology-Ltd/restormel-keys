@@ -20,8 +20,8 @@ After maintainers push git tag **`graph-v*`** (e.g. **`graph-v0.1.0`**), CI publ
 ```json
 {
   "dependencies": {
-    "@restormel/graph-core": "^0.1.0",
-    "@restormel/ui-graph-svelte": "^0.1.0"
+    "@restormel/graph-core": "^0.1.1",
+    "@restormel/ui-graph-svelte": "^0.1.1"
   }
 }
 ```
@@ -77,7 +77,8 @@ In **SOPHIA**, point dependencies at those `.tgz` files and **override** transit
 | Workspace filters / scope helpers | `import { filterGraph, … } from '@restormel/graph-core/workspace'` |
 | Barrel (all MVP exports) | `import { … } from '@restormel/graph-core'` |
 | Canvas + optional detail | `import { GraphCanvas, NodeDetail, graphCanvasEdgeKey } from '@restormel/ui-graph-svelte'` |
-| Optional built CSS (library artefact) | `@restormel/ui-graph-svelte/styles.css` — **not** required if you rely on inlined Svelte styles (typical); see § CSS |
+| Strict TS props (callbacks, etc.) | `import type { GraphCanvasProps, NodeDetailProps } from '@restormel/ui-graph-svelte'` — `GraphCanvasProps` matches `GraphRendererProps` from graph-core |
+| Optional built CSS (library artefact) | `@restormel/ui-graph-svelte/styles.css` — see §3 *styles.css vs host tokens* |
 
 **Do not** rely on deep paths such as `node_modules/.../src/...` — only **`package.json` `exports`** are supported.
 
@@ -97,6 +98,12 @@ In **SOPHIA**, point dependencies at those `.tgz` files and **override** transit
 **restormel-graph-demo** mirrors the same `:root` block in `apps/restormel-graph-demo/src/lib/graph-demo-tokens.css` for standalone parity.
 
 **Package CSS:** `@restormel/ui-graph-svelte` also emits **`dist/ui-graph-svelte.css`** as export **`@restormel/ui-graph-svelte/styles.css`** (Svelte-scoped rules from the components). It does **not** define the palette variables above; host apps must still provide **`:root`** tokens for full visual parity.
+
+### `styles.css` vs host tokens (avoid duplicate work)
+
+- **If your app already imports a full SOPHIA-compatible `design-tokens.css` on `:root`** (same variable names as above), you **do not need** `@restormel/ui-graph-svelte/styles.css` for colours — component JS already inlines scoped rules for layout/animation.
+- **Import `styles.css`** when you want the packaged **component-level** rules guaranteed in one place (e.g. minimal demo apps without a token file), or when debugging style drift — expect **no** `:root` palette from that file alone.
+- **SOPHIA** may import both: tokens for globals + `styles.css` for parity with the library build; that is **optional**, not required for variables, and can duplicate some rules — prefer **one** source of truth for tokens and add `styles.css` only if you see missing layout/animation without it.
 
 ---
 

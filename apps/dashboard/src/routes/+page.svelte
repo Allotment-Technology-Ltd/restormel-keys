@@ -4,10 +4,10 @@
 </script>
 
 <svelte:head>
-  <title>Restormel — Keys, Testing, and integrations for production AI</title>
+  <title>Restormel — Keys, Testing, Graph, and integrations for production AI</title>
   <meta
     name="description"
-    content="Restormel Keys for BYOK and gateway routing, Restormel Testing for goal-based AI product verification, and integration guides—all in one place."
+    content="Restormel Keys for BYOK and gateway routing, Restormel Testing for goal-based AI product verification, Restormel Graph for Svelte graph UIs, and integration guides—all in one place."
   />
 </svelte:head>
 
@@ -17,8 +17,8 @@
       <p class="suite-kicker">Restormel</p>
       <h1 class="suite-title">Ship AI products with confidence</h1>
       <p class="suite-lead">
-        One suite for <strong>provider keys and routing</strong>, <strong>goal-based testing</strong>, and
-        <strong>integration paths</strong> your team can run in CI and production.
+        One suite for <strong>provider keys and routing</strong>, <strong>goal-based testing</strong>,
+        <strong>contract-first graph UI</strong>, and <strong>integration paths</strong> your team can run in CI and production.
       </p>
     </section>
 
@@ -46,6 +46,19 @@
             <li><a class="btn btn-primary" href="/testing">Explore Testing</a></li>
             <li><a class="btn btn-ghost" href="/testing/docs">Documentation</a></li>
             <li><a class="btn btn-ghost" href="/testing/dashboard">Testing dashboard</a></li>
+          </ul>
+        </article>
+
+        <article class="suite-card">
+          <h2 class="suite-card-title">Restormel Graph</h2>
+          <p class="suite-card-desc">
+            Portable GraphData DTOs, orbital layout helpers, and a Svelte&nbsp;5 canvas—integrate without coupling your app
+            to Restormel reasoning contracts.
+          </p>
+          <ul class="suite-card-actions">
+            <li><a class="btn btn-primary" href="/graph">Explore Graph</a></li>
+            <li><a class="btn btn-ghost" href="/graph/docs">Documentation</a></li>
+            <li><a class="btn btn-ghost" href="/graph/docs/integration/sveltekit">SvelteKit integration</a></li>
           </ul>
         </article>
 
@@ -108,15 +121,10 @@
   }
   .suite-cards-inner {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
     gap: var(--space-8);
     padding-top: var(--space-10);
     padding-bottom: var(--space-10);
-  }
-  @media (max-width: 960px) {
-    .suite-cards-inner {
-      grid-template-columns: 1fr;
-    }
   }
   .suite-card {
     background: var(--rm-bg);

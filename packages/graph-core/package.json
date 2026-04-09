@@ -1,8 +1,12 @@
 {
   "name": "@restormel/graph-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Restormel Graph Contract v0 DTOs plus contracts-free layout, trace, and workspace helpers.",
   "license": "MIT",
+  "keywords": ["restormel", "graph", "dto", "layout", "svelte"],
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",

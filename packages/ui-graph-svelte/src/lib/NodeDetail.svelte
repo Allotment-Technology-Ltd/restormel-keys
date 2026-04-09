@@ -2,15 +2,9 @@
 	import { onMount } from 'svelte';
 	import type { GraphEdge, GraphNode } from '@restormel/graph-core/viewModel';
 	import { formatTraceTag, getNodeTraceTags } from '@restormel/graph-core/trace';
+	import type { NodeDetailProps } from '../types';
 
-	interface Props {
-		node: GraphNode;
-		edges: GraphEdge[];
-		nodes: GraphNode[];
-		position: { x: number; y: number };
-		onClose: () => void;
-		onJumpToReferences?: () => void;
-	}
+	type Props = NodeDetailProps;
 
 	let {
 		node,
