@@ -2,6 +2,8 @@ import type { Page } from "playwright";
 import type { AcceptanceCriterionDefinition } from "@restormel/testing-core";
 import type { ResolvedModel } from "@restormel/testing-keys-adapter";
 import { postChatCompletions, type ChatMessage } from "./ac-llm.js";
+import { normalizeEgressAllowHosts, resolveAgentNavigateUrl } from "./egress-navigation.js";
+import type { SuiteLlmBudgetTracker } from "./suite-llm-budget.js";
 
 function truncate(s: string, n: number): string {
   return s.length <= n ? s : `${s.slice(0, n)}…`;
@@ -14,23 +16,14 @@ async function pageSnippet(page: Page): Promise<string> {
   return `URL: ${url}\nTitle: ${title}\nBody (truncated):\n${truncate(body.trim(), 6000)}`;
 }
 
-function resolveNavUrl(href: string, baseUrl: string): string | null {
-  try {
-    const b = new URL(baseUrl);
-    const t = new URL(href.trim(), b);
-    if (t.origin !== b.origin) return null;
-    return t.href;
-  } catch {
-    return null;
-  }
-}
-
 type AgentAction =
   | { action: "navigate"; url: string }
   | { action: "click_css"; selector: string }
   | { action: "click_role"; role: string; name?: string }
   | { action: "fill"; role: string; name?: string; value: string }
   | { action: "wait_load"; state?: "load" | "domcontentloaded" | "networkidle" }
+  | { action: "scroll_into_view"; selector: string }
+  | { action: "snapshot_a11y" }
   | { action: "done" }
   | { action: "give_up"; reason?: string };
 
@@ -63,17 +56,33 @@ function parseAgentAction(raw: string): AgentAction | undefined {
           ? a.state
           : undefined,
     };
+  if (action === "scroll_into_view" && typeof a.selector === "string")
+    return { action: "scroll_into_view", selector: a.selector };
+  if (action === "snapshot_a11y") return { action: "snapshot_a11y" };
   if (action === "done") return { action: "done" };
   if (action === "give_up") return { action: "give_up", reason: typeof a.reason === "string" ? a.reason : undefined };
   return undefined;
 }
 
-async function executeAction(page: Page, act: AgentAction, baseUrl: string): Promise<{ ok: true } | { ok: false; err: string }> {
+async function executeAction(
+  page: Page,
+  act: AgentAction,
+  baseUrl: string,
+  egressAllowHosts: string[] | undefined,
+): Promise<{ ok: true } | { ok: false; err: string }> {
   const timeout = 15_000;
   try {
     if (act.action === "navigate") {
-      const u = resolveNavUrl(act.url, baseUrl) ?? resolveNavUrl(act.url, page.url());
-      if (!u) return { ok: false, err: "navigate: URL not allowed (same-origin only)" };
+      const cur = page.url();
+      const u =
+        resolveAgentNavigateUrl(act.url, baseUrl, cur, egressAllowHosts) ??
+        resolveAgentNavigateUrl(act.url, baseUrl, undefined, egressAllowHosts);
+      if (!u) {
+        return {
+          ok: false,
+          err: "navigate: URL not allowed (same-origin as base_url or egress_allow_hosts only)",
+        };
+      }
       await page.goto(u, { waitUntil: "load", timeout });
       return { ok: true };
     }
@@ -95,6 +104,10 @@ async function executeAction(page: Page, act: AgentAction, baseUrl: string): Pro
       await page.waitForLoadState(act.state ?? "networkidle", { timeout });
       return { ok: true };
     }
+    if (act.action === "scroll_into_view") {
+      await page.locator(act.selector).first().scrollIntoViewIfNeeded({ timeout });
+      return { ok: true };
+    }
     return { ok: false, err: "unhandled action" };
   } catch (e) {
     return { ok: false, err: e instanceof Error ? e.message : String(e) };
@@ -105,9 +118,18 @@ function escapeReg(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Sum of provider-reported tokens across AC agent chat completions in this loop (when APIs return `usage`). */
+export type AcAgentAggregatedUsage = { promptTokens: number; completionTokens: number };
+
 export type AcAgentLoopResult =
-  | { ok: true; roundsUsed: number; finished: "done" | "max_rounds" }
-  | { ok: false; roundsUsed: number; reasonCode: string; summary: string };
+  | { ok: true; roundsUsed: number; finished: "done" | "max_rounds"; aggregatedTokenUsage?: AcAgentAggregatedUsage }
+  | {
+      ok: false;
+      roundsUsed: number;
+      reasonCode: string;
+      summary: string;
+      aggregatedTokenUsage?: AcAgentAggregatedUsage;
+    };
 
 /**
  * Multi-turn tool-use style loop: model proposes JSON actions until `done` / `give_up` / max rounds.
@@ -117,22 +139,34 @@ export async function runBuiltInAcAgentLoop(
   ac: AcceptanceCriterionDefinition,
   model: ResolvedModel,
   baseUrl: string,
-  options?: { maxRounds?: number; instructions?: string },
+  options?: {
+    maxRounds?: number;
+    instructions?: string;
+    egressAllowHosts?: string[];
+    suiteLlmBudget?: SuiteLlmBudgetTracker;
+  },
 ): Promise<AcAgentLoopResult> {
   const maxRounds = options?.maxRounds ?? 12;
   const extra = options?.instructions?.trim() ? `\n${options.instructions.trim()}` : "";
+  const egress = normalizeEgressAllowHosts(options?.egressAllowHosts);
+  const egressNote =
+    egress.length > 0
+      ? ` Additional navigation is allowed to these hostnames (https): ${egress.join(", ")}.`
+      : "";
 
   const system = `You are a browser automation agent. You must satisfy ONE acceptance criterion at a time using the page.
 Output a single JSON object per message (no markdown). Allowed actions:
-- {"action":"navigate","url":"<path or absolute same-origin URL>"}
+- {"action":"navigate","url":"<path or absolute URL on allowed host(s)>"}
 - {"action":"click_css","selector":"<CSS selector>"}
 - {"action":"click_role","role":"<aria role>","name":"<optional accessible name substring>"}
 - {"action":"fill","role":"textbox","name":"<optional>","value":"<text>"}
 - {"action":"wait_load","state":"networkidle"|"load"|"domcontentloaded"}
+- {"action":"scroll_into_view","selector":"<CSS selector>"} to bring an element into view before clicking
+- {"action":"snapshot_a11y"} to receive a fresh accessibility tree (ARIA) for the page — use when DOM text is ambiguous
 - {"action":"done"} when the criterion is satisfied on the current page
 - {"action":"give_up","reason":"..."} if blocked
 
-Rules: stay on the same origin as the starting base URL. Prefer role-based actions over fragile CSS. Never output secrets.${extra}`;
+Rules: stay on the same origin as the starting base URL${egressNote} Prefer role-based actions over fragile CSS. Never output secrets.${extra}`;
 
   const messages: ChatMessage[] = [
     { role: "system", content: system },
@@ -143,15 +177,37 @@ Rules: stay on the same origin as the starting base URL. Prefer role-based actio
   ];
 
   let roundsUsed = 0;
+  let promptAgg = 0;
+  let completionAgg = 0;
+  const bumpUsage = (u: { promptTokens?: number; completionTokens?: number } | undefined) => {
+    promptAgg += u?.promptTokens ?? 0;
+    completionAgg += u?.completionTokens ?? 0;
+  };
+  const agg = (): AcAgentAggregatedUsage | undefined =>
+    promptAgg > 0 || completionAgg > 0 ? { promptTokens: promptAgg, completionTokens: completionAgg } : undefined;
+
   for (let i = 0; i < maxRounds; i++) {
+    const block = options?.suiteLlmBudget?.tryConsumeLlm("ac_round");
+    if (block) {
+      return {
+        ok: false,
+        roundsUsed,
+        reasonCode: block.code,
+        summary: block.summary,
+        aggregatedTokenUsage: agg(),
+      };
+    }
     roundsUsed++;
     const chat = await postChatCompletions(model, messages, { maxTokens: 400, temperature: 0 });
+    options?.suiteLlmBudget?.recordLlmCall("ac_round", chat.usage);
+    bumpUsage(chat.usage);
     if (!chat.ok) {
       return {
         ok: false,
         roundsUsed,
         reasonCode: "AC_AGENT_LLM_ERROR",
         summary: chat.summary,
+        aggregatedTokenUsage: agg(),
       };
     }
 
@@ -166,7 +222,7 @@ Rules: stay on the same origin as the starting base URL. Prefer role-based actio
     }
 
     if (act.action === "done") {
-      return { ok: true, roundsUsed, finished: "done" };
+      return { ok: true, roundsUsed, finished: "done", aggregatedTokenUsage: agg() };
     }
     if (act.action === "give_up") {
       return {
@@ -174,10 +230,29 @@ Rules: stay on the same origin as the starting base URL. Prefer role-based actio
         roundsUsed,
         reasonCode: "AC_AGENT_GAVE_UP",
         summary: act.reason ?? "Agent gave up",
+        aggregatedTokenUsage: agg(),
       };
     }
 
-    const ex = await executeAction(page, act, baseUrl);
+    if (act.action === "snapshot_a11y") {
+      try {
+        const snap = await page.locator("body").ariaSnapshot();
+        const cap = 14_000;
+        const text = snap.length <= cap ? snap : `${snap.slice(0, cap)}…`;
+        messages.push({
+          role: "user",
+          content: `ARIA snapshot (Playwright ariaSnapshot, truncated if long):\n${text}`,
+        });
+      } catch (e) {
+        messages.push({
+          role: "user",
+          content: `ARIA snapshot failed: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+      continue;
+    }
+
+    const ex = await executeAction(page, act, baseUrl, egress.length > 0 ? egress : undefined);
     if (!ex.ok) {
       messages.push({
         role: "user",
@@ -197,5 +272,6 @@ Rules: stay on the same origin as the starting base URL. Prefer role-based actio
     roundsUsed,
     reasonCode: "AC_AGENT_MAX_ROUNDS",
     summary: `Exceeded ${maxRounds} rounds without done`,
+    aggregatedTokenUsage: agg(),
   };
 }

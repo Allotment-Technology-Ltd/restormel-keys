@@ -1,0 +1,60 @@
+# A3 BYOK proof: judge_rubric + Keys HTTP resolve. Secrets only via GitHub Environment (no values in git).
+# Setup: docs/testing/testing-a3-dogfood-workflow.md
+name: Testing A3 BYOK dogfood
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testing-a3-dogfood-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  a3-byok:
+    if: github.event_name == 'workflow_dispatch' || vars.RESTORMEL_TESTING_A3_MAIN == 'true'
+    runs-on: ubuntu-latest
+    environment: restormel-testing-a3
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+
+      - name: Build @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens run build
+
+      - name: Build testing packages
+        run: pnpm run build:testing-packages
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+
+      - name: Validate A3 dogfood config
+        run: node packages/testing-cli/dist/bin/testing.js validate --config examples/testing-a3-dogfood/restormel-testing.yaml
+
+      - name: Serve basic-web and run A3 suite (Keys secrets from Environment)
+        env:
+          RESTORMEL_KEYS_BASE: ${{ secrets.RESTORMEL_KEYS_BASE }}
+          RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY }}
+          RESTORMEL_PROJECT_ID: ${{ secrets.RESTORMEL_PROJECT_ID }}
+          RESTORMEL_ENVIRONMENT_ID: ${{ secrets.RESTORMEL_ENVIRONMENT_ID }}
+        run: |
+          set -euo pipefail
+          (cd examples/testing-basic-web && pnpm exec serve -l 4173 .) &
+          SERVE_PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null
+          node packages/testing-cli/dist/bin/testing.js run --suite a3-byok-smoke --config examples/testing-a3-dogfood/restormel-testing.yaml
+          kill $SERVE_PID

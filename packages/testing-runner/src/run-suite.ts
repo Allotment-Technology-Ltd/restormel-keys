@@ -23,6 +23,7 @@ import { runAcSequenceBrowserGoal } from "./run-ac-sequence-goal.js";
 import { toPostMissionObserveGoal } from "./post-mission-goal.js";
 import { resolveStorageStatePath } from "./storage-state.js";
 import { runMissionExecutorCommand, runShellHookCommands } from "./shell-hooks.js";
+import { SuiteLlmBudgetTracker } from "./suite-llm-budget.js";
 import type { RunLocalSuiteOptions, RunSuiteExecutionOptions, RunSuiteResult } from "./types.js";
 
 function hookWorkingDirectory(configFilePath: string | undefined): string {
@@ -60,6 +61,8 @@ function mergeKeysMeta(fragments: KeysModelMeta[]): KeysModelMeta[] {
       byRef.set(f.logicalRef, { ...f });
     } else {
       prev.invocationCount = (prev.invocationCount ?? 0) + (f.invocationCount ?? 0);
+      prev.promptTokens = (prev.promptTokens ?? 0) + (f.promptTokens ?? 0);
+      prev.completionTokens = (prev.completionTokens ?? 0) + (f.completionTokens ?? 0);
     }
   }
   return [...byRef.values()];
@@ -151,6 +154,7 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
   let stepIndex = 0;
   const allKeysFragments: KeysModelMeta[] = [];
   const hookCwd = hookWorkingDirectory(options.configFilePath);
+  const budgetTracker = new SuiteLlmBudgetTracker(suite.llmBudget);
 
   const beforeSuiteHooks = suiteAdapterCommandsBefore(options.config.adapterHooks);
   if (beforeSuiteHooks.length > 0) {
@@ -218,6 +222,7 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
       }
 
       try {
+        budgetTracker.beginGoal(goal.id, goal.llmBudget);
         const isAgentBrowser = goal.type === "browser" && goal.executionMode === "agent";
         const isAcSequenceBrowser = goal.type === "browser" && goal.executionMode === "ac_sequence";
 
@@ -278,6 +283,18 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
               });
             } else {
               const observeGoal = toPostMissionObserveGoal(goal);
+              const preObserve = budgetTracker.suiteNonAcWouldBlock();
+              if (preObserve) {
+                goalRuns.push({
+                  goalId: goal.id,
+                  verdict: "failed",
+                  reasonCode: preObserve.code,
+                  summary: preObserve.summary,
+                  retriesUsed: 0,
+                  evidenceRefs: [],
+                  ...acIdsOnRecord(goal),
+                });
+              } else {
               const bg = await runBrowserGoal({
                 runId,
                 goal: observeGoal,
@@ -292,12 +309,14 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
                 resolvedKeys,
                 keysAdapterOptions: options.keysAdapterOptions,
                 startingStepIndex: stepIndex,
+                suiteLlmBudget: budgetTracker,
               });
               stepIndex = bg.nextStepIndex;
               traces.push(...bg.traces);
               warnings.push(...bg.warnings);
               goalRuns.push({ ...bg.goalRecord, ...acIdsOnRecord(goal) });
               allKeysFragments.push(...bg.keysModelMetaFragments);
+              }
             }
           }
         } else if (isAcSequenceBrowser) {
@@ -337,6 +356,29 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
                 ...acIdsOnRecord(goal),
               });
             } else {
+              const acPre = budgetTracker.suiteAcBudgetWouldBlock();
+              const preAc = budgetTracker.suiteNonAcWouldBlock();
+              if (acPre) {
+                goalRuns.push({
+                  goalId: goal.id,
+                  verdict: "failed",
+                  reasonCode: acPre.code,
+                  summary: acPre.summary,
+                  retriesUsed: 0,
+                  evidenceRefs: [],
+                  ...acIdsOnRecord(goal),
+                });
+              } else if (preAc) {
+                goalRuns.push({
+                  goalId: goal.id,
+                  verdict: "failed",
+                  reasonCode: preAc.code,
+                  summary: preAc.summary,
+                  retriesUsed: 0,
+                  evidenceRefs: [],
+                  ...acIdsOnRecord(goal),
+                });
+              } else {
               const bg = await runAcSequenceBrowserGoal({
                 runId,
                 goal,
@@ -354,15 +396,30 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
                 suiteUserStory: suite.userStory,
                 acceptanceCriteria: criteriaRun,
                 hookCwd,
+                egressAllowHosts: profile.egressAllowHosts,
+                suiteLlmBudget: budgetTracker,
               });
               stepIndex = bg.nextStepIndex;
               traces.push(...bg.traces);
               warnings.push(...bg.warnings);
               goalRuns.push({ ...bg.goalRecord, ...acIdsOnRecord(goal) });
               allKeysFragments.push(...bg.keysModelMetaFragments);
+              }
             }
           }
         } else {
+          const preBg = budgetTracker.suiteNonAcWouldBlock();
+          if (preBg) {
+            goalRuns.push({
+              goalId: goal.id,
+              verdict: "failed",
+              reasonCode: preBg.code,
+              summary: preBg.summary,
+              retriesUsed: 0,
+              evidenceRefs: [],
+              ...acIdsOnRecord(goal),
+            });
+          } else {
           const bg = await runBrowserGoal({
             runId,
             goal,
@@ -377,12 +434,15 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
             resolvedKeys,
             keysAdapterOptions: options.keysAdapterOptions,
             startingStepIndex: stepIndex,
+            egressAllowHosts: profile.egressAllowHosts,
+            suiteLlmBudget: budgetTracker,
           });
           stepIndex = bg.nextStepIndex;
           traces.push(...bg.traces);
           warnings.push(...bg.warnings);
           goalRuns.push({ ...bg.goalRecord, ...acIdsOnRecord(goal) });
           allKeysFragments.push(...bg.keysModelMetaFragments);
+          }
         }
       } finally {
         if (goal.cleanup !== undefined && goal.cleanup.length > 0) {
@@ -412,11 +472,24 @@ export async function runSuiteFromConfig(options: RunSuiteExecutionOptions): Pro
   const verdict = aggregateVerdict(goalRuns.map((g) => g.verdict));
   const mergedMeta = mergeKeysMeta(allKeysFragments);
   const judgeInvocations = mergedMeta.reduce((n, m) => n + (m.invocationCount ?? 0), 0);
+  const execSummary = budgetTracker.summarizeExecution();
+  const usageBits = budgetTracker.usageForCostEstimate();
   let costEstimate: CostEstimate | undefined;
-  if (judgeInvocations > 0) {
+  if (execSummary.llmCompletions > 0 || judgeInvocations > 0 || usageBits.usageSource !== "estimate") {
     costEstimate = {
-      tokenEstimate: { input: 0, output: judgeInvocations * 120 },
+      ...usageBits,
+      suiteExecution: {
+        wallClockMs: execSummary.wallClockMs,
+        llmCompletions: execSummary.llmCompletions,
+        acAgentRounds: execSummary.acAgentRounds,
+      },
     };
+    if (
+      (usageBits.usageSource === "estimate" || usageBits.usageSource === "mixed") &&
+      execSummary.llmCompletions > 0
+    ) {
+      costEstimate.tokenEstimate = { input: 0, output: execSummary.llmCompletions * 120 };
+    }
   }
 
   const acFilter =

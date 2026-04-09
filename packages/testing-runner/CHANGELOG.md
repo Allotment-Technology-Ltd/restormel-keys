@@ -1,5 +1,14 @@
 # @restormel/testing-runner
 
+## 0.1.6
+
+### Patch Changes
+
+- **LLM budgets:** `SuiteLlmBudgetTracker` enforces suite/goal **`max_rounds`**, **`max_completions`**, **`max_wall_clock_ms`**; aggregates OpenAI-style **`usage`** into **`RunRecord.costEstimate`** when providers return it.
+- **Default-deny browser egress:** Playwright **`context.route`** blocks page requests (navigations, scripts, `fetch`, XHR, **`WebSocket`**, etc.) to hosts outside **`base_url`** origin and **`egress_allow_hosts`**; **`data:`** / **`blob:`** / **`about:`** still allowed. Applied for all **`browser`** goals before first navigation.
+- Built-in **`ac_sequence`** agent loop: JSON actions **`scroll_into_view`** and **`snapshot_a11y`** (Playwright accessibility snapshot).
+- Shared **`postChatCompletions`** with optional **`response_format: json_object`** for judges; **`egress_allow_hosts`** on environments for agent **`navigate`** and context egress.
+
 ## 0.1.5
 
 ### Patch Changes

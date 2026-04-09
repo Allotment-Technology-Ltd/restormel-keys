@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-keys-adapter",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Restormel / Keys resolution and BYOK execution seam (scaffold).",
   "license": "MIT",
   "repository": {

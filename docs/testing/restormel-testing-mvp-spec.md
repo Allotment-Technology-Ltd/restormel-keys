@@ -385,7 +385,7 @@ Restormel / Testing should use Keys for:
 
 The MVP is successful if:
 
-1. Plot can run 5–8 meaningful `web-critical` goals through Restormel / Testing.
+1. Plot (or equivalent) can run a `web-critical`-class suite through Restormel / Testing — either several goals or **fewer goals with equivalent multi-criteria** deterministic coverage (see monorepo `examples/testing-basic-web`).
 2. A developer can run the same suite locally and in GitHub Actions.
 3. Keys-backed execution works with at least one provider end to end.
 4. Failed runs produce enough evidence for an engineer to triage the issue in under 30 minutes.

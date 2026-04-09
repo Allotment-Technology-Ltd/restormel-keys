@@ -54,15 +54,29 @@ inputs:
     default: "."
   fork_pr_policy:
     description: >
-      skip (default) — do not run browser suites when is_fork_pr is true (safe when secrets
-      or private previews are required). run — execute anyway (you must use only public URLs
-      and expect secrets to be unavailable on fork workflows).
+      skip (default) — do not run when is_fork_pr is true. run — execute on forks (public URLs only).
+      require_label — on fork PRs, run only when fork_pr_label_present is true (maintainer label).
+      sandbox_only — like require_label, but the action exits 78 when skipping so you can treat the
+      check as neutral instead of green (optional; see docs/testing/github-action-io-spec.md).
     required: false
     default: skip
   is_fork_pr:
     description: >
       Set to the string 'true' when github.event.pull_request.head.repo.fork is true.
       Ignored outside pull_request workflows.
+    required: false
+    default: "false"
+  fork_pr_required_label:
+    description: >
+      Human-readable label name for docs / step summary only (e.g. ok-to-test). The workflow must
+      set fork_pr_label_present from github.event.pull_request.labels; this input is not interpreted by the runner.
+    required: false
+    default: ""
+  fork_pr_label_present:
+    description: >
+      Set to the string 'true' when the fork PR has the maintainer approval label (e.g.
+      contains(join(github.event.pull_request.labels.*.name, ','), 'ok-to-test')). Ignored when
+      fork_pr_policy is skip or run, or when is_fork_pr is not true.
     required: false
     default: "false"
   poll_interval_seconds:
@@ -103,6 +117,7 @@ runs:
         RESTORMEL_TESTING_WORKING_DIRECTORY: ${{ inputs.working_directory }}
         RESTORMEL_TESTING_FORK_PR_POLICY: ${{ inputs.fork_pr_policy }}
         RESTORMEL_TESTING_IS_FORK_PR: ${{ inputs.is_fork_pr }}
+        RESTORMEL_TESTING_FORK_PR_LABEL_PRESENT: ${{ inputs.fork_pr_label_present }}
         RESTORMEL_TESTING_POLL_INTERVAL_SECONDS: ${{ inputs.poll_interval_seconds }}
         RESTORMEL_TESTING_TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
       run: node "$RESTORMEL_TESTING_ACTION_MAIN_JS"

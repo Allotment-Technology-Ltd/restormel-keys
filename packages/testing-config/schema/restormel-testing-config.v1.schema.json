@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://restormel.dev/schemas/restormel-testing-config.v1.json",
+  "title": "Restormel Testing workspace config",
+  "description": "Structural draft for editors. Strict validation (refs, cross-refs) is enforced by @restormel/testing-config at load time.",
+  "type": "object",
+  "required": ["environments", "suites"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [{ "required": ["schema_version"] }, { "required": ["schemaVersion"] }]
+    }
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1" },
+    "schemaVersion": { "type": "string", "const": "1" },
+    "keys": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Logical key refs only (ref:restormel-keys:… or env:VAR)"
+    },
+    "defaults": { "$ref": "#/$defs/defaults" },
+    "environments": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/environment" }
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/suite" }
+    },
+    "adapter_hooks": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "adapterHooks": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "target_url_overrides": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "format": "uri" }
+    },
+    "targetUrlOverrides": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "format": "uri" }
+    }
+  },
+  "$defs": {
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retry_policy": {
+          "type": "object",
+          "required": ["max_retries"],
+          "properties": {
+            "max_retries": { "type": "integer", "minimum": 0 },
+            "maxRetries": { "type": "integer", "minimum": 0 },
+            "backoff_ms": { "type": "integer", "minimum": 0 },
+            "backoffMs": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "default_timeout_ms": { "type": "integer", "minimum": 1 },
+        "defaultTimeoutMs": { "type": "integer", "minimum": 1 },
+        "artifact_policy": { "$ref": "#/$defs/artifactPolicy" },
+        "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" }
+      }
+    },
+    "artifactPolicy": {
+      "type": "object",
+      "properties": {
+        "screenshots": { "type": "string", "enum": ["off", "on_failure", "always"] },
+        "browser_trace": { "type": "string", "enum": ["off", "on_failure", "always"] },
+        "browserTrace": { "type": "string", "enum": ["off", "on_failure", "always"] },
+        "console": { "type": "boolean" }
+      }
+    },
+    "llmBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Suite-level caps: total AC agent rounds, wall clock from run start, and chat completions.",
+      "properties": {
+        "max_rounds": { "type": "integer", "minimum": 1 },
+        "maxRounds": { "type": "integer", "minimum": 1 },
+        "max_wall_clock_ms": { "type": "integer", "minimum": 0 },
+        "maxWallClockMs": { "type": "integer", "minimum": 0 },
+        "max_completions": { "type": "integer", "minimum": 1 },
+        "maxCompletions": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "llmBudgetGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-goal LLM caps (max_wall_clock_ms belongs on the suite only).",
+      "properties": {
+        "max_rounds": { "type": "integer", "minimum": 1 },
+        "maxRounds": { "type": "integer", "minimum": 1 },
+        "max_completions": { "type": "integer", "minimum": 1 },
+        "maxCompletions": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["base_url"],
+      "additionalProperties": true,
+      "properties": {
+        "base_url": { "type": "string" },
+        "baseUrl": { "type": "string" },
+        "auth_mode": { "type": "string" },
+        "authMode": { "type": "string" },
+        "storage_state": { "type": "string" },
+        "storageState": { "type": "string" },
+        "keys": { "type": "object", "additionalProperties": { "type": "string" } },
+        "egress_allow_hosts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Extra hostnames allowed for browser egress (ac_sequence navigate + Playwright context blocking for scripts, fetch, XHR, WebSocket)"
+        },
+        "egressAllowHosts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "oneOf": [{ "required": ["base_url"] }, { "required": ["baseUrl"] }]
+    },
+    "suite": {
+      "type": "object",
+      "required": ["id", "environment", "goals"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "user_story": { "type": "string" },
+        "userStory": { "type": "string" },
+        "acceptance_criteria": { "type": "array" },
+        "acceptanceCriteria": { "type": "array" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "environment": { "type": "string" },
+        "goals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/goal" } },
+        "retry_policy": { "type": "object" },
+        "retryPolicy": { "type": "object" },
+        "default_timeout_ms": { "type": "integer", "minimum": 1 },
+        "defaultTimeoutMs": { "type": "integer", "minimum": 1 },
+        "artifact_policy": { "$ref": "#/$defs/artifactPolicy" },
+        "artifactPolicy": { "$ref": "#/$defs/artifactPolicy" },
+        "llm_budget": { "$ref": "#/$defs/llmBudget" },
+        "llmBudget": { "$ref": "#/$defs/llmBudget" }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "required": ["id", "type", "description"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["browser", "performance", "native"] },
+        "description": { "type": "string" },
+        "success_criteria": { "type": "object" },
+        "successCriteria": { "type": "object" },
+        "start_path": { "type": "string" },
+        "startPath": { "type": "string" },
+        "execution_mode": { "type": "string", "enum": ["observe", "agent", "ac_sequence"] },
+        "executionMode": { "type": "string", "enum": ["observe", "agent", "ac_sequence"] },
+        "mission": { "type": "string" },
+        "mission_executor": { "type": "string" },
+        "missionExecutor": { "type": "string" },
+        "preconditions": { "type": "array", "items": { "type": "string" } },
+        "cleanup": { "type": "array", "items": { "type": "string" } },
+        "exclusive_with": { "type": "array", "items": { "type": "string" } },
+        "exclusiveWith": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "acceptance_criterion_ids": { "type": "array", "items": { "type": "string" } },
+        "acceptanceCriterionIds": { "type": "array", "items": { "type": "string" } },
+        "ac_sequence": { "type": "object" },
+        "acSequence": { "type": "object" },
+        "llm_budget": { "$ref": "#/$defs/llmBudgetGoal" },
+        "llmBudget": { "$ref": "#/$defs/llmBudgetGoal" }
+      }
+    }
+  }
+}

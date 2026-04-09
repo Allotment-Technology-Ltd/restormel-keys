@@ -33,6 +33,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 ## Keys + Restormel Testing
 
 - End-to-end onboarding (Connections, encrypted provider keys, Testing hub, CLI env): [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md); in-product [/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding).
+- GA OSS quickstart, config schema policy, composite Action semver tags: [docs/testing/quickstart-ga.md](docs/testing/quickstart-ga.md), [docs/testing/schema-stability-policy.md](docs/testing/schema-stability-policy.md), [docs/testing/github-action-semver.md](docs/testing/github-action-semver.md).
 
 ## Inventory
 

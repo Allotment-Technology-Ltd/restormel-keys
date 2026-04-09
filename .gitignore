@@ -49,6 +49,9 @@ temp/
 # packages/*/dist/
 .vercel
 
+# Local Restormel Testing run / runs-api artefacts (do not commit)
+.restormel-testing/
+
 # Local-only internal notes (not committed)
 internal/**
 !internal/README.md

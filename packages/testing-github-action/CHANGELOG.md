@@ -1,5 +1,12 @@
 # @restormel/testing-github-action
 
+## 0.1.6
+
+### Patch Changes
+
+- README: **semver Git tag** consumer pins (`testing-action-v*.*.*`) and link to [docs/testing/github-action-semver.md](../../docs/testing/github-action-semver.md); maintainer workflow [`.github/workflows/release-testing-action-version.yml`](../../.github/workflows/release-testing-action-version.yml).
+- Fork PR policy values **`require_label`** and **`sandbox_only`** (with input **`fork_pr_label_present`**). **`sandbox_only`** exits **78** when skipping a fork PR without the maintainer label (optional neutral check). **`fork_pr_required_label`** is documentation-only for workflow authors.
+
 ## 0.1.5
 
 ### Patch Changes

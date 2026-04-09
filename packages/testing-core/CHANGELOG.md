@@ -1,5 +1,13 @@
 # @restormel/testing-core
 
+## 0.1.6
+
+### Patch Changes
+
+- **`LlmBudget`** and optional **`TestSuite.llmBudget`** / **`TestGoal.llmBudget`** for suite- and goal-level LLM caps.
+- **`CostEstimate`**: `tokenUsage`, `usageSource`, `suiteExecution`; **`KeysModelMeta`**: `promptTokens`, `completionTokens` for provider-reported usage.
+- **`EnvironmentProfile.egressAllowHosts`** documented alongside YAML `egress_allow_hosts` (agent `navigate` + Playwright context egress).
+
 ## 0.1.5
 
 ### Patch Changes

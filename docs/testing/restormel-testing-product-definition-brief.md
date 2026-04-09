@@ -468,7 +468,7 @@ That wedge is:
 
 Internal source documents:
 - `restormel_testing_chatgpt_project_setup.md`
-- `restormel-agentic-testing-requirements.md`
+- [restormel-testing-agentic-product-requirements.md](restormel-testing-agentic-product-requirements.md)
 - `repomix-output.md`
 
 External market and ecosystem sources consulted on 2026-04-07 include official docs/sites for:

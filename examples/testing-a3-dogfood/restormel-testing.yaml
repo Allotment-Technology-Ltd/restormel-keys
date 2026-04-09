@@ -1,0 +1,45 @@
+# A3 dogfood only — requires Keys resolve (GitHub Environment secrets on main / workflow_dispatch).
+# Serves examples/testing-basic-web on 127.0.0.1:4173 in CI; no secrets in this file.
+schema_version: "1"
+
+keys: {}
+
+defaults:
+  retry_policy:
+    max_retries: 0
+    backoff_ms: 400
+  default_timeout_ms: 90000
+  artifact_policy:
+    screenshots: on_failure
+    browser_trace: on_failure
+    console: true
+
+environments:
+  local:
+    base_url: http://127.0.0.1:4173
+    auth_mode: none
+    keys:
+      llm_primary: ref:restormel-keys:llm/primary
+
+suites:
+  - id: a3-byok-smoke
+    description: >
+      One browser goal — deterministic text_present plus Keys-backed judge_rubric (BYOK E2E / A3).
+    environment: local
+    goals:
+      - id: keys-judge-smoke
+        type: browser
+        description: Static demo page is visible; judge confirms minimal CI demo semantics.
+        success_criteria:
+          text_present:
+            - basic-web
+            - runner-ready
+          judge_rubric:
+            id: a3-static-demo-ok
+            summary: >
+              The page is a minimal static demo for Restormel Testing CI. Answer pass only if the
+              main heading clearly indicates a small demo/test site (not an error or login wall).
+            context_selector: "main h1"
+            model_ref: ref:restormel-keys:llm/primary
+
+target_url_overrides: {}

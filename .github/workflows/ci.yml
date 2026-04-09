@@ -164,7 +164,7 @@ jobs:
         run: pnpm run test:testing
       - name: Serve testing-basic-web and run web-critical (integration)
         run: |
-          (cd examples/testing-basic-web && pnpm exec serve . -l 4173) &
+          (cd examples/testing-basic-web && pnpm exec serve -l 4173 .) &
           SERVE_PID=$!
           for i in $(seq 1 60); do
             if curl -sf http://127.0.0.1:4173/ >/dev/null; then break; fi

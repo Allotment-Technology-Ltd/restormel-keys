@@ -4,11 +4,13 @@ import { sanitizePathSegment } from "@restormel/testing-core";
 import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
 import { buildGithubStepSummaryMarkdown, writeRunReportBundle } from "@restormel/testing-report";
 import { runLocalSuite } from "@restormel/testing-runner";
-import { shouldSkipForkPr, type ForkPrPolicy } from "./fork-policy.js";
+import { evaluateForkPrPolicy, type ForkPrPolicy } from "./fork-policy.js";
 
 const EXIT_OK = 0;
 const EXIT_FAILED = 1;
 const EXIT_USAGE = 2;
+/** Optional “neutral skip” for fork policies that should not count as a green required check. */
+export const EXIT_NEUTRAL_SKIP = 78;
 
 function getenv(name: string): string | undefined {
   const v = process.env[name];
@@ -31,8 +33,16 @@ function appendOutput(pairs: Record<string, string>): void {
 }
 
 function parseForkPolicy(raw: string | undefined): ForkPrPolicy {
-  const v = (raw ?? "skip").toLowerCase();
-  return v === "run" ? "run" : "skip";
+  const v = (raw ?? "skip").toLowerCase().trim();
+  if (v === "run") return "run";
+  if (v === "require_label") return "require_label";
+  if (v === "sandbox_only") return "sandbox_only";
+  return "skip";
+}
+
+function parseForkLabelPresent(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
 }
 
 /**
@@ -44,25 +54,42 @@ export async function runCiFromEnv(): Promise<number> {
   const policy = parseForkPolicy(getenv("RESTORMEL_TESTING_FORK_PR_POLICY"));
   const forkRaw = getenv("RESTORMEL_TESTING_IS_FORK_PR")?.trim().toLowerCase();
   const isForkPr = forkRaw === "true" || forkRaw === "1" || forkRaw === "yes";
+  const requiredLabelPresent = parseForkLabelPresent(getenv("RESTORMEL_TESTING_FORK_PR_LABEL_PRESENT"));
 
-  if (shouldSkipForkPr(policy, isForkPr)) {
+  const forkDecision = evaluateForkPrPolicy(policy, { isForkPr, requiredLabelPresent });
+
+  if (!forkDecision.execute) {
     appendSummary("## Restormel Testing");
     appendSummary("");
-    appendSummary("**Status:** skipped (fork PR safe mode)");
+    const reason =
+      forkDecision.skipReason === "fork_missing_label"
+        ? "skipped (fork PR — required maintainer label not present)"
+        : "skipped (fork PR safe mode)";
+    appendSummary(`**Status:** ${reason}`);
     appendSummary("");
-    appendSummary(
-      "This workflow run targets a **fork** pull request. By default the action does not run browser suites so you are not surprised by missing secrets or unreachable private preview URLs.",
-    );
+    if (forkDecision.skipReason === "fork_missing_label") {
+      appendSummary(
+        "This fork PR does not have the approval label your workflow checks. Add the label or use `fork_pr_policy: run` only when the suite is safe on forks (public URLs, no repo secrets).",
+      );
+    } else {
+      appendSummary(
+        "This workflow run targets a **fork** pull request. By default the action does not run browser suites so you are not surprised by missing secrets or unreachable private preview URLs.",
+      );
+    }
     appendSummary("");
     appendSummary(
       "To run on forks anyway, set input `fork_pr_policy: run` and ensure the suite uses only **public** targets and **no repository secrets**.",
     );
     appendSummary("");
     appendSummary(
+      "For `require_label` / `sandbox_only`, set `fork_pr_label_present` from `github.event.pull_request.labels` in the workflow.",
+    );
+    appendSummary("");
+    appendSummary(
       "Prefer `pull_request` (not `pull_request_target`) unless you fully understand the security model.",
     );
     appendOutput({ verdict: "skipped", run_id: "", skipped: "true" });
-    return EXIT_OK;
+    return forkDecision.useNeutralExit ? EXIT_NEUTRAL_SKIP : EXIT_OK;
   }
 
   const wd = getenv("RESTORMEL_TESTING_WORKING_DIRECTORY") ?? ".";

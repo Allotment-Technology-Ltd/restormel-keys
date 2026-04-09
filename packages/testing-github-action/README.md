@@ -2,6 +2,16 @@
 
 Composite GitHub Action that runs the **same inline runner** as the local CLI (`testing run`): load `restormel-testing.yaml`, execute browser goals, write **`report.json`**, **`summary.md`**, **`github-summary.md`**, **`junit.xml`**, plus `run.json` / `traces.json`, append a **GitHub step summary**, and **fail the step** when the suite verdict is not `passed`.
 
+## Semver pins (GA)
+
+Pin **`uses`** to an **immutable Git tag** on this repository, **not** only `@main`:
+
+```yaml
+uses: YourOrg/restormel-keys/packages/testing-github-action@testing-action-v1.0.0
+```
+
+Tags are created with workflow **[release-testing-action-version.yml](../../.github/workflows/release-testing-action-version.yml)** (`testing-action-vMAJOR.MINOR.PATCH`). Full policy: [docs/testing/github-action-semver.md](../../docs/testing/github-action-semver.md).
+
 There is **no hosted control plane** in this MVP; `poll_interval_seconds` and `timeout_minutes` inputs are reserved for documentation alignment only.
 
 ## HTTP `/v1/runs` or curl pollers

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Minimal static site + restormel-testing.yaml to exercise validate, run, and report artefacts.",
   "scripts": {
-    "start": "serve . -l 4173",
+    "start": "serve -l 4173 .",
     "validate": "testing validate --config restormel-testing.yaml",
     "run:web-critical": "testing run --suite web-critical --config restormel-testing.yaml",
     "demo": "node run-example.mjs",

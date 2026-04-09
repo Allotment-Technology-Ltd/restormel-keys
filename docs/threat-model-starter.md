@@ -11,3 +11,5 @@ Trust boundaries and initial risks. **Single source** for boundaries and risk li
 **Initial risks:** Key leakage (logs, docs, fixtures, examples); over-trusting provider APIs; cross-project/cross-user scope confusion; insecure example defaults; **credential store** becoming a high-value target (mitigate with encryption, least privilege, no secret echo on list endpoints).
 
 **Mitigations:** No raw keys in logs/docs; redaction; no committed secrets; examples use placeholders; boundaries and data classes kept in this doc and security-baseline.
+
+**Autonomous browser / agent loop (Restormel Testing):** LLM-driven Playwright paths (`ac_sequence`, rubrics) add DOM-injection and cost risks. See [testing/testing-autonomous-browsing-threat-addendum.md](testing/testing-autonomous-browsing-threat-addendum.md).

@@ -186,13 +186,14 @@ suites:
     const config = loadConfig(yaml);
     process.env.RESTORMEL_TESTING_STUB_KEY = "stub-key-not-real";
 
+    const judgeBody = JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({ verdict: "uncertain" }) } }],
+    });
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 200,
-      text: async () => "",
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify({ verdict: "uncertain" }) } }],
-      }),
+      text: async () => judgeBody,
+      json: async () => JSON.parse(judgeBody),
     }));
     vi.stubGlobal("fetch", fetchMock);
 

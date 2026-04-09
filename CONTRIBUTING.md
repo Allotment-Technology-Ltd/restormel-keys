@@ -11,7 +11,18 @@ Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/bo
 - **Plan Mode** before non-trivial work (multi-file, security-sensitive, repo structure, CI, rules/skills/subagents).
 - **One canonical source per topic.** Update the owning doc; avoid duplicating truth. See [docs/working-agreement.md](docs/working-agreement.md).
 - **Exact target files;** thin slices. Prefer scripts/CI for repeatable checks.
-- **Security:** No committed secrets; no raw key logging. [docs/security-baseline.md](docs/security-baseline.md).
+- **Security:** No committed secrets; no raw key logging. [docs/security-baseline.md](docs/security-baseline.md) and [SECURITY.md](SECURITY.md).
+
+## Restormel Testing (`@restormel/testing-*`)
+
+- **Packages:** `packages/testing-*`; publish train **tag `testing-v*`** → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
+- **Composite GitHub Action:** `packages/testing-github-action/` — **semver Git tags** `testing-action-v*.*.*` for consumer pins (not npm). Maintainer workflow: [.github/workflows/release-testing-action-version.yml](.github/workflows/release-testing-action-version.yml). See [docs/testing/github-action-semver.md](docs/testing/github-action-semver.md).
+- **Config contract:** [docs/testing/schema-stability-policy.md](docs/testing/schema-stability-policy.md) (patch/minor/major vs `schema_version`).
+- **GA quickstart (external adopters):** [docs/testing/quickstart-ga.md](docs/testing/quickstart-ga.md).
+
+## A3 BYOK dogfood (maintainers)
+
+Optional workflow proves Keys resolve for `judge_rubric` using **GitHub Environment** secrets — [docs/testing/testing-a3-dogfood-workflow.md](docs/testing/testing-a3-dogfood-workflow.md). No credential values belong in the repo.
 
 ## Dogfood feedback (other repos)
 

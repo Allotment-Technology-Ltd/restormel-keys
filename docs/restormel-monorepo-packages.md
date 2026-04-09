@@ -14,7 +14,7 @@ End users consume **published npm packages**; this document is for contributors.
 | `packages/cli` (Keys) | `@restormel/keys-cli` | Keys CLI wrapper |
 | `packages/doctor`, `validate` | `@restormel/doctor`, `@restormel/validate` | OSS tooling |
 | `packages/aaif`, `mcp` | `@restormel/aaif`, `@restormel/mcp` | Contracts / MCP |
-| `packages/testing-core` … `testing-github-action`, `packages/restormel-testing` | `@restormel/testing-*`, `@restormel/testing-bundle` | Goal-based testing runner, CLI, optional meta-package (`testing-bundle`), composite Action; publish tag **`testing-v*`** (or workflow dispatch) |
+| `packages/testing-core` … `testing-github-action`, `packages/testing-runs-server`, `packages/restormel-testing` | `@restormel/testing-*`, `@restormel/testing-bundle` | Goal-based testing runner, CLI, optional HTTP **Runs API** server (`testing-runs-server`), meta-package (`testing-bundle`), composite Action; publish tag **`testing-v*`** (or workflow dispatch). Config JSON Schema draft: `packages/testing-config/schema/restormel-testing-config.v1.schema.json` |
 | `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app (**Connections**, **Restormel Testing** hub, encrypted provider credentials); Testing marketing/docs at **`/testing`** (`src/routes/testing/`) |
 | `platform/` | (mostly non-published) | Cursor template, module scaffold mirror, shared composite copies |
 
@@ -31,6 +31,7 @@ flowchart BT
   testing_cli["@restormel/testing-cli"]
   testing_bundle["@restormel/testing-bundle"]
   testing_action["@restormel/testing-github-action"]
+  testing_runs_server["@restormel/testing-runs-server"]
 
   testing_bundle --> testing_cli
   testing_bundle --> testing_browser
@@ -50,6 +51,11 @@ flowchart BT
   testing_action --> testing_runner
   testing_action --> testing_report
   testing_action --> testing_keys_adapter
+
+  testing_runs_server --> testing_runner
+  testing_runs_server --> testing_config
+  testing_runs_server --> testing_report
+  testing_runs_server --> testing_keys_adapter
 ```
 
 `@restormel/testing-bundle` is a thin **meta-package** (CLI + browser adaptor dependency) for consumers who want one `pnpm add -D` line; it contains no runtime code.

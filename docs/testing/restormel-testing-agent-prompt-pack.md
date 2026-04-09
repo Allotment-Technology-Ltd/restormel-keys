@@ -33,4 +33,4 @@ Restormel / Testing is **repo-first** agentic testing: **`restormel-testing.yaml
 - [Technical architecture](restormel-testing-technical-architecture.md)
 - [Product definition brief](restormel-testing-product-definition-brief.md)
 
-**Note:** `docs/restormel-agentic-testing-requirements.md` is not in this repository yet. Until it exists, treat the **MVP spec** and **product brief** as the authoritative requirements-shaped context for agentic testing scope.
+**Agentic upgrade spec:** [restormel-testing-agentic-product-requirements.md](restormel-testing-agentic-product-requirements.md) (roadmap + FR mapping). **MVP spec** and **product brief** remain the day-to-day test-definition authority.

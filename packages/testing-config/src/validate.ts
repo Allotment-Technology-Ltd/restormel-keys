@@ -15,6 +15,7 @@ import type {
   SuccessCriteria,
   TestGoal,
   TestSuite,
+  LlmBudget,
 } from "@restormel/testing-core";
 import { isOpaqueKeyRef, isSafeHttpUrl, looksLikeInlineSecret } from "./refs.js";
 import { isPlainObject, pickKey } from "./pick.js";
@@ -120,6 +121,58 @@ function parseRetryPolicy(raw: unknown, path: string, errors: ConfigError[]): Re
   const policy: RetryPolicy = { maxRetries: max };
   if (backoffMs !== undefined) policy.backoffMs = backoffMs;
   return policy;
+}
+
+function parseLlmBudget(
+  raw: unknown,
+  path: string,
+  errors: ConfigError[],
+  scope: "suite" | "goal",
+): LlmBudget | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isPlainObject(raw)) {
+    errors.push(err(path, "type", "llm_budget must be an object"));
+    return undefined;
+  }
+  const wallRaw = pickKey(raw, "max_wall_clock_ms", "maxWallClockMs");
+  if (scope === "goal" && wallRaw !== undefined && wallRaw !== null) {
+    errors.push(
+      err(
+        `${path}.max_wall_clock_ms`,
+        "forbidden",
+        "max_wall_clock_ms is suite-only (set llm_budget on the suite, not on a goal)",
+      ),
+    );
+    return undefined;
+  }
+  const mrRaw = pickKey(raw, "max_rounds", "maxRounds");
+  const mcRaw = pickKey(raw, "max_completions", "maxCompletions");
+  const maxWallClockMs =
+    scope === "suite"
+      ? asNonNegInt(wallRaw, `${path}.max_wall_clock_ms`, "max_wall_clock_ms", errors)
+      : undefined;
+  const maxRounds =
+    mrRaw !== undefined && mrRaw !== null
+      ? asPosInt(mrRaw, `${path}.max_rounds`, "max_rounds", errors)
+      : undefined;
+  const maxCompletions =
+    mcRaw !== undefined && mcRaw !== null
+      ? asPosInt(mcRaw, `${path}.max_completions`, "max_completions", errors)
+      : undefined;
+
+  const out: LlmBudget = {};
+  if (maxRounds !== undefined) out.maxRounds = maxRounds;
+  if (maxWallClockMs !== undefined) out.maxWallClockMs = maxWallClockMs;
+  if (maxCompletions !== undefined) out.maxCompletions = maxCompletions;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function applyGoalLlmBudget(goal: TestGoal, raw: unknown, path: string, errors: ConfigError[]): void {
+  if (!isPlainObject(raw)) return;
+  const lbRaw = pickKey(raw, "llm_budget", "llmBudget");
+  if (lbRaw === undefined || lbRaw === null) return;
+  const b = parseLlmBudget(lbRaw, `${path}.llm_budget`, errors, "goal");
+  if (b) goal.llmBudget = b;
 }
 
 const ARTIFACT_KINDS: readonly string[] = ["never", "on_failure", "always"];
@@ -247,6 +300,25 @@ function parseEnvironment(
   const profile: EnvironmentProfile = { id, baseUrl, keys: Object.keys(keys).length ? keys : undefined };
   if (authMode !== undefined) profile.authMode = authMode;
   if (authRef !== undefined) profile.authRef = authRef;
+  const egressRaw = pickKey(raw, "egress_allow_hosts", "egressAllowHosts");
+  if (egressRaw !== undefined && egressRaw !== null) {
+    if (!Array.isArray(egressRaw)) {
+      errors.push(err(`${path}.egress_allow_hosts`, "type", "egress_allow_hosts must be an array of strings"));
+      return undefined;
+    }
+    const hosts: string[] = [];
+    for (let i = 0; i < egressRaw.length; i++) {
+      const item = egressRaw[i];
+      if (typeof item !== "string" || item.trim() === "") {
+        errors.push(
+          err(`${path}.egress_allow_hosts[${i}]`, "type", "each egress_allow_hosts entry must be a non-empty string"),
+        );
+        return undefined;
+      }
+      hosts.push(item.trim());
+    }
+    if (hosts.length > 0) profile.egressAllowHosts = hosts;
+  }
   return profile;
 }
 
@@ -936,6 +1008,7 @@ function parseGoal(
       goal.tags = tags as string[];
     }
     if (!addOptionalAcceptanceCriterionIds(goal, raw, path, errors, allowedAcIds)) return undefined;
+    applyGoalLlmBudget(goal, raw, path, errors);
     return goal;
   }
 
@@ -1036,6 +1109,7 @@ function parseGoal(
     if (goalAc.acceptanceCriterionIds === undefined || goalAc.acceptanceCriterionIds.length === 0) {
       goalAc.acceptanceCriterionIds = [...orderedAcIds];
     }
+    applyGoalLlmBudget(goalAc, raw, path, errors);
     return goalAc;
   }
 
@@ -1100,16 +1174,17 @@ function parseGoal(
     }
     goal.exclusiveWith = ex as string[];
   }
-    const tags = pickKey(raw, "tags", "tags");
-    if (tags !== undefined && tags !== null) {
-      if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
-        errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
-        return undefined;
-      }
-      goal.tags = tags as string[];
+  const tags = pickKey(raw, "tags", "tags");
+  if (tags !== undefined && tags !== null) {
+    if (!Array.isArray(tags) || !tags.every((x) => typeof x === "string")) {
+      errors.push(err(`${path}.tags`, "type", "tags must be string[]"));
+      return undefined;
     }
-    if (!addOptionalAcceptanceCriterionIds(goal, raw, path, errors, allowedAcIds)) return undefined;
-    return goal;
+    goal.tags = tags as string[];
+  }
+  if (!addOptionalAcceptanceCriterionIds(goal, raw, path, errors, allowedAcIds)) return undefined;
+  applyGoalLlmBudget(goal, raw, path, errors);
+  return goal;
 }
 
 function parseSuite(
@@ -1192,6 +1267,13 @@ function parseSuite(
   if (dto !== undefined) suite.defaultTimeoutMs = dto;
   const ap = parseArtifactPolicy(pickKey(raw, "artifact_policy", "artifactPolicy"), `${path}.artifact_policy`, errors);
   if (ap) suite.artifactPolicy = ap;
+  const llmBudget = parseLlmBudget(
+    pickKey(raw, "llm_budget", "llmBudget"),
+    `${path}.llm_budget`,
+    errors,
+    "suite",
+  );
+  if (llmBudget) suite.llmBudget = llmBudget;
   return suite;
 }
 

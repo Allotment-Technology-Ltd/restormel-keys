@@ -1,5 +1,11 @@
 # @restormel/testing-browser-playwright
 
+## 0.1.6
+
+### Patch Changes
+
+- **0.1.6** publish train: version align with the rest of the **`@restormel/testing-*`** line.
+
 ## 0.1.5
 
 ### Patch Changes

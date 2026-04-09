@@ -1,7 +1,9 @@
 import type { Page } from "playwright";
 import type { JudgeRubric, SuccessCriteria, Verdict } from "@restormel/testing-core";
 import type { ResolvedModel } from "@restormel/testing-keys-adapter";
+import { postChatCompletions } from "./ac-llm.js";
 import { evaluateLighthouseStructuredCheck, parseLighthouseStructuredPath } from "./lighthouse-structured-check.js";
+import type { SuiteLlmBudgetTracker } from "./suite-llm-budget.js";
 
 export interface CriteriaEvaluation {
   verdict: Verdict;
@@ -9,6 +11,9 @@ export interface CriteriaEvaluation {
   summary: string;
   /** Set when an OpenAI-compatible judge request was sent (for Keys model meta). */
   judgeModelInvocations?: number;
+  /** Provider-reported tokens from the judge completion, when present. */
+  judgePromptTokens?: number;
+  judgeCompletionTokens?: number;
 }
 
 function normalizeUrl(u: string): string {
@@ -28,6 +33,7 @@ export async function evaluateBrowserSuccessCriteria(
   criteria: SuccessCriteria,
   options?: {
     judgeModel?: ResolvedModel;
+    suiteLlmBudget?: SuiteLlmBudgetTracker;
   },
 ): Promise<CriteriaEvaluation> {
   if (criteria.anyOf !== undefined && criteria.anyOf.length > 0) {
@@ -138,7 +144,7 @@ export async function evaluateBrowserSuccessCriteria(
         summary: "judge_rubric present but model could not be resolved via Keys",
       };
     }
-    const j = await runJudgeRubric(page, criteria, options.judgeModel);
+    const j = await runJudgeRubric(page, criteria, options.judgeModel, options.suiteLlmBudget);
     return j;
   }
 
@@ -345,14 +351,21 @@ async function sampleTextForJudge(page: Page, rubric: JudgeRubric): Promise<stri
   return truncate(bodyText.trim(), MAX_JUDGE_SAMPLE_CHARS);
 }
 
-function redactForLog(s: string): string {
-  return s.replace(/\bBearer\s+[\w-_.]+\b/gi, "Bearer [redacted]").replace(/\bsk-[a-zA-Z0-9]{10,}\b/g, "sk-[redacted]");
+function judgeUsageFields(usage: { promptTokens?: number; completionTokens?: number } | undefined): Pick<
+  CriteriaEvaluation,
+  "judgePromptTokens" | "judgeCompletionTokens"
+> {
+  const out: Pick<CriteriaEvaluation, "judgePromptTokens" | "judgeCompletionTokens"> = {};
+  if (usage?.promptTokens !== undefined) out.judgePromptTokens = usage.promptTokens;
+  if (usage?.completionTokens !== undefined) out.judgeCompletionTokens = usage.completionTokens;
+  return out;
 }
 
 async function runJudgeRubric(
   page: Page,
   criteria: SuccessCriteria,
   model: ResolvedModel,
+  suiteLlmBudget?: SuiteLlmBudgetTracker,
 ): Promise<CriteriaEvaluation> {
   const rubric = criteria.judgeRubric;
   if (!rubric) {
@@ -360,83 +373,79 @@ async function runJudgeRubric(
   }
 
   const sample = await sampleTextForJudge(page, rubric);
-  const base = model.providerBaseUrl?.replace(/\/?$/, "") ?? "https://api.openai.com/v1";
-  const url = `${base}/chat/completions`;
 
   const system =
     'You are a test oracle. Reply with a single JSON object only: {"verdict":"pass"|"fail"|"uncertain"} matching whether the page satisfies the rubric.';
   const user = `Rubric id: ${rubric.id}\nSummary: ${rubric.summary ?? "(none)"}\n\nPage text:\n${sample}`;
 
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${model.credentials.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model.modelId,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        max_tokens: 80,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      return {
-        verdict: "indeterminate",
-        reasonCode: "JUDGE_HTTP_ERROR",
-        summary: `Judge request failed: HTTP ${res.status} ${truncate(redactForLog(t), 80)}`,
-        judgeModelInvocations: 1,
-      };
-    }
-
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const raw = data.choices?.[0]?.message?.content ?? "{}";
-    let parsed: { verdict?: string };
-    try {
-      parsed = JSON.parse(raw) as { verdict?: string };
-    } catch {
-      return {
-        verdict: "indeterminate",
-        reasonCode: "JUDGE_PARSE_ERROR",
-        summary: "Judge response was not valid JSON",
-        judgeModelInvocations: 1,
-      };
-    }
-
-    const v = (parsed.verdict ?? "").toLowerCase();
-    if (v === "pass") {
-      return {
-        verdict: "passed",
-        reasonCode: "JUDGE_PASS",
-        summary: "Judge rubric passed",
-        judgeModelInvocations: 1,
-      };
-    }
-    if (v === "fail") {
-      return {
-        verdict: "failed",
-        reasonCode: "JUDGE_FAIL",
-        summary: "Judge rubric failed",
-        judgeModelInvocations: 1,
-      };
-    }
+  const block = suiteLlmBudget?.tryConsumeLlm("chat");
+  if (block) {
     return {
-      verdict: "indeterminate",
-      reasonCode: "JUDGE_UNCERTAIN",
-      summary: "Judge returned uncertain",
-      judgeModelInvocations: 1,
-    };
-  } catch (e) {
-    return {
-      verdict: "indeterminate",
-      reasonCode: "JUDGE_ERROR",
-      summary: `Judge error: ${e instanceof Error ? e.message : String(e)}`,
+      verdict: "failed",
+      reasonCode: block.code,
+      summary: block.summary,
+      judgeModelInvocations: 0,
     };
   }
+
+  const chat = await postChatCompletions(
+    model,
+    [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    { maxTokens: 80, temperature: 0, responseFormat: "json_object" },
+  );
+  suiteLlmBudget?.recordLlmCall("chat", chat.usage);
+  const usageFields = judgeUsageFields(chat.usage);
+
+  if (!chat.ok) {
+    return {
+      verdict: "indeterminate",
+      reasonCode: "JUDGE_HTTP_ERROR",
+      summary: `Judge request failed: ${chat.summary}`,
+      judgeModelInvocations: 1,
+      ...usageFields,
+    };
+  }
+
+  let parsed: { verdict?: string };
+  try {
+    parsed = JSON.parse(chat.content) as { verdict?: string };
+  } catch {
+    return {
+      verdict: "indeterminate",
+      reasonCode: "JUDGE_PARSE_ERROR",
+      summary: "Judge response was not valid JSON",
+      judgeModelInvocations: 1,
+      ...usageFields,
+    };
+  }
+
+  const v = (parsed.verdict ?? "").toLowerCase();
+  if (v === "pass") {
+    return {
+      verdict: "passed",
+      reasonCode: "JUDGE_PASS",
+      summary: "Judge rubric passed",
+      judgeModelInvocations: 1,
+      ...usageFields,
+    };
+  }
+  if (v === "fail") {
+    return {
+      verdict: "failed",
+      reasonCode: "JUDGE_FAIL",
+      summary: "Judge rubric failed",
+      judgeModelInvocations: 1,
+      ...usageFields,
+    };
+  }
+  return {
+    verdict: "indeterminate",
+    reasonCode: "JUDGE_UNCERTAIN",
+    summary: "Judge returned uncertain",
+    judgeModelInvocations: 1,
+    ...usageFields,
+  };
 }

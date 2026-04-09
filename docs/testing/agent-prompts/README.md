@@ -57,7 +57,7 @@ In **your product repo**, point the agent at your real config path and app route
 - [Product definition brief](../restormel-testing-product-definition-brief.md)
 - [OSS consumption](../oss-consumption.md)
 
-`docs/restormel-agentic-testing-requirements.md` is not in this repo yet; link it here when added.
+[Agentic upgrade requirements (roadmap + FR map)](../restormel-testing-agentic-product-requirements.md)
 
 ## Prompt index
 

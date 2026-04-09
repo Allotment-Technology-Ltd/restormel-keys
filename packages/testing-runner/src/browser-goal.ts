@@ -10,9 +10,11 @@ import type { GoalRunRecord, KeysModelMeta, TestGoal, TraceEvent } from "@restor
 import { sanitizePathSegment } from "@restormel/testing-core";
 import type { RetryPolicy } from "@restormel/testing-core";
 import { resolveModel, type KeysModelAdapterOptions, type ResolvedModel } from "@restormel/testing-keys-adapter";
+import { installBrowserEgressRouteBlockForSession } from "./egress-browser-context.js";
 import { evaluateBrowserSuccessCriteria } from "./evaluate-criteria.js";
 import { judgeLogicalRefForCriteria } from "./judge-ref.js";
 import { runGoalAttempts, type AttemptOutcome } from "./retries.js";
+import type { SuiteLlmBudgetTracker } from "./suite-llm-budget.js";
 import { TimeoutError, withTimeout } from "./timeout.js";
 
 export interface RunBrowserGoalOptions {
@@ -30,6 +32,10 @@ export interface RunBrowserGoalOptions {
   resolvedKeys: Record<string, string>;
   keysAdapterOptions?: KeysModelAdapterOptions;
   startingStepIndex: number;
+  /** From environment `egress_allow_hosts` — agent `navigate` plus **context-level** default-deny for other requests. */
+  egressAllowHosts?: string[];
+  /** Suite- and goal-level LLM budgets and token aggregation for {@link RunRecord.costEstimate}. */
+  suiteLlmBudget?: SuiteLlmBudgetTracker;
 }
 
 export interface RunBrowserGoalResult {
@@ -56,14 +62,21 @@ export function goalEntryUrl(baseUrl: string, startPath?: string): string {
   }
 }
 
-function toKeysModelMeta(model: ResolvedModel, invocations: number): KeysModelMeta {
-  return {
+function toKeysModelMeta(
+  model: ResolvedModel,
+  invocations: number,
+  tokens?: { prompt?: number; completion?: number },
+): KeysModelMeta {
+  const m: KeysModelMeta = {
     logicalRef: model.meta.logicalRef,
     provider: model.meta.provider,
     model: model.meta.model,
     resolutionSource: model.meta.resolutionSource,
     invocationCount: invocations,
   };
+  if (tokens?.prompt !== undefined) m.promptTokens = tokens.prompt;
+  if (tokens?.completion !== undefined) m.completionTokens = tokens.completion;
+  return m;
 }
 
 async function captureScreenshot(
@@ -158,6 +171,7 @@ export async function runBrowserGoal(options: RunBrowserGoalOptions): Promise<Ru
       }
 
       try {
+        await installBrowserEgressRouteBlockForSession(session, options.baseUrl, options.egressAllowHosts);
         const entryUrl = goalEntryUrl(options.baseUrl, goal.startPath);
         await withTimeout(
           session.navigate(entryUrl, { timeoutMs: options.timeoutMs, waitUntil: "load" }),
@@ -174,6 +188,7 @@ export async function runBrowserGoal(options: RunBrowserGoalOptions): Promise<Ru
         const evalResult = await withTimeout(
           evaluateBrowserSuccessCriteria(session.page, goal.successCriteria, {
             judgeModel,
+            suiteLlmBudget: options.suiteLlmBudget,
           }),
           options.timeoutMs + 2000,
           "evaluation",
@@ -189,7 +204,12 @@ export async function runBrowserGoal(options: RunBrowserGoalOptions): Promise<Ru
         allTraces.push(...mapped);
 
         if (judgeModel && (evalResult.judgeModelInvocations ?? 0) > 0) {
-          keysModelMetaFragments.push(toKeysModelMeta(judgeModel, evalResult.judgeModelInvocations ?? 1));
+          keysModelMetaFragments.push(
+            toKeysModelMeta(judgeModel, evalResult.judgeModelInvocations ?? 1, {
+              prompt: evalResult.judgePromptTokens,
+              completion: evalResult.judgeCompletionTokens,
+            }),
+          );
         }
 
         pushTrace({
