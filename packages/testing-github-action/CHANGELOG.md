@@ -1,5 +1,12 @@
 # @restormel/testing-github-action
 
+## 0.1.7
+
+### Patch Changes
+
+- **0.1.7** publish train: tarball matches **`main`** after PR **#79** merge (CI: Next `^14.2.25`, basic-web `/about` + `serve -l 4173 .`).
+
+
 ## 0.1.6
 
 ### Patch Changes

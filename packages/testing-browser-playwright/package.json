@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-browser-playwright",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Narrow Playwright session API for Restormel / Testing (launch, navigate, act, observe, artefacts).",
   "license": "MIT",
   "repository": {

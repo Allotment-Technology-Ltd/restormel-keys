@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-runner",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Suite execution: browser goals, Keys-backed judges, retries, artefacts.",
   "license": "MIT",
   "repository": {

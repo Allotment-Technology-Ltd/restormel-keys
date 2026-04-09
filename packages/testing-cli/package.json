@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-cli",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Restormel / Testing CLI (init, validate, run, report).",
   "license": "MIT",
   "repository": {

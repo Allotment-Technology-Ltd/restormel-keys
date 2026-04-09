@@ -6,7 +6,7 @@
 
 ## 1. Restormel Testing packages (`@restormel/testing-*`)
 
-If you are not already on a single aligned line, target `**^0.1.5**` across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers). Full upgrade table and feature delta: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)**.
+If you are not already on a single aligned line, target `**^0.1.7**` across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers) — **0.1.7** matches **`main`** post–PR **#79** (LLM budgets, egress, Runs server, CI fixes). Feature deltas: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)** (and **0.1.4**/**0.1.6** notes in-repo for earlier trains).
 
 **Keys env (CLI / CI / judges):** Prefer canonical names:
 

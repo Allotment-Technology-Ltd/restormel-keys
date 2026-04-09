@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-09)
+
+**`@restormel/testing-*` npm `0.1.7`:** Publish train after PR **[#79](https://github.com/Allotment-Technology-Ltd/restormel-keys/pull/79)** merged to **`main`**, aligning npm tarballs with **`main`** (CI: Next **`^14.2.25`**, **`examples/testing-basic-web`** canonical **`/about`**, **`serve -l 4173 .`**). Tag **`testing-v0.1.7`**.
+
 ## Repo (2026-04-08)
 
 **Restormel Testing — LLM budgets + usage:** Suite `llm_budget` / `llmBudget` (`max_rounds`, `max_wall_clock_ms`, `max_completions`) and optional per-goal `llm_budget` (`max_rounds` overrides `ac_sequence` per-criterion rounds; `max_completions` per goal). Runner enforces caps before each chat completion, aggregates OpenAI-style `usage` into `RunRecord.costEstimate` when providers return it, and fills `suiteExecution` counters; `max_wall_clock_ms` on goals is a config error. JSON Schema: `llmBudget` / `llmBudgetGoal` under `packages/testing-config/schema/restormel-testing-config.v1.schema.json`.
