@@ -81,3 +81,13 @@ jobs:
           else
             pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
           fi
+          # Scoped packages can still land as private under some org defaults; force public visibility.
+          if [ "${PLATFORM_PUBLISH_DRY_RUN}" != "true" ]; then
+            if [ "${SCOPE}" = "all" ]; then
+              npm access set status=public @restormel/contracts
+              npm access set status=public @restormel/observability
+              npm access set status=public @restormel/graph-reasoning-extensions
+            else
+              npm access set status=public @restormel/observability
+            fi
+          fi
