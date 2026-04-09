@@ -1,8 +1,10 @@
 # `@restormel/ui-graph-svelte`
 
+**Public docs (integrators):** [restormel.dev/graph/docs](https://restormel.dev/graph/docs) — canonical SvelteKit guide: [Integrate Restormel Graph in a SvelteKit app](https://restormel.dev/graph/docs/integration/sveltekit).
+
 Svelte 5 implementation of the Restormel Graph canvas (`GraphCanvas`, optional `NodeDetail`), aligned with **Contract v0** in `@restormel/graph-core` (`viewModel.ts`). Ported from the SOPHIA app for modular reuse.
 
-**SOPHIA / SvelteKit consumers:** follow **[docs/restormel-graph-sophia-consumer.md](../../docs/restormel-graph-sophia-consumer.md)** (npm versions, `pnpm.overrides` + tarballs, peers, Vite `ssr.noExternal`, CSS tokens).
+**SOPHIA / maintainer depth:** **[docs/restormel-graph-sophia-consumer.md](../../docs/restormel-graph-sophia-consumer.md)** (npm versions, `pnpm.overrides` + tarballs, peers, Vite `ssr.noExternal` for **both** packages, CSS tokens).
 
 ## Dependencies
 

@@ -134,6 +134,8 @@ export default defineConfig({
 });
 ```
 
+**Both** `@restormel/ui-graph-svelte` **and** `@restormel/graph-core` belong in `ssr.noExternal`. Omitting **`graph-core`** breaks SSR when the server bundle resolves `graph-core` subpaths (via the UI package or your app)—harmonise with the public guide: [Integrate Restormel Graph in a SvelteKit app](https://restormel.dev/graph/docs/integration/sveltekit).
+
 If you see dev-time prebundle errors for `graph-core` only, try extending **`optimizeDeps.include`** with `@restormel/graph-core/layout` (rare).
 
 **Validation:** restormel-keys runs **`bash scripts/smoke-graph-packages-consumer.sh`** in CI — tarball install + `pnpm run check` + `pnpm run build` on a copy of **restormel-graph-demo** outside the workspace graph.

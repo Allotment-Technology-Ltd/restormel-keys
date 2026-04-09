@@ -1,0 +1,39 @@
+{
+  "name": "@restormel/observability",
+  "version": "0.1.0",
+  "description": "Restormel observability helpers for reasoning events, trace normalization, and SSE types.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/observability"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./fixtures": { "types": "./dist/fixtures.d.ts", "import": "./dist/fixtures.js" },
+    "./sse": { "types": "./dist/sse.d.ts", "import": "./dist/sse.js" },
+    "./trace": { "types": "./dist/trace.d.ts", "import": "./dist/trace.js" }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

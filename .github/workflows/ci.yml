@@ -158,6 +158,15 @@ jobs:
       - name: Restormel Graph (tests + tarball consumer smoke)
         run: bash scripts/smoke-graph-packages-consumer.sh
 
+      - name: Restormel platform (contracts, observability, graph-reasoning-extensions)
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/contracts test
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/observability test
+          pnpm --filter @restormel/graph-reasoning-extensions run build
+          pnpm --filter @restormel/graph-reasoning-extensions test
+
       # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
       - name: Validate testing-github-action action.yml (YAML)
         run: bash scripts/validate-testing-github-action-yml.sh
