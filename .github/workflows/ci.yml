@@ -143,7 +143,14 @@ jobs:
           pnpm --filter @restormel/keys-elements run build
           pnpm --filter @restormel/keys-react run build
           pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
           pnpm --filter @restormel/mcp run build
+          pnpm --filter @restormel/mcp run test
       - name: Dashboard check (svelte-check)
         run: pnpm --filter dashboard run check
       - name: Dashboard build
@@ -152,6 +159,8 @@ jobs:
         run: node scripts/check-testing-dashboard-doc-routes.mjs
       - name: Graph dashboard docs routes (link graph)
         run: node scripts/check-graph-dashboard-doc-routes.mjs
+      - name: Zuplo gateway OpenAPI (routes.oas.json)
+        run: node zuplo-gateway/scripts/check-openapi.mjs
       - name: Dashboard tests
         run: pnpm --filter dashboard run test
 

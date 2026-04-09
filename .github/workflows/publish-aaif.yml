@@ -19,6 +19,18 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys (aaif peer)
+        run: pnpm --filter @restormel/keys run build
+      - name: Build deps for @restormel/mcp (aaif devDependency types)
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
+      - name: Build @restormel/mcp
+        run: pnpm --filter @restormel/mcp run build
       - name: Test @restormel/aaif
         run: pnpm --filter @restormel/aaif run test
       - name: Build @restormel/aaif

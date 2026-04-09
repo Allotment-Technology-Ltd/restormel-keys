@@ -1,6 +1,6 @@
 {
   "name": "@restormel/mcp",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "description": "MCP tool definitions for Restormel — models, providers, cost, routing, entitlements, and docs.",
   "keywords": [
     "mcp",
@@ -48,21 +48,27 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "@restormel/keys": ">=0.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@restormel/contracts": "workspace:*",
     "@restormel/keys": "workspace:*",
+    "@restormel/observability": "workspace:*",
+    "@restormel/state": "workspace:*",
+    "@restormel/testing-config": "workspace:*",
     "zod": "^4.0.0"
   }
 }

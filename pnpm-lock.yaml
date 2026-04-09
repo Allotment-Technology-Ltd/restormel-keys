@@ -51,6 +51,9 @@ importers:
       '@restormel/keys-tokens':
         specifier: workspace:*
         version: link:../../packages/keys-tokens
+      '@restormel/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@sveltejs/adapter-vercel':
         specifier: ^6.3.3
         version: 6.3.3(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(rollup@4.60.1)
@@ -262,6 +265,9 @@ importers:
         specifier: '>=0.1.0'
         version: 0.2.5
     devDependencies:
+      '@restormel/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -426,9 +432,21 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.3.6)
+      '@restormel/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@restormel/keys':
         specifier: workspace:*
         version: link:../core
+      '@restormel/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@restormel/state':
+        specifier: workspace:*
+        version: link:../state
+      '@restormel/testing-config':
+        specifier: workspace:*
+        version: link:../testing-config
       zod:
         specifier: ^4.0.0
         version: 4.3.6
@@ -439,6 +457,9 @@ importers:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/observability:
     dependencies:

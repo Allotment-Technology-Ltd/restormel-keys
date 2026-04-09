@@ -30,3 +30,11 @@ Deep dive (tables, checklist, verification): **Documentation** on restormel.dev 
 - MCP tool output must not include raw secrets; prefer masked identifiers and fingerprints for key metadata.
 
 Product baseline: [Security baseline](https://restormel.dev/keys/docs/security-baseline) (in-app docs).
+
+## Suite read tools (Horizon Phase 1) — HTTP mirror
+
+**stdio (default):** `@restormel/mcp` registers **`docs.canonical_resolve`**, **`testing.config_validate`**, **`observability.trace_summarize`**, **`graph.fixture_validate`**, **`state.memory_preview`** — no network for those tools.
+
+**Zuplo / consumer key:** The gateway exposes **`POST /api/suite/invoke`** with the same policy stack as other forwarded **`/api/*`** routes (consumer key → injected backend Gateway key). Request body: **`{ "tool": "<name>", "payload": { ... } }`** — see repo **`docs/integrations/restormel-suite-tool-envelope.schema.json`**. The dashboard handler is **`POST /keys/dashboard/api/suite/invoke`**.
+
+Do **not** send raw provider secrets or full trace dumps to untrusted logs; treat payloads like MCP stdio arguments.

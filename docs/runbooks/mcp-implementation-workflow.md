@@ -13,6 +13,7 @@ This runbook focuses on wiring the MCP server/tools so your agent workflow can:
 - IDE/agent tool calling: agent needs to call Restormel tools at runtime.
 - Debugging and pre-flight validation inside agent workflows.
 - Automated “select model -> estimate cost -> explain routing -> proceed” flows.
+- **Suite-wide read helpers (Horizon Phase 1):** validate **restormel-testing** YAML/JSON offline (`testing.config_validate`), summarize **RunTrace** JSON (`observability.trace_summarize`), structural **GraphData** checks (`graph.fixture_validate`), **Restormel State** working-memory preview without echoing cell text (`state.memory_preview`), and resolve **canonical doc topics** to repo paths / URLs (`docs.canonical_resolve`). Same behaviour is available over HTTP as **`POST {dashboard}/keys/dashboard/api/suite/invoke`** with a **Zuplo consumer key** on **`POST /api/suite/invoke`** (see [restormel-suite-tool-envelope.schema.json](../integrations/restormel-suite-tool-envelope.schema.json)).
 
 ## Prerequisites
 1. Dependencies installed:
@@ -70,6 +71,11 @@ Set **`RESTORMEL_SERVER_TOKEN`** to the **same value** as the Gateway key unless
 ### C) Readiness, catalog, BYOK templates, simulation
 
 No separate cloud URL: `readiness.check`, `catalog.sync_check`, `catalog.deprecation_alerts`, `policy.simulate`, `byok.*`, and `integration.bootstrap_nextjs` run **locally** in the MCP process (provider env for validation, generated contracts only).
+
+### C2) Suite read tools (stdio or HTTP)
+
+- **stdio:** `docs.canonical_resolve`, `testing.config_validate`, `observability.trace_summarize`, `graph.fixture_validate`, `state.memory_preview` — no extra env vars; do not log pasted config or trace bodies.
+- **HTTP (Zuplo → dashboard):** `POST /api/suite/invoke` on the gateway with body `{ "tool": "<name>", "payload": { ... } }` — same auth stack as other forwarded **`/api/*`** routes (consumer key → injected backend Gateway key). Dashboard path: `/keys/dashboard/api/suite/invoke`.
 
 ### D) Projects, model index, environments, Gateway keys, and Restormel Testing (agents)
 

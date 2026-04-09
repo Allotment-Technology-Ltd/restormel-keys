@@ -30,7 +30,7 @@ Headless resolution and doctor checks need only:
 |---|---|---|
 | `@restormel/keys` | `Published on npm` | Core: resolve, providers, config consumption |
 | `@restormel/aaif` | `Check npm view` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts |
-| `@restormel/mcp` | `Check npm view` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime) |
+| `@restormel/mcp` | `Check npm view` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime). **0.2+** adds offline suite read tools (Testing config validate, trace summarize, graph/state fixtures, canonical doc map); HTTP mirror: dashboard **`POST /keys/dashboard/api/suite/invoke`** (Zuplo **`POST /api/suite/invoke`**). |
 | `@restormel/doctor` | `Published on npm` | Local setup check (no UI packages required) |
 
 Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) **or** manually (see [Phase 1 walkthrough](../walkthrough/03-phase-1-install.md#step-13--manual-restormelconfigjson-no-cli)).

@@ -3,7 +3,7 @@
   "info": {
     "title": "Restormel Keys API",
     "version": "1.0.0",
-    "description": "Zuplo Gateway API (control-plane CRUD) for managing projects and Gateway keys. Call through this Zuplo gateway with a Zuplo consumer key (zpka_...). Runtime operations (Resolve, policies/evaluate, routes/steps) are Dashboard API endpoints and are NOT served through this gateway."
+    "description": "Zuplo Gateway API (control-plane CRUD) for managing projects and Gateway keys. Call through this Zuplo gateway with a Zuplo consumer key (zpka_...). Runtime operations (Resolve, policies/evaluate, routes/steps) are Dashboard API endpoints and are NOT served through this gateway. POST /api/suite/invoke forwards read-only suite tool execution to the dashboard (same semantics as @restormel/mcp Horizon tools)."
   },
   "servers": [
     { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
@@ -44,6 +44,42 @@
           "policies": {
             "inbound": []
           }
+        }
+      }
+    },
+    "/api/suite/invoke": {
+      "post": {
+        "summary": "Invoke read-only suite tool (HTTP mirror of MCP)",
+        "description": "Runs a Horizon Phase 1 suite read tool on the dashboard origin (docs canonical resolve, testing config validate, trace summarize, graph fixture validate, state memory preview). Request body: { tool, payload? }. See repo docs/integrations/restormel-suite-tool-envelope.schema.json.",
+        "operationId": "postSuiteInvoke",
+        "tags": ["Suite"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SuiteToolRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result JSON (structuredContent-equivalent; may include ok:false and code for tool-level errors)",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "400": {
+            "description": "Invalid envelope or missing required payload fields",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
         }
       }
     },
@@ -281,6 +317,26 @@
       }
     },
     "schemas": {
+      "SuiteToolRequest": {
+        "type": "object",
+        "required": ["tool"],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": [
+              "docs.canonical_resolve",
+              "testing.config_validate",
+              "observability.trace_summarize",
+              "graph.fixture_validate",
+              "state.memory_preview"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "description": "Tool-specific arguments (e.g. topic, content+format, traceJson, graphJson, eventsJson)."
+          }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {

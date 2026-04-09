@@ -1,6 +1,6 @@
 {
   "name": "@restormel/aaif",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "Agent-to-Agent Interaction Format — structured request/response contract for predictable AI interactions.",
   "keywords": [
     "aaif",
@@ -44,9 +44,16 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "@restormel/keys": ">=0.1.0"
+    "@restormel/keys": ">=0.1.0",
+    "@restormel/mcp": ">=0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@restormel/mcp": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@restormel/mcp": "workspace:*",
     "@types/node": "^25.5.0",
     "typescript": "^5.4.0",
     "vitest": "^4.1.0"

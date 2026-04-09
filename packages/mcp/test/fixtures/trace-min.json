@@ -1,0 +1,5 @@
+{
+  "source": "sse",
+  "events": [{ "type": "pass_start", "pass": "analysis" }],
+  "snapshots": []
+}

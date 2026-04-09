@@ -1,6 +1,6 @@
 # @restormel/mcp
 
-**Model Context Protocol** tools for Restormel Keys and Restormel Testing: model catalog, cost estimates, routing explain, provider validation, entitlements, **projects + model bindings + environments + Gateway keys (read/write)**, **Testing hub snapshot + journey + CI env template + resolve probe**, control-plane route/policy CRUD, integration bootstrap, BYOK contracts, simulation, and offline docs search.
+**Model Context Protocol** tools for Restormel Keys and Restormel Testing: model catalog, cost estimates, routing explain, provider validation, entitlements, **projects + model bindings + environments + Gateway keys (read/write)**, **Testing hub snapshot + journey + CI env template + resolve probe**, control-plane route/policy CRUD, integration bootstrap, BYOK contracts, simulation, offline docs search, and **Horizon suite read tools** (`docs.canonical_resolve`, `testing.config_validate`, `observability.trace_summarize`, `graph.fixture_validate`, `state.memory_preview` — same semantics as **`POST …/api/suite/invoke`** on the dashboard when using a Zuplo consumer key; see [restormel-suite-tool-envelope.schema.json](../../docs/integrations/restormel-suite-tool-envelope.schema.json)).
 
 ## Install
 
@@ -93,6 +93,10 @@ For clients that only need JSON Schema metadata:
 ```ts
 import { ALL_TOOLS } from "@restormel/mcp";
 ```
+
+## Suite inventory and roadmap
+
+Maintainer table of **implemented tools** (read vs act) and **desired** Testing / Graph / State / observability coverage: [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](../../docs/restormel/HORIZON-PLATFORM-PROGRAMME.md) (section 3).
 
 ## Security
 

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://restormel.dev/schemas/restormel-suite-tool-request.json",
+  "title": "RestormelSuiteToolRequest",
+  "description": "HTTP envelope for Horizon Phase 1 suite read tools. POST to dashboard /keys/dashboard/api/suite/invoke or Zuplo /api/suite/invoke with consumer key auth.",
+  "type": "object",
+  "required": ["tool"],
+  "additionalProperties": false,
+  "properties": {
+    "tool": {
+      "type": "string",
+      "enum": [
+        "docs.canonical_resolve",
+        "testing.config_validate",
+        "observability.trace_summarize",
+        "graph.fixture_validate",
+        "state.memory_preview"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Per-tool arguments. Omit or use {} when no fields are required.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "docsCanonicalResolve": {
+      "type": "object",
+      "required": ["topic"],
+      "properties": { "topic": { "type": "string" } }
+    },
+    "testingConfigValidate": {
+      "type": "object",
+      "required": ["content", "format"],
+      "properties": {
+        "content": { "type": "string" },
+        "format": { "type": "string", "enum": ["yaml", "json"] }
+      }
+    },
+    "observabilityTraceSummarize": {
+      "type": "object",
+      "required": ["traceJson"],
+      "properties": { "traceJson": { "type": "string" } }
+    },
+    "graphFixtureValidate": {
+      "type": "object",
+      "required": ["graphJson"],
+      "properties": { "graphJson": { "type": "string" } }
+    },
+    "stateMemoryPreview": {
+      "type": "object",
+      "required": ["eventsJson"],
+      "properties": {
+        "eventsJson": { "type": "string" },
+        "maxCellsPerScope": { "type": "integer", "minimum": 1 },
+        "maxApproxTokensPerScope": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

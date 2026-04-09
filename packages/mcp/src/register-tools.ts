@@ -15,6 +15,7 @@ import { searchDocs } from "./docs-index.js";
 import { credentialEnvHint, resolveProviderCredential } from "./provider-env.js";
 import { getMcpKeysConfig } from "./mcp-config.js";
 import { getJourneyPhases, testingCiEnvTemplateLines } from "./journey-data.js";
+import { registerHorizonSuiteTools } from "./register-suite-tools.js";
 
 function findProviderForModel(modelId: string, providers: ProviderDefinition[]): ProviderDefinition | undefined {
   return providers.find((p) => p.models.includes(modelId));
@@ -2022,4 +2023,6 @@ ${includeAppRouter ? "// Use this only in server actions / route handlers. Never
       };
     },
   );
+
+  registerHorizonSuiteTools(server);
 }

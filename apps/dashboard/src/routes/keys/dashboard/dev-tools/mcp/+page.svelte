@@ -1,5 +1,41 @@
 <script lang="ts">
   import EmptyState from "$lib/components/EmptyState.svelte";
+
+  type SuiteRow = { pillar: string; name: string; desc: string };
+  const suiteTools: SuiteRow[] = [
+    {
+      pillar: "Docs",
+      name: "docs.canonical_resolve",
+      desc: "Map a canonical topic id to repo path and public URL (offline).",
+    },
+    {
+      pillar: "Testing",
+      name: "testing.config_validate",
+      desc: "Validate restormel-testing YAML/JSON config offline (size-capped).",
+    },
+    {
+      pillar: "Observability",
+      name: "observability.trace_summarize",
+      desc: "Normalize RunTrace JSON and return counts + short summary.",
+    },
+    {
+      pillar: "Graph",
+      name: "graph.fixture_validate",
+      desc: "Structural GraphData check (nodes/edges/ghost arrays).",
+    },
+    {
+      pillar: "State",
+      name: "state.memory_preview",
+      desc: "Project StateEvent stream to working memory; text lengths only.",
+    },
+  ];
+
+  let suiteFilter = "";
+  $: suiteFiltered = suiteTools.filter(
+    (t) =>
+      !suiteFilter.trim() ||
+      `${t.pillar} ${t.name} ${t.desc}`.toLowerCase().includes(suiteFilter.trim().toLowerCase()),
+  );
 </script>
 
 <h1 class="page-title">MCP</h1>
@@ -57,6 +93,52 @@
   >
     <a href="/keys/docs/integrations/mcp" class="btn-link">MCP setup guide</a>
   </EmptyState>
+</section>
+
+<section class="section" aria-labelledby="suite-heading">
+  <h2 id="suite-heading" class="section-title">Suite tools (Horizon)</h2>
+  <p class="page-desc">
+    Cross-product read helpers (stdio MCP and HTTP). Same names as <code class="tool-name">@restormel/mcp</code> 0.2+.
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/THEME-L-IA-MATRIX.md"
+      class="btn-link">Theme L IA matrix</a
+    >
+    ·
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/THEME-L-MCP-PARITY.md"
+      class="btn-link">MCP parity table</a
+    >
+    · HTTP envelope:
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/integrations/restormel-suite-tool-envelope.schema.json"
+      class="btn-link">JSON Schema</a
+    >
+    · Zuplo:
+    <code class="tool-name">POST /api/suite/invoke</code>
+    → dashboard
+    <code class="tool-name">POST …/keys/dashboard/api/suite/invoke</code>
+  </p>
+  <label class="suite-search-label" for="suite-tool-filter">Filter suite tools</label>
+  <input
+    id="suite-tool-filter"
+    class="suite-search"
+    type="search"
+    autocomplete="off"
+    placeholder="Search by pillar, tool name, or description"
+    bind:value={suiteFilter}
+  />
+  <ul class="tool-list suite-tool-list" aria-label="Filtered suite MCP tools">
+    {#each suiteFiltered as t (t.name)}
+      <li class="suite-row" data-suite-tool={t.name}>
+        <span class="tool-pillar">{t.pillar}</span>
+        <code class="tool-name">{t.name}</code>
+        <span class="tool-desc">{t.desc}</span>
+      </li>
+    {/each}
+  </ul>
+  {#if suiteFiltered.length === 0}
+    <p class="page-desc" role="status">No suite tools match this filter.</p>
+  {/if}
 </section>
 
 <section class="section" aria-labelledby="usecase-heading">
@@ -228,5 +310,34 @@
   }
   .btn-link:hover {
     text-decoration: underline;
+  }
+  .suite-search-label {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--rm-text);
+    margin-bottom: var(--space-2);
+  }
+  .suite-search {
+    width: 100%;
+    max-width: 24rem;
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    color: var(--rm-text);
+    margin-bottom: var(--space-4);
+  }
+  .suite-tool-list li.suite-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .tool-pillar {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--rm-sage);
+    min-width: 6.5rem;
+    flex-shrink: 0;
   }
 </style>

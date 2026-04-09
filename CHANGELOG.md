@@ -2,7 +2,17 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10)
+
+**npm (Horizon suite):** Publish **`@restormel/mcp@0.2.0`** before **`@restormel/aaif@0.0.8`** (aaif optional peer **`@restormel/mcp@>=0.2.0`**). Registry **`@restormel/aaif@0.0.7`** predates the MCP parity re-export; **`0.0.8`** is the first publishable version containing it. Use GitHub Actions **Publish mcp** then **Publish aaif** (`workflow_dispatch`), or the **`keys-v*`** train on `main`. **Publish mcp** now runs **`pnpm --filter @restormel/mcp test`** before publish.
+
+**Horizon — draft Theme M (Restormel Support Agent):** [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](docs/restormel/HORIZON-PLATFORM-PROGRAMME.md) adds **§5** — cross-suite **support / guidance agent** bet (dogfood on `apps/dashboard`, optional platform-market packaging), relationships to Themes **L**, **I**, and **H**, and owner-doc rule. [docs/restormel/THEME-L-IA-MATRIX.md](docs/restormel/THEME-L-IA-MATRIX.md) adds a matrix row. [STATUS.md](STATUS.md) and [AGENTS.md](AGENTS.md) mention Theme M in the horizon programme line.
+
 ## Repo (2026-04-09)
+
+**`@restormel/mcp@0.2.0` (Horizon Phase 1 suite):** Five read-only suite tools (`docs.canonical_resolve`, `testing.config_validate`, `observability.trace_summarize`, `graph.fixture_validate`, `state.memory_preview`), Vitest + fixtures, Node **>=20**, exports `RestormelSuiteToolName` / `CANONICAL_DOC_TOPICS` / shared `suite*` helpers. Dashboard **`POST /keys/dashboard/api/suite/invoke`** and Zuplo **`POST /api/suite/invoke`** mirror the same logic. JSON Schema: [docs/integrations/restormel-suite-tool-envelope.schema.json](docs/integrations/restormel-suite-tool-envelope.schema.json). Runbooks: [docs/runbooks/mcp-implementation-workflow.md](docs/runbooks/mcp-implementation-workflow.md), [docs/runbooks/mcp-suite-troubleshooting.md](docs/runbooks/mcp-suite-troubleshooting.md). Theme L parity: [docs/restormel/THEME-L-MCP-PARITY.md](docs/restormel/THEME-L-MCP-PARITY.md). Internal checklist: [docs/restormel/MCP-COMPETITIVE-CHECKLIST.md](docs/restormel/MCP-COMPETITIVE-CHECKLIST.md). Zuplo portal: [zuplo-gateway/docs/pages/integrations-mcp.md](zuplo-gateway/docs/pages/integrations-mcp.md). **`@restormel/aaif@0.0.8`:** optional peer **`@restormel/mcp`**, README “Parity with MCP”, re-export **`RestormelSuiteToolName`** (publish **`0.0.8`**; **`0.0.7`** on npm predates this export).
+
+**Horizon platform programme (docs):** Canonical maintainer narrative [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](docs/restormel/HORIZON-PLATFORM-PROGRAMME.md) — capability shortlist (Themes A–J), Theme L IA and `apps/dashboard` shell rules, full `@restormel/mcp` tool inventory (read vs act) plus desired suite-wide backlog, and canonical source boundaries. Linked from [STATUS.md](STATUS.md), [AGENTS.md](AGENTS.md), [docs/documentation-strategy.md](docs/documentation-strategy.md), [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md), and [docs/restormel/phase1-restormel-engineering-spec.md](docs/restormel/phase1-restormel-engineering-spec.md).
 
 **`@restormel/state@0.2.0` (breaking):** Stoa-specific helpers (**`createStoaTurnDigestEvents`**, **`createStoaHistorySummarizationEvent`**, **`createStoaScopeClearEvent`**) removed from the npm package; they are SOPHIA-only. Copy the reference module from [docs/restormel/state-sophia-integration.md](docs/restormel/state-sophia-integration.md) into SOPHIA. See [packages/state/CHANGELOG.md](packages/state/CHANGELOG.md).
 

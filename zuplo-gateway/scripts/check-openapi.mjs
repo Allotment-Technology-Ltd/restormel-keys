@@ -4,6 +4,7 @@ const ROUTES_PATH = new URL("../config/routes.oas.json", import.meta.url);
 
 const REQUIRED_PATHS = [
   "/api/health",
+  "/api/suite/invoke",
   "/api/projects",
   "/api/projects/{id}",
   "/api/projects/{id}/keys",
@@ -47,10 +48,13 @@ for (const p of REQUIRED_PATHS) {
   const pathItem = paths[p];
   for (const method of ["get", "post", "patch", "delete"]) {
     if (!pathItem?.[method]) continue;
-    const zr = pathItem[method]["x-zuplo-route"];
+    const op = pathItem[method];
+    const zr = op["x-zuplo-route"];
     if (!zr?.handler?.export || !zr?.handler?.module) fail(`Missing x-zuplo-route handler for ${method.toUpperCase()} ${p}`);
     const inbound = zr?.policies?.inbound;
-    if (!Array.isArray(inbound) || inbound.length === 0) fail(`Missing inbound policies for ${method.toUpperCase()} ${p}`);
+    const publicOp = Array.isArray(op.security) && op.security.length === 0;
+    if (!Array.isArray(inbound)) fail(`Missing inbound policies array for ${method.toUpperCase()} ${p}`);
+    if (!publicOp && inbound.length === 0) fail(`Missing inbound policies for ${method.toUpperCase()} ${p}`);
   }
 }
 

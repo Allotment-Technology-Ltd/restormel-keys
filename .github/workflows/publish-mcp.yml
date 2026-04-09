@@ -21,6 +21,16 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build @restormel/keys
         run: pnpm --filter @restormel/keys run build
+      - name: Build deps for @restormel/mcp tests
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
+      - name: Test @restormel/mcp
+        run: pnpm --filter @restormel/mcp run test
       - name: Build @restormel/mcp
         run: pnpm --filter @restormel/mcp run build
       - name: Configure npm auth

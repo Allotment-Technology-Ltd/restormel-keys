@@ -1,5 +1,9 @@
 export type { McpToolSchema } from "./tools.js";
 
+export type { RestormelSuiteToolName } from "./suite-tool-names.js";
+export { RESTORMEL_SUITE_TOOL_NAMES } from "./suite-tool-names.js";
+export { CANONICAL_DOC_TOPICS } from "./canonical-docs.js";
+
 export {
   modelsListTool,
   providersValidateTool,
@@ -34,7 +38,21 @@ export {
   catalogSyncCheckTool,
   catalogDeprecationAlertsTool,
   readinessCheckTool,
+  docsCanonicalResolveTool,
+  testingConfigValidateTool,
+  observabilityTraceSummarizeTool,
+  graphFixtureValidateTool,
+  stateMemoryPreviewTool,
   ALL_TOOLS,
 } from "./tools.js";
 
 export { createRestormelMcpServer, startStdioRestormelMcpServer } from "./create-server.js";
+
+/** Shared by HTTP suite invoke (`/api/suite/invoke`) and stdio MCP tools. */
+export {
+  suiteMemoryPreview,
+  suiteResolveCanonical,
+  suiteSummarizeTrace,
+  suiteValidateGraphFixture,
+  suiteValidateTestingConfig,
+} from "./suite-tools-logic.js";

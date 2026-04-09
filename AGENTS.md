@@ -25,7 +25,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 - Tokens publish: tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml).
 - Testing packages publish: tag **`testing-v*`** or workflow dispatch → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
 - Graph packages publish: tag **`graph-v*`** → [.github/workflows/publish-graph.yml](.github/workflows/publish-graph.yml). SOPHIA / SvelteKit consumer runbook: [docs/restormel-graph-sophia-consumer.md](docs/restormel-graph-sophia-consumer.md).
-- Platform packages publish: tag **`platform-v*`** → [.github/workflows/publish-restormel-platform.yml](.github/workflows/publish-restormel-platform.yml) (includes **`@restormel/context-packs`** — Phase 2 context packing: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](docs/restormel/PHASE2-EXTRACTION-STATUS.md); **`@restormel/state`** — Restormel State: [docs/restormel/RESTORMEL-STATE.md](docs/restormel/RESTORMEL-STATE.md)).
+- Platform packages publish: tag **`platform-v*`** → [.github/workflows/publish-restormel-platform.yml](.github/workflows/publish-restormel-platform.yml) (includes **`@restormel/context-packs`** — Phase 2 context packing: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](docs/restormel/PHASE2-EXTRACTION-STATUS.md); **`@restormel/state`** — Restormel State: [docs/restormel/RESTORMEL-STATE.md](docs/restormel/RESTORMEL-STATE.md)). **Horizon programme** (capability themes A–J, Theme L IA, draft Theme M Support Agent, MCP inventory): [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](docs/restormel/HORIZON-PLATFORM-PROGRAMME.md).
 
 ## Cursor skills and rules
 

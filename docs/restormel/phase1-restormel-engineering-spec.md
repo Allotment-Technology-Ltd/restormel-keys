@@ -4,7 +4,7 @@
 
 **Status:** Canonical for **this repository**. If SOPHIA adds `docs/restormel/phase1-restormel-engineering-spec.md`, treat it as the **programme** source of truth for stakeholder wording; **merge or reconcile** acceptance IDs and links here so agents working in `restormel-keys` do not drift.
 
-**Related:** Agent instructions (verbatim prompt + comms snippet) live in **[phase1-agent-prompt-restormel-engineering.md](./phase1-agent-prompt-restormel-engineering.md)**.
+**Related:** Agent instructions (verbatim prompt + comms snippet) live in **[phase1-agent-prompt-restormel-engineering.md](./phase1-agent-prompt-restormel-engineering.md)**. Suite-wide horizon themes (A–J), Theme L IA, and MCP inventory: **[HORIZON-PLATFORM-PROGRAMME.md](./HORIZON-PLATFORM-PROGRAMME.md)** (complements this Phase 1 package scope).
 
 ---
 

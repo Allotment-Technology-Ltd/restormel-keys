@@ -1,0 +1,12 @@
+environments:
+  a:
+    base_url: https://a.test
+suites:
+  - id: s
+    environment: a
+    goals:
+      - id: g
+        type: browser
+        description: d
+        success_criteria:
+          url_matches: "/"

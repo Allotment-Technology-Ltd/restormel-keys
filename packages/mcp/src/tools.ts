@@ -634,6 +634,161 @@ export const readinessCheckTool: McpToolSchema = {
   },
 };
 
+export const docsCanonicalResolveTool: McpToolSchema = {
+  name: "docs.canonical_resolve",
+  description:
+    "Resolve a canonical programme doc topic to repo path and optional public URL. Read-only; no network.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      topic: { type: "string", description: "Canonical doc topic id (see @restormel/mcp CANONICAL_DOC_TOPICS)." },
+    },
+    required: ["topic"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      code: { type: "string" },
+      message: { type: "string" },
+      topic: { type: "string" },
+      title: { type: "string" },
+      repoPath: { type: "string" },
+      publicUrl: { type: "string" },
+    },
+  },
+};
+
+export const testingConfigValidateTool: McpToolSchema = {
+  name: "testing.config_validate",
+  description:
+    "Validate restormel-testing YAML/JSON config offline. Input is string only—do not log secrets. Max ~512k chars.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      content: { type: "string", description: "YAML or JSON document string." },
+      format: { type: "string", enum: ["yaml", "json"] },
+    },
+    required: ["content", "format"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      code: { type: "string" },
+      message: { type: "string" },
+      valid: { type: "boolean" },
+      errors: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            path: { type: "string" },
+            code: { type: "string" },
+            message: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const observabilityTraceSummarizeTool: McpToolSchema = {
+  name: "observability.trace_summarize",
+  description:
+    "Parse RunTrace JSON, normalize via observability helpers, return summary and counts. Read-only; max ~2M chars.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      traceJson: { type: "string", description: "JSON string matching RunTraceSchema." },
+    },
+    required: ["traceJson"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      code: { type: "string" },
+      message: { type: "string" },
+      summary: { type: "string" },
+      traceId: { type: "string" },
+      eventCount: { type: "number" },
+      spanCount: { type: "number" },
+      errorEventCount: { type: "number" },
+    },
+  },
+};
+
+export const graphFixtureValidateTool: McpToolSchema = {
+  name: "graph.fixture_validate",
+  description:
+    "Validate minimal GraphData JSON (Contract v0): nodes, edges, ghostNodes, ghostEdges arrays. Structural only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      graphJson: { type: "string", description: "JSON string of GraphData." },
+    },
+    required: ["graphJson"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      code: { type: "string" },
+      message: { type: "string" },
+      nodeCount: { type: "number" },
+      edgeCount: { type: "number" },
+      ghostNodeCount: { type: "number" },
+      ghostEdgeCount: { type: "number" },
+    },
+  },
+};
+
+export const stateMemoryPreviewTool: McpToolSchema = {
+  name: "state.memory_preview",
+  description:
+    "Project Restormel State events into working memory; returns counts and cell metadata with text lengths only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      eventsJson: { type: "string", description: "JSON array of StateEvent objects." },
+      maxCellsPerScope: { type: "integer", minimum: 1 },
+      maxApproxTokensPerScope: { type: "integer", minimum: 1 },
+    },
+    required: ["eventsJson"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+      code: { type: "string" },
+      message: { type: "string" },
+      last_sequence: { type: "number" },
+      applied_event_count: { type: "number" },
+      scope_ids: { type: "array", items: { type: "string" } },
+      scope_cell_counts: { type: "object", additionalProperties: { type: "number" } },
+      cells_preview: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            scope: { type: "string" },
+            id: { type: "string" },
+            approx_tokens: { type: "number" },
+            pinned: { type: "boolean" },
+            textLength: { type: "number" },
+          },
+        },
+      },
+    },
+  },
+};
+
 export const ALL_TOOLS: McpToolSchema[] = [
   modelsListTool,
   providersValidateTool,
@@ -668,4 +823,9 @@ export const ALL_TOOLS: McpToolSchema[] = [
   catalogSyncCheckTool,
   catalogDeprecationAlertsTool,
   readinessCheckTool,
+  docsCanonicalResolveTool,
+  testingConfigValidateTool,
+  observabilityTraceSummarizeTool,
+  graphFixtureValidateTool,
+  stateMemoryPreviewTool,
 ];
