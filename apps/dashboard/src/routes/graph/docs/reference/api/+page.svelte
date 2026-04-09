@@ -16,7 +16,8 @@
       <a href="{GITHUB_REPO_URL}/tree/main/packages/graph-core" rel="noopener noreferrer">graph-core</a>
       and
       <a href="{GITHUB_REPO_URL}/tree/main/packages/ui-graph-svelte" rel="noopener noreferrer">ui-graph-svelte</a>
-      on GitHub.
+      on GitHub. What is frozen as Contract v0 (vs out of scope) is summarized in
+      <a href="{base}/docs/reference/contract-v0-scope">Contract v0 scope</a>.
     </p>
 
     <h2>Core types (<code>@restormel/graph-core/viewModel</code>)</h2>
@@ -107,6 +108,10 @@
       <strong>published types</strong> and file an issue.
     </p>
 
-    <p><a href="{base}/docs/integration/sveltekit">← SvelteKit integration</a></p>
+    <p>
+      <a href="{base}/docs/integration/sveltekit">← SvelteKit integration</a> ·
+      <a href="{base}/docs/reference/accessibility">Accessibility &amp; input</a> ·
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a>
+    </p>
   </div>
 </DocArticle>

@@ -27,7 +27,7 @@ Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, z
 
 **Testing hub entry:** Prefer the **Testing hub** URL above in copy and automation. The marketing route `https://restormel.dev/testing/dashboard` **redirects signed-in users** to the Testing hub; anonymous users see a short stub with sign-in.
 
-**Restormel Graph (Svelte graph UI):** Product home `https://restormel.dev/graph`. Public docs live at `https://restormel.dev/graph/docs` with the **canonical integrator guide** at `https://restormel.dev/graph/docs/integration/sveltekit` (install → imports → Vite SSR → CSS → example → verify → migrate). npm packages publish on git tags `graph-v*`; treat the in-app guide as the versioned narrative alongside package changelogs.
+**Restormel Graph (Svelte graph UI):** Product home `https://restormel.dev/graph`. Public docs live at `https://restormel.dev/graph/docs` with the **canonical integrator guide** at `https://restormel.dev/graph/docs/integration/sveltekit` (install → imports → Vite SSR → CSS → example → verify → migrate). The same docs tree covers **Contract v0 scope**, **@restormel/graph-reasoning-extensions** (+ contracts handoff), **recipes**, **accessibility**, and **performance** under `/graph/docs/...`. npm canvas packages publish on git tags `graph-v*`; reasoning extensions publish on `platform-v*`; treat the in-app guides as the versioned narrative alongside package changelogs.
 
 ## 3. Agent-readability
 

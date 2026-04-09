@@ -27,21 +27,27 @@
     <h2>Decision hints</h2>
     <ul>
       <li>
-        <strong>Still need compare / lineage / projection in-app?</strong> Keep those modules; they should map
-        <em>into</em> <code>GraphData</code> rather than forking Contract v0 DTOs.
+        <strong>Compare / lineage / projection / evaluation?</strong> Prefer the published
+        <a href="{base}/docs/extensions/reasoning"><code>@restormel/graph-reasoning-extensions</code></a> package (plus
+        <code>@restormel/contracts</code>) and map results <em>into</em> <code>GraphData</code> — do not fork Contract v0
+        DTOs. Add internal packages only for org-specific logic on top.
       </li>
       <li>
-        <strong>Monorepo pattern:</strong> colocate reasoning-specific code in a <strong>dedicated workspace package</strong>
-        (for example an internal <code>@your-org/graph-reasoning-extensions</code>—similar in spirit to how larger apps split
-        “canvas from npm” vs “compare/lineage/projection”) that depends on <code>@restormel/graph-core</code> and your
-        contracts layer, then adapt into <code>GraphData</code> at the edge. Keeps the replace-custom-canvas story
-        copy-paste clear: npm canvas + one local extensions package, not a second forked <code>viewModel</code>.
+        <strong>Monorepo pattern:</strong> npm canvas + contracts-backed extensions + <strong>one adapter</strong> that
+        converts snapshots into <code>GraphData</code>. See
+        <a href="{base}/docs/reference/performance">Performance &amp; scale</a> if you need to cap graph size.
       </li>
       <li>
         <strong>Already deleted legacy graph code?</strong> Focus on adapter correctness and CSS parity; run the
         verification commands from the integration page.
       </li>
     </ul>
+
+    <h2>Performance</h2>
+    <p>
+      Large graphs: pre-filter or cluster in your adapter before calling <code>computeLayout</code> / <code>GraphCanvas</code>.
+      Details: <a href="{base}/docs/reference/performance">Performance &amp; scale</a>.
+    </p>
 
     <h2>Risk callouts</h2>
     <ul>

@@ -4,6 +4,8 @@
 
 **Phase 1 programme (broader extraction):** agent prompt + engineering spec (packages, acceptance pointers, §6 SOPHIA reintegration) — **[docs/restormel/phase1-agent-prompt-restormel-engineering.md](../phase1-agent-prompt-restormel-engineering.md)** and **[docs/restormel/phase1-restormel-engineering-spec.md](../phase1-restormel-engineering-spec.md)**.
 
+**Phase 2 (context packs):** **[docs/restormel/PHASE2-EXTRACTION-STATUS.md](../PHASE2-EXTRACTION-STATUS.md)** — `@restormel/context-packs` builds pass-specific text from a portable retrieval-shaped input (SOPHIA keeps `contextPackInputFromRetrieval` next to `engine.ts`).
+
 **Canonical implementation (this repo):**
 
 | Path | Role |
@@ -17,6 +19,7 @@
 | `packages/ui-graph-svelte/src/lib/NodeDetail.svelte` | Optional inline node detail |
 | `packages/ui-graph-svelte/src/lib/semanticStyles.ts` | `graphCanvasEdgeKey` + canvas semantic style types |
 | `apps/restormel-graph-demo/src/routes/dev/graph-portability/+page.svelte` | Portability proof: mock `GraphData` + `GraphCanvas` |
+| `packages/context-packs` | **`@restormel/context-packs`** — `buildPassSpecificContextPacks` from `ContextPackRetrievalInput` (Phase 2; no graph canvas) |
 
 **Reference in SOPHIA** (port source; do not depend at runtime from these packages):
 

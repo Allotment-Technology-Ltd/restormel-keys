@@ -22,6 +22,7 @@
     <ul class="graph-cta-row">
       <li><a class="btn btn-primary" href="{base}/docs/integration/sveltekit">Integrate in SvelteKit</a></li>
       <li><a class="btn btn-ghost" href="{base}/docs">Documentation</a></li>
+      <li><a class="btn btn-ghost" href="{base}/docs/extensions/reasoning">Reasoning extensions</a></li>
       <li>
         <a
           class="btn btn-ghost"

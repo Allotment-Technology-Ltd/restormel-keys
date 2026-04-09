@@ -21,13 +21,23 @@ export const docsNav: DocsNavSection[] = [
     items: [{ path: "/docs/integration/sveltekit", title: "SvelteKit integration" }],
   },
   {
+    label: "Extensions",
+    items: [{ path: "/docs/extensions/reasoning", title: "Reasoning extensions & contracts" }],
+  },
+  {
     label: "Guides",
-    items: [{ path: "/docs/guides/migration-from-custom-canvas", title: "Migrate from a custom canvas" }],
+    items: [
+      { path: "/docs/guides/migration-from-custom-canvas", title: "Migrate from a custom canvas" },
+      { path: "/docs/guides/recipes", title: "Recipes" },
+    ],
   },
   {
     label: "Reference",
     items: [
       { path: "/docs/reference/api", title: "API reference" },
+      { path: "/docs/reference/contract-v0-scope", title: "Contract v0 scope" },
+      { path: "/docs/reference/accessibility", title: "Accessibility & input" },
+      { path: "/docs/reference/performance", title: "Performance & scale" },
       { path: "/docs/reference/releases-and-support", title: "Releases & support" },
     ],
   },

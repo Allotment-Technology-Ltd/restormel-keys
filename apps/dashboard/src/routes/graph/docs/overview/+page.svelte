@@ -16,12 +16,14 @@
     </p>
     <p>
       It is <strong>not</strong> a general graph database, a knowledge-reasoning engine, or an OpenAPI-style HTTP product.
-      It is <strong>not</strong> a replacement for application-specific compare/lineage/projection modules—those stay in
-      your app or in separate extensions.
+      Compare, lineage, projection, evaluation, and related helpers ship in the separate published package
+      <a href="{base}/docs/extensions/reasoning"><code>@restormel/graph-reasoning-extensions</code></a> (with
+      <code>@restormel/contracts</code>) and should map <strong>into</strong> <code>GraphData</code> at your adapter boundary.
     </p>
     <p>
       Next: <a href="{base}/docs/how-it-fits-together">How it fits together</a> ·
-      <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> (canonical)
+      <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> (canonical) ·
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a>
     </p>
   </div>
 </DocArticle>

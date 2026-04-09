@@ -32,6 +32,12 @@ function toGraphData(snapshot: YourDomainSnapshot): GraphData {
         optional <code>NodeDetail</code>, semantic style helpers, and packaged component CSS. Depends on published
         graph-core.
       </li>
+      <li>
+        <strong>@restormel/graph-reasoning-extensions</strong> (optional) — compare, lineage, projection, evaluation, diff,
+        summary over <code>@restormel/contracts</code> snapshots. Depends on contracts + graph-core types; semver train
+        <code>platform-v*</code>, independent of <code>graph-v*</code>. See
+        <a href="{base}/docs/extensions/reasoning">Reasoning extensions &amp; contracts</a>.
+      </li>
     </ul>
     <h2>Integration seam (one sentence)</h2>
     <p>
@@ -43,7 +49,8 @@ function toGraphData(snapshot: YourDomainSnapshot): GraphData {
     <pre><code>{typeSnippet}</code></pre>
     <p>
       Back: <a href="{base}/docs/overview">Overview</a> · Forward:
-      <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a>
+      <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> ·
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a>
     </p>
   </div>
 </DocArticle>

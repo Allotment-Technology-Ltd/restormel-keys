@@ -18,6 +18,7 @@ npm view @restormel/ui-graph-svelte version 2>/dev/null || echo "not published o
 npm view @restormel/contracts version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/observability version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/graph-reasoning-extensions version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/context-packs version 2>/dev/null || echo "not published or name differs"
 ```
 
 ## Minimum path (Phases 1–4, any framework)
@@ -60,6 +61,7 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 | `@restormel/contracts` | `Check npm view` | Cross-boundary Zod schemas and types (API, trace, reasoning, graph API shapes — not Contract v0 canvas DTOs). |
 | `@restormel/observability` | `Check npm view` | Trace normalization, reasoning events, SSE-shaped types (depends on contracts). |
 | `@restormel/graph-reasoning-extensions` | `Check npm view` | Compare, lineage, projection, evaluation, summary, diff over graph snapshots (depends on **contracts** + **graph-core**). |
+| `@restormel/context-packs` | `Check npm view` | Pass-specific LLM context text from a portable retrieval-shaped payload (no **contracts** / DB; Phase 2). Status: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](../restormel/PHASE2-EXTRACTION-STATUS.md). |
 
 **Phase 1 programme:** [docs/restormel/phase1-restormel-engineering-spec.md](../restormel/phase1-restormel-engineering-spec.md).
 
@@ -85,8 +87,8 @@ If a package returns **404** from npm, use the **manual config** path and `@rest
 
 - **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
 - **Graph packages:** push git tag `graph-v*` (e.g. `graph-v0.1.0`) → workflow **Publish Graph packages** (`.github/workflows/publish-graph.yml`) publishes `@restormel/graph-core` then `@restormel/ui-graph-svelte`. **Pre-flight:** `bash scripts/smoke-graph-packages-consumer.sh` (also runs in CI).
-- **Platform packages (Phase 1):** push git tag `platform-v*` → workflow **Publish Restormel platform packages** (`.github/workflows/publish-restormel-platform.yml`) publishes `@restormel/contracts`, `@restormel/observability`, `@restormel/graph-reasoning-extensions` in that order. **Local:** `pnpm run build:platform-packages` and `pnpm run test:platform-packages`.
-- **Platform single-package (recovery):** same workflow → **Run workflow** → set **`package_scope`** to **`observability`** when you must republish only `@restormel/observability` without re-uploading the other platform packages (after a version bump in `packages/observability`).
+- **Platform packages (Phase 1 + context packs):** push git tag `platform-v*` → workflow **Publish Restormel platform packages** (`.github/workflows/publish-restormel-platform.yml`) publishes `@restormel/contracts`, `@restormel/context-packs`, `@restormel/observability`, `@restormel/graph-reasoning-extensions`. **Local:** `pnpm run build:platform-packages` and `pnpm run test:platform-packages`.
+- **Platform single-package (recovery):** same workflow → **Run workflow** → set **`package_scope`** to **`observability`** when you must republish only `@restormel/observability` without re-uploading the other platform packages (after a version bump in `packages/observability`). Use **`context-packs`** when publishing **`@restormel/context-packs` alone** (for example first npm release at `0.1.0` while other platform packages are already published).
 - **Observability public visibility:** if **`npm view @restormel/observability`** returns **404** but publish logs show **`+ @restormel/observability@…`**, run **[`npm-access-public-observability.yml`](../.github/workflows/npm-access-public-observability.yml)** (**`npm access set status=public`**).
 - **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
 

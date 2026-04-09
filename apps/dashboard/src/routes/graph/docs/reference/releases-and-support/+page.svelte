@@ -19,13 +19,24 @@
       bullets.
     </p>
     <p>
-      npm: <a href="https://www.npmjs.com/package/@restormel/graph-core" rel="noopener noreferrer">@restormel/graph-core</a>,
+      npm (canvas): <a href="https://www.npmjs.com/package/@restormel/graph-core" rel="noopener noreferrer"
+        >@restormel/graph-core</a
+      >,
       <a href="https://www.npmjs.com/package/@restormel/ui-graph-svelte" rel="noopener noreferrer"
         >@restormel/ui-graph-svelte</a
-      >.
+      >. Reasoning extensions (separate train):
+      <a href="https://www.npmjs.com/package/@restormel/graph-reasoning-extensions" rel="noopener noreferrer"
+        >@restormel/graph-reasoning-extensions</a
+      >,
+      <a href="https://www.npmjs.com/package/@restormel/contracts" rel="noopener noreferrer">@restormel/contracts</a> — see
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions &amp; contracts</a>.
     </p>
 
-    <h2>Compatibility matrix (initial)</h2>
+    <h2>Compatibility matrix</h2>
+    <p>
+      CI and tarball smoke cover the repo’s pinned stack. Consumer apps on adjacent minors should work but should run their
+      own <code>svelte-check</code> and a smoke route after upgrades.
+    </p>
     <table>
       <thead>
         <tr>
@@ -36,19 +47,38 @@
       <tbody>
         <tr>
           <td>Node.js</td>
-          <td><code>&gt;=20</code> (graph-core engine field)</td>
+          <td><code>&gt;=20</code> (graph-core <code>engines</code> field)</td>
+        </tr>
+        <tr>
+          <td>TypeScript</td>
+          <td>
+            <code>moduleResolution: "NodeNext"</code> or bundler resolution that honours package <code>exports</code>; use
+            published <code>.d.ts</code> as source of truth for component props
+          </td>
         </tr>
         <tr>
           <td>Svelte</td>
-          <td><code>^5.0.0</code> peer on ui-graph-svelte</td>
+          <td><code>^5.0.0</code> peer on <code>ui-graph-svelte</code> — certify your minor (e.g. 5.20.x) in your app</td>
         </tr>
         <tr>
-          <td>Vite + SvelteKit</td>
-          <td>Aligned with <code>apps/restormel-graph-demo</code> in this repo; use <code>ssr.noExternal</code> as documented</td>
+          <td>Vite</td>
+          <td>Vite 5.x and 6.x used in this monorepo; match or exceed demo + dashboard toolchain when upgrading</td>
+        </tr>
+        <tr>
+          <td>SvelteKit</td>
+          <td>
+            Aligned with <code>apps/restormel-graph-demo</code> and dashboard; <code>ssr.noExternal</code> for
+            <strong>both</strong> <code>@restormel/ui-graph-svelte</code> and <code>@restormel/graph-core</code> as documented
+          </td>
+        </tr>
+        <tr>
+          <td>graph-reasoning-extensions</td>
+          <td>Published on <code>platform-v*</code>; pin alongside <code>@restormel/contracts</code> — independent of
+            <code>graph-v*</code></td>
         </tr>
       </tbody>
     </table>
-    <p>Expand this matrix as you certify more minor versions in consumer apps.</p>
+    <p>Extend this matrix with specific SvelteKit / Vite patch lines as you certify them in production consumers.</p>
 
     <h2>Support boundary</h2>
     <ul>

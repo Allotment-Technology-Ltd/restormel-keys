@@ -9,6 +9,11 @@
       blurb: "Canonical path: install, import map, Vite SSR, CSS, minimal example, verify, migrate.",
     },
     {
+      href: `${base}/docs/extensions/reasoning`,
+      title: "Reasoning extensions & contracts",
+      blurb: "@restormel/graph-reasoning-extensions + @restormel/contracts: subpaths, when to use vs GraphData only.",
+    },
+    {
       href: `${base}/docs/overview`,
       title: "Overview",
       blurb: "What Restormel Graph is—and what it deliberately is not.",
@@ -17,6 +22,26 @@
       href: `${base}/docs/how-it-fits-together`,
       title: "How it fits together",
       blurb: "Hosts produce GraphData; packages own DTOs, layout, and the canvas.",
+    },
+    {
+      href: `${base}/docs/reference/contract-v0-scope`,
+      title: "Contract v0 scope",
+      blurb: "What graph-core freezes, what is out of scope, semver expectations — summary of GRAPH_CORE_V0_SCOPE.md.",
+    },
+    {
+      href: `${base}/docs/guides/recipes`,
+      title: "Recipes",
+      blurb: "Ghost layer, focus/dim, path highlight, semantic maps, fullscreen — beyond the hello-world snippet.",
+    },
+    {
+      href: `${base}/docs/reference/accessibility`,
+      title: "Accessibility & input",
+      blurb: "Keyboard, ARIA roles, focus order, and known limitations of GraphCanvas.",
+    },
+    {
+      href: `${base}/docs/reference/performance`,
+      title: "Performance & scale",
+      blurb: "Layout cost, SVG scale, pre-filtering — no built-in virtualization.",
     },
     {
       href: `${base}/docs/guides/migration-from-custom-canvas`,
@@ -31,7 +56,7 @@
     {
       href: `${base}/docs/reference/releases-and-support`,
       title: "Releases & support",
-      blurb: "Tags, compatibility, support boundary, changelog links.",
+      blurb: "Tags, compatibility matrix, support boundary, changelog links.",
     },
   ] as const;
 </script>
@@ -40,7 +65,7 @@
   <title>Docs — Restormel Graph</title>
   <meta
     name="description"
-    content="Restormel Graph documentation: integrate @restormel/graph-core and @restormel/ui-graph-svelte in SvelteKit with a single canonical guide."
+    content="Restormel Graph documentation: Contract v0 canvas (@restormel/graph-core, @restormel/ui-graph-svelte), reasoning extensions (@restormel/graph-reasoning-extensions), integration, recipes, a11y, and performance."
   />
 </svelte:head>
 
@@ -48,7 +73,9 @@
   <h1 class="graph-docs-home__title">Docs</h1>
   <p class="graph-docs-home__intro">
     <strong>Restormel Graph</strong> ships npm packages for a <strong>frozen Contract v0</strong> view-model and a
-    <strong>Svelte&nbsp;5</strong> graph canvas. Start with the
+    <strong>Svelte&nbsp;5</strong> graph canvas, plus a published
+    <a href="{base}/docs/extensions/reasoning"><strong>reasoning extensions</strong></a> stack on
+    <code>@restormel/contracts</code>. Start with the
     <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> guide—it is the
     <strong>canonical</strong> page for humans and agents (install → imports → Vite → CSS → example → verify → migrate).
     Maintainer-facing detail also lives in the repo:

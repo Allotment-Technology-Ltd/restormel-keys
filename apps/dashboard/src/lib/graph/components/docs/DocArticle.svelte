@@ -94,6 +94,11 @@
     padding-left: var(--space-6);
   }
 
+  :global(.doc-article .doc-prose ol) {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-6);
+  }
+
   :global(.doc-article .doc-prose li) {
     margin-bottom: var(--space-2);
   }

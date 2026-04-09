@@ -84,6 +84,11 @@ In **SOPHIA**, point dependencies at those `.tgz` files and **override** transit
 
 **`graphDataFromSophiaGraphKit`** (and similar) stays in **SOPHIA**; it must return **`GraphData`** matching **`@restormel/graph-core/viewModel`**.
 
+### Reasoning extensions (compare, lineage, projection, …)
+
+SOPHIA already consumes **`@restormel/graph-reasoning-extensions`** from npm alongside **`@restormel/contracts`**. Public reading order and export subpaths:
+[Reasoning extensions & contracts](https://restormel.dev/graph/docs/extensions/reasoning) (restormel.dev). Publish train: git tag **`platform-v*`** (independent of **`graph-v*`** canvas releases).
+
 ---
 
 ## 3. CSS / design tokens

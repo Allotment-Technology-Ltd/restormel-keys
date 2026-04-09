@@ -2,6 +2,8 @@
 
 **Single source of truth:** Use **this file** for the exact **agent prompt** text, **links**, and **acceptance pointers** so implementation does not drift. The companion spec is **[phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md)**.
 
+**Phase 2 (context packs):** portable LLM context blocks — **[PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md)**, **[phase2-agent-prompt-restormel-engineering.md](./phase2-agent-prompt-restormel-engineering.md)**, package [`@restormel/context-packs`](../../packages/context-packs/).
+
 **Sync rule:** If the same filenames exist on SOPHIA `main`, reconcile **links, package names, and § references** with this copy after each milestone; prefer **this repo’s** version for npm/publish and CI truth.
 
 ---

@@ -166,6 +166,8 @@ jobs:
           pnpm --filter @restormel/observability test
           pnpm --filter @restormel/graph-reasoning-extensions run build
           pnpm --filter @restormel/graph-reasoning-extensions test
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/context-packs test
 
       # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
       - name: Validate testing-github-action action.yml (YAML)

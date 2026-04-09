@@ -298,7 +298,11 @@ pnpm run build</code></pre>
     <h2>Not in MVP (explicit)</h2>
     <ul>
       <li>No <code>@restormel/contracts</code> inside graph-core or ui-graph-svelte.</li>
-      <li>Reasoning-heavy modules (compare, lineage, projection, …) stay app-side or in separate extensions.</li>
+      <li>
+        Compare, lineage, projection, evaluation, diff, and summary ship in the published package
+        <a href="{base}/docs/extensions/reasoning"><code>@restormel/graph-reasoning-extensions</code></a> (with contracts) —
+        not inside the canvas packages. Adapt their outputs into <code>GraphData</code> for <code>GraphCanvas</code>.
+      </li>
     </ul>
 
     <h2>Troubleshooting</h2>
@@ -330,6 +334,9 @@ pnpm run build</code></pre>
 
     <h2>Related docs</h2>
     <p>
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions &amp; contracts</a> ·
+      <a href="{base}/docs/reference/contract-v0-scope">Contract v0 scope</a> ·
+      <a href="{base}/docs/guides/recipes">Recipes</a> ·
       <a href="{base}/docs/reference/api">API reference</a> ·
       <a href="{base}/docs/guides/migration-from-custom-canvas">Migrate from a custom canvas</a> ·
       <a href="{base}/docs/reference/releases-and-support">Releases &amp; support</a>

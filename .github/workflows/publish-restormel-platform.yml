@@ -1,5 +1,5 @@
-# Publish @restormel/contracts, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
-# Order: contracts → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
+# Publish @restormel/contracts, @restormel/context-packs, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
+# Order: contracts → context-packs → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
 # graph-core / ui-graph-svelte use tag graph-v* (publish-graph.yml). Requires NPM_TOKEN.
 name: Publish Restormel platform packages
 on:
@@ -13,11 +13,12 @@ on:
         type: boolean
         default: false
       package_scope:
-        description: "Which packages to upload (push tags always publish all three)."
+        description: "Which packages to upload (push tags always publish all platform packages including context-packs)."
         type: choice
         default: all
         options:
           - all
+          - context-packs
           - observability
 
 permissions:
@@ -46,6 +47,8 @@ jobs:
         run: |
           pnpm --filter @restormel/contracts run build
           pnpm --filter @restormel/contracts test
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/context-packs test
           pnpm --filter @restormel/observability run build
           pnpm --filter @restormel/observability test
           pnpm --filter @restormel/graph-core run build
@@ -76,8 +79,11 @@ jobs:
           SCOPE="${PLATFORM_PACKAGE_SCOPE:-all}"
           if [ "${SCOPE}" = "all" ]; then
             pnpm --filter @restormel/contracts publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/graph-reasoning-extensions publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "context-packs" ]; then
+            pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
           else
             pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
           fi
@@ -85,8 +91,11 @@ jobs:
           if [ "${PLATFORM_PUBLISH_DRY_RUN}" != "true" ]; then
             if [ "${SCOPE}" = "all" ]; then
               npm access set status=public @restormel/contracts
+              npm access set status=public @restormel/context-packs
               npm access set status=public @restormel/observability
               npm access set status=public @restormel/graph-reasoning-extensions
+            elif [ "${SCOPE}" = "context-packs" ]; then
+              npm access set status=public @restormel/context-packs
             else
               npm access set status=public @restormel/observability
             fi
