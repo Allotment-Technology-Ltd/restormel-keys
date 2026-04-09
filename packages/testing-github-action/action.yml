@@ -96,7 +96,8 @@ outputs:
     description: Run record id when the suite executed; empty when skipped or error before run
     value: ${{ steps.exec.outputs.run_id }}
   skipped:
-    description: "true" when the fork PR policy skipped execution
+    description: >-
+      The string "true" when fork PR policy skipped execution; otherwise "false".
     value: ${{ steps.exec.outputs.skipped }}
 
 runs:

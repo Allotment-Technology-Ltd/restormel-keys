@@ -154,6 +154,8 @@ jobs:
         run: pnpm --filter dashboard run test
 
       # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
+      - name: Validate testing-github-action action.yml (YAML)
+        run: bash scripts/validate-testing-github-action-yml.sh
       - name: Build @restormel/keys-tokens (workspace)
         run: pnpm --filter @restormel/keys-tokens run build
       - name: Build testing TypeScript packages

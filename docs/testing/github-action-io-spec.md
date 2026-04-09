@@ -32,7 +32,7 @@
 |--------|------|
 | `verdict` | `passed` \| `failed` \| `indeterminate` \| `skipped` \| `error` |
 | `run_id` | UUID from last executed suite; empty if skipped / error before run |
-| `skipped` | `true` if fork policy prevented execution |
+| `skipped` | String `true` or `false` — `true` if fork policy prevented execution |
 
 ## Exit codes
 

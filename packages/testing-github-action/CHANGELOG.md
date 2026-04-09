@@ -1,5 +1,11 @@
 # @restormel/testing-github-action
 
+## 0.1.8
+
+### Patch Changes
+
+- **Fix:** `outputs.skipped.description` in `action.yml` broke YAML parsing (embedded `"true"` ended the double-quoted string early), so GitHub could not load the composite manifest when using `uses: ./node_modules/@restormel/testing-github-action`. Reword using a folded block scalar (`>-`) so the description is a single valid string. **`scripts/validate-testing-github-action-yml.sh`** runs in CI and the **Publish Testing packages** workflow to catch regressions.
+
 ## 0.1.7
 
 ### Patch Changes

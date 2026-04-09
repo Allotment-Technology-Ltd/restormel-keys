@@ -21,6 +21,7 @@
     "typecheck:testing-dashboard": "pnpm --filter dashboard run check",
     "test:testing": "vitest run --config vitest.testing.config.ts",
     "check:testing": "pnpm run typecheck:testing-packages && pnpm run test:testing && pnpm run typecheck:testing-dashboard",
+    "validate:testing-github-action-yml": "bash scripts/validate-testing-github-action-yml.sh",
     "validate-registry": "node scripts/validate-registry.mjs",
     "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
     "init-module": "node scripts/init-restormel-module.mjs"

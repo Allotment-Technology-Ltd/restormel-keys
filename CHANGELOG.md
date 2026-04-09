@@ -4,6 +4,8 @@ Single record of meaningful repo changes.
 
 ## Repo (2026-04-09)
 
+**`@restormel/testing-*` npm `0.1.8`:** Fix **`packages/testing-github-action/action.yml`** invalid YAML on **`outputs.skipped.description`** (quotes around **`true`** broke composite manifest parsing for `uses: ./node_modules/@restormel/testing-github-action`). **`scripts/validate-testing-github-action-yml.sh`** added; runs in **CI** and **[Publish Testing packages](.github/workflows/publish-testing.yml)** before install/publish. Tag **`testing-v0.1.8`**.
+
 **`@restormel/testing-*` npm `0.1.7`:** Publish train after PR **[#79](https://github.com/Allotment-Technology-Ltd/restormel-keys/pull/79)** merged to **`main`**, aligning npm tarballs with **`main`** (CI: Next **`^14.2.25`**, **`examples/testing-basic-web`** canonical **`/about`**, **`serve -l 4173 .`**). Tag **`testing-v0.1.7`**.
 
 ## Repo (2026-04-08)

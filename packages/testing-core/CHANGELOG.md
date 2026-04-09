@@ -1,5 +1,11 @@
 # @restormel/testing-core
 
+## 0.1.8
+
+### Patch Changes
+
+- **0.1.8** publish train: version align with **`@restormel/testing-github-action`** `action.yml` YAML parse fix.
+
 ## 0.1.7
 
 ### Patch Changes

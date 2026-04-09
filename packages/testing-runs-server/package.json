@@ -1,6 +1,6 @@
 {
   "name": "@restormel/testing-runs-server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Minimal HTTP server implementing GET/POST /v1/runs for Restormel Testing (embedded runner).",
   "license": "MIT",
   "repository": {

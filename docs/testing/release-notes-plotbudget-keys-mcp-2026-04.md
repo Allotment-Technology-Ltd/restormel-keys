@@ -6,7 +6,7 @@
 
 ## 1. Restormel Testing packages (`@restormel/testing-*`)
 
-If you are not already on a single aligned line, target `**^0.1.7**` across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers) — **0.1.7** matches **`main`** post–PR **#79** (LLM budgets, egress, Runs server, CI fixes). Feature deltas: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)** (and **0.1.4**/**0.1.6** notes in-repo for earlier trains).
+If you are not already on a single aligned line, target `**^0.1.8**` across the Testing packages you use (CLI, bundle, GitHub Action, and any direct `@restormel/testing-*` peers) — **0.1.8** includes the **`action.yml`** YAML fix for composite `uses: ./node_modules/@restormel/testing-github-action`; **0.1.7** and earlier can fail manifest load on that output description. Feature deltas: **[release-notes-plot-engineers-0.1.5.md](release-notes-plot-engineers-0.1.5.md)** (and **0.1.4**/**0.1.6** notes in-repo for earlier trains).
 
 **Keys env (CLI / CI / judges):** Prefer canonical names:
 
