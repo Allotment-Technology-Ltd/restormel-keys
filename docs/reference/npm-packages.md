@@ -15,6 +15,9 @@ npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name 
 npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/graph-core version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/ui-graph-svelte version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/contracts version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/observability version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/graph-reasoning-extensions version 2>/dev/null || echo "not published or name differs"
 ```
 
 ## Minimum path (Phases 1–4, any framework)
@@ -50,6 +53,16 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 
 **SOPHIA / SvelteKit integration:** [docs/restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) (imports, CSS variables, `ssr.noExternal`, tarball overrides).
 
+## Restormel platform (contracts + observability + reasoning extensions)
+
+| Package | Availability | When needed |
+|---------|--------------|-------------|
+| `@restormel/contracts` | `Check npm view` | Cross-boundary Zod schemas and types (API, trace, reasoning, graph API shapes — not Contract v0 canvas DTOs). |
+| `@restormel/observability` | `Check npm view` | Trace normalization, reasoning events, SSE-shaped types (depends on contracts). |
+| `@restormel/graph-reasoning-extensions` | `Check npm view` | Compare, lineage, projection, evaluation, summary, diff over graph snapshots (depends on **contracts** + **graph-core**). |
+
+**Phase 1 programme:** [docs/restormel/phase1-restormel-engineering-spec.md](../restormel/phase1-restormel-engineering-spec.md).
+
 ## Availability truth table
 
 Use this as the canonical "what is available now" check:
@@ -72,6 +85,7 @@ If a package returns **404** from npm, use the **manual config** path and `@rest
 
 - **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
 - **Graph packages:** push git tag `graph-v*` (e.g. `graph-v0.1.0`) → workflow **Publish Graph packages** (`.github/workflows/publish-graph.yml`) publishes `@restormel/graph-core` then `@restormel/ui-graph-svelte`. **Pre-flight:** `bash scripts/smoke-graph-packages-consumer.sh` (also runs in CI).
+- **Platform packages (Phase 1):** push git tag `platform-v*` → workflow **Publish Restormel platform packages** (`.github/workflows/publish-restormel-platform.yml`) publishes `@restormel/contracts`, `@restormel/observability`, `@restormel/graph-reasoning-extensions` in that order. **Local:** `pnpm run build:platform-packages` and `pnpm run test:platform-packages`.
 - **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
 
 ## pnpm monorepos

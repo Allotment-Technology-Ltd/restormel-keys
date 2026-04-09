@@ -2,6 +2,8 @@
 
 **Purpose:** file map, integration contract, portability notes, and parity checklist for splitting interactive graph rendering out of the SOPHIA codebase into Restormel platform packages.
 
+**Phase 1 programme (broader extraction):** agent prompt + engineering spec (packages, acceptance pointers, §6 SOPHIA reintegration) — **[docs/restormel/phase1-agent-prompt-restormel-engineering.md](../phase1-agent-prompt-restormel-engineering.md)** and **[docs/restormel/phase1-restormel-engineering-spec.md](../phase1-restormel-engineering-spec.md)**.
+
 **Canonical implementation (this repo):**
 
 | Path | Role |

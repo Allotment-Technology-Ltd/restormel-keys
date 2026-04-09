@@ -25,7 +25,9 @@
     "validate-registry": "node scripts/validate-registry.mjs",
     "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
     "init-module": "node scripts/init-restormel-module.mjs",
-    "smoke:graph-consumer": "bash scripts/smoke-graph-packages-consumer.sh"
+    "smoke:graph-consumer": "bash scripts/smoke-graph-packages-consumer.sh",
+    "build:platform-packages": "pnpm --filter @restormel/contracts run build && pnpm --filter @restormel/observability run build && pnpm --filter @restormel/graph-reasoning-extensions run build",
+    "test:platform-packages": "pnpm --filter @restormel/contracts test && pnpm --filter @restormel/observability test && pnpm --filter @restormel/graph-reasoning-extensions test"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
