@@ -1,0 +1,31 @@
+# One-off / recovery: ensure @restormel/observability is visible on the public registry.
+# If the first publish landed as private (org default), unauthenticated npm view returns 404.
+name: npm access public — @restormel/observability
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publicize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: npm access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            exit 1
+          fi
+          npm access public @restormel/observability
