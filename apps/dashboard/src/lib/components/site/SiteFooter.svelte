@@ -2,6 +2,7 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import {
     developerLinks,
+    graphPillarLinks,
     keysPillarLinks,
     testingPillarLinks,
   } from "$lib/site-nav";
@@ -26,6 +27,18 @@
       <ul class="site-footer-links" aria-label="Testing">
         {#each testingPillarLinks as item}
           <li><a href={item.href}>{item.label}</a></li>
+        {/each}
+      </ul>
+    </div>
+    <div class="site-footer-col">
+      <span class="site-footer-title">Graph</span>
+      <ul class="site-footer-links" aria-label="Graph">
+        {#each graphPillarLinks as item}
+          <li>
+            <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined}
+              >{item.label}</a
+            >
+          </li>
         {/each}
       </ul>
     </div>
@@ -57,7 +70,7 @@
       <a href="/" class="site-footer-logo">
         <img src="/restormel-lockup-nav.svg" alt="Restormel" style="height: 24px; width: auto;" />
       </a>
-      <p class="site-footer-tagline">Keys, Testing, and integrations for production AI teams</p>
+      <p class="site-footer-tagline">Keys, Testing, Graph, and integrations for production AI teams</p>
     </div>
   </div>
   <p class="site-footer-copy">restormel.dev</p>

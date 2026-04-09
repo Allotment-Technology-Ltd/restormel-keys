@@ -150,8 +150,13 @@ jobs:
         run: pnpm --filter dashboard run build
       - name: Testing dashboard docs routes (link graph)
         run: node scripts/check-testing-dashboard-doc-routes.mjs
+      - name: Graph dashboard docs routes (link graph)
+        run: node scripts/check-graph-dashboard-doc-routes.mjs
       - name: Dashboard tests
         run: pnpm --filter dashboard run test
+
+      - name: Restormel Graph (tests + tarball consumer smoke)
+        run: bash scripts/smoke-graph-packages-consumer.sh
 
       # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
       - name: Validate testing-github-action action.yml (YAML)

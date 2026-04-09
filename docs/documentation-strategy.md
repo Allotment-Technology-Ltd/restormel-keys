@@ -27,6 +27,8 @@ Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, z
 
 **Testing hub entry:** Prefer the **Testing hub** URL above in copy and automation. The marketing route `https://restormel.dev/testing/dashboard` **redirects signed-in users** to the Testing hub; anonymous users see a short stub with sign-in.
 
+**Restormel Graph (Svelte graph UI):** Product home `https://restormel.dev/graph`. Public docs live at `https://restormel.dev/graph/docs` with the **canonical integrator guide** at `https://restormel.dev/graph/docs/integration/sveltekit` (install → imports → Vite SSR → CSS → example → verify → migrate). npm packages publish on git tags `graph-v*`; treat the in-app guide as the versioned narrative alongside package changelogs.
+
 ## 3. Agent-readability
 
 - **Structure:** Consistent heading hierarchy (e.g. H1 → H2 → H3), predictable section patterns, and canonical file paths so agents can resolve references.

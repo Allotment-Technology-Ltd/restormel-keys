@@ -160,6 +160,37 @@ importers:
         specifier: ^6.4.2
         version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
+  apps/restormel-graph-demo:
+    dependencies:
+      '@restormel/graph-core':
+        specifier: workspace:*
+        version: link:../../packages/graph-core
+      '@restormel/ui-graph-svelte':
+        specifier: workspace:*
+        version: link:../../packages/ui-graph-svelte
+    devDependencies:
+      '@sveltejs/adapter-auto':
+        specifier: ^3.0.0
+        version: 3.3.1(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+      '@sveltejs/kit':
+        specifier: ^2.0.0
+        version: 2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.53.12)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.0
+        version: 5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      svelte:
+        specifier: ^5.0.0
+        version: 5.53.12
+      svelte-check:
+        specifier: ^4.0.0
+        version: 4.4.5(picomatch@4.0.4)(svelte@5.53.12)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.4.2
+        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+
   apps/site: {}
 
   examples/nextjs-playwright:
@@ -323,6 +354,15 @@ importers:
       vite-plugin-dts:
         specifier: ^4.0.0
         version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/graph-core:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
@@ -586,6 +626,31 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+
+  packages/ui-graph-svelte:
+    dependencies:
+      '@restormel/graph-core':
+        specifier: workspace:*
+        version: link:../graph-core
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.0
+        version: 5.1.1(svelte@5.53.12)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      svelte:
+        specifier: ^5.0.0
+        version: 5.53.12
+      svelte-check:
+        specifier: ^4.0.0
+        version: 4.4.5(picomatch@4.0.4)(svelte@5.53.12)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^6.4.2
+        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite-plugin-dts:
+        specifier: ^4.0.0
+        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/validate:
     dependencies:

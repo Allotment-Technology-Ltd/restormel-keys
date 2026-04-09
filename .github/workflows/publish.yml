@@ -1,4 +1,5 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
+# Graph packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`) use tag graph-v* → publish-graph.yml.
 # Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
 #   → @restormel/aaif → @restormel/mcp → doctor → validate → keys-cli.
 # keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
