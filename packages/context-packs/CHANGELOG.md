@@ -13,6 +13,10 @@ All notable changes to `@restormel/context-packs` are documented here.
 - Changes to **token budget tables** (`quick` / `standard` / `deep` per pass) → treat as **MINOR** unless consumers relied on exact numbers (then MAJOR).
 - Changes to **output text format** (headers, claim line shape, synthesis signals) → **MINOR** if stats stay consistent; **MAJOR** if integrators parse blocks.
 
+## 0.1.1
+
+- Optional **`restormel_correlation`** on **`ContextPackRetrievalInput`** (`ContextPackRestormelCorrelation`) for cross-linking with **`@restormel/state`** and observability runs; ignored when building pack text.
+
 ## 0.1.0
 
 - Initial publish from Restormel Keys monorepo: `buildPassSpecificContextPacks` on `ContextPackRetrievalInput` only; parity with SOPHIA `contextPacks.ts` behaviour and tests.

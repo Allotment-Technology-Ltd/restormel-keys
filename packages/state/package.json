@@ -1,12 +1,12 @@
 {
-  "name": "@restormel/context-packs",
-  "version": "0.1.1",
-  "description": "Pass-specific text context packs (analysis, critique, synthesis) from a minimal graph-shaped retrieval payload — no DB or engine dependencies.",
+  "name": "@restormel/state",
+  "version": "0.1.0",
+  "description": "Restormel State — append-only agent memory events, deterministic materialized views, and correlation hooks for context-packs and observability.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
-    "directory": "packages/context-packs"
+    "directory": "packages/state"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -25,6 +25,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/context-packs": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

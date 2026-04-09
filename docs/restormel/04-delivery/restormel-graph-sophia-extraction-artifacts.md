@@ -20,6 +20,7 @@
 | `packages/ui-graph-svelte/src/lib/semanticStyles.ts` | `graphCanvasEdgeKey` + canvas semantic style types |
 | `apps/restormel-graph-demo/src/routes/dev/graph-portability/+page.svelte` | Portability proof: mock `GraphData` + `GraphCanvas` |
 | `packages/context-packs` | **`@restormel/context-packs`** — `buildPassSpecificContextPacks` from `ContextPackRetrievalInput` (Phase 2; no graph canvas) |
+| `packages/state` | **`@restormel/state`** — agent memory events + `projectWorkingMemory`; correlation on `ContextPackRetrievalInput.restormel_correlation` ([RESTORMEL-STATE.md](../RESTORMEL-STATE.md)) |
 
 **Reference in SOPHIA** (port source; do not depend at runtime from these packages):
 

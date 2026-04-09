@@ -11,5 +11,7 @@ High-level programme docs for lifting shared surfaces from SOPHIA into this mono
 | [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md) | Context packs status + post-publish steps |
 | [phase2-context-packs-extraction-scope.md](./phase2-context-packs-extraction-scope.md) | Context packs API, tests, docs checklist |
 | [phase2-agent-prompt-restormel-engineering.md](./phase2-agent-prompt-restormel-engineering.md) | Phase 2 copy-paste agent prompt |
+| [RESTORMEL-STATE.md](./RESTORMEL-STATE.md) | `@restormel/state` — agent memory events, projection, correlation (canonical spec; integrator mirror: `/graph/docs/extensions/state`) |
+| [state-sophia-integration.md](./state-sophia-integration.md) | SOPHIA Stoa / escalation hook points for state events |
 
 Consumer handoff (Vite, npm, `ssr.noExternal`): [restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md).

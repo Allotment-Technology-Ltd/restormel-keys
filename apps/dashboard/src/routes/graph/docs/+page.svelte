@@ -14,6 +14,11 @@
       blurb: "@restormel/graph-reasoning-extensions + @restormel/contracts: subpaths, when to use vs GraphData only.",
     },
     {
+      href: `${base}/docs/extensions/state`,
+      title: "Restormel State (agent memory)",
+      blurb: "@restormel/state on platform-v*: memory events, projection, correlation with context packs and traces—not canvas.",
+    },
+    {
       href: `${base}/docs/overview`,
       title: "Overview",
       blurb: "What Restormel Graph is—and what it deliberately is not.",
@@ -65,7 +70,7 @@
   <title>Docs — Restormel Graph</title>
   <meta
     name="description"
-    content="Restormel Graph documentation: Contract v0 canvas (@restormel/graph-core, @restormel/ui-graph-svelte), reasoning extensions (@restormel/graph-reasoning-extensions), integration, recipes, a11y, and performance."
+    content="Restormel Graph documentation: Contract v0 canvas (@restormel/graph-core, @restormel/ui-graph-svelte), reasoning extensions (@restormel/graph-reasoning-extensions), Restormel State (@restormel/state), integration, recipes, a11y, and performance."
   />
 </svelte:head>
 
@@ -73,9 +78,11 @@
   <h1 class="graph-docs-home__title">Docs</h1>
   <p class="graph-docs-home__intro">
     <strong>Restormel Graph</strong> ships npm packages for a <strong>frozen Contract v0</strong> view-model and a
-    <strong>Svelte&nbsp;5</strong> graph canvas, plus a published
-    <a href="{base}/docs/extensions/reasoning"><strong>reasoning extensions</strong></a> stack on
-    <code>@restormel/contracts</code>. Start with the
+    <strong>Svelte&nbsp;5</strong> graph canvas, plus published
+    <a href="{base}/docs/extensions/reasoning"><strong>reasoning extensions</strong></a> on
+    <code>@restormel/contracts</code> and optional
+    <a href="{base}/docs/extensions/state"><strong>Restormel State</strong></a> (<code>@restormel/state</code>,
+    <code>platform-v*</code>) for agent memory next to context packs. Start with the
     <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> guide—it is the
     <strong>canonical</strong> page for humans and agents (install → imports → Vite → CSS → example → verify → migrate).
     Maintainer-facing detail also lives in the repo:

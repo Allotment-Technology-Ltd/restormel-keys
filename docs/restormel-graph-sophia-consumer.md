@@ -89,6 +89,13 @@ In **SOPHIA**, point dependencies at those `.tgz` files and **override** transit
 SOPHIA already consumes **`@restormel/graph-reasoning-extensions`** from npm alongside **`@restormel/contracts`**. Public reading order and export subpaths:
 [Reasoning extensions & contracts](https://restormel.dev/graph/docs/extensions/reasoning) (restormel.dev). Publish train: git tag **`platform-v*`** (independent of **`graph-v*`** canvas releases).
 
+### Context packs & Restormel State (memory + correlation)
+
+**`@restormel/context-packs`** and **`@restormel/state`** ship on the same **`platform-v*`** train. Public reading order (aligned with Graph docs navigation):
+
+- [Restormel State (agent memory)](https://restormel.dev/graph/docs/extensions/state) — what State is, how it sits next to context packs and observability, publish order.
+- Repo checklists: [docs/restormel/RESTORMEL-STATE.md](restormel/RESTORMEL-STATE.md), [docs/restormel/state-sophia-integration.md](restormel/state-sophia-integration.md) (Stoa / escalation hook points).
+
 ---
 
 ## 3. CSS / design tokens

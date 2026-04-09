@@ -31,6 +31,13 @@
       <a href="https://www.npmjs.com/package/@restormel/contracts" rel="noopener noreferrer">@restormel/contracts</a> — see
       <a href="{base}/docs/extensions/reasoning">Reasoning extensions &amp; contracts</a>.
     </p>
+    <p>
+      <strong>Context packs &amp; agent memory</strong> (same <code>platform-v*</code> workflow, not canvas):
+      <a href="https://www.npmjs.com/package/@restormel/context-packs" rel="noopener noreferrer">@restormel/context-packs</a>,
+      <a href="https://www.npmjs.com/package/@restormel/state" rel="noopener noreferrer">@restormel/state</a> — overview
+      <a href="{base}/docs/extensions/state">Restormel State (agent memory)</a>; reasoning page links both to the
+      graph-aware LLM story.
+    </p>
 
     <h2>Compatibility matrix</h2>
     <p>
@@ -75,6 +82,13 @@
           <td>graph-reasoning-extensions</td>
           <td>Published on <code>platform-v*</code>; pin alongside <code>@restormel/contracts</code> — independent of
             <code>graph-v*</code></td>
+        </tr>
+        <tr>
+          <td>context-packs, observability, state</td>
+          <td>
+            Published on <code>platform-v*</code>; <code>@restormel/state</code> depends on context-packs for correlation
+            typing — see <a href="{base}/docs/extensions/state">Restormel State</a>
+          </td>
         </tr>
       </tbody>
     </table>

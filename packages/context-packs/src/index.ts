@@ -5,6 +5,7 @@ export type {
   ContextPackClaim,
   ContextPackPass,
   ContextPackRelation,
+  ContextPackRestormelCorrelation,
   ContextPackRetrievalInput,
   ContextPackRole,
   ContextPackStats,

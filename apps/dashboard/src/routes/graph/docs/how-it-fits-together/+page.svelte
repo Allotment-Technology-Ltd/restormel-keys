@@ -38,6 +38,13 @@ function toGraphData(snapshot: YourDomainSnapshot): GraphData {
         <code>platform-v*</code>, independent of <code>graph-v*</code>. See
         <a href="{base}/docs/extensions/reasoning">Reasoning extensions &amp; contracts</a>.
       </li>
+      <li>
+        <strong>@restormel/context-packs</strong> + <strong>@restormel/state</strong> (optional, same
+        <code>platform-v*</code> train) — pass-specific LLM text from a retrieval-shaped payload; append-only
+        <strong>agent memory</strong> projections and correlation with those packs and traces. Not canvas packages; see
+        <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a> (context packs) and
+        <a href="{base}/docs/extensions/state">Restormel State</a>.
+      </li>
     </ul>
     <h2>Integration seam (one sentence)</h2>
     <p>
@@ -50,7 +57,8 @@ function toGraphData(snapshot: YourDomainSnapshot): GraphData {
     <p>
       Back: <a href="{base}/docs/overview">Overview</a> · Forward:
       <a href="{base}/docs/integration/sveltekit">SvelteKit integration</a> ·
-      <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a>
+      <a href="{base}/docs/extensions/reasoning">Reasoning extensions</a> ·
+      <a href="{base}/docs/extensions/state">Restormel State</a>
     </p>
   </div>
 </DocArticle>

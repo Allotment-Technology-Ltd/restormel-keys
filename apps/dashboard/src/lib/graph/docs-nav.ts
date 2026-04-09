@@ -22,7 +22,10 @@ export const docsNav: DocsNavSection[] = [
   },
   {
     label: "Extensions",
-    items: [{ path: "/docs/extensions/reasoning", title: "Reasoning extensions & contracts" }],
+    items: [
+      { path: "/docs/extensions/reasoning", title: "Reasoning extensions & contracts" },
+      { path: "/docs/extensions/state", title: "Restormel State (agent memory)" },
+    ],
   },
   {
     label: "Guides",

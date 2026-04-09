@@ -36,6 +36,17 @@ export interface ContextPackArgument {
 }
 
 /**
+ * Optional correlation for `@restormel/state` timelines and `@restormel/observability` runs.
+ * Ignored when rendering pack text; safe to attach for operator debugging.
+ */
+export interface ContextPackRestormelCorrelation {
+  run_id?: string;
+  retrieval_version?: string;
+  state_sequence?: number;
+  materialized_memory_event_ids?: string[];
+}
+
+/**
  * Minimal retrieval payload for pass-specific context packs (analysis / critique / synthesis).
  * No DB driver, trace, or lineage fields — hosts map full retrieval DTOs onto this shape.
  */
@@ -44,6 +55,8 @@ export interface ContextPackRetrievalInput {
   relations: ContextPackRelation[];
   arguments: ContextPackArgument[];
   seed_claim_ids: string[];
+  /** Optional; carried through for cross-linking memory + traces; not read by pack builders. */
+  restormel_correlation?: ContextPackRestormelCorrelation;
 }
 
 export type ContextPackPass = "analysis" | "critique" | "synthesis";

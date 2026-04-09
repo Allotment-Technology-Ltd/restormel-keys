@@ -142,6 +142,18 @@ const delta = diffGraphs(before, after);
       >.
     </p>
 
+    <h2>Related: Restormel State (agent memory)</h2>
+    <p>
+      <code>@restormel/state</code> adds an append-only <strong>memory event</strong> model, deterministic
+      <code>projectWorkingMemory</code>, and <strong>correlation</strong> fields on context-pack inputs (and helpers for
+      observability <code>run_id</code> alignment). Same <code>platform-v*</code> train as contracts, context-packs, and this
+      extensions package—not <code>graph-v*</code>. Integrator overview:
+      <a href="{base}/docs/extensions/state">Restormel State (agent memory)</a>; repo spec:
+      <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/RESTORMEL-STATE.md" rel="noopener noreferrer"
+        >RESTORMEL-STATE.md</a
+      >.
+    </p>
+
     <p>
       <a href="{base}/docs">← Docs home</a> · <a href="{base}/docs/reference/contract-v0-scope">Contract v0 scope</a> ·
       <a href="{base}/docs/reference/api">API reference</a>

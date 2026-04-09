@@ -19,8 +19,9 @@ Implement and **publish** under `@restormel/*`:
 | `@restormel/graph-core` | **Contract v0** — DTOs + layout / trace / workspace only; **no** `@restormel/contracts` inside MVP graph-core. |
 | `@restormel/ui-graph-svelte` | Svelte 5 canvas + semantic styles; consumes published graph-core. |
 | `@restormel/graph-reasoning-extensions` | **Lift** from SOPHIA `packages/graph-reasoning-extensions` (compare, lineage, projection, and other reasoning modules that must **not** live inside graph-core v0). |
+| `@restormel/state` | **Restormel State** — append-only agent memory events, deterministic `projectWorkingMemory`, Stoa-oriented helpers, correlation with context packs and observability runs (depends on **`@restormel/context-packs`** for input typing). |
 
-**In this repo today:** `packages/graph-core`, `packages/ui-graph-svelte`, `apps/restormel-graph-demo`, public `/graph` docs, **`packages/contracts`**, **`packages/observability`**, **`packages/graph-reasoning-extensions`** (`@restormel/graph-reasoning-extensions`). CI runs build + test for all three; publish via git tag **`platform-v*`** → `.github/workflows/publish-restormel-platform.yml` (after **`NPM_TOKEN`** and maintainer verification).
+**In this repo today:** `packages/graph-core`, `packages/ui-graph-svelte`, `apps/restormel-graph-demo`, public `/graph` docs, **`packages/contracts`**, **`packages/observability`**, **`packages/graph-reasoning-extensions`** (`@restormel/graph-reasoning-extensions`), **`packages/context-packs`**, **`packages/state`**. CI runs build + test for platform packages; publish via git tag **`platform-v*`** → `.github/workflows/publish-restormel-platform.yml` (after **`NPM_TOKEN`** and maintainer verification).
 
 ---
 
