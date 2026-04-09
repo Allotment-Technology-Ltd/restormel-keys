@@ -31,6 +31,13 @@
         <em>into</em> <code>GraphData</code> rather than forking Contract v0 DTOs.
       </li>
       <li>
+        <strong>Monorepo pattern:</strong> colocate reasoning-specific code in a <strong>dedicated workspace package</strong>
+        (for example an internal <code>@your-org/graph-reasoning-extensions</code>—similar in spirit to how larger apps split
+        “canvas from npm” vs “compare/lineage/projection”) that depends on <code>@restormel/graph-core</code> and your
+        contracts layer, then adapt into <code>GraphData</code> at the edge. Keeps the replace-custom-canvas story
+        copy-paste clear: npm canvas + one local extensions package, not a second forked <code>viewModel</code>.
+      </li>
+      <li>
         <strong>Already deleted legacy graph code?</strong> Focus on adapter correctness and CSS parity; run the
         verification commands from the integration page.
       </li>

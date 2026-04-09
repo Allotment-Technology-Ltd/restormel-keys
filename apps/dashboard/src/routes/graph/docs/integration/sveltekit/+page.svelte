@@ -52,6 +52,11 @@ export default defineConfig({
 
   const optionalCssImport = `/* Optional: component-level rules from the package */
 import "@restormel/ui-graph-svelte/styles.css";`;
+
+  const npmBadgeGraphCore =
+    "https://img.shields.io/npm/v/@restormel/graph-core?label=%40restormel%2Fgraph-core&logo=npm";
+  const npmBadgeUi =
+    "https://img.shields.io/npm/v/@restormel/ui-graph-svelte?label=%40restormel%2Fui-graph-svelte&logo=npm";
 </script>
 
 <DocArticle
@@ -64,8 +69,27 @@ import "@restormel/ui-graph-svelte/styles.css";`;
       it is versioned with the restormel.dev site and mirrors the maintainer note
       <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel-graph-sophia-consumer.md" rel="noopener noreferrer"
         ><code>docs/restormel-graph-sophia-consumer.md</code></a
-      >. CLI or MCP helpers are optional; they must not contradict this guide.
+      >
+      for SOPHIA-depth wiring. <strong>Step-by-step on this site is the primary interface;</strong> CLI or MCP tooling is
+      fine only if it is generated or tested against the same content and never treated as the only source of truth.
     </p>
+
+    <div class="doc-version-strip" role="note" aria-label="Docs and npm version alignment">
+      <p>
+        <strong>Verified against npm:</strong>
+        <code>@restormel/graph-core@0.1.1</code> and <code>@restormel/ui-graph-svelte@0.1.1</code> (see badges below).
+        When you upgrade, bump <strong>both</strong> packages in lockstep—<code>ui-graph-svelte</code> depends on
+        graph-core, and mixed minors across the pair are a common source of drift.
+      </p>
+      <p class="doc-badge-row">
+        <a href="https://www.npmjs.com/package/@restormel/graph-core" rel="noopener noreferrer">
+          <img src={npmBadgeGraphCore} alt="npm version @restormel/graph-core" width="156" height="20" loading="lazy" />
+        </a>
+        <a href="https://www.npmjs.com/package/@restormel/ui-graph-svelte" rel="noopener noreferrer">
+          <img src={npmBadgeUi} alt="npm version @restormel/ui-graph-svelte" width="200" height="20" loading="lazy" />
+        </a>
+      </p>
+    </div>
 
     <h2>What to install</h2>
     <p>
@@ -163,15 +187,71 @@ import "@restormel/ui-graph-svelte/styles.css";`;
 
     <h2>CSS contract</h2>
     <p>
-      The canvas reads <strong>CSS variables</strong> for colours, radius, type, spacing, motion, and focus rings (e.g.
-      <code>--color-bg</code>, <code>--color-text</code>, <code>--color-muted</code>, <code>--color-border</code>,
-      <code>--color-sage</code>, <code>--radius-sm</code>, <code>--font-ui</code>, <code>--space-*</code>,
-      <code>--transition-fast</code>, <code>--focus-ring-width</code>, …). If your app already defines a compatible
-      <code>:root</code> token sheet, you may not need extra palette imports from Restormel.
+      The canvas expects a <strong>:root</strong> token story. Use the table below to decide what you must define vs what
+      is optional; diff your <code>design-tokens.css</code> (or equivalent) against the demo reference file.
     </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Layer</th>
+          <th scope="col">Required for sensible defaults</th>
+          <th scope="col">Optional / extended parity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Surfaces &amp; text</td>
+          <td>
+            <code>--color-bg</code>, <code>--color-text</code>, <code>--color-muted</code>, <code>--color-border</code>,
+            <code>--color-surface</code>, <code>--color-surface-raised</code>
+          </td>
+          <td><code>--color-surface-sunken</code>, <code>--color-dim</code> (decorative only)</td>
+        </tr>
+        <tr>
+          <td>Accents &amp; states</td>
+          <td><code>--color-sage</code> (+ <code>--color-sage-bg</code>, <code>--color-sage-border</code> where used)</td>
+          <td>
+            <code>--color-copper</code>, <code>--color-blue</code>, <code>--color-teal</code>, <code>--color-coral</code>,
+            <code>--color-purple</code>, <code>--color-amber</code> (+ matching <code>*-bg</code> / <code>*-border</code>)
+          </td>
+        </tr>
+        <tr>
+          <td>Type &amp; rhythm</td>
+          <td>
+            <code>--font-ui</code>, <code>--text-meta</code> or <code>--text-ui</code>, <code>--text-body</code>,
+            <code>--leading-body</code>, <code>--space-*</code> used by controls
+          </td>
+          <td><code>--font-display</code>, <code>--font-body</code>, larger type scale tokens</td>
+        </tr>
+        <tr>
+          <td>Chrome</td>
+          <td>
+            <code>--radius-sm</code>, <code>--radius-md</code>, <code>--transition-fast</code>,
+            <code>--focus-ring-width</code>, <code>--focus-ring-color</code>, <code>--focus-ring-offset</code>
+          </td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Packaged library CSS</td>
+          <td>—</td>
+          <td>
+            <code>@restormel/ui-graph-svelte/styles.css</code> — component-scoped rules (build artefact
+            <code>dist/ui-graph-svelte.css</code> in repo). Does <strong>not</strong> define the palette; import for layout
+            / animation parity or when you have no token sheet yet.
+          </td>
+        </tr>
+      </tbody>
+    </table>
     <p>
-      <strong><code>styles.css</code> from the UI package</strong> ships component-level rules; it does not replace your
-      palette. Import it when you want packaged rules in one place or when debugging style drift.
+      <strong>Stable references to diff or copy from:</strong>
+      <a href="{GITHUB_REPO_URL}/blob/main/apps/restormel-graph-demo/src/lib/graph-demo-tokens.css" rel="noopener noreferrer"
+        ><code>apps/restormel-graph-demo/src/lib/graph-demo-tokens.css</code></a
+      >
+      (full SOPHIA Design&nbsp;B mirror used by the demo) · packaged stylesheet entrypoint in repo tree
+      <a href="{GITHUB_REPO_URL}/tree/main/packages/ui-graph-svelte" rel="noopener noreferrer"
+        ><code>packages/ui-graph-svelte</code></a
+      >
+      (<code>exports["./styles.css"]</code> → built CSS).
     </p>
     <pre><code>{optionalCssImport}</code></pre>
 
@@ -221,6 +301,33 @@ pnpm run build</code></pre>
       <li>Reasoning-heavy modules (compare, lineage, projection, …) stay app-side or in separate extensions.</li>
     </ul>
 
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li>
+        <strong>SSR / “Cannot find module” during dev or build:</strong> ensure <strong>both</strong>
+        <code>@restormel/ui-graph-svelte</code> and <code>@restormel/graph-core</code> are in
+        <code>ssr.noExternal</code>. Listing only the UI package is a common mistake when graph-core subpaths are pulled in
+        transitively.
+      </li>
+      <li>
+        <strong>Vite prebundle errors:</strong> try <code>optimizeDeps.include: ["@restormel/graph-core/layout"]</code> (or
+        the subpath mentioned in the error); clear Vite cache if upgrades look “stuck.”
+      </li>
+      <li>
+        <strong><code>svelte-check</code> / callback types:</strong> import <code>GraphCanvasProps</code> /
+        <code>NodeDetailProps</code> from <code>@restormel/ui-graph-svelte</code>; trust published <code>.d.ts</code> over
+        inferred props.
+      </li>
+      <li>
+        <strong>Duplicate <code>@restormel/graph-core</code>:</strong> a workspace package with the same name as npm will
+        shadow installs—rename or remove the local package and use npm (or explicit tarball overrides) as a single source.
+      </li>
+      <li>
+        <strong>Lockfile mismatch:</strong> after bumping one of the pair, run a fresh install so
+        <code>ui-graph-svelte</code> resolves the same graph-core version you intend.
+      </li>
+    </ul>
+
     <h2>Related docs</h2>
     <p>
       <a href="{base}/docs/reference/api">API reference</a> ·
@@ -229,3 +336,41 @@ pnpm run build</code></pre>
     </p>
   </div>
 </DocArticle>
+
+<style>
+  .doc-version-strip {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-8);
+    padding: var(--space-4);
+    background: var(--rm-surface-2);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    border-left: var(--border-4) solid var(--rm-sage);
+  }
+  .doc-version-strip strong {
+    color: var(--rm-text);
+  }
+  .doc-version-strip p {
+    margin: 0 0 var(--space-3);
+  }
+  .doc-version-strip p:last-child {
+    margin-bottom: 0;
+  }
+  .doc-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .doc-badge-row a {
+    line-height: 0;
+  }
+  .doc-badge-row img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+</style>

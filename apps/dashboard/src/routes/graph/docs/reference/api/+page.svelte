@@ -44,6 +44,62 @@
       <li><code>graphCanvasEdgeKey</code> — stable edge key helper (<code>from:type:to</code>)</li>
     </ul>
 
+    <h2>GraphCanvas — high-traffic props</h2>
+    <p>
+      One-screen cheat sheet for first integration; exhaustive shapes and optional props live in
+      <code>GraphRendererProps</code> / published <code>index.d.ts</code>.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Prop</th>
+          <th scope="col">Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>nodes</code>, <code>edges</code></td>
+          <td>Required graph data (arrays; shape from <code>viewModel</code>).</td>
+        </tr>
+        <tr>
+          <td><code>ghostNodes</code>, <code>ghostEdges</code>, <code>showGhostLayer</code></td>
+          <td>Optional rejected / overlay layer and visibility toggle.</td>
+        </tr>
+        <tr>
+          <td><code>selectedNodeId</code>, <code>onSelectedNodeChange</code>, <code>onNodeSelect</code></td>
+          <td>Controlled selection and selection change callbacks.</td>
+        </tr>
+        <tr>
+          <td><code>viewportCommand</code></td>
+          <td>Imperative <code>fit</code> / <code>reset-layout</code> via <code>GraphViewportCommand</code> + nonce.</td>
+        </tr>
+        <tr>
+          <td><code>nodeSemanticStyles</code>, <code>edgeSemanticStyles</code></td>
+          <td>Maps keyed by node id and by edge key (<code>graphCanvasEdgeKey</code>).</td>
+        </tr>
+        <tr>
+          <td><code>showInlineDetail</code>, <code>showStatusChip</code>, <code>showViewportControls</code></td>
+          <td>UI chrome toggles.</td>
+        </tr>
+        <tr>
+          <td><code>width</code>, <code>height</code>, <code>isFullscreen</code>, <code>onToggleFullscreen</code></td>
+          <td>Layout and fullscreen affordances.</td>
+        </tr>
+        <tr>
+          <td><code>pinnedNodeIds</code>, <code>pathNodeIds</code>, <code>pathEdges</code></td>
+          <td>Highlight / path overlays.</td>
+        </tr>
+        <tr>
+          <td><code>focusNodeIds</code>, <code>focusEdgeIds</code>, <code>dimOutOfScope</code></td>
+          <td>Focus mode and dimming outside focus set.</td>
+        </tr>
+        <tr>
+          <td><code>onJumpToReferences</code></td>
+          <td>Callback when the user jumps references from detail UI; signature is explicit in published <code>.d.ts</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <h2>Why .d.ts matters</h2>
     <p>
       Ambiguous or inferred callback types in consuming apps can cause <code>svelte-check</code> friction. The UI package

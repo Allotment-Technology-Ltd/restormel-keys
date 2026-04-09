@@ -1,5 +1,7 @@
 # `@restormel/graph-core`
 
+**Public docs (integrators):** [restormel.dev/graph/docs](https://restormel.dev/graph/docs) — canonical SvelteKit guide: [Integrate Restormel Graph in a SvelteKit app](https://restormel.dev/graph/docs/integration/sveltekit).
+
 **Restormel Graph Contract v0** — portable types and contracts-free helpers for interactive graph rendering.
 
 - **`viewModel.ts`** — frozen DTOs only (no runtime logic, no `@restormel/contracts`).
