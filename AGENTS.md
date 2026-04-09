@@ -24,6 +24,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 - Keys library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
 - Tokens publish: tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml).
 - Testing packages publish: tag **`testing-v*`** or workflow dispatch → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
+- Graph packages publish: tag **`graph-v*`** → [.github/workflows/publish-graph.yml](.github/workflows/publish-graph.yml). SOPHIA / SvelteKit consumer runbook: [docs/restormel-graph-sophia-consumer.md](docs/restormel-graph-sophia-consumer.md).
 
 ## Cursor skills and rules
 

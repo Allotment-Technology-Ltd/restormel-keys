@@ -13,6 +13,8 @@ npm view @restormel/mcp version 2>/dev/null || echo "not published or name diffe
 npm view @restormel/doctor version
 npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/graph-core version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/ui-graph-svelte version 2>/dev/null || echo "not published or name differs"
 ```
 
 ## Minimum path (Phases 1–4, any framework)
@@ -39,6 +41,15 @@ Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) 
 | `@restormel/keys-elements` | `Check npm view` | Web components / Astro |
 | `@restormel/keys-cli` | `Published on npm` | `keys init`, `keys add`, wrappers for doctor/validate |
 
+## Restormel Graph (Svelte canvas + Contract v0)
+
+| Package | Availability | When needed |
+|---------|--------------|-------------|
+| `@restormel/graph-core` | `Check npm view` | Frozen **`GraphData`** DTOs + `layout` / `trace` / `workspace` helpers (no `@restormel/contracts`) |
+| `@restormel/ui-graph-svelte` | `Check npm view` | **`GraphCanvas`**, **`NodeDetail`**, **`graphCanvasEdgeKey`** — peer **`svelte@^5`** |
+
+**SOPHIA / SvelteKit integration:** [docs/restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) (imports, CSS variables, `ssr.noExternal`, tarball overrides).
+
 ## Availability truth table
 
 Use this as the canonical "what is available now" check:
@@ -60,6 +71,7 @@ If a package returns **404** from npm, use the **manual config** path and `@rest
 ## Publishing (maintainers)
 
 - **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
+- **Graph packages:** push git tag `graph-v*` (e.g. `graph-v0.1.0`) → workflow **Publish Graph packages** (`.github/workflows/publish-graph.yml`) publishes `@restormel/graph-core` then `@restormel/ui-graph-svelte`. **Pre-flight:** `bash scripts/smoke-graph-packages-consumer.sh` (also runs in CI).
 - **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
 
 ## pnpm monorepos

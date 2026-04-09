@@ -24,7 +24,8 @@
     "validate:testing-github-action-yml": "bash scripts/validate-testing-github-action-yml.sh",
     "validate-registry": "node scripts/validate-registry.mjs",
     "check:catalog-drift": "tsx scripts/check-catalog-drift.ts",
-    "init-module": "node scripts/init-restormel-module.mjs"
+    "init-module": "node scripts/init-restormel-module.mjs",
+    "smoke:graph-consumer": "bash scripts/smoke-graph-packages-consumer.sh"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",

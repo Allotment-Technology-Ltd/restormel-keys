@@ -14,8 +14,10 @@ End users consume **published npm packages**; this document is for contributors.
 | `packages/cli` (Keys) | `@restormel/keys-cli` | Keys CLI wrapper |
 | `packages/doctor`, `validate` | `@restormel/doctor`, `@restormel/validate` | OSS tooling |
 | `packages/aaif`, `mcp` | `@restormel/aaif`, `@restormel/mcp` | Contracts / MCP |
+| `packages/graph-core`, `packages/ui-graph-svelte` | `@restormel/graph-core`, `@restormel/ui-graph-svelte` | **Restormel Graph** — Contract v0 + contracts-free helpers; Svelte 5 canvas (ported from SOPHIA). Publish tag **`graph-v*`** → [`.github/workflows/publish-graph.yml`](../.github/workflows/publish-graph.yml). SOPHIA: [docs/restormel-graph-sophia-consumer.md](restormel-graph-sophia-consumer.md). Scope: [packages/graph-core/GRAPH_CORE_V0_SCOPE.md](../packages/graph-core/GRAPH_CORE_V0_SCOPE.md); extraction map: [docs/restormel/04-delivery/restormel-graph-sophia-extraction-artifacts.md](restormel/04-delivery/restormel-graph-sophia-extraction-artifacts.md) |
 | `packages/testing-core` … `testing-github-action`, `packages/testing-runs-server`, `packages/restormel-testing` | `@restormel/testing-*`, `@restormel/testing-bundle` | Goal-based testing runner, CLI, optional HTTP **Runs API** server (`testing-runs-server`), meta-package (`testing-bundle`), composite Action; publish tag **`testing-v*`** (or workflow dispatch). Config JSON Schema draft: `packages/testing-config/schema/restormel-testing-config.v1.schema.json` |
 | `apps/dashboard` | `dashboard` (private) | Keys marketing + dashboard SvelteKit app (**Connections**, **Restormel Testing** hub, encrypted provider credentials); Testing marketing/docs at **`/testing`** (`src/routes/testing/`) |
+| `apps/restormel-graph-demo` | `restormel-graph-demo` (private) | SvelteKit demo: **`/dev/graph-portability`** mock **`GraphData`** + **`GraphCanvas`** |
 | `platform/` | (mostly non-published) | Cursor template, module scaffold mirror, shared composite copies |
 
 ## @restormel/testing-* dependency graph
