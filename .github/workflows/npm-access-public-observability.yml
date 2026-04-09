@@ -19,7 +19,7 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - name: npm access public
+      - name: npm access set status=public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -28,4 +28,4 @@ jobs:
             echo "::error::NPM_TOKEN secret is not set."
             exit 1
           fi
-          npm access public @restormel/observability
+          npm access set status=public "@restormel/observability"
