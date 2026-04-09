@@ -10,11 +10,6 @@ export {
   workingMemoryToPromptBlock,
 } from "./reducer.js";
 export {
-  createStoaHistorySummarizationEvent,
-  createStoaScopeClearEvent,
-  createStoaTurnDigestEvents,
-} from "./sophiaEvents.js";
-export {
   estimateApproxTokens,
   type MemoryCell,
   type MemoryCellRefs,

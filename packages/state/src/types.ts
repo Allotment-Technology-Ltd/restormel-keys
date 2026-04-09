@@ -95,7 +95,7 @@ export interface MemoryCellUnpinEvent {
   run_id?: string;
 }
 
-/** Replace many cells with one summary cell (e.g. Stoa history compression). */
+/** Replace many cells with one summary cell (e.g. transcript summarization). */
 export interface MemorySummarizeCompactEvent {
   type: "memory_summarize_compact";
   id: string;

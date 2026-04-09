@@ -35,6 +35,7 @@ Step-by-step hook points (Stoa dialogue, escalation): [state-sophia-integration.
 
 ## Related docs
 
+- Append-only host storage: [state-host-persistence-recipe.md](./state-host-persistence-recipe.md)
 - Context packs: [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md)
 - Platform programme: [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md)
 - npm reference: [docs/reference/npm-packages.md](../reference/npm-packages.md)

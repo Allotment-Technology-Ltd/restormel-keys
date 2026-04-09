@@ -39,8 +39,12 @@
         or traces next to <code>run_id</code> (alongside <code>@restormel/observability</code>).
       </li>
       <li>
-        Optional <strong>Stoa-oriented factories</strong> (turn digest, history summarization, scope clear) for wiring SOPHIA
-        without copying types by hand.
+        <strong>SOPHIA / Stoa:</strong> dialogue-specific event builders are <strong>not</strong> in the npm package — copy the
+        reference module from
+        <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/state-sophia-integration.md" rel="noopener noreferrer"
+          ><code>state-sophia-integration.md</code></a
+        >
+        into SOPHIA.
       </li>
     </ul>
 

@@ -53,9 +53,9 @@ const packInput = attachCorrelationToRetrievalInput(
 );
 ```
 
-## SOPHIA / Stoa helpers
+## SOPHIA (Stoa)
 
-`createStoaTurnDigestEvents`, `createStoaHistorySummarizationEvent`, and `createStoaScopeClearEvent` map common Stoa boundaries to `StateEvent`s. Integration steps: [docs/restormel/state-sophia-integration.md](../../docs/restormel/state-sophia-integration.md).
+Stoa-specific event builders live **only in SOPHIA** — they are not part of this package. Copy the reference module from [docs/restormel/state-sophia-integration.md](../../docs/restormel/state-sophia-integration.md) into your app.
 
 ## API (summary)
 
