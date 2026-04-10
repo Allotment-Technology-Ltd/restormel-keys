@@ -2,6 +2,9 @@
   /**
    * Social proof: live metrics (GitHub stars + summed npm 30d downloads) and/or shields.io badges.
    * Metrics variant renders nothing when data is missing or invalid.
+   *
+   * Uses legacy `export let` (not `$props`) because the dashboard sets `compilerOptions.runes: false`;
+   * mixing runes here produced broken SSR (ReferenceError: props is not defined) in the Vercel ISR bundle.
    */
   import type { SocialProofMetrics } from "$lib/social-proof";
   import {
@@ -14,28 +17,24 @@
 
   type Variant = "metrics" | "badges";
 
-  interface Props {
-    variant?: Variant;
-    /** From root layout load; required for variant="metrics" */
-    metrics?: SocialProofMetrics | null;
-    class?: string;
-  }
-
-  let { variant = "metrics", metrics = null, class: className = "" }: Props = $props();
+  export let variant: Variant = "metrics";
+  /** From root layout load; used when variant="metrics" */
+  export let metrics: SocialProofMetrics | null = null;
+  /** Optional extra classes on the root element */
+  export let className = "";
 
   const shieldsStars = socialProofShieldStarsUrl();
   const shieldsNpm = socialProofShieldNpmKeysUrl();
 
-  const showMetrics = $derived(
+  $: showMetrics =
     variant === "metrics" &&
-      metrics != null &&
-      metrics.stars > 0 &&
-      metrics.npmDownloads30d > 0,
-  );
+    metrics != null &&
+    metrics.stars > 0 &&
+    metrics.npmDownloads30d > 0;
 </script>
 
 {#if variant === "badges"}
-  <div class="social-proof social-proof--badges {className}" aria-label="Community links">
+  <div class="social-proof social-proof--badges {className || ''}" aria-label="Community links">
     <a
       href={GITHUB_REPO_URL}
       class="social-proof-badge-link"
@@ -60,7 +59,7 @@
     </a>
   </div>
 {:else if showMetrics && metrics}
-  <div class="social-proof social-proof--metrics {className}">
+  <div class="social-proof social-proof--metrics {className || ''}">
     <p class="social-proof-heading">Community</p>
     <ul class="social-proof-stats">
       <li class="social-proof-stat">
