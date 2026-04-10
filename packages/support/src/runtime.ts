@@ -1,11 +1,11 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, tool, type CoreMessage } from "ai";
+import { stepCountIs, streamText, tool, type ModelMessage } from "ai";
 import { z } from "zod";
 import { searchRestormelDocumentation } from "./grounding.js";
 import { RESTORMEL_SUPPORT_SYSTEM } from "./prompt.js";
 
 export type SupportStreamOptions = {
-  messages: CoreMessage[];
+  messages: ModelMessage[];
   openaiApiKey: string;
   model?: string;
 };
@@ -26,7 +26,7 @@ export function supportChatToTextStreamResponse(options: SupportStreamOptions): 
       searchRestormelDocs: tool({
         description:
           "Search the Restormel documentation index (offline). Returns titles and URLs on restormel.dev. Use before answering how-to or navigation questions.",
-        parameters: z.object({
+        inputSchema: z.object({
           query: z.string().describe("What to look for"),
           section: z.string().optional().describe("Optional section id, e.g. mcp, integrations"),
         }),
@@ -40,7 +40,7 @@ export function supportChatToTextStreamResponse(options: SupportStreamOptions): 
         },
       }),
     },
-    maxSteps: 6,
+    stopWhen: stepCountIs(6),
   });
 
   return result.toTextStreamResponse();

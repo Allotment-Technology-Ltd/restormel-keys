@@ -2,6 +2,12 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — Security: Dependabot / npm audit remediation
+
+**Deps:** Root `pnpm.overrides` for patched transitive versions (`hono`, `@hono/node-server`, `basic-ftp`, `lodash`, `defu`, `brace-expansion`, `path-to-regexp`, `jsondiffpatch`). **Zuplo:** overrides `axios` `>=1.15.0`, `brace-expansion` `>=5.0.5`. **Example:** [`examples/nextjs-playwright`](examples/nextjs-playwright) **Next.js** `^15.5.14` (patched App Router / image / rewrite advisories on the 15.x line).
+
+**`@restormel/support`:** **AI SDK** `^5.0.52` + **`@ai-sdk/openai` `^2.0.102`**, **Zod** `^3.25.76`; migrate `CoreMessage` → `ModelMessage`, tool `parameters` → `inputSchema`, `maxSteps` → `stopWhen: stepCountIs(6)`.
+
 ## Repo (2026-04-10) — Dashboard admin: npm package insights
 
 **Dashboard (service owners):** [`/keys/dashboard/admin/package-registry`](apps/dashboard/src/routes/keys/dashboard/admin/package-registry/+page.svelte) — npm **per-version last-week** download breakdown (public API), Libraries.io **dependent repositories** (optional `LIBRARIES_IO_API_KEY`), and outbound links to npm, **GitHub Dependents**, deps.dev, and Libraries.io. Env: `RESTORMEL_NPM_INSIGHTS_PACKAGE`, `RESTORMEL_NPM_INSIGHTS_GITHUB_REPO`. Nav + Settings link from the existing admin block.

@@ -1,4 +1,4 @@
-import type { CoreMessage } from "ai";
+import type { ModelMessage } from "ai";
 
 export type SupportChatInputMessage = {
   role: "user" | "assistant";
@@ -11,9 +11,9 @@ const MAX_CONTENT_LEN = 8000;
 /**
  * Sanitize client-supplied messages: only user/assistant, bounded length and count.
  */
-export function parseSupportMessages(raw: unknown): CoreMessage[] | null {
+export function parseSupportMessages(raw: unknown): ModelMessage[] | null {
   if (!Array.isArray(raw)) return null;
-  const out: CoreMessage[] = [];
+  const out: ModelMessage[] = [];
   for (const item of raw) {
     if (out.length >= MAX_MESSAGES) break;
     if (!item || typeof item !== "object") continue;
