@@ -107,4 +107,14 @@ describe("parseArgs", () => {
       force: false,
     });
   });
+
+  it("parses telemetry status (default)", () => {
+    expect(parseArgs(["telemetry"])).toEqual({ kind: "telemetry", action: "status" });
+    expect(parseArgs(["telemetry", "status"])).toEqual({ kind: "telemetry", action: "status" });
+  });
+
+  it("parses telemetry disable and enable", () => {
+    expect(parseArgs(["telemetry", "disable"])).toEqual({ kind: "telemetry", action: "disable" });
+    expect(parseArgs(["telemetry", "enable"])).toEqual({ kind: "telemetry", action: "enable" });
+  });
 });

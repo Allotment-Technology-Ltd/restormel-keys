@@ -145,7 +145,7 @@
       <div class="container pricing-cta-inner">
         <h2 id="suite-pricing-heading" class="pricing-cta-title">One suite. One price.</h2>
         <p class="pricing-cta-lead">Get all three modules on the Platform plan — £35/mo.</p>
-        <a class="btn btn-primary pricing-cta-btn" href="/keys/pricing">See pricing →</a>
+        <a class="btn btn-primary pricing-cta-btn" href="/pricing">See suite pricing →</a>
       </div>
     </section>
 

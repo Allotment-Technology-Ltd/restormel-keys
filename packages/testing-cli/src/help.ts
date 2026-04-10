@@ -1,4 +1,4 @@
-const KNOWN_TOPICS = new Set(["init", "validate", "run", "report", "doctor"]);
+const KNOWN_TOPICS = new Set(["init", "validate", "run", "report", "doctor", "telemetry"]);
 
 export function printGlobalHelp(program: string): void {
   console.log(`${program} — Restormel / Testing CLI
@@ -12,6 +12,7 @@ Commands:
   run        Execute a browser suite locally and write report artefacts
   report     Print a human summary from a previous run directory
   doctor     Check Node, optional config file, Playwright Chromium, Keys env hints
+  telemetry  Show, enable, or disable anonymous CLI usage telemetry
 
 Global options:
   -h, --help       Show help (optionally: ${program} help <command>)
@@ -26,12 +27,16 @@ Examples:
   ${program} run --suite web-critical --goal smoke,login --config restormel-testing.yaml
   ${program} report .restormel-testing/runs/run-2026-04-07
   ${program} doctor --config restormel-testing.yaml
+  ${program} telemetry status
 
 Environment (Keys / judges — values never printed):
   RESTORMEL_KEYS_BASE             Canonical site origin for Keys HTTP resolve (optional; alias: RESTORMEL_KEYS_API_BASE_URL)
   RESTORMEL_GATEWAY_KEY           Canonical bearer for resolve (optional; alias: RESTORMEL_KEYS_API_TOKEN)
   RESTORMEL_KEYS_API_TOKEN_ENV    Name of env var with Keys HTTP bearer (default RESTORMEL_KEYS_API_TOKEN)
   RESTORMEL_TESTING_OPENAI_FALLBACK   Set to 1 for documented OPENAI_API_KEY fallback when Keys unset
+
+Telemetry (anonymous usage — no code, credentials, or personal data):
+  RESTORMEL_TELEMETRY           Set to 0 to disable; 1 to enable (overrides ~/.restormel/telemetry.json)
 
 Shell hooks (adapter_hooks, preconditions, cleanup):
   RESTORMEL_TESTING_SKIP_SHELL_HOOKS=1   Skip all shell hooks
@@ -50,7 +55,7 @@ export function printCommandHelp(program: string, topic: string): boolean {
   const t = topic.toLowerCase();
   if (!KNOWN_TOPICS.has(t)) {
     console.error(`Unknown help topic: ${topic}`);
-    console.error(`Try: ${program} help init | validate | run | report | doctor`);
+    console.error(`Try: ${program} help init | validate | run | report | doctor | telemetry`);
     return false;
   }
 
@@ -117,9 +122,27 @@ Exit: 0 OK, 2 prerequisite failure
     return true;
   }
 
-  console.log(`${program} report <path>
+  if (t === "report") {
+    console.log(`${program} report <path>
 
 Print a summary from a run artefact directory (containing run.json) or a direct path to run.json.
 `);
-  return true;
+    return true;
+  }
+
+  if (t === "telemetry") {
+    console.log(`${program} telemetry [status|disable|enable]
+
+Anonymous usage telemetry (command name, Node/OS, suite and goal counts, verdict counts only).
+Opt out: RESTORMEL_TELEMETRY=0 or \`telemetry disable\` (saved to ~/.restormel/telemetry.json).
+
+Subcommands:
+  status    Show whether sending is enabled and why (default when no subcommand)
+  disable   Turn off telemetry
+  enable    Turn telemetry back on
+`);
+    return true;
+  }
+
+  return false;
 }

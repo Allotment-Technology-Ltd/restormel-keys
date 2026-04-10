@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXIT_OK, EXIT_USAGE } from "./exit-codes.js";
 import { runCli } from "./dispatch.js";
 import { STARTER_CONFIG_YAML } from "./starter-config.js";
@@ -11,7 +11,12 @@ import { PRE_RUN_FAILURE_JSON, writeRunArtifacts } from "@restormel/testing-repo
 describe("runCli", () => {
   let workDir: string;
 
+  beforeEach(() => {
+    vi.stubEnv("RESTORMEL_TELEMETRY", "0");
+  });
+
   afterEach(async () => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     if (workDir) {
       await rm(workDir, { recursive: true, force: true });

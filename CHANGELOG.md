@@ -2,6 +2,26 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — GitHub meta issue #90 + child issues
+
+**Tracking:** Meta issue [#90](https://github.com/Allotment-Technology-Ltd/restormel-keys/issues/90) (suite marketing / dashboard train follow-ups) with child issues **#91–#111** (see comment on #90 for the index).
+
+## Repo (2026-04-10) — Reference: Allotment Technology pitch deck source
+
+**Docs:** [`docs/reference/allotment-technology-pitch-deck.md`](docs/reference/allotment-technology-pitch-deck.md) — slide-by-slide copy for Restormel + Plotbudget + SOPHIA + founder narrative (export to PDF for accelerator uploads).
+
+## Repo (2026-04-10) — Reference: startup accelerators and credits
+
+**Docs:** [`docs/reference/startup-accelerators-and-credits.md`](docs/reference/startup-accelerators-and-credits.md) — checklist of LLM/inference startup programmes, cloud credits, NVIDIA Inception, and UK Innovate UK entry points (reference only; verify eligibility on each site).
+
+## Repo (2026-04-10) — Public roadmap page
+
+**Dashboard:** [`/roadmap`](apps/dashboard/src/routes/roadmap/+page.svelte) — “What we're building” hero, three columns (Shipping soon / Planned / Considering), **Suggest a feature** → [GitHub Discussions](https://github.com/Allotment-Technology-Ltd/restormel-keys/discussions), **Founders Circle** vote CTA → [`/founders`](apps/dashboard/src/routes/founders/+page.svelte). **`GITHUB_DISCUSSIONS_URL`** in [`site-nav.ts`](apps/dashboard/src/lib/site-nav.ts). **Main nav + footer** link in [`SiteHeader.svelte`](apps/dashboard/src/lib/components/site/SiteHeader.svelte) / [`SiteFooter.svelte`](apps/dashboard/src/lib/components/site/SiteFooter.svelte).
+
+## Repo (2026-04-10) — Testing CLI telemetry
+
+**`@restormel/testing-cli`:** Optional anonymous telemetry — first-run notice on `stderr`, preference in `~/.restormel/telemetry.json`, `RESTORMEL_TELEMETRY` override, POST to `https://telemetry.restormel.dev/v1/event` (silent on failure). Payload: command (`run` / `validate` / `report` / `doctor`), Node version, OS platform, suite/goal counts, goal verdict counts only — no names, code, secrets, or PII. New commands: `telemetry status`, `telemetry disable`, `telemetry enable`. Docs: [`/testing/docs/guides/telemetry`](apps/dashboard/src/routes/testing/docs/guides/telemetry/+page.svelte) + [`docs-nav`](apps/dashboard/src/lib/testing/docs-nav.ts).
+
 ## Repo (2026-04-10) — Keys dashboard usage charts
 
 **Analytics (`/keys/dashboard/analytics`):** New **Usage** section — **Requests over time** (SVG line, last **30 days** UTC from `getRequestLogCountsByUtcDay` + `request_logs`; **sample data** if the query fails), **Cost by model** (SVG bars from `getEstimatedCostUsdByModel`; **illustrative** mock when `estimated_cost` is all zero), **Provider health** (static badges + **TODO** for live wiring). Component [`UsageChartsSection.svelte`](apps/dashboard/src/lib/components/dashboard/UsageChartsSection.svelte). **No new charting dependency** (inline SVG). Resolved stray **merge conflict** in [`apps/dashboard/package.json`](apps/dashboard/package.json) (precheck/prebuild + duplicate `@restormel/mcp`).

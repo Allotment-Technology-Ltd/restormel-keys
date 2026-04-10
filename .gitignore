@@ -56,5 +56,8 @@ temp/
 internal/**
 !internal/README.md
 
+# Founder / investor reference decks — keep local only (clone-safe public repo)
+docs/reference/allotment-technology-pitch-deck.md
+
 # Cursor plan artifacts (local-only)
 .cursor/plans/**

@@ -19,6 +19,7 @@
       <ul class="site-footer-links" aria-label="Keys">
         <li><a href="/">Restormel home</a></li>
         <li><a href="/changelog">Changelog</a></li>
+        <li><a href="/roadmap">Roadmap</a></li>
         {#each keysPillarLinks as item}
           <li><a href={item.href}>{item.label}</a></li>
         {/each}

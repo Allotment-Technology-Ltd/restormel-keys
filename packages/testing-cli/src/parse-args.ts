@@ -22,6 +22,7 @@ export type ParsedCli =
     }
   | { kind: "report"; path: string }
   | { kind: "doctor"; config?: string }
+  | { kind: "telemetry"; action: "status" | "disable" | "enable" }
   | { kind: "error"; message: string };
 
 function parseInitArgs(args: string[]): ParsedCli {
@@ -240,6 +241,27 @@ function parseReportArgs(args: string[]): ParsedCli {
   return { kind: "report", path: pos[0]! };
 }
 
+function parseTelemetryArgs(args: string[]): ParsedCli {
+  const rest = [...args];
+  for (const a of rest) {
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "telemetry" };
+    }
+  }
+  const pos = rest.filter((a) => !a.startsWith("-"));
+  const sub = pos[0]?.toLowerCase();
+  if (sub === undefined || sub === "status") {
+    return { kind: "telemetry", action: "status" };
+  }
+  if (sub === "disable") {
+    return { kind: "telemetry", action: "disable" };
+  }
+  if (sub === "enable") {
+    return { kind: "telemetry", action: "enable" };
+  }
+  return { kind: "error", message: `telemetry: unknown subcommand: ${pos[0]}` };
+}
+
 function parseDoctorArgs(args: string[]): ParsedCli {
   let config: string | undefined;
   for (let i = 0; i < args.length; i++) {
@@ -296,6 +318,9 @@ export function parseArgs(argv: string[]): ParsedCli {
   }
   if (first === "doctor") {
     return parseDoctorArgs(rest);
+  }
+  if (first === "telemetry") {
+    return parseTelemetryArgs(rest);
   }
 
   return { kind: "error", message: `Unknown command: ${first}` };

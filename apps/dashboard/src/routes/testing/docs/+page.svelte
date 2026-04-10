@@ -54,6 +54,7 @@
     { href: `${base}/docs/guides/performance-goals`, label: "Performance goals", hint: "Vitals + Lighthouse paths" },
     { href: `${base}/docs/architecture`, label: "Architecture", hint: "Packages and boundaries" },
     { href: `${base}/docs/guides/plot-dogfooding`, label: "Plot dogfooding", hint: "First real suite" },
+    { href: `${base}/docs/guides/telemetry`, label: "CLI telemetry", hint: "Anonymous usage; opt out" },
     { href: `${base}/docs/examples`, label: "Examples", hint: "Reference layouts" },
     { href: keysDocsUrl, label: "Keys docs (canonical)", hint: "Env vocabulary, resolve API" },
     { href: keysHomeUrl, label: "Restormel Keys", hint: "Suite product home" },

@@ -9,13 +9,49 @@ import {
   readRunArtifacts,
   writeRunReportBundle,
 } from "@restormel/testing-report";
+import type { GoalRunRecord } from "@restormel/testing-core";
 import { runLocalSuite } from "@restormel/testing-runner";
 import { runDoctor } from "./doctor.js";
 import { EXIT_FAILED, EXIT_OK, EXIT_USAGE } from "./exit-codes.js";
 import { printCommandHelp, printGlobalHelp } from "./help.js";
-import { parseArgs } from "./parse-args.js";
+import { parseArgs, type ParsedCli } from "./parse-args.js";
 import { STARTER_CONFIG_YAML } from "./starter-config.js";
+import {
+  countGoalVerdicts,
+  getTelemetryStatus,
+  isTelemetrySendingEnabled,
+  maybeShowFirstRunTelemetryNotice,
+  sendTelemetrySnapshot,
+  setTelemetrySendingEnabled,
+  telemetryUserConfigPath,
+  type TelemetrySnapshot,
+} from "./telemetry.js";
 import { cliPackageVersion } from "./version.js";
+
+type CliResult = { code: number; telemetry?: TelemetrySnapshot };
+
+function emptyTelemetrySnapshot(command: TelemetrySnapshot["command"]): TelemetrySnapshot {
+  return {
+    command,
+    suiteCount: 0,
+    goalCount: 0,
+    verdictPassed: 0,
+    verdictFailed: 0,
+    verdictIndeterminate: 0,
+  };
+}
+
+function runTelemetrySnapshot(suiteCount: number, goalRuns: GoalRunRecord[]): TelemetrySnapshot {
+  const v = countGoalVerdicts(goalRuns);
+  return {
+    command: "run",
+    suiteCount,
+    goalCount: goalRuns.length,
+    verdictPassed: v.passed,
+    verdictFailed: v.failed,
+    verdictIndeterminate: v.indeterminate,
+  };
+}
 
 function programLabel(): string {
   const exe = process.argv[1];
@@ -55,7 +91,7 @@ async function cmdInit(opts: { config: string; print: boolean; force: boolean })
   return EXIT_OK;
 }
 
-async function cmdValidate(opts: { config: string; json: boolean }): Promise<number> {
+async function cmdValidate(opts: { config: string; json: boolean }): Promise<CliResult> {
   const loaded = await loadConfigFromFile(opts.config);
   if (!loaded.ok) {
     if (opts.json) {
@@ -63,8 +99,10 @@ async function cmdValidate(opts: { config: string; json: boolean }): Promise<num
     } else {
       console.error(formatConfigErrors(loaded.errors));
     }
-    return EXIT_USAGE;
+    return { code: EXIT_USAGE, telemetry: emptyTelemetrySnapshot("validate") };
   }
+  const suiteCount = loaded.config.suites.length;
+  const goalCount = loaded.config.suites.reduce((n, s) => n + s.goals.length, 0);
   if (opts.json) {
     console.log(
       JSON.stringify(
@@ -80,7 +118,17 @@ async function cmdValidate(opts: { config: string; json: boolean }): Promise<num
   } else {
     console.log(`Valid ${opts.config} (schema_version ${loaded.config.schemaVersion})`);
   }
-  return EXIT_OK;
+  return {
+    code: EXIT_OK,
+    telemetry: {
+      command: "validate",
+      suiteCount,
+      goalCount,
+      verdictPassed: 0,
+      verdictFailed: 0,
+      verdictIndeterminate: 0,
+    },
+  };
 }
 
 function defaultArtifactDir(): string {
@@ -211,7 +259,7 @@ async function cmdRunOneSuite(
   return { code: EXIT_OK, run, artifactDir };
 }
 
-async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> {
+async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<CliResult> {
   const cwd = process.cwd();
   const { suites, ...rest } = opts;
 
@@ -221,14 +269,15 @@ async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> 
       const ar = resolvePathUnderRoot(cwd, opts.artifactDir);
       if (!ar.ok) {
         console.error(ar.reason);
-        return EXIT_USAGE;
+        return { code: EXIT_USAGE, telemetry: runTelemetrySnapshot(suites.length, []) };
       }
       artifactDir = ar.path;
     } else {
       artifactDir = defaultArtifactDir();
     }
     const one = await cmdRunOneSuite(suites[0]!, artifactDir, rest);
-    return one.code;
+    const goalRuns = one.run?.goalRuns ?? [];
+    return { code: one.code, telemetry: runTelemetrySnapshot(suites.length, goalRuns) };
   }
 
   let baseDir: string;
@@ -236,7 +285,7 @@ async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> 
     const ar = resolvePathUnderRoot(cwd, opts.artifactDir);
     if (!ar.ok) {
       console.error(ar.reason);
-      return EXIT_USAGE;
+      return { code: EXIT_USAGE, telemetry: runTelemetrySnapshot(suites.length, []) };
     }
     baseDir = ar.path;
   } else {
@@ -252,12 +301,16 @@ async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> 
     artifact_dir: string;
   }[] = [];
   let worst = EXIT_OK;
+  const allGoalRuns: GoalRunRecord[] = [];
 
   for (let i = 0; i < suites.length; i++) {
     const suiteId = suites[i]!;
     const safe = sanitizePathSegment(suiteId) || `suite-${i}`;
     const subDir = join(baseDir, safe);
     const r = await cmdRunOneSuite(suiteId, subDir, { ...rest, json: false });
+    if (r.run) {
+      allGoalRuns.push(...r.run.goalRuns);
+    }
     if (r.code === EXIT_USAGE) {
       if (opts.json) {
         console.log(
@@ -273,7 +326,7 @@ async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> 
           ),
         );
       }
-      return EXIT_USAGE;
+      return { code: EXIT_USAGE, telemetry: runTelemetrySnapshot(suites.length, allGoalRuns) };
     }
     if (r.run) {
       rows.push({
@@ -305,21 +358,88 @@ async function cmdRun(opts: RunCliOpts & { suites: string[] }): Promise<number> 
     console.log(`Re-run: ${program} run ${suites.map((s) => `--suite ${s}`).join(" ")} --config ${opts.config}`);
   }
 
-  return worst;
+  return { code: worst, telemetry: runTelemetrySnapshot(suites.length, allGoalRuns) };
 }
 
-async function cmdReport(opts: { path: string }): Promise<number> {
+async function cmdReport(opts: { path: string }): Promise<CliResult> {
   const loaded = await readRunArtifacts(opts.path);
   if (!("run" in loaded)) {
     console.error(loaded.message);
-    return EXIT_USAGE;
+    return { code: EXIT_USAGE, telemetry: emptyTelemetrySnapshot("report") };
   }
   console.log(formatRunSummary(loaded.run));
   if (loaded.warnings.length > 0) {
     console.warn("Warnings from run:");
     for (const w of loaded.warnings) console.warn(`  ${w}`);
   }
+  const v = countGoalVerdicts(loaded.run.goalRuns);
+  return {
+    code: EXIT_OK,
+    telemetry: {
+      command: "report",
+      suiteCount: 1,
+      goalCount: loaded.run.goalRuns.length,
+      verdictPassed: v.passed,
+      verdictFailed: v.failed,
+      verdictIndeterminate: v.indeterminate,
+    },
+  };
+}
+
+async function cmdDoctorWithTelemetry(opts: { config?: string }): Promise<CliResult> {
+  const code = await runDoctor(opts);
+  let suiteCount = 0;
+  let goalCount = 0;
+  if (opts.config !== undefined) {
+    const loaded = await loadConfigFromFile(opts.config);
+    if (loaded.ok) {
+      suiteCount = loaded.config.suites.length;
+      goalCount = loaded.config.suites.reduce((n, s) => n + s.goals.length, 0);
+    }
+  }
+  return {
+    code,
+    telemetry: {
+      command: "doctor",
+      suiteCount,
+      goalCount,
+      verdictPassed: 0,
+      verdictFailed: 0,
+      verdictIndeterminate: 0,
+    },
+  };
+}
+
+async function cmdTelemetry(
+  action: "status" | "disable" | "enable",
+  program: string,
+): Promise<number> {
+  const prefPath = telemetryUserConfigPath();
+  if (action === "status") {
+    const s = await getTelemetryStatus();
+    console.log(`${program}: telemetry ${s.sending ? "enabled" : "disabled"}`);
+    console.log(`${s.detail}`);
+    console.log(`Preference file: ${prefPath}`);
+    return EXIT_OK;
+  }
+  if (action === "disable") {
+    await setTelemetrySendingEnabled(false);
+    console.log(`${program}: telemetry disabled (saved to ${prefPath})`);
+    return EXIT_OK;
+  }
+  await setTelemetrySendingEnabled(true);
+  console.log(`${program}: telemetry enabled (saved to ${prefPath})`);
   return EXIT_OK;
+}
+
+function shouldShowTelemetryFirstRunNotice(parsed: ParsedCli): boolean {
+  return (
+    parsed.kind === "validate" ||
+    parsed.kind === "run" ||
+    parsed.kind === "report" ||
+    parsed.kind === "doctor" ||
+    parsed.kind === "telemetry"
+  );
 }
 
 /**
@@ -349,26 +469,34 @@ export async function runCli(argv: string[]): Promise<number> {
     return EXIT_USAGE;
   }
 
+  if (shouldShowTelemetryFirstRunNotice(parsed)) {
+    await maybeShowFirstRunTelemetryNotice(program);
+  }
+
   if (parsed.kind === "init") {
     return cmdInit(parsed);
   }
 
+  if (parsed.kind === "telemetry") {
+    return cmdTelemetry(parsed.action, program);
+  }
+
+  let result: CliResult;
   if (parsed.kind === "validate") {
-    return cmdValidate(parsed);
-  }
-
-  if (parsed.kind === "run") {
+    result = await cmdValidate(parsed);
+  } else if (parsed.kind === "run") {
     const { suites, ...rest } = parsed;
-    return cmdRun({ suites, ...rest });
+    result = await cmdRun({ suites, ...rest });
+  } else if (parsed.kind === "report") {
+    result = await cmdReport(parsed);
+  } else if (parsed.kind === "doctor") {
+    result = await cmdDoctorWithTelemetry({ config: parsed.config });
+  } else {
+    return EXIT_USAGE;
   }
 
-  if (parsed.kind === "report") {
-    return cmdReport(parsed);
+  if (result.telemetry !== undefined && (await isTelemetrySendingEnabled())) {
+    await sendTelemetrySnapshot(result.telemetry);
   }
-
-  if (parsed.kind === "doctor") {
-    return runDoctor({ config: parsed.config });
-  }
-
-  return EXIT_USAGE;
+  return result.code;
 }

@@ -425,7 +425,11 @@
     </ul>
   </section>
 
-  <p><a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/usage"}>Usage (placeholder)</a></p>
+  <p class="project-quick-links">
+    <a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; analytics</a>
+    ·
+    <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/usage"}>Project usage</a>
+  </p>
 {/if}
 
 <style>
@@ -440,6 +444,16 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
+  }
+  .project-quick-links {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: var(--space-4) 0 0;
+  }
+  .project-quick-links a {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .section {
     margin-bottom: var(--space-6);

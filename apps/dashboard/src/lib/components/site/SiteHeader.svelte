@@ -43,6 +43,7 @@
   $: graphPillarOn = isGraphPillarActive(path);
   $: integrationsOn = isIntegrationsActive(path);
   $: changelogOn = normalizePath(path) === "/changelog";
+  $: roadmapOn = normalizePath(path) === "/roadmap";
 
   function toggleMobileMenu() {
     mobileOpen = !mobileOpen;
@@ -215,6 +216,9 @@
           Changelog
         </a>
       </li>
+      <li>
+        <a href="/roadmap" class:active={roadmapOn} aria-current={roadmapOn ? "page" : undefined}>Roadmap</a>
+      </li>
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
           <summary
@@ -316,6 +320,11 @@
       class:active={changelogOn}
       aria-current={changelogOn ? "page" : undefined}
       on:click={closeMobileMenu}>Changelog</a>
+    <a
+      href="/roadmap"
+      class:active={roadmapOn}
+      aria-current={roadmapOn ? "page" : undefined}
+      on:click={closeMobileMenu}>Roadmap</a>
     <span class="site-header-mobile-heading" role="presentation">Developers</span>
     {#each devLinks as item}
       <a

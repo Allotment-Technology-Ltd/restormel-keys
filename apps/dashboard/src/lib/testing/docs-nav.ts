@@ -10,7 +10,7 @@ import type { DocsNavBlock } from "$lib/keys/docs-nav.js";
  * - **Concepts** — `overview`, `how-it-fits-together` (Keys-style top-level orientation).
  * - **Quickstart / getting started** — `getting-started/new-project`, `getting-started/existing-stack`.
  * - **Walkthrough** — phase-based onboarding (`walkthrough`, `walkthrough/phase-*`, extended topics).
- * - **Guides** — task docs: `guides/ci`, `guides/ci-security`, `guides/http-runs-and-actions`, `guides/performance-goals`, `guides/config`, `guides/test-definition`, `guides/plot-dogfooding`.
+ * - **Guides** — task docs: `guides/ci`, `guides/ci-security`, `guides/http-runs-and-actions`, `guides/performance-goals`, `guides/config`, `guides/test-definition`, `guides/plot-dogfooding`, `guides/telemetry`.
  * - **Integrations** — `integrations/keys` (BYOK seam; Keys canonical env/API docs linked from here); `guides/keys-ci-checklist` for CI env when adding judge goals; `guides/keys-dashboard-onboarding` → Keys doc journey (Connections + Testing hub).
  * - **Reference-style** — `architecture`, `examples`, `compatibility` (runtime/CI matrix).
  * - **Journeys** — thin entry points for the chooser (`journeys/*`), same pattern as Keys.
@@ -47,6 +47,7 @@ export const docsNav: DocsNavSection[] = [
       { path: "/docs/guides/config", title: "Configuration" },
       { path: "/docs/guides/test-definition", title: "Test definition" },
       { path: "/docs/guides/plot-dogfooding", title: "Plot dogfooding" },
+      { path: "/docs/guides/telemetry", title: "CLI telemetry" },
       { path: "/docs/guides/keys-ci-checklist", title: "Keys in CI (checklist)" },
       { path: "/docs/guides/keys-dashboard-onboarding", title: "Keys + Testing (dashboard)" },
     ],

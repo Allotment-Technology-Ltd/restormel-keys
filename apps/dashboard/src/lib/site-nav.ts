@@ -6,6 +6,8 @@ import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
 export const GITHUB_REPO_URL = "https://github.com/Allotment-Technology-Ltd/restormel-keys";
 
+export const GITHUB_DISCUSSIONS_URL = `${GITHUB_REPO_URL}/discussions`;
+
 export type SiteNavLink = {
   href: string;
   label: string;
