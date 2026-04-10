@@ -12,6 +12,8 @@ npm install @restormel/mcp @restormel/keys
 
 `@restormel/keys` is required at runtime for catalog, pricing, and validation logic.
 
+**Programmatic doc index:** `searchDocs`, `DOC_INDEX`, and `DocIndexEntry` are exported from the package entrypoint for hosts such as **`@restormel/support`** (same data as MCP `docs.search`).
+
 ## Run the stdio server (Cursor, Claude Desktop, Codex, …)
 
 After install, point your MCP client at the published binary:

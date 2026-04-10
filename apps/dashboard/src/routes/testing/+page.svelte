@@ -3,10 +3,10 @@
 </script>
 
 <svelte:head>
-  <title>Restormel Testing — Agentic testing for AI products</title>
+  <title>Restormel Testing — Goal-based AI testing for CI</title>
   <meta
     name="description"
-    content="Open-source goal-based testing for AI-enabled software. Local and CI/CD, powered by BYOK through Restormel Keys."
+    content="Ship AI features without flying blind in CI. Goal-based, workflow-aware tests with clear verdicts — local and GitHub Actions, MIT licensed, Keys-backed execution."
   />
 </svelte:head>
 

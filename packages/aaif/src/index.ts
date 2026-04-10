@@ -9,8 +9,8 @@ export type {
   AAIFRoutingHints,
 } from "./types.js";
 
-/** Optional compile-time alignment with Horizon suite MCP tool names (install `@restormel/mcp` for the resolver). */
-export type { RestormelSuiteToolName } from "@restormel/mcp";
+/** Horizon suite MCP tool names (duplicated here so `@restormel/aaif` builds without `@restormel/mcp`). */
+export type { RestormelSuiteToolName } from "./suite-tool-names.js";
 
 export { isAAIFRequest, isAAIFResponse } from "./validate.js";
 

@@ -151,6 +151,8 @@ jobs:
           pnpm --filter @restormel/testing-config run build
           pnpm --filter @restormel/mcp run build
           pnpm --filter @restormel/mcp run test
+          pnpm --filter @restormel/support run build
+          pnpm --filter @restormel/support run test
       - name: Dashboard check (svelte-check)
         run: pnpm --filter dashboard run check
       - name: Dashboard build

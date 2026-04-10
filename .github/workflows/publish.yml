@@ -1,7 +1,7 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
 # Graph packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`) use tag graph-v* → publish-graph.yml.
 # Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
-#   → @restormel/aaif → @restormel/mcp → doctor → validate → keys-cli.
+#   → @restormel/aaif → @restormel/mcp (with platform deps + tests) → doctor → validate → keys-cli.
 # keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
 # does not block publishing keys-svelte (previously aaif ran first and aborted the job).
 # pnpm version must match root package.json "packageManager" (9.0.0).
@@ -73,6 +73,16 @@ jobs:
       - name: Publish @restormel/aaif to npm
         run: pnpm --filter @restormel/aaif publish --access public --no-git-checks
 
+      - name: Build deps for @restormel/mcp
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
+      - name: Test @restormel/mcp
+        run: pnpm --filter @restormel/mcp run test
       - name: Build @restormel/mcp
         run: pnpm --filter @restormel/mcp run build
       # pnpm publish rewrites workspace:* on @restormel/keys to semver

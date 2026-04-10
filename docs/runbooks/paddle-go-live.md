@@ -50,6 +50,8 @@ pnpm tsx scripts/bootstrap-paddle.ts -- --force-create --write-env=apps/dashboar
 
 This writes env var lines including `PADDLE_PRICE_KEYS_PRO_MONTHLY_GBP=...`.
 
+The same script also provisions catalog entries for **Keys Team** (`PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP` / `_USD`) and **Platform** bundle (`PADDLE_PRICE_PLATFORM_MONTHLY_GBP` / `_USD`), defaulting to **£35** / **$84** monthly unless you override with `PADDLE_SETUP_*` minor-unit env vars. There is no first-party Paddle CLI; use the Dashboard, Billing API, or this repo script. Self-serve checkout for Team/Platform remains off until product entitlements catch up — see webhook handling for `tier` on Pro today.
+
 ## 3. App env vars (production)
 
 Set these in your production environment (Vercel or your deployment target). **Do not commit values.**

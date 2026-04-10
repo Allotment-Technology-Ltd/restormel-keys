@@ -12,6 +12,7 @@
     isLinkActive,
     isTestingPillarActive,
     keysPillarLinks,
+    normalizePath,
     testingPillarLinks,
   } from "$lib/site-nav";
 
@@ -41,6 +42,7 @@
   $: testingPillarOn = isTestingPillarActive(path);
   $: graphPillarOn = isGraphPillarActive(path);
   $: integrationsOn = isIntegrationsActive(path);
+  $: changelogOn = normalizePath(path) === "/changelog";
 
   function toggleMobileMenu() {
     mobileOpen = !mobileOpen;
@@ -204,6 +206,15 @@
           Integrations
         </a>
       </li>
+      <li>
+        <a
+          href="/changelog"
+          class:active={changelogOn}
+          aria-current={changelogOn ? "page" : undefined}
+        >
+          Changelog
+        </a>
+      </li>
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
           <summary
@@ -300,6 +311,11 @@
       class:active={integrationsOn}
       aria-current={integrationsOn ? "page" : undefined}
       on:click={closeMobileMenu}>Overview</a>
+    <a
+      href="/changelog"
+      class:active={changelogOn}
+      aria-current={changelogOn ? "page" : undefined}
+      on:click={closeMobileMenu}>Changelog</a>
     <span class="site-header-mobile-heading" role="presentation">Developers</span>
     {#each devLinks as item}
       <a

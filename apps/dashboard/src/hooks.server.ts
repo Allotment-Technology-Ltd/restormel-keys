@@ -9,24 +9,27 @@ import { getSession } from "$lib/server/auth";
 import { upsertUser } from "$lib/server/db";
 import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
-import { resolveServiceAdminStatus } from "$lib/server/service-admin";
+import { resolveServiceAdminStatus, syncServiceOwnerBootstrap } from "$lib/server/service-admin";
 
 export const handle: Handle = async ({ event, resolve }) => {
   try {
     const { data: session } = await getSession(event.request, event.url.host);
     if (session?.user) {
+      const email = session.user.email ?? null;
       const isServiceAdmin = await resolveServiceAdminStatus(
         session.user.id,
-        session.user.role ?? null
+        session.user.role ?? null,
+        email
       );
       event.locals.user = {
         uid: session.user.id,
-        email: session.user.email ?? null,
+        email,
         authType: "session",
         isServiceAdmin,
       };
       try {
-        await upsertUser(session.user.id, session.user.email ?? null);
+        await syncServiceOwnerBootstrap(session.user.id, email);
+        await upsertUser(session.user.id, email);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
         if (msg) console.error("[db] upsertUser:", msg.slice(0, 100));
@@ -98,5 +101,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 
 export const config = {
-  runtime: "nodejs",
+  runtime: "nodejs20.x" as const,
 };

@@ -199,11 +199,11 @@ A **Restormel Support Agent** is an **in-product guide**: help signed-in (and, l
 
 - **Dogfood:** Site-wide, session-gated assistant on `apps/dashboard` (see implementation plan in workspace `.cursor/plans/` for the Keys repo slice).
 - **Contract:** Documented **HTTP + auth model** (session-only vs future API key), rate limits, and **no-secret** rules consistent with [security-baseline.md](../security-baseline.md).
-- **Packaging (platform market):** A **reusable layer**—e.g. `@restormel/support-agent` (types + server adapter + optional Svelte shell), or a **documented integration template** under [platform/](../../platform/) for non-Keys consumers—so “Restormel Support Agent” is a **named module** in the suite story, not a one-off page.
+- **Packaging (platform market):** A **reusable layer**—**[`@restormel/support`](../../packages/support)** (types + server adapter; first host `apps/dashboard`), or a **documented integration template** under [platform/](../../platform/) for non-Keys consumers—so “Restormel Support Agent” is a **named module** in the suite story, not a one-off page.
 
 ### 5.4 Canonical owner (when active)
 
-Create or nominate **one topic owner doc** under `docs/restormel/` or `docs/requirements/` (e.g. support-agent product brief); link it from here and from [documentation-strategy.md](../documentation-strategy.md) if the surface is customer-visible. Do not duplicate operational API specs in this programme file.
+**Owner doc:** [RESTORMEL-SUPPORT.md](./RESTORMEL-SUPPORT.md). Link it from here and from [documentation-strategy.md](../documentation-strategy.md) where the surface is customer-visible. Operational env and dogfood: [runbooks/restormel-support-production.md](../runbooks/restormel-support-production.md). Do not duplicate API specs in this programme file.
 
 ---
 

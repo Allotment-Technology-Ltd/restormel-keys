@@ -1,13 +1,24 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
-  export let data: { user?: { uid: string; email?: string | null } };
+  export let data: { user?: { uid: string; email?: string | null; isServiceAdmin?: boolean } };
+  $: isOp = data.user?.isServiceAdmin === true;
 </script>
 
 <h1 class="page-title">Profile &amp; settings</h1>
 <p class="page-desc">Account, subscription, and sign-out.</p>
 
 {#if data.user}
+  {#if isOp}
+    <section class="settings-section" aria-labelledby="admin-heading">
+      <h2 id="admin-heading" class="section-title">Service owner</h2>
+      <p class="section-desc">Manage who has dashboard operator access.</p>
+      <p class="section-links">
+        <a class="link" href={DASHBOARD_BASE + "/admin/users"}>User management</a>
+      </p>
+    </section>
+  {/if}
+
   <section class="settings-section" aria-labelledby="account-heading">
     <h2 id="account-heading" class="section-title">Account</h2>
     <dl class="settings-list">

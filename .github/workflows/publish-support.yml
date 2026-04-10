@@ -1,0 +1,43 @@
+# Publish @restormel/support to npm (tag support-v* or manual dispatch).
+name: Publish Restormel Support
+on:
+  push:
+    tags:
+      - "support-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-support-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+
+      - name: Build @restormel/mcp (dependency)
+        run: pnpm --filter @restormel/mcp run build
+
+      - name: Test @restormel/support
+        run: pnpm --filter @restormel/support run test
+
+      - name: Build @restormel/support
+        run: pnpm --filter @restormel/support run build
+
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+
+      - name: Publish @restormel/support
+        run: pnpm --filter @restormel/support publish --access public --no-git-checks

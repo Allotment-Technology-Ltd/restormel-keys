@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SocialProof from "$lib/components/site/SocialProof.svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import {
     developerLinks,
@@ -17,6 +18,7 @@
       <span class="site-footer-title">Keys</span>
       <ul class="site-footer-links" aria-label="Keys">
         <li><a href="/">Restormel home</a></li>
+        <li><a href="/changelog">Changelog</a></li>
         {#each keysPillarLinks as item}
           <li><a href={item.href}>{item.label}</a></li>
         {/each}
@@ -72,6 +74,9 @@
       </a>
       <p class="site-footer-tagline">Keys, Testing, Graph, and integrations for production AI teams</p>
     </div>
+  </div>
+  <div class="site-footer-social" aria-label="Open source badges">
+    <SocialProof variant="badges" />
   </div>
   <p class="site-footer-copy">restormel.dev</p>
 </footer>
@@ -140,6 +145,16 @@
     font-size: var(--text-sm);
     color: var(--rm-dim);
     margin: 0;
+  }
+  .site-footer-social {
+    max-width: var(--rm-container-max);
+    margin: var(--space-6) auto 0;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--rm-border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
   }
   .site-footer-copy {
     font-size: var(--text-xs);

@@ -1,29 +1,24 @@
 <script lang="ts">
-  /** Pricing page — Free + Pro only (two-tier). */
+  /** Keys pricing: Free, Pro (Paddle GBP/USD), Team & Platform (catalog ready; checkout when entitlements ship). */
   import { onMount } from "svelte";
   import { initPaddleCheckout } from "$lib/paddle-checkout";
   import { browser } from "$app/environment";
+  import type { PageData } from "./$types";
 
-  export let data: {
-    dashboardUrl: string;
-    paddleToken: string;
-    proPriceIdMonthlyGbp: string;
-    proPriceIdMonthlyUsd: string;
-    proMonthlyPriceDisplayGbp: string;
-    proMonthlyPriceDisplayUsd: string;
-  };
-  let billingCurrency: "gbp" | "usd" = "gbp";
-  $: canUseGbp = Boolean(data.proPriceIdMonthlyGbp);
-  $: canUseUsd = Boolean(data.proPriceIdMonthlyUsd);
-  $: selectedPriceId =
+  let { data }: { data: PageData } = $props();
+
+  let billingCurrency = $state<"gbp" | "usd">("gbp");
+  const canUseGbp = $derived(Boolean(data.proPriceIdMonthlyGbp));
+  const canUseUsd = $derived(Boolean(data.proPriceIdMonthlyUsd));
+  const selectedPriceId = $derived(
     billingCurrency === "usd"
-      ? (data.proPriceIdMonthlyUsd || data.proPriceIdMonthlyGbp)
-      : (data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd);
-  $: priceDisplay =
-    billingCurrency === "usd"
-      ? data.proMonthlyPriceDisplayUsd
-      : data.proMonthlyPriceDisplayGbp;
-  $: checkoutCurrencyLabel = billingCurrency === "usd" ? "USD" : "GBP";
+      ? data.proPriceIdMonthlyUsd || data.proPriceIdMonthlyGbp
+      : data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd,
+  );
+  const priceDisplay = $derived(
+    billingCurrency === "usd" ? data.proMonthlyPriceDisplayUsd : data.proMonthlyPriceDisplayGbp,
+  );
+  const checkoutCurrencyLabel = $derived(billingCurrency === "usd" ? "USD" : "GBP");
 
   function selectBillingCurrency(next: "gbp" | "usd") {
     if (next === "usd" && !canUseUsd) return;
@@ -47,17 +42,30 @@
 
 <svelte:head>
   <title>Pricing — Restormel Keys</title>
-  <meta name="description" content="Restormel Keys pricing: Free (build/prototype) and Pro ($10/mo) for production limits and visibility. No hosted key custody. Library-first." />
+  <meta
+    name="description"
+    content="Restormel Keys pricing: Free, Pro (Paddle), Team and Platform tiers. BYOK product layer above your gateway. Founders Circle: 50 slots, 12 months Pro free."
+  />
 </svelte:head>
 
 <article class="pricing-page">
   <div class="container">
     <header class="pricing-header">
       <h1 class="pricing-title">Pricing</h1>
-      <p class="pricing-kicker">Ship BYOK in minutes — not weeks</p>
+      <p class="pricing-kicker">The AI product layer — keys, without the heavy lift</p>
       <p class="pricing-intro">
-        <strong>Restormel Keys</strong> gives you production-grade key management, routing, and cost control — without running heavy infrastructure. Free for development. Upgrade when you’re ready to ship.
+        <strong>Restormel Keys</strong> sits above OpenRouter, Portkey, and Vercel AI: production-grade BYOK routing,
+        policies, and usage visibility — without replacing your gateway. Start free, upgrade to Pro when you ship, add Team
+        for collaboration, or pick the <a class="pricing-intro-link" href="/pricing">Platform bundle</a> if you are
+        standardising on Keys, Testing, and Graph together.
       </p>
+      <aside class="suite-strip" aria-label="Suite pricing">
+        <p class="suite-strip-copy">
+          <strong>One suite. One price.</strong> Platform — all three Pros — is <strong>£35/mo</strong> on the
+          <a href="/pricing">suite pricing page</a>. Early adopters: <a href="/founders">Founders Circle</a> (50 slots,
+          12 months Pro free).
+        </p>
+      </aside>
       <div id="checkout-message" class="checkout-message" role="alert" aria-live="polite" hidden></div>
     </header>
 
@@ -71,14 +79,16 @@
           <p class="tier-period">/ month</p>
           <ul class="tier-list">
             <li>2 projects</li>
-            <li>First 50 signups: 12 months Pro included</li>
-            <li>Local key handling (user-controlled storage)</li>
-            <li>Multi-provider routing</li>
-            <li>Key validation</li>
-            <li>Basic dashboard</li>
             <li>1,000 API requests / month</li>
+            <li>Multi-provider routing</li>
+            <li>Key validation &amp; health checks</li>
+            <li>Basic dashboard</li>
+            <li>CLI access</li>
+            <li>Community support</li>
           </ul>
-          <p class="tier-limitations"><strong>Limitations:</strong> no advanced usage insights; limited scale; not production-optimised.</p>
+          <p class="tier-limitations">
+            <strong>Limitations:</strong> No usage charts, no team seats, not production-optimised.
+          </p>
           <a href="/keys/docs" class="btn btn-secondary">Get started for free</a>
         </div>
 
@@ -109,13 +119,16 @@
           <p class="tier-price">{priceDisplay}</p>
           <p class="tier-period">/ month + tax</p>
           <ul class="tier-list">
+            <li>10 projects</li>
+            <li>100,000 API requests / month</li>
+            <li>Everything in Free</li>
+            <li>Usage dashboard with request charts &amp; cost tracking</li>
             <li>Advanced routing controls</li>
-            <li>Usage insights + cost tracking</li>
-            <li>50k–100k API requests / month</li>
-            <li>5–10 projects</li>
-            <li>Key health + validation feedback</li>
-            <li>Production-grade performance</li>
+            <li>Provider health history</li>
+            <li>Webhook alerts (budget, provider failure)</li>
+            <li>Priority email support</li>
           </ul>
+          <p class="tier-footnote">Most developers upgrade when they're ready to ship.</p>
           <button
             type="button"
             class="btn btn-primary btn-upgrade-pro"
@@ -134,29 +147,113 @@
           </button>
           <p class="tier-hint">Opens Paddle checkout in {checkoutCurrencyLabel}. Taxes are calculated at checkout.</p>
         </div>
+
+        <div class="tier-card tier-card-team">
+          <h3 class="tier-name">Team</h3>
+          <p class="tier-desc"><strong>Best for:</strong> production teams</p>
+          <p class="tier-price">£35</p>
+          <p class="tier-period">/ month + tax</p>
+          <ul class="tier-list">
+            <li>Unlimited projects</li>
+            <li>500,000 API requests / month</li>
+            <li>Everything in Pro</li>
+            <li>Team seats (up to 5 users)</li>
+            <li>SSO (GitHub org)</li>
+            <li>Audit log</li>
+            <li>Priority support with SLA</li>
+          </ul>
+          <p class="tier-footnote">For teams shipping AI in production.</p>
+          <button type="button" class="btn btn-secondary btn-todo-checkout" disabled title="Checkout not yet available">
+            Upgrade to Team (coming soon)
+          </button>
+          <p class="tier-hint tier-hint-muted">
+            Self-serve checkout lands with Team entitlements. Catalog price IDs: run
+            <code class="tier-code">pnpm run bootstrap-paddle -- --force-create</code> — or apply via
+            <a href="/founders">Founders</a>.
+          </p>
+        </div>
+
+        <div class="tier-card tier-card-platform">
+          <p class="platform-badge">Suite</p>
+          <h3 class="tier-name">Platform</h3>
+          <p class="tier-desc"><strong>Best for:</strong> multi-module adoption</p>
+          <p class="tier-price">£35</p>
+          <p class="tier-period">/ month + tax</p>
+          <ul class="tier-list">
+            <li>All three Pro modules (Keys Pro + Testing Pro + Graph Pro)</li>
+            <li>Best value if you're using more than one module.</li>
+          </ul>
+          <a class="btn btn-primary btn-platform-pricing" href="/pricing">See full Platform pricing →</a>
+          <button type="button" class="btn btn-secondary btn-todo-checkout btn-platform-todo" disabled title="Checkout not yet available">
+            Subscribe to Platform (coming soon)
+          </button>
+          <p class="tier-hint tier-hint-muted">
+            Bundle checkout will open from the <a href="/pricing">Platform page</a> once wired. Paddle catalog entries are
+            created by the same bootstrap script as Pro.
+          </p>
+        </div>
       </div>
-      <p class="tiers-anchor">Most developers start on Free and upgrade when they deploy.</p>
     </section>
 
     <section class="features-section" aria-labelledby="features-heading">
-      <h2 id="features-heading" class="section-title">What you get in every tier</h2>
+      <h2 id="features-heading" class="section-title">What you get across Keys</h2>
       <div class="features-grid">
-        <div class="feat"><span class="feat-name">Provider access modes</span><span class="feat-desc">Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span></div>
-        <div class="feat"><span class="feat-name">Restormel Resolve</span><span class="feat-desc">Model → provider resolution. One middleware.</span></div>
-        <div class="feat"><span class="feat-name">Policies</span><span class="feat-desc">Allow/deny models, enforce route rules, and keep behavior inspectable.</span></div>
-        <div class="feat"><span class="feat-name">Health & fallbacks</span><span class="feat-desc">Detect failures and shift traffic safely with explicit fallback chains.</span></div>
-        <div class="feat"><span class="feat-name">Embeddable UX</span><span class="feat-desc">ModelSelector, CostEstimator, and optional KeyManager for BYOK flows.</span></div>
-        <div class="feat"><span class="feat-name">Dashboard & API</span><span class="feat-desc">Cloud API and Dashboard (Pro+).</span></div>
+        <div class="feat">
+          <span class="feat-name">Provider access modes</span><span class="feat-desc"
+            >Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span
+          >
+        </div>
+        <div class="feat">
+          <span class="feat-name">Restormel Resolve</span><span class="feat-desc">Model → provider resolution. One middleware.</span>
+        </div>
+        <div class="feat">
+          <span class="feat-name">Policies</span><span class="feat-desc"
+            >Allow/deny models, enforce route rules, and keep behavior inspectable.</span
+          >
+        </div>
+        <div class="feat">
+          <span class="feat-name">Health &amp; fallbacks</span><span class="feat-desc"
+            >Detect failures and shift traffic safely with explicit fallback chains.</span
+          >
+        </div>
+        <div class="feat">
+          <span class="feat-name">Embeddable UX</span><span class="feat-desc"
+            >ModelSelector, CostEstimator, and optional KeyManager for BYOK flows.</span
+          >
+        </div>
+        <div class="feat">
+          <span class="feat-name">Dashboard &amp; API</span><span class="feat-desc">Cloud API and dashboard; usage charts on Pro+.</span>
+        </div>
       </div>
     </section>
 
     <section class="faq-section" aria-labelledby="faq-heading">
       <h2 id="faq-heading" class="section-title">FAQ</h2>
       <dl class="faq-list">
+        <dt class="faq-q">What counts as an API request?</dt>
+        <dd class="faq-a">
+          One call to the Restormel resolve endpoint. Health checks and validation runs do not count toward your limit.
+        </dd>
+        <dt class="faq-q">What happens when I hit my request limit?</dt>
+        <dd class="faq-a">
+          You'll receive a warning at 80% usage. Requests above the limit return a 429 with a clear error. No silent failures.
+        </dd>
+        <dt class="faq-q">Is there a free trial of Pro?</dt>
+        <dd class="faq-a">
+          Yes — the first 50 founding members receive 12 months of Pro free through the
+          <a class="faq-inline-link" href="/founders">Founders Circle</a> program (apply on that page).
+        </dd>
+        <dt class="faq-q">Can I use Keys without Testing or Graph?</dt>
+        <dd class="faq-a">Absolutely. Each module is independently adoptable.</dd>
         <dt class="faq-q">Can I use Keys without paying?</dt>
-        <dd class="faq-a">Yes. Start on Free for development and prototyping. Upgrade when you need production-grade limits and visibility.</dd>
+        <dd class="faq-a">
+          Yes. Start on Free for development and prototyping. Upgrade when you need production-grade limits and visibility.
+        </dd>
         <dt class="faq-q">What happens after I subscribe?</dt>
-        <dd class="faq-a">You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your project; you can create API keys and use the cloud API from there.</dd>
+        <dd class="faq-a">
+          You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your workspace; you
+          can create API keys and use the cloud API from there.
+        </dd>
         <dt class="faq-q">Can I change plan later?</dt>
         <dd class="faq-a">Yes. Billing is through Paddle. You can cancel any time and keep using Free.</dd>
       </dl>
@@ -182,8 +279,36 @@
   }
   .pricing-intro {
     color: var(--rm-muted);
-    margin: 0 0 var(--space-6);
+    margin: 0 0 var(--space-5);
     max-width: var(--rm-container-narrow);
+    line-height: var(--leading-relaxed);
+  }
+  .pricing-intro-link {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .suite-strip {
+    margin: 0 0 var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    max-width: var(--rm-container-narrow);
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in oklab, var(--rm-sage) 35%, var(--rm-border));
+    background: color-mix(in oklab, var(--rm-surface-raised) 92%, var(--rm-sage) 8%);
+  }
+  .suite-strip-copy {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--rm-muted);
+  }
+  .suite-strip-copy strong {
+    color: var(--rm-text);
+  }
+  .suite-strip-copy a {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .pricing-kicker {
     margin: 0 0 var(--space-2);
@@ -210,15 +335,22 @@
   }
   .tiers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
     gap: var(--space-6);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-10);
+  }
+  @media (min-width: 1100px) {
+    .tiers-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
   .tier-card {
     background: var(--rm-surface-raised);
     border: 1px solid var(--rm-border);
     border-radius: var(--radius-md);
     padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
   }
   .tier-card-pro {
     border-color: color-mix(in oklab, var(--rm-sage) 55%, var(--rm-border));
@@ -226,6 +358,13 @@
     box-shadow:
       0 0 0 2px color-mix(in oklab, var(--rm-sage) 20%, transparent),
       0 14px 28px rgba(0, 0, 0, 0.16);
+  }
+  .tier-card-team {
+    border-color: color-mix(in oklab, var(--rm-muted) 40%, var(--rm-border));
+  }
+  .tier-card-platform {
+    border-color: color-mix(in oklab, var(--path-blue, var(--rm-sage)) 45%, var(--rm-border));
+    background: color-mix(in oklab, var(--rm-surface-raised) 94%, var(--path-blue, var(--rm-sage)) 6%);
   }
   .pro-badge {
     display: inline-flex;
@@ -235,6 +374,21 @@
     border-radius: 999px;
     border: 1px solid color-mix(in oklab, var(--rm-sage) 70%, transparent);
     background: color-mix(in oklab, var(--rm-sage) 16%, transparent);
+    color: var(--rm-text);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .platform-badge {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0 var(--space-3);
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--path-blue, var(--rm-sage)) 55%, transparent);
+    background: color-mix(in oklab, var(--path-blue, var(--rm-sage)) 12%, transparent);
     color: var(--rm-text);
     font-family: var(--rm-font-ui);
     font-size: var(--text-xs);
@@ -293,6 +447,9 @@
     color: var(--rm-sage);
     margin: 0 0 var(--space-1);
   }
+  .tier-card-platform .tier-price {
+    color: var(--path-blue, var(--rm-sage));
+  }
   .tier-period {
     font-size: var(--text-sm);
     color: var(--rm-dim);
@@ -304,6 +461,7 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
+    flex: 1;
   }
   .tier-limitations {
     margin: 0 0 var(--space-4);
@@ -311,11 +469,22 @@
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
   }
+  .tier-footnote {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: var(--leading-normal);
+    font-style: italic;
+  }
   .tier-hint {
     font-size: var(--text-xs);
     color: var(--rm-dim);
     margin: var(--space-3) 0 0;
     line-height: var(--leading-normal);
+  }
+  .tier-hint-muted {
+    color: var(--rm-muted);
+    font-style: italic;
   }
   .btn-upgrade-pro {
     width: 100%;
@@ -341,10 +510,20 @@
     outline: 2px solid color-mix(in oklab, var(--rm-sage) 70%, white);
     outline-offset: 2px;
   }
-  .tiers-anchor {
-    font-size: var(--text-sm);
-    color: var(--rm-dim);
-    margin: 0;
+  .btn-todo-checkout {
+    width: 100%;
+    margin-top: auto;
+    opacity: 0.72;
+    cursor: not-allowed;
+  }
+  .btn-platform-pricing {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    margin-bottom: var(--space-2);
+  }
+  .btn-platform-todo {
+    margin-top: 0;
   }
   .section-title {
     font-family: var(--rm-font-display);
@@ -392,5 +571,22 @@
     color: var(--rm-muted);
     margin: 0 0 var(--space-4);
     line-height: var(--leading-relaxed);
+  }
+  .faq-inline-link {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .tier-code {
+    font-size: 0.85em;
+    padding: 0.08em 0.3em;
+    border-radius: 4px;
+    background: var(--rm-surface);
+    border: 1px solid var(--rm-border);
+  }
+  .tier-hint-muted a {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 </style>

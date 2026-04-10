@@ -1,6 +1,6 @@
 # Keys dashboard
 
-SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, walkthrough, and authenticated dashboard. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (workspaces, projects, environments, Gateway keys, provider integrations, models, routes, policies, request logs). Run migrations 001–023 as needed (011 seeds full model catalog; 013 adds route version history; 014/015 add provenance + policy version events + coverage indexes; 016 backfills provenance defaults; **020** project model index bindings; **022** CLI device sessions; **023** service operator allowlist). Base path `/keys`.
+SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, walkthrough, and authenticated dashboard. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (workspaces, projects, environments, Gateway keys, provider integrations, models, routes, policies, request logs). Run migrations 001–028 as needed (011 seeds full model catalog; 013 adds route version history; 014/015 add provenance + policy version events + coverage indexes; 016 backfills provenance defaults; **020** project model index bindings; **022** CLI device sessions; **023** service operator allowlist; **028** app `users` mirror for `upsertUser`). Base path `/keys`.
 
 **Product surface:** `/keys` (landing), `/keys/pricing`, `/keys/docs` (including integration walkthrough Phase 0–6 with optional **agent prompts** per phase; `RESTORMEL_DOCS_AGENT_PROMPTS=false` hides them site-wide), `/keys/dashboard` (authenticated app). One **SiteHeader** and **SiteFooter** site-wide (API portal + account live in the header only; the dashboard inner topbar is collapse + section title). Docs and dashboard side navs are **collapsible** (state in localStorage). Max-width container `--rm-container-max` (72rem) used across docs and dashboard shells.
 
@@ -30,7 +30,8 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `/keys/dashboard/logs` — **Logs & Traces**: request logs (filter by project/route)
 - `/keys/dashboard/lifecycle` — **Lifecycle & Migrations**: placeholder and migration guidance
 - `/keys/dashboard/billing` — **Billing & Forecasting**: placeholder
-- `/keys/dashboard/settings` — Account (user id, email)
+- `/keys/dashboard/settings` — Account (user id, email); **User management** link for service owners
+- `/keys/dashboard/admin/users` — **User management** (service owners): list registered users, toggle `service_admins`
 - `/keys/dashboard/login` — Sign in with GitHub
 - `/keys/dashboard/logout` — Clear session, redirect to login
 
@@ -43,6 +44,9 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `GET /keys/dashboard/api/usage-aggregates` — Usage aggregates or on-the-fly from request_logs
 - `GET/POST /keys/dashboard/api/auth/*` — Neon Auth proxy (sign-in, callback, sign-out)
 - `GET /keys/dashboard/api/health` — Health check
+- `POST /keys/dashboard/api/support-chat` — **Restormel Support** (session-only JSON `{ "messages": [{ "role": "user"|"assistant", "content": "…" }] }`; streams `text/plain`). See [docs/restormel/RESTORMEL-SUPPORT.md](../../docs/restormel/RESTORMEL-SUPPORT.md).
+- `GET /keys/dashboard/api/admin/users` — List registered users (**session + service owner**).
+- `PATCH /keys/dashboard/api/admin/users/[userId]` — Set `service_admins` membership: `{ "serviceOwner": boolean }` (**session + service owner**).
 
 ## Environment (no secrets in repo)
 
@@ -52,8 +56,18 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 | `NEON_AUTH_BASE_URL` | Yes | Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env. |
 | `FEEDBACK_GITHUB_TOKEN` | Optional | GitHub PAT with `issues:write` for feedback issue creation from `/keys/dashboard/api/feedback`. If unset, feedback is logged locally and API still returns `200`. |
 | `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `Allotment-Technology-Ltd/restormel-keys`. |
-| `RESTORMEL_SERVICE_ADMIN_USER_IDS` | Optional | Comma-separated Better Auth user IDs for **service operators**: subscription-style limits and Pro UI gates waived. See [docs/runbooks/service-admin-operators.md](../../docs/runbooks/service-admin-operators.md). Also supports Neon Auth `user.role` (`admin`, `operator`, …) and `service_admins` table. |
+| `RESTORMEL_SERVICE_ADMIN_USER_IDS` | Optional | Comma-separated Better Auth user IDs for **service operators**: subscription-style limits and Pro UI gates waived. See [docs/runbooks/service-admin-operators.md](../../docs/runbooks/service-admin-operators.md). Also supports Neon Auth `user.role` (`admin`, `operator`, …), **`RESTORMEL_SERVICE_OWNER_EMAILS`**, and `service_admins` table. |
+| `RESTORMEL_SERVICE_OWNER_EMAILS` | Optional | Comma-separated sign-in emails treated as **service owners** (case-insensitive). When **unset**, built-in primary-operator defaults apply; set to empty to disable email-based grants. See runbook. |
 | `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` | Optional | **Required** to store **hosted API keys** under Connections (32-byte key, base64-encoded). If unset, POST with `apiKey` returns **503** `server_misconfigured`. See [docs/security-baseline.md](../../docs/security-baseline.md). |
+| `OPENAI_API_KEY` | Optional | **Required** for **Restormel Support** (`/keys/dashboard/api/support-chat`). If unset, support returns **503**. |
+| `RESTORMEL_SUPPORT_ENABLED` | Optional | Set to `false` to disable Restormel Support (API **503**). |
+| `RESTORMEL_SUPPORT_MODEL` | Optional | OpenAI model id for support (default `gpt-4o-mini`). |
+
+### Public env (build-time)
+
+| Variable | Description |
+|----------|-------------|
+| `PUBLIC_RESTORMEL_SUPPORT_UI` | Set to `false` to hide the Support FAB for signed-in users (default: show). |
 
 ### Dashboard UI feature flags (optional)
 
@@ -69,7 +83,7 @@ Example (minimal in-browser surface: overview + Access + Profile only):
 
 Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
 
-Run migrations in `migrations/` (001 through `026` as needed) against the Neon database. Provider credential encryption and Testing project flags: `024`–`026`.
+Run migrations in `migrations/` (001 through `028` as needed) against the Neon database. Provider credential encryption and Testing project flags: `024`–`026`; app user mirror: `028`.
 
 ## Terminology
 

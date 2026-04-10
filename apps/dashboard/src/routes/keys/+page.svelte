@@ -331,7 +331,11 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
     <div class="container">
       <h2 id="pricing-heading" class="section-title">Pricing</h2>
       <p class="section-intro">Free to build. Upgrade to Pro when you’re ready to ship.</p>
-      <p class="section-intro"><strong>Early access:</strong> First 50 signups get 12 months of Pro included.</p>
+      <p class="section-intro">
+        <strong>Early access:</strong> First <strong>50</strong> founding members get <strong>12 months of Pro</strong> via
+        <a class="section-intro-link" href="/founders">Founders Circle</a>. Full tiers (Team, Platform bundle) are on the
+        pricing page.
+      </p>
       <div class="pricing-grid">
         <div class="pricing-card">
           <h3 class="pricing-tier">Free</h3>
@@ -340,8 +344,10 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
         </div>
         <div class="pricing-card">
           <h3 class="pricing-tier">Pro</h3>
-          <p class="pricing-price">$10<span class="pricing-period">/mo</span></p>
-          <p class="pricing-desc">Best for production. Higher limits, visibility, and routing controls.</p>
+          <p class="pricing-price">£10<span class="pricing-period">/mo</span></p>
+          <p class="pricing-desc">
+            Best for production. Higher limits, visibility, and routing controls. Other currencies at checkout (Paddle).
+          </p>
         </div>
       </div>
       <p class="pricing-cta"><a href="/keys/pricing">See full pricing and FAQ →</a></p>
@@ -388,6 +394,11 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
     font-size: var(--text-base);
     line-height: var(--leading-relaxed);
     max-width: var(--rm-container-narrow);
+  }
+  .section-intro-link {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .btn {
     display: inline-block;

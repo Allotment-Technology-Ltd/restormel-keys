@@ -1,7 +1,7 @@
 /**
  * Restormel Keys — Paddle Bootstrap (catalog only)
  *
- * Creates (or reuses) Paddle products and prices for Keys tiers: Pro.
+ * Creates (or reuses) Paddle products and prices: Keys Pro, Keys Team, Platform bundle.
  * Does not create webhooks (configure in Paddle Dashboard → Developer tools → Notifications).
  *
  * Per Paddle docs: 240 requests/min per IP; on 429 you must wait 60s (Retry-After header).
@@ -122,6 +122,24 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
       { key: "keys_pro_annual_usd", envVar: "PADDLE_PRICE_KEYS_PRO_ANNUAL_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_PRO_ANNUAL_USD", 24000), currency: "USD", recurring: true, interval: "year", frequency: 1, displayName: "Pro Annual (USD)", description: "Restormel Keys Pro annual subscription in USD." },
     ],
   },
+  {
+    key: "keys_team",
+    name: "Restormel Keys Team",
+    description: "Restormel Keys Team — higher limits and collaboration (catalog; checkout when entitlements ship).",
+    prices: [
+      { key: "keys_team_monthly_gbp", envVar: "PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_MONTHLY_GBP", 3500), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Team Monthly (GBP)", description: "Restormel Keys Team monthly subscription in GBP." },
+      { key: "keys_team_monthly_usd", envVar: "PADDLE_PRICE_KEYS_TEAM_MONTHLY_USD", amountMinor: readMinorUnits("PADDLE_SETUP_KEYS_TEAM_MONTHLY_USD", 8400), currency: "USD", recurring: true, interval: "month", frequency: 1, displayName: "Team Monthly (USD)", description: "Restormel Keys Team monthly subscription in USD." },
+    ],
+  },
+  {
+    key: "platform_suite",
+    name: "Restormel Platform",
+    description: "Restormel Platform — Keys Pro + Testing Pro + Graph Pro bundle (catalog; checkout when bundle entitlements ship).",
+    prices: [
+      { key: "platform_monthly_gbp", envVar: "PADDLE_PRICE_PLATFORM_MONTHLY_GBP", amountMinor: readMinorUnits("PADDLE_SETUP_PLATFORM_MONTHLY_GBP", 3500), currency: "GBP", recurring: true, interval: "month", frequency: 1, displayName: "Platform Monthly (GBP)", description: "Restormel Platform monthly bundle in GBP." },
+      { key: "platform_monthly_usd", envVar: "PADDLE_PRICE_PLATFORM_MONTHLY_USD", amountMinor: readMinorUnits("PADDLE_SETUP_PLATFORM_MONTHLY_USD", 8400), currency: "USD", recurring: true, interval: "month", frequency: 1, displayName: "Platform Monthly (USD)", description: "Restormel Platform monthly bundle in USD." },
+    ],
+  },
 ];
 
 function parseOptions(args: string[]): ScriptOptions {
@@ -146,7 +164,7 @@ Usage:
 
 Required env: PADDLE_API_KEY
 
-Optional: PADDLE_ENVIRONMENT=sandbox|production, PADDLE_SETUP_KEYS_* (minor units),
+Optional: PADDLE_ENVIRONMENT=sandbox|production, PADDLE_SETUP_* (minor units for Pro/Team/Platform),
 PADDLE_SKIP_DISCOVERY=true, PADDLE_DEFAULT_TAX_CATEGORY=standard
 
 Paddle rate limits: 240 req/min per IP; 60s cooldown on 429.

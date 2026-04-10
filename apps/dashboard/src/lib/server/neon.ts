@@ -3724,3 +3724,54 @@ export async function aggregateRequestLogsToUsage(
     fallbackRate: null,
   })) as UsageAggregateRecord[];
 }
+
+/** Daily request counts (UTC calendar days) for usage charts. */
+export async function getRequestLogCountsByUtcDay(
+  workspaceId: string,
+  since: number,
+  until: number,
+): Promise<{ day: string; count: number }[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      to_char(timezone('UTC', to_timestamp(created_at / 1000.0)), 'YYYY-MM-DD') AS day,
+      COUNT(*)::bigint AS cnt
+    FROM request_logs
+    WHERE workspace_id = ${workspaceId}
+      AND created_at >= ${since}
+      AND created_at <= ${until}
+    GROUP BY 1
+    ORDER BY 1 ASC
+  `;
+  return rows.map((r: Record<string, unknown>) => ({
+    day: String(r.day),
+    count: Number(r.cnt) || 0,
+  }));
+}
+
+/** Sum estimated_cost (USD) by resolved model id for bar charts. */
+export async function getEstimatedCostUsdByModel(
+  workspaceId: string,
+  since: number,
+  until: number,
+  limit = 12,
+): Promise<{ model: string; costUsd: number }[]> {
+  const sql = getSql();
+  const safeLimit = Math.min(Math.max(1, limit), 24);
+  const rows = await sql`
+    SELECT
+      COALESCE(NULLIF(btrim(COALESCE(final_model_id, '')), ''), 'unknown') AS model,
+      COALESCE(SUM(estimated_cost), 0)::float8 AS cost_usd
+    FROM request_logs
+    WHERE workspace_id = ${workspaceId}
+      AND created_at >= ${since}
+      AND created_at <= ${until}
+    GROUP BY 1
+    ORDER BY cost_usd DESC NULLS LAST
+    LIMIT ${safeLimit}
+  `;
+  return rows.map((r: Record<string, unknown>) => ({
+    model: String(r.model),
+    costUsd: Number(r.cost_usd) || 0,
+  }));
+}

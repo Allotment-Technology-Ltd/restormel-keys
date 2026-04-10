@@ -71,7 +71,7 @@ If you don’t provide token hints, the runtime defaults to `1M` input and `1M` 
 
 **Suite-wide read operations** (canonical doc map, Testing config validation, RunTrace summarization, GraphData structural checks, State memory preview) ship as **`@restormel/mcp` stdio tools** first. The same semantics are available over HTTP as **`POST /keys/dashboard/api/suite/invoke`** (and **`POST /api/suite/invoke`** through the Zuplo gateway with a consumer key). Request envelope: [docs/integrations/restormel-suite-tool-envelope.schema.json](../../docs/integrations/restormel-suite-tool-envelope.schema.json).
 
-**Optional type import:** `import type { RestormelSuiteToolName } from "@restormel/aaif"` re-exports the union from `@restormel/mcp` when that package is installed (optional peer **`@restormel/mcp@>=0.2.0`**). Future work may add a typed AAIF extension or a shared JSON Schema for a generic “tool envelope” across HTTP and MCP.
+**Optional type:** `import type { RestormelSuiteToolName } from "@restormel/aaif"` — the same string union as **`@restormel/mcp`** suite tools (kept in sync in source; optional peer **`@restormel/mcp@>=0.2.0`** when you use the MCP server). Future work may add a typed AAIF extension or a shared JSON Schema for a generic “tool envelope” across HTTP and MCP.
 
 Human / agent parity table: [docs/restormel/THEME-L-MCP-PARITY.md](../../docs/restormel/THEME-L-MCP-PARITY.md).
 

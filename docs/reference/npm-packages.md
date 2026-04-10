@@ -10,6 +10,7 @@ Registry state changes with releases. From your project:
 npm view @restormel/keys version
 npm view @restormel/aaif version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/mcp version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/support version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/doctor version
 npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name differs"
 npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or name differs"

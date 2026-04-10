@@ -11,18 +11,26 @@ This does **not** add customer-facing “admin” for tenant workspaces. It is o
 
 ## How to grant
 
-Use **one** of these (first match wins in code):
+Resolution order in code (any match grants operator status):
 
 1. **Neon Auth / Better Auth `role`** — If `get-session` returns `user.role` as `admin`, `superadmin`, `service_admin`, or `operator` (case-insensitive), the session is treated as a service admin. Aligns with marking a user **Admin** in the Neon Auth console when that value is exposed on the session payload.
 
-2. **Environment allowlist** — Set `RESTORMEL_SERVICE_ADMIN_USER_IDS` to a comma-separated list of Better Auth user IDs (same `id` as in the `"user"` / session user). Useful for Vercel without a DB migration.
+2. **Environment user IDs** — Set `RESTORMEL_SERVICE_ADMIN_USER_IDS` to a comma-separated list of Better Auth user IDs (same `id` as in the `"user"` / session user). Useful for Vercel without a DB migration.
 
-3. **Database** — After migration **`023_service_admins.sql`**:
+3. **Environment owner emails** — Set `RESTORMEL_SERVICE_OWNER_EMAILS` to comma-separated sign-in emails (normalized case-insensitive). GitHub may return `…@gmail.com` or `…@googlemail.com` for the same mailbox; list both if needed. If this variable is **not set**, built-in primary-operator defaults apply (override by setting the env explicitly, including empty `RESTORMEL_SERVICE_OWNER_EMAILS=` to disable email-based grants). Allowlisted emails also receive a `service_admins` row on sign-in (`bootstrap:service_owner_email`).
+
+4. **Database** — After migration **`023_service_admins.sql`**:
 
    ```sql
    INSERT INTO service_admins (user_id, note, created_at)
    VALUES ('<better-auth-user-id>', 'Allotment operator', EXTRACT(EPOCH FROM NOW()) * 1000);
    ```
+
+## User management (UI)
+
+Service owners signed in with a **session** can open **`/keys/dashboard/admin/users`** (also linked from **Profile** when you are an operator). The page lists Better Auth users and toggles **`service_admins`** membership. **Primary email allowlist** accounts cannot be demoted via the UI (change `RESTORMEL_SERVICE_OWNER_EMAILS` or Neon configuration instead). You cannot remove your own operator flag via the UI (use another operator account).
+
+API: **`GET /keys/dashboard/api/admin/users`**, **`PATCH /keys/dashboard/api/admin/users/{userId}`** with body `{ "serviceOwner": true | false }` — session + operator only.
 
 ## Verify
 

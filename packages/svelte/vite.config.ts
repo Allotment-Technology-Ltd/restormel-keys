@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
     svelte(),
     dts({
       include: ["src"],
+      exclude: ["src/**/*.test.ts", "src/**/*.spec.ts"],
       outDir: "dist",
       staticImport: true,
     }),

@@ -1,6 +1,8 @@
 interface ImportMetaEnv {
   readonly PUBLIC_GITHUB_REPO_URL?: string;
   readonly PUBLIC_SUITE_TESTING_URL?: string;
+  /** When `"false"`, hide Restormel Support FAB for signed-in users (default: show). */
+  readonly PUBLIC_RESTORMEL_SUPPORT_UI?: string;
 }
 
 declare global {
@@ -30,9 +32,16 @@ declare global {
       };
     }
     interface PageData {
-      user?: { uid: string; email?: string | null };
+      user?: {
+        uid: string;
+        email?: string | null;
+        authType?: "session" | "gateway_key" | "management_key";
+        isServiceAdmin?: boolean;
+      };
     }
     interface LayoutData {
+      /** GitHub stars + summed npm downloads (30d); null when skipped, failed, or zero. Cached 1h server-side. */
+      socialProof?: import("$lib/social-proof").SocialProofMetrics | null;
       dashboardUiHidden?: import("$lib/dashboard-ui-sections").DashboardUiSection[];
       navGroupsForUi?: import("$lib/nav-config").NavGroup[];
       dashboardUiHiddenBanner?: { section: string; label: string } | null;

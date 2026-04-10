@@ -48,6 +48,9 @@ export {
 
 export { createRestormelMcpServer, startStdioRestormelMcpServer } from "./create-server.js";
 
+/** Offline doc index — shared with `@restormel/support` / Restormel Support. */
+export { searchDocs, DOC_INDEX, type DocIndexEntry } from "./docs-index.js";
+
 /** Shared by HTTP suite invoke (`/api/suite/invoke`) and stdio MCP tools. */
 export {
   suiteMemoryPreview,

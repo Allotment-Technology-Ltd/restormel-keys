@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { navigating } from "$app/stores";
+  import UsageChartsSection from "$lib/components/dashboard/UsageChartsSection.svelte";
 
   type Aggregate = {
     projectId: string | null;
@@ -33,6 +34,12 @@
     period: { since: number; until: number };
     days: number;
     error: string | null;
+    usageCharts: {
+      dailyRequests: { label: string; count: number }[];
+      requestsOverTimeSource: "database" | "mock";
+      costByModel: { model: string; costUsd: number }[];
+      costByModelSource: "database" | "mock";
+    } | null;
   };
 
   /** Legacy `$:` (not `$derived`) — dashboard uses `compilerOptions.runes: false`. */
@@ -104,7 +111,7 @@
   <strong>Imported gateway analytics:</strong> If you’re using OpenRouter/Portkey/Vercel as your execution layer, you can import their usage exports into Restormel.
   Imported aggregates appear in <a href={DASHBOARD_BASE + "/usage"}>Usage</a> (and will be surfaced here as coverage expands). See <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.
 </p>
-{#if !data.error && (data.aggregates.length > 0 || data.recentLogs.length > 0)}
+{#if !data.error}
   <p class="period-links" role="navigation" aria-label="Time range">
     <span class="period-label">Range:</span>
     <a href="?days=1" class="period-link" class:active={data.days === 1}>24h</a>
@@ -119,14 +126,23 @@
 {:else if data.error}
   <p class="error-msg" role="alert">{data.error}</p>
   <p><a href={DASHBOARD_BASE + "/logs"}>View Logs & Traces</a> for raw request data.</p>
-{:else if data.aggregates.length === 0 && data.recentLogs.length === 0}
-  <div class="empty-state" role="status">
-    <p class="empty-title">No requests yet</p>
-    <p class="empty-desc">Usage data will appear here once traffic flows through resolved routes.</p>
-    <a href={DASHBOARD_BASE + "/routes"} class="btn btn-primary">Routes</a>
-    <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Logs & Traces</a>
-  </div>
 {:else}
+  {#if data.usageCharts}
+    <UsageChartsSection
+      dailyRequests={data.usageCharts.dailyRequests}
+      requestsOverTimeSource={data.usageCharts.requestsOverTimeSource}
+      costByModel={data.usageCharts.costByModel}
+      costByModelSource={data.usageCharts.costByModelSource}
+    />
+  {/if}
+  {#if data.aggregates.length === 0 && data.recentLogs.length === 0}
+    <div class="empty-state" role="status">
+      <p class="empty-title">No requests yet</p>
+      <p class="empty-desc">Usage data will appear here once traffic flows through resolved routes.</p>
+      <a href={DASHBOARD_BASE + "/routes"} class="btn btn-primary">Routes</a>
+      <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Logs & Traces</a>
+    </div>
+  {:else}
   <section class="section overview" aria-labelledby="overview-heading">
     <h2 id="overview-heading" class="section-title">Overview</h2>
     <div class="metrics">
@@ -238,6 +254,7 @@
       <p><a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Open Logs & Traces</a></p>
     {/if}
   </section>
+  {/if}
 {/if}
 
 <style>
