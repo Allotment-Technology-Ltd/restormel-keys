@@ -1,11 +1,20 @@
-import { RunTraceSchema, type RunTrace } from "@restormel/contracts";
+import {
+  RunTraceSchema,
+  type NormalizedTraceEvent,
+  type RunTrace,
+} from "@restormel/contracts";
 import { normalizeRunTrace } from "@restormel/observability";
 import {
   projectWorkingMemory,
   type MemoryPolicy,
   type StateEvent,
 } from "@restormel/state";
-import { loadConfigFromString, type ConfigStringFormat } from "@restormel/testing-config";
+import {
+  loadConfigFromString,
+  type ConfigError,
+  type ConfigStringFormat,
+} from "@restormel/testing-config";
+import type { ZodIssue } from "zod";
 import { resolveCanonicalDoc, type CanonicalDocTopic } from "./canonical-docs.js";
 
 export type SuiteError = { ok: false; code: string; message: string };
@@ -30,7 +39,11 @@ export function suiteValidateTestingConfig(content: string, format: ConfigString
   return {
     ok: true,
     valid: false,
-    errors: result.errors.map((e) => ({ path: e.path, code: e.code, message: e.message })),
+    errors: result.errors.map((e: ConfigError) => ({
+      path: e.path,
+      code: e.code,
+      message: e.message,
+    })),
   };
 }
 
@@ -50,11 +63,14 @@ export function suiteSummarizeTrace(traceJson: string): SuiteError | { ok: true;
     return {
       ok: false,
       code: "RST_SUITE_TRACE_SHAPE",
-      message: parsedTrace.error.issues.map((i) => i.message).join("; ") || "RunTrace validation failed.",
+      message:
+        parsedTrace.error.issues.map((i: ZodIssue) => i.message).join("; ") || "RunTrace validation failed.",
     };
   }
   const normalized = normalizeRunTrace(parsedTrace.data as unknown as RunTrace);
-  const errorEventCount = normalized.events.filter((ev) => ev.status === "error").length;
+  const errorEventCount = normalized.events.filter(
+    (ev: NormalizedTraceEvent) => ev.status === "error",
+  ).length;
   const summary = `traceId=${normalized.traceId} events=${normalized.events.length} spans=${normalized.spans.length} errorEvents=${errorEventCount} source=${normalized.source}`;
   return {
     ok: true,
