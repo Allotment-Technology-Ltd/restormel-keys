@@ -1,4 +1,5 @@
 import type { PageServerLoad } from "./$types";
+import { SUITE_PRICING_FALLBACK_GBP } from "$lib/suite-pricing-display";
 import { formatMinorAmount, getPaddleDisplayPrice } from "$lib/server/paddle-catalog-display";
 
 export const load: PageServerLoad = async () => {
@@ -17,13 +18,15 @@ export const load: PageServerLoad = async () => {
   ]);
 
   const gbpDisplay =
-    gbpRow && gbpRow.currency === "GBP" ? formatMinorAmount(gbpRow.amountMinor, "GBP") : "£35";
+    gbpRow && gbpRow.currency === "GBP"
+      ? formatMinorAmount(gbpRow.amountMinor, "GBP")
+      : SUITE_PRICING_FALLBACK_GBP.platformMonthly;
   const usdDisplay =
     usdRow && usdRow.currency === "USD" ? formatMinorAmount(usdRow.amountMinor, "USD") : null;
   const keysProDisplayGbp =
     keysProGbpRow && keysProGbpRow.currency === "GBP"
       ? formatMinorAmount(keysProGbpRow.amountMinor, "GBP")
-      : "£10";
+      : SUITE_PRICING_FALLBACK_GBP.keysProMonthly;
 
   return {
     platformMonthlyDisplayGbp: gbpDisplay,

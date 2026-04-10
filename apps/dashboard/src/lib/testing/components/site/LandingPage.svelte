@@ -128,10 +128,14 @@
   </section>
 
   <section class="section section-alt" aria-labelledby="demo-heading">
-    <div class="container">
-      <h2 id="demo-heading" class="visually-hidden">Product demo</h2>
-      <div class="demo-slab" role="img" aria-label="Demo placeholder">
-        [ Demo coming — screenshot/recording will appear here ]
+    <div class="container demo-action-wrap">
+      <h2 id="demo-heading" class="section-title demo-action-title">See Testing in action</h2>
+      <p class="section-intro demo-action-intro">
+        Walk through install, config, and CI with the in-product docs — no placeholder recording required.
+      </p>
+      <div class="demo-action-buttons">
+        <a class="btn btn-primary" href="/testing/docs/walkthrough/phase-1-install">Testing walkthrough →</a>
+        <a class="btn btn-secondary" href="/testing/docs/guides/quickstart">Quickstart guide →</a>
       </div>
     </div>
   </section>
@@ -393,24 +397,22 @@
     display: inline-flex;
   }
 
-  .demo-slab {
+  .demo-action-wrap {
     max-width: 40rem;
     margin: 0 auto;
-    min-height: 14rem;
-    padding: var(--space-8) var(--space-6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     text-align: center;
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-base);
-    font-style: italic;
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
-    border: var(--border-1) dashed var(--rm-border);
-    border-radius: var(--rm-card-radius);
-    background: var(--rm-surface);
-    box-sizing: border-box;
+  }
+  .demo-action-title {
+    margin-bottom: var(--space-3);
+  }
+  .demo-action-intro {
+    margin-bottom: var(--space-6);
+  }
+  .demo-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: center;
   }
 
   .visually-hidden {

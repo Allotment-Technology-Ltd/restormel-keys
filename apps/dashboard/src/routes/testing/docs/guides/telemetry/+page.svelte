@@ -40,8 +40,9 @@
 
     <h2>Where events are sent</h2>
     <p>
-      Events are sent via HTTPS POST to <code>https://telemetry.restormel.dev/v1/event</code>. If the service is unavailable, the CLI
-      fails silently and your command still completes normally.
+      Events are sent via HTTPS POST to the URL in <code>RESTORMEL_TELEMETRY_URL</code> when set; otherwise the default is
+      <code>https://telemetry.restormel.dev/v1/event</code>. The collector must accept the CLI’s JSON body shape (anonymous counters
+      only). If the service is unavailable, the CLI fails silently and your command still completes normally.
     </p>
 
     <h2>Opt out</h2>

@@ -16,7 +16,18 @@ export type ChangelogRelease = {
   url: string;
 };
 
-type CacheEntry = { releases: ChangelogRelease[]; expiresAt: number };
+/** Non-null when the GitHub API did not return a release list (distinct from “zero releases”). */
+export type ChangelogLoadError = {
+  kind: "rate_limit" | "forbidden" | "not_found" | "server_error" | "network" | "parse" | "config";
+  status?: number;
+};
+
+export type ChangelogLoadResult = {
+  releases: ChangelogRelease[];
+  loadError: ChangelogLoadError | null;
+};
+
+type CacheEntry = { result: ChangelogLoadResult; expiresAt: number };
 
 let cache: CacheEntry | null = null;
 
@@ -46,7 +57,15 @@ interface GhRelease {
   html_url?: string;
 }
 
-async function fetchReleasesFromGitHub(owner: string, repo: string): Promise<ChangelogRelease[]> {
+function errorKindForStatus(status: number): ChangelogLoadError["kind"] {
+  if (status === 403) return "forbidden";
+  if (status === 404) return "not_found";
+  if (status === 429) return "rate_limit";
+  if (status >= 500) return "server_error";
+  return "server_error";
+}
+
+async function fetchReleasesFromGitHub(owner: string, repo: string): Promise<ChangelogLoadResult> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "User-Agent": "restormel-dashboard-changelog",
@@ -55,11 +74,23 @@ async function fetchReleasesFromGitHub(owner: string, repo: string): Promise<Cha
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const url = `https://api.github.com/repos/${owner}/${repo}/releases?per_page=${PER_PAGE}`;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) return [];
+  let res: Response;
+  try {
+    res = await fetch(url, { headers, signal: AbortSignal.timeout(20_000) });
+  } catch {
+    return { releases: [], loadError: { kind: "network" } };
+  }
+  if (!res.ok) {
+    return {
+      releases: [],
+      loadError: { kind: errorKindForStatus(res.status), status: res.status },
+    };
+  }
 
-  const raw = (await res.json().catch(() => [])) as unknown;
-  if (!Array.isArray(raw)) return [];
+  const raw = (await res.json().catch(() => null)) as unknown;
+  if (!Array.isArray(raw)) {
+    return { releases: [], loadError: { kind: "parse", status: res.status } };
+  }
 
   const out: ChangelogRelease[] = [];
   for (const item of raw) {
@@ -76,26 +107,28 @@ async function fetchReleasesFromGitHub(owner: string, repo: string): Promise<Cha
     });
   }
 
-  return out;
+  return { releases: out, loadError: null };
 }
 
 /**
- * Newest releases first. Empty array when the API fails or there are no published releases.
+ * Newest releases first. `loadError` set when the GitHub API fails; empty `releases` with null `loadError` means success but no published releases.
  */
-export async function getChangelogReleases(): Promise<ChangelogRelease[]> {
+export async function getChangelogReleases(): Promise<ChangelogLoadResult> {
   const now = Date.now();
-  if (cache && cache.expiresAt > now) return cache.releases;
+  if (cache && cache.expiresAt > now) return cache.result;
 
   const parsed = parseOwnerRepo(GITHUB_REPO_URL);
-  let releases: ChangelogRelease[] = [];
-  if (parsed) {
+  let result: ChangelogLoadResult;
+  if (!parsed) {
+    result = { releases: [], loadError: { kind: "config" } };
+  } else {
     try {
-      releases = await fetchReleasesFromGitHub(parsed.owner, parsed.repo);
+      result = await fetchReleasesFromGitHub(parsed.owner, parsed.repo);
     } catch {
-      releases = [];
+      result = { releases: [], loadError: { kind: "network" } };
     }
   }
 
-  cache = { releases, expiresAt: now + TTL_MS };
-  return releases;
+  cache = { result, expiresAt: now + TTL_MS };
+  return result;
 }

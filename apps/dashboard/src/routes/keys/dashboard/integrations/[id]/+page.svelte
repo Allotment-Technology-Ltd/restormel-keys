@@ -12,6 +12,7 @@
 
   let verifying = false;
   let verifyError = "";
+  let verifyOkMsg = "";
   let addBindingProjectId = data.projects[0]?.id ?? "";
   let addingBinding = false;
   let addBindingError = "";
@@ -47,12 +48,15 @@
     if (!data.integration) return;
     verifying = true;
     verifyError = "";
+    verifyOkMsg = "";
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/integrations/${data.integration.id}/verify`, {
         method: "POST",
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
+        const detail = (body as { data?: { verificationDetail?: string } }).data?.verificationDetail;
+        verifyOkMsg = detail ?? "Verification updated.";
         await invalidateAll();
       } else {
         verifyError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
@@ -187,7 +191,26 @@
     {#if verifyError}
       <p class="error-msg" role="alert">{verifyError}</p>
     {/if}
+    {#if verifyOkMsg}
+      <p class="muted verify-ok" role="status">{verifyOkMsg}</p>
+    {/if}
   </section>
+
+  {#if data.integration.usageModelIds.length > 0}
+    <section class="section" aria-labelledby="usage-models-heading">
+      <h2 id="usage-models-heading" class="section-title">Models in usage aggregates</h2>
+      <p class="section-desc muted">
+        Model IDs recently recorded for this provider in workspace usage data (imported or logged traffic).
+      </p>
+      <ul class="model-chip-list">
+        {#each data.integration.usageModelIds as mid}
+          <li>
+            <a href={DASHBOARD_BASE + "/models/" + encodeURIComponent(mid)} class="mix-link">{mid}</a>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   <section class="section" aria-labelledby="bindings-heading">
     <h2 id="bindings-heading" class="section-title">Project bindings</h2>
@@ -344,6 +367,20 @@
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-3);
+  }
+  .model-chip-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .model-chip-list li {
+    margin: 0;
+  }
+  .verify-ok {
+    margin-top: var(--space-2);
   }
   .verified-row {
     display: flex;

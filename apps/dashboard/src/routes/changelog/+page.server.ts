@@ -6,6 +6,6 @@ export const load: PageServerLoad = async ({ setHeaders }) => {
     "cache-control": "public, max-age=0, s-maxage=3600",
   });
 
-  const releases = await getChangelogReleases();
-  return { releases };
+  const { releases, loadError } = await getChangelogReleases();
+  return { releases, changelogLoadError: loadError };
 };

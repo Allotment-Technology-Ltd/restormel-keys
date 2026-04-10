@@ -39,6 +39,10 @@ export function isAAIFResponse(value: unknown): value is AAIFResponse {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
   if (typeof obj.output !== "string") return false;
+  if (obj.embedding !== undefined) {
+    if (!Array.isArray(obj.embedding) || !obj.embedding.every((x) => typeof x === "number")) return false;
+  }
+  if (obj.outputText !== undefined && typeof obj.outputText !== "string") return false;
   if (typeof obj.provider !== "string") return false;
   if (typeof obj.model !== "string") return false;
   if (typeof obj.cost !== "number") return false;

@@ -3730,6 +3730,7 @@ export async function getRequestLogCountsByUtcDay(
   workspaceId: string,
   since: number,
   until: number,
+  projectId?: string | null,
 ): Promise<{ day: string; count: number }[]> {
   const sql = getSql();
   const rows = await sql`
@@ -3740,6 +3741,7 @@ export async function getRequestLogCountsByUtcDay(
     WHERE workspace_id = ${workspaceId}
       AND created_at >= ${since}
       AND created_at <= ${until}
+      ${projectId != null && projectId !== "" ? sql`AND project_id = ${projectId}` : sql``}
     GROUP BY 1
     ORDER BY 1 ASC
   `;
@@ -3755,6 +3757,7 @@ export async function getEstimatedCostUsdByModel(
   since: number,
   until: number,
   limit = 12,
+  projectId?: string | null,
 ): Promise<{ model: string; costUsd: number }[]> {
   const sql = getSql();
   const safeLimit = Math.min(Math.max(1, limit), 24);
@@ -3766,6 +3769,7 @@ export async function getEstimatedCostUsdByModel(
     WHERE workspace_id = ${workspaceId}
       AND created_at >= ${since}
       AND created_at <= ${until}
+      ${projectId != null && projectId !== "" ? sql`AND project_id = ${projectId}` : sql``}
     GROUP BY 1
     ORDER BY cost_usd DESC NULLS LAST
     LIMIT ${safeLimit}
@@ -3931,4 +3935,36 @@ export async function listWorkspaceWebhooksForDelivery(
     out.push({ id: r.id, url: r.url, signingSecretPlaintext: dec.secret });
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Founders Circle applications (PII in payload — no raw logging)
+// ---------------------------------------------------------------------------
+
+export async function insertFoundersApplication(payload: unknown): Promise<string | null> {
+  try {
+    const sql = getSql();
+    const id = `fca_${randomBytes(12).toString("hex")}`;
+    const submittedAt = Date.now();
+    const json = JSON.stringify(payload ?? null);
+    await sql`
+      INSERT INTO founders_applications (id, submitted_at_ms, payload)
+      VALUES (${id}, ${submittedAt}, ${json})
+    `;
+    return id;
+  } catch {
+    console.error("[founders] insertFoundersApplication failed");
+    return null;
+  }
+}
+
+export async function countFoundersApplications(): Promise<number> {
+  try {
+    const sql = getSql();
+    const rows = await sql`SELECT count(*)::int AS c FROM founders_applications`;
+    const r = rows[0] as { c: number } | undefined;
+    return r?.c ?? 0;
+  } catch {
+    return 0;
+  }
 }

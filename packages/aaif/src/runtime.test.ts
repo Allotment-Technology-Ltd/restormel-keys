@@ -61,5 +61,37 @@ describe("AAIF runtime helpers", () => {
 
     expect(res.output).toMatch(/out\(cost=/);
   });
+
+  it("returns typed embedding when options.embedding is set", async () => {
+    const keys = makeKeys();
+
+    const req: AAIFRequest = {
+      input: "noop",
+      task: "embedding",
+      routing: { model: "gpt-4o-mini" },
+      constraints: { tokens: { inputTokensM: 0.1, outputTokensM: 0.1 }, maxCost: 999 },
+    };
+
+    const vec = [0.1, 0.2, 0.3];
+    const res = await executeAAIFRequest(req, keys, { embedding: vec });
+
+    expect(res.embedding).toEqual(vec);
+    expect(res.output).toContain("0.1");
+    expect(res.outputText).toBeUndefined();
+  });
+
+  it("sets outputText for chat tasks", async () => {
+    const keys = makeKeys();
+
+    const req: AAIFRequest = {
+      input: "hello",
+      task: "chat",
+      routing: { model: "gpt-4o-mini" },
+      constraints: { tokens: { inputTokensM: 1, outputTokensM: 1 }, maxCost: 999 },
+    };
+
+    const res = await executeAAIFRequest(req, keys);
+    expect(res.outputText).toBe("hello");
+  });
 });
 

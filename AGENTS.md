@@ -19,7 +19,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 
 ## CI / CD
 
-- Main workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml) (path filters, dashboard build, **Testing** build/test/integration, migrations job with `DASHBOARD_DATABASE_URL_PROD` when enabled).
+- Main workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml) (path filters, dashboard build, **Testing** build/test/integration). **Production Postgres migrations** on **push to `main`** when `apps/dashboard/migrations/**` or catalog-seed paths change (secret **`DASHBOARD_DATABASE_URL_PROD`**) — [docs/runbooks/dashboard-postgres-migrations.md](docs/runbooks/dashboard-postgres-migrations.md). PR preview DBs: [.github/workflows/neon_workflow.yml](.github/workflows/neon_workflow.yml).
 - **Composites:** [.github/actions/pnpm-workspace-install](.github/actions/pnpm-workspace-install), [.github/actions/js-security-scan](.github/actions/js-security-scan) — mirrored under [platform/.github/actions/](platform/.github/actions/) for template extraction.
 - Keys library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
 - Tokens publish: tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml).

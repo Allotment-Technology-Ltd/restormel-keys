@@ -4,8 +4,12 @@ import { join } from "node:path";
 import type { GoalRunRecord } from "@restormel/testing-core";
 import { cliPackageVersion } from "./version.js";
 
-/** POST target; failures are ignored (endpoint may not be live yet). */
-const TELEMETRY_ENDPOINT = "https://telemetry.restormel.dev/v1/event";
+/** POST target; failures are ignored (endpoint may not be live yet). Override with RESTORMEL_TELEMETRY_URL. */
+function telemetryPostUrl(): string {
+  const raw = process.env.RESTORMEL_TELEMETRY_URL?.trim();
+  if (raw) return raw;
+  return "https://telemetry.restormel.dev/v1/event";
+}
 
 export type TelemetryCommand = "run" | "validate" | "report" | "doctor";
 
@@ -168,7 +172,7 @@ export async function sendTelemetrySnapshot(snapshot: TelemetrySnapshot): Promis
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 800);
   try {
-    await fetch(TELEMETRY_ENDPOINT, {
+    await fetch(telemetryPostUrl(), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

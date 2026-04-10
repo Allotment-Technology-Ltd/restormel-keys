@@ -151,7 +151,7 @@
         <div class="tier-card tier-card-team">
           <h3 class="tier-name">Team</h3>
           <p class="tier-desc"><strong>Best for:</strong> production teams</p>
-          <p class="tier-price">£35</p>
+          <p class="tier-price">{data.teamMonthlyDisplayGbp}</p>
           <p class="tier-period">/ month + tax</p>
           <ul class="tier-list">
             <li>Unlimited projects</li>
@@ -163,34 +163,63 @@
             <li>Priority support with SLA</li>
           </ul>
           <p class="tier-footnote">For teams shipping AI in production.</p>
-          <button type="button" class="btn btn-secondary btn-todo-checkout" disabled title="Checkout not yet available">
-            Upgrade to Team (coming soon)
-          </button>
-          <p class="tier-hint tier-hint-muted">
-            Self-serve checkout lands with Team entitlements. Catalog price IDs: run
-            <code class="tier-code">pnpm run bootstrap-paddle -- --force-create</code> — or apply via
-            <a href="/founders">Founders</a>.
-          </p>
+          {#if data.paddleToken && data.teamPriceIdMonthlyGbp}
+            <button
+              type="button"
+              class="btn btn-secondary btn-upgrade-team"
+              data-paddle-checkout
+              data-price-id={data.teamPriceIdMonthlyGbp}
+              onclick={() =>
+                window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "team", currency: "GBP" })}
+            >
+              Upgrade to Team (GBP)
+            </button>
+            <p class="tier-hint">Opens Paddle checkout in GBP. Taxes are calculated at checkout.</p>
+          {:else}
+            <button type="button" class="btn btn-secondary btn-todo-checkout" disabled title="Checkout not configured">
+              Upgrade to Team (configure Paddle)
+            </button>
+            <p class="tier-hint tier-hint-muted">
+              Set <code class="tier-code">PUBLIC_PADDLE_CLIENT_TOKEN</code> and
+              <code class="tier-code">PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP</code>, or use
+              <code class="tier-code">pnpm run bootstrap-paddle -- --force-create</code> — or apply via
+              <a href="/founders">Founders</a>.
+            </p>
+          {/if}
         </div>
 
         <div class="tier-card tier-card-platform">
           <p class="platform-badge">Suite</p>
           <h3 class="tier-name">Platform</h3>
           <p class="tier-desc"><strong>Best for:</strong> multi-module adoption</p>
-          <p class="tier-price">£35</p>
+          <p class="tier-price">{data.platformMonthlyDisplayGbp}</p>
           <p class="tier-period">/ month + tax</p>
           <ul class="tier-list">
             <li>All three Pro modules (Keys Pro + Testing Pro + Graph Pro)</li>
             <li>Best value if you're using more than one module.</li>
           </ul>
           <a class="btn btn-primary btn-platform-pricing" href="/pricing">See full Platform pricing →</a>
-          <button type="button" class="btn btn-secondary btn-todo-checkout btn-platform-todo" disabled title="Checkout not yet available">
-            Subscribe to Platform (coming soon)
-          </button>
-          <p class="tier-hint tier-hint-muted">
-            Bundle checkout will open from the <a href="/pricing">Platform page</a> once wired. Paddle catalog entries are
-            created by the same bootstrap script as Pro.
-          </p>
+          {#if data.paddleToken && data.platformPriceIdMonthlyGbp}
+            <button
+              type="button"
+              class="btn btn-secondary btn-upgrade-platform"
+              data-paddle-checkout
+              data-price-id={data.platformPriceIdMonthlyGbp}
+              onclick={() =>
+                window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "platform", currency: "GBP" })}
+            >
+              Subscribe to Platform (GBP)
+            </button>
+            <p class="tier-hint">Opens Paddle checkout in GBP. Taxes are calculated at checkout.</p>
+          {:else}
+            <button type="button" class="btn btn-secondary btn-todo-checkout btn-platform-todo" disabled title="Checkout not configured">
+              Subscribe to Platform (configure Paddle)
+            </button>
+            <p class="tier-hint tier-hint-muted">
+              Set <code class="tier-code">PADDLE_PRICE_PLATFORM_MONTHLY_GBP</code> (and Paddle client token) to enable
+              checkout here, or start from the <a href="/pricing">suite pricing page</a>.
+            </p>
+          {/if}
         </div>
       </div>
     </section>

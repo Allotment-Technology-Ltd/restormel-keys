@@ -43,7 +43,12 @@ export type AAIFRouting = {
 };
 
 export type AAIFResponse = {
+  /** Text output for chat/completion, or a legacy string form for embeddings (often JSON of the vector). */
   output: string;
+  /** When the task is `embedding`, numeric vector from the host (avoids JSON round-trips on `output`). */
+  embedding?: number[];
+  /** Explicit text alias for chat/completion; mirrors `output` for non-embedding tasks. */
+  outputText?: string;
   provider: string;
   model: string;
   cost: number;

@@ -3,7 +3,10 @@ import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
 import {
   aggregateRequestLogsToUsage,
   getEstimatedCostUsdByModel,
+  getProjectInWorkspace,
   getRequestLogCountsByUtcDay,
+  listProjects,
+  listProjectsByWorkspace,
   listRequestLogs,
 } from "$lib/server/db";
 
@@ -18,6 +21,10 @@ const MOCK_COST_BY_MODEL: { model: string; costUsd: number }[] = [
   { model: "gpt-4o-mini", costUsd: 3.85 },
   { model: "unknown", costUsd: 0.45 },
 ];
+
+function useAnalyticsMockFallback(): boolean {
+  return process.env.RESTORMEL_ANALYTICS_USE_MOCK_FALLBACK !== "false";
+}
 
 export type UsageChartsPayload = {
   dailyRequests: { label: string; count: number }[];
@@ -74,32 +81,52 @@ function mockDailyRequestsForChart(untilMs: number): { label: string; count: num
   return out;
 }
 
-async function loadUsageCharts(workspaceId: string, chartUntil: number): Promise<UsageChartsPayload> {
+async function loadUsageCharts(
+  workspaceId: string,
+  chartUntil: number,
+  projectId: string | null,
+  allowMockFallback: boolean,
+): Promise<UsageChartsPayload> {
   const chartSince = chartUntil - THIRTY_D_MS;
   let requestsOverTimeSource: "database" | "mock" = "database";
   let dailyRequests: { label: string; count: number }[] = [];
   try {
-    const byDay = await getRequestLogCountsByUtcDay(workspaceId, chartSince, chartUntil);
+    const byDay = await getRequestLogCountsByUtcDay(workspaceId, chartSince, chartUntil, projectId);
     const map = new Map(byDay.map((r) => [r.day, r.count]));
     dailyRequests = buildLast30DaysDailySeries(chartUntil, map);
   } catch (e) {
     console.error("[analytics] getRequestLogCountsByUtcDay failed:", e);
-    dailyRequests = mockDailyRequestsForChart(chartUntil);
-    requestsOverTimeSource = "mock";
+    if (allowMockFallback) {
+      dailyRequests = mockDailyRequestsForChart(chartUntil);
+      requestsOverTimeSource = "mock";
+    } else {
+      dailyRequests = buildLast30DaysDailySeries(chartUntil, new Map());
+      requestsOverTimeSource = "database";
+    }
   }
 
   let costByModelSource: "database" | "mock" = "database";
   let costByModel: { model: string; costUsd: number }[] = [];
   try {
-    costByModel = await getEstimatedCostUsdByModel(workspaceId, chartSince, chartUntil);
+    costByModel = await getEstimatedCostUsdByModel(workspaceId, chartSince, chartUntil, 12, projectId);
     if (!costByModel.some((r) => r.costUsd > 0)) {
-      costByModel = MOCK_COST_BY_MODEL;
-      costByModelSource = "mock";
+      if (allowMockFallback) {
+        costByModel = MOCK_COST_BY_MODEL;
+        costByModelSource = "mock";
+      } else {
+        costByModel = [];
+        costByModelSource = "database";
+      }
     }
   } catch (e) {
     console.error("[analytics] getEstimatedCostUsdByModel failed:", e);
-    costByModel = MOCK_COST_BY_MODEL;
-    costByModelSource = "mock";
+    if (allowMockFallback) {
+      costByModel = MOCK_COST_BY_MODEL;
+      costByModelSource = "mock";
+    } else {
+      costByModel = [];
+      costByModelSource = "database";
+    }
   }
 
   return { dailyRequests, requestsOverTimeSource, costByModel, costByModelSource };
@@ -114,6 +141,7 @@ function aggregateFromRecentLogs(
     latencyMs: number;
     requestStatus: string;
   }>,
+  projectId: string | null,
 ) {
   const buckets = new Map<
     string,
@@ -128,6 +156,7 @@ function aggregateFromRecentLogs(
     }
   >();
   for (const log of logs) {
+    if (projectId && log.projectId !== projectId) continue;
     const key = `${log.projectId}\0${log.routeId ?? ""}\0${log.providerType}\0${log.finalModelId ?? ""}`;
     const existing = buckets.get(key) ?? {
       projectId: log.projectId,
@@ -173,24 +202,54 @@ export const load: PageServerLoad = async ({ url, locals }) => {
         recentLogs: [],
         period: { since, until },
         days,
+        projectId: null as string | null,
+        projects: [] as { id: string; name: string }[],
         error: "Unauthorized" as string | null,
         usageCharts: null as UsageChartsPayload | null,
       };
     }
-    const recentLogs = await listRequestLogs(ctx.workspaceId, { limit: 50, since, until });
+
+    let projectId: string | null = url.searchParams.get("projectId")?.trim() || null;
+    if (projectId) {
+      const proj = await getProjectInWorkspace(projectId, ctx.workspaceId);
+      if (!proj) projectId = null;
+    }
+
+    const projects =
+      ctx.actorType === "user"
+        ? await listProjects(ctx.actorId)
+        : await listProjectsByWorkspace(ctx.workspaceId);
+
+    const recentLogs = await listRequestLogs(ctx.workspaceId, {
+      limit: 50,
+      since,
+      until,
+      projectId: projectId ?? undefined,
+    });
     let aggregates = [];
     try {
-      aggregates = await aggregateRequestLogsToUsage(ctx.workspaceId, { since, until });
+      aggregates = await aggregateRequestLogsToUsage(ctx.workspaceId, {
+        since,
+        until,
+        projectId: projectId ?? undefined,
+      });
     } catch (aggErr) {
       console.error("[analytics] aggregate failed; using recent-log fallback:", aggErr);
-      aggregates = aggregateFromRecentLogs(recentLogs);
+      aggregates = aggregateFromRecentLogs(recentLogs, projectId);
     }
-    const usageCharts = await loadUsageCharts(ctx.workspaceId, until);
+    const usageCharts = await loadUsageCharts(
+      ctx.workspaceId,
+      until,
+      projectId,
+      useAnalyticsMockFallback(),
+    );
     return {
       aggregates,
       recentLogs,
       period: { since, until },
       days,
+      projectId,
+      projects: projects.map((p) => ({ id: p.id, name: p.name })),
       error: null,
       usageCharts,
     };
@@ -201,6 +260,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
       recentLogs: [],
       period: { since, until },
       days,
+      projectId: null as string | null,
+      projects: [] as { id: string; name: string }[],
       error: "Unable to load analytics",
       usageCharts: null as UsageChartsPayload | null,
     };

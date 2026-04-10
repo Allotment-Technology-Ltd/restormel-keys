@@ -2,6 +2,28 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — CI/CD: production dashboard migrations documented + catalog seed gated
+
+**Workflow:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `apply-dashboard-migrations-prod` now uses **`concurrency: dashboard-prod-postgres`** (no parallel prod applies). **Catalog seed** runs only when catalog-seed paths change on `main` or **`workflow_dispatch`** sets **`run_model_catalog_seed`** (SQL-only migration pushes still apply migrations but skip seed). **Runbook:** [`docs/runbooks/dashboard-postgres-migrations.md`](docs/runbooks/dashboard-postgres-migrations.md). **Refs:** [`apps/dashboard/README.md`](apps/dashboard/README.md), [`AGENTS.md`](AGENTS.md).
+
+## Repo (2026-04-10) — GitHub issue programme (marketing, founders, analytics, commerce, dogfood)
+
+**Marketing:** Suite homepage [`+page.svelte`](apps/dashboard/src/routes/+page.svelte) — inline SVG suite flow (design tokens), roadmap/changelog links, testimonial copy. Testing [`LandingPage.svelte`](apps/dashboard/src/lib/testing/components/site/LandingPage.svelte) — walkthrough/quickstart CTAs.
+
+**Founders:** Migration [`030_founders_applications.sql`](apps/dashboard/migrations/030_founders_applications.sql); [`founders/+page.server.ts`](apps/dashboard/src/routes/founders/+page.server.ts) — DB persistence, slot counts, webhook retries + `Idempotency-Key`. [`docs/security-baseline.md`](docs/security-baseline.md) PII note.
+
+**Commerce:** [`suite-pricing-display.ts`](apps/dashboard/src/lib/suite-pricing-display.ts) shared fallbacks; Keys pricing Team/Platform Paddle buttons when `PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP` / `PADDLE_PRICE_PLATFORM_MONTHLY_GBP` + client token are set.
+
+**Analytics:** Optional `RESTORMEL_ANALYTICS_USE_MOCK_FALLBACK=false`; `?projectId=` scoping; spend footnote only without cost signals. Neon: `getRequestLogCountsByUtcDay` / `getEstimatedCostUsdByModel` accept optional `projectId`.
+
+**Integrations:** [`integration-verify.ts`](apps/dashboard/src/lib/server/integration-verify.ts); usage model IDs on integration detail.
+
+**Telemetry CLI:** `RESTORMEL_TELEMETRY_URL` override in [`packages/testing-cli/src/telemetry.ts`](packages/testing-cli/src/telemetry.ts); docs [`telemetry/+page.svelte`](apps/dashboard/src/routes/testing/docs/guides/telemetry/+page.svelte).
+
+**Dogfood:** `@restormel/mcp` — `restormel-mcp --check` / `tools --json`. `@restormel/aaif` — `embedding` + `outputText` on responses. `@restormel/state` README — install verify, peers, ESM, persistence.
+
+**Reference:** [`docs/reference/github-open-issues-inventory.md`](docs/reference/github-open-issues-inventory.md).
+
 ## Repo (2026-04-10) — Security: Dependabot / npm audit remediation
 
 **Deps:** Root `pnpm.overrides` for patched transitive versions (`hono`, `@hono/node-server`, `basic-ftp`, `lodash`, `defu`, `brace-expansion`, `path-to-regexp`, `jsondiffpatch`). **Zuplo:** overrides `axios` `>=1.15.0`, `brace-expansion` `>=5.0.5`. **Example:** [`examples/nextjs-playwright`](examples/nextjs-playwright) **Next.js** `^15.5.14` (patched App Router / image / rewrite advisories on the 15.x line).

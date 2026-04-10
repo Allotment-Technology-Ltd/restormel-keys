@@ -9,6 +9,9 @@ vi.mock("$lib/server/db", () => ({
   listRequestLogs: vi.fn(),
   getRequestLogCountsByUtcDay: vi.fn(),
   getEstimatedCostUsdByModel: vi.fn(),
+  getProjectInWorkspace: vi.fn(),
+  listProjects: vi.fn(),
+  listProjectsByWorkspace: vi.fn(),
 }));
 
 describe("/keys/dashboard/analytics load", () => {
@@ -20,6 +23,7 @@ describe("/keys/dashboard/analytics load", () => {
     vi.mocked(db.listRequestLogs).mockResolvedValue([]);
     vi.mocked(db.getRequestLogCountsByUtcDay).mockResolvedValue([]);
     vi.mocked(db.getEstimatedCostUsdByModel).mockResolvedValue([]);
+    vi.mocked(db.listProjects).mockResolvedValue([]);
 
     const mod = await import("./+page.server");
     const res = (await mod.load({

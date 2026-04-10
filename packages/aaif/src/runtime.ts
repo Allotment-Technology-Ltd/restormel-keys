@@ -40,6 +40,12 @@ export interface ExecuteAAIFOptions {
 
   /** Fallback output if `generate` is not provided. Default: `request.input`. */
   output?: string;
+
+  /**
+   * For `task: "embedding"`, supply the numeric vector. `output` defaults to `JSON.stringify(embedding)` unless
+   * `generate` / `output` override it.
+   */
+  embedding?: number[];
 }
 
 function nonNegativeNumber(value: unknown): number | null {
@@ -132,7 +138,9 @@ export async function executeAAIFRequest(
     latency: request.constraints?.latency,
   });
 
-  const output =
+  const task = request.task ?? "chat";
+
+  const rawOutput =
     options.generate
       ? await options.generate({
           request,
@@ -143,8 +151,28 @@ export async function executeAAIFRequest(
         })
       : options.output ?? request.input;
 
+  let output = rawOutput;
+  const embedding =
+    task === "embedding" && Array.isArray(options.embedding) && options.embedding.length > 0
+      ? options.embedding
+      : undefined;
+
+  if (embedding) {
+    if (options.output !== undefined) {
+      output = options.output;
+    } else if (options.generate) {
+      output = rawOutput;
+    } else {
+      output = JSON.stringify(embedding);
+    }
+  }
+
+  const outputText = task === "embedding" ? undefined : output;
+
   const response: AAIFResponse = {
     output,
+    ...(embedding ? { embedding } : {}),
+    ...(outputText !== undefined ? { outputText } : {}),
     provider: finalProvider,
     model: modelId,
     cost: totalCost,

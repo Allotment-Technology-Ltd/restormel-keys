@@ -1,16 +1,60 @@
+import { randomUUID } from "node:crypto";
 import { fail } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
+import { countFoundersApplications, insertFoundersApplication } from "$lib/server/db";
 
-const SLOTS_TOTAL = 50;
+function foundersSlotsTotal(): number {
+  const n = parseInt(process.env.FOUNDERS_CIRCLE_SLOTS_TOTAL ?? "50", 10);
+  if (!Number.isFinite(n) || n < 0) return 50;
+  return Math.min(n, 1_000_000);
+}
 
-/** TODO: Replace with dynamic count (DB, CMS, or admin-configured). */
-const SLOTS_REMAINING_HARDCODED = 0;
+async function deliverFoundersWebhook(
+  url: string,
+  body: object,
+  idempotencyKey: string,
+  serverFetch: typeof fetch,
+): Promise<{ ok: boolean; status: number }> {
+  const max = 3;
+  for (let attempt = 0; attempt < max; attempt++) {
+    try {
+      const res = await serverFetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey.slice(0, 200),
+        },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return { ok: true, status: res.status };
+      if (res.status >= 500 && attempt < max - 1) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        continue;
+      }
+      return { ok: false, status: res.status };
+    } catch {
+      if (attempt < max - 1) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        continue;
+      }
+      return { ok: false, status: 0 };
+    }
+  }
+  return { ok: false, status: 0 };
+}
 
 export const load: PageServerLoad = async () => {
-  return {
-    slotsRemaining: SLOTS_REMAINING_HARDCODED,
-    slotsTotal: SLOTS_TOTAL,
-  };
+  const slotsTotal = foundersSlotsTotal();
+  const displayOverride = process.env.FOUNDERS_SLOTS_REMAINING_DISPLAY?.trim();
+  let slotsRemaining: number;
+  if (displayOverride !== undefined && displayOverride !== "") {
+    const n = parseInt(displayOverride, 10);
+    slotsRemaining = Number.isFinite(n) ? Math.max(0, n) : 0;
+  } else {
+    const used = await countFoundersApplications();
+    slotsRemaining = Math.max(0, slotsTotal - used);
+  }
+  return { slotsRemaining, slotsTotal };
 };
 
 const MODULE_VALUES = ["keys", "testing", "graph", "platform"] as const;
@@ -71,30 +115,33 @@ export const actions: Actions = {
       listedPublicly: listed === "yes",
     };
 
-    const webhook = (process.env.FOUNDERS_APPLICATION_WEBHOOK_URL ?? "").trim();
-    if (webhook) {
-      try {
-        const res = await serverFetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          return fail(502, {
-            errors: { _form: "We could not submit your application. Please try again or email us." },
-            values,
-            success: false as const,
-          });
-        }
-      } catch {
+    const hasDb = Boolean(process.env.DATABASE_URL?.trim());
+    let applicationId: string;
+    if (hasDb) {
+      const id = await insertFoundersApplication(payload);
+      if (!id) {
         return fail(502, {
-          errors: { _form: "We could not submit your application. Please try again later." },
+          errors: { _form: "We could not save your application. Please try again later." },
           values,
           success: false as const,
         });
       }
+      applicationId = id;
+    } else {
+      applicationId = `local_${randomUUID()}`;
     }
-    // No webhook: accept and show confirmation (TODO: persist or notify when webhook unset).
+
+    const webhook = (process.env.FOUNDERS_APPLICATION_WEBHOOK_URL ?? "").trim();
+    if (webhook) {
+      const delivered = await deliverFoundersWebhook(webhook, payload, applicationId, serverFetch);
+      if (!delivered.ok) {
+        console.error("[founders] webhook delivery failed after retries", {
+          applicationId,
+          status: delivered.status,
+        });
+      }
+    }
+
     return { success: true as const };
   },
 };

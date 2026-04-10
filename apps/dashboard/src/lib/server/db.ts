@@ -105,6 +105,8 @@ export {
   aggregateRequestLogsToUsage,
   getRequestLogCountsByUtcDay,
   getEstimatedCostUsdByModel,
+  insertFoundersApplication,
+  countFoundersApplications,
   insertUsageAggregate,
   setWorkspacePlan,
   findWorkspaceByPaddleSubscriptionId,

@@ -1,6 +1,6 @@
 # Keys dashboard
 
-SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, walkthrough, and authenticated dashboard. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (workspaces, projects, environments, Gateway keys, provider integrations, models, routes, policies, request logs). Run migrations 001–029 as needed (011 seeds full model catalog; 013 adds route version history; 014/015 add provenance + policy version events + coverage indexes; 016 backfills provenance defaults; **020** project model index bindings; **022** CLI device sessions; **023** service operator allowlist; **028** app `users` mirror for `upsertUser`; **029** workspace outbound webhooks). Base path `/keys`.
+SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, walkthrough, and authenticated dashboard. **Neon Auth** (GitHub OAuth, proxied at `/api/auth/*`) and **Neon Postgres** (workspaces, projects, environments, Gateway keys, provider integrations, models, routes, policies, request logs). Run migrations 001–030+ as needed (011 seeds full model catalog; 013 adds route version history; 014/015 add provenance + policy version events + coverage indexes; 016 backfills provenance defaults; **020** project model index bindings; **022** CLI device sessions; **023** service operator allowlist; **028** app `users` mirror for `upsertUser`; **029** workspace outbound webhooks; **030** founders applications). Base path `/keys`.
 
 **Product surface:** `/keys` (landing), `/keys/pricing`, `/keys/docs` (including integration walkthrough Phase 0–6 with optional **agent prompts** per phase; `RESTORMEL_DOCS_AGENT_PROMPTS=false` hides them site-wide), `/keys/dashboard` (authenticated app). One **SiteHeader** and **SiteFooter** site-wide (API portal + account live in the header only; the dashboard inner topbar is collapse + section title). Docs and dashboard side navs are **collapsible** (state in localStorage). Max-width container `--rm-container-max` (72rem) used across docs and dashboard shells.
 
@@ -84,7 +84,7 @@ Example (minimal in-browser surface: overview + Access + Profile only):
 
 Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
 
-Run migrations in `migrations/` (001 through `029` as needed) against the Neon database. Provider credential encryption and Testing project flags: `024`–`026`; app user mirror: `028`; workspace webhooks: `029`.
+Run migrations in `migrations/` (sorted `001` … `030`+ as needed) against the Neon database. **CI/CD:** on **push to `main`**, GitHub Actions applies all migration files when `apps/dashboard/migrations/**` (or catalog seed paths) changes, using repo secret **`DASHBOARD_DATABASE_URL_PROD`** — see [docs/runbooks/dashboard-postgres-migrations.md](../../docs/runbooks/dashboard-postgres-migrations.md). Provider credential encryption and Testing project flags: `024`–`026`; app user mirror: `028`; workspace webhooks: `029`; founders applications: `030`.
 
 ## Terminology
 

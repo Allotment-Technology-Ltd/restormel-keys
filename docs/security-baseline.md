@@ -21,3 +21,5 @@ Canonical security baseline. BYOK-safe defaults. **Single source** for security 
 
 **Restormel Support (in-product assistant):** Session-only **`POST /keys/dashboard/api/support-chat`**; no Gateway-key or management-key access. **Do not** log user message bodies or `OPENAI_API_KEY` in application logs. UI copy must discourage pasting secrets; treat chat content as **user-provided** and minimise retention (v1: no server-side conversation store). Product narrative: [docs/restormel/RESTORMEL-SUPPORT.md](restormel/RESTORMEL-SUPPORT.md). Production env: [docs/runbooks/restormel-support-production.md](runbooks/restormel-support-production.md).
 
+**Founders Circle applications:** Rows in `founders_applications` may contain **PII** (name, email, free text) inside the JSON payload. **Do not** log payload bodies or outbound webhook bodies. Use only opaque `applicationId` / row id in logs. Retention follows your Postgres operations policy; restrict database access accordingly.
+

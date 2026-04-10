@@ -33,6 +33,8 @@
     recentLogs: RequestLog[];
     period: { since: number; until: number };
     days: number;
+    projectId: string | null;
+    projects: { id: string; name: string }[];
     error: string | null;
     usageCharts: {
       dailyRequests: { label: string; count: number }[];
@@ -55,6 +57,17 @@
   );
   $: errorRate = totalRequests > 0 ? totalErrorWeighted / totalRequests : 0;
   $: totalSpend = data.aggregates.reduce((s, a) => s + (a.estimatedCost ?? 0), 0);
+  $: hasRealCostSignals =
+    data.aggregates.some((a) => a.estimatedCost != null && a.estimatedCost > 0) ||
+    (data.usageCharts?.costByModelSource === "database" &&
+      (data.usageCharts?.costByModel?.some((c) => c.costUsd > 0) ?? false));
+
+  function projectScopedDaysHref(nextDays: number): string {
+    const q = new URLSearchParams();
+    q.set("days", String(nextDays));
+    if (data.projectId) q.set("projectId", data.projectId);
+    return `?${q.toString()}`;
+  }
 
   function providerMix(): { name: string; count: number }[] {
     const byProvider: Record<string, number> = {};
@@ -114,11 +127,23 @@
 {#if !data.error}
   <p class="period-links" role="navigation" aria-label="Time range">
     <span class="period-label">Range:</span>
-    <a href="?days=1" class="period-link" class:active={data.days === 1}>24h</a>
-    <a href="?days=7" class="period-link" class:active={data.days === 7}>7d</a>
-    <a href="?days=30" class="period-link" class:active={data.days === 30}>30d</a>
-    <a href="?days=90" class="period-link" class:active={data.days === 90}>90d</a>
+    <a href={projectScopedDaysHref(1)} class="period-link" class:active={data.days === 1}>24h</a>
+    <a href={projectScopedDaysHref(7)} class="period-link" class:active={data.days === 7}>7d</a>
+    <a href={projectScopedDaysHref(30)} class="period-link" class:active={data.days === 30}>30d</a>
+    <a href={projectScopedDaysHref(90)} class="period-link" class:active={data.days === 90}>90d</a>
   </p>
+  {#if data.projects.length > 0}
+    <p class="period-links project-scope-links" role="navigation" aria-label="Project scope">
+      <span class="period-label">Project:</span>
+      <a href={projectScopedDaysHref(data.days)} class="period-link" class:active={!data.projectId}>All</a>
+      {#each data.projects as p}
+        <a
+          href={`?days=${data.days}&projectId=${encodeURIComponent(p.id)}`}
+          class="period-link"
+          class:active={data.projectId === p.id}>{p.name}</a>
+      {/each}
+    </p>
+  {/if}
 {/if}
 
 {#if $navigating}
@@ -163,7 +188,12 @@
         <span class="metric-label">Est. spend</span>
       </div>
     </div>
-    <p class="muted">Spend is a placeholder when <code>estimated_cost</code> is not set on request logs.</p>
+    {#if totalRequests > 0 && !hasRealCostSignals}
+      <p class="muted">
+        Estimated spend is not shown until <code>estimated_cost</code> is populated on request logs (or cost-by-model data
+        is non-zero).
+      </p>
+    {/if}
   </section>
 
   <section class="section" aria-labelledby="mix-heading">

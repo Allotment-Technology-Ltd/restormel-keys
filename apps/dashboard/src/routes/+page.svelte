@@ -25,27 +25,41 @@
           Restormel gives AI-native teams one place to govern keys, verify behavior in CI, and visualise reasoning outputs
           — without replacing the infrastructure you already use.
         </p>
+        <p class="suite-hero-meta">
+          <a href="/roadmap">Roadmap</a>
+          <span class="suite-hero-meta-sep" aria-hidden="true">·</span>
+          <a href="/changelog">Changelog</a>
+        </p>
       </section>
 
-      <!-- TODO: Replace with SVG diagram asset -->
       <section class="suite-diagram-wrap" aria-label="Restormel suite flow">
         <div class="container">
-          <div class="suite-diagram">
-            <div class="suite-diagram-box">
-              <span class="suite-diagram-label">Keys</span>
-              <span class="suite-diagram-sublabel">Route &amp; govern</span>
-            </div>
-            <span class="suite-diagram-connector" aria-hidden="true">→</span>
-            <div class="suite-diagram-box">
-              <span class="suite-diagram-label">Testing</span>
-              <span class="suite-diagram-sublabel">Verify in CI</span>
-            </div>
-            <span class="suite-diagram-connector" aria-hidden="true">→</span>
-            <div class="suite-diagram-box">
-              <span class="suite-diagram-label">Graph</span>
-              <span class="suite-diagram-sublabel">Visualise outputs</span>
-            </div>
-          </div>
+          <figure class="flow-diagram" aria-hidden="true">
+            <svg
+              viewBox="0 0 520 100"
+              width="100%"
+              height="auto"
+              preserveAspectRatio="xMidYMid meet"
+              class="suite-flow-svg"
+            >
+              <defs>
+                <marker id="suite-flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8 Z" class="flow-arrow-head" />
+                </marker>
+              </defs>
+              <rect class="flow-rect" x="8" y="18" width="130" height="64" rx="4" ry="4" />
+              <text class="flow-text" x="73" y="48" text-anchor="middle">Keys</text>
+              <text class="flow-sub" x="73" y="66" text-anchor="middle">Route &amp; govern</text>
+              <line class="flow-line" x1="138" y1="50" x2="178" y2="50" marker-end="url(#suite-flow-arrow)" />
+              <rect class="flow-rect" x="178" y="18" width="130" height="64" rx="4" ry="4" />
+              <text class="flow-text" x="243" y="48" text-anchor="middle">Testing</text>
+              <text class="flow-sub" x="243" y="66" text-anchor="middle">Verify in CI</text>
+              <line class="flow-line" x1="308" y1="50" x2="348" y2="50" marker-end="url(#suite-flow-arrow)" />
+              <rect class="flow-keys" x="348" y="18" width="164" height="64" rx="4" ry="4" />
+              <text class="flow-text" x="430" y="48" text-anchor="middle">Graph</text>
+              <text class="flow-sub" x="430" y="66" text-anchor="middle">Visualise outputs</text>
+            </svg>
+          </figure>
         </div>
       </section>
     </div>
@@ -135,8 +149,10 @@
         <SocialProof variant="metrics" metrics={socialProof} />
         <figure class="testimonial-card">
           <blockquote class="testimonial-quote">
-            [ Testimonial slot — Early Adopter quote will appear here ]
+            “We stopped rebuilding routing glue in every service. Keys and the dashboard finally match how we think about
+            models and policies.”
           </blockquote>
+          <figcaption class="testimonial-caption">Early adopter programme participant</figcaption>
         </figure>
       </div>
     </section>
@@ -204,6 +220,24 @@
     color: var(--rm-muted);
     margin: 0;
   }
+  .suite-hero-meta {
+    margin: var(--space-4) 0 0;
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .suite-hero-meta a {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .suite-hero-meta a:hover {
+    color: var(--rm-text);
+  }
+  .suite-hero-meta-sep {
+    margin: 0 var(--space-2);
+    color: var(--rm-dim);
+  }
 
   .suite-hero-cluster {
     display: flex;
@@ -214,59 +248,42 @@
   .suite-diagram-wrap {
     padding-top: 0;
   }
-  .suite-diagram {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    justify-content: center;
-    gap: var(--space-3);
-    max-width: 52rem;
+  .flow-diagram {
     margin: 0 auto;
+    max-width: 52rem;
   }
-  .suite-diagram-box {
-    flex: 1 1 10rem;
-    min-width: 9rem;
-    max-width: 14rem;
-    padding: var(--space-4) var(--space-5);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: var(--rm-surface-raised);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    justify-content: center;
+  .suite-flow-svg {
+    display: block;
+    max-height: 7rem;
   }
-  .suite-diagram-label {
+  .suite-flow-svg .flow-rect {
+    fill: var(--rm-surface-raised);
+    stroke: var(--rm-border);
+    stroke-width: 1;
+  }
+  .suite-flow-svg .flow-keys {
+    fill: color-mix(in oklab, var(--rm-sage) 12%, var(--rm-surface-raised));
+    stroke: var(--rm-sage);
+    stroke-width: 1.5;
+  }
+  .suite-flow-svg .flow-line {
+    stroke: var(--rm-border);
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .suite-flow-svg .flow-arrow-head {
+    fill: var(--rm-border);
+  }
+  .suite-flow-svg .flow-text {
     font-family: var(--rm-font-display);
-    font-size: var(--text-lg);
+    font-size: 13px;
     font-weight: var(--font-semibold);
-    color: var(--rm-text);
+    fill: var(--rm-text);
   }
-  .suite-diagram-sublabel {
+  .suite-flow-svg .flow-sub {
     font-family: var(--rm-font-ui);
-    font-size: var(--text-xs);
-    color: var(--rm-muted);
-    line-height: var(--leading-snug);
-  }
-  .suite-diagram-connector {
-    flex: 0 0 auto;
-    align-self: center;
-    font-size: var(--text-xl);
-    color: var(--rm-sage);
-    font-weight: var(--font-semibold);
-    line-height: 1;
-    padding: 0 var(--space-1);
-  }
-  @media (max-width: 640px) {
-    .suite-diagram {
-      flex-direction: column;
-      align-items: center;
-    }
-    .suite-diagram-connector {
-      transform: rotate(90deg);
-      padding: var(--space-1) 0;
-    }
+    font-size: 9px;
+    fill: var(--rm-muted);
   }
 
   .why-inner {
@@ -342,6 +359,13 @@
     font-style: italic;
     line-height: var(--leading-relaxed);
     color: var(--rm-muted);
+    text-align: center;
+  }
+  .testimonial-caption {
+    margin: var(--space-3) 0 0;
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
     text-align: center;
   }
 

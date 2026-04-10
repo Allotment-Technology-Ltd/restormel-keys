@@ -30,7 +30,8 @@
 </section>
 
 <p class="honest-note" role="status">
-  <strong>Accuracy note:</strong> Model lifecycle state in the catalog may reflect placeholder data until the full ingestion pipeline is wired. Do not rely on lifecycle state for automated compliance until this note is removed.
+  <strong>Accuracy note:</strong> Treat catalog lifecycle labels as <strong>advisory</strong> until provider-backed ingestion is
+  enabled in your deployment. Do not rely on them alone for automated compliance gates.
 </p>
 
 <style>

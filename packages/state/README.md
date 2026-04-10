@@ -16,6 +16,27 @@ npm install @restormel/state
 
 Depends on **`@restormel/context-packs`** for `ContextPackRetrievalInput` correlation typing.
 
+### Verify install
+
+Scoped packages are **public**; a bare `404` on install is usually registry or auth misconfiguration, not a missing release.
+
+```bash
+npm view @restormel/state version
+mkdir -p /tmp/rm-state-smoke && cd /tmp/rm-state-smoke && npm init -y && npm install @restormel/state@latest
+```
+
+### Compatibility with `@restormel/context-packs`
+
+Use the **`peerDependencies`** range published on npm for `@restormel/context-packs` (see this package’s `package.json`). Bump minors together when correlation field shapes change; check both packages’ `CHANGELOG.md` for migration notes.
+
+### Module format
+
+**ESM only** (`"type": "module"`, Node **≥ 20**). Use `"moduleResolution": "node16"` or `"bundler"` in TypeScript.
+
+### Host integration (persistence)
+
+Storage is **host-owned**. Prefer an append-only log with monotonic ordering (e.g. `recorded_at` ascending; tie-break with `StateEvent.id` and `ts`). **`StateEvent.id` must be unique** within each batch you append. See [docs/restormel/RESTORMEL-STATE.md](../../docs/restormel/RESTORMEL-STATE.md) for the canonical model.
+
 ## Usage
 
 ```ts

@@ -1,4 +1,8 @@
 import type { PageServerLoad } from "./$types";
+import {
+  SUITE_PRICING_FALLBACK_GBP,
+  SUITE_PRICING_FALLBACK_USD,
+} from "$lib/suite-pricing-display";
 import { formatMinorAmount, getPaddleDisplayPrice } from "$lib/server/paddle-catalog-display";
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -12,16 +16,32 @@ export const load: PageServerLoad = async ({ url }) => {
     process.env.PADDLE_PRICE_KEYS_PRO_MONTHLY ??
     "";
   const proPriceIdMonthlyUsd = process.env.PADDLE_PRICE_KEYS_PRO_MONTHLY_USD ?? "";
+  const teamPriceIdMonthlyGbp = (process.env.PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP ?? "").trim();
+  const platformPriceIdMonthlyGbp = (process.env.PADDLE_PRICE_PLATFORM_MONTHLY_GBP ?? "").trim();
 
-  const [gbpPrice, usdPrice] = await Promise.all([
+  const [gbpPrice, usdPrice, teamGbp, platformGbp] = await Promise.all([
     getPaddleDisplayPrice(proPriceIdMonthlyGbp),
     getPaddleDisplayPrice(proPriceIdMonthlyUsd),
+    teamPriceIdMonthlyGbp ? getPaddleDisplayPrice(teamPriceIdMonthlyGbp) : Promise.resolve(null),
+    platformPriceIdMonthlyGbp ? getPaddleDisplayPrice(platformPriceIdMonthlyGbp) : Promise.resolve(null),
   ]);
 
   const proMonthlyPriceDisplayGbp =
-    gbpPrice && gbpPrice.currency === "GBP" ? formatMinorAmount(gbpPrice.amountMinor, "GBP") : "£10";
+    gbpPrice && gbpPrice.currency === "GBP"
+      ? formatMinorAmount(gbpPrice.amountMinor, "GBP")
+      : SUITE_PRICING_FALLBACK_GBP.keysProMonthly;
   const proMonthlyPriceDisplayUsd =
-    usdPrice && usdPrice.currency === "USD" ? formatMinorAmount(usdPrice.amountMinor, "USD") : "$24";
+    usdPrice && usdPrice.currency === "USD"
+      ? formatMinorAmount(usdPrice.amountMinor, "USD")
+      : SUITE_PRICING_FALLBACK_USD.keysProMonthly;
+  const teamMonthlyDisplayGbp =
+    teamGbp && teamGbp.currency === "GBP"
+      ? formatMinorAmount(teamGbp.amountMinor, "GBP")
+      : SUITE_PRICING_FALLBACK_GBP.teamMonthly;
+  const platformMonthlyDisplayGbp =
+    platformGbp && platformGbp.currency === "GBP"
+      ? formatMinorAmount(platformGbp.amountMinor, "GBP")
+      : SUITE_PRICING_FALLBACK_GBP.platformMonthly;
 
   return {
     dashboardUrl,
@@ -30,5 +50,9 @@ export const load: PageServerLoad = async ({ url }) => {
     proPriceIdMonthlyUsd,
     proMonthlyPriceDisplayGbp,
     proMonthlyPriceDisplayUsd,
+    teamPriceIdMonthlyGbp,
+    platformPriceIdMonthlyGbp,
+    teamMonthlyDisplayGbp,
+    platformMonthlyDisplayGbp,
   };
 };
