@@ -15,6 +15,8 @@
       <p class="section-desc">Manage who has dashboard operator access.</p>
       <p class="section-links">
         <a class="link" href={DASHBOARD_BASE + "/admin/users"}>User management</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a class="link" href={DASHBOARD_BASE + "/admin/package-registry"}>Package registry insights</a>
       </p>
     </section>
   {/if}

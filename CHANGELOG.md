@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — Dashboard admin: npm package insights
+
+**Dashboard (service owners):** [`/keys/dashboard/admin/package-registry`](apps/dashboard/src/routes/keys/dashboard/admin/package-registry/+page.svelte) — npm **per-version last-week** download breakdown (public API), Libraries.io **dependent repositories** (optional `LIBRARIES_IO_API_KEY`), and outbound links to npm, **GitHub Dependents**, deps.dev, and Libraries.io. Env: `RESTORMEL_NPM_INSIGHTS_PACKAGE`, `RESTORMEL_NPM_INSIGHTS_GITHUB_REPO`. Nav + Settings link from the existing admin block.
+
 ## Repo (2026-04-10) — Marketing routes SSR (founders, changelog, pricing, Keys pricing)
 
 **Cause:** Same class as SocialProof — **`$props()` / `$derived` / `$state`** with **`compilerOptions.runes: false`** ([`svelte.config.js`](apps/dashboard/svelte.config.js)), breaking Vercel SSR (**`ReferenceError: props is not defined`**). **Fix:** legacy **`export let`** + **`$:`** on [`founders/+page.svelte`](apps/dashboard/src/routes/founders/+page.svelte), [`changelog/+page.svelte`](apps/dashboard/src/routes/changelog/+page.svelte), [`pricing/+page.svelte`](apps/dashboard/src/routes/pricing/+page.svelte), [`keys/pricing/+page.svelte`](apps/dashboard/src/routes/keys/pricing/+page.svelte). **Dogfood:** [`examples/dashboard-dogfood/restormel-testing.yaml`](examples/dashboard-dogfood/restormel-testing.yaml) **`dashboard-critical`** adds **`/pricing`**, **`/founders`**, **`/changelog`**. **Smoke:** [`scripts/smoke-dashboard-docs.sh`](scripts/smoke-dashboard-docs.sh) curls **`/pricing`**, **`/founders`**, **`/changelog`**, **`/keys/pricing`**.

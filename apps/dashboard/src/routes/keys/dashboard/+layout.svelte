@@ -117,6 +117,14 @@
           >
             User management
           </a>
+          <a
+            href={DASHBOARD_BASE + "/admin/package-registry"}
+            class="nav-link"
+            class:nav-link-active={isActivePath(DASHBOARD_BASE + "/admin/package-registry")}
+            aria-current={isActivePath(DASHBOARD_BASE + "/admin/package-registry") ? "page" : undefined}
+          >
+            Package registry
+          </a>
         {/if}
 
         {#if !projectsNavHidden}
