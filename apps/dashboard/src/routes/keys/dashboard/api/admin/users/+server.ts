@@ -2,7 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { listUsersForServiceOwnerAdmin } from "$lib/server/admin-users";
 
-export const config = { runtime: "nodejs20.x" as const };
+export const config = { runtime: "nodejs22.x" as const };
 
 export const GET: RequestHandler = async ({ locals }) => {
   const u = locals.user;

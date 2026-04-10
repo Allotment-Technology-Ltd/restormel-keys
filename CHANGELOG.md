@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — Dashboard prod 500 (Vercel) mitigation
+
+**Cause (likely):** `export const config` on `hooks.server.ts` is **not** a supported adapter-vercel location (config belongs on `+layout.server` / `+page.server` / `+server`). **Fix:** remove hooks `config`; set `export const config = { runtime: "nodejs22.x" }` on root [`+layout.server.ts`](apps/dashboard/src/routes/+layout.server.ts). **Resilience:** try/catch root layout `load` so social-proof failures cannot 500 the site. **Client:** load `posthog-js` via dynamic `import()` in `onMount` only ([`+layout.svelte`](apps/dashboard/src/routes/+layout.svelte)). **API routes** that pinned `nodejs20.x` → `nodejs22.x` for consistency ([`support-chat`](apps/dashboard/src/routes/keys/dashboard/api/support-chat/+server.ts), [admin users](apps/dashboard/src/routes/keys/dashboard/api/admin/users/+server.ts)).
+
 ## Repo (2026-04-10) — GitHub meta issue #90 + child issues
 
 **Tracking:** Meta issue [#90](https://github.com/Allotment-Technology-Ltd/restormel-keys/issues/90) (suite marketing / dashboard train follow-ups) with child issues **#91–#111** (see comment on #90 for the index).

@@ -100,6 +100,4 @@ export const handle: Handle = async ({ event, resolve }) => {
   return response;
 };
 
-export const config = {
-  runtime: "nodejs20.x" as const,
-};
+/** Deployment `config` belongs on `+layout.server.ts` / `+page.server.ts` / `+server.ts` (adapter-vercel), not here. */
