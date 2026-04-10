@@ -347,7 +347,7 @@ Docs
 
 ## 16. Future Expansion
 
-- webhooks
+- webhooks — MVP shipped: [webhooks-audit-mvp.md](webhooks-audit-mvp.md); in-app `/keys/docs/integrations/webhooks-audit`
 - event streams
 - automation
 - evaluation integrations

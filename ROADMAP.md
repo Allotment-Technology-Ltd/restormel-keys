@@ -26,7 +26,8 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 - **CLI:** `keys models list` and `keys routing explain` commands added.
 - **Onboarding:** Usage path selector ("In my app / terminal / agent") on dashboard overview.
 - **Docs:** `/keys/docs/integrations/` with CLI quickstart, MCP setup, AAIF overview.
-- **Next:** AAIF routing integration, webhook/event stream support; MCP transport extras (e.g. HTTP) if demand emerges.
+- **Shipped (repo):** `testing release-pack` CLI + schema `restormel-release-pack/1`; workspace **webhooks** MVP (`policy.published`, signed POST, migration **029**); in-app docs for **BYO-GPU** paths, **Release pack**, **webhooks/audit**, **hosted MCP (BYO execution)** posture; GTM note [docs/restormel/gtm-plg-enterprise-sequencing.md](docs/restormel/gtm-plg-enterprise-sequencing.md).
+- **Next:** AAIF routing integration, additional webhook event types / streaming; MCP HTTP transport if demand emerges.
 - Full spec: [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
 - **Operator API parity shipped:** provider trust health, route coverage/readiness APIs, route recommendation endpoint, policy lifecycle parity endpoints, and provenance fields for route/policy updates.
 

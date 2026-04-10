@@ -2,6 +2,26 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-10) — Marketing routes SSR (founders, changelog, pricing, Keys pricing)
+
+**Cause:** Same class as SocialProof — **`$props()` / `$derived` / `$state`** with **`compilerOptions.runes: false`** ([`svelte.config.js`](apps/dashboard/svelte.config.js)), breaking Vercel SSR (**`ReferenceError: props is not defined`**). **Fix:** legacy **`export let`** + **`$:`** on [`founders/+page.svelte`](apps/dashboard/src/routes/founders/+page.svelte), [`changelog/+page.svelte`](apps/dashboard/src/routes/changelog/+page.svelte), [`pricing/+page.svelte`](apps/dashboard/src/routes/pricing/+page.svelte), [`keys/pricing/+page.svelte`](apps/dashboard/src/routes/keys/pricing/+page.svelte). **Dogfood:** [`examples/dashboard-dogfood/restormel-testing.yaml`](examples/dashboard-dogfood/restormel-testing.yaml) **`dashboard-critical`** adds **`/pricing`**, **`/founders`**, **`/changelog`**. **Smoke:** [`scripts/smoke-dashboard-docs.sh`](scripts/smoke-dashboard-docs.sh) curls **`/pricing`**, **`/founders`**, **`/changelog`**, **`/keys/pricing`**.
+
+## Repo (2026-04-10) — Dashboard dogfood: Restormel Testing in CI
+
+**Dogfood:** Suite **`dashboard-critical`** in [`examples/dashboard-dogfood/restormel-testing.yaml`](examples/dashboard-dogfood/restormel-testing.yaml) — observe-only browser goals for suite marketing **`/`**, [`/keys/docs`](apps/dashboard/src/routes/keys/docs/+page.svelte), [`/testing/docs`](apps/dashboard/src/routes/testing/docs/+page.svelte). **CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it after `vite preview` (**`--host 127.0.0.1`**) on the built dashboard, following the existing `testing-basic-web` integration (same Playwright install). **Docs:** [`docs/testing/dashboard-dogfood.md`](docs/testing/dashboard-dogfood.md); [`docs/testing-strategy.md`](docs/testing-strategy.md) cross-link. **Smoke:** [`scripts/smoke-dashboard-docs.sh`](scripts/smoke-dashboard-docs.sh) now curls **`/`** (fast 2xx guard). **Build fix:** [`byo-gpu-vm/+page.svelte`](apps/dashboard/src/routes/keys/docs/guides/byo-gpu-vm/+page.svelte) — curl JSON moved to a script string so `{` does not break Svelte parsing.
+
+## Repo (2026-04-10) — NGC-adjacent plan delivery (BYO-GPU docs, Release pack, webhooks MVP)
+
+**Docs (repo + in-app):** BYO-GPU VM/Kubernetes guides, Testing GPU route smoke + `docs/testing/gpu-route-smoke-template.yaml`, Release pack + merge-gate example `examples/github-actions/restormel-testing-merge-gate.yml`, GTM sequencing [docs/restormel/gtm-plg-enterprise-sequencing.md](docs/restormel/gtm-plg-enterprise-sequencing.md), private OpenAI-compatible matrix [docs/guides/private-openai-compatible-endpoints.md](docs/guides/private-openai-compatible-endpoints.md), template tiers [docs/guides/byo-gpu-template-tiers.md](docs/guides/byo-gpu-template-tiers.md), webhooks spec [docs/integrations/webhooks-audit-mvp.md](docs/integrations/webhooks-audit-mvp.md), graph licensing one-pager [docs/restormel/graph-enterprise-licensing-onepager.md](docs/restormel/graph-enterprise-licensing-onepager.md). Keys docs nav updated.
+
+**`@restormel/testing-report`:** `buildReleasePackV1` / `serializeReleasePackV1`, schema `restormel-release-pack/1`.
+
+**`@restormel/testing-cli`:** `testing release-pack --from-run …` with optional `--route-version` / `--policy-version`.
+
+**Dashboard:** Migration **`029_workspace_webhooks.sql`** (TEXT `id` / `workspace_id`, matching `workspaces.id`); `GET`/`POST`/`DELETE` `/keys/dashboard/api/webhooks`; HMAC-signed `policy.published` delivery on policy publish; [docs/threat-model-starter.md](docs/threat-model-starter.md) + [docs/security-baseline.md](docs/security-baseline.md) webhook notes. Testing hub links to Release pack docs. **`INTEGRATION_FAILURE_ATTRIBUTION_DOC_PATH`** export on `@restormel/keys-svelte`.
+
+## Repo (2026-04-10) — Dashboard prod 500 (Vercel) — SocialProof SSR
+
 ## Repo (2026-04-10) — Dashboard prod 500 (Vercel) — SocialProof SSR
 
 **Cause (confirmed):** [`SocialProof.svelte`](apps/dashboard/src/lib/components/site/SocialProof.svelte) used **`$props()` / `$derived`** while the app sets **`compilerOptions.runes: false`** ([`svelte.config.js`](apps/dashboard/svelte.config.js)). The Vercel ISR server bundle then emitted **`ReferenceError: props is not defined`** during SSR (homepage + footer). **Fix:** rewrite the component to legacy **`export let`** + **`$:`** so SSR matches the compiler mode.

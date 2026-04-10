@@ -13,3 +13,5 @@ Trust boundaries and initial risks. **Single source** for boundaries and risk li
 **Mitigations:** No raw keys in logs/docs; redaction; no committed secrets; examples use placeholders; boundaries and data classes kept in this doc and security-baseline.
 
 **Autonomous browser / agent loop (Restormel Testing):** LLM-driven Playwright paths (`ac_sequence`, rubrics) add DOM-injection and cost risks. See [testing/testing-autonomous-browsing-threat-addendum.md](testing/testing-autonomous-browsing-threat-addendum.md).
+
+**Outbound workspace webhooks:** Signing secrets use the same AES-256-GCM envelope as hosted provider credentials (`RESTORMEL_CREDENTIALS_ENCRYPTION_KEY`). Verify HMAC on the **raw** POST body at the receiver; treat failed deliveries as observable reliability, not as secret leakage. Webhook URLs are attacker-controlled SSRF targets—restrict to HTTPS in production dashboards where possible, apply timeouts, and avoid following redirects that exfiltrate headers. Payloads must **not** include raw provider keys or user prompts.

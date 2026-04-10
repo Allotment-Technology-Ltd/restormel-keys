@@ -1,0 +1,148 @@
+# First-party dogfood: Restormel dashboard (SvelteKit) served via `vite preview` on 4173.
+# Run from repo root after `pnpm --filter dashboard run build`:
+#   (cd apps/dashboard && pnpm exec vite preview --port 4173 --strictPort) &
+#   node packages/testing-cli/dist/bin/testing.js validate --config examples/dashboard-dogfood/restormel-testing.yaml
+#   node packages/testing-cli/dist/bin/testing.js run --suite dashboard-critical --config examples/dashboard-dogfood/restormel-testing.yaml
+#
+# Observe-only goals (no LLM): fails when marketing SSR breaks (e.g. 500) or core docs shells regress.
+# See docs/testing/dashboard-dogfood.md
+schema_version: "1"
+
+keys: {}
+
+defaults:
+  retry_policy:
+    max_retries: 1
+    backoff_ms: 400
+  default_timeout_ms: 45000
+  artifact_policy:
+    screenshots: on_failure
+    browser_trace: on_failure
+    console: true
+
+environments:
+  local:
+    base_url: http://127.0.0.1:4173
+    auth_mode: none
+
+suites:
+  - id: dashboard-critical
+    description: >
+      Marketing home, suite + Keys pricing, founders, changelog, Keys + Testing docs hubs.
+      Deterministic observe-only; catches runes/SSR regressions on marketing routes.
+    environment: local
+    goals:
+      - id: suite-home-marketing
+        type: browser
+        description: Suite marketing homepage — hero copy and landmarks (SSR must succeed).
+        success_criteria:
+          url_matches: "/"
+          text_present:
+            - "The AI product layer your stack is missing"
+            - "Why Restormel?"
+            - "Restormel Keys"
+            - "Restormel Testing"
+          dom_signals:
+            - "main"
+            - "nav"
+          structured_checks:
+            - id: hero_h1
+              path: "css:main h1.suite-title"
+              expect: "The AI product layer your stack is missing"
+      - id: keys-docs-hub
+        type: browser
+        description: Keys documentation landing (/keys/docs).
+        start_path: /keys/docs
+        success_criteria:
+          url_matches: "/keys/docs"
+          text_present:
+            - "Choose a provider access mode"
+            - "Starting a new project"
+            - "Restormel Keys"
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: keys_docs_h1
+              path: "css:main h1"
+              expect: "Docs"
+      - id: testing-docs-hub
+        type: browser
+        description: Testing documentation landing (/testing/docs).
+        start_path: /testing/docs
+        success_criteria:
+          url_matches: "/testing/docs"
+          text_present:
+            - "goal-based, workflow-aware"
+            - "What brings you here?"
+            - "Restormel Keys (BYOK)"
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: testing_docs_h1
+              path: "css:main h1"
+              expect: "Docs"
+      - id: suite-pricing
+        type: browser
+        description: Suite pricing page (/pricing).
+        start_path: /pricing
+        success_criteria:
+          url_matches: "/pricing"
+          text_present:
+            - "Simple pricing for every stage"
+            - "Restormel Keys"
+            - "Platform"
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: pricing_h1
+              path: "css:main h1.suite-pricing-title"
+              expect: "Simple pricing for every stage"
+      - id: founders-page
+        type: browser
+        description: Founders Circle application page.
+        start_path: /founders
+        success_criteria:
+          url_matches: "/founders"
+          text_present:
+            - "Restormel Founders Circle"
+            - "Apply"
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: founders_h1
+              path: "css:main h1.founders-hero-title"
+              expect: "Restormel Founders Circle"
+      - id: changelog-page
+        type: browser
+        description: Changelog (GitHub releases); empty or populated both include title shell.
+        start_path: /changelog
+        success_criteria:
+          url_matches: "/changelog"
+          text_present:
+            - "Changelog"
+            - "Allotment-Technology-Ltd/restormel-keys"
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: changelog_h1
+              path: "css:main h1"
+              expect: "Changelog"
+      - id: keys-pricing-page
+        type: browser
+        description: Keys product pricing (/keys/pricing); uses keys marketing layout + main.
+        start_path: /keys/pricing
+        success_criteria:
+          url_matches: "/keys/pricing"
+          text_present:
+            - "Restormel Keys"
+            - "The AI product layer"
+            - "Free"
+          dom_signals:
+            - "main"
+            - "nav"
+          structured_checks:
+            - id: keys_pricing_h1
+              path: "css:main h1.pricing-title"
+              expect: "Pricing"
+
+target_url_overrides: {}

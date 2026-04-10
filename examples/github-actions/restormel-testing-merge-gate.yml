@@ -1,0 +1,54 @@
+# Example: fail the PR when Restormel Testing does not pass (customer-funded runners).
+# Copy into `.github/workflows/` and adjust paths, suite id, and Keys secrets.
+name: Restormel Testing merge gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  restormel-testing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Restormel Testing suite
+        env:
+          # Customer-funded: use GitHub-hosted minutes or your self-hosted pool.
+          RESTORMEL_KEYS_BASE: ${{ secrets.RESTORMEL_KEYS_BASE }}
+          RESTORMEL_GATEWAY_KEY: ${{ secrets.RESTORMEL_GATEWAY_KEY }}
+        run: |
+          pnpm exec testing run --suite ci-smoke --config restormel-testing.yaml --ci
+
+      - name: Build Release pack (optional artifact)
+        if: success()
+        run: |
+          ART=$(ls -dt .restormel-testing/runs/run-* 2>/dev/null | head -1)
+          if [ -n "$ART" ] && [ -d "$ART" ]; then
+            pnpm exec testing release-pack --from-run "$ART" \
+              --route-version "${RESTORMEL_ROUTE_VERSION_LABEL:-}" \
+              --policy-version "${RESTORMEL_POLICY_VERSION_LABEL:-}" \
+              --out release-pack.json || true
+          fi
+
+      - name: Upload Release pack
+        if: success() && hashFiles('release-pack.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: restormel-release-pack
+          path: release-pack.json

@@ -83,3 +83,9 @@ export interface CostEstimatorProps {
 /** Message shown when Restormel backend/config is unavailable. Use in host UI for consistency. */
 export const RESTORMEL_BACKEND_ERROR_MESSAGE =
   "Restormel backend unavailable. Check RESTORMEL_* configuration.";
+
+/**
+ * In-app docs path for host engineers: distinguish Restormel vs provider vs policy failures when wiring components.
+ * (Repo mirror: docs/reference/restormel-first-assessment.md)
+ */
+export const INTEGRATION_FAILURE_ATTRIBUTION_DOC_PATH = "/keys/docs/guides/integration-failure-attribution";

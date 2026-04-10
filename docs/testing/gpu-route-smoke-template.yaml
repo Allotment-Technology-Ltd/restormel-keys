@@ -1,0 +1,19 @@
+# Reference fragment — merge into restormel-testing.yaml for BYO-GPU / private route smoke.
+# Replace placeholders; do not commit live URLs or secrets.
+#
+# See: /keys/docs/guides/testing-gpu-route-smoke (in-app docs)
+
+# suites:
+#   - id: gpu-route-smoke
+#     description: Smoke private OpenAI-compatible route after infra change
+#     environment: prod
+#     user_story: As an operator, I need the private LLM route to respond with valid JSON.
+#     acceptance_criteria:
+#       - id: gpu-smoke.reachable
+#         text: Chat completions returns 200 within SLA
+#       - id: gpu-smoke.schema
+#         text: Response JSON includes expected completion shape
+#     goals:
+#       - id: private_llm_ping
+#         acceptance_criterion_ids: [gpu-smoke.reachable, gpu-smoke.schema]
+#         # Define vitals / HTTP probe appropriate to your stack (see config-reference-mvp.md)

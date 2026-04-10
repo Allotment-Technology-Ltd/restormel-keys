@@ -1,7 +1,7 @@
 {
   "name": "@restormel/testing-cli",
-  "version": "0.1.8",
-  "description": "Restormel / Testing CLI (init, validate, run, report, doctor, telemetry).",
+  "version": "0.1.9",
+  "description": "Restormel / Testing CLI (init, validate, run, report, release-pack, doctor, telemetry).",
   "license": "MIT",
   "repository": {
     "type": "git",

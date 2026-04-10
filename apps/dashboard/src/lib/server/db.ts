@@ -120,4 +120,8 @@ export {
   type UsageAggregateRecord,
   type ListUsageAggregatesFilters,
   type InsertUsageAggregateParams,
+  listWorkspaceWebhooks,
+  createWorkspaceWebhook,
+  deleteWorkspaceWebhook,
+  type WorkspaceWebhookRecord,
 } from "$lib/server/neon";

@@ -13,4 +13,7 @@ export type {
   ModelSelectorHostStatus,
   CostEstimatorProps,
 } from "./types.js";
-export { RESTORMEL_BACKEND_ERROR_MESSAGE } from "./types.js";
+export {
+  RESTORMEL_BACKEND_ERROR_MESSAGE,
+  INTEGRATION_FAILURE_ATTRIBUTION_DOC_PATH,
+} from "./types.js";

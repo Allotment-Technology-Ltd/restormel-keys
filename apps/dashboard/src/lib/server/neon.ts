@@ -3775,3 +3775,160 @@ export async function getEstimatedCostUsdByModel(
     costUsd: Number(r.cost_usd) || 0,
   }));
 }
+
+// --- Workspace webhooks (outbound; MVP: policy.published) ---
+
+export type WorkspaceWebhookRecord = {
+  id: string;
+  workspaceId: string;
+  url: string;
+  eventTypes: string[];
+  disabled: boolean;
+  createdAt: number;
+};
+
+type WebhookSecretRow = {
+  id: string;
+  workspaceId: string;
+  url: string;
+  eventTypes: string[];
+  disabled: boolean;
+  createdAt: number;
+  signingSecretCiphertext: string | null;
+  signingSecretIv: string | null;
+  signingSecretAuthTag: string | null;
+  signingSecretEncryptionVersion: number;
+};
+
+export async function listWorkspaceWebhooks(workspaceId: string): Promise<WorkspaceWebhookRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", url,
+           event_types AS "eventTypes", disabled, created_at AS "createdAt"
+    FROM workspace_webhooks
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return (rows as Record<string, unknown>[]).map((r) => {
+    const et = r.eventTypes;
+    let eventTypes: string[] = [];
+    if (Array.isArray(et)) {
+      eventTypes = et.map(String);
+    } else if (typeof et === "string") {
+      try {
+        const p = JSON.parse(et) as unknown;
+        if (Array.isArray(p)) eventTypes = p.map(String);
+      } catch {
+        eventTypes = [];
+      }
+    }
+    return {
+      id: String(r.id),
+      workspaceId: String(r.workspaceId),
+      url: String(r.url),
+      eventTypes,
+      disabled: Boolean(r.disabled),
+      createdAt: Number(r.createdAt) || 0,
+    };
+  });
+}
+
+export async function createWorkspaceWebhook(params: {
+  workspaceId: string;
+  url: string;
+  eventTypes?: string[];
+  signingSecretPlaintext: string;
+}): Promise<
+  | { ok: true; record: WorkspaceWebhookRecord; signingSecretPlaintext: string }
+  | { ok: false; error: string }
+> {
+  const enc = encryptProviderSecret(params.signingSecretPlaintext);
+  if (!enc.ok) {
+    return { ok: false, error: enc.error };
+  }
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const types = params.eventTypes?.length ? params.eventTypes : ["policy.published"];
+  const typesJson = JSON.stringify(types);
+  const p = enc.payload;
+  await sql`
+    INSERT INTO workspace_webhooks (
+      id, workspace_id, url, event_types,
+      signing_secret_ciphertext, signing_secret_iv, signing_secret_auth_tag, signing_secret_encryption_version,
+      disabled, created_at
+    )
+    VALUES (
+      ${id}, ${params.workspaceId}, ${params.url}, ${typesJson},
+      ${p.ciphertextB64}, ${p.ivB64}, ${p.authTagB64}, ${p.encryptionVersion},
+      FALSE, ${createdAt}
+    )
+  `;
+  return {
+    ok: true,
+    record: {
+      id,
+      workspaceId: params.workspaceId,
+      url: params.url,
+      eventTypes: types,
+      disabled: false,
+      createdAt,
+    },
+    signingSecretPlaintext: params.signingSecretPlaintext,
+  };
+}
+
+export async function deleteWorkspaceWebhook(
+  workspaceId: string,
+  webhookId: string,
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM workspace_webhooks
+    WHERE id = ${webhookId} AND workspace_id = ${workspaceId}
+    RETURNING id
+  `;
+  return (rows as { id: string }[]).length > 0;
+}
+
+/** Internal: load webhooks subscribed to `eventType` with decryptable signing secrets. */
+export async function listWorkspaceWebhooksForDelivery(
+  workspaceId: string,
+  eventType: string,
+): Promise<{ id: string; url: string; signingSecretPlaintext: string }[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", url, event_types AS "eventTypes", disabled, created_at AS "createdAt",
+           signing_secret_ciphertext AS "signingSecretCiphertext",
+           signing_secret_iv AS "signingSecretIv",
+           signing_secret_auth_tag AS "signingSecretAuthTag",
+           signing_secret_encryption_version AS "signingSecretEncryptionVersion"
+    FROM workspace_webhooks
+    WHERE workspace_id = ${workspaceId} AND disabled = FALSE
+  `;
+  const out: { id: string; url: string; signingSecretPlaintext: string }[] = [];
+  for (const raw of rows as WebhookSecretRow[]) {
+    const r = raw;
+    let types: string[] = [];
+    const et = r.eventTypes as unknown;
+    if (Array.isArray(et)) types = et.map(String);
+    else if (typeof et === "string") {
+      try {
+        const p = JSON.parse(et) as unknown;
+        if (Array.isArray(p)) types = p.map(String);
+      } catch {
+        types = [];
+      }
+    }
+    if (!types.includes(eventType)) continue;
+    const dec = decryptProviderSecret({
+      credentialCiphertext: r.signingSecretCiphertext,
+      credentialIv: r.signingSecretIv,
+      credentialAuthTag: r.signingSecretAuthTag,
+      encryptionVersion: r.signingSecretEncryptionVersion,
+    });
+    if (!dec.ok) continue;
+    out.push({ id: r.id, url: r.url, signingSecretPlaintext: dec.secret });
+  }
+  return out;
+}

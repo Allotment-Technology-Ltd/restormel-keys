@@ -21,6 +21,15 @@ export type ParsedCli =
       json: boolean;
     }
   | { kind: "report"; path: string }
+  | {
+      kind: "release-pack";
+      fromRun: string;
+      out: string;
+      routeVersion?: string;
+      policyVersion?: string;
+      routeId?: string;
+      policyId?: string;
+    }
   | { kind: "doctor"; config?: string }
   | { kind: "telemetry"; action: "status" | "disable" | "enable" }
   | { kind: "error"; message: string };
@@ -262,6 +271,82 @@ function parseTelemetryArgs(args: string[]): ParsedCli {
   return { kind: "error", message: `telemetry: unknown subcommand: ${pos[0]}` };
 }
 
+function parseReleasePackArgs(args: string[]): ParsedCli {
+  let fromRun = "";
+  let out = "release-pack.json";
+  let routeVersion: string | undefined;
+  let policyVersion: string | undefined;
+  let routeId: string | undefined;
+  let policyId: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--from-run") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --from-run requires a path" };
+      }
+      fromRun = v;
+      continue;
+    }
+    if (a === "--out" || a === "-o") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --out requires a file path" };
+      }
+      out = v;
+      continue;
+    }
+    if (a === "--route-version") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --route-version requires a value" };
+      }
+      routeVersion = v;
+      continue;
+    }
+    if (a === "--policy-version") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --policy-version requires a value" };
+      }
+      policyVersion = v;
+      continue;
+    }
+    if (a === "--route-id") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --route-id requires a value" };
+      }
+      routeId = v;
+      continue;
+    }
+    if (a === "--policy-id") {
+      const v = args[++i];
+      if (!v || v.startsWith("-")) {
+        return { kind: "error", message: "release-pack: --policy-id requires a value" };
+      }
+      policyId = v;
+      continue;
+    }
+    if (a === "-h" || a === "--help") {
+      return { kind: "help", topic: "release-pack" };
+    }
+    return { kind: "error", message: `release-pack: unexpected argument: ${a}` };
+  }
+  if (!fromRun) {
+    return { kind: "error", message: "release-pack: --from-run <run-dir> is required" };
+  }
+  return {
+    kind: "release-pack",
+    fromRun,
+    out,
+    routeVersion,
+    policyVersion,
+    routeId,
+    policyId,
+  };
+}
+
 function parseDoctorArgs(args: string[]): ParsedCli {
   let config: string | undefined;
   for (let i = 0; i < args.length; i++) {
@@ -315,6 +400,9 @@ export function parseArgs(argv: string[]): ParsedCli {
   }
   if (first === "report") {
     return parseReportArgs(rest);
+  }
+  if (first === "release-pack") {
+    return parseReleasePackArgs(rest);
   }
   if (first === "doctor") {
     return parseDoctorArgs(rest);

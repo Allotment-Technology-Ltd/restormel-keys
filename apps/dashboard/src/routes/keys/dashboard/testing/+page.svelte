@@ -63,6 +63,17 @@ RESTORMEL_PROJECT_ID=${data.testingProject.id}`
       </p>
     </section>
 
+    <section class="card" aria-labelledby="evidence-heading">
+      <h2 id="evidence-heading" class="h2">Evidence and merge gates</h2>
+      <p class="muted">
+        Export a <strong>Release pack</strong> from CI to tie route/policy versions to acceptance results—see
+        <a href="/keys/docs/guides/release-pack-and-merge-gates">Release pack &amp; merge gates</a>
+        and the example workflow <code class="mono">examples/github-actions/restormel-testing-merge-gate.yml</code>.
+        GPU / private route smoke templates:
+        <a href="/keys/docs/guides/testing-gpu-route-smoke">GPU route smoke (Testing)</a>.
+      </p>
+    </section>
+
     <section class="card" aria-labelledby="keys-heading">
       <h2 id="keys-heading" class="h2">Gateway keys for this project</h2>
       {#if data.gatewayKeys.length === 0}

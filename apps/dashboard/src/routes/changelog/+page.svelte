@@ -1,9 +1,13 @@
 <script lang="ts">
+  /**
+   * Legacy `export let` (not `$props`) — dashboard uses `compilerOptions.runes: false`;
+   * runes here break SSR in the Vercel bundle (ReferenceError: props is not defined).
+   */
   import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
   import { GITHUB_REPO_URL } from "$lib/site-nav";
   import type { PageData } from "./$types";
 
-  let { data }: { data: PageData } = $props();
+  export let data: PageData;
 </script>
 
 <svelte:head>

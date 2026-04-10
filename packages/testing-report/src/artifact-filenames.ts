@@ -8,3 +8,5 @@ export const GITHUB_SUMMARY_MD = "github-summary.md" as const;
 export const JUNIT_XML = "junit.xml" as const;
 /** Written when `run` exits before a {@link RunRecord} exists (config / suite resolution errors). */
 export const PRE_RUN_FAILURE_JSON = "pre-run-failure.json" as const;
+/** Governance export: route/policy versions + Testing summary (see `release-pack.ts`). */
+export const RELEASE_PACK_JSON = "release-pack.json" as const;

@@ -8,6 +8,7 @@ import {
   getOrCreateDefaultWorkspace,
   getProject,
 } from "$lib/server/db";
+import { deliverWorkspaceWebhookEvent } from "$lib/server/webhook-delivery";
 
 async function policyScope(locals: App.Locals): Promise<{ workspaceId: string; actorId: string; actorType: string } | null> {
   if (!locals.user) return null;
@@ -50,6 +51,11 @@ export const POST: RequestHandler = async ({ params, locals }) => {
       actorType: ctx.actorType,
       summary: `Published policy version ${nextVersion}`,
       policySnapshot: updated as unknown as Record<string, unknown>,
+    });
+
+    deliverWorkspaceWebhookEvent(ctx.workspaceId, "policy.published", {
+      policy_id: params.id,
+      version: nextVersion,
     });
 
     return json({ data: { policy: updated, publishedVersion: nextVersion } });

@@ -1,9 +1,11 @@
 <script lang="ts">
+  /** Legacy props + `$:` — `runes: false` (see changelog/+page.svelte). */
   import { enhance } from "$app/forms";
   import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
   import type { ActionData, PageData } from "./$types";
 
-  let { data, form }: { data: PageData; form: ActionData } = $props();
+  export let data: PageData;
+  export let form: ActionData | undefined = undefined;
 
   const moduleOptions = [
     { value: "keys", label: "Restormel Keys" },
@@ -12,25 +14,25 @@
     { value: "platform", label: "Platform bundle (Keys + Testing + Graph)" },
   ] as const;
 
-  const values = $derived(
-    form && "values" in form && form.values
-      ? form.values
-      : {
-          name: "",
-          email: "",
-          building: "",
-          modules: [] as string[],
-          stack: "",
-          howFound: "",
-          listed: "" as "",
-        },
-  );
+  const defaultValues = {
+    name: "",
+    email: "",
+    building: "",
+    modules: [] as string[],
+    stack: "",
+    howFound: "",
+    listed: "",
+  };
 
-  const fieldErrors = $derived(
-    form && "errors" in form && form.errors ? (form.errors as Record<string, string>) : ({} as Record<string, string>),
-  );
+  $: values =
+    form && typeof form === "object" && "values" in form && form.values ? form.values : defaultValues;
 
-  const submitted = $derived(Boolean(form && "success" in form && form.success === true));
+  $: fieldErrors =
+    form && typeof form === "object" && "errors" in form && form.errors
+      ? (form.errors as Record<string, string>)
+      : ({} as Record<string, string>);
+
+  $: submitted = Boolean(form && typeof form === "object" && "success" in form && form.success === true);
 
   function moduleChecked(value: string): boolean {
     return values.modules?.includes(value) ?? false;

@@ -33,7 +33,8 @@ for i in $(seq 1 30); do
 done
 
 FAILED=0
-for path in "/keys/docs" "/keys/docs/guides/keys-testing-onboarding" "/keys/docs/walkthrough/phase-0-inventory" \
+# Marketing homepage (SSR); curl smoke catches 5xx that docs-only lists would miss.
+for path in "/" "/pricing" "/founders" "/changelog" "/keys/pricing" "/keys/docs" "/keys/docs/guides/keys-testing-onboarding" "/keys/docs/walkthrough/phase-0-inventory" \
   "/keys/docs/walkthrough/phase-2-resolve" "/keys/docs/walkthrough/phase-3-routes" \
   "/testing" "/testing/docs" "/testing/docs/guides/plot-dogfooding" \
   "/testing/docs/guides/ci" "/testing/docs/architecture" "/testing/docs/compatibility" \

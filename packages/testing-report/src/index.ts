@@ -22,6 +22,14 @@ export {
   type MvpGoalReportRow,
   type MvpJsonReportV1,
 } from "./mvp-json-report.js";
+export {
+  buildReleasePackV1,
+  RELEASE_PACK_SCHEMA_VERSION,
+  serializeReleasePackV1,
+  type ReleasePackControlPlaneRefsV1,
+  type ReleasePackTestingSectionV1,
+  type ReleasePackV1,
+} from "./release-pack.js";
 export { formatRunSummary, formatRunSummaryLines } from "./terminal-summary.js";
 export { readRunArtifacts } from "./read-artifacts.js";
 export type { LoadedRunArtifacts } from "./read-artifacts.js";

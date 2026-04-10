@@ -1,4 +1,12 @@
-const KNOWN_TOPICS = new Set(["init", "validate", "run", "report", "doctor", "telemetry"]);
+const KNOWN_TOPICS = new Set([
+  "init",
+  "validate",
+  "run",
+  "report",
+  "release-pack",
+  "doctor",
+  "telemetry",
+]);
 
 export function printGlobalHelp(program: string): void {
   console.log(`${program} — Restormel / Testing CLI
@@ -11,6 +19,7 @@ Commands:
   validate   Check that a config file parses and satisfies the schema
   run        Execute a browser suite locally and write report artefacts
   report     Print a human summary from a previous run directory
+  release-pack  Write governance Release pack JSON (route/policy refs + Testing MVP report)
   doctor     Check Node, optional config file, Playwright Chromium, Keys env hints
   telemetry  Show, enable, or disable anonymous CLI usage telemetry
 
@@ -55,7 +64,9 @@ export function printCommandHelp(program: string, topic: string): boolean {
   const t = topic.toLowerCase();
   if (!KNOWN_TOPICS.has(t)) {
     console.error(`Unknown help topic: ${topic}`);
-    console.error(`Try: ${program} help init | validate | run | report | doctor | telemetry`);
+    console.error(
+      `Try: ${program} help init | validate | run | report | release-pack | doctor | telemetry`,
+    );
     return false;
   }
 
@@ -126,6 +137,25 @@ Exit: 0 OK, 2 prerequisite failure
     console.log(`${program} report <path>
 
 Print a summary from a run artefact directory (containing run.json) or a direct path to run.json.
+`);
+    return true;
+  }
+
+  if (t === "release-pack") {
+    console.log(`${program} release-pack --from-run <dir> [options]
+
+Build a Restormel Release pack JSON (schema restormel-release-pack/1): optional control-plane
+route/policy version strings plus the Testing MVP report from the run directory.
+
+Uses report.json when present and valid; otherwise rebuilds MVP JSON from run.json.
+
+Options:
+      --from-run <dir>     Run artefact directory (or path to run.json)
+  -o, --out <file>       Output path (default: release-pack.json)
+      --route-version <s>  Optional label (e.g. route@7)
+      --policy-version <s> Optional label (e.g. policy@3)
+      --route-id <id>      Optional route id
+      --policy-id <id>     Optional policy id
 `);
     return true;
   }

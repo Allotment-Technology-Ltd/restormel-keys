@@ -196,7 +196,7 @@ jobs:
         run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
       - name: Test @restormel/testing-*
         run: pnpm run test:testing
-      - name: Serve testing-basic-web and run web-critical (integration)
+      - name: Serve testing-basic-web + dashboard preview; run web-critical + dashboard-critical
         run: |
           (cd examples/testing-basic-web && pnpm exec serve -l 4173 .) &
           SERVE_PID=$!
@@ -208,6 +208,19 @@ jobs:
           node packages/testing-cli/dist/bin/testing.js validate --config examples/testing-basic-web/restormel-testing.yaml
           node packages/testing-cli/dist/bin/testing.js run --suite web-critical --config examples/testing-basic-web/restormel-testing.yaml
           kill $SERVE_PID
+          wait $SERVE_PID 2>/dev/null || true
+
+          (cd apps/dashboard && pnpm exec vite preview --port 4173 --strictPort --host 127.0.0.1) &
+          PREV_PID=$!
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null
+          node packages/testing-cli/dist/bin/testing.js validate --config examples/dashboard-dogfood/restormel-testing.yaml
+          node packages/testing-cli/dist/bin/testing.js run --suite dashboard-critical --config examples/dashboard-dogfood/restormel-testing.yaml
+          kill $PREV_PID
+          wait $PREV_PID 2>/dev/null || true
 
   keys-svelte-republish-smoke:
     runs-on: ubuntu-latest

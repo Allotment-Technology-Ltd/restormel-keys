@@ -1,14 +1,20 @@
-import { access, constants, mkdir, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { resolvePathUnderRoot, sanitizePathSegment } from "@restormel/testing-core";
 import { formatConfigErrors, loadConfigFromFile } from "@restormel/testing-config";
 import { keysAdapterOptionsFromProcessEnv } from "@restormel/testing-keys-adapter";
 import {
+  buildMvpJsonReport,
+  buildReleasePackV1,
   formatRunSummary,
+  MVP_REPORT_SCHEMA_VERSION,
   PRE_RUN_FAILURE_JSON,
   readRunArtifacts,
+  REPORT_JSON,
+  serializeReleasePackV1,
   writeRunReportBundle,
 } from "@restormel/testing-report";
+import type { LoadedRunArtifacts, MvpJsonReportV1 } from "@restormel/testing-report";
 import type { GoalRunRecord } from "@restormel/testing-core";
 import { runLocalSuite } from "@restormel/testing-runner";
 import { runDoctor } from "./doctor.js";
@@ -386,6 +392,77 @@ async function cmdReport(opts: { path: string }): Promise<CliResult> {
   };
 }
 
+function parseMvpReportJson(raw: string): MvpJsonReportV1 | null {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (typeof v !== "object" || v === null) return null;
+    if ((v as { schema_version?: unknown }).schema_version !== MVP_REPORT_SCHEMA_VERSION) {
+      return null;
+    }
+    return v as MvpJsonReportV1;
+  } catch {
+    return null;
+  }
+}
+
+async function cmdReleasePack(opts: {
+  fromRun: string;
+  out: string;
+  routeVersion?: string;
+  policyVersion?: string;
+  routeId?: string;
+  policyId?: string;
+}): Promise<number> {
+  const cwd = process.cwd();
+  const loaded = await readRunArtifacts(opts.fromRun, { allowedRoot: cwd });
+  function isArtifactLoadFailure(
+    x: LoadedRunArtifacts | { ok: false; message: string },
+  ): x is { ok: false; message: string } {
+    return "ok" in x && x.ok === false;
+  }
+  if (isArtifactLoadFailure(loaded)) {
+    console.error(loaded.message);
+    return EXIT_USAGE;
+  }
+  const { run, warnings, artifactDir } = loaded;
+  const reportPath = join(artifactDir, REPORT_JSON);
+  let mvp: MvpJsonReportV1 | null = null;
+  try {
+    const raw = await readFile(reportPath, "utf8");
+    mvp = parseMvpReportJson(raw);
+  } catch {
+    mvp = null;
+  }
+  if (mvp === null) {
+    mvp = buildMvpJsonReport({ run, warnings: warnings.length ? warnings : undefined });
+  }
+  const cp =
+    opts.routeVersion !== undefined ||
+    opts.policyVersion !== undefined ||
+    opts.routeId !== undefined ||
+    opts.policyId !== undefined
+      ? {
+          route_version: opts.routeVersion,
+          policy_version: opts.policyVersion,
+          route_id: opts.routeId,
+          policy_id: opts.policyId,
+        }
+      : undefined;
+  const pack = buildReleasePackV1({
+    mvpReport: mvp,
+    controlPlane: cp,
+    artifactDir,
+  });
+  const outResolved = resolvePathUnderRoot(cwd, opts.out);
+  if (!outResolved.ok) {
+    console.error(outResolved.reason);
+    return EXIT_USAGE;
+  }
+  await writeFile(outResolved.path, serializeReleasePackV1(pack), "utf8");
+  console.log(`Wrote ${outResolved.path}`);
+  return EXIT_OK;
+}
+
 async function cmdDoctorWithTelemetry(opts: { config?: string }): Promise<CliResult> {
   const code = await runDoctor(opts);
   let suiteCount = 0;
@@ -437,6 +514,7 @@ function shouldShowTelemetryFirstRunNotice(parsed: ParsedCli): boolean {
     parsed.kind === "validate" ||
     parsed.kind === "run" ||
     parsed.kind === "report" ||
+    parsed.kind === "release-pack" ||
     parsed.kind === "doctor" ||
     parsed.kind === "telemetry"
   );
@@ -475,6 +553,10 @@ export async function runCli(argv: string[]): Promise<number> {
 
   if (parsed.kind === "init") {
     return cmdInit(parsed);
+  }
+
+  if (parsed.kind === "release-pack") {
+    return cmdReleasePack(parsed);
   }
 
   if (parsed.kind === "telemetry") {

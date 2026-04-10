@@ -1,24 +1,24 @@
 <script lang="ts">
   /** Keys pricing: Free, Pro (Paddle GBP/USD), Team & Platform (catalog ready; checkout when entitlements ship). */
+  /** Legacy props + `$:` / `let` — `runes: false` (see changelog/+page.svelte). */
   import { onMount } from "svelte";
   import { initPaddleCheckout } from "$lib/paddle-checkout";
   import { browser } from "$app/environment";
   import type { PageData } from "./$types";
 
-  let { data }: { data: PageData } = $props();
+  export let data: PageData;
 
-  let billingCurrency = $state<"gbp" | "usd">("gbp");
-  const canUseGbp = $derived(Boolean(data.proPriceIdMonthlyGbp));
-  const canUseUsd = $derived(Boolean(data.proPriceIdMonthlyUsd));
-  const selectedPriceId = $derived(
+  let billingCurrency: "gbp" | "usd" = "gbp";
+
+  $: canUseGbp = Boolean(data.proPriceIdMonthlyGbp);
+  $: canUseUsd = Boolean(data.proPriceIdMonthlyUsd);
+  $: selectedPriceId =
     billingCurrency === "usd"
       ? data.proPriceIdMonthlyUsd || data.proPriceIdMonthlyGbp
-      : data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd,
-  );
-  const priceDisplay = $derived(
-    billingCurrency === "usd" ? data.proMonthlyPriceDisplayUsd : data.proMonthlyPriceDisplayGbp,
-  );
-  const checkoutCurrencyLabel = $derived(billingCurrency === "usd" ? "USD" : "GBP");
+      : data.proPriceIdMonthlyGbp || data.proPriceIdMonthlyUsd;
+  $: priceDisplay =
+    billingCurrency === "usd" ? data.proMonthlyPriceDisplayUsd : data.proMonthlyPriceDisplayGbp;
+  $: checkoutCurrencyLabel = billingCurrency === "usd" ? "USD" : "GBP";
 
   function selectBillingCurrency(next: "gbp" | "usd") {
     if (next === "usd" && !canUseUsd) return;

@@ -1,9 +1,10 @@
 <script lang="ts">
+  /** Legacy props — `runes: false` (see changelog/+page.svelte). */
   import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { PageData } from "./$types";
 
-  let { data }: { data: PageData } = $props();
+  export let data: PageData;
 
   const loginHref = `${DASHBOARD_BASE}/login`;
 </script>
