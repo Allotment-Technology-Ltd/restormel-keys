@@ -1,7 +1,8 @@
+import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { listUsersForServiceOwnerAdmin } from "$lib/server/admin-users";
+import { ADMIN_BASE } from "$lib/dashboard-base";
 
+/** @deprecated Use `/keys/admin/users` */
 export const load: PageServerLoad = async () => {
-  const adminUsers = await listUsersForServiceOwnerAdmin();
-  return { adminUsers };
+  throw redirect(301, ADMIN_BASE + "/users");
 };

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { page } from "$app/stores";
@@ -21,7 +21,8 @@
 
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
-  export let user: { uid: string; email?: string | null; name?: string | null } | null = null;
+  export let user: { uid: string; email?: string | null; name?: string | null; isServiceAdmin?: boolean } | null =
+    null;
 
   let mobileOpen = false;
   let keysOpen = false;
@@ -338,6 +339,9 @@
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
       <a href="/keys/pricing" on:click={closeMobileMenu}>Pricing</a>
+      {#if user.isServiceAdmin}
+        <a href={ADMIN_BASE + "/users"} on:click={closeMobileMenu}>Admin</a>
+      {/if}
       <a href={DASHBOARD_BASE + "/settings"} on:click={closeMobileMenu}>Profile &amp; settings</a>
       <a href={DASHBOARD_BASE + "/billing"} on:click={closeMobileMenu}>Subscription</a>
       <a href={DASHBOARD_BASE + "/logout"} data-sveltekit-reload on:click={closeMobileMenu}>Sign out</a>

@@ -69,7 +69,6 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/logs"]: "Logs",
   [DASHBOARD_BASE + "/sandbox"]: "Test & Preview",
   [DASHBOARD_BASE + "/settings"]: "Profile",
-  [DASHBOARD_BASE + "/admin/users"]: "User management",
 };
 
 /** Title for topbar from pathname (exact match or segment). */

@@ -8,9 +8,17 @@ Single record of meaningful repo changes.
 
 **`@restormel/support`:** **AI SDK** `^5.0.52` + **`@ai-sdk/openai` `^2.0.102`**, **Zod** `^3.25.76`; migrate `CoreMessage` → `ModelMessage`, tool `parameters` → `inputSchema`, `maxSteps` → `stopWhen: stepCountIs(6)`.
 
-## Repo (2026-04-10) — Dashboard admin: npm package insights
+## Repo (2026-04-10) — Keys admin console (`/keys/admin`) + avatar Admin link
 
-**Dashboard (service owners):** [`/keys/dashboard/admin/package-registry`](apps/dashboard/src/routes/keys/dashboard/admin/package-registry/+page.svelte) — npm **per-version last-week** download breakdown (public API), Libraries.io **dependent repositories** (optional `LIBRARIES_IO_API_KEY`), and outbound links to npm, **GitHub Dependents**, deps.dev, and Libraries.io. Env: `RESTORMEL_NPM_INSIGHTS_PACKAGE`, `RESTORMEL_NPM_INSIGHTS_GITHUB_REPO`. Nav + Settings link from the existing admin block.
+**Admin** is a **separate** area from the end-user dashboard: [`/keys/admin`](apps/dashboard/src/routes/keys/admin/+layout.svelte) with its own sidebar (**User management**, **Package registry**). End-user [`+layout.svelte`](apps/dashboard/src/routes/keys/dashboard/+layout.svelte) no longer shows operator nav items. **Avatar menu** and mobile header show **Admin** only when `isServiceAdmin`. APIs: **`GET/PATCH /keys/admin/api/users`** (legacy **`/keys/dashboard/api/admin/users`** kept). **`ADMIN_BASE`** in [`dashboard-base.ts`](apps/dashboard/src/lib/dashboard-base.ts). Legacy HTML paths under `/keys/dashboard/admin/*` **301** to `/keys/admin/*`. Session **`name`** passed through [`hooks.server.ts`](apps/dashboard/src/hooks.server.ts) for display. Docs: [STATUS.md](STATUS.md), [service-admin-operators.md](docs/runbooks/service-admin-operators.md), [security-baseline.md](docs/security-baseline.md).
+
+## Repo (2026-04-10) — Dashboard: admin users + support error hardening
+
+**Admin users:** user-management `load` is wrapped in try/catch so missing `DATABASE_URL`, wrong DB, or missing Better Auth / `service_admins` tables surface an on-page message instead of a **500** (now under `/keys/admin/users`). **Support:** [`POST …/api/support-chat`](apps/dashboard/src/routes/keys/dashboard/api/support-chat/+server.ts) — try/catch around stream setup returns JSON **500** with a clear `error` string; [`SupportAssistant.svelte`](apps/dashboard/src/lib/components/site/SupportAssistant.svelte) prefers `message` then `error` from error bodies.
+
+## Repo (2026-04-10) — Admin: npm package insights
+
+**Service owners:** Package registry insights at [`/keys/admin/package-registry`](apps/dashboard/src/routes/keys/admin/package-registry/+page.svelte) — npm **per-version last-week** API, Libraries.io **dependent repositories** (optional `LIBRARIES_IO_API_KEY`), outbound links. Legacy [`/keys/dashboard/admin/package-registry`](apps/dashboard/src/routes/keys/dashboard/admin/package-registry/+page.server.ts) **301** to the admin console. Env: `RESTORMEL_NPM_INSIGHTS_PACKAGE`, `RESTORMEL_NPM_INSIGHTS_GITHUB_REPO`.
 
 ## Repo (2026-04-10) — Marketing routes SSR (founders, changelog, pricing, Keys pricing)
 
@@ -66,7 +74,7 @@ Single record of meaningful repo changes.
 
 **Service operators:** `resolveServiceAdminStatus` now takes session **email** and checks **`RESTORMEL_SERVICE_OWNER_EMAILS`** (comma-separated; when **unset**, built-in primary-operator defaults include both Gmail and googlemail aliases for the same mailbox). On sign-in, matching users get a **`service_admins`** row (`bootstrap:service_owner_email`). **`hooks.server.ts`** calls **`syncServiceOwnerBootstrap`** after resolution.
 
-**Admin UI + API:** **`/keys/dashboard/admin/users`** (nav + Profile link for operators) lists Better Auth **`"user"`** rows and toggles **`service_admins`** via **`GET /keys/dashboard/api/admin/users`** and **`PATCH …/api/admin/users/[userId]`** (`{ "serviceOwner": boolean }`). Self-demotion and demoting email-allowlist accounts are rejected.
+**Admin UI + API:** User management lists Better Auth **`"user"`** rows and toggles **`service_admins`** via admin APIs (`{ "serviceOwner": boolean }`). Self-demotion and demoting email-allowlist accounts are rejected. *(Superseded later same day: **`/keys/admin`** console + **`/keys/admin/api/users`**; legacy paths retained.)*
 
 **Schema:** Migration **`028_users_app_mirror.sql`** adds app **`users`** mirror table used by **`upsertUser`**.
 

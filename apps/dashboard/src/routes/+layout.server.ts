@@ -7,7 +7,7 @@ export const config = { runtime: "nodejs22.x" as const };
 export const load: LayoutServerLoad = async ({ locals, url }) => {
   try {
     const path = url.pathname;
-    const skipSocialFetch = path.startsWith("/keys/dashboard");
+    const skipSocialFetch = path.startsWith("/keys/dashboard") || path.startsWith("/keys/admin");
     const socialProof = skipSocialFetch ? null : await getSocialProofMetrics();
     return { user: locals.user ?? null, socialProof };
   } catch (e) {

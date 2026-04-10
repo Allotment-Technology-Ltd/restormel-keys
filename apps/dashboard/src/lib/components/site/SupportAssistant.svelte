@@ -112,8 +112,12 @@
       if (!res.ok) {
         let msg = "Something went wrong.";
         try {
-          const errBody = (await res.json()) as { error?: unknown };
-          if (typeof errBody.error === "string") msg = errBody.error;
+          const errBody = (await res.json()) as { error?: unknown; message?: unknown };
+          if (typeof errBody.message === "string" && errBody.message.trim()) {
+            msg = errBody.message;
+          } else if (typeof errBody.error === "string") {
+            msg = errBody.error;
+          }
         } catch {
           if (res.status === 503) msg = "Support is not available right now.";
           if (res.status === 429) msg = "Too many requests. Try again later.";

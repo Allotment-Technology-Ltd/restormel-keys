@@ -11,7 +11,6 @@
   import { openFeedbackWidget } from "$lib/stores/feedback-widget";
 
   $: user = $page.data.user;
-  $: isServiceAdminUser = user?.isServiceAdmin === true;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
@@ -107,25 +106,6 @@
         >
           {OVERVIEW_ITEM.label}
         </a>
-
-        {#if isServiceAdminUser}
-          <a
-            href={DASHBOARD_BASE + "/admin/users"}
-            class="nav-link"
-            class:nav-link-active={isActivePath(DASHBOARD_BASE + "/admin/users")}
-            aria-current={isActivePath(DASHBOARD_BASE + "/admin/users") ? "page" : undefined}
-          >
-            User management
-          </a>
-          <a
-            href={DASHBOARD_BASE + "/admin/package-registry"}
-            class="nav-link"
-            class:nav-link-active={isActivePath(DASHBOARD_BASE + "/admin/package-registry")}
-            aria-current={isActivePath(DASHBOARD_BASE + "/admin/package-registry") ? "page" : undefined}
-          >
-            Package registry
-          </a>
-        {/if}
 
         {#if !projectsNavHidden}
           <ProjectContextSwitcher projects={projectContexts} />

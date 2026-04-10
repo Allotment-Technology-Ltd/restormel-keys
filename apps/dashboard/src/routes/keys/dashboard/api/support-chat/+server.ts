@@ -52,9 +52,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: "Unavailable" }, { status: 503 });
   }
 
-  return supportChatToTextStreamResponse({
-    messages,
-    openaiApiKey: apiKey,
-    model: supportModelFromEnv(process.env),
-  });
+  try {
+    return supportChatToTextStreamResponse({
+      messages,
+      openaiApiKey: apiKey,
+      model: supportModelFromEnv(process.env),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[support-chat] stream setup failed:", msg.slice(0, 200));
+    return json(
+      {
+        error:
+          "Support could not start the assistant. Check OPENAI_API_KEY, RESTORMEL_SUPPORT_MODEL, and provider status.",
+      },
+      { status: 500 }
+    );
+  }
 };

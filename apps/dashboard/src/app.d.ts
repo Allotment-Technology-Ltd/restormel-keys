@@ -19,6 +19,7 @@ declare global {
       user?: {
         uid: string;
         email?: string | null;
+        name?: string | null;
         /** When set, request was authenticated via Bearer key (Gateway or Management), not session. */
         authType?: "session" | "gateway_key" | "management_key";
         /** Service operator (Allotment): plan limits and Pro gates waived; not end-customer RBAC. */
@@ -35,6 +36,7 @@ declare global {
       user?: {
         uid: string;
         email?: string | null;
+        name?: string | null;
         authType?: "session" | "gateway_key" | "management_key";
         isServiceAdmin?: boolean;
       };

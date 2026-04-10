@@ -1,4 +1,3 @@
-/** Legacy path — keep in sync with `routes/keys/admin/api/users/+server.ts`. */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { listUsersForServiceOwnerAdmin } from "$lib/server/admin-users";

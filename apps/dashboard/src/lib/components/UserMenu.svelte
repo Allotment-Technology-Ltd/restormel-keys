@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
 
-  export let user: { uid: string; email?: string | null; name?: string | null };
+  export let user: { uid: string; email?: string | null; name?: string | null; isServiceAdmin?: boolean };
   export let align: "left" | "right" = "right";
 
   let open = false;
@@ -106,6 +106,9 @@
         {/if}
       </div>
       <div class="user-menu-sep" aria-hidden="true"></div>
+      {#if user.isServiceAdmin}
+        <a class="user-menu-item" role="menuitem" href={ADMIN_BASE + "/users"} on:click={close}>Admin</a>
+      {/if}
       <a class="user-menu-item" role="menuitem" href={DASHBOARD_BASE + "/settings"} on:click={close}>
         Profile &amp; settings
       </a>

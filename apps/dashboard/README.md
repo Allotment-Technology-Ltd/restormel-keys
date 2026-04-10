@@ -30,8 +30,8 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `/keys/dashboard/logs` — **Logs & Traces**: request logs (filter by project/route)
 - `/keys/dashboard/lifecycle` — **Lifecycle & Migrations**: placeholder and migration guidance
 - `/keys/dashboard/billing` — **Billing & Forecasting**: placeholder
-- `/keys/dashboard/settings` — Account (user id, email); **User management** link for service owners
-- `/keys/dashboard/admin/users` — **User management** (service owners): list registered users, toggle `service_admins`
+- `/keys/dashboard/settings` — Account (user id, email); service owners see admin console guidance
+- `/keys/admin` — **Service-owner admin console** (separate shell; avatar → Admin): **User management**, **Package registry** insights; legacy `/keys/dashboard/admin/*` redirects here
 - `/keys/dashboard/login` — Sign in with GitHub
 - `/keys/dashboard/logout` — Clear session, redirect to login
 
@@ -45,8 +45,9 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `GET/POST /keys/dashboard/api/auth/*` — Neon Auth proxy (sign-in, callback, sign-out)
 - `GET /keys/dashboard/api/health` — Health check
 - `POST /keys/dashboard/api/support-chat` — **Restormel Support** (session-only JSON `{ "messages": [{ "role": "user"|"assistant", "content": "…" }] }`; streams `text/plain`). See [docs/restormel/RESTORMEL-SUPPORT.md](../../docs/restormel/RESTORMEL-SUPPORT.md).
-- `GET /keys/dashboard/api/admin/users` — List registered users (**session + service owner**).
-- `PATCH /keys/dashboard/api/admin/users/[userId]` — Set `service_admins` membership: `{ "serviceOwner": boolean }` (**session + service owner**).
+- `GET /keys/admin/api/users` — List registered users (**session + service owner**).
+- `PATCH /keys/admin/api/users/[userId]` — Set `service_admins` membership: `{ "serviceOwner": boolean }` (**session + service owner**).
+- Legacy: `GET/PATCH /keys/dashboard/api/admin/users` — same behaviour (automation compatibility).
 
 ## Environment (no secrets in repo)
 

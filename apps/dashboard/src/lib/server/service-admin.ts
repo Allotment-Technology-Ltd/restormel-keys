@@ -1,7 +1,13 @@
 /**
  * Service operators (internal): not end-customers; exempt from plan limits for dogfooding.
- * Resolution order: session role → RESTORMEL_SERVICE_ADMIN_USER_IDS → RESTORMEL_SERVICE_OWNER_EMAILS
- * (or built-in defaults when that env is unset) → service_admins row.
+ *
+ * **Preferred:** Neon Auth / Better Auth **role** on the session (`user.role` from `get-session`) —
+ * set the user to **admin** (or `service_admin` / `operator` / `superadmin`) in the Neon Auth console so
+ * `resolveServiceAdminStatus` picks it up without DB edits or env churn.
+ *
+ * Fallback order: session role → `RESTORMEL_SERVICE_ADMIN_USER_IDS` → `RESTORMEL_SERVICE_OWNER_EMAILS`
+ * (or built-in defaults when that env is unset) → `service_admins` row.
+ *
  * Never log raw session payloads; do not treat this as customer RBAC for multi-tenant end users.
  */
 import { neon } from "@neondatabase/serverless";

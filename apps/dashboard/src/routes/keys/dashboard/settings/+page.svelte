@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
 
   export let data: { user?: { uid: string; email?: string | null; isServiceAdmin?: boolean } };
   $: isOp = data.user?.isServiceAdmin === true;
@@ -12,11 +12,17 @@
   {#if isOp}
     <section class="settings-section" aria-labelledby="admin-heading">
       <h2 id="admin-heading" class="section-title">Service owner</h2>
-      <p class="section-desc">Manage who has dashboard operator access.</p>
+      <p class="section-desc">
+        Open the <strong>admin console</strong> (avatar menu → Admin) for user management and package insights. Prefer
+        assigning an <strong>admin</strong> (or <code>service_admin</code> / <code>operator</code>) role in
+        <strong>Neon Auth</strong> when your project exposes <code>user.role</code> on the session — that is the easiest
+        way to grant operator access. You can also use the <code>service_admins</code> table or deployment env vars; see
+        the service-admin runbook.
+      </p>
       <p class="section-links">
-        <a class="link" href={DASHBOARD_BASE + "/admin/users"}>User management</a>
+        <a class="link" href={ADMIN_BASE + "/users"}>User management</a>
         <span class="sep" aria-hidden="true">·</span>
-        <a class="link" href={DASHBOARD_BASE + "/admin/package-registry"}>Package registry insights</a>
+        <a class="link" href={ADMIN_BASE + "/package-registry"}>Package registry insights</a>
       </p>
     </section>
   {/if}
