@@ -36,6 +36,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 ## Keys + Restormel Testing
 
 - End-to-end onboarding (Connections, encrypted provider keys, Testing hub, CLI env): [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md); in-product [/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding).
+- Self-host **Postgres / Neon** (default recommendation, Neon Auth, CI previews, ingestion/graph context): [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md); in-product [/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
 - GA OSS quickstart, config schema policy, composite Action semver tags: [docs/testing/quickstart-ga.md](docs/testing/quickstart-ga.md), [docs/testing/schema-stability-policy.md](docs/testing/schema-stability-policy.md), [docs/testing/github-action-semver.md](docs/testing/github-action-semver.md).
 
 ## Inventory

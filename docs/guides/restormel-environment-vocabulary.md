@@ -4,7 +4,7 @@
 
 **Do not duplicate** this table in other docs as an alternate source of truth. Link here instead: `docs/guides/restormel-environment-vocabulary.md` (repo) or in-product [Environment vocabulary](https://restormel.dev/keys/docs/guides/environment-vocabulary).
 
-**See also:** end-to-end Keys + Testing setup (project IDs, Connections, CLI): [keys-testing-onboarding.md](../keys-testing-onboarding.md).
+**See also:** end-to-end Keys + Testing setup (project IDs, Connections, CLI): [keys-testing-onboarding.md](../keys-testing-onboarding.md). Self-host database (Neon recommended): [database-neon-for-self-hosters.md](database-neon-for-self-hosters.md) — [published guide](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
 
 ---
 

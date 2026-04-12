@@ -40,6 +40,9 @@
 
   <h2>Related</h2>
   <ul class="doc-ul">
+    <li>
+      <a href="/keys/docs/guides/database-neon-for-self-hosters">Database for self-hosters: Neon</a> — when you self-host the Keys dashboard (Postgres + Neon Auth).
+    </li>
     <li><a href="/keys/docs/guides/environment-vocabulary">Environment vocabulary</a> — canonical <code class="inline-code">RESTORMEL_*</code> names.</li>
     <li>
       <a href="https://restormel.dev/testing/docs/integrations/keys">Testing docs — Restormel Keys</a> (runner env and <code class="inline-code">resolve-model</code>).

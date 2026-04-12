@@ -77,6 +77,9 @@
   <h2>Quick links</h2>
   <ul>
     <li><a href="/keys/docs/guides/environment-vocabulary">Environment vocabulary (canonical)</a> — official <code>RESTORMEL_*</code> names; Gateway key vs server token; site base vs control-plane vs evaluate URL</li>
+    <li>
+      <a href="/keys/docs/guides/database-neon-for-self-hosters">Database for self-hosters: Neon</a> — default Postgres + Neon Auth when you self-host Keys; CI previews; ingestion/graph context; links to Neon docs and the OSS program
+    </li>
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Restormel Testing onboarding</a> — Connections, Testing hub, Gateway keys, CLI env</li>
     <li><a href="/keys/docs/how-it-fits-together">How it all fits together</a> — key types, API surfaces, and where each URL fits</li>
     <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>

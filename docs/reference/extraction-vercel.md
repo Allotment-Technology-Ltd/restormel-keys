@@ -6,7 +6,7 @@ The dashboard is a **Node/SvelteKit app** that only needs **runtime env** for da
 
 ## What the dashboard needs
 
-1. **DATABASE_URL** — Neon (or any Postgres) connection string.
+1. **DATABASE_URL** — **Neon is the recommended default** for self-hosters ([public guide](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters)). Use a Neon (or other Postgres-compatible) connection string if you accept migration and ops responsibility yourself.
 2. **Neon Auth** — `NEON_AUTH_BASE_URL` (your Neon Auth URL from Neon Console: Project → Branch → Auth → Configuration, e.g. `https://ep-xxx.neonauth.region.aws.neon.tech/neondb/auth`). GitHub OAuth is configured in **Neon Console** (Auth → OAuth providers), not in app env; the **GitHub OAuth App** callback URL must be your **dashboard** auth callback so the flow goes through the app proxy, e.g. `https://your-vercel-domain.vercel.app/keys/dashboard/api/auth/callback/github`.
 3. **Paddle** (if billing is used) — `PADDLE_SECRET`, `PADDLE_API_KEY` (or whatever the app expects).
 

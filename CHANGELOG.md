@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-12) — Public docs: Neon as default database for self-hosters
+
+**Guide:** [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md) — Neon Postgres + Neon Auth checklist, when a DB is required vs optional, CI preview branches, SOPHIA-style ingestion vs graph store framing, links to [Neon Open Source Program](https://neon.com/programs/open-source) and [Neon docs](https://neon.com/docs/llms.txt). **In-product:** [`apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte`](apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte) at `/keys/docs/guides/database-neon-for-self-hosters`. **Discovery:** [docs/+page.svelte](apps/dashboard/src/routes/keys/docs/+page.svelte) quick links, [search index](apps/dashboard/src/routes/keys/docs/search/+page.svelte). **Cross-links:** [docs/guides/restormel-environment-vocabulary.md](docs/guides/restormel-environment-vocabulary.md), [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md), [docs/reference/extraction-vercel.md](docs/reference/extraction-vercel.md), [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md), [AGENTS.md](AGENTS.md), [docs/00-master-index.md](docs/00-master-index.md).
+
 ## Repo (2026-04-10) — CI/CD: production dashboard migrations documented + catalog seed gated
 
 **Workflow:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `apply-dashboard-migrations-prod` now uses **`concurrency: dashboard-prod-postgres`** (no parallel prod applies). **Catalog seed** runs only when catalog-seed paths change on `main` or **`workflow_dispatch`** sets **`run_model_catalog_seed`** (SQL-only migration pushes still apply migrations but skip seed). **Runbook:** [`docs/runbooks/dashboard-postgres-migrations.md`](docs/runbooks/dashboard-postgres-migrations.md). **Refs:** [`apps/dashboard/README.md`](apps/dashboard/README.md), [`AGENTS.md`](AGENTS.md).

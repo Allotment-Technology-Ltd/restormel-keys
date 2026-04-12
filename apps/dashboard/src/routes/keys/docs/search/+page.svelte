@@ -13,6 +13,11 @@
       href: "/keys/docs/guides/keys-testing-onboarding",
       tags: "testing restormel judge_rubric resolve connections hosted credentials RESTORMEL_PROJECT_ID doctor cli",
     },
+    {
+      title: "Database for self-hosters: Neon",
+      href: "/keys/docs/guides/database-neon-for-self-hosters",
+      tags: "neon postgres database self-host self host DATABASE_URL NEON_AUTH migration preview branch surreal graph sophia ingestion",
+    },
     { title: "Provider access modes", href: "/keys/docs/guides/provider-access-modes", tags: "gateway byok direct" },
     { title: "OpenRouter guide", href: "/keys/docs/guides/openrouter", tags: "openrouter" },
     { title: "Vercel AI Gateway guide", href: "/keys/docs/guides/vercel-ai-gateway", tags: "vercel gateway" },

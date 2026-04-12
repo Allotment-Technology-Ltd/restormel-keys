@@ -22,7 +22,7 @@
 | **UI runtime** | **Svelte 5** | Keys reference UI; use `@restormel/keys-tokens` for `--rm-*` / `--rk-*` alignment. |
 | **React / Next** | **Not default** | Use for a module that explicitly targets the React ecosystem; see **Variant A** below. |
 | **Python** | **Not default** | Use for batch jobs, ML, or dedicated APIs when required; see **Variant B**. Do not mix as the primary web app stack without an ADR. |
-| **Database** | **Neon (Postgres)** | Serverless driver patterns as in dashboard (`@neondatabase/serverless`, migrations as SQL in-repo). |
+| **Database** | **Neon (Postgres)** | Serverless driver patterns as in dashboard (`@neondatabase/serverless`, migrations as SQL in-repo). Adopter-facing rationale: [Database for self-hosters: Neon](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters) (`docs/guides/database-neon-for-self-hosters.md`). |
 | **Auth** | **Product-specific** | Keys uses session + Gateway keys + OIDC surfaces on Better Auth / Neon Auth patterns; new modules **document** cookie domain and issuer URLs if they share `restormel.dev`. |
 | **Hosting** | **Vercel** | SvelteKit via `@sveltejs/adapter-vercel`; root `vercel.json` pattern: `pnpm install`, `pnpm --filter <app> build`. |
 | **CI/CD** | **GitHub Actions** | Path-filtered workflow on `main`/`master`; reuse **pnpm install** + **JS security** composites ([.github/actions/pnpm-workspace-install](../.github/actions/pnpm-workspace-install), [js-security-scan](../.github/actions/js-security-scan)). Add module-specific jobs (tests, E2E) behind filters. |

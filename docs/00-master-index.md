@@ -57,6 +57,12 @@ This build pack contains everything needed to take Restormel Keys from concept t
 
 Served at `/keys/docs/integrations-walkthrough/`. Use for onboarding to Restormel Integrations (developer enablement layer) with optional coding-agent execution.
 
+### Self-host database (public)
+
+| # | Document | What it covers |
+|---|----------|----------------|
+| — | `docs/guides/database-neon-for-self-hosters.md` | **Neon recommended** for Keys self-host: `DATABASE_URL`, Neon Auth, migrations, CI preview branches; optional Testing runs DB; ingestion → graph context. **Published:** [restormel.dev/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters). |
+
 Documentation lives in the Svelte/SvelteKit app (`/keys/docs/` and `/keys/docs/walkthrough/`); Zuplo is used for the Cloud API gateway. Use the walkthrough as the canonical onboarding journey for integrating Restormel Keys.
 
 ### Prompt packs (Cursor-targeted)

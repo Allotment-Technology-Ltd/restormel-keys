@@ -52,5 +52,6 @@ With `RESTORMEL_KEYS_BASE` (or `RESTORMEL_KEYS_API_BASE_URL`) and a Gateway toke
 ## Related
 
 - Environment variable names: [restormel-environment-vocabulary.md](guides/restormel-environment-vocabulary.md).
+- Self-hosting the dashboard and Postgres: [guides/database-neon-for-self-hosters.md](guides/database-neon-for-self-hosters.md) — [public page](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
 - Consuming Testing packages outside the monorepo: [testing/oss-consumption.md](testing/oss-consumption.md).
 - In-product (Keys docs): **[/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding)** — same journey in the dashboard docs shell.
