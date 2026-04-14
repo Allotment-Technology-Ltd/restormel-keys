@@ -8,9 +8,9 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "vite dev",
-    "precheck": "pnpm -w --filter @restormel/contracts run build && pnpm -w --filter @restormel/context-packs run build && pnpm -w --filter @restormel/observability run build && pnpm -w --filter @restormel/state run build && pnpm -w --filter @restormel/testing-core run build && pnpm -w --filter @restormel/testing-config run build && pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build && pnpm -w --filter @restormel/mcp run build && pnpm -w --filter @restormel/support run build",
+    "precheck": "pnpm -w --filter @restormel/contracts run build && pnpm -w --filter @restormel/context-packs run build && pnpm -w --filter @restormel/observability run build && pnpm -w --filter @restormel/state run build && pnpm -w --filter @restormel/testing-core run build && pnpm -w --filter @restormel/testing-config run build && pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build && pnpm -w --filter @restormel/aaif run build && pnpm -w --filter @restormel/mcp run build && pnpm -w --filter @restormel/support run build",
     "build": "vite build && node ../../scripts/vercel-copy-build-output.mjs",
-    "prebuild": "pnpm -w --filter @restormel/contracts run build && pnpm -w --filter @restormel/context-packs run build && pnpm -w --filter @restormel/observability run build && pnpm -w --filter @restormel/state run build && pnpm -w --filter @restormel/testing-core run build && pnpm -w --filter @restormel/testing-config run build && pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build && pnpm -w --filter @restormel/mcp run build && pnpm -w --filter @restormel/support run build",
+    "prebuild": "pnpm -w --filter @restormel/contracts run build && pnpm -w --filter @restormel/context-packs run build && pnpm -w --filter @restormel/observability run build && pnpm -w --filter @restormel/state run build && pnpm -w --filter @restormel/testing-core run build && pnpm -w --filter @restormel/testing-config run build && pnpm -w --filter @restormel/keys-tokens run build && pnpm -w --filter @restormel/keys run build && pnpm -w --filter @restormel/keys-svelte run build && pnpm -w --filter @restormel/aaif run build && pnpm -w --filter @restormel/mcp run build && pnpm -w --filter @restormel/support run build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
@@ -26,6 +26,7 @@
   "dependencies": {
     "@neondatabase/neon-js": "0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
+    "@restormel/aaif": "workspace:*",
     "@restormel/keys": "workspace:*",
     "@restormel/mcp": "workspace:*",
     "@restormel/keys-react": "workspace:*",

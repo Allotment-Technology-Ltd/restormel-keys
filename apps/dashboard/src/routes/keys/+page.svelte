@@ -2,6 +2,7 @@
   /** Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages. */
   import { onMount } from "svelte";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
   import { getVariant } from "$lib/posthog";
   import VariantA from "$lib/components/landing/VariantA.svelte";
   import VariantB from "$lib/components/landing/VariantB.svelte";
@@ -109,6 +110,14 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
   {:else}
     <VariantA />
   {/if}
+
+  <div class="container keys-eco-wrap">
+    <EcosystemStrip
+      variant="compact"
+      heading="Integrates with the stack you already run"
+      intro="Gateways, model providers, CI, and Postgres — documented paths, not a rip-and-replace migration."
+    />
+  </div>
 
   <section class="section section-intents section-alt" aria-labelledby="intent-heading">
     <div class="container">
@@ -364,6 +373,10 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
 </article>
 
 <style>
+  .keys-eco-wrap {
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-2);
+  }
   .keys-page {
     --keys-max: var(--rm-container-max);
   }

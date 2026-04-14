@@ -2,6 +2,7 @@
   import { graphBase as base } from "$lib/graph/paths.js";
   import { GITHUB_REPO_URL } from "$lib/site-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
 
   const discussionsUrl = `${GITHUB_REPO_URL}/discussions`;
   const npmGraphCore = "https://www.npmjs.com/package/@restormel/graph-core";
@@ -98,6 +99,14 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
       </li>
     </ul>
   </section>
+
+  <div class="container">
+    <EcosystemStrip
+      variant="compact"
+      heading="Same suite, shared foundations"
+      intro="Graph ships standalone — and sits next to Keys, Testing, and the integrations you already run in production."
+    />
+  </div>
 
   <section class="use-cases section-alt" aria-labelledby="use-cases-heading">
     <div class="container">

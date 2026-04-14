@@ -2,6 +2,18 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-14) — Integration catalog, ecosystem marketing, stack wizard, `@restormel/aaif` **0.0.12**
+
+**AAIF:** Optional **`integrationStack`** on `AAIFRequest` (`schemaVersion: "1"`, optional `templateId`, `components[]` with ids from **`INTEGRATION_COMPONENT_IDS`**); **`INTEGRATION_CATALOG`** / **`INTEGRATION_STACK_TEMPLATES`**; **`isAAIFRequest`** validation; package [packages/aaif](packages/aaif/README.md).
+
+**Dashboard:** **Connect your stack** wizard on Overview (template → checklist → copy JSON); **`workspaceId`** on overview load for keyed `localStorage`. Data-driven **`EcosystemStrip`** on suite `/`, `/keys`, `/testing`, `/graph`, `/integrations`.
+
+**Docs (in-app):** `/keys/docs/guides/integration-catalog`, `/keys/docs/guides/third-party-brand-marks`; sidebar + sitemap + search index; **AAIF** page `integrationStack` section; [docs/keys-routing-contract.md](docs/keys-routing-contract.md) + [docs/documentation-strategy.md](docs/documentation-strategy.md) discoverability. Canonical markdown: [docs/guides/third-party-brand-marks.md](docs/guides/third-party-brand-marks.md); [docs/design-system-index.md](docs/design-system-index.md) third-party marks subsection.
+
+**Cursor:** New skills **`restormel-suite-integrations-marketing`**, **`restormel-third-party-brand-marks`**, **`restormel-integration-docs-hub`**; [AGENTS.md](AGENTS.md) + [.cursor/rules/08-project-skills.mdc](.cursor/rules/08-project-skills.mdc); [.cursor/rules/00-bootstrap-gate.mdc](.cursor/rules/00-bootstrap-gate.mdc) reconciled with [STATUS.md](STATUS.md).
+
+**npm:** After merge, publish **`@restormel/aaif` 0.0.12** (tag train or `publish-aaif` workflow as applicable).
+
 ## Repo (2026-04-15) — Route graph export + simulate routingAttempts + stepChain trigger hints
 
 **Export:** `GET /keys/dashboard/api/projects/{projectId}/routes/{routeId}/export` returns a versioned bundle (`schemaVersion` **1.0.0**); schema [docs/schemas/route-graph-bundle.schema.json](docs/schemas/route-graph-bundle.schema.json); builder [apps/dashboard/src/lib/server/route-graph-bundle.ts](apps/dashboard/src/lib/server/route-graph-bundle.ts).

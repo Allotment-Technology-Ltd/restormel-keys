@@ -1,5 +1,6 @@
 <script lang="ts">
   import IntegrationCard from "$lib/components/integrations/IntegrationCard.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
 </script>
 
 <svelte:head>
@@ -20,9 +21,15 @@
     </div>
   </section>
 
+  <EcosystemStrip variant="full" heading="Works with your stack" />
+
   <!-- Integration Cards -->
   <section id="integrations" class="section" aria-labelledby="cards-heading">
-    <h2 id="cards-heading" class="sr-only">Integrations</h2>
+    <h2 id="cards-heading" class="section-title">Restormel developer surfaces</h2>
+    <p class="section-intro">
+      CLI, MCP, and AAIF are how you wire Restormel into terminals and agents. Third-party databases, gateways, and CI
+      are indexed in the <a href="/keys/docs/guides/integration-catalog">integration catalog</a>.
+    </p>
     <div class="cards-grid">
       <IntegrationCard
         title="CLI"
@@ -184,6 +191,16 @@
     font-weight: 600;
     color: var(--rm-text);
     margin: 0 0 var(--space-4);
+  }
+  .section-intro {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+    margin: calc(-1 * var(--space-2)) 0 var(--space-5);
+    max-width: 42rem;
+  }
+  .section-intro a {
+    color: var(--rm-sage);
   }
 
   /* Cards grid */

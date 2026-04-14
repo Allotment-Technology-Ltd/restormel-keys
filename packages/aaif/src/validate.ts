@@ -1,7 +1,36 @@
 import type { AAIFRequest, AAIFResponse } from "./types.js";
+import {
+  INTEGRATION_STACK_SCHEMA_VERSION,
+  INTEGRATION_STACK_TEMPLATES,
+  isIntegrationComponentId,
+} from "./integration-stack-catalog.js";
 
 const VALID_TASKS = new Set(["chat", "completion", "embedding"]);
 const VALID_LATENCIES = new Set(["low", "balanced", "high"]);
+
+const TEMPLATE_IDS = new Set<string>(INTEGRATION_STACK_TEMPLATES.map((t) => t.id));
+const MAX_STACK_COMPONENTS = 32;
+const MAX_ROLE_LEN = 64;
+
+function isValidIntegrationStack(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const s = value as Record<string, unknown>;
+  if (s.schemaVersion !== INTEGRATION_STACK_SCHEMA_VERSION) return false;
+  if (s.templateId !== undefined) {
+    if (typeof s.templateId !== "string" || !TEMPLATE_IDS.has(s.templateId)) return false;
+  }
+  if (!Array.isArray(s.components)) return false;
+  if (s.components.length === 0 || s.components.length > MAX_STACK_COMPONENTS) return false;
+  for (const row of s.components) {
+    if (typeof row !== "object" || row === null) return false;
+    const c = row as Record<string, unknown>;
+    if (typeof c.id !== "string" || !isIntegrationComponentId(c.id)) return false;
+    if (c.role !== undefined) {
+      if (typeof c.role !== "string" || c.role.length > MAX_ROLE_LEN) return false;
+    }
+  }
+  return true;
+}
 
 export function isAAIFRequest(value: unknown): value is AAIFRequest {
   if (typeof value !== "object" || value === null) return false;
@@ -50,6 +79,7 @@ export function isAAIFRequest(value: unknown): value is AAIFRequest {
   if (obj.routingPlan !== undefined) {
     if (typeof obj.routingPlan !== "object" || obj.routingPlan === null) return false;
   }
+  if (obj.integrationStack !== undefined && !isValidIntegrationStack(obj.integrationStack)) return false;
   return true;
 }
 

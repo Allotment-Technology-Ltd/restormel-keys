@@ -83,6 +83,23 @@ export type AAIFRoutingPlan = {
   routingAttempts?: AAIFRoutingAttempt[];
 };
 
+/** Machine-readable host / integration environment metadata (orthogonal to {@link AAIFRoutingContext}). */
+export type AAIFIntegrationStackSchemaVersion = "1";
+
+export type AAIFIntegrationStackComponent = {
+  /** Stable id from `INTEGRATION_COMPONENT_IDS` in `./integration-stack-catalog.js`. */
+  id: string;
+  /** Optional role within the stack, e.g. `database`, `ci`, `gateway`. */
+  role?: string;
+};
+
+export type AAIFIntegrationStack = {
+  schemaVersion: AAIFIntegrationStackSchemaVersion;
+  /** Optional preset id from `INTEGRATION_STACK_TEMPLATES` in `./integration-stack-catalog.js`. */
+  templateId?: string;
+  components: AAIFIntegrationStackComponent[];
+};
+
 export type AAIFRequest = {
   input: string;
   task?: AAIFTask;
@@ -98,6 +115,11 @@ export type AAIFRequest = {
   routingContext?: AAIFRoutingContext;
   /** Optional typed copy of resolve/simulate chain rows for logging or downstream agents (see {@link AAIFRoutingPlan}). */
   routingPlan?: AAIFRoutingPlan;
+  /**
+   * Optional declaration of third-party products in the host environment (Neon, Vercel, gateways, etc.).
+   * Use for logs, MCP agents, and analytics — not for Keys resolve behaviour.
+   */
+  integrationStack?: AAIFIntegrationStack;
 };
 
 export type AAIFRouting = {

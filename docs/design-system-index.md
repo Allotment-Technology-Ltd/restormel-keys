@@ -30,6 +30,10 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 
 **Rules:** (1) **One lockup in nav/header/sidebar:** restormel-lockup-nav.svg everywhere; no exceptions. (2) Lockup = mark + wordmark; use in nav, header, footer. (3) Mark only = concentric symbol; use when space is tight or icon-only is required. (4) **Sizing mandatory:** nav/header = 28px height; footer = 24px; dashboard sidebar = 28px. (5) **Clear-space:** same vertical/horizontal rhythm as surrounding nav (`--space-4` / `--space-6`); header/sidebar use `--rm-nav-height` or equivalent so the logo sits in the layout grid. (6) Focus and contrast: use `--focus-ring-*`; sufficient contrast on `--rm-surface` / `--rm-bg`. (7) All shell headers/sidebars use the same tokenized spacing so the logo is part of the layout system, not a tag-on.
 
+### Third-party (vendor) marks
+
+Vendor logos are **optional credibility signals**, not decoration. **Canonical rules:** [third-party-brand-marks.md](./guides/third-party-brand-marks.md) — sourcing (Simple Icons / press kits), monochrome treatment, alt text, no implied endorsement, and [`apps/dashboard/static/integrations/brands/ATTRIBUTION.md`](../apps/dashboard/static/integrations/brands/ATTRIBUTION.md) for files we ship. Implementation: [`EcosystemStrip`](../apps/dashboard/src/lib/components/integrations/EcosystemStrip.svelte) (or successors) under `apps/dashboard/static/integrations/brands/*.svg`.
+
 ## Canonical documents
 
 | Document | Purpose |
@@ -38,6 +42,7 @@ Logo and lockup are **core layout primitives**, not decoration. Use them consist
 | [DESIGN-SPECIFICATION.md](./DESIGN-SPECIFICATION.md) | Design principles, foundation, components, graph patterns, page layouts, usage guidelines, accessibility. |
 | [COMPONENT-INVENTORY.md](./COMPONENT-INVENTORY.md) | Full component inventory (atoms, molecules, organisms, graph components, templates) with variants and props. |
 | [documentation-strategy.md](./documentation-strategy.md) | Single coherent doc journey, agent-readability, compulsory same links (Dashboard/Sign in), runbooks and in-app docs alignment. |
+| [guides/third-party-brand-marks.md](./guides/third-party-brand-marks.md) | Vendor logos: sourcing, tokens, a11y, trademark-neutral copy; complements Brand and logo usage above. |
 | [ux-contracts.md](./ux-contracts.md) | Shared navigation model, copy registry (product nouns, CTA grammar), and state conventions (loading/error/empty/success) across site, docs, dashboard, and embeddable surfaces. |
 
 ## Implementation

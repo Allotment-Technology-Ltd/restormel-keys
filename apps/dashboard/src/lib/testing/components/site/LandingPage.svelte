@@ -2,6 +2,7 @@
   import { testingBase as base } from "$lib/testing/paths.js";
   import { githubRepoUrl, keysDocsUrl, keysHomeUrl } from "$lib/testing/site.js";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
 
   const goalYamlExample = `suites:
   - id: web-critical
@@ -45,6 +46,14 @@
       </div>
     </div>
   </section>
+
+  <div class="container">
+    <EcosystemStrip
+      variant="compact"
+      heading="Runs alongside your providers and CI"
+      intro="Model access and policies flow through Restormel Keys; tests run in GitHub Actions or locally with the same contracts."
+    />
+  </div>
 
   <section class="section section-alt" aria-labelledby="yaml-heading">
     <div class="container">

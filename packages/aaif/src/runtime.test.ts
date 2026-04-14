@@ -104,5 +104,52 @@ describe("AAIF runtime helpers", () => {
     ).toBe(true);
     expect(isAAIFRequest({ input: "x", routingPlan: "bad" })).toBe(false);
   });
+
+  it("isAAIFRequest accepts valid integrationStack", () => {
+    expect(
+      isAAIFRequest({
+        input: "x",
+        integrationStack: {
+          schemaVersion: "1",
+          templateId: "sveltekit-neon-keys",
+          components: [{ id: "neon" }, { id: "vercel" }, { id: "openai" }],
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it("isAAIFRequest rejects integrationStack with unknown component id", () => {
+    expect(
+      isAAIFRequest({
+        input: "x",
+        integrationStack: {
+          schemaVersion: "1",
+          components: [{ id: "not-a-real-integration" }],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("isAAIFRequest rejects integrationStack with wrong schemaVersion", () => {
+    expect(
+      isAAIFRequest({
+        input: "x",
+        integrationStack: { schemaVersion: "2", components: [{ id: "neon" }] },
+      }),
+    ).toBe(false);
+  });
+
+  it("isAAIFRequest rejects integrationStack with invalid templateId", () => {
+    expect(
+      isAAIFRequest({
+        input: "x",
+        integrationStack: {
+          schemaVersion: "1",
+          templateId: "nope",
+          components: [{ id: "neon" }],
+        },
+      }),
+    ).toBe(false);
+  });
 });
 

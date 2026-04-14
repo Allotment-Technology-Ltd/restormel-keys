@@ -2,6 +2,7 @@
   import { page } from "$app/stores";
   import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
   import SocialProof from "$lib/components/site/SocialProof.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
   $: socialProof = $page.data.socialProof ?? null;
@@ -89,6 +90,10 @@
         </ol>
       </div>
     </section>
+
+    <div class="container">
+      <EcosystemStrip variant="full" />
+    </div>
 
     <section class="suite-cards section-alt" aria-label="Products">
       <div class="container suite-cards-inner">

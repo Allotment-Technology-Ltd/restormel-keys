@@ -11,6 +11,7 @@ Documentation is a first-class part of the product. It must be **user-friendly**
 - **Two API surfaces everywhere:** Dashboard API (`rk_…`) vs Zuplo Gateway (`zpka_…`) must be explicit wherever integrators choose a key — especially **project model index** (`GET/POST/PUT …/models`, `PATCH/DELETE …/models/{bindingId}` on Dashboard + Gateway Key only; not Zuplo). The in-app Cloud API page carries the matrix; OpenAPI repeats it so agents and portals do not infer Zuplo for that path.
 - **Discoverable paths:**
   - **Integrate:** Docs overview → Framework compatibility → Dashboard (create project, Gateway key) or Cloud API.
+  - **Third-party index:** [Integration catalog](https://restormel.dev/keys/docs/guides/integration-catalog) → existing per-vendor guides (Neon, gateways, CI, Cloud API / Zuplo); optional AAIF `integrationStack` for machine-readable stack metadata ([AAIF doc](https://restormel.dev/keys/docs/integrations/aaif#integration-stack)).
   - **Cloud API / gateway:** In-app [Cloud API](https://restormel.dev/keys/docs/cloud-api) → [Zuplo setup runbook](runbooks/zuplo-setup.md) and [Zuplo launch CLI](runbooks/zuplo-launch-cli.md). Runbooks link back to docs and dashboard with the same URLs.
 
 ## 2. Same links (compulsory)

@@ -101,7 +101,7 @@ Portable **route graph** JSON for GitOps and agent diffs: `schemaVersion` **`1.0
 ## MCP and AAIF (development-time)
 
 - **MCP:** `docs.canonical_resolve` with topic **`keys_routing_contract`** → this file and public URL. Use **`routing.capabilities`** (suite tool) for a structured list of routing-related MCP tools and HTTP paths. Control-plane tools include **`routing.export`** (GET bundle), **`routing.import`** (POST apply bundle), **`routing.explain_chain`** (GET route + steps + policy-scope summary for agents), and **`routes.simulate`**. Tool **outputSchema** for **`routing.export`**, **`routing.import`**, **`routing.explain_chain`**, and **`routes.simulate`** documents success payload shapes (Zod in `packages/mcp/src/register-tools.ts`, JSON Schema mirrors in `packages/mcp/src/routing-mcp-output-schemas.ts`).
-- **AAIF:** Types in `@restormel/aaif`; optional **`routingContext`** mirrors resolve hints; optional **`routingPlan`** carries typed **`stepChain` / `routingAttempts`** mirrors from HTTP responses. AAIF does not replace resolve for full chains — see package README and [examples/aaif-resolve-then-execute/README.md](../examples/aaif-resolve-then-execute/README.md).
+- **AAIF:** Types in `@restormel/aaif`; optional **`routingContext`** mirrors resolve hints; optional **`routingPlan`** carries typed **`stepChain` / `routingAttempts`** mirrors from HTTP responses; optional **`integrationStack`** (`schemaVersion: "1"`, optional `templateId`, `components[]` with ids from **`INTEGRATION_COMPONENT_IDS`**) declares third-party products in the host environment for logs and agents — it does **not** participate in resolve. AAIF does not replace resolve for full chains — see package README and [examples/aaif-resolve-then-execute/README.md](../examples/aaif-resolve-then-execute/README.md). In-product: [/keys/docs/integrations/aaif#integration-stack](https://restormel.dev/keys/docs/integrations/aaif#integration-stack).
 
 ## Catalog signals (optional / future)
 
@@ -118,4 +118,4 @@ Step-by-step adoption for workers outside this repo: [sophia-keys-routing-consum
 ## Changelog (doc)
 
 - **2026-04-15:** `GET .../export` route graph bundle (schema 1.0.0); `POST .../routes/import` apply bundle; `GET .../explain-chain` agent summary (route + steps + policy bindings); MCP **`routing.export`** / **`routing.import`** / **`routing.explain_chain`**; simulate **`includeRoutingAttempts`** + **`routingAttempts`**; `stepChain` **`advanceOn`** / **`retryOn`** hints from step JSON.
-- **2026-04-14:** Rich `stepChain`, simulate `stepDiagnostics`, `ingestion_remediation` stage, contract `2026-04-14`.
+- **2026-04-14:** Rich `stepChain`, simulate `stepDiagnostics`, `ingestion_remediation` stage, contract `2026-04-14`; optional AAIF **`integrationStack`** (host environment metadata; validated in `@restormel/aaif`) aligned with Dashboard stack wizard and [integration catalog](https://restormel.dev/keys/docs/guides/integration-catalog).

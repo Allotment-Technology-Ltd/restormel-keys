@@ -1,10 +1,12 @@
 <script lang="ts">
   import FirstRunOnboarding from "$lib/components/dashboard/FirstRunOnboarding.svelte";
+  import StackSetupWizard from "$lib/components/dashboard/StackSetupWizard.svelte";
   import LivePulse from "$lib/components/dashboard/LivePulse.svelte";
   import { onMount } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
   export let data: {
+    workspaceId: string | null;
     projects: { id: string; name: string }[];
     projectsError?: string | null;
     entitlements:
@@ -119,6 +121,9 @@
 <h1 class="page-title">Overview</h1>
 <p class="page-desc">Command center for setup progress, live request pulse, and next actions.</p>
 <FirstRunOnboarding />
+{#if data.workspaceId}
+  <StackSetupWizard workspaceId={data.workspaceId} />
+{/if}
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>

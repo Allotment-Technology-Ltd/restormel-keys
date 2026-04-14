@@ -38,6 +38,13 @@
     model?: string
     provider?: string
   &#125;
+  routingContext?: &#123; routeId?: string; workload?: string; stage?: string; /* … */ &#125;
+  routingPlan?: &#123; stepChain?: unknown[]; routingAttempts?: unknown[] &#125;
+  integrationStack?: &#123;
+    schemaVersion: "1"
+    templateId?: string
+    components: &#123; id: string; role?: string &#125;[]
+  &#125;
 &#125;</code></pre>
 
 <h2 class="docs-h2">Response</h2>
@@ -64,6 +71,16 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
   <li><strong>Routing transparency</strong> — responses include the routing reason so callers understand why a provider/model was chosen.</li>
   <li><strong>Cost control</strong> — the <code class="inline-code">maxCost</code> constraint caps estimated spend per request.</li>
 </ul>
+
+<h2 class="docs-h2" id="integration-stack">Integration stack (optional)</h2>
+<p class="docs-p">
+  Optional <code class="inline-code">integrationStack</code> on <code class="inline-code">AAIFRequest</code> declares which third-party products appear in the host environment (for example Neon, Vercel, OpenRouter). It is <strong>orthogonal</strong> to
+  <code class="inline-code">routingContext</code> (resolve hints) and <strong>does not</strong> change provider selection. Use it for logs, MCP agents, and analytics. Valid <code class="inline-code">components[].id</code> values are exported as
+  <code class="inline-code">INTEGRATION_COMPONENT_IDS</code> from <code class="inline-code">@restormel/aaif</code>; <code class="inline-code">isAAIFRequest()</code> validates the object when present. The Dashboard <strong>Overview → Connect your stack</strong> wizard copies JSON that passes this guard.
+</p>
+<p class="docs-p">
+  Human index of vendors: <a href="/keys/docs/guides/integration-catalog">Integration catalog</a>.
+</p>
 
 <h2 class="docs-h2">Routing and resolve</h2>
 <p class="docs-p">

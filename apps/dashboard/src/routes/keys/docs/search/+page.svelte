@@ -28,6 +28,11 @@
       tags: "models providers catalog feed api integration third party global",
     },
     {
+      title: "Integration catalog",
+      href: "/keys/docs/guides/integration-catalog",
+      tags: "integrations neon vercel openrouter portkey zuplo github actions stack ecosystem third party index",
+    },
+    {
       title: "Cloud API",
       href: "/keys/docs/cloud-api",
       tags: "api resolve policies routes openapi gateway key models bindings project index allowlist ingestion picker",

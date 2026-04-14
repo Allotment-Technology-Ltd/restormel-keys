@@ -47,6 +47,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.0.2
+      '@restormel/aaif':
+        specifier: workspace:*
+        version: link:../../packages/aaif
       '@restormel/keys':
         specifier: workspace:*
         version: link:../../packages/core

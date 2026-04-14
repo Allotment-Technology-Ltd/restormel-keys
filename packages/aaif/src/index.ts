@@ -12,7 +12,24 @@ export type {
   AAIFRoutingPlanStep,
   AAIFRoutingAttempt,
   AAIFRoutingAttemptOutcome,
+  AAIFIntegrationStack,
+  AAIFIntegrationStackComponent,
+  AAIFIntegrationStackSchemaVersion,
 } from "./types.js";
+
+export {
+  INTEGRATION_STACK_SCHEMA_VERSION,
+  INTEGRATION_COMPONENT_IDS,
+  INTEGRATION_CATALOG,
+  INTEGRATION_STACK_TEMPLATES,
+  isIntegrationComponentId,
+} from "./integration-stack-catalog.js";
+export type {
+  IntegrationComponentId,
+  IntegrationCatalogCategory,
+  IntegrationCatalogEntry,
+  IntegrationStackTemplateId,
+} from "./integration-stack-catalog.js";
 
 /** Horizon suite MCP tool names (duplicated here so `@restormel/aaif` builds without `@restormel/mcp`). */
 export type { RestormelSuiteToolName } from "./suite-tool-names.js";

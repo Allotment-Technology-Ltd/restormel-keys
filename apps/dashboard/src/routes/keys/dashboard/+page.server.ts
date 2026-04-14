@@ -23,6 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     return {
       projects: [],
       projectsError: null,
+      workspaceId: null as string | null,
       onboarding: null,
       entitlements: null,
       usage: null,
@@ -181,6 +182,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     return {
       projects,
       projectsError: null,
+      workspaceId: workspace.id,
       onboarding: {
         hasProjects: projects.length > 0,
         hasKeys,
@@ -219,6 +221,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     return {
       projects: [],
       projectsError: "Unable to load projects",
+      workspaceId: null,
       onboarding: null,
       entitlements: null,
       usage: null,

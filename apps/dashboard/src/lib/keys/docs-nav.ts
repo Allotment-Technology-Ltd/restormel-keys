@@ -47,6 +47,8 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
       { href: "/keys/docs/guides/routing-contract", label: "Routing contract (SOPHIA-class)" },
       { href: "/keys/docs/guides/environment-vocabulary", label: "Environment vocabulary" },
       { href: "/keys/docs/guides/keys-testing-onboarding", label: "Keys + Testing onboarding" },
+      { href: "/keys/docs/guides/integration-catalog", label: "Integration catalog" },
+      { href: "/keys/docs/guides/third-party-brand-marks", label: "Third-party brand marks" },
       { href: "/keys/docs/guides/byo-gpu-vm", label: "BYO-GPU — VM path" },
       { href: "/keys/docs/guides/byo-gpu-kubernetes", label: "BYO-GPU — Kubernetes" },
       { href: "/keys/docs/guides/testing-gpu-route-smoke", label: "GPU route smoke (Testing)" },

@@ -28,6 +28,8 @@ const STATIC_PATHS = [
   "/keys/docs/guides/vercel-ai-gateway",
   "/keys/docs/guides/integration-vs-hosted-vault",
   "/keys/docs/guides/canonical-catalog",
+  "/keys/docs/guides/integration-catalog",
+  "/keys/docs/guides/third-party-brand-marks",
   "/keys/docs/compatibility",
   "/keys/docs/cloud-api",
   "/keys/docs/reference/cli",
