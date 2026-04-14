@@ -23,3 +23,5 @@ Canonical security baseline. BYOK-safe defaults. **Single source** for security 
 
 **Founders Circle applications:** Rows in `founders_applications` may contain **PII** (name, email, free text) inside the JSON payload. **Do not** log payload bodies or outbound webhook bodies. Use only opaque `applicationId` / row id in logs. Retention follows your Postgres operations policy; restrict database access accordingly.
 
+**Keys routing metadata:** Step JSON such as **`model_pool`**, **`switchCriteria`**, and parallel hints are **control-plane intent** only. **Do not** store provider secrets or raw API keys in these blobs; resolve/simulate responses must not echo secrets ([keys-routing-contract.md](keys-routing-contract.md)). **Hosted runtime** evaluates **`advanceOn`** only against an allowlisted subset for **failure advance** decisions; do not extend with unreviewed expression languages ([rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md) Phase 3).
+

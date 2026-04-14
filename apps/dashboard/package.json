@@ -15,7 +15,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "seed:catalog": "node scripts/ingest-model-catalog.mjs",
-    "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs"
+    "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs",
+    "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./tsconfig.json ./scripts/hosted-runtime-worker.ts"
   },
   "devDependencies": {
     "@testing-library/svelte": "^5.0.0",
@@ -28,10 +29,10 @@
     "@neondatabase/serverless": "^1.0.2",
     "@restormel/aaif": "workspace:*",
     "@restormel/keys": "workspace:*",
-    "@restormel/mcp": "workspace:*",
     "@restormel/keys-react": "workspace:*",
     "@restormel/keys-svelte": "workspace:*",
     "@restormel/keys-tokens": "workspace:*",
+    "@restormel/mcp": "workspace:*",
     "@restormel/support": "workspace:*",
     "@sveltejs/adapter-vercel": "^6.3.3",
     "@sveltejs/kit": "^2.0.0",

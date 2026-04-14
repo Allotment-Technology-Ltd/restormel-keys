@@ -17,7 +17,7 @@ const THIRTY_D_MS = 30 * 24 * 60 * 60 * 1000;
 /** TODO(cost-by-model): Remove when real estimated_cost is reliably backfilled for charts. */
 const MOCK_COST_BY_MODEL: { model: string; costUsd: number }[] = [
   { model: "gpt-4o", costUsd: 18.2 },
-  { model: "claude-3-5-sonnet-20241022", costUsd: 14.6 },
+  { model: "claude-sonnet-4", costUsd: 14.6 },
   { model: "gpt-4o-mini", costUsd: 3.85 },
   { model: "unknown", costUsd: 0.45 },
 ];

@@ -9,6 +9,16 @@
   } from "@restormel/aaif";
 
   export let workspaceId: string;
+  /** When true (e.g. Overview “More setup”), hide duplicate title and flatten chrome. */
+  export let embedded = false;
+
+  function templateIcon(id: (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"]): string {
+    if (id === "sveltekit-neon-keys") return "◆";
+    if (id === "next-vercel-ai-keys") return "▲";
+    if (id === "github-actions-testing") return "↻";
+    if (id === "openrouter-portkey-keys") return "◇";
+    return "□";
+  }
 
   const storageKey = () => `rk_integration_stack_v1_${workspaceId}`;
 
@@ -83,13 +93,25 @@
   }
 </script>
 
-<section class="stack-wiz panel" aria-labelledby="stack-wiz-h">
-  <h2 id="stack-wiz-h" class="stack-wiz-title">Connect your stack</h2>
-  <p class="stack-wiz-desc">
-    Pick a template, follow the checklist in the dashboard, then copy a machine-readable
-    <code class="inline">integrationStack</code> for AAIF hosts and agents (
-    <a href="/keys/docs/integrations/aaif">AAIF docs</a>).
-  </p>
+<section
+  class="stack-wiz"
+  class:panel={!embedded}
+  class:stack-wiz--embedded={embedded}
+  aria-labelledby={embedded ? undefined : "stack-wiz-h"}
+  aria-label={embedded ? "Stack template, checklist, and integrationStack export" : undefined}
+>
+  {#if !embedded}
+    <h2 id="stack-wiz-h" class="stack-wiz-title">Connect your stack</h2>
+    <p class="stack-wiz-desc">
+      Pick a template, follow the checklist in the dashboard, then copy a machine-readable
+      <code class="inline">integrationStack</code> for AAIF hosts and agents (
+      <a href="/keys/docs/integrations/aaif">AAIF docs</a>).
+    </p>
+  {:else}
+    <p class="stack-wiz-desc stack-wiz-desc--compact">
+      <a href="/keys/docs/integrations/aaif">AAIF integrationStack</a> — JSON preset for your host or agent.
+    </p>
+  {/if}
   {#if loadError}
     <p class="stack-wiz-err" role="alert">{loadError}</p>
   {/if}
@@ -110,6 +132,7 @@
     <div class="tpl-grid">
       {#each INTEGRATION_STACK_TEMPLATES as tpl}
         <button type="button" class="tpl-btn" on:click={() => selectTemplate(tpl.id)}>
+          <span class="tpl-icon" aria-hidden="true">{templateIcon(tpl.id)}</span>
           <span class="tpl-label">{tpl.label}</span>
         </button>
       {/each}
@@ -119,21 +142,33 @@
       Selected: <strong>{INTEGRATION_STACK_TEMPLATES.find((t) => t.id === selectedTemplateId)?.label}</strong>
       <button type="button" class="linkish" on:click={reset}>Change</button>
     </p>
-    <ul class="checklist">
-      <li>
-        <a class="btn btn-secondary" href={DASHBOARD_BASE + "/integrations"}>Connections</a>
-        — add provider access (hosted key, vault ref, or direct).
+    <ul class="checklist checklist-cards">
+      <li class="checklist-card">
+        <span class="checklist-card-icon" aria-hidden="true">🔌</span>
+        <div class="checklist-card-main">
+          <a class="btn btn-secondary" href={DASHBOARD_BASE + "/integrations"}>Connections</a>
+          <span class="checklist-card-hint">Hosted key, vault ref, or direct.</span>
+        </div>
       </li>
-      <li>
-        <a class="btn btn-secondary" href={DASHBOARD_BASE + "/access"}>Gateway keys</a>
-        — create a key for your app or CI.
+      <li class="checklist-card">
+        <span class="checklist-card-icon" aria-hidden="true">🔑</span>
+        <div class="checklist-card-main">
+          <a class="btn btn-secondary" href={DASHBOARD_BASE + "/access"}>Gateway keys</a>
+          <span class="checklist-card-hint">Key for app or CI.</span>
+        </div>
       </li>
-      <li>
-        <a class="btn btn-secondary" href={DASHBOARD_BASE + "/routes"}>Rules</a>
-        — route and policy basics.
+      <li class="checklist-card">
+        <span class="checklist-card-icon" aria-hidden="true">📍</span>
+        <div class="checklist-card-main">
+          <a class="btn btn-secondary" href={DASHBOARD_BASE + "/routes"}>Routes</a>
+          <span class="checklist-card-hint">Models and guard rails.</span>
+        </div>
       </li>
-      <li>
-        <a class="btn btn-ghost" href="/keys/docs/guides/integration-catalog">Integration catalog →</a>
+      <li class="checklist-card checklist-card--link">
+        <span class="checklist-card-icon" aria-hidden="true">📚</span>
+        <div class="checklist-card-main">
+          <a class="btn btn-ghost" href="/keys/docs/guides/integration-catalog">Integration catalog →</a>
+        </div>
       </li>
     </ul>
     <div class="stack-actions">
@@ -158,6 +193,13 @@
   .stack-wiz {
     margin-bottom: var(--space-5);
   }
+  .stack-wiz--embedded {
+    margin-bottom: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
   .stack-wiz-title {
     font-size: var(--text-base);
     font-weight: 600;
@@ -167,8 +209,20 @@
   .stack-wiz-desc {
     font-size: var(--text-sm);
     color: var(--rm-muted);
-    margin: 0 0 var(--space-4);
+    margin: 0 0 var(--space-5);
     line-height: var(--leading-relaxed);
+  }
+  .stack-wiz-desc--compact {
+    margin-bottom: var(--space-4);
+    font-size: var(--text-xs);
+  }
+  .stack-wiz-desc--compact a {
+    color: var(--rm-sage);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .stack-wiz-desc--compact a:hover {
+    text-decoration: underline;
   }
   .stack-wiz-err {
     color: var(--rm-coral, #e85d5d);
@@ -181,10 +235,13 @@
     display: flex;
     gap: var(--space-4);
     list-style: none;
-    margin: 0 0 var(--space-4);
-    padding: 0;
+    margin: 0 0 var(--space-5);
+    padding: var(--space-2) var(--space-3);
     font-size: var(--text-xs);
     color: var(--rm-muted);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: color-mix(in oklab, var(--rm-sage) 5%, var(--rm-surface));
   }
   .stack-steps li {
     display: flex;
@@ -200,36 +257,69 @@
   }
   .num {
     display: inline-flex;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.35rem;
+    height: 1.35rem;
     align-items: center;
     justify-content: center;
     border-radius: 999px;
     border: 1px solid var(--rm-border);
     font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--rm-surface-raised);
+  }
+  .stack-steps li.active .num {
+    border-color: color-mix(in oklab, var(--rm-sage) 55%, var(--rm-border));
+    background: color-mix(in oklab, var(--rm-sage) 16%, var(--rm-surface));
+    color: var(--rm-sage);
+  }
+  .stack-steps li.done .num {
+    color: var(--rm-sage);
+    border-color: color-mix(in oklab, var(--rm-sage) 40%, var(--rm-border));
   }
   .tpl-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-    gap: var(--space-2);
+    gap: var(--space-3);
   }
   .tpl-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
     text-align: left;
     padding: var(--space-3);
-    border-radius: var(--radius-md);
+    border-radius: var(--rm-radius);
     border: 1px solid var(--rm-border);
     background: var(--rm-surface);
     color: var(--rm-text);
     cursor: pointer;
     font-size: var(--text-sm);
-    min-height: 44px;
-    transition: border-color 0.15s ease;
+    min-height: 3.25rem;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
   }
   .tpl-btn:hover {
     border-color: var(--rm-sage);
+    background: color-mix(in oklab, var(--rm-sage) 7%, var(--rm-surface));
+  }
+  .tpl-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface-raised);
+    font-size: 0.85rem;
+    line-height: 1;
+    color: var(--rm-sage);
   }
   .tpl-label {
-    font-weight: 500;
+    font-weight: 600;
+    line-height: 1.35;
+    padding-top: 0.2rem;
   }
   .stack-picked {
     font-size: var(--text-sm);
@@ -254,6 +344,45 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+  .checklist-cards {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-4);
+    gap: var(--space-2);
+    display: flex;
+    flex-direction: column;
+  }
+  .checklist-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--rm-radius);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+  }
+  .checklist-card-icon {
+    flex-shrink: 0;
+    font-size: 1.25rem;
+    line-height: 1;
+    margin-top: 0.1rem;
+  }
+  .checklist-card-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+  .checklist-card-hint {
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: 1.4;
+  }
+  .checklist-card--link .checklist-card-main {
+    justify-content: center;
+    padding-top: 0.15rem;
   }
   .checklist .btn {
     margin-right: var(--space-2);

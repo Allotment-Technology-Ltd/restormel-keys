@@ -58,7 +58,7 @@ describe("validateRouteStepsForPublish", () => {
   it("still accepts google (stored) and openai", () => {
     expect(
       validateRouteStepsForPublish(route({ defaultModelId: "gpt-4o" }), [
-        step({ id: "a", orderIndex: 0, providerPreference: "google", modelId: "gemini-1.5-flash" }),
+        step({ id: "a", orderIndex: 0, providerPreference: "google", modelId: "gemini-2.5-flash" }),
       ])
     ).toEqual([]);
     expect(

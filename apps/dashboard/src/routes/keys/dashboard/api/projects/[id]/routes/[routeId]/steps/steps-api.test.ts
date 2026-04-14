@@ -14,7 +14,7 @@ vi.mock("$lib/server/db", () => ({
     routeId: "r1",
     orderIndex: 0,
     providerPreference: "anthropic",
-    modelId: "claude-3-5-sonnet",
+    modelId: "claude-sonnet-4",
     conditionBlock: null,
     fallbackOn: "error",
     timeoutMs: null,
@@ -27,7 +27,7 @@ vi.mock("$lib/server/db", () => ({
     routeId: "r1",
     orderIndex: 1,
     providerPreference: "anthropic",
-    modelId: "claude-3-5-sonnet",
+    modelId: "claude-sonnet-4",
     conditionBlock: null,
     fallbackOn: "error",
     timeoutMs: null,
@@ -36,7 +36,7 @@ vi.mock("$lib/server/db", () => ({
     updatedAt: new Date(2).toISOString(),
   }),
   deleteRouteStep: vi.fn().mockResolvedValue(true),
-  getModel: vi.fn().mockResolvedValue({ id: "claude-3-5-sonnet" }),
+  getModel: vi.fn().mockResolvedValue({ id: "claude-sonnet-4" }),
 }));
 
 function mockEvent(params: Record<string, string>, body?: unknown, locals?: App.Locals) {
@@ -59,7 +59,7 @@ describe("Steps API", () => {
     const res = await POST(
       mockEvent(
         { id: "p1", routeId: "r1" },
-        { orderIndex: 0, providerPreference: "anthropic", modelId: "claude-3-5-sonnet", fallbackOn: "error", enabled: true },
+        { orderIndex: 0, providerPreference: "anthropic", modelId: "claude-sonnet-4", fallbackOn: "error", enabled: true },
         { user: { uid: "u1", authType: "gateway_key", projectIdForKey: "p1", keyId: "k1" } }
       )
     );

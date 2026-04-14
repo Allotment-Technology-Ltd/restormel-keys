@@ -173,7 +173,7 @@
   <p class="error-msg" role="alert">{data.error}</p>
 {:else if data.logs.length === 0}
   <p class="empty-msg">No request logs in the last 7 days. Traffic through resolved routes will appear here.</p>
-  <p><a href={DASHBOARD_BASE + "/analytics"}>Usage & Analytics</a> · <a href={DASHBOARD_BASE + "/routes"}>Rules</a></p>
+  <p><a href={DASHBOARD_BASE + "/analytics"}>Usage & Analytics</a> · <a href={DASHBOARD_BASE + "/routes"}>Routes</a></p>
 {:else}
   <ul class="log-list">
     {#each data.logs as log}

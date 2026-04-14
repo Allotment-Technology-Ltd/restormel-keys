@@ -17,7 +17,7 @@ const PROVIDER_PRIORITY = ["openai", "anthropic", "openrouter", "portkey", "verc
 
 const DEFAULT_MODEL: Record<string, string> = {
   openai: "gpt-4o-mini",
-  anthropic: "claude-3-5-sonnet",
+  anthropic: "claude-sonnet-4",
   openrouter: "gpt-4o-mini",
   portkey: "gpt-4o-mini",
   vercel_ai_gateway: "gpt-4o-mini",

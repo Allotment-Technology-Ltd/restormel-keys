@@ -10,10 +10,11 @@
  *
  * Never log raw session payloads; do not treat this as customer RBAC for multi-tenant end users.
  */
+import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
 
 function getSql() {
-  const url = process.env.DATABASE_URL;
+  const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return neon(url);
 }

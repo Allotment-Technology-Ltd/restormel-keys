@@ -2,11 +2,12 @@
  * Service-owner-only: list Better Auth users and toggle service_admins membership.
  */
 import type { AdminUserListRow } from "$lib/admin-user-list";
+import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
 import { emailImpliesServiceOwner } from "$lib/server/service-admin";
 
 function getSql() {
-  const url = process.env.DATABASE_URL;
+  const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return neon(url);
 }

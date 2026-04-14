@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { fail } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
+import { env } from "$env/dynamic/private";
 import { countFoundersApplications, insertFoundersApplication } from "$lib/server/db";
 
 function foundersSlotsTotal(): number {
@@ -115,7 +116,7 @@ export const actions: Actions = {
       listedPublicly: listed === "yes",
     };
 
-    const hasDb = Boolean(process.env.DATABASE_URL?.trim());
+    const hasDb = Boolean(env.DATABASE_URL?.trim());
     let applicationId: string;
     if (hasDb) {
       const id = await insertFoundersApplication(payload);

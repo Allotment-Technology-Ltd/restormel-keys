@@ -28,8 +28,11 @@ describe("provider model lists", () => {
 
   it("google exposes expected models", () => {
     expect(googleProvider.models).toEqual([...GOOGLE_MODELS]);
+    expect(googleProvider.models).toContain("gemini-3.1-pro-preview");
+    expect(googleProvider.models).toContain("gemini-3-flash-preview");
     expect(googleProvider.models).toContain("gemini-2.5-pro");
     expect(googleProvider.models).toContain("gemini-2.5-flash");
+    expect(googleProvider.models).not.toContain("gemini-1.5-flash");
   });
 });
 

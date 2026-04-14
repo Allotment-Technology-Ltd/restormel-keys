@@ -20,7 +20,8 @@ with at least `environmentId`, and either `routeId` or **`workload` + optional `
 Read:
 
 - **`providerType` / `modelId`** for the winning tier.
-- **`stepChain`** for the full ordered list (with rich metadata as of contract `2026-04-14`).
+- **`stepChain`** for the full ordered list (with rich metadata; contract **`2026-04-16`** adds optional **model pool** fields and **parallel** metadata echoes — see [keys-routing-contract.md](../keys-routing-contract.md)).
+- **`selectedPoolMemberIndex`** when the winning step used a **model pool** (otherwise null).
 - **`fallbackCandidates`** for tiers after the winner.
 
 ## 3. Two consumption patterns
@@ -43,6 +44,11 @@ Replace ad-hoc env JSON (e.g. base64 routing blobs) with **published routes** + 
 ## 6. Publish vs draft (dashboard parity)
 
 When `version !== publishedVersion`, discovery treats the route as **unpublished** for metadata-based selection; explicit `routeId` may still return `route_unpublished`. Operators should **publish** from the dashboard after edits. Any future **visual diff** UI must keep **accessible** status text (not color-only): use `role="status"` / visible labels for draft vs published (see dashboard route detail banner).
+
+## 6a. Model pools and parallel hints
+
+- **Pools:** Configure `model_pool` on a step (version **1** JSON: `selectionStrategy`, `members[]`). Resolve returns the **first** member that passes policy and is executable; use **`poolMembers`** / **`poolMemberIndex`** in `stepChain` for UX.
+- **Parallel:** `parallel_group_id` / `parallel_branch_role` on steps are **hints** only in v1 — Keys does not run parallel LLM calls. Hosts implement fan-out/fan-in and merge semantics.
 
 ## 7. Typed AAIF carry (`routingPlan`)
 

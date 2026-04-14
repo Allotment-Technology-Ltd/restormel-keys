@@ -15,6 +15,8 @@
   } from "$lib/stores/user-mode";
 
   export const ONBOARDING_COMPLETE_STORAGE_KEY = "restormel_onboarding_complete";
+  /** Closing the assistant only hides it for this tab session; use "Open setup assistant" on Overview to reopen. */
+  const ONBOARDING_SESSION_DISMISS_KEY = "restormel_onboarding_session_dismissed";
 
   type ChecklistItem = { label: string; href: string };
 
@@ -42,12 +44,26 @@
   onMount(() => {
     syncUserModeFromStorage();
     syncUserStackChoiceFromStorage();
-    visible = localStorage.getItem(ONBOARDING_COMPLETE_STORAGE_KEY) !== "true";
+    const finished = localStorage.getItem(ONBOARDING_COMPLETE_STORAGE_KEY) === "true";
+    const dismissedThisSession = sessionStorage.getItem(ONBOARDING_SESSION_DISMISS_KEY) === "1";
+    visible = !finished && !dismissedThisSession;
     return () => {
       unsubscribeMode();
       unsubscribeStack();
     };
   });
+
+  /** Reopens the mode / checklist assistant (Overview always exposes this). */
+  export function openOnboarding() {
+    syncUserModeFromStorage();
+    syncUserStackChoiceFromStorage();
+    try {
+      sessionStorage.removeItem(ONBOARDING_SESSION_DISMISS_KEY);
+    } catch {
+      /* ignore */
+    }
+    visible = true;
+  }
 
   function requiresStackQuestion(mode: UserMode | null): boolean {
     return mode === "existing_stack" || mode === "byok_saas";
@@ -55,11 +71,21 @@
 
   function markCompleteAndHide() {
     localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
+    try {
+      sessionStorage.removeItem(ONBOARDING_SESSION_DISMISS_KEY);
+    } catch {
+      /* ignore */
+    }
     visible = false;
   }
 
   function closeOverlay() {
-    markCompleteAndHide();
+    try {
+      sessionStorage.setItem(ONBOARDING_SESSION_DISMISS_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    visible = false;
   }
 
   function next() {
@@ -147,13 +173,13 @@
       aria-modal="true"
       aria-labelledby="onboarding-title"
     >
-      <button type="button" class="close-btn" on:click={closeOverlay} aria-label="Dismiss onboarding">
+      <button type="button" class="close-btn" on:click={closeOverlay} aria-label="Close for now (reopen from Overview)">
         ×
       </button>
 
       {#if currentStep === 1}
         <h2 id="onboarding-title" class="title">What brings you here?</h2>
-        <ModeSelector showSkip={true} />
+        <ModeSelector showSkip={true} onSkip={markCompleteAndHide} />
       {:else if currentStep === 2}
         <h2 id="onboarding-title" class="title">How does your app reach AI providers today?</h2>
         <div class="stack-options">
@@ -251,6 +277,18 @@
     color: var(--rm-muted);
     font-size: 1.25rem;
     cursor: pointer;
+    border-radius: var(--rm-radius);
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  .close-btn:hover {
+    color: var(--rm-text);
+    background: color-mix(in oklab, var(--rm-border) 40%, transparent);
+  }
+  .close-btn:focus-visible {
+    outline: 2px solid var(--rm-sage);
+    outline-offset: 2px;
   }
 
   .title {

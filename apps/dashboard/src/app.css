@@ -32,6 +32,10 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -40,6 +44,126 @@ body {
   font-family: var(--rm-font-ui);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
+}
+
+/**
+ * Shared form controls — must be global so child Svelte components (e.g. RouteGuardRailsPanel)
+ * pick up the same styling as route-level scoped `.input` / `.btn` blocks.
+ */
+.input,
+select.input,
+textarea.input,
+input.input {
+  width: 100%;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--rm-radius);
+  border: 1px solid var(--rm-border);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  line-height: var(--leading-normal);
+  background: var(--rm-bg);
+  color: var(--rm-text);
+}
+
+select.input {
+  cursor: pointer;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--rm-sage);
+  outline-offset: 2px;
+}
+
+.btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--rm-radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  line-height: var(--leading-normal);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease,
+    filter 0.12s ease,
+    box-shadow 0.1s ease,
+    transform 0.06s ease;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn-primary {
+  background: var(--rm-sage);
+  color: var(--rm-bg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.94);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--rm-bg) 55%, var(--rm-sage));
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background: var(--rm-surface);
+  color: var(--rm-text);
+  border: 1px solid var(--rm-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--rm-surface-raised) 72%, var(--rm-text));
+  border-color: color-mix(in oklab, var(--rm-border) 65%, var(--rm-text));
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 2px color-mix(in oklab, var(--rm-text) 10%, transparent);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--rm-sage);
+  outline-offset: 2px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--coral-alert);
+  border: 1px solid var(--coral-alert);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--coral-alert) 14%, transparent);
+  border-color: color-mix(in oklab, var(--coral-alert) 82%, var(--rm-border));
+}
+
+.btn-danger:active:not(:disabled) {
+  transform: translateY(1px);
+  background: color-mix(in oklab, var(--coral-alert) 22%, transparent);
+}
+
+.btn-danger:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--coral-alert) 65%, var(--rm-border));
+  outline-offset: 2px;
+}
+
+.btn-inline {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
 }
 
 code,

@@ -2,6 +2,93 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-14) — Guard rails: one binding per route scope (route vs model)
+
+**Dashboard:** Route guard rail picker hides policies already attached to the **entire route**, to **any model** on that route, or (for model scope) to the **inspected step**; **POST** `…/api/policies/{id}/bindings` returns **409** when a duplicate or route-vs-step conflict would occur (`getPolicyBindingConflictMessage` in Neon).
+
+**Dashboard:** Flow inspector **Guard rails** panel lists **step-only bindings on other models** so an empty picker does not look contradictory when those bindings block whole-route attach.
+
+## Repo (2026-04-14) — Route Flow: draft-first enable/reorder + deferred guard rails
+
+**Dashboard:** Route detail — **Enable/Disable** and **Move up/down** update the local map draft only; **Apply to server** runs reorder (`patchStepOrderIndices` + graph) then field PATCHes. **Guard rail** bind/unbind in the inspector queues until the same apply (with optimistic lists). `committedRowDiffersFromServer` includes **`enabled`** and **`orderIndex`**.
+
+## Repo (2026-04-14) — Route Flow map: connectors, parallel row scroll, framed zoom
+
+**Dashboard:** `RouteFlowCanvas` — dotted vertical spine with centered **+** and down arrow between chain steps; solid horizontal segments between parallel branch cards; parallel row **no-wrap** with **horizontal scroll** inside the group frame; map lives in a **framed viewport** (`max-height` + scroll) with **zoom** (− / + / Reset, **Ctrl/Cmd + wheel**). Zoom strip sits **below** the apply lede and **above** the graph, with compact controls. Vertical spine/arrow only when a **following** segment exists; slightly **taller** connector when shown.
+
+
+## Repo (2026-04-14) — Route flow: Apply to server + inspector draft + leave guard
+
+**Dashboard:** Route **Flow** — copy uses **model** / **models** for flow-map steps (not “block”); remove control is **Remove model**. Toolbar **Apply to server** / **Applying…** persists map draft + locally merged rows (no map-toolbar **Revert**; discard via leaving the route and confirming). Flow tab **status strip**: amber **Draft** when map/inspector/step overlays are pending; green **On server** with last-saved time (max of route `updatedAt` and last successful apply) when in sync. Shorter map toolbar + inspector copy. **Route map:** map dirty-check uses stable JSON + comparable `flowLayout` shape so saved graphs clear draft state; after graph PUT + `invalidateAll`, `tick` ×2 + `revertRouteMapDraft()` resyncs edge draft from server props; step PATCH refresh uses an extra `tick` before `startEditStep` so inspector dirty state clears. Inspector **Apply changes** in **Call settings** (provider/model/timeout/label) and **Advanced JSON, pools & parallel** merge into the **local** overlay; footer **Update route map** / **Revert** removed earlier. Inspector header **Unsaved** pill removed. Map dirty still treats null `flowLayout` as baseline. **`beforeunload`** unchanged. Global **`.btn-*`** interaction states in `app.css`. **Route detail:** map-only draft no longer blocks opening the inspector; **`beforeNavigate`** confirm clears `mapDraftDirty`, step overlays, and unsubmitted inspector fields (reinstates last-loaded server flow when the canvas is mounted, or clears parent draft flags when it is not), and resets the Configuration form from server.
+
+## Repo (2026-04-14) — Model catalog: Gemini 3.x, retire legacy Gemini 1.5 / 2.0 exp + Claude 3.5 Haiku defaults
+
+**Catalog:** `apps/dashboard/data/model-catalog-seed.json` adds **`gemini-3.1-pro-preview`** and **`gemini-3-flash-preview`**; marks **Gemini 1.5** (pro/flash/8b), **Gemini 2.0 Flash exp**, and **Claude 3.5 Haiku** snapshot as **deprecated** with **`availabilityStatus: unavailable`** and **`replacementModelId`** toward 2.5 / 3.x or Haiku 4.5.
+
+**@restormel/keys:** `GOOGLE_MODELS` / pricing now list **3.1 Pro preview**, **3 Flash preview**, **2.5 Pro**, **2.5 Flash** only; **`ANTHROPIC_MODELS`** drops dated **3.5 snapshot** ids (Sonnet 4 / Haiku 4.5 / Opus 4 only). Portkey/OpenRouter curated lists and **`registry/models.json`** aligned. **`@restormel/contracts`** `DEFAULT_MODEL_CATALOG` vertex/OpenRouter entries updated.
+
+## Repo (2026-04-14) — Phase 3 hosted switch-eval + Phase 4 jobs scaffold + deferred roadmap
+
+**Runtime:** `runtime-switch-eval.ts` — upstream failures classified to **`error`** / **`rate_limit`** (etc.); **`fallbackOn`** + allowlisted **`advanceOn`** may advance to the next step (`skipReason: upstream_failed_advancing`). **`runtimeContractVersion` `2026-06-01`**, **`runtimeSwitchEvalVersion`** on invoke success.
+
+**Simulate:** Optional **`includeHostedSwitchEvaluation`** → **`hostedRuntimeSwitch`** (per-step advance matrix).
+
+**Jobs (Phase 4):** Migration **`033`** / **`034`** `hosted_runtime_jobs` (queue + idempotency + cancel); **`POST …/runtime/jobs`** — same pipeline as invoke including **parallel** fan-out (`mergeStrategy` **`first_wins`** | **`all_succeed`**), optional **`async`** (**202**), **`Idempotency-Key`** dedup; **`GET …/runtime/jobs/{jobId}`**; **`DELETE …/runtime/jobs/{jobId}`** cancel; worker script **`pnpm --filter dashboard run hosted-runtime-worker`**. RFC: [docs/rfc/keys-hosted-runtime-parallel-jobs.md](docs/rfc/keys-hosted-runtime-parallel-jobs.md). OpenAPI **1.6.0**.
+
+**Dashboard:** Note on route Flow when parallel groups imply fan-out.
+
+**Docs:** Deferred backlog [docs/roadmap/hosted-runtime-deferred-spikes.md](docs/roadmap/hosted-runtime-deferred-spikes.md); threat model + security baseline; OpenAPI **1.5.0**.
+
+## Repo (2026-04-14) — Dashboard: create route on project screen + faster route detail refresh
+
+**Dashboard:** Global **Routes** list **New route** navigates to **Project routes → Create route** (hash `#create-heading`); no inline route naming on the list. Route detail toolbar **New route** matches. Route detail `load` registers **`depends('app:route-detail:{routeId}')`**; step/policy edits call **`invalidate`** for that key instead of **`invalidateAll`** to cut lag after confirmations (e.g. remove step).
+
+**Dashboard:** Route **Flow map** — removed redundant **Next-step links** list (edges are edited via **+** on the map and **Save route map**). Step cards use **`color: var(--rm-text)`** on buttons so model names are not UA dark text on dark backgrounds. **First step** dropdown removed; **Save route map** moved below the visualization; save still sends **`entryStepId`** from the route (set elsewhere, e.g. route API / resolver defaults).
+
+**Dashboard:** Route editor defaults to **Flow map** (`?flow=visual`); **+** on the map opens a shared **Add step** `<dialog>` (provider/model/timeout) and inserts after the anchor or appends; linear tab uses the same dialog. Smaller centered cards and parallel row layout for horizontal groups. Advanced graph-only edge menu removed from **+** (graph still saved with **Save route map**).
+
+**Dashboard:** **Flow & steps** — inspector is an **embedded column** beside the canvas (not a fixed overlay); **Save route map** centered under the map. Inspector lede/hint use **`color: var(--rm-muted)`** for contrast.
+
+**Dashboard:** **Add step** dialog — header + scrollable **2-column** field grid (stacks on narrow viewports), **sticky footer** with Cancel / Add step, **`max-height`** so actions stay visible, clearer lede and label contrast.
+
+## Repo (2026-04-14) — Phase 2 hosted runtime invoke + vertical route Flow
+
+**Runtime:** `POST …/routes/{routeId}/runtime/invoke` executes **enabled** steps in **graph-linear order** with per-step policy and OpenAI-compatible upstream calls; message chaining for step 2+; aggregated usage; optional **`runtimeSteps`** in success `data`; **`runtimeContractVersion` `2026-05-01`**. Caps: max **10** enabled steps (`runtime_step_limit_exceeded`), wall timeout (**504** `runtime_wall_timeout`). Implementation: `runtime-invoke-chain.ts`, `loadRouteExecutionContext` in `route-resolver.ts`, invoke `+server.ts`.
+
+**Dashboard:** Route **Flow** is a **vertical** step column with connectors; empty state **Add model**; **+ Add linear step** after the chain; **Advanced** section keeps optional next-step linking; reorder (DnD) and delete **sync linear edges** + **entryStepId** via `PUT …/graph`.
+
+**Docs:** [docs/api/openapi.yaml](docs/api/openapi.yaml) **1.4.0**; RFC Phase 2 status in [docs/rfc/keys-no-code-route-runtime.md](docs/rfc/keys-no-code-route-runtime.md).
+
+## Repo (2026-04-14) — RFC: hosted no-code route runtime (phased)
+
+**Docs:** [docs/rfc/keys-no-code-route-runtime.md](docs/rfc/keys-no-code-route-runtime.md) defines phased delivery (single-step hosted invoke → graph-linear execution → optional server-evaluated switch hints → parallel jobs). **Canonical routing contract** links the future boundary: [docs/keys-routing-contract.md](docs/keys-routing-contract.md). **Roadmap:** [ROADMAP.md](ROADMAP.md). Implementation is **not** part of this entry.
+
+## Repo (2026-04-14) — Option B route graph + visual editor (dashboard)
+
+**Data:** Migration **`032`** adds `routes.entry_step_id`, `routes.flow_layout`, and **`route_step_edges`** (from/to step, priority). `ensureIngestionRoutingSchema` self-heals the same.
+
+**Resolver:** When a route has **edges**, enabled steps are ordered by a deterministic DFS from **`entryStepId`** (fallback: first source node with no incoming edge, then `orderIndex`). **Per-step policy** evaluation includes **`route_step`** bindings (`PolicyEvaluationContext.routeStepId`). Simulate diagnostics use the same ordering as resolve.
+
+**API:** `PATCH .../routes/[routeId]` accepts **`entryStepId`** and **`flowLayout`**. **`PUT .../routes/[routeId]/graph`** replaces edges and updates layout/entry in one call.
+
+**Dashboard:** Route **Flow** tab adds **List** | **Route map** — draggable step cards, **Link next steps**, list of **next-step links**, **First step** selector, **Save route map**, and **per-step policy** binding (`route_step`). UI copy uses Keys routing terms, not **graph/edge** jargon.
+
+## Repo (2026-04-16) — Phase F routing: model pools, parallel metadata, contract 2026-04-16
+
+**Routing:** Migration **`031`** adds `route_steps.model_pool` (JSONB), `parallel_group_id`, `parallel_branch_role`. Resolver walks **ordered pool members** (`first_eligible`, `deterministic_hash`, `round_robin`, `weighted_random`) and evaluates policies **per member**. Resolve/simulate **`contractVersion`** → **`2026-04-16`**; success payloads include **`selectedPoolMemberIndex`** and rich **`stepChain`** pool fields. Simulate **`stepDiagnostics`**, **`routingAttempts`**, **`perStepEstimates`** align with pool selection and echo parallel metadata.
+
+**Dashboard:** Route step inspector fields for model pool JSON and parallel ids; pipeline strip **Pool** badge when a pool is configured.
+
+**Docs:** [docs/rfc/keys-routing-phase-f-dynamic-chains.md](docs/rfc/keys-routing-phase-f-dynamic-chains.md) (Accepted), [docs/routing/phase-f-resolve-pools.md](docs/routing/phase-f-resolve-pools.md), [docs/routing/phase-f-parallel-metadata.md](docs/routing/phase-f-parallel-metadata.md), [docs/keys-routing-contract.md](docs/keys-routing-contract.md), [docs/api/openapi.yaml](docs/api/openapi.yaml), [docs/guides/sophia-keys-routing-consumer.md](docs/guides/sophia-keys-routing-consumer.md). **Packages:** `@restormel/keys` **ResolveStepChainEntry** / resolve success extended in [packages/core/src/dashboard/types.ts](packages/core/src/dashboard/types.ts). **MCP** [packages/mcp/src/routing-capabilities.ts](packages/mcp/src/routing-capabilities.ts) contract version.
+
+**Refs:** [STATUS.md](STATUS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Repo (2026-04-14) — Dashboard Routes UX (pipeline, preview, DnD, inspector) + Phase F RFC draft
+
+**Dashboard:** Sidebar label **Routes** (replaces “Rules” in nav and key copy). Route detail: read-only **pipeline strip** (`RoutePipelineStrip`), collapsible **Resolution preview** (`RouteResolutionPreview` — explain-chain + simulate JSON), **drag-and-drop** step reorder via **`svelte-dnd-action`**, two-column **builder** with sticky **inspector** (route fields + selected step + guard rails remain on the main column). **Overview** setup checklist filters hidden hrefs so **`RESTORMEL_DASHBOARD_UI_HIDDEN`** does not surface a dead “next step”.
+
+**Docs:** [docs/guides/dashboard-routes-discovery.md](docs/guides/dashboard-routes-discovery.md); runbooks table in [docs/runbooks.md](docs/runbooks.md). **RFC (design-only):** [docs/rfc/keys-routing-phase-f-dynamic-chains.md](docs/rfc/keys-routing-phase-f-dynamic-chains.md). **Status:** [STATUS.md](STATUS.md).
+
 ## Repo (2026-04-14) — Integration catalog, ecosystem marketing, stack wizard, `@restormel/aaif` **0.0.12**
 
 **AAIF:** Optional **`integrationStack`** on `AAIFRequest` (`schemaVersion: "1"`, optional `templateId`, `components[]` with ids from **`INTEGRATION_COMPONENT_IDS`**); **`INTEGRATION_CATALOG`** / **`INTEGRATION_STACK_TEMPLATES`**; **`isAAIFRequest`** validation; package [packages/aaif](packages/aaif/README.md).

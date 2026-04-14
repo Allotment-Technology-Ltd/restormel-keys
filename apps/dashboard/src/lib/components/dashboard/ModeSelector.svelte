@@ -3,6 +3,7 @@
   import { USER_MODE_OPTIONS, setUserMode, userMode, type UserMode } from "$lib/stores/user-mode";
 
   export let onSelect: ((mode: UserMode) => void) | undefined = undefined;
+  export let onSkip: (() => void) | undefined = undefined;
   export let showSkip = false;
 
   let selectedMode: UserMode | null = null;
@@ -39,7 +40,9 @@
     {/each}
   </div>
   {#if showSkip}
-    <button type="button" class="skip-link">Skip for now</button>
+    <button type="button" class="skip-link" on:click={() => onSkip?.()} aria-label="Skip onboarding">
+      Skip for now
+    </button>
   {/if}
 </section>
 

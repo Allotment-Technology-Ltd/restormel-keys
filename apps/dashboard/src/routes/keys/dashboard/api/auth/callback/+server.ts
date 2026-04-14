@@ -20,7 +20,7 @@ export const GET: RequestHandler = async (event) => {
     return new Response(
       JSON.stringify({
         error: "Neon Auth callback returned 404",
-        hint: "Check NEON_AUTH_BASE_URL in apps/dashboard/.env and that Auth is enabled in Neon Console. Tried paths: callback, callback/github.",
+        hint: "Check NEON_AUTH_BASE_URL in apps/dashboard/.env or .env.local and that Auth is enabled in Neon Console. Tried paths: callback, callback/github.",
       }),
       { status: 502, headers: { "Content-Type": "application/json" } }
     );
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async (event) => {
     return new Response(
       JSON.stringify({
         error: "Neon Auth callback returned 404",
-        hint: "Check NEON_AUTH_BASE_URL in apps/dashboard/.env and that Auth is enabled in Neon Console. Tried paths: callback, callback/github.",
+        hint: "Check NEON_AUTH_BASE_URL in apps/dashboard/.env or .env.local and that Auth is enabled in Neon Console. Tried paths: callback, callback/github.",
       }),
       { status: 502, headers: { "Content-Type": "application/json" } }
     );

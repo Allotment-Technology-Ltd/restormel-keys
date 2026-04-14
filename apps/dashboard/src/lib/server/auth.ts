@@ -1,15 +1,11 @@
 /**
  * Neon Auth: proxy + session. Auth is managed in Neon Console (OAuth, etc.).
- * Requires NEON_AUTH_BASE_URL. NEON_AUTH_COOKIE_SECRET is optional (used if we sign cookies; for proxy we rely on Neon’s cookie and optional domain rewrite).
+ * Requires NEON_AUTH_BASE_URL. NEON Auth URL must come from `$env/dynamic/private` so
+ * `apps/dashboard/.env.local` is respected (Vite envDir); `process.env` alone does not.
  */
-import path from "path";
-import { fileURLToPath } from "url";
-import { config as loadDotenv } from "dotenv";
+import { env } from "$env/dynamic/private";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-loadDotenv({ path: path.resolve(__dirname, "../../../.env") });
-
-export const baseUrl = () => process.env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
+export const baseUrl = () => env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
 
 function getSessionUrl(): string {
   const base = baseUrl();
@@ -130,8 +126,8 @@ export async function proxyAuthRequest(
 ): Promise<Response> {
   const base = baseUrl();
   if (!base) {
-    const raw = process.env.NEON_AUTH_BASE_URL;
-    console.error("[auth] NEON_AUTH_BASE_URL is not set; returning 503. (typeof:", typeof raw, "length:", raw?.length ?? 0, ") Set it in Vercel → Settings → Environment Variables for Production.");
+    const raw = env.NEON_AUTH_BASE_URL;
+    console.error("[auth] NEON_AUTH_BASE_URL is not set; returning 503. (typeof:", typeof raw, "length:", raw?.length ?? 0, ") Set it in apps/dashboard/.env or .env.local (or Vercel env for production).");
     return new Response(JSON.stringify({ error: "Neon Auth not configured" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },

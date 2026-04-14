@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { RESOLVE_SIMULATE_CONTRACT_VERSION } from "$lib/server/resolve-response";
 
 vi.mock("$lib/server/db", () => ({
   getProjectInWorkspace: vi.fn(),
   getModelsLifecycleByIds: vi.fn().mockResolvedValue([]),
   evaluatePolicies: vi.fn().mockResolvedValue([]),
+  listRouteStepEdges: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("$lib/server/route-resolver", () => ({
   resolveRouteForExecution: vi.fn(),
+  selectExecutableMemberForStep: vi.fn(),
 }));
 
 vi.mock("@restormel/keys", () => ({
@@ -32,8 +35,14 @@ function mockEvent(
 
 describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
   beforeEach(async () => {
-    const { resolveRouteForExecution } = await import("$lib/server/route-resolver");
-    vi.mocked(resolveRouteForExecution).mockReset();
+    const mod = await import("$lib/server/route-resolver");
+    vi.mocked(mod.resolveRouteForExecution).mockReset();
+    vi.mocked(mod.selectExecutableMemberForStep).mockResolvedValue({
+      ok: true,
+      canonicalProvider: "openai",
+      modelId: "gpt-4o",
+      memberIndex: null,
+    });
   });
 
   it("returns 401 when user missing", async () => {
@@ -117,7 +126,7 @@ describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
     expect(body.data).toMatchObject({
       selectedStepId: "s1",
       wouldRun: true,
-      contractVersion: "2026-04-14",
+      contractVersion: RESOLVE_SIMULATE_CONTRACT_VERSION,
     });
     expect(Array.isArray(body.data.stepDiagnostics)).toBe(true);
     expect(Array.isArray(body.data.perStepEstimates)).toBe(true);

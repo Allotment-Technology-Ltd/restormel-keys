@@ -30,6 +30,7 @@ vi.mock("$lib/server/db", () => ({
   deletePolicy: vi.fn().mockResolvedValue(false),
   listPolicyBindings: vi.fn().mockResolvedValue([]),
   listPolicyBindingsByTarget: vi.fn().mockResolvedValue([]),
+  getPolicyBindingConflictMessage: vi.fn().mockResolvedValue(null),
   createPolicyBinding: vi.fn().mockResolvedValue(null),
   deletePolicyBinding: vi.fn().mockResolvedValue(false),
   evaluatePolicies: vi.fn().mockResolvedValue([]),

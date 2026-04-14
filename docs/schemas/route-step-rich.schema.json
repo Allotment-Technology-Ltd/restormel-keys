@@ -13,7 +13,7 @@
         "advanceOn": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Suggested failure kinds that mean \"try next tier\" (host interpretation). Echoed on resolve `stepChain` as `advanceOn` when set."
+          "description": "Suggested failure kinds that mean \"try next tier\". Echoed on resolve `stepChain` as `advanceOn` when set. Hosts interpret freely. **Hosted runtime** (`POST …/runtime/invoke`) honours only allowlisted tokens (`error`, `rate_limit`, `no_key`, `policy_block`, `any`) for upstream-failure advance; see `runtimeSwitchEvalVersion`."
         }
       }
     },
@@ -36,6 +36,33 @@
         "maxUsdPerRequest": { "type": "number" },
         "maxInputTokens": { "type": "integer", "minimum": 0 }
       }
+    },
+    "modelPool": {
+      "type": "object",
+      "description": "Model pool v1 (stored in route_steps.model_pool). Resolver picks first eligible member after ordering; must not contain secrets.",
+      "required": ["version", "selectionStrategy", "members"],
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "selectionStrategy": {
+          "type": "string",
+          "enum": ["first_eligible", "deterministic_hash", "round_robin", "weighted_random"]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["providerPreference", "modelId"],
+            "properties": {
+              "providerPreference": { "type": "string" },
+              "modelId": { "type": "string" },
+              "weight": { "type": "number", "minimum": 0.0001 }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

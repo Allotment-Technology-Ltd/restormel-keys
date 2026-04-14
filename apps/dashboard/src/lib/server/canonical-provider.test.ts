@@ -27,7 +27,7 @@ describe("canonical-provider (voyage + vertex)", () => {
   });
 
   it("vertex/google remain executable with model", () => {
-    expect(isExecutableProviderModelPair("google", "gemini-1.5-flash").ok).toBe(true);
-    expect(isExecutableProviderModelPair("vertex", "gemini-1.5-flash").ok).toBe(true);
+    expect(isExecutableProviderModelPair("google", "gemini-2.5-flash").ok).toBe(true);
+    expect(isExecutableProviderModelPair("vertex", "gemini-2.5-flash").ok).toBe(true);
   });
 });

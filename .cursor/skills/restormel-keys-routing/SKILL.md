@@ -12,7 +12,7 @@ description: Use when configuring or explaining Restormel Keys multi-step routes
 
 ## Control plane (no LLM execution)
 
-- **`POST .../resolve`** — discovery (`workload` + `stage` or `routeId`), returns `stepChain` with rich per-step metadata (contract `2026-04-14+`), `attemptNumber` for server-advanced fallback.
+- **`POST .../resolve`** — discovery (`workload` + `stage` or `routeId`), returns `stepChain` with rich per-step metadata (contract `2026-04-16+`; pools + parallel metadata), `attemptNumber` for server-advanced fallback.
 - **`POST .../routes/{routeId}/simulate`** — dry-run + optional `stepDiagnostics`; optional `includeRoutingAttempts` for hypothetical tier outcomes.
 - **`GET .../routes/{routeId}/export`** — portable route+steps bundle (JSON schema 1.0.0) for GitOps.
 - **`POST .../routes/import`** — apply a bundle (create route, or **`replaceRouteId`** to overwrite metadata + steps).

@@ -1,7 +1,7 @@
 {
   "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
   "source": "static",
-  "lastUpdated": "2026-03-28",
+  "lastUpdated": "2026-04-14",
   "models": [
     {
       "id": "gpt-4o",
@@ -246,6 +246,50 @@
       ]
     },
     {
+      "id": "gemini-3.1-pro-preview",
+      "canonicalName": "gemini-3.1-pro-preview",
+      "family": "gemini",
+      "lifecycleState": "preview",
+      "description": "Gemini 3.1 Pro (preview): frontier multimodal model on the Google Generative Language API.",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools", "reasoning"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-3.1-pro-preview", "availabilityStatus": "available", "pricingRef": "google-gemini-3-1-pro-preview" }
+      ]
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "canonicalName": "gemini-3-flash-preview",
+      "family": "gemini",
+      "lifecycleState": "preview",
+      "description": "Gemini 3 Flash (preview): fast multimodal model on the Google Generative Language API.",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": ["text", "vision"],
+      "capabilities": ["chat", "vision", "tools"],
+      "editorialSummary": null,
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        { "providerIntegrationType": "google", "providerModelId": "gemini-3-flash-preview", "availabilityStatus": "available", "pricingRef": "google-gemini-3-flash-preview" }
+      ]
+    },
+    {
       "id": "gpt-4o-audio-preview",
       "canonicalName": "gpt-4o-audio-preview",
       "family": "gpt-4",
@@ -337,8 +381,8 @@
       "id": "claude-3-5-haiku",
       "canonicalName": "claude-3-5-haiku",
       "family": "claude",
-      "lifecycleState": "active",
-      "description": "Claude 3.5 Haiku.",
+      "lifecycleState": "deprecated",
+      "description": "Claude 3.5 Haiku (legacy snapshot). Anthropic recommends Claude Haiku 4.5 for new work.",
       "contextWindow": 200000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -349,18 +393,18 @@
       "editorialSummary": null,
       "deprecationDate": null,
       "retirementDate": null,
-      "replacementModelId": null,
+      "replacementModelId": "claude-haiku-4.5",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-haiku-20241022", "availabilityStatus": "available", "pricingRef": "anthropic-claude-3-5-haiku" }
+        { "providerIntegrationType": "anthropic", "providerModelId": "claude-3-5-haiku-20241022", "availabilityStatus": "unavailable", "pricingRef": "anthropic-claude-3-5-haiku" }
       ]
     },
     {
       "id": "gemini-2.0-flash-exp",
       "canonicalName": "gemini-2.0-flash-exp",
       "family": "gemini",
-      "lifecycleState": "active",
-      "description": "Gemini 2.0 Flash (experimental).",
+      "lifecycleState": "deprecated",
+      "description": "Gemini 2.0 Flash (experimental). Superseded by Gemini 2.5 Flash and Gemini 3.x on the Google AI API.",
       "contextWindow": 1000000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -371,18 +415,18 @@
       "editorialSummary": null,
       "deprecationDate": null,
       "retirementDate": null,
-      "replacementModelId": null,
+      "replacementModelId": "gemini-2.5-flash",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-2.0-flash-exp", "availabilityStatus": "available", "pricingRef": "google-gemini-2-0-flash-exp" }
+        { "providerIntegrationType": "google", "providerModelId": "gemini-2.0-flash-exp", "availabilityStatus": "unavailable", "pricingRef": "google-gemini-2-0-flash-exp" }
       ]
     },
     {
       "id": "gemini-1.5-pro",
       "canonicalName": "gemini-1.5-pro",
       "family": "gemini",
-      "lifecycleState": "active",
-      "description": "Gemini 1.5 Pro.",
+      "lifecycleState": "deprecated",
+      "description": "Gemini 1.5 Pro (legacy). Google recommends Gemini 2.5 Pro or Gemini 3.1 Pro preview for new integrations.",
       "contextWindow": 2000000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -393,18 +437,18 @@
       "editorialSummary": null,
       "deprecationDate": null,
       "retirementDate": null,
-      "replacementModelId": null,
+      "replacementModelId": "gemini-2.5-pro",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-pro", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-pro" }
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-pro", "availabilityStatus": "unavailable", "pricingRef": "google-gemini-1-5-pro" }
       ]
     },
     {
       "id": "gemini-1.5-flash",
       "canonicalName": "gemini-1.5-flash",
       "family": "gemini",
-      "lifecycleState": "active",
-      "description": "Gemini 1.5 Flash.",
+      "lifecycleState": "deprecated",
+      "description": "Gemini 1.5 Flash (legacy). Google recommends Gemini 2.5 Flash or Gemini 3.x for latency-sensitive workloads.",
       "contextWindow": 1000000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -415,18 +459,18 @@
       "editorialSummary": null,
       "deprecationDate": null,
       "retirementDate": null,
-      "replacementModelId": null,
+      "replacementModelId": "gemini-2.5-flash",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-flash" }
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash", "availabilityStatus": "unavailable", "pricingRef": "google-gemini-1-5-flash" }
       ]
     },
     {
       "id": "gemini-1.5-flash-8b",
       "canonicalName": "gemini-1.5-flash-8b",
       "family": "gemini",
-      "lifecycleState": "active",
-      "description": "Gemini 1.5 Flash 8B.",
+      "lifecycleState": "deprecated",
+      "description": "Gemini 1.5 Flash 8B (legacy). Use Gemini 2.5 Flash for small fast models.",
       "contextWindow": 1000000,
       "maxOutputTokens": 8192,
       "supportsTools": true,
@@ -437,10 +481,10 @@
       "editorialSummary": null,
       "deprecationDate": null,
       "retirementDate": null,
-      "replacementModelId": null,
+      "replacementModelId": "gemini-2.5-flash",
       "sourceLastVerifiedAt": null,
       "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash-8b", "availabilityStatus": "available", "pricingRef": "google-gemini-1-5-flash-8b" }
+        { "providerIntegrationType": "google", "providerModelId": "gemini-1.5-flash-8b", "availabilityStatus": "unavailable", "pricingRef": "google-gemini-1-5-flash-8b" }
       ]
     },
     {

@@ -26,10 +26,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: DASHBOARD_BASE + "/integrations", label: "Connections" },
       { href: DASHBOARD_BASE + "/access", label: "Gateway keys" },
-      { href: DASHBOARD_BASE + "/testing", label: "Restormel Testing" },
-      { href: DASHBOARD_BASE + "/routes", label: "Rules" },
+      { href: DASHBOARD_BASE + "/routes", label: "Routes" },
       { href: DASHBOARD_BASE + "/policies", label: "Guard Rails" },
-      { href: DASHBOARD_BASE + "/models", label: "Model Catalog" },
     ],
   },
   {
@@ -39,6 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: DASHBOARD_BASE + "/analytics", label: "Usage & Analytics" },
       { href: DASHBOARD_BASE + "/logs", label: "Logs" },
       { href: DASHBOARD_BASE + "/healthcheck", label: "System Health" },
+      { href: DASHBOARD_BASE + "/models", label: "Model Catalog" },
     ],
   },
   {
@@ -48,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: DASHBOARD_BASE + "/sandbox", label: "Test & Preview" },
       { href: DASHBOARD_BASE + "/copy-for-ci", label: "GitHub Setup" },
       { href: DASHBOARD_BASE + "/dev-tools", label: "Dev Tools" },
+      { href: DASHBOARD_BASE + "/testing", label: "Restormel Testing" },
     ],
   },
 ];
@@ -63,7 +63,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/cli/connect"]: "Connect CLI",
   [DASHBOARD_BASE + "/models"]: "Model Catalog",
   [DASHBOARD_BASE + "/healthcheck"]: "System Health",
-  [DASHBOARD_BASE + "/routes"]: "Rules",
+  [DASHBOARD_BASE + "/routes"]: "Routes",
   [DASHBOARD_BASE + "/policies"]: "Guard Rails",
   [DASHBOARD_BASE + "/analytics"]: "Usage & Analytics",
   [DASHBOARD_BASE + "/logs"]: "Logs",
@@ -87,8 +87,8 @@ export function topbarTitle(pathname: string): string {
     return "Model";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname.includes("/routes")) {
-    if (pathname.endsWith("/routes")) return "Rules";
-    return "Rule";
+    if (pathname.endsWith("/routes")) return "Routes";
+    return "Route";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/policies/") && pathname !== DASHBOARD_BASE + "/policies") {
     return "Guard Rail";

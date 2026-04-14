@@ -41,7 +41,7 @@ export interface RouteResolveMetadata {
   publishedVersion: number | null;
 }
 
-/** Enabled steps in route order on resolve/simulate success (`stepChain`). Contract 2026-04-14+ adds optional policy/routing metadata per tier. */
+/** Enabled steps in route order on resolve/simulate success (`stepChain`). Contract 2026-04-16+ adds pools + parallel metadata. */
 export interface ResolveStepChainEntry {
   stepId: string;
   orderIndex: number;
@@ -60,6 +60,13 @@ export interface ResolveStepChainEntry {
   advanceOn?: string[];
   /** Echoed from `retryPolicy.retryOn` when present (string array). Host interprets. */
   retryOn?: string[];
+  /** Echoed from `model_pool` when set (v1 JSON). */
+  modelPool?: Record<string, unknown> | null;
+  poolSelectionStrategy?: string | null;
+  poolMemberIndex?: number | null;
+  poolMembers?: Array<{ providerType: string | null; modelId: string | null }>;
+  parallelGroupId?: string | null;
+  parallelBranchRole?: string | null;
 }
 
 export interface ResolveSuccess {
@@ -79,6 +86,7 @@ export interface ResolveSuccess {
     switchReasonCode?: string | null;
     estimatedCostUsd?: number | null;
     matchedCriteria?: Record<string, unknown> | null;
+    selectedPoolMemberIndex?: number | null;
     fallbackCandidates?: unknown[];
     stepChain?: ResolveStepChainEntry[];
     decisionMetadata?: Record<string, unknown>;

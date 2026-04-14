@@ -82,7 +82,7 @@ export const costEstimateTool: McpToolSchema = {
     properties: {
       model: {
         type: "string",
-        description: "Model ID (e.g. gpt-4o, claude-3-5-sonnet).",
+        description: "Model ID (e.g. gpt-4o, claude-sonnet-4).",
       },
       inputTokensM: {
         type: "number",

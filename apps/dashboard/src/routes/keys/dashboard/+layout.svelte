@@ -181,6 +181,17 @@
             >
               ▶ Expand nav
             </button>
+          {:else}
+            <button
+              type="button"
+              class="topbar-nav-toggle"
+              aria-pressed={false}
+              aria-label="Collapse dashboard navigation for more workspace"
+              title="Hide sidebar — more room for editors"
+              on:click={toggleSidebar}
+            >
+              ◀ Hide nav
+            </button>
           {/if}
           <span class="topbar-title">{title}</span>
         </div>
@@ -215,7 +226,7 @@
                 <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
                 <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
                 <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create a Gateway key</strong>, <strong>connect a provider</strong> (Connections), then <strong>create a rule</strong> (Rules) for live traffic — or use <strong>Restormel Testing</strong> for CI without rules first.</li>
+                <li><strong>Create a Gateway key</strong>, <strong>connect a provider</strong> (Connections), then <strong>create a route</strong> (Routes) for live traffic — or use <strong>Restormel Testing</strong> for CI without routes first.</li>
                 <li><strong>First request</strong> (sandbox) → then <strong>Usage & Analytics</strong> and Logs.</li>
               </ol>
               <p class="welcome-links">

@@ -8,7 +8,7 @@ const PROVIDERS: ProviderDefinition[] = [openaiProvider, anthropicProvider, goog
 export function registerEstimate(program: Command): void {
   program
     .command("estimate <model>")
-    .description("Cost estimate for a model (e.g. gpt-4o, claude-3-5-sonnet)")
+    .description("Cost estimate for a model (e.g. gpt-4o, claude-sonnet-4)")
     .option("-i, --input <n>", "Input tokens (millions)", "1")
     .option("-o, --output <n>", "Output tokens (millions)", "1")
     .action(async (model: string, opts: { input?: string; output?: string }) => {

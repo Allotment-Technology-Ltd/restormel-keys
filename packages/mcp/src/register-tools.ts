@@ -47,7 +47,7 @@ const providersValidateOutput = {
 };
 
 const costEstimateInput = {
-  model: z.string().describe("Model ID (e.g. gpt-4o, claude-3-5-sonnet)."),
+    model: z.string().describe("Model ID (e.g. gpt-4o, claude-sonnet-4)."),
   inputTokensM: z.number().optional().describe("Input tokens in millions. Default: 1."),
   outputTokensM: z.number().optional().describe("Output tokens in millions. Default: 1."),
 };
@@ -795,7 +795,7 @@ const DEPRECATED_MODELS: Record<string, { severity: "info" | "warning" | "critic
     },
     "claude-2": {
       severity: "critical",
-      replacement: "claude-3-5-sonnet",
+      replacement: "claude-sonnet-4",
       message: "Model is retired in many regions and should be removed from fallback chains.",
     },
   };

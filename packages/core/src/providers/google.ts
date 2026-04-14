@@ -10,23 +10,20 @@ import type {
 
 const BASE_URL = "https://generativelanguage.googleapis.com";
 
+/** Google AI (Generative Language API) model ids aligned with dashboard catalog + drift checks. */
 export const GOOGLE_MODELS = [
+  "gemini-3.1-pro-preview",
+  "gemini-3-flash-preview",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
-  "gemini-2.0-flash-exp",
-  "gemini-1.5-pro",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
 ] as const;
 
-/** Pricing per 1M tokens (USD). Input, output. */
+/** Pricing per 1M tokens (USD). Input, output. Placeholders track UI estimates; verify against Google pricing pages. */
 const GOOGLE_PRICING: Record<string, { input: number; output: number }> = {
+  "gemini-3.1-pro-preview": { input: 1.25, output: 5 },
+  "gemini-3-flash-preview": { input: 0.5, output: 3 },
   "gemini-2.5-pro": { input: 1.25, output: 5 },
   "gemini-2.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-2.0-flash-exp": { input: 0.1, output: 0.4 },
-  "gemini-1.5-pro": { input: 1.25, output: 5 },
-  "gemini-1.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-1.5-flash-8b": { input: 0.0375, output: 0.15 },
 };
 
 async function validateKey(

@@ -217,6 +217,9 @@ describe("bundleStepsToSnapshotsForDb", () => {
         fallbackOn: "error",
         timeoutMs: 3000,
         notes: null,
+        modelPool: null,
+        parallelGroupId: null,
+        parallelBranchRole: null,
       },
     ]);
   });

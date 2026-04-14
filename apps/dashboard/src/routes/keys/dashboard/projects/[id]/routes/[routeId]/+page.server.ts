@@ -7,8 +7,62 @@ import {
   listPolicies,
   listPolicyBindingsByTarget,
   listModels,
+  listProviderModelVariantsByModelIds,
+  listRouteStepEdges,
 } from "$lib/server/db";
 import { INGESTION_STAGE_IDS, INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
+import { expandPoolMembersFromStep } from "$lib/server/model-pool";
+
+/** Provider keys aligned with dashboard step `providerPreference` options. */
+const STEP_PROVIDER_KEYS = [
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "vercel",
+  "portkey",
+  "voyage",
+] as const;
+
+function variantServesProvider(
+  v: {
+    modelId: string;
+    providerIntegrationType: string;
+    catalogProviderId: string | null;
+    availabilityStatus: string | null;
+  },
+  pref: string
+): boolean {
+  const status = (v.availabilityStatus ?? "").toLowerCase();
+  if (status === "unavailable") return false;
+  const p = pref.trim().toLowerCase();
+  const t = (v.providerIntegrationType ?? "").trim().toLowerCase();
+  const c = (v.catalogProviderId ?? "").trim().toLowerCase();
+  return t === p || (Boolean(c) && c === p);
+}
+
+function buildModelIdsByProvider(
+  modelRows: { id: string; canonicalName: string }[],
+  variantRows: Awaited<ReturnType<typeof listProviderModelVariantsByModelIds>>
+): Record<string, string[]> {
+  const modelIdsByProvider: Record<string, string[]> = {};
+  for (const k of STEP_PROVIDER_KEYS) modelIdsByProvider[k] = [];
+  const nameById = new Map(modelRows.map((m) => [m.id, m.canonicalName]));
+  for (const m of modelRows) {
+    const mv = variantRows.filter((v) => v.modelId === m.id);
+    for (const pref of STEP_PROVIDER_KEYS) {
+      if (mv.some((v) => variantServesProvider(v, pref))) {
+        modelIdsByProvider[pref].push(m.id);
+      }
+    }
+  }
+  for (const pref of STEP_PROVIDER_KEYS) {
+    modelIdsByProvider[pref].sort((a, b) =>
+      (nameById.get(a) ?? a).localeCompare(nameById.get(b) ?? b, undefined, { sensitivity: "base" })
+    );
+  }
+  return modelIdsByProvider;
+}
 
 async function projectScope(
   locals: App.Locals,
@@ -27,7 +81,9 @@ async function projectScope(
   return project ? { projectId, userId: locals.user.uid } : null;
 }
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, depends, locals }) => {
+  /** Narrow client `invalidate()` so step/route edits do not rerun every layout load. */
+  depends(`app:route-detail:${params.routeId}`);
   const scope = await projectScope(locals, params.id);
   if (!scope) {
     return {
@@ -35,6 +91,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       route: null,
       steps: [],
       modelLifecycleWarnings: [],
+      availablePolicies: [],
+      routePolicyBindings: [],
+      routeStepLinks: [],
+      stepPolicyBindings: [],
+      modelOptions: [],
+      modelCatalog: [],
+      modelIdsByProvider: {},
       ingestionWorkload: INGESTION_WORKLOAD,
       ingestionStageIds: [...INGESTION_STAGE_IDS],
       error: "Not found",
@@ -48,6 +111,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         route: null,
         steps: [],
         modelLifecycleWarnings: [],
+        availablePolicies: [],
+        routePolicyBindings: [],
+        routeStepLinks: [],
+        stepPolicyBindings: [],
+        modelOptions: [],
+        modelCatalog: [],
+        modelIdsByProvider: {},
         ingestionWorkload: INGESTION_WORKLOAD,
         ingestionStageIds: [...INGESTION_STAGE_IDS],
         error: "Route not found",
@@ -56,7 +126,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     const modelIds: string[] = [];
     if (result.route.defaultModelId) modelIds.push(result.route.defaultModelId);
     for (const s of result.steps) {
-      if (s.modelId) modelIds.push(s.modelId);
+      const { candidates } = expandPoolMembersFromStep(s, result.route.defaultModelId ?? null);
+      for (const c of candidates) {
+        if (c.modelId) modelIds.push(c.modelId);
+      }
     }
     const lifecycleList = await getModelsLifecycleByIds(modelIds);
     const deprecatedStates = new Set(["deprecated", "retired"]);
@@ -69,7 +142,29 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     const routePolicyBindings = workspaceId
       ? await listPolicyBindingsByTarget("route", params.routeId, workspaceId)
       : [];
-    const modelOptions = await listModels({ limit: 200 });
+    const routeStepLinks = await listRouteStepEdges(params.routeId, scope.projectId, scope.userId);
+    const stepPolicyBindings =
+      workspaceId && result.steps.length > 0
+        ? await Promise.all(
+            result.steps.map(async (s) => {
+              const bindings = await listPolicyBindingsByTarget("route_step", s.id, workspaceId);
+              return {
+                stepId: s.id,
+                bindings: bindings.map((b) => ({
+                  id: b.id,
+                  policyId: b.policyId,
+                  policyName: b.policy?.name ?? "Policy",
+                  policyType: b.policy?.type ?? "unknown",
+                })),
+              };
+            })
+          )
+        : [];
+    const modelRows = await listModels({ limit: 250 });
+    const variantRows =
+      modelRows.length > 0 ? await listProviderModelVariantsByModelIds(modelRows.map((m) => m.id)) : [];
+    const modelIdsByProvider = buildModelIdsByProvider(modelRows, variantRows);
+    const modelCatalog = modelRows.map((m) => ({ id: m.id, name: m.canonicalName }));
     return {
       project: project ? { id: project.id, name: project.name } : null,
       route: result.route,
@@ -89,7 +184,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         policyName: b.policy?.name ?? "Policy",
         policyType: b.policy?.type ?? "unknown",
       })),
-      modelOptions: modelOptions.map((m) => m.id),
+      routeStepLinks: routeStepLinks.map((e) => ({
+        id: e.id,
+        fromStepId: e.fromStepId,
+        toStepId: e.toStepId,
+        priority: e.priority,
+        label: e.label ?? null,
+      })),
+      stepPolicyBindings,
+      modelOptions: modelRows.map((m) => m.id),
+      modelCatalog,
+      modelIdsByProvider,
       error: null,
     };
   } catch (e) {
@@ -101,7 +206,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       modelLifecycleWarnings: [],
       availablePolicies: [],
       routePolicyBindings: [],
+      routeStepLinks: [],
+      stepPolicyBindings: [],
       modelOptions: [],
+      modelCatalog: [],
+      modelIdsByProvider: {},
       ingestionWorkload: INGESTION_WORKLOAD,
       ingestionStageIds: [...INGESTION_STAGE_IDS],
       error: "Unable to load route",

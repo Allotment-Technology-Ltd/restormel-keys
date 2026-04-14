@@ -52,6 +52,9 @@ export function serializeStepForBundle(s: RouteStepRecord) {
     fallbackOn: s.fallbackOn,
     timeoutMs: s.timeoutMs,
     notes: s.notes ?? null,
+    modelPool: s.modelPool ?? null,
+    parallelGroupId: s.parallelGroupId ?? null,
+    parallelBranchRole: s.parallelBranchRole ?? null,
     enabled: s.enabled,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
@@ -147,6 +150,16 @@ export function bundleStepsToSnapshotsForDb(steps: RouteGraphBundle["steps"]): R
     else if (s.timeoutMs === null) snap.timeoutMs = null;
     if (typeof s.notes === "string") snap.notes = s.notes;
     else if (s.notes === null) snap.notes = null;
+    if (s.modelPool !== undefined && s.modelPool !== null && typeof s.modelPool === "object") {
+      snap.modelPool = s.modelPool;
+    } else if (s.modelPool === null) snap.modelPool = null;
+    if (typeof s.parallelGroupId === "string") snap.parallelGroupId = s.parallelGroupId;
+    else if (s.parallelGroupId === null) snap.parallelGroupId = null;
+    if (typeof s.parallelBranchRole === "string") snap.parallelBranchRole = s.parallelBranchRole;
+    else if (s.parallelBranchRole === null) snap.parallelBranchRole = null;
+    if (!("modelPool" in snap)) snap.modelPool = null;
+    if (!("parallelGroupId" in snap)) snap.parallelGroupId = null;
+    if (!("parallelBranchRole" in snap)) snap.parallelBranchRole = null;
     return snap;
   });
 }

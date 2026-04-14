@@ -1,8 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-
-const NEON_AUTH_BASE_URL = (process.env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
+import { env } from "$env/dynamic/private";
 
 /** Collect all Set-Cookie values from a response (handles multi-value headers). */
 function getSetCookies(headers: Headers): string[] {
@@ -21,7 +20,8 @@ function normaliseCookie(cookie: string): string {
 }
 
 export const GET: RequestHandler = async ({ url }) => {
-  if (!NEON_AUTH_BASE_URL) {
+  const neonAuthBase = (env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
+  if (!neonAuthBase) {
     return json({ error: "Neon Auth not configured" }, { status: 503 });
   }
 
@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
   let res: Response;
   try {
-    res = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
+    res = await fetch(`${neonAuthBase}/sign-in/social`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -46,7 +46,7 @@ export const GET: RequestHandler = async ({ url }) => {
   } catch (e) {
     console.error("[auth] Neon Auth sign-in/social network error", {
       error: e instanceof Error ? e.message : String(e),
-      endpoint: `${NEON_AUTH_BASE_URL}/sign-in/social`,
+      endpoint: `${neonAuthBase}/sign-in/social`,
       callbackURL,
     });
     return json(

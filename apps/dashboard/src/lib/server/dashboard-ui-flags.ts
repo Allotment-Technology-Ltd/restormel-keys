@@ -56,7 +56,7 @@ export function filterNavGroupsForDashboardUi(groups: NavGroup[], hidden: Set<Da
 
 const SECTION_LABELS: Record<DashboardUiSection, string> = {
   policies: "Guard Rails",
-  routes: "Rules",
+  routes: "Routes",
   models: "Model Catalog",
   providers: "Connections",
   analytics: "Usage & Analytics",

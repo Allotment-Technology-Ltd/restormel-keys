@@ -3,6 +3,7 @@ import type { RequestHandler } from "./$types";
 import { createRouteStep, getModel, getRoute, listRouteSteps } from "$lib/server/db";
 import { normalizeProviderForStorage, ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS } from "$lib/server/canonical-provider";
 import { jsonRouteStepProviderNotAllowed } from "$lib/server/route-step-http";
+import { ROUTE_STEP_LABEL_MAX_LENGTH } from "$lib/route-step-label";
 const FALLBACK_ON = new Set(["error", "rate_limit", "no_key", "policy_block", "any"]);
 
 function projectScope(locals: App.Locals, projectId: string): { projectId: string; userId: string } | null {
@@ -55,6 +56,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       fallbackOn?: string | null;
       timeoutMs?: number | null;
       notes?: string | null;
+      modelPool?: Record<string, unknown> | null;
+      parallelGroupId?: string | null;
+      parallelBranchRole?: string | null;
       enabled?: boolean;
     };
     try {
@@ -92,6 +96,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   }
 
   const label = typeof body.label === "string" ? body.label.trim() : null;
+  if (label !== null && label.length > ROUTE_STEP_LABEL_MAX_LENGTH) {
+    return invalid(`label must be at most ${ROUTE_STEP_LABEL_MAX_LENGTH} characters`);
+  }
   let switchCriteria: Record<string, unknown> | null | undefined = undefined;
   if (body.switchCriteria !== undefined) {
     if (body.switchCriteria === null) switchCriteria = null;
@@ -115,6 +122,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
   const notes = typeof body.notes === "string" ? body.notes.trim() : null;
 
+  if (body.modelPool !== undefined && body.modelPool !== null && typeof body.modelPool !== "object") {
+    return invalid("modelPool must be an object or null");
+  }
+  if (body.parallelGroupId !== undefined && body.parallelGroupId !== null && typeof body.parallelGroupId !== "string") {
+    return invalid("parallelGroupId must be a string or null");
+  }
+  if (
+    body.parallelBranchRole !== undefined &&
+    body.parallelBranchRole !== null &&
+    typeof body.parallelBranchRole !== "string"
+  ) {
+    return invalid("parallelBranchRole must be a string or null");
+  }
+
   const existing = await listRouteSteps(params.routeId, scope.projectId, scope.userId);
   if (existing.some((s) => s.orderIndex === orderIndex)) {
     return json({ error: "duplicate_order_index" }, { status: 409 });
@@ -136,6 +157,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       retryPolicy,
       costPolicy,
       notes,
+      modelPool: body.modelPool,
+      parallelGroupId: body.parallelGroupId,
+      parallelBranchRole: body.parallelBranchRole,
     });
     if (!step) return json({ error: "route_not_found" }, { status: 404 });
     return json({ data: step }, { status: 201 });

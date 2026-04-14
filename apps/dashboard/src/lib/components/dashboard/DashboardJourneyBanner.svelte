@@ -77,8 +77,8 @@
     }
     if (path.startsWith(base + "/models")) {
       return {
-        text: "Use catalog model IDs when you create or edit rules.",
-        cta: "Rules",
+        text: "Use catalog model IDs when you create or edit routes.",
+        cta: "Routes",
         href: `${base}/routes`,
       };
     }
@@ -98,8 +98,8 @@
     }
     if (path.startsWith(base + "/sandbox")) {
       return {
-        text: "Promote a working model choice into a named rule.",
-        cta: "Rules",
+        text: "Promote a working model choice into a named route.",
+        cta: "Routes",
         href: `${base}/routes`,
       };
     }
@@ -120,7 +120,7 @@
     if (path.startsWith(base + "/dev-tools/aaif")) {
       return {
         text: "Define routes and guard rails first so AAIF calls land on governed model paths.",
-        cta: "Rules",
+        cta: "Routes",
         href: `${base}/routes`,
       };
     }
@@ -147,7 +147,7 @@
     }
     if (path.startsWith(base + "/lifecycle")) {
       return {
-        text: "Overview lists two tracks: live traffic (rules) vs Restormel Testing in CI (resolve + doctor).",
+        text: "Overview lists two tracks: live traffic (routes) vs Restormel Testing in CI (resolve + doctor).",
         cta: "Overview",
         href: `${base}/`,
       };

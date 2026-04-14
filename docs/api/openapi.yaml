@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.8
+  version: 1.6.0
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -13,7 +13,7 @@ info:
     **Two HTTP surfaces:** (1) **Zuplo Gateway** — control-plane CRUD (projects, keys); use **consumer key** (`zpka_...`, `apiKey` scheme).
     (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
 
-    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-04-14` and return stable
+    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-04-16` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
 
     **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
@@ -23,7 +23,7 @@ info:
     for selectors. Each row has **`bindingKind`**: **`execution`** (canonical `providerType` + Keys catalog `modelId`, strict validation) or **`registry`** (arbitrary provider/model strings for host merge metadata; nested `model` may be null). **Default `GET` response:** the binding rows are in JSON **`data`** (array); there is no `data.bindings` key — integrators should read `data`. **Global catalog** remains `GET /api/models`. Legacy: `GET .../models?source=catalog`
     on the project path returns the global list (deprecated — prefer `GET /api/models`). **Batch validation errors:** `POST`/`PUT` may return **400** with `error: project_models_validation_failed` and `errors[]` (see schema `ProjectModelsValidationError`). Spec: `docs/requirements/project-model-index-gateway-api.md`, integrator note: `docs/restormel-integration/keys-catalog-sync.md`.
 
-    **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
+    **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`, `POST /api/projects/{projectId}/routes/{routeId}/runtime/invoke`, `POST /api/projects/{projectId}/routes/{routeId}/runtime/jobs`, `GET /api/projects/{projectId}/routes/{routeId}/runtime/jobs/{jobId}`, `DELETE /api/projects/{projectId}/routes/{routeId}/runtime/jobs/{jobId}`,
     `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
     `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `GET .../export`, `GET .../explain-chain`, `POST .../routes/import`, `POST .../validate-binding`, `POST .../recommend`,
     `GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`, `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
@@ -370,13 +370,14 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-04-14" }
+                      contractVersion: { type: string, example: "2026-04-16" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string, description: Matched route ID }
                       routeName: { type: string, description: Matched route name }
                       route: { $ref: "#/components/schemas/RouteResolveMetadata" }
                       providerType: { type: string, description: Canonical API slug; e.g. vertex for Google }
                       modelId: { type: string, description: Non-null on HTTP 200 success }
+                      selectedPoolMemberIndex: { type: integer, nullable: true, description: Set when the winning step used a model pool member }
                       explanation: { type: string }
                       selectedStepId: { type: string, nullable: true }
                       selectedOrderIndex: { type: integer, nullable: true }
@@ -431,6 +432,355 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "500":
           description: Internal resolve error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/runtime/invoke:
+    post:
+      summary: Runtime invoke (hosted pipeline chat)
+      description: |
+        **Phase 2–3:** Walks **enabled** route steps in **graph-linear order** (same ordering as `POST /resolve`), runs **policy** per step, then executes a **pipeline** of **OpenAI-compatible** `POST /v1/chat/completions` calls. Step 1 uses the request `messages`; each later step receives the same initial messages plus the **previous step’s assistant output** as an additional **user** message (chained pipeline). **Phase 3:** On upstream failure, Keys may **advance** to the next enabled step when **`fallbackOn`** and allowlisted **`switchCriteria.advanceOn`** match the classified failure kind (`error`, `rate_limit`, …); see **`runtimeSwitchEvalVersion`**.
+
+        **Limits:** At most **10** enabled steps per route; maximum wall time per request is capped (HTTP **504** `runtime_wall_timeout` if exceeded). More than 10 enabled steps returns **422** `runtime_step_limit_exceeded`.
+
+        **Auth:** Same as resolve — Gateway key or session; project scoping unchanged.
+
+        **Response:** `data` includes `runtimeContractVersion`, **`runtimeSwitchEvalVersion`**, `content` (final assistant text), aggregated `usage`, optional `runtimeSteps[]` (per-step token usage and skipped steps, including `upstream_failed_advancing`), and resolve-aligned fields (`contractVersion`, route, provider/model for the **last** executed step, etc.). Raw API keys are never returned.
+
+        **Stable error codes** (JSON `error` field):
+        | HTTP | `error` | Meaning |
+        |------|---------|---------|
+        | 401 | `unauthorized` | Missing/invalid auth or project not in scope |
+        | 402 | `usage_limit_reached` | Free-plan monthly request cap (when entitlements apply) |
+        | 403 | `policy_blocked` | Every enabled step was blocked by policy |
+        | 404 | `no_route` / `integration_not_found` | No route or missing provider integration |
+        | 409 | `route_unpublished` | Route exists but draft |
+        | 422 | `no_key_available` / `resolve_incomplete` / `credential_unavailable` / `runtime_provider_not_supported` / `runtime_step_limit_exceeded` | No executable output, credentials, unsupported provider for a step, or too many steps |
+        | 502 | `runtime_upstream_error` | Upstream HTTP or parse failure (safe `message`; no secrets) |
+        | 504 | `runtime_wall_timeout` | Pipeline exceeded maximum duration |
+        | 500 | `internal_error` | Server error |
+      operationId: runtimeInvokeRoute
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string, description: Route UUID or route name }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId, messages]
+              properties:
+                environmentId: { type: string, description: Environment to resolve against (e.g. dev, prod) }
+                traceId:
+                  type: string
+                  nullable: true
+                  description: Optional correlation id echoed in success `data.traceId` when present
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant, developer]
+                      content: { type: string }
+      responses:
+        "200":
+          description: Assistant content + usage + resolved subset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      runtimeContractVersion:
+                        type: string
+                        example: "2026-06-01"
+                      runtimeSwitchEvalVersion:
+                        type: string
+                        example: "2026-06-01"
+                        description: Allowlisted advanceOn / fallbackOn evaluation for upstream failures
+                      runtimeSteps:
+                        type: array
+                        description: Per-step execution or skip (when present)
+                        items:
+                          type: object
+                          properties:
+                            routeStepId: { type: string }
+                            orderIndex: { type: integer }
+                            providerType: { type: string, nullable: true }
+                            modelId: { type: string, nullable: true }
+                            promptTokens: { type: integer, nullable: true }
+                            completionTokens: { type: integer, nullable: true }
+                            totalTokens: { type: integer, nullable: true }
+                            skipped: { type: boolean }
+                            skipReason: { type: string }
+                      contractVersion:
+                        type: string
+                        example: "2026-04-16"
+                      content: { type: string, description: Assistant message text from upstream choices[0].message.content }
+                      usage:
+                        type: object
+                        properties:
+                          promptTokens: { type: integer, nullable: true }
+                          completionTokens: { type: integer, nullable: true }
+                          totalTokens: { type: integer, nullable: true }
+                      traceId: { type: string, nullable: true }
+                      routeId: { type: string }
+                      routeName: { type: string }
+                      route: { $ref: "#/components/schemas/RouteResolveMetadata" }
+                      providerType: { type: string }
+                      modelId: { type: string, nullable: true }
+                      explanation: { type: string }
+                      selectedStepId: { type: string, nullable: true }
+                      selectedOrderIndex: { type: integer, nullable: true }
+                      stepChain:
+                        type: array
+                        items: { $ref: "#/components/schemas/ResolveStepChainEntry" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "402":
+          description: Usage limit reached (free tier)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Policy blocked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: No route or integration not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Route unpublished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Resolve or runtime constraint failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "502":
+          description: Upstream provider error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "504":
+          description: Runtime pipeline wall timeout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/runtime/jobs:
+    post:
+      summary: Hosted runtime job (persisted pipeline)
+      description: |
+        Persists **`hosted_runtime_jobs`** and runs the **same** OpenAI-compatible pipeline as `POST …/runtime/invoke`, including **parallel fan-out** when multiple enabled steps share a **`parallelGroupId`** (merge strategies **`first_wins`** | **`all_succeed`**).
+        Set **`async`: true** to enqueue (**202**) and process via a worker (`pnpm --filter dashboard run hosted-runtime-worker`) or best-effort in-process drain after the request.
+        **`Idempotency-Key`** (header) or **`idempotencyKey`** (body) deduplicates **`POST`** per project, route, environment, and key.
+      operationId: runtimeJobsCreate
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId, messages]
+              properties:
+                environmentId: { type: string }
+                async: { type: boolean, description: When true, enqueue and return 202 }
+                idempotencyKey: { type: string, description: Same role as Idempotency-Key header }
+                mergeStrategy:
+                  type: string
+                  enum: [first_wins, all_succeed]
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role: { type: string }
+                      content: { type: string }
+      responses:
+        "200":
+          description: Job completed inline (or idempotent replay of a completed job); `data` includes `jobId` and the same fields as runtime invoke success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "202":
+          description: Job accepted asynchronously (or idempotent replay while queued/processing); `data` contains `jobId`, `status`, `async`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Route not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Constraint failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "502":
+          description: Upstream error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "504":
+          description: Wall timeout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/runtime/jobs/{jobId}:
+    get:
+      summary: Get hosted runtime job status
+      description: Returns persisted job row for the project (no secrets in `result`).
+      operationId: runtimeJobsGet
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      summary: Cancel hosted runtime job
+      description: |
+        Requests cancellation for **queued** or **processing** jobs. Queued jobs may transition immediately to **cancelled**;
+        processing jobs set **`cancelRequestedAt`** and complete as **cancelled** when the worker observes the flag.
+      operationId: runtimeJobsCancel
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Cancellation recorded (queued job cancelled, or processing job marked for cancel)
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Job not found or not cancellable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Internal error
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -1054,6 +1404,9 @@ paths:
                 includeRoutingAttempts:
                   type: boolean
                   description: When true, response includes routingAttempts (hypothetical tier outcomes for this dry-run). Implies policy evaluation even if includeStepDiagnostics is false.
+                includeHostedSwitchEvaluation:
+                  type: boolean
+                  description: When true, response includes hostedRuntimeSwitch (Phase 3 advance matrix aligned with POST …/runtime/invoke).
       responses:
         "200":
           description: Simulation result
@@ -1065,7 +1418,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-04-14" }
+                      contractVersion: { type: string, example: "2026-04-16" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string }
                       routeName: { type: string }
@@ -1095,6 +1448,10 @@ paths:
                       switchOutcomePreview:
                         type: object
                         additionalProperties: true
+                      hostedRuntimeSwitch:
+                        type: object
+                        description: Present when includeHostedSwitchEvaluation is true; Phase 3 advance matrix for hosted invoke
+                        additionalProperties: true
                       stepDiagnostics:
                         type: array
                         description: Present when includeStepDiagnostics is not false; per enabled step policy + executable probe.
@@ -1109,6 +1466,8 @@ paths:
                               type: array
                               items: { type: object, additionalProperties: true }
                             executable: { type: boolean }
+                            parallelGroupId: { type: string, nullable: true }
+                            parallelBranchRole: { type: string, nullable: true }
                       routingAttempts:
                         type: array
                         description: Present when includeRoutingAttempts is true; hypothetical outcome per enabled step (no LLM execution).
@@ -1122,6 +1481,8 @@ paths:
                             hypotheticalOutcome:
                               type: string
                               enum: [selected, blocked_by_policy, not_executable, not_selected]
+                            parallelGroupId: { type: string, nullable: true }
+                            parallelBranchRole: { type: string, nullable: true }
                       decisionMetadata:
                         type: object
                         nullable: true
@@ -1783,6 +2144,22 @@ components:
           type: array
           items: { type: string }
           description: Echoed from retryPolicy.retryOn when present
+        modelPool:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Echoed from route_steps.model_pool when set (model pool v1)
+        poolSelectionStrategy: { type: string, nullable: true }
+        poolMemberIndex: { type: integer, nullable: true }
+        poolMembers:
+          type: array
+          items:
+            type: object
+            properties:
+              providerType: { type: string, nullable: true }
+              modelId: { type: string, nullable: true }
+        parallelGroupId: { type: string, nullable: true }
+        parallelBranchRole: { type: string, nullable: true }
     RoutePublishFieldError:
       type: object
       properties:
@@ -1792,7 +2169,7 @@ components:
         message: { type: string }
     RouteResolveMetadata:
       type: object
-      description: Route fields returned on successful resolve (`contractVersion` 2026-04-14+)
+      description: Route fields returned on successful resolve (`contractVersion` 2026-04-16+)
       properties:
         id: { type: string }
         environmentId: { type: string }

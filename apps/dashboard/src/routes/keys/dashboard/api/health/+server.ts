@@ -1,11 +1,12 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { env } from "$env/dynamic/private";
 
 export const GET: RequestHandler = async () => {
-  const dbUrl = process.env.DATABASE_URL;
-  const neonAuthUrl = process.env.NEON_AUTH_BASE_URL;
-  const feedbackToken = process.env.FEEDBACK_GITHUB_TOKEN;
-  const feedbackRepo = process.env.FEEDBACK_GITHUB_REPO ?? "Allotment-Technology-Ltd/restormel-keys";
+  const dbUrl = env.DATABASE_URL;
+  const neonAuthUrl = env.NEON_AUTH_BASE_URL;
+  const feedbackToken = env.FEEDBACK_GITHUB_TOKEN;
+  const feedbackRepo = env.FEEDBACK_GITHUB_REPO ?? "Allotment-Technology-Ltd/restormel-keys";
 
   let dbStatus = "not_configured";
   if (dbUrl) {

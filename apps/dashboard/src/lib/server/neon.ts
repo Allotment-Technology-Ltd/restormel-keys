@@ -3,6 +3,7 @@
  * No raw Gateway keys stored; prefix + hash only. See security-baseline.
  * Schema: 001_initial, 002_better_auth, 003_workspaces_and_environments.
  */
+import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
 import { randomBytes, createHash } from "crypto";
 import {
@@ -51,7 +52,7 @@ export type ApiKeyRecord = {
 };
 
 function getSql() {
-  const url = process.env.DATABASE_URL;
+  const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return neon(url);
 }
@@ -2007,6 +2008,9 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS retry_policy JSONB`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS cost_policy JSONB`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS notes TEXT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS model_pool JSONB`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS parallel_group_id TEXT`;
+    await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS parallel_branch_role TEXT`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS created_at BIGINT`;
     await sql`ALTER TABLE route_steps ADD COLUMN IF NOT EXISTS updated_at BIGINT`;
     await sql`
@@ -2099,6 +2103,60 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_policy_version_events_workspace_policy_version
       ON policy_version_events(workspace_id, policy_id, version)
     `;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS entry_step_id TEXT`;
+    await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS flow_layout JSONB`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS route_step_edges (
+        id TEXT PRIMARY KEY,
+        route_id TEXT NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+        from_step_id TEXT NOT NULL REFERENCES route_steps(id) ON DELETE CASCADE,
+        to_step_id TEXT NOT NULL REFERENCES route_steps(id) ON DELETE CASCADE,
+        priority INTEGER NOT NULL DEFAULT 0,
+        label TEXT,
+        created_at BIGINT NOT NULL,
+        CONSTRAINT route_step_edges_unique_transition UNIQUE (route_id, from_step_id, to_step_id)
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_route_step_edges_route_from
+      ON route_step_edges(route_id, from_step_id)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS hosted_runtime_jobs (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        route_id TEXT NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        environment_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        request_summary JSONB NOT NULL,
+        result_summary JSONB,
+        error_code TEXT,
+        error_message TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT hosted_runtime_jobs_status_check CHECK (
+          status IN ('queued', 'processing', 'completed', 'failed', 'cancelled')
+        )
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_hosted_runtime_jobs_project_created
+      ON hosted_runtime_jobs (project_id, created_at DESC)
+    `;
+    await sql`ALTER TABLE hosted_runtime_jobs ADD COLUMN IF NOT EXISTS idempotency_key_hash TEXT`;
+    await sql`ALTER TABLE hosted_runtime_jobs ADD COLUMN IF NOT EXISTS cancel_requested_at BIGINT`;
+    await sql`ALTER TABLE hosted_runtime_jobs ADD COLUMN IF NOT EXISTS merge_strategy TEXT`;
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_hosted_runtime_jobs_idempotency
+      ON hosted_runtime_jobs (project_id, user_id, idempotency_key_hash)
+      WHERE idempotency_key_hash IS NOT NULL
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_hosted_runtime_jobs_queued
+      ON hosted_runtime_jobs (status, created_at)
+      WHERE status = 'queued'
+    `;
   })();
   return ensuredIngestionRoutingSchema;
 }
@@ -2131,6 +2189,20 @@ export type RouteRecord = {
   contentHash?: string | null;
   createdAt: number;
   updatedAt: number;
+  /** Option B: first step in the control-plane graph; linear orderIndex used when edges are empty. */
+  entryStepId?: string | null;
+  /** Visual editor layout (node positions); JSON blob. */
+  flowLayout?: Record<string, unknown> | null;
+};
+
+export type RouteStepEdgeRecord = {
+  id: string;
+  routeId: string;
+  fromStepId: string;
+  toStepId: string;
+  priority: number;
+  label: string | null;
+  createdAt: number;
 };
 
 export type RouteStepRecord = {
@@ -2152,6 +2224,12 @@ export type RouteStepRecord = {
   timeoutMs: number | null;
   /** Optional notes field for operator UX. */
   notes?: string | null;
+  /** Phase F: optional model pool JSON (`model_pool` column). */
+  modelPool?: Record<string, unknown> | null;
+  /** Optional parallel execution group id (metadata; v1 resolver stays linear). */
+  parallelGroupId?: string | null;
+  /** Optional branch role within a parallel group (e.g. fan_out, fan_in). */
+  parallelBranchRole?: string | null;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -2184,6 +2262,7 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
+             entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
              status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
              change_summary AS "changeSummary", content_hash AS "contentHash",
              created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2196,6 +2275,7 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
+             entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
              status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
              change_summary AS "changeSummary", content_hash AS "contentHash",
              created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2208,6 +2288,7 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
+             entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
              status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
              change_summary AS "changeSummary", content_hash AS "contentHash",
              created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2220,6 +2301,7 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
+             entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
              status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
              change_summary AS "changeSummary", content_hash AS "contentHash",
              created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2232,6 +2314,7 @@ export async function listRoutes(
       SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
              default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
              stage, workload, enabled, version, published_version AS "publishedVersion",
+             entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
              status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
              change_summary AS "changeSummary", content_hash AS "contentHash",
              created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2243,6 +2326,68 @@ export async function listRoutes(
   return rows.map((r) => mapRouteRow(r)) as RouteRecord[];
 }
 
+/** List control-plane edges for a route (empty when no graph). */
+export async function listRouteStepEdges(
+  routeId: string,
+  projectId: string,
+  userId: string
+): Promise<RouteStepEdgeRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, route_id AS "routeId", from_step_id AS "fromStepId", to_step_id AS "toStepId",
+           priority, label, created_at AS "createdAt"
+    FROM route_step_edges
+    WHERE route_id = ${routeId}
+    ORDER BY from_step_id ASC, priority ASC, to_step_id ASC
+  `;
+  return rows.map((r) => ({
+    id: r.id as string,
+    routeId: r.routeId as string,
+    fromStepId: r.fromStepId as string,
+    toStepId: r.toStepId as string,
+    priority: Number(r.priority ?? 0),
+    label: (r.label as string) ?? null,
+    createdAt: Number(r.createdAt),
+  })) as RouteStepEdgeRecord[];
+}
+
+/** Replace all edges for a route (transactional). Validates step ids belong to the route. */
+export async function replaceRouteStepEdges(
+  routeId: string,
+  projectId: string,
+  userId: string,
+  edges: Array<{ fromStepId: string; toStepId: string; priority?: number; label?: string | null }>
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  await ensureIngestionRoutingSchema();
+  const route = await getRoute(routeId, projectId, userId);
+  if (!route) return { ok: false, error: "route_not_found" };
+  const steps = await listRouteSteps(routeId, projectId, userId);
+  const stepIds = new Set(steps.map((s) => s.id));
+  for (const e of edges) {
+    if (!stepIds.has(e.fromStepId) || !stepIds.has(e.toStepId)) {
+      return { ok: false, error: "edge_step_not_in_route" };
+    }
+    if (e.fromStepId === e.toStepId) {
+      return { ok: false, error: "edge_self_loop" };
+    }
+  }
+  const sql = getSql();
+  const now = Date.now();
+  await sql`DELETE FROM route_step_edges WHERE route_id = ${routeId}`;
+  for (const e of edges) {
+    const id = crypto.randomUUID();
+    const pri = typeof e.priority === "number" && Number.isFinite(e.priority) ? e.priority : 0;
+    await sql`
+      INSERT INTO route_step_edges (id, route_id, from_step_id, to_step_id, priority, label, created_at)
+      VALUES (${id}, ${routeId}, ${e.fromStepId}, ${e.toStepId}, ${pri}, ${e.label ?? null}, ${now})
+    `;
+  }
+  return { ok: true };
+}
+
 /** Get one route; returns null if not in project. */
 export async function getRoute(id: string, projectId: string, userId: string): Promise<RouteRecord | null> {
   await ensureIngestionRoutingSchema();
@@ -2252,7 +2397,8 @@ export async function getRoute(id: string, projectId: string, userId: string): P
   const rows = await sql`
     SELECT id, project_id AS "projectId", environment_id AS "environmentId", name, description,
            default_model_id AS "defaultModelId", billing_mode AS "billingMode", route_mode AS "routeMode",
-           stage, workload, enabled, version, published_version AS "publishedVersion",
+           stage, workload, enabled, version,            published_version AS "publishedVersion",
+           entry_step_id AS "entryStepId", flow_layout AS "flowLayout",
            status, created_by AS "createdBy", updated_via AS "updatedVia", updated_by AS "updatedBy",
            change_summary AS "changeSummary", content_hash AS "contentHash",
            created_at AS "createdAt", updated_at AS "updatedAt"
@@ -2288,6 +2434,8 @@ function mapRouteRow(r: Record<string, unknown>): RouteRecord {
     contentHash: (r.contentHash as string) ?? null,
     createdAt: Number(r.createdAt),
     updatedAt: Number(r.updatedAt),
+    entryStepId: (r.entryStepId as string) ?? null,
+    flowLayout: r.flowLayout != null ? (r.flowLayout as Record<string, unknown>) : null,
   };
 }
 
@@ -2379,11 +2527,17 @@ export async function updateRoute(
     updatedVia?: string | null;
     updatedBy?: string | null;
     changeSummary?: string | null;
+    entryStepId?: string | null;
+    flowLayout?: Record<string, unknown> | null;
   }
 ): Promise<RouteRecord | null> {
   await ensureIngestionRoutingSchema();
   const existing = await getRoute(id, projectId, userId);
   if (!existing) return null;
+  if (updates.entryStepId !== undefined && updates.entryStepId !== null) {
+    const st = await listRouteSteps(id, projectId, userId);
+    if (!st.some((s) => s.id === updates.entryStepId)) return null;
+  }
   const sql = getSql();
   const name = updates.name !== undefined ? (updates.name.trim() || existing.name) : existing.name;
   const description = updates.description !== undefined ? (updates.description?.trim() || null) : existing.description;
@@ -2397,6 +2551,8 @@ export async function updateRoute(
   const publishedVersion =
     updates.publishedVersion !== undefined ? updates.publishedVersion : (existing.publishedVersion ?? 1);
   const status = updates.status ?? existing.status;
+  const entryStepId = updates.entryStepId !== undefined ? updates.entryStepId : (existing.entryStepId ?? null);
+  const flowLayout = updates.flowLayout !== undefined ? updates.flowLayout : (existing.flowLayout ?? null);
   const now = Date.now();
   const contentHash = stableContentHash({
     name,
@@ -2410,6 +2566,8 @@ export async function updateRoute(
     version,
     publishedVersion,
     status,
+    entryStepId,
+    flowLayout,
   });
   await sql`
     UPDATE routes
@@ -2424,6 +2582,8 @@ export async function updateRoute(
         version = ${version},
         published_version = ${publishedVersion},
         status = ${status},
+        entry_step_id = ${entryStepId},
+        flow_layout = ${flowLayout != null ? JSON.stringify(flowLayout) : null},
         updated_via = ${updates.updatedVia ?? "api"},
         updated_by = ${updates.updatedBy ?? userId},
         change_summary = ${updates.changeSummary ?? "Route updated"},
@@ -2457,7 +2617,8 @@ export async function listRouteSteps(routeId: string, projectId: string, userId:
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
            timeout_ms AS "timeoutMs", enabled,
            label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
-           notes,
+           notes, model_pool AS "modelPool", parallel_group_id AS "parallelGroupId",
+           parallel_branch_role AS "parallelBranchRole",
            created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps
     WHERE route_id = ${routeId}
@@ -2477,7 +2638,8 @@ export async function listRouteStepsByProject(projectId: string, userId: string)
            rs.model_id AS "modelId", rs.condition_block AS "conditionBlock", rs.fallback_on AS "fallbackOn",
            rs.timeout_ms AS "timeoutMs", rs.enabled,
            rs.label, rs.switch_criteria AS "switchCriteria", rs.retry_policy AS "retryPolicy", rs.cost_policy AS "costPolicy",
-           rs.notes,
+           rs.notes, rs.model_pool AS "modelPool", rs.parallel_group_id AS "parallelGroupId",
+           rs.parallel_branch_role AS "parallelBranchRole",
            rs.created_at AS "createdAt", rs.updated_at AS "updatedAt"
     FROM route_steps rs
     INNER JOIN routes r ON r.id = rs.route_id
@@ -2504,6 +2666,9 @@ function mapRouteStepRow(r: Record<string, unknown>): RouteStepRecord {
     fallbackOn: (r.fallbackOn as string) ?? null,
     timeoutMs: r.timeoutMs != null ? Number(r.timeoutMs) : null,
     notes: (r.notes as string) ?? null,
+    modelPool: (r.modelPool as Record<string, unknown>) ?? null,
+    parallelGroupId: (r.parallelGroupId as string) ?? null,
+    parallelBranchRole: (r.parallelBranchRole as string) ?? null,
     enabled: r.enabled !== false,
     createdAt: new Date(createdAt).toISOString(),
     updatedAt: new Date(updatedAt).toISOString(),
@@ -2526,6 +2691,9 @@ export async function createRouteStep(params: {
   fallbackOn?: string | null;
   timeoutMs?: number | null;
   notes?: string | null;
+  modelPool?: Record<string, unknown> | null;
+  parallelGroupId?: string | null;
+  parallelBranchRole?: string | null;
   enabled?: boolean;
 }): Promise<RouteStepRecord | null> {
   await ensureIngestionRoutingSchema();
@@ -2540,6 +2708,7 @@ export async function createRouteStep(params: {
       id, route_id, order_index, provider_preference, model_id,
       condition_block, fallback_on, timeout_ms,
       label, switch_criteria, retry_policy, cost_policy, notes,
+      model_pool, parallel_group_id, parallel_branch_role,
       enabled, created_at, updated_at
     )
     VALUES (
@@ -2551,6 +2720,9 @@ export async function createRouteStep(params: {
       ${params.retryPolicy ? JSON.stringify(params.retryPolicy) : null},
       ${params.costPolicy ? JSON.stringify(params.costPolicy) : null},
       ${params.notes ?? null},
+      ${params.modelPool ? JSON.stringify(params.modelPool) : null},
+      ${params.parallelGroupId ?? null},
+      ${params.parallelBranchRole ?? null},
       ${enabled}, ${now}, ${now}
     )
   `;
@@ -2559,7 +2731,8 @@ export async function createRouteStep(params: {
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
            timeout_ms AS "timeoutMs", enabled,
            label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
-           notes,
+           notes, model_pool AS "modelPool", parallel_group_id AS "parallelGroupId",
+           parallel_branch_role AS "parallelBranchRole",
            created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${id}
   `;
@@ -2585,6 +2758,9 @@ export async function updateRouteStep(
     fallbackOn: string | null;
     timeoutMs: number | null;
     notes: string | null;
+    modelPool: Record<string, unknown> | null;
+    parallelGroupId: string | null;
+    parallelBranchRole: string | null;
     enabled: boolean;
   }>
 ): Promise<RouteStepRecord | null> {
@@ -2604,6 +2780,11 @@ export async function updateRouteStep(
   const fallbackOn = updates.fallbackOn !== undefined ? updates.fallbackOn : step.fallbackOn;
   const timeoutMs = updates.timeoutMs !== undefined ? updates.timeoutMs : step.timeoutMs;
   const notes = updates.notes !== undefined ? updates.notes : step.notes;
+  const modelPool = updates.modelPool !== undefined ? updates.modelPool : step.modelPool;
+  const parallelGroupId =
+    updates.parallelGroupId !== undefined ? updates.parallelGroupId : step.parallelGroupId;
+  const parallelBranchRole =
+    updates.parallelBranchRole !== undefined ? updates.parallelBranchRole : step.parallelBranchRole;
   const enabled = updates.enabled !== undefined ? updates.enabled : step.enabled;
   const now = Date.now();
   await sql`
@@ -2616,6 +2797,9 @@ export async function updateRouteStep(
         retry_policy = ${retryPolicy != null ? JSON.stringify(retryPolicy) : null},
         cost_policy = ${costPolicy != null ? JSON.stringify(costPolicy) : null},
         notes = ${notes},
+        model_pool = ${modelPool != null ? JSON.stringify(modelPool) : null},
+        parallel_group_id = ${parallelGroupId},
+        parallel_branch_role = ${parallelBranchRole},
         condition_block = ${conditionBlock != null ? JSON.stringify(conditionBlock) : null},
         fallback_on = ${fallbackOn},
         timeout_ms = ${timeoutMs},
@@ -2628,7 +2812,8 @@ export async function updateRouteStep(
            model_id AS "modelId", condition_block AS "conditionBlock", fallback_on AS "fallbackOn",
            timeout_ms AS "timeoutMs", enabled,
            label, switch_criteria AS "switchCriteria", retry_policy AS "retryPolicy", cost_policy AS "costPolicy",
-           notes,
+           notes, model_pool AS "modelPool", parallel_group_id AS "parallelGroupId",
+           parallel_branch_role AS "parallelBranchRole",
            created_at AS "createdAt", updated_at AS "updatedAt"
     FROM route_steps WHERE id = ${stepId}
   `;
@@ -2784,7 +2969,9 @@ export async function replaceRouteStepsFromSnapshot(params: {
     await sql`
       INSERT INTO route_steps (
         id, route_id, order_index, provider_preference, model_id, condition_block, fallback_on,
-        timeout_ms, enabled, label, switch_criteria, retry_policy, cost_policy, notes, created_at, updated_at
+        timeout_ms, enabled, label, switch_criteria, retry_policy, cost_policy, notes,
+        model_pool, parallel_group_id, parallel_branch_role,
+        created_at, updated_at
       )
       VALUES (
         ${id}, ${params.routeId}, ${orderIndex},
@@ -2799,6 +2986,9 @@ export async function replaceRouteStepsFromSnapshot(params: {
         ${raw.retryPolicy ? JSON.stringify(raw.retryPolicy) : null},
         ${raw.costPolicy ? JSON.stringify(raw.costPolicy) : null},
         ${typeof raw.notes === "string" ? raw.notes : null},
+        ${raw.modelPool && typeof raw.modelPool === "object" ? JSON.stringify(raw.modelPool) : null},
+        ${typeof raw.parallelGroupId === "string" ? raw.parallelGroupId : null},
+        ${typeof raw.parallelBranchRole === "string" ? raw.parallelBranchRole : null},
         ${now},
         ${now}
       )
@@ -3177,6 +3367,92 @@ export async function listPolicyBindingsByTarget(
   });
 }
 
+/**
+ * If non-null, POST /bindings should reject (duplicate or conflicting route vs model scope).
+ * Same policy may not bind twice to the same target, and may not bind to both `route` and any
+ * `route_step` on that route.
+ */
+export async function getPolicyBindingConflictMessage(params: {
+  policyId: string;
+  targetType: string;
+  targetId: string;
+  workspaceId: string;
+}): Promise<string | null> {
+  const { policyId, targetType, targetId, workspaceId } = params;
+  const sql = getSql();
+
+  const dup = await sql`
+    SELECT 1 AS ok
+    FROM policy_bindings pb
+    INNER JOIN policies p ON p.id = pb.policy_id
+    WHERE p.workspace_id = ${workspaceId}
+      AND pb.policy_id = ${policyId}
+      AND pb.target_type = ${targetType}
+      AND pb.target_id = ${targetId}
+    LIMIT 1
+  `;
+  if (dup.length > 0) {
+    return "This guard rail is already attached at this scope.";
+  }
+
+  if (targetType === "route_step") {
+    const routeRows = await sql`
+      SELECT rs.route_id AS "routeId"
+      FROM route_steps rs
+      INNER JOIN routes r ON r.id = rs.route_id
+      INNER JOIN projects pr ON pr.id = r.project_id
+      WHERE rs.id = ${targetId}
+        AND pr.workspace_id = ${workspaceId}
+      LIMIT 1
+    `;
+    const routeId = routeRows[0]?.routeId as string | undefined;
+    if (!routeId) {
+      return "That model is not in this workspace or no longer exists.";
+    }
+    const onRoute = await sql`
+      SELECT 1 AS ok
+      FROM policy_bindings pb
+      INNER JOIN policies p ON p.id = pb.policy_id
+      WHERE p.workspace_id = ${workspaceId}
+        AND pb.policy_id = ${policyId}
+        AND pb.target_type = 'route'
+        AND pb.target_id = ${routeId}
+      LIMIT 1
+    `;
+    if (onRoute.length > 0) {
+      return "This guard rail is already attached to the entire route. Remove it there first, or pick a different guard rail.";
+    }
+  }
+
+  if (targetType === "route") {
+    const routeOk = await sql`
+      SELECT 1 AS ok
+      FROM routes r
+      INNER JOIN projects pr ON pr.id = r.project_id
+      WHERE r.id = ${targetId}
+        AND pr.workspace_id = ${workspaceId}
+      LIMIT 1
+    `;
+    if (routeOk.length === 0) return null;
+
+    const onStep = await sql`
+      SELECT 1 AS ok
+      FROM policy_bindings pb
+      INNER JOIN policies p ON p.id = pb.policy_id
+      WHERE p.workspace_id = ${workspaceId}
+        AND pb.policy_id = ${policyId}
+        AND pb.target_type = 'route_step'
+        AND pb.target_id IN (SELECT id FROM route_steps WHERE route_id = ${targetId})
+      LIMIT 1
+    `;
+    if (onStep.length > 0) {
+      return "This guard rail is already attached to a model in this route. Remove those bindings first, or pick a different guard rail.";
+    }
+  }
+
+  return null;
+}
+
 /** Create policy binding. */
 export async function createPolicyBinding(params: {
   policyId: string;
@@ -3242,7 +3518,9 @@ export async function getUsageTotalsForScope(
           ? sql`workspace_id = ${workspaceId} AND environment_id = ${targetId}`
           : targetType === "route"
             ? sql`workspace_id = ${workspaceId} AND route_id = ${targetId}`
-            : sql`workspace_id = ${workspaceId} AND 1 = 0`;
+            : targetType === "route_step"
+              ? sql`workspace_id = ${workspaceId} AND COALESCE(metadata->>'routeStepId','') = ${targetId}`
+              : sql`workspace_id = ${workspaceId} AND 1 = 0`;
   const rows = await sql`
     SELECT
       COALESCE(SUM(estimated_cost), 0)::real AS "totalCost",
@@ -3266,6 +3544,8 @@ export type PolicyEvaluationContext = {
   projectId?: string;
   environmentId?: string;
   routeId?: string;
+  /** When evaluating at step granularity (Option B / per-step policy bindings). */
+  routeStepId?: string;
   modelId?: string;
   providerType?: string;
   /** Pass from catalog for deprecated_model_block. */
@@ -3288,6 +3568,7 @@ export async function evaluatePolicies(context: PolicyEvaluationContext): Promis
   if (context.projectId) targets.push({ targetType: "project", targetId: context.projectId });
   if (context.environmentId) targets.push({ targetType: "environment", targetId: context.environmentId });
   if (context.routeId) targets.push({ targetType: "route", targetId: context.routeId });
+  if (context.routeStepId) targets.push({ targetType: "route_step", targetId: context.routeStepId });
 
   type BindingHit = { policyId: string; targetType: string; targetId: string };
   const bindingHits: BindingHit[] = [];
@@ -3967,4 +4248,307 @@ export async function countFoundersApplications(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Hosted runtime jobs (Phase 4 — POST …/runtime/jobs)
+// ---------------------------------------------------------------------------
+
+export type HostedRuntimeJobRecord = {
+  id: string;
+  projectId: string;
+  routeId: string;
+  userId: string;
+  environmentId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  requestSummary: unknown;
+  resultSummary: unknown | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: number;
+  updatedAt: number;
+  idempotencyKeyHash?: string | null;
+  cancelRequestedAt?: number | null;
+  mergeStrategy?: string | null;
+};
+
+/**
+ * Stable idempotency key for POST …/runtime/jobs (same inputs → same job row).
+ * Hash only; no message content in the hash input beyond what the client sends.
+ */
+export function hashHostedRuntimeIdempotencyKey(args: {
+  projectId: string;
+  routeId: string;
+  userId: string;
+  environmentId: string;
+  idempotencyKey: string;
+}): string {
+  return createHash("sha256")
+    .update(
+      [
+        args.projectId,
+        args.routeId,
+        args.userId,
+        args.environmentId,
+        args.idempotencyKey.trim(),
+      ].join("|")
+    )
+    .digest("hex");
+}
+
+export async function findHostedRuntimeJobByIdempotencyKey(
+  projectId: string,
+  userId: string,
+  hash: string
+): Promise<HostedRuntimeJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      id,
+      project_id AS "projectId",
+      route_id AS "routeId",
+      user_id AS "userId",
+      environment_id AS "environmentId",
+      status,
+      request_summary AS "requestSummary",
+      result_summary AS "resultSummary",
+      error_code AS "errorCode",
+      error_message AS "errorMessage",
+      created_at AS "createdAt",
+      updated_at AS "updatedAt",
+      idempotency_key_hash AS "idempotencyKeyHash",
+      cancel_requested_at AS "cancelRequestedAt",
+      merge_strategy AS "mergeStrategy"
+    FROM hosted_runtime_jobs
+    WHERE project_id = ${projectId} AND user_id = ${userId} AND idempotency_key_hash = ${hash}
+    LIMIT 1
+  `;
+  const r = rows[0] as HostedRuntimeJobRecord | undefined;
+  return r ?? null;
+}
+
+export async function insertHostedRuntimeJob(params: {
+  id: string;
+  projectId: string;
+  routeId: string;
+  userId: string;
+  environmentId: string;
+  requestSummary: unknown;
+  idempotencyKeyHash?: string | null;
+  mergeStrategy?: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const reqJson = JSON.stringify(params.requestSummary ?? null);
+  await sql`
+    INSERT INTO hosted_runtime_jobs (
+      id, project_id, route_id, user_id, environment_id, status,
+      request_summary, result_summary, error_code, error_message, created_at, updated_at,
+      idempotency_key_hash, cancel_requested_at, merge_strategy
+    )
+    VALUES (
+      ${params.id},
+      ${params.projectId},
+      ${params.routeId},
+      ${params.userId},
+      ${params.environmentId},
+      ${"queued"},
+      ${reqJson},
+      NULL,
+      NULL,
+      NULL,
+      ${now},
+      ${now},
+      ${params.idempotencyKeyHash ?? null},
+      NULL,
+      ${params.mergeStrategy ?? null}
+    )
+  `;
+}
+
+export async function getHostedRuntimeJobForProject(
+  jobId: string,
+  projectId: string,
+  userId: string
+): Promise<HostedRuntimeJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      id,
+      project_id AS "projectId",
+      route_id AS "routeId",
+      user_id AS "userId",
+      environment_id AS "environmentId",
+      status,
+      request_summary AS "requestSummary",
+      result_summary AS "resultSummary",
+      error_code AS "errorCode",
+      error_message AS "errorMessage",
+      created_at AS "createdAt",
+      updated_at AS "updatedAt",
+      idempotency_key_hash AS "idempotencyKeyHash",
+      cancel_requested_at AS "cancelRequestedAt",
+      merge_strategy AS "mergeStrategy"
+    FROM hosted_runtime_jobs
+    WHERE id = ${jobId} AND project_id = ${projectId} AND user_id = ${userId}
+    LIMIT 1
+  `;
+  const r = rows[0] as HostedRuntimeJobRecord | undefined;
+  return r ?? null;
+}
+
+/** Worker: load job by id only (row-level security is caller trust). */
+export async function getHostedRuntimeJobById(jobId: string): Promise<HostedRuntimeJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      id,
+      project_id AS "projectId",
+      route_id AS "routeId",
+      user_id AS "userId",
+      environment_id AS "environmentId",
+      status,
+      request_summary AS "requestSummary",
+      result_summary AS "resultSummary",
+      error_code AS "errorCode",
+      error_message AS "errorMessage",
+      created_at AS "createdAt",
+      updated_at AS "updatedAt",
+      idempotency_key_hash AS "idempotencyKeyHash",
+      cancel_requested_at AS "cancelRequestedAt",
+      merge_strategy AS "mergeStrategy"
+    FROM hosted_runtime_jobs
+    WHERE id = ${jobId}
+    LIMIT 1
+  `;
+  const r = rows[0] as HostedRuntimeJobRecord | undefined;
+  return r ?? null;
+}
+
+export async function setHostedRuntimeJobCancelRequested(
+  jobId: string,
+  projectId: string,
+  userId: string
+): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    UPDATE hosted_runtime_jobs
+    SET
+      cancel_requested_at = ${now},
+      updated_at = ${now},
+      status = CASE
+        WHEN status = 'queued' THEN 'cancelled'::text
+        ELSE status
+      END
+    WHERE id = ${jobId} AND project_id = ${projectId} AND user_id = ${userId}
+      AND status IN ('queued', 'processing')
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/** Claim next queued job for background worker (SKIP LOCKED). */
+export async function claimNextQueuedHostedRuntimeJob(): Promise<HostedRuntimeJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    WITH c AS (
+      SELECT id
+      FROM hosted_runtime_jobs
+      WHERE status = 'queued' AND cancel_requested_at IS NULL
+      ORDER BY created_at ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE hosted_runtime_jobs h
+    SET status = 'processing', updated_at = ${now}
+    FROM c
+    WHERE h.id = c.id
+    RETURNING
+      h.id,
+      h.project_id AS "projectId",
+      h.route_id AS "routeId",
+      h.user_id AS "userId",
+      h.environment_id AS "environmentId",
+      h.status,
+      h.request_summary AS "requestSummary",
+      h.result_summary AS "resultSummary",
+      h.error_code AS "errorCode",
+      h.error_message AS "errorMessage",
+      h.created_at AS "createdAt",
+      h.updated_at AS "updatedAt",
+      h.idempotency_key_hash AS "idempotencyKeyHash",
+      h.cancel_requested_at AS "cancelRequestedAt",
+      h.merge_strategy AS "mergeStrategy"
+  `;
+  const r = rows[0] as HostedRuntimeJobRecord | undefined;
+  return r ?? null;
+}
+
+export async function updateHostedRuntimeJobById(params: {
+  id: string;
+  projectId: string;
+  userId: string;
+  status: HostedRuntimeJobRecord["status"];
+  resultSummary?: unknown | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+
+  if (params.status === "completed" && params.resultSummary !== undefined) {
+    const rows = await sql`
+      UPDATE hosted_runtime_jobs
+      SET
+        status = ${params.status},
+        updated_at = ${now},
+        result_summary = ${JSON.stringify(params.resultSummary)},
+        error_code = NULL,
+        error_message = NULL
+      WHERE id = ${params.id} AND project_id = ${params.projectId} AND user_id = ${params.userId}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  }
+
+  if (params.status === "failed" && params.errorCode) {
+    const rows = await sql`
+      UPDATE hosted_runtime_jobs
+      SET
+        status = ${params.status},
+        updated_at = ${now},
+        error_code = ${params.errorCode},
+        error_message = ${params.errorMessage ?? null}
+      WHERE id = ${params.id} AND project_id = ${params.projectId} AND user_id = ${params.userId}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  }
+
+  if (params.status === "cancelled") {
+    const rows = await sql`
+      UPDATE hosted_runtime_jobs
+      SET status = ${params.status}, updated_at = ${now}
+      WHERE id = ${params.id} AND project_id = ${params.projectId} AND user_id = ${params.userId}
+      RETURNING id
+    `;
+    return rows.length > 0;
+  }
+
+  const rows = await sql`
+    UPDATE hosted_runtime_jobs
+    SET status = ${params.status}, updated_at = ${now}
+    WHERE id = ${params.id} AND project_id = ${params.projectId} AND user_id = ${params.userId}
+    RETURNING id
+  `;
+  return rows.length > 0;
 }

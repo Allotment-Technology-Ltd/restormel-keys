@@ -117,13 +117,13 @@ export const PROVIDER_UI_META: Record<ByokProvider, ProviderUiMeta> = {
 
 export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
   vertex: [
+    'gemini-3.1-pro-preview',
+    'gemini-3-flash-preview',
     'gemini-2.5-pro',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
     'text-embedding-005',
     'text-embedding-004',
     'multimodalembedding@001'
@@ -172,11 +172,12 @@ export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
   ],
   openrouter: [
     'anthropic/claude-sonnet-4',
-    'anthropic/claude-3.5-sonnet',
-    'anthropic/claude-3.5-haiku',
+    'anthropic/claude-haiku-4.5',
     'openai/gpt-4.1',
     'openai/gpt-4o',
     'openai/gpt-4o-mini',
+    'google/gemini-3.1-pro-preview',
+    'google/gemini-3-flash-preview',
     'google/gemini-2.5-pro',
     'google/gemini-2.5-flash',
     'deepseek/deepseek-chat',

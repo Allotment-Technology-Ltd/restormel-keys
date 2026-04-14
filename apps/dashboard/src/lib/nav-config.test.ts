@@ -13,7 +13,7 @@ describe("sidebar nav", () => {
   it("contains expected grouped labels", () => {
     const labels = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.label));
     expect(labels).toContain("Connections");
-    expect(labels).toContain("Rules");
+    expect(labels).toContain("Routes");
     expect(labels).toContain("Guard Rails");
     expect(labels).toContain("Model Catalog");
     expect(labels).toContain("Usage & Analytics");
@@ -23,6 +23,7 @@ describe("sidebar nav", () => {
     expect(labels).toContain("Test & Preview");
     expect(labels).toContain("GitHub Setup");
     expect(labels).toContain("Dev Tools");
+    expect(labels).toContain("Restormel Testing");
   });
 });
 
@@ -49,5 +50,9 @@ describe("topbarTitle", () => {
 
   it("returns Connect CLI for cli connect path", () => {
     expect(topbarTitle(DASHBOARD_BASE + "/cli/connect")).toBe("Connect CLI");
+  });
+
+  it("returns Routes for /routes", () => {
+    expect(topbarTitle(DASHBOARD_BASE + "/routes")).toBe("Routes");
   });
 });

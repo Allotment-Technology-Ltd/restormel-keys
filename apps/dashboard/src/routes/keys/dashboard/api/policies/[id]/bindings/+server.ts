@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
-import { getPolicy, listPolicyBindings, createPolicyBinding } from "$lib/server/db";
+import { getPolicy, listPolicyBindings, getPolicyBindingConflictMessage, createPolicyBinding } from "$lib/server/db";
 
 /** GET: list bindings for policy. */
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -26,6 +26,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   const targetType = typeof body.targetType === "string" ? body.targetType.trim() : "";
   const targetId = typeof body.targetId === "string" ? body.targetId.trim() : "";
   if (!targetType || !targetId) return json({ error: "targetType and targetId are required" }, { status: 400 });
+  const policy = await getPolicy(params.id, ctx.workspaceId);
+  if (!policy) return json({ error: "Not found" }, { status: 404 });
+  const conflict = await getPolicyBindingConflictMessage({
+    policyId: params.id,
+    targetType,
+    targetId,
+    workspaceId: ctx.workspaceId,
+  });
+  if (conflict) return json({ error: conflict }, { status: 409 });
   const binding = await createPolicyBinding({
     policyId: params.id,
     targetType,

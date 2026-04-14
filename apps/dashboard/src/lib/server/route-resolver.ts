@@ -9,19 +9,22 @@ import {
   listRoutes,
   getRoute,
   getRouteWithSteps,
+  listRouteStepEdges,
   evaluatePolicies,
   getModelsLifecycleByIds,
   type RouteRecord,
   type RouteStepRecord,
   type PolicyViolation,
 } from "$lib/server/db";
+import { computeEnabledStepOrderForGraph } from "$lib/server/route-order-graph";
 import {
   canonicalApiToPolicyProvider,
   normalizeProviderToCanonicalApi,
   isExecutableProviderModelPair,
 } from "$lib/server/canonical-provider";
+import { expandPoolMembersFromStep, orderPoolCandidates } from "$lib/server/model-pool";
 
-/** Rich metadata for one tier in resolve `stepChain` / simulate (contract 2026-04-14+). */
+/** Rich metadata for one tier in resolve `stepChain` / simulate (contract 2026-04-16+). */
 export type ResolveStepChainRow = {
   stepId: string;
   orderIndex: number;
@@ -40,6 +43,18 @@ export type ResolveStepChainRow = {
   advanceOn?: string[];
   /** When `retryPolicy.retryOn` is a string array, echoed here for hosts (Keys does not evaluate). */
   retryOn?: string[];
+  /** Raw `model_pool` JSON when set. */
+  modelPool?: Record<string, unknown> | null;
+  /** Selection strategy when `modelPool` is present. */
+  poolSelectionStrategy?: string | null;
+  /** Index into `poolMembers` for the resolved row (null when no pool). */
+  poolMemberIndex?: number | null;
+  /** Ordered pool members (canonical provider types) for UI and hosts. */
+  poolMembers?: Array<{ providerType: string | null; modelId: string | null }>;
+  /** Optional parallel group id (metadata; v1 resolver remains linear). */
+  parallelGroupId?: string | null;
+  /** Optional role within a parallel group (e.g. fan_out, fan_in). */
+  parallelBranchRole?: string | null;
 };
 
 /** Steps after the winner; same fields except `selected` (always false if present). */
@@ -68,16 +83,47 @@ function tierTriggerHintsFromStep(s: RouteStepRecord): Pick<ResolveStepChainRow,
   };
 }
 
+type ChainRowContext = {
+  seed: string;
+  attemptNumber: number;
+  winnerStepId: string | null;
+  winner?: { memberIndex: number | null; providerType: string | null; modelId: string | null } | null;
+};
+
 function buildResolveStepChainRow(
   s: RouteStepRecord,
   routeRecord: RouteRecord,
-  selected: boolean
+  selected: boolean,
+  ctx: ChainRowContext
 ): ResolveStepChainRow {
+  const { pool, candidates } = expandPoolMembersFromStep(s, routeRecord.defaultModelId ?? null);
+  const strategy = pool?.selectionStrategy ?? "first_eligible";
+  const ordered = orderPoolCandidates(strategy, candidates, ctx.seed, ctx.attemptNumber, s.orderIndex, pool);
+  const poolMembers = ordered.map((c) => ({
+    providerType: normalizeProviderToCanonicalApi(c.providerPreference),
+    modelId: c.modelId ?? null,
+  }));
+  const winner = ctx.winner;
+  const isWinner = ctx.winnerStepId === s.id && winner != null;
+  const preview = ordered[0];
+  const effectiveProvider = isWinner
+    ? winner.providerType
+    : normalizeProviderToCanonicalApi(preview?.providerPreference ?? null);
+  const effectiveModel = isWinner
+    ? winner.modelId
+    : (preview?.modelId ?? routeRecord.defaultModelId) ?? null;
+  const poolMemberIndex =
+    isWinner && winner.memberIndex != null
+      ? winner.memberIndex
+      : pool
+        ? ordered[0]?.memberIndex ?? 0
+        : null;
+
   return {
     stepId: s.id,
     orderIndex: s.orderIndex,
-    providerType: normalizeProviderToCanonicalApi(s.providerPreference),
-    modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
+    providerType: effectiveProvider,
+    modelId: effectiveModel,
     enabled: s.enabled,
     selected,
     label: s.label ?? null,
@@ -87,8 +133,88 @@ function buildResolveStepChainRow(
     retryPolicy: s.retryPolicy ?? null,
     costPolicy: s.costPolicy ?? null,
     notes: s.notes ?? null,
+    ...(pool ? { modelPool: s.modelPool ?? null, poolSelectionStrategy: strategy, poolMemberIndex, poolMembers } : {}),
+    parallelGroupId: s.parallelGroupId ?? null,
+    parallelBranchRole: s.parallelBranchRole ?? null,
     ...tierTriggerHintsFromStep(s),
   };
+}
+
+function violationKey(v: PolicyViolation): string {
+  return `${v.policyId}:${v.type}:${v.message}`;
+}
+
+function dedupeViolations(violations: PolicyViolation[]): PolicyViolation[] {
+  const seen = new Set<string>();
+  const out: PolicyViolation[] = [];
+  for (const v of violations) {
+    const k = violationKey(v);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Same pool walk as resolve: first eligible member after ordering. Used by simulate diagnostics.
+ */
+export async function selectExecutableMemberForStep(
+  step: RouteStepRecord,
+  routeRecord: RouteRecord,
+  workspaceId: string,
+  environmentId: string,
+  routeId: string,
+  lifecycleByModel: Map<string, string | undefined>,
+  seed: string,
+  attemptNumber: number
+): Promise<
+  | {
+      ok: true;
+      canonicalProvider: string;
+      modelId: string;
+      memberIndex: number | null;
+    }
+  | { ok: false; policyViolations: PolicyViolation[]; sawNotExecutable: boolean }
+> {
+  const { pool, candidates } = expandPoolMembersFromStep(step, routeRecord.defaultModelId ?? null);
+  const strategy = pool?.selectionStrategy ?? "first_eligible";
+  const ordered = orderPoolCandidates(strategy, candidates, seed, attemptNumber, step.orderIndex, pool);
+  const merged: PolicyViolation[] = [];
+  let sawNotExecutable = false;
+  for (const cand of ordered) {
+    const modelId = cand.modelId ?? undefined;
+    const policyProvider =
+      canonicalApiToPolicyProvider(normalizeProviderToCanonicalApi(cand.providerPreference)) ??
+      (cand.providerPreference?.trim() ? cand.providerPreference.trim() : undefined);
+    const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
+    const violations = await evaluatePolicies({
+      workspaceId,
+      projectId: routeRecord.projectId,
+      environmentId,
+      routeId,
+      routeStepId: step.id,
+      modelId,
+      providerType: policyProvider,
+      modelLifecycleState: lifecycleState,
+    });
+    if (violations.length > 0) {
+      merged.push(...violations);
+      continue;
+    }
+    const exec = isExecutableProviderModelPair(cand.providerPreference, cand.modelId);
+    if (!exec.ok) {
+      sawNotExecutable = true;
+      continue;
+    }
+    return {
+      ok: true,
+      canonicalProvider: exec.canonicalProvider,
+      modelId: exec.modelId,
+      memberIndex: pool ? cand.memberIndex : null,
+    };
+  }
+  return { ok: false, policyViolations: dedupeViolations(merged), sawNotExecutable };
 }
 
 function toFallbackRow(row: ResolveStepChainRow): ResolveStepChainFallbackRow {
@@ -112,6 +238,8 @@ export type ResolvedRouteResult = {
   providerType: string | null;
   /** Model id from selected step or route default. */
   modelId: string | null;
+  /** When the winning step used a pool, index of the selected member (otherwise null). */
+  selectedPoolMemberIndex?: number | null;
   /** Explanation for logging/audit. */
   explanation: string;
   /** Criteria that matched on selected step (switchCriteria snapshot). */
@@ -162,6 +290,91 @@ async function findRouteByIdOrName(
   if (byId) return byId;
   const inProject = await listRoutes(projectId, userId);
   return inProject.find((r) => r.name === trimmed) ?? null;
+}
+
+/** Route + ordered enabled steps + model lifecycle map (shared by resolve and hosted runtime pipeline). */
+export type RouteExecutionContext = {
+  workspaceId: string;
+  projectId: string;
+  environmentId: string;
+  route: RouteRecord;
+  allSteps: RouteStepRecord[];
+  orderedEnabledSteps: RouteStepRecord[];
+  lifecycleByModel: Map<string, string | undefined>;
+};
+
+/**
+ * Load a published route by id/name and compute graph-linear step order (same as resolve).
+ * Used by hosted runtime Phase 2 multi-step pipeline.
+ */
+export async function loadRouteExecutionContext(
+  projectId: string,
+  environmentId: string,
+  userId: string,
+  routeIdOrName: string
+): Promise<{ ok: true; ctx: RouteExecutionContext } | { ok: false; failure: ResolveRouteFailure }> {
+  const project = await getProject(projectId, userId);
+  if (!project) {
+    return { ok: false, failure: { code: "no_route", message: "Project not found" } };
+  }
+
+  const workspaceId =
+    project.workspaceId ?? (await getOrCreateDefaultWorkspace(project.userId)).id;
+
+  const route = await findRouteByIdOrName(projectId, userId, routeIdOrName.trim());
+  if (!route) {
+    return { ok: false, failure: { code: "no_route", message: "No route matched routeId" } };
+  }
+  const life = classifyRouteForExplicitId(route, environmentId);
+  if (life) {
+    return { ok: false, failure: life };
+  }
+
+  const withSteps = await getRouteWithSteps(route.id, projectId, userId);
+  if (!withSteps) {
+    return { ok: false, failure: { code: "no_route", routeId: route.id, message: "Route not found" } };
+  }
+
+  const { route: routeRecord, steps } = withSteps;
+  const graphEdges = await listRouteStepEdges(routeRecord.id, projectId, userId);
+  const edgeInputs = graphEdges.map((e) => ({
+    fromStepId: e.fromStepId,
+    toStepId: e.toStepId,
+    priority: e.priority,
+  }));
+  const orderedEnabledSteps =
+    edgeInputs.length > 0
+      ? computeEnabledStepOrderForGraph(steps, edgeInputs, routeRecord.entryStepId ?? null)
+      : steps
+          .filter((s) => s.enabled)
+          .slice()
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  const modelIdSet = new Set<string>();
+  if (routeRecord.defaultModelId) modelIdSet.add(routeRecord.defaultModelId);
+  for (const s of orderedEnabledSteps) {
+    const { candidates } = expandPoolMembersFromStep(s, routeRecord.defaultModelId ?? null);
+    for (const c of candidates) {
+      if (c.modelId) modelIdSet.add(c.modelId);
+    }
+  }
+  const modelIds = [...modelIdSet];
+  const lifecycleByModel = new Map(
+    (await getModelsLifecycleByIds(modelIds)).map((m) => [m.id, m.lifecycleState ?? undefined])
+  );
+
+  return {
+    ok: true,
+    ctx: {
+      workspaceId,
+      projectId,
+      environmentId,
+      route: routeRecord,
+      allSteps: steps,
+      orderedEnabledSteps,
+      lifecycleByModel,
+    },
+  };
 }
 
 /** Failure ordering when routeId is explicit: wrong env / missing → no_route before lifecycle checks. */
@@ -287,22 +500,43 @@ export async function resolveRouteForExecution(
   }
 
   const { route: routeRecord, steps } = withSteps;
-  const enabledSteps = steps
-    .filter((s) => s.enabled)
-    .slice()
-    .sort((a, b) => a.orderIndex - b.orderIndex);
+  const graphEdges = await listRouteStepEdges(routeRecord.id, projectId, userId);
+  const edgeInputs = graphEdges.map((e) => ({
+    fromStepId: e.fromStepId,
+    toStepId: e.toStepId,
+    priority: e.priority,
+  }));
+  const orderedEnabledSteps =
+    edgeInputs.length > 0
+      ? computeEnabledStepOrderForGraph(steps, edgeInputs, routeRecord.entryStepId ?? null)
+      : steps
+          .filter((s) => s.enabled)
+          .slice()
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  const graphIndexById = new Map(orderedEnabledSteps.map((s, i) => [s.id, i]));
 
   const attemptNumber = options?.attemptNumber ?? 0;
-  const startAfterOrderIndex = attemptNumber > 0
-    ? options?.previousFailure?.selectedOrderIndex ?? -1
-    : -1;
+  const prev = options?.previousFailure;
+  let skipThroughGraphIndex = -1;
+  if (attemptNumber > 0 && prev) {
+    if (prev.selectedStepId && graphIndexById.has(prev.selectedStepId)) {
+      skipThroughGraphIndex = graphIndexById.get(prev.selectedStepId)!;
+    } else if (prev.selectedOrderIndex != null && Number.isFinite(prev.selectedOrderIndex)) {
+      const match = orderedEnabledSteps.find((s) => s.orderIndex === prev.selectedOrderIndex);
+      if (match) skipThroughGraphIndex = graphIndexById.get(match.id) ?? -1;
+    }
+  }
 
-  const modelIds = [
-    ...new Set([
-      ...enabledSteps.map((s) => s.modelId).filter(Boolean),
-      routeRecord.defaultModelId,
-    ].filter(Boolean) as string[]),
-  ];
+  const modelIdSet = new Set<string>();
+  if (routeRecord.defaultModelId) modelIdSet.add(routeRecord.defaultModelId);
+  for (const s of orderedEnabledSteps) {
+    const { candidates } = expandPoolMembersFromStep(s, routeRecord.defaultModelId ?? null);
+    for (const c of candidates) {
+      if (c.modelId) modelIdSet.add(c.modelId);
+    }
+  }
+  const modelIds = [...modelIdSet];
   const lifecycleByModel = new Map(
     (await getModelsLifecycleByIds(modelIds)).map((m) => [m.id, m.lifecycleState ?? undefined])
   );
@@ -310,44 +544,59 @@ export async function resolveRouteForExecution(
   const allViolations: PolicyViolation[] = [];
   let sawPolicyPassIncomplete = false;
 
-  const stepChainBase = enabledSteps.map((s) => buildResolveStepChainRow(s, routeRecord, false));
+  const seed = `${projectId}:${routeRecord.id}:${environmentId}:${attemptNumber}`;
 
-  for (const step of enabledSteps) {
-    if (attemptNumber > 0 && step.orderIndex <= startAfterOrderIndex) continue;
+  const stepChainNoWinner = orderedEnabledSteps.map((s) =>
+    buildResolveStepChainRow(s, routeRecord, false, {
+      seed,
+      attemptNumber,
+      winnerStepId: null,
+      winner: null,
+    })
+  );
 
-    const modelId = step.modelId ?? routeRecord.defaultModelId ?? null;
-    const policyProvider =
-      canonicalApiToPolicyProvider(normalizeProviderToCanonicalApi(step.providerPreference)) ??
-      (step.providerPreference?.trim() ? step.providerPreference.trim() : undefined);
-    const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
+  for (const step of orderedEnabledSteps) {
+    const gi = graphIndexById.get(step.id) ?? 0;
+    if (attemptNumber > 0 && gi <= skipThroughGraphIndex) continue;
 
-    const violations = await evaluatePolicies({
+    const picked = await selectExecutableMemberForStep(
+      step,
+      routeRecord,
       workspaceId,
-      projectId,
       environmentId,
-      routeId: routeRecord.id,
-      modelId: modelId ?? undefined,
-      providerType: policyProvider,
-      modelLifecycleState: lifecycleState,
-    });
-    if (violations.length > 0) {
-      allViolations.push(...violations);
+      routeRecord.id,
+      lifecycleByModel,
+      seed,
+      attemptNumber
+    );
+    if (!picked.ok) {
+      allViolations.push(...picked.policyViolations);
+      if (picked.sawNotExecutable) sawPolicyPassIncomplete = true;
       continue;
     }
 
-    const exec = isExecutableProviderModelPair(step.providerPreference, modelId);
-    if (!exec.ok) {
-      sawPolicyPassIncomplete = true;
-      continue;
-    }
+    const canonicalProvider = picked.canonicalProvider;
+    const resolvedModelId = picked.modelId;
+    const memberIndex = picked.memberIndex;
+    const explanation =
+      memberIndex != null
+        ? `route=${routeRecord.id} step=${step.orderIndex} poolMember=${memberIndex} provider=${canonicalProvider} model=${resolvedModelId}`
+        : `route=${routeRecord.id} step=${step.orderIndex} provider=${canonicalProvider} model=${resolvedModelId}`;
 
-    const canonicalProvider = exec.canonicalProvider;
-    const resolvedModelId = exec.modelId;
-    const explanation = `route=${routeRecord.id} step=${step.orderIndex} provider=${canonicalProvider} model=${resolvedModelId}`;
-    const stepChain = stepChainBase.map((row) => ({
-      ...row,
-      selected: row.stepId === step.id,
-    }));
+    const chainCtx: ChainRowContext = {
+      seed,
+      attemptNumber,
+      winnerStepId: step.id,
+      winner: {
+        memberIndex,
+        providerType: canonicalProvider,
+        modelId: resolvedModelId,
+      },
+    };
+    const stepChain = orderedEnabledSteps.map((s) =>
+      buildResolveStepChainRow(s, routeRecord, s.id === step.id, chainCtx)
+    );
+    const winnerGi = graphIndexById.get(step.id) ?? 0;
     return {
       ok: true,
       result: {
@@ -365,17 +614,18 @@ export async function resolveRouteForExecution(
             : "initial_selection",
         providerType: canonicalProvider,
         modelId: resolvedModelId,
+        selectedPoolMemberIndex: memberIndex,
         explanation,
         matchedCriteria: step.switchCriteria ?? null,
         stepChain,
-        fallbackCandidates: enabledSteps
-          .filter((s) => s.orderIndex > step.orderIndex)
-          .map((s) => toFallbackRow(buildResolveStepChainRow(s, routeRecord, false))),
+        fallbackCandidates: orderedEnabledSteps
+          .filter((_, i) => i > winnerGi)
+          .map((s) => toFallbackRow(buildResolveStepChainRow(s, routeRecord, false, chainCtx))),
       },
     };
   }
 
-  if (enabledSteps.length > 0 && sawPolicyPassIncomplete) {
+  if (orderedEnabledSteps.length > 0 && sawPolicyPassIncomplete) {
     return {
       ok: false,
       failure: {
@@ -388,9 +638,9 @@ export async function resolveRouteForExecution(
   }
 
   const allSkippedByAttempt =
-    enabledSteps.length > 0 &&
+    orderedEnabledSteps.length > 0 &&
     attemptNumber > 0 &&
-    enabledSteps.every((s) => s.orderIndex <= startAfterOrderIndex);
+    orderedEnabledSteps.every((_s, i) => i <= skipThroughGraphIndex);
   if (allSkippedByAttempt) {
     return {
       ok: false,
@@ -407,11 +657,11 @@ export async function resolveRouteForExecution(
   const modelId = null;
   const switchReasonCode =
     attemptNumber > 0 && options?.failureKind ? options.failureKind : null;
-  const explanation = enabledSteps.length > 0
+  const explanation = orderedEnabledSteps.length > 0
     ? `route=${routeRecord.id} all_steps_blocked_by_policy`
     : `route=${routeRecord.id} no_enabled_step default_model=${routeRecord.defaultModelId ?? "—"}`;
 
-  if (enabledSteps.length > 0) {
+  if (orderedEnabledSteps.length > 0) {
     return {
       ok: true,
       result: {
@@ -429,8 +679,8 @@ export async function resolveRouteForExecution(
         explanation,
         matchedCriteria: null,
         fallbackCandidates: [],
-        stepChain: stepChainBase,
-        policyViolations: allViolations,
+        stepChain: stepChainNoWinner,
+        policyViolations: dedupeViolations(allViolations),
       },
     };
   }

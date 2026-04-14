@@ -21,7 +21,7 @@
 
   <h2>Contract version</h2>
   <p>
-    Successful resolve and simulate responses include <code class="inline-code">contractVersion</code> (currently <strong>2026-04-14</strong>).
+    Successful resolve and simulate responses include <code class="inline-code">contractVersion</code> (currently <strong>2026-04-16</strong>).
     Additive features (2026-04-15): <code class="inline-code">GET …/routes/&#123;routeId&#125;/export</code> bundle, simulate <code class="inline-code">routingAttempts</code>,
     and <code class="inline-code">stepChain</code> <code class="inline-code">advanceOn</code> / <code class="inline-code">retryOn</code> hints — see repo canonical doc for detail.
   </p>

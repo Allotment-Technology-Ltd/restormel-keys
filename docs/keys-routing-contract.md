@@ -8,7 +8,11 @@
 
 - **Keys** stores **intent**: named routes, ordered steps, policies, workload/stage metadata, optional JSON policies on steps (`switchCriteria`, `retryPolicy`, `costPolicy`), timeouts, and `fallbackOn` hints.
 - **Hosts / SOPHIA** run the **data plane**: they call providers, handle retries, parse responses, and decide when to advance tiers using **their** runtime signals unless you later add a hosted execution proxy in Keys.
-- Keys **resolve** and **simulate** do **not** execute upstream LLM calls; they return provider/model decisions and **rich step metadata** for hosts to consume.
+- Keys **resolve** and **simulate** do **not** execute upstream LLM calls; they return provider/model decisions and **rich step metadata** for hosts to consume. **`switchCriteria.advanceOn`** remains a **hint** on resolve/simulate success payloads. **Exception:** **`POST …/runtime/invoke`** (hosted runtime) evaluates **`advanceOn`** against an **allowlisted** subset for **upstream failure → try next step** behaviour; see **`runtimeSwitchEvalVersion`** on success and simulate **`hostedRuntimeSwitch`** when requested ([rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md)).
+
+### Optional future: hosted “no-code” runtime
+
+A **full** no-code product (hosted execution of route graphs without customer-side orchestration code) requires a **separate data-plane** path: server-side upstream calls, continuation semantics, and strict security/tenancy controls. That is **not** implied by resolve-only or by the dashboard **visual graph** alone. Phased design and trust boundaries: [docs/rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md).
 
 ## Contract versions
 
@@ -17,8 +21,11 @@
 | `2026-03-26` | Baseline: `stepChain`, `fallbackCandidates`, `attemptNumber`, workload/stage discovery. |
 | `2026-04-14` | Rich **`stepChain` / `fallbackCandidates`** rows: `label`, `timeoutMs`, `fallbackOn`, `switchCriteria`, `retryPolicy`, `costPolicy`, `notes`. Simulate adds optional **`stepDiagnostics`** (policy + executable probe per enabled step). |
 | Additive (same `contractVersion` string) | **`advanceOn` / `retryOn`** on `stepChain` when set in step JSON; **`GET …/export`** bundle; simulate **`routingAttempts`** when requested. Documented as **2026-04-15** in repo changelog. |
+| `2026-04-16` | **Model pools** per step (`model_pool` JSON v1): resolver picks first eligible member; `stepChain` adds optional **`modelPool`**, **`poolSelectionStrategy`**, **`poolMemberIndex`**, **`poolMembers`**; top-level **`selectedPoolMemberIndex`** on success. **Parallel metadata** (`parallelGroupId`, `parallelBranchRole`) echoed on `stepChain`, simulate **`stepDiagnostics`**, **`routingAttempts`**, **`perStepEstimates`** (v1 resolver remains linear). Diagrams: [docs/routing/phase-f-resolve-pools.md](routing/phase-f-resolve-pools.md), [docs/routing/phase-f-parallel-metadata.md](routing/phase-f-parallel-metadata.md). RFC: [docs/rfc/keys-routing-phase-f-dynamic-chains.md](rfc/keys-routing-phase-f-dynamic-chains.md). |
 
 Clients should read `contractVersion` on resolve/simulate success payloads and tolerate unknown fields.
+
+**Phase F (2026-04-16):** Policies apply to **each pool member** in selection order until one passes. Parallel fields are **metadata** for hosts; Keys does not schedule parallel LLM calls in v1.
 
 ## Capability matrix (vs common gateways)
 
@@ -45,7 +52,7 @@ Industry patterns (documentation only — no endorsement):
 ### Success payload highlights
 
 - **`providerType` / `modelId`:** winning executable step (canonical `vertex` for Google).
-- **`stepChain`:** every **enabled** step in order; exactly one `selected: true` on success. When `switchCriteria.advanceOn` or `retryPolicy.retryOn` are string arrays on the step row, the same arrays are echoed top-level as **`advanceOn`** / **`retryOn`** on each `stepChain` entry (Keys does not evaluate them).
+- **`stepChain`:** every **enabled** step in order; exactly one `selected: true` on success. When `switchCriteria.advanceOn` or `retryPolicy.retryOn` are string arrays on the step row, the same arrays are echoed top-level as **`advanceOn`** / **`retryOn`** on each `stepChain` entry. **Resolve/simulate do not evaluate `advanceOn`.** Hosted **`POST …/runtime/invoke`** evaluates **`advanceOn`** only for **failure advance** and only for allowlisted tokens (see RFC).
 - **`fallbackCandidates`:** suffix after the winner (no `selected` field); same rich metadata as chain rows minus selection.
 
 ### Ingestion workload / stage
@@ -95,7 +102,7 @@ Portable **route graph** JSON for GitOps and agent diffs: `schemaVersion` **`1.0
 
 ## JSON Schemas
 
-- [route-step-rich.schema.json](schemas/route-step-rich.schema.json) — optional objects on route steps (`switchCriteria`, `retryPolicy`, `costPolicy`).
+- [route-step-rich.schema.json](schemas/route-step-rich.schema.json) — optional objects on route steps (`switchCriteria`, `retryPolicy`, `costPolicy`, `modelPool` v1).
 - [route-graph-bundle.schema.json](schemas/route-graph-bundle.schema.json) — full route + steps export bundle.
 
 ## MCP and AAIF (development-time)
@@ -117,5 +124,7 @@ Step-by-step adoption for workers outside this repo: [sophia-keys-routing-consum
 
 ## Changelog (doc)
 
+- **2026-04-14:** Draft RFC for **hosted no-code route runtime** (phased: single-step invoke → graph walk → optional evaluators): [docs/rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md).
 - **2026-04-15:** `GET .../export` route graph bundle (schema 1.0.0); `POST .../routes/import` apply bundle; `GET .../explain-chain` agent summary (route + steps + policy bindings); MCP **`routing.export`** / **`routing.import`** / **`routing.explain_chain`**; simulate **`includeRoutingAttempts`** + **`routingAttempts`**; `stepChain` **`advanceOn`** / **`retryOn`** hints from step JSON.
+- **2026-04-16:** **`contractVersion` `2026-04-16`** — model pools (`model_pool`), `selectedPoolMemberIndex`, parallel metadata echoes; see RFC [docs/rfc/keys-routing-phase-f-dynamic-chains.md](rfc/keys-routing-phase-f-dynamic-chains.md).
 - **2026-04-14:** Rich `stepChain`, simulate `stepDiagnostics`, `ingestion_remediation` stage, contract `2026-04-14`; optional AAIF **`integrationStack`** (host environment metadata; validated in `@restormel/aaif`) aligned with Dashboard stack wizard and [integration catalog](https://restormel.dev/keys/docs/guides/integration-catalog).

@@ -1,6 +1,7 @@
 /**
  * CLI device linking (OAuth 2.0 device grant patterns). Ephemeral pending_raw_key; never log raw values.
  */
+import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { createApiKey, deleteApiKey, getProject } from "./neon";
@@ -12,7 +13,7 @@ const STARTS_PER_IP_PER_HOUR = 30;
 const USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function getSql() {
-  const url = process.env.DATABASE_URL;
+  const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return neon(url);
 }

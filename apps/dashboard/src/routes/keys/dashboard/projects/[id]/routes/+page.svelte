@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { invalidateAll } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import EmptyState from "$lib/components/EmptyState.svelte";
 
   export let data: {
@@ -54,8 +54,7 @@
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data?.id) {
         await invalidateAll();
-        createName = "";
-        createDescription = "";
+        await goto(`${DASHBOARD_BASE}/projects/${data.project.id}/routes/${body.data.id as string}?flow=visual`);
       } else {
         createError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
       }
@@ -71,8 +70,8 @@
   <p class="error-msg" role="alert">{data.error ?? "Project not found."}</p>
   <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
 {:else}
-  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Rules</a></p>
-  <h1 class="page-title">Rules · {data.project.name}</h1>
+  <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
+  <h1 class="page-title">Routes · {data.project.name}</h1>
   <p class="page-desc">
     Routes define how requests are handled in this project: primary model, fallback behaviour, and billing. Each route belongs to one environment.
   </p>
@@ -139,7 +138,10 @@
       <ul class="route-list">
         {#each data.routes as r}
           <li class="route-row">
-            <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/routes/" + r.id} class="route-link">
+            <a
+              href={DASHBOARD_BASE + "/projects/" + data.project.id + "/routes/" + r.id + "?flow=visual"}
+              class="route-link"
+            >
               <span class="route-name">{r.name}</span>
               <span class="route-meta">{envName(r.environmentId)} · {r.status}{#if r.billingMode} · {r.billingMode}{/if}</span>
             </a>

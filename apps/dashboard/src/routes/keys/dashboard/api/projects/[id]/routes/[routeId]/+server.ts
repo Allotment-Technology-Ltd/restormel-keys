@@ -46,6 +46,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     publishedVersion?: number;
     updatedVia?: string;
     changeSummary?: string;
+    entryStepId?: string | null;
+    flowLayout?: Record<string, unknown> | null;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -91,6 +93,22 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     Number.isFinite(body.publishedVersion)
   ) {
     updates.publishedVersion = body.publishedVersion;
+  }
+  if (body.entryStepId !== undefined) {
+    updates.entryStepId = body.entryStepId === null ? null : String(body.entryStepId).trim() || null;
+  }
+  if (body.flowLayout !== undefined) {
+    if (body.flowLayout === null) {
+      updates.flowLayout = null;
+    } else if (
+      typeof body.flowLayout === "object" &&
+      body.flowLayout !== null &&
+      !Array.isArray(body.flowLayout)
+    ) {
+      updates.flowLayout = body.flowLayout as Record<string, unknown>;
+    } else {
+      return json({ error: "flowLayout must be a JSON object or null" }, { status: 400 });
+    }
   }
   updates.updatedVia = typeof body.updatedVia === "string" ? body.updatedVia.trim() : locals.user.authType ?? "session";
   updates.updatedBy = locals.user.uid;

@@ -1,8 +1,11 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { deleteRouteStep, getModel, getRoute, listRouteSteps, updateRouteStep } from "$lib/server/db";
+import { getPrimaryChainEnableBlockMessage } from "$lib/route-flow-primary-enable-guard";
 import { normalizeProviderForStorage, ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS } from "$lib/server/canonical-provider";
+import { parseModelPool } from "$lib/server/model-pool";
 import { jsonRouteStepProviderNotAllowed } from "$lib/server/route-step-http";
+import { ROUTE_STEP_LABEL_MAX_LENGTH } from "$lib/route-step-label";
 const FALLBACK_ON = new Set(["error", "rate_limit", "no_key", "policy_block", "any"]);
 
 function projectScope(locals: App.Locals, projectId: string): { projectId: string; userId: string } | null {
@@ -35,6 +38,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     fallbackOn?: string | null;
     timeoutMs?: number | null;
     notes?: string | null;
+    modelPool?: Record<string, unknown> | null;
+    parallelGroupId?: string | null;
+    parallelBranchRole?: string | null;
     enabled?: boolean;
   };
   try {
@@ -81,6 +87,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
   if (body.label !== undefined) {
     if (body.label !== null && typeof body.label !== "string") return invalid("label must be a string or null");
+    if (typeof body.label === "string") {
+      const t = body.label.trim();
+      body.label = t.length === 0 ? null : t;
+      if (body.label !== null && body.label.length > ROUTE_STEP_LABEL_MAX_LENGTH) {
+        return invalid(`label must be at most ${ROUTE_STEP_LABEL_MAX_LENGTH} characters`);
+      }
+    }
   }
 
   if (body.switchCriteria !== undefined) {
@@ -101,8 +114,47 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     }
   }
 
+  if (body.modelPool !== undefined) {
+    if (body.modelPool !== null && typeof body.modelPool !== "object") {
+      return invalid("modelPool must be an object or null");
+    }
+    if (body.modelPool !== null && parseModelPool(body.modelPool) === null) {
+      return invalid("modelPool must match model pool v1 shape (version, selectionStrategy, members) or be null");
+    }
+  }
+
+  if (body.parallelGroupId !== undefined) {
+    if (body.parallelGroupId !== null && typeof body.parallelGroupId !== "string") {
+      return invalid("parallelGroupId must be a string or null");
+    }
+  }
+
+  if (body.parallelBranchRole !== undefined) {
+    if (body.parallelBranchRole !== null && typeof body.parallelBranchRole !== "string") {
+      return invalid("parallelBranchRole must be a string or null");
+    }
+  }
+
   if (body.notes !== undefined) {
     if (body.notes !== null && typeof body.notes !== "string") return invalid("notes must be a string or null");
+  }
+
+  if (body.enabled === false) {
+    const allSteps = await listRouteSteps(params.routeId, scope.projectId, scope.userId);
+    const steps = allSteps.map((s) => ({
+      id: s.id,
+      orderIndex: s.orderIndex,
+      enabled: s.enabled,
+      parallelGroupId: s.parallelGroupId ?? null,
+    }));
+    const block = getPrimaryChainEnableBlockMessage({
+      steps,
+      stepId: params.stepId,
+      nextEnabled: false,
+    });
+    if (block) {
+      return json({ error: "primary_chain_enable_guard", detail: block }, { status: 409 });
+    }
   }
 
   const step = await updateRouteStep(

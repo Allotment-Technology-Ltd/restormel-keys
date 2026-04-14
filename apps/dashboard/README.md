@@ -53,7 +53,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | Neon Postgres connection string |
+| `DATABASE_URL` | Yes | Neon Postgres connection string. Put it in **`apps/dashboard/.env` or `.env.local`** (Vite `envDir`); server code reads it via **`$env/dynamic/private`**, not `process.env`, so `.env.local` loads reliably. |
 | `NEON_AUTH_BASE_URL` | Yes | Neon Auth URL from Neon Console (Project → Branch → Auth → Configuration). GitHub OAuth is configured in Neon Console, not in app env. |
 | `FEEDBACK_GITHUB_TOKEN` | Optional | GitHub PAT with `issues:write` for feedback issue creation from `/keys/dashboard/api/feedback`. If unset, feedback is logged locally and API still returns `200`. |
 | `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `Allotment-Technology-Ltd/restormel-keys`. |
@@ -63,6 +63,26 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 | `OPENAI_API_KEY` | Optional | **Required** for **Restormel Support** (`/keys/dashboard/api/support-chat`). If unset, support returns **503**. |
 | `RESTORMEL_SUPPORT_ENABLED` | Optional | Set to `false` to disable Restormel Support (API **503**). |
 | `RESTORMEL_SUPPORT_MODEL` | Optional | OpenAI model id for support (default `gpt-4o-mini`). |
+
+### Local development (localhost) vs production
+
+Do **not** point `pnpm dev` at the **production** Neon branch if you will create or change data. Use a **separate branch** (for example a preview branch or a branch created for local use) and put both **`DATABASE_URL`** and **`NEON_AUTH_BASE_URL`** in **`apps/dashboard/.env` or `.env.local`**.
+
+**Why both:** Neon Auth is **per branch**. The Auth base URL and the Postgres connection string must refer to the **same** branch. If they differ, sign-in can succeed while API calls hit the wrong database or session validation fails.
+
+**How to obtain values:** Neon Console → project → choose the **non-production** branch → **Connection details** for `DATABASE_URL`; **Auth → Configuration** for the Auth base URL (same branch). The Neon MCP can also return a branch connection string (`get_connection_string` with `branchId`).
+
+Restart the dev server after changing env.
+
+**GitHub OAuth — “redirect_uri is not associated with this application”:** Each Neon branch has its **own** Neon Auth hostname. The GitHub OAuth App (the one whose **Client ID** you pasted into Neon Console → Auth → GitHub) only accepts **registered** callback URLs. When you switch branches (for example from `production` to a dev branch), add that branch’s callback in GitHub → **Settings** → **Developer settings** → **OAuth Apps** → your app → **Authorization callback URL** (GitHub allows **multiple** URLs).
+
+Use exactly (append to your branch’s Auth base URL, no extra slash):
+
+`…/neondb/auth/callback/github`
+
+The host and path prefix must match **`NEON_AUTH_BASE_URL`** for that branch (Neon Console → Branch → Auth → Configuration shows the base; add `/callback/github`).
+
+Also add **`http://localhost:5173/keys/dashboard/api/auth/callback/github`** if GitHub still rejects the redirect (some flows use the dashboard URL; Neon Console should allow localhost under Auth → trusted origins / domains).
 
 ### Public env (build-time)
 

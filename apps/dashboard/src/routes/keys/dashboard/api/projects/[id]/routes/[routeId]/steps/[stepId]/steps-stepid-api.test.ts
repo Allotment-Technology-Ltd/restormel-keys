@@ -29,7 +29,10 @@ vi.mock("$lib/server/db", () => ({
     conditionBlock: null,
     fallbackOn: "error",
     timeoutMs: null,
-    enabled: false,
+    enabled: true,
+    label: null,
+    parallelGroupId: null,
+    parallelBranchRole: null,
     createdAt: new Date(1).toISOString(),
     updatedAt: new Date(2).toISOString(),
   }),
@@ -37,8 +40,49 @@ vi.mock("$lib/server/db", () => ({
   getModel: vi.fn().mockResolvedValue({ id: "gpt-4o" }),
 }));
 
+const defaultListSteps = [
+  {
+    id: "s1",
+    routeId: "r1",
+    orderIndex: 0,
+    providerPreference: "anthropic",
+    modelId: null,
+    conditionBlock: null,
+    fallbackOn: "error",
+    timeoutMs: null,
+    enabled: true,
+    label: null,
+    parallelGroupId: null,
+    parallelBranchRole: null,
+    createdAt: new Date(1).toISOString(),
+    updatedAt: new Date(1).toISOString(),
+  },
+];
+
+const defaultUpdateStepResult = {
+  id: "s1",
+  routeId: "r1",
+  orderIndex: 1,
+  providerPreference: "anthropic",
+  modelId: null,
+  conditionBlock: null,
+  fallbackOn: "error",
+  timeoutMs: null,
+  enabled: true,
+  label: null,
+  parallelGroupId: null,
+  parallelBranchRole: null,
+  createdAt: new Date(1).toISOString(),
+  updatedAt: new Date(2).toISOString(),
+};
+
 describe("PATCH/DELETE /api/projects/:id/routes/:routeId/steps/:stepId", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const db = await import("$lib/server/db");
+    vi.mocked(db.listRouteSteps).mockResolvedValue(defaultListSteps as never);
+    vi.mocked(db.updateRouteStep).mockResolvedValue(defaultUpdateStepResult as never);
+  });
 
   it("PATCH updates a step", async () => {
     const { PATCH } = await import("./+server");
@@ -49,7 +93,7 @@ describe("PATCH/DELETE /api/projects/:id/routes/:routeId/steps/:stepId", () => {
         request: new Request("http://localhost", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderIndex: 1, enabled: false }),
+          body: JSON.stringify({ orderIndex: 1 }),
         }),
       } as unknown as Parameters<typeof PATCH>[0]
     );
@@ -114,6 +158,25 @@ describe("PATCH/DELETE /api/projects/:id/routes/:routeId/steps/:stepId", () => {
       } as unknown as Parameters<typeof PATCH>[0]
     );
     expect(res.status).toBe(409);
+  });
+
+  it("PATCH rejects label longer than max length", async () => {
+    const { ROUTE_STEP_LABEL_MAX_LENGTH } = await import("$lib/route-step-label");
+    const { PATCH } = await import("./+server");
+    const res = await PATCH(
+      {
+        params: { id: "p1", routeId: "r1", stepId: "s1" },
+        locals: { user: { uid: "u1", authType: "gateway_key", projectIdForKey: "p1", keyId: "k1" } },
+        request: new Request("http://localhost", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: "x".repeat(ROUTE_STEP_LABEL_MAX_LENGTH + 1) }),
+        }),
+      } as unknown as Parameters<typeof PATCH>[0]
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBe("invalid_step_schema");
   });
 });
 

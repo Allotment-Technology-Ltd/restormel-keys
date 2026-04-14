@@ -35,7 +35,7 @@ describe("policyAvailabilityMapFromEntries", () => {
       },
       {
         providerType: "anthropic",
-        modelId: "claude-3-5-sonnet",
+        modelId: "claude-sonnet-4",
         status: "unknown_or_unavailable",
         message: "403",
       },
@@ -44,7 +44,7 @@ describe("policyAvailabilityMapFromEntries", () => {
       available: false,
       enforcement: "soft",
     });
-    expect(map["anthropic:claude-3-5-sonnet"]).toMatchObject({
+    expect(map["anthropic:claude-sonnet-4"]).toMatchObject({
       available: false,
       enforcement: "soft",
     });

@@ -1,6 +1,6 @@
 /** Static capability map for MCP `routing.capabilities` (read-only; no network). */
 export const ROUTING_CAPABILITIES = {
-  contractVersion: "2026-04-14",
+  contractVersion: "2026-04-16",
   canonicalDocTopic: "keys_routing_contract",
   publicDocUrl: "https://restormel.dev/keys/docs/guides/routing-contract",
   resolve: {
