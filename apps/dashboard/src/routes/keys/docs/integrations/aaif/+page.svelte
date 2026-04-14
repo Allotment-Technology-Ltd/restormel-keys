@@ -65,6 +65,15 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
   <li><strong>Cost control</strong> — the <code class="inline-code">maxCost</code> constraint caps estimated spend per request.</li>
 </ul>
 
+<h2 class="docs-h2">Routing and resolve</h2>
+<p class="docs-p">
+  AAIF adds optional <code class="inline-code">routingContext</code> on <code class="inline-code">AAIFRequest</code> so hosts can mirror resolve hints (for example <code class="inline-code">workload</code>, <code class="inline-code">stage</code>, <code class="inline-code">attemptNumber</code>) next to the legacy <code class="inline-code">routing</code> object.
+  AAIF does <strong>not</strong> call the dashboard resolve HTTP API; for a full <code class="inline-code">stepChain</code> from Keys, use <code class="inline-code">@restormel/keys</code> <code class="inline-code">resolve()</code> (Gateway key) then execute the model in your worker.
+</p>
+<p class="docs-p">
+  Canonical semantics: <a href="/keys/docs/guides/routing-contract">Routing contract</a> (mirrors <code class="inline-code">docs/keys-routing-contract.md</code>). Agents: MCP <code class="inline-code">docs.canonical_resolve</code> topic <code class="inline-code">keys_routing_contract</code> or suite tool <code class="inline-code">routing.capabilities</code>.
+</p>
+
 <h2 class="docs-h2">When to choose AAIF vs MCP vs CLI</h2>
 <ul class="docs-list">
   <li><strong>AAIF</strong> — your app/service wants a typed contract and runtime helper for routing + cost estimation.</li>

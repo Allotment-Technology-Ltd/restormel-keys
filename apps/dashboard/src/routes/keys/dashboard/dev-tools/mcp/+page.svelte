@@ -183,6 +183,10 @@
       <span class="tool-desc">Explain routing decisions for a given request</span>
     </li>
     <li>
+      <code class="tool-name">routing.export | routing.import | routing.explain_chain</code>
+      <span class="tool-desc">Route graph bundle (GET/POST import); read-only route + steps + policy-scope summary for agents (GET explain-chain)</span>
+    </li>
+    <li>
       <code class="tool-name">entitlements.check</code>
       <span class="tool-desc">Check plan entitlements and feature access</span>
     </li>

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://restormel.dev/docs/schemas/route-graph-bundle.schema.json",
+  "title": "Restormel route graph export bundle",
+  "description": "Portable snapshot of one route and its steps for GitOps and agent diffs. No secrets. Additional properties allowed on route/steps objects for forward compatibility.",
+  "type": "object",
+  "required": ["schemaVersion", "exportedAt", "projectId", "route", "steps"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Bump when breaking bundle shape."
+    },
+    "exportedAt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix epoch milliseconds when the bundle was produced."
+    },
+    "projectId": { "type": "string" },
+    "route": {
+      "type": "object",
+      "description": "Route row (control plane); keys align with dashboard RouteRecord JSON.",
+      "additionalProperties": true
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "Route step row; rich policies optional per route-step-rich.schema.json.",
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

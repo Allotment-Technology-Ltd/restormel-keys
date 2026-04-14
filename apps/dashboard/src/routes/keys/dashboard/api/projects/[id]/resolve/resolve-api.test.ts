@@ -2,6 +2,7 @@
  * Resolve API: request execution path (Gateway Key / session → route resolution → log).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { RESOLVE_SIMULATE_CONTRACT_VERSION } from "$lib/server/resolve-response";
 
 const mockProject = {
   id: "p1",
@@ -159,7 +160,7 @@ describe("POST /api/projects/[id]/resolve", () => {
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),
-      contractVersion: "2026-03-26",
+      contractVersion: RESOLVE_SIMULATE_CONTRACT_VERSION,
     });
     expect(insertRequestLog).toHaveBeenCalledWith(
       expect.objectContaining({

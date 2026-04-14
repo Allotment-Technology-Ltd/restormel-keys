@@ -44,6 +44,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     label: "Guides",
     ariaLabel: "Guides section",
     items: [
+      { href: "/keys/docs/guides/routing-contract", label: "Routing contract (SOPHIA-class)" },
       { href: "/keys/docs/guides/environment-vocabulary", label: "Environment vocabulary" },
       { href: "/keys/docs/guides/keys-testing-onboarding", label: "Keys + Testing onboarding" },
       { href: "/keys/docs/guides/byo-gpu-vm", label: "BYO-GPU — VM path" },

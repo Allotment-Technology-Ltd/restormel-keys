@@ -32,6 +32,8 @@ Route modes available:
 
 You can create multiple routes per project — for example, `ingestion` for background jobs and `interactive` for user-facing requests with different fallback priorities.
 
+**Canonical routing contract (SOPHIA-class):** Resolve returns a **`stepChain`** (ordered tiers), optional **`fallbackCandidates`**, and a **`contractVersion`** (currently **`2026-04-14`**) with per-step metadata such as **`timeoutMs`**, **`retryPolicy`**, **`costPolicy`**, and **`switchCriteria`**. Ingestion pipelines can attach **`workload: "ingestion"`** and a **`stage`** (for example `ingestion_embedding`) on the route so resolve discovers the right rule without baking in internal UUIDs; use **`attemptNumber`** plus **`previousFailure`** so Keys advances past exhausted tiers. Full semantics: [docs/keys-routing-contract.md](../keys-routing-contract.md) — in-product mirror: [/keys/docs/guides/routing-contract](https://restormel.dev/keys/docs/guides/routing-contract).
+
 ---
 
 ## Step 3.2 — Create your first route in the Dashboard
@@ -43,7 +45,9 @@ You can create multiple routes per project — for example, `ingestion` for back
 2. **Route mode:** Select `fallback_chain`.
 3. **Save** the route.
 
-At the moment, the dashboard UI shows steps but does not yet provide a full step editor. You create steps via the Steps API in Step 3.4a.
+On the route detail page, use **Add step** to create ordered tiers (provider, model catalog id, fallback trigger, timeout). Expand a step to edit **label**, **switch criteria**, **retry policy**, and **cost policy** as JSON objects (validated as objects server-side; see **`docs/schemas/route-step-rich.schema.json`** for a reference shape). Optional **Ingestion workload** / **Ingestion stage** fields map the rule to SOPHIA-style resolve discovery.
+
+You can still create or tweak steps with the Steps HTTP API (Step 3.4a) when automating from CI or scripts.
 
 Adjust provider order and models to match your actual preferences. The example above is illustrative.
 
@@ -115,11 +119,69 @@ curl -s -X POST \
 
 Expected output: `"openai"` and `"gpt-4o"` (or whatever your first step is).
 
+Inspect the full chain in one response:
+
+```bash
+curl -s -X POST \
+  "https://restormel.dev/keys/dashboard/api/projects/${RESTORMEL_PROJECT_ID}/resolve" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{ "environmentId": "production", "routeId": "ingestion" }' \
+  | jq '.data.contractVersion, .data.stepChain'
+```
+
+---
+
+## Step 3.3a — Optional: resolve by ingestion workload and stage
+
+If you created a route with **`workload`** `ingestion` and a non-null **`stage`** (for example `ingestion_extraction`), you can call resolve **without** `routeId` and let Keys pick the dedicated stage route, then fall back to a shared ingestion route whose **`stage`** is null:
+
+```bash
+curl -s -X POST \
+  "https://restormel.dev/keys/dashboard/api/projects/${RESTORMEL_PROJECT_ID}/resolve" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentId": "production",
+    "workload": "ingestion",
+    "stage": "ingestion_extraction"
+  }' | jq '.data.routeId, .data.stepChain[0].providerType'
+```
+
+Use the canonical doc for the full stage list and trust boundary vs your worker.
+
+---
+
+## Step 3.3b — Optional: simulate (dry-run diagnostics)
+
+Dry-run one route’s selection and per-step policy hints (no upstream LLM execution in Keys):
+
+```bash
+ROUTE_ID="route_123"  # UUID from dashboard URL
+
+curl -s -X POST \
+  "https://restormel.dev/keys/dashboard/api/projects/${RESTORMEL_PROJECT_ID}/routes/${ROUTE_ID}/simulate" \
+  -H "Authorization: Bearer ${RESTORMEL_GATEWAY_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{ "environmentId": "production", "includeStepDiagnostics": true }' \
+  | jq '.data.contractVersion, .data.stepDiagnostics'
+```
+
+Set **`includeStepDiagnostics`** to **`false`** when you only need cost-style hints.
+
+**Optional `routingAttempts`:** set **`includeRoutingAttempts`** to **`true`** on the same POST to receive a per–enabled-step list of hypothetical outcomes (`selected`, `blocked_by_policy`, `not_executable`, `not_selected`) for forensics—still no LLM execution in Keys.
+
+**GitOps export:** **`GET …/routes/{routeId}/export`** returns a portable JSON bundle (`schemaVersion` **1.0.0**) of the route and ordered steps (see **`docs/schemas/route-graph-bundle.schema.json`**). MCP tool **`routing.export`** wraps the same GET.
+
+**GitOps import:** **`POST …/routes/import`** applies that bundle (create, or body **`replaceRouteId`** to replace an existing route). MCP **`routing.import`** wraps the same POST.
+
+**Agent explain chain:** **`GET …/routes/{routeId}/explain-chain`** returns route + ordered steps + policy bindings at workspace/project/environment/route (read-only). MCP **`routing.explain_chain`**.
+
 ---
 
 ## Step 3.4 — Test fallback behaviour
 
-To confirm the fallback chain works, make the first step unusable and confirm resolve returns the next enabled step. The dashboard UI shows steps; you create and manage steps via the Steps API (or the dashboard when a full step editor is available).
+To confirm the fallback chain works, make the first step unusable and confirm resolve returns the next enabled step. Prefer **PATCH** on **`…/steps/{stepId}`** (disable the step or change order in the dashboard) instead of deleting rows when you want a reversible test.
 
 ### Step 3.4a — Create steps via the Steps API
 
@@ -148,7 +210,7 @@ curl -s -X POST \
 Temporarily disable (or delete) the first step so resolve returns the second step. Then call resolve again with the same route.
 
 > **Tip**
-> If you do not yet have a step update endpoint, deleting the first step is the simplest way to force the fallback path; re-create it afterwards.
+> Use **PATCH** `…/routes/{routeId}/steps/{stepId}` with `{ "enabled": false }` to force the fallback path, then re-enable the step when finished.
 
 ### You'll see
 

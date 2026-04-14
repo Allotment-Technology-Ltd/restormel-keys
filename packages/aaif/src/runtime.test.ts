@@ -3,6 +3,7 @@ import { createKeys, openaiProvider } from "@restormel/keys";
 import type { KeysConfig } from "@restormel/keys";
 import type { AAIFRequest } from "./types.js";
 import { executeAAIFRequest } from "./runtime.js";
+import { isAAIFRequest } from "./validate.js";
 
 describe("AAIF runtime helpers", () => {
   function makeKeys(): ReturnType<typeof createKeys> {
@@ -92,6 +93,16 @@ describe("AAIF runtime helpers", () => {
 
     const res = await executeAAIFRequest(req, keys);
     expect(res.outputText).toBe("hello");
+  });
+
+  it("isAAIFRequest accepts optional routingPlan object", () => {
+    expect(
+      isAAIFRequest({
+        input: "x",
+        routingPlan: { stepChain: [] },
+      }),
+    ).toBe(true);
+    expect(isAAIFRequest({ input: "x", routingPlan: "bad" })).toBe(false);
   });
 });
 

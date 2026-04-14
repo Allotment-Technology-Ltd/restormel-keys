@@ -11,6 +11,7 @@ import {
   suiteValidateGraphFixture,
   suiteValidateTestingConfig,
 } from "./suite-tools-logic.js";
+import { ROUTING_CAPABILITIES } from "./routing-capabilities.js";
 
 const canonicalResolveInput = {
   topic: z
@@ -100,6 +101,28 @@ const memoryPreviewOutput = {
 };
 
 export function registerHorizonSuiteTools(server: McpServer): void {
+  const routingCapabilitiesOutput = {
+    ok: z.boolean(),
+    capabilities: z.any(),
+  };
+
+  server.registerTool(
+    "routing.capabilities",
+    {
+      description:
+        "Return a structured summary of Restormel Keys routing features (resolve, simulate, MCP tool names, AAIF note). Read-only; no network. Use so agents know what is possible before calling the control plane.",
+      inputSchema: { _noop: z.boolean().optional().describe("Ignored; callers may send an empty object.") },
+      outputSchema: routingCapabilitiesOutput,
+    },
+    async () => {
+      const structuredContent = { ok: true as const, capabilities: ROUTING_CAPABILITIES };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
   server.registerTool(
     "docs.canonical_resolve",
     {

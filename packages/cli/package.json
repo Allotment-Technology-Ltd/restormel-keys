@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-cli",
-  "version": "0.1.9",
+  "version": "0.1.11",
   "description": "CLI for Restormel Keys: init, add keys, validate, doctor, cost estimate.",
   "keywords": [
     "restormel",

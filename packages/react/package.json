@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React components and hooks for Restormel Keys. Wraps Web Components; native-feeling API for React and Next.js.",
   "type": "module",
   "main": "./dist/index.js",

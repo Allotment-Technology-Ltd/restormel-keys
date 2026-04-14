@@ -24,8 +24,15 @@ The following tools are defined (name, description, input/output schema):
 - **integration.generate** — Generate integration configuration for a stack
 - **integration.bootstrap_nextjs** — Generate Next.js server resolver + admin key contract
 - **routes.list/create/update/delete** — Manage control-plane routes
+- **routes.upsert_with_steps** — Create or replace a route with explicit ordered steps (dashboard-aligned shape; prefer over legacy **`routes.create`** when you need ingestion **`workload`** / **`stage`** and step metadata)
+- **routes.simulate** — Dry-run selection for a route id (policy diagnostics; optional `includeRoutingAttempts`; no LLM execution in Keys)
+- **routing.export** — GET portable route+steps JSON bundle (schema 1.0.0) for GitOps and agent diffs; read-only, no secrets
+- **routing.import** — POST apply a bundle on the control plane (create route or replace **`replaceRouteId`** metadata + steps)
+- **routing.explain_chain** — GET read-only route + ordered steps + policy binding layers (workspace/project/environment/route) for agents
 - **policies.list/create/update/delete** — Manage control-plane policies
-- **fallback_chain.set** — Set one primary + fallback chain in one call
+- **fallback_chain.set** — Set one primary + fallback chain in one call (legacy convenience; full step authoring uses **routes** APIs or **`routes.upsert_with_steps`**)
+- **docs.canonical_resolve** — Resolve a topic id to repo path + optional public URL (for agents: **`keys_routing_contract`**)
+- **routing.capabilities** (suite invoke) — Structured list of routing-related tools and HTTP paths
 - **byok.schema.generate** — Generate BYOK DB schema templates
 - **byok.api_contract.generate** — Generate BYOK endpoint contracts
 - **policy.simulate** — Run batch policy simulations for rollout scenarios

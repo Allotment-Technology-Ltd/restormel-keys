@@ -30,7 +30,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 
 ## Cursor skills and rules
 
-- Skills: `.cursor/skills/` with symlinks under `.agents/skills/` per [.cursor/rules/08-project-skills.mdc](.cursor/rules/08-project-skills.mdc). **Keys vs platform:** [.cursor/skills/restormel-keys-vs-platform/SKILL.md](.cursor/skills/restormel-keys-vs-platform/SKILL.md).
+- Skills: `.cursor/skills/` with symlinks under `.agents/skills/` per [.cursor/rules/08-project-skills.mdc](.cursor/rules/08-project-skills.mdc). **Keys vs platform:** [.cursor/skills/restormel-keys-vs-platform/SKILL.md](.cursor/skills/restormel-keys-vs-platform/SKILL.md). **SOPHIA-class routing (resolve, MCP, AAIF):** [.cursor/skills/restormel-keys-routing/SKILL.md](.cursor/skills/restormel-keys-routing/SKILL.md) and canonical [docs/keys-routing-contract.md](docs/keys-routing-contract.md).
 - New Restormel **product** repos: start from [platform/cursor-template/](platform/cursor-template/) and [platform/docs/cursor-init.md](platform/docs/cursor-init.md).
 
 ## Keys + Restormel Testing

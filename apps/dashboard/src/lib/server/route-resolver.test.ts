@@ -43,6 +43,8 @@ vi.mock("$lib/server/db", () => ({
         fallbackOn: "error",
         timeoutMs: null,
         enabled: true,
+        switchCriteria: { advanceOn: ["rate_limit"] },
+        retryPolicy: { retryOn: ["timeout"] },
         createdAt: new Date(1).toISOString(),
         updatedAt: new Date(1).toISOString(),
       },
@@ -73,6 +75,9 @@ describe("resolveRouteForExecution", () => {
     if (!res.ok) throw new Error("expected ok");
     expect(res.result.selectedStep?.id).toBe("s1");
     expect(res.result.providerType).toBe("anthropic");
+    const s2row = res.result.stepChain?.find((r) => r.stepId === "s2");
+    expect(s2row?.advanceOn).toEqual(["rate_limit"]);
+    expect(s2row?.retryOn).toEqual(["timeout"]);
   });
 
   it("skips disabled steps", async () => {

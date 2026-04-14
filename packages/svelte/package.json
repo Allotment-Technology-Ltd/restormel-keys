@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-svelte",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Svelte 5 components for Restormel Keys: KeyManager, themeable and accessible.",
   "type": "module",
   "main": "./dist/index.js",

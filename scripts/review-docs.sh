@@ -30,6 +30,9 @@ for f in $required_extra; do
 done
 
 if [ "$MISSING" -eq 0 ]; then
+  if [ -f "$ROOT/scripts/routing-doc-drift-check.sh" ]; then
+    bash "$ROOT/scripts/routing-doc-drift-check.sh"
+  fi
   echo "Docs review OK"
   exit 0
 else

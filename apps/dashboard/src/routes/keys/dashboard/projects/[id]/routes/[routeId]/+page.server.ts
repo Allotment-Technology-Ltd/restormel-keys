@@ -8,6 +8,7 @@ import {
   listPolicyBindingsByTarget,
   listModels,
 } from "$lib/server/db";
+import { INGESTION_STAGE_IDS, INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
 
 async function projectScope(
   locals: App.Locals,
@@ -34,6 +35,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       route: null,
       steps: [],
       modelLifecycleWarnings: [],
+      ingestionWorkload: INGESTION_WORKLOAD,
+      ingestionStageIds: [...INGESTION_STAGE_IDS],
       error: "Not found",
     };
   }
@@ -45,6 +48,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         route: null,
         steps: [],
         modelLifecycleWarnings: [],
+        ingestionWorkload: INGESTION_WORKLOAD,
+        ingestionStageIds: [...INGESTION_STAGE_IDS],
         error: "Route not found",
       };
     }
@@ -68,6 +73,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     return {
       project: project ? { id: project.id, name: project.name } : null,
       route: result.route,
+      ingestionWorkload: INGESTION_WORKLOAD,
+      ingestionStageIds: [...INGESTION_STAGE_IDS],
       steps: result.steps,
       modelLifecycleWarnings,
       availablePolicies: availablePolicies.map((p) => ({
@@ -95,6 +102,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       availablePolicies: [],
       routePolicyBindings: [],
       modelOptions: [],
+      ingestionWorkload: INGESTION_WORKLOAD,
+      ingestionStageIds: [...INGESTION_STAGE_IDS],
       error: "Unable to load route",
     };
   }

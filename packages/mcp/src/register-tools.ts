@@ -1,6 +1,7 @@
 /**
  * Registers Restormel MCP tools on an McpServer instance.
- * Keep Zod field shapes aligned with {@link ./tools.js} JSON schemas.
+ * Keep Zod field shapes aligned with {@link ./tools.js} JSON schemas; for **`routes.simulate`** /
+ * **`routing.export`** success payloads, also mirror {@link ./routing-mcp-output-schemas.ts}.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
@@ -158,6 +159,254 @@ const routesUpdateInput = {
 const routesDeleteInput = {
   projectId: z.string(),
   routeId: z.string(),
+};
+
+const routesUpsertStepInput = z.object({
+  providerPreference: z.string().describe("Route step provider slug (e.g. openai, anthropic, google)."),
+  modelId: z.string().describe("Catalog model id for this tier."),
+  orderIndex: z.number().int().nonnegative().optional().describe("Defaults to array index when omitted."),
+  timeoutMs: z.number().int().positive().optional(),
+  fallbackOn: z.string().optional().describe("One of: error, rate_limit, no_key, policy_block, any"),
+  label: z.string().optional(),
+});
+
+const routesUpsertWithStepsInput = {
+  projectId: z.string(),
+  environmentId: z.string().describe("Target environment id (e.g. production)."),
+  name: z.string().describe("Route display name."),
+  routeMode: z.string().optional().describe("Defaults to fallback_chain."),
+  workload: z.string().nullable().optional().describe("Optional workload (e.g. ingestion)."),
+  stage: z.string().nullable().optional().describe("Optional stage when workload is ingestion."),
+  steps: z
+    .array(routesUpsertStepInput)
+    .min(1)
+    .describe("Ordered fallback tiers; first step is primary."),
+};
+
+const routesUpsertWithStepsOutput = {
+  routeId: z.string(),
+  stepsCreated: z.number().int().nonnegative(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const routesSimulateInput = {
+  projectId: z.string(),
+  routeId: z.string(),
+  environmentId: z.string(),
+  stage: z.string().optional(),
+  workload: z.string().optional(),
+  includeStepDiagnostics: z.boolean().optional(),
+  includeRoutingAttempts: z.boolean().optional(),
+};
+
+/** Open object maps for forward-compatible nested JSON (step rows, policy payloads, etc.). */
+const jsonRecord = z.record(z.string(), z.unknown());
+
+const routesSimulateRoutingAttemptRow = z.object({
+  stepId: z.string(),
+  orderIndex: z.number(),
+  providerType: z.union([z.string(), z.null()]).optional(),
+  modelId: z.union([z.string(), z.null()]).optional(),
+  hypotheticalOutcome: z.enum(["selected", "blocked_by_policy", "not_executable", "not_selected"]),
+});
+
+const routeMetaSimulate = z.object({
+  id: z.string(),
+  environmentId: z.string(),
+  workload: z.union([z.string(), z.null()]),
+  stage: z.union([z.string(), z.null()]),
+  enabled: z.union([z.boolean(), z.null()]),
+  version: z.union([z.number(), z.null()]),
+  publishedVersion: z.union([z.number(), z.null()]),
+});
+
+const perStepEstimateRow = z.object({
+  stepId: z.string(),
+  orderIndex: z.number(),
+  providerType: z.union([z.string(), z.null()]),
+  modelId: z.union([z.string(), z.null()]),
+  estimatedCostUsd: z.union([z.number(), z.null()]),
+  wouldRun: z.boolean(),
+  wouldBeSkippedBecause: z.union([z.string(), z.null()]),
+});
+
+const stepDiagnosticRow = z.object({
+  stepId: z.string(),
+  orderIndex: z.number(),
+  providerType: z.union([z.string(), z.null()]),
+  modelId: z.union([z.string(), z.null()]),
+  policyViolations: z.array(jsonRecord),
+  executable: z.boolean(),
+});
+
+const decisionMetadataSimulate = z.object({
+  selectedStepId: z.union([z.string(), z.null()]),
+  selectedOrderIndex: z.union([z.number(), z.null()]),
+  switchReasonCode: z.union([z.string(), z.null()]),
+  providerType: z.union([z.string(), z.null()]),
+  modelId: z.union([z.string(), z.null()]),
+  estimatedCostUsd: z.union([z.number(), z.null()]),
+  matchedCriteria: z.union([jsonRecord, z.null()]),
+  fallbackCandidates: z.array(jsonRecord),
+  stepChain: z.array(jsonRecord),
+  route: routeMetaSimulate,
+});
+
+/** Success `data` from dashboard POST …/simulate (aligned with buildResolveSuccessData + simulate extras). */
+const routesSimulateSuccessData = z.object({
+  contractVersion: z.string(),
+  traceId: z.union([z.string(), z.null()]),
+  routeId: z.string(),
+  routeName: z.string(),
+  route: routeMetaSimulate,
+  providerType: z.union([z.string(), z.null()]),
+  modelId: z.union([z.string(), z.null()]),
+  explanation: z.string(),
+  selectedStepId: z.union([z.string(), z.null()]),
+  selectedOrderIndex: z.union([z.number(), z.null()]),
+  switchReasonCode: z.union([z.string(), z.null()]),
+  estimatedCostUsd: z.union([z.number(), z.null()]),
+  matchedCriteria: z.union([jsonRecord, z.null()]),
+  fallbackCandidates: z.array(jsonRecord),
+  stepChain: z.array(jsonRecord),
+  decisionMetadata: decisionMetadataSimulate,
+  perStepEstimates: z.array(perStepEstimateRow),
+  stepDiagnostics: z.array(stepDiagnosticRow).optional(),
+  routingAttempts: z.array(routesSimulateRoutingAttemptRow).optional(),
+  wouldRun: z.boolean(),
+  switchOutcomePreview: z.object({
+    attemptNumber: z.number(),
+    failureKind: z.union([z.string(), z.null()]),
+    selectedOrderIndex: z.union([z.number(), z.null()]),
+  }),
+});
+
+const routesSimulateOutput = {
+  data: routesSimulateSuccessData.optional(),
+  error: z.string().optional(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const routingExportInput = {
+  projectId: z.string(),
+  routeId: z.string(),
+};
+
+/** Portable bundle body only (see docs/schemas/route-graph-bundle.schema.json). */
+const routeGraphBundleData = z.object({
+  schemaVersion: z.literal("1.0.0"),
+  exportedAt: z.number(),
+  projectId: z.string(),
+  route: jsonRecord,
+  steps: z.array(jsonRecord),
+});
+
+const routingExportOutput = {
+  data: routeGraphBundleData.optional(),
+  error: z.string().optional(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const routingImportInput = {
+  projectId: z.string(),
+  bundle: z.record(z.string(), z.unknown()),
+  replaceRouteId: z.string().optional(),
+};
+
+/** Success `data` from dashboard POST …/routes/import (`getRouteWithSteps` shape). */
+const routingImportSuccessData = z.object({
+  route: jsonRecord,
+  steps: z.array(jsonRecord),
+});
+
+const routingImportOutput = {
+  data: routingImportSuccessData.optional(),
+  error: z.string().optional(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
+};
+
+const routingExplainChainInput = {
+  projectId: z.string(),
+  routeId: z.string(),
+  includePolicyRuleJson: z.boolean().optional(),
+  includeCatalogHints: z.boolean().optional(),
+};
+
+const routingExplainChainScope = z.enum(["workspace", "project", "environment", "route"]);
+
+const explainChainPolicyRow = z.object({
+  scope: routingExplainChainScope,
+  bindingId: z.string(),
+  policyId: z.string(),
+  name: z.string(),
+  type: z.string(),
+  status: z.string(),
+  ruleSummary: z.string(),
+  ruleDefinition: jsonRecord.optional(),
+});
+
+const explainChainOrderedStep = z.object({
+  stepId: z.string(),
+  orderIndex: z.number(),
+  providerPreference: z.union([z.string(), z.null()]),
+  modelId: z.union([z.string(), z.null()]),
+  enabled: z.boolean(),
+  label: z.union([z.string(), z.null()]),
+  hasConditionBlock: z.boolean(),
+  advanceOn: z.array(z.string()).optional(),
+  retryOn: z.array(z.string()).optional(),
+});
+
+const explainChainRouteBlock = z.object({
+  id: z.string(),
+  name: z.string(),
+  environmentId: z.string(),
+  workload: z.union([z.string(), z.null()]),
+  stage: z.union([z.string(), z.null()]),
+  routeMode: z.union([z.string(), z.null()]),
+  enabled: z.boolean(),
+  status: z.string(),
+  isPublished: z.boolean(),
+  version: z.union([z.number(), z.null()]),
+  publishedVersion: z.union([z.number(), z.null()]),
+  defaultModelId: z.union([z.string(), z.null()]),
+  billingMode: z.union([z.string(), z.null()]),
+});
+
+const catalogCrowdHintRow = z.object({
+  stepId: z.union([z.string(), z.null()]),
+  catalogProviderId: z.string(),
+  providerModelId: z.string(),
+  deprecatedReportCount: z.number(),
+  retiredReportCount: z.number(),
+});
+
+/** Success `data` from dashboard GET …/explain-chain (see `buildRoutingExplainChainData`). */
+const routingExplainChainSuccessData = z.object({
+  contractVersion: z.string(),
+  projectId: z.string(),
+  routeId: z.string(),
+  environmentId: z.string(),
+  route: explainChainRouteBlock,
+  steps: z.object({
+    total: z.number(),
+    enabledCount: z.number(),
+    ordered: z.array(explainChainOrderedStep),
+  }),
+  policies: z.array(explainChainPolicyRow),
+  catalogCrowdHints: z.array(catalogCrowdHintRow).optional(),
+  narrative: z.array(z.string()),
+});
+
+const routingExplainChainOutput = {
+  data: routingExplainChainSuccessData.optional(),
+  error: z.string().optional(),
+  status: z.string(),
+  serverOnlyToken: z.boolean(),
 };
 
 const policyShape = z.object({
@@ -774,7 +1023,7 @@ function asRouteRecord(value: unknown): RouteRecord {
   return {
     id: String(obj.id ?? ""),
     name: String(obj.name ?? ""),
-    primaryModel: String(obj.primaryModel ?? ""),
+    primaryModel: String(obj.primaryModel ?? obj.defaultModelId ?? ""),
     fallbackModels: Array.isArray(obj.fallbackModels) ? obj.fallbackModels.map((m) => String(m)) : [],
     enabled: Boolean(obj.enabled ?? true),
     updatedAt: typeof obj.updatedAt === "string" ? obj.updatedAt : nowIso(),
@@ -1044,8 +1293,16 @@ export function registerRestormelTools(server: McpServer): void {
       outputSchema: routesCrudOutput,
     },
     async (args: { projectId: string }) => {
-      const payload = await controlPlaneRequest<{ routes?: unknown[] }>("GET", `/api/projects/${args.projectId}/routes`);
-      const routes = Array.isArray(payload.routes) ? payload.routes.map(asRouteRecord) : [];
+      const payload = await controlPlaneRequest<{ routes?: unknown[]; data?: unknown[] }>(
+        "GET",
+        `/api/projects/${args.projectId}/routes`,
+      );
+      const raw = Array.isArray(payload.data)
+        ? payload.data
+        : Array.isArray(payload.routes)
+          ? payload.routes
+          : [];
+      const routes = raw.map(asRouteRecord);
       const structuredContent = { routes, status: "ok", serverOnlyToken: SERVER_ONLY_MARKER };
       return {
         content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
@@ -1121,6 +1378,195 @@ export function registerRestormelTools(server: McpServer): void {
     async (args: { projectId: string; routeId: string }) => {
       await controlPlaneRequest<Record<string, unknown>>("DELETE", `/api/projects/${args.projectId}/routes/${args.routeId}`);
       const structuredContent = { status: "deleted", serverOnlyToken: SERVER_ONLY_MARKER };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "routes.upsert_with_steps",
+    {
+      description:
+        "Create a route aligned with the dashboard API (environment, optional ingestion workload/stage), then append ordered steps with provider+model. Does not call LLM providers. Requires server token.",
+      inputSchema: routesUpsertWithStepsInput,
+      outputSchema: routesUpsertWithStepsOutput,
+    },
+    async (args: {
+      projectId: string;
+      environmentId: string;
+      name: string;
+      routeMode?: string;
+      workload?: string | null;
+      stage?: string | null;
+      steps: Array<{
+        providerPreference: string;
+        modelId: string;
+        orderIndex?: number;
+        timeoutMs?: number;
+        fallbackOn?: string;
+        label?: string;
+      }>;
+    }) => {
+      const createBody: Record<string, unknown> = {
+        environmentId: args.environmentId.trim(),
+        name: args.name.trim(),
+        routeMode: args.routeMode?.trim() || "fallback_chain",
+        workload: args.workload === undefined ? null : args.workload,
+        stage: args.stage === undefined ? null : args.stage,
+        changeSummary: "Route created via MCP routes.upsert_with_steps",
+      };
+      const created = await controlPlaneRequest<{ data?: { id?: string } }>(
+        "POST",
+        `/api/projects/${args.projectId}/routes`,
+        createBody,
+      );
+      const routeId = created.data?.id;
+      if (!routeId) {
+        throw new Error("routes.upsert_with_steps: create route response missing data.id");
+      }
+      let idx = 0;
+      for (const s of args.steps) {
+        const orderIndex = s.orderIndex ?? idx;
+        await controlPlaneRequest("POST", `/api/projects/${args.projectId}/routes/${routeId}/steps`, {
+          orderIndex,
+          providerPreference: s.providerPreference,
+          modelId: s.modelId,
+          timeoutMs: s.timeoutMs ?? 12000,
+          fallbackOn: s.fallbackOn ?? "error",
+          enabled: true,
+          ...(s.label ? { label: s.label } : {}),
+        });
+        idx += 1;
+      }
+      const structuredContent = {
+        routeId,
+        stepsCreated: args.steps.length,
+        status: "created",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "routes.simulate",
+    {
+      description:
+        "POST route simulate on the control plane (dry-run resolve for one route id). Returns resolve-shaped data plus per-step estimates; includeStepDiagnostics defaults true; optional includeRoutingAttempts for hypothetical tier outcomes. Server token required.",
+      inputSchema: routesSimulateInput,
+      outputSchema: routesSimulateOutput,
+    },
+    async (args: {
+      projectId: string;
+      routeId: string;
+      environmentId: string;
+      stage?: string;
+      workload?: string;
+      includeStepDiagnostics?: boolean;
+      includeRoutingAttempts?: boolean;
+    }) => {
+      const body: Record<string, unknown> = {
+        environmentId: args.environmentId.trim(),
+        ...(args.stage ? { stage: args.stage.trim() } : {}),
+        ...(args.workload ? { workload: args.workload.trim() } : {}),
+        ...(args.includeStepDiagnostics === false ? { includeStepDiagnostics: false } : {}),
+        ...(args.includeRoutingAttempts === true ? { includeRoutingAttempts: true } : {}),
+      };
+      const payload = await controlPlaneRequest<{ data?: unknown; error?: string }>(
+        "POST",
+        `/api/projects/${args.projectId}/routes/${args.routeId}/simulate`,
+        body,
+      );
+      const structuredContent = {
+        data: payload.data ?? payload,
+        status: "ok",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "routing.export",
+    {
+      description:
+        "GET portable route+steps bundle (JSON schema 1.0.0) from the control plane for GitOps and agent diffs. Read-only; no secrets. Server token required.",
+      inputSchema: routingExportInput,
+      outputSchema: routingExportOutput,
+    },
+    async (args: { projectId: string; routeId: string }) => {
+      const payload = await controlPlaneGet<{ data?: unknown; error?: string }>(
+        `/api/projects/${args.projectId}/routes/${args.routeId}/export`,
+      );
+      const structuredContent = {
+        data: payload.data ?? payload,
+        status: "ok",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "routing.import",
+    {
+      description:
+        "POST apply a portable route+steps bundle (JSON schema 1.0.0) on the control plane: creates a route or replaces an existing route's metadata and ordered steps when replaceRouteId is set. Same validation as dashboard POST …/routes/import. Server token required.",
+      inputSchema: routingImportInput,
+      outputSchema: routingImportOutput,
+    },
+    async (args: { projectId: string; bundle: Record<string, unknown>; replaceRouteId?: string }) => {
+      const body: Record<string, unknown> = { bundle: args.bundle };
+      if (args.replaceRouteId?.trim()) body.replaceRouteId = args.replaceRouteId.trim();
+      const payload = await controlPlaneRequest<{ data?: unknown; error?: string }>(
+        "POST",
+        `/api/projects/${args.projectId}/routes/import`,
+        body,
+      );
+      const structuredContent = {
+        data: payload.data ?? payload,
+        status: "ok",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+      };
+    },
+  );
+
+  server.registerTool(
+    "routing.explain_chain",
+    {
+      description:
+        "GET control-plane summary for one route: ordered steps (provider/model, advanceOn/retryOn hints) plus policies bound at workspace, project, environment, and route scope (same layers as resolve policy evaluation). Read-only; no LLM or provider calls. Optional includePolicyRuleJson for full ruleDefinition objects. Server token required.",
+      inputSchema: routingExplainChainInput,
+      outputSchema: routingExplainChainOutput,
+    },
+    async (args: { projectId: string; routeId: string; includePolicyRuleJson?: boolean; includeCatalogHints?: boolean }) => {
+      const params = new URLSearchParams();
+      if (args.includePolicyRuleJson === true) params.set("includePolicyRuleJson", "true");
+      if (args.includeCatalogHints === true) params.set("includeCatalogHints", "true");
+      const q = params.toString() ? `?${params.toString()}` : "";
+      const payload = await controlPlaneGet<{ data?: unknown; error?: string }>(
+        `/api/projects/${args.projectId}/routes/${args.routeId}/explain-chain${q}`,
+      );
+      const structuredContent = {
+        data: payload.data ?? payload,
+        status: "ok",
+        serverOnlyToken: SERVER_ONLY_MARKER,
+      };
       return {
         content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
         structuredContent,

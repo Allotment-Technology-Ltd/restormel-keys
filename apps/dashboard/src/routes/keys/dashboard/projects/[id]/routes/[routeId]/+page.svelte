@@ -12,7 +12,13 @@
       defaultModelId: string | null;
       billingMode: string | null;
       routeMode: string | null;
+      workload?: string | null;
+      stage?: string | null;
+      version?: number | null;
+      publishedVersion?: number | null;
     } | null;
+    ingestionWorkload: string;
+    ingestionStageIds: string[];
     steps: {
       id: string;
       orderIndex: number;
@@ -21,6 +27,11 @@
       fallbackOn: string | null;
       timeoutMs: number | null;
       enabled: boolean;
+      label?: string | null;
+      switchCriteria?: Record<string, unknown> | null;
+      retryPolicy?: Record<string, unknown> | null;
+      costPolicy?: Record<string, unknown> | null;
+      notes?: string | null;
     }[];
     availablePolicies: { id: string; name: string; type: string; status: string }[];
     routePolicyBindings: { id: string; policyId: string; policyName: string; policyType: string }[];
@@ -54,6 +65,11 @@
   let editingFallbackOn = "error";
   let editingTimeoutMs = "12000";
   let editingEnabled = true;
+  let editingLabel = "";
+  let editingSwitchCriteriaText = "";
+  let editingRetryPolicyText = "";
+  let editingCostPolicyText = "";
+  let editingNotesText = "";
   let expandedStepId: string | null = null;
   let stepBusyId: string | null = null;
   let movingStepId: string | null = null;
@@ -65,6 +81,9 @@
   let createPolicyType = "model_allowlist";
   let unbindingId: string | null = null;
   let deletingThisRoute = false;
+  let editWorkload = "";
+  let editStage = "";
+  let lastBoundRouteId = "";
 
   $: if (data.route) {
     editName = data.route.name;
@@ -72,10 +91,42 @@
     editBillingMode = data.route.billingMode ?? "";
     editRouteMode = data.route.routeMode ?? "";
   }
+  $: if (data.route && data.route.id !== lastBoundRouteId) {
+    lastBoundRouteId = data.route.id;
+    editWorkload = data.route.workload ?? "";
+    editStage = data.route.stage ?? "";
+  }
   $: if (expandedStepId && !data.steps.some((s) => s.id === expandedStepId)) {
     expandedStepId = null;
     editingStepId = null;
   }
+  function stringifyJsonField(value: Record<string, unknown> | null | undefined): string {
+    if (value == null) return "";
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return "";
+    }
+  }
+
+  function parseOptionalJsonObject(
+    raw: string,
+    fieldLabel: string
+  ): { ok: true; value: Record<string, unknown> | null } | { ok: false; error: string } {
+    const t = raw.trim();
+    if (!t) return { ok: true, value: null };
+    try {
+      const parsed: unknown = JSON.parse(t);
+      if (parsed === null) return { ok: true, value: null };
+      if (typeof parsed !== "object" || Array.isArray(parsed)) {
+        return { ok: false, error: `${fieldLabel} must be a JSON object or empty` };
+      }
+      return { ok: true, value: parsed as Record<string, unknown> };
+    } catch {
+      return { ok: false, error: `${fieldLabel} is not valid JSON` };
+    }
+  }
+
   $: orderedSteps = [...data.steps].sort((a, b) => a.orderIndex - b.orderIndex);
   $: summarySteps = orderedSteps.length
     ? orderedSteps
@@ -97,6 +148,8 @@
           status: editStatus,
           billingMode: editBillingMode || null,
           routeMode: editRouteMode || null,
+          workload: editWorkload.trim() || null,
+          stage: editStage.trim() || null,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -179,6 +232,11 @@
     fallbackOn: string | null;
     timeoutMs: number | null;
     enabled: boolean;
+    label?: string | null;
+    switchCriteria?: Record<string, unknown> | null;
+    retryPolicy?: Record<string, unknown> | null;
+    costPolicy?: Record<string, unknown> | null;
+    notes?: string | null;
   }) {
     editingStepId = step.id;
     expandedStepId = step.id;
@@ -187,6 +245,11 @@
     editingFallbackOn = step.fallbackOn ?? "error";
     editingTimeoutMs = String(step.timeoutMs ?? 12000);
     editingEnabled = step.enabled;
+    editingLabel = step.label?.trim() ?? "";
+    editingSwitchCriteriaText = stringifyJsonField(step.switchCriteria ?? undefined);
+    editingRetryPolicyText = stringifyJsonField(step.retryPolicy ?? undefined);
+    editingCostPolicyText = stringifyJsonField(step.costPolicy ?? undefined);
+    editingNotesText = step.notes ?? "";
     stepError = "";
   }
 
@@ -202,6 +265,11 @@
     fallbackOn: string | null;
     timeoutMs: number | null;
     enabled: boolean;
+    label?: string | null;
+    switchCriteria?: Record<string, unknown> | null;
+    retryPolicy?: Record<string, unknown> | null;
+    costPolicy?: Record<string, unknown> | null;
+    notes?: string | null;
   }) {
     if (expandedStepId === step.id) {
       cancelEditStep();
@@ -212,8 +280,23 @@
 
   async function saveStepEdit() {
     if (!data.project || !data.route || !editingStepId) return;
-    stepBusyId = editingStepId;
     stepError = "";
+    const sw = parseOptionalJsonObject(editingSwitchCriteriaText, "Switch criteria");
+    if (!sw.ok) {
+      stepError = sw.error;
+      return;
+    }
+    const rp = parseOptionalJsonObject(editingRetryPolicyText, "Retry policy");
+    if (!rp.ok) {
+      stepError = rp.error;
+      return;
+    }
+    const cp = parseOptionalJsonObject(editingCostPolicyText, "Cost policy");
+    if (!cp.ok) {
+      stepError = cp.error;
+      return;
+    }
+    stepBusyId = editingStepId;
     try {
       const timeoutNum = parseInt(editingTimeoutMs, 10);
       const res = await fetch(
@@ -227,6 +310,11 @@
             fallbackOn: editingFallbackOn || "error",
             timeoutMs: Number.isFinite(timeoutNum) ? timeoutNum : 12000,
             enabled: editingEnabled,
+            label: editingLabel.trim() || null,
+            switchCriteria: sw.value,
+            retryPolicy: rp.value,
+            costPolicy: cp.value,
+            notes: editingNotesText.trim() || null,
           }),
         }
       );
@@ -410,6 +498,12 @@
     <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/routes"} class="back-link">← Rules · {data.project.name}</a>
   </p>
   <h1 class="page-title">{data.route.name}</h1>
+  {#if data.route.version != null && data.route.publishedVersion != null && data.route.version !== data.route.publishedVersion}
+    <div class="publish-draft-banner" role="status">
+      <strong>Draft rule:</strong> working version {data.route.version} differs from published version {data.route.publishedVersion}.
+      Publish from version history when this rule should receive discovery traffic.
+    </div>
+  {/if}
   <p class="page-desc">
     Rule status, billing mode, and fallback behaviour. Steps define the resolution order and fallback chain.
   </p>
@@ -466,6 +560,28 @@
           <option value="fallback_chain">Fallback chain</option>
         </select>
       </div>
+      <div class="form-row">
+        <label for="ingest-workload">Ingestion workload (optional)</label>
+        <select id="ingest-workload" bind:value={editWorkload} class="input">
+          <option value="">— none —</option>
+          <option value={data.ingestionWorkload}>{data.ingestionWorkload}</option>
+        </select>
+      </div>
+      {#if editWorkload === data.ingestionWorkload}
+        <div class="form-row">
+          <label for="ingest-stage">Ingestion stage</label>
+          <select id="ingest-stage" bind:value={editStage} class="input">
+            <option value="">— shared route (null stage) —</option>
+            {#each data.ingestionStageIds as sid}
+              <option value={sid}>{sid}</option>
+            {/each}
+          </select>
+        </div>
+        <p class="muted">
+          Used by resolve discovery for SOPHIA-style pipelines. Canonical reference:
+          <a href="/keys/docs/guides/routing-contract">Routing contract</a>.
+        </p>
+      {/if}
       <button type="submit" class="btn btn-primary" disabled={saving}>
         {saving ? "Saving…" : "Save"}
       </button>
@@ -548,6 +664,9 @@
               <span class="step-summary-main">
                 <span class="step-index">Step {i + 1}</span>
                 <span class="step-model">{step.modelId ?? "No model selected"}</span>
+                {#if step.label}
+                  <span class="step-label">{step.label}</span>
+                {/if}
                 <span class="step-meta-row">
                   <span>{step.providerPreference ?? "no provider"}</span>
                   <span>fallback: {step.fallbackOn ?? "error"}</span>
@@ -634,6 +753,26 @@
                   <div class="form-row compact">
                     <label for="edit-step-timeout">Give up after (ms)</label>
                     <input id="edit-step-timeout" class="input" bind:value={editingTimeoutMs} />
+                  </div>
+                  <div class="form-row compact full-width">
+                    <label for="edit-step-label">Step label (optional)</label>
+                    <input id="edit-step-label" class="input" bind:value={editingLabel} placeholder="e.g. primary-openai" />
+                  </div>
+                  <div class="form-row compact full-width">
+                    <label for="edit-step-switch">Switch criteria (JSON object, optional)</label>
+                    <textarea id="edit-step-switch" class="input textarea-json" bind:value={editingSwitchCriteriaText} rows="4" spellcheck="false" placeholder={'{}'}></textarea>
+                  </div>
+                  <div class="form-row compact full-width">
+                    <label for="edit-step-retry">Retry policy (JSON object, optional)</label>
+                    <textarea id="edit-step-retry" class="input textarea-json" bind:value={editingRetryPolicyText} rows="4" spellcheck="false"></textarea>
+                  </div>
+                  <div class="form-row compact full-width">
+                    <label for="edit-step-cost">Cost policy (JSON object, optional)</label>
+                    <textarea id="edit-step-cost" class="input textarea-json" bind:value={editingCostPolicyText} rows="4" spellcheck="false"></textarea>
+                  </div>
+                  <div class="form-row compact full-width">
+                    <label for="edit-step-notes">Operator notes (optional)</label>
+                    <textarea id="edit-step-notes" class="input textarea-json" bind:value={editingNotesText} rows="2" spellcheck="true"></textarea>
                   </div>
                   <label class="checkbox-field">
                     <input type="checkbox" bind:checked={editingEnabled} />
@@ -765,6 +904,15 @@
     background: var(--rm-surface-raised);
     padding: var(--space-2) var(--space-3);
   }
+  .publish-draft-banner {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--rm-radius);
+    border: 1px solid color-mix(in oklab, var(--coral-alert) 40%, var(--rm-border));
+    background: color-mix(in oklab, var(--coral-alert) 8%, var(--rm-surface));
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+  }
   .section {
     margin-bottom: var(--space-6);
   }
@@ -795,6 +943,19 @@
     margin-bottom: 0;
     min-width: 12rem;
     flex: 1 1 12rem;
+  }
+  .form-row.compact.full-width {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+  .textarea-json {
+    min-height: 5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: var(--text-xs);
+  }
+  .step-label {
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
   }
   .form-row label {
     display: block;

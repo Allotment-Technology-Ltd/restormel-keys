@@ -7,6 +7,11 @@ export type {
   AAIFUser,
   AAIFRouting,
   AAIFRoutingHints,
+  AAIFRoutingContext,
+  AAIFRoutingPlan,
+  AAIFRoutingPlanStep,
+  AAIFRoutingAttempt,
+  AAIFRoutingAttemptOutcome,
 } from "./types.js";
 
 /** Horizon suite MCP tool names (duplicated here so `@restormel/aaif` builds without `@restormel/mcp`). */

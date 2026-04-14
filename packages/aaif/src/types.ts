@@ -25,6 +25,64 @@ export type AAIFRoutingHints = {
   provider?: string;
 };
 
+/**
+ * Optional context aligned with Restormel dashboard `POST .../resolve` (workload/stage discovery, retry attempts).
+ * The AAIF package does **not** perform HTTP resolve; hosts pass resolved `routing` hints or use `@restormel/keys` `resolve()` and then call `executeAAIFRequest`.
+ */
+export type AAIFRoutingContext = {
+  routeId?: string;
+  workload?: string;
+  stage?: string;
+  attemptNumber?: number;
+  previousFailure?: { selectedOrderIndex?: number | null; selectedStepId?: string | null };
+  failureKind?: string;
+};
+
+/** Hypothetical tier outcome from dashboard simulate when `includeRoutingAttempts` is used (no LLM in Keys). */
+export type AAIFRoutingAttemptOutcome =
+  | "selected"
+  | "blocked_by_policy"
+  | "not_executable"
+  | "not_selected";
+
+/** One row of simulate `routingAttempts` — attach from HTTP response for typed hosts. */
+export type AAIFRoutingAttempt = {
+  stepId: string;
+  orderIndex: number;
+  providerType?: string | null;
+  modelId?: string | null;
+  hypotheticalOutcome?: AAIFRoutingAttemptOutcome;
+};
+
+/**
+ * Optional mirror of dashboard resolve `stepChain` / simulate extras for strongly typed hosts.
+ * Populate from `POST …/resolve` or `POST …/simulate` JSON; AAIF does not perform HTTP resolve.
+ */
+export type AAIFRoutingPlanStep = {
+  stepId: string;
+  orderIndex: number;
+  providerType?: string | null;
+  modelId?: string | null;
+  enabled?: boolean;
+  selected?: boolean;
+  label?: string | null;
+  timeoutMs?: number | null;
+  fallbackOn?: string | null;
+  switchCriteria?: Record<string, unknown> | null;
+  retryPolicy?: Record<string, unknown> | null;
+  costPolicy?: Record<string, unknown> | null;
+  notes?: string | null;
+  advanceOn?: string[];
+  retryOn?: string[];
+};
+
+export type AAIFRoutingPlan = {
+  contractVersion?: string;
+  routeId?: string;
+  stepChain?: AAIFRoutingPlanStep[];
+  routingAttempts?: AAIFRoutingAttempt[];
+};
+
 export type AAIFRequest = {
   input: string;
   task?: AAIFTask;
@@ -36,6 +94,10 @@ export type AAIFRequest = {
    * - This does not change the AAIF contract; it is optional.
    */
   routing?: AAIFRoutingHints;
+  /** Pass-through for hosts that also use dashboard resolve; see {@link AAIFRoutingContext}. */
+  routingContext?: AAIFRoutingContext;
+  /** Optional typed copy of resolve/simulate chain rows for logging or downstream agents (see {@link AAIFRoutingPlan}). */
+  routingPlan?: AAIFRoutingPlan;
 };
 
 export type AAIFRouting = {

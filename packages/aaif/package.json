@@ -1,6 +1,6 @@
 {
   "name": "@restormel/aaif",
-  "version": "0.0.9",
+  "version": "0.0.11",
   "description": "Agent-to-Agent Interaction Format — structured request/response contract for predictable AI interactions.",
   "keywords": [
     "aaif",

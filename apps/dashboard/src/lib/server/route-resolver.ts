@@ -21,6 +21,81 @@ import {
   isExecutableProviderModelPair,
 } from "$lib/server/canonical-provider";
 
+/** Rich metadata for one tier in resolve `stepChain` / simulate (contract 2026-04-14+). */
+export type ResolveStepChainRow = {
+  stepId: string;
+  orderIndex: number;
+  providerType: string | null;
+  modelId: string | null;
+  enabled: boolean;
+  selected: boolean;
+  label?: string | null;
+  timeoutMs?: number | null;
+  fallbackOn?: string | null;
+  switchCriteria?: Record<string, unknown> | null;
+  retryPolicy?: Record<string, unknown> | null;
+  costPolicy?: Record<string, unknown> | null;
+  notes?: string | null;
+  /** When `switchCriteria.advanceOn` is a string array, echoed here for hosts (Keys does not evaluate). */
+  advanceOn?: string[];
+  /** When `retryPolicy.retryOn` is a string array, echoed here for hosts (Keys does not evaluate). */
+  retryOn?: string[];
+};
+
+/** Steps after the winner; same fields except `selected` (always false if present). */
+export type ResolveStepChainFallbackRow = Omit<ResolveStepChainRow, "selected">;
+
+function stringTriggerArray(
+  obj: Record<string, unknown> | null | undefined,
+  key: string
+): string[] | undefined {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
+  const v = obj[key];
+  if (!Array.isArray(v)) return undefined;
+  const out = v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+  return out.length ? out : undefined;
+}
+
+/** Optional Portkey/LiteLLM-style hints stored in step JSON; Keys returns only — hosts interpret. */
+function tierTriggerHintsFromStep(s: RouteStepRecord): Pick<ResolveStepChainRow, "advanceOn" | "retryOn"> {
+  const sw = s.switchCriteria as Record<string, unknown> | undefined;
+  const rp = s.retryPolicy as Record<string, unknown> | undefined;
+  const advanceOn = stringTriggerArray(sw, "advanceOn");
+  const retryOn = stringTriggerArray(rp, "retryOn");
+  return {
+    ...(advanceOn ? { advanceOn } : {}),
+    ...(retryOn ? { retryOn } : {}),
+  };
+}
+
+function buildResolveStepChainRow(
+  s: RouteStepRecord,
+  routeRecord: RouteRecord,
+  selected: boolean
+): ResolveStepChainRow {
+  return {
+    stepId: s.id,
+    orderIndex: s.orderIndex,
+    providerType: normalizeProviderToCanonicalApi(s.providerPreference),
+    modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
+    enabled: s.enabled,
+    selected,
+    label: s.label ?? null,
+    timeoutMs: s.timeoutMs,
+    fallbackOn: s.fallbackOn ?? null,
+    switchCriteria: s.switchCriteria ?? null,
+    retryPolicy: s.retryPolicy ?? null,
+    costPolicy: s.costPolicy ?? null,
+    notes: s.notes ?? null,
+    ...tierTriggerHintsFromStep(s),
+  };
+}
+
+function toFallbackRow(row: ResolveStepChainRow): ResolveStepChainFallbackRow {
+  const { selected: _selected, ...rest } = row;
+  return rest;
+}
+
 export type ResolvedRouteResult = {
   workspaceId: string;
   projectId: string;
@@ -42,22 +117,9 @@ export type ResolvedRouteResult = {
   /** Criteria that matched on selected step (switchCriteria snapshot). */
   matchedCriteria?: Record<string, unknown> | null;
   /** Ordered candidates considered after selected step. */
-  fallbackCandidates?: Array<{
-    stepId: string;
-    orderIndex: number;
-    providerType: string | null;
-    modelId: string | null;
-    enabled: boolean;
-  }>;
+  fallbackCandidates?: ResolveStepChainFallbackRow[];
   /** All enabled steps in route order with canonical providerType/modelId (support, billing, forensics). */
-  stepChain?: Array<{
-    stepId: string;
-    orderIndex: number;
-    providerType: string | null;
-    modelId: string | null;
-    enabled: boolean;
-    selected: boolean;
-  }>;
+  stepChain?: ResolveStepChainRow[];
   /** Set when there were enabled steps but all were blocked by policy (selectedStep is null). */
   policyViolations?: PolicyViolation[];
 };
@@ -248,14 +310,7 @@ export async function resolveRouteForExecution(
   const allViolations: PolicyViolation[] = [];
   let sawPolicyPassIncomplete = false;
 
-  const stepChainBase = enabledSteps.map((s) => ({
-    stepId: s.id,
-    orderIndex: s.orderIndex,
-    providerType: normalizeProviderToCanonicalApi(s.providerPreference),
-    modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
-    enabled: s.enabled,
-    selected: false,
-  }));
+  const stepChainBase = enabledSteps.map((s) => buildResolveStepChainRow(s, routeRecord, false));
 
   for (const step of enabledSteps) {
     if (attemptNumber > 0 && step.orderIndex <= startAfterOrderIndex) continue;
@@ -315,13 +370,7 @@ export async function resolveRouteForExecution(
         stepChain,
         fallbackCandidates: enabledSteps
           .filter((s) => s.orderIndex > step.orderIndex)
-          .map((s) => ({
-            stepId: s.id,
-            orderIndex: s.orderIndex,
-            providerType: normalizeProviderToCanonicalApi(s.providerPreference),
-            modelId: (s.modelId ?? routeRecord.defaultModelId) ?? null,
-            enabled: s.enabled,
-          })),
+          .map((s) => toFallbackRow(buildResolveStepChainRow(s, routeRecord, false))),
       },
     };
   }

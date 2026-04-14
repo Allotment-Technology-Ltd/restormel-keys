@@ -19,6 +19,9 @@ AAIF is a **standalone contract integration**: keep your existing model executio
 - `constraints?: { maxCost?: number; latency?: "low" | "balanced" | "high"; tokens?: { inputTokensM?: number; outputTokensM?: number } }`
 - `user?: { id: string; plan?: string }`
 - `routing?: { model?: string; provider?: string }`
+- `routingContext?: { environmentId?: string; routeId?: string; workload?: string; stage?: string; attemptNumber?: number; previousFailure?: { code?: string; message?: string; httpStatus?: number } }` — optional hints aligned with Keys **resolve** (AAIF does not perform HTTP resolve; use `@restormel/keys` for a full **`stepChain`**)
+
+See [Keys routing contract](../keys-routing-contract.md) and in-product [/keys/docs/guides/routing-contract](https://restormel.dev/keys/docs/guides/routing-contract).
 
 ---
 

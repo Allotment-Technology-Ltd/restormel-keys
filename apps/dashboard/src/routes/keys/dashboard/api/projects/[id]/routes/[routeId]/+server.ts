@@ -1,16 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { getProjectInWorkspace, getRoute, updateRoute, deleteRoute } from "$lib/server/db";
-
-const INGESTION_WORKLOAD = "ingestion";
-const INGESTION_STAGES = new Set([
-  "ingestion_extraction",
-  "ingestion_relations",
-  "ingestion_grouping",
-  "ingestion_validation",
-  "ingestion_embedding",
-  "ingestion_json_repair",
-]);
+import { INGESTION_STAGES, INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
 
 async function projectIdAndUid(
   locals: App.Locals,

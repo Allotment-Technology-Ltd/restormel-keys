@@ -3,6 +3,7 @@
  */
 export const RESTORMEL_SUITE_TOOL_NAMES = [
   "docs.canonical_resolve",
+  "routing.capabilities",
   "testing.config_validate",
   "observability.trace_summarize",
   "graph.fixture_validate",

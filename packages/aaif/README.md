@@ -22,6 +22,14 @@ import type { AAIFRequest, AAIFResponse } from "@restormel/aaif";
 import { isAAIFRequest, isAAIFResponse } from "@restormel/aaif";
 ```
 
+## Routing context vs dashboard resolve
+
+- **`routingContext`** (optional on `AAIFRequest`) carries **hints** aligned with Keys resolve: `routeId`, `workload`, `stage`, `attemptNumber`, `previousFailure`, `failureKind`. Use it so logs and downstream services share one vocabulary with SOPHIA-style pipelines.
+- **`routingPlan`** (optional) holds typed **`AAIFRoutingPlan`** / **`AAIFRoutingPlanStep`** / **`AAIFRoutingAttempt`** shapes so you can attach a copy of HTTP **`stepChain`** / **`routingAttempts`** from simulate without re-deriving types in the host.
+- **Semver (pre-1.0):** additive optional fields on `AAIFRequest` and expansions to `AAIFRoutingPlan*` / `AAIFRoutingPlanStep` are **patch** bumps (for example **0.0.10 → 0.0.11** for `routingPlan`). Hosts should pin a range and read the package **CHANGELOG** when upgrading.
+- **Full `stepChain`** and **simulate diagnostics** come from the **dashboard HTTP API** (`POST …/resolve`, `POST …/routes/{routeId}/simulate`), not from `executeAAIFRequest`. Typical pattern: **resolve → execute** in the host. Example walkthrough (placeholders only): [examples/aaif-resolve-then-execute/README.md](../../examples/aaif-resolve-then-execute/README.md).
+- Human + agent canonical doc: [docs/keys-routing-contract.md](../../docs/keys-routing-contract.md) — public mirror [/keys/docs/guides/routing-contract](https://restormel.dev/keys/docs/guides/routing-contract). MCP: `docs.canonical_resolve` topic **`keys_routing_contract`**, suite tool **`routing.capabilities`**.
+
 ## Runtime helper (routing + cost)
 
 ```ts

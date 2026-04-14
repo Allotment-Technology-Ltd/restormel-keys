@@ -32,6 +32,24 @@ export function isAAIFRequest(value: unknown): value is AAIFRequest {
     if (r.model !== undefined && typeof r.model !== "string") return false;
     if (r.provider !== undefined && typeof r.provider !== "string") return false;
   }
+  if (obj.routingContext !== undefined) {
+    if (typeof obj.routingContext !== "object" || obj.routingContext === null) return false;
+    const rc = obj.routingContext as Record<string, unknown>;
+    if (rc.routeId !== undefined && typeof rc.routeId !== "string") return false;
+    if (rc.workload !== undefined && typeof rc.workload !== "string") return false;
+    if (rc.stage !== undefined && typeof rc.stage !== "string") return false;
+    if (rc.attemptNumber !== undefined && typeof rc.attemptNumber !== "number") return false;
+    if (rc.failureKind !== undefined && typeof rc.failureKind !== "string") return false;
+    if (rc.previousFailure !== undefined) {
+      if (typeof rc.previousFailure !== "object" || rc.previousFailure === null) return false;
+      const pf = rc.previousFailure as Record<string, unknown>;
+      if (pf.selectedOrderIndex !== undefined && typeof pf.selectedOrderIndex !== "number") return false;
+      if (pf.selectedStepId !== undefined && typeof pf.selectedStepId !== "string") return false;
+    }
+  }
+  if (obj.routingPlan !== undefined) {
+    if (typeof obj.routingPlan !== "object" || obj.routingPlan === null) return false;
+  }
   return true;
 }
 

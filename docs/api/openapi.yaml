@@ -5,7 +5,7 @@
 openapi: 3.0.3
 info:
   title: Restormel Keys API
-  version: 1.3.6
+  version: 1.3.8
   description: |
     API for managing projects and API keys. Call through the Zuplo gateway with a consumer API key.
     Authentication is required for all endpoints (API key in Authorization header).
@@ -13,7 +13,7 @@ info:
     **Two HTTP surfaces:** (1) **Zuplo Gateway** — control-plane CRUD (projects, keys); use **consumer key** (`zpka_...`, `apiKey` scheme).
     (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
 
-    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-03-26` and return stable
+    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-04-14` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
 
     **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
@@ -25,7 +25,7 @@ info:
 
     **Inventory (subset; see paths below):** `GET/POST /api/projects`, `GET/PATCH /api/projects/{id}`, `POST /api/projects/{id}/resolve`,
     `GET/POST /api/projects/{id}/routes`, `GET/PATCH/DELETE .../routes/{routeId}`, `GET/POST .../steps`, `PATCH/DELETE .../steps/{stepId}`,
-    `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `POST .../validate-binding`, `POST .../recommend`,
+    `POST .../publish`, `POST .../rollback`, `GET .../history`, `POST .../simulate`, `GET .../export`, `GET .../explain-chain`, `POST .../routes/import`, `POST .../validate-binding`, `POST .../recommend`,
     `GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`, `GET .../keys`, `GET .../readiness`, `GET .../route-coverage`, `GET .../routing-capabilities`, `GET .../switch-criteria-enums`,
     `GET .../providers/health`, `GET .../provider-bindings`, `GET/POST /api/policies`, policy lifecycle routes, `POST .../policies/evaluate`,
     `GET /api/models`, `GET /api/catalog`, `POST /api/catalog/observations`.
@@ -370,7 +370,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-26" }
+                      contractVersion: { type: string, example: "2026-04-14" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string, description: Matched route ID }
                       routeName: { type: string, description: Matched route name }
@@ -1048,6 +1048,12 @@ paths:
                   properties:
                     selectedOrderIndex: { type: integer, nullable: true }
                     selectedStepId: { type: string, nullable: true }
+                includeStepDiagnostics:
+                  type: boolean
+                  description: When true (default), response includes stepDiagnostics (extra policy evaluations per enabled step).
+                includeRoutingAttempts:
+                  type: boolean
+                  description: When true, response includes routingAttempts (hypothetical tier outcomes for this dry-run). Implies policy evaluation even if includeStepDiagnostics is false.
       responses:
         "200":
           description: Simulation result
@@ -1059,7 +1065,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-03-26" }
+                      contractVersion: { type: string, example: "2026-04-14" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string }
                       routeName: { type: string }
@@ -1089,6 +1095,33 @@ paths:
                       switchOutcomePreview:
                         type: object
                         additionalProperties: true
+                      stepDiagnostics:
+                        type: array
+                        description: Present when includeStepDiagnostics is not false; per enabled step policy + executable probe.
+                        items:
+                          type: object
+                          properties:
+                            stepId: { type: string }
+                            orderIndex: { type: integer }
+                            providerType: { type: string, nullable: true }
+                            modelId: { type: string, nullable: true }
+                            policyViolations:
+                              type: array
+                              items: { type: object, additionalProperties: true }
+                            executable: { type: boolean }
+                      routingAttempts:
+                        type: array
+                        description: Present when includeRoutingAttempts is true; hypothetical outcome per enabled step (no LLM execution).
+                        items:
+                          type: object
+                          properties:
+                            stepId: { type: string }
+                            orderIndex: { type: integer }
+                            providerType: { type: string, nullable: true }
+                            modelId: { type: string, nullable: true }
+                            hypotheticalOutcome:
+                              type: string
+                              enum: [selected, blocked_by_policy, not_executable, not_selected]
                       decisionMetadata:
                         type: object
                         nullable: true
@@ -1111,6 +1144,146 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /api/projects/{projectId}/routes/{routeId}/export:
+    get:
+      summary: Export route graph bundle (GitOps)
+      operationId: exportRouteGraph
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Portable JSON bundle (`schemaVersion` 1.0.0); see docs/schemas/route-graph-bundle.schema.json
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+        "404":
+          description: Route not found
+
+  /api/projects/{projectId}/routes/{routeId}/explain-chain:
+    get:
+      summary: Explain route chain for agents (read-only)
+      operationId: explainRouteChain
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: includePolicyRuleJson
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: When true, include full policy ruleDefinition objects on each policy row
+        - name: includeCatalogHints
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+          description: When true, include catalogCrowdHints (aggregated catalog observation counts per step model pair; read-only)
+      responses:
+        "200":
+          description: Route + steps + contextual policy binding summary (`contractVersion` on payload)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project or route not found
+        "500":
+          description: Internal error
+
+  /api/projects/{projectId}/routes/import:
+    post:
+      summary: Import route graph bundle (GitOps)
+      operationId: importRouteGraph
+      tags: [Dashboard API]
+      security:
+        - gatewayKey: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bundle]
+              properties:
+                bundle:
+                  type: object
+                  description: Portable route+steps bundle (`schemaVersion` 1.0.0); see docs/schemas/route-graph-bundle.schema.json
+                  additionalProperties: true
+                replaceRouteId:
+                  type: string
+                  description: When set, replace this route's metadata and ordered steps instead of creating a new route
+                changeSummary: { type: string }
+                updatedVia: { type: string }
+      responses:
+        "200":
+          description: Existing route replaced; returns route and ordered steps
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "201":
+          description: New route created from bundle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Invalid bundle or workload/stage rules
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized
+        "404":
+          description: Project or route not found, or environment not in project
+        "409":
+          description: Ingestion workload/stage slot already occupied (`ingestion_stage_route_already_exists`)
+        "500":
+          description: Internal error
 
   /api/projects/{projectId}/routes/{routeId}/publish:
     post:
@@ -1595,6 +1768,21 @@ components:
         modelId: { type: string, nullable: true }
         enabled: { type: boolean }
         selected: { type: boolean }
+        label: { type: string, nullable: true }
+        timeoutMs: { type: integer, nullable: true }
+        fallbackOn: { type: string, nullable: true }
+        switchCriteria: { type: object, nullable: true, additionalProperties: true }
+        retryPolicy: { type: object, nullable: true, additionalProperties: true }
+        costPolicy: { type: object, nullable: true, additionalProperties: true }
+        notes: { type: string, nullable: true }
+        advanceOn:
+          type: array
+          items: { type: string }
+          description: Echoed from switchCriteria.advanceOn when present
+        retryOn:
+          type: array
+          items: { type: string }
+          description: Echoed from retryPolicy.retryOn when present
     RoutePublishFieldError:
       type: object
       properties:
@@ -1604,7 +1792,7 @@ components:
         message: { type: string }
     RouteResolveMetadata:
       type: object
-      description: Route fields returned on successful resolve (`contractVersion` 2026-03-26+)
+      description: Route fields returned on successful resolve (`contractVersion` 2026-04-14+)
       properties:
         id: { type: string }
         environmentId: { type: string }

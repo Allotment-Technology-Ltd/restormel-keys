@@ -4,6 +4,7 @@
  */
 export type RestormelSuiteToolName =
   | "docs.canonical_resolve"
+  | "routing.capabilities"
   | "testing.config_validate"
   | "observability.trace_summarize"
   | "graph.fixture_validate"

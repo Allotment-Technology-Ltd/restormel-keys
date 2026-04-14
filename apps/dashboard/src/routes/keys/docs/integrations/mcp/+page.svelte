@@ -56,6 +56,7 @@
     <tr><td><code>providers.validate</code></td><td>Validate provider configuration and access</td></tr>
     <tr><td><code>cost.estimate</code></td><td>Estimate cost for a model and token volume</td></tr>
     <tr><td><code>routing.explain</code></td><td>Explain routing decisions for a given request</td></tr>
+    <tr><td><code>routing.export / routing.import / routing.explain_chain</code></td><td>Control plane: route graph bundle export/import; read-only route + steps + policy-scope summary for agents</td></tr>
     <tr><td><code>entitlements.check</code></td><td>Check plan entitlements and feature access</td></tr>
     <tr><td><code>integration.generate</code></td><td>Generate integration configuration for a stack</td></tr>
     <tr><td><code>integration.bootstrap_nextjs</code></td><td>Generate Next.js server resolver + admin KeyManager wiring contract</td></tr>
@@ -82,6 +83,7 @@
   <li><strong>`providers.validate`</strong> — same credential health check as `keys validate`.</li>
   <li><strong>`cost.estimate`</strong> — same pricing lookup as `keys estimate`.</li>
   <li><strong>`routing.explain`</strong> — same static provider resolution as `keys routing explain` (policies require a configured project).</li>
+  <li><strong>`routing.export` / `routing.import` / `routing.explain_chain`</strong> — control-plane route graph GitOps and agent-oriented summaries (server token + control-plane base URL).</li>
   <li><strong>`entitlements.check`</strong> — policy checks (local rules via `RESTORMEL_MCP_CONFIG` or remote evaluation via `RESTORMEL_EVALUATE_URL` + `RESTORMEL_GATEWAY_KEY`).</li>
   <li><strong>`integration.generate`</strong> — scaffolding helper for a new integration.</li>
   <li><strong>`integration.bootstrap_nextjs`</strong> — project-scoped server bootstrap contract for Next.js.</li>

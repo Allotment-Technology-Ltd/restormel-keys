@@ -1,5 +1,6 @@
 /** Topic ids for {@link resolveCanonicalDoc}. */
 export type CanonicalDocTopic =
+  | "keys_routing_contract"
   | "horizon_programme"
   | "theme_l_ia_matrix"
   | "restormel_state"
@@ -24,6 +25,11 @@ export type CanonicalDocEntry = {
 };
 
 const ENTRIES: Record<CanonicalDocTopic, Omit<CanonicalDocEntry, "topic">> = {
+  keys_routing_contract: {
+    title: "Keys routing contract (SOPHIA-class workloads)",
+    repoPath: "docs/keys-routing-contract.md",
+    publicUrl: "https://restormel.dev/keys/docs/guides/routing-contract",
+  },
   horizon_programme: {
     title: "Horizon platform programme",
     repoPath: "docs/restormel/HORIZON-PLATFORM-PROGRAMME.md",

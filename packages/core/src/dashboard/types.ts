@@ -41,7 +41,7 @@ export interface RouteResolveMetadata {
   publishedVersion: number | null;
 }
 
-/** Enabled steps in route order on resolve/simulate success (`stepChain`). */
+/** Enabled steps in route order on resolve/simulate success (`stepChain`). Contract 2026-04-14+ adds optional policy/routing metadata per tier. */
 export interface ResolveStepChainEntry {
   stepId: string;
   orderIndex: number;
@@ -49,6 +49,17 @@ export interface ResolveStepChainEntry {
   modelId: string | null;
   enabled: boolean;
   selected: boolean;
+  label?: string | null;
+  timeoutMs?: number | null;
+  fallbackOn?: string | null;
+  switchCriteria?: Record<string, unknown> | null;
+  retryPolicy?: Record<string, unknown> | null;
+  costPolicy?: Record<string, unknown> | null;
+  notes?: string | null;
+  /** Echoed from `switchCriteria.advanceOn` when present (string array). Host interprets. */
+  advanceOn?: string[];
+  /** Echoed from `retryPolicy.retryOn` when present (string array). Host interprets. */
+  retryOn?: string[];
 }
 
 export interface ResolveSuccess {

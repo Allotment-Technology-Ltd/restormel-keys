@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://restormel.dev/docs/schemas/route-step-rich.schema.json",
+  "title": "Restormel route step rich metadata",
+  "description": "Optional JSON blobs stored on route_steps and echoed in resolve stepChain (contract 2026-04-14+). Additional properties are allowed for forward compatibility.",
+  "type": "object",
+  "properties": {
+    "switchCriteria": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Switch hints; hosts interpret. Optional `advanceOn` lists suggested failure kinds to advance to the next tier.",
+      "properties": {
+        "advanceOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Suggested failure kinds that mean \"try next tier\" (host interpretation). Echoed on resolve `stepChain` as `advanceOn` when set."
+        }
+      }
+    },
+    "retryPolicy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "maxAttempts": { "type": "integer", "minimum": 0 },
+        "retryOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Suggested failure kinds to retry on same tier before advancing (host interpretation)."
+        }
+      }
+    },
+    "costPolicy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "maxUsdPerRequest": { "type": "number" },
+        "maxInputTokens": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "additionalProperties": true
+}

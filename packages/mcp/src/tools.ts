@@ -5,6 +5,12 @@
  * **Runtime:** The stdio MCP server (`restormel-mcp` / `pnpm exec restormel-mcp`) registers tools
  * with Zod schemas that mirror this file; keep shapes aligned when changing either layer.
  */
+import {
+  routesSimulateMcpOutputSchema,
+  routingExportMcpOutputSchema,
+  routingImportMcpOutputSchema,
+  routingExplainChainMcpOutputSchema,
+} from "./routing-mcp-output-schemas.js";
 
 export type McpToolSchema = {
   name: string;
@@ -249,7 +255,8 @@ export const routesListTool: McpToolSchema = {
 
 export const routesCreateTool: McpToolSchema = {
   name: "routes.create",
-  description: "Create a route in the Restormel control plane.",
+  description:
+    "Create a route in the Restormel control plane (legacy primaryModel/fallbackModels shape; prefer routes.upsert_with_steps for dashboard-aligned ingestion routes with explicit steps).",
   inputSchema: {
     type: "object",
     properties: {
@@ -294,6 +301,117 @@ export const routesDeleteTool: McpToolSchema = {
     required: ["projectId", "routeId"],
     additionalProperties: false,
   },
+};
+
+export const routesUpsertWithStepsTool: McpToolSchema = {
+  name: "routes.upsert_with_steps",
+  description:
+    "Create a route with environment + optional ingestion workload/stage, then create ordered steps (provider+model per tier). Matches dashboard POST /routes and POST /routes/:id/steps. Does not execute LLM calls.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      environmentId: { type: "string" },
+      name: { type: "string" },
+      routeMode: { type: "string" },
+      workload: { type: "string", description: "Optional; omit when not using ingestion workload." },
+      stage: { type: "string", description: "Optional ingestion stage when workload is ingestion." },
+      steps: {
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: {
+            providerPreference: { type: "string" },
+            modelId: { type: "string" },
+            orderIndex: { type: "integer" },
+            timeoutMs: { type: "integer" },
+            fallbackOn: { type: "string" },
+            label: { type: "string" },
+          },
+          required: ["providerPreference", "modelId"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["projectId", "environmentId", "name", "steps"],
+    additionalProperties: false,
+  },
+};
+
+export const routesSimulateTool: McpToolSchema = {
+  name: "routes.simulate",
+  description:
+    "Dry-run resolve for a single route (dashboard simulate API). Returns resolve-shaped payload and optional stepDiagnostics. Set includeRoutingAttempts for hypothetical tier outcomes (no LLM calls). Read-only for providers.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+      environmentId: { type: "string" },
+      stage: { type: "string" },
+      workload: { type: "string" },
+      includeStepDiagnostics: { type: "boolean" },
+      includeRoutingAttempts: { type: "boolean" },
+    },
+    required: ["projectId", "routeId", "environmentId"],
+    additionalProperties: false,
+  },
+  outputSchema: routesSimulateMcpOutputSchema,
+};
+
+export const routingExportTool: McpToolSchema = {
+  name: "routing.export",
+  description:
+    "GET portable route+steps bundle (JSON schema 1.0.0) for GitOps and agent diffs. Same data as dashboard GET .../routes/{routeId}/export. No secrets; read-only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+    },
+    required: ["projectId", "routeId"],
+    additionalProperties: false,
+  },
+  outputSchema: routingExportMcpOutputSchema,
+};
+
+export const routingImportTool: McpToolSchema = {
+  name: "routing.import",
+  description:
+    "POST apply a route+steps bundle (schema 1.0.0) on the control plane: create a route or replace an existing route (replaceRouteId) metadata + steps. Same as dashboard POST .../routes/import.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      bundle: { type: "object", additionalProperties: true, description: "Full route graph bundle (schemaVersion 1.0.0)." },
+      replaceRouteId: { type: "string", description: "When set, update this route id instead of creating a new route." },
+    },
+    required: ["projectId", "bundle"],
+    additionalProperties: false,
+  },
+  outputSchema: routingImportMcpOutputSchema,
+};
+
+export const routingExplainChainTool: McpToolSchema = {
+  name: "routing.explain_chain",
+  description:
+    "GET agent-oriented route + ordered step summary + policy bindings at workspace/project/environment/route (read-only). Same as dashboard GET .../routes/{routeId}/explain-chain. Optional includePolicyRuleJson.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string" },
+      routeId: { type: "string" },
+      includePolicyRuleJson: { type: "boolean", description: "When true, include full ruleDefinition on each policy row." },
+      includeCatalogHints: {
+        type: "boolean",
+        description: "When true, include catalogCrowdHints (aggregated observation counts per step model pair; read-only).",
+      },
+    },
+    required: ["projectId", "routeId"],
+    additionalProperties: false,
+  },
+  outputSchema: routingExplainChainMcpOutputSchema,
 };
 
 export const policiesListTool: McpToolSchema = {
@@ -811,6 +929,11 @@ export const ALL_TOOLS: McpToolSchema[] = [
   routesCreateTool,
   routesUpdateTool,
   routesDeleteTool,
+  routesUpsertWithStepsTool,
+  routesSimulateTool,
+  routingExportTool,
+  routingImportTool,
+  routingExplainChainTool,
   policiesListTool,
   policiesCreateTool,
   policiesUpdateTool,

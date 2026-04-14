@@ -5,7 +5,7 @@ import type { ResolvedRouteResult } from "$lib/server/route-resolver";
 import { normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
 
 /** Bump when resolve/simulate JSON semantics change (see docs/release-readiness.md). */
-export const RESOLVE_SIMULATE_CONTRACT_VERSION = "2026-03-26";
+export const RESOLVE_SIMULATE_CONTRACT_VERSION = "2026-04-14";
 
 export type RouteMetaBlock = {
   id: string;
