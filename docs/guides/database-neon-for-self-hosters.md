@@ -44,6 +44,8 @@ Other Postgres-compatible providers can work in principle if you apply the same 
 
 The open repository’s GitHub Actions workflows can **create or reuse Neon preview branches** for pull requests, run the same migration script against a preview connection string, then tear down or expire branches. That pattern reduces “works on my machine” risk for schema changes. Configure **`NEON_API_KEY`** and **`NEON_PROJECT_ID`** (and related variables) only in GitHub Actions secrets and variables—not in git.
 
+**Cost control:** Preview branches may also be created by a **Neon ↔ Vercel Marketplace integration** (Neon shows `creation_source: vercel`); that is **not** configured in this repo’s `vercel.json`. There is typically **no** “disable branching only” toggle—Neon’s docs compare [managed integrations](https://neon.com/docs/guides/vercel-overview) (preview branching on) vs a **[manual Vercel connection](https://neon.com/docs/guides/vercel-manual)** (no auto branches). **Dependabot PR previews do not need Neon** for Keys: disconnect the integration and use manual env vars, or keep the integration and rely on retention + [prune/cleanup](https://neon.com/docs/guides/vercel-branch-cleanup). Maintainer detail: [dashboard-postgres-migrations.md](../runbooks/dashboard-postgres-migrations.md) (*Neon compute: preview branches and cost*).
+
 ---
 
 ## Ingestion, knowledge graphs, and Restormel Graph

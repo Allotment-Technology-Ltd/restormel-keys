@@ -97,6 +97,18 @@
     The <strong>restormel-keys</strong> repository includes GitHub Actions workflows that can create or reuse <strong>Neon preview branches</strong> for pull requests, run the same migration script against a preview
     <code class="inline-code">DATABASE_URL</code>, and expire branches when PRs close. Store <code class="inline-code">NEON_API_KEY</code> and project identifiers only in GitHub Actions secrets and variables.
   </p>
+  <p>
+    <strong>Cost control:</strong> A <strong>Neon ↔ Vercel Marketplace integration</strong> can create <code class="inline-code">preview/…</code> branches (Neon metadata: <code class="inline-code">creation_source: vercel</code>); that is not set in repo <code class="inline-code">vercel.json</code>. Neon’s docs: managed integrations enable preview branching; a
+    <a href="https://neon.com/docs/guides/vercel-manual" rel="noopener noreferrer" target="_blank">manual Vercel connection</a>
+    does not. <strong>Dependabot previews do not need Neon</strong>—disconnect integration + manual env, or prune/retention (see runbook). The repo ships a
+    <strong>Prune stale Neon preview branches</strong> workflow (weekly live prune; manual runs default to dry-run). Maintainer detail:
+    <a
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/runbooks/dashboard-postgres-migrations.md"
+      rel="noopener noreferrer"
+      target="_blank">dashboard-postgres-migrations.md</a
+    >
+    (section <em>Neon compute: preview branches and cost</em>).
+  </p>
 
   <h2>Ingestion, knowledge graphs, and Restormel Graph</h2>
   <p>

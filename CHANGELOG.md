@@ -2,6 +2,21 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-12) — Dependabot: weekly single grouped PR per ecosystem
+
+**`.github/dependabot.yml`:** One **`weekly-npm`** group (`patterns: ["*"]`) and one **`weekly-actions`** group, **`open-pull-requests-limit: 1`**, aligned **Monday 06:00 UTC**, to cut Dependabot-driven Vercel preview / Neon preview-branch churn while keeping weekly bumps. Runbook: [dashboard-postgres-migrations.md](docs/runbooks/dashboard-postgres-migrations.md) (*Operational levers*). **STATUS.md:** one-line pointer under Keys + Testing.
+
+## Repo (2026-04-12) — Docs: Neon–Vercel integration vs manual (no “branching off” toggle)
+
+**Runbook + public guide:** Clarify that `preview/*` with `creation_source: vercel` comes from **Neon Marketplace ↔ Vercel** integrations (not `vercel.json`); Neon docs do not offer a per-PR “disable branching” switch—use **[manual connection](https://neon.com/docs/guides/vercel-manual)** or **Disconnect** + env vars, plus [branch cleanup](https://neon.com/docs/guides/vercel-branch-cleanup). Files: [docs/runbooks/dashboard-postgres-migrations.md](docs/runbooks/dashboard-postgres-migrations.md), [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md), [database-neon-for-self-hosters/+page.svelte](apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte).
+
+## Repo (2026-04-12) — Docs: Dependabot previews do not need Neon (Vercel)
+
+**Runbook + public guide:** [docs/runbooks/dashboard-postgres-migrations.md](docs/runbooks/dashboard-postgres-migrations.md), [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md), in-app [database-neon-for-self-hosters/+page.svelte](apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte) — explicit policy to **disable Neon preview branches for Dependabot-only previews in Vercel**; prune workflow remains for stragglers.
+
+## Repo (2026-04-12) — Neon preview cost: prune schedule fixes + runbook
+
+**Prune workflow:** [`.github/workflows/neon-prune-preview-branches.yml`](.github/workflows/neon-prune-preview-branches.yml) — **scheduled** runs now set `DRY_RUN=false` (weekly cron previously behaved as dry-run because `inputs` are empty on `schedule`). Schedule uses **72h** minimum branch age before deletion. **Open PR head refs** are collected (paginated) so `preview/<head_ref>` branches for **open** PRs are preserved, not only `preview-pr-<n>`. **Runbook:** [`docs/runbooks/dashboard-postgres-migrations.md`](docs/runbooks/dashboard-postgres-migrations.md) new subsection *Neon compute: preview branches and cost* (Vercel vs Actions, Dependabot, prune, query notes). **Comment:** [`.github/workflows/neon_workflow.yml`](.github/workflows/neon_workflow.yml) header documents Dependabot / Vercel duplication.
 ## Repo (2026-04-14) — Guard rails: one binding per route scope (route vs model)
 
 **Dashboard:** Route guard rail picker hides policies already attached to the **entire route**, to **any model** on that route, or (for model scope) to the **inspected step**; **POST** `…/api/policies/{id}/bindings` returns **409** when a duplicate or route-vs-step conflict would occur (`getPolicyBindingConflictMessage` in Neon).
@@ -128,7 +143,6 @@ Single record of meaningful repo changes.
 **Integrations:** MCP **`keys_routing_contract`** via `docs.canonical_resolve`, static **`routing.capabilities`**, **`routes.upsert_with_steps`** and **`routes.simulate`**; journey **`keys_routing`** steps updated; docs search index entry for routing contract. **`@restormel/aaif`:** optional **`routingContext`** on requests; README routing section. Cursor skill **`.cursor/skills/restormel-keys-routing`**.
 
 **Docs:** Walkthrough [docs/walkthrough/05-phase-3-routes.md](docs/walkthrough/05-phase-3-routes.md); integrations walkthrough MCP list [docs/integrations-walkthrough/05-phase-3-mcp.md](docs/integrations-walkthrough/05-phase-3-mcp.md); in-product [/keys/docs/guides/routing-contract](apps/dashboard/src/routes/keys/docs/guides/routing-contract/+page.svelte); [ARCHITECTURE.md](ARCHITECTURE.md) and [STATUS.md](STATUS.md) pointers.
-
 ## Repo (2026-04-12) — Public docs: Neon as default database for self-hosters
 
 **Guide:** [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md) — Neon Postgres + Neon Auth checklist, when a DB is required vs optional, CI preview branches, SOPHIA-style ingestion vs graph store framing, links to [Neon Open Source Program](https://neon.com/programs/open-source) and [Neon docs](https://neon.com/docs/llms.txt). **In-product:** [`apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte`](apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte) at `/keys/docs/guides/database-neon-for-self-hosters`. **Discovery:** [docs/+page.svelte](apps/dashboard/src/routes/keys/docs/+page.svelte) quick links, [search index](apps/dashboard/src/routes/keys/docs/search/+page.svelte). **Cross-links:** [docs/guides/restormel-environment-vocabulary.md](docs/guides/restormel-environment-vocabulary.md), [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md), [docs/reference/extraction-vercel.md](docs/reference/extraction-vercel.md), [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md), [AGENTS.md](AGENTS.md), [docs/00-master-index.md](docs/00-master-index.md).
