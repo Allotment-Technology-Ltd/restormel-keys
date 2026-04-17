@@ -10,6 +10,7 @@ export const BYOK_PROVIDER_ORDER = [
   'together',
   'openrouter',
   'perplexity',
+  'aizolo',
   'cohere',
   'voyage'
 ] as const;
@@ -28,7 +29,8 @@ export const REASONING_PROVIDER_ORDER = [
   'together',
   'cohere',
   'openrouter',
-  'perplexity'
+  'perplexity',
+  'aizolo'
 ] as const;
 
 export const ReasoningProviderSchema = z.enum(REASONING_PROVIDER_ORDER);
@@ -94,6 +96,12 @@ export const PROVIDER_UI_META: Record<ByokProvider, ProviderUiMeta> = {
     modelLabel: 'OpenRouter',
     hint: 'Use an OpenRouter API key. Stored encrypted per account.',
     placeholder: 'sk-or-v1-...'
+  },
+  aizolo: {
+    label: 'AiZolo',
+    modelLabel: 'AiZolo',
+    hint: 'Use an AiZolo API key (OpenAI-compatible chat completions). Stored encrypted per account.',
+    placeholder: 'aizolo_…'
   },
   perplexity: {
     label: 'Perplexity',
@@ -185,6 +193,19 @@ export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
     'meta-llama/llama-3.3-70b-instruct',
     'qwen/qwen-2.5-72b-instruct'
   ],
+  /** Subset; full list in @restormel/keys `AIZOLO_VENDOR_MODEL_IDS` + dashboard catalog seed. */
+  aizolo: [
+    'aizolo-openai',
+    'aizolo-openai-gpt-4o',
+    'aizolo-openai-gpt-5',
+    'aizolo-gemini',
+    'aizolo-gemini-gemini-2.5-pro',
+    'aizolo-grok',
+    'aizolo-claude-claude-sonnet-4-5-20250929',
+    'aizolo-deepseek-deepseek-chat',
+    'aizolo-perplexity-sonar',
+    'aizolo-kimi-kimi-k2.5'
+  ],
   /** Aligned with @restormel/keys COHERE_MODELS plus common dated ids from operator catalogs. */
   cohere: [
     'command-r-plus',
@@ -227,7 +248,8 @@ export const REASONING_PROVIDER_PLATFORM_API_KEY_ENV: Partial<Record<ReasoningPr
   together: 'TOGETHER_API_KEY',
   cohere: 'COHERE_API_KEY',
   openrouter: 'OPENROUTER_API_KEY',
-  perplexity: 'PERPLEXITY_API_KEY'
+  perplexity: 'PERPLEXITY_API_KEY',
+  aizolo: 'AIZOLO_API_KEY'
 };
 
 export const REASONING_PROVIDER_BASE_URL_ENV: Partial<Record<ReasoningProvider, string>> = {
@@ -238,7 +260,8 @@ export const REASONING_PROVIDER_BASE_URL_ENV: Partial<Record<ReasoningProvider, 
   together: 'TOGETHER_BASE_URL',
   cohere: 'COHERE_BASE_URL',
   openrouter: 'OPENROUTER_BASE_URL',
-  perplexity: 'PERPLEXITY_BASE_URL'
+  perplexity: 'PERPLEXITY_BASE_URL',
+  aizolo: 'AIZOLO_BASE_URL'
 };
 
 export const REASONING_PROVIDER_DEFAULT_BASE_URL: Partial<Record<ReasoningProvider, string>> = {
@@ -249,7 +272,8 @@ export const REASONING_PROVIDER_DEFAULT_BASE_URL: Partial<Record<ReasoningProvid
   /** Cohere OpenAI SDK compatibility layer (chat completions). */
   cohere: 'https://api.cohere.com/compatibility/v1',
   openrouter: 'https://openrouter.ai/api/v1',
-  perplexity: 'https://api.perplexity.ai'
+  perplexity: 'https://api.perplexity.ai',
+  aizolo: 'https://chat.aizolo.com/api/v1'
 };
 
 const BYOK_PROVIDER_SET = new Set<string>(BYOK_PROVIDER_ORDER);

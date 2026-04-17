@@ -22,6 +22,7 @@ const STEP_PROVIDER_KEYS = [
   "vercel",
   "portkey",
   "voyage",
+  "aizolo",
 ] as const;
 
 function variantServesProvider(

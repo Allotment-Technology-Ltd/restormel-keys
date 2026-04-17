@@ -2,6 +2,14 @@
 
 Single record of meaningful repo changes.
 
+## npm (2026-04-17) — platform-v0.1.1 + keys-v0.2.20
+
+**@restormel/contracts** **0.1.1** — provider catalog updates (e.g. AiZolo) and related contract surface.
+
+**Platform train** (tag **`platform-v0.1.1`**): **@restormel/context-packs** **0.1.2**, **@restormel/state** **0.2.1**, **@restormel/observability** **0.1.2**, **@restormel/graph-reasoning-extensions** **0.1.1** (version bumps only; publish workflow publishes the full platform set).
+
+**Keys train** (tag **`keys-v0.2.20`**): **@restormel/keys** **0.2.20** (AiZolo provider + model metadata). Earlier attempts published through **@restormel/keys-elements** **0.1.5** before **`@restormel/keys-react`** tests failed in CI; **0.2.20** removes jest-dom matchers from React tests. **@restormel/keys-svelte** **0.1.13**, **@restormel/keys-elements** **0.1.6**, **@restormel/keys-react** **0.1.6**, **@restormel/aaif** **0.0.17**, **@restormel/mcp** **0.2.6**, **@restormel/doctor** **0.1.16**, **@restormel/validate** **0.1.16**, **@restormel/keys-cli** **0.1.16**.
+
 ## Repo (2026-04-12) — Dependabot: weekly single grouped PR per ecosystem
 
 **`.github/dependabot.yml`:** One **`weekly-npm`** group (`patterns: ["*"]`) and one **`weekly-actions`** group, **`open-pull-requests-limit: 1`**, aligned **Monday 06:00 UTC**, to cut Dependabot-driven Vercel preview / Neon preview-branch churn while keeping weekly bumps. Runbook: [dashboard-postgres-migrations.md](docs/runbooks/dashboard-postgres-migrations.md) (*Operational levers*). **STATUS.md:** one-line pointer under Keys + Testing.
@@ -143,6 +151,7 @@ Single record of meaningful repo changes.
 **Integrations:** MCP **`keys_routing_contract`** via `docs.canonical_resolve`, static **`routing.capabilities`**, **`routes.upsert_with_steps`** and **`routes.simulate`**; journey **`keys_routing`** steps updated; docs search index entry for routing contract. **`@restormel/aaif`:** optional **`routingContext`** on requests; README routing section. Cursor skill **`.cursor/skills/restormel-keys-routing`**.
 
 **Docs:** Walkthrough [docs/walkthrough/05-phase-3-routes.md](docs/walkthrough/05-phase-3-routes.md); integrations walkthrough MCP list [docs/integrations-walkthrough/05-phase-3-mcp.md](docs/integrations-walkthrough/05-phase-3-mcp.md); in-product [/keys/docs/guides/routing-contract](apps/dashboard/src/routes/keys/docs/guides/routing-contract/+page.svelte); [ARCHITECTURE.md](ARCHITECTURE.md) and [STATUS.md](STATUS.md) pointers.
+
 ## Repo (2026-04-12) — Public docs: Neon as default database for self-hosters
 
 **Guide:** [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md) — Neon Postgres + Neon Auth checklist, when a DB is required vs optional, CI preview branches, SOPHIA-style ingestion vs graph store framing, links to [Neon Open Source Program](https://neon.com/programs/open-source) and [Neon docs](https://neon.com/docs/llms.txt). **In-product:** [`apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte`](apps/dashboard/src/routes/keys/docs/guides/database-neon-for-self-hosters/+page.svelte) at `/keys/docs/guides/database-neon-for-self-hosters`. **Discovery:** [docs/+page.svelte](apps/dashboard/src/routes/keys/docs/+page.svelte) quick links, [search index](apps/dashboard/src/routes/keys/docs/search/+page.svelte). **Cross-links:** [docs/guides/restormel-environment-vocabulary.md](docs/guides/restormel-environment-vocabulary.md), [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md), [docs/reference/extraction-vercel.md](docs/reference/extraction-vercel.md), [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md), [AGENTS.md](AGENTS.md), [docs/00-master-index.md](docs/00-master-index.md).

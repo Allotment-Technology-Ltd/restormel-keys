@@ -10,6 +10,7 @@ import {
   googleProvider,
   openrouterProvider,
   portkeyProvider,
+  aizoloProvider,
 } from "@restormel/keys";
 import type { ProviderDefinition } from "@restormel/keys";
 import { readStore } from "./store.js";
@@ -48,6 +49,7 @@ const PROVIDERS: Record<string, ProviderDefinition> = {
   google: googleProvider,
   openrouter: openrouterProvider,
   portkey: portkeyProvider,
+  aizolo: aizoloProvider,
 };
 
 function sleep(ms: number): Promise<void> {

@@ -24,6 +24,7 @@ const STATIC_PATHS = [
   "/keys/docs/guides/keys-testing-onboarding",
   "/keys/docs/guides/provider-access-modes",
   "/keys/docs/guides/openrouter",
+  "/keys/docs/guides/aizolo",
   "/keys/docs/guides/portkey",
   "/keys/docs/guides/vercel-ai-gateway",
   "/keys/docs/guides/integration-vs-hosted-vault",

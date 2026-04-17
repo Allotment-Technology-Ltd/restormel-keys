@@ -20,7 +20,7 @@ describe("KeyManager", () => {
     const keys = null;
     render(<KeyManager keys={keys} userId="u-1" />);
     const el = document.querySelector("rk-key-manager");
-    expect(el).toBeInTheDocument();
+    expect(el).not.toBeNull();
     expect(el?.getAttribute("user-id")).toBe("u-1");
   });
 

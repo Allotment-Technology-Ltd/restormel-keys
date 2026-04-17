@@ -1908,6 +1908,7 @@
                         <option value="vercel">vercel</option>
                         <option value="portkey">portkey</option>
                         <option value="voyage">voyage</option>
+                        <option value="aizolo">aizolo</option>
                       </select>
                     </div>
                     <div class="form-row compact">
@@ -2150,6 +2151,7 @@
                   <option value="vercel">vercel</option>
                   <option value="portkey">portkey</option>
                   <option value="voyage">voyage</option>
+                  <option value="aizolo">aizolo</option>
                 </select>
               </div>
               <div class="add-step-dialog-field">

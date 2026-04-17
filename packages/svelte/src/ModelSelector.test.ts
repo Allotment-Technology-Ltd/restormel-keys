@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/svelte";
 import ModelSelector from "./ModelSelector.svelte";
 import { createKeys } from "@restormel/keys";
 import { openaiProvider, anthropicProvider } from "@restormel/keys";
+import { expectElementHasClasses } from "./testing/assert-dom";
 
 const providers = [openaiProvider, anthropicProvider];
 
@@ -13,8 +14,8 @@ describe("ModelSelector", () => {
     render(ModelSelector, { props: { keys, providers } });
 
     const region = screen.getByRole("region", { name: /model selection/i });
-    expect(region).toBeInTheDocument();
-    expect(region).toHaveClass("rk-model-selector", "rk-dark");
+    expect(region).toBeTruthy();
+    expectElementHasClasses(region, "rk-model-selector", "rk-dark");
   });
 
   it("shows provider names when resolved", async () => {
@@ -25,8 +26,8 @@ describe("ModelSelector", () => {
     const keys = createKeys(config, { providers });
     render(ModelSelector, { props: { keys, providers } });
 
-    expect(await screen.findByText("OpenAI")).toBeInTheDocument();
-    expect(screen.getByText("Anthropic")).toBeInTheDocument();
+    expect(await screen.findByText("OpenAI")).toBeTruthy();
+    expect(screen.getByText("Anthropic")).toBeTruthy();
   });
 
   it("groups models under each provider", async () => {
@@ -37,8 +38,8 @@ describe("ModelSelector", () => {
     const keys = createKeys(config, { providers });
     render(ModelSelector, { props: { keys, providers } });
 
-    expect(await screen.findByRole("button", { name: "gpt-4o (available)" })).toBeInTheDocument();
-    expect(screen.getByText("OpenAI")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "gpt-4o (available)" })).toBeTruthy();
+    expect(screen.getByText("OpenAI")).toBeTruthy();
   });
 
   it("respects theme custom property container", () => {
@@ -46,7 +47,7 @@ describe("ModelSelector", () => {
     const keys = createKeys(config, { providers });
     render(ModelSelector, { props: { keys, providers } });
     const el = document.querySelector(".rk-model-selector");
-    expect(el).toHaveClass("rk-dark");
+    expectElementHasClasses(el, "rk-dark");
   });
 
   it("still resolves when policy entry is soft-blocked", async () => {
@@ -69,7 +70,7 @@ describe("ModelSelector", () => {
       },
     });
 
-    expect(await screen.findByRole("button", { name: "gpt-4o (available)" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "gpt-4o (available)" })).toBeTruthy();
   });
 
   it("keeps hard policy-blocked models unavailable", async () => {
@@ -92,6 +93,10 @@ describe("ModelSelector", () => {
       },
     });
 
-    expect(await screen.findByRole("button", { name: /gpt-4o \(Policy: blocked by test\)/i })).toBeDisabled();
+    const blocked = await screen.findByRole("button", {
+      name: /gpt-4o \(Policy: blocked by test\)/i,
+    });
+    expect(blocked).toBeInstanceOf(HTMLButtonElement);
+    expect((blocked as HTMLButtonElement).disabled).toBe(true);
   });
 });

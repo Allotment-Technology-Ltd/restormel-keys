@@ -20,6 +20,7 @@ const CONVENTIONAL_ENV: Record<string, string[]> = {
   xai: ["XAI_API_KEY"],
   voyage: ["VOYAGE_API_KEY"],
   portkey: ["PORTKEY_API_KEY"],
+  aizolo: ["AIZOLO_API_KEY"],
 };
 
 function envKeyForProvider(providerId: string): string {

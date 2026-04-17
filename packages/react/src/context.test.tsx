@@ -16,7 +16,7 @@ describe("KeysProvider", () => {
         <Consumer />
       </KeysProvider>
     );
-    expect(screen.getByTestId("has-keys")).toHaveTextContent("yes");
+    expect(screen.getByTestId("has-keys").textContent?.trim()).toBe("yes");
   });
 
   it("useKeysContext throws when used outside provider", () => {

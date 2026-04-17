@@ -8,6 +8,7 @@
   const PROVIDER_CARDS = [
     { value: "openai", label: "OpenAI" },
     { value: "anthropic", label: "Anthropic" },
+    { value: "aizolo", label: "AiZolo" },
     { value: "openrouter", label: "OpenRouter" },
     { value: "portkey", label: "Portkey" },
     { value: "vercel_ai_gateway", label: "Vercel AI" },

@@ -26,9 +26,11 @@ Lifecycle fields (e.g. `sourceLastVerifiedAt`) are only as good as the seed or t
 From `apps/dashboard`:
 
 ```bash
-# Ensure DATABASE_URL is set (e.g. in .env). Run after migrations 004 and 005.
+# DATABASE_URL: see “Env files” below. Run after migrations 004 and 005.
 pnpm run seed:catalog
 ```
+
+**Env files (local vs production):** Ingestion scripts load, in order, repo-root `.env`, then `apps/dashboard/.env`, then **`apps/dashboard/.env.local`** (each layer overrides the previous). Use **`.env`** for the default (e.g. production URI you keep in sync with Vercel production) and **`.env.local`** for local / preview DB while testing (`pnpm dev`, `pnpm run seed:catalog`). `.env.local` is gitignored and is not deployed; **Vercel** uses project environment variables only, so production keeps using the prod `DATABASE_URL` you set there.
 
 Requires `models` and `provider_model_variants` tables (migration `004_control_plane_tables.sql`). Optional SQL seed `005_seed_model_catalog.sql` can be run first for minimal bootstrap; the script upserts over it. **Project model index** (`020` + `021_project_model_bindings_kind.sql`): **`bindingKind` `execution`** rows should match catalog ids; **`registry`** rows store arbitrary `model_id` strings (no FK to `models`). If you remove catalog rows, execution bindings may show nested `model: null` on `GET`.
 
@@ -63,6 +65,19 @@ The repository includes a scheduled GitHub Action to keep the catalog aligned da
 - Each variant must have: `providerIntegrationType`, `providerModelId`. Optional: `availabilityStatus`, `pricingRef`, `rateLimitRef`, `sourceLastVerifiedAt`.
 
 Validation is performed by `scripts/ingest-model-catalog.mjs` before any DB writes. Tests can load the same JSON and assert on shape (see dashboard test suite).
+
+## Troubleshooting: `password authentication failed for user 'neondb_owner'`
+
+The URI is reaching Neon (`ep-…-pooler…` or `ep-…` without pooler), but Postgres rejected the password. The password in the file can look “correct” while the **string the client sends** is still wrong for that **branch and role**.
+
+1. **Use the connection string for the right branch** — In Neon Console, open the **same branch** this endpoint belongs to, then **Connection details → copy** the full URI. **Protected / forked branches** can use **different** role passwords than the parent; do not reuse the parent’s URI on a child branch (or vice versa).
+2. **Reset and paste once** — Project → **Roles** → `neondb_owner` → reset password, then copy the **new** connection string from **Connection details** in one step (do not mix host from one place with a password typed elsewhere).
+3. **Pooler vs direct** — If auth still fails, switch the dashboard dropdown to the **direct** (non-`pooler`) URI and try again; keep `?sslmode=require` if Neon adds it.
+4. **Confirm what Node sees** — From `apps/dashboard`: `MODEL_CATALOG_DEBUG_URL=1 pnpm run seed:catalog` prints host, user, database, and **password length only** (no secret). Compare the host to the branch you expect in the console.
+
+`apps/dashboard/.env` overrides repo-root `.env` for `DATABASE_URL` when both define it.
+
+The **`ep-…`** segment in the hostname (before `-pooler` if present) identifies the **Neon compute / branch** for that URI. It must match the database you intend (e.g. preview vs production). If Vercel links **preview** to one Neon branch and **production** to another, use the connection string from Neon for **that** branch—credentials are not interchangeable across different `ep-…` endpoints.
 
 ## Tests and validation
 

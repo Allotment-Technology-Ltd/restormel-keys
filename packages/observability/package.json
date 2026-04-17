@@ -1,6 +1,6 @@
 {
   "name": "@restormel/observability",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Restormel observability helpers for reasoning events, trace normalization, and SSE types.",
   "license": "MIT",
   "repository": {

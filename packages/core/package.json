@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys",
-  "version": "0.2.15",
+  "version": "0.2.20",
   "description": "Drop-in BYOK for AI apps. Headless key resolution, cost estimation, and provider adapters (OpenAI, Anthropic, Google).",
   "keywords": [
     "byok",

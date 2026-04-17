@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-react",
-  "version": "0.1.1",
+  "version": "0.1.6",
   "description": "React components and hooks for Restormel Keys. Wraps Web Components; native-feeling API for React and Next.js.",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,7 +22,6 @@
     "@restormel/keys-elements": "workspace:*"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/react": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",

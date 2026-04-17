@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     svelte(),
     dts({
       include: ["src"],
-      exclude: ["src/**/*.test.ts", "src/**/*.spec.ts"],
+      exclude: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/testing/**"],
       outDir: "dist",
       staticImport: true,
     }),
@@ -29,12 +29,7 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist",
     emptyOutDir: true,
   },
-  test: {
-    environment: "jsdom",
-    include: ["src/**/*.{test,spec}.{js,ts}"],
-    globals: true,
-    setupFiles: ["./src/test-setup.ts"],
-  },
+  // Vitest: see vitest.config.ts (jest-dom setup must merge via vitest/config for CI).
   resolve: {
     conditions: mode === "test" ? ["browser"] : [],
   },

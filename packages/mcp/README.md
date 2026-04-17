@@ -74,7 +74,7 @@ Exit code `0` when the manifest is built successfully. Use in smoke scripts inst
 |----------|---------|
 | `RESTORMEL_MCP_CONFIG` | Optional path to JSON `KeysConfig` for local entitlement rules (see `@restormel/keys`). |
 | `RESTORMEL_MCP_<PROVIDER>_KEY` | Override API key for `providers.validate` (e.g. `RESTORMEL_MCP_OPENAI_KEY`). Use underscores for hyphenated provider ids (`RESTORMEL_MCP_AZURE_OPENAI_KEY`). |
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, … | Conventional names also accepted for validation. |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `AIZOLO_API_KEY`, … | Conventional names also accepted for validation. |
 | `RESTORMEL_EVALUATE_URL` | Optional **full** URL for `POST` policy evaluation on the **Dashboard API**. Hosted example: `https://restormel.dev/keys/dashboard/api/policies/evaluate`. Self-host: `https://<host>/keys/dashboard/api/policies/evaluate`. |
 | `RESTORMEL_GATEWAY_KEY` | Project Gateway Key (`rk_…`) for `Authorization: Bearer` to the evaluate URL (never log this value). |
 | `RESTORMEL_CONTROL_PLANE_URL` | Base URL for MCP control-plane tools (`projects.list`, `project_models.list`, `routes.*`, `policies.*`, `fallback_chain.set`). Must be the dashboard app origin **without** a trailing slash, such that `{base}/api/projects/...` is valid. Hosted: `https://restormel.dev/keys/dashboard`. **Not** the same value as `RESTORMEL_EVALUATE_URL`. |

@@ -31,6 +31,7 @@ type ProviderValidationMode = "native" | "openai_compatible" | "none";
 const OPENAI_COMPATIBLE_DEFAULT_BASE: Record<string, string> = {
   openrouter: "https://openrouter.ai/api/v1",
   vercel: "https://ai-gateway.vercel.sh/v1",
+  aizolo: "https://chat.aizolo.com/api/v1",
   portkey: "https://api.portkey.ai/v1",
   together: "https://api.together.xyz/v1",
   fireworks: "https://api.fireworks.ai/inference/v1",
@@ -57,6 +58,7 @@ const PROVIDER_META: Record<
   perplexity: { displayName: "Perplexity", validationMode: "openai_compatible", requiresBaseUrl: false, requiresModel: true },
   xai: { displayName: "xAI", validationMode: "native", requiresBaseUrl: false, requiresModel: true },
   voyage: { displayName: "Voyage AI", validationMode: "native", requiresBaseUrl: false, requiresModel: true },
+  aizolo: { displayName: "AiZolo", validationMode: "openai_compatible", requiresBaseUrl: false, requiresModel: true },
 };
 
 function titleCaseProvider(providerType: string): string {

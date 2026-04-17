@@ -1,6 +1,6 @@
 {
   "name": "@restormel/contracts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Restormel shared API and reasoning contracts (Zod schemas and types).",
   "license": "MIT",
   "repository": {

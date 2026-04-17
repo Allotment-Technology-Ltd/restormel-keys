@@ -9,6 +9,8 @@ import {
   ANTHROPIC_MODELS,
   googleProvider,
   GOOGLE_MODELS,
+  aizoloProvider,
+  AIZOLO_MODELS,
 } from "./index.js";
 
 describe("provider model lists", () => {
@@ -33,6 +35,14 @@ describe("provider model lists", () => {
     expect(googleProvider.models).toContain("gemini-2.5-pro");
     expect(googleProvider.models).toContain("gemini-2.5-flash");
     expect(googleProvider.models).not.toContain("gemini-1.5-flash");
+  });
+
+  it("aizolo exposes vendor model ids aligned with catalog allowlist", () => {
+    expect(aizoloProvider.models).toEqual([...AIZOLO_MODELS]);
+    expect(aizoloProvider.models.length).toBeGreaterThan(40);
+    expect(aizoloProvider.models).toContain("openai");
+    expect(aizoloProvider.models).toContain("openai/gpt-4o");
+    expect(aizoloProvider.models).toContain("gemini/gemini-2.5-pro");
   });
 });
 
@@ -157,6 +167,21 @@ describe("validateKey with mocked fetch", () => {
     );
   });
 
+  it("aizolo validateKey POSTs chat/completions probe", async () => {
+    const mockFetch = vi.mocked(globalThis.fetch);
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200 } as Response);
+
+    await aizoloProvider.validateKey("aizolo_test", mockFetch as typeof fetch);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://chat.aizolo.com/api/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer aizolo_test" }),
+      })
+    );
+  });
+
   it("validateKey returns invalid on fetch throw", async () => {
     const mockFetch = vi.mocked(globalThis.fetch);
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
@@ -185,5 +210,11 @@ describe("createClient", () => {
     const client = googleProvider.createClient("key");
     expect(client.provider).toBe("google");
     expect(client.baseUrl).toBe("https://generativelanguage.googleapis.com");
+  });
+
+  it("aizolo createClient returns provider and OpenAI-compatible base", () => {
+    const client = aizoloProvider.createClient("k");
+    expect(client.provider).toBe("aizolo");
+    expect(client.baseUrl).toBe("https://chat.aizolo.com/api/v1");
   });
 });

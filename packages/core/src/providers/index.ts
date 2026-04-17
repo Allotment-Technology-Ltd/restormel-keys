@@ -5,6 +5,8 @@ export { openrouterProvider, OPENROUTER_MODELS } from "./openrouter.js";
 export { portkeyProvider, PORTKEY_MODELS } from "./portkey.js";
 export { mistralProvider, MISTRAL_MODELS } from "./mistral.js";
 export { groqProvider, GROQ_MODELS } from "./groq.js";
+export { aizoloProvider, AIZOLO_MODELS } from "./aizolo.js";
+export { AIZOLO_VENDOR_MODEL_IDS, aizoloCatalogModelId } from "./aizolo-models.js";
 export { togetherProvider, TOGETHER_MODELS } from "./together.js";
 export { deepseekProvider, DEEPSEEK_MODELS } from "./deepseek.js";
 export { fireworksProvider, FIREWORKS_MODELS } from "./fireworks.js";

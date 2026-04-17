@@ -1,6 +1,6 @@
 {
   "name": "@restormel/context-packs",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Pass-specific text context packs (analysis, critique, synthesis) from a minimal graph-shaped retrieval payload — no DB or engine dependencies.",
   "license": "MIT",
   "repository": {

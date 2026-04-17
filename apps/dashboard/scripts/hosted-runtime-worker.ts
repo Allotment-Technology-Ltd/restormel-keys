@@ -3,7 +3,7 @@
  *
  * Usage (from repo root): `pnpm --filter dashboard exec tsx --tsconfig apps/dashboard/tsconfig.json apps/dashboard/scripts/hosted-runtime-worker.ts`
  */
-import "dotenv/config";
+import "./load-dashboard-env.mjs";
 import { runHostedRuntimeWorkerLoop } from "../src/lib/server/hosted-runtime-worker";
 
 const max = Math.max(1, Number(process.env.HOSTED_RUNTIME_WORKER_MAX_JOBS ?? "50"));

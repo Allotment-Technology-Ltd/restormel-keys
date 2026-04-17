@@ -58,6 +58,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
       { href: "/keys/docs/guides/provider-access-modes", label: "Provider access modes" },
       { href: "/keys/docs/reference/cli", label: "CLI options" },
       { href: "/keys/docs/guides/openrouter", label: "OpenRouter" },
+      { href: "/keys/docs/guides/aizolo", label: "AiZolo" },
       { href: "/keys/docs/guides/vercel-ai-gateway", label: "Vercel AI Gateway" },
       { href: "/keys/docs/guides/portkey", label: "Portkey" },
       { href: "/keys/docs/guides/canonical-catalog", label: "Canonical catalog" },

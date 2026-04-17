@@ -34,6 +34,7 @@ export function openAiCompatibleChatBaseUrl(canonicalProvider: string): string |
     mistral: "https://api.mistral.ai/v1",
     deepseek: "https://api.deepseek.com/v1",
     vercel: "https://ai-gateway.vercel.sh/v1",
+    aizolo: "https://chat.aizolo.com/api/v1",
   };
   return map[k] ?? null;
 }
@@ -93,13 +94,27 @@ export async function postOpenAiCompatibleChat(args: {
   }
 
   if (!res.ok) {
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      const suffix = retryAfter ? `; retry_after_s=${retryAfter}` : "";
+      return {
+        ok: false,
+        value: {
+          errorCode: "upstream_http_error",
+          httpStatus: 429,
+          message: `upstream_rate_limit${suffix}`,
+        },
+      };
+    }
     const errObj = json && typeof json === "object" && json !== null ? (json as Record<string, unknown>) : null;
     const errMsg =
       typeof errObj?.error === "object" && errObj.error !== null
         ? String((errObj.error as { message?: unknown }).message ?? "upstream_error")
         : typeof errObj?.error === "string"
           ? errObj.error
-          : "upstream_error";
+          : typeof errObj?.message === "string"
+            ? errObj.message
+            : "upstream_error";
     return {
       ok: false,
       value: {

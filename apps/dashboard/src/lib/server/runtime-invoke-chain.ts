@@ -15,6 +15,7 @@ import {
   postOpenAiCompatibleChat,
   type ChatMessage,
 } from "$lib/server/runtime-openai-chat";
+import { resolveVendorOpenAiChatModelId } from "$lib/server/runtime-model-upstream";
 import { findDecryptedApiKeyForResolvedProvider } from "$lib/server/runtime-invoke";
 import { defaultProviders, estimateCost, type ProviderDefinition } from "@restormel/keys";
 import { canonicalApiToPolicyProvider } from "$lib/server/canonical-provider";
@@ -290,10 +291,12 @@ export async function runRuntimeInvokePipeline(args: {
           ? Math.min(step.timeoutMs, 300_000)
           : 120_000;
 
+      const vendorModelId = await resolveVendorOpenAiChatModelId(canonical, picked.modelId);
+
       const upstream = await postOpenAiCompatibleChat({
         baseUrl,
         apiKey: cred.apiKey,
-        model: picked.modelId,
+        model: vendorModelId,
         messages: workingMessages,
         timeoutMs,
         signal: args.abortSignal,
@@ -335,7 +338,7 @@ export async function runRuntimeInvokePipeline(args: {
       sumTotal += tt;
 
       const stepUsd = estimateCostUsdForStep({
-        modelId: picked.modelId,
+        modelId: vendorModelId,
         providerType: picked.canonicalProvider,
         promptTokens: u.promptTokens,
         completionTokens: u.completionTokens,
@@ -384,6 +387,7 @@ export async function runRuntimeInvokePipeline(args: {
       baseUrl: string | null;
       cred: Awaited<ReturnType<typeof findDecryptedApiKeyForResolvedProvider>>;
       timeoutMs: number;
+      vendorModelId: string | null;
     };
 
     const prepList: Prep[] = await Promise.all(
@@ -414,6 +418,10 @@ export async function runRuntimeInvokePipeline(args: {
           step.timeoutMs != null && step.timeoutMs > 0
             ? Math.min(step.timeoutMs, 300_000)
             : 120_000;
+        const vendorModelId =
+          picked.ok && canonical
+            ? await resolveVendorOpenAiChatModelId(canonical, picked.modelId)
+            : null;
         return {
           step,
           idx,
@@ -422,6 +430,7 @@ export async function runRuntimeInvokePipeline(args: {
           baseUrl,
           cred: cred as Awaited<ReturnType<typeof findDecryptedApiKeyForResolvedProvider>>,
           timeoutMs,
+          vendorModelId,
         };
       })
     );
@@ -477,7 +486,7 @@ export async function runRuntimeInvokePipeline(args: {
         return postOpenAiCompatibleChat({
           baseUrl: p.baseUrl,
           apiKey: p.cred.apiKey,
-          model: p.picked.modelId,
+          model: p.vendorModelId ?? p.picked.modelId,
           messages: workingMessages,
           timeoutMs: p.timeoutMs,
           signal: ac.signal,
@@ -511,7 +520,7 @@ export async function runRuntimeInvokePipeline(args: {
         sumCompletion += ct;
         sumTotal += tt;
         const stepUsd = estimateCostUsdForStep({
-          modelId: p.picked.modelId,
+          modelId: p.vendorModelId ?? p.picked.modelId,
           providerType: p.picked.canonicalProvider,
           promptTokens: u.promptTokens,
           completionTokens: u.completionTokens,
@@ -630,7 +639,7 @@ export async function runRuntimeInvokePipeline(args: {
       sumCompletion += ct;
       sumTotal += tt;
       const stepUsd = estimateCostUsdForStep({
-        modelId: p.picked.modelId,
+        modelId: p.vendorModelId ?? p.picked.modelId,
         providerType: p.picked.canonicalProvider,
         promptTokens: u.promptTokens,
         completionTokens: u.completionTokens,

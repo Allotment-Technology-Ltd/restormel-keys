@@ -20,6 +20,7 @@
     },
     { title: "Provider access modes", href: "/keys/docs/guides/provider-access-modes", tags: "gateway byok direct" },
     { title: "OpenRouter guide", href: "/keys/docs/guides/openrouter", tags: "openrouter" },
+    { title: "AiZolo quick start", href: "/keys/docs/guides/aizolo", tags: "aizolo chat completions openai compatible" },
     { title: "Vercel AI Gateway guide", href: "/keys/docs/guides/vercel-ai-gateway", tags: "vercel gateway" },
     { title: "Portkey guide", href: "/keys/docs/guides/portkey", tags: "portkey" },
     {

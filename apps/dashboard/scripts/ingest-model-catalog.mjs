@@ -1,15 +1,22 @@
 /**
  * Model catalog ingestion: load seed JSON and upsert into models + provider_model_variants.
  * Run from apps/dashboard: pnpm run seed:catalog (requires DATABASE_URL).
+ * Do not prefix the command with DATABASE_URL=… — that overrides values from .env.
+ * Local dev: put preview/dev `DATABASE_URL` in `apps/dashboard/.env.local` (overrides `.env`).
  * See docs/reference/model-catalog-ingestion.md for static vs dynamic and refresh.
  */
-import "dotenv/config";
+import {
+  dashboardEnvPath,
+  dashboardLocalEnvPath,
+  repoRootEnvPath,
+} from "./load-dashboard-env.mjs";
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const SEED_PATH = join(__dirname, "..", "data", "model-catalog-seed.json");
 
 function loadSeed() {
@@ -110,12 +117,70 @@ async function upsertVariants(sql, models) {
   return count;
 }
 
+/** Set MODEL_CATALOG_DEBUG_URL=1 to print host, user, db name, and password length only (no secrets). */
+function logDatabaseUrlDiagnostics(url) {
+  if (process.env.MODEL_CATALOG_DEBUG_URL !== "1") return;
+  console.error(
+    "[MODEL_CATALOG_DEBUG_URL] Loaded in order (later wins): repo root .env → apps/dashboard/.env → apps/dashboard/.env.local",
+  );
+  console.error("[MODEL_CATALOG_DEBUG_URL] repo root:", repoRootEnvPath);
+  console.error("[MODEL_CATALOG_DEBUG_URL] dashboard:", dashboardEnvPath);
+  console.error("[MODEL_CATALOG_DEBUG_URL] dashboard local:", dashboardLocalEnvPath);
+  const raw = String(url).trim();
+  const q = raw.startsWith('"') && raw.endsWith('"');
+  const sq = raw.startsWith("'") && raw.endsWith("'");
+  if (q || sq) {
+    console.error(
+      "[MODEL_CATALOG_DEBUG_URL] Warning: value looks quote-wrapped; ensure DATABASE_URL is a single URI without stray quotes.",
+    );
+  }
+  try {
+    const httpish = raw.replace(/^postgres(ql)?:\/\//, "http://");
+    const u = new URL(httpish);
+    const safeDecode = (s) => {
+      try {
+        return decodeURIComponent(s);
+      } catch {
+        return s;
+      }
+    };
+    const user = u.username ? safeDecode(u.username) : "";
+    const passDecoded = u.password ? safeDecode(u.password) : "";
+    const db = (u.pathname || "/").replace(/^\//, "") || "(none)";
+    console.error(
+      `[MODEL_CATALOG_DEBUG_URL] host=${u.hostname} port=${u.port || "default"} user=${user} database=${db} passwordLength=${passDecoded.length}`,
+    );
+  } catch (e) {
+    console.error("[MODEL_CATALOG_DEBUG_URL] Could not parse DATABASE_URL:", e.message);
+  }
+}
+
+function assertValidDatabaseUrl(url) {
+  const trimmed = String(url).trim();
+  if (!trimmed.startsWith("postgres://") && !trimmed.startsWith("postgresql://")) {
+    console.error(
+      "DATABASE_URL must be a Postgres connection URI (postgresql:// or postgres://).",
+    );
+    console.error(
+      "Do not use the literal … placeholder from docs; paste the URI from Neon (or .env / vercel env pull).",
+    );
+    console.error(
+      "If DATABASE_URL is in .env, run without prefixing the command (shell vars override .env).",
+    );
+    process.exit(1);
+  }
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    console.error("DATABASE_URL is not set. Set it in .env or environment.");
+    console.error(
+      "DATABASE_URL is not set. Set it in apps/dashboard/.env (e.g. prod) and/or .env.local (local dev overrides).",
+    );
     process.exit(1);
   }
+  assertValidDatabaseUrl(url);
+  logDatabaseUrlDiagnostics(url);
   const seed = loadSeed();
   const errors = validate(seed);
   if (errors.length) {
@@ -131,5 +196,14 @@ async function main() {
 
 main().catch((err) => {
   console.error(err);
+  const msg = String(err?.message ?? err);
+  if (/password authentication failed/i.test(msg)) {
+    console.error(
+      "If the password is correct, common causes: (1) special characters in the password must be percent-encoded in the URI—use Neon’s “Copy” connection string; (2) for local runs, apps/dashboard/.env.local overrides .env—confirm DATABASE_URL matches the intended branch; (3) wrong branch/project host in the URL.",
+    );
+    console.error(
+      "Run: MODEL_CATALOG_DEBUG_URL=1 pnpm run seed:catalog — prints host, user, database, password length only.",
+    );
+  }
   process.exit(1);
 });

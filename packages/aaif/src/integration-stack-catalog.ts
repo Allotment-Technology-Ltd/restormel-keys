@@ -14,6 +14,7 @@ export const INTEGRATION_COMPONENT_IDS = [
   "openai",
   "anthropic",
   "google",
+  "aizolo",
   "zuplo",
 ] as const;
 
@@ -105,6 +106,13 @@ export const INTEGRATION_CATALOG: readonly IntegrationCatalogEntry[] = [
     docsPath: "/keys/docs/compatibility",
     externalUrl: "https://ai.google.dev/",
     logoId: "google",
+  },
+  {
+    id: "aizolo",
+    label: "AiZolo",
+    category: "model_provider",
+    docsPath: "/keys/docs/guides/aizolo",
+    externalUrl: "https://aizolo.com/",
   },
   {
     id: "zuplo",

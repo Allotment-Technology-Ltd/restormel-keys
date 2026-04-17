@@ -16,6 +16,7 @@
     "test": "vitest run",
     "seed:catalog": "node scripts/ingest-model-catalog.mjs",
     "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs",
+    "sync:aizolo-seed": "node scripts/sync-aizolo-catalog-seed.mjs",
     "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./tsconfig.json ./scripts/hosted-runtime-worker.ts"
   },
   "devDependencies": {

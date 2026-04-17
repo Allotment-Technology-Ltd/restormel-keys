@@ -11,6 +11,7 @@ import { xaiProvider } from "./xai.js";
 import { voyageProvider } from "./voyage.js";
 import { mistralProvider } from "./mistral.js";
 import { groqProvider } from "./groq.js";
+import { aizoloProvider } from "./aizolo.js";
 import { togetherProvider } from "./together.js";
 import { deepseekProvider } from "./deepseek.js";
 import { fireworksProvider } from "./fireworks.js";
@@ -28,6 +29,7 @@ export const defaultProviders: ProviderDefinition[] = [
   xaiProvider,
   mistralProvider,
   groqProvider,
+  aizoloProvider,
   deepseekProvider,
   cohereProvider,
   perplexityProvider,

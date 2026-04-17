@@ -9,7 +9,7 @@
  * - We only populate minimal model fields; any richer metadata already in the DB (e.g. from 011_seed_full_model_catalog.sql)
  *   is preserved on conflict.
  */
-import "dotenv/config";
+import "./load-dashboard-env.mjs";
 import { neon } from "@neondatabase/serverless";
 import { defaultProviders } from "@restormel/keys";
 
