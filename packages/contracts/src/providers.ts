@@ -170,7 +170,8 @@ export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
     'ministral-8b-latest',
     'codestral-latest'
   ],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-coder'],
+  /** Native DeepSeek API: V3.2 chat + reasoner only (see api-docs.deepseek.com). */
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   together: [
     'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     'Qwen/Qwen2.5-72B-Instruct-Turbo',
@@ -206,16 +207,29 @@ export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
     'aizolo-perplexity-sonar',
     'aizolo-kimi-kimi-k2.5'
   ],
-  /** Aligned with @restormel/keys COHERE_MODELS plus common dated ids from operator catalogs. */
+  /** Aligned with @restormel/keys COHERE_MODELS (Command / Command A / Aya). */
   cohere: [
-    'command-r-plus',
+    'command',
+    'command-light',
     'command-r',
+    'command-r-plus',
+    'command-r-03-2024',
+    'command-r-08-2024',
+    'command-r-plus-04-2024',
+    'command-r-plus-08-2024',
     'command-r7b',
     'command-r7b-12-2024',
-    'command-light',
     'command-a',
+    'command-a-03-2025',
+    'command-a-reasoning-08-2025',
+    'command-a-translate-08-2025',
+    'command-a-vision-07-2025',
     'aya-23-8b',
-    'aya-23-35b'
+    'aya-23-35b',
+    'c4ai-aya-expanse-8b',
+    'c4ai-aya-expanse-32b',
+    'c4ai-aya-vision-8b',
+    'c4ai-aya-vision-32b'
   ],
   perplexity: ['sonar-reasoning-pro', 'sonar-reasoning', 'sonar-pro', 'sonar']
 };

@@ -2,6 +2,12 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-04-17) — @restormel/keys: Mistral, Together, Cohere, DeepSeek model lists
+
+**`packages/core`:** Broader curated **`MISTRAL_MODELS`** and **`TOGETHER_MODELS`** (with **`TOGETHER_PRICING`** / **`estimateCost`**); expanded **`COHERE_MODELS`** and pricing; **`DEEPSEEK_MODELS`** aligned to native API (`deepseek-chat`, `deepseek-reasoner`) with current V3.2 pricing from DeepSeek docs. **`providers.test.ts`** covers the four providers.
+
+**`packages/contracts`:** Example provider model ids for **cohere** and **deepseek** updated to match.
+
 ## npm (2026-04-17) — platform-v0.1.1 + keys-v0.2.20
 
 **@restormel/contracts** **0.1.1** — provider catalog updates (e.g. AiZolo) and related contract surface.

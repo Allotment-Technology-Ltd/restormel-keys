@@ -7,20 +7,18 @@ import type {
 
 const BASE_URL = "https://api.deepseek.com";
 
+/**
+ * DeepSeek Chat API models (OpenAI-compatible).
+ * @see https://api-docs.deepseek.com
+ */
 export const DEEPSEEK_MODELS = [
   "deepseek-chat",
   "deepseek-reasoner",
-  "deepseek-coder",
-  "deepseek-r1",
-  "deepseek-r1-distill-llama-70b",
 ] as const;
 
 const DEEPSEEK_PRICING: Record<string, { input: number; output: number }> = {
-  "deepseek-chat": { input: 0.27, output: 1.1 },
-  "deepseek-reasoner": { input: 0.55, output: 2.19 },
-  "deepseek-coder": { input: 0.14, output: 0.28 },
-  "deepseek-r1": { input: 0.55, output: 2.19 },
-  "deepseek-r1-distill-llama-70b": { input: 0.4, output: 0.4 },
+  "deepseek-chat": { input: 0.28, output: 0.42 },
+  "deepseek-reasoner": { input: 0.28, output: 0.42 },
 };
 
 async function validateKey(

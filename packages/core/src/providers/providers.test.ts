@@ -11,6 +11,14 @@ import {
   GOOGLE_MODELS,
   aizoloProvider,
   AIZOLO_MODELS,
+  mistralProvider,
+  MISTRAL_MODELS,
+  togetherProvider,
+  TOGETHER_MODELS,
+  cohereProvider,
+  COHERE_MODELS,
+  deepseekProvider,
+  DEEPSEEK_MODELS,
 } from "./index.js";
 
 describe("provider model lists", () => {
@@ -43,6 +51,32 @@ describe("provider model lists", () => {
     expect(aizoloProvider.models).toContain("openai");
     expect(aizoloProvider.models).toContain("openai/gpt-4o");
     expect(aizoloProvider.models).toContain("gemini/gemini-2.5-pro");
+  });
+
+  it("mistral exposes a broad chat model list without duplicate ids", () => {
+    expect(mistralProvider.models).toEqual([...MISTRAL_MODELS]);
+    expect(new Set(mistralProvider.models).size).toBe(mistralProvider.models.length);
+    expect(mistralProvider.models.length).toBeGreaterThan(40);
+    expect(mistralProvider.models).toContain("mistral-large-latest");
+  });
+
+  it("together exposes serverless chat models without duplicate ids", () => {
+    expect(togetherProvider.models).toEqual([...TOGETHER_MODELS]);
+    expect(new Set(togetherProvider.models).size).toBe(togetherProvider.models.length);
+    expect(togetherProvider.models.length).toBeGreaterThan(20);
+    expect(togetherProvider.models).toContain("meta-llama/Llama-3.3-70B-Instruct-Turbo");
+  });
+
+  it("cohere exposes Command and Aya chat models", () => {
+    expect(cohereProvider.models).toEqual([...COHERE_MODELS]);
+    expect(cohereProvider.models).toContain("command-r-08-2024");
+    expect(cohereProvider.models).toContain("command-a-03-2025");
+  });
+
+  it("deepseek exposes official chat API models", () => {
+    expect(deepseekProvider.models).toEqual([...DEEPSEEK_MODELS]);
+    expect(deepseekProvider.models).toContain("deepseek-chat");
+    expect(deepseekProvider.models).toContain("deepseek-reasoner");
   });
 });
 
@@ -102,6 +136,33 @@ describe("cost estimation", () => {
     expect(est).not.toBeNull();
     expect(est!.inputPerMillion).toBe(0.075);
     expect(est!.outputPerMillion).toBe(0.3);
+  });
+
+  it("mistral returns cost for mistral-large-latest", () => {
+    const est = mistralProvider.estimateCost("mistral-large-latest");
+    expect(est).not.toBeNull();
+    expect(est!.inputPerMillion).toBe(2);
+    expect(est!.outputPerMillion).toBe(6);
+  });
+
+  it("together returns cost for priced model", () => {
+    const est = togetherProvider.estimateCost("meta-llama/Llama-3.3-70B-Instruct-Turbo");
+    expect(est).not.toBeNull();
+    expect(est!.unit).toBe("USD");
+  });
+
+  it("cohere returns cost for command-r", () => {
+    const est = cohereProvider.estimateCost("command-r");
+    expect(est).not.toBeNull();
+    expect(est!.inputPerMillion).toBe(0.15);
+    expect(est!.outputPerMillion).toBe(0.6);
+  });
+
+  it("deepseek returns cost for deepseek-chat", () => {
+    const est = deepseekProvider.estimateCost("deepseek-chat");
+    expect(est).not.toBeNull();
+    expect(est!.inputPerMillion).toBe(0.28);
+    expect(est!.outputPerMillion).toBe(0.42);
   });
 });
 
