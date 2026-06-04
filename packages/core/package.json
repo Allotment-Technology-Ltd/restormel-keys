@@ -1,6 +1,7 @@
 {
   "name": "@restormel/keys",
-  "version": "0.2.20",
+  "version": "0.2.21",
+  "deprecated": "Bugfix-only until 2026-12-01. New integrations: Keys REST (/keys/v1) and @restormel/keys-elements — https://restormel.dev/keys/docs/guides/npm-to-rest-keys",
   "description": "Drop-in BYOK for AI apps. Headless key resolution, cost estimation, and provider adapters (OpenAI, Anthropic, Google).",
   "keywords": [
     "byok",

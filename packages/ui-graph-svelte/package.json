@@ -1,6 +1,7 @@
 {
   "name": "@restormel/ui-graph-svelte",
-  "version": "0.1.1",
+  "version": "0.1.2",
+  "deprecated": "Bugfix-only until 2026-12-01. Use @restormel/graph-elements and Graph REST — https://restormel.dev/graph/docs/integration/sveltekit",
   "description": "Svelte 5 graph canvas for Restormel Graph Contract v0 (ported from SOPHIA).",
   "license": "MIT",
   "repository": {
@@ -23,14 +24,14 @@
   },
   "files": ["dist"],
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "svelte": "^5.55.7"
   },
   "dependencies": {
     "@restormel/graph-core": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "svelte": "^5.0.0",
+    "svelte": "^5.55.7",
     "svelte-check": "^4.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.4.2",

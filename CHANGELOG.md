@@ -2,6 +2,10 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-06-04) — Deploy consolidation + npm MVP train
+
+**Marketing:** remove `Integration catalog` CTA from `EcosystemStrip` (fixes small-screen horizontal overflow). **npm:** `deprecated` field on `@restormel/keys`, `keys-svelte`, `keys-react`, `ui-graph-svelte` (bugfix-only until 2026-12-01); patch bumps for Keys MVP publish (`keys-v0.2.21`, `graph-v0.1.1`). **Deps:** merge Dependabot `@sveltejs/kit` 2.60.1 (#152) and `svelte` 5.55.7 (#150). **Publish (maintainers, after merge):** push tags `keys-v0.2.21`, `platform-v0.1.0`, `graph-v0.1.1` to run npm workflows; first-time `@restormel/connect-core`, `graph-elements`, and platform packages upload.
+
 ## Repo (2026-06-03) — Design system token update (Neo-Brutalist v3)
 
 **Tokens:** `@restormel/keys-tokens/brutalist-rm.css` — cream/yellow palette, tri-font stack (Barlow Condensed / DM Sans / Space Mono), 2px borders, 3/5/7px offset shadows, yellow-only primary fills. **Dashboard + marketing:** global `.btn` variants, inverted lift-on-hover, sidebar/docs active states, `SiteHeader`/`SiteFooter`, brutalist components, `CodeBlock` dark panel syntax colors. **Suite landing (`/`):** two-column hero with preview cards, product cards grid, stack diagram rail, black invite band — aligned to [restormel_redesign.html](docs/reference/restormel_redesign.html). **Full-site uplift:** shared shells (`SuiteMarketingLayout` on testing/graph/integrations), `marketing-content.css`, `docs-prose.css`, `dashboard-surfaces.css`; brutal `DocsShell` callouts, `ProductHubLayout`, admin chrome, `IntegrationCard`/`SuiteHubCard`, Testing landing, Connect pipeline cards. **Docs:** [design-system-index.md](docs/design-system-index.md), [DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md).
