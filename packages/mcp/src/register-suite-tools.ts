@@ -11,7 +11,20 @@ import {
   suiteValidateGraphFixture,
   suiteValidateTestingConfig,
 } from "./suite-tools-logic.js";
+import {
+  connectIngestStatusHint,
+  connectValidateIngestStartRequest,
+  connectValidateRetrieveRequest,
+  connectValidateVerifyRequest,
+  connectProxyPost,
+} from "./connect-tools-logic.js";
 import { ROUTING_CAPABILITIES } from "./routing-capabilities.js";
+import {
+  getEnabledSuiteToolNames,
+  type RestormelSuiteToolName,
+  type SuiteToolModuleFlags,
+} from "./suite-tool-names.js";
+import { resolveMcpModuleFlagsFromEnv } from "./module-flags-env.js";
 
 const canonicalResolveInput = {
   topic: z
@@ -100,13 +113,24 @@ const memoryPreviewOutput = {
     .optional(),
 };
 
-export function registerHorizonSuiteTools(server: McpServer): void {
+export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolModuleFlags): void {
+  const resolved = flags ?? resolveMcpModuleFlagsFromEnv();
+  const enabledNames = new Set(getEnabledSuiteToolNames(resolved));
+  const reg = (
+    name: RestormelSuiteToolName,
+    definition: Record<string, unknown>,
+    handler: (...args: never[]) => unknown,
+  ) => {
+    if (!enabledNames.has(name)) return;
+    server.registerTool(name, definition as never, handler as never);
+  };
+
   const routingCapabilitiesOutput = {
     ok: z.boolean(),
     capabilities: z.any(),
   };
 
-  server.registerTool(
+  reg(
     "routing.capabilities",
     {
       description:
@@ -123,7 +147,7 @@ export function registerHorizonSuiteTools(server: McpServer): void {
     },
   );
 
-  server.registerTool(
+  reg(
     "docs.canonical_resolve",
     {
       description:
@@ -154,7 +178,7 @@ export function registerHorizonSuiteTools(server: McpServer): void {
     },
   );
 
-  server.registerTool(
+  reg(
     "testing.config_validate",
     {
       description:
@@ -181,7 +205,7 @@ export function registerHorizonSuiteTools(server: McpServer): void {
     },
   );
 
-  server.registerTool(
+  reg(
     "observability.trace_summarize",
     {
       description:
@@ -213,7 +237,7 @@ export function registerHorizonSuiteTools(server: McpServer): void {
     },
   );
 
-  server.registerTool(
+  reg(
     "graph.fixture_validate",
     {
       description:
@@ -244,7 +268,7 @@ export function registerHorizonSuiteTools(server: McpServer): void {
     },
   );
 
-  server.registerTool(
+  reg(
     "state.memory_preview",
     {
       description:
@@ -276,6 +300,122 @@ export function registerHorizonSuiteTools(server: McpServer): void {
         content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }],
         structuredContent,
       };
+    },
+  );
+
+  const connectRequestJsonInput = {
+    requestJson: z.string().describe("JSON body matching @restormel/contracts/connect request schema."),
+  };
+
+  const connectValidatedOutput = {
+    ok: z.boolean(),
+    code: z.string().optional(),
+    message: z.string().optional(),
+    validated: z.boolean().optional(),
+    stage: z.string().optional(),
+    note: z.string().optional(),
+    upstreamStatus: z.number().optional(),
+    upstream: z.unknown().optional(),
+  };
+
+  reg(
+    "connect.verify",
+    {
+      description:
+        "Validate a Knowledge Verify REST payload (POST /connect/v1/verify). When RESTORMEL_CONNECT_API_BASE and RESTORMEL_GATEWAY_KEY are set, proxies to hosted REST.",
+      inputSchema: connectRequestJsonInput,
+      outputSchema: connectValidatedOutput,
+    },
+    async (args: { requestJson: string }) => {
+      const base = process.env.RESTORMEL_CONNECT_API_BASE?.trim();
+      const key = process.env.RESTORMEL_GATEWAY_KEY?.trim();
+      if (base && key) {
+        let body: unknown;
+        try {
+          body = JSON.parse(args.requestJson) as unknown;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const structuredContent = { ok: false, code: "RST_CONNECT_JSON", message: msg };
+          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+        }
+        const proxied = await connectProxyPost({ baseUrl: base, gatewayKey: key, path: "/connect/v1/verify", body });
+        if (!proxied.ok) {
+          const structuredContent = proxied;
+          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+        }
+        const structuredContent = { ok: true, validated: true, upstreamStatus: proxied.status, upstream: proxied.json };
+        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+      }
+      const r = await connectValidateVerifyRequest(args.requestJson);
+      const structuredContent = r.ok
+        ? { ...r, note: "Set RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY to execute against hosted REST." }
+        : r;
+      return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+    },
+  );
+
+  reg(
+    "connect.retrieve",
+    {
+      description:
+        "Validate a Knowledge Retrieve REST payload (POST /connect/v1/retrieve). Optional hosted proxy via RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY.",
+      inputSchema: connectRequestJsonInput,
+      outputSchema: connectValidatedOutput,
+    },
+    async (args: { requestJson: string }) => {
+      const base = process.env.RESTORMEL_CONNECT_API_BASE?.trim();
+      const key = process.env.RESTORMEL_GATEWAY_KEY?.trim();
+      if (base && key) {
+        let body: unknown;
+        try {
+          body = JSON.parse(args.requestJson) as unknown;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const structuredContent = { ok: false, code: "RST_CONNECT_JSON", message: msg };
+          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+        }
+        const proxied = await connectProxyPost({ baseUrl: base, gatewayKey: key, path: "/connect/v1/retrieve", body });
+        if (!proxied.ok) {
+          const structuredContent = proxied;
+          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+        }
+        const structuredContent = { ok: true, validated: true, upstreamStatus: proxied.status, upstream: proxied.json };
+        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+      }
+      const r = await connectValidateRetrieveRequest(args.requestJson);
+      const structuredContent = r.ok
+        ? { ...r, note: "Set RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY to execute against hosted REST." }
+        : r;
+      return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+    },
+  );
+
+  reg(
+    "connect.ingest.start",
+    {
+      description:
+        "Validate a Knowledge Ingest job create payload (POST /connect/v1/ingest/jobs). Act tier — returns 501 upstream until Phase 5b persistence.",
+      inputSchema: connectRequestJsonInput,
+      outputSchema: connectValidatedOutput,
+    },
+    async (args: { requestJson: string }) => {
+      const r = await connectValidateIngestStartRequest(args.requestJson);
+      const structuredContent = r;
+      return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+    },
+  );
+
+  reg(
+    "connect.ingest.status",
+    {
+      description: "Validate job id for Knowledge Ingest status (GET /connect/v1/ingest/jobs/{jobId}). Read tier.",
+      inputSchema: { jobId: z.string().describe("Ingest job UUID.") },
+      outputSchema: connectValidatedOutput,
+    },
+    async (args: { jobId: string }) => {
+      const r = connectIngestStatusHint(args.jobId);
+      const structuredContent = r;
+      return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
     },
   );
 }

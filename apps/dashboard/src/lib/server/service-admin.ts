@@ -12,6 +12,7 @@
  */
 import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
+import { isServiceAdminEmailInDb } from "$lib/server/service-admin-emails";
 
 function getSql() {
   const url = env.DATABASE_URL;
@@ -98,18 +99,23 @@ export async function resolveServiceAdminStatus(
   if (roleImpliesServiceAdmin(sessionRole)) return true;
   if (parseAdminUserIdsEnv().has(userId)) return true;
   if (emailImpliesServiceOwner(email)) return true;
+  if (await isServiceAdminEmailInDb(email)) return true;
   return isServiceAdminUserIdInDb(userId);
 }
 
 /** Ensures allowlisted service-owner emails get a service_admins row (for auditing and UI toggles). */
 export async function syncServiceOwnerBootstrap(userId: string, email: string | null | undefined): Promise<void> {
-  if (!userId || !emailImpliesServiceOwner(email)) return;
+  if (!userId) return;
+  const ownerEmail = emailImpliesServiceOwner(email);
+  const grantedEmail = await isServiceAdminEmailInDb(email);
+  if (!ownerEmail && !grantedEmail) return;
   try {
     const sql = getSql();
     const now = Date.now();
+    const note = ownerEmail ? "bootstrap:service_owner_email" : "bootstrap:service_admin_email";
     await sql`
       INSERT INTO service_admins (user_id, note, created_at)
-      VALUES (${userId}, ${"bootstrap:service_owner_email"}, ${now})
+      VALUES (${userId}, ${note}, ${now})
       ON CONFLICT (user_id) DO NOTHING
     `;
   } catch (e) {

@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { trackDashboardOnboardingStep } from "$lib/posthog";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import ModeSelector from "$lib/components/dashboard/ModeSelector.svelte";
   import { isDashboardHrefUiHidden } from "$lib/dashboard-ui-path-match";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import {
     setUserStackChoice,
     syncUserModeFromStorage,
@@ -15,6 +17,8 @@
   } from "$lib/stores/user-mode";
 
   export const ONBOARDING_COMPLETE_STORAGE_KEY = "restormel_onboarding_complete";
+  /** Set false to hide the modal everywhere; remount from Overview when re-enabling. */
+  export const SETUP_ASSISTANT_ENABLED = false;
   /** Closing the assistant only hides it for this tab session; use "Open setup assistant" on Overview to reopen. */
   const ONBOARDING_SESSION_DISMISS_KEY = "restormel_onboarding_session_dismissed";
 
@@ -27,6 +31,8 @@
     { value: "direct_env_secrets", label: "Direct (env/secrets)" },
     { value: "not_sure_yet", label: "Not sure yet" },
   ];
+
+  const GATEWAY_STACK_CHOICES = new Set<UserStackChoice>(["openrouter", "vercel_ai_gateway", "portkey"]);
 
   let visible = false;
   let currentStep = 1;
@@ -42,6 +48,7 @@
   });
 
   onMount(() => {
+    if (!SETUP_ASSISTANT_ENABLED) return;
     syncUserModeFromStorage();
     syncUserStackChoiceFromStorage();
     const finished = localStorage.getItem(ONBOARDING_COMPLETE_STORAGE_KEY) === "true";
@@ -55,6 +62,7 @@
 
   /** Reopens the mode / checklist assistant (Overview always exposes this). */
   export function openOnboarding() {
+    if (!SETUP_ASSISTANT_ENABLED) return;
     syncUserModeFromStorage();
     syncUserStackChoiceFromStorage();
     try {
@@ -70,6 +78,7 @@
   }
 
   function markCompleteAndHide() {
+    trackDashboardOnboardingStep("complete");
     localStorage.setItem(ONBOARDING_COMPLETE_STORAGE_KEY, "true");
     try {
       sessionStorage.removeItem(ONBOARDING_SESSION_DISMISS_KEY);
@@ -91,10 +100,12 @@
   function next() {
     if (currentStep === 1) {
       if (!selectedMode) return;
+      trackDashboardOnboardingStep("mode_selected");
       currentStep = requiresStackQuestion(selectedMode) ? 2 : 3;
       return;
     }
     if (currentStep === 2) {
+      trackDashboardOnboardingStep("stack_selected");
       currentStep = 3;
     }
   }
@@ -119,53 +130,66 @@
   }
 
   function checklistForMode(mode: UserMode | null, choice: UserStackChoice | null): ChecklistItem[] {
+    const connectHome = { label: "Start in Restormel Connect", href: "/keys/dashboard/connect" };
+    const connectStore = {
+      label: "Connect Surreal graph store",
+      href: "/keys/dashboard/connect/pipeline?step=store",
+    };
     if (mode === "existing_stack") {
       return [
+        connectHome,
+        connectStore,
         { label: `Connect your ${stackLabel(choice)} integration`, href: "/keys/dashboard/integrations" },
-        { label: "Create a route", href: "/keys/dashboard/routes" },
-        { label: "Check your logs", href: "/keys/dashboard/logs" },
+        { label: "Configure ingest routes in Connect", href: "/keys/dashboard/connect/models" },
       ];
     }
     if (mode === "byok_saas") {
       return [
+        connectHome,
+        connectStore,
         { label: "Connect a provider", href: "/keys/dashboard/integrations" },
-        { label: "Preview the KeyManager component", href: "/keys/dashboard/sandbox" },
-        { label: "Create a route", href: "/keys/dashboard/routes" },
+        { label: "Load starter corpus in Connect", href: "/keys/dashboard/connect/pipeline?step=sources" },
       ];
     }
     if (mode === "cli_agent") {
       return [
+        connectHome,
         { label: "Install the CLI", href: "/keys/docs/integrations/cli" },
-        { label: "Set up MCP", href: "/keys/docs/integrations/mcp" },
-        { label: "Copy CI secrets", href: "/keys/dashboard/copy-for-ci" },
+        { label: "Set up MCP for retrieve & verify", href: "/keys/docs/integrations/mcp" },
       ];
     }
     if (mode === "ops") {
       return [
-        { label: "View your logs", href: "/keys/dashboard/logs" },
+        connectHome,
+        { label: "View ingest runs", href: "/keys/dashboard/connect/ingest" },
         { label: "Check healthcheck", href: "/keys/dashboard/healthcheck" },
-        { label: "Review your policies", href: "/keys/dashboard/policies" },
       ];
     }
     return [
+      connectHome,
+      connectStore,
       { label: "Connect a provider", href: "/keys/dashboard/integrations" },
-      { label: "Create your first route", href: "/keys/dashboard/routes" },
-      { label: "Make your first request", href: "/keys/docs" },
+      { label: "Configure chat and embedding routes", href: "/keys/dashboard/connect/models" },
     ];
   }
 
   $: uiHidden = $page.data.dashboardUiHidden ?? [];
+  $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
+  $: testingOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).testing;
+  $: stackOptionsForUi = gatewayProvidersOn
+    ? stackOptions
+    : stackOptions.filter((o) => !GATEWAY_STACK_CHOICES.has(o.value));
   $: checklist = checklistForMode(selectedMode, selectedStackChoice).filter(
     (item) => !isDashboardHrefUiHidden(item.href, uiHidden)
   );
 
   async function startHere() {
     markCompleteAndHide();
-    await goto(checklist[0]?.href ?? "/keys/docs");
+    await goto(checklist[0]?.href ?? "/keys/dashboard/connect");
   }
 </script>
 
-{#if visible}
+{#if SETUP_ASSISTANT_ENABLED && visible}
   <div class="onboarding-overlay" role="presentation">
     <div
       class="onboarding-modal"
@@ -183,7 +207,7 @@
       {:else if currentStep === 2}
         <h2 id="onboarding-title" class="title">How does your app reach AI providers today?</h2>
         <div class="stack-options">
-          {#each stackOptions as option}
+          {#each stackOptionsForUi as option}
             <label class="stack-card">
               <input
                 type="radio"
@@ -210,6 +234,7 @@
             {/each}
           </ol>
           <p class="testing-ci-hint">
+            {#if testingOn}
             <strong>Restormel Testing in CI?</strong> Use
             <a href="/keys/dashboard/integrations">Connections</a> →
             <a href="/keys/dashboard/access">Gateway keys</a> →
@@ -217,6 +242,11 @@
             <code>RESTORMEL_GATEWAY_KEY</code>,
             <code>RESTORMEL_PROJECT_ID</code>). Then <code>pnpm exec testing doctor</code>.
             <a href="/keys/docs/guides/keys-testing-onboarding">Full guide</a>
+            {:else}
+            <strong>Automating with CLI or MCP?</strong> Start at
+            <a href="/keys/dashboard/dev-tools">CLI &amp; agents</a> or run
+            <code>pnpm exec keys login</code> after you create a Gateway key.
+            {/if}
           </p>
         {/if}
       {/if}

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { invalidateAll } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import type { IntegrationDetail } from "./+page.server";
 
   export let data: {
@@ -27,6 +29,7 @@
   $: addBindingProjectId = data.projects.length && !addBindingProjectId
     ? data.projects[0].id
     : addBindingProjectId;
+  $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
 
   function projectName(projectId: string): string {
     return data.projects.find((p) => p.id === projectId)?.name ?? projectId;
@@ -268,6 +271,7 @@
     <p class="placeholder-note">Model discovery summary coming soon.</p>
   </section>
 
+  {#if gatewayProvidersOn}
   <section class="section" aria-labelledby="import-heading">
     <h2 id="import-heading" class="section-title">Import data</h2>
     <p class="section-desc">
@@ -312,6 +316,7 @@
       <p class="import-note">Tip: if you don’t have an export file handy, you can fetch activity via OpenRouter’s API and save the JSON, then upload it here.</p>
     </div>
   </section>
+  {/if}
 
   <section class="section danger-zone">
     <h2 class="section-title">Delete integration</h2>

@@ -1,5 +1,7 @@
 # @restormel/keys
 
+> **Deprecated (Phase 7 maintenance window):** New integrations must use **Keys REST** (`/keys/v1/*`) and **`@restormel/keys-elements`**. This package receives **bugfix-only** patch releases until **2026-12-01**, then npm deprecation. Migration: [docs/guides/npm-to-rest-keys.md](../../docs/guides/npm-to-rest-keys.md) · Runbook: [docs/runbooks/npm-maintenance-window.md](../../docs/runbooks/npm-maintenance-window.md).
+
 Drop-in BYOK for AI apps. Headless key resolution, cost estimation, and optional server helpers.
 
 ## Install

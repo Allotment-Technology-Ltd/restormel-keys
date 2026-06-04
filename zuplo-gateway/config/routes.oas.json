@@ -3,7 +3,7 @@
   "info": {
     "title": "Restormel Keys API",
     "version": "1.0.0",
-    "description": "Zuplo Gateway API (control-plane CRUD) for managing projects and Gateway keys. Call through this Zuplo gateway with a Zuplo consumer key (zpka_...). Runtime operations (Resolve, policies/evaluate, routes/steps) are Dashboard API endpoints and are NOT served through this gateway. POST /api/suite/invoke forwards read-only suite tool execution to the dashboard (same semantics as @restormel/mcp Horizon tools)."
+    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev)."
   },
   "servers": [
     { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
@@ -301,6 +301,253 @@
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
             "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/catalog": {
+      "get": {
+        "summary": "Global model catalog (Keys v1)",
+        "description": "Canonical provider+model catalog. Public read; same semantics as GET /keys/dashboard/api/catalog.",
+        "operationId": "keysV1Catalog",
+        "tags": ["KeysV1"],
+        "responses": {
+          "200": { "description": "Catalog payload", "content": { "application/json": { "schema": { "type": "object" } } } }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/models": {
+      "get": {
+        "summary": "List catalog models (Keys v1)",
+        "description": "Paged model list. Same semantics as GET /keys/dashboard/api/models.",
+        "operationId": "keysV1Models",
+        "tags": ["KeysV1"],
+        "responses": {
+          "200": { "description": "Model list", "content": { "application/json": { "schema": { "type": "object" } } } }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/projects/{projectId}/resolve": {
+      "post": {
+        "summary": "Resolve provider/model for a project (Keys v1)",
+        "description": "Runtime route resolution. Gateway key must be scoped to projectId. Same semantics as POST /keys/dashboard/api/projects/{id}/resolve.",
+        "operationId": "keysV1Resolve",
+        "tags": ["KeysV1"],
+        "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "environmentId": { "type": "string" } }, "required": ["environmentId"] } } }
+        },
+        "responses": {
+          "200": { "description": "Resolved route", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/policies/evaluate": {
+      "post": {
+        "summary": "Evaluate guard rails (Keys v1)",
+        "description": "Policy evaluation for a model/context. Same semantics as POST /keys/dashboard/api/policies/evaluate.",
+        "operationId": "keysV1PoliciesEvaluate",
+        "tags": ["KeysV1"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": { "description": "Evaluation result", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/graph/v1/layout": {
+      "post": {
+        "summary": "Compute Contract v0 orbital layout (Graph v1)",
+        "description": "Stateless layout from inline GraphData snapshot. Same semantics as in-process computeLayout in @restormel/graph-core.",
+        "operationId": "graphV1Layout",
+        "tags": ["GraphV1"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": { "description": "Layout positions", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "400": { "description": "Invalid snapshot" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/graph/v1/snapshots/{snapshotId}": {
+      "get": {
+        "summary": "Read hosted graph snapshot metadata (Graph v1)",
+        "description": "Returns 404 until Phase 6 operator persistence. Use POST /graph/v1/layout with inline snapshot today.",
+        "operationId": "graphV1GetSnapshot",
+        "tags": ["GraphV1"],
+        "parameters": [{ "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "404": { "description": "Snapshot not found (persistence Phase 6)" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/connect/v1/verify": {
+      "post": {
+        "summary": "Connect Verify (Connect v1)",
+        "description": "Claim extraction, reasoning evaluation, and constitution checks via @restormel/reasoning-core.",
+        "operationId": "knowledgeV1Verify",
+        "tags": ["ConnectV1"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": { "description": "Verification result envelope" },
+          "400": { "description": "Invalid request" },
+          "503": { "description": "Verify routes or credentials not configured" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/connect/v1/retrieve": {
+      "post": {
+        "summary": "Connect Retrieve (Connect v1)",
+        "description": "Graph-aware context assembly via @restormel/graphrag-core (workspace graph index when configured).",
+        "operationId": "knowledgeV1Retrieve",
+        "tags": ["ConnectV1"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": { "description": "Context block + retrieval metadata" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/connect/v1/ingest/jobs": {
+      "post": {
+        "summary": "Create Connect Ingest job (Connect v1)",
+        "operationId": "knowledgeV1IngestCreateJob",
+        "tags": ["ConnectV1"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "501": { "description": "Not ready until Phase 5b job persistence" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      },
+      "get": {
+        "summary": "List Connect Ingest jobs (Connect v1)",
+        "operationId": "knowledgeV1IngestListJobs",
+        "tags": ["ConnectV1"],
+        "responses": {
+          "501": { "description": "Not ready until Phase 5b job persistence" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/connect/v1/ingest/jobs/{jobId}": {
+      "get": {
+        "summary": "Connect Ingest job status (Connect v1)",
+        "operationId": "knowledgeV1IngestJobStatus",
+        "tags": ["ConnectV1"],
+        "parameters": [{ "name": "jobId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "501": { "description": "Not ready until Phase 5b job persistence" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
           },
           "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
         }

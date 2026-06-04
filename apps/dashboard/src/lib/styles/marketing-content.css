@@ -1,0 +1,199 @@
+/**
+ * Shared marketing page patterns (module landings, legal, suite sub-pages).
+ * Import via marketing-shell.css — v3 neo-brutalist.
+ */
+
+.marketing-page-pad {
+  padding: var(--space-8) var(--space-6);
+}
+
+@media (max-width: 760px) {
+  .marketing-page-pad {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+.marketing-banner {
+  border-bottom: var(--border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-lg);
+  color: var(--color-ink);
+}
+
+.marketing-banner-inner {
+  max-width: var(--rm-container-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-6);
+}
+
+/* ── Sections ── */
+.module-landing section,
+.marketing-sections section {
+  border-top: var(--border);
+}
+
+.module-landing .section,
+.marketing-sections .section {
+  padding: var(--space-12) 0;
+}
+
+.module-landing .section-alt,
+.marketing-sections .section-alt {
+  background: var(--color-bg-deep);
+}
+
+.module-landing .section-title,
+.marketing-sections .section-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  text-transform: uppercase;
+  letter-spacing: var(--text-display-tracking);
+  line-height: 1.05;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-4);
+}
+
+.module-landing .section-intro,
+.module-landing .lede,
+.marketing-sections .section-intro {
+  font-size: var(--text-body-lg);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink-muted);
+  max-width: 42rem;
+  margin: 0 0 var(--space-6);
+}
+
+.module-landing .eyebrow,
+.marketing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-md);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--color-yellow);
+  border: var(--border);
+  padding: 4px 10px;
+  margin-bottom: var(--space-4);
+  color: var(--color-ink);
+}
+
+.module-landing .hero-title,
+.marketing-hero-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  text-transform: uppercase;
+  line-height: var(--text-display-line-height);
+  letter-spacing: var(--text-display-tracking);
+  color: var(--color-ink);
+  margin: 0 0 var(--space-4);
+}
+
+/* ── Cards (intent, diff, product, integration) ── */
+.marketing-card,
+.intent-card,
+.diff-card,
+.product-card,
+.integration-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: 0;
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+a.marketing-card:hover,
+a.intent-card:hover,
+a.diff-card:hover,
+a.product-card:hover,
+a.integration-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+}
+
+a.marketing-card:active,
+a.intent-card:active,
+a.diff-card:active,
+a.product-card:active,
+a.integration-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+/* ── Legal / prose pages ── */
+.legal,
+.legal-prose {
+  max-width: var(--rm-reading-width);
+  margin: 0 auto;
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink-muted);
+}
+
+.legal h1,
+.legal-prose h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  text-transform: uppercase;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-6);
+}
+
+.legal h2,
+.legal-prose h2 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-display-sm);
+  text-transform: uppercase;
+  color: var(--color-ink);
+  margin: var(--space-8) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border);
+}
+
+.legal p,
+.legal li,
+.legal-prose p,
+.legal-prose li {
+  margin: 0 0 var(--space-3);
+}
+
+.legal ul,
+.legal-prose ul {
+  padding-left: var(--space-5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-card,
+  .intent-card,
+  .diff-card,
+  .product-card,
+  .integration-card {
+    transition: none;
+  }
+  a.marketing-card:hover,
+  a.intent-card:hover,
+  a.diff-card:hover,
+  a.product-card:hover,
+  a.integration-card:hover,
+  a.marketing-card:active,
+  a.intent-card:active,
+  a.diff-card:active,
+  a.product-card:active,
+  a.integration-card:active {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+}

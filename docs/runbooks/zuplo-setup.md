@@ -35,7 +35,8 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 | Variable | Where to get it |
 |----------|-----------------|
 | **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
-| **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard`. |
+| **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard`. Used for Zuplo `/api/*` forwards. |
+| **KEYS_SITE_ORIGIN** | Site root, **no trailing slash**. Current: `https://restormel.dev`. Used for Zuplo **`/keys/v1/*`** forwards (Phase 1+). |
 | **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard**: [Sign in](https://restormel.dev/keys/dashboard/login) → create/select a project → create a Gateway key. Use that key only in Zuplo (as secret). Format: `rk_...`. |
 | **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
 | **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |

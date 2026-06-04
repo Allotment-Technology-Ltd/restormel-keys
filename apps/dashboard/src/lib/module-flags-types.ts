@@ -1,0 +1,75 @@
+/** Graph module visibility (PostHog multivariate `restormel-module-graph`). */
+export type GraphModuleMode = "disabled" | "preview" | "enabled";
+
+/** Resolved Restormel suite module flags (server + client layout data). */
+export type ModuleFlags = {
+  connect: boolean;
+  testing: boolean;
+  graph: GraphModuleMode;
+  gatewayProviders: boolean;
+  guardrails: boolean;
+  environments: boolean;
+  modelPools: boolean;
+  hostedRuntime: boolean;
+  catalogExternalSignals: boolean;
+  /** One-click graph store reusing dashboard DATABASE_URL (host Neon). Default off — BYO Surreal only for MVP. */
+  connectNeonGraphStore: boolean;
+  /** Usage, logs, and health dashboard (Monitor nav). Default off — coming-soon shell tracks interest. */
+  monitor: boolean;
+  /** True when RESTORMEL_MODULE_FLAGS env override is active (skips PostHog). */
+  fromEnvOverride: boolean;
+};
+
+export type ModuleFlagKey =
+  | "connect"
+  | "testing"
+  | "graph"
+  | "gatewayProviders"
+  | "guardrails"
+  | "environments"
+  | "modelPools"
+  | "hostedRuntime"
+  | "catalogExternalSignals"
+  | "connectNeonGraphStore"
+  | "monitor";
+
+/** PostHog feature flag keys (EU project 123553). */
+export const POSTHOG_MODULE_FLAG_KEYS = {
+  connect: "restormel-module-connect",
+  testing: "restormel-module-testing",
+  graph: "restormel-module-graph",
+  gatewayProviders: "restormel-module-gateway-providers",
+  guardrails: "restormel-module-guardrails",
+  environments: "restormel-module-environments",
+  modelPools: "restormel-module-model-pools",
+  hostedRuntime: "restormel-module-hosted-runtime",
+  catalogExternalSignals: "restormel-module-catalog-external-signals",
+  connectNeonGraphStore: "restormel-module-connect-neon-graph-store",
+  monitor: "restormel-module-monitor",
+} as const;
+
+/** MVP production defaults (match PostHog rollouts configured 2026-06-03). */
+export const MVP_MODULE_DEFAULTS: ModuleFlags = {
+  connect: true,
+  testing: false,
+  graph: "disabled",
+  gatewayProviders: false,
+  guardrails: false,
+  environments: false,
+  modelPools: false,
+  hostedRuntime: false,
+  catalogExternalSignals: false,
+  connectNeonGraphStore: false,
+  monitor: false,
+  fromEnvOverride: false,
+};
+
+/** Module flags for dashboard API tests that exercise full Keys control-plane behavior. */
+export const KEYS_API_TEST_MODULE_FLAGS: ModuleFlags = {
+  ...MVP_MODULE_DEFAULTS,
+  environments: true,
+  guardrails: true,
+  hostedRuntime: true,
+  catalogExternalSignals: true,
+  gatewayProviders: true,
+};

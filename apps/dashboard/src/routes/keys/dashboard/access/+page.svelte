@@ -138,7 +138,7 @@
     <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View key history →</a>
     <p class="key-callout">
       A Gateway key authenticates your app to Restormel. It is not a provider credential.
-      To connect OpenAI, Anthropic, or other providers, go to
+      To connect OpenAI, Anthropic, Mistral, Together, Voyage, or other providers, go to
       <a href={DASHBOARD_BASE + "/integrations"}>Connections</a>.
     </p>
     <p class="cli-hint">

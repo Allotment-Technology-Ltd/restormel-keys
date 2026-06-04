@@ -32,6 +32,9 @@ bash scripts/check-repo-hygiene.sh
 echo "[quality] Registry validation..."
 node scripts/validate-registry.mjs
 
+echo "[quality] Neo-Brutalist token governance..."
+bash scripts/check-brutalist-tokens.sh
+
 # Optional: smoke-test docs routes (catches runtime 500s e.g. undefined refs in templates)
 if [ -n "${RUN_SMOKE:-}" ]; then
   echo "[quality] Smoke-testing docs routes..."

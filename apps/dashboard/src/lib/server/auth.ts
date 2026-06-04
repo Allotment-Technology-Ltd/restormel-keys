@@ -43,6 +43,25 @@ function encodeLocalhostSetCookie(setCookie: string, host: string): string {
   return out;
 }
 
+function readSetCookieHeaders(headers: Headers): string[] {
+  const withGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof withGetSetCookie.getSetCookie === "function") {
+    return withGetSetCookie.getSetCookie();
+  }
+  const single = headers.get("set-cookie");
+  return single ? [single] : [];
+}
+
+/** Normalize Neon Auth Set-Cookie headers for our host (Path=/, localhost-safe names). */
+export function rewriteAuthSetCookiesForHost(rawCookies: string[], ourHost: string): string[] {
+  if (!ourHost || rawCookies.length === 0) return [];
+  return rawCookies.map((cookie) => {
+    const withoutDomain = cookie.replace(/;\s*Domain=[^;]+/gi, "") || cookie;
+    const withRootPath = withoutDomain.replace(/;\s*Path=[^;]+/gi, "; Path=/");
+    return encodeLocalhostSetCookie(withRootPath, ourHost);
+  });
+}
+
 function forwardedPort(url: URL): string {
   if (url.port) return url.port;
   return url.protocol === "https:" ? "443" : "80";
@@ -90,13 +109,20 @@ function buildProxyHeaders(request: Request, ourUrl: URL, targetUrl: URL): Heade
 /**
  * Get current session from Neon Auth by forwarding the request’s cookies.
  */
+export type GetSessionResult = {
+  data: { user: SessionUser } | null;
+  error: Error | null;
+  /** Refreshed session cookies from Neon Auth — must be forwarded to the browser. */
+  setCookies: string[];
+};
+
 export async function getSession(
   request: Request,
   host = ""
-): Promise<{ data: { user: SessionUser } | null; error: Error | null }> {
+): Promise<GetSessionResult> {
   const url = getSessionUrl();
   if (!url) {
-    return { data: null, error: null };
+    return { data: null, error: null, setCookies: [] };
   }
   try {
     const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
@@ -105,14 +131,17 @@ export async function getSession(
       headers: { cookie },
       cache: "no-store",
     });
+    const setCookies = res.ok
+      ? rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), host)
+      : [];
     if (!res.ok) {
-      return { data: null, error: null };
+      return { data: null, error: null, setCookies };
     }
     const data = (await res.json()) as { user?: SessionUser; session?: unknown } | null;
     const user = data?.user ?? null;
-    return { data: user ? { user } : null, error: null };
+    return { data: user ? { user } : null, error: null, setCookies };
   } catch (e) {
-    return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+    return { data: null, error: e instanceof Error ? e : new Error(String(e)), setCookies: [] };
   }
 }
 
@@ -165,25 +194,11 @@ export async function proxyAuthRequest(
     bodyToReturn = errText;
   }
   const outHeaders = new Headers(res.headers);
-  // Preserve all auth cookies. Neon may set multiple cookies during OAuth.
-  const setCookies =
-    typeof (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function"
-      ? (res.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
-      : (() => {
-          const single = res.headers.get("set-cookie");
-          return single ? [single] : [];
-        })();
-  if (setCookies.length > 0 && ourHost) {
+  const rewritten = rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), ourHost);
+  if (rewritten.length > 0) {
     outHeaders.delete("Set-Cookie");
-    for (const cookie of setCookies) {
-      // Scope cookies to our host and root path so session is available on /keys/dashboard.
-      // - Strip Domain so the browser uses the current origin.
-      // - Normalize Path to / so the cookie is sent to all app routes.
-      // - Keep Secure intact: __Secure-* cookies are rejected by browsers if Secure is removed.
-      const withoutDomain = cookie.replace(/;\s*Domain=[^;]+/gi, "") || cookie;
-      const withRootPath = withoutDomain.replace(/;\s*Path=[^;]+/gi, "; Path=/");
-      const rewritten = encodeLocalhostSetCookie(withRootPath, ourHost);
-      outHeaders.append("Set-Cookie", rewritten);
+    for (const cookie of rewritten) {
+      outHeaders.append("Set-Cookie", cookie);
     }
   }
   // Rewrite redirect Location so the user lands on our dashboard root (not Neon Auth)

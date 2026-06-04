@@ -4,6 +4,8 @@
  * One full-path test to verify the chain works; db is mocked to avoid a real database.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+import * as moduleFlags from "$lib/server/module-flags";
 
 const PROJECT_ID = "proj-e2e";
 const ENV_ID = "env-dev";
@@ -85,6 +87,7 @@ function mockEvent(body: { environmentId: string; routeId?: string }) {
 
 describe("control-plane flow (integration)", () => {
   beforeEach(async () => {
+    vi.restoreAllMocks();
     const db = await import("$lib/server/db");
     vi.mocked(db.getProject).mockResolvedValue(mockProject);
     vi.mocked(db.getOrCreateDefaultWorkspace).mockResolvedValue({
@@ -163,6 +166,10 @@ describe("control-plane flow (integration)", () => {
     vi.mocked(db.evaluatePolicies).mockResolvedValue([
       { policyId: "pol-1", policyName: "Allowlist", type: "model_allowlist", message: "Model gpt-4o is not in allowlist" },
     ]);
+    vi.spyOn(moduleFlags, "resolveModuleFlagsSync").mockReturnValue({
+      ...MVP_MODULE_DEFAULTS,
+      guardrails: true,
+    });
 
     const POST = await getHandler();
     const res = await POST(mockEvent({ environmentId: ENV_ID }));

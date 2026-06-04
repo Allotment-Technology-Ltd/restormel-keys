@@ -4,13 +4,17 @@ export const ACTIVE_PROJECT_SESSION_KEY = "restormel_active_project";
 
 export type ActiveProjectSelection = {
   projectId: string;
-  environmentId: string;
+  /** Omitted when environments module is off (project-only scope). */
+  environmentId?: string;
 };
 
 function isSelection(value: unknown): value is ActiveProjectSelection {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return typeof v.projectId === "string" && typeof v.environmentId === "string";
+  return (
+    typeof v.projectId === "string" &&
+    (v.environmentId === undefined || typeof v.environmentId === "string")
+  );
 }
 
 function readStoredSelection(): ActiveProjectSelection | null {

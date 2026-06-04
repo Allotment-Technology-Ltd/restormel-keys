@@ -14,6 +14,8 @@ import {
   isViableCatalogVariantAvailability,
 } from "$lib/server/catalog-viability";
 import { listCatalogModelObservationsForPairs, listModels, listProviderModelVariantsByModelIds } from "$lib/server/db";
+import { GATEWAY_PROVIDER_TYPES } from "$lib/server/module-gates";
+import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 
 /** Bump when response semantics change (e.g. default allowlist, externalSignals, crowd observations). */
 const CONTRACT_VERSION = "2026-03-26.catalog.v6";
@@ -72,6 +74,7 @@ function titleCaseProvider(providerType: string): string {
 
 /** GET: canonical provider+model catalog for downstream BYOK UIs. Public read. */
 export const GET: RequestHandler = async ({ url }) => {
+  const flags = resolveModuleFlagsSync();
   const lifecycleState = url.searchParams.get("lifecycleState")?.trim() || undefined;
   const family = url.searchParams.get("family")?.trim() || undefined;
   const limitParam = url.searchParams.get("limit");
@@ -87,7 +90,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
   const [rawModels, externalCtx] = await Promise.all([
     listModels({ lifecycleState, family, limit, offset, includeUnhealthy }),
-    loadCatalogExternalContext(),
+    flags.catalogExternalSignals ? loadCatalogExternalContext() : Promise.resolve(null),
   ]);
   const models = rawModels;
   const modelIds = models.map((m) => m.id);
@@ -95,6 +98,12 @@ export const GET: RequestHandler = async ({ url }) => {
   let variants = includeUnhealthy
     ? rawVariants
     : rawVariants.filter((variant) => isViableCatalogVariantAvailability(variant.availabilityStatus));
+  if (!flags.gatewayProviders) {
+    variants = variants.filter((variant) => {
+      const providerId = (variant.catalogProviderId ?? variant.providerIntegrationType).toLowerCase();
+      return !GATEWAY_PROVIDER_TYPES.has(providerId);
+    });
+  }
   if (!skipDefaultAllowlist) {
     variants = variants.filter((variant) => {
       const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
@@ -104,7 +113,7 @@ export const GET: RequestHandler = async ({ url }) => {
         DEFAULT_PROVIDER_MODEL_ALLOWLIST
       );
     });
-    const orListed = externalCtx.openRouterListedIds;
+    const orListed = externalCtx?.openRouterListedIds;
     if (orListed) {
       variants = variants.filter((variant) => {
         const providerId = variant.catalogProviderId ?? variant.providerIntegrationType;
@@ -133,6 +142,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
   const providers = Array.from(providerModelCounts.entries())
     .sort(([a], [b]) => a.localeCompare(b))
+    .filter(([providerType]) => flags.gatewayProviders || !GATEWAY_PROVIDER_TYPES.has(providerType.toLowerCase()))
     .map(([providerType, modelCount]) => {
       const meta = PROVIDER_META[providerType];
       const mode = meta?.validationMode ?? "openai_compatible";
@@ -209,28 +219,36 @@ export const GET: RequestHandler = async ({ url }) => {
         .map((variant) => variant.providerModelId)
     )
   );
-  const openRouterEndpointHealth = await getOpenRouterEndpointHealthByModel(openRouterModelIds);
+  const openRouterEndpointHealth = flags.catalogExternalSignals
+    ? await getOpenRouterEndpointHealthByModel(openRouterModelIds)
+    : {};
 
-  const freshness = buildExternalSignalsFreshness({
-    openRouterModelsFetchedAt: externalCtx.payload.openRouter.fetchedAt,
-    openaiFetchedAt: externalCtx.payload.providerStatus.openai.fetchedAt,
-    anthropicFetchedAt: externalCtx.payload.providerStatus.anthropic.fetchedAt,
-    endpointHealthByModel: openRouterEndpointHealth,
-  });
+  const freshness = flags.catalogExternalSignals && externalCtx
+    ? buildExternalSignalsFreshness({
+        openRouterModelsFetchedAt: externalCtx.payload.openRouter.fetchedAt,
+        openaiFetchedAt: externalCtx.payload.providerStatus.openai.fetchedAt,
+        anthropicFetchedAt: externalCtx.payload.providerStatus.anthropic.fetchedAt,
+        endpointHealthByModel: openRouterEndpointHealth,
+      })
+    : null;
 
   return json({
     contractVersion: CONTRACT_VERSION,
     source: "restormel-keys",
     generatedAt: new Date().toISOString(),
     compatibility: CATALOG_COMPATIBILITY,
-    externalSignals: {
-      freshness,
-      ...externalCtx.payload,
-      openRouter: {
-        ...externalCtx.payload.openRouter,
-        endpointHealthByModel: openRouterEndpointHealth,
-      },
-    },
+    ...(flags.catalogExternalSignals && externalCtx
+      ? {
+          externalSignals: {
+            freshness,
+            ...externalCtx.payload,
+            openRouter: {
+              ...externalCtx.payload.openRouter,
+              endpointHealthByModel: openRouterEndpointHealth,
+            },
+          },
+        }
+      : {}),
     providers,
     data,
     paging: { limit, offset, count: data.length },

@@ -27,7 +27,6 @@
       copied = true;
       window.setTimeout(() => (copied = false), 1200);
     } catch {
-      // Fallback: select & copy
       const el = document.getElementById(codeId);
       if (!el) return;
       const range = document.createRange();
@@ -90,9 +89,10 @@
 
 <style>
   .codeblock {
-    background: color-mix(in oklab, var(--rm-surface) 85%, black 15%);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
+    background: var(--code-bg);
+    border: var(--border);
+    border-radius: 0;
+    box-shadow: var(--shadow-md);
     overflow: hidden;
     margin: 0 0 var(--space-4);
   }
@@ -103,8 +103,8 @@
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--rm-border);
-    background: color-mix(in oklab, var(--rm-surface-raised, var(--rm-surface)) 80%, black 20%);
+    border-bottom: var(--border-thin);
+    background: var(--code-bg);
   }
 
   .codeblock-label {
@@ -115,10 +115,12 @@
   }
 
   .codeblock-lang {
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    letter-spacing: var(--text-mono-tracking);
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--rm-muted);
+    color: var(--code-keyword);
   }
 
   .codeblock-tabs {
@@ -128,43 +130,49 @@
   }
 
   .codeblock-tab {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    font-size: var(--text-xs);
+    border: var(--border-thin);
+    background: var(--code-bg);
+    color: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
     padding: 0.35rem 0.6rem;
-    border-radius: var(--radius);
+    border-radius: 0;
     cursor: pointer;
   }
   .codeblock-tab[aria-selected="true"] {
-    color: var(--rm-fg, var(--rm-text, #fff));
-    border-color: color-mix(in oklab, var(--rm-primary) 60%, var(--rm-border));
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--rm-primary) 22%, transparent);
+    color: var(--color-ink);
+    background: var(--color-yellow);
+    border-color: var(--color-ink);
   }
 
   .codeblock-copy {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    font-size: var(--text-xs);
+    border: var(--border-thin);
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    text-transform: uppercase;
     padding: 0.35rem 0.6rem;
-    border-radius: var(--radius);
+    border-radius: 0;
     cursor: pointer;
     min-width: 4.5rem;
     text-align: center;
   }
   .codeblock-copy:hover {
-    background: var(--rm-surface);
-    color: var(--rm-fg, var(--rm-text, #fff));
+    background: var(--color-surface);
+    color: var(--color-ink);
   }
 
   .codeblock-pre {
     margin: 0;
     padding: var(--space-4);
     overflow-x: auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--rm-fg, var(--rm-text, #fff));
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--color-surface);
+    background: var(--code-bg);
   }
 </style>

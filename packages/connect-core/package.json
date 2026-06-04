@@ -1,0 +1,50 @@
+{
+  "name": "@restormel/connect-core",
+  "version": "0.1.0",
+  "description": "Connect ingest planning, resume checkpoints, and shared stage model-call helpers (no DB or Surreal dependencies).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/connect-core"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "CHANGELOG.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@restormel/aaif": "workspace:*",
+    "@restormel/contracts": "workspace:*",
+    "@restormel/keys": "workspace:*"
+  },
+  "peerDependencies": {
+    "ai": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "ai": "^4.3.19",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

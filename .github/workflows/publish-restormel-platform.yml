@@ -1,5 +1,5 @@
-# Publish @restormel/contracts, @restormel/context-packs, @restormel/state, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
-# Order: contracts → context-packs → state → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
+# Publish @restormel/contracts, @restormel/context-packs, @restormel/reasoning-core, @restormel/graphrag-core, @restormel/connect-core, @restormel/state, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
+# Order: contracts → context-packs → reasoning-core → graphrag-core → connect-core → state → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
 # graph-core / ui-graph-svelte use tag graph-v* (publish-graph.yml). Requires NPM_TOKEN.
 name: Publish Restormel platform packages
 on:
@@ -19,6 +19,9 @@ on:
         options:
           - all
           - context-packs
+          - reasoning-core
+          - graphrag-core
+          - connect-core
           - state
           - observability
 
@@ -50,6 +53,12 @@ jobs:
           pnpm --filter @restormel/contracts test
           pnpm --filter @restormel/context-packs run build
           pnpm --filter @restormel/context-packs test
+          pnpm --filter @restormel/reasoning-core run build
+          pnpm --filter @restormel/reasoning-core test
+          pnpm --filter @restormel/graphrag-core run build
+          pnpm --filter @restormel/graphrag-core test
+          pnpm --filter @restormel/connect-core run build
+          pnpm --filter @restormel/connect-core test
           pnpm --filter @restormel/state run build
           pnpm --filter @restormel/state test
           pnpm --filter @restormel/observability run build
@@ -83,11 +92,20 @@ jobs:
           if [ "${SCOPE}" = "all" ]; then
             pnpm --filter @restormel/contracts publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/reasoning-core publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/graphrag-core publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/connect-core publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/state publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
             pnpm --filter @restormel/graph-reasoning-extensions publish --access public --no-git-checks ${EXTRA}
           elif [ "${SCOPE}" = "context-packs" ]; then
             pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "reasoning-core" ]; then
+            pnpm --filter @restormel/reasoning-core publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "graphrag-core" ]; then
+            pnpm --filter @restormel/graphrag-core publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "connect-core" ]; then
+            pnpm --filter @restormel/connect-core publish --access public --no-git-checks ${EXTRA}
           elif [ "${SCOPE}" = "state" ]; then
             pnpm --filter @restormel/state publish --access public --no-git-checks ${EXTRA}
           else
@@ -98,11 +116,20 @@ jobs:
             if [ "${SCOPE}" = "all" ]; then
               npm access set status=public @restormel/contracts
               npm access set status=public @restormel/context-packs
+              npm access set status=public @restormel/reasoning-core
+              npm access set status=public @restormel/graphrag-core
+              npm access set status=public @restormel/connect-core
               npm access set status=public @restormel/state
               npm access set status=public @restormel/observability
               npm access set status=public @restormel/graph-reasoning-extensions
             elif [ "${SCOPE}" = "context-packs" ]; then
               npm access set status=public @restormel/context-packs
+            elif [ "${SCOPE}" = "reasoning-core" ]; then
+              npm access set status=public @restormel/reasoning-core
+            elif [ "${SCOPE}" = "graphrag-core" ]; then
+              npm access set status=public @restormel/graphrag-core
+            elif [ "${SCOPE}" = "connect-core" ]; then
+              npm access set status=public @restormel/connect-core
             elif [ "${SCOPE}" = "state" ]; then
               npm access set status=public @restormel/state
             else

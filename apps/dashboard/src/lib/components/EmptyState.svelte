@@ -20,16 +20,19 @@
 
 <style>
   .empty-state {
-    background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
+    background: var(--brut-white);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
     padding: var(--space-6);
     margin: 0 0 var(--space-4);
   }
   .empty-state-title {
     font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--rm-text);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--brut-ink);
     margin: 0 0 var(--space-2);
   }
   .empty-state-desc {

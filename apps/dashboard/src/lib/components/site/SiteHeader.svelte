@@ -2,18 +2,17 @@
   import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
+  import RestormelLogo from "$lib/components/RestormelLogo.svelte";
   import { page } from "$app/stores";
   import {
+    companyNavLinks,
     developerLinks,
-    graphPillarLinks,
-    isGraphPillarActive,
+    isCompanyNavActive,
     isIntegrationsActive,
-    isKeysPillarActive,
     isLinkActive,
-    isTestingPillarActive,
-    keysPillarLinks,
+    isProductNavActive,
     normalizePath,
-    testingPillarLinks,
+    productNavLinks,
   } from "$lib/site-nav";
 
   $: portalUrl = developerPortalUrl();
@@ -25,26 +24,21 @@
     null;
 
   let mobileOpen = false;
-  let keysOpen = false;
-  let testingOpen = false;
-  let graphOpen = false;
+  let productOpen = false;
+  let companyOpen = false;
   let developersOpen = false;
 
   $: path = $page.url.pathname.replace(/\/$/, "") || "/";
   $: if ($page.url.pathname) {
     mobileOpen = false;
-    keysOpen = false;
-    testingOpen = false;
-    graphOpen = false;
+    productOpen = false;
+    companyOpen = false;
     developersOpen = false;
   }
 
-  $: keysPillarOn = isKeysPillarActive(path);
-  $: testingPillarOn = isTestingPillarActive(path);
-  $: graphPillarOn = isGraphPillarActive(path);
+  $: productNavOn = isProductNavActive(path);
   $: integrationsOn = isIntegrationsActive(path);
-  $: changelogOn = normalizePath(path) === "/changelog";
-  $: roadmapOn = normalizePath(path) === "/roadmap";
+  $: companyNavOn = isCompanyNavActive(path);
 
   function toggleMobileMenu() {
     mobileOpen = !mobileOpen;
@@ -54,29 +48,18 @@
     mobileOpen = false;
   }
 
-  function onKeysToggle(e: Event) {
+  function onProductToggle(e: Event) {
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
-      testingOpen = false;
-      graphOpen = false;
+      companyOpen = false;
       developersOpen = false;
     }
   }
 
-  function onTestingToggle(e: Event) {
+  function onCompanyToggle(e: Event) {
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
-      keysOpen = false;
-      graphOpen = false;
-      developersOpen = false;
-    }
-  }
-
-  function onGraphToggle(e: Event) {
-    const el = e.currentTarget as HTMLDetailsElement;
-    if (el.open) {
-      keysOpen = false;
-      testingOpen = false;
+      productOpen = false;
       developersOpen = false;
     }
   }
@@ -84,9 +67,8 @@
   function onDevelopersToggle(e: Event) {
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
-      keysOpen = false;
-      testingOpen = false;
-      graphOpen = false;
+      productOpen = false;
+      companyOpen = false;
     }
   }
 
@@ -107,91 +89,31 @@
 <header class="site-header">
   <nav class="site-header-inner" aria-label="Main">
     <a href="/" class="logo-link" aria-label="Restormel home">
-      <img src="/restormel-lockup-nav.svg" alt="" class="logo-img" />
+      <RestormelLogo variant="lockup" height={32} decorative />
     </a>
 
     <ul class="site-header-links">
       <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={keysOpen} on:toggle={onKeysToggle}>
+        <details class="nav-details" bind:open={productOpen} on:toggle={onProductToggle}>
           <summary
-            id="site-nav-summary-keys"
+            id="site-nav-summary-product"
             class="nav-summary"
-            class:nav-summary-active={keysPillarOn}
-            aria-controls="site-nav-panel-keys"
+            class:nav-summary-active={productNavOn}
+            aria-controls="site-nav-panel-product"
           >
-            Keys
+            Product
           </summary>
           <div
-            id="site-nav-panel-keys"
+            id="site-nav-panel-product"
             class="nav-dropdown-panel"
             role="region"
-            aria-labelledby="site-nav-summary-keys"
+            aria-labelledby="site-nav-summary-product"
           >
-            {#each keysPillarLinks as item}
+            {#each productNavLinks as item}
               <a
                 href={item.href}
                 class:active={linkActive(item.href)}
                 aria-current={linkActive(item.href) ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            {/each}
-          </div>
-        </details>
-      </li>
-      <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={testingOpen} on:toggle={onTestingToggle}>
-          <summary
-            id="site-nav-summary-testing"
-            class="nav-summary"
-            class:nav-summary-active={testingPillarOn}
-            aria-controls="site-nav-panel-testing"
-          >
-            Testing
-          </summary>
-          <div
-            id="site-nav-panel-testing"
-            class="nav-dropdown-panel"
-            role="region"
-            aria-labelledby="site-nav-summary-testing"
-          >
-            {#each testingPillarLinks as item}
-              <a
-                href={item.href}
-                class:active={linkActive(item.href)}
-                aria-current={linkActive(item.href) ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            {/each}
-          </div>
-        </details>
-      </li>
-      <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={graphOpen} on:toggle={onGraphToggle}>
-          <summary
-            id="site-nav-summary-graph"
-            class="nav-summary"
-            class:nav-summary-active={graphPillarOn}
-            aria-controls="site-nav-panel-graph"
-          >
-            Graph
-          </summary>
-          <div
-            id="site-nav-panel-graph"
-            class="nav-dropdown-panel"
-            role="region"
-            aria-labelledby="site-nav-summary-graph"
-          >
-            {#each graphPillarLinks as item}
-              <a
-                href={item.href}
-                class:active={linkActive(item.href)}
-                aria-current={linkActive(item.href) ? "page" : undefined}
-                target={item.external ? "_blank" : undefined}
-                rel={item.external ? "noopener noreferrer" : undefined}
-                title={item.external ? "Opens in a new tab" : undefined}
-                aria-label={item.external ? item.ariaLabel : undefined}
               >
                 {item.label}
               </a>
@@ -208,17 +130,33 @@
           Integrations
         </a>
       </li>
-      <li>
-        <a
-          href="/changelog"
-          class:active={changelogOn}
-          aria-current={changelogOn ? "page" : undefined}
-        >
-          Changelog
-        </a>
-      </li>
-      <li>
-        <a href="/roadmap" class:active={roadmapOn} aria-current={roadmapOn ? "page" : undefined}>Roadmap</a>
+      <li class="nav-dropdown-wrap">
+        <details class="nav-details" bind:open={companyOpen} on:toggle={onCompanyToggle}>
+          <summary
+            id="site-nav-summary-company"
+            class="nav-summary"
+            class:nav-summary-active={companyNavOn}
+            aria-controls="site-nav-panel-company"
+          >
+            Company
+          </summary>
+          <div
+            id="site-nav-panel-company"
+            class="nav-dropdown-panel"
+            role="region"
+            aria-labelledby="site-nav-summary-company"
+          >
+            {#each companyNavLinks as item}
+              <a
+                href={item.href}
+                class:active={linkActive(item.href)}
+                aria-current={linkActive(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            {/each}
+          </div>
+        </details>
       </li>
       <li class="nav-dropdown-wrap">
         <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
@@ -255,11 +193,12 @@
       {#if user}
         <UserMenu {user} align="right" />
       {:else if rightText && rightHref}
-        <a class="site-header-cta" href={rightHref}>{rightText}</a>
+        <a class="btn btn-primary" href={rightHref}>{rightText}</a>
       {:else if rightText}
         <span class="site-header-right-text">{rightText}</span>
       {:else}
-        <a class="site-header-cta" href={DASHBOARD_BASE + "/login"}>Sign in</a>
+        <a class="btn btn-ghost" href={DASHBOARD_BASE + "/login"}>Sign in</a>
+        <a class="btn btn-primary" href="/founders#apply-heading">Early access →</a>
       {/if}
     </div>
 
@@ -282,32 +221,12 @@
   {/if}
 
   <div class="site-header-mobile-menu" id="site-mobile-menu" class:site-header-mobile-menu-open={mobileOpen}>
-    <span class="site-header-mobile-heading" role="presentation">Keys</span>
-    {#each keysPillarLinks as item}
+    <span class="site-header-mobile-heading" role="presentation">Product</span>
+    {#each productNavLinks as item}
       <a
         href={item.href}
         class:active={linkActive(item.href)}
         aria-current={linkActive(item.href) ? "page" : undefined}
-        on:click={closeMobileMenu}>{item.label}</a>
-    {/each}
-    <span class="site-header-mobile-heading" role="presentation">Testing</span>
-    {#each testingPillarLinks as item}
-      <a
-        href={item.href}
-        class:active={linkActive(item.href)}
-        aria-current={linkActive(item.href) ? "page" : undefined}
-        on:click={closeMobileMenu}>{item.label}</a>
-    {/each}
-    <span class="site-header-mobile-heading" role="presentation">Graph</span>
-    {#each graphPillarLinks as item}
-      <a
-        href={item.href}
-        class:active={linkActive(item.href)}
-        aria-current={linkActive(item.href) ? "page" : undefined}
-        target={item.external ? "_blank" : undefined}
-        rel={item.external ? "noopener noreferrer" : undefined}
-        title={item.external ? "Opens in a new tab" : undefined}
-        aria-label={item.external ? item.ariaLabel : undefined}
         on:click={closeMobileMenu}>{item.label}</a>
     {/each}
     <span class="site-header-mobile-heading" role="presentation">Integrations</span>
@@ -316,16 +235,14 @@
       class:active={integrationsOn}
       aria-current={integrationsOn ? "page" : undefined}
       on:click={closeMobileMenu}>Overview</a>
-    <a
-      href="/changelog"
-      class:active={changelogOn}
-      aria-current={changelogOn ? "page" : undefined}
-      on:click={closeMobileMenu}>Changelog</a>
-    <a
-      href="/roadmap"
-      class:active={roadmapOn}
-      aria-current={roadmapOn ? "page" : undefined}
-      on:click={closeMobileMenu}>Roadmap</a>
+    <span class="site-header-mobile-heading" role="presentation">Company</span>
+    {#each companyNavLinks as item}
+      <a
+        href={item.href}
+        class:active={linkActive(item.href)}
+        aria-current={linkActive(item.href) ? "page" : undefined}
+        on:click={closeMobileMenu}>{item.label}</a>
+    {/each}
     <span class="site-header-mobile-heading" role="presentation">Developers</span>
     {#each devLinks as item}
       <a
@@ -338,7 +255,7 @@
     {/each}
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
-      <a href="/keys/pricing" on:click={closeMobileMenu}>Pricing</a>
+      <a href="/founders" on:click={closeMobileMenu}>Early access</a>
       {#if user.isServiceAdmin}
         <a href={ADMIN_BASE + "/users"} on:click={closeMobileMenu}>Admin</a>
       {/if}
@@ -355,67 +272,74 @@
 
 <style>
   .site-header {
-    border-bottom: 1px solid var(--rm-border);
-    background: var(--rm-surface);
-    min-height: var(--rm-nav-height);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    border-bottom: var(--border);
+    background: var(--color-bg);
+    min-height: 3.5rem;
   }
   .site-header-inner {
-    max-width: var(--rm-container-max);
+    max-width: 75rem;
     margin: 0 auto;
-    padding: var(--space-3) var(--space-6);
+    padding: 0 var(--space-8);
     display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-height: var(--rm-nav-height);
+    align-items: stretch;
+    gap: 0;
+    min-height: 3.5rem;
   }
   .logo-link {
     display: inline-flex;
     align-items: center;
     text-decoration: none;
     flex-shrink: 0;
-    transition: opacity 0.15s ease;
+    padding-right: var(--space-4);
+    align-self: center;
   }
   .logo-link:hover {
-    opacity: 0.88;
+    transform: none;
   }
   .logo-link:focus-visible {
-    outline: 2px solid var(--rm-sage);
+    outline: var(--brut-border-width) solid var(--brut-ink);
     outline-offset: 2px;
-    border-radius: var(--rm-radius);
-  }
-  .logo-img {
-    display: block;
-    height: 2rem;
-    width: auto;
-    object-fit: contain;
+    border-radius: 0;
   }
   .site-header-links {
     list-style: none;
-    margin: 0;
+    margin: 0 0 0 auto;
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-left: auto;
-    align-items: center;
+    align-items: stretch;
+    gap: 0;
+  }
+  .site-header-links > li {
+    display: flex;
+    align-items: stretch;
+    border-left: var(--border);
   }
   .site-header-links > li > a {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink);
     text-decoration: none;
-    padding: var(--space-2) var(--space-1);
-    min-height: 44px;
+    padding: 0 1rem;
+    min-height: 3.5rem;
     display: inline-flex;
     align-items: center;
-    transition: color 0.15s ease;
+    transition: background 0.08s ease;
   }
   .site-header-links > li > a:hover {
-    color: var(--rm-sage);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
   .site-header-links > li > a.active {
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
+    color: var(--color-ink);
+    font-weight: 800;
+    background: var(--color-yellow);
   }
   .nav-dropdown-wrap {
     position: relative;
@@ -425,15 +349,18 @@
   }
   .nav-summary {
     list-style: none;
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink);
     cursor: pointer;
-    padding: var(--space-2) var(--space-1);
-    min-height: 44px;
+    padding: 0 1rem;
+    min-height: 3.5rem;
     display: flex;
     align-items: center;
-    transition: color 0.15s ease;
+    transition: background 0.08s ease;
   }
   .nav-summary::-webkit-details-marker {
     display: none;
@@ -444,11 +371,13 @@
     opacity: 0.75;
   }
   .nav-summary:hover {
-    color: var(--rm-sage);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
   .nav-summary-active {
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
+    color: var(--color-ink);
+    font-weight: 800;
+    background: var(--color-yellow);
   }
   .nav-dropdown-panel {
     position: absolute;
@@ -456,54 +385,43 @@
     left: 0;
     min-width: 12rem;
     padding: var(--space-2);
-    background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    box-shadow: var(--rm-card-shadow, 0 8px 24px rgba(0, 0, 0, 0.2));
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: 0;
+    box-shadow: var(--shadow-md);
     z-index: calc(var(--z-sticky) + 2);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
   }
   .nav-dropdown-panel a {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    color: var(--color-ink-muted);
     text-decoration: none;
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
+    border-radius: 0;
     min-height: 44px;
     display: flex;
     align-items: center;
   }
   .nav-dropdown-panel a:hover {
-    background: var(--rm-sage-bg);
-    color: var(--rm-sage);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     text-decoration: none;
   }
   .nav-dropdown-panel a.active {
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
+    color: var(--color-ink);
+    font-weight: 800;
+    background: var(--color-yellow);
   }
   .site-header-right {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: 0.75rem;
     flex-shrink: 0;
-  }
-  .site-header-cta {
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--rm-sage);
-    text-decoration: none;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
-    transition: color 0.15s ease, background 0.15s ease;
-  }
-  .site-header-cta:hover {
-    color: var(--rm-text);
-    background: color-mix(in oklab, var(--rm-sage) 12%, transparent);
-    text-decoration: none;
+    padding-left: var(--space-3);
+    margin-left: var(--space-2);
   }
   .site-header-right-text {
     font-size: var(--text-sm);
@@ -518,16 +436,19 @@
     align-items: center;
     gap: var(--space-2);
     margin-left: auto;
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-text);
-    border-radius: var(--rm-radius);
+    border: var(--border);
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    border-radius: 0;
+    box-shadow: var(--shadow-sm);
     padding: var(--space-2) var(--space-3);
     min-width: 44px;
     min-height: 44px;
   }
   .site-header-mobile-toggle:hover {
-    background: var(--rm-surface-raised);
+    background: var(--brut-neon);
   }
   .site-header-mobile-toggle:focus-visible {
     outline: 2px solid var(--rm-sage);
@@ -556,8 +477,8 @@
     position: relative;
     z-index: var(--z-modal);
     padding: var(--space-3) var(--space-6) var(--space-4);
-    border-top: 1px solid var(--rm-border);
-    background: var(--rm-surface);
+    border-top: var(--border);
+    background: var(--color-surface);
     gap: var(--space-2);
     flex-direction: column;
   }
@@ -567,22 +488,24 @@
     font-size: var(--text-sm);
     text-decoration: none;
     padding: var(--space-2) var(--space-2);
-    border-radius: var(--rm-radius);
+    border-radius: 0;
     min-height: 44px;
     align-content: center;
   }
   .site-header-mobile-menu a:hover {
-    background: var(--rm-sage-bg);
-    color: var(--rm-sage);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     text-decoration: none;
   }
   .site-header-mobile-menu a.active {
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
+    color: var(--color-ink);
+    font-weight: 800;
+    background: var(--color-yellow);
   }
   .site-header-mobile-heading {
-    font-size: var(--text-xs);
-    font-weight: var(--font-semibold);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
     color: var(--rm-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;

@@ -19,6 +19,8 @@
     "./domains": { "types": "./dist/domains.d.ts", "import": "./dist/domains.js" },
     "./enrichment": { "types": "./dist/enrichment.d.ts", "import": "./dist/enrichment.js" },
     "./ingestion": { "types": "./dist/ingestion.d.ts", "import": "./dist/ingestion.js" },
+    "./connect": { "types": "./dist/connect.d.ts", "import": "./dist/connect.js" },
+    "./knowledge": { "types": "./dist/knowledge.d.ts", "import": "./dist/knowledge.js" },
     "./learn": { "types": "./dist/learn.d.ts", "import": "./dist/learn.js" },
     "./passes": { "types": "./dist/passes.d.ts", "import": "./dist/passes.js" },
     "./providers": { "types": "./dist/providers.d.ts", "import": "./dist/providers.js" },

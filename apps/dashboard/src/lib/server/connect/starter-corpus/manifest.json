@@ -1,0 +1,20 @@
+{
+  "id": "restormel-philosophy-starter-v1",
+  "title": "Philosophy starter corpus",
+  "license": "CC0-1.0",
+  "description": "Three Restormel-authored demo passages for first-graph onboarding: ethics dialogue, epistemology sketch, and utilitarian objection.",
+  "documents": [
+    {
+      "file": "01-trolley-problem-dialogue.md",
+      "name": "Starter: The trolley problem — a dialogue"
+    },
+    {
+      "file": "02-knowledge-vs-belief.md",
+      "name": "Starter: Knowledge versus true belief"
+    },
+    {
+      "file": "03-utilitarian-objection.md",
+      "name": "Starter: A utilitarian objection"
+    }
+  ]
+}

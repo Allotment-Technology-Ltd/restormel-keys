@@ -10,13 +10,13 @@
   <h1>Integration failure attribution</h1>
   <p class="doc-intro">
     Host apps should not guess whether a red <code>ModelSelector</code> state is “Restormel down”, “policy blocked”, or “provider key invalid”.
-    Use the packaged <strong>status callbacks</strong>, <strong>batch policy availability</strong>, and the shared backend message constant from <code>@restormel/keys-svelte</code>.
+    Use the packaged <strong>status callbacks</strong>, <strong>batch policy availability</strong>, and the shared backend message constant from <code>@restormel/keys-elements</code>.
   </p>
 
   <h2>Typed props and status</h2>
   <p>
     Import <code>KeyManagerProps</code>, <code>ModelSelectorProps</code>, <code>ModelSelectorHostStatus</code>, and
-    <code>RESTORMEL_BACKEND_ERROR_MESSAGE</code> from <code>@restormel/keys-svelte</code> (see package <code>types</code> exports).
+    <code>RESTORMEL_BACKEND_ERROR_MESSAGE</code> from <code>@restormel/keys-elements</code> (see package exports).
     Wire <code>onStatusChange</code> to show banners: <code>loading</code>, <code>ready</code>, <code>empty</code>, <code>error</code>, <code>degraded</code>.
   </p>
 

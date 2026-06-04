@@ -1,8 +1,10 @@
 # Restormel Graph — SOPHIA consumer integration
 
-**Audience:** agents and humans wiring **SOPHIA** (or any SvelteKit + Vite app) to **`@restormel/graph-core`** and **`@restormel/ui-graph-svelte`** from npm (or an approved local substitute).
+**Audience:** agents and humans wiring **SOPHIA** (or any SvelteKit + Vite app) to **`@restormel/graph-core`** and **`@restormel/graph-elements`** (Phase 8+ canonical UI path).
 
-**Canonical contract:** `packages/graph-core/src/viewModel.ts` in **restormel-keys** (banner: `RESTORMEL GRAPH CONTRACT v0`). **Sophia migration baseline:** restormel-keys `main` at the commit that first published **`@restormel/graph-core@0.1.0`** / **`@restormel/ui-graph-svelte@0.1.0`** (or the current `0.1.x` line). Drift policy: [CHANGELOG.md](../CHANGELOG.md) and § *Contract drift* below.
+> **Phase 8 (2026-06-01):** SOPHIA must **not** depend on `@restormel/ui-graph-svelte` directly. Use **`GraphCanvasHost`** (or plain `<rg-graph-canvas>`) from `@restormel/graph-elements`. Status: [docs/restormel/PHASE8-SUITE-MIGRATION-STATUS.md](restormel/PHASE8-SUITE-MIGRATION-STATUS.md).
+
+**Canonical contract:** `packages/graph-core/src/viewModel.ts` in **restormel-keys** (banner: `RESTORMEL GRAPH CONTRACT v0`). **Sophia migration baseline:** restormel-keys `main` at the commit that first published **`@restormel/graph-core@0.1.0`** / **`@restormel/graph-elements@0.1.0`** (or the current `0.1.x` line). Drift policy: [CHANGELOG.md](../CHANGELOG.md) and § *Contract drift* below.
 
 ---
 
@@ -13,15 +15,15 @@
 After maintainers push git tag **`graph-v*`** (e.g. **`graph-v0.1.0`**), CI publishes (see [`.github/workflows/publish-graph.yml`](../.github/workflows/publish-graph.yml)):
 
 1. `@restormel/graph-core`
-2. `@restormel/ui-graph-svelte` (depends on published `graph-core`; `pnpm publish` rewrites `workspace:*`)
+2. `@restormel/graph-elements` (Web Components; depends on `graph-core` + internal `ui-graph-svelte`)
 
-**SOPHIA `package.json` (app or workspace package that owns the graph UI):**
+**SOPHIA `package.json` (Phase 8+):**
 
 ```json
 {
   "dependencies": {
     "@restormel/graph-core": "^0.1.1",
-    "@restormel/ui-graph-svelte": "^0.1.1"
+    "@restormel/graph-elements": "^0.1.0"
   }
 }
 ```
@@ -30,8 +32,10 @@ Verify:
 
 ```bash
 npm view @restormel/graph-core version
-npm view @restormel/ui-graph-svelte version
+npm view @restormel/graph-elements version
 ```
+
+**Legacy (maintenance only until 2026-12-01):** `@restormel/ui-graph-svelte` — do not add to new consumers.
 
 ### B. Alternative — git / tarball / `pnpm.overrides` (no npm yet)
 
@@ -76,9 +80,10 @@ In **SOPHIA**, point dependencies at those `.tgz` files and **override** transit
 | Trace labels / tags | `import { getNodeTraceTags, getNodeTraceLabel, formatTraceTag } from '@restormel/graph-core/trace'` |
 | Workspace filters / scope helpers | `import { filterGraph, … } from '@restormel/graph-core/workspace'` |
 | Barrel (all MVP exports) | `import { … } from '@restormel/graph-core'` |
-| Canvas + optional detail | `import { GraphCanvas, NodeDetail, graphCanvasEdgeKey } from '@restormel/ui-graph-svelte'` |
-| Strict TS props (callbacks, etc.) | `import type { GraphCanvasProps, NodeDetailProps } from '@restormel/ui-graph-svelte'` — `GraphCanvasProps` matches `GraphRendererProps` from graph-core |
-| Optional built CSS (library artefact) | `@restormel/ui-graph-svelte/styles.css` — see §3 *styles.css vs host tokens* |
+| Canvas (Web Components) | `import '@restormel/graph-elements'` then `<rg-graph-canvas>` or SOPHIA `GraphCanvasHost.svelte` |
+| Semantic edge keys / styles | `import { graphCanvasEdgeKey, type GraphCanvasNodeSemanticStyle } from '@restormel/graph-elements'` |
+| Layout REST (optional) | `POST /graph/v1/layout` — see SOPHIA `graphLayoutApiClient.ts` |
+| **Legacy** Svelte canvas | `import { GraphCanvas } from '@restormel/ui-graph-svelte'` — maintenance mode only |
 
 **Do not** rely on deep paths such as `node_modules/.../src/...` — only **`package.json` `exports`** are supported.
 

@@ -39,7 +39,8 @@
 
   <p>
     If your repo includes a model registry at <code>registry/models.json</code>, Doctor can map detected models to lifecycle states.
-    See <a href="/docs/model-registry">Model registry</a>.
+    See <a href="/keys/docs/guides/canonical-catalog">Canonical model catalog</a> and
+    <a href="/keys/docs/guides/model-registry">model registry (advisory)</a>.
   </p>
 
   <h3>Manifest output (CI-stable)</h3>

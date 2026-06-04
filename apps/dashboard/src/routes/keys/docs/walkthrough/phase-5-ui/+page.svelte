@@ -22,12 +22,10 @@
 
   const phase5Steps = [
     { id: "5.1", label: "Decide what to embed" },
-    { id: "5.2", label: "Embed ModelSelector (Next.js / React)" },
-    { id: "5.3", label: "Embed ModelSelector (SvelteKit)" },
-    { id: "5.4", label: "Embed ModelSelector (Web Components / vanilla)" },
-    { id: "5.5", label: "Filter the model list by policies" },
-    { id: "5.6", label: "Embed KeyManager (optional — for BYOK apps)" },
-    { id: "5.7", label: "Theme the components" },
+    { id: "5.2", label: "Embed ModelSelector (Web Components)" },
+    { id: "5.3", label: "Filter the model list by policies" },
+    { id: "5.4", label: "Embed KeyManager (optional — for BYOK apps)" },
+    { id: "5.5", label: "Theme the components" },
   ];
 
   const resolveProviderModelExample = "resolveProvider({ model: userSelectedModel })";
@@ -38,10 +36,7 @@ Goal: Embed Restormel Keys UI components (ModelSelector and optionally KeyManage
 
 Steps:
 1. Find the existing model picker / BYOK settings UI from your Phase 0 routing inventory.
-2. Based on your framework:
-   - Next.js/React: use @restormel/keys-react (KeysProvider + client component ModelSelector).
-   - SvelteKit: use @restormel/keys-svelte (ModelSelector component + createKeys).
-   - Other: use @restormel/keys-elements (Web Component) and set keys/providers as JS properties.
+2. Use @restormel/keys-elements for all frameworks (<rk-model-selector>, <rk-key-manager>).
 3. Wire selection events:
    - ModelSelector: send { modelId, providerId } to your backend (e.g. persist via POST /api/preferences, or use request-scoped selection per request — both valid).
    - KeyManager (if BYOK): wire add/remove to your key storage API (KeyManager sits on top of host-owned endpoints: POST /api/keys, DELETE /api/keys/:id).
@@ -96,10 +91,10 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <p class="doc-prereqs">
     <strong>Time:</strong> ~25 minutes<br />
     <strong>Prerequisites:</strong> <a href="/keys/docs/walkthrough/phase-4-policies">Phase 4</a> complete (routes and policies configured, resolve works with route IDs)<br />
-    <strong>You'll need:</strong> Your app's frontend codebase, the UI packages installed in Phase 1
+    <strong>You'll need:</strong> Your app's frontend codebase, <code>@restormel/keys-elements</code> installed in Phase 1
   </p>
 
-  <p>This phase puts Restormel's embeddable components into your app so end-users can select models and (optionally) manage their own provider credentials. By the end, your app shows a ModelSelector filtered by your policies and optionally a KeyManager for BYOK, both wired to your backend.</p>
+  <p>This phase puts Restormel Web Components into your app so end-users can select models and (optionally) manage provider credentials. Use <code>@restormel/keys-elements</code> for every framework — deprecated Svelte/React npm adapters are not part of the public path.</p>
 
   <WalkthroughStep stepId="5.1" title="Step 5.1 — Decide what to embed" defaultOpen={true} {phaseSlug}>
   <p>Not every app needs every component. Use this decision matrix:</p>
@@ -117,37 +112,18 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <p>Most apps that reached this phase want <strong>ModelSelector</strong>. KeyManager is for apps where users supply their own OpenAI/Anthropic/Google keys. CostEstimator is a nice-to-have.</p>
   </WalkthroughStep>
 
-  <WalkthroughStep stepId="5.2" title="Step 5.2 — Embed ModelSelector (Next.js / React)" {phaseSlug}>
-  <p>Use <code>KeysProvider</code> from <code>@restormel/keys-react</code> and a client component that renders <code>ModelSelector</code> with <code>keys</code>, <code>providers</code>, and <code>onSelect</code>. Wire <code>onSelect</code> to your backend — for example persist to <code>POST /api/preferences</code> with <code>modelId</code> and <code>providerId</code>, or use request-scoped model selection (pass selection per request); both are valid.</p>
-  <div class="callout callout-tip">
-    <strong>Tip</strong> — Use <code>next/dynamic</code> with <code>ssr: false</code> to lazy-load the model selector so it doesn't increase your initial page bundle.
-  </div>
-  <h3>You'll see</h3>
-  <p>A model selection UI grouped by provider. Each model shows its availability based on whether a key exists for that provider. Users click a model to select it.</p>
-  <h3>How to test</h3>
-  <p>Start your dev server, navigate to your settings page, confirm the ModelSelector renders with provider groups and models, and click a model to confirm the <code>onSelect</code> callback fires (check the network tab for the preferences API call).</p>
-  </WalkthroughStep>
-
-  <WalkthroughStep stepId="5.3" title="Step 5.3 — Embed ModelSelector (SvelteKit)" {phaseSlug}>
-  <p>Import <code>ModelSelector</code> from <code>@restormel/keys-svelte</code> and <code>createKeys</code> plus provider definitions from <code>@restormel/keys</code>. Create the <code>keys</code> instance and pass <code>keys</code>, <code>providers</code>, and <code>onSelect</code> to the component. Wire <code>onSelect</code> to your backend (e.g. persist via <code>POST /api/preferences</code> or use request-scoped selection — both are valid).</p>
-  <h3>You'll see</h3>
-  <p>The same model selection UI as the React version, rendered natively in Svelte.</p>
-  <h3>How to test</h3>
-  <p>Same as Step 5.2: navigate to the settings page, confirm rendering, click a model, verify the callback.</p>
-  </WalkthroughStep>
-
-  <WalkthroughStep stepId="5.4" title="Step 5.4 — Embed ModelSelector (Web Components / vanilla)" {phaseSlug}>
-  <p>For frameworks not covered by the React or Svelte wrappers, use the Web Components: import <code>@restormel/keys-elements</code>, create the <code>keys</code> instance, set <code>el.keys</code> and <code>el.providers</code> on the <code>&lt;rk-model-selector&gt;</code> element, and listen for the <code>rk-model-selected</code> event to save the selection to your backend.</p>
+  <WalkthroughStep stepId="5.2" title="Step 5.2 — Embed ModelSelector (Web Components)" {phaseSlug}>
+  <p>Import <code>@restormel/keys-elements</code>, render <code>&lt;rk-model-selector&gt;</code>, set <code>keys</code> and <code>providers</code> via JavaScript properties, and listen for <code>rk-model-selected</code> to persist selection to your backend.</p>
   <div class="callout callout-pitfall">
-    <strong>Pitfall</strong> — Web Components require setting object props (<code>keys</code>, <code>providers</code>) via JavaScript properties, not HTML attributes. See <a href="/keys/docs/compatibility">Framework compatibility</a> for the full list.
+    <strong>Pitfall</strong> — Set object props via JavaScript, not HTML attributes. See <a href="/keys/docs/compatibility">Framework compatibility</a>.
   </div>
   <h3>You'll see</h3>
-  <p>The model selector rendered inside a shadow DOM. Theming applies via <code>--rk-*</code> CSS custom properties.</p>
+  <p>A model selection UI grouped by provider. Users click a model to select it.</p>
   <h3>How to test</h3>
-  <p>Open your page in a browser, confirm the custom element renders, click a model, and confirm the <code>rk-model-selected</code> event fires.</p>
+  <p>Navigate to your settings page, confirm the selector renders, click a model, and verify your backend receives the selection.</p>
   </WalkthroughStep>
 
-  <WalkthroughStep stepId="5.5" title="Step 5.5 — Filter the model list by policies" {phaseSlug}>
+  <WalkthroughStep stepId="5.3" title="Step 5.3 — Filter the model list by policies" {phaseSlug}>
   <p>The ModelSelector shows all models from the configured providers by default. If you have policies (Phase 4) that restrict which models are allowed, filter the model list so users only see valid choices.</p>
   <p><strong>Server-side filtering (recommended):</strong> Add an API route (e.g. <code>GET /api/allowed-models</code>) that calls the Restormel <strong>evaluate</strong> endpoint for each candidate model, using your project <strong>Gateway Key</strong> from server-side environment variables. Return only the allowed model IDs to the client and configure the component with that list.</p>
   <div class="callout callout-security">
@@ -160,7 +136,7 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <p>Add a <code>model_allowlist</code> policy that excludes one model. Refresh the settings page; that model should not appear (or should appear greyed out with "Not allowed").</p>
   </WalkthroughStep>
 
-  <WalkthroughStep stepId="5.6" title="Step 5.6 — Embed KeyManager (optional — for BYOK apps)" {phaseSlug}>
+  <WalkthroughStep stepId="5.4" title="Step 5.4 — Embed KeyManager (optional — for BYOK apps)" {phaseSlug}>
   <p>If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. <strong>KeyManager sits on top of your own storage and validation endpoints</strong> — you implement and own the key storage API (e.g. <code>POST /api/keys</code>, <code>DELETE /api/keys/:id</code>) and any server-side validation; KeyManager is the UI layer that calls them via <code>onKeyAdded</code> and <code>onKeyRemoved</code>.</p>
   <div class="callout callout-security">
     <strong>Security</strong> — Treat provider credentials as <em>builder-managed</em>. Raw key material should never be logged or persisted in plaintext. Restormel does not need to custody raw provider secrets by default: store credentials in your own backend/secret store (or use a gateway-backed scheme) and return only masked identifiers and metadata to the UI.
@@ -171,7 +147,7 @@ DO NOT: Implement UI yet. Add secrets to client code. Commit secrets.`,
   <p>Navigate to settings, add a key (test/invalid is fine to confirm validation), confirm <code>onKeyAdded</code> fires and your API receives the request. With a valid key, confirm validation passes. Delete the key and confirm <code>onKeyRemoved</code> fires.</p>
   </WalkthroughStep>
 
-  <WalkthroughStep stepId="5.7" title="Step 5.7 — Theme the components" {phaseSlug}>
+  <WalkthroughStep stepId="5.5" title="Step 5.5 — Theme the components" {phaseSlug}>
   <p>Restormel UI components use <code>--rk-*</code> CSS custom properties for theming. Override them to match your app:</p>
   <CodeBlock language="css" code={themeCssSnippet} />
   <p>The components ship with dark (`.rk-dark`) and light (`.rk-light`) presets.</p>

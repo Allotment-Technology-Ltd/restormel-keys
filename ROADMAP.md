@@ -9,6 +9,33 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 
 ## Phase 01 — Implementation (current)
 
+### Keys MVP touchpoint matrix
+
+PostHog **`restormel-module-*`** flags gate non-core surfaces (MVP default: **Keys + Connect** only). Registry: [docs/guides/keys-mvp-module-flags.md](docs/guides/keys-mvp-module-flags.md). Operator mode: [docs/guides/keys-mvp-mode.md](docs/guides/keys-mvp-mode.md). Graph decision: [docs/restormel/GRAPH-MVP-PRODUCT-MEMO.md](docs/restormel/GRAPH-MVP-PRODUCT-MEMO.md).
+
+| Capability | Marketing | Dashboard UI | REST API | MCP / AAIF | CLI | Docs / sitemap | CI publish |
+|------------|-----------|--------------|----------|------------|-----|----------------|------------|
+| **Testing** | `suite-modules.ts`, `site-nav.ts`, proof gallery | `nav-config.ts`, `/keys/dashboard/testing`, `copy-for-ci` | `/v1/testing/resolve-model` | `testing.*`, suite invoke | `@restormel/testing-cli` (OSS) | `/testing/docs`, `docs/testing/` | `publish-testing.yml` (gated) |
+| **Graph** | Suite nav, `/graph` landing | Docs only | `/graph/v1/*` | `graph.fixture_validate` | — | `/graph/docs` | `publish-graph.yml` (SOPHIA) |
+| **Gateway providers** | Integration guides | `integrations/` | `/api/integrations` | AAIF `integrationStack` | — | openrouter, portkey, vercel-ai-gateway guides | — |
+| **Guard rails** | — | policies nav, route inspector | resolve policy eval | routing policy tools | — | walkthrough phase 4 | — |
+| **Environments** | — | `ProjectContextSwitcher`, route env picker | resolve `environmentId` | `project.environments.list` | env snippets | environment-vocabulary | migration `043` |
+| **Connect** | `/connect` marketing | Connect hub, pipeline wizard | `/connect/v1/*` | `connect.*` | — | `/connect/docs` | — |
+
+**Connect (Ingest · Retrieve · Verify) — shipped vs programme plan:** Canonical product brief [docs/restormel/CONNECT-PRODUCT.md](docs/restormel/CONNECT-PRODUCT.md). Original programme target was **hosted REST/MCP integrator surfaces** (not npm-only ingestion) per [docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md](docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md) Phase 5–6.
+
+| Area | Shipped in repo | Still open |
+|------|-----------------|------------|
+| **Ingest REST** | `POST/GET /connect/v1/ingest/jobs*`, dashboard BFF, `@restormel/connect-core` stages, hosted worker → BYO Surreal/Postgres graph | OpenAPI GA; SOPHIA worker cutover to hosted REST; wave-1 staging parity; entity linking (e.g. thinker/authored) |
+| **Operator ingest** | Pipeline wizard, domain packs, Graph Designer, source docs/connectors, per-stage Keys routes, graph explorer, validation review, graph re-validation jobs | Ingest GA hardening (validation at scale, provenance, observability) |
+| **Verify REST** | `POST /connect/v1/verify` → `@restormel/reasoning-core` | Operator smoke polish |
+| **Retrieve REST** | `POST /connect/v1/retrieve` → `@restormel/graphrag-core` (hybrid/seed/context in package) | **Retrieve GA:** Keys-routed embeddings, workspace graph index populated, non-degraded retrieve; dashboard operator smoke + SOPHIA grounding parity |
+| **Packages** | `@restormel/connect-core`, `@restormel/graphrag-core`, `@restormel/reasoning-core`, `@restormel/context-packs` | Integrator default remains REST/MCP; packages for adapters/self-host |
+
+**Next Connect milestones (public roadmap: `/roadmap`):** (1) **Reliable agent grounding** — retrieval that consistently returns the right context from the workspace graph; (2) **Trust you can ship on** — validation, provenance, and review at scale; (3) **Faster first graph** — onboarding for teams without a platform group; (4) **Embed without rebuilding** — stable integrator surfaces. Technical programme: [CONNECT-PRODUCT.md](docs/restormel/CONNECT-PRODUCT.md).
+
+**Post-MVP re-enable:** flip flags in PostHog or set `RESTORMEL_MODULE_FLAGS` on preview/staging; no code deletion required.
+
 - **Hosted no-code route runtime (partial):** **`POST …/routes/{routeId}/runtime/invoke`** — Phases **1–2** pipeline + Phase **3** **allowlisted** `advanceOn` / **`fallbackOn`** failure advance; OpenAPI **1.5.0**, contract **`2026-06-01`**. **`POST …/runtime/jobs`** + job rows: **linear** completes; **parallel fan-out** gated (**501**). **Not** shipped: full async worker, continuation tokens, streaming — [docs/rfc/keys-no-code-route-runtime.md](docs/rfc/keys-no-code-route-runtime.md), [docs/rfc/keys-hosted-runtime-parallel-jobs.md](docs/rfc/keys-hosted-runtime-parallel-jobs.md), [docs/roadmap/hosted-runtime-deferred-spikes.md](docs/roadmap/hosted-runtime-deferred-spikes.md).
 - **Restormel Testing — business acceptance criteria (shipped `0.1.3`):** suite **`user_story`** + **`acceptance_criteria`** with stable ids; goal **`acceptance_criterion_ids`**; roll-up on **`RunRecord.acceptanceResults`**; **`testing run --ac`**; Markdown/GitHub/JSON reports; mission env **`RESTORMEL_TESTING_ACCEPTANCE_CRITERIA_JSON`**. Full autonomous “one rubric per AC” execution (Plotbudget R-BA-4 style) remains future work on top of **`execution_mode: agent`**.
 - **Keys + Testing seamless path (shipped in repo):** hosted provider credentials (AES-256-GCM at rest, masked API/UI), `POST /v1/testing/resolve-model` decrypt path for logical refs, auto-provisioned **Restormel Testing** project + model bindings, dashboard **Restormel Testing** hub and Connections UX, CLI `doctor` hint for `RESTORMEL_PROJECT_ID`. Canonical onboarding: [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md). **Onboarding simplification:** canonical Testing env **`RESTORMEL_KEYS_BASE`** + **`RESTORMEL_GATEWAY_KEY`** (with `RESTORMEL_KEYS_API_*` compatibility in the adapter), **Gateway keys** beside **Restormel Testing** in sidebar, overview **Restormel Testing in CI** track + first-run hint.
@@ -16,8 +43,15 @@ Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](S
 - **Phase 2 complete:** @restormel/keys-svelte (KeyManager, ModelSelector, CostEstimator), @restormel/keys-elements, @restormel/keys-react, CLI, Next.js/SvelteKit demos, SOPHIA runbook, a11y, publish.
 - **Phase 3 in current architecture:** product surfaces are unified in `apps/dashboard` (Keys landing, docs, dashboard); `apps/site` is archived. Next: iterative UX + docs + control-plane quality improvements in the single-app layout.
 - **Experience unification (Phase A–D):** Dashboard logged-out UX and SSO, frontend brand shell and logo integration, journey fixes (pricing checkout, docs handoff, billing copy), docs/Zuplo same-link and documentation strategy, shared tokens package and drift check, UX contracts (nav/copy/state), reintegration seams documented in ARCHITECTURE.md.
-- **Platform IA (marketing + docs + dashboard shell):** Module-first site header (Keys | Testing | Integrations | Developers) and matching footer pillars; shared in-app docs shell for `/keys/docs` and `/testing/docs` (data-driven nav, mobile drawer, breadcrumbs); dashboard topbar product context (Keys vs Testing hub); signed-in users hitting `/testing/dashboard` redirect to `/keys/dashboard/testing` (canonical Testing hub — see [docs/documentation-strategy.md](docs/documentation-strategy.md)).
+- **Platform IA (Theme L — suite-first):** Marketing header **Product · Integrations · Company · Developers**; suite docs hub at `/docs` with progressive disclosure (slim product sidebars + collapsed Reference); dashboard sidebar **Set Up · Monitor · Quality · Connect · Build & embed**; Run vs Embed home CTAs; inventory [docs/restormel/SUITE-IA-REDIRECT-INVENTORY.md](docs/restormel/SUITE-IA-REDIRECT-INVENTORY.md). Canonical Testing hub unchanged — [docs/documentation-strategy.md](docs/documentation-strategy.md).
 - **Suite platform:** [platform/](platform/) subtree (tokens, reusable CI composites, Cursor template for new repos). Optional split to **restormel-platform** + npm `tokens-v*` publish — [docs/platform-modularization.md](docs/platform-modularization.md). **New module stack:** [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md) (template checklist + initiation prompt). **Deferred:** Integrations app extraction and dashboard-only repo (same doc).
+
+## Suite architecture migration (programme)
+
+Phased plan to move Keys, Graph, and Knowledge to REST / Web Components / MCP integrator surfaces, extract platform logic from SOPHIA, and reintegrate SOPHIA as reference consumer. **Restormel Testing delivery-model changes are post-MVP and excluded.**
+
+- **Plan (canonical):** [docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md](docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md)
+- **Extraction map:** [docs/restormel/CONNECT-EXTRACTION-MAP.md](docs/restormel/CONNECT-EXTRACTION-MAP.md)
 
 ## Integrations — Developer Enablement
 

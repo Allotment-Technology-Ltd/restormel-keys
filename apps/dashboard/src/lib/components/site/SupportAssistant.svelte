@@ -399,7 +399,7 @@
     align-self: flex-start;
   }
   .btn-primary {
-    background: var(--path-blue);
+    background: var(--color-yellow);
     color: var(--rm-bg);
   }
   .btn-primary:disabled {

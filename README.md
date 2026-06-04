@@ -10,21 +10,23 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 
 ---
 
-## Packages
+## Packages (public integrators)
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| [@restormel/keys](packages/core) | 0.2.5 | Headless core: routing, cost, providers (OpenAI, Anthropic, Google), storage, server middleware |
-| [@restormel/keys-svelte](packages/svelte) | 0.1.0 | Svelte 5: KeyManager, ModelSelector, CostEstimator |
-| [@restormel/keys-elements](packages/elements) | 0.1.0 | Web Components: `<rk-key-manager>`, `<rk-model-selector>`, `<rk-cost-estimator>` |
-| [@restormel/keys-react](packages/react) | 0.1.0 | React 18+: KeyManager, ModelSelector, CostEstimator, hooks, KeysProvider |
-| [@restormel/doctor](packages/doctor) | 0.1.9 | OSS CLI: setup and health checks (`restormel-doctor`) |
-| [@restormel/validate](packages/validate) | 0.1.9 | OSS CLI: credential/config validation (`restormel-validate`) |
-| [@restormel/keys-cli](packages/cli) | 0.1.2 | Wrapper CLI: `keys init`, `keys add`, `keys list`, `keys validate`, `keys doctor`, `keys estimate` |
-| [@restormel/aaif](packages/aaif) | 0.0.1 | AAIF contract + runtime helper (routing + cost estimation) |
-| [@restormel/mcp](packages/mcp) | 0.1.0 | MCP tools + stdio server (`restormel-mcp`) for agents/IDEs |
+**Recommended:** Keys REST + `@restormel/keys-elements`, `@restormel/keys-cli`, `@restormel/doctor`, `@restormel/mcp`, `@restormel/aaif`. See [docs/reference/npm-packages.md](docs/reference/npm-packages.md) and [docs/guides/keys-mvp-mode.md](docs/guides/keys-mvp-mode.md).
 
-**Restormel Testing** (goal-based runner, CLI, composite Action) — see [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md):
+| Package | Status | Description |
+|---------|--------|-------------|
+| [@restormel/keys-elements](packages/elements) | **Public** | Web Components: `<rk-key-manager>`, `<rk-model-selector>`, `<rk-cost-estimator>` |
+| [@restormel/keys-cli](packages/cli) | **Public** | `keys init`, `keys login`, `keys doctor`, `keys catalog fetch` |
+| [@restormel/doctor](packages/doctor) | **Public** | OSS CLI: setup and health checks |
+| [@restormel/validate](packages/validate) | **Public** | OSS CLI: credential/config validation |
+| [@restormel/aaif](packages/aaif) | **Public** | AAIF contract + runtime helper |
+| [@restormel/mcp](packages/mcp) | **Public** | MCP tools + stdio server for agents/IDEs |
+| [@restormel/keys](packages/core) | **Deprecated** | In-process core — use [Keys REST](docs/guides/npm-to-rest-keys.md) for new apps |
+| [@restormel/keys-svelte](packages/svelte) | **Deprecated** | Use `@restormel/keys-elements` |
+| [@restormel/keys-react](packages/react) | **Deprecated** | Use `@restormel/keys-elements` |
+
+**Restormel Testing** (non-MVP by default — enable `restormel-module-testing` for public docs) — see [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md):
 
 | Package | Description |
 |---------|-------------|
@@ -43,49 +45,34 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 
 ## Quick start
 
-**Core only (headless):**
+**Keys REST (recommended — no npm core):**
 
 ```bash
-pnpm add @restormel/keys
+export RESTORMEL_KEYS_BASE=https://restormel.dev
+export RESTORMEL_GATEWAY_KEY=rk_…   # from Dashboard → Gateway keys
+curl -sS -X POST "$RESTORMEL_KEYS_BASE/keys/v1/projects/$RESTORMEL_PROJECT_ID/resolve" \
+  -H "Authorization: Bearer $RESTORMEL_GATEWAY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"workload":"chat"}'
 ```
 
-```ts
-import { createKeys, openaiProvider, anthropicProvider } from "@restormel/keys";
-
-const keys = createKeys(
-  { routing: { defaultProvider: "openai" } },
-  { providers: [openaiProvider, anthropicProvider] }
-);
-const resolved = await keys.resolve("openai", "gpt-4o");
-const cost = keys.estimateCost("gpt-4o-mini");
-```
-
-**With React (e.g. Next.js App Router):**
+**Web Components UI:**
 
 ```bash
-pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements
+pnpm add @restormel/keys-elements
 ```
 
-Use `KeysProvider`, `KeyManager`, `ModelSelector` in a client component; fetch keys from your API and pass config. See [apps/demo-next](apps/demo-next) (Next.js — clone the repo and run locally; not run in CI) or [apps/demo-svelte](apps/demo-svelte) (SvelteKit) for full examples.
-
-**With Svelte:**
+**CLI + doctor:**
 
 ```bash
-pnpm add @restormel/keys @restormel/keys-svelte
+pnpm add -D @restormel/keys-cli @restormel/doctor
+pnpm exec keys login
+pnpm exec keys doctor
 ```
 
-**SvelteKit headless (Phases 1–4):** `pnpm add @restormel/keys` only; `npx @restormel/doctor` passes without UI packages.
+Legacy in-process `@restormel/keys` npm remains in **maintenance mode** until 2026-12-01 — see [npm-to-rest-keys.md](docs/guides/npm-to-rest-keys.md). Do not start new integrations on `@restormel/keys-svelte` or `@restormel/keys-react`.
 
-**CLI (when published):**
-
-```bash
-pnpm add -D @restormel/keys-cli
-npx keys init
-npx keys add openai
-npx @restormel/doctor
-```
-
-If `keys-cli` is unavailable, create `restormel.config.json` manually — see [docs/reference/npm-packages.md](docs/reference/npm-packages.md) and Phase 1 walkthrough.
+If `keys-cli` is unavailable, create `restormel.config.json` manually — see [docs/reference/npm-packages.md](docs/reference/npm-packages.md).
 
 ### CLI choices (what to use when)
 

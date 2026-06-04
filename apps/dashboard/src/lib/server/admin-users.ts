@@ -4,7 +4,8 @@
 import type { AdminUserListRow } from "$lib/admin-user-list";
 import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
-import { emailImpliesServiceOwner } from "$lib/server/service-admin";
+import { emailImpliesServiceOwner, normalizeEmailForServiceOwnerMatch } from "$lib/server/service-admin";
+import { listServiceAdminEmails } from "$lib/server/service-admin-emails";
 
 function getSql() {
   const url = env.DATABASE_URL;
@@ -29,15 +30,22 @@ function effectiveServiceOwner(
   userId: string,
   email: string,
   inDb: boolean,
-  envIds: Set<string>
+  envIds: Set<string>,
+  grantedEmails: Set<string>
 ): { isServiceOwner: boolean; serviceOwnerImmutable: boolean } {
-  const allowEmail = emailImpliesServiceOwner(email);
+  const normalized = normalizeEmailForServiceOwnerMatch(email);
+  const allowEmail = emailImpliesServiceOwner(email) || (normalized != null && grantedEmails.has(normalized));
   const isServiceOwner = inDb || envIds.has(userId) || allowEmail;
-  return { isServiceOwner, serviceOwnerImmutable: allowEmail };
+  return { isServiceOwner, serviceOwnerImmutable: emailImpliesServiceOwner(email) };
 }
 
 export async function listUsersForServiceOwnerAdmin(): Promise<AdminUserListRow[]> {
   const sql = getSql();
+  const grantedEmails = new Set(
+    (await listServiceAdminEmails())
+      .map((row) => normalizeEmailForServiceOwnerMatch(row.email))
+      .filter((e): e is string => e != null)
+  );
   const rows = await sql`
     SELECT u.id AS id, u.email AS email, u.name AS name,
            u."emailVerified" AS "emailVerified",
@@ -57,7 +65,13 @@ export async function listUsersForServiceOwnerAdmin(): Promise<AdminUserListRow[
     const id = String(r.id);
     const email = String(r.email ?? "");
     const dbMember = inDb.has(id);
-    const { isServiceOwner, serviceOwnerImmutable } = effectiveServiceOwner(id, email, dbMember, envIds);
+    const { isServiceOwner, serviceOwnerImmutable } = effectiveServiceOwner(
+      id,
+      email,
+      dbMember,
+      envIds,
+      grantedEmails
+    );
     return {
       id,
       email,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { CONNECT_HUB_HREF } from "$lib/nav-config";
 
   $: path = $page.url.pathname;
 
@@ -20,6 +21,14 @@
     <nav class="admin-nav">
       <a
         class="admin-nav-link"
+        class:admin-nav-link-active={active(ADMIN_BASE + "/founders")}
+        href={ADMIN_BASE + "/founders"}
+        aria-current={active(ADMIN_BASE + "/founders") ? "page" : undefined}
+      >
+        Founders Circle
+      </a>
+      <a
+        class="admin-nav-link"
         class:admin-nav-link-active={active(ADMIN_BASE + "/users")}
         href={ADMIN_BASE + "/users"}
         aria-current={active(ADMIN_BASE + "/users") ? "page" : undefined}
@@ -35,7 +44,7 @@
         Package registry
       </a>
     </nav>
-    <a class="admin-back" href={DASHBOARD_BASE + "/"}>← Keys dashboard</a>
+    <a class="admin-back" href={CONNECT_HUB_HREF}>← Connect hub</a>
   </aside>
   <div class="admin-main">
     <slot />
@@ -45,41 +54,46 @@
 <style>
   .admin-shell {
     display: flex;
-    min-height: calc(100vh - var(--rm-nav-height, 3.5rem));
+    flex: 1;
+    min-height: 0;
+    width: 100%;
     max-width: var(--rm-container-max);
     margin: 0 auto;
-    border-left: 1px solid var(--rm-border);
-    border-right: 1px solid var(--rm-border);
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
   }
   .admin-sidebar {
     width: 13rem;
     flex-shrink: 0;
     padding: var(--space-5) var(--space-4);
-    border-right: 1px solid var(--rm-border);
-    background: var(--rm-surface);
+    border-right: var(--border);
+    background: var(--color-bg-deep);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
   }
   .admin-brand {
     margin: 0;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--rm-text);
-    font-family: var(--rm-font-display);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink);
   }
   .admin-brand-tag {
     display: inline-block;
     margin-left: var(--space-1);
-    padding: 0.1rem 0.35rem;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 0;
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    background: color-mix(in oklab, var(--rm-sage) 18%, var(--rm-surface-raised));
-    border: 1px solid var(--rm-border);
-    color: var(--rm-muted);
+    letter-spacing: 0.06em;
+    background: var(--color-yellow);
+    border: var(--border-thin);
+    color: var(--color-ink);
   }
   .admin-nav {
     display: flex;
@@ -88,40 +102,49 @@
     flex: 1;
   }
   .admin-nav-link {
-    padding: var(--space-2) var(--space-2);
-    border-radius: var(--rm-radius);
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
+    padding: var(--space-2);
+    border-radius: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
     text-decoration: none;
     min-height: 44px;
     display: flex;
     align-items: center;
+    border: var(--border-thin);
+    border-color: transparent;
   }
   .admin-nav-link:hover {
-    background: var(--rm-sage-bg);
-    color: var(--rm-sage);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     text-decoration: none;
   }
   .admin-nav-link-active {
-    color: var(--rm-sage);
-    font-weight: 600;
-    background: color-mix(in oklab, var(--rm-sage) 10%, transparent);
+    color: var(--color-ink);
+    font-weight: 700;
+    background: var(--color-yellow);
+    border-color: var(--color-ink);
   }
   .admin-back {
-    font-size: var(--text-xs);
-    color: var(--rm-dim);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    color: var(--color-ink-faint);
     text-decoration: none;
     margin-top: auto;
     padding-top: var(--space-4);
   }
   .admin-back:hover {
-    color: var(--rm-sage);
-    text-decoration: underline;
+    color: var(--color-ink);
+    background: var(--color-yellow);
+    text-decoration: none;
   }
   .admin-main {
     flex: 1;
     min-width: 0;
     padding: var(--space-6);
-    background: var(--rm-bg);
+    background: var(--color-bg);
   }
 </style>

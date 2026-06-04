@@ -2,48 +2,68 @@
   import "../../../app.css";
   import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { NAV_GROUPS, OVERVIEW_ITEM, topbarTitle } from "$lib/nav-config";
+  import {
+    NAV_GROUPS,
+    isWorkNavActive,
+    navGroupContainsPath,
+    topbarTitle,
+    defaultNavGroupsOpen,
+    hydrateNavGroupsOpen,
+    type NavGroupId,
+    type NavItem,
+    type NavGroup,
+  } from "$lib/nav-config";
+  import { contextualHelpForPath, SUITE_MAP_LINK } from "$lib/dashboard-contextual-help";
   import { onMount } from "svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
   import FeedbackWidget from "$lib/components/FeedbackWidget.svelte";
   import DashboardJourneyBanner from "$lib/components/dashboard/DashboardJourneyBanner.svelte";
+  import ConnectWizardReturnBanner from "$lib/components/connect/pipeline/ConnectWizardReturnBanner.svelte";
+  import MonitorComingSoonNav from "$lib/components/dashboard/MonitorComingSoonNav.svelte";
   import { openFeedbackWidget } from "$lib/stores/feedback-widget";
+  import { trackDashboardFeatureInterest } from "$lib/posthog";
+  import { MONITOR_COMING_SOON_ITEMS, type MonitorInterestItem } from "$lib/dashboard-monitor-interest";
+  import {
+    isPipelineWizardPath,
+    parseWizardStepParam,
+    type PipelineWizardStepId,
+  } from "$lib/connect/pipeline-config";
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
-  $: isTestingHub =
-    currentPath === DASHBOARD_BASE + "/testing" ||
-    currentPath.startsWith(DASHBOARD_BASE + "/testing/");
+  $: contextualHelp = contextualHelpForPath(currentPath);
   $: projectContexts = $page.data.projectContexts ?? [];
-  $: navGroupsForLayout = $page.data.navGroupsForUi ?? NAV_GROUPS;
+  $: workNavForUi = ($page.data.workNavForUi ?? []) as NavItem[];
+  $: moduleFlags = $page.data.moduleFlags ?? null;
+  $: navGroupsForLayout = ($page.data.navGroupsForUi ?? NAV_GROUPS) as NavGroup[];
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
   $: projectsNavHidden = ($page.data.dashboardUiHidden ?? []).includes("projects");
   $: journeySignals = $page.data.journeySignals ?? null;
+  $: monitorInterestFromRedirect = ($page.data.monitorInterestFromRedirect ?? null) as MonitorInterestItem | null;
+  $: monitorComingSoon = moduleFlags ? !moduleFlags.monitor : true;
+  $: wizardReturnStep = parseWizardStepParam($page.url.searchParams.get("wizard_step"));
+  $: showWizardReturn =
+    Boolean(wizardReturnStep) && !isPipelineWizardPath($page.url.pathname);
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
   let collapsed = false;
   let isPhone = false;
-  let navGroupsOpen: Record<string, boolean> = { build: true, monitor: true, developer: false };
+  let navGroupsOpen: Record<NavGroupId, boolean> = defaultNavGroupsOpen();
 
   onMount(() => {
     collapsed = localStorage.getItem(STORAGE_KEY) === "true";
     try {
       const raw = localStorage.getItem(NAV_GROUPS_STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        navGroupsOpen = {
-          build: typeof parsed.build === "boolean" ? parsed.build : true,
-          monitor: typeof parsed.monitor === "boolean" ? parsed.monitor : true,
-          developer: typeof parsed.developer === "boolean" ? parsed.developer : false,
-        };
+        navGroupsOpen = hydrateNavGroupsOpen(JSON.parse(raw) as Record<string, unknown>);
       }
     } catch {
-      navGroupsOpen = { build: true, monitor: true, developer: false };
+      navGroupsOpen = defaultNavGroupsOpen();
     }
 
     const media = window.matchMedia("(max-width: 767px)");
@@ -61,18 +81,75 @@
     localStorage.setItem(STORAGE_KEY, String(collapsed));
   }
 
-  function toggleNavGroup(groupId: "build" | "monitor" | "developer") {
-    navGroupsOpen = { ...navGroupsOpen, [groupId]: !navGroupsOpen[groupId] };
+  let loggedMonitorInterestRedirect: MonitorInterestItem | null = null;
+  let showMonitorInterestBanner = false;
+
+  $: if (monitorInterestFromRedirect) {
+    showMonitorInterestBanner = true;
+  }
+
+  function toggleNavGroup(groupId: NavGroupId) {
+    const willOpen = !navGroupsOpen[groupId];
+    navGroupsOpen = { ...navGroupsOpen, [groupId]: willOpen };
     localStorage.setItem(NAV_GROUPS_STORAGE_KEY, JSON.stringify(navGroupsOpen));
+    if (willOpen && groupId === "observe" && monitorComingSoon) {
+      trackDashboardFeatureInterest({ feature: "monitor", action: "section_expand", item: null });
+    }
+  }
+
+  $: if (
+    monitorInterestFromRedirect &&
+    user &&
+    monitorInterestFromRedirect !== loggedMonitorInterestRedirect
+  ) {
+    loggedMonitorInterestRedirect = monitorInterestFromRedirect;
+    trackDashboardFeatureInterest({
+      feature: "monitor",
+      action: "direct_navigation",
+      item: monitorInterestFromRedirect,
+    });
+  }
+
+  function dismissMonitorInterestBanner() {
+    showMonitorInterestBanner = false;
+    const url = new URL($page.url);
+    url.searchParams.delete("monitor-interest");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+  }
+
+  function onMonitorInterestFeedback() {
+    trackDashboardFeatureInterest({
+      feature: "monitor",
+      action: "notify_feedback",
+      item: monitorInterestFromRedirect,
+    });
+    openFeedbackWidget();
+  }
+
+  function monitorInterestLabel(item: MonitorInterestItem): string {
+    return MONITOR_COMING_SOON_ITEMS.find((e) => e.id === item)?.label ?? item;
   }
 
   function isActivePath(href: string): boolean {
-    return currentPath === href || (href !== DASHBOARD_BASE + "/" && currentPath.startsWith(href + "/"));
+    return currentPath === href || currentPath.startsWith(href + "/");
+  }
+
+  /** Reveal the group that contains the current page without collapsing others. */
+  $: {
+    const next = { ...navGroupsOpen };
+    let changed = false;
+    for (const group of navGroupsForLayout) {
+      if (navGroupContainsPath(group, currentPath) && !next[group.id]) {
+        next[group.id] = true;
+        changed = true;
+      }
+    }
+    if (changed) navGroupsOpen = next;
   }
 </script>
 
 <svelte:head>
-  <title>{title ? `${title} – Restormel Keys` : "Dashboard – Restormel Keys"}</title>
+  <title>{title ? `${title} – Restormel Dashboard` : "Restormel Dashboard"}</title>
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
@@ -88,7 +165,7 @@
         <span class="mobile-gate-sep">·</span>
         <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a>
         <span class="mobile-gate-sep">·</span>
-        <a href="/keys/pricing">Pricing</a>
+        <a href="/founders">Early access</a>
       </p>
     </section>
   </div>
@@ -98,18 +175,28 @@
   <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="hover">
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
-        <a
-          href={OVERVIEW_ITEM.href}
-          class="nav-link nav-link-overview"
-          class:nav-link-active={isActivePath(OVERVIEW_ITEM.href)}
-          aria-current={isActivePath(OVERVIEW_ITEM.href) ? "page" : undefined}
-        >
-          {OVERVIEW_ITEM.label}
-        </a>
-
         {#if !projectsNavHidden}
-          <ProjectContextSwitcher projects={projectContexts} />
+          <div class="nav-section nav-section-scope">
+            <p class="nav-section-label" id="nav-scope-label">Project</p>
+            <ProjectContextSwitcher projects={projectContexts} {moduleFlags} labelledBy="nav-scope-label" />
+          </div>
         {/if}
+
+        <div class="nav-section nav-section-work">
+          <p class="nav-section-label" id="nav-work-label">Work</p>
+          <div class="nav-section-links" role="group" aria-labelledby="nav-work-label">
+            {#each workNavForUi as item}
+              <a
+                href={item.href}
+                class="nav-link nav-link-work"
+                class:nav-link-active={isWorkNavActive(currentPath, item.href)}
+                aria-current={isWorkNavActive(currentPath, item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            {/each}
+          </div>
+        </div>
 
         {#each navGroupsForLayout as group}
           <section class="nav-group" aria-labelledby={`nav-group-label-${group.id}`}>
@@ -122,25 +209,26 @@
               on:click={() => toggleNavGroup(group.id)}
             >
               <span class="nav-group-label">
-                {#if group.id === "developer"}
-                  <span aria-hidden="true">⚙</span>
-                {/if}
                 <span>{group.label}</span>
               </span>
               <span aria-hidden="true">{navGroupsOpen[group.id] ? "▾" : "▸"}</span>
             </button>
             {#if navGroupsOpen[group.id]}
               <div class="nav-group-links" id={`nav-group-links-${group.id}`} role="group" aria-label={group.label}>
-                {#each group.items as item}
-                  <a
-                    href={item.href}
-                    class="nav-link"
-                    class:nav-link-active={isActivePath(item.href)}
-                    aria-current={isActivePath(item.href) ? "page" : undefined}
-                  >
-                    {item.label}
-                  </a>
-                {/each}
+                {#if group.comingSoon}
+                  <MonitorComingSoonNav />
+                {:else}
+                  {#each group.items as item}
+                    <a
+                      href={item.href}
+                      class="nav-link"
+                      class:nav-link-active={isActivePath(item.href)}
+                      aria-current={isActivePath(item.href) ? "page" : undefined}
+                    >
+                      {item.label}
+                    </a>
+                  {/each}
+                {/if}
               </div>
             {/if}
           </section>
@@ -195,16 +283,10 @@
           {/if}
           <span class="topbar-title">{title}</span>
         </div>
-        <nav class="topbar-product-nav" aria-label="Product and related docs">
-          {#if isTestingHub}
-            <span class="topbar-product-pill" title="You are in the Restormel Testing hub">Testing hub</span>
-            <a href="/testing/docs" class="topbar-product-link">Testing docs</a>
-            <a href="/keys" class="topbar-product-link">Keys</a>
-          {:else}
-            <span class="topbar-product-pill" title="Restormel Keys control plane">Keys</span>
-            <a href="/keys/docs" class="topbar-product-link">Keys docs</a>
-            <a href={DASHBOARD_BASE + "/testing"} class="topbar-product-link">Testing hub</a>
-          {/if}
+        <nav class="topbar-help" aria-label="Help">
+          <a href={contextualHelp.href} class="topbar-help-link">{contextualHelp.label}</a>
+          <span class="topbar-help-sep" aria-hidden="true">·</span>
+          <a href={SUITE_MAP_LINK.href} class="topbar-help-link">{SUITE_MAP_LINK.label}</a>
         </nav>
       </header>
       <main class="main" data-sveltekit-preload-data="hover">
@@ -219,26 +301,44 @@
             </div>
           {:else}
             <div class="welcome" role="region" aria-labelledby="welcome-heading">
-              <h1 id="welcome-heading" class="welcome-title">Restormel Keys Dashboard</h1>
-              <p class="welcome-intro">Control your AI access from one place: create a workspace and project, create an API Key to call the API, connect providers, define rules, and track usage.</p>
+              <h1 id="welcome-heading" class="welcome-title">Restormel Dashboard</h1>
+              <p class="welcome-intro">
+                One workspace for routing live traffic, assuring quality in CI, and building knowledge graphs — sign in to see your next step.
+              </p>
               <ol class="welcome-checklist" aria-label="Get started">
-                <li><strong>Sign in</strong> with GitHub (button above).</li>
-                <li><strong>Workspace</strong> — created automatically. Then <strong>create a project</strong> (one per app).</li>
-                <li><strong>Key model:</strong> An <strong>API Key</strong> lets your app call Restormel. A <strong>provider credential</strong> (e.g. OpenAI key) lets Restormel route requests; you can use one or both.</li>
-                <li><strong>Billing</strong> — bring your own keys or Restormel-managed, per route.</li>
-                <li><strong>Create a Gateway key</strong>, <strong>connect a provider</strong> (Connections), then <strong>create a route</strong> (Routes) for live traffic — or use <strong>Restormel Testing</strong> for CI without routes first.</li>
-                <li><strong>First request</strong> (sandbox) → then <strong>Usage & Analytics</strong> and Logs.</li>
+                <li><strong>Sign in</strong> with GitHub.</li>
+                <li><strong>Overview</strong> shows workspace health, setup progress, and your next step.</li>
+                <li><strong>Connect</strong> is where you ingest documents, build a graph, and serve agent context.</li>
+                <li><strong>Configure</strong> in the sidebar wires Connections, routes, and guard rails for every stage.</li>
+                <li><strong>Testing &amp; Graph</strong> open when you need CI assurance or embedded graph UIs.</li>
+                <li><strong>Docs</strong> — <a href="/docs/how-it-fits-together">how the suite fits together</a> when you want the map.</li>
               </ol>
               <p class="welcome-links">
                 <a href="/keys/docs/">Docs</a>
                 <span class="welcome-sep">·</span>
                 <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a>
                 <span class="welcome-sep">·</span>
-                <a href="/keys/pricing">Pricing</a>
+                <a href="/founders">Early access</a>
               </p>
             </div>
           {/if}
         {:else}
+          {#if showMonitorInterestBanner && monitorInterestFromRedirect}
+            <div class="monitor-interest-banner" role="status">
+              <p>
+                <strong>{monitorInterestLabel(monitorInterestFromRedirect)}</strong> in Monitor is not available yet — we are
+                prioritising the roadmap from interest like yours.
+              </p>
+              <p class="monitor-interest-banner-actions">
+                <button type="button" class="monitor-interest-feedback" on:click={onMonitorInterestFeedback}>
+                  Tell us what you need
+                </button>
+                <button type="button" class="monitor-interest-dismiss" on:click={dismissMonitorInterestBanner}>
+                  Dismiss
+                </button>
+              </p>
+            </div>
+          {/if}
           {#if uiHiddenBanner}
             <div class="ui-hidden-banner" role="status">
               <p>
@@ -253,7 +353,10 @@
               </p>
             </div>
           {/if}
-          <DashboardJourneyBanner {currentPath} {user} {journeySignals} />
+          <DashboardJourneyBanner {currentPath} {user} {journeySignals} {moduleFlags} />
+          {#if showWizardReturn && wizardReturnStep}
+            <ConnectWizardReturnBanner step={wizardReturnStep as PipelineWizardStepId} />
+          {/if}
           <slot />
         {/if}
       </main>
@@ -267,17 +370,19 @@
 <style>
   .shell {
     display: flex;
-    min-height: 100vh;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
     max-width: var(--rm-container-max);
     margin: 0 auto;
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
     overflow: hidden;
   }
   .sidebar {
-    width: 12rem;
-    background: var(--rm-surface);
-    border-right: 1px solid var(--rm-border);
+    width: 13rem;
+    background: var(--brut-white);
+    border-right: var(--brut-border-width) solid var(--brut-ink);
     padding: var(--space-4) 0;
     display: flex;
     flex-direction: column;
@@ -285,12 +390,34 @@
   .nav {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: 0;
     flex: 1;
     min-height: 0;
   }
-  .nav-link-overview {
-    margin-bottom: var(--space-1);
+  .nav-section {
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
+    border-bottom: var(--brut-border-micro) solid var(--brut-ink);
+  }
+  .nav-section-work {
+    padding-bottom: var(--space-2);
+  }
+  .nav-section-label {
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-2);
+    font-size: 0.625rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
+  }
+  .nav-section-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .nav-link-work {
+    font-weight: 700;
   }
   .nav-group {
     margin-top: var(--space-1);
@@ -298,15 +425,17 @@
   .nav-group-header {
     width: 100%;
     border: 0;
-    background: transparent;
-    color: var(--rm-dim);
+    border-bottom: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-canvas);
+    color: var(--brut-ink);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) var(--space-4);
     min-height: 44px;
     font-size: var(--text-xs);
-    letter-spacing: 0.04em;
+    font-weight: 900;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
   }
@@ -316,29 +445,32 @@
     gap: var(--space-1);
   }
   .nav-group-header:hover {
-    color: var(--rm-muted);
+    background: var(--brut-neon);
   }
   .nav-group-links {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: 0;
   }
   .nav-link {
     padding: var(--space-2) var(--space-4);
     min-height: 44px;
     display: flex;
     align-items: center;
-    color: var(--rm-muted);
+    color: var(--brut-ink);
     font-size: var(--text-sm);
+    font-weight: 600;
+    border-bottom: var(--brut-border-micro) solid var(--brut-ink);
   }
   .nav-link:hover {
-    color: var(--rm-sage);
-    background: var(--rm-sage-bg);
+    color: var(--brut-ink);
+    background: var(--brut-neon);
     text-decoration: none;
   }
   .nav-link-active {
-    color: var(--rm-sage);
-    font-weight: 500;
+    color: var(--color-ink);
+    background: var(--color-yellow);
+    font-weight: 900;
   }
   .main-wrap {
     flex: 1;
@@ -348,8 +480,8 @@
   }
   .topbar {
     min-height: 3rem;
-    border-bottom: 1px solid var(--rm-border);
-    background: var(--rm-surface-raised);
+    border-bottom: var(--brut-border-width) solid var(--brut-ink);
+    background: var(--brut-white);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -364,54 +496,56 @@
     min-width: 0;
   }
   .topbar-nav-toggle {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
+    border-radius: 0;
+    font-weight: 800;
     padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
     white-space: nowrap;
   }
   .topbar-nav-toggle:hover {
-    background: var(--rm-surface);
-    color: var(--rm-text);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
   }
   .topbar-title {
     font-size: var(--text-base);
-    color: var(--rm-text);
-    font-weight: 600;
+    color: var(--brut-ink);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .topbar-product-nav {
+  .topbar-help {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2) var(--space-3);
     font-size: var(--text-xs);
   }
-  .topbar-product-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--rm-radius);
-    background: color-mix(in oklab, var(--rm-sage) 14%, transparent);
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
-    border: 1px solid var(--rm-border);
-  }
-  .topbar-product-link {
-    color: var(--rm-muted);
+  .topbar-help-link {
+    color: var(--brut-ink);
+    font-weight: 700;
     text-decoration: none;
-    padding: var(--space-1) 0;
+    padding: var(--space-1) var(--space-2);
     min-height: 44px;
     display: inline-flex;
     align-items: center;
+    border: var(--brut-border-micro) solid transparent;
   }
-  .topbar-product-link:hover {
-    color: var(--rm-sage);
+  .topbar-help-link:hover {
+    color: var(--brut-ink);
+    background: var(--brut-neon);
+    border-color: var(--brut-ink);
     text-decoration: none;
+  }
+  .topbar-help-sep {
+    color: var(--rm-muted);
+    user-select: none;
   }
   .sidebar-footer {
     margin-top: var(--space-2);
@@ -423,10 +557,11 @@
   }
   .feedback-nav-btn {
     width: 100%;
-    border: 1px dashed var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: transparent;
-    color: var(--rm-muted);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    border-radius: 0;
+    background: var(--brut-white);
+    color: var(--brut-ink);
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -436,9 +571,8 @@
     text-align: left;
   }
   .feedback-nav-btn:hover {
-    color: var(--rm-text);
-    border-color: var(--rm-muted);
-    background: var(--rm-surface);
+    color: var(--brut-ink);
+    background: var(--brut-neon);
   }
   .feedback-icon {
     width: 0.9rem;
@@ -448,18 +582,20 @@
   }
   .sidebar-nav-toggle {
     width: 100%;
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-muted);
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    color: var(--brut-ink);
+    font-weight: 800;
+    border-radius: 0;
     padding: var(--space-2) var(--space-2);
     font-size: var(--text-xs);
+    text-transform: uppercase;
     text-align: left;
     white-space: nowrap;
   }
   .sidebar-nav-toggle:hover {
-    background: var(--rm-surface);
-    color: var(--rm-text);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
   }
   .main {
     flex: 1;
@@ -475,10 +611,13 @@
   .auth-error {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);
-    background: var(--rm-error-bg, rgba(201, 92, 92, 0.12));
-    color: var(--rm-error, #c95c5c);
+    background: var(--brut-coral);
+    color: var(--brut-ink);
+    font-weight: 600;
     font-size: 0.875rem;
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
   }
   .auth-error p {
     margin: 0 0 var(--space-2);
@@ -501,10 +640,12 @@
     max-width: var(--rm-container-narrow);
   }
   .welcome-title {
-    font-family: var(--rm-font-display);
-    font-size: var(--text-2xl);
-    font-weight: 600;
-    color: var(--rm-text);
+    font-family: var(--brut-font);
+    font-size: var(--text-3xl);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    color: var(--brut-ink);
     margin: 0 0 var(--space-3);
   }
   .welcome-intro {
@@ -543,17 +684,19 @@
     padding: var(--space-6) var(--space-4);
   }
   .mobile-gate {
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
+    background: var(--brut-white);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
     padding: var(--space-5);
   }
   .mobile-gate-title {
     margin: 0 0 var(--space-2);
-    font-family: var(--rm-font-display);
+    font-family: var(--brut-font);
     font-size: var(--text-2xl);
-    font-weight: 600;
-    color: var(--rm-text);
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--brut-ink);
   }
   .mobile-gate-desc {
     margin: 0 0 var(--space-4);
@@ -575,11 +718,12 @@
   .ui-hidden-banner {
     margin: 0 0 var(--space-5);
     padding: var(--space-4);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: var(--rm-surface-raised);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
+    background: var(--brut-neon);
     font-size: var(--text-sm);
-    color: var(--rm-text);
+    color: var(--brut-ink);
   }
   .ui-hidden-banner p {
     margin: 0 0 var(--space-2);
@@ -604,5 +748,41 @@
   }
   .ui-hidden-dismiss:hover {
     text-decoration: underline;
+  }
+  .monitor-interest-banner {
+    margin: 0 0 var(--space-5);
+    padding: var(--space-4);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
+    background: var(--brut-canvas);
+    font-size: var(--text-sm);
+    color: var(--brut-ink);
+  }
+  .monitor-interest-banner p {
+    margin: 0 0 var(--space-2);
+  }
+  .monitor-interest-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .monitor-interest-feedback,
+  .monitor-interest-dismiss {
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    color: var(--brut-ink);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .monitor-interest-feedback:hover {
+    background: var(--brut-neon);
+  }
+  .monitor-interest-dismiss:hover {
+    background: var(--color-bg-deep);
   }
 </style>

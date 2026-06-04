@@ -1,7 +1,7 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { NAV_GROUPS } from "$lib/nav-config";
+import { NAV_GROUPS, filterNavGroupsForModuleFlags, filterWorkNavForModuleFlags } from "$lib/nav-config";
 import {
   dashboardUiSectionLabel,
   filterNavGroupsForDashboardUi,
@@ -9,6 +9,10 @@ import {
   parseUiSectionHiddenParam,
   pathnameToHiddenDashboardSection,
 } from "$lib/server/dashboard-ui-flags";
+import { moduleFlagsToDashboardUiHidden } from "$lib/server/module-flags";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+import { dashboardSectionToMonitorInterest, parseMonitorInterestParam } from "$lib/dashboard-monitor-interest";
+import type { DashboardUiSection } from "$lib/dashboard-ui-sections";
 import {
   countApiKeysByWorkspace,
   getOrCreateDefaultWorkspace,
@@ -18,10 +22,16 @@ import {
 } from "$lib/server/db";
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
+  const moduleFlags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
   const baseWithSlash = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE : DASHBOARD_BASE + "/";
   const dashboardUiHiddenSet = parseDashboardUiHidden();
+  for (const token of moduleFlagsToDashboardUiHidden(moduleFlags)) {
+    dashboardUiHiddenSet.add(token as DashboardUiSection);
+  }
   const dashboardUiHidden = [...dashboardUiHiddenSet];
-  const navGroupsForUi = filterNavGroupsForDashboardUi(NAV_GROUPS, dashboardUiHiddenSet);
+  let navGroupsForUi = filterNavGroupsForModuleFlags(NAV_GROUPS, moduleFlags);
+  navGroupsForUi = filterNavGroupsForDashboardUi(navGroupsForUi, dashboardUiHiddenSet);
+  const workNavForUi = filterWorkNavForModuleFlags(moduleFlags);
 
   // Fix malformed redirect from Neon Auth: params appended as path (e.g. /keys/dashboard/state=...&error=...)
   const pathname = url.pathname;
@@ -62,10 +72,19 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   // Hide advanced dashboard sections from UI (nav + direct navigation). APIs stay available.
   const gatedSection = pathnameToHiddenDashboardSection(pathname, dashboardUiHiddenSet);
   if (locals.user && gatedSection) {
+    const monitorItem =
+      !moduleFlags.monitor ? dashboardSectionToMonitorInterest(gatedSection) : null;
+    if (monitorItem) {
+      const target = new URL(`${baseNorm}/activity`, url.origin);
+      target.searchParams.set("monitor-interest", monitorItem);
+      throw redirect(302, target.toString());
+    }
     const target = new URL(`${baseNorm}/`, url.origin);
     target.searchParams.set("ui-section-hidden", gatedSection);
     throw redirect(302, target.toString());
   }
+
+  const monitorInterestFromRedirect = parseMonitorInterestParam(url.searchParams.get("monitor-interest"));
 
   const bannerSection = parseUiSectionHiddenParam(url.searchParams.get("ui-section-hidden"));
   const dashboardUiHiddenBanner = bannerSection
@@ -118,6 +137,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     journeySignals,
     dashboardUiHidden,
     navGroupsForUi,
+    workNavForUi,
+    moduleFlags,
     dashboardUiHiddenBanner,
+    monitorInterestFromRedirect,
   };
 };

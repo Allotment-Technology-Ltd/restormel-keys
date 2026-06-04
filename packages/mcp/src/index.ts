@@ -1,7 +1,7 @@
 export type { McpToolSchema } from "./tools.js";
 
-export type { RestormelSuiteToolName } from "./suite-tool-names.js";
-export { RESTORMEL_SUITE_TOOL_NAMES } from "./suite-tool-names.js";
+export type { RestormelSuiteToolName, SuiteToolModuleFlags } from "./suite-tool-names.js";
+export { RESTORMEL_SUITE_TOOL_NAMES, getEnabledSuiteToolNames } from "./suite-tool-names.js";
 export { CANONICAL_DOC_TOPICS } from "./canonical-docs.js";
 
 export {

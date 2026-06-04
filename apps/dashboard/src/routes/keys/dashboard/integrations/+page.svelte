@@ -1,19 +1,28 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { invalidateAll } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import { DIRECT_PROVIDER_CONNECT_CARDS } from "$lib/route-step-providers";
   import type { IntegrationSummary } from "./+page.server";
 
   export let data: { integrations: IntegrationSummary[]; error: string | null };
 
-  const PROVIDER_CARDS = [
-    { value: "openai", label: "OpenAI" },
-    { value: "anthropic", label: "Anthropic" },
-    { value: "aizolo", label: "AiZolo" },
+  const GATEWAY_PROVIDER_VALUES = new Set(["openrouter", "portkey", "vercel_ai_gateway"]);
+
+  const ALL_PROVIDER_CARDS = [
+    ...DIRECT_PROVIDER_CONNECT_CARDS,
     { value: "openrouter", label: "OpenRouter" },
     { value: "portkey", label: "Portkey" },
     { value: "vercel_ai_gateway", label: "Vercel AI" },
     { value: "other", label: "Other" },
   ];
+
+  $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
+  $: PROVIDER_CARDS = ALL_PROVIDER_CARDS.filter(
+    (card) => gatewayProvidersOn || !GATEWAY_PROVIDER_VALUES.has(card.value)
+  );
+  $: showGatewayJourneys = gatewayProvidersOn;
 
   let connecting = false;
   let connectError = "";
@@ -128,6 +137,7 @@
     <details class="section journey-details">
       <summary>How does this work? →</summary>
       <div class="journeys-grid">
+        {#if showGatewayJourneys}
         <div class="journey-card">
           <h3 class="journey-title">OpenRouter</h3>
           <p class="journey-desc">Keep OpenRouter as execution. Use Restormel for rules, guard rails, and fallbacks.</p>
@@ -152,6 +162,7 @@
             <a class="btn-link" href="/keys/docs/guides/portkey" target="_blank" rel="noopener noreferrer">Guide →</a>
           </div>
         </div>
+        {/if}
         <div class="journey-card">
           <h3 class="journey-title">Direct providers</h3>
           <p class="journey-desc">Keep provider keys in your own secret manager. Restormel applies routing decisions.</p>
@@ -167,6 +178,7 @@
       <h2 id="journeys-heading" class="section-title">How do you connect?</h2>
       <p class="section-desc">Pick the journey that matches your stack. This is the first step when no connections exist.</p>
       <div class="journeys-grid">
+        {#if showGatewayJourneys}
         <div class="journey-card">
           <h3 class="journey-title">OpenRouter</h3>
           <p class="journey-desc">Keep OpenRouter as execution. Use Restormel for rules, guard rails, and fallbacks.</p>
@@ -191,6 +203,7 @@
             <a class="btn-link" href="/keys/docs/guides/portkey" target="_blank" rel="noopener noreferrer">Guide →</a>
           </div>
         </div>
+        {/if}
         <div class="journey-card">
           <h3 class="journey-title">Direct providers</h3>
           <p class="journey-desc">Keep provider keys in your own secret manager. Restormel applies routing decisions.</p>

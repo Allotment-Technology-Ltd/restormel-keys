@@ -69,9 +69,10 @@
 
 <style>
   .live-pulse {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-surface-raised);
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    background: var(--color-yellow);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
     padding: var(--space-4);
     display: grid;
     gap: var(--space-3);
@@ -79,12 +80,16 @@
   .pulse-header h2 {
     margin: 0;
     font-size: var(--text-base);
-    color: var(--rm-text);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--brut-ink);
   }
   .pro-nudge {
     margin: var(--space-1) 0 0;
     font-size: var(--text-xs);
-    color: var(--rm-muted);
+    font-weight: 700;
+    color: var(--brut-ink);
   }
   .pulse-grid {
     display: grid;
@@ -92,29 +97,33 @@
     gap: var(--space-3);
   }
   .pulse-grid article {
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: var(--rm-surface);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    border-radius: 0;
+    background: var(--brut-white);
     padding: var(--space-3);
     display: grid;
     gap: 0.25rem;
   }
   .metric {
     font-size: var(--text-xl);
-    color: var(--rm-text);
-    font-weight: 600;
+    color: var(--brut-ink);
+    font-weight: 900;
   }
   .label {
     font-size: var(--text-xs);
-    color: var(--rm-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--brut-ink);
   }
   .top-route {
     margin: 0;
     font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-weight: 600;
+    color: var(--brut-ink);
   }
   .top-route strong {
-    color: var(--rm-text);
+    color: var(--brut-ink);
   }
   .top-route span {
     margin-left: var(--space-1);
@@ -122,11 +131,13 @@
   .limited-note {
     margin: 0;
     font-size: var(--text-xs);
-    color: var(--rm-dim);
+    font-weight: 600;
+    color: var(--brut-ink);
   }
   .empty {
     margin: 0;
-    color: var(--rm-muted);
+    color: var(--brut-ink);
+    font-weight: 600;
     font-size: var(--text-sm);
   }
 </style>

@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { activeProject, syncActiveProjectFromSession } from "$lib/stores/active-project";
+  import { activeProject, syncActiveProjectFromSession, type ActiveProjectSelection } from "$lib/stores/active-project";
   import KeyManager from "@restormel/keys-svelte";
   import { ModelSelector, CostEstimator } from "@restormel/keys-svelte";
   import { createKeys, openaiProvider, anthropicProvider } from "@restormel/keys";
@@ -131,7 +131,7 @@
   let frameworkTab: "react" | "sveltekit" | "web-components" = "sveltekit";
 
   // ---- Active project context + preview data
-  let activeSelection: { projectId: string; environmentId: string } | null = null;
+  let activeSelection: ActiveProjectSelection | null = null;
   const unsubscribeActiveProject = activeProject.subscribe((value) => {
     activeSelection = value;
   });
@@ -214,7 +214,7 @@
     "web-components": "pnpm add @restormel/keys @restormel/keys-elements",
   } as const;
 
-  $: hasProjectContext = Boolean(activeSelection?.projectId && activeSelection?.environmentId);
+  $: hasProjectContext = Boolean(activeSelection?.projectId);
   $: hasProjectConfig = hasProjectContext && previewRouteCount > 0 && previewPolicyCount > 0;
   $: frameworkRuntimeReady =
     frameworkTab === "sveltekit"
@@ -521,7 +521,7 @@
           <pre class="preview-code"><code>{codeSnippets[frameworkTab]}</code></pre>
           {#if hasPreviewInteraction}
             <div class="wizard-actions">
-              <a class="wizard-link" href="/keys/dashboard/ci-cd">Open CI / CD</a>
+              <a class="wizard-link" href="/keys/dashboard/copy-for-ci">Open GitHub Setup</a>
               <a class="wizard-link" href="/keys/dashboard/dev-tools">Open Dev Tools</a>
             </div>
           {/if}

@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
+    credentials: "include",
   });
   throw redirect(302, `${url.origin}${DASHBOARD_BASE}/`);
 };

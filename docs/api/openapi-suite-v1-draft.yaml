@@ -1,0 +1,289 @@
+# Restormel Suite — versioned public API draft
+# Keys v1 (Phase 1), Graph v1 (Phase 2), Connect v1 (Phase 6): IMPLEMENTED on restormel.dev.
+# Canonical contracts: @restormel/contracts/connect, docs/api/openapi.yaml (Keys legacy /api)
+# Programme: docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md
+# Integrator guide: docs/guides/npm-to-rest-keys.md
+
+openapi: 3.0.3
+info:
+  title: Restormel Suite API (draft)
+  version: 0.2.0-draft
+  description: |
+    **Suite namespace map** for architecture migration.
+
+    | Namespace | Phase | Auth | Status |
+    | --- | --- | --- | --- |
+    | `/keys/v1/*` | Phase 1 | Gateway key (`rk_…`) via Zuplo or dashboard | **Implemented** |
+    | `/graph/v1/*` | Phase 2 | Gateway key (layout public on origin; Zuplo may require consumer key) | **Implemented** |
+    | `/connect/v1/*` | Phase 6 | Gateway key; workspace-scoped | **Implemented** |
+
+    **Operator UI:** Restormel Dashboard (`/keys/dashboard`) — Connect hub `/keys/dashboard/connect`, Graph hub `/keys/dashboard/graph`.
+
+servers:
+  - url: https://restormel.dev
+    description: Site origin — Keys v1 paths `/keys/v1/*`
+  - url: https://restormel.dev/keys/dashboard
+    description: Dashboard origin — legacy `/api/*` (still supported)
+  - url: https://restormel-keys-gateway-main-bc13eba.zuplo.app
+    description: Zuplo edge — `/keys/v1/*` via KEYS_SITE_ORIGIN; `/api/*` via KEYS_BACKEND_URL
+
+tags:
+  - name: KeysV1
+    description: Keys REST (Phase 1 GA) — primary integrator path
+  - name: GraphV1
+    description: Graph layout REST (Phase 2)
+  - name: ConnectV1
+    description: Connect Ingest · Retrieve · Verify (Phase 6)
+
+paths:
+  /keys/v1/projects/{projectId}/resolve:
+    post:
+      summary: Resolve provider/model for a project
+      operationId: keysV1Resolve
+      tags: [KeysV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 1
+      x-restormel-legacy-path: /keys/dashboard/api/projects/{id}/resolve
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environmentId]
+              properties:
+                environmentId: { type: string, format: uuid }
+                routeId: { type: string }
+                stage: { type: string }
+                workload: { type: string }
+      responses:
+        '200':
+          description: Resolved route payload (`data` object)
+        '401':
+          description: Unauthorized or project not in scope
+
+  /keys/v1/catalog:
+    get:
+      summary: Global model catalog
+      operationId: keysV1Catalog
+      tags: [KeysV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 1
+      x-restormel-legacy-path: /keys/dashboard/api/catalog
+      responses:
+        '200':
+          description: Catalog with contractVersion, providers, data
+
+  /keys/v1/models:
+    get:
+      summary: List catalog models (paged)
+      operationId: keysV1Models
+      tags: [KeysV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 1
+      x-restormel-legacy-path: /keys/dashboard/api/models
+      responses:
+        '200':
+          description: `{ data: Model[] }`
+
+  /keys/v1/policies/evaluate:
+    post:
+      summary: Evaluate guard rails / policies
+      operationId: keysV1PoliciesEvaluate
+      tags: [KeysV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 1
+      x-restormel-legacy-path: /keys/dashboard/api/policies/evaluate
+      responses:
+        '200':
+          description: Policy evaluation result
+        '401':
+          description: Unauthorized
+
+  /graph/v1/layout:
+    post:
+      summary: Compute Contract v0 orbital layout
+      operationId: graphV1Layout
+      tags: [GraphV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GraphLayoutRequest'
+      responses:
+        '200':
+          description: Layout positions keyed by node id
+        '400':
+          description: Invalid snapshot
+
+  /graph/v1/snapshots/{snapshotId}:
+    get:
+      summary: Read hosted graph snapshot metadata
+      operationId: graphV1GetSnapshot
+      tags: [GraphV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 2
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '404':
+          description: Snapshot not found until Phase 6 persistence
+
+  /connect/v1/verify:
+    post:
+      summary: Connect Verify — claim extraction, reasoning eval, constitution (planned)
+      operationId: knowledgeV1Verify
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectVerifyRequest'
+      responses:
+        '501':
+          description: Not implemented until Phase 6 — SOPHIA reference POST /api/v1/verify today
+
+  /connect/v1/retrieve:
+    post:
+      summary: Connect Retrieve — graph-aware context assembly (planned)
+      operationId: knowledgeV1Retrieve
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectRetrieveRequest'
+      responses:
+        '501':
+          description: Not implemented until Phase 6
+
+  /connect/v1/ingest/jobs:
+    post:
+      summary: Create Connect Ingest job
+      operationId: knowledgeV1IngestCreateJob
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectIngestJobCreateRequest'
+      responses:
+        '201':
+          description: Job created (workspace-scoped persistence)
+    get:
+      summary: List Connect Ingest jobs for workspace
+      operationId: knowledgeV1IngestListJobs
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      responses:
+        '200':
+          description: Jobs for the authenticated workspace
+
+  /connect/v1/ingest/jobs/{jobId}:
+    get:
+      summary: Connect Ingest job status
+      operationId: knowledgeV1IngestJobStatus
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Job status and stage progress
+
+components:
+  securitySchemes:
+    gatewayKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Gateway key `rk_…` (Bearer or raw)
+
+  schemas:
+    ConnectWorkspaceContext:
+      type: object
+      required: [workspace_id]
+      properties:
+        workspace_id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        environment_id: { type: string, format: uuid }
+
+    ConnectVerifyRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConnectWorkspaceContext'
+        - type: object
+          required: [verify]
+          properties:
+            contract_version: { type: string, example: '2026-06-01' }
+            verify:
+              type: object
+              description: See @restormel/contracts/verification VerificationRequest
+
+    ConnectRetrieveRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConnectWorkspaceContext'
+        - type: object
+          required: [query]
+          properties:
+            contract_version: { type: string, example: '2026-06-01' }
+            query: { type: string }
+            depth: { type: string, enum: [quick, standard, deep] }
+            domain_hint: { type: string }
+            max_claims: { type: integer }
+            require_verified: { type: boolean }
+
+    ConnectIngestJobCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConnectWorkspaceContext'
+        - type: object
+          required: [sources]
+          properties:
+            contract_version: { type: string, example: '2026-06-01' }
+            label: { type: string }
+            stop_after_stage:
+              type: string
+              enum: [extracting, relating, grouping, embedding, validating, remediating, storing]
+            sources:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+                  text: { type: string }
+                  title: { type: string }
+
+    GraphLayoutRequest:
+      type: object
+      description: Contract v0 graph snapshot input for computeLayout (Phase 2)
+      properties:
+        contract_version: { type: string, example: '2026-06-01' }
+        snapshot: { type: object, additionalProperties: true }
+
+security:
+  - gatewayKey: []

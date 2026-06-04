@@ -1,0 +1,24 @@
+/**
+ * Neo-Brutalist scoped root (prototype). Delegates to canonical package tokens.
+ */
+@import "@restormel/keys-tokens/brutalist-rm.css";
+@import "./brutalist-utilities.css";
+
+.brutalist-root {
+  --brut-sidebar-width: 13rem;
+  --brut-sidebar-collapsed: 3.25rem;
+  --brut-topbar-height: 3.25rem;
+
+  color-scheme: light;
+  font-family: var(--font-body);
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+.brutalist-root *,
+.brutalist-root *::before,
+.brutalist-root *::after {
+  box-sizing: border-box;
+}

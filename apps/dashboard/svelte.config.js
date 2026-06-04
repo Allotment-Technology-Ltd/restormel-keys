@@ -15,7 +15,8 @@ const config = {
     // The OIDC token endpoint (/keys/auth/token) receives exactly these from the portal.
     // Disabling is safe: all sensitive endpoints enforce security via JWT signature
     // or session validation — not relying on SvelteKit's CSRF tokens.
-    csrf: { checkOrigin: false },
+    // OIDC token endpoint accepts cross-origin form POSTs from the portal (see comment above).
+    csrf: { trustedOrigins: ["*"] },
   },
 };
 

@@ -18,17 +18,16 @@ One login, one cookie, same links everywhere. Sign-in uses a single entry point 
 
 Logo and lockup are **core layout primitives**, not decoration. Use them consistently so brand is embedded in structure.
 
-**One lockup in nav contexts:** The same asset (**restormel-lockup-nav.svg**) is used for nav/header/sidebar across site, docs, and dashboard. No alternate lockup in these contexts so the product reads as one brand. Marketing layout and docs layout use it in [keys/+layout.svelte](../apps/dashboard/src/routes/keys/+layout.svelte) and [keys/docs/+layout.svelte](../apps/dashboard/src/routes/keys/docs/+layout.svelte); dashboard uses it in [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte). Hero and marketing full-width contexts may use the larger lockup variants (dark/light); nav, header, and sidebar must use the nav lockup only.
+**One lockup in nav contexts:** The same **`RestormelLogo`** component (`variant="lockup"`) and matching static asset (**restormel-lockup-nav.svg** for OG/schema) are used for nav/header/sidebar across site, docs, and dashboard. Implementation: [RestormelLogo.svelte](../apps/dashboard/src/lib/components/RestormelLogo.svelte), [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte), [SiteHeader.svelte](../apps/dashboard/src/lib/components/site/SiteHeader.svelte).
 
 | Context | Asset | Size / rule | Where |
 |--------|--------|-------------|--------|
-| Marketing nav (header) | restormel-lockup-nav.svg | Height 28px; min-height container `--rm-nav-height` (3.5rem) | [keys/+layout.svelte](../apps/dashboard/src/routes/keys/+layout.svelte) `.marketing-nav-inner` / `.logo`. |
-| Marketing footer | restormel-lockup-nav.svg | Height 24px | Same layout, `.marketing-footer-logo`. |
-| Dashboard sidebar | restormel-lockup-nav.svg | Height 28px; padding `var(--space-4)` to match nav links | [AppLogo.svelte](../apps/dashboard/src/lib/components/AppLogo.svelte) `height="28"`; layout `.logo` padding. |
-| Docs layout | restormel-lockup-nav.svg | Same as marketing nav | [keys/docs/+layout.svelte](../apps/dashboard/src/routes/keys/docs/+layout.svelte) `.docs-nav`. |
-| Icon-only (favicon, tight spaces) | Mark | 24–32px | Favicon, OG, or icon-only UI (dashboard static or equivalent). |
+| Marketing nav (header) | `RestormelLogo` lockup | Height 32px; min-height container `--rm-nav-height` (3.5rem) | [SiteHeader.svelte](../apps/dashboard/src/lib/components/site/SiteHeader.svelte) |
+| Dashboard sidebar | No logo — nav starts with Overview | — | [keys/dashboard/+layout.svelte](../apps/dashboard/src/routes/keys/dashboard/+layout.svelte) |
+| Docs layout | Same as marketing nav | SiteHeader + DocsShell | [docs/+layout.svelte](../apps/dashboard/src/routes/docs/+layout.svelte) |
+| Icon-only (favicon, tight spaces) | restormel-mark-brutalist.svg / `RestormelLogo variant="mark"` | 24–32px | Favicon, collapsed sidebar, icon-only UI. |
 
-**Rules:** (1) **One lockup in nav/header/sidebar:** restormel-lockup-nav.svg everywhere; no exceptions. (2) Lockup = mark + wordmark; use in nav, header, footer. (3) Mark only = concentric symbol; use when space is tight or icon-only is required. (4) **Sizing mandatory:** nav/header = 28px height; footer = 24px; dashboard sidebar = 28px. (5) **Clear-space:** same vertical/horizontal rhythm as surrounding nav (`--space-4` / `--space-6`); header/sidebar use `--rm-nav-height` or equivalent so the logo sits in the layout grid. (6) Focus and contrast: use `--focus-ring-*`; sufficient contrast on `--rm-surface` / `--rm-bg`. (7) All shell headers/sidebars use the same tokenized spacing so the logo is part of the layout system, not a tag-on.
+**Rules:** (1) **Marketing/docs nav:** `RestormelLogo variant="lockup"`; static `restormel-lockup-nav.svg` for OG/schema only. (2) **Dashboard sidebar:** no logo — navigation is task-focused. (3) **Login:** `AppLogo` at 36px on the sign-in panel only. (4) Mark-only for favicon and collapsed prototype chrome. (5) **Sizing:** site header 32px; login 36px. (6) Logo links use 1px mechanical press on hover where present.
 
 ### Third-party (vendor) marks
 
@@ -63,11 +62,15 @@ Vendor logos are **optional credibility signals**, not decoration. **Canonical r
 
 ## Principles (from DESIGN-SPECIFICATION.md)
 
-1. **Dark-mode first** — All colors optimized for dark backgrounds.
-2. **Technical credibility over ornament** — Restraint, no decorative flourish.
-3. **Calm, analytical interface** — Subtle motion, muted palette, generous space.
-4. **Graph-inspired visual language** — Nodes, edges, hierarchies; color has semantic meaning.
-5. **Semantic color meaning** — Blue = primary/selection, Teal = verified/success, Amber = warning, Coral = error, Violet = inference/reasoning.
+> **v3 — Neo-Brutalist (committed):** Warm cream canvas (`#F3EAD0`), ink structure (`#0C0C0C`), **yellow-only primary fills** (`#FFD600`), blueprint blue for text/tags only (`#1A3F8A`), tri-font stack (Barlow Condensed / DM Sans / Space Mono), 2px borders, 3/5/7px offset shadows with lift-on-hover. Canonical CSS:
+> [`@restormel/keys-tokens/brutalist-rm.css`](../packages/keys-tokens/src/brutalist-rm.css); utilities:
+> [`apps/dashboard/src/lib/styles/brutalist-utilities.css`](../apps/dashboard/src/lib/styles/brutalist-utilities.css). Reference mock: [`docs/reference/restormel_redesign.html`](./reference/restormel_redesign.html) when present.
+
+1. **Light cream canvas** — High-contrast ink-on-paper across product surfaces.
+2. **Technical credibility over ornament** — 2px borders and hard offset shadows; zero radius on buttons, tags, cards.
+3. **Lift on hover** — Interactive cards/buttons translate `(-2px,-2px)` and grow shadow; active state presses in.
+4. **Yellow-only primary fills** — CTAs, active nav, highlighted badges; secondary surfaces use `--color-surface` + ink border.
+5. **Tri-font roles** — Display headings (Barlow Condensed), body (DM Sans), labels/buttons/code (Space Mono).
 
 When adding or changing UI, prefer tokens and components from this system; avoid one-off colors or typography.
 

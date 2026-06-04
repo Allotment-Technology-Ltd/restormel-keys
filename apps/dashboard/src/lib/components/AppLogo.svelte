@@ -1,24 +1,18 @@
 <script lang="ts">
   /**
-   * Restormel lockup for dashboard sidebar. Same asset as site nav (restormel-lockup-nav.svg)
-   * for one brand across site, docs, and dashboard. Height 28px matches marketing nav.
+   * Restormel lockup for dashboard sidebar. Uses RestormelLogo — same mark everywhere.
    */
   import { DASHBOARD_BASE } from '$lib/dashboard-base';
+  import RestormelLogo from '$lib/components/RestormelLogo.svelte';
 
   export let href: string = DASHBOARD_BASE + '/';
-  export let height: string = '28px';
-  export let compact: boolean = false;
+  /** CSS height, e.g. 28px nav / 36px login */
+  export let height = 28;
   export let className: string = '';
 </script>
 
 <a {href} class="app-logo {className}" aria-label="Restormel dashboard home">
-  <img
-    src="/restormel-lockup-nav.svg"
-    alt="Restormel"
-    width={compact ? 120 : 160}
-    height={compact ? 18 : 24}
-    style="height: {height}; width: auto;"
-  />
+  <RestormelLogo variant="lockup" {height} decorative />
 </a>
 
 <style>
@@ -27,18 +21,15 @@
     align-items: center;
     text-decoration: none;
     padding: 0 var(--space-1);
-    transition: opacity var(--duration-fast, 0.15s) var(--ease, ease);
+    transform: translate(0, 0);
+    transition: transform 100ms ease-in-out;
   }
   .app-logo:hover {
-    opacity: 0.9;
+    transform: translate(1px, 1px);
   }
   .app-logo:focus-visible {
     outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color);
     outline-offset: var(--focus-ring-offset, 2px);
-    border-radius: var(--rm-radius, var(--radius-base));
-  }
-  img {
-    display: block;
-    object-fit: contain;
+    border-radius: 0;
   }
 </style>

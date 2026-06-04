@@ -21,7 +21,7 @@
 | ----- | ---------------- | --------------------------------------------------------------------- |
 | 1     | **L + MCP/AAIF** | Repeatable IA, multi-product dashboard, tool/doc parity               |
 | 2     | **A + C**        | Eval/rubric contracts + usage/telemetry ledger (UI + CI + agents)     |
-| 3     | **I or J**       | Memory/RAG lane *or* AI gateway++ (pick one anchor big bet per cycle) |
+| 3     | **Knowledge (Theme I)** | **Active programme:** [SUITE-ARCHITECTURE-MIGRATION.md](./SUITE-ARCHITECTURE-MIGRATION.md) — fourth product (Ingest · Retrieve · Verify); Theme I formalized as **Restormel Connect** |
 | 4     | **B + E**        | Policy/constitution packs + provenance/audit bundles                  |
 | 5     | **D + F + G**    | HITL envelopes, durable execution, production AI probes               |
 
@@ -36,7 +36,7 @@
 - **F** — Durable agent execution (checkpoints, resume) as product or spec-first implementation.
 - **G** — Production synthetics reusing Testing goal/AC semantics.
 - **H** — MCP capability manifests and registry for tools.
-- **I** — Retrieval/memory/RAG product lane with Restormel correlation and debugger narrative.
+- **I** — **Restormel Connect** (Ingest · Retrieve · Verify): retrieval/memory/RAG product lane with Restormel correlation, workspace-scoped graph tenancy, and Restormel Dashboard operator hubs. **Canonical programme:** [SUITE-ARCHITECTURE-MIGRATION.md](./SUITE-ARCHITECTURE-MIGRATION.md), product brief [CONNECT-PRODUCT.md](./CONNECT-PRODUCT.md). *Theme J (AI gateway++) remains a separate bet.*
 - **J** — Keys + policy + metering + MCP as enterprise AI front door.
 
 **Out of scope for this programme:** Blockchain/DLT spikes (no Theme K workstream).
@@ -51,6 +51,7 @@
 | Restormel State (library non-goals, correlation) | [RESTORMEL-STATE.md](./RESTORMEL-STATE.md)                                                                                   | Links only                    |
 | Phase 1 platform extraction objectives           | [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md)                                               | Links only                    |
 | Package map, publish trains                      | [docs/restormel-monorepo-packages.md](../restormel-monorepo-packages.md)                                                     | Links only                    |
+| **Suite architecture migration (Keys/Graph/Knowledge)** | [SUITE-ARCHITECTURE-MIGRATION.md](./SUITE-ARCHITECTURE-MIGRATION.md), [PHASE0-SUITE-MIGRATION-STATUS.md](./PHASE0-SUITE-MIGRATION-STATUS.md) | Links only; Testing npm migration **out of scope** |
 | npm install truth                                | [docs/reference/npm-packages.md](../reference/npm-packages.md)                                                               | Links only                    |
 | Doc IA, same-links, agent-readability            | [docs/documentation-strategy.md](../documentation-strategy.md)                                                               | Extends with Theme L patterns |
 | Security, secrets, UX safety                     | [docs/security-baseline.md](../security-baseline.md), [.cursor/rules/04-ux-safety.mdc](../../.cursor/rules/04-ux-safety.mdc) | Mandatory for dashboard + MCP |

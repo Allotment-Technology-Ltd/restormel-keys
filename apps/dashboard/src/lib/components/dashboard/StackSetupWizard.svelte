@@ -1,18 +1,25 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { AAIFIntegrationStack } from "@restormel/aaif";
   import {
     INTEGRATION_STACK_SCHEMA_VERSION,
-    INTEGRATION_STACK_TEMPLATES,
     isAAIFRequest,
   } from "@restormel/aaif";
+  import { integrationCatalogForFlags, integrationStackTemplatesForFlags } from "$lib/integration-catalog-for-flags";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   export let workspaceId: string;
   /** When true (e.g. Overview “More setup”), hide duplicate title and flatten chrome. */
   export let embedded = false;
 
-  function templateIcon(id: (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"]): string {
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: templatesForUi = integrationStackTemplatesForFlags(flags);
+  $: showIntegrationCatalog = integrationCatalogForFlags(flags).length > 0;
+  $: guardrailsOn = flags.guardrails;
+
+  function templateIcon(id: string): string {
     if (id === "sveltekit-neon-keys") return "◆";
     if (id === "next-vercel-ai-keys") return "▲";
     if (id === "github-actions-testing") return "↻";
@@ -23,20 +30,23 @@
   const storageKey = () => `rk_integration_stack_v1_${workspaceId}`;
 
   let step: 1 | 2 | 3 = 1;
-  let selectedTemplateId: (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"] | null = null;
+  let selectedTemplateId: string | null = null;
   let copyMsg = "";
   let loadError = "";
 
-  function stackForTemplate(
-    id: (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"],
-  ): AAIFIntegrationStack {
-    const t = INTEGRATION_STACK_TEMPLATES.find((x) => x.id === id);
+  function stackForTemplate(id: string): AAIFIntegrationStack {
+    const t = templatesForUi.find((x) => x.id === id);
     if (!t) throw new Error("unknown template");
     return {
       schemaVersion: INTEGRATION_STACK_SCHEMA_VERSION,
       templateId: t.id,
       components: t.componentIds.map((cid) => ({ id: cid })),
     };
+  }
+
+  $: if (selectedTemplateId && !templatesForUi.some((t) => t.id === selectedTemplateId)) {
+    selectedTemplateId = null;
+    step = 1;
   }
 
   $: stackObj = selectedTemplateId == null ? null : stackForTemplate(selectedTemplateId);
@@ -48,8 +58,8 @@
       const raw = localStorage.getItem(storageKey());
       if (!raw) return;
       const parsed = JSON.parse(raw) as { templateId?: string };
-      if (parsed?.templateId && INTEGRATION_STACK_TEMPLATES.some((t) => t.id === parsed.templateId)) {
-        selectedTemplateId = parsed.templateId as (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"];
+      if (parsed?.templateId && templatesForUi.some((t) => t.id === parsed.templateId)) {
+        selectedTemplateId = parsed.templateId;
         step = 2;
       }
     } catch {
@@ -57,7 +67,7 @@
     }
   });
 
-  function selectTemplate(id: (typeof INTEGRATION_STACK_TEMPLATES)[number]["id"]) {
+  function selectTemplate(id: string) {
     selectedTemplateId = id;
     try {
       localStorage.setItem(storageKey(), JSON.stringify({ templateId: id }));
@@ -130,7 +140,7 @@
 
   {#if step === 1}
     <div class="tpl-grid">
-      {#each INTEGRATION_STACK_TEMPLATES as tpl}
+      {#each templatesForUi as tpl}
         <button type="button" class="tpl-btn" on:click={() => selectTemplate(tpl.id)}>
           <span class="tpl-icon" aria-hidden="true">{templateIcon(tpl.id)}</span>
           <span class="tpl-label">{tpl.label}</span>
@@ -139,7 +149,7 @@
     </div>
   {:else if step === 2 && selectedTemplateId}
     <p class="stack-picked">
-      Selected: <strong>{INTEGRATION_STACK_TEMPLATES.find((t) => t.id === selectedTemplateId)?.label}</strong>
+      Selected: <strong>{templatesForUi.find((t) => t.id === selectedTemplateId)?.label}</strong>
       <button type="button" class="linkish" on:click={reset}>Change</button>
     </p>
     <ul class="checklist checklist-cards">
@@ -161,15 +171,19 @@
         <span class="checklist-card-icon" aria-hidden="true">📍</span>
         <div class="checklist-card-main">
           <a class="btn btn-secondary" href={DASHBOARD_BASE + "/routes"}>Routes</a>
-          <span class="checklist-card-hint">Models and guard rails.</span>
+          <span class="checklist-card-hint"
+            >{guardrailsOn ? "Models and guard rails." : "Models and resolve paths."}</span
+          >
         </div>
       </li>
-      <li class="checklist-card checklist-card--link">
-        <span class="checklist-card-icon" aria-hidden="true">📚</span>
-        <div class="checklist-card-main">
-          <a class="btn btn-ghost" href="/keys/docs/guides/integration-catalog">Integration catalog →</a>
-        </div>
-      </li>
+      {#if showIntegrationCatalog}
+        <li class="checklist-card checklist-card--link">
+          <span class="checklist-card-icon" aria-hidden="true">📚</span>
+          <div class="checklist-card-main">
+            <a class="btn btn-ghost" href="/keys/docs/guides/integration-catalog">Integration catalog →</a>
+          </div>
+        </li>
+      {/if}
     </ul>
     <div class="stack-actions">
       <button type="button" class="btn btn-primary" on:click={goCopyStep}>Continue to export</button>

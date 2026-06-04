@@ -8,4 +8,8 @@ export type RestormelSuiteToolName =
   | "testing.config_validate"
   | "observability.trace_summarize"
   | "graph.fixture_validate"
-  | "state.memory_preview";
+  | "state.memory_preview"
+  | "connect.verify"
+  | "connect.retrieve"
+  | "connect.ingest.start"
+  | "connect.ingest.status";

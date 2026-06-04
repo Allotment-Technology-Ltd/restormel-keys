@@ -4,6 +4,9 @@
   import { buildRouteFlowSegments, type RouteFlowSegment } from "$lib/route-flow-segments";
   import { invalidateAll } from "$app/navigation";
 
+  /** Marketing / embedded preview — hides toolbar and add controls; cards are non-interactive. */
+  export let preview = false;
+
   export let projectId: string;
   export let routeId: string;
   export let steps: {
@@ -327,8 +330,12 @@
   }
 </script>
 
-<div class="route-map-root" aria-label="Route map: provider steps and next-step order">
-  {#if saveError}
+<div
+  class="route-map-root"
+  class:route-map-root--preview={preview}
+  aria-label="Route map: provider steps and next-step order"
+>
+  {#if !preview && saveError}
     <p class="error-msg" role="alert">{saveError}</p>
   {/if}
 
@@ -342,6 +349,7 @@
       {/if}
     </div>
   {:else}
+  {#if !preview}
   <div class="route-map-toolbar" role="toolbar" aria-label="Route map actions">
     <div class="route-map-toolbar-row">
       <p class="route-map-toolbar-lede">
@@ -398,7 +406,8 @@
       </p>
     </div>
   </div>
-  <div class="route-map-viewport-shell" use:mapViewportWheelZoom aria-describedby="route-map-zoom-hint">
+  {/if}
+  <div class="route-map-viewport-shell" use:mapViewportWheelZoom aria-describedby={preview ? undefined : "route-map-zoom-hint"}>
     <div class="route-map-viewport">
       <div class="route-map-scale-inner" style:transform="scale({mapZoom})" style:transform-origin="top center">
         <div class="route-map-column" role="list">
@@ -628,6 +637,13 @@
     --route-map-shell-w: calc(var(--route-map-card-w) + 4px);
     --route-map-parallel-max-branches: 3;
     --route-map-segment-gap: var(--space-1);
+  }
+  .route-map-root--preview {
+    margin-bottom: 0;
+    pointer-events: none;
+  }
+  .route-map-root--preview .route-map-card {
+    cursor: default;
   }
   .route-map-toolbar {
     position: sticky;

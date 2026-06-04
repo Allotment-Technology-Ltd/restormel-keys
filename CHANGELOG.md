@@ -2,6 +2,58 @@
 
 Single record of meaningful repo changes.
 
+## Repo (2026-06-03) — Design system token update (Neo-Brutalist v3)
+
+**Tokens:** `@restormel/keys-tokens/brutalist-rm.css` — cream/yellow palette, tri-font stack (Barlow Condensed / DM Sans / Space Mono), 2px borders, 3/5/7px offset shadows, yellow-only primary fills. **Dashboard + marketing:** global `.btn` variants, inverted lift-on-hover, sidebar/docs active states, `SiteHeader`/`SiteFooter`, brutalist components, `CodeBlock` dark panel syntax colors. **Suite landing (`/`):** two-column hero with preview cards, product cards grid, stack diagram rail, black invite band — aligned to [restormel_redesign.html](docs/reference/restormel_redesign.html). **Full-site uplift:** shared shells (`SuiteMarketingLayout` on testing/graph/integrations), `marketing-content.css`, `docs-prose.css`, `dashboard-surfaces.css`; brutal `DocsShell` callouts, `ProductHubLayout`, admin chrome, `IntegrationCard`/`SuiteHubCard`, Testing landing, Connect pipeline cards. **Docs:** [design-system-index.md](docs/design-system-index.md), [DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md).
+
+## Repo (2026-06-03) — Stack rail marketing (compact flow)
+
+**Marketing:** `EcosystemStrip` redesigned as a horizontal **Your stack → Restormel → Your product** rail with brutal chips (Data/Models tags, Neon, SurrealDB, providers) — much less vertical space than the layer grid.
+
+## Repo (2026-06-03) — Stack compatibility marketing band
+
+**Marketing:** `EcosystemStrip` → stack-layer grid (Data & graph · Models · Gateways · Ship) with neo-brutalist styling; default copy covers Neon, SurrealDB, and BYOK providers. **`@restormel/aaif`:** `surreal` catalog entry, `stackLayer` on integrations, `STACK_LAYERS` export. **Docs:** integration catalog index mentions Surreal + Connect graph path.
+
+## Repo (2026-06-03) — Public roadmap: outcome-focused copy
+
+**Marketing:** [`/roadmap`](apps/dashboard/src/routes/(marketing)/roadmap/+page.svelte) — market thesis (trustworthy private knowledge for agents), **Already live** / **Building next** / **On the horizon** sections; outcome language instead of API/package detail. **Docs:** [ROADMAP.md](ROADMAP.md) public Connect milestone line aligned.
+
+## Repo (2026-06-03) — Public roadmap: Connect programme alignment
+
+**Marketing:** [`/roadmap`](apps/dashboard/src/routes/(marketing)/roadmap/+page.svelte) — **Recently shipped** strip (Connect operator hub, REST v1 + MCP, full ingest worker); **Shipping soon** prioritises **Connect Retrieve API GA** (SOPHIA-class `@restormel/graphrag-core` with Keys embeddings), Ingest GA, and OpenAPI integrator contract; removes stale generic-only columns. **Docs:** [ROADMAP.md](ROADMAP.md) Connect shipped-vs-open table; [STATUS.md](STATUS.md) Connect milestone note.
+
+## Repo (2026-06-03) — Connect first graph onboarding
+
+**Dashboard:** Expandable **First graph setup** guide on Connect home (`ConnectFirstGraphGuide.svelte`); Surreal-first walkthrough with vendor prep links, readiness flags (`modelsReady`, `starterCorpusLoaded`), and canonical doc [connect-first-graph-onboarding.md](docs/connect-first-graph-onboarding.md). **Starter corpus:** three CC0 philosophy demo passages + `POST …/sources/starter-corpus`. Graph Designer passes starter document IDs and suggested intent. FirstRunOnboarding checklists start at `pipeline?step=store`.
+
+## Repo (2026-06-03) — Connect host Neon graph store flag
+
+**Dashboard:** `restormel-module-connect-neon-graph-store` (MVP default **off**) gates the one-click **Use Neon** graph store path, `POST …/graph-target/neon`, and Postgres spine ingest writes. MVP Connect expects BYO SurrealDB; future 1-click Neon should link the operator's own Neon account, not host `DATABASE_URL`. Env token: `connect_neon_graph_store`. Docs: [keys-mvp-module-flags.md](docs/guides/keys-mvp-module-flags.md), [CONNECT-DOMAIN-PACKS.md](docs/restormel/CONNECT-DOMAIN-PACKS.md).
+
+## Repo (2026-06-03) — Public npm package hygiene (Keys MVP)
+
+**Marketing/docs:** Deprecated `@restormel/keys`, `keys-svelte`, `keys-react`, and `ui-graph-svelte` removed from public install paths; canonical guidance is Keys REST + `@restormel/keys-elements`. **`apps/dashboard/src/lib/public-npm-packages.ts`** centralizes MVP public packages. **`docs/reference/npm-packages.md`** rewritten. **`scripts/check-mvp-doc-links.mjs`** fails CI when deprecated install snippets reappear on Keys landing, compatibility, walkthrough Phase 1, integrations, and README.
+
+## Repo (2026-06-03) — Keys MVP module flags
+
+**Dashboard:** PostHog `restormel-module-*` flags + `RESTORMEL_MODULE_FLAGS` env override; `event.locals.moduleFlags` in hooks; suite nav/docs/sitemap/API gates for Testing, Graph, Connect, gateway providers, guardrails, environments, hosted runtime. Migration **`043_project_default_environment.sql`** for project-only routing when environments off. **MCP:** `getEnabledSuiteToolNames()` filters stdio + HTTP suite invoke. **CI:** optional Testing extended job (`RESTORMEL_PUBLISH_TESTING`); `publish-testing.yml` gated. Docs: [keys-mvp-mode.md](docs/guides/keys-mvp-mode.md), [keys-mvp-module-flags.md](docs/guides/keys-mvp-module-flags.md), [GRAPH-MVP-PRODUCT-MEMO.md](docs/restormel/GRAPH-MVP-PRODUCT-MEMO.md). Script: `scripts/check-mvp-doc-links.mjs`.
+
+## Suite migration (2026-06-01) — Phase 10 Knowledge Ingest worker + relations helpers (5c–5d)
+
+**`@restormel/connect-core`:** relation-stage helpers extracted (5c); `worker-stub` for hosted dequeue bookkeeping. **Dashboard:** `claimNextPendingConnectIngestJob`, `connect-ingest-worker` script (stub completes stages). **SOPHIA:** relations-helpers delegate to knowledge-core. Runbook: [docs/runbooks/connect-ingest-hosted-worker.md](docs/runbooks/connect-ingest-hosted-worker.md). Status: [docs/restormel/PHASE10-SUITE-MIGRATION-STATUS.md](docs/restormel/PHASE10-SUITE-MIGRATION-STATUS.md).
+
+## Suite migration (2026-06-01) — Phase 9 Knowledge Ingest job persistence (5b)
+
+**Hosted Knowledge Ingest jobs:** migration `035_knowledge_ingest_jobs.sql`, Neon CRUD, `buildInitialConnectIngestJob` in `@restormel/connect-core`, REST create/list/status (no longer 501). Workers (5d) deferred. Status: [docs/restormel/PHASE9-SUITE-MIGRATION-STATUS.md](docs/restormel/PHASE9-SUITE-MIGRATION-STATUS.md).
+
+## Suite migration (2026-06-01) — Phase 8 SOPHIA reference consumer + Graph Web Components
+
+**`@restormel/graph-elements`:** Extended `<rg-graph-canvas>` with full Graph Kit prop surface (semantic styles, focus/path, viewport commands, `rg-jump-to-references`). Re-exported `graphCanvasEdgeKey` and semantic style types. **SOPHIA:** `GraphCanvasHost.svelte`, removed direct `@restormel/ui-graph-svelte` dependency; optional `GRAPH_API_BASE` layout client. Status: [docs/restormel/PHASE8-SUITE-MIGRATION-STATUS.md](docs/restormel/PHASE8-SUITE-MIGRATION-STATUS.md).
+
+## Suite migration (2026-06-01) — Phase 7 npm maintenance window
+
+**Deprecated npm (bugfix-only until 2026-12-01, then npm `deprecate`):** `@restormel/keys`, `@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/ui-graph-svelte`. README banners + [docs/runbooks/npm-maintenance-window.md](docs/runbooks/npm-maintenance-window.md). **Keep publishing:** `keys-elements`, `graph-elements`, `keys-cli`, `mcp`, `aaif`, platform + knowledge packages; Testing npm unchanged. **Consumer smoke:** `pnpm run smoke:consumer-elements-only`. Status: [docs/restormel/PHASE7-SUITE-MIGRATION-STATUS.md](docs/restormel/PHASE7-SUITE-MIGRATION-STATUS.md).
+
 ## Repo (2026-04-17) — @restormel/keys: Mistral, Together, Cohere, DeepSeek model lists
 
 **`packages/core`:** Broader curated **`MISTRAL_MODELS`** and **`TOGETHER_MODELS`** (with **`TOGETHER_PRICING`** / **`estimateCost`**); expanded **`COHERE_MODELS`** and pricing; **`DEEPSEEK_MODELS`** aligned to native API (`deepseek-chat`, `deepseek-reasoner`) with current V3.2 pricing from DeepSeek docs. **`providers.test.ts`** covers the four providers.

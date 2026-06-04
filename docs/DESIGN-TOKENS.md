@@ -1,7 +1,28 @@
 # Restormel Design System - Design Tokens
 
 **Version:** 1.0.0  
-**Last Updated:** 2026-03-13
+**Last Updated:** 2026-06-03
+
+## Neo-Brutalist v3 (product chrome — canonical)
+
+Marketing, docs, and dashboard use **`@restormel/keys-tokens/brutalist-rm.css`** as the live token source. Key values:
+
+| Token | Value | Role |
+|-------|-------|------|
+| `--color-bg` | `#F3EAD0` | Page background |
+| `--color-bg-deep` | `#E8DFBF` | Footer, hover tints |
+| `--color-surface` | `#FFFEF0` | Cards, inputs |
+| `--color-yellow` | `#FFD600` | Primary accent (buttons, active nav, badges) |
+| `--color-blue` | `#1A3F8A` | Secondary accent (tags, keywords — not button fills) |
+| `--color-ink` | `#0C0C0C` | Text, borders |
+| `--font-display` | Barlow Condensed | h1–h4, section titles |
+| `--font-body` | DM Sans | Body copy |
+| `--font-mono` | Space Mono | Labels, buttons, code |
+| `--shadow-sm/md/lg` | 3/5/7px offset | Interactive lift pattern |
+
+Legacy `--rm-*` and `--brut-*` aliases map to these values. Visual reference: [docs/reference/restormel_redesign.html](./reference/restormel_redesign.html).
+
+The sections below document the **original dark embeddable palette** (`base.css` / `--rk-*`) retained for KeyManager and Web Components hosts.
 
 ## Overview
 

@@ -1,0 +1,598 @@
+import type { AAIFLatency, AAIFRequest } from '@restormel/aaif';
+import type { ModelProvider } from '@restormel/contracts/providers';
+import { estimateIngestLlmUsageUsd } from './llm-token-usd-rates.js';
+import type {
+  IngestPlanningDeps,
+  IngestionPlanningContext,
+  IngestionStage,
+  IngestionStagePlan,
+  IngestionStageUsageEstimate,
+  IngestProviderPreference,
+  PipelinePhaseStage,
+  ReasoningModelRoute,
+} from '../ports.js';
+function preferTogetherStage(stage: IngestionStage): boolean {
+  const raw = (process.env.INGEST_PREFER_TOGETHER ?? '').trim().toLowerCase();
+  if (!(raw === '1' || raw === 'true' || raw === 'yes')) return false;
+  // Keep validation and embedding on their existing stacks (trust + cost controls).
+  if (stage === 'validation' || stage === 'embedding') return false;
+  return true;
+}
+
+function readTogetherPreferredModel(stage: Exclude<IngestionStage, 'embedding'>): { provider?: ModelProvider; modelId?: string } {
+  const rawModel = (process.env.INGEST_TOGETHER_MODEL ?? '').trim();
+  // Default matches the current degraded-default used when Restormel cannot resolve.
+  const modelId = rawModel || 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
+  const provider = 'together' as ModelProvider;
+  // Allow per-stage override via existing pin envs (higher priority than this convenience).
+  return { provider, modelId };
+}
+
+/** Pre-ingest HTTP + parse workload (not an LLM route); listed separately from extraction in cost views. */
+
+function isBookSource(st?: string): boolean {
+  return st === 'book';
+}
+
+function isEncyclopediaSource(st?: string): boolean {
+  return st === 'sep_entry' || st === 'iep_entry';
+}
+
+function isPaperSource(st?: string): boolean {
+  return st === 'paper' || st === 'journal_article';
+}
+
+function claimCountEstimate(context: IngestionPlanningContext): number {
+  if (typeof context.claimCount === 'number' && context.claimCount > 0) {
+    return context.claimCount;
+  }
+  return Math.max(6, Math.ceil(context.estimatedTokens / 100));
+}
+
+function relationCountEstimate(context: IngestionPlanningContext): number {
+  if (typeof context.relationCount === 'number' && context.relationCount > 0) {
+    return context.relationCount;
+  }
+  return Math.max(4, Math.ceil(claimCountEstimate(context) * 0.8));
+}
+
+function argumentCountEstimate(context: IngestionPlanningContext): number {
+  if (typeof context.argumentCount === 'number' && context.argumentCount > 0) {
+    return context.argumentCount;
+  }
+  return Math.max(2, Math.ceil(claimCountEstimate(context) / 8));
+}
+
+function stageLatency(stage: IngestionStage, context: IngestionPlanningContext): AAIFLatency {
+  if (stage === 'json_repair') return 'low';
+  if (stage === 'embedding') return 'low';
+  const tokens = context.estimatedTokens;
+  const claims = claimCountEstimate(context);
+  if (stage === 'grouping') {
+    // Single production profile: keep grouping on balanced routing depth unless the source is very large.
+    if (tokens > 22_000 || claims > 70) return 'high';
+    return 'balanced';
+  }
+  if (stage === 'validation') {
+    if (isBookSource(context.sourceType) && claims > 55) return 'high';
+    return claims > 60 ? 'high' : 'balanced';
+  }
+  if (stage === 'remediation') {
+    return claims > 40 ? 'high' : 'balanced';
+  }
+  if (stage === 'extraction') {
+    if (isBookSource(context.sourceType)) {
+      return tokens > 10_000 ? 'balanced' : 'low';
+    }
+    return tokens > 18_000 ? 'balanced' : 'low';
+  }
+  return 'balanced';
+}
+
+function stagePass(stage: Exclude<IngestionStage, 'embedding'>): 'analysis' | 'synthesis' | 'verification' | 'generic' {
+  if (stage === 'grouping') return 'synthesis';
+  if (stage === 'validation') return 'verification';
+  if (stage === 'remediation') return 'synthesis';
+  if (stage === 'json_repair') return 'generic';
+  return 'analysis';
+}
+
+function latencyToDepth(latency: AAIFLatency): 'quick' | 'standard' | 'deep' {
+  if (latency === 'low') return 'quick';
+  if (latency === 'high') return 'deep';
+  return 'standard';
+}
+
+const PIN_ENV_SUFFIX: Record<Exclude<IngestionStage, 'embedding'>, string> = {
+  extraction: 'EXTRACTION',
+  relations: 'RELATIONS',
+  grouping: 'GROUPING',
+  validation: 'VALIDATION',
+  remediation: 'REMEDIATION',
+  json_repair: 'JSON_REPAIR'
+};
+
+/** Env-only pins (no canonical defaults). Used when catalog defaults must not block an `EXTRACTION_*` mirror route. */
+function readEnvPinnedModel(
+  stage: Exclude<IngestionStage, 'embedding'>
+): { provider?: ModelProvider; modelId?: string } {
+  const suffix = PIN_ENV_SUFFIX[stage];
+  const modelId = process.env[`INGEST_PIN_MODEL_${suffix}`]?.trim();
+  const provider = process.env[`INGEST_PIN_PROVIDER_${suffix}`]?.trim().toLowerCase() as ModelProvider | undefined;
+  if (modelId && provider) return { provider, modelId };
+  return {};
+}
+
+/**
+ * Explicit pins only: `INGEST_PIN_PROVIDER_*` + `INGEST_PIN_MODEL_*` (and embedding is handled elsewhere).
+ * Do **not** hardcode a default provider for `auto` when pins are empty — that made `resolveProviderDecision`
+ * treat the stage as a non-Restormel **requested** path and **skip** Keys selection (`source=requested`).
+ */
+function readPinnedModel(stage: IngestionStage): { provider?: ModelProvider; modelId?: string } {
+  if (stage === 'embedding') return {};
+  const envPinned = readEnvPinnedModel(stage as Exclude<IngestionStage, 'embedding'>);
+  if (envPinned.provider && envPinned.modelId) return envPinned;
+  if (preferTogetherStage(stage)) {
+    return readTogetherPreferredModel(stage as Exclude<IngestionStage, 'embedding'>);
+  }
+  return {};
+}
+
+/**
+ * Optional Sophia route bindings: per-stage Neon bindings win, then the app-wide shared fallback.
+ * When unset, resolve omits routeId; Restormel picks a published route by workload + stage
+ * (dedicated ingestion_<substage> first, then shared ingestion with empty stage). Keys ≥0.2.11.
+ */
+async function resolveRouteBindingForPlan(stage: IngestionStage, deps: IngestPlanningDeps): Promise<{ routeId?: string }> {
+  const fromNeon = await deps.getStoredRouteIdForStage(stage);
+  if (fromNeon?.trim()) {
+    return { routeId: fromNeon.trim() };
+  }
+  const shared = (await deps.getDefaultSharedRouteId())?.trim();
+  if (shared) return { routeId: shared };
+  return {};
+}
+
+function buildStageRestormelContext(options: {
+  stage: IngestionStage;
+  task: AAIFRequest['task'];
+  estimatedInputTokens: number;
+  estimatedInputChars: number;
+  complexity: 'low' | 'medium' | 'high';
+  constraints: AAIFRequest['constraints'];
+}) {
+  return {
+    workload: 'ingestion' as const,
+    stage: `ingestion_${options.stage}`,
+    task: options.task,
+    attempt: 1,
+    estimatedInputTokens: options.estimatedInputTokens,
+    estimatedInputChars: options.estimatedInputChars,
+    complexity: options.complexity,
+    constraints: options.constraints
+  };
+}
+
+function stageMaxCost(stage: IngestionStage): number | undefined {
+  const upper = stage.toUpperCase();
+  const raw = process.env[`INGEST_STAGE_${upper}_MAX_USD`];
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function buildStageRequest(stage: IngestionStage, context: IngestionPlanningContext): AAIFRequest {
+  const claims = claimCountEstimate(context);
+  const relations = relationCountEstimate(context);
+  const argumentsCount = argumentCountEstimate(context);
+  const latency = stageLatency(stage, context);
+  const task = stage === 'embedding' ? 'embedding' : 'completion';
+  const input =
+    stage === 'embedding'
+      ? `Plan embedding for ${claims} extracted claims from "${context.sourceTitle}" (${context.sourceType ?? 'source'}).`
+      : `Plan SOPHIA ingestion stage "${stage}" for "${context.sourceTitle}" (${context.sourceType ?? 'source'}) with ~${context.estimatedTokens} source tokens, ${claims} claims, ${relations} relations, and ${argumentsCount} grouped arguments.`;
+
+  return {
+    input,
+    task,
+    constraints: {
+      latency,
+      maxCost: stageMaxCost(stage)
+    }
+  };
+}
+
+export function estimateStageUsage(stage: IngestionStage, context: IngestionPlanningContext): {
+  inputTokens: number;
+  outputTokens: number;
+} {
+  const claims = claimCountEstimate(context);
+  const relations = relationCountEstimate(context);
+  const argumentsCount = argumentCountEstimate(context);
+
+  switch (stage) {
+    case 'extraction':
+      return {
+        inputTokens: Math.ceil(context.estimatedTokens + 1_200),
+        outputTokens: Math.max(700, claims * 120)
+      };
+    case 'relations':
+      return {
+        inputTokens: Math.max(1_200, claims * 140),
+        outputTokens: Math.max(400, relations * 28)
+      };
+    case 'grouping':
+      return {
+        inputTokens: Math.max(1_800, claims * 130 + relations * 45),
+        outputTokens: Math.max(900, argumentsCount * 260)
+      };
+    case 'validation':
+      return {
+        inputTokens: Math.max(2_000, context.estimatedTokens + claims * 90 + relations * 40),
+        outputTokens: Math.max(700, claims * 32)
+      };
+    case 'remediation': {
+      const capped = Math.min(claims, 24);
+      return {
+        inputTokens: Math.max(1_800, capped * 420 + 900),
+        outputTokens: Math.max(400, capped * 180)
+      };
+    }
+    case 'json_repair':
+      return {
+        inputTokens: 1_400,
+        outputTokens: 600
+      };
+    case 'embedding':
+      // Embedding cost should scale with the amount of claim text that will be vectorized.
+      // Use measured claim text volume when available, otherwise derive a conservative estimate.
+      // Average claim length heuristic: ~280 chars (~70 tokens) per claim.
+      const claimTextChars =
+        typeof context.claimTextChars === 'number' && context.claimTextChars > 0
+          ? context.claimTextChars
+          : claims * 280;
+      return {
+        inputTokens: Math.max(200, Math.ceil(claimTextChars / 4)),
+        outputTokens: 0
+      };
+  }
+}
+
+export function buildIngestionStageUsageEstimates(
+  context: IngestionPlanningContext
+): IngestionStageUsageEstimate[] {
+  const stages: IngestionStage[] = [
+    'extraction',
+    'relations',
+    'grouping',
+    'validation',
+    'remediation',
+    'embedding',
+    'json_repair'
+  ];
+  // Fetch is HTTP + HTML/text normalization only — no Restormel LLM route. Token count is source-volume
+  // (for sizing); extraction below keeps the full LLM input estimate for claim extraction.
+  const fetchTokens = Math.max(1, Math.ceil(context.estimatedTokens));
+  const fetchRow: IngestionStageUsageEstimate = {
+    stage: 'fetch',
+    latency: 'low',
+    complexity: 'low',
+    inputTokens: fetchTokens,
+    outputTokens: 0,
+    totalTokens: fetchTokens
+  };
+
+  const rest = stages.map((stage) => {
+    const usage = estimateStageUsage(stage, context);
+    const latency = stageLatency(stage, context);
+    const complexity: 'low' | 'medium' | 'high' =
+      latency === 'high' ? 'high' : latency === 'balanced' ? 'medium' : 'low';
+    return {
+      stage,
+      latency,
+      complexity,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalTokens: usage.inputTokens + usage.outputTokens
+    };
+  });
+
+  return [fetchRow, ...rest];
+}
+
+function estimateReasoningCostUsd(route: ReasoningModelRoute, inputTokens: number, outputTokens: number): number {
+  return estimateIngestLlmUsageUsd(route.modelId, inputTokens, outputTokens);
+}
+
+function estimateEmbeddingCostUsd(context: IngestionPlanningContext): number {
+  const chars =
+    typeof context.claimTextChars === 'number' && context.claimTextChars > 0
+      ? context.claimTextChars
+      : claimCountEstimate(context) * 300;
+  return (chars / 1_000_000) * 0.025;
+}
+
+export async function planIngestionStage(
+  stage: IngestionStage,
+  context: IngestionPlanningContext,
+  deps: IngestPlanningDeps
+): Promise<IngestionStagePlan> {
+  const request = buildStageRequest(stage, context);
+
+  if (stage === 'embedding') {
+    const embeddingPlan = deps.getEmbeddingPlan();
+    return {
+      stage,
+      request,
+      routeId: undefined,
+      provider: embeddingPlan.name,
+      model: embeddingPlan.model,
+      estimatedCostUsd: estimateEmbeddingCostUsd(context),
+      routingSource: 'requested',
+      selectedStepId: null,
+      selectedOrderIndex: null,
+      switchReasonCode: null,
+      matchedCriteria: null,
+      fallbackCandidates: null,
+      routingReason:
+        `Sophia executes ingestion embeddings on the configured ${embeddingPlan.name} embedding pipeline because Restormel execution routing for embeddings is not exposed in the published runtime.`
+    };
+  }
+
+  const routeIdForResolve = (await resolveRouteBindingForPlan(stage, deps)).routeId?.trim() || undefined;
+
+  if (stage === 'extraction') {
+    const extractionOverride = deps.buildExtractionOpenAiCompatibleRoute();
+    /**
+     * Restormel-bound extraction (Neon or env route id) must not be bypassed by EXTRACTION_BASE_URL FT
+     * unless the worker explicitly opts in (bulk extraction / stop-after-extraction window).
+     */
+    const forceOverride =
+      (process.env.INGEST_FORCE_EXTRACTION_OPENAI_COMPAT ?? '').trim() === '1' ||
+      (process.env.INGEST_FORCE_EXTRACTION_OPENAI_COMPAT ?? '').trim().toLowerCase() === 'true';
+    if (extractionOverride && (!routeIdForResolve || forceOverride)) {
+      const usage = estimateStageUsage(stage, context);
+      return {
+        stage,
+        request,
+        routeId: routeIdForResolve,
+        provider: extractionOverride.provider,
+        model: extractionOverride.modelId,
+        estimatedCostUsd: estimateReasoningCostUsd(
+          extractionOverride,
+          usage.inputTokens,
+          usage.outputTokens
+        ),
+        routingSource: extractionOverride.routingSource ?? 'requested',
+        selectedStepId: extractionOverride.resolvedStepId ?? null,
+        selectedOrderIndex: extractionOverride.resolvedOrderIndex ?? null,
+        switchReasonCode: extractionOverride.resolvedSwitchReasonCode ?? null,
+        matchedCriteria: extractionOverride.resolvedMatchedCriteria ?? null,
+        fallbackCandidates: extractionOverride.resolvedFallbackCandidates ?? null,
+        routingReason:
+          extractionOverride.resolvedExplanation ??
+          (forceOverride
+            ? 'Bulk extraction override: OpenAI-compatible extraction endpoint (EXTRACTION_BASE_URL + EXTRACTION_MODEL) forced even with a bound Restormel route.'
+            : 'OpenAI-compatible extraction endpoint (EXTRACTION_BASE_URL).'),
+        route: extractionOverride
+      };
+    }
+  }
+
+  /** When `EXTRACTION_BASE_URL` + `EXTRACTION_MODEL` are set, reuse that OpenAI-compatible route for JSON repair (same FT deployment as extraction). Opt out: `INGEST_JSON_REPAIR_USE_EXTRACTION_ENDPOINT=0` or pin `INGEST_PIN_*_JSON_REPAIR`. */
+  if (stage === 'json_repair') {
+    const useExtractionRepair = !['0', 'false', 'no'].includes(
+      (process.env.INGEST_JSON_REPAIR_USE_EXTRACTION_ENDPOINT ?? '1').trim().toLowerCase()
+    );
+    const repairEnvPin = readEnvPinnedModel('json_repair');
+    const repairExplicitlyPinned = Boolean(repairEnvPin.provider && repairEnvPin.modelId);
+    const extractionRepairRoute = deps.buildExtractionOpenAiCompatibleRoute();
+    if (useExtractionRepair && extractionRepairRoute && !repairExplicitlyPinned && !routeIdForResolve) {
+      const usage = estimateStageUsage(stage, context);
+      return {
+        stage,
+        request,
+        routeId: routeIdForResolve,
+        provider: extractionRepairRoute.provider,
+        model: extractionRepairRoute.modelId,
+        estimatedCostUsd: estimateReasoningCostUsd(
+          extractionRepairRoute,
+          usage.inputTokens,
+          usage.outputTokens
+        ),
+        routingSource: extractionRepairRoute.routingSource ?? 'requested',
+        selectedStepId: extractionRepairRoute.resolvedStepId ?? null,
+        selectedOrderIndex: extractionRepairRoute.resolvedOrderIndex ?? null,
+        switchReasonCode: extractionRepairRoute.resolvedSwitchReasonCode ?? null,
+        matchedCriteria: extractionRepairRoute.resolvedMatchedCriteria ?? null,
+        fallbackCandidates: extractionRepairRoute.resolvedFallbackCandidates ?? null,
+        routingReason: extractionRepairRoute.resolvedExplanation
+          ? `JSON repair: ${extractionRepairRoute.resolvedExplanation}`
+          : 'JSON repair uses the same OpenAI-compatible endpoint as extraction (EXTRACTION_BASE_URL + EXTRACTION_MODEL). Set INGEST_JSON_REPAIR_USE_EXTRACTION_ENDPOINT=0 to use catalog/Restormel json_repair instead.',
+        route: extractionRepairRoute
+      };
+    }
+  }
+
+  const pin = readPinnedModel(stage);
+  const preferIndependentValidation = !['0', 'false', 'no'].includes(
+    (process.env.INGEST_VALIDATION_PREFER_INDEPENDENT ?? '1').trim().toLowerCase()
+  );
+  // `loadServerEnv` aliases GEMINI_API_KEY -> GOOGLE_AI_API_KEY for local/prod consistency.
+  // In Sophia's provider catalog, Gemini via AI Studio key is treated as `vertex` provider access.
+  const hasGoogleAiKey = Boolean((process.env.GOOGLE_AI_API_KEY ?? '').trim());
+  const hasVertexProject = Boolean(
+    (process.env.GOOGLE_VERTEX_PROJECT ?? process.env.GCP_PROJECT_ID ?? '').trim()
+  );
+
+  // Keep Stage 5 "cross-model" by default: if Vertex is available and there are no explicit pins,
+  // prefer Gemini for validation so we do not validate with the same model family as extraction.
+  const requestedProvider =
+    stage === 'validation' &&
+    preferIndependentValidation &&
+    (hasGoogleAiKey || hasVertexProject) &&
+    !pin.provider &&
+    !pin.modelId &&
+    (context.preferredProvider == null || String(context.preferredProvider).trim().toLowerCase() === 'auto')
+      ? ('vertex' as ModelProvider)
+      : ((pin.provider ?? context.preferredProvider ?? 'auto') as ModelProvider);
+
+  const requestedModelId =
+    stage === 'validation' &&
+    preferIndependentValidation &&
+    (hasGoogleAiKey || hasVertexProject) &&
+    !pin.provider &&
+    !pin.modelId
+      ? (process.env.INGEST_VALIDATION_GOOGLE_MODEL?.trim() || 'gemini-3-flash-preview')
+      : pin.modelId;
+  const routeIdForLog = routeIdForResolve ? '(bound)' : '(none)';
+  if (process.env.INGEST_LOG_PINS === '1' || process.env.INGEST_LOG_PINS === 'true') {
+    console.log(
+      `[INGEST_PINS] plan stage=${stage} pin_provider=${pin.provider ?? '—'} pin_model=${pin.modelId ?? '—'} preferred=${String(context.preferredProvider ?? 'auto')} restormel_route_id=${routeIdForLog}`
+    );
+  }
+  const route =
+    stage === 'extraction'
+      ? await deps.resolveExtractionModelRoute({
+          requestedProvider,
+          requestedModelId,
+          routeId: routeIdForResolve,
+          failureMode: 'degraded_default',
+          restormelContext: buildStageRestormelContext({
+            stage,
+            task: request.task,
+            estimatedInputTokens: context.estimatedTokens,
+            estimatedInputChars: context.sourceLengthChars ?? context.estimatedTokens * 4,
+            complexity:
+              context.estimatedTokens > 18_000 ? 'high' : context.estimatedTokens > 8_000 ? 'medium' : 'low',
+            constraints: request.constraints
+          })
+        })
+      : await deps.resolveReasoningModelRoute({
+          pass: stagePass(stage),
+          depthMode: latencyToDepth(stageLatency(stage, context)),
+          routeId: routeIdForResolve,
+          requestedProvider,
+          requestedModelId,
+          failureMode: 'degraded_default',
+          restormelContext: buildStageRestormelContext({
+            stage,
+            task: request.task,
+            estimatedInputTokens: estimateStageUsage(stage, context).inputTokens,
+            estimatedInputChars:
+              typeof context.sourceLengthChars === 'number'
+                ? context.sourceLengthChars
+                : Math.max(context.estimatedTokens * 4, 0),
+            complexity:
+              stageLatency(stage, context) === 'high'
+                ? 'high'
+                : stageLatency(stage, context) === 'balanced'
+                  ? 'medium'
+                  : 'low',
+            constraints: request.constraints
+          })
+        });
+  const usage = estimateStageUsage(stage, context);
+
+  return {
+    stage,
+    request,
+    routeId: route.resolvedRouteId ?? routeIdForResolve ?? undefined,
+    provider: route.provider,
+    model: route.modelId,
+    estimatedCostUsd: estimateReasoningCostUsd(route, usage.inputTokens, usage.outputTokens),
+    routingSource: route.routingSource ?? 'restormel',
+    selectedStepId: route.resolvedStepId ?? null,
+    selectedOrderIndex: route.resolvedOrderIndex ?? null,
+    switchReasonCode: route.resolvedSwitchReasonCode ?? null,
+    matchedCriteria: route.resolvedMatchedCriteria ?? null,
+    fallbackCandidates: route.resolvedFallbackCandidates ?? null,
+    routingReason:
+      route.resolvedExplanation ??
+      (route.routingSource === 'degraded_default'
+        ? 'Restormel resolve failed, so Sophia planned this stage on a degraded default route.'
+        : route.routingSource === 'requested'
+          ? 'Sophia used the operator-requested provider for this ingestion stage.'
+          : 'Restormel selected this route for the ingestion stage.'),
+    route
+  };
+}
+
+/**
+ * Build a plan for an explicit provider/model (used after transient failures to try the next tier
+ * when the explicit tier cannot be planned. Fails hard if credentials are missing.
+ */
+export async function planIngestionStageWithExplicitModel(
+  stage: IngestionStage,
+  context: IngestionPlanningContext,
+  explicit: { provider: ModelProvider; modelId: string },
+  deps: IngestPlanningDeps
+): Promise<IngestionStagePlan> {
+  if (stage === 'embedding') {
+    return planIngestionStage(stage, context, deps);
+  }
+
+  const request = buildStageRequest(stage, context);
+  const routeIdForResolve = (await resolveRouteBindingForPlan(stage, deps)).routeId?.trim() || undefined;
+
+  const route =
+    stage === 'extraction'
+      ? await deps.resolveExtractionModelRoute({
+          requestedProvider: explicit.provider,
+          requestedModelId: explicit.modelId,
+          routeId: routeIdForResolve,
+          failureMode: 'error',
+          restormelContext: buildStageRestormelContext({
+            stage,
+            task: request.task,
+            estimatedInputTokens: context.estimatedTokens,
+            estimatedInputChars: context.sourceLengthChars ?? context.estimatedTokens * 4,
+            complexity:
+              context.estimatedTokens > 18_000 ? 'high' : context.estimatedTokens > 8_000 ? 'medium' : 'low',
+            constraints: request.constraints
+          })
+        })
+      : await deps.resolveReasoningModelRoute({
+          pass: stagePass(stage),
+          depthMode: latencyToDepth(stageLatency(stage, context)),
+          routeId: routeIdForResolve,
+          requestedProvider: explicit.provider,
+          requestedModelId: explicit.modelId,
+          failureMode: 'error',
+          restormelContext: buildStageRestormelContext({
+            stage,
+            task: request.task,
+            estimatedInputTokens: estimateStageUsage(stage, context).inputTokens,
+            estimatedInputChars:
+              typeof context.sourceLengthChars === 'number'
+                ? context.sourceLengthChars
+                : Math.max(context.estimatedTokens * 4, 0),
+            complexity:
+              stageLatency(stage, context) === 'high'
+                ? 'high'
+                : stageLatency(stage, context) === 'balanced'
+                  ? 'medium'
+                  : 'low',
+            constraints: request.constraints
+          })
+        });
+
+  const usage = estimateStageUsage(stage, context);
+
+  return {
+    stage,
+    request,
+    routeId: route.resolvedRouteId ?? routeIdForResolve ?? undefined,
+    provider: route.provider,
+    model: route.modelId,
+    estimatedCostUsd: estimateReasoningCostUsd(route, usage.inputTokens, usage.outputTokens),
+    routingSource: 'requested',
+    selectedStepId: route.resolvedStepId ?? null,
+    selectedOrderIndex: route.resolvedOrderIndex ?? null,
+    switchReasonCode: route.resolvedSwitchReasonCode ?? null,
+    matchedCriteria: route.resolvedMatchedCriteria ?? null,
+    fallbackCandidates: route.resolvedFallbackCandidates ?? null,
+    routingReason: `Fallback tier: explicit ${explicit.provider}/${explicit.modelId}.`,
+    route
+  };
+}

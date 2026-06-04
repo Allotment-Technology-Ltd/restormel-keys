@@ -1,4 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
+import { KEYS_API_TEST_MODULE_FLAGS } from "$lib/module-flags-types";
+
+vi.mock("$lib/server/module-flags", () => ({
+  resolveModuleFlagsSync: vi.fn(() => KEYS_API_TEST_MODULE_FLAGS),
+}));
 
 function recentExternalPayload() {
   const fetchedAt = new Date().toISOString();

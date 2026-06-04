@@ -6,7 +6,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 
 ## Commands
 
-- `pnpm dev` — dev server (open http://localhost:5173/keys/dashboard)
+- `pnpm dev` — dev server (open http://localhost:5173/keys/dashboard). Runs **`predev`** first (builds `@restormel/graph-core`, `ui-graph-svelte`, `graph-reasoning-extensions`). Use **Node 20.x** if you see engine warnings on Node 24.
 - `pnpm build` — build for Node (adapter-node)
 - `pnpm preview` — preview production build
 - `pnpm run seed:catalog` — ingest model catalog from `data/model-catalog-seed.json` (requires DATABASE_URL)
@@ -103,6 +103,19 @@ Example (minimal in-browser surface: overview + Access + Profile only):
 **Caution:** including **`projects`** hides the project switcher and blocks project pages in the UI; use only when operators rely on the API for project lifecycle.
 
 Unset or empty **RESTORMEL_DASHBOARD_UI_HIDDEN** = full dashboard (default).
+
+### Suite module flags (MVP)
+
+**PostHog `restormel-module-*`** flags gate Testing, Graph, Connect, gateway providers, guardrails, environments, model pools, hosted runtime, and catalog external signals. **`RESTORMEL_MODULE_FLAGS`** (comma-separated) overrides PostHog for local dev, CI, and emergencies.
+
+MVP default (no override): **Connect on**; Testing, gateways, guardrails, environments, model pools, hosted runtime, external catalog signals **off**; Graph **disabled**.
+
+```bash
+RESTORMEL_MODULE_FLAGS=connect          # force MVP locally
+RESTORMEL_MODULE_FLAGS=connect,testing,environments  # dogfood
+```
+
+Server: `POSTHOG_API_KEY` or `PUBLIC_POSTHOG_KEY` for `/decide` eval (60s cache). Full registry: [docs/guides/keys-mvp-module-flags.md](../../docs/guides/keys-mvp-module-flags.md).
 
 Run migrations in `migrations/` (sorted `001` … `030`+ as needed) against the Neon database. **CI/CD:** on **push to `main`**, GitHub Actions applies all migration files when `apps/dashboard/migrations/**` (or catalog seed paths) changes, using repo secret **`DASHBOARD_DATABASE_URL_PROD`** — see [docs/runbooks/dashboard-postgres-migrations.md](../../docs/runbooks/dashboard-postgres-migrations.md). Provider credential encryption and Testing project flags: `024`–`026`; app user mirror: `028`; workspace webhooks: `029`; founders applications: `030`.
 

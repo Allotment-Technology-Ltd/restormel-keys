@@ -21,9 +21,8 @@
       <div class="variant-card">
         <h3 class="variant-card-title">Drop-in components</h3>
         <p class="variant-card-copy">
-          On SvelteKit: drop in <code>&lt;KeyManager&gt;</code> and <code>&lt;ModelSelector&gt;</code> as native Svelte 5
-          components from <code>@restormel/keys-svelte</code>. On Next.js / React: use the headless core today —
-          React components are in active development.
+          On any stack: use <code>&lt;rk-key-manager&gt;</code> and <code>&lt;rk-model-selector&gt;</code> from
+          <code>@restormel/keys-elements</code> with Keys REST for resolve — one Web Components path for SvelteKit, React, and Astro.
         </p>
       </div>
       <div class="variant-card">
@@ -101,7 +100,7 @@
     line-height: var(--leading-relaxed);
   }
   .variant-card-copy code {
-    font-family: var(--rm-font-mono, "JetBrains Mono", monospace);
+    font-family: var(--font-mono);
     font-size: 0.85em;
     background: var(--rm-surface);
     padding: 0.1em 0.35em;
@@ -124,7 +123,7 @@
     font-weight: var(--font-medium);
   }
   .btn-primary {
-    background: var(--path-blue);
+    background: var(--color-yellow);
     color: var(--rm-bg);
   }
   .btn-primary:hover {

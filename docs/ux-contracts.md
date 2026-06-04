@@ -4,6 +4,14 @@
 
 All user-facing surfaces must align with these contracts so the product feels consistent and predictable.
 
+> **Visual system (v2 — Neo-Brutalist):** Product chrome uses the light drafting-paper canvas,
+> pure-black `4px` borders, hard `8px 8px 0` block shadows, zero radius, monospace type, and `100ms`
+> mechanical press. State styling below maps to the brutalist tokens: error = coral fill + black
+> border (`BrutalErrorBanner`), empty = bordered block + recovery CTA (`EmptyState`), loading =
+> bordered block with optional skeleton rows (`BrutalLoadingState`). Page headers use
+> `BrutalPageHeader` (heavy uppercase H1 + description). See
+> [DESIGN-SPECIFICATION.md](DESIGN-SPECIFICATION.md) (Neo-Brutalist v2).
+
 ## 1. Navigation model
 
 ### Route taxonomy and canonical URLs

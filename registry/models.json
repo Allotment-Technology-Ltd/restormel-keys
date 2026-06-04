@@ -19,12 +19,12 @@
     },
     {
       "id": "gemini-3.1-pro-preview",
-      "lifecycle": "preview",
+      "lifecycle": "active",
       "providers": ["google", "openrouter", "portkey"]
     },
     {
       "id": "gemini-3-flash-preview",
-      "lifecycle": "preview",
+      "lifecycle": "active",
       "providers": ["google", "openrouter", "portkey"]
     },
     {

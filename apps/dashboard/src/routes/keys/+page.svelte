@@ -1,11 +1,20 @@
 <script lang="ts">
   /** Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages. */
   import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
   import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
   import { getVariant } from "$lib/posthog";
   import VariantA from "$lib/components/landing/VariantA.svelte";
   import VariantB from "$lib/components/landing/VariantB.svelte";
+  import { isSuiteMarketingExpanded } from "$lib/integration-catalog-for-flags";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import {
+    CLI_INSTALL,
+    ELEMENTS_INSTALL,
+    ELEMENTS_SNIPPET,
+    REST_RESOLVE_SNIPPET,
+  } from "$lib/public-npm-packages";
 
   let variant = "control";
 
@@ -23,85 +32,29 @@
     check();
   });
 
-  const pkgKeys = "@restormel/keys";
-  const pkgSvelte = "@restormel/keys-svelte";
-  const pkgReact = "@restormel/keys-react";
-  const pkgElements = "@restormel/keys-elements";
+  const restInstall = `# Gateway key + site base — no npm core required
+# RESTORMEL_KEYS_BASE=https://restormel.dev
+# RESTORMEL_GATEWAY_KEY=rk_…`;
+  const restCode = REST_RESOLVE_SNIPPET;
 
-  const svelteInstall = `pnpm add ${pkgKeys} ${pkgSvelte}`;
-  const svelteCode = `// src/routes/api/chat/+server.ts (SvelteKit)
-import { createResolveMiddleware } from "${pkgKeys}";
-import { KeyManager } from "${pkgSvelte}";
+  const elementsInstall = ELEMENTS_INSTALL;
+  const elementsCode = ELEMENTS_SNIPPET;
 
-const resolve = createResolveMiddleware({
-  providers: ["openai", "anthropic"],
-});
+  const cliInstall = CLI_INSTALL;
+  const cliCode = `# Device login + doctor
+pnpm exec keys login
+pnpm exec keys doctor`;
 
-export async function POST({ request }) {
-  const { model, messages } = await request.json();
-  const { provider } = await resolve(model);
-
-  const apiKey =
-    provider.type === "openai" ? import.meta.env.OPENAI_API_KEY :
-    provider.type === "anthropic" ? import.meta.env.ANTHROPIC_API_KEY :
-    undefined;
-  if (!apiKey) return new Response("Missing provider access", { status: 500 });
-
-  const res = await fetch(provider.chatUrl, {
-    method: "POST",
-    headers: { "Authorization": \`Bearer \${apiKey}\` },
-    body: JSON.stringify({ model, messages }),
-  });
-  return new Response(JSON.stringify(await res.json()));
-}
-
-// src/routes/settings/+page.svelte
-<script lang="ts">
-  const user = { id: "u_123" };
-  const keys = {} as unknown;
-<\/script>
-
-<KeyManager
-  keys={keys}
-  userId={user.id}
-  onKeyAdded={(event) => console.log("added", event.detail)}
-/>`;
-
-  const nextInstall = `pnpm add ${pkgKeys} ${pkgReact} ${pkgElements}`;
-  const nextCode = `"use client";
-import { createKeys } from "${pkgKeys}";
-import { KeysProvider, KeyManager } from "${pkgReact}";
-
-const keys = createKeys({ routing: { defaultProvider: "openai" } });
-
-export function SettingsKeyManager() {
-  return (
-    <KeysProvider keys={keys}>
-      <KeyManager userId="user_123" />
-    </KeysProvider>
-  );
-}`;
-
-  const headlessInstall = `pnpm add ${pkgKeys}`;
-  const headlessCode = `import { createKeys, openaiProvider, anthropicProvider } from "${pkgKeys}";
-
-const keys = createKeys(
-  { routing: { defaultProvider: "openai" } },
-  { providers: [openaiProvider, anthropicProvider] }
-);
-
-const resolved = await keys.resolve("gpt-4o-mini");
-const estimate = keys.estimateCost("gpt-4o-mini", { inputTokens: 1200, outputTokens: 350 });
-
-console.log(resolved.provider.type, estimate.totalUsd);`;
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: suiteExpanded = isSuiteMarketingExpanded(flags);
+  $: keysMetaDescription = suiteExpanded
+    ? "The missing application layer for AI apps: BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers. No proxy. No infrastructure. No migration."
+    : "BYOK routing and control for AI apps — direct providers, Gateway keys, and Connect knowledge paths. No proxy. No migration.";
 </script>
 
 <svelte:head>
   <title>Restormel Keys — BYOK for AI apps</title>
-  <meta
-    name="description"
-    content="The missing application layer for AI apps: BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers. No proxy. No infrastructure. No migration."
-  />
+  <meta name="description" content={keysMetaDescription} />
 </svelte:head>
 
 <article class="keys-page">
@@ -112,11 +65,7 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
   {/if}
 
   <div class="container keys-eco-wrap">
-    <EcosystemStrip
-      variant="compact"
-      heading="Integrates with the stack you already run"
-      intro="Gateways, model providers, CI, and Postgres — documented paths, not a rip-and-replace migration."
-    />
+    <EcosystemStrip variant="compact" />
   </div>
 
   <section class="section section-intents section-alt" aria-labelledby="intent-heading">
@@ -129,7 +78,11 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
         </a>
         <a class="intent-card" href="/keys/docs/walkthrough/migration-paths">
           <strong>Adding control to an existing stack</strong>
-          <span>OpenRouter/Vercel/Portkey + Restormel control-plane path.</span>
+          <span
+            >{flags.gatewayProviders
+              ? "OpenRouter/Vercel/Portkey + Restormel control-plane path."
+              : "Direct providers + Restormel control-plane path."}</span
+          >
         </a>
         <a class="intent-card" href="/keys/docs/walkthrough/phase-5-ui">
           <strong>Adding BYOK to a SaaS</strong>
@@ -221,47 +174,47 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
       <p class="section-intro">Choose your integration path. Tabs are CSS-only, so this section renders cleanly without client JavaScript.</p>
 
       <div class="code-tabs">
-        <input id="tab-sveltekit" class="code-tab-input" type="radio" name="framework-tab" checked />
-        <input id="tab-nextjs" class="code-tab-input" type="radio" name="framework-tab" />
-        <input id="tab-headless" class="code-tab-input" type="radio" name="framework-tab" />
+        <input id="tab-rest" class="code-tab-input" type="radio" name="framework-tab" checked />
+        <input id="tab-elements" class="code-tab-input" type="radio" name="framework-tab" />
+        <input id="tab-cli" class="code-tab-input" type="radio" name="framework-tab" />
 
-        <div class="code-framework-tabs" role="tablist" aria-label="Framework snippets">
-          <label class="code-fw-tab code-fw-tab-sveltekit" for="tab-sveltekit" role="tab">SvelteKit</label>
-          <label class="code-fw-tab code-fw-tab-nextjs" for="tab-nextjs" role="tab">Next.js / React</label>
-          <label class="code-fw-tab code-fw-tab-headless" for="tab-headless" role="tab">Headless (any framework)</label>
+        <div class="code-framework-tabs" role="tablist" aria-label="Integration snippets">
+          <label class="code-fw-tab code-fw-tab-rest" for="tab-rest" role="tab">Keys REST</label>
+          <label class="code-fw-tab code-fw-tab-elements" for="tab-elements" role="tab">Web Components</label>
+          <label class="code-fw-tab code-fw-tab-cli" for="tab-cli" role="tab">CLI</label>
         </div>
 
         <div class="code-tab-panels">
-          <section class="code-tab-panel panel-sveltekit" aria-label="SvelteKit example">
+          <section class="code-tab-panel panel-rest" aria-label="Keys REST example">
             <div class="code-pane">
-              <span class="code-label">Install</span>
-              <CodeBlock language="bash" code={svelteInstall} />
+              <span class="code-label">Env</span>
+              <CodeBlock language="bash" code={restInstall} />
             </div>
             <div class="code-pane">
-              <span class="code-label">Example</span>
-              <CodeBlock language="ts" code={svelteCode} />
-            </div>
-          </section>
-
-          <section class="code-tab-panel panel-nextjs" aria-label="Next.js and React example">
-            <div class="code-pane">
-              <span class="code-label">Install</span>
-              <CodeBlock language="bash" code={nextInstall} />
-            </div>
-            <div class="code-pane">
-              <span class="code-label">Example</span>
-              <CodeBlock language="tsx" code={nextCode} />
+              <span class="code-label">Resolve</span>
+              <CodeBlock language="ts" code={restCode} />
             </div>
           </section>
 
-          <section class="code-tab-panel panel-headless" aria-label="Headless core example">
+          <section class="code-tab-panel panel-elements" aria-label="Web Components example">
             <div class="code-pane">
               <span class="code-label">Install</span>
-              <CodeBlock language="bash" code={headlessInstall} />
+              <CodeBlock language="bash" code={elementsInstall} />
             </div>
             <div class="code-pane">
               <span class="code-label">Example</span>
-              <CodeBlock language="ts" code={headlessCode} />
+              <CodeBlock language="html" code={elementsCode} />
+            </div>
+          </section>
+
+          <section class="code-tab-panel panel-cli" aria-label="CLI example">
+            <div class="code-pane">
+              <span class="code-label">Install</span>
+              <CodeBlock language="bash" code={cliInstall} />
+            </div>
+            <div class="code-pane">
+              <span class="code-label">Example</span>
+              <CodeBlock language="bash" code={cliCode} />
             </div>
           </section>
         </div>
@@ -668,17 +621,17 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
   .code-tab-panel {
     display: none;
   }
-  #tab-sveltekit:checked ~ .code-tab-panels .panel-sveltekit,
-  #tab-nextjs:checked ~ .code-tab-panels .panel-nextjs,
-  #tab-headless:checked ~ .code-tab-panels .panel-headless {
+  #tab-rest:checked ~ .code-tab-panels .panel-rest,
+  #tab-elements:checked ~ .code-tab-panels .panel-elements,
+  #tab-cli:checked ~ .code-tab-panels .panel-cli {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-6);
   }
   @media (max-width: 900px) {
-    #tab-sveltekit:checked ~ .code-tab-panels .panel-sveltekit,
-    #tab-nextjs:checked ~ .code-tab-panels .panel-nextjs,
-    #tab-headless:checked ~ .code-tab-panels .panel-headless {
+    #tab-rest:checked ~ .code-tab-panels .panel-rest,
+    #tab-elements:checked ~ .code-tab-panels .panel-elements,
+    #tab-cli:checked ~ .code-tab-panels .panel-cli {
       grid-template-columns: 1fr;
     }
   }
@@ -699,9 +652,9 @@ console.log(resolved.provider.type, estimate.totalUsd);`;
     color: var(--rm-text);
     border-color: var(--rm-sage);
   }
-  #tab-sveltekit:checked ~ .code-framework-tabs .code-fw-tab-sveltekit,
-  #tab-nextjs:checked ~ .code-framework-tabs .code-fw-tab-nextjs,
-  #tab-headless:checked ~ .code-framework-tabs .code-fw-tab-headless {
+  #tab-rest:checked ~ .code-framework-tabs .code-fw-tab-rest,
+  #tab-elements:checked ~ .code-framework-tabs .code-fw-tab-elements,
+  #tab-cli:checked ~ .code-framework-tabs .code-fw-tab-cli {
     background: var(--rm-sage);
     color: var(--rm-bg);
     border-color: var(--rm-sage);

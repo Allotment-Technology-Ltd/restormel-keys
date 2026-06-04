@@ -50,6 +50,8 @@ export type CiStagingSnippetOptions = {
   /** Human label for comment (e.g. "Development"). */
   environmentLabel?: string;
   keysBaseUrl: string;
+  /** When false, omit RESTORMEL_ENVIRONMENT_ID lines (environments module off). Default true. */
+  includeEnvironmentId?: boolean;
 };
 
 /**
@@ -60,6 +62,7 @@ export function ciStagingSecretsSnippet(opts: CiStagingSnippetOptions): string {
   const base = normalizedOrigin(opts.keysBaseUrl);
   const evaluateUrl = restormelEvaluatePolicyUrl(opts.keysBaseUrl);
   const controlPlaneBase = restormelControlPlaneBaseUrl(opts.keysBaseUrl);
+  const includeEnv = opts.includeEnvironmentId !== false;
   const lines: string[] = [
     "# Restormel Keys — CI / staging (add to .env.local or GitHub Secrets). Do not commit real values.",
     "# One Gateway key is enough for this project. Environment ID chooses dev vs prod slot for API calls — pick one for CI (usually Development).",
@@ -83,16 +86,18 @@ export function ciStagingSecretsSnippet(opts: CiStagingSnippetOptions): string {
 
   lines.push(`RESTORMEL_PROJECT_ID_STAGING=${opts.projectId}`);
 
-  if (opts.environmentId) {
-    lines.push(`RESTORMEL_ENVIRONMENT_ID_STAGING=${opts.environmentId}`);
-    if (opts.environmentLabel) {
-      lines.push(`# ↑ Environment: ${opts.environmentLabel}`);
+  if (includeEnv) {
+    if (opts.environmentId) {
+      lines.push(`RESTORMEL_ENVIRONMENT_ID_STAGING=${opts.environmentId}`);
+      if (opts.environmentLabel) {
+        lines.push(`# ↑ Environment: ${opts.environmentLabel}`);
+      }
+    } else {
+      lines.push(
+        "RESTORMEL_ENVIRONMENT_ID_STAGING=",
+        "# ↑ No environments on this project yet — create one or leave unset until ready.",
+      );
     }
-  } else {
-    lines.push(
-      "RESTORMEL_ENVIRONMENT_ID_STAGING=",
-      "# ↑ No environments on this project yet — create one or leave unset until ready.",
-    );
   }
 
   lines.push(
@@ -121,10 +126,12 @@ export function ciStagingSecretsSnippet(opts: CiStagingSnippetOptions): string {
 
   lines.push(`RESTORMEL_PROJECT_ID=${opts.projectId}`);
 
-  if (opts.environmentId) {
-    lines.push(`RESTORMEL_ENVIRONMENT_ID=${opts.environmentId}`);
-  } else {
-    lines.push("RESTORMEL_ENVIRONMENT_ID=");
+  if (includeEnv) {
+    if (opts.environmentId) {
+      lines.push(`RESTORMEL_ENVIRONMENT_ID=${opts.environmentId}`);
+    } else {
+      lines.push("RESTORMEL_ENVIRONMENT_ID=");
+    }
   }
 
   lines.push(

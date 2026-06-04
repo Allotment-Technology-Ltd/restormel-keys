@@ -51,7 +51,7 @@ export function filterNavGroupsForDashboardUi(groups: NavGroup[], hidden: Set<Da
         return s === null || !hidden.has(s);
       }),
     }))
-    .filter((g) => g.items.length > 0);
+    .filter((g) => g.items.length > 0 || g.comingSoon);
 }
 
 const SECTION_LABELS: Record<DashboardUiSection, string> = {

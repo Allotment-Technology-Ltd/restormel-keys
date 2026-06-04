@@ -1,6 +1,12 @@
 <script lang="ts">
   import IntegrationCard from "$lib/components/integrations/IntegrationCard.svelte";
   import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
+  import { page } from "$app/stores";
+  import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: showIntegrationCatalog = integrationCatalogForFlags(flags).length > 0;
 </script>
 
 <svelte:head>
@@ -21,14 +27,17 @@
     </div>
   </section>
 
-  <EcosystemStrip variant="full" heading="Works with your stack" />
+  <EcosystemStrip variant="full" />
 
   <!-- Integration Cards -->
   <section id="integrations" class="section" aria-labelledby="cards-heading">
     <h2 id="cards-heading" class="section-title">Restormel developer surfaces</h2>
     <p class="section-intro">
-      CLI, MCP, and AAIF are how you wire Restormel into terminals and agents. Third-party databases, gateways, and CI
-      are indexed in the <a href="/keys/docs/guides/integration-catalog">integration catalog</a>.
+      CLI, MCP, and AAIF are how you wire Restormel into terminals and agents.
+      {#if showIntegrationCatalog}
+        Third-party databases, gateways, and CI are indexed in the
+        <a href="/keys/docs/guides/integration-catalog">integration catalog</a>.
+      {/if}
     </p>
     <div class="cards-grid">
       <IntegrationCard
@@ -64,7 +73,7 @@
         <div>
           <strong>Install Keys</strong>
           <p class="step-desc">Add the core package to your project.</p>
-          <code class="step-code">npm install @restormel/keys</code>
+          <code class="step-code">pnpm add @restormel/keys-cli @restormel/keys-elements</code>
         </div>
       </li>
       <li class="setup-step">

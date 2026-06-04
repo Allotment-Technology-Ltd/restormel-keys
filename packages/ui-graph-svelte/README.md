@@ -1,5 +1,7 @@
 # `@restormel/ui-graph-svelte`
 
+> **Deprecated (Phase 7 maintenance window):** Prefer **`@restormel/graph-elements`** and **Layout REST** (`POST /graph/v1/layout`). **Bugfix-only** until **2026-12-01**, then npm deprecation. SOPHIA may keep this package until **Phase 8** WC cutover. See [graph-elements README](../graph-elements/README.md) and [npm-maintenance-window.md](../../docs/runbooks/npm-maintenance-window.md).
+
 **Public docs (integrators):** [restormel.dev/graph/docs](https://restormel.dev/graph/docs) — canonical SvelteKit guide: [Integrate Restormel Graph in a SvelteKit app](https://restormel.dev/graph/docs/integration/sveltekit).
 
 Svelte 5 implementation of the Restormel Graph canvas (`GraphCanvas`, optional `NodeDetail`), aligned with **Contract v0** in `@restormel/graph-core` (`viewModel.ts`). Ported from the SOPHIA app for modular reuse.

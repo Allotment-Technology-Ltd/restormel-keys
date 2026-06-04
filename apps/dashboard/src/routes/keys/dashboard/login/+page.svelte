@@ -6,63 +6,75 @@
 </script>
 
 <div class="login-page">
-  <div class="login-logo">
-    <AppLogo href={DASHBOARD_BASE + "/"} height="36" />
+  <div class="login-panel">
+    <div class="login-logo">
+      <AppLogo href="/" height={36} />
+    </div>
+    <h1 class="login-title">Sign in</h1>
+    <p class="login-desc">
+      Dashboard access is invite-only during early access. If you haven’t received a link yet,
+      <a href="/founders">request access</a> first.
+    </p>
+    <p class="login-desc login-desc-secondary">
+      Already applied? Sign in with GitHub — if your cohort is not approved yet, you will land on a pending page.
+    </p>
+    <form action={DASHBOARD_BASE + "/api/auth/initiate/github"} method="get" class="login-form">
+      <button type="submit" class="btn btn-primary login-btn">Sign in with GitHub</button>
+    </form>
+    <a href="/" class="back-link">← Back to Restormel</a>
   </div>
-  <h1 class="login-title">Sign in</h1>
-  <p class="login-desc">Use GitHub to sign in to the Keys dashboard.</p>
-  <form action={DASHBOARD_BASE + "/api/auth/initiate/github"} method="get" class="login-form">
-    <button type="submit" class="btn btn-primary">Sign in with GitHub</button>
-  </form>
-  <a href={DASHBOARD_BASE + "/"} class="back-link">Back to overview</a>
 </div>
 
 <style>
   .login-page {
-    max-width: 24rem;
+    max-width: 26rem;
     margin: 4rem auto;
+    padding: 0 var(--space-4);
+  }
+  .login-panel {
     text-align: center;
+    background: var(--brut-white);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    box-shadow: var(--brut-shadow);
+    padding: var(--space-8) var(--space-6);
   }
   .login-logo {
     display: block;
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-6);
   }
   .login-title {
-    font-family: var(--rm-font-display);
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--rm-text);
-    margin: 0 0 0.5rem;
+    font-family: var(--brut-font);
+    font-size: var(--text-2xl);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--brut-ink);
+    margin: 0 0 var(--space-2);
   }
   .login-desc {
-    color: var(--rm-muted);
-    font-size: 0.875rem;
-    margin: 0 0 1.5rem;
+    color: var(--brut-muted);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-4);
+    line-height: 1.5;
+  }
+  .login-desc a {
+    color: var(--brut-blue);
+    font-weight: 700;
+  }
+  .login-desc-secondary {
+    margin-bottom: var(--space-6);
   }
   .login-form {
-    margin: 0 0 1.5rem;
+    margin: 0 0 var(--space-4);
   }
-  .btn {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border-radius: var(--rm-radius);
-    font-size: 0.875rem;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
-  .btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+  .login-btn {
+    width: 100%;
   }
   .back-link {
     display: block;
-    margin-top: 1.5rem;
-    font-size: 0.875rem;
-    color: var(--rm-muted);
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--brut-ink);
   }
 </style>

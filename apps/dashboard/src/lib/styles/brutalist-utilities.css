@@ -1,0 +1,162 @@
+/**
+ * Neo-Brutalist utility classes (global).
+ * Depends on @restormel/keys-tokens/brutalist-rm.css for --color-* / --brut-* values.
+ */
+
+.brut-border {
+  border: var(--border);
+}
+
+.brut-border-micro {
+  border: var(--border-thin);
+}
+
+.brut-sharp {
+  border-radius: 0;
+}
+
+.brut-sharp-sm {
+  border-radius: 0;
+}
+
+.brut-shadow {
+  box-shadow: var(--shadow-md);
+}
+
+.brut-transition {
+  transition: var(--brut-transition);
+}
+
+/* Yellow = primary highlight fill only */
+.brut-fill-neon {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+.brut-fill-white {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.brut-fill-canvas {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+/* Module / secondary accents — outline, not filled blocks */
+.brut-fill-blue {
+  background: transparent;
+  color: var(--color-blue);
+  border: var(--border-thin);
+}
+
+.brut-fill-coral {
+  background: transparent;
+  color: var(--brut-coral);
+  border: var(--border-thin);
+}
+
+.brut-muted {
+  color: var(--color-ink-muted);
+}
+
+/* Interactive cards — lift on hover, press on active */
+.brut-pressable {
+  border: var(--border);
+  box-shadow: var(--shadow-md);
+  transform: translate(0, 0);
+  transition: var(--brut-transition);
+  border-radius: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brut-pressable:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.brut-pressable:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+.card,
+[data-card] {
+  box-shadow: var(--shadow-md);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.card:hover,
+[data-card]:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Blueprint-cutout overlap — slight rotation, preserved through press */
+.brut-overlap {
+  transform: rotate(-1deg);
+}
+
+.brut-overlap.brut-pressable:hover {
+  transform: rotate(-1deg) translate(-2px, -2px);
+}
+
+.brut-overlap.brut-pressable:active {
+  transform: rotate(-1deg) translate(2px, 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brut-pressable,
+  .brut-transition,
+  .card,
+  [data-card] {
+    transition: none;
+  }
+  .brut-pressable:hover,
+  .brut-pressable:active,
+  .brut-overlap.brut-pressable:hover,
+  .brut-overlap.brut-pressable:active,
+  .card:hover,
+  [data-card]:hover {
+    transform: var(--brut-reduced-transform, none);
+    box-shadow: var(--shadow-md);
+  }
+  .brut-overlap {
+    --brut-reduced-transform: rotate(-1deg);
+  }
+}
+
+.brut-focus:focus-visible {
+  outline: 2px solid var(--color-yellow);
+  outline-offset: 0;
+}
+
+.brut-heading {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: var(--text-display-tracking);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.brut-kicker {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-mono-sm);
+  letter-spacing: var(--text-mono-tracking);
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: var(--border-thin);
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border-radius: 0;
+}
+
+.brut-divider {
+  border: 0;
+  border-top: var(--border);
+  margin: var(--space-8) 0;
+}

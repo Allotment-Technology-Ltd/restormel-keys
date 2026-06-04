@@ -48,3 +48,27 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 
 - **Default stack** (database, hosting, Actions, frameworks, variants): [docs/restormel-module-default-stack.md](docs/restormel-module-default-stack.md) — includes GitHub template checklist and copy-paste **initiation prompt**.
 - **Scaffold:** `pnpm run init-module -- --out <dir> --slug <kebab> --title "<name>" [--platform-repo <path-to-restormel-platform>]` — see [docs/template-restormel-module-repo.md](docs/template-restormel-module-repo.md). Template sources: [platform/template-restormel-module/](platform/template-restormel-module/) (includes **09-suite-vs-platform** rule + **restormel-suite-vs-platform** skill for standalone modules).
+
+## Cursor Cloud specific instructions
+
+This Cloud Agent workspace also includes the sibling repo **`/agent/repos/sophia`** (SOPHIA showcase app). Use the pnpm version pinned in each repo’s `packageManager` field (`corepack prepare … --activate`).
+
+### restormel-keys (this repo)
+
+- **Install:** `pnpm install` from repo root (pnpm 9).
+- **Dashboard dev server:** `pnpm --filter dashboard dev --host 0.0.0.0 --port 5173` → http://localhost:5173/keys (marketing/docs work without env; authenticated routes need Neon).
+- **First dev boot gotcha:** `pnpm --filter dashboard run check` (or `build`) prebuilds workspace packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`, platform packages, etc.). If `vite dev` errors on unresolved `@restormel/graph-*` imports, run `pnpm --filter dashboard run check` once, then restart dev.
+- **Env (optional for marketing/docs):** copy `apps/dashboard/.env.example` → `apps/dashboard/.env.local`; set `DATABASE_URL` + `NEON_AUTH_BASE_URL` from the **same** Neon branch for login/dashboard CRUD. See [apps/dashboard/README.md](apps/dashboard/README.md).
+- **Quality gate (local):** `pnpm run quality` (dashboard check/build/test + docs/secrets/hygiene). Testing-only slice: `pnpm run check:testing` (152 tests; Playwright browser tests need Chromium — run once: `cd packages/testing-browser-playwright && pnpm exec playwright install chromium`).
+- **Node:** dashboard `engines` pin **20.x**; Node 22 usually works but may warn.
+
+### sophia (`/agent/repos/sophia`)
+
+- **Install:** `corepack prepare pnpm@11.0.8 --activate && pnpm install`.
+- **Dev server:** prefer `pnpm dev:vite --host 0.0.0.0 --port 5174` (direct Vite; `pnpm dev` via `scripts/dev.mjs` ignores `--host`). Default port may shift if 5173 is taken.
+- **Env:** copy `.env.example` → `.env`; `DATABASE_URL` (Neon) required for auth/admin APIs; `SURREAL_*` for graph/analyse flows. Docker is **not** installed in Cloud VMs by default — use Surreal Cloud or skip graph E2E.
+- **Checks:** `pnpm check` (svelte-check), `pnpm test` (Vitest + a11y contrast).
+
+### Running both apps
+
+Use separate tmux sessions (e.g. `dashboard-dev-server`, `sophia-dev-server`). Keys dashboard on **5173**, SOPHIA on **5174**.

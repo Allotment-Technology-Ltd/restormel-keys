@@ -1,8 +1,32 @@
 # Restormel Design System - Complete Specification
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-03-13  
+**Version:** 2.0.0 (Neo-Brutalist)  
+**Last Updated:** 2026-06-02  
 **Status:** Production Ready
+
+---
+
+## Neo-Brutalist Industrial (v2) — canonical
+
+Restormel's product surfaces (marketing, docs, and the signed-in dashboard) use a
+**Neo-Brutalist / High-Contrast Industrial** language: "Technical Drafting meets Retro-Terminal."
+This **supersedes the dark-first aesthetic** described in the v1 principles below for all product
+chrome. The v1 graph-node semantics are retained for data visualisation only.
+
+- **Canvas:** `#F0E6D2` (warm drafting paper) — base background everywhere.
+- **Ink:** `#000000` — all structural borders and text.
+- **Neon accent:** `#FFDE4D` — active states, badges, focal tags (backgrounds only; text on neon is ink).
+- **Block fills:** `#4D96FF` (blueprint blue) and `#FF6B6B` (coral flare).
+- **Geometry:** zero radius (`2px` max for inner modules); uniform `4px` black borders (`2px` micro).
+- **Shadows:** hard offset blocks only — `8px 8px 0 #000` (no ambient blur).
+- **Type:** monospace-only (JetBrains Mono / Space Mono), `800`–`900` weights for headings.
+- **Motion:** mechanical press (`translate` + shadow shrink), `100ms` transitions, honouring `prefers-reduced-motion`.
+- **Implementation:** CSS custom properties + utility classes (no Tailwind) — tokens in
+  [`@restormel/keys-tokens/brutalist-rm.css`](../packages/keys-tokens/src/brutalist-rm.css),
+  utilities in [`apps/dashboard/src/lib/styles/brutalist-utilities.css`](../apps/dashboard/src/lib/styles/brutalist-utilities.css).
+- **Contrast:** audited against WCAG AA/AAA — see
+  [`brutalist-contrast.test.ts`](../apps/dashboard/src/lib/styles/brutalist-contrast.test.ts).
+- **Embeddables:** `--rk-*` consumer components remain on their existing theme until a deliberate v2 embed pass.
 
 ---
 
@@ -54,17 +78,24 @@ This design system provides:
 
 ## Design Principles
 
-### 1. Dark-Mode First
+### 1. Light Drafting Canvas (v2 — supersedes "Dark-Mode First")
 
-All colors, shadows, and contrast ratios optimized for dark backgrounds. Light mode is not supported—this is a deliberate choice for technical workflows.
+> **Superseded:** The original v1 principle was "Dark-Mode First." Product chrome is now a
+> **light drafting-paper canvas** (`#F0E6D2`) with pure-black structure. The dark palette below is
+> retained only as historical context and for graph data-viz node semantics.
 
-**Rationale:** Developer tools are used in low-light environments. Dark interfaces reduce eye strain and improve focus during extended sessions.
+All product surfaces use the warm canvas with black ink borders and text. High contrast is the
+point: the interface reads like a technical blueprint, not a glossy SaaS app.
+
+**Rationale:** High-contrast black-on-paper maximises legibility and gives the product a confident,
+engineered character that stands apart from sterile dark-mode SaaS dashboards.
 
 ### 2. Technical Credibility Over Ornament
 
-No gradients, no drop shadows beyond functional elevation, no decorative elements. Every visual choice serves a functional purpose.
+No gradients, no soft/ambient shadows, no rounded pills, no decorative elements. Elevation is
+expressed with **hard offset block shadows** (`8px 8px 0 #000`) and **thick black borders**.
 
-**Rationale:** Trust is built through restraint. Users should focus on the data, not the interface.
+**Rationale:** Trust is built through restraint and structure. Every line is load-bearing.
 
 ### 3. Calm, Analytical Interface
 

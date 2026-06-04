@@ -23,6 +23,7 @@ import {
   isExecutableProviderModelPair,
 } from "$lib/server/canonical-provider";
 import { expandPoolMembersFromStep, orderPoolCandidates } from "$lib/server/model-pool";
+import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 
 /** Rich metadata for one tier in resolve `stepChain` / simulate (contract 2026-04-16+). */
 export type ResolveStepChainRow = {
@@ -188,16 +189,18 @@ export async function selectExecutableMemberForStep(
       canonicalApiToPolicyProvider(normalizeProviderToCanonicalApi(cand.providerPreference)) ??
       (cand.providerPreference?.trim() ? cand.providerPreference.trim() : undefined);
     const lifecycleState = modelId ? lifecycleByModel.get(modelId) : undefined;
-    const violations = await evaluatePolicies({
-      workspaceId,
-      projectId: routeRecord.projectId,
-      environmentId,
-      routeId,
-      routeStepId: step.id,
-      modelId,
-      providerType: policyProvider,
-      modelLifecycleState: lifecycleState,
-    });
+    const violations = resolveModuleFlagsSync().guardrails
+      ? await evaluatePolicies({
+          workspaceId,
+          projectId: routeRecord.projectId,
+          environmentId,
+          routeId,
+          routeStepId: step.id,
+          modelId,
+          providerType: policyProvider,
+          modelLifecycleState: lifecycleState,
+        })
+      : [];
     if (violations.length > 0) {
       merged.push(...violations);
       continue;

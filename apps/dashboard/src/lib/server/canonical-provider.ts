@@ -3,6 +3,11 @@
  * Matches executor expectations (e.g. `vertex` for Google/Vertex AI). Persisted step rows may use legacy aliases.
  */
 
+export {
+  ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS,
+  type RouteStepAllowedStorageProviderId,
+} from "$lib/route-step-allowed-providers";
+
 /** Values emitted by resolve/simulate/list responses after normalization. */
 export const CANONICAL_PROVIDER_TYPES = [
   "openai",
@@ -23,26 +28,6 @@ export const CANONICAL_PROVIDER_TYPES = [
 export type CanonicalProviderType = (typeof CANONICAL_PROVIDER_TYPES)[number];
 
 const CANONICAL_SET = new Set<string>(CANONICAL_PROVIDER_TYPES);
-
-/**
- * Allowed values for persisted `provider_preference` on route steps (after `normalizeProviderForStorage`).
- * `vertex` inbound is stored as `google`; include `google` here for DB round-trips.
- */
-export const ROUTE_STEP_ALLOWED_STORAGE_PROVIDERS = new Set([
-  "openai",
-  "anthropic",
-  "google",
-  "openrouter",
-  "vercel",
-  "portkey",
-  "voyage",
-  "mistral",
-  "deepseek",
-  "together",
-  "cohere",
-  "groq",
-  "aizolo",
-]);
 
 /** Normalize free-text / legacy labels to slug form before alias map. */
 function slugProviderInput(raw: string): string {

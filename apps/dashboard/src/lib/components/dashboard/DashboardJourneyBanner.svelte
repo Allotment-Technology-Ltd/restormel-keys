@@ -1,25 +1,42 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import type { ModuleFlags } from "$lib/module-flags-types";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   /** Current pathname (e.g. from $page.url.pathname). */
   export let currentPath: string;
   export let user: unknown | null;
   export let journeySignals: { integrationCount: number; gatewayKeyCount: number } | null;
+  export let moduleFlags: ModuleFlags | null = null;
 
   const base = DASHBOARD_BASE.replace(/\/$/, "");
 
   type Hint = { text: string; cta: string; href: string };
 
-  function isOverviewPath(path: string): boolean {
-    return path === base || path === base + "/";
+  import { CONNECT_HUB_HREF, WORKSPACE_HOME_HREF } from "$lib/nav-config";
+
+  function isConnectHubPath(path: string): boolean {
+    return path === CONNECT_HUB_HREF || path.startsWith(CONNECT_HUB_HREF + "/");
   }
 
-  function computeHint(path: string, sig: typeof journeySignals): Hint | null {
+  function computeHint(
+    path: string,
+    sig: typeof journeySignals,
+    flags: ModuleFlags,
+  ): Hint | null {
     if (!sig) return null;
-    if (isOverviewPath(path)) return null;
+    if (isConnectHubPath(path)) return null;
     if (path.startsWith(base + "/login") || path.startsWith(base + "/logout")) return null;
 
+    if (path === WORKSPACE_HOME_HREF || path === `${base}/`) {
+      return {
+        text: "Confirm your project context above, then open Connect to configure ingest and graph storage.",
+        cta: "Open Connect",
+        href: `${base}/connect`,
+      };
+    }
     if (path.startsWith(base + "/testing")) {
+      if (!flags.testing) return null;
       if (sig.gatewayKeyCount === 0) {
         return {
           text: "Create a Gateway key before copying env for the Testing CLI.",
@@ -43,9 +60,9 @@
     if (path.startsWith(base + "/integrations")) {
       if (sig.integrationCount === 0) {
         return {
-          text: "Save a connection to unlock model bindings and Testing resolve.",
-          cta: "Why Connections matter",
-          href: "/keys/docs/guides/keys-testing-onboarding",
+          text: "Connections power Connect ingest stages — add one to unlock the pipeline.",
+          cta: "Open Connect",
+          href: `${base}/connect`,
         };
       }
       return {
@@ -55,13 +72,27 @@
       };
     }
     if (path.startsWith(base + "/access")) {
+      if (flags.testing) {
+        return {
+          text: "Copy RESTORMEL_KEYS_BASE, RESTORMEL_GATEWAY_KEY, and project ID from one place.",
+          cta: "Restormel Testing hub",
+          href: `${base}/testing`,
+        };
+      }
       return {
-        text: "Copy RESTORMEL_KEYS_BASE, RESTORMEL_GATEWAY_KEY, and project ID from one place.",
-        cta: "Restormel Testing hub",
-        href: `${base}/testing`,
+        text: "Copy RESTORMEL_KEYS_BASE and RESTORMEL_GATEWAY_KEY for your app, CLI, or MCP setup.",
+        cta: "CLI & agents",
+        href: `${base}/dev-tools`,
       };
     }
     if (path.startsWith(base + "/routes")) {
+      if (!flags.guardrails) {
+        return {
+          text: "Promote a working model choice from sandbox into a named route.",
+          cta: "Try a request",
+          href: `${base}/sandbox`,
+        };
+      }
       return {
         text: "Attach guard rails to routes to enforce limits in production.",
         cta: "Guard rails",
@@ -71,7 +102,7 @@
     if (path.startsWith(base + "/policies")) {
       return {
         text: "Monitor usage and failures after policies are live.",
-        cta: "Usage & Analytics",
+        cta: "Usage",
         href: `${base}/analytics`,
       };
     }
@@ -103,38 +134,70 @@
         href: `${base}/routes`,
       };
     }
-    if (path.startsWith(base + "/healthcheck")) {
+    if (path.startsWith(base + "/connect")) {
       return {
-        text: "New to the dashboard? Use Overview for two setup tracks (Keys routing + Testing in CI).",
+        text: "Follow the Connect hub steps — pipeline profile before your first ingest run.",
+        cta: "Operator model",
+        href: "/docs/operator-model",
+      };
+    }
+    if (path.startsWith(base + "/graph")) {
+      return {
+        text: "Graph is embed-first: use the SvelteKit integrator guide when wiring the canvas in your app.",
+        cta: "SvelteKit guide",
+        href: "/graph/docs/integration/sveltekit",
+      };
+    }
+    if (path.startsWith(base + "/healthcheck")) {
+      if (flags.testing) {
+        return {
+          text: "New to the dashboard? Use Overview for two setup tracks (Keys routing + Testing in CI).",
+          cta: "Overview",
+          href: WORKSPACE_HOME_HREF,
+        };
+      }
+      return {
+        text: "New to the dashboard? Finish the setup checklist on Overview.",
         cta: "Overview",
-        href: `${base}/`,
+        href: WORKSPACE_HOME_HREF,
       };
     }
     if (path.startsWith(base + "/dev-tools/cli")) {
       return {
-        text: "CLI and MCP share the same Gateway key model; use testing.hub_snapshot from an agent to pull env ids.",
+        text: flags.testing
+          ? "CLI and MCP share the same Gateway key model; use testing.hub_snapshot from an agent to pull env ids."
+          : "CLI and MCP share the same Gateway key model — wire RESTORMEL_GATEWAY_KEY in server env only.",
         cta: "MCP tools",
         href: `${base}/dev-tools/mcp`,
       };
     }
     if (path.startsWith(base + "/dev-tools/aaif")) {
       return {
-        text: "Define routes and guard rails first so AAIF calls land on governed model paths.",
+        text: flags.guardrails
+          ? "Define routes and guard rails first so AAIF calls land on governed model paths."
+          : "Define routes first so AAIF calls land on consistent model paths.",
         cta: "Routes",
         href: `${base}/routes`,
       };
     }
     if (path.startsWith(base + "/dev-tools")) {
+      if (flags.testing && flags.environments) {
+        return {
+          text: "Agents: testing.journey, testing.hub_snapshot, project.environments.list, project.gateway_keys.* (server env only).",
+          cta: "Environment vocabulary",
+          href: "/keys/docs/guides/environment-vocabulary",
+        };
+      }
       return {
-        text: "Agents: testing.journey, testing.hub_snapshot, project.environments.list, project.gateway_keys.* (server env only).",
-        cta: "Environment vocabulary",
-        href: "/keys/docs/guides/environment-vocabulary",
+        text: "Wire MCP with RESTORMEL_GATEWAY_KEY and server-only env — see the MCP setup guide.",
+        cta: "MCP setup",
+        href: "/keys/docs/integrations/mcp",
       };
     }
     if (path.startsWith(base + "/billing")) {
       return {
         text: "After changing plan, confirm Analytics and Logs reflect expected traffic and limits.",
-        cta: "Usage & Analytics",
+        cta: "Usage",
         href: `${base}/analytics`,
       };
     }
@@ -146,13 +209,15 @@
       };
     }
     if (path.startsWith(base + "/lifecycle")) {
+      if (!flags.testing) return null;
       return {
         text: "Overview lists two tracks: live traffic (routes) vs Restormel Testing in CI (resolve + doctor).",
         cta: "Overview",
-        href: `${base}/`,
+        href: WORKSPACE_HOME_HREF,
       };
     }
     if (path.startsWith(base + "/copy-for-ci") || path.startsWith(base + "/copy-for-cli")) {
+      if (!flags.testing) return null;
       return {
         text: "Restormel Testing shares the same Gateway key model; grab IDs from the Testing hub.",
         cta: "Restormel Testing",
@@ -169,7 +234,8 @@
     return null;
   }
 
-  $: hint = user ? computeHint(currentPath, journeySignals) : null;
+  $: flags = moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: hint = user ? computeHint(currentPath, journeySignals, flags) : null;
 </script>
 
 {#if hint}

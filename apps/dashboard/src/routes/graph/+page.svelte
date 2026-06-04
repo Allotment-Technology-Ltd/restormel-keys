@@ -44,31 +44,18 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
   showGhostLayer={true}
 />`;
 
-  const helloInstall = "pnpm add @restormel/graph-core @restormel/ui-graph-svelte";
+  const helloInstall = "pnpm add @restormel/graph-core @restormel/graph-elements";
 
-  const helloSnippet = `<script lang="ts">
-  import { GraphCanvas } from "@restormel/ui-graph-svelte";
-  import type { GraphData } from "@restormel/graph-core/viewModel";
-
-  const graphData: GraphData = {
-    nodes: [
-      { id: "a", type: "claim", label: "Node A" },
-      { id: "b", type: "claim", label: "Node B" },
-    ],
-    edges: [{ from: "a", to: "b", type: "supports" }],
-    ghostNodes: [],
-    ghostEdges: [],
-  };
+  const helloSnippet = `<script type="module">
+  import "@restormel/graph-elements";
+  const el = document.querySelector("rg-graph-canvas");
+  el.nodes = [
+    { id: "a", type: "claim", label: "Node A" },
+    { id: "b", type: "claim", label: "Node B" },
+  ];
+  el.edges = [{ from: "a", to: "b", type: "supports" }];
 <\/script>
-
-<GraphCanvas
-  nodes={graphData.nodes}
-  edges={graphData.edges}
-  ghostNodes={graphData.ghostNodes}
-  ghostEdges={graphData.ghostEdges}
-  width={560}
-  height={320}
-/>`;
+<rg-graph-canvas width="560" height="320"></rg-graph-canvas>`;
 </script>
 
 <svelte:head>
@@ -89,7 +76,7 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
     </p>
     <ul class="graph-cta-row">
       <li>
-        <a class="btn btn-primary" href="{base}/docs/integration/sveltekit">Get started →</a>
+        <a class="btn btn-primary" href="{base}/docs/integration/web-components">Get started →</a>
       </li>
       <li>
         <a class="btn btn-ghost" href={npmGraphCore} rel="noopener noreferrer" target="_blank">View on npm →</a>
@@ -101,11 +88,7 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
   </section>
 
   <div class="container">
-    <EcosystemStrip
-      variant="compact"
-      heading="Same suite, shared foundations"
-      intro="Graph ships standalone — and sits next to Keys, Testing, and the integrations you already run in production."
-    />
+    <EcosystemStrip variant="compact" />
   </div>
 
   <section class="use-cases section-alt" aria-labelledby="use-cases-heading">
@@ -148,7 +131,8 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
     <h2 id="contract-heading" class="section-heading">Contract-first, not library-lock-in</h2>
     <p class="contract-prose">
       Most graph libraries couple your data model to their renderer. Change the library, rewrite your adapters. Restormel
-      Graph separates the contract (<strong>GraphData</strong>) from the canvas (<strong>@restormel/ui-graph-svelte</strong>).
+      Graph separates the contract (<strong>GraphData</strong>) from the canvas (<strong>@restormel/graph-elements</strong>).
+      Legacy <code>@restormel/ui-graph-svelte</code> is deprecated — use Web Components for new apps.
       Swap the renderer without touching your domain.
     </p>
     <div class="code-two-col">
@@ -193,7 +177,7 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
     <div class="container graph-pricing-inner">
       <h2 id="graph-pricing-heading" class="section-heading">Pricing</h2>
       <p class="graph-pricing-lead">
-        Both <strong>@restormel/graph-core</strong> and <strong>@restormel/ui-graph-svelte</strong> are <strong>MIT</strong>
+        Both <strong>@restormel/graph-core</strong> and <strong>@restormel/graph-elements</strong> are <strong>MIT</strong>
         — free forever for build and ship.
       </p>
       <p class="graph-pricing-pro">
@@ -207,9 +191,9 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
   <section class="founders-section section-alt founders-edge" aria-labelledby="founders-heading">
     <div class="container founders-inner">
       <h2 id="founders-heading" class="founders-title">Join the Founders Circle</h2>
-      <p class="founders-lead">50 founding member slots. 12 months Pro free. Direct access to the roadmap.</p>
+      <p class="founders-lead">Invite-only dashboard access while we prove product–market fit. Register — we’ll email your link.</p>
       <div class="founders-actions">
-        <a class="btn btn-primary founders-primary" href="/founders">Apply for founding access →</a>
+        <a class="btn btn-primary founders-primary" href="/founders#apply-heading">Request early access →</a>
         <p class="founders-secondary-wrap">
           <a class="founders-secondary" href="/founders#program">Learn more about the program</a>
         </p>

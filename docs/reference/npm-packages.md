@@ -2,114 +2,88 @@
 
 Canonical reference for **which packages exist**, **what to install when**, and **how to verify** they resolve from npm.
 
+**Keys MVP (public default):** use **Keys REST** for resolve/catalog/models, **`@restormel/keys-elements`** for UI, **`@restormel/keys-cli`** / **`@restormel/doctor`** for local tooling, **`@restormel/mcp`** / **`@restormel/aaif`** for agents. See [keys-mvp-mode.md](../guides/keys-mvp-mode.md).
+
+---
+
 ## Verify before you install
 
-Registry state changes with releases. From your project:
-
 ```bash
-npm view @restormel/keys version
-npm view @restormel/aaif version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/mcp version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/support version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/keys-elements version
+npm view @restormel/keys-cli version
 npm view @restormel/doctor version
-npm view @restormel/keys-cli version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/keys-svelte version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/graph-core version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/ui-graph-svelte version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/contracts version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/observability version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/graph-reasoning-extensions version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/context-packs version 2>/dev/null || echo "not published or name differs"
-npm view @restormel/state version 2>/dev/null || echo "not published or name differs"
+npm view @restormel/mcp version
+npm view @restormel/aaif version
 ```
 
-## Minimum path (Phases 1–4, any framework)
+---
 
-Headless resolution and doctor checks need only:
+## Recommended path (Keys MVP integrators)
 
-| Package | Availability | Purpose |
-|---|---|---|
-| `@restormel/keys` | `Published on npm` | Core: resolve, providers, config consumption |
-| `@restormel/aaif` | `Check npm view` | AAIF contract + runtime helper (routing + cost estimation) for app/service hosts |
-| `@restormel/mcp` | `Check npm view` | MCP tools + stdio server for agents/IDEs (requires `@restormel/keys` at runtime). **0.2+** adds offline suite read tools (Testing config validate, trace summarize, graph/state fixtures, canonical doc map); HTTP mirror: dashboard **`POST /keys/dashboard/api/suite/invoke`** (Zuplo **`POST /api/suite/invoke`**). |
-| `@restormel/doctor` | `Published on npm` | Local setup check (no UI packages required) |
+| Package | Purpose |
+|---------|---------|
+| **Keys REST** (`/keys/v1/*`) | Resolve, catalog, models, policies — **no npm core required** |
+| `@restormel/keys-elements` | Web Components: KeyManager, ModelSelector, CostEstimator |
+| `@restormel/keys-cli` | `keys init`, `keys login`, `keys doctor`, `keys catalog fetch` |
+| `@restormel/doctor` | Local setup check (REST env + config) |
+| `@restormel/mcp` | MCP tools + stdio server for agents/IDEs |
+| `@restormel/aaif` | AAIF contract + runtime helper for app/service hosts |
 
-Create `restormel.config.json` with [`keys init`](../../packages/cli/README.md) **or** manually (see [Phase 1 walkthrough](../walkthrough/03-phase-1-install.md#step-13--manual-restormelconfigjson-no-cli)).
+Migrate from in-process npm: [npm-to-rest-keys.md](../guides/npm-to-rest-keys.md).
 
-**Restormel Doctor** requires `@restormel/keys` and a valid config. **It does not fail** if optional UI packages (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) are missing — those are for [Phase 5 UI](../walkthrough/07-phase-5-ui.md).
+```bash
+pnpm add @restormel/keys-elements
+pnpm add -D @restormel/keys-cli @restormel/doctor
+```
 
-## UI and wrapper CLI (Phase 5 and onboarding)
+---
 
-| Package | Availability | When needed |
-|---|---|---|
-| `@restormel/keys-svelte` | `Check npm view` | SvelteKit embeddable components |
-| `@restormel/keys-react` | `Check npm view` | React / Next.js embeddable components |
-| `@restormel/keys-elements` | `Check npm view` | Web components / Astro |
-| `@restormel/keys-cli` | `Published on npm` | `keys init`, `keys add`, wrappers for doctor/validate |
+## Deprecated — do not start new integrations
 
-## Restormel Graph (Svelte canvas + Contract v0)
+Bugfix-only until **2026-12-01**; see [npm-maintenance-window.md](../runbooks/npm-maintenance-window.md).
 
-| Package | Availability | When needed |
-|---------|--------------|-------------|
-| `@restormel/graph-core` | `Check npm view` | Frozen **`GraphData`** DTOs + `layout` / `trace` / `workspace` helpers (no `@restormel/contracts`) |
-| `@restormel/ui-graph-svelte` | `Check npm view` | **`GraphCanvas`**, **`NodeDetail`**, **`graphCanvasEdgeKey`** — peer **`svelte@^5`** |
+| Package | Use instead |
+|---------|-------------|
+| `@restormel/keys` | Keys REST + [npm-to-rest-keys.md](../guides/npm-to-rest-keys.md) |
+| `@restormel/keys-svelte` | `@restormel/keys-elements` |
+| `@restormel/keys-react` | `@restormel/keys-elements` |
+| `@restormel/ui-graph-svelte` | `@restormel/graph-elements` + `POST /graph/v1/layout` |
 
-**SOPHIA / SvelteKit integration:** [docs/restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) (imports, CSS variables, `ssr.noExternal`, tarball overrides).
+Existing apps may stay on maintenance releases until migrated.
 
-## Restormel platform (contracts + observability + reasoning extensions)
+---
 
-| Package | Availability | When needed |
-|---------|--------------|-------------|
-| `@restormel/contracts` | `Check npm view` | Cross-boundary Zod schemas and types (API, trace, reasoning, graph API shapes — not Contract v0 canvas DTOs). |
-| `@restormel/observability` | `Check npm view` | Trace normalization, reasoning events, SSE-shaped types (depends on contracts). |
-| `@restormel/graph-reasoning-extensions` | `Check npm view` | Compare, lineage, projection, evaluation, summary, diff over graph snapshots (depends on **contracts** + **graph-core**). |
-| `@restormel/context-packs` | `Check npm view` | Pass-specific LLM context text from a portable retrieval-shaped payload (no **contracts** / DB; Phase 2). Optional **`restormel_correlation`** for **`@restormel/state`** / observability. Status: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](../restormel/PHASE2-EXTRACTION-STATUS.md). |
-| `@restormel/state` | `Check npm view` | Restormel State: append-only memory events, `projectWorkingMemory`, correlation with context packs + traces. Depends on **`@restormel/context-packs`**. SOPHIA/Stoa-only builders: [docs/restormel/state-sophia-integration.md](../restormel/state-sophia-integration.md). Repo spec: [docs/restormel/RESTORMEL-STATE.md](../restormel/RESTORMEL-STATE.md). Integrator overview: [restormel.dev/graph/docs/extensions/state](https://restormel.dev/graph/docs/extensions/state). |
+## Non-MVP suite packages (hidden by default)
 
-**Phase 1 programme:** [docs/restormel/phase1-restormel-engineering-spec.md](../restormel/phase1-restormel-engineering-spec.md).
+Not promoted on restormel.dev when module flags are at MVP defaults:
 
-## Availability truth table
+| Train | Packages | When public |
+|-------|----------|-------------|
+| **Testing** | `@restormel/testing-*` | Enable `restormel-module-testing` — [docs/testing/oss-consumption.md](../testing/oss-consumption.md) |
+| **Graph pillar** | `@restormel/graph-core`, `@restormel/graph-elements` | Enable `restormel-module-graph` (preview+) — [restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) |
+| **Platform** | `@restormel/contracts`, `@restormel/observability`, `@restormel/state`, … | Graph extensions / dogfood only — not Keys MVP onboarding |
 
-Use this as the canonical "what is available now" check:
-
-1. Run the `npm view` commands in this document.
-2. Mark each package as one of:
-   - `Published on npm`
-   - `Private preview`
-   - `Local package only`
-   - `Planned`
-3. Do not infer availability from roadmap phase labels alone.
-
-For user-facing docs snippets, default to `@restormel/keys` unless the UI package has a confirmed `npm view` result.
-
-**Avoid `@restormel/keys-cli@0.1.0`** and **`@restormel/validate@0.1.3`** — broken `workspace:*` on `@restormel/keys`. Use **keys-cli ≥0.1.1**, **validate ≥0.1.4**, or manual config / doctor-only checks.
-
-If a package returns **404** from npm, use the **manual config** path and `@restormel/doctor` until that package is published (see repo [README](../../README.md#publish-phase-2) and release workflow).
+---
 
 ## Publishing (maintainers)
 
-- **Full release train:** push git tag `keys-v*` → workflow **Publish** (`.github/workflows/publish.yml`).
-- **Graph packages:** push git tag `graph-v*` (e.g. `graph-v0.1.0`) → workflow **Publish Graph packages** (`.github/workflows/publish-graph.yml`) publishes `@restormel/graph-core` then `@restormel/ui-graph-svelte`. **Pre-flight:** `bash scripts/smoke-graph-packages-consumer.sh` (also runs in CI).
-- **Platform packages (Phase 1 + context packs + state):** push git tag `platform-v*` → workflow **Publish Restormel platform packages** (`.github/workflows/publish-restormel-platform.yml`) publishes `@restormel/contracts`, `@restormel/context-packs`, `@restormel/state`, `@restormel/observability`, `@restormel/graph-reasoning-extensions`. **Local:** `pnpm run build:platform-packages` and `pnpm run test:platform-packages`.
-- **Platform single-package (recovery):** same workflow → **Run workflow** → set **`package_scope`** to **`observability`** when you must republish only `@restormel/observability` without re-uploading the other platform packages (after a version bump in `packages/observability`). Use **`context-packs`** when publishing **`@restormel/context-packs` alone** (for example first npm release at `0.1.0` while other platform packages are already published).
-- **Observability public visibility:** if **`npm view @restormel/observability`** returns **404** but publish logs show **`+ @restormel/observability@…`**, run **[`npm-access-public-observability.yml`](../.github/workflows/npm-access-public-observability.yml)** (**`npm access set status=public`**).
-- **Single package (recovery):** GitHub Actions → run **Publish keys-svelte** or **Publish aaif** (uses `NPM_TOKEN`). Use when you need npm install without bumping `@restormel/keys` again.
+- **Keys train:** tag `keys-v*` → `.github/workflows/publish.yml` (deprecated adapters still patch-only)
+- **Elements:** published with Keys train
+- **Testing train:** tag `testing-v*` when `RESTORMEL_PUBLISH_TESTING=true` → `publish-testing.yml`
+- **Graph train:** tag `graph-v*` → `publish-graph.yml` (SOPHIA consumers)
+- **Platform train:** tag `platform-v*` → `publish-restormel-platform.yml`
+
+MVP publish matrix: [restormel-monorepo-packages.md](../restormel-monorepo-packages.md).
+
+---
 
 ## pnpm monorepos
 
-Install into the **app package** that contains your app code (where `svelte.config.js` / `next.config.*` lives), not only the workspace root:
+Install into the **app package** that contains your app code:
 
 ```bash
 cd apps/my-app
-pnpm add @restormel/keys
+pnpm add @restormel/keys-elements
 ```
 
-If you must install from the **workspace root**, scope the dependency to the right package:
-
-```bash
-pnpm add @restormel/keys --filter my-app
-# or, for a root that is also the app:
-pnpm add -w @restormel/keys
-```
-
-See also: on **restormel.dev**, **Docs → Framework compatibility** (`/keys/docs/compatibility`).
+See also: [/keys/docs/compatibility](https://restormel.dev/keys/docs/compatibility).

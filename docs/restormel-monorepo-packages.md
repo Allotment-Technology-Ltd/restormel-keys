@@ -4,6 +4,18 @@
 
 End users consume **published npm packages**; this document is for contributors.
 
+## MVP publish trains (2026-06)
+
+| Train | MVP default | Notes |
+|-------|-------------|-------|
+| **`keys-v*`** | Publish | Core product |
+| **`tokens-v*`** | Publish | Dashboard dependency |
+| **`testing-v*`** | Skip unless `RESTORMEL_PUBLISH_TESTING=true` | Packages remain in monorepo; CI extended job optional |
+| **`graph-v*`** | Publish for SOPHIA | Suite marketing gated via PostHog |
+| **`platform-v*`** | Minimal (`contracts`, `mcp`, `aaif`) | Defer `state`, `context-packs` unless Connect needs them |
+
+Module flags: [guides/keys-mvp-mode.md](guides/keys-mvp-mode.md).
+
 ## Workspace layout
 
 | Path | npm scope / app | Role |

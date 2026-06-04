@@ -33,48 +33,53 @@
   }
 
   .doc-article h1 {
-    font-family: var(--rm-font-display);
-    font-size: var(--text-3xl);
-    font-weight: var(--font-semibold);
-    letter-spacing: var(--tracking-tight);
-    color: var(--rm-text);
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 900;
+    letter-spacing: var(--text-display-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink);
     margin: 0 0 var(--space-6);
-    line-height: var(--leading-tight);
+    line-height: 1.05;
   }
 
   .doc-banner {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
+    font-size: var(--text-body-sm);
+    line-height: var(--text-body-line-height);
+    color: var(--color-ink-muted);
     margin: 0 0 var(--space-6);
     padding: var(--space-4);
-    background: var(--rm-surface);
-    border: var(--border-1) solid var(--rm-border);
-    border-radius: var(--rm-card-radius);
-    border-left: var(--border-4) solid var(--rm-sage);
+    background: var(--color-surface);
+    border: var(--border);
+    border-left-width: 6px;
+    border-left-color: var(--color-yellow);
+    border-radius: 0;
   }
 
   .doc-banner a {
-    color: var(--rm-sage);
+    color: var(--color-ink);
+    font-weight: 700;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
 
   .doc-banner a:hover {
-    color: var(--signal-teal-hover);
+    background: var(--color-yellow);
   }
 
   .doc-code-inline {
-    font-size: 0.9em;
-    color: var(--rm-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    padding: 0.08rem 0.35rem;
+    border: var(--border-thin);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
 
   .doc-lede {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-line-height);
+    color: var(--color-ink-muted);
     margin: 0 0 var(--space-6);
   }
 

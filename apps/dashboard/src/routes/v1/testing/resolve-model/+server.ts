@@ -4,6 +4,7 @@
  */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { decryptProviderSecret } from "$lib/server/credential-crypto";
 import {
   getProviderIntegrationSecretRow,
@@ -12,6 +13,11 @@ import {
 } from "$lib/server/db";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+  const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  if (!flags.testing) {
+    return json({ error: "module_disabled", module: "testing" }, { status: 404 });
+  }
+
   if (!locals.user) {
     return json({ error: "unauthorized", message: "Unauthorized" }, { status: 401 });
   }

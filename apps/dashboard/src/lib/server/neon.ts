@@ -11,6 +11,9 @@ import {
   encryptProviderSecret,
   secretDisplaySuffix,
 } from "$lib/server/credential-crypto";
+import { resolveModuleFlagsSync } from "$lib/server/module-flags";
+import { normalizeConnectIngestStages } from "@restormel/connect-core";
+import { reconcileConnectIngestJobStagesForApi } from "$lib/connect/ingest-progress-ui";
 
 const KEY_PREFIX = "rk_";
 
@@ -51,7 +54,7 @@ export type ApiKeyRecord = {
   createdAt: number;
 };
 
-function getSql() {
+export function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return neon(url);
@@ -438,24 +441,36 @@ export async function getProjectInWorkspace(projectId: string, workspaceId: stri
   );
 }
 
-/** Create project under user's default workspace; seeds dev and prod environments. */
+/** Create project under user's default workspace; seeds environments per module flags. */
 export async function createProject(userId: string, name: string): Promise<Project> {
   const sql = getSql();
   const workspace = await getOrCreateDefaultWorkspace(userId);
   const id = crypto.randomUUID();
   const createdAt = Date.now();
   const projectName = name || "Unnamed project";
+  const flags = resolveModuleFlagsSync();
   await sql`
     INSERT INTO projects (id, name, user_id, workspace_id, created_at)
     VALUES (${id}, ${projectName}, ${userId}, ${workspace.id}, ${createdAt})
   `;
   const envCreatedAt = Date.now();
-  await sql`
-    INSERT INTO environments (id, project_id, name, type, created_at)
-    VALUES
-      (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
-      (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
-  `;
+  if (flags.environments) {
+    await sql`
+      INSERT INTO environments (id, project_id, name, type, created_at)
+      VALUES
+        (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
+        (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
+    `;
+  } else {
+    const prodEnvId = crypto.randomUUID();
+    await sql`
+      INSERT INTO environments (id, project_id, name, type, created_at)
+      VALUES (${prodEnvId}, ${id}, 'Production', 'prod', ${envCreatedAt})
+    `;
+    await sql`
+      UPDATE projects SET default_environment_id = ${prodEnvId} WHERE id = ${id}
+    `;
+  }
   return {
     id,
     name: projectName,
@@ -566,6 +581,27 @@ export async function listEnvironments(projectId: string, userId: string): Promi
     type: r.type,
     createdAt: Number(r.createdAt),
   })) as Environment[];
+}
+
+/** Resolve canonical environment for resolve API when `environmentId` omitted (environments module off). */
+export async function getProjectDefaultEnvironmentId(
+  projectId: string,
+  userId: string
+): Promise<string | null> {
+  const project = await getProject(projectId, userId);
+  if (!project) return null;
+  const sql = getSql();
+  const rows = await sql`
+    SELECT default_environment_id AS "defaultEnvironmentId"
+    FROM projects
+    WHERE id = ${projectId} AND user_id = ${userId}
+    LIMIT 1
+  `;
+  const fromColumn = (rows[0] as { defaultEnvironmentId?: string | null } | undefined)?.defaultEnvironmentId;
+  if (fromColumn) return fromColumn;
+  const envs = await listEnvironments(projectId, userId);
+  const prod = envs.find((e) => e.type?.toLowerCase() === "prod");
+  return prod?.id ?? envs[0]?.id ?? null;
 }
 
 /** Get environment if it belongs to the project (for route creation). */
@@ -1990,7 +2026,7 @@ let ensuredIngestionRoutingSchema: Promise<void> | null = null;
  * Self-heal for older environments where migrations 012/013 were not applied yet.
  * Keeps runtime routing endpoints operational instead of failing with undefined-column errors.
  */
-async function ensureIngestionRoutingSchema(): Promise<void> {
+export async function ensureIngestionRoutingSchema(): Promise<void> {
   if (ensuredIngestionRoutingSchema) return ensuredIngestionRoutingSchema;
   ensuredIngestionRoutingSchema = (async () => {
     const sql = getSql();
@@ -2157,8 +2193,292 @@ async function ensureIngestionRoutingSchema(): Promise<void> {
       ON hosted_runtime_jobs (status, created_at)
       WHERE status = 'queued'
     `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_ingest_jobs (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        label TEXT,
+        current_stage TEXT,
+        stages JSONB NOT NULL DEFAULT '[]'::jsonb,
+        sources JSONB NOT NULL,
+        stop_after_stage TEXT,
+        error TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT knowledge_ingest_jobs_status_check CHECK (
+          status IN ('pending', 'running', 'completed', 'failed', 'cancelled')
+        )
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_jobs_workspace_updated
+      ON knowledge_ingest_jobs (workspace_id, updated_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_jobs_workspace_status
+      ON knowledge_ingest_jobs (workspace_id, status)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_jobs_pending
+      ON knowledge_ingest_jobs (status, created_at)
+      WHERE status = 'pending'
+    `;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS pipeline_profile_id TEXT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS domain_pack_id TEXT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS graph_target_id TEXT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS current_action TEXT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS progress JSONB`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_ingest_job_logs (
+        id BIGSERIAL PRIMARY KEY,
+        job_id TEXT NOT NULL REFERENCES knowledge_ingest_jobs(id) ON DELETE CASCADE,
+        line TEXT NOT NULL,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_job_logs_job_seq
+      ON knowledge_ingest_job_logs (job_id, id)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_targets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL DEFAULT 'surreal',
+        endpoint TEXT NOT NULL,
+        namespace TEXT NOT NULL,
+        database TEXT NOT NULL,
+        username TEXT,
+        secret_ciphertext TEXT,
+        secret_iv TEXT,
+        secret_auth_tag TEXT,
+        secret_encryption_version INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'untested',
+        last_tested_at BIGINT,
+        last_error TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT knowledge_graph_targets_status_check CHECK (status IN ('untested', 'ok', 'error')),
+        CONSTRAINT knowledge_graph_targets_workspace_unique UNIQUE (workspace_id)
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_domain_packs (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        slug TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        ontology JSONB NOT NULL,
+        prompts JSONB NOT NULL DEFAULT '{}'::jsonb,
+        graph_schema JSONB NOT NULL,
+        passage_profile JSONB NOT NULL,
+        entity_linking JSONB,
+        embedding JSONB NOT NULL,
+        is_builtin BOOLEAN NOT NULL DEFAULT false,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT knowledge_domain_packs_workspace_slug_unique UNIQUE (workspace_id, slug)
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_domain_packs_workspace
+      ON knowledge_domain_packs (workspace_id, updated_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_pipeline_profiles (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        domain_pack_id TEXT NOT NULL REFERENCES knowledge_domain_packs(id) ON DELETE CASCADE,
+        graph_target_id TEXT REFERENCES knowledge_graph_targets(id) ON DELETE SET NULL,
+        default_stop_after_stage TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_pipeline_profiles_workspace
+      ON knowledge_pipeline_profiles (workspace_id, updated_at DESC)
+    `;
+    await sql`ALTER TABLE knowledge_graph_targets ADD COLUMN IF NOT EXISTS use_dashboard_database BOOLEAN NOT NULL DEFAULT false`;
+    await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN endpoint DROP NOT NULL`;
+    await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN namespace DROP NOT NULL`;
+    await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN database DROP NOT NULL`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_sources (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        domain_pack_id TEXT,
+        job_id TEXT,
+        title TEXT,
+        url TEXT,
+        text_preview TEXT,
+        source_kind TEXT,
+        payload JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_sources_workspace
+      ON knowledge_graph_sources (workspace_id, created_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_units (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        domain_pack_id TEXT,
+        source_id TEXT,
+        unit_type TEXT,
+        domain TEXT,
+        text TEXT NOT NULL,
+        embedding JSONB,
+        payload JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_units_workspace
+      ON knowledge_graph_units (workspace_id, created_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_relations (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        domain_pack_id TEXT,
+        from_unit_id TEXT NOT NULL,
+        to_unit_id TEXT NOT NULL,
+        relation_type TEXT NOT NULL,
+        payload JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_relations_workspace
+      ON knowledge_graph_relations (workspace_id, created_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_groups (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        domain_pack_id TEXT,
+        name TEXT,
+        summary TEXT,
+        payload JSONB,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_groups_workspace
+      ON knowledge_graph_groups (workspace_id, created_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_group_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        group_id TEXT NOT NULL REFERENCES knowledge_graph_groups(id) ON DELETE CASCADE,
+        unit_id TEXT NOT NULL REFERENCES knowledge_graph_units(id) ON DELETE CASCADE,
+        role TEXT,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_knowledge_graph_group_members_group ON knowledge_graph_group_members (group_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_knowledge_graph_group_members_unit ON knowledge_graph_group_members (unit_id)`;
+    await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_status TEXT`;
+    await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_note TEXT`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_source_documents (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        source_kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        mime TEXT,
+        url TEXT,
+        text TEXT,
+        char_count INTEGER NOT NULL DEFAULT 0,
+        chunk_count INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'parsed',
+        error TEXT,
+        parser_provider TEXT,
+        created_at BIGINT NOT NULL,
+        CONSTRAINT knowledge_source_documents_status_check CHECK (status IN ('parsed', 'failed', 'pending'))
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_source_documents_workspace
+      ON knowledge_source_documents (workspace_id, created_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_sources (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL,
+        label TEXT,
+        config JSONB,
+        secret_ciphertext TEXT,
+        secret_iv TEXT,
+        secret_auth_tag TEXT,
+        secret_encryption_version INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'untested',
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_sources_workspace
+      ON knowledge_sources (workspace_id, updated_at DESC)
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_stage_models (
+        workspace_id TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+        config JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_at BIGINT NOT NULL
+      )
+    `;
   })();
   return ensuredIngestionRoutingSchema;
+}
+
+/** Read per-stage routing config for a workspace (null when unset). */
+export async function getConnectStageRoutingConfig(workspaceId: string): Promise<unknown> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT config FROM knowledge_stage_models WHERE workspace_id = ${workspaceId} LIMIT 1`;
+  if (rows.length === 0) return null;
+  return (rows[0] as { config?: unknown }).config ?? null;
+}
+
+export async function upsertConnectStageRoutingConfig(workspaceId: string, config: unknown): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const json = JSON.stringify(config ?? {});
+  await sql`
+    INSERT INTO knowledge_stage_models (workspace_id, config, updated_at)
+    VALUES (${workspaceId}, ${json}::jsonb, ${now})
+    ON CONFLICT (workspace_id) DO UPDATE SET config = ${json}::jsonb, updated_at = ${now}
+  `;
+}
+
+/** @deprecated Legacy model-id chains — returns arrays only when config uses old shape. */
+export async function getConnectStageModels(workspaceId: string): Promise<Record<string, string[]>> {
+  const cfg = await getConnectStageRoutingConfig(workspaceId);
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return {};
+  const rec = cfg as Record<string, unknown>;
+  if (typeof rec.project_id === "string") return {};
+  const out: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(rec)) {
+    if (Array.isArray(v) && v.every((x) => typeof x === "string")) out[k] = v as string[];
+  }
+  return out;
+}
+
+/** @deprecated Use upsertConnectStageRoutingConfig */
+export async function upsertConnectStageModels(workspaceId: string, config: Record<string, string[]>): Promise<void> {
+  await upsertConnectStageRoutingConfig(workspaceId, config);
 }
 
 export type RouteRecord = {
@@ -4551,4 +4871,1373 @@ export async function updateHostedRuntimeJobById(params: {
     RETURNING id
   `;
   return rows.length > 0;
+}
+
+export type ConnectIngestJobProgress = {
+  percent: number;
+  processed: number;
+  total: number;
+  execution_mode?: "stub" | "full";
+};
+
+export type ConnectIngestJobRecord = {
+  id: string;
+  workspaceId: string;
+  projectId: string | null;
+  status: string;
+  label: string | null;
+  currentStage: string | null;
+  currentAction: string | null;
+  progress: ConnectIngestJobProgress | null;
+  stages: unknown;
+  sources: unknown;
+  stopAfterStage: string | null;
+  pipelineProfileId: string | null;
+  domainPackId: string | null;
+  graphTargetId: string | null;
+  error: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function msToIso(ms: number): string {
+  return new Date(ms).toISOString();
+}
+
+function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const rec = raw as Record<string, unknown>;
+  const percent = Number(rec.percent);
+  const processed = Number(rec.processed);
+  const total = Number(rec.total);
+  if (!Number.isFinite(percent) || !Number.isFinite(processed) || !Number.isFinite(total)) {
+    return null;
+  }
+  return {
+    percent: Math.min(100, Math.max(0, Math.round(percent))),
+    processed: Math.max(0, Math.round(processed)),
+    total: Math.max(1, Math.round(total)),
+    ...(rec.execution_mode === "stub" || rec.execution_mode === "full"
+      ? { execution_mode: rec.execution_mode }
+      : {}),
+  };
+}
+
+export function connectIngestJobRecordToApi(
+  row: ConnectIngestJobRecord,
+  opts?: { includeSources?: boolean },
+): {
+  id: string;
+  workspace_id: string;
+  status: string;
+  label?: string;
+  created_at: string;
+  updated_at: string;
+  current_stage?: string;
+  current_action?: string;
+  progress?: ConnectIngestJobProgress;
+  stages?: unknown;
+  sources?: unknown;
+  stop_after_stage?: string;
+  pipeline_profile_id?: string;
+  domain_pack_id?: string;
+  graph_target_id?: string;
+  error?: string;
+} {
+  return {
+    id: row.id,
+    workspace_id: row.workspaceId,
+    status: row.status,
+    ...(row.label ? { label: row.label } : {}),
+    created_at: msToIso(row.createdAt),
+    updated_at: msToIso(row.updatedAt),
+    ...(row.currentStage ? { current_stage: row.currentStage } : {}),
+    ...(row.currentAction ? { current_action: row.currentAction } : {}),
+    ...(row.progress ? { progress: row.progress } : {}),
+    stages: reconcileConnectIngestJobStagesForApi(normalizeConnectIngestStages(row.stages), {
+      status: row.status,
+      currentStage: row.currentStage,
+      currentAction: row.currentAction,
+    }),
+    ...(opts?.includeSources && Array.isArray(row.sources) ? { sources: row.sources } : {}),
+    ...(row.stopAfterStage ? { stop_after_stage: row.stopAfterStage } : {}),
+    ...(row.pipelineProfileId ? { pipeline_profile_id: row.pipelineProfileId } : {}),
+    ...(row.domainPackId ? { domain_pack_id: row.domainPackId } : {}),
+    ...(row.graphTargetId ? { graph_target_id: row.graphTargetId } : {}),
+    ...(row.error ? { error: row.error } : {}),
+  };
+}
+
+function mapConnectIngestJobRow(row: Record<string, unknown>): ConnectIngestJobRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    projectId: row.project_id != null ? String(row.project_id) : null,
+    status: String(row.status),
+    label: row.label != null ? String(row.label) : null,
+    currentStage: row.current_stage != null ? String(row.current_stage) : null,
+    currentAction: row.current_action != null ? String(row.current_action) : null,
+    progress: parseConnectIngestJobProgress(row.progress),
+    stages: normalizeConnectIngestStages(row.stages),
+    sources: row.sources,
+    stopAfterStage: row.stop_after_stage != null ? String(row.stop_after_stage) : null,
+    pipelineProfileId: row.pipeline_profile_id != null ? String(row.pipeline_profile_id) : null,
+    domainPackId: row.domain_pack_id != null ? String(row.domain_pack_id) : null,
+    graphTargetId: row.graph_target_id != null ? String(row.graph_target_id) : null,
+    error: row.error != null ? String(row.error) : null,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function insertConnectIngestJob(params: {
+  id: string;
+  workspaceId: string;
+  projectId?: string | null;
+  label?: string | null;
+  stages: unknown;
+  sources: unknown;
+  stopAfterStage?: string | null;
+  pipelineProfileId?: string | null;
+  domainPackId?: string | null;
+  graphTargetId?: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const stagesJson = JSON.stringify(params.stages ?? []);
+  const sourcesJson = JSON.stringify(params.sources ?? []);
+  await sql`
+    INSERT INTO knowledge_ingest_jobs (
+      id, workspace_id, project_id, status, label, current_stage, stages, sources,
+      stop_after_stage, pipeline_profile_id, domain_pack_id, graph_target_id, error, created_at, updated_at
+    )
+    VALUES (
+      ${params.id},
+      ${params.workspaceId},
+      ${params.projectId ?? null},
+      ${"pending"},
+      ${params.label ?? null},
+      NULL,
+      ${stagesJson}::jsonb,
+      ${sourcesJson}::jsonb,
+      ${params.stopAfterStage ?? null},
+      ${params.pipelineProfileId ?? null},
+      ${params.domainPackId ?? null},
+      ${params.graphTargetId ?? null},
+      NULL,
+      ${now},
+      ${now}
+    )
+  `;
+}
+
+export async function listConnectIngestJobsForWorkspace(params: {
+  workspaceId: string;
+  projectId?: string;
+  limit?: number;
+}): Promise<ConnectIngestJobRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const rows = params.projectId
+    ? await sql`
+        SELECT *
+        FROM knowledge_ingest_jobs
+        WHERE workspace_id = ${params.workspaceId} AND project_id = ${params.projectId}
+        ORDER BY updated_at DESC
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT *
+        FROM knowledge_ingest_jobs
+        WHERE workspace_id = ${params.workspaceId}
+        ORDER BY updated_at DESC
+        LIMIT ${limit}
+      `;
+  return rows.map((row) => mapConnectIngestJobRow(row as Record<string, unknown>));
+}
+
+export async function getConnectIngestJobForWorkspace(params: {
+  jobId: string;
+  workspaceId: string;
+  projectId?: string;
+}): Promise<ConnectIngestJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = params.projectId
+    ? await sql`
+        SELECT *
+        FROM knowledge_ingest_jobs
+        WHERE id = ${params.jobId}
+          AND workspace_id = ${params.workspaceId}
+          AND project_id = ${params.projectId}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT *
+        FROM knowledge_ingest_jobs
+        WHERE id = ${params.jobId} AND workspace_id = ${params.workspaceId}
+        LIMIT 1
+      `;
+  if (rows.length === 0) return null;
+  return mapConnectIngestJobRow(rows[0] as Record<string, unknown>);
+}
+
+export async function claimNextPendingConnectIngestJob(): Promise<ConnectIngestJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    WITH c AS (
+      SELECT id
+      FROM knowledge_ingest_jobs
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE knowledge_ingest_jobs j
+    SET status = 'running', updated_at = ${now}
+    FROM c
+    WHERE j.id = c.id
+    RETURNING j.*
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectIngestJobRow(rows[0] as Record<string, unknown>);
+}
+
+export async function updateConnectIngestJobById(params: {
+  id: string;
+  status: string;
+  /** Omit to leave `current_stage` unchanged; pass `null` to clear. */
+  currentStage?: string | null;
+  /** Omit to leave `current_action` unchanged. */
+  currentAction?: string | null;
+  progress?: ConnectIngestJobProgress | null;
+  stages?: unknown;
+  error?: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const stagesJson =
+    params.stages !== undefined ? JSON.stringify(params.stages) : null;
+  const progressJson =
+    params.progress !== undefined
+      ? params.progress != null
+        ? JSON.stringify(params.progress)
+        : null
+      : undefined;
+  const patchStage = params.currentStage !== undefined;
+  const patchAction = params.currentAction !== undefined;
+
+  if (progressJson !== undefined) {
+    if (patchStage && patchAction) {
+      await sql`
+        UPDATE knowledge_ingest_jobs
+        SET
+          status = ${params.status},
+          current_stage = ${params.currentStage},
+          current_action = ${params.currentAction},
+          progress = ${progressJson}::jsonb,
+          stages = COALESCE(${stagesJson}::jsonb, stages),
+          error = ${params.error ?? null},
+          updated_at = ${now}
+        WHERE id = ${params.id}
+      `;
+    } else if (patchStage) {
+      await sql`
+        UPDATE knowledge_ingest_jobs
+        SET
+          status = ${params.status},
+          current_stage = ${params.currentStage},
+          progress = ${progressJson}::jsonb,
+          stages = COALESCE(${stagesJson}::jsonb, stages),
+          error = ${params.error ?? null},
+          updated_at = ${now}
+        WHERE id = ${params.id}
+      `;
+    } else if (patchAction) {
+      await sql`
+        UPDATE knowledge_ingest_jobs
+        SET
+          status = ${params.status},
+          current_action = ${params.currentAction},
+          progress = ${progressJson}::jsonb,
+          stages = COALESCE(${stagesJson}::jsonb, stages),
+          error = ${params.error ?? null},
+          updated_at = ${now}
+        WHERE id = ${params.id}
+      `;
+    } else {
+      await sql`
+        UPDATE knowledge_ingest_jobs
+        SET
+          status = ${params.status},
+          progress = ${progressJson}::jsonb,
+          stages = COALESCE(${stagesJson}::jsonb, stages),
+          error = ${params.error ?? null},
+          updated_at = ${now}
+        WHERE id = ${params.id}
+      `;
+    }
+    return;
+  }
+
+  if (patchStage && patchAction) {
+    await sql`
+      UPDATE knowledge_ingest_jobs
+      SET
+        status = ${params.status},
+        current_stage = ${params.currentStage},
+        current_action = ${params.currentAction},
+        stages = COALESCE(${stagesJson}::jsonb, stages),
+        error = ${params.error ?? null},
+        updated_at = ${now}
+      WHERE id = ${params.id}
+    `;
+    return;
+  }
+  if (patchStage) {
+    await sql`
+      UPDATE knowledge_ingest_jobs
+      SET
+        status = ${params.status},
+        current_stage = ${params.currentStage},
+        stages = COALESCE(${stagesJson}::jsonb, stages),
+        error = ${params.error ?? null},
+        updated_at = ${now}
+      WHERE id = ${params.id}
+    `;
+    return;
+  }
+  if (patchAction) {
+    await sql`
+      UPDATE knowledge_ingest_jobs
+      SET
+        status = ${params.status},
+        current_action = ${params.currentAction},
+        stages = COALESCE(${stagesJson}::jsonb, stages),
+        error = ${params.error ?? null},
+        updated_at = ${now}
+      WHERE id = ${params.id}
+    `;
+    return;
+  }
+
+  await sql`
+    UPDATE knowledge_ingest_jobs
+    SET
+      status = ${params.status},
+      stages = COALESCE(${stagesJson}::jsonb, stages),
+      error = ${params.error ?? null},
+      updated_at = ${now}
+    WHERE id = ${params.id}
+  `;
+}
+
+export async function appendConnectIngestJobLog(params: {
+  jobId: string;
+  line: string;
+}): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    INSERT INTO knowledge_ingest_job_logs (job_id, line, created_at)
+    VALUES (${params.jobId}, ${params.line.slice(0, 4000)}, ${now})
+    RETURNING id
+  `;
+  return Number(rows[0]?.id ?? 0);
+}
+
+export async function listConnectIngestJobLogsSince(params: {
+  jobId: string;
+  sinceId?: number;
+  limit?: number;
+}): Promise<{ id: number; line: string; created_at: number }[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(Math.max(params.limit ?? 200, 1), 500);
+  const since = Math.max(0, params.sinceId ?? 0);
+  const rows =
+    since > 0
+      ? await sql`
+          SELECT id, line, created_at
+          FROM knowledge_ingest_job_logs
+          WHERE job_id = ${params.jobId} AND id > ${since}
+          ORDER BY id ASC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT id, line, created_at
+          FROM knowledge_ingest_job_logs
+          WHERE job_id = ${params.jobId}
+          ORDER BY id DESC
+          LIMIT ${limit}
+        `;
+  const mapped = rows.map((row) => ({
+    id: Number(row.id),
+    line: String(row.line),
+    created_at: Number(row.created_at),
+  }));
+  return since > 0 ? mapped : mapped.reverse();
+}
+
+export async function countConnectIngestJobLogs(jobId: string): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT COUNT(*)::int AS n FROM knowledge_ingest_job_logs WHERE job_id = ${jobId}
+  `;
+  return Number(rows[0]?.n ?? 0);
+}
+
+/** Cancel a workspace-scoped job if it is still pending or running. Returns true if a row changed. */
+export async function cancelConnectIngestJobForWorkspace(params: {
+  jobId: string;
+  workspaceId: string;
+  projectId?: string;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = params.projectId
+    ? await sql`
+        UPDATE knowledge_ingest_jobs
+        SET status = 'cancelled', updated_at = ${now}
+        WHERE id = ${params.jobId}
+          AND workspace_id = ${params.workspaceId}
+          AND project_id = ${params.projectId}
+          AND status IN ('pending', 'running')
+        RETURNING id
+      `
+    : await sql`
+        UPDATE knowledge_ingest_jobs
+        SET status = 'cancelled', updated_at = ${now}
+        WHERE id = ${params.jobId}
+          AND workspace_id = ${params.workspaceId}
+          AND status IN ('pending', 'running')
+        RETURNING id
+      `;
+  return rows.length > 0;
+}
+
+// ─── Knowledge graph targets (Bring-Your-Own store) ──────────────────────────
+
+export type ConnectGraphTargetRecord = {
+  id: string;
+  workspaceId: string;
+  provider: string;
+  endpoint: string | null;
+  namespace: string | null;
+  database: string | null;
+  username: string | null;
+  useDashboardDatabase: boolean;
+  secretCiphertext: string | null;
+  secretIv: string | null;
+  secretAuthTag: string | null;
+  secretEncryptionVersion: number;
+  status: string;
+  lastTestedAt: number | null;
+  lastError: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapConnectGraphTargetRow(row: Record<string, unknown>): ConnectGraphTargetRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    provider: String(row.provider),
+    endpoint: row.endpoint != null ? String(row.endpoint) : null,
+    namespace: row.namespace != null ? String(row.namespace) : null,
+    database: row.database != null ? String(row.database) : null,
+    username: row.username != null ? String(row.username) : null,
+    useDashboardDatabase: Boolean(row.use_dashboard_database),
+    secretCiphertext: row.secret_ciphertext != null ? String(row.secret_ciphertext) : null,
+    secretIv: row.secret_iv != null ? String(row.secret_iv) : null,
+    secretAuthTag: row.secret_auth_tag != null ? String(row.secret_auth_tag) : null,
+    secretEncryptionVersion: Number(row.secret_encryption_version ?? 0),
+    status: String(row.status),
+    lastTestedAt: row.last_tested_at != null ? Number(row.last_tested_at) : null,
+    lastError: row.last_error != null ? String(row.last_error) : null,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function getConnectGraphTargetForWorkspace(
+  workspaceId: string,
+): Promise<ConnectGraphTargetRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectGraphTargetRow(rows[0] as Record<string, unknown>);
+}
+
+export async function upsertConnectGraphTarget(params: {
+  workspaceId: string;
+  provider: string;
+  endpoint?: string | null;
+  namespace?: string | null;
+  database?: string | null;
+  username?: string | null;
+  useDashboardDatabase?: boolean;
+  /** Initial status (e.g. 'ok' for the one-click dashboard-Neon path). */
+  status?: "untested" | "ok" | "error";
+  /** Encrypted secret payload; omit to keep an existing secret. */
+  secret?: {
+    ciphertext: string;
+    iv: string;
+    authTag: string;
+    encryptionVersion: number;
+  } | null;
+}): Promise<ConnectGraphTargetRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const existing = await getConnectGraphTargetForWorkspace(params.workspaceId);
+  const id = existing?.id ?? crypto.randomUUID();
+  const setSecret = params.secret != null;
+  const cipher = setSecret ? params.secret!.ciphertext : (existing?.secretCiphertext ?? null);
+  const iv = setSecret ? params.secret!.iv : (existing?.secretIv ?? null);
+  const tag = setSecret ? params.secret!.authTag : (existing?.secretAuthTag ?? null);
+  const version = setSecret ? params.secret!.encryptionVersion : (existing?.secretEncryptionVersion ?? 0);
+  const createdAt = existing?.createdAt ?? now;
+  const useDash = params.useDashboardDatabase ?? false;
+  // Preserve last connectivity status on partial updates (save without explicit status).
+  const status = params.status ?? existing?.status ?? "untested";
+  await sql`
+    INSERT INTO knowledge_graph_targets (
+      id, workspace_id, provider, endpoint, namespace, database, username, use_dashboard_database,
+      secret_ciphertext, secret_iv, secret_auth_tag, secret_encryption_version,
+      status, last_tested_at, last_error, created_at, updated_at
+    ) VALUES (
+      ${id}, ${params.workspaceId}, ${params.provider}, ${params.endpoint ?? null}, ${params.namespace ?? null},
+      ${params.database ?? null}, ${params.username ?? null}, ${useDash},
+      ${cipher}, ${iv}, ${tag}, ${version},
+      ${status}, NULL, NULL, ${createdAt}, ${now}
+    )
+    ON CONFLICT (workspace_id) DO UPDATE SET
+      provider = EXCLUDED.provider,
+      endpoint = EXCLUDED.endpoint,
+      namespace = EXCLUDED.namespace,
+      database = EXCLUDED.database,
+      username = EXCLUDED.username,
+      use_dashboard_database = EXCLUDED.use_dashboard_database,
+      secret_ciphertext = ${cipher},
+      secret_iv = ${iv},
+      secret_auth_tag = ${tag},
+      secret_encryption_version = ${version},
+      status = ${status},
+      last_error = NULL,
+      updated_at = ${now}
+  `;
+  const updated = await getConnectGraphTargetForWorkspace(params.workspaceId);
+  if (!updated) throw new Error("graph target upsert failed");
+  return updated;
+}
+
+/** Connectivity check against the dashboard's own Neon database (one-click Postgres target). */
+export async function pingDashboardDatabase(): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`SELECT 1 AS ok`;
+  return rows.length > 0;
+}
+
+/** Insert a source record into the Postgres graph spine (domain-agnostic). Returns the new id. */
+export async function insertConnectGraphSourcePostgres(params: {
+  workspaceId: string;
+  domainPackId?: string | null;
+  jobId?: string | null;
+  title?: string | null;
+  url?: string | null;
+  textPreview?: string | null;
+  sourceKind?: string | null;
+}): Promise<string> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const id = crypto.randomUUID();
+  await sql`
+    INSERT INTO knowledge_graph_sources (
+      id, workspace_id, domain_pack_id, job_id, title, url, text_preview, source_kind, payload, created_at
+    ) VALUES (
+      ${id}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${params.jobId ?? null},
+      ${params.title ?? null}, ${params.url ?? null}, ${params.textPreview ?? null}, ${params.sourceKind ?? null},
+      NULL, ${now}
+    )
+  `;
+  return id;
+}
+
+/**
+ * Store an extracted graph (units + relations) in the Postgres spine.
+ * `units` carry caller-local ids referenced by `relations`; this maps them to
+ * generated db ids. Returns how many of each were written.
+ */
+export async function storeExtractedGraphPostgres(params: {
+  workspaceId: string;
+  domainPackId?: string | null;
+  sourceId?: string | null;
+  units: { localId: string; text: string; unitType?: string | null; domain?: string | null }[];
+  relations: { fromLocalId: string; toLocalId: string; relationType: string }[];
+}): Promise<{ units: { id: string; text: string; type: string | null }[]; relations: number }> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const idByLocal = new Map<string, string>();
+  const insertedUnits: { id: string; text: string; type: string | null }[] = [];
+  for (const u of params.units) {
+    if (!u.text?.trim()) continue;
+    const dbId = crypto.randomUUID();
+    idByLocal.set(u.localId, dbId);
+    await sql`
+      INSERT INTO knowledge_graph_units (
+        id, workspace_id, domain_pack_id, source_id, unit_type, domain, text, embedding, payload, created_at
+      ) VALUES (
+        ${dbId}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${params.sourceId ?? null},
+        ${u.unitType ?? null}, ${u.domain ?? null}, ${u.text}, NULL, NULL, ${now}
+      )
+    `;
+    insertedUnits.push({ id: dbId, text: u.text, type: u.unitType ?? null });
+  }
+  let relationCount = 0;
+  for (const r of params.relations) {
+    const from = idByLocal.get(r.fromLocalId);
+    const to = idByLocal.get(r.toLocalId);
+    if (!from || !to) continue;
+    await sql`
+      INSERT INTO knowledge_graph_relations (
+        id, workspace_id, domain_pack_id, from_unit_id, to_unit_id, relation_type, payload, created_at
+      ) VALUES (
+        ${crypto.randomUUID()}, ${params.workspaceId}, ${params.domainPackId ?? null},
+        ${from}, ${to}, ${r.relationType}, NULL, ${now}
+      )
+    `;
+    relationCount += 1;
+  }
+  return { units: insertedUnits, relations: relationCount };
+}
+
+/** Aggregate graph stats for the workspace (journey payoff + monitoring). */
+export async function getConnectGraphStats(workspaceId: string): Promise<{
+  units: number;
+  relations: number;
+  groups: number;
+  embedded: number;
+  validation: { ok: number; weak: number; unsupported: number; unvalidated: number };
+}> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const [unitRows, relRows, groupRows, embeddedRows, valRows] = await Promise.all([
+    sql`SELECT count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId}`,
+    sql`SELECT count(*)::int AS c FROM knowledge_graph_relations WHERE workspace_id = ${workspaceId}`,
+    sql`SELECT count(*)::int AS c FROM knowledge_graph_groups WHERE workspace_id = ${workspaceId}`,
+    sql`SELECT count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId} AND embedding IS NOT NULL`,
+    sql`SELECT validation_status AS s, count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId} GROUP BY validation_status`,
+  ]);
+  const validation = { ok: 0, weak: 0, unsupported: 0, unvalidated: 0 };
+  for (const r of valRows as { s: string | null; c: number }[]) {
+    const c = Number(r.c);
+    if (r.s === "ok") validation.ok = c;
+    else if (r.s === "weak") validation.weak = c;
+    else if (r.s === "unsupported") validation.unsupported = c;
+    else validation.unvalidated += c;
+  }
+  return {
+    units: Number((unitRows[0] as { c: number })?.c ?? 0),
+    relations: Number((relRows[0] as { c: number })?.c ?? 0),
+    groups: Number((groupRows[0] as { c: number })?.c ?? 0),
+    embedded: Number((embeddedRows[0] as { c: number })?.c ?? 0),
+    validation,
+  };
+}
+
+/** Read a slice of the graph for the explorer UI (Postgres spine). */
+export async function getConnectGraphExplorer(
+  workspaceId: string,
+  opts?: { groupLimit?: number; unitLimit?: number },
+): Promise<{
+  groups: { id: string; name: string; summary: string | null; members: { text: string; role: string | null; validationStatus: string | null }[] }[];
+  units: {
+    id: string;
+    text: string;
+    unitType: string | null;
+    domain: string | null;
+    validationStatus: string | null;
+    validationNote: string | null;
+    sourceTitle: string | null;
+    sourceUrl: string | null;
+    sourceKind: string | null;
+    author: string | null;
+  }[];
+}> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const groupLimit = Math.min(Math.max(opts?.groupLimit ?? 20, 1), 100);
+  const unitLimit = Math.min(Math.max(opts?.unitLimit ?? 50, 1), 200);
+
+  const groupRows = (await sql`
+    SELECT id, name, summary FROM knowledge_graph_groups
+    WHERE workspace_id = ${workspaceId} ORDER BY created_at DESC LIMIT ${groupLimit}
+  `) as { id: string; name: string; summary: string | null }[];
+  const groupIds = groupRows.map((g) => g.id);
+
+  const memberRows = groupIds.length
+    ? ((await sql`
+        SELECT gm.group_id AS group_id, gm.role AS role, u.text AS text, u.validation_status AS validation_status
+        FROM knowledge_graph_group_members gm
+        JOIN knowledge_graph_units u ON u.id = gm.unit_id
+        WHERE gm.workspace_id = ${workspaceId} AND gm.group_id = ANY(${groupIds})
+      `) as { group_id: string; role: string | null; text: string; validation_status: string | null }[])
+    : [];
+
+  const unitRows = (await sql`
+    SELECT
+      u.id,
+      u.text,
+      u.unit_type,
+      u.domain,
+      u.validation_status,
+      u.validation_note,
+      s.title AS source_title,
+      s.url AS source_url,
+      s.source_kind AS source_kind
+    FROM knowledge_graph_units u
+    LEFT JOIN knowledge_graph_sources s
+      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+    WHERE u.workspace_id = ${workspaceId}
+    ORDER BY u.created_at DESC
+    LIMIT ${unitLimit}
+  `) as {
+    id: string;
+    text: string;
+    unit_type: string | null;
+    domain: string | null;
+    validation_status: string | null;
+    validation_note: string | null;
+    source_title: string | null;
+    source_url: string | null;
+    source_kind: string | null;
+  }[];
+
+  const groups = groupRows.map((g) => ({
+    id: g.id,
+    name: g.name,
+    summary: g.summary ?? null,
+    members: memberRows
+      .filter((m) => m.group_id === g.id)
+      .map((m) => ({ text: m.text, role: m.role ?? null, validationStatus: m.validation_status ?? null })),
+  }));
+  const units = unitRows.map((u) => ({
+    id: u.id,
+    text: u.text,
+    unitType: u.unit_type ?? null,
+    domain: u.domain ?? null,
+    validationStatus: u.validation_status ?? null,
+    validationNote: u.validation_note ?? null,
+    sourceTitle: u.source_title ?? null,
+    sourceUrl: u.source_url ?? null,
+    sourceKind: u.source_kind ?? null,
+    author: null,
+  }));
+  return { groups, units };
+}
+
+/** Set embeddings on units (embedding stage). */
+export async function updateUnitEmbeddingsPostgres(params: {
+  workspaceId: string;
+  embeddings: { unitId: string; vector: number[] }[];
+}): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  let n = 0;
+  for (const e of params.embeddings) {
+    const json = JSON.stringify(e.vector);
+    await sql`
+      UPDATE knowledge_graph_units SET embedding = ${json}::jsonb
+      WHERE id = ${e.unitId} AND workspace_id = ${params.workspaceId}
+    `;
+    n += 1;
+  }
+  return n;
+}
+
+/** Set per-unit validation results (validation stage). */
+export async function updateUnitValidationPostgres(params: {
+  workspaceId: string;
+  results: { unitId: string; status: string; note?: string | null }[];
+}): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  let n = 0;
+  for (const r of params.results) {
+    await sql`
+      UPDATE knowledge_graph_units SET validation_status = ${r.status}, validation_note = ${r.note ?? null}
+      WHERE id = ${r.unitId} AND workspace_id = ${params.workspaceId}
+    `;
+    n += 1;
+  }
+  return n;
+}
+
+/** Replace a unit's text (remediation repair). */
+export async function updateUnitTextPostgres(params: {
+  workspaceId: string;
+  unitId: string;
+  text: string;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`
+    UPDATE knowledge_graph_units SET text = ${params.text}, validation_status = 'ok', validation_note = 'remediated'
+    WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}
+  `;
+}
+
+/** Delete a unit and any relations referencing it (remediation drop). Group memberships cascade. */
+export async function deleteUnitPostgres(params: { workspaceId: string; unitId: string }): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`
+    DELETE FROM knowledge_graph_relations
+    WHERE workspace_id = ${params.workspaceId} AND (from_unit_id = ${params.unitId} OR to_unit_id = ${params.unitId})
+  `;
+  await sql`DELETE FROM knowledge_graph_units WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}`;
+}
+
+/** Store groups + memberships (grouping stage). `members.unitId` are existing unit ids. */
+export async function storeGroupsPostgres(params: {
+  workspaceId: string;
+  domainPackId?: string | null;
+  groups: { name: string; summary?: string | null; members: { unitId: string; role?: string | null }[] }[];
+}): Promise<{ groups: number; members: number }> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  let groupCount = 0;
+  let memberCount = 0;
+  for (const g of params.groups) {
+    if (!g.name?.trim() || g.members.length === 0) continue;
+    const groupId = crypto.randomUUID();
+    await sql`
+      INSERT INTO knowledge_graph_groups (id, workspace_id, domain_pack_id, name, summary, payload, created_at)
+      VALUES (${groupId}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${g.name}, ${g.summary ?? null}, NULL, ${now})
+    `;
+    groupCount += 1;
+    for (const m of g.members) {
+      await sql`
+        INSERT INTO knowledge_graph_group_members (id, workspace_id, group_id, unit_id, role, created_at)
+        VALUES (${crypto.randomUUID()}, ${params.workspaceId}, ${groupId}, ${m.unitId}, ${m.role ?? null}, ${now})
+      `;
+      memberCount += 1;
+    }
+  }
+  return { groups: groupCount, members: memberCount };
+}
+
+export async function updateConnectGraphTargetStatus(params: {
+  workspaceId: string;
+  status: "untested" | "ok" | "error";
+  lastError?: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE knowledge_graph_targets
+    SET status = ${params.status},
+        last_error = ${params.lastError ?? null},
+        last_tested_at = ${now},
+        updated_at = ${now}
+    WHERE workspace_id = ${params.workspaceId}
+  `;
+}
+
+export async function deleteConnectGraphTarget(workspaceId: string): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`DELETE FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId}`;
+}
+
+// ─── Knowledge domain packs ──────────────────────────────────────────────────
+
+export type ConnectDomainPackRecord = {
+  id: string;
+  workspaceId: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  ontology: unknown;
+  prompts: unknown;
+  graphSchema: unknown;
+  passageProfile: unknown;
+  entityLinking: unknown;
+  embedding: unknown;
+  isBuiltin: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapConnectDomainPackRow(row: Record<string, unknown>): ConnectDomainPackRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    slug: String(row.slug),
+    title: String(row.title),
+    description: row.description != null ? String(row.description) : null,
+    ontology: row.ontology,
+    prompts: row.prompts ?? {},
+    graphSchema: row.graph_schema,
+    passageProfile: row.passage_profile,
+    entityLinking: row.entity_linking ?? null,
+    embedding: row.embedding,
+    isBuiltin: Boolean(row.is_builtin),
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function listConnectDomainPacksForWorkspace(
+  workspaceId: string,
+): Promise<ConnectDomainPackRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_domain_packs WHERE workspace_id = ${workspaceId} ORDER BY updated_at DESC
+  `;
+  return rows.map((r) => mapConnectDomainPackRow(r as Record<string, unknown>));
+}
+
+export async function getConnectDomainPackById(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<ConnectDomainPackRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_domain_packs WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectDomainPackRow(rows[0] as Record<string, unknown>);
+}
+
+export async function upsertConnectDomainPack(params: {
+  workspaceId: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  ontology: unknown;
+  prompts: unknown;
+  graphSchema: unknown;
+  passageProfile: unknown;
+  entityLinking?: unknown;
+  embedding: unknown;
+  isBuiltin?: boolean;
+}): Promise<ConnectDomainPackRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const id = crypto.randomUUID();
+  const ontologyJson = JSON.stringify(params.ontology ?? {});
+  const promptsJson = JSON.stringify(params.prompts ?? {});
+  const graphSchemaJson = JSON.stringify(params.graphSchema ?? {});
+  const passageJson = JSON.stringify(params.passageProfile ?? {});
+  const entityJson = params.entityLinking != null ? JSON.stringify(params.entityLinking) : null;
+  const embeddingJson = JSON.stringify(params.embedding ?? {});
+  await sql`
+    INSERT INTO knowledge_domain_packs (
+      id, workspace_id, slug, title, description, ontology, prompts, graph_schema,
+      passage_profile, entity_linking, embedding, is_builtin, created_at, updated_at
+    ) VALUES (
+      ${id}, ${params.workspaceId}, ${params.slug}, ${params.title}, ${params.description ?? null},
+      ${ontologyJson}::jsonb, ${promptsJson}::jsonb, ${graphSchemaJson}::jsonb,
+      ${passageJson}::jsonb, ${entityJson}::jsonb, ${embeddingJson}::jsonb,
+      ${params.isBuiltin ?? false}, ${now}, ${now}
+    )
+    ON CONFLICT (workspace_id, slug) DO UPDATE SET
+      title = EXCLUDED.title,
+      description = EXCLUDED.description,
+      ontology = EXCLUDED.ontology,
+      prompts = EXCLUDED.prompts,
+      graph_schema = EXCLUDED.graph_schema,
+      passage_profile = EXCLUDED.passage_profile,
+      entity_linking = EXCLUDED.entity_linking,
+      embedding = EXCLUDED.embedding,
+      updated_at = ${now}
+  `;
+  const rows = await sql`
+    SELECT * FROM knowledge_domain_packs WHERE workspace_id = ${params.workspaceId} AND slug = ${params.slug} LIMIT 1
+  `;
+  return mapConnectDomainPackRow(rows[0] as Record<string, unknown>);
+}
+
+export async function deleteConnectDomainPack(params: { id: string; workspaceId: string }): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM knowledge_domain_packs
+    WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} AND is_builtin = false
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+// ─── Knowledge pipeline profiles ─────────────────────────────────────────────
+
+export type ConnectPipelineProfileRecord = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string | null;
+  domainPackId: string;
+  graphTargetId: string | null;
+  defaultStopAfterStage: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapConnectPipelineProfileRow(row: Record<string, unknown>): ConnectPipelineProfileRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    title: String(row.title),
+    description: row.description != null ? String(row.description) : null,
+    domainPackId: String(row.domain_pack_id),
+    graphTargetId: row.graph_target_id != null ? String(row.graph_target_id) : null,
+    defaultStopAfterStage: row.default_stop_after_stage != null ? String(row.default_stop_after_stage) : null,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function listConnectPipelineProfilesForWorkspace(
+  workspaceId: string,
+): Promise<ConnectPipelineProfileRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_pipeline_profiles WHERE workspace_id = ${workspaceId} ORDER BY updated_at DESC
+  `;
+  return rows.map((r) => mapConnectPipelineProfileRow(r as Record<string, unknown>));
+}
+
+export async function getConnectPipelineProfileById(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<ConnectPipelineProfileRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_pipeline_profiles WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectPipelineProfileRow(rows[0] as Record<string, unknown>);
+}
+
+export async function insertConnectPipelineProfile(params: {
+  workspaceId: string;
+  title: string;
+  description?: string | null;
+  domainPackId: string;
+  graphTargetId?: string | null;
+  defaultStopAfterStage?: string | null;
+}): Promise<ConnectPipelineProfileRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const id = crypto.randomUUID();
+  await sql`
+    INSERT INTO knowledge_pipeline_profiles (
+      id, workspace_id, title, description, domain_pack_id, graph_target_id, default_stop_after_stage, created_at, updated_at
+    ) VALUES (
+      ${id}, ${params.workspaceId}, ${params.title}, ${params.description ?? null},
+      ${params.domainPackId}, ${params.graphTargetId ?? null}, ${params.defaultStopAfterStage ?? null}, ${now}, ${now}
+    )
+  `;
+  const rows = await sql`SELECT * FROM knowledge_pipeline_profiles WHERE id = ${id} LIMIT 1`;
+  return mapConnectPipelineProfileRow(rows[0] as Record<string, unknown>);
+}
+
+export async function deleteConnectPipelineProfile(params: { id: string; workspaceId: string }): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`
+    DELETE FROM knowledge_pipeline_profiles WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+  `;
+}
+
+// ─── Knowledge source documents (connectors + parsing) ───────────────────────
+
+export type ConnectSourceDocumentRecord = {
+  id: string;
+  workspaceId: string;
+  sourceKind: string;
+  name: string;
+  mime: string | null;
+  url: string | null;
+  text: string | null;
+  charCount: number;
+  chunkCount: number;
+  status: string;
+  error: string | null;
+  parserProvider: string | null;
+  createdAt: number;
+};
+
+function mapConnectSourceDocumentRow(row: Record<string, unknown>): ConnectSourceDocumentRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    sourceKind: String(row.source_kind),
+    name: String(row.name),
+    mime: row.mime != null ? String(row.mime) : null,
+    url: row.url != null ? String(row.url) : null,
+    text: row.text != null ? String(row.text) : null,
+    charCount: Number(row.char_count ?? 0),
+    chunkCount: Number(row.chunk_count ?? 0),
+    status: String(row.status),
+    error: row.error != null ? String(row.error) : null,
+    parserProvider: row.parser_provider != null ? String(row.parser_provider) : null,
+    createdAt: Number(row.created_at),
+  };
+}
+
+export async function insertConnectSourceDocument(params: {
+  id: string;
+  workspaceId: string;
+  sourceKind: string;
+  name: string;
+  mime?: string | null;
+  url?: string | null;
+  text?: string | null;
+  charCount: number;
+  chunkCount: number;
+  status: "parsed" | "failed" | "pending";
+  error?: string | null;
+  parserProvider?: string | null;
+}): Promise<ConnectSourceDocumentRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    INSERT INTO knowledge_source_documents (
+      id, workspace_id, source_kind, name, mime, url, text, char_count, chunk_count, status, error, parser_provider, created_at
+    ) VALUES (
+      ${params.id}, ${params.workspaceId}, ${params.sourceKind}, ${params.name}, ${params.mime ?? null},
+      ${params.url ?? null}, ${params.text ?? null}, ${params.charCount}, ${params.chunkCount}, ${params.status},
+      ${params.error ?? null}, ${params.parserProvider ?? null}, ${now}
+    )
+  `;
+  const rows = await sql`SELECT * FROM knowledge_source_documents WHERE id = ${params.id} LIMIT 1`;
+  return mapConnectSourceDocumentRow(rows[0] as Record<string, unknown>);
+}
+
+/** List documents for a workspace (without full text). */
+export async function listConnectSourceDocumentsForWorkspace(
+  workspaceId: string,
+): Promise<ConnectSourceDocumentRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id, source_kind, name, mime, url, NULL AS text, char_count, chunk_count, status, error, parser_provider, created_at
+    FROM knowledge_source_documents
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+    LIMIT 500
+  `;
+  return rows.map((r) => mapConnectSourceDocumentRow(r as Record<string, unknown>));
+}
+
+/** Fetch full documents (incl. text) by ids, scoped to a workspace. */
+export async function getConnectSourceDocumentsByIds(params: {
+  ids: string[];
+  workspaceId: string;
+}): Promise<ConnectSourceDocumentRecord[]> {
+  await ensureIngestionRoutingSchema();
+  if (params.ids.length === 0) return [];
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_source_documents
+    WHERE workspace_id = ${params.workspaceId} AND id = ANY(${params.ids})
+  `;
+  return rows.map((r) => mapConnectSourceDocumentRow(r as Record<string, unknown>));
+}
+
+/** Resolve parsed document text by name or URL for graph re-validation. */
+export async function findConnectSourceDocumentText(params: {
+  workspaceId: string;
+  name?: string | null;
+  url?: string | null;
+}): Promise<string | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const url = params.url?.trim();
+  if (url) {
+    const byUrl = (await sql`
+      SELECT text FROM knowledge_source_documents
+      WHERE workspace_id = ${params.workspaceId} AND url = ${url}
+        AND status = 'parsed' AND text IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { text: string | null }[];
+    if (byUrl[0]?.text?.trim()) return byUrl[0].text.trim();
+  }
+  const name = params.name?.trim();
+  if (name) {
+    const exact = (await sql`
+      SELECT text FROM knowledge_source_documents
+      WHERE workspace_id = ${params.workspaceId} AND name = ${name}
+        AND status = 'parsed' AND text IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { text: string | null }[];
+    if (exact[0]?.text?.trim()) return exact[0].text.trim();
+    const fuzzy = (await sql`
+      SELECT text FROM knowledge_source_documents
+      WHERE workspace_id = ${params.workspaceId} AND name ILIKE ${name}
+        AND status = 'parsed' AND text IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { text: string | null }[];
+    if (fuzzy[0]?.text?.trim()) return fuzzy[0].text.trim();
+  }
+  return null;
+}
+
+export async function deleteConnectSourceDocument(params: { id: string; workspaceId: string }): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM knowledge_source_documents WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+// ─── Knowledge source connections (cloud connectors) ─────────────────────────
+
+export type ConnectSourceConnectionRecord = {
+  id: string;
+  workspaceId: string;
+  provider: string;
+  label: string | null;
+  config: unknown;
+  secretCiphertext: string | null;
+  secretIv: string | null;
+  secretAuthTag: string | null;
+  secretEncryptionVersion: number;
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapConnectSourceConnectionRow(row: Record<string, unknown>): ConnectSourceConnectionRecord {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    provider: String(row.provider),
+    label: row.label != null ? String(row.label) : null,
+    config: row.config ?? {},
+    secretCiphertext: row.secret_ciphertext != null ? String(row.secret_ciphertext) : null,
+    secretIv: row.secret_iv != null ? String(row.secret_iv) : null,
+    secretAuthTag: row.secret_auth_tag != null ? String(row.secret_auth_tag) : null,
+    secretEncryptionVersion: Number(row.secret_encryption_version ?? 0),
+    status: String(row.status),
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function insertConnectSourceConnection(params: {
+  id: string;
+  workspaceId: string;
+  provider: string;
+  label?: string | null;
+  config: unknown;
+  status: string;
+  secret?: { ciphertext: string; iv: string; authTag: string; encryptionVersion: number } | null;
+}): Promise<ConnectSourceConnectionRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const configJson = JSON.stringify(params.config ?? {});
+  await sql`
+    INSERT INTO knowledge_sources (
+      id, workspace_id, provider, label, config,
+      secret_ciphertext, secret_iv, secret_auth_tag, secret_encryption_version, status, created_at, updated_at
+    ) VALUES (
+      ${params.id}, ${params.workspaceId}, ${params.provider}, ${params.label ?? null}, ${configJson}::jsonb,
+      ${params.secret?.ciphertext ?? null}, ${params.secret?.iv ?? null}, ${params.secret?.authTag ?? null},
+      ${params.secret?.encryptionVersion ?? 0}, ${params.status}, ${now}, ${now}
+    )
+  `;
+  const rows = await sql`SELECT * FROM knowledge_sources WHERE id = ${params.id} LIMIT 1`;
+  return mapConnectSourceConnectionRow(rows[0] as Record<string, unknown>);
+}
+
+export async function listConnectSourceConnections(
+  workspaceId: string,
+): Promise<ConnectSourceConnectionRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_sources WHERE workspace_id = ${workspaceId} ORDER BY updated_at DESC
+  `;
+  return rows.map((r) => mapConnectSourceConnectionRow(r as Record<string, unknown>));
+}
+
+export async function getConnectSourceConnection(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<ConnectSourceConnectionRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_sources WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectSourceConnectionRow(rows[0] as Record<string, unknown>);
+}
+
+export async function updateConnectSourceConnection(params: {
+  id: string;
+  workspaceId: string;
+  status?: string;
+  config?: unknown;
+  secret?: { ciphertext: string; iv: string; authTag: string; encryptionVersion: number } | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  if (params.status !== undefined) {
+    await sql`UPDATE knowledge_sources SET status = ${params.status}, updated_at = ${now} WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}`;
+  }
+  if (params.config !== undefined) {
+    const configJson = JSON.stringify(params.config);
+    await sql`UPDATE knowledge_sources SET config = ${configJson}::jsonb, updated_at = ${now} WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}`;
+  }
+  if (params.secret) {
+    await sql`
+      UPDATE knowledge_sources SET
+        secret_ciphertext = ${params.secret.ciphertext},
+        secret_iv = ${params.secret.iv},
+        secret_auth_tag = ${params.secret.authTag},
+        secret_encryption_version = ${params.secret.encryptionVersion},
+        updated_at = ${now}
+      WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+    `;
+  }
+}
+
+export async function deleteConnectSourceConnection(params: { id: string; workspaceId: string }): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`DELETE FROM knowledge_sources WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}`;
 }

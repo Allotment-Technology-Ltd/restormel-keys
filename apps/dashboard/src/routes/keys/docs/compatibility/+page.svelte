@@ -1,75 +1,88 @@
 <script lang="ts">
   /** Framework compatibility */
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
+  import {
+    CLI_INSTALL,
+    DEPRECATED_PUBLIC_PACKAGES,
+    ELEMENTS_INSTALL,
+    ELEMENTS_SNIPPET,
+    MVP_PUBLIC_PACKAGES,
+    REST_RESOLVE_SNIPPET,
+  } from "$lib/public-npm-packages";
 </script>
 
 <svelte:head>
   <title>Framework compatibility — Restormel Keys</title>
-  <meta name="description" content="Which package to use for Next.js, React, SvelteKit, Web Components, or headless core." />
+  <meta name="description" content="Keys REST, Web Components, CLI, MCP, and AAIF — recommended public packages for Keys MVP." />
 </svelte:head>
 
 <div class="doc-content">
   <h1>Framework compatibility</h1>
-  <p>Restormel Keys is built to fit the stacks you already use. This page helps you choose the right package and get started quickly.</p>
+  <p>
+    New integrations should use <strong>Keys REST</strong> for resolve/catalog and
+    <code>{MVP_PUBLIC_PACKAGES.keysElements}</code> for UI. Legacy npm adapters are deprecated — see
+    <a href="/keys/docs/guides/npm-to-rest-keys">npm → REST migration</a>.
+  </p>
+
+  <aside class="deprecation-note" aria-label="Deprecated npm packages">
+    <strong>Deprecated (do not install for new apps):</strong>
+    {#each DEPRECATED_PUBLIC_PACKAGES as pkg}
+      <span><code>{pkg.name}</code> → {pkg.replacement}</span>
+    {/each}
+  </aside>
 
   <h2>Compatibility at a glance</h2>
   <table class="doc-table">
     <thead>
-      <tr><th>Framework</th><th>Package</th><th>Status</th></tr>
+      <tr><th>Framework</th><th>Recommended path</th><th>Status</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>Next.js (App Router)</strong></td><td><code>@restormel/keys</code> + <code>@restormel/keys-react</code> + <code>@restormel/keys-elements</code></td><td>Supported</td></tr>
-      <tr><td><strong>React (generic)</strong></td><td><code>@restormel/keys</code> + <code>@restormel/keys-react</code> + <code>@restormel/keys-elements</code></td><td>Supported</td></tr>
-      <tr><td><strong>SvelteKit</strong></td><td><code>@restormel/keys</code> + <code>@restormel/keys-svelte</code></td><td>Supported</td></tr>
-      <tr><td><strong>Web Components / Astro / vanilla</strong></td><td><code>@restormel/keys</code> + <code>@restormel/keys-elements</code></td><td>Supported</td></tr>
-      <tr><td><strong>Vue / Nuxt</strong></td><td>—</td><td>🔵 Planned — use headless core or Web Components for now</td></tr>
+      <tr><td><strong>Any (server)</strong></td><td>Keys REST + Gateway key</td><td>Supported</td></tr>
+      <tr><td><strong>Next.js / React / SvelteKit / Astro</strong></td><td><code>{MVP_PUBLIC_PACKAGES.keysElements}</code></td><td>Supported</td></tr>
+      <tr><td><strong>Agents / IDE</strong></td><td><code>{MVP_PUBLIC_PACKAGES.mcp}</code>, <code>{MVP_PUBLIC_PACKAGES.aaif}</code></td><td>Supported</td></tr>
+      <tr><td><strong>Local tooling</strong></td><td><code>{MVP_PUBLIC_PACKAGES.keysCli}</code>, <code>{MVP_PUBLIC_PACKAGES.doctor}</code></td><td>Supported</td></tr>
+      <tr><td><strong>Vue / Nuxt</strong></td><td>Keys REST + Web Components</td><td>Supported via elements</td></tr>
     </tbody>
   </table>
-  <p>All UI paths depend on the headless core (<code>@restormel/keys</code>) for resolution, cost, and storage. The React wrapper uses the Web Components under the hood; Svelte uses native Svelte 5 components. <strong>Headless only</strong> works today without the UI packages.</p>
 
   <h2>Install paths</h2>
-  <p><strong>Headless only (no UI) — works today:</strong></p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys" />
+  <p><strong>Resolve (no npm core):</strong></p>
+  <CodeBlock language="ts" code={REST_RESOLVE_SNIPPET} />
 
-  <p><strong>Next.js or React (KeyManager, ModelSelector, CostEstimator):</strong> install the core, React wrapper, and elements package.</p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
+  <p><strong>UI (Web Components — all frameworks):</strong></p>
+  <CodeBlock language="bash" code={ELEMENTS_INSTALL} />
+  <CodeBlock language="html" code={ELEMENTS_SNIPPET} />
 
-  <p><strong>SvelteKit (native Svelte components):</strong> install the core plus Svelte wrapper.</p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-svelte" />
-
-  <p><strong>Web Components (Astro, vanilla HTML, or any framework):</strong> install the core plus elements package.</p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-elements" />
-
-  <p><strong>CLI (init, add keys, validate, doctor):</strong></p>
-  <CodeBlock language="bash" code="pnpm add -D @restormel/keys-cli" />
-
-  <h2>When to use which</h2>
-  <ul>
-    <li><strong>Headless core (<code>@restormel/keys</code> only)</strong> — You want resolution, cost, and server middleware without any UI.</li>
-    <li><strong>React wrapper (<code>@restormel/keys-react</code>)</strong> — You're in a React or Next.js app and want drop-in KeyManager, ModelSelector, CostEstimator plus hooks. Recommended for Next.js App Router.</li>
-    <li><strong>Web Components (<code>@restormel/keys-elements</code>)</strong> — One integration that works in Astro, vanilla HTML, or any framework.</li>
-    <li><strong>Svelte components (<code>@restormel/keys-svelte</code>)</strong> — You're on SvelteKit or Svelte and want native KeyManager, ModelSelector, CostEstimator as Svelte 5 components.</li>
-  </ul>
-
-  <h2>Start with Next.js</h2>
-  <ol>
-    <li>Install: <code>pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements</code></li>
-    <li>Add a settings (or similar) page with KeyManager and your key storage.</li>
-    <li>Use the core on the server for resolution and cost; use the React components on the client for UI.</li>
-  </ol>
+  <p><strong>CLI + doctor:</strong></p>
+  <CodeBlock language="bash" code={CLI_INSTALL} />
 
   <h2>See also</h2>
   <ul>
-    <li><a href="/keys/docs/cloud-api">Cloud API</a> — gateway URL, Developer Portal, and API reference</li>
-    <li><a href="/keys/dashboard">Dashboard</a> — create projects and API keys</li>
-    <li><a href="/keys/dashboard/login">Sign in</a> — authenticate with GitHub</li>
-    <li><a href="/keys/pricing">Pricing</a> — tiers and plans</li>
+    <li><a href="/keys/docs/cloud-api">Cloud API</a> — Gateway key, Developer Portal, OpenAPI</li>
+    <li><a href="/keys/docs/guides/npm-to-rest-keys">Migrate from @restormel/keys npm</a></li>
+    <li><a href="/keys/docs/integrations">CLI, MCP, AAIF</a></li>
+    <li><a href="/keys/dashboard">Dashboard</a> — projects and provider vault</li>
   </ul>
 </div>
 
 <style>
   .doc-content {
     max-width: var(--rm-container-narrow);
+  }
+  .deprecation-note {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-2);
+    margin: 0 0 var(--space-6);
+  }
+  .deprecation-note strong {
+    color: var(--rm-text);
   }
   .doc-content h1 {
     font-family: var(--rm-font-display);
@@ -88,7 +101,7 @@
     line-height: var(--leading-relaxed);
     margin: 0 0 var(--space-4);
   }
-  .doc-content ul, .doc-content ol {
+  .doc-content ul {
     margin: 0 0 var(--space-6);
     padding-left: var(--space-5);
   }

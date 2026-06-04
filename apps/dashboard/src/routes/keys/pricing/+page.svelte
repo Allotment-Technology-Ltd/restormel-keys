@@ -44,26 +44,30 @@
   <title>Pricing — Restormel Keys</title>
   <meta
     name="description"
-    content="Restormel Keys pricing: Free, Pro (Paddle), Team and Platform tiers. BYOK product layer above your gateway. Founders Circle: 50 slots, 12 months Pro free."
+    content="Planned Restormel Keys tiers (reference only). Early access is invite-only — request access via Founders Circle."
   />
 </svelte:head>
 
 <article class="pricing-page">
   <div class="container">
-    <header class="pricing-header">
-      <h1 class="pricing-title">Pricing</h1>
-      <p class="pricing-kicker">The AI product layer — keys, without the heavy lift</p>
-      <p class="pricing-intro">
-        <strong>Restormel Keys</strong> sits above OpenRouter, Portkey, and Vercel AI: production-grade BYOK routing,
-        policies, and usage visibility — without replacing your gateway. Start free, upgrade to Pro when you ship, add Team
-        for collaboration, or pick the <a class="pricing-intro-link" href="/pricing">Platform bundle</a> if you are
-        standardising on Keys, Testing, and Graph together.
+    <aside class="early-access-banner" role="note">
+      <p>
+        <strong>Early access only.</strong> Restormel is not on general sale yet. Dashboard sign-in is invite-only —
+        <a href="/founders">request access</a> and we’ll email you a personal link when approved.
       </p>
-      <aside class="suite-strip" aria-label="Suite pricing">
+    </aside>
+
+    <header class="pricing-header">
+      <h1 class="pricing-title">Planned tiers</h1>
+      <p class="pricing-kicker">Reference pricing — checkout disabled during Founders Circle</p>
+      <p class="pricing-intro">
+        <strong>Restormel Keys</strong> is the BYOK product layer above your gateway. We’re validating the full suite
+        with founders before opening self-serve billing. Use the form below to get dashboard access now.
+      </p>
+      <aside class="suite-strip" aria-label="Early access">
         <p class="suite-strip-copy">
-          <strong>One suite. One price.</strong> Platform — all three Pros — is <strong>£35/mo</strong> on the
-          <a href="/pricing">suite pricing page</a>. Early adopters: <a href="/founders">Founders Circle</a> (50 slots,
-          12 months Pro free).
+          <a href="/founders"><strong>Request early access →</strong></a>
+          — Keys, Testing, Graph, and Connect in one invite-only workspace. No card required.
         </p>
       </aside>
       <div id="checkout-message" class="checkout-message" role="alert" aria-live="polite" hidden></div>
@@ -89,7 +93,8 @@
           <p class="tier-limitations">
             <strong>Limitations:</strong> No usage charts, no team seats, not production-optimised.
           </p>
-          <a href="/keys/docs" class="btn btn-secondary">Get started for free</a>
+          <a href="/keys/docs" class="btn btn-secondary">Read the docs</a>
+          <a href="/founders" class="btn btn-secondary tier-secondary-cta">Request dashboard access</a>
         </div>
 
         <div class="tier-card tier-card-pro">
@@ -129,23 +134,8 @@
             <li>Priority email support</li>
           </ul>
           <p class="tier-footnote">Most developers upgrade when they're ready to ship.</p>
-          <button
-            type="button"
-            class="btn btn-primary btn-upgrade-pro"
-            data-paddle-checkout
-            data-tier="pro"
-            data-billing-period="monthly"
-            data-price-id={selectedPriceId}
-            onclick={() =>
-              window.rmCapture?.("upgrade_clicked", {
-                surface: "keys_pricing",
-                tier: "pro",
-                currency: checkoutCurrencyLabel,
-              })}
-          >
-            Upgrade to Pro ({checkoutCurrencyLabel})
-          </button>
-          <p class="tier-hint">Opens Paddle checkout in {checkoutCurrencyLabel}. Taxes are calculated at checkout.</p>
+          <a href="/founders" class="btn btn-primary btn-upgrade-pro">Request early access</a>
+          <p class="tier-hint">Self-serve checkout opens after the Founders Circle cohort. No card today.</p>
         </div>
 
         <div class="tier-card tier-card-team">
@@ -163,29 +153,8 @@
             <li>Priority support with SLA</li>
           </ul>
           <p class="tier-footnote">For teams shipping AI in production.</p>
-          {#if data.paddleToken && data.teamPriceIdMonthlyGbp}
-            <button
-              type="button"
-              class="btn btn-secondary btn-upgrade-team"
-              data-paddle-checkout
-              data-price-id={data.teamPriceIdMonthlyGbp}
-              onclick={() =>
-                window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "team", currency: "GBP" })}
-            >
-              Upgrade to Team (GBP)
-            </button>
-            <p class="tier-hint">Opens Paddle checkout in GBP. Taxes are calculated at checkout.</p>
-          {:else}
-            <button type="button" class="btn btn-secondary btn-todo-checkout" disabled title="Checkout not configured">
-              Upgrade to Team (configure Paddle)
-            </button>
-            <p class="tier-hint tier-hint-muted">
-              Set <code class="tier-code">PUBLIC_PADDLE_CLIENT_TOKEN</code> and
-              <code class="tier-code">PADDLE_PRICE_KEYS_TEAM_MONTHLY_GBP</code>, or use
-              <code class="tier-code">pnpm run bootstrap-paddle -- --force-create</code> — or apply via
-              <a href="/founders">Founders</a>.
-            </p>
-          {/if}
+          <a href="/founders" class="btn btn-secondary btn-upgrade-team">Request early access</a>
+          <p class="tier-hint">Team checkout opens after the Founders Circle cohort.</p>
         </div>
 
         <div class="tier-card tier-card-platform">
@@ -195,31 +164,11 @@
           <p class="tier-price">{data.platformMonthlyDisplayGbp}</p>
           <p class="tier-period">/ month + tax</p>
           <ul class="tier-list">
-            <li>All three Pro modules (Keys Pro + Testing Pro + Graph Pro)</li>
-            <li>Best value if you're using more than one module.</li>
+            <li>Full suite (Keys, Testing, Graph, Connect) — planned</li>
+            <li>Best value when you adopt more than one module.</li>
           </ul>
-          <a class="btn btn-primary btn-platform-pricing" href="/pricing">See full Platform pricing →</a>
-          {#if data.paddleToken && data.platformPriceIdMonthlyGbp}
-            <button
-              type="button"
-              class="btn btn-secondary btn-upgrade-platform"
-              data-paddle-checkout
-              data-price-id={data.platformPriceIdMonthlyGbp}
-              onclick={() =>
-                window.rmCapture?.("upgrade_clicked", { surface: "keys_pricing", tier: "platform", currency: "GBP" })}
-            >
-              Subscribe to Platform (GBP)
-            </button>
-            <p class="tier-hint">Opens Paddle checkout in GBP. Taxes are calculated at checkout.</p>
-          {:else}
-            <button type="button" class="btn btn-secondary btn-todo-checkout btn-platform-todo" disabled title="Checkout not configured">
-              Subscribe to Platform (configure Paddle)
-            </button>
-            <p class="tier-hint tier-hint-muted">
-              Set <code class="tier-code">PADDLE_PRICE_PLATFORM_MONTHLY_GBP</code> (and Paddle client token) to enable
-              checkout here, or start from the <a href="/pricing">suite pricing page</a>.
-            </p>
-          {/if}
+          <a class="btn btn-primary btn-platform-pricing" href="/founders">Request early access →</a>
+          <p class="tier-hint">Platform billing is not live yet. Founders get the full suite invite-first.</p>
         </div>
       </div>
     </section>
@@ -296,6 +245,28 @@
     margin: 0 auto;
     padding: 0 var(--space-6);
   }
+  .early-access-banner {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    border: 1px solid color-mix(in oklab, var(--rm-sage) 45%, var(--rm-border));
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--rm-sage) 10%, var(--rm-surface-raised));
+  }
+  .early-access-banner p {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--rm-muted);
+  }
+  .early-access-banner a {
+    color: var(--rm-sage);
+    font-weight: var(--font-semibold);
+  }
+  .tier-secondary-cta {
+    margin-top: var(--space-2);
+    display: inline-flex;
+  }
+
   .pricing-header {
     margin-bottom: var(--space-10);
   }

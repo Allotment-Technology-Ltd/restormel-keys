@@ -1,12 +1,16 @@
 <script lang="ts">
-  /** Marketing layout: nav + footer for /keys (excluding /keys/dashboard, which uses the app shell). */
+  /** Marketing layout for /keys marketing routes; app chrome (header/footer) for dashboard + admin. */
   import "$lib/styles/marketing-shell.css";
+  import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
   import { page } from "$app/stores";
   import { absoluteUrl } from "$lib/seo";
 
   $: user = $page.data.user;
+  $: pathname = $page.url.pathname;
+  $: skipMarketingShell =
+    pathname.startsWith("/keys/dashboard") || pathname.startsWith("/keys/admin");
 
   const orgJsonLd = (baseUrl: URL) => ({
     "@context": "https://schema.org",
@@ -36,14 +40,20 @@
   <script type="application/ld+json">{JSON.stringify(productJsonLd($page.url))}</script>
 </svelte:head>
 
-<div class="marketing-page">
-  <a href="#main-content" class="skip-link">Skip to main content</a>
-  <SiteHeader {user} />
-  <main id="main-content" class="marketing-main">
+{#if skipMarketingShell}
+  <div class="marketing-page app-chrome">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <SiteHeader {user} />
+    <main id="main-content" class="app-main dashboard-chrome-main">
+      <slot />
+    </main>
+    <SiteFooter />
+  </div>
+{:else}
+  <SuiteMarketingLayout>
     <slot />
-  </main>
-  <SiteFooter />
-</div>
+  </SuiteMarketingLayout>
+{/if}
 
 <style>
   .skip-link {
@@ -51,22 +61,35 @@
     top: -100%;
     left: var(--space-4);
     padding: var(--space-2) var(--space-3);
-    background: var(--rm-surface-raised);
-    color: var(--rm-sage);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
+    font-weight: 800;
     font-size: var(--text-sm);
     text-decoration: none;
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
     z-index: var(--z-modal);
     transition: top 0.2s ease;
   }
   .skip-link:focus {
     top: var(--space-4);
   }
-  .marketing-main {
+  .app-chrome {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .app-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
     padding: var(--space-8) var(--space-6);
   }
   @media (max-width: 760px) {
-    .marketing-main {
+    .app-main {
       padding: var(--space-6) var(--space-4);
     }
   }

@@ -27,5 +27,5 @@
 
 ## Initial extraction scope
 
-- `api`, `constitution`, `domains`, `enrichment`, `ingestion`, `learn`, `passes`, `providers`, `references`, `trace`, and `verification`
+- `api`, `constitution`, `domains`, `enrichment`, `ingestion`, **`knowledge`**, `learn`, `passes`, `providers`, `references`, `trace`, and `verification`
 - SOPHIA app-local shims in `src/lib/types/*` and `src/lib/server/ingestion/contracts.ts` now re-export from this package during migration

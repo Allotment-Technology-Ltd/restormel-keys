@@ -104,7 +104,7 @@
     line-height: var(--leading-relaxed);
   }
   .variant-card-copy code {
-    font-family: var(--rm-font-mono, "JetBrains Mono", monospace);
+    font-family: var(--font-mono);
     font-size: 0.85em;
     background: var(--rm-surface);
     padding: 0.1em 0.35em;
@@ -133,7 +133,7 @@
     font-weight: var(--font-medium);
   }
   .btn-primary {
-    background: var(--path-blue);
+    background: var(--color-yellow);
     color: var(--rm-bg);
   }
   .btn-primary:hover {

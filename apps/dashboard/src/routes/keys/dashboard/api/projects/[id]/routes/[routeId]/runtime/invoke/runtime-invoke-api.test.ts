@@ -7,6 +7,7 @@ import {
   RUNTIME_INVOKE_CONTRACT_VERSION,
 } from "$lib/server/resolve-response";
 import { RUNTIME_SWITCH_EVAL_VERSION } from "$lib/server/runtime-switch-eval";
+import { KEYS_API_TEST_MODULE_FLAGS } from "$lib/module-flags-types";
 import type { ResolvedRouteResult } from "$lib/server/route-resolver";
 
 const mockProject = {
@@ -65,6 +66,7 @@ vi.mock("$lib/server/db", () => ({
   }),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
   aggregateRequestLogsToUsage: vi.fn().mockResolvedValue([]),
+  getProjectDefaultEnvironmentId: vi.fn().mockResolvedValue("env-1"),
   listProviderBindingsByProject: vi.fn().mockResolvedValue([
     {
       id: "pb1",
@@ -113,7 +115,10 @@ vi.mock("$lib/server/runtime-invoke-chain", () => ({
 
 function mockEvent(
   body: Record<string, unknown>,
-  locals: App.Locals = { user: { uid: "u1" } } as App.Locals
+  locals: App.Locals = {
+    user: { uid: "u1" },
+    moduleFlags: KEYS_API_TEST_MODULE_FLAGS,
+  } as App.Locals
 ) {
   return {
     params: { id: "p1", routeId: "route-1" },
@@ -155,6 +160,7 @@ describe("POST …/runtime/invoke", () => {
     const res = await POST(
       mockEvent({ environmentId: "env-1", messages: [{ role: "user", content: "hi" }] }, {
         user: undefined,
+        moduleFlags: KEYS_API_TEST_MODULE_FLAGS,
       } as App.Locals)
     );
     expect(res.status).toBe(401);

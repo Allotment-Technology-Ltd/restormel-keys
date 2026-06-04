@@ -1,0 +1,102 @@
+/**
+ * Dashboard page surfaces — brutal defaults for shared class names
+ * used across /keys/dashboard/** without per-page CSS churn.
+ */
+
+:is(.app-main, .main, .admin-main) :is(.page-title, h1.page-title) {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  text-transform: uppercase;
+  letter-spacing: var(--text-display-tracking);
+  line-height: 1.05;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-2);
+}
+
+:is(.app-main, .main, .admin-main) :is(.page-desc, .section-desc) {
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink-muted);
+  max-width: 48rem;
+  margin: 0 0 var(--space-5);
+}
+
+:is(.app-main, .main, .admin-main) .section {
+  border-top: var(--border);
+  padding-top: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+:is(.app-main, .main, .admin-main) .section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+:is(.app-main, .main, .admin-main) .section-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-display-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--text-display-tracking);
+  color: var(--color-ink);
+  margin: 0 0 var(--space-3);
+}
+
+:is(.app-main, .main, .admin-main)
+  :is(.panel, .card, .stat-card, .data-card, .page-card, .info-card, .form-card) {
+  border: var(--border);
+  border-radius: 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+:is(.app-main, .main, .admin-main) table {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--border);
+  background: var(--color-surface);
+  font-size: var(--text-body-sm);
+}
+
+:is(.app-main, .main, .admin-main) :is(th, td) {
+  border: var(--border-thin);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+:is(.app-main, .main, .admin-main) th {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-md);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--color-bg-deep);
+}
+
+:is(.app-main, .main, .admin-main) :is(.badge, .tag, .pill) {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: var(--border-thin);
+  border-radius: 0;
+  padding: 2px 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+:is(.app-main, .main, .admin-main) :is(.alert, .notice, .banner) {
+  border: var(--border);
+  border-radius: 0;
+  border-left-width: 6px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-line-height);
+}

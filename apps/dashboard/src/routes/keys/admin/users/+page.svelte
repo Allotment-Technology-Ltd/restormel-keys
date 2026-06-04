@@ -2,15 +2,73 @@
   import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { AdminUserListRow } from "$lib/admin-user-list";
 
-  export let data: { adminUsers: AdminUserListRow[]; adminUsersError: string | null };
+  export let data: {
+    adminUsers: AdminUserListRow[];
+    operatorEmails: import("$lib/server/service-admin-emails").ServiceAdminEmailRow[];
+    adminUsersError: string | null;
+  };
 
   let rows = data.adminUsers;
+  let operatorEmails = data.operatorEmails;
   let savingId: string | null = null;
+  let operatorEmailInput = "";
+  let operatorSaving = false;
   let errorMessage: string | null = null;
   /** Bumps to remount checkboxes after a failed toggle (browser flips before we respond). */
   let checkboxEpoch: Record<string, number> = {};
 
   $: rows = data.adminUsers;
+  $: operatorEmails = data.operatorEmails;
+
+  async function addOperatorEmail() {
+    errorMessage = null;
+    operatorSaving = true;
+    try {
+      const res = await fetch(`${ADMIN_BASE}/api/operator-emails`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: operatorEmailInput.trim() }),
+        credentials: "same-origin",
+      });
+      const payload = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!res.ok) {
+        errorMessage = payload.message ?? payload.error ?? `Request failed (${res.status})`;
+        return;
+      }
+      const email = operatorEmailInput.trim().toLowerCase();
+      operatorEmailInput = "";
+      if (!operatorEmails.some((r) => r.email === email)) {
+        operatorEmails = [{ email, createdAtMs: Date.now(), createdByUserId: null, note: null }, ...operatorEmails];
+      }
+    } catch {
+      errorMessage = "Network error. Try again.";
+    } finally {
+      operatorSaving = false;
+    }
+  }
+
+  async function removeOperatorEmail(email: string) {
+    errorMessage = null;
+    operatorSaving = true;
+    try {
+      const res = await fetch(`${ADMIN_BASE}/api/operator-emails`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: "same-origin",
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+        errorMessage = payload.message ?? payload.error ?? `Request failed (${res.status})`;
+        return;
+      }
+      operatorEmails = operatorEmails.filter((r) => r.email !== email);
+    } catch {
+      errorMessage = "Network error. Try again.";
+    } finally {
+      operatorSaving = false;
+    }
+  }
 
   async function toggleDbOperator(row: AdminUserListRow, next: boolean) {
     errorMessage = null;
@@ -49,8 +107,48 @@
 <h1 class="page-title">User management</h1>
 <p class="page-desc">
   Service owners can grant or revoke <strong>dashboard operator</strong> access (stored in <code>service_admins</code>).
-  Primary operator emails from configuration always retain operator access.
+  Primary operator emails from configuration always retain operator access. Add operator emails below before
+  someone signs in for the first time.
 </p>
+
+<section class="operator-emails" aria-labelledby="operator-emails-heading">
+  <h2 id="operator-emails-heading" class="section-title">Operator emails</h2>
+  <p class="section-desc">These emails receive administrator access on their next sign-in (without editing env vars).</p>
+  <form class="operator-form" on:submit|preventDefault={addOperatorEmail}>
+    <label class="operator-label">
+      <span class="sr-only">Email address</span>
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        placeholder="operator@example.com"
+        bind:value={operatorEmailInput}
+        required
+        disabled={operatorSaving}
+      />
+    </label>
+    <button type="submit" class="btn-add" disabled={operatorSaving || !operatorEmailInput.trim()}>
+      Add operator email
+    </button>
+  </form>
+  {#if operatorEmails.length > 0}
+    <ul class="operator-list">
+      {#each operatorEmails as row}
+        <li>
+          <span>{row.email}</span>
+          <button
+            type="button"
+            class="btn-remove"
+            disabled={operatorSaving}
+            on:click={() => removeOperatorEmail(row.email)}
+          >
+            Remove
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+</section>
 
 {#if data.adminUsersError}
   <p class="banner-error" role="alert">{data.adminUsersError}</p>
@@ -131,6 +229,76 @@
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
     max-width: 42rem;
+  }
+  .section-title {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-2);
+  }
+  .section-desc {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    margin: 0 0 var(--space-3);
+  }
+  .operator-emails {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface);
+  }
+  .operator-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .operator-label input {
+    min-height: 44px;
+    min-width: min(100%, 18rem);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+  }
+  .btn-add,
+  .btn-remove {
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--rm-border);
+    cursor: pointer;
+    background: var(--rm-bg);
+  }
+  .btn-add:disabled,
+  .btn-remove:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .operator-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .operator-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
   }
   .banner-error {
     padding: var(--space-3);

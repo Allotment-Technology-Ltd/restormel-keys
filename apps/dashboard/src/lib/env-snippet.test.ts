@@ -64,4 +64,15 @@ describe("ciStagingSecretsSnippet", () => {
     expect(s).toContain("RESTORMEL_ENVIRONMENT_ID_STAGING=");
     expect(s).toContain("No environments");
   });
+
+  it("omits environment id lines when includeEnvironmentId is false", () => {
+    const s = ciStagingSecretsSnippet({
+      projectId: "p1",
+      environmentId: "e1",
+      keysBaseUrl: "https://x",
+      includeEnvironmentId: false,
+    });
+    expect(s).not.toContain("RESTORMEL_ENVIRONMENT_ID");
+    expect(s).toContain("RESTORMEL_PROJECT_ID=p1");
+  });
 });

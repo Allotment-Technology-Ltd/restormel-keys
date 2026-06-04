@@ -9,8 +9,11 @@
 </svelte:head>
 
 <div class="doc-content">
-  <h1>Docs</h1>
-  <p class="doc-tagline">Choose a provider access mode, then follow the walkthrough.</p>
+  <h1>Keys docs</h1>
+  <p class="doc-tagline">
+    Prefer the <a href="/docs">suite docs hub</a> for orientation. Use this tree for Keys-specific guides and reference
+    (search and collapsed Reference in the sidebar).
+  </p>
 
   <h2>What brings you here?</h2>
   <div class="intent-grid">
@@ -82,7 +85,7 @@
     </li>
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Restormel Testing onboarding</a> — Connections, Testing hub, Gateway keys, CLI env</li>
     <li><a href="/keys/docs/guides/integration-catalog">Integration catalog</a> — index of vendors and stacks with links to canonical guides</li>
-    <li><a href="/keys/docs/how-it-fits-together">How it all fits together</a> — key types, API surfaces, and where each URL fits</li>
+    <li><a href="/docs/how-it-fits-together">How the suite fits together</a> — key types, API surfaces, and where each URL fits</li>
     <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
     <li>
       <a href="/keys/docs/cloud-api">Cloud API</a> — Dashboard API (<code>rk_…</code>): resolve, routes, policies, catalog, <strong>project model index</strong>; Zuplo gateway (<code>zpka_…</code>); OpenAPI imports.

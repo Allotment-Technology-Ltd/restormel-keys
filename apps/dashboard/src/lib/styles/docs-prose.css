@@ -1,0 +1,108 @@
+/**
+ * Shared docs typography — keys, testing, graph, suite docs trees.
+ * Imported by DocsShell; complements global callouts in DocsShell.svelte.
+ */
+
+.docs-main :global(.docs-h1),
+.docs-main :global(.doc-article h1) {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  text-transform: uppercase;
+  letter-spacing: var(--text-display-tracking);
+  line-height: 1.05;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-4);
+}
+
+.docs-main :global(.docs-h2),
+.docs-main :global(.doc-article h2) {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-display-sm);
+  text-transform: uppercase;
+  color: var(--color-ink);
+  margin: var(--space-8) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border);
+}
+
+.docs-main :global(.docs-h3),
+.docs-main :global(.doc-article h3) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-body-lg);
+  color: var(--color-ink);
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.docs-main :global(.docs-intro),
+.docs-main :global(.docs-p),
+.docs-main :global(.doc-lede),
+.docs-main :global(.doc-article > p) {
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink-muted);
+  max-width: 44rem;
+  margin: 0 0 var(--space-4);
+}
+
+.docs-main :global(.docs-list),
+.docs-main :global(.cat-list),
+.docs-main :global(.doc-article ul) {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.docs-main :global(.docs-list li),
+.docs-main :global(.cat-item) {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-line-height);
+}
+
+.docs-main :global(.cat-link) {
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.docs-main :global(.cat-link:hover) {
+  background: var(--color-yellow);
+}
+
+.docs-main :global(.cat-ext) {
+  margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-md);
+  color: var(--color-ink-faint);
+}
+
+.docs-main :global(.doc-banner) {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-line-height);
+  color: var(--color-ink-muted);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border);
+  border-left-width: 6px;
+  border-left-color: var(--color-yellow);
+  border-radius: 0;
+}
+
+.docs-main :global(.inline-code),
+.docs-main :global(.doc-code-inline) {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-md);
+  padding: 0.08rem 0.35rem;
+  border: var(--border-thin);
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border-radius: 0;
+}

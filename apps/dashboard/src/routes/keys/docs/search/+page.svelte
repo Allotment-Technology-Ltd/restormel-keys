@@ -1,5 +1,11 @@
 <script lang="ts">
-  const docsIndex = [
+  import { page } from "$app/stores";
+  import type { ModuleFlags } from "$lib/module-flags-types";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+
+  type DocsIndexEntry = { title: string; href: string; tags: string };
+
+  const docsIndexAll: DocsIndexEntry[] = [
     { title: "Docs overview", href: "/keys/docs", tags: "overview intro" },
     { title: "Walkthrough", href: "/keys/docs/walkthrough", tags: "phase migration" },
     { title: "Integrations walkthrough", href: "/keys/docs/integrations-walkthrough", tags: "cli mcp aaif" },
@@ -42,9 +48,27 @@
     { title: "Compatibility", href: "/keys/docs/compatibility", tags: "next react svelte" },
   ];
 
+  function docsIndexForFlags(flags: ModuleFlags): DocsIndexEntry[] {
+    return docsIndexAll.filter((d) => {
+      if (!flags.testing && d.href === "/keys/docs/guides/keys-testing-onboarding") return false;
+      if (!flags.environments && d.href === "/keys/docs/guides/environment-vocabulary") return false;
+      if (
+        !flags.gatewayProviders &&
+        (d.href === "/keys/docs/guides/openrouter" ||
+          d.href === "/keys/docs/guides/portkey" ||
+          d.href === "/keys/docs/guides/vercel-ai-gateway")
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   let q = "";
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: docsIndex = docsIndexForFlags(flags);
   $: results = docsIndex.filter((d) =>
-    `${d.title} ${d.tags}`.toLowerCase().includes(q.trim().toLowerCase())
+    `${d.title} ${d.tags}`.toLowerCase().includes(q.trim().toLowerCase()),
   );
 </script>
 
@@ -58,24 +82,42 @@
 <input id="docs-search" bind:value={q} class="search-input" placeholder="e.g. resolve, byok, mcp, openrouter" />
 
 <ul class="results">
-  {#each results as item}
-    <li><a href={item.href}>{item.title}</a></li>
+  {#each results as doc}
+    <li><a href={doc.href}>{doc.title}</a></li>
   {/each}
 </ul>
 
 <style>
-  .intro { color: var(--rm-muted); margin: 0 0 var(--space-3); }
-  .search-label { display: block; font-size: var(--text-xs); color: var(--rm-muted); margin-bottom: var(--space-1); }
+  .intro {
+    color: var(--rm-muted);
+    margin-bottom: var(--space-4);
+  }
+  .search-label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    margin-bottom: var(--space-2);
+  }
   .search-input {
     width: 100%;
-    max-width: 32rem;
+    max-width: 28rem;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);
-    background: var(--rm-bg);
-    color: var(--rm-text);
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
   }
-  .results { margin: 0; padding-left: var(--space-5); }
-  .results a { color: var(--rm-sage); }
+  .results {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .results a {
+    color: var(--rm-sage);
+    text-decoration: none;
+  }
+  .results a:hover {
+    text-decoration: underline;
+  }
 </style>

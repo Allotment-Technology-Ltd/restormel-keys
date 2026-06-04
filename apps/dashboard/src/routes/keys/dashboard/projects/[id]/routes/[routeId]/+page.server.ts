@@ -12,18 +12,7 @@ import {
 } from "$lib/server/db";
 import { INGESTION_STAGE_IDS, INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
 import { expandPoolMembersFromStep } from "$lib/server/model-pool";
-
-/** Provider keys aligned with dashboard step `providerPreference` options. */
-const STEP_PROVIDER_KEYS = [
-  "openai",
-  "anthropic",
-  "google",
-  "openrouter",
-  "vercel",
-  "portkey",
-  "voyage",
-  "aizolo",
-] as const;
+import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
 
 function variantServesProvider(
   v: {
@@ -47,17 +36,17 @@ function buildModelIdsByProvider(
   variantRows: Awaited<ReturnType<typeof listProviderModelVariantsByModelIds>>
 ): Record<string, string[]> {
   const modelIdsByProvider: Record<string, string[]> = {};
-  for (const k of STEP_PROVIDER_KEYS) modelIdsByProvider[k] = [];
+  for (const k of ROUTE_STEP_PROVIDER_OPTIONS) modelIdsByProvider[k] = [];
   const nameById = new Map(modelRows.map((m) => [m.id, m.canonicalName]));
   for (const m of modelRows) {
     const mv = variantRows.filter((v) => v.modelId === m.id);
-    for (const pref of STEP_PROVIDER_KEYS) {
+    for (const pref of ROUTE_STEP_PROVIDER_OPTIONS) {
       if (mv.some((v) => variantServesProvider(v, pref))) {
         modelIdsByProvider[pref].push(m.id);
       }
     }
   }
-  for (const pref of STEP_PROVIDER_KEYS) {
+  for (const pref of ROUTE_STEP_PROVIDER_OPTIONS) {
     modelIdsByProvider[pref].sort((a, b) =>
       (nameById.get(a) ?? a).localeCompare(nameById.get(b) ?? b, undefined, { sensitivity: "base" })
     );

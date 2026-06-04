@@ -24,6 +24,8 @@ declare global {
         authType?: "session" | "gateway_key" | "management_key";
         /** Service operator (Allotment): plan limits and Pro gates waived; not end-customer RBAC. */
         isServiceAdmin?: boolean;
+        /** Founders Circle approved (or service operator). Session auth only. */
+        foundersCircleApproved?: boolean;
         /** Only set when authType === "gateway_key": restricts API access to this project. */
         projectIdForKey?: string;
         /** Set when authType is gateway_key or management_key (key id, for audit). */
@@ -31,6 +33,8 @@ declare global {
         /** Only set when authType === "management_key": workspace-scoped access. */
         workspaceId?: string;
       };
+      /** Suite module flags (PostHog + env override). */
+      moduleFlags?: import("$lib/module-flags-types").ModuleFlags;
     }
     interface PageData {
       user?: {
@@ -39,6 +43,8 @@ declare global {
         name?: string | null;
         authType?: "session" | "gateway_key" | "management_key";
         isServiceAdmin?: boolean;
+        /** Founders Circle approved (or service operator). Session auth only. */
+        foundersCircleApproved?: boolean;
       };
     }
     interface LayoutData {
@@ -49,6 +55,14 @@ declare global {
       dashboardUiHiddenBanner?: { section: string; label: string } | null;
       /** Integration + Gateway key counts for contextual “next step” hints (Keys dashboard). */
       journeySignals?: { integrationCount: number; gatewayKeyCount: number } | null;
+      /** Resolved suite module flags (server). */
+      moduleFlags?: import("$lib/module-flags-types").ModuleFlags;
+      /** Suite modules visible for current flags (marketing). */
+      suiteModulesForUi?: import("$lib/suite/suite-modules").SuiteModule[];
+      /** Filtered primary work nav (Keys dashboard). */
+      workNavForUi?: import("$lib/nav-config").NavItem[];
+      /** Graph marketing preview banner when graph module is preview-only. */
+      graphModulePreview?: boolean;
     }
     // interface Error {}
     // interface Platform {}

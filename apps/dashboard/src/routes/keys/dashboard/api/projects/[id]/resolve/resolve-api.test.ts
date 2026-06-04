@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RESOLVE_SIMULATE_CONTRACT_VERSION } from "$lib/server/resolve-response";
+import { KEYS_API_TEST_MODULE_FLAGS, MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
 const mockProject = {
   id: "p1",
@@ -63,6 +64,7 @@ vi.mock("$lib/server/db", () => ({
   aggregateRequestLogsToUsage: vi.fn().mockResolvedValue([]),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
   downgradeWorkspaceIfProExpired: vi.fn().mockResolvedValue(undefined),
+  getProjectDefaultEnvironmentId: vi.fn().mockResolvedValue("env-1"),
 }));
 
 vi.mock("$lib/server/route-resolver", () => ({
@@ -82,7 +84,7 @@ function mockEvent(body: { environmentId: string; routeId?: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-    locals: { user: { uid: "u1" } },
+    locals: { user: { uid: "u1" }, moduleFlags: KEYS_API_TEST_MODULE_FLAGS },
   } as unknown as Parameters<Awaited<ReturnType<typeof getHandler>>>[0];
 }
 
@@ -110,6 +112,10 @@ describe("POST /api/projects/[id]/resolve", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       }),
+      locals: {
+        user: { uid: "u1" },
+        moduleFlags: { ...MVP_MODULE_DEFAULTS, environments: true },
+      },
     } as Parameters<Awaited<ReturnType<typeof getHandler>>>[0]);
     expect(res.status).toBe(400);
   });

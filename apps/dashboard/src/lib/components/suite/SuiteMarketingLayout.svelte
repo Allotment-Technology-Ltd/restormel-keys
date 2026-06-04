@@ -5,6 +5,9 @@
   import { page } from "$app/stores";
   import { absoluteUrl } from "$lib/seo";
 
+  /** Optional module-preview notice (e.g. Graph marketing while module flag is preview). */
+  export let previewNotice: string | null = null;
+
   $: user = $page.data.user;
 </script>
 
@@ -18,6 +21,19 @@
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <SiteHeader {user} />
+  {#if previewNotice}
+    <div class="marketing-banner">
+      <div class="marketing-banner-inner">
+        {@html previewNotice}
+      </div>
+    </div>
+  {:else if $$slots.banner}
+    <div class="marketing-banner">
+      <div class="marketing-banner-inner">
+        <slot name="banner" />
+      </div>
+    </div>
+  {/if}
   <main id="main-content" class="marketing-main">
     <slot />
   </main>
@@ -30,11 +46,13 @@
     top: -100%;
     left: var(--space-4);
     padding: var(--space-2) var(--space-3);
-    background: var(--rm-surface-raised);
-    color: var(--rm-sage);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
+    font-weight: 800;
     font-size: var(--text-sm);
     text-decoration: none;
-    border-radius: var(--rm-radius);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
     z-index: var(--z-modal);
     transition: top 0.2s ease;
   }
@@ -42,11 +60,8 @@
     top: var(--space-4);
   }
   .marketing-main {
-    padding: var(--space-8) var(--space-6);
-  }
-  @media (max-width: 760px) {
-    .marketing-main {
-      padding: var(--space-6) var(--space-4);
-    }
+    flex: 1;
+    width: 100%;
+    padding: 0;
   }
 </style>

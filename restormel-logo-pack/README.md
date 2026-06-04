@@ -1,26 +1,35 @@
-# Restormel logo pack — Concentric Routing
+# Restormel logo pack — Quad Router (neo-brutalist v2)
 
-This pack contains starter SVG assets based on the preferred "Concentric Routing" direction.
+**Canonical product assets** live in `apps/dashboard/static/` and are rendered in-app via [`RestormelLogo.svelte`](../apps/dashboard/src/lib/components/RestormelLogo.svelte).
 
-Files:
-- **`restormel-mark-export.svg`** — **master mark for export** (1024×1024): nested routing squares with **solid mint kernel**; use for slides, print, app stores, grants
-- **`restormel-lockup-export.svg`** — **horizontal lockup for export** (2400×640): mark + “Restormel” wordmark, scaled from `restormel-lockup-dark.svg`
-- **`restormel-mark-export-1024.png`** / **`restormel-lockup-export-2400.png`** — raster companions (generated locally; regenerate if SVG changes)
-- `restormel-mark-primary-dark.svg` — presentation tile for review
-- `restormel-mark-icon-transparent.svg` — transparent symbol
-- `restormel-mark-icon-dark.svg` — symbol on dark background
-- `restormel-favicon.svg` — simplified favicon candidate
-- `restormel-lockup-dark.svg` — horizontal lockup for dark surfaces
-- `restormel-lockup-light.svg` — horizontal lockup for light surfaces
-- `restormel-social-avatar.svg` — square avatar/icon
-- `restormel-app-header-lockup.svg` — compact header lockup
+The mark is a **four-quadrant router**: Keys (blue), Graph (neon), Testing (coral), Knowledge (canvas), with a neon resolve kernel, blueprint registration ticks, and I/O port tabs. Hard offset shadow; no rounded corners.
 
-**Colours:** background `#070B12`, line and kernel `#C9F7D5` (Restormel mint), wordmark `#E8EDF3`.
+## Files (this pack)
 
-Suggested placement:
-- Navbar: compact icon or header lockup
-- Footer: icon + wordmark
-- Docs shell: compact icon in top-left
-- Dashboard sign-in: primary mark or lockup
-- Favicon: simplified favicon file
-- Social/GitHub avatar: square avatar
+| File | Use |
+|------|-----|
+| `restormel-mark-icon-transparent.svg` | Mark only — favicon, avatars, tight UI |
+| `restormel-app-header-lockup.svg` | Nav lockup (mark + RESTORMEL + accent rules) |
+| `restormel-favicon.svg` | Favicon (canvas field + mark) |
+| `restormel-mark-export.svg` | Legacy 1024×1024 export tile — **superseded** by brutalist mark; regenerate from static when needed |
+| `restormel-lockup-export.svg` | Legacy dark lockup — **superseded** by `apps/dashboard/static/restormel-lockup-brutalist.svg` for hero |
+
+## Colours (neo-brutalist v2)
+
+| Token | Hex | Role |
+|-------|-----|------|
+| Canvas | `#F0E6D2` | Page / Knowledge quadrant |
+| Ink | `#000000` | Borders, wordmark, shadow |
+| Neon | `#FFDE4D` | Resolve kernel, Graph quadrant, accents |
+| Blueprint blue | `#4D96FF` | Keys quadrant, registration ticks |
+| Coral | `#FF6B6B` | Testing quadrant |
+| White | `#FFFFFF` | Mark module fill |
+
+## Placement (in product)
+
+- **Nav / header / sidebar:** `RestormelLogo variant="lockup"` height 28–32px
+- **Login / hero:** `RestormelLogo` height 36px+ or `restormel-lockup-brutalist.svg`
+- **Favicon:** `favicon.svg`
+- **Collapsed sidebar / icon-only:** `RestormelLogo variant="mark"`
+
+See [docs/design-system-index.md](../docs/design-system-index.md) for sizing rules.

@@ -1,4 +1,5 @@
 import {
+  getEnabledSuiteToolNames,
   RESTORMEL_SUITE_TOOL_NAMES,
   suiteMemoryPreview,
   suiteResolveCanonical,
@@ -8,11 +9,17 @@ import {
 } from "@restormel/mcp";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
 type SuiteTool = (typeof RESTORMEL_SUITE_TOOL_NAMES)[number];
 
 function isSuiteTool(s: string): s is SuiteTool {
   return (RESTORMEL_SUITE_TOOL_NAMES as readonly string[]).includes(s);
+}
+
+function enabledToolsForRequest(locals: App.Locals): readonly string[] {
+  const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  return getEnabledSuiteToolNames(flags);
 }
 
 function badRequest(code: string, message: string) {
@@ -42,8 +49,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (typeof tool !== "string" || !isSuiteTool(tool)) {
     return badRequest(
       "RST_SUITE_UNKNOWN_TOOL",
-      `Unknown or missing tool. Valid: ${RESTORMEL_SUITE_TOOL_NAMES.join(", ")}.`,
+      `Unknown or missing tool. Valid: ${enabledToolsForRequest(locals).join(", ")}.`,
     );
+  }
+  if (!enabledToolsForRequest(locals).includes(tool)) {
+    return json({ ok: false, code: "RST_SUITE_MODULE_DISABLED", message: "Tool disabled for this deployment." }, { status: 404 });
   }
   if (payload !== undefined && (typeof payload !== "object" || payload === null || Array.isArray(payload))) {
     return badRequest("RST_SUITE_HTTP_PAYLOAD", "payload must be a plain object when present.");

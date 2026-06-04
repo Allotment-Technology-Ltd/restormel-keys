@@ -9,6 +9,7 @@ import {
   getProject,
   getProjectInWorkspace,
   getOrCreateDefaultWorkspace,
+  getProjectDefaultEnvironmentId,
   insertRequestLog,
   aggregateRequestLogsToUsage,
 } from "$lib/server/db";
@@ -17,6 +18,7 @@ import { canonicalApiToPolicyProvider } from "$lib/server/canonical-provider";
 import { buildResolveSuccessData } from "$lib/server/resolve-response";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import { defaultProviders, estimateCost, type ProviderDefinition } from "@restormel/keys";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
 function monthStartMs(now: number): number {
   const d = new Date(now);
@@ -88,9 +90,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     } catch {
       return json({ error: "Invalid JSON" }, { status: 400 });
     }
-    const environmentId = typeof body.environmentId === "string" ? body.environmentId.trim() : "";
+    const environmentIdRaw = typeof body.environmentId === "string" ? body.environmentId.trim() : "";
+    const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+    let environmentId = environmentIdRaw;
     if (!environmentId) {
-      return json({ error: "environmentId is required" }, { status: 400 });
+      if (flags.environments) {
+        return json({ error: "environmentId is required" }, { status: 400 });
+      }
+      const defaultEnvId = await getProjectDefaultEnvironmentId(scope.projectId, scope.userId);
+      if (!defaultEnvId) {
+        return json(
+          { error: "no_environment", message: "Project has no default environment configured" },
+          { status: 422 }
+        );
+      }
+      environmentId = defaultEnvId;
     }
 
     // Enforce monthly request limits for Free tier.

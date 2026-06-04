@@ -97,6 +97,8 @@ jobs:
         run: bash scripts/check-secrets.sh
       - name: check-dependency-policy.sh
         run: bash scripts/check-dependency-policy.sh
+      - name: check-mvp-doc-links.mjs
+        run: node scripts/check-mvp-doc-links.mjs
 
   docs-check:
     runs-on: ubuntu-latest
@@ -168,26 +170,17 @@ jobs:
       - name: Dashboard tests
         run: pnpm --filter dashboard run test
 
-      - name: Restormel Graph (tests + tarball consumer smoke)
-        run: bash scripts/smoke-graph-packages-consumer.sh
-
-      - name: Restormel platform (contracts, observability, graph-reasoning-extensions, state)
-        run: |
-          pnpm --filter @restormel/contracts run build
-          pnpm --filter @restormel/contracts test
-          pnpm --filter @restormel/observability run build
-          pnpm --filter @restormel/observability test
-          pnpm --filter @restormel/graph-reasoning-extensions run build
-          pnpm --filter @restormel/graph-reasoning-extensions test
-          pnpm --filter @restormel/context-packs run build
-          pnpm --filter @restormel/context-packs test
-          pnpm --filter @restormel/state run build
-          pnpm --filter @restormel/state test
-
-      - name: Restormel State minimal consumer (example)
-        run: pnpm --filter restormel-state-minimal-consumer run start
-
-      # Restormel Testing (@restormel/testing-*) — merged from restormel-testing
+  test-testing-extended:
+    name: Testing packages (extended)
+    runs-on: ubuntu-latest
+    if: |
+      needs.changes.outputs.code == 'true' &&
+      (vars.RESTORMEL_PUBLISH_TESTING == 'true' || github.event_name == 'workflow_dispatch')
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
       - name: Validate testing-github-action action.yml (YAML)
         run: bash scripts/validate-testing-github-action-yml.sh
       - name: Build @restormel/keys-tokens (workspace)
@@ -223,6 +216,25 @@ jobs:
           node packages/testing-cli/dist/bin/testing.js run --suite dashboard-critical --config examples/dashboard-dogfood/restormel-testing.yaml
           kill $PREV_PID
           wait $PREV_PID 2>/dev/null || true
+
+      - name: Restormel Graph (tests + tarball consumer smoke)
+        run: bash scripts/smoke-graph-packages-consumer.sh
+
+      - name: Restormel platform (contracts, observability, graph-reasoning-extensions, state)
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/contracts test
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/observability test
+          pnpm --filter @restormel/graph-reasoning-extensions run build
+          pnpm --filter @restormel/graph-reasoning-extensions test
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/context-packs test
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/state test
+
+      - name: Restormel State minimal consumer (example)
+        run: pnpm --filter restormel-state-minimal-consumer run start
 
   keys-svelte-republish-smoke:
     runs-on: ubuntu-latest

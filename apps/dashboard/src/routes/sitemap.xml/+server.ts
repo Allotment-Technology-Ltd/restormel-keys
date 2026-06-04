@@ -1,6 +1,7 @@
 import type { RequestHandler } from "./$types";
+import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 
-const STATIC_PATHS = [
+const ALL_STATIC_PATHS = [
   "/",
   "/keys",
   "/keys/pricing",
@@ -34,7 +35,51 @@ const STATIC_PATHS = [
   "/keys/docs/compatibility",
   "/keys/docs/cloud-api",
   "/keys/docs/reference/cli",
+  "/connect",
+  "/connect/docs",
+  "/testing",
+  "/testing/docs",
+  "/graph",
+  "/graph/docs",
+  "/integrations",
+  "/docs",
 ];
+
+function staticPathsForModuleFlags(): string[] {
+  const flags = resolveModuleFlagsSync();
+  return ALL_STATIC_PATHS.filter((p) => {
+    if (!flags.testing && (p === "/testing" || p.startsWith("/testing/") || p === "/keys/docs/guides/keys-testing-onboarding")) {
+      return false;
+    }
+    if (flags.graph === "disabled" && (p === "/graph" || p.startsWith("/graph/"))) {
+      return false;
+    }
+    if (!flags.connect && (p === "/connect" || p.startsWith("/connect/"))) {
+      return false;
+    }
+    if (
+      !flags.gatewayProviders &&
+      (p === "/keys/docs/guides/openrouter" ||
+        p === "/keys/docs/guides/portkey" ||
+        p === "/keys/docs/guides/vercel-ai-gateway")
+    ) {
+      return false;
+    }
+    if (!flags.environments && p === "/keys/docs/guides/environment-vocabulary") {
+      return false;
+    }
+    if (!flags.guardrails && p === "/keys/docs/walkthrough/phase-4-policies") {
+      return false;
+    }
+    if (!flags.gatewayProviders && p === "/keys/docs/walkthrough/migration-paths") {
+      return false;
+    }
+    if (!flags.testing && p === "/keys/docs/walkthrough/staging-and-ci-setup") {
+      return false;
+    }
+    return true;
+  });
+}
 
 function xmlEscape(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
@@ -43,8 +88,9 @@ function xmlEscape(s: string): string {
 export const GET: RequestHandler = async ({ url }) => {
   const base = `${url.protocol}//${url.host}`;
   const now = new Date().toISOString();
+  const paths = staticPathsForModuleFlags();
 
-  const urls = STATIC_PATHS.map((p) => {
+  const urls = paths.map((p) => {
     const loc = xmlEscape(base + p);
     return [
       "  <url>",
@@ -69,4 +115,3 @@ export const GET: RequestHandler = async ({ url }) => {
     },
   });
 };
-

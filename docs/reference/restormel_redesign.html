@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restormel — One AI Product Layer For Your Whole Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream:   #F3EAD0;
+    --cream-d: #E8DFBF;
+    --black:   #0C0C0C;
+    --yellow:  #FFD600;
+    --yellow-d:#E6BF00;
+    --blue:    #1A3F8A;
+    --white:   #FFFEF0;
+    --shadow:  4px 4px 0 var(--black);
+    --shadow-lg: 6px 6px 0 var(--black);
+    --border:  2px solid var(--black);
+    --font-head: 'Barlow Condensed', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--cream);
+    color: var(--black);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--cream);
+    border-bottom: var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.08em; text-decoration: none; color: var(--black);
+  }
+  .nav-logo-badge {
+    width: 28px; height: 28px;
+    background: var(--yellow);
+    border: 2px solid var(--black);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+  .nav-links {
+    display: flex; align-items: center; gap: 0;
+    list-style: none;
+  }
+  .nav-links a {
+    display: block; padding: 0 1rem; line-height: 56px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.06em; text-decoration: none; color: var(--black);
+    text-transform: uppercase; border-left: var(--border);
+    transition: background 0.1s;
+  }
+  .nav-links a:hover { background: var(--yellow); }
+  .nav-right {
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 8px 18px; cursor: pointer; text-decoration: none;
+    border: var(--border); transition: transform 0.08s, box-shadow 0.08s;
+    white-space: nowrap;
+  }
+  .btn-ghost {
+    background: transparent; box-shadow: none;
+    color: var(--black);
+  }
+  .btn-ghost:hover { background: var(--cream-d); }
+  .btn-primary {
+    background: var(--yellow); color: var(--black);
+    box-shadow: var(--shadow);
+  }
+  .btn-primary:hover  { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+  .btn-primary:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+  .btn-outline {
+    background: var(--white); color: var(--black);
+    box-shadow: var(--shadow);
+  }
+  .btn-outline:hover  { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+  .btn-outline:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 var(--black); }
+
+  /* ── HERO ── */
+  .hero {
+    max-width: 1200px; margin: 0 auto;
+    padding: 5rem 2rem 4rem;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    background: var(--yellow); border: var(--border);
+    padding: 4px 10px; margin-bottom: 1.25rem;
+  }
+  .hero-eyebrow::before {
+    content: "⬡"; font-size: 12px;
+  }
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(52px, 6vw, 78px);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--blue);
+    -webkit-text-stroke: 1px var(--blue);
+  }
+  .hero-sub {
+    font-size: 16px; line-height: 1.65;
+    color: #3A3530;
+    margin-bottom: 2rem;
+    max-width: 460px;
+  }
+  .hero-sub strong { color: var(--black); font-weight: 600; }
+  .hero-ctas {
+    display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+  .hero-footnote {
+    font-family: var(--font-mono); font-size: 11px;
+    color: #7A7060; letter-spacing: 0.04em;
+  }
+  .hero-footnote a { color: inherit; }
+
+  /* ── HERO PRODUCT PREVIEW ── */
+  .hero-preview {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .preview-label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #7A7060; margin-bottom: 0.25rem;
+  }
+  .preview-card {
+    background: var(--white);
+    border: var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .preview-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.6rem 0.875rem;
+    border-bottom: var(--border);
+    background: var(--black);
+    color: var(--white);
+  }
+  .preview-card-head-title {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preview-card-head-title span {
+    background: var(--yellow); color: var(--black);
+    padding: 1px 6px; font-size: 9px;
+  }
+  .preview-card-body {
+    padding: 0.875rem;
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.7;
+    color: #2A2520;
+  }
+  .code-comment { color: #8A8070; }
+  .code-key     { color: var(--blue); font-weight: 700; }
+  .code-val     { color: #1A6B3C; }
+  .code-accent  { color: #7B3FB0; }
+
+  /* ── SECTION SHARED ── */
+  section {
+    border-top: var(--border);
+  }
+  .section-inner {
+    max-width: 1200px; margin: 0 auto; padding: 4rem 2rem;
+  }
+  .section-tag {
+    display: inline-flex;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    border: var(--border); padding: 3px 10px;
+    margin-bottom: 1rem;
+  }
+  h2 {
+    font-family: var(--font-head); font-weight: 900; font-size: clamp(32px, 4vw, 48px);
+    text-transform: uppercase; line-height: 1; letter-spacing: -0.01em;
+    margin-bottom: 0.5rem;
+  }
+  .section-sub {
+    font-size: 15px; color: #5A5045; margin-bottom: 2.5rem; max-width: 520px;
+  }
+
+  /* ── PRODUCTS ── */
+  .products-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .product-card {
+    background: var(--white); border: var(--border);
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .product-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 var(--black);
+  }
+  .product-card-head {
+    padding: 1rem 1.25rem; border-bottom: var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .product-card-name {
+    font-family: var(--font-head); font-size: 22px; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .product-tag {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 8px; border: var(--border);
+  }
+  .product-tag.yellow { background: var(--yellow); }
+  .product-tag.blue   { background: var(--blue); color: var(--white); }
+  .product-card-body  { padding: 1.25rem; }
+  .product-card-desc {
+    font-size: 14px; color: #3A3530; line-height: 1.6; margin-bottom: 1rem;
+  }
+  .product-code {
+    background: #1C1917; border: var(--border);
+    padding: 0.875rem 1rem;
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.8;
+    color: #D4CEBC; overflow-x: auto;
+  }
+  .product-code .ck { color: #FFD600; }
+  .product-code .cv { color: #7ECBA8; }
+  .product-code .cs { color: #808080; }
+  .product-code .ca { color: #BFA8FF; }
+  .product-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--black); text-decoration: none; margin-top: 1rem;
+    border-bottom: 2px solid var(--black);
+    transition: gap 0.15s;
+  }
+  .product-link:hover { gap: 9px; }
+
+  /* ── STACK DIAGRAM ── */
+  .stack-diagram {
+    display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: stretch; gap: 0;
+    border: var(--border); box-shadow: var(--shadow-lg);
+    margin-top: 2.5rem;
+  }
+  .stack-col {
+    padding: 1.5rem 1.25rem;
+    border-right: var(--border);
+  }
+  .stack-col:last-child { border-right: none; }
+  .stack-arrow {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--yellow); border-right: var(--border);
+    padding: 0 0.625rem; min-width: 36px;
+    font-size: 18px; font-weight: 700;
+  }
+  .stack-col-label {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #8A7F6A; margin-bottom: 0.75rem;
+  }
+  .stack-col-title {
+    font-family: var(--font-head); font-size: 20px; font-weight: 900;
+    text-transform: uppercase; line-height: 1.1; margin-bottom: 0.75rem;
+  }
+  .stack-col.highlight { background: var(--black); color: var(--white); }
+  .stack-col.highlight .stack-col-label { color: #888; }
+  .stack-col.highlight .stack-col-title { color: var(--yellow); }
+  .stack-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    border: 1.5px solid currentColor; padding: 2px 7px;
+    margin: 2px; letter-spacing: 0.04em;
+  }
+  .stack-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.5rem; }
+  .stack-note { font-size: 12px; color: #7A7060; line-height: 1.5; margin-top: 0.5rem; }
+  .stack-note.light { color: #AAA; }
+
+  /* ── INVITE ── */
+  .invite { background: var(--black); color: var(--white); }
+  .invite .section-inner {
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 3rem;
+  }
+  .invite h2 { color: var(--yellow); }
+  .invite p { color: #AAA; font-size: 15px; max-width: 480px; margin-top: 0.5rem; }
+  .btn-yellow-lg {
+    background: var(--yellow); color: var(--black);
+    border: 2px solid var(--yellow);
+    box-shadow: 6px 6px 0 #FFD60044;
+    font-size: 13px; padding: 14px 28px;
+    white-space: nowrap;
+  }
+  .btn-yellow-lg:hover  { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 #FFD60066; }
+  .btn-yellow-lg:active { transform: translate(2px,2px);   box-shadow: 3px 3px 0 #FFD60044; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: var(--border); background: var(--cream-d);
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 3rem 2rem 2rem;
+    display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 2rem;
+  }
+  .footer-brand p {
+    font-size: 13px; color: #6A6050; margin-top: 0.5rem; max-width: 220px; line-height: 1.6;
+  }
+  .footer-col h3 {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #8A7F6A; margin-bottom: 0.875rem;
+  }
+  .footer-col a {
+    display: block; font-size: 13px; color: #3A3530;
+    text-decoration: none; margin-bottom: 0.4rem;
+    transition: color 0.1s;
+  }
+  .footer-col a:hover { color: var(--black); }
+  .footer-bottom {
+    max-width: 1200px; margin: 0 auto; padding: 1.25rem 2rem;
+    border-top: 1px solid var(--cream-d);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.06em; color: #8A7F6A;
+  }
+
+  /* ── DIVIDER ── */
+  .full-border { border-top: var(--border); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 2.5rem; }
+    .products-grid { grid-template-columns: 1fr; }
+    .stack-diagram { grid-template-columns: 1fr; }
+    .stack-arrow { display: none; }
+    .stack-col { border-right: none; border-bottom: var(--border); }
+    .invite .section-inner { grid-template-columns: 1fr; }
+    .footer-inner { grid-template-columns: 1fr 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-badge">⬡</div>
+    RESTORMEL
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Product ↓</a></li>
+    <li><a href="#">Integrations</a></li>
+    <li><a href="#">Company ↓</a></li>
+    <li><a href="#">Developers ↓</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="#" class="btn btn-ghost">Sign in</a>
+    <a href="#invite" class="btn btn-primary">Early access →</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Restormel</div>
+    <h1>One AI<br>product<br>layer for<br><em>your</em> stack</h1>
+    <p class="hero-sub">
+      Route model requests with <strong>fallback chains</strong> and stand up
+      agent-ready knowledge infrastructure — in one signed-in workspace,
+      with direct providers and <strong>BYOK custody</strong>.
+    </p>
+    <div class="hero-ctas">
+      <a href="#" class="btn btn-primary" style="font-size:13px;padding:12px 24px;">Run Restormel →</a>
+      <a href="#" class="btn btn-outline" style="font-size:13px;padding:12px 24px;">Embed in my stack</a>
+    </div>
+    <p class="hero-footnote">
+      Suite docs · <a href="#">Capabilities</a> · Invite-only while we learn
+    </p>
+  </div>
+
+  <div class="hero-preview">
+    <p class="preview-label">Restormel Keys — Route</p>
+    <div class="preview-card">
+      <div class="preview-card-head">
+        <div class="preview-card-head-title">
+          RESOLVE CHAIN <span>KEYS</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:10px;color:#AAA;">production-default</span>
+      </div>
+      <div class="preview-card-body">
+        <div><span class="code-key">route:</span>     <span class="code-val">production-default</span></div>
+        <div><span class="code-key">primary</span>   <span style="color:#8A8070;">→</span> <span class="code-accent">openai</span> / <span class="code-val">gpt-4o-mini</span></div>
+        <div><span class="code-key">fallback</span>  <span style="color:#8A8070;">→</span> <span class="code-accent">anthropic</span> / <span class="code-val">claude-3-5</span></div>
+        <div><span class="code-key">policy:</span>   <span class="code-val">cost-cap-pass</span></div>
+        <div class="code-comment" style="margin-top:6px;"># BYOK · no proxy · your keys</div>
+      </div>
+    </div>
+
+    <p class="preview-label" style="margin-top:0.5rem;">Restormel Connect — Agent context</p>
+    <div class="preview-card">
+      <div class="preview-card-head">
+        <div class="preview-card-head-title">
+          AGENT CONTEXT LAYER <span>CONNECT</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:10px;color:#AAA;">94% verified</span>
+      </div>
+      <div class="preview-card-body">
+        <div><span class="code-key">graph:</span>    <span class="code-val">847 ideas · 2.1k edges</span></div>
+        <div><span class="code-key">retrieve:</span> <span class="code-val">depth: standard</span></div>
+        <div><span class="code-key">agent:</span>    <span class="code-val">tool call + context pack</span></div>
+        <div><span class="code-key">verify:</span>   <span class="code-val">→ 94% claims supported</span></div>
+        <div class="code-comment" style="margin-top:6px;"># ingest · retrieve · verify</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRODUCTS ── -->
+<section>
+  <div class="section-inner">
+    <span class="section-tag">The suite</span>
+    <h2>Route and connect.<br>Two products, one layer.</h2>
+    <p class="section-sub">
+      Start in the dashboard. Keys handles your model routing;
+      Connect handles your knowledge paths.
+    </p>
+
+    <div class="products-grid">
+      <!-- KEYS -->
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-card-name">Restormel Keys</div>
+            <div style="font-family:var(--font-mono);font-size:11px;color:#6A6050;margin-top:2px;">Model routing &amp; BYOK custody</div>
+          </div>
+          <span class="product-tag yellow">Route</span>
+        </div>
+        <div class="product-card-body">
+          <p class="product-card-desc">
+            Define fallback chains across OpenAI, Anthropic, Google, and Mistral.
+            Your keys, your cost, your custody — no proxy in the middle.
+          </p>
+          <div class="product-code">
+<span class="cs"># resolve chain config</span>
+<span class="ck">route:</span>   <span class="cv">production-default</span>
+<span class="ck">primary:</span> <span class="ca">openai</span>/<span class="cv">gpt-4o-mini</span>
+<span class="ck">fallback:</span> <span class="ca">anthropic</span>/<span class="cv">claude-3-5</span>
+<span class="ck">policy:</span>  <span class="cv">cost-cap-pass</span>
+          </div>
+          <a href="#" class="product-link">Keys overview →</a>
+        </div>
+      </div>
+
+      <!-- CONNECT -->
+      <div class="product-card">
+        <div class="product-card-head">
+          <div>
+            <div class="product-card-name">Restormel Connect</div>
+            <div style="font-family:var(--font-mono);font-size:11px;color:#6A6050;margin-top:2px;">Agent-ready knowledge infrastructure</div>
+          </div>
+          <span class="product-tag blue">Connect</span>
+        </div>
+        <div class="product-card-body">
+          <p class="product-card-desc">
+            Ingest any content into a verified knowledge graph. Retrieve
+            with graph + vector hybrid. Verify for logical consistency.
+          </p>
+          <div class="product-code">
+<span class="cs"># agent context layer</span>
+<span class="ck">graph:</span>    <span class="cv">847 ideas · 2.1k edges</span>
+<span class="ck">retrieve:</span> <span class="cv">graph + vector hybrid</span>
+<span class="ck">verify:</span>   <span class="cv">94% claims supported</span>
+<span class="ck">domain:</span>  <span class="ca">configurable schema</span>
+          </div>
+          <a href="#" class="product-link">Open Connect hub →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STACK ── -->
+<section>
+  <div class="section-inner">
+    <span class="section-tag">How it fits</span>
+    <h2>No rip-and-replace.</h2>
+    <p class="section-sub">
+      Keep Neon, SurrealDB, and your existing providers.
+      Restormel sits between your stack and your product as a thin control layer.
+    </p>
+
+    <div class="stack-diagram">
+      <div class="stack-col">
+        <div class="stack-col-label">Your stack</div>
+        <div class="stack-col-title">What you already have</div>
+        <div class="stack-pills">
+          <span class="stack-pill">Neon</span>
+          <span class="stack-pill">SurrealDB</span>
+          <span class="stack-pill">OpenAI</span>
+          <span class="stack-pill">Anthropic</span>
+          <span class="stack-pill">Google AI</span>
+          <span class="stack-pill">Mistral</span>
+        </div>
+        <p class="stack-note">Your keys. Your databases. Your providers.</p>
+      </div>
+
+      <div class="stack-arrow">→</div>
+
+      <div class="stack-col highlight">
+        <div class="stack-col-label">Restormel</div>
+        <div class="stack-col-title">Control layer</div>
+        <div class="stack-pills" style="margin-bottom:0.75rem;">
+          <span class="stack-pill" style="border-color:#FFD600;color:#FFD600;">Route</span>
+          <span class="stack-pill" style="border-color:#7ECBA8;color:#7ECBA8;">Ingest</span>
+          <span class="stack-pill" style="border-color:#7ECBA8;color:#7ECBA8;">Retrieve</span>
+          <span class="stack-pill" style="border-color:#7ECBA8;color:#7ECBA8;">Verify</span>
+        </div>
+        <p class="stack-note light">Signed-in workspace. Domain schemas. BYOK custody.</p>
+      </div>
+
+      <div class="stack-arrow">→</div>
+
+      <div class="stack-col" style="background:var(--yellow);">
+        <div class="stack-col-label" style="color:#6A5800;">Your product</div>
+        <div class="stack-col-title">Grounded agents</div>
+        <div class="stack-pills">
+          <span class="stack-pill" style="border-color:#0C0C0C;">Cited answers</span>
+          <span class="stack-pill" style="border-color:#0C0C0C;">Your keys</span>
+          <span class="stack-pill" style="border-color:#0C0C0C;">Verified graphs</span>
+        </div>
+        <p class="stack-note" style="color:#5A4800;">AI products that earn trust by showing their reasoning.</p>
+      </div>
+    </div>
+
+    <p style="font-family:var(--font-mono);font-size:11px;color:#8A7F6A;margin-top:1.25rem;letter-spacing:0.04em;">
+      Integration catalog → Nuxt · SvelteKit · Next.js · Django · LangChain · LlamaIndex
+    </p>
+  </div>
+</section>
+
+<!-- ── INVITE ── -->
+<section class="invite" id="invite">
+  <div class="section-inner">
+    <div>
+      <h2>Invite-only<br>while we learn</h2>
+      <p>
+        Restormel isn't on general sale yet. Join the Founders Circle — register your email,
+        get a personal access link, and help us prove the suite before we set pricing.
+      </p>
+    </div>
+    <a href="#" class="btn btn-yellow-lg" style="font-family:var(--font-mono);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;text-decoration:none;display:inline-flex;">
+      Request early access →
+    </a>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="#" class="nav-logo" style="margin-bottom:0.75rem;display:inline-flex;">
+        <div class="nav-logo-badge">⬡</div>
+        RESTORMEL
+      </a>
+      <p>One AI product layer for your whole stack. Route · Ingest · Verify.</p>
+    </div>
+    <div class="footer-col">
+      <h3>Product</h3>
+      <a href="#">Restormel home</a>
+      <a href="#">Suite overview</a>
+      <a href="#">Capabilities</a>
+      <a href="#">Documentation</a>
+      <a href="#">Dashboard</a>
+    </div>
+    <div class="footer-col">
+      <h3>Capabilities</h3>
+      <a href="#">Route (Keys)</a>
+      <a href="#">Connect</a>
+    </div>
+    <div class="footer-col">
+      <h3>Company</h3>
+      <a href="#">Early access</a>
+      <a href="#">Roadmap</a>
+      <a href="#">Changelog</a>
+    </div>
+    <div class="footer-col">
+      <h3>Developers</h3>
+      <a href="#">Suite docs</a>
+      <a href="#">API portal</a>
+      <a href="#">GitHub</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Allotment Technology Ltd</span>
+    <span>Terms · Privacy · Refund policy</span>
+  </div>
+</footer>
+
+</body>
+</html>

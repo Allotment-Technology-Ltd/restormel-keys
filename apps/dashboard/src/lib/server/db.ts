@@ -16,6 +16,7 @@ export {
   updateProject,
   deleteProject,
   listEnvironments,
+  getProjectDefaultEnvironmentId,
   listApiKeys,
   countApiKeysByWorkspace,
   createApiKey,

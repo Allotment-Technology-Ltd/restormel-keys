@@ -1,0 +1,139 @@
+/**
+ * Restormel Neo-Brutalist token layer (v3).
+ * Warm cream canvas, ink structure, yellow primary accent, tri-font stack
+ * (Barlow Condensed / DM Sans / Space Mono). Offset shadows lift on hover.
+ *
+ * Loads base.css for spacing scale, then defines canonical --color-* / --font-*
+ * tokens plus --brut-* / --rm-* aliases for existing surfaces.
+ * See docs/design-system-index.md and docs/DESIGN-TOKENS.md (Neo-Brutalist v3).
+ */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap");
+@import "./base.css";
+
+:root {
+  /* ── Surfaces ── */
+  --color-bg: #f3ead0;
+  --color-bg-deep: #e8dfbf;
+  --color-surface: #fffef0;
+
+  /* ── Brand ── */
+  --color-yellow: #ffd600;
+  --color-yellow-dark: #e6bf00;
+  --color-blue: #1a3f8a;
+
+  /* ── Ink ── */
+  --color-ink: #0c0c0c;
+  --color-ink-muted: #3a3530;
+  --color-ink-faint: #7a7060;
+
+  /* ── Semantic aliases ── */
+  --color-border: var(--color-ink);
+  --color-text: var(--color-ink);
+  --color-text-muted: var(--color-ink-muted);
+
+  /* ── Borders ── */
+  --border-width: 2px;
+  --border-color: var(--color-ink);
+  --border: var(--border-width) solid var(--border-color);
+  --border-thin: 1.5px solid var(--border-color);
+
+  /* ── Shadows (offset neo-brutalist) ── */
+  --shadow-sm: 3px 3px 0 var(--color-ink);
+  --shadow-md: 5px 5px 0 var(--color-ink);
+  --shadow-lg: 7px 7px 0 var(--color-ink);
+
+  /* ── Fonts ── */
+  --font-display: "Barlow Condensed", sans-serif;
+  --font-mono: "Space Mono", monospace;
+  --font-body: "DM Sans", sans-serif;
+
+  /* ── Button tokens ── */
+  --btn-font: var(--font-mono);
+  --btn-size: 12px;
+  --btn-weight: 700;
+  --btn-tracking: 0.06em;
+  --btn-transform: uppercase;
+  --btn-border: var(--border);
+  --btn-radius: 0;
+
+  /* ── Typography scale ── */
+  --text-display-xl: 78px;
+  --text-display-lg: 52px;
+  --text-display-md: 32px;
+  --text-display-sm: 22px;
+  --text-display-line-height: 0.95;
+  --text-display-tracking: -0.01em;
+
+  --text-body-lg: 16px;
+  --text-body-md: 15px;
+  --text-body-sm: 14px;
+  --text-body-line-height: 1.65;
+
+  --text-mono-sm: 10px;
+  --text-mono-md: 11px;
+  --text-mono-lg: 13px;
+  --text-mono-tracking: 0.08em;
+
+  /* ── Code block syntax (dark panel) ── */
+  --code-bg: #1c1917;
+  --code-keyword: #ffd600;
+  --code-value: #7ecba8;
+  --code-comment: #808080;
+  --code-accent: #bfa8ff;
+
+  /* ── Legacy --brut-* aliases (backward compat) ── */
+  --brut-canvas: var(--color-bg);
+  --brut-canvas-deep: var(--color-bg-deep);
+  --brut-white: var(--color-surface);
+  --brut-ink: var(--color-ink);
+  --brut-neon: var(--color-yellow);
+  --brut-blue: var(--color-blue);
+  --brut-coral: var(--coral-alert-active);
+  --brut-muted: var(--color-ink-muted);
+
+  /* Module accents — text/border only, not primary fills */
+  --brut-module-keys: var(--color-blue);
+  --brut-module-testing: var(--brut-coral);
+  --brut-module-graph: var(--color-yellow);
+  --brut-module-connect: var(--color-bg-deep);
+
+  --brut-border-width: var(--border-width);
+  --brut-border-micro: 1.5px;
+  --brut-shadow: var(--shadow-md);
+  --brut-shadow-hover: var(--shadow-sm);
+  --brut-shadow-none: none;
+  --brut-transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+  --brut-font: var(--font-mono);
+
+  /* ── Semantic --rm-* aliases ── */
+  --rm-bg: var(--color-bg);
+  --rm-surface: var(--color-bg-deep);
+  --rm-surface-raised: var(--color-surface);
+  --rm-border: var(--color-ink);
+  --rm-text: var(--color-ink);
+  --rm-muted: var(--color-ink-muted);
+  --rm-dim: var(--color-ink-faint);
+  --rm-sage: var(--color-blue);
+  --rm-sage-bg: var(--color-yellow);
+
+  --rm-font-display: var(--font-display);
+  --rm-font-ui: var(--font-body);
+  --rm-font-mono: var(--font-mono);
+
+  --rm-radius: 0;
+  --rm-card-radius: 0;
+  --rm-card-shadow: var(--shadow-md);
+  --rm-container-max: 72rem;
+  --rm-container-narrow: 56rem;
+  --rm-reading-width: 65ch;
+  --rm-nav-height: 3.5rem;
+  --rm-section-padding: var(--space-12);
+  --rm-section-padding-sm: var(--space-8);
+
+  --focus-ring-color: var(--color-yellow);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 0;
+  --focus-ring: 0 0 0 2px var(--color-yellow);
+
+  color-scheme: light;
+}

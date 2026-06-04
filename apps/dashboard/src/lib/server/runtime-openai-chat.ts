@@ -47,6 +47,7 @@ export async function postOpenAiCompatibleChat(args: {
   timeoutMs?: number;
   /** Combined with timeout; abort cancels the upstream request (e.g. job cancellation). */
   signal?: AbortSignal;
+  jsonMode?: boolean;
 }): Promise<{ ok: true; value: OpenAiChatSuccess } | { ok: false; value: OpenAiChatFailure }> {
   const timeoutMs = args.timeoutMs ?? 120_000;
   const url = `${args.baseUrl.replace(/\/$/, "")}/chat/completions`;
@@ -63,7 +64,11 @@ export async function postOpenAiCompatibleChat(args: {
         Authorization: `Bearer ${args.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model: args.model, messages: args.messages }),
+      body: JSON.stringify({
+        model: args.model,
+        messages: args.messages,
+        ...(args.jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
       signal: combined,
     });
   } catch (e) {

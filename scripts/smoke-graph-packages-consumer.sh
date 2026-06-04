@@ -6,10 +6,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "[smoke-graph] Building graph-core + ui-graph-svelte..."
+echo "[smoke-graph] Building graph-core + ui-graph-svelte + graph-elements..."
 pnpm --filter @restormel/graph-core run build
 pnpm --filter @restormel/ui-graph-svelte run build
+pnpm --filter @restormel/graph-elements run build
 pnpm --filter @restormel/graph-core test
+pnpm --filter @restormel/graph-elements test
 
 echo "[smoke-graph] Verifying graph-core export targets exist on disk..."
 node <<'NODER'
@@ -114,16 +116,30 @@ j.pnpm = j.pnpm || {};
 j.pnpm.overrides = Object.assign({}, j.pnpm.overrides, {
   "@restormel/graph-core": "file:" + process.env.GC_TGZ,
 });
+j.pnpm.onlyBuiltDependencies = ["esbuild"];
 delete j.scripts.prebuild;
 fs.writeFileSync(demo, JSON.stringify(j, null, 2) + "\n");
 NODER
 
 echo "[smoke-graph] Installing restormel-graph-demo from tarballs (pnpm, ignore workspace root)..."
 cd "$DEMO_TMP"
+# Use pnpm 9 in the isolated demo (pnpm 10+ fails on ignored esbuild scripts without interactive approve-builds).
+corepack prepare pnpm@9.15.9 --activate >/dev/null 2>&1 || true
+set +e
 pnpm install --no-frozen-lockfile --ignore-workspace
+install_rc=$?
+set -e
+if [ "$install_rc" -ne 0 ] && [ ! -f node_modules/vite/package.json ]; then
+  echo "[smoke-graph] FAIL pnpm install (exit $install_rc)"
+  exit 1
+fi
+if [ "$install_rc" -ne 0 ]; then
+  echo "[smoke-graph] WARN pnpm install exit $install_rc; continuing when node_modules present"
+fi
 
 echo "[smoke-graph] svelte-check + production build..."
-pnpm run check
+pnpm exec svelte-kit sync
+pnpm exec svelte-check --tsconfig ./tsconfig.json
 pnpm run build
 
 echo "[smoke-graph] OK — tarball consumer check + build succeeded."

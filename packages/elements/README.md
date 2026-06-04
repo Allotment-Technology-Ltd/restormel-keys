@@ -1,12 +1,43 @@
 # @restormel/keys-elements
 
-Web Component wrappers for Restormel Keys. Use `<rk-key-manager>`, `<rk-model-selector>`, and `<rk-cost-estimator>` in plain HTML, Astro, or any framework.
+**Primary UI surface (Phase 1+)** for Restormel Keys. Web Component wrappers — use `<rk-key-manager>`, `<rk-model-selector>`, and `<rk-cost-estimator>` in plain HTML, Astro, or any framework. Pair with **Keys REST** (`/keys/v1/*`) for server-side resolve; see [npm-to-rest-keys.md](../../docs/guides/npm-to-rest-keys.md).
 
-## Installation
+## Installation (npm)
 
 ```bash
 pnpm add @restormel/keys @restormel/keys-svelte @restormel/keys-elements
 ```
+
+## CDN (via unpkg)
+
+Load the built ESM bundle from npm without a bundler. Pin a **semver tag** in production (replace `@latest` with a published version from `npm view @restormel/keys-elements version`).
+
+```html
+<script type="module">
+  import 'https://unpkg.com/@restormel/keys-elements@latest/dist/index.js';
+</script>
+<rk-key-manager user-id="user-1"></rk-key-manager>
+```
+
+For **Keys REST** resolve from the browser, call your backend or `POST /keys/v1/projects/{projectId}/resolve` with a Gateway key — never embed `rk_…` in public pages. Host-side proxy recommended.
+
+**Module import map (optional):**
+
+```html
+<script type="importmap">
+{
+  "imports": {
+    "@restormel/keys-elements": "https://unpkg.com/@restormel/keys-elements@latest/dist/index.js",
+    "@restormel/keys": "https://unpkg.com/@restormel/keys@latest/dist/index.js"
+  }
+}
+</script>
+<script type="module">
+  import '@restormel/keys-elements';
+</script>
+```
+
+Published files live under `dist/` after `pnpm --filter @restormel/keys-elements run build`. Self-host the same artifacts from your CDN by copying `dist/` from the npm tarball.
 
 ## Register elements
 

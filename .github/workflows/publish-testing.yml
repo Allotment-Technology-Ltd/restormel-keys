@@ -25,6 +25,7 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: vars.RESTORMEL_PUBLISH_TESTING == 'true' || github.event_name == 'workflow_dispatch'
     env:
       TESTING_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
     steps:

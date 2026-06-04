@@ -15,7 +15,7 @@ description: >-
 
 ## IA rules
 
-1. **One story:** Suite hero states the product layer; a compact **“Works with your stack”** band points to the [integration catalog](/keys/docs/guides/integration-catalog) and vendor guides—do not duplicate full setup steps on marketing pages.
+1. **One story:** Suite hero states the product layer; a compact **stack rail** (`EcosystemStrip`) shows *Your stack → Restormel → Your product* with vendor chips and a link to the [integration catalog](/keys/docs/guides/integration-catalog)—do not duplicate full setup steps on marketing pages.
 2. **Module landings:** Each pillar (Keys, Testing, Graph) gets a **short** ecosystem line or strip variant that links to the catalog and the 1–2 most relevant guides (e.g. Keys → gateways; Testing → CI + Keys onboarding).
 3. **CTAs:** Prefer “Browse integrations” / “Integration catalog” over vague “Learn more” where the destination is the hub page.
 4. **Canonical URLs:** Dashboard `https://restormel.dev/keys/dashboard`, Sign in `https://restormel.dev/keys/dashboard/login`, docs paths as in [documentation-strategy.md](../../../docs/documentation-strategy.md).

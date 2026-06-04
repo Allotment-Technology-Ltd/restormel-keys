@@ -1,5 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+import { isGatewayProviderType } from "$lib/server/module-gates";
 import { getWorkspaceAndActor } from "$lib/server/integrations-auth";
 import {
   listProviderIntegrations,
@@ -26,6 +28,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
   const providerType = typeof body.providerType === "string" ? body.providerType.trim() : "";
   if (!providerType) return json({ error: "providerType is required" }, { status: 400 });
+  const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  if (isGatewayProviderType(providerType, flags)) {
+    return json({ error: "module_disabled", module: "gatewayProviders" }, { status: 404 });
+  }
   const displayName = typeof body.displayName === "string" ? body.displayName.trim() : undefined;
   const credentialRef = typeof body.credentialRef === "string" ? body.credentialRef.trim() : undefined;
   const apiKey = typeof body.apiKey === "string" ? body.apiKey : undefined;

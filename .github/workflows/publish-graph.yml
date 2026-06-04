@@ -1,4 +1,9 @@
 # Publish @restormel/graph-core and @restormel/ui-graph-svelte to npm on tag graph-v* (e.g. graph-v0.1.0).
+#
+# Phase 7 maintenance window (2026-06-01 → 2026-12-01): @restormel/ui-graph-svelte is bugfix-only;
+# graph-elements + Graph REST are the preferred integrator path. npm deprecate ui-graph-svelte at window close.
+# Runbook: docs/runbooks/npm-maintenance-window.md
+#
 # Order: graph-core first, then ui-graph-svelte (pnpm rewrites workspace:* on graph-core to semver).
 # Same registry/org pattern as Keys (`@restormel/*`). Requires NPM_TOKEN.
 # pnpm version must match root package.json "packageManager" (9.0.0).
@@ -40,6 +45,8 @@ jobs:
           pnpm --filter @restormel/graph-core test
           pnpm --filter @restormel/graph-core run build
           pnpm --filter @restormel/ui-graph-svelte run build
+          pnpm --filter @restormel/graph-elements run build
+          pnpm --filter @restormel/graph-elements test
 
       - name: Tarball consumer smoke (graph demo)
         run: bash scripts/smoke-graph-packages-consumer.sh
@@ -66,3 +73,4 @@ jobs:
           fi
           pnpm --filter @restormel/graph-core publish --access public --no-git-checks ${EXTRA}
           pnpm --filter @restormel/ui-graph-svelte publish --access public --no-git-checks ${EXTRA}
+          pnpm --filter @restormel/graph-elements publish --access public --no-git-checks ${EXTRA}

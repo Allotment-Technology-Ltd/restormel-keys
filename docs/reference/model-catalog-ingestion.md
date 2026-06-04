@@ -2,6 +2,16 @@
 
 Reference only. Canonical process: this doc and the scripts it describes.
 
+## Keys MVP (simplified maintenance)
+
+When **`restormel-module-catalog-external-signals`** is off (MVP default):
+
+1. Edit **`apps/dashboard/data/model-catalog-seed.json`** for OpenAI, Anthropic, and Google models.
+2. Run **`pnpm run seed:catalog`** from `apps/dashboard` (or let CI apply on push to `main` when seed paths change).
+3. Run **`pnpm run check:catalog-drift`** locally before merge (direct providers only).
+
+Deferred: external signals (`catalog-external-signals.ts`), daily [`.github/workflows/model-catalog-weekly.yml`](../../.github/workflows/model-catalog-weekly.yml) (requires repo variable **`RESTORMEL_CATALOG_EXTERNAL_SIGNALS=true`** or manual `workflow_dispatch`).
+
 ## Overview
 
 **CI vs `@restormel/keys` defaults:** Which OpenAI/Anthropic/Google model strings from `defaultProviders` must appear in the JSON seed is defined in [catalog-governance.md](catalog-governance.md) (`pnpm run check:catalog-drift`).

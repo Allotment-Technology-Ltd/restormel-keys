@@ -1,5 +1,10 @@
 # Publish public packages to npm on tag keys-v* (e.g. keys-v0.2.0).
 # Graph packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`) use tag graph-v* → publish-graph.yml.
+#
+# Phase 7 maintenance window (2026-06-01 → 2026-12-01): @restormel/keys, keys-svelte, keys-react are
+# bugfix-only (patch semver). Prefer keys-elements + Keys REST for new integrations. npm deprecate at window close.
+# Runbook: docs/runbooks/npm-maintenance-window.md
+#
 # Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
 #   → @restormel/aaif → @restormel/mcp (with platform deps + tests) → doctor → validate → keys-cli.
 # keys-svelte is intentionally before aaif so a first-time / permission failure on aaif

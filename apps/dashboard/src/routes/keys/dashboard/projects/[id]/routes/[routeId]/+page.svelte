@@ -13,6 +13,12 @@
   import RouteGuardRailsPanel from "$lib/components/dashboard/RouteGuardRailsPanel.svelte";
   import { buildRouteFlowSegments, routeFlowSegmentListToStepIds } from "$lib/route-flow-segments";
   import { getPrimaryChainEnableBlockMessage } from "$lib/route-flow-primary-enable-guard";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
+
+  $: guardrailsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).guardrails;
+  $: modelPoolsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).modelPools;
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -1901,14 +1907,9 @@
                     <div class="form-row compact">
                       <label for="edit-step-provider">Provider</label>
                       <select id="edit-step-provider" bind:value={editingProviderPreference} class="input">
-                        <option value="openai">openai</option>
-                        <option value="anthropic">anthropic</option>
-                        <option value="google">google</option>
-                        <option value="openrouter">openrouter</option>
-                        <option value="vercel">vercel</option>
-                        <option value="portkey">portkey</option>
-                        <option value="voyage">voyage</option>
-                        <option value="aizolo">aizolo</option>
+                        {#each ROUTE_STEP_PROVIDER_OPTIONS as providerId}
+                          <option value={providerId}>{providerId}</option>
+                        {/each}
                       </select>
                     </div>
                     <div class="form-row compact">
@@ -1949,6 +1950,7 @@
                 </div>
               </details>
 
+              {#if guardrailsEnabled}
               <details class="inspector-disclosure route-inspector-advanced-guard">
                 <summary class="inspector-disclosure-summary">Guard rails</summary>
                 <div class="inspector-disclosure-body">
@@ -1989,9 +1991,12 @@
                   {/if}
                 </div>
               </details>
+              {/if}
 
               <details class="inspector-disclosure">
-                <summary class="inspector-disclosure-summary">Advanced JSON, pools & parallel</summary>
+                <summary class="inspector-disclosure-summary">
+                  Advanced JSON{#if modelPoolsEnabled}, pools{/if} & parallel
+                </summary>
                 <div class="inspector-disclosure-body">
                   <p class="muted inspector-disclosure-intro">
                     Optional JSON, pool, parallel — when <strong>Call settings</strong> is not enough.
@@ -2012,6 +2017,7 @@
                     <label for="edit-step-notes">Operator notes (optional)</label>
                     <textarea id="edit-step-notes" class="input textarea-json" bind:value={editingNotesText} rows="2" spellcheck="true"></textarea>
                   </div>
+                  {#if modelPoolsEnabled}
                   <div class="form-row compact full-width">
                     <label for="edit-step-model-pool">Model pool (JSON, optional)</label>
                     <textarea
@@ -2027,6 +2033,7 @@
                       provider and model in <strong>Call settings</strong> only.
                     </p>
                   </div>
+                  {/if}
                   <div class="form-row compact">
                     <label for="edit-parallel-group">Parallel group id (optional)</label>
                     <input
@@ -2144,14 +2151,9 @@
               <div class="add-step-dialog-field">
                 <label for="add-step-provider">Provider</label>
                 <select id="add-step-provider" bind:value={stepProviderPreference} class="input add-step-dialog-input">
-                  <option value="openai">openai</option>
-                  <option value="anthropic">anthropic</option>
-                  <option value="google">google</option>
-                  <option value="openrouter">openrouter</option>
-                  <option value="vercel">vercel</option>
-                  <option value="portkey">portkey</option>
-                  <option value="voyage">voyage</option>
-                  <option value="aizolo">aizolo</option>
+                  {#each ROUTE_STEP_PROVIDER_OPTIONS as providerId}
+                    <option value={providerId}>{providerId}</option>
+                  {/each}
                 </select>
               </div>
               <div class="add-step-dialog-field">

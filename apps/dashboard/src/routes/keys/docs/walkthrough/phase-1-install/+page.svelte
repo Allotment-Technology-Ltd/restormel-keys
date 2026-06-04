@@ -8,6 +8,13 @@
   import WalkthroughStep from "$lib/components/walkthrough/WalkthroughStep.svelte";
   import WalkthroughPhaseNav from "$lib/components/walkthrough/WalkthroughPhaseNav.svelte";
 
+  import {
+    CLI_INSTALL,
+    ELEMENTS_INSTALL,
+    MVP_PUBLIC_PACKAGES,
+    REST_RESOLVE_SNIPPET,
+  } from "$lib/public-npm-packages";
+
   const { prev, next, stepOf } = getWalkthroughPrevNext("phase-1-install");
   const phaseSlug = "phase-1-install";
 
@@ -21,28 +28,26 @@
     { id: "1.7", label: "Add env var placeholders to .env.example" },
   ];
 
-  const esmCheckCmd =
-    "node --input-type=module -e \"import { createKeys } from '@restormel/keys'; console.log('OK: createKeys is', typeof createKeys)\"";
+  const esmCheckCmd = "pnpm exec keys doctor";
 
-  const confirmPackageCmd =
-    "# Confirm the package installed correctly\nnode -e \"const k = require('@restormel/keys'); console.log('OK:', Object.keys(k).length, 'exports')\"";
+  const confirmPackageCmd = "# Confirm CLI + REST env\npnpm exec keys doctor";
 
-  const doctorTestCmd = 'npx @restormel/doctor && echo "PASS" || echo "FAIL"';
+  const doctorTestCmd = 'pnpm exec @restormel/doctor && echo "PASS" || echo "FAIL"';
 
   const installAndConfigurePrompt = `You are working in [your app repo].
 
-Goal: Install Restormel Keys (headless minimum), config, env placeholders; Restormel Doctor exits 0.
+Goal: Wire Keys REST + CLI (no deprecated @restormel/keys npm for new apps), config, env placeholders; Restormel Doctor exits 0.
 
 Steps:
-1. cd into the app package (pnpm monorepo) or use pnpm add --filter <app> @restormel/keys
-2. Install at least @restormel/keys. Add UI packages only if on npm and needed for Phase 5.
-3. Create restormel.config.json via npx @restormel/keys-cli init OR manually: {"framework":"sveltekit","providers":[]} (match your stack).
-4. .env.example placeholders only: RESTORMEL_GATEWAY_KEY=, RESTORMEL_PROJECT_ID=, RESTORMEL_ENVIRONMENT_ID=, USE_RESTORMEL_KEYS=false
-5. npx @restormel/doctor — exit 0 (optional UI package warnings OK).
+1. cd into the app package (pnpm monorepo) or use pnpm add --filter <app> @restormel/keys-cli @restormel/keys-elements
+2. Do NOT add @restormel/keys, @restormel/keys-svelte, or @restormel/keys-react for new integrations.
+3. Create restormel.config.json via pnpm exec keys init OR manually: {"framework":"sveltekit","providers":[]} (match your stack).
+4. .env.example placeholders only: RESTORMEL_KEYS_BASE=, RESTORMEL_GATEWAY_KEY=, RESTORMEL_PROJECT_ID=, USE_RESTORMEL_KEYS=false
+5. pnpm exec @restormel/doctor — exit 0.
 6. Human: Dashboard GitHub sign-in → project + Gateway Key → copy into local .env (never commit).
 7. Commit config + .env.example + lockfile.
 
-DO NOT: Commit secrets. Rely on doctor failing only if @restormel/keys or config missing.`;
+DO NOT: Commit secrets. Install deprecated npm adapters.`;
 
   const agentPrompts = [
     {
@@ -95,21 +100,18 @@ DO NOT: Install packages yet. Run init/doctor. Create or paste any real keys or 
     <strong>You'll need:</strong> Terminal access, your app's package manager (pnpm, npm, or yarn), access to the <a href={DASHBOARD_BASE}>Dashboard</a>
   </p>
 
-  <p>This phase gets <code>@restormel/keys</code> into your app and Dashboard resources (project, environment, Gateway Key). <strong>Restormel Doctor</strong> must exit <strong>0</strong> with only the core package for Phases 1–4 (UI packages are optional; doctor warns, does not fail). See repo <strong>docs/reference/npm-packages.md</strong> for npm scope and pnpm monorepo installs. Cloud env vars are verified in Phase 2.</p>
+  <p>This phase wires <strong>Keys REST</strong> and the CLI into your app, plus Dashboard resources (project, Gateway Key). <strong>Restormel Doctor</strong> must exit <strong>0</strong>. Do not install deprecated npm packages (<code>@restormel/keys</code>, <code>keys-svelte</code>, <code>keys-react</code>) for new integrations — see <a href="/keys/docs/guides/npm-to-rest-keys">npm → REST</a> and <a href="/keys/docs/compatibility">compatibility</a>.</p>
   <div class="callout callout-note">
     <strong>pnpm workspace</strong> — Run installs in the app directory (or <code>pnpm add --filter &lt;app&gt; @restormel/keys</code>). Root-only <code>pnpm add -w</code> only if the root is your app.
   </div>
 
   <WalkthroughStep stepId="1.1" title="Step 1.1 — Install the packages" defaultOpen={true} {phaseSlug}>
-  <p><strong>Required:</strong> <code>@restormel/keys</code>. <strong>Phase 5 UI</strong> (<code>keys-svelte</code>, <code>keys-react</code>, <code>keys-elements</code>) — add when on npm. Verify with <code>npm view @restormel/keys-svelte version</code> before relying on install.</p>
-  <p><strong>Headless / SvelteKit Phases 1–4:</strong></p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys" />
-  <p><strong>Next.js + UI (Phase 5, only if npm view confirms packages):</strong></p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-react @restormel/keys-elements" />
-  <p><strong>SvelteKit + UI (Phase 5, only if npm view confirms packages):</strong></p>
-  <CodeBlock language="bash" code="pnpm add @restormel/keys @restormel/keys-svelte" />
+  <p><strong>Recommended:</strong> CLI + Web Components. Resolve uses <strong>Keys REST</strong> (no <code>@restormel/keys</code> npm).</p>
+  <CodeBlock language="bash" code={`${CLI_INSTALL}\n${ELEMENTS_INSTALL}`} />
+  <p><strong>REST resolve (any framework):</strong></p>
+  <CodeBlock language="ts" code={REST_RESOLVE_SNIPPET} />
   <div class="callout callout-tip">
-    <strong>Tip</strong> — <a href="/keys/docs/compatibility">Framework compatibility</a>. Dogfooding: headless + doctor is enough until UI packages publish.
+    <strong>Tip</strong> — <a href="/keys/docs/compatibility">Framework compatibility</a>. Legacy npm adapters are deprecated until 2026-12-01.
   </div>
   <h3>You'll see</h3>
   <p>The packages appear in your <code>package.json</code> dependencies. No build errors.</p>

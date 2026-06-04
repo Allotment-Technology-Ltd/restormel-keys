@@ -1,7 +1,9 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { navigating } from "$app/stores";
+  import { page } from "$app/stores";
   import UsageChartsSection from "$lib/components/dashboard/UsageChartsSection.svelte";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   type Aggregate = {
     projectId: string | null;
@@ -110,6 +112,8 @@
   function periodLabel(): string {
     return data.days === 1 ? "Last 24 hours" : `Last ${data.days} days`;
   }
+
+  $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
 </script>
 
 <svelte:head>
@@ -120,10 +124,12 @@
 <p class="page-desc">
   Request counts, latency, error rate, and usage by provider, model, and route. Data from request logs ({periodLabel()}).
 </p>
+{#if gatewayProvidersOn}
 <p class="notice">
   <strong>Imported gateway analytics:</strong> If you’re using OpenRouter/Portkey/Vercel as your execution layer, you can import their usage exports into Restormel.
   Imported aggregates appear in <a href={DASHBOARD_BASE + "/usage"}>Usage</a> (and will be surfaced here as coverage expands). See <a href={DASHBOARD_BASE + "/integrations"}>Integrations</a>.
 </p>
+{/if}
 {#if !data.error}
   <p class="period-links" role="navigation" aria-label="Time range">
     <span class="period-label">Range:</span>

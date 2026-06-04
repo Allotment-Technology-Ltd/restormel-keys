@@ -1,11 +1,13 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { goto, invalidateAll } from "$app/navigation";
+  import { page } from "$app/stores";
   import {
     ciStagingSecretsSnippet,
     restormelControlPlaneBaseUrl,
     restormelEvaluatePolicyUrl,
   } from "$lib/env-snippet";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -49,12 +51,14 @@
   function buildCiSnippet(): string {
     if (!data.project) return "";
     const env = data.environments.find((e) => e.id === selectedCiEnvId);
+    const environmentsOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).environments;
     return ciStagingSecretsSnippet({
       gatewayKey: effectiveGatewayKeyForSnippet(),
       projectId: data.project.id,
       environmentId: env?.id,
       environmentLabel: env ? `${env.name} (${env.type})` : undefined,
       keysBaseUrl: data.keysBaseUrl,
+      includeEnvironmentId: environmentsOn,
     });
   }
 

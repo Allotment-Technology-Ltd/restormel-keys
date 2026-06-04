@@ -1,0 +1,46 @@
+{
+  "name": "@restormel/graph-elements",
+  "version": "0.1.0",
+  "description": "Web Component wrappers for Restormel Graph Contract v0 (rg-graph-canvas).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/graph-elements"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "dependencies": {
+    "@restormel/graph-core": "workspace:*",
+    "@restormel/ui-graph-svelte": "workspace:*",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.0",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.2",
+    "vite-plugin-dts": "^4.0.0",
+    "vitest": "^4.1.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

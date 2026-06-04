@@ -30,7 +30,7 @@
   ] as const;
 </script>
 
-<div class="landing">
+<div class="landing module-landing">
   <section class="section section--hero" aria-labelledby="hero-heading">
     <div class="container">
       <p class="eyebrow">Restormel Testing — open source</p>
@@ -48,11 +48,7 @@
   </section>
 
   <div class="container">
-    <EcosystemStrip
-      variant="compact"
-      heading="Runs alongside your providers and CI"
-      intro="Model access and policies flow through Restormel Keys; tests run in GitHub Actions or locally with the same contracts."
-    />
+    <EcosystemStrip variant="compact" />
   </div>
 
   <section class="section section-alt" aria-labelledby="yaml-heading">
@@ -144,7 +140,7 @@
       </p>
       <div class="demo-action-buttons">
         <a class="btn btn-primary" href="/testing/docs/walkthrough/phase-1-install">Testing walkthrough →</a>
-        <a class="btn btn-secondary" href="/testing/docs/guides/quickstart">Quickstart guide →</a>
+        <a class="btn btn-secondary" href="/testing/docs/getting-started/new-project">Getting started →</a>
       </div>
     </div>
   </section>
@@ -152,9 +148,9 @@
   <section class="section section--founders section-alt" aria-labelledby="founders-heading">
     <div class="container founders-inner">
       <h2 id="founders-heading" class="founders-title">Join the Founders Circle</h2>
-      <p class="founders-lead">50 founding member slots. 12 months Pro free. Direct access to the roadmap.</p>
+      <p class="founders-lead">Invite-only dashboard access while we prove product–market fit. Register — we’ll email your link.</p>
       <div class="founders-actions">
-        <a class="btn btn-primary founders-primary" href="/founders">Apply for founding access →</a>
+        <a class="btn btn-primary founders-primary" href="/founders#apply-heading">Request early access →</a>
         <p class="founders-secondary-wrap">
           <a class="founders-secondary" href="/founders#program">Learn more about the program</a>
         </p>
@@ -187,22 +183,29 @@
   }
 
   .eyebrow {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-    color: var(--rm-dim);
-    margin: 0 0 var(--space-4);
+    background: var(--color-yellow);
+    border: var(--border);
+    padding: 4px 10px;
+    margin-bottom: var(--space-4);
+    color: var(--color-ink);
   }
 
   .hero-title {
-    font-family: var(--rm-font-display);
-    font-size: clamp(var(--text-3xl), 4vw, var(--text-5xl));
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
-    color: var(--rm-text);
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
+    color: var(--color-ink);
     margin: 0 0 var(--space-6);
     max-width: 22ch;
   }
@@ -213,15 +216,6 @@
     }
   }
 
-  .lede {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-lg);
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
-    margin: 0 0 var(--space-8);
-    max-width: var(--rm-reading-width);
-  }
-
   .hero-cta {
     display: flex;
     flex-wrap: wrap;
@@ -229,37 +223,48 @@
     align-items: center;
   }
 
+  .hero-docs-link:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+  }
+
+  .lede {
+    font-size: var(--text-body-lg);
+    line-height: var(--text-body-line-height);
+    color: var(--color-ink-muted);
+    margin: 0 0 var(--space-8);
+    max-width: var(--rm-reading-width);
+  }
+
   .hero-docs-link {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--rm-sage);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink);
     text-decoration: none;
   }
 
   .hero-docs-link:hover {
-    text-decoration: underline;
-  }
-
-  .hero-docs-link:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
+    background: var(--color-yellow);
+    text-decoration: none;
   }
 
   .section-title {
-    font-family: var(--rm-font-display);
-    font-size: var(--text-2xl);
-    font-weight: var(--font-semibold);
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 900;
+    text-transform: uppercase;
     margin: 0 0 var(--space-4);
-    color: var(--rm-text);
-    letter-spacing: var(--tracking-tight);
+    color: var(--color-ink);
+    letter-spacing: var(--text-display-tracking);
   }
 
   .section-intro {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-base);
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-line-height);
+    color: var(--color-ink-muted);
     margin: 0 0 var(--space-6);
     max-width: var(--rm-reading-width);
   }
@@ -268,7 +273,8 @@
   .yaml-foot a,
   .oss-links a,
   .diff-body a {
-    color: var(--rm-sage);
+    color: var(--color-ink);
+    font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -277,13 +283,13 @@
   .yaml-foot a:hover,
   .oss-links a:hover,
   .diff-body a:hover {
-    color: var(--signal-teal-hover);
+    background: var(--color-yellow);
   }
 
   .section-alt {
-    background: var(--rm-surface-2);
-    border-top: 1px solid var(--rm-border);
-    border-bottom: 1px solid var(--rm-border);
+    background: var(--color-bg-deep);
+    border-top: var(--border);
+    border-bottom: var(--border);
   }
 
   .yaml-block-wrap {
@@ -317,31 +323,31 @@
 
   .diff-card {
     margin: 0;
-    padding: var(--card-padding-md);
-    background: var(--rm-surface-raised);
-    border: var(--border-1) solid var(--rm-border);
-    border-radius: var(--rm-card-radius);
-    box-shadow: var(--rm-card-shadow);
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: 0;
+    box-shadow: var(--shadow-md);
   }
 
   .diff-title {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--rm-sage);
+    font-family: var(--font-display);
+    font-size: var(--text-body-md);
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--color-ink);
     margin: 0 0 var(--space-2);
   }
 
   .diff-body {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    line-height: var(--leading-relaxed);
-    color: var(--rm-muted);
+    font-size: var(--text-body-sm);
+    line-height: var(--text-body-line-height);
+    color: var(--color-ink-muted);
     margin: 0;
   }
 
   .diff-body strong {
-    color: var(--rm-text);
+    color: var(--color-ink);
   }
 
   .oss-wrap {

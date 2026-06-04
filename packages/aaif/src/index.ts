@@ -22,6 +22,8 @@ export {
   INTEGRATION_COMPONENT_IDS,
   INTEGRATION_CATALOG,
   INTEGRATION_STACK_TEMPLATES,
+  STACK_LAYER_ORDER,
+  STACK_LAYERS,
   isIntegrationComponentId,
 } from "./integration-stack-catalog.js";
 export type {
@@ -29,6 +31,7 @@ export type {
   IntegrationCatalogCategory,
   IntegrationCatalogEntry,
   IntegrationStackTemplateId,
+  StackLayer,
 } from "./integration-stack-catalog.js";
 
 /** Horizon suite MCP tool names (duplicated here so `@restormel/aaif` builds without `@restormel/mcp`). */

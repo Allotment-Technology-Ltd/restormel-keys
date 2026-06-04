@@ -1,5 +1,7 @@
 # @restormel/keys-react
 
+> **Deprecated (Phase 7):** Prefer **`@restormel/keys-elements`** or **Keys REST**. **Bugfix-only** until **2026-12-01**, then npm deprecation. See [npm-to-rest-keys.md](../../docs/guides/npm-to-rest-keys.md) and [npm-maintenance-window.md](../../docs/runbooks/npm-maintenance-window.md).
+
 React components and hooks for Restormel Keys. Wraps the Web Components so you get a native React API with typed props and callbacks—no need to think about custom elements.
 
 ## Installation

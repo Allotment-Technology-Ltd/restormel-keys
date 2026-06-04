@@ -23,6 +23,7 @@
     },
     "./base.css": "./src/base.css",
     "./semantic-rm.css": "./src/semantic-rm.css",
+    "./brutalist-rm.css": "./src/brutalist-rm.css",
     "./semantic-rk.css": "./src/semantic-rk.css"
   },
   "files": [

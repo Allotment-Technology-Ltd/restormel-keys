@@ -4,7 +4,9 @@
   import { page } from "$app/stores";
   import { absoluteUrl } from "$lib/seo";
   import DocsShell from "$lib/components/docs/DocsShell.svelte";
-  import { keysDocsNavBlocks } from "$lib/keys/docs-nav";
+  import type { LayoutData } from "./$types";
+
+  export let data: LayoutData;
 
   const STORAGE_KEY = "rk_docs_sidebar_collapsed";
 
@@ -53,17 +55,21 @@
 
 <DocsShell
   storageKey={STORAGE_KEY}
-  navBlocks={keysDocsNavBlocks}
+  navBlocks={data.keysDocsNavBlocks}
   {breadcrumbItems}
   {footerLinks}
 >
-  <aside slot="banner" class="docs-cross-product" aria-label="Related product">
-    <strong>Restormel Testing</strong>
-    — CI goals, runner, and Keys-backed env:
-    <a href="/testing/docs">Testing documentation</a>
-    ·
-    <a href={DASHBOARD_BASE + "/testing"}>Testing hub</a> (dashboard)
-  </aside>
+  <div slot="banner">
+    {#if data.moduleFlags.testing}
+      <aside class="docs-cross-product" aria-label="Related product">
+        <strong>Restormel Testing</strong>
+        — CI goals, runner, and Keys-backed env:
+        <a href="/testing/docs">Testing documentation</a>
+        ·
+        <a href={DASHBOARD_BASE + "/testing"}>Testing hub</a> (dashboard)
+      </aside>
+    {/if}
+  </div>
   <slot />
 </DocsShell>
 

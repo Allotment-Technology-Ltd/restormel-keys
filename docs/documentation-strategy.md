@@ -23,8 +23,17 @@ Every surface—marketing nav, docs header/sidebar, dashboard, runbooks, and ref
 | Dashboard | `https://restormel.dev/keys/dashboard`     |
 | Sign in   | `https://restormel.dev/keys/dashboard/login` |
 | Testing hub | `https://restormel.dev/keys/dashboard/testing` |
+| Suite docs hub | `https://restormel.dev/docs` |
+| Suite quickstart | `https://restormel.dev/docs/quickstart` |
+| Operator model (in-app) | `https://restormel.dev/docs/operator-model` |
 
-Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, zuplo-launch-cli.md), and any phase/reference doc that points to the product. Site, docs, and dashboard are served from one app at restormel.dev (dashboard at `/keys/dashboard`, docs at `/keys/docs`).
+Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, zuplo-launch-cli.md), and any phase/reference doc that points to the product. Site, docs, and dashboard are served from one app at restormel.dev (dashboard at `/keys/dashboard`, product docs at `/keys/docs`, **suite map** at `/docs`).
+
+### Dashboard-first onboarding (Theme L)
+
+- **Primary learning surface:** signed-in dashboard (setup wizard, Connect hub journey, Testing hub). Public docs are for **SEO, agents, and deep reference** — not the first-run tour.
+- **Progressive disclosure tiers:** Tier 0 = suite hub `/docs`; Tier 1 = quickstart + operator model + slim product sidebars; Tier 2 = walkthroughs, vendor guides, search — collapsed **Reference** sections in sidebars. Inventory: [docs/restormel/SUITE-IA-REDIRECT-INVENTORY.md](restormel/SUITE-IA-REDIRECT-INVENTORY.md).
+- **Canonical operator vocabulary:** [docs/restormel/SUITE-OPERATOR-MODEL.md](restormel/SUITE-OPERATOR-MODEL.md) (mirrored at `/docs/operator-model`).
 
 **Testing hub entry:** Prefer the **Testing hub** URL above in copy and automation. The marketing route `https://restormel.dev/testing/dashboard` **redirects signed-in users** to the Testing hub; anonymous users see a short stub with sign-in.
 
@@ -46,6 +55,9 @@ Use these in: in-app nav, footer, docs sidebar, runbooks (e.g. zuplo-setup.md, z
 | Reference           | `docs/reference/`, `docs/api/`, `docs/restormel-integration/` | Deployment, extraction, OpenAPI, prompt packs. **Consumer integrator contract (project model index vs catalog):** [docs/restormel-integration/keys-catalog-sync.md](restormel-integration/keys-catalog-sync.md). **Implemented behaviour:** [docs/reference/implemented-behaviour.md](reference/implemented-behaviour.md) — what is live in the dashboard and product so docs do not contradict. **Remaining backlog:** [docs/reference/remaining-backlog-after-implementation.md](reference/remaining-backlog-after-implementation.md) — completed vs partial vs missing, tech debt, next tasks (grounded in repo state). |
 | Phase 1 platform extraction (agents) | `docs/restormel/phase1-agent-prompt-restormel-engineering.md`, `docs/restormel/phase1-restormel-engineering-spec.md` | **SSOT** for Phase 1 agent prompt text, comms snippet, objectives, §6 SOPHIA reintegration (`@sophia/graph-reasoning-extensions` → `@restormel/graph-reasoning-extensions`), and links to SOPHIA programme paths; reconcile with SOPHIA `docs/restormel/*` when those files land on default branch. |
 | Horizon platform programme (suite expansion) | `docs/restormel/HORIZON-PLATFORM-PROGRAMME.md` | Capability shortlist (A–J), Theme L IA + dashboard shell rules, Theme M pointer, MCP/AAIF inventory and backlog, canonical boundaries—does not replace topic-specific specs. |
+| Horizon platform programme (suite expansion) | `docs/restormel/HORIZON-PLATFORM-PROGRAMME.md` | Capability shortlist (A–J), Theme L IA + dashboard shell rules, Theme M pointer, MCP/AAIF inventory and backlog, canonical boundaries—does not replace topic-specific specs. |
+| Suite architecture migration (Keys / Graph / Knowledge) | `docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md`, `docs/restormel/CONNECT-EXTRACTION-MAP.md`, `docs/restormel/PHASE0-SUITE-MIGRATION-STATUS.md` | Phased delivery-model migration, SOPHIA extract + reintegrate playbook, stage gates; **Testing delivery changes post-MVP (out of scope)**. |
+| Restormel Connect (product) | `docs/restormel/CONNECT-PRODUCT.md`, `@restormel/contracts/connect`, `docs/api/openapi-suite-v1-draft.yaml` | Fourth suite product definition and REST contract epoch. |
 | Restormel Support (Theme M product) | `docs/restormel/RESTORMEL-SUPPORT.md`, `docs/runbooks/restormel-support-production.md` | In-product assistant: trust boundaries, production env, dogfood checklist. Package: `@restormel/support`. |
 | Design system       | `docs/design-system-index.md`, `docs/design-tokens.css` | Tokens, brand, components. |
 

@@ -18,6 +18,8 @@ import {
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import { runRuntimeInvokePipeline } from "$lib/server/runtime-invoke-chain";
 import { parseChatMessages } from "$lib/server/runtime-invoke";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+import { getProjectDefaultEnvironmentId } from "$lib/server/db";
 
 function monthStartMs(now: number): number {
   const d = new Date(now);
@@ -45,6 +47,14 @@ async function projectScope(
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   try {
+    const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+    if (!flags.hostedRuntime) {
+      return json(
+        { error: "module_disabled", module: "hostedRuntime", message: "Hosted runtime is not enabled on this deployment" },
+        { status: 501 }
+      );
+    }
+
     const scope = await projectScope(locals, params.id);
     if (!scope) {
       return json(
@@ -62,8 +72,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
     const bodyObj =
       body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : null;
-    const envId =
+    let envId =
       bodyObj && typeof bodyObj.environmentId === "string" ? bodyObj.environmentId.trim() : "";
+    if (!envId && !flags.environments) {
+      envId = (await getProjectDefaultEnvironmentId(scope.projectId, scope.userId)) ?? "";
+    }
     if (!envId) {
       return json({ error: "environmentId_required" }, { status: 400 });
     }

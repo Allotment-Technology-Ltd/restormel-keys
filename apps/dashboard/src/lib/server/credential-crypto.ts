@@ -1,16 +1,28 @@
 /**
  * AES-256-GCM encryption for hosted provider credentials.
  * Key: RESTORMEL_CREDENTIALS_ENCRYPTION_KEY — 32 bytes, base64-encoded (openssl rand -base64 32).
+ *
+ * Read via `$env/dynamic/private` so `apps/dashboard/.env.local` is respected in dev;
+ * `process.env` alone does not receive Vite-loaded env files reliably.
  */
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { env } from "$env/dynamic/private";
 
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
 const KEY_BYTES = 32;
 const VERSION = 1;
 
+function encryptionKeyBase64(): string {
+  return (
+    env.RESTORMEL_CREDENTIALS_ENCRYPTION_KEY?.trim() ??
+    process.env.RESTORMEL_CREDENTIALS_ENCRYPTION_KEY?.trim() ??
+    ""
+  );
+}
+
 function getMasterKey(): Buffer | null {
-  const b64 = process.env.RESTORMEL_CREDENTIALS_ENCRYPTION_KEY?.trim();
+  const b64 = encryptionKeyBase64();
   if (!b64) return null;
   try {
     const buf = Buffer.from(b64, "base64");
@@ -19,6 +31,21 @@ function getMasterKey(): Buffer | null {
   } catch {
     return null;
   }
+}
+
+export function credentialEncryptionMisconfigReason(): string | null {
+  const b64 = encryptionKeyBase64();
+  if (!b64) {
+    return "RESTORMEL_CREDENTIALS_ENCRYPTION_KEY is not set (use apps/dashboard/.env.local in dev)";
+  }
+  try {
+    if (Buffer.from(b64, "base64").length !== KEY_BYTES) {
+      return "RESTORMEL_CREDENTIALS_ENCRYPTION_KEY is invalid (expect 32-byte base64 from: openssl rand -base64 32)";
+    }
+  } catch {
+    return "RESTORMEL_CREDENTIALS_ENCRYPTION_KEY is invalid (expect base64 encoding)";
+  }
+  return null;
 }
 
 export function isCredentialEncryptionConfigured(): boolean {
