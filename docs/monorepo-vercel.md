@@ -9,16 +9,18 @@
 
 | Setting | Value |
 |--------|--------|
-| **Root Directory** | *(repo root — leave empty / `.`)* |
+| **Root Directory** | Repo root (`.`) **or** `apps/dashboard` — if subfolder, [`apps/dashboard/vercel.json`](../apps/dashboard/vercel.json) must set `ignoreCommand` |
 | **Framework Preset** | Other (root `vercel.json` sets `framework: null`) |
 | **Install Command** | *(default)* `pnpm install` (from [`vercel.json`](../vercel.json)) |
 | **Build Command** | `pnpm --filter dashboard build` |
 
 ## Skipping needless builds (`ignoreCommand`)
 
-Root [`vercel.json`](../vercel.json) sets **`ignoreCommand`** to [`scripts/vercel-ignore-dashboard.sh`](../scripts/vercel-ignore-dashboard.sh). Vercel runs it before install/build: **exit 0** skips the deployment, **exit 1** proceeds. The script diffs against **`VERCEL_GIT_PREVIOUS_SHA`** when set, else **`HEAD^`**, and only builds when those paths change: `apps/dashboard/`, dashboard **prebuild** deps (`packages/keys-tokens`, `packages/core`, `packages/svelte`), [`scripts/vercel-copy-build-output.mjs`](../scripts/vercel-copy-build-output.mjs), and root **`vercel.json` / `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`**.
+Root [`vercel.json`](../vercel.json) (or [`apps/dashboard/vercel.json`](../apps/dashboard/vercel.json) when Root Directory is `apps/dashboard`) sets **`ignoreCommand`** to [`scripts/vercel-ignore-dashboard.sh`](../scripts/vercel-ignore-dashboard.sh). Vercel runs it before install/build: **exit 0** skips the deployment, **exit 1** proceeds. **Preview / PR deployments always build.** Production skips only when **`VERCEL_GIT_PREVIOUS_SHA`** (or **`HEAD^`**) has no diff under: `apps/dashboard/`, `packages/` (all workspace prebuild deps), [`scripts/vercel-copy-build-output.mjs`](../scripts/vercel-copy-build-output.mjs), and root **`vercel.json` / `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`**.
 
-If the dashboard **prebuild** graph changes, update **`PATHS`** in that script (for example if a new workspace package is required at build time).
+If the dashboard **prebuild** graph pulls in paths outside `packages/` (unusual), extend **`PATHS`** in that script.
+
+**Prebuild order:** `@restormel/connect-core` depends on `@restormel/keys` and `@restormel/aaif` — build those before `connect-core` in `apps/dashboard` `precheck` / `prebuild` / `predev` and root `build:platform-packages`.
 
 ## Testing marketing and docs on the same deployment
 
