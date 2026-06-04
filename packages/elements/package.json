@@ -17,7 +17,7 @@
   "dependencies": {
     "@restormel/keys": "workspace:*",
     "@restormel/keys-svelte": "workspace:*",
-    "svelte": "^5.0.0"
+    "svelte": "^5.55.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.0",
