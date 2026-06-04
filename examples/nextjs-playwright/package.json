@@ -11,7 +11,7 @@
     "run:web-critical": "testing run --suite web-critical --config restormel-testing.yaml"
   },
   "dependencies": {
-    "next": "^16.2.3",
+    "next": "^16.2.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
