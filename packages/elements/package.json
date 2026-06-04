@@ -1,6 +1,6 @@
 {
   "name": "@restormel/keys-elements",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Web Component wrappers for Restormel Keys (rk-key-manager, rk-model-selector, rk-cost-estimator).",
   "type": "module",
   "main": "./dist/index.js",

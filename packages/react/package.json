@@ -1,6 +1,7 @@
 {
   "name": "@restormel/keys-react",
-  "version": "0.1.6",
+  "version": "0.1.7",
+  "deprecated": "Bugfix-only until 2026-12-01. Use @restormel/keys-elements — https://restormel.dev/keys/docs/guides/npm-to-rest-keys",
   "description": "React components and hooks for Restormel Keys. Wraps Web Components; native-feeling API for React and Next.js.",
   "type": "module",
   "main": "./dist/index.js",

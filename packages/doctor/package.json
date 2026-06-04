@@ -1,6 +1,6 @@
 {
   "name": "@restormel/doctor",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Restormel Doctor — open-source CLI for setup and health checks.",
   "keywords": [
     "restormel",

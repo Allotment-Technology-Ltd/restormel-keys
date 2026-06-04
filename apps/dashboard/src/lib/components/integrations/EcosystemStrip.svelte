@@ -9,12 +9,11 @@
     type IntegrationCatalogEntry,
     type StackLayer,
   } from "@restormel/aaif";
-  import { integrationCatalogForFlags, integrationCatalogFootnoteLabels } from "$lib/integration-catalog-for-flags";
+  import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   /** compact = legacy rail; diagram = suite landing stack flow (restormel_redesign.html) */
   export let variant: "full" | "compact" | "diagram" = "full";
-  export let catalogHref = "/keys/docs/guides/integration-catalog";
 
   const maxPerLayerFull = 12;
   const maxPerLayerCompact = 6;
@@ -42,8 +41,6 @@
   })).filter((g) => g.entries.length > 0);
 
   $: flatChips = layerGroups.flatMap((g) => g.entries);
-  $: showCatalogCta = catalogEntries.length > 0;
-  $: catalogFootnoteLabels = integrationCatalogFootnoteLabels(catalogEntries);
 </script>
 
 {#if flatChips.length > 0}
@@ -143,21 +140,12 @@
       </div>
     </div>
 
-    {#if showCatalogCta && !isDiagram}
+    {#if !isDiagram && flatChips.length > 0}
       <p class="stack-rail-foot">
         <span class="stack-rail-foot-note">No rip-and-replace — keep Neon, SurrealDB, and your providers.</span>
-        <a class="stack-rail-catalog" href={catalogHref}>Integration catalog →</a>
       </p>
     {/if}
   </section>
-
-    {#if showCatalogCta && isDiagram}
-      <p class="stack-rail-catalog-below">
-        <a class="stack-rail-catalog stack-rail-catalog-mono" href={catalogHref}>
-          Integration catalog → {catalogFootnoteLabels}
-        </a>
-      </p>
-    {/if}
   </div>
 {/if}
 
@@ -357,11 +345,6 @@
   .stack-rail-foot {
     margin: 0;
     padding: var(--space-2) var(--space-4);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
     border-top: var(--brut-border-micro, 1px) solid var(--brut-ink, var(--rm-border));
     background: var(--brut-white, var(--rm-surface-raised));
   }
@@ -370,21 +353,6 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: var(--rm-muted);
-  }
-
-  .stack-rail-catalog {
-    font-size: var(--text-xs);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--brut-ink, var(--rm-text));
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .stack-rail-catalog:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
   }
 
   /* ── Diagram variant (suite landing) ── */
@@ -523,29 +491,5 @@
 
   .stack-rail-outer-diagram {
     margin-top: 2.5rem;
-  }
-
-  .stack-rail-catalog-below {
-    margin: 1.25rem 0 0;
-    padding: 0;
-    text-align: left;
-  }
-
-  .stack-rail-catalog-below .stack-rail-catalog-mono {
-    display: inline;
-    line-height: 1.5;
-  }
-
-  .stack-rail-catalog-mono {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: none;
-    color: var(--color-ink-faint);
-  }
-
-  .stack-rail-catalog-mono:hover {
-    color: var(--color-ink);
   }
 </style>

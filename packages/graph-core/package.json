@@ -1,6 +1,6 @@
 {
   "name": "@restormel/graph-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Restormel Graph Contract v0 DTOs plus contracts-free layout, trace, and workspace helpers.",
   "license": "MIT",
   "keywords": ["restormel", "graph", "dto", "layout", "svelte"],
