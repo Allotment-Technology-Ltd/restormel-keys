@@ -46,7 +46,7 @@
     "@restormel/support": "workspace:*",
     "@restormel/ui-graph-svelte": "workspace:*",
     "@sveltejs/adapter-vercel": "^6.3.3",
-    "@sveltejs/kit": "^2.57.1",
+    "@sveltejs/kit": "^2.60.1",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/pg": "^8.20.0",
     "dotenv": "^17.3.1",
