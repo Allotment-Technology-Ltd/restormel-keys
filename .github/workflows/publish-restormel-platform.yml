@@ -55,16 +55,19 @@ jobs:
           pnpm --filter @restormel/context-packs test
           pnpm --filter @restormel/reasoning-core run build
           pnpm --filter @restormel/reasoning-core test
+          pnpm --filter @restormel/graph-core run build
+          pnpm --filter @restormel/graph-core test
           pnpm --filter @restormel/graphrag-core run build
           pnpm --filter @restormel/graphrag-core test
+          pnpm --filter @restormel/keys-tokens run build
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/aaif run build
           pnpm --filter @restormel/connect-core run build
           pnpm --filter @restormel/connect-core test
           pnpm --filter @restormel/state run build
           pnpm --filter @restormel/state test
           pnpm --filter @restormel/observability run build
           pnpm --filter @restormel/observability test
-          pnpm --filter @restormel/graph-core run build
-          pnpm --filter @restormel/graph-core test
           pnpm --filter @restormel/graph-reasoning-extensions run build
           pnpm --filter @restormel/graph-reasoning-extensions test
 
