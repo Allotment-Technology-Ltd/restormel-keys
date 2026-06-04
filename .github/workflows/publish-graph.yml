@@ -74,3 +74,6 @@ jobs:
           pnpm --filter @restormel/graph-core publish --access public --no-git-checks ${EXTRA}
           pnpm --filter @restormel/ui-graph-svelte publish --access public --no-git-checks ${EXTRA}
           pnpm --filter @restormel/graph-elements publish --access public --no-git-checks ${EXTRA}
+          if [ "${GRAPH_PUBLISH_DRY_RUN}" != "true" ]; then
+            npm access set status=public @restormel/graph-elements
+          fi
