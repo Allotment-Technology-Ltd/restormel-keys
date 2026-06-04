@@ -20,17 +20,18 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version: "20"
-          cache: "pnpm"
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      # pnpm version must match root package.json "packageManager" (9.0.0). Unpinned setup installs pnpm 10+ which requires Node 22+ (node:sqlite).
+      - uses: ./.github/actions/pnpm-workspace-install
       - name: Build core package (required by seed script)
         run: pnpm -w --filter @restormel/keys run build
       - name: Refresh model catalog (provider-derived)
         env:
+          DASHBOARD_DATABASE_URL_PROD: ${{ secrets.DASHBOARD_DATABASE_URL_PROD }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm --filter dashboard seed:catalog:from-keys
-
+        run: |
+          if [[ -z "${DASHBOARD_DATABASE_URL_PROD:-}" && -z "${DATABASE_URL:-}" ]]; then
+            echo "Missing secret: set DASHBOARD_DATABASE_URL_PROD (preferred, same as ci.yml migrations) or DATABASE_URL"
+            exit 1
+          fi
+          export DATABASE_URL="${DASHBOARD_DATABASE_URL_PROD:-$DATABASE_URL}"
+          pnpm --filter dashboard seed:catalog:from-keys
