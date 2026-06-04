@@ -18,6 +18,18 @@
 
 ---
 
+## CI publish token (`NPM_TOKEN`)
+
+GitHub Actions publish workflows (`publish.yml`, `publish-graph.yml`, `publish-restormel-platform.yml`, and recovery `workflow_dispatch` jobs) read **`NPM_TOKEN`** from repository secrets.
+
+- Use an npm **granular** or **automation** token scoped to publish `@restormel/*`.
+- Enable **Bypass 2FA for automation** on the token (otherwise publishes fail with `EOTP`).
+- Store only in GitHub Secrets; never commit. Package matrix: [npm-packages.md](../reference/npm-packages.md).
+
+After updating the secret, re-run failed jobs with `gh run rerun <run-id> --failed` or trigger the relevant recovery workflow on `main`.
+
+---
+
 ## Maintainer policy during the window
 
 1. **Allowed:** security fixes, regression bugfixes, dependency bumps required for CI/security.
