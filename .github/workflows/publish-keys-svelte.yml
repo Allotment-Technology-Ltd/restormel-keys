@@ -20,6 +20,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys (workspace dep for tests)
+        run: pnpm --filter @restormel/keys run build
       - name: Test @restormel/keys-svelte
         run: pnpm --filter @restormel/keys-svelte test
       - name: Build @restormel/keys-svelte

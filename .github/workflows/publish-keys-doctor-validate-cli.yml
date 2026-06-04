@@ -1,0 +1,41 @@
+# Recovery: publish @restormel/doctor, @restormel/validate, @restormel/keys-cli after a partial keys-v* train.
+name: Publish keys doctor validate cli
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys
+        run: pnpm --filter @restormel/keys run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Build @restormel/doctor
+        run: pnpm --filter @restormel/doctor run build
+      - name: Publish @restormel/doctor to npm
+        run: pnpm --filter @restormel/doctor publish --access public --no-git-checks
+      - name: Build @restormel/validate
+        run: pnpm --filter @restormel/validate run build
+      - name: Publish @restormel/validate to npm
+        run: pnpm --filter @restormel/validate publish --access public --no-git-checks
+      - name: Test @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli test
+      - name: Build @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli run build
+      - name: Publish @restormel/keys-cli to npm
+        run: pnpm --filter @restormel/keys-cli publish --access public --no-git-checks
