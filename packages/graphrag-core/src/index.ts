@@ -40,6 +40,7 @@ export {
   type OriginBalanceConfig,
   type LexicalConfig,
   type VerificationConfig,
+  type SchemaConfig,
   type EntityEnrichmentConfig,
   type PresentationConfig,
   type VerificationCategory,

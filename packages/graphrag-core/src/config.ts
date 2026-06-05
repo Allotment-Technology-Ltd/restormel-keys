@@ -180,6 +180,18 @@ export interface PresentationConfig {
   annotateVerification: boolean;
 }
 
+/** Physical graph-store table names the engine reads (the storing stage writes these). */
+export interface SchemaConfig {
+  /** Table holding atomic units (SOPHIA/philosophy: `claim`; generic pack: `statement`). */
+  unitTable: string;
+  /** Table holding source-grounded passages. */
+  passageTable: string;
+  /** Table holding sources/documents. */
+  sourceTable: string;
+  /** Table holding named groups of units (SOPHIA: `argument`; generic: `topic`). */
+  groupTable: string;
+}
+
 export interface RetrievalConfig {
   claimTaxonomy: ClaimTaxonomyConfig;
   relations: RelationsConfig;
@@ -191,6 +203,8 @@ export interface RetrievalConfig {
   originBalance: OriginBalanceConfig;
   lexical: LexicalConfig;
   verification: VerificationConfig;
+  /** Physical table names the graph store uses (defaults to claim/passage/source/argument). */
+  schema: SchemaConfig;
   /** Optional advisory enrichment (philosophy wires thinker/Wikidata lineage; legal omits it). */
   entityEnrichment?: EntityEnrichmentConfig;
   presentation: PresentationConfig;
@@ -456,6 +470,12 @@ export const philosophyRetrievalConfig: RetrievalConfig = {
   verification: {
     supportedStates: ["validated"],
     flaggedStates: ["flagged"],
+  },
+  schema: {
+    unitTable: "claim",
+    passageTable: "passage",
+    sourceTable: "source",
+    groupTable: "argument",
   },
   entityEnrichment: {
     fetch: fetchThinkerContext,

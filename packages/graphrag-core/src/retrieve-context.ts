@@ -479,6 +479,7 @@ export async function retrieveContext(
 		enrichWithThinkerContext = false
 	} = options;
 	const config = options.config ?? philosophyRetrievalConfig;
+	const schema = config.schema;
 	const normalizeType = config.claimTaxonomy.normalize ?? defaultNormalizeClaimType;
 	const verificationPolicy = resolveVerificationPolicy(options.verificationPolicy);
 	const verificationExcluded: Record<VerificationCategory, number> = {
@@ -556,7 +557,7 @@ export async function retrieveContext(
 		};
 		const lexicalPool = lexicalTerms.length === 0 ? 0 : corpusLevelQuery ? topK * 8 : topK * 4;
 		const acceptedClaimRows = await store.query<Array<{ count?: number }>>(
-			`SELECT count() AS count FROM claim WHERE review_state = 'accepted' GROUP ALL`
+			`SELECT count() AS count FROM ${schema.unitTable} WHERE review_state = 'accepted' GROUP ALL`
 		).catch(() => []);
 		const trustedGraphActive = (acceptedClaimRows[0]?.count ?? 0) > 0;
 		const claimReviewFilter = trustedGraphActive
@@ -606,7 +607,7 @@ export async function retrieveContext(
 			const pending = (async () => {
 				const sid = sourceIdPart(sourceId);
 				const passageRows = await store.query<Array<{ id: string }>>(
-					`SELECT id FROM passage WHERE source = type::record('source', $sid) LIMIT 1`,
+					`SELECT id FROM ${schema.passageTable} WHERE source = type::record('${schema.sourceTable}', $sid) LIMIT 1`,
 					{ sid }
 				).catch(() => []);
 				return passageRows.length > 0;
@@ -659,7 +660,7 @@ export async function retrieveContext(
 				`${rowProjection}
 				FROM (
 					SELECT *
-					FROM claim
+					FROM ${schema.unitTable}
 					WHERE embedding ${op} $query_embedding
 				)
 				${postWhere}
@@ -707,7 +708,7 @@ export async function retrieveContext(
 
 				lexicalSeedClaims = await store.query<SeedRow[]>(
 					`${rowProjection}
-					FROM claim
+					FROM ${schema.unitTable}
 					${lexicalWhere}
 					ORDER BY confidence DESC
 					LIMIT ${lexicalPool}`,
@@ -764,7 +765,7 @@ export async function retrieveContext(
 				if (taxonomyIds.length > 0) {
 					const taxonomyRows = await store.query<SeedRow[]>(
 						`${rowProjection}
-						FROM claim
+						FROM ${schema.unitTable}
 						WHERE id INSIDE $ids AND ${postFilters.join(' AND ')}
 						LIMIT $limit`,
 						{ ids: taxonomyIds, limit: taxonomyIds.length }
@@ -799,7 +800,7 @@ export async function retrieveContext(
 				if (passageGroundedClaimIds.length > 0) {
 					const passageRows = await store.query<SeedRow[]>(
 						`${rowProjection}
-						FROM claim
+						FROM ${schema.unitTable}
 						WHERE id INSIDE $ids AND ${postFilters.join(' AND ')}
 						LIMIT $limit`,
 						{ ids: passageGroundedClaimIds, limit: passageGroundedClaimIds.length }
@@ -826,7 +827,7 @@ export async function retrieveContext(
 		if (options.forcedSeedClaimIds && options.forcedSeedClaimIds.length > 0) {
 			const forcedRows = await store.query<SeedRow[]>(
 				`${rowProjection}
-				FROM claim
+				FROM ${schema.unitTable}
 				WHERE id INSIDE $ids AND ${postFilters.join(' AND ')}
 				LIMIT $limit`,
 				{ ids: options.forcedSeedClaimIds, limit: options.forcedSeedClaimIds.length, ...sharedParams }
@@ -1699,7 +1700,7 @@ export async function retrieveContext(
 				const argRows = await store.query<ArgRow[]>(
 					`SELECT
 						*,
-						<-${config.arguments.membershipEdge}<-claim.{text, role: <-${config.arguments.membershipEdge}[WHERE out = $arg_id].role} AS member_claims
+						<-${config.arguments.membershipEdge}<-${schema.unitTable}.{text, role: <-${config.arguments.membershipEdge}[WHERE out = $arg_id].role} AS member_claims
 					FROM $arg_id`,
 					{ arg_id: argId }
 				);

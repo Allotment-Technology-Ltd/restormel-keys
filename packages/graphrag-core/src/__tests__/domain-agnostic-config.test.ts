@@ -182,4 +182,45 @@ describe("domain-agnostic engine (legal config)", () => {
     expect(block).toContain("official reporter");
     expect(block).not.toContain("PHILOSOPHICAL");
   });
+
+  it("queries the configured unit/passage tables (schema block), not 'claim'", async () => {
+    let queriedUnitTable = false;
+    let queriedClaimTable = false;
+    const store: GraphStore = {
+      async query<T>(sql: string): Promise<T> {
+        const out = (rows: unknown[]): T => rows as unknown as T;
+        if (/\bFROM claim\b/.test(sql)) queriedClaimTable = true;
+        if (sql.includes("count() AS count")) return out([{ count: 0 }]);
+        if (/FROM passages_v2 WHERE source/.test(sql)) return out([{ id: "passage:1" }]);
+        if (/\bFROM statements_v2\b/.test(sql) && sql.includes("WHERE embedding <")) {
+          queriedUnitTable = true;
+          return out([SEED_ROW({ id: "claim:h1", text: "A holding.", claim_type: "holding" })]);
+        }
+        return out([]);
+      },
+      isDatabaseUnavailable() {
+        return false;
+      },
+    };
+
+    const config: RetrievalConfig = {
+      ...legalConfig,
+      schema: {
+        unitTable: "statements_v2",
+        passageTable: "passages_v2",
+        sourceTable: "source",
+        groupTable: "topics_v2",
+      },
+    };
+
+    const result = await retrieveContext("q", {
+      store,
+      embedder: { embedQuery: async () => [1, 0, 0] },
+      resolveOriginBucket: () => "other",
+    }, { topK: 4, config });
+
+    expect(queriedUnitTable).toBe(true);
+    expect(queriedClaimTable).toBe(false);
+    expect(result.claims.some((c) => c.id === "claim:h1")).toBe(true);
+  });
 });
