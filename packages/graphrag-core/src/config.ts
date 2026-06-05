@@ -51,9 +51,17 @@ export interface ClaimTaxonomyConfig {
   normalize?: (claimType: string) => string;
 }
 
+/** How a relation contributes to reasoning — used by orchestrator reasoning modes. */
+export type ReasoningClass = "causal" | "temporal" | "semantic" | "structural";
+
 export interface RelationTraversalEdge {
   table: string;
   edgePrior: number;
+  /**
+   * Optional reasoning classification (Phase 4). When present, the orchestrator's
+   * causal/temporal reasoning modes boost edges of the matching class.
+   */
+  reasoningClass?: ReasoningClass;
 }
 
 export interface RelationFetchEdge {

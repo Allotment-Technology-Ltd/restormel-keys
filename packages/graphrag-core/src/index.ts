@@ -31,6 +31,7 @@ export {
   type ClaimTaxonomyConfig,
   type RelationsConfig,
   type RelationTraversalEdge,
+  type ReasoningClass,
   type RelationFetchEdge,
   type ArgumentsConfig,
   type TraversalConfig,
@@ -92,3 +93,19 @@ export {
 } from "./retrieve-context.js";
 
 export { emptyGraphData, type GraphData } from "./empty-graph.js";
+
+export {
+  RetrievalOrchestrator,
+  type ReasoningMode,
+  type Tokenizer,
+  type OrchestratorTrace,
+  type CuratedSubgraph,
+  type OrchestratorResult,
+  type RetrievalPath,
+  type RetrievalPathStep,
+  type FindPathsResult,
+  type RetrieveContextParams,
+  type ExpandContextParams,
+  type FindRelevantSubgraphParams,
+  type FindPathsParams,
+} from "./orchestrator/index.js";
