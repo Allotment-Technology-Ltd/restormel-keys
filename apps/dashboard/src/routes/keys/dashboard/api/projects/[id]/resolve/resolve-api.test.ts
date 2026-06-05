@@ -61,6 +61,7 @@ vi.mock("$lib/server/db", () => ({
   }),
   getWorkspace: vi.fn().mockResolvedValue({ id: "ws1", plan: "free", planExpiresAt: null }),
   getAuthUserSignupRank: vi.fn().mockResolvedValue(null),
+  foundingPromoMaxUsers: vi.fn().mockReturnValue(50),
   aggregateRequestLogsToUsage: vi.fn().mockResolvedValue([]),
   insertRequestLog: vi.fn().mockResolvedValue(undefined),
   downgradeWorkspaceIfProExpired: vi.fn().mockResolvedValue(undefined),

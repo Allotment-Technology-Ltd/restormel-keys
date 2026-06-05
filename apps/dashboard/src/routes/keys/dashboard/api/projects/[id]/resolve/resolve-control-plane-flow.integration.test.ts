@@ -56,6 +56,7 @@ vi.mock("$lib/server/db", () => ({
   getOrCreateDefaultWorkspace: vi.fn(),
   getWorkspace: vi.fn().mockResolvedValue({ id: WORKSPACE_ID, plan: "free", planExpiresAt: null }),
   getAuthUserSignupRank: vi.fn().mockResolvedValue(null),
+  foundingPromoMaxUsers: vi.fn().mockReturnValue(50),
   aggregateRequestLogsToUsage: vi.fn().mockResolvedValue([]),
   listRoutes: vi.fn(),
   getRouteWithSteps: vi.fn(),
