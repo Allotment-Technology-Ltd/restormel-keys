@@ -719,7 +719,8 @@ export async function retrieveContext(
 					const bm25Rows = await fetchBm25ClaimCandidates(store, {
 						terms: lexicalTerms,
 						limit: lexicalPool,
-						reviewFilter: postFilters.join(' AND ')
+						reviewFilter: postFilters.join(' AND '),
+						unitTable: schema.unitTable
 					});
 					if (bm25Rows.length > 0) {
 						const existing = new Set(lexicalSeedClaims.map((r) => String(r.id)));
@@ -760,7 +761,8 @@ export async function retrieveContext(
 				const taxonomyIds = await fetchTaxonomySeedClaimIds(store, {
 					terms: lexicalTerms,
 					limit: Math.max(4, topK),
-					reviewFilter: postFilters.join(' AND ')
+					reviewFilter: postFilters.join(' AND '),
+					unitTable: schema.unitTable
 				});
 				if (taxonomyIds.length > 0) {
 					const taxonomyRows = await store.query<SeedRow[]>(
@@ -795,7 +797,10 @@ export async function retrieveContext(
 				passageGroundedClaimIds = await fetchPassageGroundedClaimIds(store, {
 					queryEmbedding,
 					limit: Math.max(4, topK),
-					reviewFilter: postFilters.join(' AND ')
+					reviewFilter: postFilters.join(' AND '),
+						unitTable: schema.unitTable,
+						passageTable: schema.passageTable,
+						groundedInEdge: schema.groundedInEdge
 				});
 				if (passageGroundedClaimIds.length > 0) {
 					const passageRows = await store.query<SeedRow[]>(
@@ -1027,7 +1032,9 @@ export async function retrieveContext(
 		let frontier = new Set(seedClaimIds);
 		const nativeNeighborIds = await fetchNativeGraphNeighbors(store, {
 			seedIds: seedClaimIds,
-			limit: Math.max(16, topK * 4)
+			limit: Math.max(16, topK * 4),
+			unitTable: schema.unitTable,
+			relationEdges: config.relations.traversalEdges.map((edge) => edge.table)
 		});
 		for (const neighborId of nativeNeighborIds) {
 			frontier.add(neighborId);

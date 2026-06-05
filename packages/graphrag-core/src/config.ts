@@ -190,6 +190,8 @@ export interface SchemaConfig {
   sourceTable: string;
   /** Table holding named groups of units (SOPHIA: `argument`; generic: `topic`). */
   groupTable: string;
+  /** Edge linking a passage to the unit it grounds (default `grounded_in`). Opt-in features only. */
+  groundedInEdge?: string;
 }
 
 export interface RetrievalConfig {
