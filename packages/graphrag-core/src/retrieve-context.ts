@@ -22,6 +22,7 @@ import {
 	philosophyRetrievalConfig,
 	type RetrievalConfig,
 	type ThinkerContext,
+	type VerificationCategory,
 } from './config.js';
 import {
 	detectCorpusLevelQuery,
@@ -56,15 +57,111 @@ function surrealKnnOperator(k: number): string {
 	return `<|${kk},${ef}|>`;
 }
 
-function claimVerificationSqlFilter(trustedGraphActive: boolean): string {
-	const flagged = `(verification_state = NONE OR verification_state != 'flagged')`;
-	const raw = (process.env.RETRIEVAL_REQUIRE_VERIFIED ?? '').trim().toLowerCase();
-	const requireValidated =
-		trustedGraphActive && (raw === '1' || raw === 'true' || raw === 'yes');
-	if (requireValidated) {
-		return `${flagged} AND verification_state = 'validated'`;
+// ─── Verification policy (Phase 2 — first-class, per-query trust filtering) ──
+
+/**
+ * Per-query trust filter. Defaults to supported-only with flagged claims excluded —
+ * Restormel's trust promise. Opt into weaker evidence explicitly.
+ */
+export interface VerificationPolicy {
+	/** Trust categories to include (default: `['supported']`). */
+	include: VerificationCategory[];
+	/** Optional trust-score floor, 0–100; claims with a lower score are dropped. */
+	minTrustScore?: number;
+	/** Exclude flagged claims regardless of `include` (default: true). */
+	excludeFlagged?: boolean;
+}
+
+const DEFAULT_VERIFICATION_POLICY: Required<Pick<VerificationPolicy, 'include' | 'excludeFlagged'>> &
+	VerificationPolicy = {
+	include: ['supported'],
+	excludeFlagged: true,
+};
+
+let envPolicyDeprecationLogged = false;
+
+/** Resolve the effective policy, mapping the legacy env var to a default policy with a notice. */
+function resolveVerificationPolicy(explicit: VerificationPolicy | undefined): VerificationPolicy {
+	if (explicit) {
+		return {
+			include: explicit.include.length > 0 ? explicit.include : DEFAULT_VERIFICATION_POLICY.include,
+			minTrustScore: explicit.minTrustScore,
+			excludeFlagged: explicit.excludeFlagged ?? true,
+		};
 	}
-	return flagged;
+	const raw = (process.env.RETRIEVAL_REQUIRE_VERIFIED ?? '').trim().toLowerCase();
+	if (raw === '1' || raw === 'true' || raw === 'yes') {
+		if (!envPolicyDeprecationLogged) {
+			console.warn(
+				'[RETRIEVAL] RETRIEVAL_REQUIRE_VERIFIED is deprecated; pass options.verificationPolicy instead. ' +
+					'Mapping to { include: ["supported"], excludeFlagged: true }.'
+			);
+			envPolicyDeprecationLogged = true;
+		}
+	}
+	return { ...DEFAULT_VERIFICATION_POLICY };
+}
+
+function sqlStringList(values: string[]): string {
+	return `[${values.map((v) => `'${v.replace(/'/g, "\\'")}'`).join(', ')}]`;
+}
+
+/** Classify a claim's verification_state into a trust category using the config vocabulary. */
+function classifyVerification(
+	verificationState: string | null | undefined,
+	vconfig: RetrievalConfig['verification']
+): VerificationCategory {
+	const state = (verificationState ?? '').trim();
+	if (state && vconfig.supportedStates.includes(state)) return 'supported';
+	if (state && vconfig.flaggedStates.includes(state)) return 'unsupported';
+	return 'weak';
+}
+
+/** True when a claim of the given category + trust score is admitted by the policy. */
+function policyAdmits(
+	category: VerificationCategory,
+	trustScore: number | null | undefined,
+	policy: VerificationPolicy
+): boolean {
+	if (category === 'unsupported' && policy.excludeFlagged) return false;
+	if (!policy.include.includes(category)) return false;
+	if (
+		policy.minTrustScore !== undefined &&
+		typeof trustScore === 'number' &&
+		trustScore < policy.minTrustScore
+	) {
+		return false;
+	}
+	return true;
+}
+
+/** Build the SQL WHERE predicate for the seed query from the policy + config vocabulary. */
+function buildVerificationSqlPredicate(
+	policy: VerificationPolicy,
+	vconfig: RetrievalConfig['verification']
+): string {
+	const supported = sqlStringList(vconfig.supportedStates);
+	const flagged = sqlStringList(vconfig.flaggedStates);
+	const buckets: string[] = [];
+	if (policy.include.includes('supported')) {
+		buckets.push(`verification_state IN ${supported}`);
+	}
+	if (policy.include.includes('weak')) {
+		buckets.push(
+			`(verification_state = NONE OR (verification_state NOT IN ${supported} AND verification_state NOT IN ${flagged}))`
+		);
+	}
+	if (policy.include.includes('unsupported') && !policy.excludeFlagged) {
+		buckets.push(`verification_state IN ${flagged}`);
+	}
+	let predicate = buckets.length > 0 ? `(${buckets.join(' OR ')})` : `false`;
+	if (policy.excludeFlagged) {
+		predicate = `${predicate} AND (verification_state = NONE OR verification_state NOT IN ${flagged})`;
+	}
+	if (policy.minTrustScore !== undefined) {
+		predicate = `${predicate} AND (trust_score = NONE OR trust_score >= ${policy.minTrustScore})`;
+	}
+	return predicate;
 }
 
 // ─── Result interfaces ─────────────────────────────────────────────────────
@@ -78,6 +175,12 @@ export interface RetrievedClaim {
 	source_author: string[];
 	confidence: number;
 	position_in_source: number;
+	/** Raw verification state from the graph (e.g. 'validated' | 'flagged' | null). */
+	verification_state?: string | null;
+	/** Trust score 0–100 when the graph supplies one. */
+	trust_score?: number | null;
+	/** Trust category derived from `verification_state` via the active config. */
+	verification_category?: VerificationCategory;
 }
 
 export interface RetrievedRelation {
@@ -168,6 +271,18 @@ export interface RetrievalPruningSummaryTrace {
 	relations_by_reason: Record<RejectedRelationReasonCode, number>;
 }
 
+export interface RetrievalVerificationSummary {
+	policy: {
+		include: VerificationCategory[];
+		min_trust_score?: number;
+		exclude_flagged: boolean;
+	};
+	/** Counts of claims in the returned set, by trust category. */
+	included: Record<VerificationCategory, number>;
+	/** Counts of candidate claims dropped by the verification policy, by trust category. */
+	excluded: Record<VerificationCategory, number>;
+}
+
 export interface RetrievalResult {
 	claims: RetrievedClaim[];
 	relations: RetrievedRelation[];
@@ -195,6 +310,7 @@ export interface RetrievalResult {
 		query_decomposition?: RetrievalQueryDecompositionTrace;
 		seed_claims?: RetrievalSeedTrace[];
 		pruning_summary?: RetrievalPruningSummaryTrace;
+		verification_summary?: RetrievalVerificationSummary;
 		traversed_claim_count: number;
 		relation_candidate_count: number;
 		relation_kept_count: number;
@@ -225,6 +341,11 @@ export interface RetrievalOptions {
 	viewerUid?: string | null;
 	/** Opt-in thinker graph enrichment for retrieved claim context */
 	enrichWithThinkerContext?: boolean;
+	/**
+	 * Per-query trust filter. Defaults to supported-only (flagged excluded).
+	 * Opt into weak/unsupported evidence explicitly. See {@link VerificationPolicy}.
+	 */
+	verificationPolicy?: VerificationPolicy;
 	/** Skip hybrid seeding; start traversal from these claim ids (get_context_for). */
 	forcedSeedClaimIds?: string[];
 	/**
@@ -359,6 +480,42 @@ export async function retrieveContext(
 	} = options;
 	const config = options.config ?? philosophyRetrievalConfig;
 	const normalizeType = config.claimTaxonomy.normalize ?? defaultNormalizeClaimType;
+	const verificationPolicy = resolveVerificationPolicy(options.verificationPolicy);
+	const verificationExcluded: Record<VerificationCategory, number> = {
+		supported: 0,
+		weak: 0,
+		unsupported: 0
+	};
+	/** Pure policy check (no counting). */
+	const verificationAllows = (claim: {
+		verification_state?: string | null;
+		trust_score?: number | null;
+	}): boolean =>
+		policyAdmits(
+			classifyVerification(claim.verification_state, config.verification),
+			claim.trust_score ?? null,
+			verificationPolicy
+		);
+	/** Classify a claim and check the policy; count + reject when not admitted. */
+	const admitVerification = (claim: {
+		verification_state?: string | null;
+		trust_score?: number | null;
+	}): boolean => {
+		if (!verificationAllows(claim)) {
+			verificationExcluded[classifyVerification(claim.verification_state, config.verification)] += 1;
+			return false;
+		}
+		return true;
+	};
+	/** Verification provenance fields attached to every RetrievedClaim. */
+	const verificationFields = (
+		verification_state?: string | null,
+		trust_score?: number | null
+	): Pick<RetrievedClaim, 'verification_state' | 'trust_score' | 'verification_category'> => ({
+		verification_state: verification_state ?? null,
+		trust_score: trust_score ?? null,
+		verification_category: classifyVerification(verification_state, config.verification)
+	});
 	const traversalMaxHops = Math.max(1, maxHops ?? config.traversal.defaultMaxHops(topK));
 	const traversalClaimCap = Math.max(topK, maxClaims ?? config.traversal.defaultClaimCap(topK));
 
@@ -417,7 +574,7 @@ export async function retrieveContext(
 		if (domain) postFilters.push('domain = $domain');
 		if (minConfidence > 0) postFilters.push('confidence >= $minConfidence');
 		postFilters.push(claimReviewFilter);
-		postFilters.push(claimVerificationSqlFilter(trustedGraphActive));
+		postFilters.push(buildVerificationSqlPredicate(verificationPolicy, config.verification));
 		const postWhere = postFilters.length > 0 ? `WHERE ${postFilters.join(' AND ')}` : '';
 
 		type SeedRow = {
@@ -429,6 +586,8 @@ export async function retrieveContext(
 			embedding?: number[] | null;
 			position_in_source: number;
 			review_state?: string;
+			verification_state?: string | null;
+			trust_score?: number | null;
 			section_context: string | null;
 			source_id: string;
 			source_url?: string | null;
@@ -476,6 +635,8 @@ export async function retrieveContext(
 			embedding,
 			position_in_source,
 			review_state,
+			verification_state,
+			trust_score,
 			section_context,
 			source.id AS source_id,
 			source.url AS source_url,
@@ -709,6 +870,8 @@ export async function retrieveContext(
 		const seedPool = [...seedClaims];
 		const vettedSeedPool: SeedRow[] = [];
 		for (const seed of seedPool) {
+			// Verification policy (defense in depth — the seed SQL also pre-filters by policy).
+			if (!admitVerification(seed)) continue;
 			const sourceOk = await sourceHasPassageCoverage(seed.source_id);
 			if (!sourceOk) {
 				addRejectedClaim({
@@ -792,7 +955,8 @@ export async function retrieveContext(
 			confidence: number;
 			position_in_source: number;
 			review_state?: string;
-			verification_state?: string;
+			verification_state?: string | null;
+			trust_score?: number | null;
 			source: { id?: string; title: string; author: string[] } | string;
 		};
 
@@ -819,7 +983,8 @@ export async function retrieveContext(
 				source_title: seed.source_title ?? 'Unknown',
 				source_author: seed.source_author ?? [],
 				confidence: seed.confidence,
-				position_in_source: seed.position_in_source ?? 0
+				position_in_source: seed.position_in_source ?? 0,
+				...verificationFields(seed.verification_state, seed.trust_score)
 			});
 		}
 
@@ -840,19 +1005,12 @@ export async function retrieveContext(
 			return String(idValue);
 		};
 		const claimProjection =
-			`{id, text, claim_type, domain, confidence, position_in_source, review_state, verification_state, source.{id, title, author}}`;
+			`{id, text, claim_type, domain, confidence, position_in_source, review_state, verification_state, trust_score, source.{id, title, author}}`;
 		const passesTraversalClaimGate = (claim: GraphClaim): boolean => {
 			if (claim.review_state === 'rejected' || claim.review_state === 'merged') return false;
-			if (claim.verification_state === 'flagged') return false;
 			if (trustedGraphActive && claim.review_state !== 'accepted') return false;
-			const raw = (process.env.RETRIEVAL_REQUIRE_VERIFIED ?? '').trim().toLowerCase();
-			if (
-				trustedGraphActive &&
-				(raw === '1' || raw === 'true' || raw === 'yes') &&
-				claim.verification_state !== 'validated'
-			) {
-				return false;
-			}
+			// Verification policy (Phase 2): counts excluded candidates by trust category.
+			if (!admitVerification(claim)) return false;
 			return true;
 		};
 
@@ -1076,7 +1234,8 @@ export async function retrieveContext(
 					source_title: source.title,
 					source_author: source.author,
 					confidence: claim.confidence ?? 0.5,
-					position_in_source: claim.position_in_source ?? 0
+					position_in_source: claim.position_in_source ?? 0,
+					...verificationFields(claim.verification_state, claim.trust_score)
 				});
 				nextFrontier.add(cId);
 			}
@@ -1120,6 +1279,8 @@ export async function retrieveContext(
 					confidence: number;
 					position_in_source: number;
 					review_state?: string;
+					verification_state?: string | null;
+					trust_score?: number | null;
 					source: { id?: string; title: string; author: string[] } | string;
 				};
 				role: string;
@@ -1128,7 +1289,7 @@ export async function retrieveContext(
 			try {
 				const memberRows = await store.query<ArgumentMemberRow[]>(
 					`SELECT
-						in.{id, text, claim_type, domain, confidence, position_in_source, review_state, source.{id, title, author}} AS in,
+						in.{id, text, claim_type, domain, confidence, position_in_source, review_state, verification_state, trust_score, source.{id, title, author}} AS in,
 						role
 					FROM ${config.arguments.membershipEdge}
 					WHERE out INSIDE $arg_ids AND ${argumentClaimReviewFilter}`,
@@ -1150,6 +1311,7 @@ export async function retrieveContext(
 						const claim = row.in;
 						if (claim.review_state === 'rejected' || claim.review_state === 'merged') continue;
 						if (trustedGraphActive && claim.review_state !== 'accepted') continue;
+						if (!admitVerification(claim)) continue;
 						const cId = typeof claim.id === 'object' ? String(claim.id) : claim.id;
 						if (allGraphClaims.has(cId)) continue;
 						const source =
@@ -1180,7 +1342,8 @@ export async function retrieveContext(
 							source_title: source.title,
 							source_author: source.author,
 							confidence: claim.confidence ?? 0.5,
-							position_in_source: claim.position_in_source ?? 0
+							position_in_source: claim.position_in_source ?? 0,
+							...verificationFields(claim.verification_state, claim.trust_score)
 						});
 					}
 				}
@@ -1217,6 +1380,7 @@ export async function retrieveContext(
 		const passesClosureReviewGate = (claim: GraphClaim): boolean => {
 			if (claim.review_state === 'rejected' || claim.review_state === 'merged') return false;
 			if (trustedGraphActive && claim.review_state !== 'accepted') return false;
+			if (!verificationAllows(claim)) return false;
 			return true;
 		};
 
@@ -1258,7 +1422,8 @@ export async function retrieveContext(
 				source_title: source.title,
 				source_author: source.author,
 				confidence: claim.confidence ?? 0.5,
-				position_in_source: claim.position_in_source ?? 0
+				position_in_source: claim.position_in_source ?? 0,
+				...verificationFields(claim.verification_state, claim.trust_score)
 			});
 			return 'added';
 		};
@@ -1616,6 +1781,27 @@ export async function retrieveContext(
 			pruningSummary.relations_by_reason[rejected.reason_code] += 1;
 		}
 
+		const verificationIncluded: Record<VerificationCategory, number> = {
+			supported: 0,
+			weak: 0,
+			unsupported: 0
+		};
+		for (const claim of claims) {
+			verificationIncluded[
+				claim.verification_category ??
+					classifyVerification(claim.verification_state, config.verification)
+			] += 1;
+		}
+		const verificationSummary: RetrievalVerificationSummary = {
+			policy: {
+				include: verificationPolicy.include,
+				min_trust_score: verificationPolicy.minTrustScore,
+				exclude_flagged: verificationPolicy.excludeFlagged ?? true
+			},
+			included: verificationIncluded,
+			excluded: { ...verificationExcluded }
+		};
+
 		let evidencePassages: RetrievalResult['evidence_passages'];
 		if (isRetrievalPassageGroundedEnabled() && passageGroundedClaimIds.length > 0) {
 			try {
@@ -1664,6 +1850,7 @@ export async function retrieveContext(
 				query_decomposition: queryDecomposition,
 				seed_claims: seedTrace,
 				pruning_summary: pruningSummary,
+				verification_summary: verificationSummary,
 				traversed_claim_count: Math.max(claims.length - seedClaimIds.length, 0),
 				relation_candidate_count: relationCandidateCount,
 				relation_kept_count: relations.length,
@@ -1719,7 +1906,14 @@ export function buildContextBlock(
 		const authorStr = c.source_author?.length
 			? c.source_author.join(', ')
 			: 'Unknown';
-		lines.push(`CLAIM [${claimId}] (${c.claim_type}, source: "${c.source_title}")`);
+		let verificationMark = '';
+		if (config.presentation.annotateVerification) {
+			const category =
+				c.verification_category ?? classifyVerification(c.verification_state, config.verification);
+			const trust = typeof c.trust_score === 'number' ? ` ${c.trust_score}` : '';
+			verificationMark = ` [${category}${trust}]`;
+		}
+		lines.push(`CLAIM [${claimId}] (${c.claim_type}${verificationMark}, source: "${c.source_title}")`);
 		lines.push(`"${c.text}"`);
 		
 		// Show relations from this claim

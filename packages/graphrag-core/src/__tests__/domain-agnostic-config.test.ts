@@ -47,6 +47,7 @@ const legalConfig: RetrievalConfig = {
     header: "=== LEGAL AUTHORITIES ===",
     intro: "The following are cited authorities from the case-law graph.",
     footer: "Verify each authority against the official reporter.",
+    annotateVerification: true,
   },
 };
 
@@ -58,6 +59,8 @@ const SEED_ROW = (over: Record<string, unknown>) => ({
   embedding: [1, 0, 0],
   position_in_source: 0,
   review_state: undefined,
+  verification_state: "validated",
+  trust_score: 90,
   section_context: null,
   source_id: "source:1",
   source_url: null,
@@ -74,7 +77,8 @@ const GRAPH_CLAIM = (over: Record<string, unknown>) => ({
   confidence: 0.9,
   position_in_source: 0,
   review_state: undefined,
-  verification_state: undefined,
+  verification_state: "validated",
+  trust_score: 88,
   source: { id: "source:2", title: "Appeals Reporter", author: ["Cardozo, J."] },
   ...over,
 });

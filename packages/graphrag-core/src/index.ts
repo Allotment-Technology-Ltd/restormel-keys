@@ -41,6 +41,7 @@ export {
   type VerificationConfig,
   type EntityEnrichmentConfig,
   type PresentationConfig,
+  type VerificationCategory,
   type ThinkerContext,
   type ThinkerSummary,
 } from "./config.js";
@@ -84,6 +85,8 @@ export {
   type RetrievalSeedTrace,
   type RetrievalQueryDecompositionTrace,
   type RetrievalPruningSummaryTrace,
+  type RetrievalVerificationSummary,
+  type VerificationPolicy,
   type RetrievalResult,
   type RetrievalOptions,
 } from "./retrieve-context.js";

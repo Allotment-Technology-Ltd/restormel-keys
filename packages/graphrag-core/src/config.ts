@@ -141,12 +141,20 @@ export interface LexicalConfig {
   knownPhrases: string[];
 }
 
+/** Trust category a claim falls into, derived from its verification state. */
+export type VerificationCategory = "supported" | "weak" | "unsupported";
+
 export interface VerificationConfig {
   /**
    * Require `verification_state = 'validated'` for trusted-graph claims.
-   * When undefined the engine falls back to the `RETRIEVAL_REQUIRE_VERIFIED` env var (legacy).
+   * @deprecated Legacy env-driven flag. Use a per-query `verificationPolicy` instead.
+   * When undefined the engine falls back to the `RETRIEVAL_REQUIRE_VERIFIED` env var.
    */
   requireVerified?: boolean;
+  /** `verification_state` values that count as `supported` (high trust). */
+  supportedStates: string[];
+  /** `verification_state` values that count as `unsupported` (flagged / refuted). */
+  flaggedStates: string[];
 }
 
 export interface EntityEnrichmentConfig {
@@ -160,6 +168,8 @@ export interface PresentationConfig {
   header: string;
   intro: string;
   footer: string;
+  /** Annotate each claim in the context block with its verification status (default true). */
+  annotateVerification: boolean;
 }
 
 export interface RetrievalConfig {
@@ -430,7 +440,10 @@ export const philosophyRetrievalConfig: RetrievalConfig = {
     ],
     knownPhrases: ["public reason", "epistemic injustice", "non-identity problem"],
   },
-  verification: {},
+  verification: {
+    supportedStates: ["validated"],
+    flaggedStates: ["flagged"],
+  },
   entityEnrichment: {
     fetch: fetchThinkerContext,
     format: formatThinkerContextBlock,
@@ -441,5 +454,6 @@ export const philosophyRetrievalConfig: RetrievalConfig = {
       "The following are structured claims from SOPHIA's curated philosophical knowledge graph. " +
       "Use these as your philosophical foundation, noting their typed logical relations and source attributions.",
     footer: "Use Google Search to verify, challenge, or extend these claims with current sources.",
+    annotateVerification: true,
   },
 };
