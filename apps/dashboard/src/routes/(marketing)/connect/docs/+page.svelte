@@ -21,10 +21,35 @@
   <ul>
     <li id="verify"><code>POST /connect/v1/verify</code> — Connect Verify (<code>@restormel/reasoning-core</code>)</li>
     <li id="retrieve"><code>POST /connect/v1/retrieve</code> — Connect Retrieve (<code>@restormel/graphrag-core</code>)</li>
+    <li id="graph"><code>POST /connect/v1/graph</code> — Graph orchestrator: higher-order retrieval (<code>@restormel/graphrag-core</code>)</li>
     <li id="ingest"><code>POST /connect/v1/ingest/jobs</code> — create ingest job (workspace-scoped persistence)</li>
     <li><code>GET /connect/v1/ingest/jobs</code> — list jobs for a workspace</li>
     <li><code>GET /connect/v1/ingest/jobs/{`{jobId}`}</code> — job status and stage progress</li>
   </ul>
+
+  <h2 id="graph-orchestrator">Graph orchestrator</h2>
+  <p>
+    <code>POST /connect/v1/graph</code> exposes the curated, "smart MCP not dumb pipe" operations: each returns a
+    ranked, structured subgraph (or paths) with a compact audit trace — never raw rows. Pick the operation with the
+    <code>operation</code> field:
+  </p>
+  <ul>
+    <li><code>retrieve_context</code> — vector-seeded, graph-expanded context for a <code>query</code> (the primary entry point)</li>
+    <li><code>expand_context</code> — graph expansion from explicit <code>seed_node_ids</code> (where graph-RAG beats vector-RAG)</li>
+    <li><code>find_relevant_subgraph</code> — topic subgraph with <code>reasoning_mode</code>: <code>semantic</code> · <code>causal</code> · <code>temporal</code> (causal/temporal re-weight edge priors)</li>
+    <li><code>find_paths</code> — ranked paths between <code>source_node_id</code> and <code>target_node_id</code></li>
+    <li><code>summarise_subgraph</code> — condense a retrieved subgraph under a <code>max_tokens</code> budget (dedup + salience prune, seeds preserved)</li>
+  </ul>
+  <p>
+    <strong>Trust by default:</strong> every operation accepts an optional <code>verification_policy</code> and defaults to
+    <strong>supported-only</strong> (flagged claims excluded). Opt into weaker evidence explicitly with
+    <code>{`{ "verification_policy": { "include": ["supported", "weak"] } }`}</code>. The response
+    <code>trace.verification</code> reports what was included and excluded, by trust category.
+  </p>
+  <p>
+    Pass <code>max_tokens</code> on any operation to fit your model's context window; <code>trace.tokens_used</code> and
+    <code>trace.nodes_dropped</code> report the budgeting outcome.
+  </p>
 
   <h2 id="contract">Contract</h2>
   <p>
@@ -46,6 +71,21 @@
     <li><code>connect.retrieve</code> — deprecated alias of <code>connect.search</code></li>
     <li><code>connect.verify</code>, <code>connect.ingest.*</code> — verify and ingest job helpers</li>
   </ul>
+  <p>
+    <strong>Graph orchestrator tools</strong> (model-agnostic; map 1:1 to <code>POST /connect/v1/graph</code>) — curated,
+    ranked, token-budgeted context for any agent host:
+  </p>
+  <ul>
+    <li><code>connect.graph.retrieve_context</code> — primary retrieval (vector + graph), token-budgeted</li>
+    <li><code>connect.graph.expand_context</code> — expand from explicit seed node ids, optional edge-type filter</li>
+    <li><code>connect.graph.find_relevant_subgraph</code> — semantic / causal / temporal reasoning modes</li>
+    <li><code>connect.graph.find_paths</code> — ranked paths between two nodes</li>
+    <li><code>connect.graph.summarise_subgraph</code> — condense a subgraph under a token budget</li>
+  </ul>
+  <p>
+    Every graph tool defaults to <strong>supported-only</strong> retrieval (the trust promise, visible in each tool's
+    schema) — set <code>verification_policy.include</code> to widen.
+  </p>
   <p>
     Env: <code>RESTORMEL_CONNECT_API_BASE</code> (e.g. <code>https://restormel.dev</code>),
     <code>RESTORMEL_GATEWAY_KEY</code> (<code>rk_…</code>), <code>RESTORMEL_WORKSPACE_ID</code>. HTTP mirror:

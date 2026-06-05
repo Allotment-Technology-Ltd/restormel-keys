@@ -21,7 +21,13 @@
     </li>
     <li>
       <strong>Retrieval layer</strong> — depth-controlled context for agents via <code>POST /connect/v1/retrieve</code>
-      or MCP <code>connect.retrieve</code>.
+      or MCP <code>connect.search</code>.
+    </li>
+    <li>
+      <strong>Graph reasoning layer</strong> — higher-order operations via <code>POST /connect/v1/graph</code> or MCP
+      <code>connect.graph.*</code>: vector + graph retrieval, expansion from seed nodes, path-finding, and
+      causal/temporal reasoning-mode subgraphs. Trust-filtered to <strong>supported claims by default</strong> and
+      token-budgeted to fit any context window.
     </li>
     <li>
       <strong>Grounding layer</strong> — claim verification before answers ship via

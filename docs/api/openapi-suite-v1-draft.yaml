@@ -174,6 +174,28 @@ paths:
         '501':
           description: Not implemented until Phase 6
 
+  /connect/v1/graph:
+    post:
+      summary: Connect graph orchestrator — higher-order retrieval operations
+      description: >-
+        RetrievalOrchestrator operations over the workspace knowledge graph. Select with the
+        `operation` field: retrieve_context, expand_context, find_relevant_subgraph, find_paths,
+        summarise_subgraph. Returns a curated, ranked subgraph (or paths) plus an audit trace.
+        Defaults to supported-only retrieval; pass `verification_policy` to widen.
+      operationId: knowledgeV1Graph
+      tags: [ConnectV1]
+      x-restormel-implementation-status: implemented
+      x-restormel-phase: 6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectGraphOpRequest'
+      responses:
+        '200':
+          description: Curated subgraph / paths with trace summary
+
   /connect/v1/ingest/jobs:
     post:
       summary: Create Connect Ingest job
@@ -256,6 +278,46 @@ components:
             domain_hint: { type: string }
             max_claims: { type: integer }
             require_verified: { type: boolean }
+
+    ConnectGraphOpRequest:
+      allOf:
+        - $ref: '#/components/schemas/ConnectWorkspaceContext'
+        - type: object
+          required: [operation]
+          properties:
+            contract_version: { type: string, example: '2026-06-01' }
+            operation:
+              type: string
+              enum: [retrieve_context, expand_context, find_relevant_subgraph, find_paths, summarise_subgraph]
+            query: { type: string, description: retrieve_context / summarise_subgraph }
+            topic: { type: string, description: find_relevant_subgraph }
+            reasoning_mode: { type: string, enum: [semantic, causal, temporal] }
+            top_k: { type: integer }
+            max_depth: { type: integer }
+            max_nodes: { type: integer }
+            domain: { type: string }
+            seed_node_ids:
+              type: array
+              items: { type: string }
+              description: expand_context
+            depth: { type: integer }
+            edge_types:
+              type: array
+              items: { type: string }
+            source_node_id: { type: string, description: find_paths }
+            target_node_id: { type: string, description: find_paths }
+            max_hops: { type: integer }
+            max_tokens: { type: integer, description: token budget; honoured end to end }
+            verification_policy:
+              type: object
+              description: Trust filter. Defaults to supported-only with flagged excluded.
+              required: [include]
+              properties:
+                include:
+                  type: array
+                  items: { type: string, enum: [supported, weak, unsupported] }
+                min_trust_score: { type: number }
+                exclude_flagged: { type: boolean }
 
     ConnectIngestJobCreateRequest:
       allOf:

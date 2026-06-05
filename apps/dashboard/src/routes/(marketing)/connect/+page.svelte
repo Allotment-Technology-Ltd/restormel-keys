@@ -17,7 +17,7 @@
     },
     {
       title: "Give agents something to think with",
-      body: "Your graph becomes the retrieval layer for copilots and agent workflows: depth-controlled context via REST or MCP, scoped to your Keys workspace.",
+      body: "Your graph becomes the retrieval layer for copilots and agents: hybrid vector + graph traversal, path-finding between ideas, and causal/temporal reasoning modes via REST or MCP — trust-filtered to supported claims by default and token-budgeted to fit any context window.",
     },
     {
       title: "Ground answers before they ship",
