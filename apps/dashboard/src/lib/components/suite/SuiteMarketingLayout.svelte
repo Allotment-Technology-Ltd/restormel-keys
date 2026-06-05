@@ -1,26 +1,44 @@
 <script lang="ts">
   import "$lib/styles/marketing-shell.css";
+  import { onMount } from "svelte";
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
-  import { page } from "$app/stores";
-  import { absoluteUrl } from "$lib/seo";
+  import { agentLog } from "$lib/debug/agent-log";
+  import type { ModuleFlags } from "$lib/module-flags-types";
+  import type { SuiteModule } from "$lib/suite/suite-modules";
 
   /** Optional module-preview notice (e.g. Graph marketing while module flag is preview). */
   export let previewNotice: string | null = null;
+  /** Passed from route layouts — lib components must not subscribe to `$page` during SSR. */
+  export let user: App.PageData["user"] | undefined = undefined;
+  export let pathname: string;
+  export let ogUrl: string;
+  export let moduleFlags: ModuleFlags;
+  export let suiteModulesForUi: SuiteModule[];
 
-  $: user = $page.data.user;
+  onMount(() => {
+    // #region agent log
+    agentLog(
+      "SuiteMarketingLayout.svelte:onMount",
+      "marketing shell hydrated",
+      { pathname },
+      "H6",
+      "post-fix"
+    );
+    // #endregion
+  });
 </script>
 
 <svelte:head>
   <meta property="og:site_name" content="Restormel" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content={absoluteUrl($page.url, $page.url.pathname)} />
+  <meta property="og:url" content={ogUrl} />
   <meta property="twitter:card" content="summary" />
 </svelte:head>
 
 <div class="marketing-page">
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <SiteHeader {user} />
+  <SiteHeader {user} {pathname} />
   {#if previewNotice}
     <div class="marketing-banner">
       <div class="marketing-banner-inner">
@@ -37,7 +55,7 @@
   <main id="main-content" class="marketing-main">
     <slot />
   </main>
-  <SiteFooter />
+  <SiteFooter {moduleFlags} {suiteModulesForUi} />
 </div>
 
 <style>

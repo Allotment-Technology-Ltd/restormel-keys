@@ -420,8 +420,8 @@
     cursor: pointer;
   }
   .currency-option[aria-pressed="true"] {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     border-color: var(--rm-sage);
   }
   .currency-option:disabled {

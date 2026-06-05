@@ -18,6 +18,13 @@ function getSql() {
   return neon(url);
 }
 
+const MIGRATION_HINT =
+  "The service_admin_emails table is missing. Apply dashboard migrations: bash scripts/apply-dashboard-migrations.sh (see docs/runbooks/dashboard-postgres-migrations.md).";
+
+function isMissingTableError(e: unknown): boolean {
+  return (e as { code?: string })?.code === "42P01";
+}
+
 export async function isServiceAdminEmailInDb(email: string | null | undefined): Promise<boolean> {
   const normalized = normalizeEmailForServiceOwnerMatch(email);
   if (!normalized) return false;
@@ -55,9 +62,22 @@ export async function listServiceAdminEmails(): Promise<ServiceAdminEmailRow[]> 
       note: r.note != null ? String(r.note) : null,
     }));
   } catch (e) {
-    const code = (e as { code?: string })?.code;
-    if (code === "42P01") return [];
+    if (isMissingTableError(e)) return [];
+    const msg = e instanceof Error ? e.message : "";
+    if (msg) console.error("[service-admin-emails] list failed:", msg.slice(0, 80));
     return [];
+  }
+}
+
+/** False when migration 042 (service_admin_emails) has not been applied. */
+export async function isServiceAdminEmailsTableReady(): Promise<boolean> {
+  try {
+    const sql = getSql();
+    await sql`SELECT 1 FROM service_admin_emails LIMIT 0`;
+    return true;
+  } catch (e) {
+    if (isMissingTableError(e)) return false;
+    return false;
   }
 }
 
@@ -78,7 +98,10 @@ export async function addServiceAdminEmail(params: {
       ON CONFLICT (email) DO NOTHING
     `;
     return { ok: true };
-  } catch {
+  } catch (e) {
+    if (isMissingTableError(e)) return { ok: false, message: MIGRATION_HINT };
+    const msg = e instanceof Error ? e.message : "";
+    if (msg) console.error("[service-admin-emails] insert failed:", msg.slice(0, 120));
     return { ok: false, message: "Could not save operator email." };
   }
 }
@@ -91,7 +114,10 @@ export async function removeServiceAdminEmail(email: string): Promise<{ ok: true
     const sql = getSql();
     await sql`DELETE FROM service_admin_emails WHERE email = ${normalized}`;
     return { ok: true };
-  } catch {
+  } catch (e) {
+    if (isMissingTableError(e)) return { ok: false, message: MIGRATION_HINT };
+    const msg = e instanceof Error ? e.message : "";
+    if (msg) console.error("[service-admin-emails] delete failed:", msg.slice(0, 120));
     return { ok: false, message: "Could not remove operator email." };
   }
 }

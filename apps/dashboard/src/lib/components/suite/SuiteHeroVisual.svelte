@@ -9,12 +9,12 @@
     { id: "route", label: "Route", sub: "Keys · fallback chains" },
     { id: "assure", label: "Assure", sub: "Testing · CI gates" },
     { id: "visualise", label: "Visualise", sub: "Graph · explorer UI" },
-    { id: "connect", label: "Connect", sub: "Ingest · verify · retrieve" },
+    { id: "connect", label: "Connect", sub: "Ingest · graph · MCP agents" },
   ] as const;
 
   const capabilitiesCompact = [
     { id: "route", label: "Route", sub: "Keys · fallback chains" },
-    { id: "connect", label: "Connect", sub: "Ingest · verify · retrieve" },
+    { id: "connect", label: "Connect", sub: "Ingest · graph · MCP agents" },
   ] as const;
 
   $: capabilities = suiteExpanded ? capabilitiesFull : capabilitiesCompact;
@@ -22,12 +22,12 @@
   $: outcomes = suiteExpanded
     ? [
         { title: "Swap models without redeploying", body: "Change resolve chains in the dashboard — your app keeps the same API." },
-        { title: "Agents grounded in verified context", body: "Ingest sources once; retrieve and verify claims against material." },
+        { title: "Agents grounded in verified context", body: "Ingest once, explore the graph, then wire MCP tools against your BYO store." },
         { title: "Catch regressions before users do", body: "Restormel Testing runs behavior checks in CI with your real routes." },
       ]
     : [
         { title: "Swap models without redeploying", body: "Fallback chains and policies live in one workspace — not in app code." },
-        { title: "Agents grounded in verified context", body: "Pipeline from sources to graph store with claim verification built in." },
+        { title: "Agents grounded in verified context", body: "Pipeline from sources to graph explorer, then connect.search via MCP." },
         { title: "BYOK end to end", body: "Provider keys and graph data stay in infrastructure you control." },
       ];
 </script>
@@ -92,22 +92,28 @@
 <style>
   .hero-visual {
     margin: 0;
-    border: var(--border);
-    box-shadow: var(--shadow-md);
+    border: 2px solid var(--color-ink);
+    box-shadow: 4px 4px 0 var(--color-ink);
     background: var(--color-surface);
     display: flex;
     flex-direction: column;
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+
+  .hero-visual:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--color-ink);
   }
 
   .hero-visual-eyebrow {
     margin: 0;
-    padding: 0.65rem 0.875rem;
+    padding: 0.5rem 0.75rem;
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    border-bottom: var(--border);
+    border-bottom: 2px solid var(--color-ink);
     background: var(--color-bg-deep);
     color: var(--color-ink);
   }
@@ -305,6 +311,15 @@
 
     .hero-cap-cell:last-child {
       border-right: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-visual,
+    .hero-visual:hover {
+      transition: none;
+      transform: none;
+      box-shadow: 4px 4px 0 var(--color-ink);
     }
   }
 

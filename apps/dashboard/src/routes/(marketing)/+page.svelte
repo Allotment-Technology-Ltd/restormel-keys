@@ -10,6 +10,18 @@
   import { isSuiteMarketingExpanded } from "$lib/integration-catalog-for-flags";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { SUITE_CAPABILITY_TAGLINE, SUITE_MODULES, type SuiteModule } from "$lib/suite/suite-modules";
+  import { HOMEPAGE_USE_CASE_IDS, useCasesByIds } from "$lib/content/use-cases";
+  import UseCaseTeaserGrid from "$lib/components/marketing/UseCaseTeaserGrid.svelte";
+  import { onMount } from "svelte";
+  import { agentLog } from "$lib/debug/agent-log";
+
+  const homepageUseCases = useCasesByIds(HOMEPAGE_USE_CASE_IDS);
+
+  onMount(() => {
+    // #region agent log
+    agentLog("(marketing)/+page.svelte:onMount", "homepage hydrated", {}, "H1", "post-fix");
+    // #endregion
+  });
 
   $: suiteModules = ($page.data.suiteModulesForUi ?? SUITE_MODULES) as SuiteModule[];
   $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
@@ -32,7 +44,7 @@
 </svelte:head>
 
 <div class="suite-landing">
-  <section class="suite-hero" aria-labelledby="suite-hero-heading">
+  <section class="suite-hero suite-hero-slab" aria-labelledby="suite-hero-heading">
     <div class="suite-hero-inner">
       <div class="suite-hero-copy">
         <p class="suite-hero-eyebrow">Restormel</p>
@@ -75,6 +87,20 @@
 
   <ProductDemo />
 
+  <section class="suite-use-cases suite-hero-slab" aria-labelledby="use-cases-teaser-heading">
+    <div class="suite-section-inner">
+      <span class="suite-section-tag suite-section-tag--inverted">Templates</span>
+      <h2 id="use-cases-teaser-heading" class="suite-section-title">What will you build first?</h2>
+      <p class="suite-section-sub">
+        From compliance corpora to mythology pantheons — Restormel works for any structured knowledge problem.
+      </p>
+      <UseCaseTeaserGrid useCases={homepageUseCases} />
+      <p class="suite-use-cases-more">
+        <a href="/use-cases">See all use cases, including starter templates →</a>
+      </p>
+    </div>
+  </section>
+
   <section class="suite-products" aria-labelledby="products-heading">
     <div class="suite-section-inner">
       <span class="suite-section-tag">The suite</span>
@@ -104,7 +130,7 @@
         Keep Neon, SurrealDB, and your existing providers. Restormel sits between your stack and your product as a thin
         control layer.
       </p>
-      <EcosystemStrip variant="diagram" />
+      <EcosystemStrip variant="diagram" moduleFlags={flags} />
     </div>
   </section>
 
@@ -121,3 +147,16 @@
     </div>
   </section>
 </div>
+
+<style>
+  .suite-use-cases-more {
+    margin: var(--space-8) 0 0;
+    font-size: var(--text-body-md);
+    font-weight: 700;
+  }
+  .suite-use-cases-more a {
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>

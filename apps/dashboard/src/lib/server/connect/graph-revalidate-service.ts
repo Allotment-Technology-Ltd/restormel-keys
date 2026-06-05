@@ -1,34 +1,73 @@
 /**
  * Re-validate existing graph units without re-extracting — updates validation_status
  * on units already stored in Postgres spine or Surreal BYO.
+ * Optional validate_and_remediate mode runs remediation + re-embed for repaired units.
  */
 import type { ConnectDomainPack, ConnectGraphRevalidateScope } from "@restormel/contracts/connect";
-import { validateUnits, type ExtractionGenerate } from "@restormel/connect-core";
+import { resolveQualityPreset, type ExtractionGenerate } from "@restormel/connect-core";
+import {
+  buildValidationBatchInputs,
+  validateUnitsBatch,
+  remapValidationBatchResults,
+  finalizeValidationCoverage,
+  type UnitValidation,
+} from "@restormel/connect-core/ingest/validation";
 import { formatSurrealRecordId } from "$lib/server/connect/graph-writer";
-import { buildValidationStageGenerate } from "$lib/server/connect/stage-route-generate";
+import { matchesGraphRevalidateScope } from "$lib/connect/validation-status";
+import {
+  paginateSurrealUnitRowsAll,
+  surrealRevalidateUnitsQuery,
+} from "$lib/server/connect/surreal-graph-units-load";
+import {
+  buildRemediationStageGenerate,
+  buildValidationStageGenerate,
+  buildKnowledgeStageGenerates,
+} from "$lib/server/connect/stage-route-generate";
 import { buildJobWriter, IngestConfigError } from "$lib/server/connect/ingest-full-runner";
 import type { ConnectIngestJobRecord } from "$lib/server/connect-ingest-jobs";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import type { GraphRevalidateJobMeta } from "$lib/server/connect/graph-revalidate-job";
+import { runGraphRemediationPass } from "$lib/server/connect/graph-remediation-pass";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { resolveKnowledgeRouteExecutionContextForWorker } from "$lib/server/connect/stage-routing";
 import { isConnectIngestLlmReady } from "$lib/server/connect/stage-route-generate";
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
 import {
+  fetchSurrealSourceRecordText,
+  resolveConnectSourceText,
+} from "$lib/server/connect/connect-source-text-resolve";
+import {
   getConnectDomainPackById,
+  getConnectGraphStats,
   getConnectGraphTargetForWorkspace,
   listConnectDomainPacksForWorkspace,
-  listConnectIngestJobsForWorkspace,
   type ConnectGraphTargetRecord,
 } from "$lib/server/neon";
 
 const SAFE_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const POSTGRES_REVALIDATE_BATCH = 2000;
+
 function tableIdent(name: string, fallback: string): string {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return SAFE_IDENT.test(s) ? s : fallback;
 }
 
-type RevalidateUnit = { id: string; text: string; validationStatus: string | null };
+type SurrealRevalidateRow = {
+  id?: string | { toString(): string };
+  text?: string;
+  validation_status?: string | null;
+  validation_note?: string | null;
+  source?: unknown;
+  source_title?: string | null;
+  source_url?: string | null;
+};
+
+type RevalidateUnit = {
+  id: string;
+  text: string;
+  validationStatus: string | null;
+  validationNote: string | null;
+};
 
 type RevalidateSourceGroup = {
   sourceKey: string;
@@ -38,25 +77,8 @@ type RevalidateSourceGroup = {
   units: RevalidateUnit[];
 };
 
-function matchesScope(status: string | null, scope: ConnectGraphRevalidateScope): boolean {
-  const s = status ?? "unvalidated";
-  if (scope === "all") return true;
-  if (scope === "unchecked") return s === "unvalidated" || !status;
-  return s === "weak" || s === "unsupported";
-}
-
-function parseJobSources(raw: unknown): { title?: string; url?: string; text?: string }[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((r) => r && typeof r === "object")
-    .map((r) => {
-      const rec = r as Record<string, unknown>;
-      return {
-        ...(typeof rec.title === "string" ? { title: rec.title } : {}),
-        ...(typeof rec.url === "string" ? { url: rec.url } : {}),
-        ...(typeof rec.text === "string" ? { text: rec.text } : {}),
-      };
-    });
+function unitMatchesScope(unit: RevalidateUnit, scope: ConnectGraphRevalidateScope): boolean {
+  return matchesGraphRevalidateScope(unit.validationStatus, unit.validationNote, scope);
 }
 
 async function resolveDomainPack(
@@ -78,36 +100,41 @@ async function resolveDomainPack(
   }
 }
 
-async function resolveSourceText(args: {
-  workspaceId: string;
-  title: string | null;
-  url: string | null;
-  textPreview: string | null;
-}): Promise<{ text: string; quality: "full" | "preview" | "missing" }> {
-  const jobs = await listConnectIngestJobsForWorkspace({ workspaceId: args.workspaceId, limit: 30 });
-  for (const job of jobs) {
-    for (const src of parseJobSources(job.sources)) {
-      const titleMatch = args.title && src.title && src.title.trim() === args.title.trim();
-      const urlMatch = args.url && src.url && src.url.trim() === args.url.trim();
-      if ((titleMatch || urlMatch) && src.text?.trim()) {
-        return { text: src.text.trim(), quality: "full" };
-      }
-    }
+function appendUnitToGroup(
+  bySource: Map<string, RevalidateSourceGroup>,
+  row: {
+    id: string;
+    text: string;
+    validation_status: string | null;
+    validation_note: string | null;
+    source_id: string | null;
+    source_title: string | null;
+    source_url: string | null;
+    source_preview: string | null;
+  },
+  scope: ConnectGraphRevalidateScope,
+): void {
+  const unit: RevalidateUnit = {
+    id: row.id,
+    text: row.text,
+    validationStatus: row.validation_status,
+    validationNote: row.validation_note,
+  };
+  if (!unitMatchesScope(unit, scope)) return;
+
+  const sourceKey = row.source_id ?? "__unknown__";
+  let group = bySource.get(sourceKey);
+  if (!group) {
+    group = {
+      sourceKey,
+      title: row.source_title ?? null,
+      url: row.source_url ?? null,
+      textPreview: row.source_preview ?? null,
+      units: [],
+    };
+    bySource.set(sourceKey, group);
   }
-
-  const { findConnectSourceDocumentText } = await import("$lib/server/neon");
-  const docText = await findConnectSourceDocumentText({
-    workspaceId: args.workspaceId,
-    name: args.title,
-    url: args.url,
-  });
-  if (docText?.trim()) return { text: docText.trim(), quality: "full" };
-
-  if (args.textPreview?.trim()) {
-    return { text: args.textPreview.trim(), quality: "preview" };
-  }
-
-  return { text: "", quality: "missing" };
+  group.units.push(unit);
 }
 
 async function loadPostgresRevalidateGroups(
@@ -117,52 +144,64 @@ async function loadPostgresRevalidateGroups(
   const { getSql, ensureIngestionRoutingSchema } = await import("$lib/server/neon");
   await ensureIngestionRoutingSchema();
   const sql = getSql();
-  const rows = (await sql`
-    SELECT
-      u.id,
-      u.text,
-      u.validation_status,
-      s.id AS source_id,
-      s.title AS source_title,
-      s.url AS source_url,
-      s.text_preview AS source_preview
-    FROM knowledge_graph_units u
-    LEFT JOIN knowledge_graph_sources s
-      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
-    WHERE u.workspace_id = ${workspaceId}
-    ORDER BY u.created_at ASC
-    LIMIT 5000
-  `) as {
-    id: string;
-    text: string;
-    validation_status: string | null;
-    source_id: string | null;
-    source_title: string | null;
-    source_url: string | null;
-    source_preview: string | null;
-  }[];
-
   const bySource = new Map<string, RevalidateSourceGroup>();
-  for (const row of rows) {
-    if (!matchesScope(row.validation_status, scope)) continue;
-    const sourceKey = row.source_id ?? "__unknown__";
-    let group = bySource.get(sourceKey);
-    if (!group) {
-      group = {
-        sourceKey,
-        title: row.source_title ?? null,
-        url: row.source_url ?? null,
-        textPreview: row.source_preview ?? null,
-        units: [],
-      };
-      bySource.set(sourceKey, group);
+  let lastId: string | null = null;
+
+  while (true) {
+    const rows = (lastId
+      ? await sql`
+          SELECT
+            u.id,
+            u.text,
+            u.validation_status,
+            u.validation_note,
+            s.id AS source_id,
+            s.title AS source_title,
+            s.url AS source_url,
+            s.text_preview AS source_preview
+          FROM knowledge_graph_units u
+          LEFT JOIN knowledge_graph_sources s
+            ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+          WHERE u.workspace_id = ${workspaceId}
+            AND u.id > ${lastId}
+          ORDER BY u.id ASC
+          LIMIT ${POSTGRES_REVALIDATE_BATCH}
+        `
+      : await sql`
+          SELECT
+            u.id,
+            u.text,
+            u.validation_status,
+            u.validation_note,
+            s.id AS source_id,
+            s.title AS source_title,
+            s.url AS source_url,
+            s.text_preview AS source_preview
+          FROM knowledge_graph_units u
+          LEFT JOIN knowledge_graph_sources s
+            ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+          WHERE u.workspace_id = ${workspaceId}
+          ORDER BY u.id ASC
+          LIMIT ${POSTGRES_REVALIDATE_BATCH}
+        `) as {
+      id: string;
+      text: string;
+      validation_status: string | null;
+      validation_note: string | null;
+      source_id: string | null;
+      source_title: string | null;
+      source_url: string | null;
+      source_preview: string | null;
+    }[];
+
+    if (!rows.length) break;
+    for (const row of rows) {
+      appendUnitToGroup(bySource, row, scope);
     }
-    group.units.push({
-      id: row.id,
-      text: row.text,
-      validationStatus: row.validation_status ?? null,
-    });
+    lastId = rows[rows.length - 1]!.id;
+    if (rows.length < POSTGRES_REVALIDATE_BATCH) break;
   }
+
   return [...bySource.values()].filter((g) => g.units.length > 0);
 }
 
@@ -175,25 +214,25 @@ async function loadSurrealRevalidateGroups(
   if (!store) return [];
 
   const unitTable = tableIdent(pack.graph_schema.unit_table, "unit");
-  const rows = await store.query<
-    {
-      id?: string | { toString(): string };
-      text?: string;
-      validation_status?: string | null;
-      source?: unknown;
-    }[]
-  >(
-    `SELECT id, text, validation_status, source.title AS source_title, source.url AS source_url, source.text_preview AS source_preview, source FROM ${unitTable} FETCH source LIMIT 5000;`,
+  const rows = await paginateSurrealUnitRowsAll<SurrealRevalidateRow>(store, (limit, start, fetchSource) =>
+    surrealRevalidateUnitsQuery(unitTable, limit, start, fetchSource),
   );
 
   const bySource = new Map<string, RevalidateSourceGroup>();
   for (const row of rows) {
     if (typeof row.text !== "string" || !row.text.trim()) continue;
-    if (!matchesScope(row.validation_status ?? null, scope)) continue;
 
     const unitId =
       formatSurrealRecordId(row.id) ?? (typeof row.id === "string" ? row.id : null);
     if (!unitId) continue;
+
+    const unit: RevalidateUnit = {
+      id: unitId,
+      text: row.text.trim(),
+      validationStatus: row.validation_status ?? null,
+      validationNote: row.validation_note ?? null,
+    };
+    if (!unitMatchesScope(unit, scope)) continue;
 
     let sourceKey = "__unknown__";
     let title: string | null = null;
@@ -217,20 +256,12 @@ async function loadSurrealRevalidateGroups(
     if (typeof (row as Record<string, unknown>).source_url === "string") {
       url = String((row as Record<string, unknown>).source_url);
     }
-    if (typeof (row as Record<string, unknown>).source_preview === "string") {
-      textPreview = String((row as Record<string, unknown>).source_preview);
-    }
-
     let group = bySource.get(sourceKey);
     if (!group) {
       group = { sourceKey, title, url, textPreview, units: [] };
       bySource.set(sourceKey, group);
     }
-    group.units.push({
-      id: unitId,
-      text: row.text.trim(),
-      validationStatus: row.validation_status ?? null,
-    });
+    group.units.push(unit);
   }
   return [...bySource.values()].filter((g) => g.units.length > 0);
 }
@@ -244,22 +275,99 @@ async function loadRevalidateGroups(
   if (target.provider === "surreal") {
     return loadSurrealRevalidateGroups(workspaceId, pack, scope);
   }
-  if (target.provider === "postgres" && target.useDashboardDatabase) {
-    return loadPostgresRevalidateGroups(workspaceId, scope);
-  }
   return loadPostgresRevalidateGroups(workspaceId, scope);
 }
 
-const SKIP_STAGES = ["extracting", "relating", "grouping", "embedding", "remediating"] as const;
+const SKIP_STAGES_VALIDATE_ONLY = ["extracting", "relating", "grouping", "embedding", "remediating"] as const;
+const SKIP_STAGES_AUTO_REMEDIATE = ["extracting", "relating", "grouping", "embedding"] as const;
+const GRAPH_REPAIR_HEARTBEAT_MS = 30_000;
+
+function startGraphRepairHeartbeat(
+  reporter: ConnectIngestProgressReporter,
+  getMessage: () => string,
+): () => void {
+  const id = setInterval(() => {
+    void reporter.log("VALIDATE", getMessage());
+    void reporter.setGraphRepair({});
+  }, GRAPH_REPAIR_HEARTBEAT_MS);
+  return () => clearInterval(id);
+}
+
+async function validateUnitsWithProgress(args: {
+  units: { ref: string; text: string }[];
+  sourceText: string;
+  pack: ConnectDomainPack;
+  generate: ExtractionGenerate;
+  reporter: ConnectIngestProgressReporter;
+  sourceIndex: number;
+  sourcesTotal: number;
+  sourceLabel: string;
+  unitsDoneBefore: number;
+  unitCount: number;
+}): Promise<{ results: UnitValidation[]; unitsValidated: number }> {
+  const preset = resolveQualityPreset(args.pack).preset;
+  const batches = buildValidationBatchInputs(args.units);
+  await args.reporter.setGraphRepair({
+    phase: "validating",
+    batches_total: batches.length,
+    batches_done: 0,
+  });
+  await args.reporter.log(
+    "VALIDATE",
+    `Calling validation model — ${args.units.length} idea(s) in ${batches.length} batch(es) for ${args.sourceLabel} (may take several minutes)`,
+  );
+
+  const merged: UnitValidation[] = [];
+  let unitsDoneInSource = 0;
+  for (let bi = 0; bi < batches.length; bi++) {
+    const { batchUnits, refToUnitId } = batches[bi]!;
+    unitsDoneInSource += batchUnits.length;
+    const unitsDone = args.unitsDoneBefore + unitsDoneInSource;
+    await args.reporter.tick(
+      "validating",
+      `Source ${args.sourceIndex}/${args.sourcesTotal} · batch ${bi + 1}/${batches.length} · ${unitsDone}/${args.unitCount} ideas`,
+      1,
+      {
+        phase: "validating",
+        units_processed: unitsDone,
+        batches_total: batches.length,
+        batches_done: bi + 1,
+        sources_done: args.sourceIndex,
+      },
+    );
+    const parsed = await validateUnitsBatch({
+      units: batchUnits,
+      sourceText: args.sourceText,
+      pack: args.pack,
+      generate: args.generate,
+      qualityPreset: preset,
+    });
+    merged.push(...remapValidationBatchResults(parsed, refToUnitId));
+  }
+
+  const results = finalizeValidationCoverage(args.units, merged);
+  return { results, unitsValidated: args.units.length };
+}
 
 export async function runGraphRevalidation(args: {
   job: ConnectIngestJobRecord;
   meta: GraphRevalidateJobMeta;
   reporter: ConnectIngestProgressReporter;
-}): Promise<{ validated: number; units: number; sources: number }> {
+}): Promise<{
+  validated: number;
+  units: number;
+  sources: number;
+  repaired: number;
+  dropped: number;
+  embedded: number;
+}> {
   const { job, meta, reporter } = args;
+  const autoRemediate = meta.mode === "validate_and_remediate";
   const target = await getConnectGraphTargetForWorkspace(job.workspaceId);
   if (!target) throw new IngestConfigError("graph_target_not_configured");
+
+  const statsBefore = await getConnectGraphStats(job.workspaceId).catch(() => null);
+  const quarantineBefore = statsBefore?.validation.awaiting_triage ?? null;
 
   const routeCtx = await resolveKnowledgeRouteExecutionContextForWorker({
     workspaceId: job.workspaceId,
@@ -282,82 +390,245 @@ export async function runGraphRevalidation(args: {
   const writer = await buildJobWriter(job);
   if (!writer) throw new IngestConfigError("graph_target_not_configured");
 
-  for (const stage of SKIP_STAGES) {
-    await reporter.skipStage(stage, "Skipped for graph re-validation");
+  const surrealStore =
+    target.provider === "surreal" ? await buildWorkspaceGraphStore(job.workspaceId) : null;
+
+  const skipStages = autoRemediate ? SKIP_STAGES_AUTO_REMEDIATE : SKIP_STAGES_VALIDATE_ONLY;
+  for (const stage of skipStages) {
+    await reporter.skipStage(stage, autoRemediate ? "Skipped for graph auto-remediation" : "Skipped for graph re-validation");
   }
 
-  await reporter.beginStage("validating", "Loading graph units for re-validation", 1);
+  await reporter.log("VALIDATE", "Loading graph units for re-validation");
   const groups = await loadRevalidateGroups(job.workspaceId, target, pack, meta.scope);
   const unitCount = groups.reduce((n, g) => n + g.units.length, 0);
+
+  const scopedQuarantineBefore =
+    meta.scope === "quarantine" || meta.scope === "unsupported"
+      ? unitCount
+      : quarantineBefore;
+
+  reporter.initGraphRepair({
+    mode: autoRemediate ? "validate_and_remediate" : "validate",
+    units_total: unitCount,
+    sources_total: Math.max(1, groups.length),
+    ...(scopedQuarantineBefore != null ? { quarantine_before: scopedQuarantineBefore } : {}),
+  });
+  await reporter.setGraphRepair({ phase: "loading" });
+
   if (unitCount === 0) {
     await reporter.completeStage("validating", "No units matched the selected scope");
     await reporter.skipStage("storing", "Nothing to update");
-    await reporter.complete("Re-validation complete — 0 units matched", "full");
-    return { validated: 0, units: 0, sources: 0 };
+    const label = autoRemediate ? "Auto-remediation complete — 0 units matched" : "Re-validation complete — 0 units matched";
+    await reporter.complete(label, "full");
+    return { validated: 0, units: 0, sources: 0, repaired: 0, dropped: 0, embedded: 0 };
   }
 
   const validationGenerate: ExtractionGenerate = buildValidationStageGenerate(
     routeCtx,
     meta.validation_route_id,
   );
+  const remediationGenerate = autoRemediate
+    ? buildRemediationStageGenerate(routeCtx, meta.remediation_route_id)
+    : null;
+
+  const stageKit = autoRemediate
+    ? await buildKnowledgeStageGenerates({ workspaceId: job.workspaceId, routeCtx })
+    : null;
 
   let validated = 0;
+  let repaired = 0;
+  let dropped = 0;
+  let embedded = 0;
+  let skippedUnits = 0;
+  let previewOnlySources = 0;
+  let sourcesRemediationFailed = 0;
+  let unitsDone = 0;
   let sourceIndex = 0;
+  const repairMode = autoRemediate ? "Re-validating" : "Re-validating";
   await reporter.beginStage(
     "validating",
-    `Re-validating ${unitCount} unit(s) across ${groups.length} source(s)`,
-    Math.max(1, groups.length),
+    `${repairMode} ${unitCount} unit(s) across ${groups.length} source(s)`,
+    unitCount,
   );
+  await reporter.setGraphRepair({ phase: "validating" });
 
   for (const group of groups) {
     sourceIndex += 1;
+    const sourceLabel = group.title ?? group.sourceKey;
     await reporter.tick(
       "validating",
-      `Source ${sourceIndex}/${groups.length} — ${group.title ?? group.sourceKey}`,
+      `Source ${sourceIndex}/${groups.length} — ${sourceLabel}`,
+      1,
+      { sources_done: sourceIndex, phase: "validating" },
     );
 
-    const resolved = await resolveSourceText({
+    const surrealHints =
+      surrealStore && pack
+        ? await fetchSurrealSourceRecordText(surrealStore, group.sourceKey)
+        : null;
+
+    const resolved = await resolveConnectSourceText({
       workspaceId: job.workspaceId,
-      title: group.title,
-      url: group.url,
-      textPreview: group.textPreview,
+      title: group.title ?? surrealHints?.title ?? null,
+      url: group.url ?? surrealHints?.url ?? null,
+      textPreview: group.textPreview ?? surrealHints?.textPreview ?? null,
+      surrealFullText: surrealHints?.fullText ?? null,
     });
 
     if (!resolved.text.trim()) {
+      skippedUnits += group.units.length;
+      unitsDone += group.units.length;
+      const gr = reporter.getGraphRepair();
+      await reporter.setGraphRepair({
+        units_processed: unitsDone,
+        sources_done: sourceIndex,
+        skipped_no_source: (gr?.skipped_no_source ?? 0) + group.units.length,
+      });
       await reporter.log(
         "VALIDATE",
-        `Skipped ${group.units.length} unit(s) — could not resolve source text for "${group.title ?? group.sourceKey}"`,
+        `Skipped ${group.units.length} unit(s) — could not resolve source text for "${group.title ?? surrealHints?.title ?? group.sourceKey}" (link source documents in Pipeline → Sources or re-run ingest with full text)`,
       );
       continue;
     }
     if (resolved.quality === "preview") {
+      previewOnlySources += 1;
+      const gr = reporter.getGraphRepair();
+      await reporter.setGraphRepair({
+        preview_only_sources: (gr?.preview_only_sources ?? 0) + 1,
+      });
       await reporter.log(
         "VALIDATE",
-        `Using source preview only for "${group.title ?? group.sourceKey}" — full document text was not found`,
+        `Using source preview only for "${sourceLabel}" — full document text was not found`,
       );
     }
 
-    const results = await validateUnits({
-      units: group.units.map((u) => ({ ref: u.id, text: u.text })),
-      sourceText: resolved.text,
-      pack,
-      generate: validationGenerate,
+    const textById = new Map(group.units.map((u) => [u.id, u.text]));
+    const unitInputs = group.units.map((u) => ({ ref: u.id, text: u.text }));
+
+    const stopHeartbeat = startGraphRepairHeartbeat(reporter, () => {
+      const gr = reporter.getGraphRepair();
+      const batchDone = gr?.batches_done ?? 0;
+      const batchTotal = gr?.batches_total ?? "?";
+      const processed = gr?.units_processed ?? unitsDone;
+      return `Still working on source ${sourceIndex}/${groups.length} — batch ${batchDone}/${batchTotal} · ${processed}/${unitCount} ideas`;
     });
+
+    let results: UnitValidation[];
+    try {
+      const outcome = await validateUnitsWithProgress({
+        units: unitInputs,
+        sourceText: resolved.text,
+        pack,
+        generate: validationGenerate,
+        reporter,
+        sourceIndex,
+        sourcesTotal: groups.length,
+        sourceLabel,
+        unitsDoneBefore: unitsDone,
+        unitCount,
+      });
+      results = outcome.results;
+      unitsDone += outcome.unitsValidated;
+    } finally {
+      stopHeartbeat();
+    }
+
+    await reporter.setGraphRepair({
+      units_processed: unitsDone,
+      sources_done: sourceIndex,
+    });
+
     validated += await writer.setValidation(
       results.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
     );
+
+    if (autoRemediate && remediationGenerate) {
+      const pass = await runGraphRemediationPass({
+        validationResults: results,
+        textById,
+        sourceText: resolved.text,
+        pack,
+        writer,
+        validationGenerate,
+        remediationGenerate,
+        embed: stageKit?.embed,
+        reporter,
+        sourceLabel,
+      });
+      repaired += pass.repaired;
+      dropped += pass.dropped;
+      embedded += pass.embedded;
+      await reporter.setGraphRepair({
+        repaired,
+        dropped,
+        phase: "validating",
+        sources_done: sourceIndex,
+      });
+      if (pass.remediationFailed) {
+        sourcesRemediationFailed += 1;
+        const gr = reporter.getGraphRepair();
+        await reporter.setGraphRepair({
+          sources_remediation_failed: (gr?.sources_remediation_failed ?? 0) + 1,
+        });
+      }
+    }
   }
 
   await reporter.completeStage(
     "validating",
-    `${validated}/${unitCount} validation row(s) persisted`,
-  );
-  await reporter.beginStage("storing", "Finalizing re-validation", 1);
-  await reporter.completeStage("storing", "Validation statuses updated");
-  await reporter.complete(
-    `Re-validation complete — ${validated}/${unitCount} unit(s) updated`,
-    "full",
+    `${validated}/${unitCount} validation row(s) persisted${skippedUnits > 0 ? ` (${skippedUnits} skipped — no source text)` : ""}`,
   );
 
-  return { validated, units: unitCount, sources: groups.length };
+  if (!autoRemediate) {
+    await reporter.skipStage("remediating", "Validate-only mode");
+  }
+
+  await reporter.setGraphRepair({ phase: "storing" });
+  await reporter.beginStage("storing", autoRemediate ? "Finalizing auto-remediation" : "Finalizing re-validation", 1);
+  await reporter.completeStage("storing", "Validation statuses updated");
+
+  const statsAfter = await getConnectGraphStats(job.workspaceId).catch(() => null);
+  const quarantineAfter = statsAfter?.validation.awaiting_triage ?? null;
+  await reporter.setGraphRepair({
+    ...(quarantineAfter != null ? { quarantine_after: quarantineAfter } : {}),
+    units_processed: unitCount,
+    sources_done: groups.length,
+  });
+
+  const quarantineDelta =
+    scopedQuarantineBefore != null && quarantineAfter != null
+      ? ` Quarantine: ${scopedQuarantineBefore} → ${quarantineAfter}.`
+      : "";
+
+  const remediateSummary = autoRemediate
+    ? ` ${repaired} repaired, ${dropped} dropped${embedded > 0 ? `, ${embedded} re-embedded` : ""}.`
+    : "";
+
+  const previewSummary =
+    previewOnlySources > 0
+      ? ` ${previewOnlySources} source(s) used preview-only text — link source documents for reliable remediation.`
+      : "";
+
+  const remediationFailSummary =
+    sourcesRemediationFailed > 0
+      ? ` ${sourcesRemediationFailed} source(s) failed remediation — check activity log for upstream model errors.`
+      : "";
+
+  const summary =
+    skippedUnits > 0
+      ? `${autoRemediate ? "Auto-remediation" : "Re-validation"} finished — ${validated}/${unitCount} unit(s) updated; ${skippedUnits} skipped (could not load source text).${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`
+      : `${autoRemediate ? "Auto-remediation" : "Re-validation"} complete — ${validated}/${unitCount} unit(s) updated.${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`;
+
+  await reporter.complete(summary, "full");
+  if (validated === 0 && unitCount > 0) {
+    await reporter.log(
+      "VALIDATE",
+      "No validation statuses were written. Check run logs above for skipped sources, Surreal credentials, and that Pipeline → Sources still has parsed documents for this graph.",
+    );
+  }
+
+  return { validated, units: unitCount, sources: groups.length, repaired, dropped, embedded };
 }
+
+/** Exported for unit tests. */
+export { unitMatchesScope as matchesRevalidateUnitScope };

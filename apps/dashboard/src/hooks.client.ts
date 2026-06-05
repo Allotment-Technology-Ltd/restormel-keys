@@ -1,5 +1,8 @@
+import { browser, dev } from "$app/environment";
+import type { HandleClientError } from "@sveltejs/kit";
 import posthog from "posthog-js";
 import { env } from "$env/dynamic/public";
+import { reportClientDebug, reportClientError, setupClientDebugCapture } from "$lib/debug/client-debug";
 
 const DASHBOARD_PREFIX = "/keys/dashboard";
 const SESSION_REFRESH_MS = 4 * 60 * 1000;
@@ -21,7 +24,7 @@ function setupAuthSessionRefresh(): void {
   if (!window.location.pathname.startsWith(DASHBOARD_PREFIX)) return;
 
   const refresh = () => {
-    void fetch(`${DASHBOARD_PREFIX}/api/auth/get-session`, {
+    void fetch(`${DASHBOARD_PREFIX}/api/auth/session-cache`, {
       credentials: "include",
       cache: "no-store",
     });
@@ -31,8 +34,11 @@ function setupAuthSessionRefresh(): void {
   window.setInterval(refresh, SESSION_REFRESH_MS);
 }
 
-void clearStaleServiceWorkers();
-setupAuthSessionRefresh();
+if (browser) {
+  setupClientDebugCapture();
+  void clearStaleServiceWorkers();
+  setupAuthSessionRefresh();
+}
 
 const key = env.PUBLIC_POSTHOG_KEY;
 /**
@@ -40,14 +46,31 @@ const key = env.PUBLIC_POSTHOG_KEY;
  */
 const host = env.PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 
-if (key) {
+if (browser && key) {
   posthog.init(key, {
     api_host: host,
     defaults: "2026-01-30",
     capture_pageview: true,
     persistence: "localStorage+cookie",
     loaded: (ph) => {
+      reportClientDebug("hooks.client.ts:posthog-loaded", "posthog loaded", {}, "H5");
       ph.reloadFeatureFlags();
     },
   });
 }
+
+export const handleClientError: HandleClientError = ({ error, event, status }) => {
+  const detail = {
+    pathname: event.url.pathname,
+    search: event.url.search,
+    status,
+    routeId: event.route.id ?? null,
+    message: error instanceof Error ? error.message : String(error),
+    name: error instanceof Error ? error.name : "Unknown",
+  };
+  reportClientError("hooks.client.ts:handleClientError", error, detail, "CX-SKIT");
+  if (dev) {
+    console.error("[restormel] SvelteKit client error", detail, error);
+  }
+  return { message: "Internal Error" };
+};

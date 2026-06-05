@@ -12,7 +12,13 @@ import {
 import type {
   ConnectSourceDocument,
   ConnectSourceDocumentCreate,
+  ConnectSourceProvenance,
 } from "@restormel/contracts/connect";
+import {
+  parseStoredProvenance,
+  provenancePreviewText,
+  resolveDocumentDisplayName,
+} from "$lib/server/connect/source-document-provenance";
 import {
   deleteConnectSourceDocument,
   getConnectSourceDocumentsByIds,
@@ -33,6 +39,7 @@ export function sourceDocumentRecordToApi(row: ConnectSourceDocumentRecord): Con
   const status = (["parsed", "failed", "pending"] as const).includes(row.status as never)
     ? (row.status as ConnectSourceDocument["status"])
     : "parsed";
+  const provenance = parseStoredProvenance(row.provenance);
   return {
     id: row.id,
     workspace_id: row.workspaceId,
@@ -40,6 +47,7 @@ export function sourceDocumentRecordToApi(row: ConnectSourceDocumentRecord): Con
     name: row.name,
     ...(row.mime ? { mime: row.mime } : {}),
     ...(row.url ? { url: row.url } : {}),
+    ...(provenance ? { provenance } : {}),
     char_count: row.charCount,
     chunk_count: row.chunkCount,
     status,
@@ -81,12 +89,18 @@ function decodeUploadContent(input: ConnectSourceDocumentCreate): FetchedDocumen
   return { bytes, mime: input.mime ?? "text/plain", name: input.name ?? "upload.txt" };
 }
 
+function provenancePayload(input: ConnectSourceDocumentCreate): Record<string, unknown> | null {
+  if (!input.provenance) return null;
+  return { ...input.provenance };
+}
+
 export async function addSourceDocument(
   workspaceId: string,
   input: ConnectSourceDocumentCreate,
 ): Promise<ConnectSourceDocument> {
   const id = randomUUID();
   const sourceKind = input.kind;
+  const provenance = input.provenance;
   let fetched: FetchedDocument;
   let url: string | null = null;
   try {
@@ -102,17 +116,27 @@ export async function addSourceDocument(
       id,
       workspaceId,
       sourceKind,
-      name: input.name ?? url ?? "document",
+      name: resolveDocumentDisplayName({
+        fallbackName: input.name ?? url ?? "document",
+        provenance,
+        explicitName: input.name,
+      }),
       url,
       charCount: 0,
       chunkCount: 0,
       status: "failed",
       error: message.slice(0, 400),
+      provenance: provenancePayload(input),
     });
     return sourceDocumentRecordToApi(rec);
   }
 
   const parser = pickParser("builtin");
+  const displayName = resolveDocumentDisplayName({
+    fallbackName: fetched.name,
+    provenance,
+    explicitName: input.name,
+  });
   try {
     const parsed = await parser.parse(fetched);
     const chunks = chunkDocument(parsed.markdown);
@@ -120,7 +144,7 @@ export async function addSourceDocument(
       id,
       workspaceId,
       sourceKind,
-      name: fetched.name,
+      name: displayName,
       mime: fetched.mime,
       url,
       text: parsed.markdown,
@@ -128,6 +152,7 @@ export async function addSourceDocument(
       chunkCount: chunks.length,
       status: "parsed",
       parserProvider: parser.id,
+      provenance: provenancePayload(input),
     });
     return sourceDocumentRecordToApi(rec);
   } catch (e) {
@@ -137,13 +162,14 @@ export async function addSourceDocument(
       id,
       workspaceId,
       sourceKind,
-      name: fetched.name,
+      name: displayName,
       mime: fetched.mime,
       url,
       charCount: 0,
       chunkCount: 0,
       status: "failed",
       error: (unsupported ? message : `Parse failed: ${message}`).slice(0, 400),
+      provenance: provenancePayload(input),
     });
     return sourceDocumentRecordToApi(rec);
   }
@@ -157,9 +183,21 @@ export async function removeSourceDocument(workspaceId: string, id: string): Pro
 export async function expandDocumentsToSources(
   workspaceId: string,
   ids: string[],
-): Promise<{ text: string; title: string }[]> {
+): Promise<
+  { text: string; title: string; url?: string; provenance?: ConnectSourceProvenance }[]
+> {
   const rows = await getConnectSourceDocumentsByIds({ ids, workspaceId });
   return rows
     .filter((r) => r.status === "parsed" && r.text && r.text.trim())
-    .map((r) => ({ text: r.text as string, title: r.name }));
+    .map((r) => {
+      const provenance = parseStoredProvenance(r.provenance);
+      const title = provenance?.title?.trim() || r.name;
+      const url = provenance?.canonical_url ?? provenance?.url ?? r.url ?? undefined;
+      return {
+        text: r.text as string,
+        title,
+        ...(url ? { url } : {}),
+        ...(provenance ? { provenance } : {}),
+      };
+    });
 }

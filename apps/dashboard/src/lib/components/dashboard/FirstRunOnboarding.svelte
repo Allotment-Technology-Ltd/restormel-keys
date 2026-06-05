@@ -420,11 +420,6 @@
     cursor: pointer;
   }
 
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
-
   .btn-secondary {
     background: transparent;
     color: var(--rm-muted);

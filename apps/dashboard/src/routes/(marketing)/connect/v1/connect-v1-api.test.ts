@@ -81,6 +81,7 @@ describe("POST /connect/v1/retrieve", () => {
     expect(data.contract_version).toBe("2026-06-01");
     expect(data.context_block).toBeDefined();
     expect(data.metadata.retrieval_degraded).toBe(true);
+    expect(data.metadata.retrieval_degraded_code).toBe("graph_target_not_configured");
   });
 });
 

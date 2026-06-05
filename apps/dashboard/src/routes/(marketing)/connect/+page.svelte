@@ -1,10 +1,14 @@
 <script lang="ts">
   import SuiteProofGallery from "$lib/components/suite/SuiteProofGallery.svelte";
   import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { moduleById } from "$lib/suite/suite-modules";
 
   const connectMod = moduleById("connect");
+
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
 
   const outcomes = [
     {
@@ -57,12 +61,9 @@
       <a href="/testing">Restormel Testing</a> to assure agent behaviour in CI.
     </p>
 
-    <EcosystemStrip variant="compact" />
+    <EcosystemStrip variant="compact" stampEyebrow="Fits your stack" moduleFlags={flags} />
 
-    <div class="proof-wrap">
-      <p class="proof-kicker">See the stack</p>
-      <SuiteProofGallery compact />
-    </div>
+    <SuiteProofGallery compact stampEyebrow="See the stack" />
   </section>
 
 <style>
@@ -97,10 +98,17 @@
     gap: var(--space-4);
   }
   .outcome {
-    border: var(--brut-border-width) solid var(--brut-ink);
+    border: 2px solid var(--brut-ink);
+    border-radius: 0;
     background: var(--brut-white);
-    box-shadow: var(--brut-shadow);
-    padding: var(--space-4);
+    box-shadow: 4px 4px 0 var(--brut-ink);
+    padding: var(--space-3) var(--space-4);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+
+  .outcome:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--brut-ink);
   }
   .outcome-title {
     margin: 0 0 var(--space-2);
@@ -126,15 +134,8 @@
     color: var(--brut-blue);
     font-weight: 700;
   }
-  .proof-wrap {
+  :global(.proof-gallery-frame),
+  :global(.stack-rail-outer-stamp) {
     margin-top: var(--space-6);
-  }
-  .proof-kicker {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--rm-dim);
   }
 </style>

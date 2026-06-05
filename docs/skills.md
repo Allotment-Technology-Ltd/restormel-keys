@@ -10,7 +10,7 @@ Skill inventory and when to use. **Single source** for the Phase 00 set; full de
 | roadmap-status-sync | ROADMAP and STATUS need syncing |
 | changelog-updater | Meaningful repo change; update CHANGELOG |
 | prompt-librarian | Inventory/classify prompts; recommend promotions |
-| security-review | Before/after security-sensitive changes |
+| security-review | Legacy name; use **restormel-high-risk-security** (`.cursor/skills/`) + [pre-pr-security-review.md](guides/pre-pr-security-review.md) before PRs |
 | architecture-recorder | Record architecture or governance decisions |
 | release-prep | Before Phase 01 or release; readiness audit |
 | content-writing | Marketing/landing copy; align with brand voice and marketing best practice |

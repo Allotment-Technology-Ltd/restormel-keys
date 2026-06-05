@@ -626,10 +626,6 @@
     text-decoration: none;
     display: inline-block;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
@@ -730,8 +726,8 @@
     font-size: 0.7rem;
   }
   .lifecycle-current {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
   .lifecycle-preview {
     background: var(--rm-surface);

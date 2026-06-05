@@ -428,8 +428,8 @@
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
     border: none;
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
@@ -533,8 +533,8 @@
   }
   .btn-apply {
     border: 1px solid var(--rm-border);
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
   .btn-clear {
     border: 1px solid var(--rm-border);

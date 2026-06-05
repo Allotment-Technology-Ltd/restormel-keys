@@ -12,6 +12,7 @@ Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/bo
 - **One canonical source per topic.** Update the owning doc; avoid duplicating truth. See [docs/working-agreement.md](docs/working-agreement.md).
 - **Exact target files;** thin slices. Prefer scripts/CI for repeatable checks.
 - **Security:** No committed secrets; no raw key logging. [docs/security-baseline.md](docs/security-baseline.md) and [SECURITY.md](SECURITY.md).
+- **Before PRs:** Run [docs/guides/pre-pr-security-review.md](docs/guides/pre-pr-security-review.md) (Cursor skill **restormel-high-risk-security**). Local gate complements CI `security` (TruffleHog + `pnpm audit`); it does not replace it.
 
 ## Restormel Testing (`@restormel/testing-*`)
 
@@ -31,3 +32,5 @@ If you integrate Restormel Keys from another GitHub project, use **[docs/github-
 ## PRs
 
 Use the repo PR template. Confirm scope respects bootstrap constraints and canonical docs are updated as needed.
+
+**Pre-PR security:** For code or security-sensitive docs, complete the [pre-PR security gate](docs/guides/pre-pr-security-review.md) (`PASS` before `gh pr create`). High-risk areas include BYOK storage, auth, Connect/MCP, gateway routes, and credential encryption.

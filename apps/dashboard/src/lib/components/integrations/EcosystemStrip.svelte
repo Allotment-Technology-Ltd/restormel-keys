@@ -3,17 +3,20 @@
    * Compact stack compatibility rail — visual flow, not a catalog grid.
    * Uses {@link INTEGRATION_CATALOG}; filtered by suite module flags.
    */
-  import { page } from "$app/stores";
   import {
     STACK_LAYER_ORDER,
     type IntegrationCatalogEntry,
     type StackLayer,
   } from "@restormel/aaif";
   import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
-  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import type { ModuleFlags } from "$lib/module-flags-types";
 
   /** compact = legacy rail; diagram = suite landing stack flow (restormel_redesign.html) */
   export let variant: "full" | "compact" | "diagram" = "full";
+  /** From route page/layout — avoid `$page` in this lib component. */
+  export let moduleFlags: ModuleFlags;
+  /** Mono stamp above rail (hero-visual pattern) — use on /product, /connect module landings. */
+  export let stampEyebrow: string | null = null;
 
   const maxPerLayerFull = 12;
   const maxPerLayerCompact = 6;
@@ -25,7 +28,7 @@
     ship: "Ship",
   };
 
-  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: flags = moduleFlags;
   $: catalogEntries = integrationCatalogForFlags(flags);
   $: cap = variant === "full" ? maxPerLayerFull : maxPerLayerCompact;
   $: isDiagram = variant === "diagram";
@@ -41,11 +44,24 @@
   })).filter((g) => g.entries.length > 0);
 
   $: flatChips = layerGroups.flatMap((g) => g.entries);
+  $: isBrutalStamp = stampEyebrow != null && stampEyebrow.length > 0 && !isDiagram;
 </script>
 
 {#if flatChips.length > 0}
-  <div class="stack-rail-outer" class:stack-rail-outer-diagram={isDiagram}>
-  <section class="stack-rail" class:stack-rail-diagram={isDiagram} aria-labelledby="stack-rail-heading">
+  <div
+    class="stack-rail-outer"
+    class:stack-rail-outer-diagram={isDiagram}
+    class:stack-rail-outer-stamp={isBrutalStamp}
+  >
+  {#if isBrutalStamp}
+    <p class="stack-rail-frame-eyebrow">{stampEyebrow}</p>
+  {/if}
+  <section
+    class="stack-rail"
+    class:stack-rail-diagram={isDiagram}
+    class:stack-rail-stamp={isBrutalStamp}
+    aria-labelledby="stack-rail-heading"
+  >
     <h2 id="stack-rail-heading" class="visually-hidden">Compatible with your stack</h2>
 
     <div class="stack-rail-track">
@@ -97,6 +113,9 @@
       </div>
 
       <div class="stack-rail-arrow" aria-hidden="true">
+        {#if isBrutalStamp}
+          <span class="stack-rail-arrow-step" aria-hidden="true">01</span>
+        {/if}
         <span class="stack-rail-arrow-glyph">→</span>
       </div>
 
@@ -118,6 +137,9 @@
       </div>
 
       <div class="stack-rail-arrow" aria-hidden="true">
+        {#if isBrutalStamp}
+          <span class="stack-rail-arrow-step" aria-hidden="true">02</span>
+        {/if}
         <span class="stack-rail-arrow-glyph">→</span>
       </div>
 
@@ -491,5 +513,161 @@
 
   .stack-rail-outer-diagram {
     margin-top: 2.5rem;
+  }
+
+  /* ── Stamp frame (module landings: /product, /connect) ── */
+  .stack-rail-outer-stamp {
+    margin: var(--space-6) 0;
+    border: 2px solid var(--color-ink);
+    box-shadow: 4px 4px 0 var(--color-ink);
+    background: var(--color-surface);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+
+  .stack-rail-outer-stamp:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--color-ink);
+  }
+
+  .stack-rail-frame-eyebrow {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--color-ink);
+    background: var(--color-bg-deep);
+    color: var(--color-ink);
+  }
+
+  .stack-rail-stamp {
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .stack-rail-stamp .stack-rail-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  .stack-rail-stamp .stack-rail-punch {
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm);
+    font-weight: 900;
+    letter-spacing: var(--text-display-tracking);
+    line-height: 1.05;
+  }
+
+  .stack-rail-stamp .stack-rail-stack {
+    background: var(--color-bg);
+  }
+
+  .stack-rail-stamp .stack-rail-restormel {
+    background: var(--color-yellow);
+    border-bottom: 2px solid var(--color-ink);
+  }
+
+  @media (min-width: 52rem) {
+    .stack-rail-stamp .stack-rail-restormel {
+      border-bottom: 0;
+      border-right: 2px solid var(--color-ink);
+    }
+  }
+
+  .stack-rail-stamp .stack-rail-outcome {
+    background: var(--color-surface);
+  }
+
+  .stack-rail-stamp .stack-rail-arrow {
+    display: none;
+    flex-direction: column;
+    gap: 0.25rem;
+    background: var(--color-bg-deep);
+    border-right: 2px solid var(--color-ink);
+    border-bottom: 2px solid var(--color-ink);
+    min-width: 2.75rem;
+  }
+
+  @media (min-width: 52rem) {
+    .stack-rail-stamp .stack-rail-arrow {
+      display: flex;
+      border-bottom: 0;
+    }
+  }
+
+  .stack-rail-stamp .stack-rail-arrow-step {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--color-ink-faint);
+  }
+
+  .stack-rail-stamp .stack-rail-arrow-glyph {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .stack-rail-stamp .stack-rail-group-tag {
+    font-family: var(--font-mono);
+    letter-spacing: 0.12em;
+    border-width: 2px;
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--color-ink);
+  }
+
+  .stack-rail-stamp .stack-chip {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: 0.04em;
+    border-width: 2px;
+    border-radius: 0;
+    box-shadow: 3px 3px 0 var(--color-ink);
+    min-height: 2.25rem;
+  }
+
+  .stack-rail-stamp .stack-chip:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--color-ink);
+    background: var(--color-yellow);
+  }
+
+  .stack-rail-stamp .stack-rail-foot {
+    border-top: 2px solid var(--color-ink);
+    background: var(--color-bg-deep);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .stack-rail-stamp .stack-rail-foot-note {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stack-rail-outer-stamp,
+    .stack-rail-outer-stamp:hover,
+    .stack-rail-stamp .stack-chip:hover {
+      transition: none;
+      transform: none;
+      box-shadow: 4px 4px 0 var(--color-ink);
+    }
+
+    .stack-rail-stamp .stack-chip {
+      box-shadow: 3px 3px 0 var(--color-ink);
+    }
   }
 </style>

@@ -2,6 +2,14 @@
   /** Legacy props + `$:` — `runes: false` (see changelog/+page.svelte). */
   import { enhance } from "$app/forms";
   import type { ActionData, PageData } from "./$types";
+  import SophiaShowcaseCard from "$lib/components/marketing/SophiaShowcaseCard.svelte";
+  import UseCaseCard from "$lib/components/marketing/UseCaseCard.svelte";
+  import { getUseCaseById } from "$lib/content/use-cases";
+
+  const foundersTemplateIds = ["research-literature", "competitive-intelligence", "mythology-pantheons"] as const;
+  $: foundersTemplates = foundersTemplateIds
+    .map((id) => getUseCaseById(id))
+    .filter((u): u is NonNullable<typeof u> => u !== undefined);
 
   export let data: PageData;
   export let form: ActionData | undefined = undefined;
@@ -116,6 +124,23 @@
           <strong>Optional public signal</strong> — star the repo, a short post, or a logo on our site if you’re comfortable.
         </li>
       </ol>
+    </section>
+
+    <section class="section-building container" aria-labelledby="building-examples-heading">
+      <h2 id="building-examples-heading" class="section-h2">What founders are building</h2>
+      <div class="founders-sophia-wrap">
+        <SophiaShowcaseCard featured showPullQuote />
+      </div>
+      <ul class="founders-template-row" role="list">
+        {#each foundersTemplates as useCase (useCase.id)}
+          <li>
+            <UseCaseCard {useCase} showQueries={false} showCta={false} compact />
+          </li>
+        {/each}
+      </ul>
+      <p class="founders-template-foot">
+        Pick a starting point, or bring your own domain. <a href="/use-cases">Browse all templates →</a>
+      </p>
     </section>
 
     <section class="section-form section-alt" aria-labelledby="apply-heading">
@@ -399,6 +424,43 @@
     font-size: var(--text-sm);
     line-height: var(--leading-relaxed);
     color: var(--rm-muted);
+  }
+
+  .section-building {
+    padding: var(--space-10) 0;
+    max-width: var(--rm-container-max);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .founders-sophia-wrap {
+    margin-bottom: var(--space-6);
+  }
+
+  .founders-template-row {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 48rem) {
+    .founders-template-row {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .founders-template-foot {
+    margin: var(--space-6) 0 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+
+  .founders-template-foot a {
+    font-weight: 700;
+    color: var(--rm-sage);
   }
 
   .section-ask {

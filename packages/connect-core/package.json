@@ -16,6 +16,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./ingest/job-record": {
+      "types": "./dist/ingest/job-record.d.ts",
+      "import": "./dist/ingest/job-record.js"
+    },
+    "./ingest/worker-stub": {
+      "types": "./dist/ingest/worker-stub.d.ts",
+      "import": "./dist/ingest/worker-stub.js"
+    },
+    "./ingest/pipeline-focus": {
+      "types": "./dist/ingest/pipeline-focus.d.ts",
+      "import": "./dist/ingest/pipeline-focus.js"
+    },
+    "./ingest/validation": {
+      "types": "./dist/ingest/validation.d.ts",
+      "import": "./dist/ingest/validation.js"
+    },
+    "./ingest/remediation": {
+      "types": "./dist/ingest/remediation.d.ts",
+      "import": "./dist/ingest/remediation.js"
+    },
+    "./ingest/golden-eval": {
+      "types": "./dist/ingest/golden-eval.d.ts",
+      "import": "./dist/ingest/golden-eval.js"
     }
   },
   "scripts": {

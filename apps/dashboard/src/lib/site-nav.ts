@@ -28,6 +28,7 @@ export function normalizePath(pathname: string): string {
 export const productNavLinks: SiteNavLink[] = [
   { href: "/", label: "Suite overview" },
   { href: "/product", label: "Capabilities" },
+  { href: "/use-cases", label: "Use cases" },
   { href: SUITE_DOCS_HREF, label: "Documentation" },
   { href: DASHBOARD_BASE, label: "Dashboard" },
 ];
@@ -96,6 +97,7 @@ export function isProductNavActive(path: string): boolean {
   return (
     p === "/" ||
     p === "/product" ||
+    p === "/use-cases" ||
     p.startsWith(SUITE_DOCS_HREF) ||
     p.startsWith("/keys") ||
     p.startsWith("/testing") ||
@@ -143,6 +145,7 @@ export function isLinkActive(path: string, href: string): boolean {
   const h = normalizePath(href);
   if (h === "/") return p === "/";
   if (h === "/product") return p === "/product";
+  if (h === "/use-cases") return p === "/use-cases";
   if (h === SUITE_DOCS_HREF) return p === SUITE_DOCS_HREF || p.startsWith(SUITE_DOCS_HREF + "/");
   if (h === "/keys") return p === "/keys";
   if (h === "/testing") return p === "/testing";

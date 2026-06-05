@@ -234,6 +234,8 @@ export interface RetrievalOptions {
 	viewerUid?: string | null;
 	/** Opt-in thinker graph enrichment for retrieved claim context */
 	enrichWithThinkerContext?: boolean;
+	/** Skip hybrid seeding; start traversal from these claim ids (get_context_for). */
+	forcedSeedClaimIds?: string[];
 }
 
 const EMPTY_RESULT: RetrievalResult = {
@@ -829,12 +831,27 @@ export async function retrieveContext(
 			}
 		}
 
-		if ((!denseSeedClaims || denseSeedClaims.length === 0) && lexicalSeedClaims.length === 0) {
+		if (options.forcedSeedClaimIds && options.forcedSeedClaimIds.length > 0) {
+			const forcedRows = await store.query<SeedRow[]>(
+				`${rowProjection}
+				FROM claim
+				WHERE id INSIDE $ids AND ${postFilters.join(' AND ')}
+				LIMIT $limit`,
+				{ ids: options.forcedSeedClaimIds, limit: options.forcedSeedClaimIds.length, ...sharedParams }
+			);
+			seedClaims = forcedRows ?? [];
+			seedPoolCount = seedClaims.length;
+			if (seedClaims.length === 0) {
+				return {
+					...EMPTY_RESULT,
+					degraded: true,
+					degraded_reason: 'seed_claim_not_found'
+				};
+			}
+		} else if ((!denseSeedClaims || denseSeedClaims.length === 0) && lexicalSeedClaims.length === 0) {
 			console.log('[RETRIEVAL] No candidates found in dense or lexical retrieval');
 			return EMPTY_RESULT;
-		}
-
-		if (hybridMode === 'dense_only') {
+		} else if (hybridMode === 'dense_only') {
 			seedClaims = denseSeedClaims;
 			seedPoolCount = denseSeedClaims.length;
 		} else {
@@ -1913,4 +1930,20 @@ export function buildContextBlock(result: RetrievalResult): string {
 	lines.push('Use Google Search to verify, challenge, or extend these claims with current sources.');
 
 	return lines.join('\n');
+}
+
+/**
+ * Graph traversal from a known claim id (topic supplements lexical context when provided).
+ */
+export async function retrieveContextFromSeed(
+	seedClaimId: string,
+	topic: string,
+	deps: GraphRagDeps,
+	options: RetrievalOptions = {}
+): Promise<RetrievalResult> {
+	const query = topic.trim() || seedClaimId;
+	return retrieveContext(query, deps, {
+		...options,
+		forcedSeedClaimIds: [seedClaimId]
+	});
 }

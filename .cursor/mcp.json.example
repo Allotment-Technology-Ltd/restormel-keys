@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "aikido": {
+      "command": "npx",
+      "args": ["-y", "@aikidosec/mcp"],
+      "envFile": "${userHome}/.cursor/aikido.env"
+    },
+    "midjourney": {
+      "type": "streamable-http",
+      "url": "https://midjourney.mcp.acedata.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:ACEDATA_MIDJOURNEY_API_TOKEN}"
+      }
+    }
+  }
+}

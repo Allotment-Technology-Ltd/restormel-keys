@@ -82,13 +82,26 @@
   font-family: var(--font-mono);
   font-size: var(--text-mono-sm);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  border: var(--border-thin);
+  border: var(--border);
   border-radius: 0;
   padding: 2px 8px;
   background: var(--color-surface);
   color: var(--color-ink);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+:is(.app-main, .main, .admin-main) .page-header,
+:is(.app-main, .main, .admin-main) :is(.dashboard-topbar, .topbar) {
+  border-bottom: 2px solid var(--color-ink);
+}
+
+:is(.app-main, .main, .admin-main) .empty-state {
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  background: var(--color-surface);
+  padding: var(--space-6);
 }
 
 :is(.app-main, .main, .admin-main) :is(.alert, .notice, .banner) {

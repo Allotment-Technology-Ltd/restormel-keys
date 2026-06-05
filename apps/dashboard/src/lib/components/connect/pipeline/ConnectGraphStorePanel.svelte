@@ -7,10 +7,8 @@
   } from "$lib/connect/pipeline-config";
   import { pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
-  import type { PipelineWizardStepId } from "$lib/connect/pipeline-config";
 
   export let embedded = false;
-  export let wizardStep: PipelineWizardStepId | null = null;
 
   $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
 
@@ -256,6 +254,16 @@
     }
   }
 
+  $: storeConnected = Boolean(target && (target.status === "ok" || target.secret_set));
+  $: storeDisplayUrl =
+    target?.provider === "postgres" && target.use_dashboard_database
+      ? "Workspace Neon database"
+      : target?.connection.endpoint ?? (target ? target.provider : "Not connected");
+  $: storeNsDb =
+    target?.connection.namespace && target?.connection.database
+      ? `${target.connection.namespace} · ${target.connection.database}`
+      : null;
+
   onMount(() => {
     loadGraphTarget();
   });
@@ -281,24 +289,34 @@
       </p>
     {/if}
 
-    {#if target}
-      <p class="connected" role="status">
-        {#if target.provider === "postgres" && target.use_dashboard_database}
-          {#if neonGraphStoreOn}
-            Using <strong>this workspace's Neon database</strong> (Restormel-managed connection)
-          {:else}
-            Using <strong>host Neon graph store</strong> (disabled on this deployment — reconnect with SurrealDB)
-          {/if}
-        {:else if target.provider === "postgres"}
-          Connected to <strong>Postgres</strong>
-          {#if target.connection.database}· db <code>{target.connection.database}</code>{/if}
-        {:else}
-          Connected to <code>{target.connection.endpoint}</code> · ns <code>{target.connection.namespace}</code> · db
-          <code>{target.connection.database}</code>
+    <div
+      class="store-status-card"
+      class:store-status-card-ok={storeConnected}
+      class:store-status-card-error={!storeConnected}
+      role="status"
+      aria-label="Graph store connection status"
+    >
+      <span class="store-status-glyph" aria-hidden="true">{storeConnected ? "■" : "□"}</span>
+      <div class="store-status-main">
+        <code class="store-status-url" title={storeDisplayUrl}>{storeDisplayUrl}</code>
+        {#if storeNsDb}
+          <span class="store-status-ns">{storeNsDb}</span>
         {/if}
-        <span class="badge {pipelineStatusClass(target.status)}">{target.status}</span>
-      </p>
-    {/if}
+      </div>
+      <button
+        type="button"
+        class="store-test-link"
+        on:click={testConnection}
+        disabled={testing || !canTestConnection}
+      >
+        {testing ? "Testing…" : "Test connection"}
+        {#if testMsg && !testing}
+          <span class="store-test-result" class:store-test-fail={testError}>{testError ? "✗" : "✓"}</span>
+        {/if}
+      </button>
+    </div>
+
+    <hr class="store-divider" />
 
     {#if neonGraphStoreOn}
       <div class="oneclick">
@@ -317,7 +335,7 @@
 
     <form class="form quick" on:submit|preventDefault={quickConnect}>
       <label class="field">
-        <span class="field-label">{target ? "Reconnect with a connection string" : "Paste your SurrealDB connection string"}</span>
+        <span class="field-label">Change connection</span>
         <input
           class="input"
           type="text"
@@ -362,7 +380,7 @@
         <button type="submit" class="btn btn-primary" disabled={connecting || !connStr.trim()}>
           {connecting ? "Connecting…" : "Connect"}
         </button>
-        <button type="button" class="btn btn-secondary" on:click={() => (showAdvanced = !showAdvanced)}>
+        <button type="button" class="btn btn-outline" on:click={() => (showAdvanced = !showAdvanced)}>
           {showAdvanced ? "Hide manual fields" : "Enter fields manually"}
         </button>
       </div>

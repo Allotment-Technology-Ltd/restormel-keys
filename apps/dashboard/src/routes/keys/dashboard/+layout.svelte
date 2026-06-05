@@ -26,8 +26,8 @@
   import { MONITOR_COMING_SOON_ITEMS, type MonitorInterestItem } from "$lib/dashboard-monitor-interest";
   import {
     isPipelineWizardPath,
-    parseWizardStepParam,
-    type PipelineWizardStepId,
+    isRouteBuilderPath,
+    parseReturnTo,
   } from "$lib/connect/pipeline-config";
 
   $: user = $page.data.user;
@@ -45,9 +45,11 @@
   $: journeySignals = $page.data.journeySignals ?? null;
   $: monitorInterestFromRedirect = ($page.data.monitorInterestFromRedirect ?? null) as MonitorInterestItem | null;
   $: monitorComingSoon = moduleFlags ? !moduleFlags.monitor : true;
-  $: wizardReturnStep = parseWizardStepParam($page.url.searchParams.get("wizard_step"));
+  $: returnContext = parseReturnTo($page.url.searchParams);
   $: showWizardReturn =
-    Boolean(wizardReturnStep) && !isPipelineWizardPath($page.url.pathname);
+    returnContext?.kind === "pipeline-setup" &&
+    !isPipelineWizardPath($page.url.pathname) &&
+    !isRouteBuilderPath($page.url.pathname);
 
   const STORAGE_KEY = "rk_dashboard_sidebar_collapsed";
   const NAV_GROUPS_STORAGE_KEY = "restormel_nav_groups";
@@ -172,9 +174,9 @@
 {:else if isAuthRoute}
   <slot />
 {:else}
-  <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="hover">
+  <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="tap">
     <aside class="sidebar" aria-label="Dashboard navigation">
-      <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="hover" data-sveltekit-preload-code="viewport">
+      <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="tap">
         {#if !projectsNavHidden}
           <div class="nav-section nav-section-scope">
             <p class="nav-section-label" id="nav-scope-label">Project</p>
@@ -289,7 +291,7 @@
           <a href={SUITE_MAP_LINK.href} class="topbar-help-link">{SUITE_MAP_LINK.label}</a>
         </nav>
       </header>
-      <main class="main" data-sveltekit-preload-data="hover">
+      <main class="main" data-sveltekit-preload-data="tap">
         {#if !user && !isAuthRoute}
           {#if authError === "session-verifier-not-found"}
             <div class="auth-error" role="alert">
@@ -354,8 +356,8 @@
             </div>
           {/if}
           <DashboardJourneyBanner {currentPath} {user} {journeySignals} {moduleFlags} />
-          {#if showWizardReturn && wizardReturnStep}
-            <ConnectWizardReturnBanner step={wizardReturnStep as PipelineWizardStepId} />
+          {#if showWizardReturn && returnContext?.kind === "pipeline-setup"}
+            <ConnectWizardReturnBanner context={returnContext} />
           {/if}
           <slot />
         {/if}

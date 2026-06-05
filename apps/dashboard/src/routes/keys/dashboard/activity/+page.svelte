@@ -587,14 +587,6 @@
     text-decoration: none;
     font-size: var(--text-sm);
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-    border: none;
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: filter 0.12s ease, transform 0.06s ease;
-  }
   .btn-primary:hover:not(:disabled) {
     filter: brightness(1.08);
   }

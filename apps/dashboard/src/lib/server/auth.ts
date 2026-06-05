@@ -4,6 +4,7 @@
  * `apps/dashboard/.env.local` is respected (Vite envDir); `process.env` alone does not.
  */
 import { env } from "$env/dynamic/private";
+import { dev } from "$app/environment";
 
 export const baseUrl = () => env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -116,6 +117,73 @@ export type GetSessionResult = {
   setCookies: string[];
 };
 
+/** Short TTL avoids hammering Neon Auth on every dashboard navigation (dev + prod). */
+export const SESSION_CACHE_MS = 20_000;
+/** @deprecated Use SESSION_CACHE_MS — kept for tests. */
+export const PROD_SESSION_CACHE_MS = SESSION_CACHE_MS;
+/** Re-use last good session when Neon returns 429 instead of treating the user as logged out. */
+const STALE_SESSION_ON_429_MS = 60_000;
+
+type SessionCacheEntry = { at: number; result: GetSessionResult };
+const sessionCache = new Map<string, SessionCacheEntry>();
+const sessionInFlight = new Map<string, Promise<GetSessionResult>>();
+
+function sessionCacheKey(host: string, cookie: string): string {
+  return `${host}\0${cookie}`;
+}
+
+function readSessionCache(key: string, maxAgeMs: number): GetSessionResult | null {
+  const hit = sessionCache.get(key);
+  if (!hit || Date.now() - hit.at > maxAgeMs) return null;
+  return hit.result;
+}
+
+function writeSessionCache(key: string, result: GetSessionResult): void {
+  if (result.data?.user) {
+    sessionCache.set(key, { at: Date.now(), result });
+  }
+}
+
+async function fetchSessionFromNeon(
+  url: string,
+  cookie: string,
+  host: string,
+  cacheKey: string,
+): Promise<GetSessionResult> {
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { cookie },
+    cache: "no-store",
+  });
+  const setCookies = res.ok
+    ? rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), host)
+    : [];
+
+  if (res.status === 429) {
+    const stale = readSessionCache(cacheKey, STALE_SESSION_ON_429_MS);
+    if (stale?.data?.user) {
+      if (dev) {
+        console.warn("[auth] Neon Auth rate limited (429); using cached session");
+      }
+      return stale;
+    }
+    if (dev) {
+      console.warn("[auth] Neon Auth rate limited (429); no cached session — wait a few seconds and refresh");
+    }
+    return { data: null, error: null, setCookies };
+  }
+
+  if (!res.ok) {
+    return { data: null, error: null, setCookies };
+  }
+
+  const data = (await res.json()) as { user?: SessionUser; session?: unknown } | null;
+  const user = data?.user ?? null;
+  const result: GetSessionResult = { data: user ? { user } : null, error: null, setCookies };
+  writeSessionCache(cacheKey, result);
+  return result;
+}
+
 export async function getSession(
   request: Request,
   host = ""
@@ -126,20 +194,20 @@ export async function getSession(
   }
   try {
     const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { cookie },
-      cache: "no-store",
+    const cacheKey = sessionCacheKey(host, cookie);
+
+    const cacheTtlMs = SESSION_CACHE_MS;
+    const fresh = readSessionCache(cacheKey, cacheTtlMs);
+    if (fresh) return fresh;
+
+    const inFlight = sessionInFlight.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const promise = fetchSessionFromNeon(url, cookie, host, cacheKey).finally(() => {
+      sessionInFlight.delete(cacheKey);
     });
-    const setCookies = res.ok
-      ? rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), host)
-      : [];
-    if (!res.ok) {
-      return { data: null, error: null, setCookies };
-    }
-    const data = (await res.json()) as { user?: SessionUser; session?: unknown } | null;
-    const user = data?.user ?? null;
-    return { data: user ? { user } : null, error: null, setCookies };
+    sessionInFlight.set(cacheKey, promise);
+    return await promise;
   } catch (e) {
     return { data: null, error: e instanceof Error ? e : new Error(String(e)), setCookies: [] };
   }

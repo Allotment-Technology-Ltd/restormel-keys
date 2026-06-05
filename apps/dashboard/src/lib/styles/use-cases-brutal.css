@@ -1,0 +1,16 @@
+/**
+ * /use-cases — page layout only. Ledger patterns: marketing-ledger.css (design system).
+ */
+
+.use-cases-landing .uc-section {
+  border-top: 2px solid var(--color-ink);
+}
+
+.use-cases-landing .uc-grid .use-case-card,
+.use-cases-landing .uc-grid .sophia-card {
+  width: 100%;
+}
+
+.use-cases-landing .uc-grid-span-full {
+  display: flex;
+}

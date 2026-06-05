@@ -1,0 +1,126 @@
+/**
+ * Marketing ledger — canonical neo-brutalist section rhythm from /use-cases.
+ * Import via marketing-shell.css. Page-specific overrides stay in use-cases-brutal.css.
+ */
+
+:is(.marketing-page, .suite-landing, .use-cases-landing) {
+  --ledger-shadow: var(--mkt-shadow-ink, 4px 4px 0 var(--color-ink));
+  --ledger-shadow-lift: var(--mkt-shadow-lift, 6px 6px 0 var(--color-ink));
+}
+
+/* ── Section tags: full-width rule (default) vs inverted slab (hero / featured bands) ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-section-tag {
+  letter-spacing: 0.18em;
+  border-bottom-width: 3px;
+}
+
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-section-tag--inverted,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero-slab .suite-section-tag,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero .suite-section-tag {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+  border-bottom: 2px solid var(--color-ink);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: var(--space-5);
+  display: inline-block;
+  width: auto;
+}
+
+/* ── Display titles on yellow slabs ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero-slab .suite-section-title,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero .suite-section-title,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero.suite-hero-slab .suite-hero-title {
+  font-size: clamp(2.5rem, 6vw, 4.25rem);
+  max-width: 14ch;
+  text-shadow: 3px 3px 0 var(--color-surface);
+}
+
+/* ── Lead copy: ink left rule ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-lead-rule,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero-slab .suite-section-sub,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero .suite-section-sub,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero.suite-hero-slab .suite-hero-lead {
+  max-width: 36rem;
+  font-size: var(--text-body-lg);
+  color: var(--color-ink);
+  border-left: 4px solid var(--color-ink);
+  padding-left: var(--space-4);
+}
+
+/* ── Mono stat / meta chip ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-stat-chip,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero-count {
+  margin: var(--space-6) 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: var(--ledger-shadow);
+}
+
+/* ── Yellow hero / featured slab ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero-slab,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero.suite-hero-slab {
+  border-top: none;
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-yellow);
+}
+
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-hero-slab .suite-section-inner,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hero .suite-section-inner {
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-10);
+}
+
+/* ── Framed intro callout (hobby band, intros) ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-callout-frame,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-hobby-intro {
+  padding: var(--space-4);
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: var(--ledger-shadow);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+/* ── Diagonal hatch band (optional section modifier) ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .suite-section--hatch {
+  background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-yellow) 35%, var(--color-bg)),
+      color-mix(in srgb, var(--color-yellow) 35%, var(--color-bg)) 8px,
+      var(--color-bg) 8px,
+      var(--color-bg) 16px
+    ),
+    var(--color-bg);
+}
+
+/* ── Pressable cards (templates grid, teasers) ── */
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .use-case-card,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .sophia-card,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .teaser-grid .teaser-card {
+  border: 2px solid var(--color-ink);
+  box-shadow: var(--ledger-shadow);
+}
+
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .use-case-card:hover,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .sophia-card:hover,
+:is(.marketing-page, .suite-landing, .use-cases-landing) .teaser-grid .teaser-card:hover {
+  box-shadow: var(--ledger-shadow-lift);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .use-case-card:hover,
+  :is(.marketing-page, .suite-landing, .use-cases-landing) .uc-grid .sophia-card:hover,
+  :is(.marketing-page, .suite-landing, .use-cases-landing) .teaser-grid .teaser-card:hover {
+    transform: none !important;
+  }
+}

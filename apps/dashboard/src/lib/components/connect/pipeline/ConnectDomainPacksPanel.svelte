@@ -5,7 +5,7 @@
     CONNECT_PIPELINE_API,
     type DomainPack,
     type PipelineWizardStepId,
-    withWizardReturn,
+    withReturnTo,
   } from "$lib/connect/pipeline-config";
   import { csvList } from "$lib/connect/pipeline-utils";
   import {
@@ -13,13 +13,16 @@
     STARTER_CORPUS_NAME_PREFIX,
     SUGGESTED_GRAPH_DESIGNER_INTENT,
   } from "$lib/connect/first-graph-guide";
+  import ConnectDomainTemplateSelector from "$lib/components/connect/ConnectDomainTemplateSelector.svelte";
+  import type { UseCase } from "$lib/content/use-cases";
 
   export let embedded = false;
   export let wizardStep: PipelineWizardStepId | null = null;
+  export let modelsReady = true;
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
-  const dispatch = createEventDispatcher<{ updated: void }>();
+  const dispatch = createEventDispatcher<{ updated: void; stepState: { canContinue: boolean } }>();
   const API_BASE = CONNECT_PIPELINE_API;
 
   function notifyUpdated() {
@@ -30,6 +33,7 @@
   let loadError: string | null = null;
 
   let packs: DomainPack[] = [];
+  let embeddingLock: { dimensions: number; embeddedUnitCount: number; model?: string } | null = null;
   let selectedPackId: string | null = null;
   let selectingPack = false;
   let packMsg: string | null = null;
@@ -53,9 +57,16 @@
     schema_mode: "guided",
     embedding_model: "voyage-3",
     embedding_dimensions: 1024,
+    quality_preset: "production" as "production" | "starter",
+    cross_model_validation: true,
+    archetype: "generic",
+    prompt_extraction: "",
+    prompt_validation: "",
   };
   let draftPatterns: { from_unit_type: string; relation: string; to_unit_type: string }[] = [];
   let showPackCreator = false;
+  let draftGenerated = false;
+  let draftSavedNotice: string | null = null;
   let editingPackId: string | null = null;
   let loadingPackEdit = false;
 
@@ -74,6 +85,11 @@
     schema_mode: "guided",
     embedding_model: "voyage-3",
     embedding_dimensions: 1024,
+    quality_preset: "production" as "production" | "starter",
+    cross_model_validation: true,
+    archetype: "generic",
+    prompt_extraction: "",
+    prompt_validation: "",
   });
 
   function resetPackForm() {
@@ -120,6 +136,13 @@
         model: np.embedding_model.trim() || "voyage-3",
         dimensions: Number(np.embedding_dimensions) || 1024,
       },
+      quality_preset: np.quality_preset,
+      cross_model_validation: np.cross_model_validation,
+      archetype: np.archetype,
+      prompts: {
+        ...(np.prompt_extraction.trim() ? { extraction: np.prompt_extraction.trim() } : {}),
+        ...(np.prompt_validation.trim() ? { validation: np.prompt_validation.trim() } : {}),
+      },
     };
   }
 
@@ -139,6 +162,10 @@
     };
     graph_schema?: { unit_table?: string; group_table?: string };
     embedding?: { model?: string; dimensions?: number };
+    quality_preset?: "production" | "starter";
+    cross_model_validation?: boolean;
+    archetype?: string;
+    prompts?: { extraction?: string; validation?: string };
   }) {
     const o = pack.ontology;
     np = {
@@ -156,6 +183,11 @@
       schema_mode: o.schema_mode ?? "guided",
       embedding_model: pack.embedding?.model ?? "voyage-3",
       embedding_dimensions: pack.embedding?.dimensions ?? 1024,
+      quality_preset: pack.quality_preset ?? "production",
+      cross_model_validation: pack.cross_model_validation !== false,
+      archetype: pack.archetype ?? "generic",
+      prompt_extraction: pack.prompts?.extraction ?? "",
+      prompt_validation: pack.prompts?.validation ?? "",
     };
     draftPatterns = o.relationship_patterns ?? [];
   }
@@ -349,6 +381,21 @@
     designDomain = "philosophy starter";
   }
 
+  function onTemplateSelect(template: UseCase) {
+    designIntent = template.starterPrompt;
+    np = {
+      ...np,
+      unit_types: template.graphShape.nodeTypes.join(", "),
+      relation_types: template.graphShape.edgeTypes.join(", "),
+    };
+    const domainLabel = template.id.replace(/-/g, " ");
+    if (!designDomain.trim()) {
+      designDomain = domainLabel;
+    }
+  }
+
+  let designIntentEl: HTMLTextAreaElement | undefined;
+
   async function loadStarterDocumentIds() {
     try {
       const res = await fetch(API_BASE + "/sources/documents");
@@ -377,6 +424,11 @@
       if (res.ok) {
         const d = await res.json();
         packs = d.packs ?? [];
+        embeddingLock = d.embedding_lock ?? null;
+        if (embeddingLock) {
+          np.embedding_dimensions = embeddingLock.dimensions;
+          if (embeddingLock.model) np.embedding_model = embeddingLock.model;
+        }
         selectedPackId =
           d.selected_domain_pack_id ??
           packs.find((p: DomainPack) => p.slug === "generic")?.id ??
@@ -501,12 +553,18 @@
         schema_mode: o.schema_mode ?? "guided",
         embedding_model: draft.embedding?.model ?? "voyage-3",
         embedding_dimensions: draft.embedding?.dimensions ?? 1024,
+        quality_preset: "production",
+        cross_model_validation: true,
+        archetype: draft.archetype ?? "generic",
+        prompt_extraction: draft.prompts?.extraction ?? "",
+        prompt_validation: draft.prompts?.validation ?? "",
       };
       draftPatterns = o.relationship_patterns ?? [];
       designRationale = d.rationale ?? null;
       designSampled = d.sampled ?? [];
       editingPackId = null;
       showPackCreator = true;
+      draftGenerated = true;
       designMsg = "Draft ready below — review, edit, and save.";
     } catch {
       designError = true;
@@ -534,6 +592,8 @@
       }
       const savedId = (d.pack?.id as string | undefined) ?? editingPackId;
       setPackMsg(editingPackId ? "Domain pack updated." : "Domain pack saved.");
+      draftSavedNotice = "New domain pack saved — you can edit it later under Domain.";
+      draftGenerated = true;
       resetPackForm();
       showPackCreator = false;
       await loadPacks();
@@ -543,6 +603,15 @@
       setPackMsg("Network error while saving pack.", true);
     } finally {
       savingPack = false;
+    }
+  }
+
+  let lastDispatchedCanContinue: boolean | null = null;
+  $: {
+    const canContinue = Boolean(selectedPackId) || draftGenerated || showPackCreator;
+    if (canContinue !== lastDispatchedCanContinue) {
+      lastDispatchedCanContinue = canContinue;
+      dispatch("stepState", { canContinue });
     }
   }
 
@@ -563,24 +632,26 @@
       <h2 class="h2">Domain packs</h2>
     {/if}
 
-    {#if embedded && wizardStep}
-      <p class="field-hint wizard-side-task">
-        Graph Designer needs chat ingestion routes.
-        <a href={withWizardReturn(CONNECT_BASE + "/models", wizardStep)}>Configure Models &amp; keys</a>
-        — you'll return to this step when done.
-      </p>
+    {#if embedded && wizardStep && !modelsReady}
+      <div class="domain-routes-warning" role="status">
+        Routes not configured — Graph Designer needs at least one chat route to generate a domain.
+        <a href={withReturnTo(CONNECT_BASE + "/models", { kind: "pipeline-setup", step: wizardStep })}>Configure Models &amp; keys →</a>
+      </div>
+    {/if}
+
+    {#if draftSavedNotice}
+      <p class="domain-draft-notice" role="status">{draftSavedNotice}</p>
     {/if}
 
     {#if packMsg}
       <p class:err={packMsgError} class:notice={!packMsgError} role="status">{packMsg}</p>
     {/if}
 
+    <section class="domain-section-a" aria-labelledby="pack-picker-heading">
+      <h3 id="pack-picker-heading" class="preview-sub">Use an existing pack</h3>
+      <p class="field-hint">Built-in packs are ready to use. Select one for extraction previews and ingest runs.</p>
+
     {#if packs.length > 0}
-      <section class="pack-picker" aria-labelledby="pack-picker-heading">
-        <div class="pack-picker-head">
-          <h3 id="pack-picker-heading" class="preview-sub">Choose your domain pack</h3>
-          <span class="field-hint">Built-in packs are ready to use. Select one for extraction previews and ingest runs.</span>
-        </div>
         <ul class="packs">
           {#each packs as p (p.id)}
             <li class="pack" class:pack-selected={selectedPackId === p.id}>
@@ -594,36 +665,47 @@
                   on:change={() => selectPack(p.id)}
                 />
                 <span class="pack-main">
-                  <span class="pack-title">{p.title}</span>
+                  <span class="pack-title-row">
+                    <span class="pack-title">{p.title}</span>
+                    {#if p.is_builtin}
+                      <span class="tag tag-builtin">Built-in</span>
+                    {:else}
+                      <span class="tag tag-custom">Custom</span>
+                    {/if}
+                  </span>
                   <code class="pack-slug">{p.slug}</code>
-                  {#if p.is_builtin}<span class="badge status-muted">built-in</span>{/if}
                   <span class="pack-onto">
                     {p.ontology.unit_noun} → {p.ontology.group_noun}{#if p.ontology.domains.length}; {p.ontology.domains.length} domains{/if}
                   </span>
                   {#if p.description}<span class="pack-desc">{p.description}</span>{/if}
                 </span>
               </label>
-              <div class="pack-actions">
-                <button
-                  type="button"
-                  class="btn btn-inline btn-secondary"
-                  on:click={() => viewPack(p.id)}
-                  disabled={loadingPackView && viewingPackId === p.id}
-                >
-                  {viewingPackId === p.id && viewingPack ? "Hide" : "View"}
-                </button>
-                {#if !p.is_builtin}
+              <details class="pack-overflow">
+                <summary class="pack-overflow-trigger" aria-label="Pack actions for {p.title}">···</summary>
+                <div class="pack-overflow-menu">
                   <button
                     type="button"
-                    class="btn btn-inline btn-secondary"
-                    on:click={() => startEditPack(p.id)}
-                    disabled={loadingPackEdit}
+                    class="pack-overflow-item"
+                    on:click={() => viewPack(p.id)}
+                    disabled={loadingPackView && viewingPackId === p.id}
                   >
-                    Edit
+                    {viewingPackId === p.id && viewingPack ? "Hide" : "View"}
                   </button>
-                  <button type="button" class="btn btn-inline btn-danger" on:click={() => deletePack(p)}>Delete</button>
-                {/if}
-              </div>
+                  {#if !p.is_builtin}
+                    <button
+                      type="button"
+                      class="pack-overflow-item"
+                      on:click={() => startEditPack(p.id)}
+                      disabled={loadingPackEdit}
+                    >
+                      Edit
+                    </button>
+                    <button type="button" class="pack-overflow-item pack-overflow-danger" on:click={() => deletePack(p)}>
+                      Delete
+                    </button>
+                  {/if}
+                </div>
+              </details>
               {#if viewingPackId === p.id}
                 <div class="pack-detail" role="region" aria-label="{p.title} details">
                   {#if loadingPackView}
@@ -640,13 +722,14 @@
             </li>
           {/each}
         </ul>
-      </section>
     {:else}
       <p class="muted">No domain packs yet.</p>
     {/if}
 
-    <section class="surreal-schema" aria-labelledby="surreal-schema-heading">
-      <h3 id="surreal-schema-heading" class="preview-sub">Import from SurrealDB</h3>
+      <details class="disclosure surreal-import-accordion">
+        <summary>Import from SurrealDB</summary>
+        <div class="surreal-schema-inner">
+      <h3 id="surreal-schema-heading" class="visually-hidden">Import from SurrealDB</h3>
       <p class="field-hint">
         Already have a graph in Surreal (e.g. from SOPHIA or your own DEFINE TABLE scripts)? Discover tables and
         relation edges from your connected store, then create a matching domain pack for ingest.
@@ -748,7 +831,20 @@
           </div>
         </form>
       {/if}
+        </div>
+      </details>
     </section>
+
+    <hr class="domain-section-divider" />
+
+    <section class="domain-section-b" aria-labelledby="design-new-heading">
+      <h3 id="design-new-heading" class="preview-sub">Or design a new domain</h3>
+
+    <ConnectDomainTemplateSelector
+      currentValue={designIntent}
+      intentAnchor={designIntentEl ?? null}
+      on:select={(e) => onTemplateSelect(e.detail)}
+    />
 
     <div class="designer">
       <h3 class="designer-title">Design with AI</h3>
@@ -764,6 +860,7 @@
         <textarea
           class="input"
           rows="3"
+          bind:this={designIntentEl}
           bind:value={designIntent}
           placeholder="e.g. Capture legal holdings from case law and how later cases affirm, distinguish, or overrule earlier ones."
         ></textarea>
@@ -790,7 +887,7 @@
     </div>
 
     <details class="disclosure" bind:open={showPackCreator}>
-      <summary>{editingPackId ? "Edit custom domain pack" : "Create a custom domain pack"}</summary>
+      <summary>{editingPackId ? "Edit custom domain pack" : "Create a custom domain pack (advanced)"}</summary>
       <form class="form" on:submit|preventDefault={savePack}>
         <div class="row">
           <label class="field">
@@ -845,6 +942,28 @@
           <input class="input" type="text" bind:value={np.group_roles} />
         </label>
         <label class="field">
+          <span class="field-label">Pack archetype</span>
+          <select class="input" bind:value={np.archetype}>
+            <option value="generic">Generic — balanced defaults</option>
+            <option value="argumentative">Argumentative — claims, discourse relations</option>
+            <option value="factual">Factual — reference, low inference</option>
+            <option value="procedural">Procedural — SOPs, obligations</option>
+            <option value="product_docs">Product docs — APIs, specs</option>
+          </select>
+        </label>
+        <details class="field">
+          <summary class="field-label">Stage prompts (optional overrides)</summary>
+          <p class="field-hint">Use placeholders: {"{unit_noun}"}, {"{pack_title}"}, {"{unit_types}"}.</p>
+          <label class="field">
+            <span class="field-label">Extraction prompt</span>
+            <textarea class="input" rows="3" bind:value={np.prompt_extraction}></textarea>
+          </label>
+          <label class="field">
+            <span class="field-label">Validation prompt</span>
+            <textarea class="input" rows="3" bind:value={np.prompt_validation}></textarea>
+          </label>
+        </details>
+        <label class="field">
           <span class="field-label">Schema mode</span>
           <select class="input" bind:value={np.schema_mode}>
             <option value="guided">Guided — prefer declared types, allow justified additions</option>
@@ -875,14 +994,53 @@
         </div>
         <div class="row">
           <label class="field">
+            <span class="field-label">Quality preset</span>
+            <select class="input" bind:value={np.quality_preset}>
+              <option value="production">Production — validate, remediate, higher chunk cap (default)</option>
+              <option value="starter">Demo (Starter) — faster, reduced coverage</option>
+            </select>
+            {#if np.quality_preset === "starter"}
+              <span class="field-hint err">Starter reduces chunk coverage and skips some production gates — not for agent-facing graphs.</span>
+            {/if}
+          </label>
+          <label class="field checkbox-field">
+            <input type="checkbox" bind:checked={np.cross_model_validation} />
+            <span class="field-label">Cross-model validation (validator ≠ extractor when routes allow)</span>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">
             <span class="field-label">Embedding model</span>
-            <input class="input" type="text" bind:value={np.embedding_model} />
+            <input
+              class="input"
+              type="text"
+              bind:value={np.embedding_model}
+              disabled={Boolean(embeddingLock)}
+              aria-describedby="embedding-lock-hint"
+            />
           </label>
           <label class="field">
             <span class="field-label">Embedding dimensions</span>
-            <input class="input" type="number" bind:value={np.embedding_dimensions} />
+            <input
+              class="input"
+              type="number"
+              bind:value={np.embedding_dimensions}
+              disabled={Boolean(embeddingLock)}
+              aria-describedby="embedding-lock-hint"
+            />
           </label>
         </div>
+        {#if embeddingLock}
+          <p id="embedding-lock-hint" class="field-hint">
+            This graph already has embeddings at {embeddingLock.dimensions} dimensions — change is blocked until
+            re-embedding is available (see roadmap). Voyage is recommended for new graphs.
+          </p>
+        {:else}
+          <p id="embedding-lock-hint" class="field-hint">
+            Pick dimensions before the first embed; the graph locks to that vector size afterward. Voyage models
+            support 256–2048d (default 1024).
+          </p>
+        {/if}
         {#if packMsg && showPackCreator}<p class:err={packMsgError} class:notice={!packMsgError} role="status">{packMsg}</p>{/if}
         <div class="actions">
           {#if editingPackId}
@@ -896,5 +1054,20 @@
         </div>
       </form>
     </details>
+    </section>
   </div>
 {/if}
+
+<style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

@@ -80,6 +80,7 @@ describe("remediation", () => {
     expect(sys).toContain("repair");
     expect(sys).toContain("drop");
     expect(sys).toContain("STRICT JSON");
+    expect(sys).toContain("do not omit units");
   });
   it("parses results, keeping repair text only for repairs", () => {
     const out = parseRemediationResponse(
@@ -90,6 +91,38 @@ describe("remediation", () => {
       { ref: "u2", action: "drop" },
       { ref: "u3", action: "keep" },
     ]);
+  });
+  it("batches short refs and fills omitted units as keep", async () => {
+    const { buildRemediationBatchInputs, finalizeRemediationCoverage, remapRemediationBatchResults } =
+      await import("../ingest/remediation.js");
+    const units = [
+      { ref: "claim:aaa", text: "A", note: "weak" },
+      { ref: "claim:bbb", text: "B", note: "unsupported" },
+    ];
+    const batches = buildRemediationBatchInputs(units);
+    expect(batches).toHaveLength(1);
+    expect(batches[0]?.batchUnits[0]?.ref).toBe("r1");
+    const remapped = remapRemediationBatchResults(
+      [{ ref: "r1", action: "repair", text: "fixed A" }],
+      batches[0]!.refToUnitId,
+    );
+    expect(remapped[0]?.ref).toBe("claim:aaa");
+    const finalized = finalizeRemediationCoverage(units, remapped);
+    expect(finalized).toEqual([
+      { ref: "claim:aaa", action: "repair", text: "fixed A" },
+      { ref: "claim:bbb", action: "keep" },
+    ]);
+  });
+  it("splits large weak-unit sets into multiple batches", async () => {
+    const { buildRemediationBatchInputs, REMEDIATION_BATCH_SIZE } = await import("../ingest/remediation.js");
+    const units = Array.from({ length: REMEDIATION_BATCH_SIZE + 3 }, (_, i) => ({
+      ref: `claim:${i}`,
+      text: `unit ${i}`,
+    }));
+    const batches = buildRemediationBatchInputs(units);
+    expect(batches).toHaveLength(2);
+    expect(batches[0]?.batchUnits).toHaveLength(REMEDIATION_BATCH_SIZE);
+    expect(batches[1]?.batchUnits).toHaveLength(3);
   });
 });
 

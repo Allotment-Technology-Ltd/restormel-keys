@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { browser } from "$app/environment";
+  import { onDestroy, onMount } from "svelte";
+  import { agentLog } from "$lib/debug/agent-log";
   import "$lib/styles/product-demo.css";
   import "$lib/components/connect/pipeline/connect-pipeline.css";
   import ProductDemoStepPanels from "./ProductDemoStepPanels.svelte";
   import { DEMO_STEPS, DEMO_STEP_MS, INGEST_LOG_LINES } from "./product-demo-data";
 
   let stepIndex = 0;
-  let paused = false;
+  /** Marketing demo: start paused until mounted to avoid SSR/hydration racing setInterval. */
+  let paused = true;
   let timerKey = 0;
   let visibleLogLines: string[] = [];
 
@@ -89,23 +92,42 @@
     restartAutoAdvance();
   }
 
-  $: stepIndex, startLogAnimation();
-  $: paused, restartAutoAdvance();
+  $: if (browser) {
+    stepIndex;
+    startLogAnimation();
+  }
+  $: if (browser) {
+    // #region agent log
+    agentLog(
+      "ProductDemo.svelte:stepIndex",
+      "demo step changed",
+      { stepIndex, stepId: DEMO_STEPS[stepIndex]?.id },
+      "H7",
+      "post-fix"
+    );
+    // #endregion
+  }
 
-  restartAutoAdvance();
+  onMount(() => {
+    // #region agent log
+    agentLog("ProductDemo.svelte:onMount", "demo mounted (auto-advance starts after paint)", { stepIndex }, "H7", "post-fix");
+    // #endregion
+    paused = false;
+    restartAutoAdvance();
+  });
 
   onDestroy(() => {
     clearAdvanceInterval();
     clearLogInterval();
   });
 
-  // TODO: Export resting-state frames (all 6 steps) as GIF/WebM for Open Graph and docs screen recordings.
+  // TODO: Export resting-state frames (all 7 steps) as GIF/WebM for Open Graph and docs screen recordings.
 </script>
 
 <section class="product-demo-section" id="first-run-demo" aria-labelledby="product-demo-heading">
   <div class="suite-section-inner product-demo connect-pipeline">
     <p class="product-demo-eyebrow">Restormel — First run</p>
-    <h2 id="product-demo-heading" class="product-demo-title">From connections to verified graph</h2>
+    <h2 id="product-demo-heading" class="product-demo-title">From connections to agent-ready knowledge</h2>
 
     <p class="product-demo-step-mobile" aria-live="polite">
       {mobileStepLabel} · {currentStep.shortLabel}
@@ -149,6 +171,10 @@
       on:mouseenter={onFrameEnter}
       on:mouseleave={onFrameLeave}
     >
+      <div class="product-demo-frame-chrome" aria-hidden="true">
+        <span class="product-demo-frame-stamp">Restormel · First run</span>
+        <span class="product-demo-frame-chrome-mark">DEMO</span>
+      </div>
       <div class="product-demo-frame">
         {#key stepIndex}
           <div class="product-demo-frame-inner connect-pipeline">

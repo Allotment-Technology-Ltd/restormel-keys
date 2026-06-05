@@ -10,7 +10,9 @@ import {
   DEFAULT_GENERIC_DOMAIN_PACK,
   ConnectDomainPackUpsertSchema,
   type ConnectDomainPackUpsert,
+  type ConnectPackArchetype,
 } from "@restormel/contracts/connect";
+import { inferArchetypeFromSlug } from "@restormel/connect-core";
 
 function asString(v: unknown, fallback = ""): string {
   return typeof v === "string" && v.trim() ? v.trim() : fallback;
@@ -101,10 +103,30 @@ export function buildDomainPackDraft(input: unknown, opts?: { fallbackTitle?: st
 
   const relationEdges = relations.map((r) => identifier(r.name, "relates_to"));
 
+  const archetypeRaw = asString(obj.archetype);
+  const archetypes = ["argumentative", "factual", "procedural", "product_docs", "generic"] as const;
+  const archetype: ConnectPackArchetype = archetypes.includes(archetypeRaw as ConnectPackArchetype)
+    ? (archetypeRaw as ConnectPackArchetype)
+    : inferArchetypeFromSlug(slug);
+
+  const promptsObj = obj.prompts && typeof obj.prompts === "object" && !Array.isArray(obj.prompts)
+    ? (obj.prompts as Record<string, unknown>)
+    : {};
+  const markerLexicon = asStringArray(obj.marker_lexicon, 200);
+
   const candidate: ConnectDomainPackUpsert = {
     slug,
     title,
     description: asString(obj.description) || undefined,
+    archetype,
+    prompt_template_version: 1,
+    prompts: {
+      ...(asString(promptsObj.extraction) ? { extraction: asString(promptsObj.extraction) } : {}),
+      ...(asString(promptsObj.validation) ? { validation: asString(promptsObj.validation) } : {}),
+      ...(asString(promptsObj.remediation) ? { remediation: asString(promptsObj.remediation) } : {}),
+      ...(asString(promptsObj.grouping) ? { grouping: asString(promptsObj.grouping) } : {}),
+      ...(asString(promptsObj.relations) ? { relations: asString(promptsObj.relations) } : {}),
+    },
     ontology: {
       unit_noun: unitNoun,
       group_noun: groupNoun,
@@ -123,7 +145,11 @@ export function buildDomainPackDraft(input: unknown, opts?: { fallbackTitle?: st
       part_of_edge: "part_of",
       relation_edges: relationEdges,
     },
-    passage_profile: { marker_lexicon: [], min_passage_chars: 400, max_passage_chars: 6000 },
+    passage_profile: {
+      marker_lexicon: markerLexicon,
+      min_passage_chars: 400,
+      max_passage_chars: 6000,
+    },
     chunking: { strategy: "structure_aware", min_chars: 400, max_chars: 4000, overlap_chars: 0 },
     parser: { provider: "builtin" },
     embedding: { model: "voyage-3", dimensions: 1024 },

@@ -1,5 +1,6 @@
 /**
- * Service-owner-only: list Better Auth users and toggle service_admins membership.
+ * Service-owner-only: list signed-in dashboard users and toggle service_admins membership.
+ * Lists from app `users` mirror (Neon Auth upserts on session); enriches from Better Auth `"user"` when present.
  */
 import type { AdminUserListRow } from "$lib/admin-user-list";
 import { env } from "$env/dynamic/private";
@@ -24,6 +25,21 @@ function parseAdminUserIdsEnvLocal(): Set<string> {
   );
 }
 
+function isMissingRelationError(e: unknown, relation: string): boolean {
+  const code = (e as { code?: string })?.code;
+  if (code === "42P01") return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.includes(`relation "${relation}" does not exist`) || msg.includes(`relation ${relation} does not exist`);
+}
+
+export type RegisteredUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  createdAt: string;
+};
+
 export type { AdminUserListRow };
 
 function effectiveServiceOwner(
@@ -39,6 +55,118 @@ function effectiveServiceOwner(
   return { isServiceOwner, serviceOwnerImmutable: emailImpliesServiceOwner(email) };
 }
 
+/** Pure mapping for admin UI rows (unit-tested). */
+export function mapRegisteredUsersToAdminList(
+  rows: RegisteredUserRow[],
+  params: {
+    dbServiceAdminIds: Set<string>;
+    envAdminUserIds: Set<string>;
+    grantedEmails: Set<string>;
+  }
+): AdminUserListRow[] {
+  const { dbServiceAdminIds, envAdminUserIds, grantedEmails } = params;
+  return rows.map((r) => {
+    const dbMember = dbServiceAdminIds.has(r.id);
+    const { isServiceOwner, serviceOwnerImmutable } = effectiveServiceOwner(
+      r.id,
+      r.email,
+      dbMember,
+      envAdminUserIds,
+      grantedEmails
+    );
+    return {
+      id: r.id,
+      email: r.email,
+      name: r.name,
+      emailVerified: r.emailVerified,
+      createdAt: r.createdAt,
+      isServiceOwner,
+      dbServiceOwner: dbMember,
+      serviceOwnerImmutable,
+      operatorViaEnvUserId: envAdminUserIds.has(r.id),
+    };
+  });
+}
+
+function rowFromRecord(r: Record<string, unknown>): RegisteredUserRow {
+  return {
+    id: String(r.id),
+    email: String(r.email ?? ""),
+    name: String(r.name ?? ""),
+    emailVerified: Boolean(r.emailVerified),
+    createdAt: String(r.createdAt ?? ""),
+  };
+}
+
+async function listRegisteredUserRows(): Promise<RegisteredUserRow[]> {
+  const sql = getSql();
+  try {
+    const rows = await sql`
+      SELECT
+        m.id AS id,
+        COALESCE(m.email, u.email, '') AS email,
+        COALESCE(u.name, '') AS name,
+        COALESCE(u."emailVerified", false) AS "emailVerified",
+        COALESCE(m.created_at::text, (EXTRACT(EPOCH FROM u."createdAt") * 1000)::bigint::text, '') AS "createdAt"
+      FROM users m
+      LEFT JOIN "user" u ON u.id = m.id
+      ORDER BY COALESCE(m.created_at, (EXTRACT(EPOCH FROM u."createdAt") * 1000)::bigint, 0) DESC
+    `;
+    return rows.map((r) => rowFromRecord(r as Record<string, unknown>));
+  } catch (e) {
+    if (isMissingRelationError(e, "users")) {
+      const rows = await sql`
+        SELECT u.id AS id, u.email AS email, u.name AS name,
+               u."emailVerified" AS "emailVerified",
+               u."createdAt"::text AS "createdAt"
+        FROM "user" u
+        ORDER BY u."createdAt" DESC
+      `;
+      return rows.map((r) => rowFromRecord(r as Record<string, unknown>));
+    }
+    if (isMissingRelationError(e, "user")) {
+      const rows = await sql`
+        SELECT m.id AS id, COALESCE(m.email, '') AS email,
+               '' AS name, false AS "emailVerified",
+               m.created_at::text AS "createdAt"
+        FROM users m
+        ORDER BY m.created_at DESC
+      `;
+      return rows.map((r) => rowFromRecord(r as Record<string, unknown>));
+    }
+    throw e;
+  }
+}
+
+async function lookupRegisteredUserEmail(userId: string): Promise<string | null> {
+  const sql = getSql();
+  try {
+    const mirrorRows = await sql`
+      SELECT email FROM users WHERE id = ${userId} LIMIT 1
+    `;
+    if (Array.isArray(mirrorRows) && mirrorRows.length > 0) {
+      const email = (mirrorRows[0] as { email?: string | null }).email;
+      if (typeof email === "string" && email.trim()) return email;
+    }
+  } catch (e) {
+    if (!isMissingRelationError(e, "users")) throw e;
+  }
+
+  try {
+    const authRows = await sql`
+      SELECT email FROM "user" WHERE id = ${userId} LIMIT 1
+    `;
+    if (Array.isArray(authRows) && authRows.length > 0) {
+      const email = (authRows[0] as { email?: string }).email;
+      if (typeof email === "string" && email.trim()) return email;
+    }
+  } catch (e) {
+    if (!isMissingRelationError(e, "user")) throw e;
+  }
+
+  return null;
+}
+
 export async function listUsersForServiceOwnerAdmin(): Promise<AdminUserListRow[]> {
   const sql = getSql();
   const grantedEmails = new Set(
@@ -46,43 +174,19 @@ export async function listUsersForServiceOwnerAdmin(): Promise<AdminUserListRow[
       .map((row) => normalizeEmailForServiceOwnerMatch(row.email))
       .filter((e): e is string => e != null)
   );
-  const rows = await sql`
-    SELECT u.id AS id, u.email AS email, u.name AS name,
-           u."emailVerified" AS "emailVerified",
-           u."createdAt"::text AS "createdAt"
-    FROM "user" u
-    ORDER BY u."createdAt" DESC
-  `;
+  const rows = await listRegisteredUserRows();
   const adminRows = await sql`
     SELECT user_id FROM service_admins
   `;
-  const inDb = new Set(
+  const dbServiceAdminIds = new Set(
     adminRows.map((r) => String((r as { user_id: unknown }).user_id ?? "")).filter(Boolean)
   );
-  const envIds = parseAdminUserIdsEnvLocal();
+  const envAdminUserIds = parseAdminUserIdsEnvLocal();
 
-  return rows.map((r: Record<string, unknown>) => {
-    const id = String(r.id);
-    const email = String(r.email ?? "");
-    const dbMember = inDb.has(id);
-    const { isServiceOwner, serviceOwnerImmutable } = effectiveServiceOwner(
-      id,
-      email,
-      dbMember,
-      envIds,
-      grantedEmails
-    );
-    return {
-      id,
-      email,
-      name: String(r.name ?? ""),
-      emailVerified: Boolean(r.emailVerified),
-      createdAt: String(r.createdAt ?? ""),
-      isServiceOwner,
-      dbServiceOwner: dbMember,
-      serviceOwnerImmutable: serviceOwnerImmutable,
-      operatorViaEnvUserId: envIds.has(id),
-    };
+  return mapRegisteredUsersToAdminList(rows, {
+    dbServiceAdminIds,
+    envAdminUserIds,
+    grantedEmails,
   });
 }
 
@@ -109,16 +213,10 @@ export async function setUserServiceOwnerMembership(params: {
 
   const sql = getSql();
   try {
-    const userRows = await sql`
-      SELECT email FROM "user" WHERE id = ${targetUserId} LIMIT 1
-    `;
-    if (!Array.isArray(userRows) || userRows.length === 0) {
+    const targetEmail = await lookupRegisteredUserEmail(targetUserId);
+    if (targetEmail == null) {
       return { ok: false, code: "not_found", message: "User not found." };
     }
-    const targetEmail =
-      userRows[0] && typeof (userRows[0] as { email?: string }).email === "string"
-        ? (userRows[0] as { email: string }).email
-        : null;
 
     if (!enabled && emailImpliesServiceOwner(targetEmail)) {
       return {

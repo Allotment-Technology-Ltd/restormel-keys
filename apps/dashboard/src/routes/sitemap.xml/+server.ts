@@ -3,6 +3,7 @@ import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 
 const ALL_STATIC_PATHS = [
   "/",
+  "/use-cases",
   "/keys",
   "/keys/pricing",
   "/keys/use-cases",

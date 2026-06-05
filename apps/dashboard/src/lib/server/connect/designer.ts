@@ -46,6 +46,14 @@ Return STRICT JSON only (no prose) with this shape:
   "group_roles": string[],        // roles a unit plays in a group, e.g. ["conclusion","premise"]
   "relationship_patterns": [{"from_unit_type": string, "relation": string, "to_unit_type": string}],
   "schema_mode": "strict" | "guided" | "open",
+  "archetype": "argumentative" | "factual" | "procedural" | "product_docs" | "generic",
+  "marker_lexicon": string[],     // discourse markers for passage_profile (optional)
+  "prompts": {
+    "extraction": string,         // may use {unit_noun}, {pack_title}, etc.
+    "validation": string,
+    "remediation": string,
+    "grouping": string
+  },
   "rationale": string             // one short paragraph explaining the design
 }
 

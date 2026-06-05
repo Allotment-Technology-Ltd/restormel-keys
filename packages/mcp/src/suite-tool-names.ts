@@ -9,6 +9,8 @@ export const RESTORMEL_SUITE_TOOL_NAMES = [
   "graph.fixture_validate",
   "state.memory_preview",
   "connect.verify",
+  "connect.search",
+  "connect.get_context_for",
   "connect.retrieve",
   "connect.ingest.start",
   "connect.ingest.status",

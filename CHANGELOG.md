@@ -1,6 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Admin user management:** User list reads from app `users` mirror (Neon Auth session upserts) with optional Better Auth `"user"` enrichment — fixes empty table on Neon Auth deployments.
+- **Connect ingest quality (admin):** Manual threshold evaluate/apply loop at `/keys/admin/ingest-quality` — replaces GitHub Actions weekly workflow; bumps builtin `prompt_template_version` in Postgres (G2-gated). Migration `049_knowledge_ingest_quality_runs.sql`.
+- **Connect use-case templates:** Suite marketing page at `/use-cases`, homepage teaser, Founders proof block, and in-product domain template pills on the Connect pipeline Domain step with `?template=` preserved through dashboard login.
+
 Single record of meaningful repo changes.
+
+## Repo (2026-06-04) — Pre-PR high-risk security skill + Aikido MCP docs
+
+**Agent:** `.cursor/skills/restormel-high-risk-security` — pre-PR gate (baseline, threat model, hygiene scripts, Aikido MCP, SvelteKit server checks, Neon operator 2FA checklist). **Docs:** [pre-pr-security-review.md](docs/guides/pre-pr-security-review.md), [aikido-cursor-mcp.md](docs/guides/aikido-cursor-mcp.md); PR template + CONTRIBUTING updated. **CI:** local gate complements existing `security` job (TruffleHog + `pnpm audit`).
 
 ## Repo (2026-06-04) — Deploy consolidation + npm MVP train
 

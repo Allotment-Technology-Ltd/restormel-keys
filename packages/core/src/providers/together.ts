@@ -12,6 +12,18 @@ const BASE_URL = "https://api.together.xyz";
  * Curated from Together docs + commonly used legacy slugs; Together adds models frequently — validate via `/v1/models`.
  */
 export const TOGETHER_MODELS = [
+  // External / partner models (single Together key — OpenAI-compatible `provider/model` strings)
+  "anthropic/claude-sonnet-4-6",
+  "anthropic/claude-sonnet-4-5",
+  "anthropic/claude-haiku-4-5",
+  "anthropic/claude-opus-4-6",
+  "openai/gpt-5.4",
+  "openai/gpt-4o",
+  "openai/gpt-4o-mini",
+  "google/gemini-3.1-pro-preview",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  // Together serverless chat
   "LiquidAI/LFM2-24B-A2B",
   "MiniMaxAI/MiniMax-M2.5",
   "MiniMaxAI/MiniMax-M2.7",

@@ -5,17 +5,23 @@
  * against a GraphWriter, so Postgres spine and Bring-Your-Own SurrealDB get the
  * same stages. All vocabulary/schema comes from the domain pack, not hardcoded.
  */
-import type { ConnectDomainPack } from "@restormel/contracts/connect";
+import type { ConnectDomainPack, ConnectSourceProvenance } from "@restormel/contracts/connect";
+import { provenancePreviewText } from "$lib/server/connect/source-document-provenance";
 import {
   chunkDocument,
   extractGraph,
+  evaluateExtractionGate,
   groupUnits,
   validateUnits,
-  remediateUnits,
   shouldRunStage,
+  resolveQualityPreset,
+  readMaxChunksForPreset,
+  effectiveStopAfterStage,
   type ExtractionGenerate,
   type EmbeddingPort,
+  type GraphIngestContext,
 } from "@restormel/connect-core";
+import { loadGraphIngestContext } from "$lib/server/connect/graph-ingest-context";
 import {
   getConnectDomainPackById,
   getConnectGraphTargetForWorkspace,
@@ -25,7 +31,9 @@ import {
 } from "$lib/server/neon";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
+import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
 import { buildGraphWriter, type GraphWriter } from "$lib/server/connect/graph-writer";
+import { runGraphRemediationPass } from "$lib/server/connect/graph-remediation-pass";
 import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flags";
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
 
@@ -33,7 +41,12 @@ export class IngestConfigError extends Error {}
 
 const SAFE_TABLE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
-type IngestSource = { url?: string; text?: string; title?: string };
+type IngestSource = {
+  url?: string;
+  text?: string;
+  title?: string;
+  provenance?: ConnectSourceProvenance;
+};
 
 function parseSources(raw: unknown): IngestSource[] {
   if (!Array.isArray(raw)) return [];
@@ -41,12 +54,23 @@ function parseSources(raw: unknown): IngestSource[] {
     .filter((r) => r && typeof r === "object")
     .map((r) => {
       const rec = r as Record<string, unknown>;
+      const prov =
+        rec.provenance && typeof rec.provenance === "object" && !Array.isArray(rec.provenance)
+          ? (rec.provenance as ConnectSourceProvenance)
+          : undefined;
       return {
         ...(typeof rec.url === "string" ? { url: rec.url } : {}),
         ...(typeof rec.text === "string" ? { text: rec.text } : {}),
         ...(typeof rec.title === "string" ? { title: rec.title } : {}),
+        ...(prov ? { provenance: prov } : {}),
       };
     });
+}
+
+function sourceTextPreview(src: IngestSource): string | null {
+  const fromProv = provenancePreviewText(src.provenance);
+  if (fromProv) return fromProv;
+  return src.text?.trim() ? src.text.trim().slice(0, 500) : null;
 }
 
 async function resolveDomainPack(job: ConnectIngestJobRecord): Promise<ConnectDomainPack | null> {
@@ -124,9 +148,22 @@ export async function runFullExtraction(args: {
   const pack = await resolveDomainPack(job);
   if (!pack) throw new IngestConfigError("domain_pack_not_found");
 
-  const stop = job.stopAfterStage as
-    | "extracting" | "relating" | "grouping" | "embedding" | "validating" | "remediating" | "storing" | null;
-  const maxChunks = Math.max(1, Math.min(Number(process.env.CONNECT_INGEST_MAX_CHUNKS ?? 8) || 8, 100));
+  const quality = resolveQualityPreset(pack);
+  const graphContext: GraphIngestContext = await loadGraphIngestContext(job.workspaceId);
+  const preset = quality.preset;
+  const stop = effectiveStopAfterStage(
+    job.stopAfterStage as
+      | "extracting"
+      | "relating"
+      | "grouping"
+      | "embedding"
+      | "validating"
+      | "remediating"
+      | "storing"
+      | null,
+    quality,
+  );
+  const maxChunks = readMaxChunksForPreset(quality, process.env.CONNECT_INGEST_MAX_CHUNKS);
   /** Grouping is LLM-heavy; validation runs on all extracted units in batches. */
   const GROUPING_UNIT_CAP = 80;
   const sources = parseSources(job.sources);
@@ -145,17 +182,20 @@ export async function runFullExtraction(args: {
   for (const src of sources) {
     const title = src.title ?? src.url ?? "untitled";
     await reporter?.setAction(`Registering source — ${title}`);
-    const sourceId = await writer.writeSource({
-      title,
-      url: src.url ?? null,
-      textPreview: src.text ? src.text.slice(0, 500) : null,
-      sourceKind: src.url ? "url" : "text",
-    });
+    const sourceId = requireGraphUnitSourceId(
+      await writer.writeSource({
+        title,
+        url: src.url ?? null,
+        textPreview: sourceTextPreview(src),
+        sourceKind: src.url ? "url" : "text",
+      }),
+    );
     await reporter?.log("INGEST", `Source registered — ${title}`);
 
     if (!src.text?.trim() || chunkBudget <= 0) continue;
 
-    const sourceUnits: { id: string; text: string; type: string | null }[] = [];
+    const sourceUnits: { id: string; text: string; type: string | null; chunkIndex: number }[] = [];
+    const chunkTextByUnitId = new Map<string, string>();
     const chunks = chunkDocument(src.text, pack.chunking).slice(0, chunkBudget);
     await reporter?.beginStage(
       "extracting",
@@ -171,7 +211,31 @@ export async function runFullExtraction(args: {
         "extracting",
         `Chunk ${i + 1}/${chunks.length} — LLM extract + relate`,
       );
-      const extraction = await extractGraph({ text: chunk.text, pack, generate: args.generates.extraction });
+      const extraction = await extractGraph({
+        text: chunk.text,
+        pack,
+        generate: args.generates.extraction,
+        qualityPreset: preset,
+        graphContext,
+      });
+      if (extraction.warnings.length > 0) {
+        const summary = extraction.warnings
+          .map((w) => `${w.code}${w.count != null ? `(${w.count})` : ""}`)
+          .join(", ");
+        await reporter?.log("EXTRACT", `Chunk ${i + 1} warnings — ${summary}`);
+      }
+      const gate = evaluateExtractionGate(
+        extraction.warnings,
+        preset,
+        pack.ontology.schema_mode,
+      );
+      if (!gate.allowPersist) {
+        await reporter?.log(
+          "EXTRACT",
+          `Chunk ${i + 1} skipped — production gate (${gate.reason ?? "blocked"})`,
+        );
+        continue;
+      }
       const stored = await writer.writeUnitsAndRelations({
         sourceId,
         units: extraction.units.map((u) => ({
@@ -179,6 +243,7 @@ export async function runFullExtraction(args: {
           text: u.text,
           unitType: u.type ?? null,
           domain: u.domain ?? null,
+          sourceChunkIndex: i,
         })),
         relations: extraction.relations.map((r) => ({
           fromLocalId: r.from,
@@ -195,7 +260,8 @@ export async function runFullExtraction(args: {
         );
       }
       for (const u of stored.units) {
-        sourceUnits.push({ id: u.id, text: u.text, type: u.type });
+        sourceUnits.push({ id: u.id, text: u.text, type: u.type, chunkIndex: i });
+        chunkTextByUnitId.set(u.id, chunk.text);
         embedText.set(u.id, u.text);
       }
     }
@@ -217,6 +283,7 @@ export async function runFullExtraction(args: {
           units: cappedForGrouping.map((u) => ({ ref: u.id, text: u.text, ...(u.type ? { type: u.type } : {}) })),
           pack,
           generate: args.generates.grouping,
+          qualityPreset: preset,
         });
         const res = await writer.storeGroups(
           groups.map((g) => ({
@@ -236,55 +303,52 @@ export async function runFullExtraction(args: {
 
     if (shouldRunStage("validating", stop)) {
       await reporter?.beginStage("validating", `Validating ${sourceUnits.length} units`, 1);
+      let validationResults: Awaited<ReturnType<typeof validateUnits>> | null = null;
       try {
-        const results = await validateUnits({
+        validationResults = await validateUnits({
           units: sourceUnits.map((u) => ({ ref: u.id, text: u.text })),
           sourceText: src.text,
           pack,
           generate: args.generates.validation,
+          qualityPreset: preset,
+          graphContext,
+          sourceTextByRef: chunkTextByUnitId,
         });
         totalValidated += await writer.setValidation(
-          results.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
+          validationResults.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
         );
         await reporter?.completeStage(
           "validating",
           `${totalValidated}/${sourceUnits.length} validation row(s) persisted`,
         );
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : "Validation failed";
+        await reporter?.skipStage("validating", `${detail.slice(0, 140)} — continuing`);
+        validationResults = null;
+      }
 
-        if (shouldRunStage("remediating", stop)) {
-          const weak = results
-            .filter((r) => r.status === "weak" || r.status === "unsupported")
-            .map((r) => ({ ref: r.ref, text: textById.get(r.ref) ?? "", note: r.note }))
-            .filter((u) => u.text);
-          await reporter?.beginStage("remediating", "Remediating weak units", Math.max(1, weak.length));
-          if (weak.length > 0) {
-            const fixes = await remediateUnits({ units: weak, sourceText: src.text, pack, generate: args.generates.remediation });
-            for (let fi = 0; fi < fixes.length; fi++) {
-              const fix = fixes[fi]!;
-              await reporter?.tick(
-                "remediating",
-                `Remediation ${fi + 1}/${fixes.length}`,
-              );
-              if (fix.action === "repair" && fix.text) {
-                await writer.updateUnitText(fix.ref, fix.text);
-                embedText.set(fix.ref, fix.text);
-                totalRepaired += 1;
-              } else if (fix.action === "drop") {
-                await writer.deleteUnit(fix.ref);
-                embedText.delete(fix.ref);
-                totalDropped += 1;
-              }
-            }
-          }
-          await reporter?.completeStage(
-            "remediating",
-            `${totalRepaired} repaired, ${totalDropped} dropped`,
-          );
-        } else {
-          await reporter?.skipStage("remediating", "Stop-after gate");
+      if (validationResults && shouldRunStage("remediating", stop)) {
+        const pass = await runGraphRemediationPass({
+          validationResults,
+          textById,
+          sourceText: src.text,
+          pack,
+          writer,
+          validationGenerate: args.generates.validation,
+          remediationGenerate: args.generates.remediation,
+          reporter,
+        });
+        for (const id of pass.repairedUnitIds) {
+          const text = textById.get(id);
+          if (text) embedText.set(id, text);
+          chunkTextByUnitId.delete(id);
         }
-      } catch {
-        await reporter?.skipStage("validating", "Validation failed — continuing");
+        totalRepaired += pass.repaired;
+        totalDropped += pass.dropped;
+      } else if (!validationResults) {
+        await reporter?.skipStage("remediating", "Validation did not complete");
+      } else {
+        await reporter?.skipStage("remediating", "Stop-after gate");
       }
     } else {
       await reporter?.skipStage("validating", "Stop-after gate");

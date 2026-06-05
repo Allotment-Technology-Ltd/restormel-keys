@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import ConnectSourceDocumentPreCheck from "$lib/components/connect/ConnectSourceDocumentPreCheck.svelte";
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   const API_BASE = DASHBOARD_BASE + "/api/connect";
@@ -50,9 +51,9 @@
   let documents: Doc[] = [];
   let selectedDocs: Record<string, boolean> = {};
   let docUrl = "";
-  let addingDoc = false;
   let docMsg: string | null = null;
   let docError = false;
+  let docPreCheck: ConnectSourceDocumentPreCheck;
 
   let loading = true;
   let submitting = false;
@@ -118,46 +119,22 @@
     }
   }
 
-  async function addUrlDocument() {
-    if (!docUrl.trim()) return;
-    addingDoc = true;
-    docMsg = null;
-    docError = false;
-    try {
-      const res = await fetch(API_BASE + "/sources/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "url", url: docUrl.trim() }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        docError = true;
-        docMsg = d.message ?? `Could not add (HTTP ${res.status}).`;
-        return;
-      }
-      const doc: Doc = d.document;
-      if (doc.status === "failed") {
-        docError = true;
-        docMsg = `Could not parse: ${doc.error ?? "unknown error"}`;
-      } else {
-        docMsg = `Added "${doc.name}" (${doc.chunk_count} chunks).`;
-        selectedDocs[doc.id] = true;
-      }
-      docUrl = "";
-      await loadDocuments();
-    } catch {
-      docError = true;
-      docMsg = "Network error while adding the document.";
-    } finally {
-      addingDoc = false;
-    }
+  async function onDocumentImported(event: CustomEvent<{ id: string; name: string; status: string; chunk_count?: number }>) {
+    const doc = event.detail;
+    docError = doc.status === "failed";
+    docMsg =
+      doc.status === "failed"
+        ? "Could not parse this document."
+        : `Added "${doc.name}" (${doc.chunk_count ?? 0} chunks).`;
+    if (doc.status === "parsed") selectedDocs[doc.id] = true;
+    docUrl = "";
+    await loadDocuments();
   }
 
-  async function addFile(event: Event) {
+  async function previewFile(event: Event) {
     const inputEl = event.target as HTMLInputElement;
     const file = inputEl.files?.[0];
     if (!file) return;
-    addingDoc = true;
     docMsg = null;
     docError = false;
     try {
@@ -174,37 +151,16 @@
         content = btoa(bin);
         encoding = "base64";
       }
-      const res = await fetch(API_BASE + "/sources/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "upload",
-          name: file.name,
-          mime: file.type || "text/plain",
-          content,
-          content_encoding: encoding,
-        }),
+      await docPreCheck.runUploadPreview({
+        name: file.name,
+        mime: file.type || "text/plain",
+        content,
+        content_encoding: encoding,
       });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        docError = true;
-        docMsg = d.message ?? `Could not upload (HTTP ${res.status}).`;
-        return;
-      }
-      const doc: Doc = d.document;
-      if (doc.status === "failed") {
-        docError = true;
-        docMsg = `Could not parse "${doc.name}": ${doc.error ?? "unsupported format"}`;
-      } else {
-        docMsg = `Uploaded "${doc.name}" (${doc.chunk_count} chunks).`;
-        selectedDocs[doc.id] = true;
-      }
-      await loadDocuments();
     } catch {
       docError = true;
       docMsg = "Could not read the file.";
     } finally {
-      addingDoc = false;
       inputEl.value = "";
     }
   }
@@ -367,19 +323,22 @@
       <fieldset class="field fieldset">
         <legend class="field-label">Documents</legend>
         <span class="field-hint">
-          Add documents by URL or file upload. They're parsed and chunked now; binary formats (PDF, DOCX) need a
-          managed parser. Selected documents are included in this job.
+          Preview title, authors, and links before full parse. Binary formats (PDF, DOCX) need a managed parser on import.
         </span>
         <div class="doc-add">
           <input class="input" type="url" bind:value={docUrl} placeholder="https://example.com/article" />
-          <button type="button" class="btn btn-secondary" on:click={addUrlDocument} disabled={addingDoc || !docUrl.trim()}>
-            {addingDoc ? "Adding…" : "Add URL"}
-          </button>
           <label class="btn btn-secondary file-btn">
-            Upload file
-            <input type="file" on:change={addFile} hidden accept=".txt,.md,.markdown,.html,.htm,.csv,.json,text/*" />
+            Choose file to preview
+            <input type="file" on:change={previewFile} hidden accept=".txt,.md,.markdown,.html,.htm,.csv,.json,text/*" />
           </label>
         </div>
+        <ConnectSourceDocumentPreCheck
+          bind:this={docPreCheck}
+          apiBase={API_BASE}
+          mode="url"
+          bind:url={docUrl}
+          on:imported={onDocumentImported}
+        />
         {#if docMsg}<p class:err={docError} class:doc-ok={!docError} role="status">{docMsg}</p>{/if}
         {#if documents.length > 0}
           <ul class="docs">

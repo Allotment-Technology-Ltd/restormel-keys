@@ -11,6 +11,7 @@ import {
 import { INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
 import { getWorkspace, listEnvironments, listProjectsByWorkspace } from "$lib/server/db";
 import { getConnectStageRoutingConfig, listRoutes, type RouteRecord } from "$lib/server/neon";
+import { resolvePrimaryStepModel } from "$lib/server/connect/resolve-stage-route-models";
 import { isRoutePublished } from "$lib/server/route-resolver";
 
 export { CONNECT_MODEL_STAGES, CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE };
@@ -37,6 +38,8 @@ export type StageRouteUiRow = {
     enabled: boolean;
   } | null;
   visualHref: string | null;
+  /** Primary enabled step model on the linked route, when resolvable at load time. */
+  activeModel: { modelId: string; provider: string } | null;
 };
 
 const STAGE_META: { key: ConnectModelStage; label: string; help: string }[] = [
@@ -168,6 +171,18 @@ export async function listConnectStageRouteRows(args: {
       }
     }
 
+    let activeModel: { modelId: string; provider: string } | null = null;
+    if (route) {
+      const resolved = await resolvePrimaryStepModel({
+        routeId: route.id,
+        projectId: args.projectId,
+        userId: args.userId,
+      }).catch(() => null);
+      if (resolved?.modelId && resolved.provider) {
+        activeModel = { modelId: resolved.modelId, provider: resolved.provider };
+      }
+    }
+
     rows.push({
       key: meta.key,
       label: meta.label,
@@ -185,6 +200,7 @@ export async function listConnectStageRouteRows(args: {
       visualHref: route
         ? `${base}/projects/${args.projectId}/routes/${route.id}?flow=visual`
         : null,
+      activeModel,
     });
   }
   return rows;
@@ -270,7 +286,40 @@ export type ConnectValidationRouteOption = {
   id: string;
   name: string;
   isDefault: boolean;
+  visualHref: string;
+  activeModel: { modelId: string; provider: string } | null;
 };
+
+const DASHBOARD_BASE = "/keys/dashboard";
+
+async function toConnectValidationRouteOption(args: {
+  route: RouteRecord;
+  projectId: string;
+  userId: string;
+  isDefault: boolean;
+}): Promise<ConnectValidationRouteOption> {
+  const visualHref = `${DASHBOARD_BASE}/projects/${args.projectId}/routes/${args.route.id}?flow=visual`;
+  let activeModel: { modelId: string; provider: string } | null = null;
+  try {
+    const resolved = await resolvePrimaryStepModel({
+      routeId: args.route.id,
+      projectId: args.projectId,
+      userId: args.userId,
+    });
+    if (resolved?.modelId && resolved.provider) {
+      activeModel = { modelId: resolved.modelId, provider: resolved.provider };
+    }
+  } catch {
+    activeModel = null;
+  }
+  return {
+    id: args.route.id,
+    name: args.route.name,
+    isDefault: args.isDefault,
+    visualHref,
+    activeModel,
+  };
+}
 
 /** Published ingestion routes suitable for the validation stage picker. */
 export async function listConnectIngestionValidationRoutes(args: {
@@ -301,11 +350,104 @@ export async function listConnectIngestionValidationRoutes(args: {
     if (seen.has(route.id)) continue;
     if (route.status !== "active" || !(route.enabled ?? true) || !isRoutePublished(route)) continue;
     seen.add(route.id);
-    options.push({
-      id: route.id,
-      name: route.name,
-      isDefault: route.id === defaultRouteId,
-    });
+    options.push(
+      await toConnectValidationRouteOption({
+        route,
+        projectId: args.projectId,
+        userId: args.userId,
+        isDefault: route.id === defaultRouteId,
+      }),
+    );
+  }
+  options.sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return options;
+}
+
+/** Published ingestion routes suitable for the embedding stage picker. */
+export async function listConnectIngestionEmbeddingRoutes(args: {
+  workspaceId: string;
+  userId: string;
+  projectId: string;
+  environmentId: string;
+}): Promise<ConnectValidationRouteOption[]> {
+  const routing = (await getConnectStageRouting(args.workspaceId)) ?? {
+    project_id: args.projectId,
+    environment_id: args.environmentId,
+  };
+  const defaultRouteId = routing.routes?.embedding ?? null;
+  const dedicated = await listRoutes(args.projectId, args.userId, {
+    environmentId: args.environmentId,
+    workload: INGESTION_WORKLOAD,
+    stage: CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE.embedding,
+  });
+  const shared = await listRoutes(args.projectId, args.userId, {
+    environmentId: args.environmentId,
+    workload: INGESTION_WORKLOAD,
+  });
+
+  const seen = new Set<string>();
+  const options: ConnectValidationRouteOption[] = [];
+  const candidates = [...dedicated, ...shared.filter((r) => !r.stage || r.stage === "")];
+  for (const route of candidates) {
+    if (seen.has(route.id)) continue;
+    if (route.status !== "active" || !(route.enabled ?? true) || !isRoutePublished(route)) continue;
+    seen.add(route.id);
+    options.push(
+      await toConnectValidationRouteOption({
+        route,
+        projectId: args.projectId,
+        userId: args.userId,
+        isDefault: route.id === defaultRouteId,
+      }),
+    );
+  }
+  options.sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return options;
+}
+
+/** Published ingestion routes suitable for the remediation stage picker. */
+export async function listConnectIngestionRemediationRoutes(args: {
+  workspaceId: string;
+  userId: string;
+  projectId: string;
+  environmentId: string;
+}): Promise<ConnectValidationRouteOption[]> {
+  const routing = (await getConnectStageRouting(args.workspaceId)) ?? {
+    project_id: args.projectId,
+    environment_id: args.environmentId,
+  };
+  const defaultRouteId = routing.routes?.remediation ?? null;
+  const dedicated = await listRoutes(args.projectId, args.userId, {
+    environmentId: args.environmentId,
+    workload: INGESTION_WORKLOAD,
+    stage: CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE.remediation,
+  });
+  const shared = await listRoutes(args.projectId, args.userId, {
+    environmentId: args.environmentId,
+    workload: INGESTION_WORKLOAD,
+  });
+
+  const seen = new Set<string>();
+  const options: ConnectValidationRouteOption[] = [];
+  const candidates = [...dedicated, ...shared.filter((r) => !r.stage || r.stage === "")];
+  for (const route of candidates) {
+    if (seen.has(route.id)) continue;
+    if (route.status !== "active" || !(route.enabled ?? true) || !isRoutePublished(route)) continue;
+    seen.add(route.id);
+    options.push(
+      await toConnectValidationRouteOption({
+        route,
+        projectId: args.projectId,
+        userId: args.userId,
+        isDefault: route.id === defaultRouteId,
+      }),
+    );
   }
   options.sort((a, b) => {
     if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;

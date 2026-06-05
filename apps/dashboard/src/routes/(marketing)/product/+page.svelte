@@ -1,9 +1,12 @@
 <script lang="ts">
   import SuiteProofGallery from "$lib/components/suite/SuiteProofGallery.svelte";
+  import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
   import { page } from "$app/stores";
   import { dashboardEntryHref } from "$lib/dashboard-entry";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { SUITE_CAPABILITY_TAGLINE, SUITE_MODULES } from "$lib/suite/suite-modules";
 
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
   $: suiteModules = $page.data.suiteModulesForUi ?? SUITE_MODULES;
   $: runRestormelHref = dashboardEntryHref($page.data.user);
 </script>
@@ -24,7 +27,9 @@
       <a class="btn btn-secondary" href="/docs/quickstart">Embed in my stack</a>
     </div>
 
-    <SuiteProofGallery compact />
+    <EcosystemStrip variant="compact" stampEyebrow="Fits your stack" moduleFlags={flags} />
+
+    <SuiteProofGallery compact stampEyebrow="Capability samples" />
 
     <ul class="cap-grid">
       {#each suiteModules as mod}
@@ -54,6 +59,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
+    margin: var(--space-6) 0;
+  }
+
+  :global(.proof-gallery-frame),
+  :global(.stack-rail-outer-stamp) {
     margin: var(--space-6) 0;
   }
   .cap-grid {

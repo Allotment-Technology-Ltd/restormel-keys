@@ -71,14 +71,15 @@ domain:   configurable schema`;
 
   .product-card {
     background: var(--color-surface);
-    border: var(--border);
-    box-shadow: var(--shadow-md);
-    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    border: 2px solid var(--color-ink);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--color-ink);
+    transition: transform 100ms ease, box-shadow 100ms ease;
   }
 
   .product-card:hover {
     transform: translate(-2px, -2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 6px 6px 0 var(--color-ink);
   }
 
   .product-card-head {
@@ -142,8 +143,11 @@ domain:   configurable schema`;
 
   .product-code {
     background: var(--code-bg);
-    border: var(--border);
-    padding: 0.875rem 1rem;
+    border: 2px solid var(--code-bg);
+    border-left: 3px solid var(--color-yellow);
+    border-radius: 0;
+    box-shadow: 3px 3px 0 var(--color-yellow);
+    padding: 0.875rem 1rem 0.875rem calc(1rem + 3px);
     font-family: var(--font-mono);
     font-size: 11px;
     line-height: 1.8;

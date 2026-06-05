@@ -64,26 +64,98 @@ export type ConnectVerifyResponse = z.infer<typeof ConnectVerifyResponseSchema>;
 
 export const ConnectRetrieveDepthSchema = z.enum(['quick', 'standard', 'deep']);
 
+export type ConnectRetrieveDepth = z.infer<typeof ConnectRetrieveDepthSchema>;
+
 export const ConnectRetrieveRequestSchema = ConnectWorkspaceContextSchema.extend({
   contract_version: ConnectApiContractVersionSchema.optional(),
   query: z.string().min(1),
   depth: ConnectRetrieveDepthSchema.optional(),
   domain_hint: z.string().min(1).optional(),
   max_claims: z.number().int().positive().max(500).optional(),
-  require_verified: z.boolean().optional()
+  require_verified: z.boolean().optional(),
+  /** When set, traversal seeds from this claim id (`get_context_for` / explorer copy). */
+  seed_claim_id: z.string().min(1).optional()
 });
 
 export type ConnectRetrieveRequest = z.infer<typeof ConnectRetrieveRequestSchema>;
+
+export const ConnectRetrievedClaimSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  claim_type: z.string(),
+  domain: z.string(),
+  source_title: z.string(),
+  confidence: z.number()
+});
+
+export const ConnectRetrievedRelationSchema = z.object({
+  from_index: z.number().int().nonnegative(),
+  to_index: z.number().int().nonnegative(),
+  relation_type: z.string()
+});
+
+export const ConnectRetrievedArgumentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tradition: z.string().nullable(),
+  summary: z.string(),
+  conclusion_text: z.string().nullable().optional(),
+  key_premises: z.array(z.string()).optional()
+});
+
+export const ConnectRetrieveGraphSchema = z.object({
+  claims: z.array(ConnectRetrievedClaimSchema),
+  relations: z.array(ConnectRetrievedRelationSchema),
+  arguments: z.array(ConnectRetrievedArgumentSchema),
+  seed_claim_ids: z.array(z.string())
+});
+
+export type ConnectRetrieveGraph = z.infer<typeof ConnectRetrieveGraphSchema>;
+
+export const ConnectContextPackStatsSchema = z.object({
+  token_budget: z.number(),
+  estimated_tokens: z.number(),
+  truncated: z.boolean(),
+  claim_count: z.number(),
+  relation_count: z.number(),
+  argument_count: z.number()
+});
+
+export const ConnectContextPackPassSchema = z.object({
+  block: z.string(),
+  stats: ConnectContextPackStatsSchema
+});
+
+export const ConnectContextPackSchema = z.object({
+  analysis: ConnectContextPackPassSchema,
+  critique: ConnectContextPackPassSchema,
+  synthesis: ConnectContextPackPassSchema
+});
+
+export type ConnectContextPack = z.infer<typeof ConnectContextPackSchema>;
 
 export const ConnectRetrieveResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
   context_block: z.string(),
+  context_pack: ConnectContextPackSchema.optional(),
+  graph: ConnectRetrieveGraphSchema.optional(),
   metadata: z.object({
     claims_retrieved: z.number().int().nonnegative(),
     arguments_retrieved: z.number().int().nonnegative(),
     retrieval_degraded: z.boolean().optional(),
     retrieval_degraded_reason: z.string().optional(),
+    retrieval_degraded_code: z
+      .enum([
+        'graph_target_not_configured',
+        'graph_target_not_surreal',
+        'graph_target_unreachable',
+        'embedding_unavailable',
+        'no_claims',
+        'seed_claim_not_found',
+        'graph_store_error'
+      ])
+      .optional(),
     detected_domain: z.string().optional(),
     domain_confidence: z.enum(['high', 'medium', 'low']).optional()
   })
@@ -93,11 +165,24 @@ export type ConnectRetrieveResponse = z.infer<typeof ConnectRetrieveResponseSche
 
 // ─── Ingest (Connect Ingest sub-product) ───────────────────────────────────
 
+/** Provenance hints from a source pre-check (URL/HTML head or upload filename). */
+export const ConnectSourceProvenanceSchema = z.object({
+  title: z.string().max(500).optional(),
+  canonical_url: z.string().max(2000).optional(),
+  url: z.string().max(2000).optional(),
+  authors: z.array(z.string().max(200)).max(20).optional(),
+  description: z.string().max(2000).optional(),
+  site_name: z.string().max(200).optional(),
+  published_at: z.string().max(80).optional()
+});
+export type ConnectSourceProvenance = z.infer<typeof ConnectSourceProvenanceSchema>;
+
 export const ConnectIngestSourceSchema = z.object({
   url: z.string().url().optional(),
   text: z.string().min(1).optional(),
   title: z.string().min(1).optional(),
-  content_type: z.enum(['url', 'text', 'file_ref']).optional()
+  content_type: z.enum(['url', 'text', 'file_ref']).optional(),
+  provenance: ConnectSourceProvenanceSchema.optional()
 }).refine((s) => Boolean(s.url?.trim() || s.text?.trim()), {
   message: 'Provide at least one of `url` or `text` on each source.'
 });
@@ -139,18 +224,42 @@ export const ConnectIngestJobDashboardCreateSchema = z
 export type ConnectIngestJobDashboardCreate = z.infer<typeof ConnectIngestJobDashboardCreateSchema>;
 
 /** Re-run validation on units already stored in the workspace graph. */
-export const ConnectGraphRevalidateScopeSchema = z.enum(['all', 'unchecked', 'flagged']);
+export const ConnectGraphRevalidateScopeSchema = z.enum([
+  'all',
+  'unchecked',
+  'flagged',
+  'quarantine',
+  'unsupported'
+]);
 export type ConnectGraphRevalidateScope = z.infer<typeof ConnectGraphRevalidateScopeSchema>;
+
+export const ConnectGraphRevalidateModeSchema = z.enum(['validate', 'validate_and_remediate']);
+export type ConnectGraphRevalidateMode = z.infer<typeof ConnectGraphRevalidateModeSchema>;
 
 export const ConnectGraphRevalidateRequestSchema = z.object({
   label: z.string().min(1).max(200).optional(),
   /** Keys ingestion route id for the validation stage (overrides workspace default). */
   validation_route_id: z.string().uuid().optional(),
+  /** Keys ingestion route id for the remediation stage (overrides workspace default). */
+  remediation_route_id: z.string().uuid().optional(),
   domain_pack_id: z.string().uuid().optional(),
   scope: ConnectGraphRevalidateScopeSchema.default('unchecked'),
+  mode: ConnectGraphRevalidateModeSchema.default('validate'),
   project_id: z.string().uuid().optional()
 });
 export type ConnectGraphRevalidateRequest = z.infer<typeof ConnectGraphRevalidateRequestSchema>;
+
+/** Re-link graph ideas to the best matching ingest or pipeline source text. */
+export const ConnectGraphLinkSourcesScopeSchema = z.enum(['all', 'unlinked_only']);
+export type ConnectGraphLinkSourcesScope = z.infer<typeof ConnectGraphLinkSourcesScopeSchema>;
+
+export const ConnectGraphLinkSourcesRequestSchema = z.object({
+  label: z.string().min(1).max(200).optional(),
+  domain_pack_id: z.string().uuid().optional(),
+  scope: ConnectGraphLinkSourcesScopeSchema.default('unlinked_only'),
+  project_id: z.string().uuid().optional()
+});
+export type ConnectGraphLinkSourcesRequest = z.infer<typeof ConnectGraphLinkSourcesRequestSchema>;
 
 // ─── Source documents (connectors + parsing) ─────────────────────────────────
 
@@ -169,6 +278,7 @@ export const ConnectSourceDocumentSchema = z.object({
   name: z.string().min(1).max(500),
   mime: z.string().max(200).optional(),
   url: z.string().max(2000).optional(),
+  provenance: ConnectSourceProvenanceSchema.optional(),
   char_count: z.number().int().nonnegative(),
   chunk_count: z.number().int().nonnegative(),
   status: ConnectSourceDocumentStatusSchema,
@@ -188,13 +298,44 @@ export const ConnectSourceDocumentCreateSchema = z
     mime: z.string().max(200).optional(),
     /** For upload: UTF-8 text or base64; binary formats need a managed parser. */
     content: z.string().max(5_000_000).optional(),
-    content_encoding: z.enum(['utf8', 'base64']).default('utf8')
+    content_encoding: z.enum(['utf8', 'base64']).default('utf8'),
+    /** From pre-check; applied to display name and stored on the document. */
+    provenance: ConnectSourceProvenanceSchema.optional()
   })
   .refine((v) => (v.kind === 'url' ? Boolean(v.url) : Boolean(v.content)), {
     message: 'url is required for kind=url; content is required for kind=upload.'
   });
 
 export type ConnectSourceDocumentCreate = z.infer<typeof ConnectSourceDocumentCreateSchema>;
+
+export const ConnectSourceDocumentPreviewRequestSchema = z
+  .object({
+    kind: z.enum(['url', 'upload']),
+    url: z.string().url().max(2000).optional(),
+    name: z.string().min(1).max(500).optional(),
+    mime: z.string().max(200).optional(),
+    content: z.string().max(512_000).optional(),
+    content_encoding: z.enum(['utf8', 'base64']).default('utf8')
+  })
+  .refine((v) => (v.kind === 'url' ? Boolean(v.url) : Boolean(v.content)), {
+    message: 'url is required for kind=url; content is required for kind=upload.'
+  });
+
+export type ConnectSourceDocumentPreviewRequest = z.infer<
+  typeof ConnectSourceDocumentPreviewRequestSchema
+>;
+
+export const ConnectSourceDocumentPreviewResponseSchema = z.object({
+  ok: z.literal(true),
+  suggested_name: z.string().min(1).max(500),
+  mime: z.string().max(200).optional(),
+  provenance: ConnectSourceProvenanceSchema,
+  warnings: z.array(z.string().max(500)).max(10).optional()
+});
+
+export type ConnectSourceDocumentPreviewResponse = z.infer<
+  typeof ConnectSourceDocumentPreviewResponseSchema
+>;
 
 // ─── Source connections (cloud connectors) ───────────────────────────────────
 
@@ -542,6 +683,22 @@ export const ConnectEmbeddingContractSchema = z.object({
 
 export type ConnectEmbeddingContract = z.infer<typeof ConnectEmbeddingContractSchema>;
 
+/** Production is default; starter is explicit demo opt-down. */
+export const ConnectQualityPresetSchema = z.enum(['production', 'starter']).default('production');
+
+export type ConnectQualityPreset = z.infer<typeof ConnectQualityPresetSchema>;
+
+/** Use-case archetype for default stage prompt templates (connect-core composer). */
+export const ConnectPackArchetypeSchema = z.enum([
+  'argumentative',
+  'factual',
+  'procedural',
+  'product_docs',
+  'generic'
+]);
+
+export type ConnectPackArchetype = z.infer<typeof ConnectPackArchetypeSchema>;
+
 /** A reusable, domain-agnostic ingestion configuration. */
 export const ConnectDomainPackSchema = z.object({
   id: z.string().uuid(),
@@ -553,6 +710,13 @@ export const ConnectDomainPackSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]*$/, 'slug must be kebab-case'),
   title: z.string().min(1).max(120),
   description: z.string().max(600).optional(),
+  quality_preset: ConnectQualityPresetSchema.default('production'),
+  /** When true, validation route should use a different provider/model than extraction. */
+  cross_model_validation: z.boolean().default(true),
+  /** Drives default stage prompts when prompts.* are empty. Inferred from slug when omitted. */
+  archetype: ConnectPackArchetypeSchema.optional(),
+  /** Bumped when automated feedback loop ships template calibration (G7). */
+  prompt_template_version: z.number().int().positive().optional(),
   ontology: ConnectOntologySchema,
   prompts: ConnectStagePromptsSchema.default({}),
   graph_schema: ConnectGraphSchemaMapSchema,
@@ -576,6 +740,10 @@ export const ConnectDomainPackUpsertSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]*$/, 'slug must be kebab-case'),
   title: z.string().min(1).max(120),
   description: z.string().max(600).optional(),
+  quality_preset: ConnectQualityPresetSchema.optional(),
+  cross_model_validation: z.boolean().optional(),
+  archetype: ConnectPackArchetypeSchema.optional(),
+  prompt_template_version: z.number().int().positive().optional(),
   ontology: ConnectOntologySchema,
   prompts: ConnectStagePromptsSchema.optional(),
   graph_schema: ConnectGraphSchemaMapSchema,
@@ -612,7 +780,17 @@ export const DEFAULT_GENERIC_DOMAIN_PACK: ConnectDomainPackUpsert = {
     relationship_patterns: [],
     schema_mode: 'guided'
   },
-  prompts: {},
+  archetype: 'generic',
+  prompts: {
+    extraction:
+      'You build a knowledge graph from text for "{pack_title}". Extract atomic {unit_noun}s — each a complete idea — and identify how they relate.',
+    validation:
+      'You validate extracted {unit_noun}s for "{pack_title}". Catch hallucinations and serious misreadings — not faithful paraphrases.',
+    remediation:
+      'Repair {unit_noun}s flagged as weak or unsupported for "{pack_title}", or drop those that cannot be supported.',
+    grouping:
+      'Group related {unit_noun}s into {group_noun}s for "{pack_title}". Each group is a coherent whole, not an arbitrary bucket.'
+  },
   graph_schema: {
     source_table: 'source',
     passage_table: 'passage',
@@ -626,7 +804,10 @@ export const DEFAULT_GENERIC_DOMAIN_PACK: ConnectDomainPackUpsert = {
     min_passage_chars: 400,
     max_passage_chars: 6000
   },
-  embedding: { model: 'voyage-3', dimensions: 1024 }
+  embedding: { model: 'voyage-3', dimensions: 1024 },
+  quality_preset: 'production',
+  cross_model_validation: true,
+  prompt_template_version: 1
 };
 
 /**
@@ -670,7 +851,19 @@ export const PHILOSOPHY_DOMAIN_PACK: ConnectDomainPackUpsert = {
     ],
     schema_mode: 'guided'
   },
-  prompts: {},
+  archetype: 'argumentative',
+  prompts: {
+    extraction:
+      'You build a knowledge graph from argumentative discourse for "{pack_title}". Extract complete {unit_noun}s (premises, conclusions, objections) and discourse relations — not isolated fragments.',
+    relations:
+      'Identify discourse relations between {unit_noun}s in argumentative text for "{pack_title}". Focus on supports, contradicts, responds_to, and qualifies.',
+    validation:
+      'Validate extracted {unit_noun}s from argumentative sources for "{pack_title}". Flag only clear hallucinations — faithful paraphrase of premises and conclusions is "ok".',
+    remediation:
+      'Repair weak {unit_noun}s from argumentative text for "{pack_title}" so they remain faithful to the source, or drop unsupported ones.',
+    grouping:
+      'Group related {unit_noun}s into coherent {group_noun}s (e.g. a complete argument) for "{pack_title}".'
+  },
   graph_schema: {
     source_table: 'source',
     passage_table: 'passage',
@@ -690,7 +883,10 @@ export const PHILOSOPHY_DOMAIN_PACK: ConnectDomainPackUpsert = {
     source_edge: 'authored',
     external_id_provider: 'wikidata'
   },
-  embedding: { model: 'voyage-3', dimensions: 1024 }
+  embedding: { model: 'voyage-3', dimensions: 1024 },
+  quality_preset: 'production',
+  cross_model_validation: true,
+  prompt_template_version: 1
 };
 
 // ─── Graph store target (Bring-Your-Own store) ───────────────────────────────

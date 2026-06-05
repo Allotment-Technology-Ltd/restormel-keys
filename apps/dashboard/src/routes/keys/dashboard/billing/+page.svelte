@@ -129,10 +129,6 @@
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-secondary {
     border: 1px solid var(--rm-border);
     color: var(--rm-text);

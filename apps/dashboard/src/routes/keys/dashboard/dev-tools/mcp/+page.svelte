@@ -28,6 +28,26 @@
       name: "state.memory_preview",
       desc: "Project StateEvent stream to working memory; text lengths only.",
     },
+    {
+      pillar: "Connect",
+      name: "connect.search",
+      desc: "BYO Surreal graph — semantic search with structured context_pack (hosted retrieve).",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.get_context_for",
+      desc: "Topic + optional seed_claim_id traversal on your graph store.",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.retrieve",
+      desc: "Deprecated alias for connect.search.",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.verify",
+      desc: "Claim verification via hosted REST (BYOK LLM routes).",
+    },
   ];
 
   let suiteFilter = "";
@@ -117,6 +137,11 @@
     <code class="tool-name">POST /api/suite/invoke</code>
     → dashboard
     <code class="tool-name">POST …/keys/dashboard/api/suite/invoke</code>
+    · Connect agents:
+    <code class="tool-name">POST …/keys/dashboard/api/connect/invoke</code>
+    (<code class="tool-name">connect.search</code>,
+    <code class="tool-name">connect.get_context_for</code>) — requires BYO Surreal; see
+    <a href="/keys/dashboard/connect" class="btn-link">Connect hub</a>
   </p>
   <label class="suite-search-label" for="suite-tool-filter">Filter suite tools</label>
   <input

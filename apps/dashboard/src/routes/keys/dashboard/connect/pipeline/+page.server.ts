@@ -1,17 +1,31 @@
 import { redirect } from "@sveltejs/kit";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import {
+  isLegacyPipelineWizardStep,
   isPipelineWizardStep,
   pipelineWizardHref,
   type PipelineRunDefaults,
   type PipelineWizardStepId,
 } from "$lib/connect/pipeline-config";
-import { getOrCreateDefaultWorkspace } from "$lib/server/db";
+import { resolveConnectJourneyPhase, resolveDefaultPipelineStep } from "$lib/connect/connect-journey";
+import { listProviderIntegrations } from "$lib/server/db";
+import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
-import { listDomainPacksForUi, resolvePipelineDomainPack, getSelectedDomainPackId, getIngestDocumentSelection, resolveIngestDocuments } from "$lib/server/connect/domain-pack-service";
+import {
+  listDomainPacksForUi,
+  resolvePipelineDomainPack,
+  getSelectedDomainPackId,
+  getIngestDocumentSelection,
+  resolveIngestDocuments,
+} from "$lib/server/connect/domain-pack-service";
 import { listConnections } from "$lib/server/connect/connections-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { listConnectPipelineProfilesForWorkspace } from "$lib/server/neon";
+import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
+import { isLlmConfigured } from "$lib/server/connect/llm-generate";
+import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
+import { perfSpan } from "$lib/debug/server-perf";
 import type { PageServerLoad } from "./$types";
 
 function graphStoreLabel(target: Awaited<ReturnType<typeof getGraphTargetForUi>>): string | null {
@@ -72,7 +86,7 @@ function resolveRunDefaults(params: {
   };
 }
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url, depends, parent }) => {
   if (url.searchParams.has("connector_connected") || url.searchParams.has("connector_error")) {
     const params = new URLSearchParams({ step: "sources" });
     for (const [key, value] of url.searchParams) {
@@ -81,29 +95,88 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     throw redirect(302, `${DASHBOARD_BASE}/connect/pipeline?${params.toString()}`);
   }
 
-  const requestedStep = url.searchParams.get("step");
+  let requestedStep = url.searchParams.get("step");
+
+  if (isLegacyPipelineWizardStep(requestedStep)) {
+    const params = new URLSearchParams(url.searchParams);
+    params.set("step", "launch");
+    throw redirect(302, `${DASHBOARD_BASE}/connect/pipeline?${params.toString()}`);
+  }
 
   if (!locals.user || locals.user.authType !== "session") {
     const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
-    return { step, wizard: null, runDefaults: null };
+    return { step, wizard: null, runDefaults: null, modelsReady: false, phase: "initial" as const };
+  }
+
+  if (requestedStep === "agents") {
+    throw redirect(302, CONNECT_MCP_HREF);
   }
 
   try {
-    const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
-    const [target, packs, connections, documents, profiles, selectedDomainPackId, ingestDocumentSelection] = await Promise.all([
-      getGraphTargetForUi(workspace.id),
-      listDomainPacksForUi(workspace.id),
-      listConnections(workspace.id),
-      listSourceDocuments(workspace.id),
-      listConnectPipelineProfilesForWorkspace(workspace.id),
-      getSelectedDomainPackId(workspace.id),
-      getIngestDocumentSelection(workspace.id),
-    ]);
+    const endPipeline = perfSpan("connect/pipeline", "load");
+    const workspace = await requireConnectWorkspace(locals, parent);
+    depends(`app:connect-pipeline:${workspace.id}`);
+
+    if (!requestedStep) {
+      const [target, documents, integrations] = await Promise.all([
+        getGraphTargetForUi(workspace.id),
+        listSourceDocuments(workspace.id),
+        listProviderIntegrations(workspace.id).catch(() => []),
+      ]);
+      const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;
+      const modelsStatus = await computeConnectModelsReady({
+        workspaceId: workspace.id,
+        userId: locals.user.uid,
+        integrationsCount: integrations.length,
+        llmReady: isLlmConfigured(),
+        dashboardBase: DASHBOARD_BASE,
+      });
+      const phase = resolveConnectJourneyPhase({
+        hasGraphStore: Boolean(target),
+        modelsReady: modelsStatus.modelsReady,
+        parsedDocumentCount,
+      });
+      const defaultStep = resolveDefaultPipelineStep({
+        phase,
+        hasGraphStore: Boolean(target),
+        parsedDocumentCount,
+      });
+      throw redirect(302, pipelineWizardHref(defaultStep));
+    }
+
+    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
+
+    const [target, packs, connections, documents, profiles, selectedDomainPackId, ingestDocumentSelection, integrations, stats] =
+      await Promise.all([
+        getGraphTargetForUi(workspace.id),
+        listDomainPacksForUi(workspace.id),
+        listConnections(workspace.id),
+        listSourceDocuments(workspace.id),
+        listConnectPipelineProfilesForWorkspace(workspace.id),
+        getSelectedDomainPackId(workspace.id),
+        getIngestDocumentSelection(workspace.id),
+        listProviderIntegrations(workspace.id).catch(() => []),
+        resolveConnectGraphStats(workspace.id).catch(() => null),
+      ]);
+
+    const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;
+    const modelsStatus = await computeConnectModelsReady({
+      workspaceId: workspace.id,
+      userId: locals.user.uid,
+      integrationsCount: integrations.length,
+      llmReady: isLlmConfigured(),
+      dashboardBase: DASHBOARD_BASE,
+    });
+    const phase = resolveConnectJourneyPhase({
+      hasGraphStore: Boolean(target),
+      modelsReady: modelsStatus.modelsReady,
+      parsedDocumentCount,
+    });
 
     const activePack = resolvePipelineDomainPack(packs, selectedDomainPackId);
     const customPack = packs.find((p) => !p.is_builtin) ?? null;
-    const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;
     const selectedDocumentCount = resolveIngestDocuments(documents, ingestDocumentSelection).length;
+    const hasGraph = Boolean(stats && stats.units > 0);
     const wizard = {
       hasGraphStore: Boolean(target),
       graphStoreLabel: graphStoreLabel(target),
@@ -113,17 +186,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       connectionCount: connections.length,
       parsedDocumentCount,
       selectedDocumentCount,
+      hasGraph,
+      agentReady: false,
+      modelsReady: modelsStatus.modelsReady,
     };
-
-    if (!requestedStep) {
-      let defaultStep: PipelineWizardStepId = "store";
-      if (wizard.hasGraphStore) {
-        defaultStep = parsedDocumentCount > 0 ? "ready" : "domain";
-      }
-      throw redirect(302, pipelineWizardHref(defaultStep));
-    }
-
-    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
 
     if (!target && step !== "store") {
       throw redirect(302, pipelineWizardHref("store"));
@@ -132,7 +198,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const domainPackOverride = url.searchParams.get("domain_pack_id");
 
     const runDefaults =
-      step === "run"
+      step === "launch"
         ? resolveRunDefaults({
             target,
             packs,
@@ -144,10 +210,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           })
         : null;
 
-    return { step, wizard, runDefaults, domainPacks: packs, selectedDomainPackId: activePack?.id ?? null };
+    const payload = {
+      step,
+      wizard,
+      runDefaults,
+      modelsReady: modelsStatus.modelsReady,
+      phase,
+      workspaceId: workspace.id,
+      domainPacks: packs,
+      selectedDomainPackId: activePack?.id ?? null,
+    };
+    endPipeline();
+    return payload;
   } catch (e) {
     if (e && typeof e === "object" && "status" in e && "location" in e) throw e;
     const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
-    return { step, wizard: null, runDefaults: null };
+    return { step, wizard: null, runDefaults: null, modelsReady: false, phase: "initial" as const };
   }
 };

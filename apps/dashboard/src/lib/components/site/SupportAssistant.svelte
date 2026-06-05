@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { page } from "$app/stores";
   import { onMount, tick } from "svelte";
   import { env } from "$env/dynamic/public";
   import { openFeedbackWidget } from "$lib/stores/feedback-widget";
@@ -8,9 +7,13 @@
     openSupportAssistant,
     supportAssistantOpen,
   } from "$lib/stores/support-assistant";
+  import { agentLog } from "$lib/debug/agent-log";
 
   type Role = "user" | "assistant";
   type Msg = { role: Role; content: string };
+
+  /** From root `+layout` load — do not use `$page` here (breaks SSR on `/`). */
+  export let user: App.PageData["user"] | undefined = undefined;
 
   let drawerEl: HTMLElement | null = null;
   let inputEl: HTMLTextAreaElement | null = null;
@@ -19,11 +22,7 @@
   let streaming = false;
   let error: string | null = null;
 
-  $: sessionUser =
-    $page.data.user &&
-    ($page.data.user as { authType?: string }).authType === "session"
-      ? $page.data.user
-      : null;
+  $: sessionUser = user?.authType === "session" ? user : null;
 
   $: uiEnabled = (env.PUBLIC_RESTORMEL_SUPPORT_UI ?? "").trim().toLowerCase() !== "false";
 
@@ -72,6 +71,14 @@
   }
 
   onMount(() => {
+    // #region agent log
+    agentLog(
+      "SupportAssistant.svelte:onMount",
+      "support assistant mounted",
+      { showShell, uiEnabled, hasSessionUser: !!sessionUser },
+      "H3"
+    );
+    // #endregion
     document.addEventListener("keydown", onDocumentKeydown);
     return () => document.removeEventListener("keydown", onDocumentKeydown);
   });

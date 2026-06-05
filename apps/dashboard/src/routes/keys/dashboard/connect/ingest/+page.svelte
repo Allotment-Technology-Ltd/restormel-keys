@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
-  const NEW_RUN_HREF = pipelineWizardHref("run");
+  const NEW_RUN_HREF = pipelineWizardHref("launch");
 
   type Job = {
     id: string;
@@ -107,16 +108,17 @@
   </div>
 
   {#if loading}
-    <p class="muted" role="status">Loading jobs…</p>
+    <BrutalLoadingState message="Loading ingest runs — fetching your workspace jobs" rows={5} />
   {:else if error}
     <p class="err" role="alert">{error}</p>
   {:else if filtered.length === 0}
     <div class="empty">
-      <p>No ingest jobs yet.</p>
+      <span class="empty-icon" aria-hidden="true">□</span>
+      <h2 class="empty-title">No runs yet</h2>
       <p class="muted">
-        Configure your <a href={NEW_RUN_HREF}>pipeline</a> and start a run from the wizard.
+        Start your first ingest run to build your knowledge graph.
       </p>
-      <a class="btn btn-primary" href={NEW_RUN_HREF}>Start a run</a>
+      <a class="btn btn-primary" href={NEW_RUN_HREF}>Open setup wizard</a>
     </div>
   {:else}
     <ul class="jobs">

@@ -13,11 +13,11 @@ import { moduleFlagsToDashboardUiHidden } from "$lib/server/module-flags";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { dashboardSectionToMonitorInterest, parseMonitorInterestParam } from "$lib/dashboard-monitor-interest";
 import type { DashboardUiSection } from "$lib/dashboard-ui-sections";
+import { perfSpan } from "$lib/debug/server-perf";
+import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
 import {
   countApiKeysByWorkspace,
-  getOrCreateDefaultWorkspace,
-  listEnvironments,
-  listProjects,
+  listProjectsWithEnvironments,
   listProviderIntegrations,
 } from "$lib/server/db";
 
@@ -98,32 +98,28 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   }[] = [];
 
   let journeySignals: { integrationCount: number; gatewayKeyCount: number } | null = null;
+  let workspaceId: string | null = null;
 
   if (locals.user) {
     try {
-      const projects = await listProjects(locals.user.uid);
-      projectContexts = await Promise.all(
-        projects.map(async (project) => {
-          const environments = await listEnvironments(project.id, locals.user!.uid);
-          return {
-            id: project.id,
-            name: project.name,
-            environments: environments.map((env) => ({ id: env.id, name: env.name, type: env.type })),
-          };
-        })
-      );
+      const endProjects = perfSpan("dashboard/layout", "listProjectsWithEnvironments");
+      projectContexts = await listProjectsWithEnvironments(locals.user.uid);
+      endProjects();
     } catch (error) {
       const msg = error instanceof Error ? error.message : "unknown error";
       console.error("[dashboard layout] project context load failed:", msg.slice(0, 120));
     }
 
     try {
-      const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
+      const endJourney = perfSpan("dashboard/layout", "journeySignals");
+      const workspace = await getConnectWorkspaceCached(locals.user.uid);
+      workspaceId = workspace.id;
       const [integrations, gatewayKeyCount] = await Promise.all([
         listProviderIntegrations(workspace.id),
         countApiKeysByWorkspace(workspace.id),
       ]);
       journeySignals = { integrationCount: integrations.length, gatewayKeyCount };
+      endJourney();
     } catch (error) {
       const msg = error instanceof Error ? error.message : "unknown error";
       console.error("[dashboard layout] journey signals load failed:", msg.slice(0, 120));
@@ -134,6 +130,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     user: locals.user,
     authError,
     projectContexts,
+    workspaceId,
     journeySignals,
     dashboardUiHidden,
     navGroupsForUi,

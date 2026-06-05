@@ -115,11 +115,32 @@ export {
   builtinDocumentParser,
 } from "./ingest/builtin-parser.js";
 
+export { createLlamaParseParser, LlamaParseDocumentParser } from "./ingest/llamaparse-parser.js";
+export { createUnstructuredParser, UnstructuredDocumentParser } from "./ingest/unstructured-parser.js";
+
 export {
   buildExtractionSystemPrompt,
   buildExtractionUserPrompt,
   EXTRACTION_OUTPUT_CONTRACT,
 } from "./ingest/extraction-prompt.js";
+
+export {
+  composeStageSystemPrompt,
+  buildRelationsSystemPrompt,
+  substitutePromptPlaceholders,
+  resolvePackArchetype,
+  resolvePromptTemplateVersion,
+  type GraphIngestContext,
+  type IngestPromptContext,
+  type PackArchetype,
+  type IngestPromptStage,
+} from "./ingest/prompt-compose.js";
+
+export {
+  inferArchetypeFromSlug,
+  getArchetypeStageIntro,
+  PROMPT_TEMPLATE_VERSION,
+} from "./ingest/prompt-templates/index.js";
 
 export {
   extractGraph,
@@ -132,7 +153,18 @@ export {
   type ExtractionGenerate,
 } from "./ingest/extract.js";
 
+export {
+  evaluateExtractionGate,
+  type ExtractionGateDecision,
+} from "./ingest/extraction-gates.js";
+
 export { extractLinks, parseSitemapUrls, sitemapUrlFor } from "./ingest/crawl.js";
+
+export {
+  extractSourceMetadataFromHtml,
+  formatSourceProvenancePreview,
+  type SourceMetadata,
+} from "./ingest/source-metadata.js";
 
 export {
   buildGroupingSystemPrompt,
@@ -147,6 +179,10 @@ export {
 export {
   buildValidationSystemPrompt,
   buildValidationUserPrompt,
+  buildValidationBatchInputs,
+  validateUnitsBatch,
+  remapValidationBatchResults,
+  finalizeValidationCoverage,
   parseValidationResponse,
   validateUnits,
   type ValidationInput,
@@ -157,6 +193,10 @@ export {
 export {
   buildRemediationSystemPrompt,
   buildRemediationUserPrompt,
+  buildRemediationBatchInputs,
+  remediateUnitsBatch,
+  remapRemediationBatchResults,
+  finalizeRemediationCoverage,
   parseRemediationResponse,
   remediateUnits,
   type RemediationInput,
@@ -165,3 +205,37 @@ export {
 } from "./ingest/remediation.js";
 
 export { CONNECT_STAGE_ORDER, shouldRunStage } from "./ingest/stage-gate.js";
+
+export {
+  CONNECT_QUALITY_PRESET_DEFAULT,
+  resolveQualityPreset,
+  readMaxChunksForPreset,
+  effectiveStopAfterStage,
+  starterPresetWarning,
+  type ConnectQualityPreset,
+  type ConnectQualityPresetConfig,
+} from "./ingest/quality-preset.js";
+
+export {
+  runSourcePreScan,
+  type PreScanInput,
+  type PreScanResult,
+  type PreScanBlocker,
+} from "./ingest/pre-scan.js";
+
+export {
+  computeTrustScore,
+  buildAuditSummary,
+  TRUST_SCORE_FORMULA,
+  type KgAuditMetrics,
+  type KgAuditIssueDraft,
+  type KgAuditSummary,
+} from "./kg-audit/trust-score.js";
+
+export {
+  assertG2Targets,
+  computeG2Metrics,
+  G2_OK_PCT_TARGET,
+  G2_UNSUPPORTED_PCT_MAX,
+  type G2QualityMetrics,
+} from "./ingest/golden-eval.js";

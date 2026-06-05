@@ -12,6 +12,8 @@ declare global {
       capture?: (event: string, props?: Record<string, unknown>) => void;
     };
     rmCapture?: (event: string, props?: Record<string, unknown>) => void;
+    /** Dev-only: dump client debug ring buffer (`reportClientDebug` / hooks). */
+    __rmClientDebugDump?: () => unknown[];
   }
 
   namespace App {
@@ -48,6 +50,8 @@ declare global {
       };
     }
     interface LayoutData {
+      /** Session or key auth from root layout load (passed to SupportAssistant; avoid `$page` in that child). */
+      user?: PageData["user"];
       /** GitHub stars + summed npm downloads (30d); null when skipped, failed, or zero. Cached 1h server-side. */
       socialProof?: import("$lib/social-proof").SocialProofMetrics | null;
       dashboardUiHidden?: import("$lib/dashboard-ui-sections").DashboardUiSection[];

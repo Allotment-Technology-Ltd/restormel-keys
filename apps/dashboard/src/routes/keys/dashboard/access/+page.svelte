@@ -5,6 +5,7 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import type { KeyWithProject } from "./+page.server";
   import { gatewayKeyEnvSnippet } from "$lib/env-snippet";
+  import { savePendingGatewayKeySession } from "$lib/connect/connect-gateway-key-storage";
 
   export let data: {
     signedIn: boolean;
@@ -19,7 +20,13 @@
   let createError = "";
   let selectedProjectId = data.projects[0]?.id ?? "";
   let createLabel = "";
-  let newKey: { rawKey: string; keyPrefix: string; projectName: string; projectId: string } | null = null;
+  let newKey: {
+    rawKey: string;
+    keyPrefix: string;
+    projectName: string;
+    projectId: string;
+    keyId: string;
+  } | null = null;
   let copied = false;
   let copiedEnv = false;
   let copiedMaskedId: string | null = null;
@@ -56,12 +63,23 @@
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data) {
         const project = data.projects.find((p) => p.id === selectedProjectId);
+        const keyId = typeof body.data.keyId === "string" ? body.data.keyId : "";
         newKey = {
           rawKey: body.data.rawKey,
           keyPrefix: body.data.keyPrefix,
           projectName: project?.name ?? "Project",
           projectId: selectedProjectId,
+          keyId,
         };
+        if (keyId) {
+          savePendingGatewayKeySession({
+            keyId,
+            rawKey: body.data.rawKey,
+            keyPrefix: body.data.keyPrefix,
+            projectId: selectedProjectId,
+            savedAt: Date.now(),
+          });
+        }
         if (createLabel.trim()) {
           keyLabels[body.data.keyPrefix] = createLabel.trim();
           localStorage.setItem("rk_key_labels", JSON.stringify(keyLabels));
@@ -159,6 +177,7 @@
           <button type="button" class="btn btn-secondary" onclick={copyEnvSnippet}>
             {copiedEnv ? "Copied" : "Copy .env snippet"}
           </button>
+          <a class="btn btn-primary" href={DASHBOARD_BASE + "/connect/mcp"}>Use in MCP setup</a>
         </div>
       </div>
     {/if}
@@ -423,10 +442,6 @@
     cursor: pointer;
     text-decoration: none;
     display: inline-block;
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
   }
   .btn-secondary {
     background: var(--rm-surface);

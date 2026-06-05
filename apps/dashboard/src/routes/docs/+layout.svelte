@@ -6,12 +6,14 @@
   import { suiteDocsShellNav } from "$lib/suite/docs-nav";
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
+  import { marketingShellPropsFromPage } from "$lib/marketing-shell-props";
   import "$lib/styles/marketing-shell.css";
 
   const STORAGE_KEY = "rm_suite_docs_sidebar_collapsed";
 
-  $: user = $page.data.user;
-  $: pathname = $page.url.pathname;
+  $: shell = marketingShellPropsFromPage($page);
+  $: user = shell.user;
+  $: pathname = shell.pathname;
   $: docsPathRaw = pathname.startsWith("/docs") ? pathname.slice("/docs".length) || "" : "";
   $: docsPath = docsPathRaw.replace(/^\/+/, "");
   $: pathSegments = docsPath ? docsPath.split("/").filter(Boolean) : [];
@@ -39,11 +41,11 @@
 </svelte:head>
 
 <div class="marketing-shell">
-  <SiteHeader {user} />
+  <SiteHeader {user} {pathname} />
   <DocsShell storageKey={STORAGE_KEY} navBlocks={navBlocks} {breadcrumbItems} {footerLinks}>
     <slot />
   </DocsShell>
-  <SiteFooter />
+  <SiteFooter moduleFlags={shell.moduleFlags} suiteModulesForUi={shell.suiteModulesForUi} />
 </div>
 
 <style>

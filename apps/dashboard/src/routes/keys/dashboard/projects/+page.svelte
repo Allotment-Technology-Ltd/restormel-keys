@@ -219,10 +219,6 @@
     border: none;
     cursor: pointer;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;

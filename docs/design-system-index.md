@@ -69,8 +69,26 @@ Vendor logos are **optional credibility signals**, not decoration. **Canonical r
 1. **Light cream canvas** — High-contrast ink-on-paper across product surfaces.
 2. **Technical credibility over ornament** — 2px borders and hard offset shadows; zero radius on buttons, tags, cards.
 3. **Lift on hover** — Interactive cards/buttons translate `(-2px,-2px)` and grow shadow; active state presses in.
-4. **Yellow-only primary fills** — CTAs, active nav, highlighted badges; secondary surfaces use `--color-surface` + ink border.
+4. **Yellow-only primary fills** — CTAs, active nav, highlighted badges; secondary surfaces use `--color-surface` + ink border. **Never** `--color-ink` on `--color-blue` fills; use `--color-on-blue` when a blue background must carry text.
 5. **Tri-font roles** — Display headings (Barlow Condensed), body (DM Sans), labels/buttons/code (Space Mono).
+6. **Site layer** — `site-brutalist.css` (global), `marketing-brutalist-pass.css` (buttons/cards lift), **`marketing-ledger.css`** (canonical marketing section rhythm from **`/use-cases`**: yellow hero slabs, inverted mono tags, ink left-rule leads, stat chips, framed callouts, hatch bands), `suite-landing.css` (home `/`), `use-cases-brutal.css` (page layout only), `dashboard-surfaces.css` (dashboard chrome).
+
+### Marketing ledger (reference: `/use-cases`)
+
+Use these patterns for suite marketing, module landings, and template grids — not one-off page CSS.
+
+| Pattern | Classes | When |
+|---------|---------|------|
+| Yellow hero / featured band | `.suite-hero-slab` on `<section>` | Primary thesis + CTA block |
+| Inverted eyebrow | `.suite-section-tag--inverted` or `.brut-tag-inverted` | Tags on yellow slabs |
+| Display title on slab | `.suite-section-title` inside slab | `text-shadow: 3px 3px 0 var(--color-surface)` |
+| Lead with ink rule | `.suite-lead-rule` or `.suite-section-sub` in slab | Left border 4px, body-lg |
+| Mono stat chip | `.suite-stat-chip` / `.uc-hero-count` | Counts, meta lines |
+| Framed intro | `.suite-callout-frame` | Section intros (e.g. hobby band) |
+| Diagonal hatch band | `.suite-section--hatch` | Alternate content sections |
+| Template / teaser cards | `.teaser-grid .teaser-card`, `.use-case-card` | Ledger shadow via `marketing-ledger.css` |
+
+Utilities mirror: `brut-hero-slab`, `brut-tag-inverted`, `brut-lead-rule`, `brut-stat-chip` in `brutalist-utilities.css`.
 
 When adding or changing UI, prefer tokens and components from this system; avoid one-off colors or typography.
 

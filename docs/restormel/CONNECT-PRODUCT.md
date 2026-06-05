@@ -14,7 +14,7 @@ Restormel Connect is the **fourth suite product**: connect structured corpora vi
 | Sub-product | Consumer | Hot path | Primary interface (target) |
 | --- | --- | --- | --- |
 | **Connect Ingest** | Pipelines, operators | Async jobs | `POST /connect/v1/ingest/jobs` |
-| **Connect Retrieve** | RAG, agents, apps | Sync | `POST /connect/v1/retrieve`, MCP `connect.retrieve` |
+| **Connect Retrieve** | RAG, agents, apps | Sync | `POST /connect/v1/retrieve` (structured `graph` + `context_pack`), MCP `connect.search`, `connect.get_context_for` (BYO Surreal) |
 | **Connect Verify** | QA, governance, agents | Sync | `POST /connect/v1/verify`, MCP `connect.verify` |
 
 ---
@@ -24,6 +24,20 @@ Restormel Connect is the **fourth suite product**: connect structured corpora vi
 - Every LLM ingest stage resolves independently via Keys (`workload: ingestion`, stage keys such as `ingestion_extraction`).
 - Embeddings may use dedicated provider env (Voyage/Vertex) — documented in operator runbooks; not proxied as LLM chat.
 - Workspace isolation: all graph data scoped by Keys **`workspace_id`**.
+
+---
+
+## Improvement telemetry (hosted dashboard)
+
+Graph review actions emit **redacted** signals to improve default ingest prompts for all tenants:
+
+- **Why flagged** — AI `validation_status` and validator note (before human triage)
+- **What the operator did** — human verdict and optional note (max 500 chars, redacted)
+- **Never stored** — unit bodies, source URLs, or raw API keys
+
+Signals land in Postgres (`knowledge_review_signals`) and PostHog (`connect_review_completed`). Aggregates drive archetype prompt template bumps gated by golden eval. See [CONNECT-INGEST-QUALITY-BAR.md](./CONNECT-INGEST-QUALITY-BAR.md).
+
+Workspaces may disable this via `settings.ingest_quality_telemetry: false` (default on).
 
 ---
 
@@ -66,6 +80,7 @@ Reference implementation extracted from [SOPHIA](https://github.com/Allotment-Te
 
 ## Related
 
+- [connect-byo-graph-agent.md](../guides/connect-byo-graph-agent.md) — BYO Surreal + MCP agent wiring (MVP)
 - [CONNECT-DOMAIN-PACKS.md](./CONNECT-DOMAIN-PACKS.md) — domain-agnostic ingestion config (packs, BYO store, profiles)
 - [keys-routing-contract.md](../keys-routing-contract.md) — ingestion workload stages
 - [database-neon-for-self-hosters.md](../guides/database-neon-for-self-hosters.md) — Neon + graph store pattern

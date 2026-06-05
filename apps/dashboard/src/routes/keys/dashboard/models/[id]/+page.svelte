@@ -204,8 +204,8 @@
     font-size: var(--text-xs);
   }
   .lifecycle-current {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
   }
   .lifecycle-preview {
     background: var(--rm-surface);

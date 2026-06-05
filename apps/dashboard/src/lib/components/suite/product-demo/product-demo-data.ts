@@ -4,7 +4,8 @@ export type DemoStepId =
   | "database"
   | "graph-config"
   | "ingest"
-  | "validate";
+  | "validate"
+  | "agents";
 
 export type DemoStep = {
   id: DemoStepId;
@@ -46,12 +47,19 @@ export const DEMO_STEPS: DemoStep[] = [
   },
   {
     id: "validate",
-    shortLabel: "Validate",
+    shortLabel: "Graph",
     headline: "Explore and verify the graph",
-    caption: "94% of claims verified against source material",
+    caption: "Review ideas, flagged claims, and provenance in the explorer",
+  },
+  {
+    id: "agents",
+    shortLabel: "Agents",
+    headline: "Connect your agent via MCP",
+    caption: "connect.search · structured context pack · your BYO Surreal graph",
   },
 ];
 
+/** Auto-advance interval for the suite landing demo (ms). */
 export const DEMO_STEP_MS = 3500;
 
 export const INGEST_LOG_LINES = [

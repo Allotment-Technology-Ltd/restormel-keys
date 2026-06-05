@@ -6,9 +6,33 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 
 ## Commands
 
-- `pnpm dev` — dev server (open http://localhost:5173/keys/dashboard). Runs **`predev`** first (builds `@restormel/graph-core`, `ui-graph-svelte`, `graph-reasoning-extensions`). Use **Node 20.x** if you see engine warnings on Node 24.
+- `pnpm dev` — dev server (open http://localhost:5173/keys/dashboard). Runs **`predev`** first (builds workspace packages into `packages/*/dist`). Uses a higher Node heap limit; Vite ignores `dist/` watch churn. If dev dies with **heap out of memory**, stop the server, avoid parallel `pnpm -w build` while dev is running, and restart `pnpm dev`. Prefer **Node 20.x** if you see engine warnings on Node 24.
 - `pnpm build` — build for Node (adapter-node)
 - `pnpm preview` — preview production build
+- `pnpm analyze` — production build with Rollup bundle report at `apps/dashboard/.analyze/bundle-stats.html` (`ANALYZE=1 vite build`)
+
+### Profiling dashboard loads locally
+
+1. **Server timing spans** — enabled in dev automatically; force in preview/prod with `DASHBOARD_PERF_LOG=1`. Look for JSON lines on stderr:
+
+   `[dashboard-perf] {"route":"connect/hub","span":"loadConnectHubPage","ms":42}`
+
+   Instrumented paths include `hooks.server.ts` (`getSession`), dashboard `+layout.server.ts` (`listProjectsWithEnvironments`, `journeySignals`), Connect layout (`loadConnectLayoutWorkspace`), hub (`connect-hub-load`), pipeline and MCP page loads, and graph SSR (`loadConnectGraphView`).
+
+2. **Bundle weight** — `pnpm analyze` then open `apps/dashboard/.analyze/bundle-stats.html` to find heavy client chunks (Connect graph explorer, pipeline wizard panels).
+
+3. **Targeted invalidation** — Connect mutations should invalidate `app:connect-hub:<workspaceId>`, `app:connect-pipeline:<workspaceId>`, or `app:connect-graph:<workspaceId>` (see `depends()` in the matching `+page.server.ts` loads) instead of `invalidateAll()`.
+
+4. **Session/workspace caches** — production session cache TTL is **20s** (`PROD_SESSION_CACHE_MS` in `auth.ts`); Connect workspace cache is **30s** (`workspace-cache.ts`). Expect briefly stale nav badges after mutations until invalidation or TTL expiry.
+
+**Connect journey acceptance (manual smoke):**
+
+| Persona | Path | Success criteria |
+|---------|------|------------------|
+| New workspace | Sidebar Connect → complete setup → first run | One active checklist; visible next/back; cannot start run without models; lands on monitor after run |
+| Returning user | Hub with store+models+docs+past job | Action cards (not full homework); “New run” opens `step=launch`; “Change settings” reaches pipeline without losing config |
+| Side trip | Wizard sources → Models tab → save | Return banner restores exact wizard step |
+| Neon store user | Complete ingest | Agent card offers REST/gateway path, not Surreal-only MCP |
 - `pnpm run seed:catalog` — ingest model catalog from `data/model-catalog-seed.json` (requires DATABASE_URL)
 - `pnpm run seed:catalog:from-keys` — derive model catalog from `@restormel/keys` provider adapters (requires DATABASE_URL)
 

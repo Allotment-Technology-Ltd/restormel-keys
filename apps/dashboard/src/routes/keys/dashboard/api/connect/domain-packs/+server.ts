@@ -10,6 +10,7 @@ import {
   getSelectedDomainPackId,
   setSelectedDomainPackId,
 } from "$lib/server/connect/domain-pack-service";
+import { getWorkspaceEmbeddingLock } from "$lib/server/connect/embedding-contract";
 import {
   isKnowledgeSessionFailure,
   resolveKnowledgeSessionContext,
@@ -23,7 +24,11 @@ export const GET: RequestHandler = async ({ locals }) => {
   }
   const packs = await listDomainPacksForUi(ctx.workspaceId);
   const selected_domain_pack_id = await getSelectedDomainPackId(ctx.workspaceId);
-  return json({ packs, selected_domain_pack_id });
+  const selectedPack = packs.find((p) => p.id === selected_domain_pack_id) ?? packs.find((p) => p.slug === "generic");
+  const embedding_lock = await getWorkspaceEmbeddingLock(ctx.workspaceId, {
+    modelHint: selectedPack?.embedding?.model ?? null,
+  }).catch(() => null);
+  return json({ packs, selected_domain_pack_id, embedding_lock });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -50,6 +55,14 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       { status: 400 },
     );
   }
-  const pack = await saveDomainPack(ctx.workspaceId, parsed.data);
-  return json({ pack }, { status: 201 });
+  try {
+    const pack = await saveDomainPack(ctx.workspaceId, parsed.data);
+    return json({ pack }, { status: 201 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not save domain pack.";
+    if (message.includes("embeddings at")) {
+      return json({ error: "embedding_dimensions_locked", message }, { status: 409 });
+    }
+    return json({ error: "save_failed", message }, { status: 500 });
+  }
 };

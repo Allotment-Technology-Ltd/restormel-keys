@@ -5,6 +5,8 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ExtractionGenerate } from "./extract.js";
+import type { ConnectQualityPreset } from "./quality-preset.js";
+import { composeStageSystemPrompt } from "./prompt-compose.js";
 
 export interface RemediationInput {
   ref: string;
@@ -21,23 +23,24 @@ export interface RemediationResult {
   text?: string;
 }
 
-export function buildRemediationSystemPrompt(pack: ConnectDomainPack): string {
-  const o = pack.ontology;
-  const parts: string[] = [];
-  if (pack.prompts?.remediation?.trim()) {
-    parts.push(pack.prompts.remediation.trim());
-  } else {
-    parts.push(
-      `You repair ${o.unit_noun}s that were flagged as weakly or not supported by the SOURCE TEXT for the domain "${pack.title}".`,
-    );
-  }
-  parts.push(
-    `For each ${o.unit_noun}, choose an action:\n- "repair": rewrite it so it is precise and faithful to the source; provide the corrected "text"\n- "drop": it cannot be supported by the source and should be removed\n- "keep": it is actually fine as-is`,
-  );
-  parts.push(
-    `Return STRICT JSON only:\n{ "results": [{ "ref": "<unit ref>", "action": "repair|drop|keep", "text": "<corrected text when repairing>" }] }`,
-  );
-  return parts.join("\n\n");
+/** Short refs per batch so the model echoes ids reliably (not Surreal record ids). */
+export const REMEDIATION_BATCH_SIZE = 25;
+
+function readRemediationBatchSize(): number {
+  const raw = Number(process.env.CONNECT_REMEDIATION_BATCH_SIZE ?? REMEDIATION_BATCH_SIZE);
+  if (!Number.isFinite(raw)) return REMEDIATION_BATCH_SIZE;
+  return Math.min(Math.max(Math.floor(raw), 5), 50);
+}
+
+export function buildRemediationSystemPrompt(
+  pack: ConnectDomainPack,
+  opts?: { qualityPreset?: ConnectQualityPreset },
+): string {
+  return composeStageSystemPrompt({
+    pack,
+    stage: "remediation",
+    qualityPreset: opts?.qualityPreset ?? pack.quality_preset ?? "production",
+  });
 }
 
 export function buildRemediationUserPrompt(units: RemediationInput[], sourceText: string): string {
@@ -45,6 +48,56 @@ export function buildRemediationUserPrompt(units: RemediationInput[], sourceText
     .map((u) => `- ${u.ref}${u.note ? ` (issue: ${u.note})` : ""}: ${u.text}`)
     .join("\n");
   return `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO REMEDIATE:\n${list}`;
+}
+
+export function buildRemediationBatchInputs(
+  units: RemediationInput[],
+): { batchUnits: RemediationInput[]; refToUnitId: Map<string, string> }[] {
+  const batchSize = readRemediationBatchSize();
+  const batches: { batchUnits: RemediationInput[]; refToUnitId: Map<string, string> }[] = [];
+  for (let offset = 0; offset < units.length; offset += batchSize) {
+    const slice = units.slice(offset, offset + batchSize);
+    const refToUnitId = new Map<string, string>();
+    const batchUnits = slice.map((unit, index) => {
+      const shortRef = `r${index + 1}`;
+      refToUnitId.set(shortRef, unit.ref);
+      return {
+        ref: shortRef,
+        text: unit.text,
+        ...(unit.note ? { note: unit.note } : {}),
+      };
+    });
+    batches.push({ batchUnits, refToUnitId });
+  }
+  return batches;
+}
+
+export function remapRemediationBatchResults(
+  results: RemediationResult[],
+  refToUnitId: Map<string, string>,
+): RemediationResult[] {
+  const out: RemediationResult[] = [];
+  for (const result of results) {
+    const unitId = refToUnitId.get(result.ref) ?? result.ref;
+    if (!unitId) continue;
+    out.push({ ...result, ref: unitId });
+  }
+  return out;
+}
+
+export function finalizeRemediationCoverage(
+  units: RemediationInput[],
+  results: RemediationResult[],
+): RemediationResult[] {
+  const byRef = new Map<string, RemediationResult>();
+  for (const result of results) {
+    if (!byRef.has(result.ref)) byRef.set(result.ref, result);
+  }
+  for (const unit of units) {
+    if (byRef.has(unit.ref)) continue;
+    byRef.set(unit.ref, { ref: unit.ref, action: "keep" });
+  }
+  return units.map((unit) => byRef.get(unit.ref)!);
 }
 
 export function parseRemediationResponse(raw: string): RemediationResult[] {
@@ -78,15 +131,42 @@ export function parseRemediationResponse(raw: string): RemediationResult[] {
   return out;
 }
 
+/** Remediate one batch (short refs). Prefer {@link remediateUnits} for full weak-unit coverage. */
+export async function remediateUnitsBatch(args: {
+  units: RemediationInput[];
+  sourceText: string;
+  pack: ConnectDomainPack;
+  generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+}): Promise<RemediationResult[]> {
+  if (args.units.length === 0) return [];
+  const system = buildRemediationSystemPrompt(args.pack, { qualityPreset: args.qualityPreset });
+  const user = buildRemediationUserPrompt(args.units, args.sourceText);
+  const raw = await args.generate({ system, user });
+  return parseRemediationResponse(raw);
+}
+
 export async function remediateUnits(args: {
   units: RemediationInput[];
   sourceText: string;
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
 }): Promise<RemediationResult[]> {
   if (args.units.length === 0) return [];
-  const system = buildRemediationSystemPrompt(args.pack);
-  const user = buildRemediationUserPrompt(args.units, args.sourceText);
-  const raw = await args.generate({ system, user });
-  return parseRemediationResponse(raw);
+
+  const batches = buildRemediationBatchInputs(args.units);
+  if (batches.length === 1) {
+    const { batchUnits, refToUnitId } = batches[0]!;
+    const parsed = await remediateUnitsBatch({ ...args, units: batchUnits });
+    const remapped = remapRemediationBatchResults(parsed, refToUnitId);
+    return finalizeRemediationCoverage(args.units, remapped);
+  }
+
+  const merged: RemediationResult[] = [];
+  for (const { batchUnits, refToUnitId } of batches) {
+    const parsed = await remediateUnitsBatch({ ...args, units: batchUnits });
+    merged.push(...remapRemediationBatchResults(parsed, refToUnitId));
+  }
+  return finalizeRemediationCoverage(args.units, merged);
 }

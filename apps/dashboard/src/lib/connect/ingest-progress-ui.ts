@@ -1,11 +1,11 @@
 /** Client-safe ingest progress formatting + SOPHIA-aligned stage row presentation. */
 import type { ConnectIngestStage } from "@restormel/contracts/connect";
+import { CONNECT_INGEST_PIPELINE_STAGES } from "@restormel/connect-core/ingest/job-record";
 import {
-  CONNECT_INGEST_PIPELINE_STAGES,
   applyConnectPipelineFocus,
   buildConnectPipelineStageRows,
-  type ConnectIngestStageProgress,
-} from "@restormel/connect-core";
+} from "@restormel/connect-core/ingest/pipeline-focus";
+import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
 
 export function formatIngestEta(seconds: number | undefined | null): string {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "—";

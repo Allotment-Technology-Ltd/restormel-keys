@@ -349,10 +349,6 @@
     border: none;
     cursor: pointer;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
