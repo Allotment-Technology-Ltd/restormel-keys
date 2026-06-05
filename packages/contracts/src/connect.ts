@@ -163,6 +163,129 @@ export const ConnectRetrieveResponseSchema = z.object({
 
 export type ConnectRetrieveResponse = z.infer<typeof ConnectRetrieveResponseSchema>;
 
+// ─── Graph orchestrator (higher-order retrieval — RetrievalOrchestrator) ────
+
+export const ConnectGraphVerificationCategorySchema = z.enum(['supported', 'weak', 'unsupported']);
+export type ConnectGraphVerificationCategory = z.infer<typeof ConnectGraphVerificationCategorySchema>;
+
+/**
+ * Per-query trust filter. Defaults to supported-only with flagged excluded —
+ * weak/unsupported claims are returned only when explicitly requested.
+ */
+export const ConnectGraphVerificationPolicySchema = z.object({
+  include: z.array(ConnectGraphVerificationCategorySchema).min(1),
+  min_trust_score: z.number().min(0).max(100).optional(),
+  exclude_flagged: z.boolean().optional()
+});
+export type ConnectGraphVerificationPolicy = z.infer<typeof ConnectGraphVerificationPolicySchema>;
+
+export const ConnectGraphReasoningModeSchema = z.enum(['semantic', 'causal', 'temporal']);
+export type ConnectGraphReasoningMode = z.infer<typeof ConnectGraphReasoningModeSchema>;
+
+export const ConnectGraphOperationSchema = z.enum([
+  'retrieve_context',
+  'expand_context',
+  'find_relevant_subgraph',
+  'find_paths',
+  'summarise_subgraph'
+]);
+export type ConnectGraphOperation = z.infer<typeof ConnectGraphOperationSchema>;
+
+export const ConnectGraphOpRequestSchema = ConnectWorkspaceContextSchema.extend({
+  contract_version: ConnectApiContractVersionSchema.optional(),
+  operation: ConnectGraphOperationSchema,
+  /** retrieve_context */
+  query: z.string().min(1).optional(),
+  /** find_relevant_subgraph */
+  topic: z.string().min(1).optional(),
+  reasoning_mode: ConnectGraphReasoningModeSchema.optional(),
+  top_k: z.number().int().positive().max(100).optional(),
+  max_depth: z.number().int().positive().max(8).optional(),
+  max_nodes: z.number().int().positive().max(500).optional(),
+  domain: z.string().min(1).optional(),
+  /** expand_context */
+  seed_node_ids: z.array(z.string().min(1)).min(1).max(50).optional(),
+  depth: z.number().int().positive().max(8).optional(),
+  edge_types: z.array(z.string().min(1)).max(20).optional(),
+  /** find_paths */
+  source_node_id: z.string().min(1).optional(),
+  target_node_id: z.string().min(1).optional(),
+  max_hops: z.number().int().positive().max(8).optional(),
+  /** shared */
+  max_tokens: z.number().int().positive().max(100_000).optional(),
+  verification_policy: ConnectGraphVerificationPolicySchema.optional()
+});
+export type ConnectGraphOpRequest = z.infer<typeof ConnectGraphOpRequestSchema>;
+
+export const ConnectGraphNodeSchema = ConnectRetrievedClaimSchema.extend({
+  verification_state: z.string().nullable().optional(),
+  trust_score: z.number().nullable().optional(),
+  verification_category: ConnectGraphVerificationCategorySchema.optional()
+});
+export type ConnectGraphNode = z.infer<typeof ConnectGraphNodeSchema>;
+
+export const ConnectGraphPathSchema = z.object({
+  node_ids: z.array(z.string()),
+  relations: z.array(
+    z.object({
+      relation_type: z.string(),
+      from_node_id: z.string(),
+      to_node_id: z.string()
+    })
+  ),
+  score: z.number()
+});
+export type ConnectGraphPath = z.infer<typeof ConnectGraphPathSchema>;
+
+const ConnectGraphCategoryCountsSchema = z.object({
+  supported: z.number().int().nonnegative(),
+  weak: z.number().int().nonnegative(),
+  unsupported: z.number().int().nonnegative()
+});
+
+export const ConnectGraphTraceSummarySchema = z.object({
+  operation: ConnectGraphOperationSchema,
+  seed_count: z.number().int().nonnegative(),
+  hops: z.number().int().nonnegative(),
+  claim_count: z.number().int().nonnegative(),
+  relation_count: z.number().int().nonnegative(),
+  tokens_used: z.number().int().nonnegative(),
+  nodes_dropped: z.number().int().nonnegative(),
+  reasoning_mode: ConnectGraphReasoningModeSchema.optional(),
+  verification: z
+    .object({
+      include: z.array(ConnectGraphVerificationCategorySchema),
+      exclude_flagged: z.boolean(),
+      included: ConnectGraphCategoryCountsSchema,
+      excluded: ConnectGraphCategoryCountsSchema
+    })
+    .optional(),
+  reason: z.string().optional()
+});
+export type ConnectGraphTraceSummary = z.infer<typeof ConnectGraphTraceSummarySchema>;
+
+export const ConnectGraphOpResponseSchema = z.object({
+  contract_version: ConnectApiContractVersionSchema,
+  request_id: z.string().min(1),
+  operation: ConnectGraphOperationSchema,
+  context_block: z.string().optional(),
+  subgraph: z
+    .object({
+      claims: z.array(ConnectGraphNodeSchema),
+      relations: z.array(ConnectRetrievedRelationSchema),
+      arguments: z.array(ConnectRetrievedArgumentSchema),
+      seed_claim_ids: z.array(z.string())
+    })
+    .optional(),
+  paths: z.array(ConnectGraphPathSchema).optional(),
+  trace: ConnectGraphTraceSummarySchema,
+  metadata: z.object({
+    retrieval_degraded: z.boolean().optional(),
+    retrieval_degraded_reason: z.string().optional()
+  })
+});
+export type ConnectGraphOpResponse = z.infer<typeof ConnectGraphOpResponseSchema>;
+
 // ─── Ingest (Connect Ingest sub-product) ───────────────────────────────────
 
 /** Provenance hints from a source pre-check (URL/HTML head or upload filename). */

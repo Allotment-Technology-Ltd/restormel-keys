@@ -12,6 +12,11 @@ export const RESTORMEL_SUITE_TOOL_NAMES = [
   "connect.search",
   "connect.get_context_for",
   "connect.retrieve",
+  "connect.graph.retrieve_context",
+  "connect.graph.expand_context",
+  "connect.graph.find_relevant_subgraph",
+  "connect.graph.find_paths",
+  "connect.graph.summarise_subgraph",
   "connect.ingest.start",
   "connect.ingest.status",
 ] as const;
