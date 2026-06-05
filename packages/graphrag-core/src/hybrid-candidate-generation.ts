@@ -43,7 +43,8 @@ const STOPWORDS = new Set([
   'with'
 ]);
 
-const CORPUS_LEVEL_SIGNALS = [
+/** Default corpus-overview trigger phrases (philosophy). Hosts may override via `detectCorpusLevelQuery`. */
+export const DEFAULT_CORPUS_LEVEL_SIGNALS = [
   'across philosophy',
   'across traditions',
   'across thinkers',
@@ -55,6 +56,9 @@ const CORPUS_LEVEL_SIGNALS = [
   'in general'
 ];
 
+/** Default lexical phrase boosts (philosophy). Hosts may override via `extractLexicalTerms`. */
+export const DEFAULT_KNOWN_PHRASES = ['public reason', 'epistemic injustice', 'non-identity problem'];
+
 function normalize(text: string): string {
   return text.toLowerCase().replace(/[^\w\s-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -63,12 +67,18 @@ function uniq<T>(input: T[]): T[] {
   return [...new Set(input)];
 }
 
-export function detectCorpusLevelQuery(query: string): boolean {
+export function detectCorpusLevelQuery(
+  query: string,
+  signals: string[] = DEFAULT_CORPUS_LEVEL_SIGNALS
+): boolean {
   const q = normalize(query);
-  return CORPUS_LEVEL_SIGNALS.some((signal) => q.includes(signal));
+  return signals.some((signal) => q.includes(signal));
 }
 
-export function extractLexicalTerms(query: string): string[] {
+export function extractLexicalTerms(
+  query: string,
+  knownPhrases: string[] = DEFAULT_KNOWN_PHRASES
+): string[] {
   const normalized = normalize(query);
   if (!normalized) return [];
 
@@ -97,7 +107,6 @@ export function extractLexicalTerms(query: string): string[] {
     }
   }
 
-  const knownPhrases = ['public reason', 'epistemic injustice', 'non-identity problem'];
   for (const phrase of knownPhrases) {
     if (normalized.includes(phrase)) terms.push(phrase);
   }

@@ -17,15 +17,18 @@
  * so the three-pass engine can still work without the graph.
  */
 
-import type { PhilosophicalDomain } from '@restormel/contracts/domains';
 import type { GraphRagDeps, GraphStore } from './ports.js';
+import {
+	philosophyRetrievalConfig,
+	type RetrievalConfig,
+	type ThinkerContext,
+} from './config.js';
 import {
 	detectCorpusLevelQuery,
 	extractLexicalTerms,
 	fuseHybridCandidates
 } from './hybrid-candidate-generation.js';
 import {
-	IDEAL_RETRIEVAL_ORIGIN_FRACTIONS,
 	isRetrievalKgBalanceEnabled,
 } from './kg-balance.js';
 import { constructSeedSet, type SeedBalanceStats } from './seed-set-constructor.js';
@@ -70,7 +73,7 @@ export interface RetrievedClaim {
 	id: string;
 	text: string;
 	claim_type: string;
-	domain: PhilosophicalDomain;
+	domain: string;
 	source_title: string;
 	source_author: string[];
 	confidence: number;
@@ -89,25 +92,13 @@ export interface RetrievedArgument {
 	id: string;
 	name: string;
 	tradition: string | null;
-	domain: PhilosophicalDomain;
+	domain: string;
 	summary: string;
 	conclusion_text: string | null;
 	key_premises: string[];
 }
 
-export interface ThinkerSummary {
-	wikidata_id: string;
-	name: string;
-	birth_year: number | null;
-	death_year: number | null;
-	traditions: string[];
-}
-
-export interface ThinkerContext {
-	direct_authors: ThinkerSummary[];
-	influences: ThinkerSummary[];
-	teachers: ThinkerSummary[];
-}
+export type { ThinkerContext, ThinkerSummary } from './config.js';
 
 export type RejectedClaimReasonCode =
 	| 'seed_pool_pruned'
@@ -158,14 +149,14 @@ export interface RetrievalClosureStats {
 export interface RetrievalSeedTrace {
 	id: string;
 	claim_type: string;
-	domain: PhilosophicalDomain;
+	domain: string;
 	source_title: string;
 	confidence: number;
 }
 
 export interface RetrievalQueryDecompositionTrace {
 	focus_mode: 'corpus_overview' | 'focused';
-	domain_filter?: PhilosophicalDomain;
+	domain_filter?: string;
 	hybrid_mode: 'auto' | 'dense_only';
 	corpus_level_query: boolean;
 	lexical_terms: string[];
@@ -193,7 +184,7 @@ export interface RetrievalResult {
 		lexical_terms?: string[];
 		corpus_level_query?: boolean;
 		seed_balance_stats?: SeedBalanceStats;
-		traversal_mode?: 'beam_trusted_v1';
+		traversal_mode?: string;
 		traversal_max_hops?: number;
 		traversal_hop_decay?: number;
 		traversal_base_confidence_threshold?: number;
@@ -221,7 +212,7 @@ export interface RetrievalOptions {
 	/** Number of seed claims from vector search (default: 5) */
 	topK?: number;
 	/** Filter by philosophical domain */
-	domain?: PhilosophicalDomain;
+	domain?: string;
 	/** Minimum confidence threshold for claims (default: 0) */
 	minConfidence?: number;
 	/** Optional override for graph traversal depth (hops from seed claims) */
@@ -236,6 +227,11 @@ export interface RetrievalOptions {
 	enrichWithThinkerContext?: boolean;
 	/** Skip hybrid seeding; start traversal from these claim ids (get_context_for). */
 	forcedSeedClaimIds?: string[];
+	/**
+	 * Domain pack driving taxonomy, edge priors, traversal tuning, enrichment and presentation.
+	 * Defaults to {@link philosophyRetrievalConfig} so omitting it preserves SOPHIA's behaviour.
+	 */
+	config?: RetrievalConfig;
 }
 
 const EMPTY_RESULT: RetrievalResult = {
@@ -247,59 +243,33 @@ const EMPTY_RESULT: RetrievalResult = {
 	degraded: false
 };
 
-const RELATION_TRAVERSAL_BEAM_SPECS = [
-	{ table: 'supports', edgePrior: 1.04 },
-	{ table: 'contradicts', edgePrior: 1.16 },
-	{ table: 'depends_on', edgePrior: 0.92 },
-	{ table: 'responds_to', edgePrior: 1.2 },
-	{ table: 'defines', edgePrior: 0.9 },
-	{ table: 'qualifies', edgePrior: 0.88 },
-	{ table: 'refines', edgePrior: 0.86 },
-	{ table: 'exemplifies', edgePrior: 0.82 }
-] as const;
-
-const RELATION_FETCH_SPECS = [
-	{ table: 'supports', relationType: 'supports' },
-	{ table: 'contradicts', relationType: 'contradicts' },
-	{ table: 'depends_on', relationType: 'depends_on' },
-	{ table: 'responds_to', relationType: 'responds_to' },
-	{ table: 'defines', relationType: 'defines' },
-	{ table: 'qualifies', relationType: 'qualifies' },
-	{ table: 'refines', relationType: 'qualifies' },
-	{ table: 'exemplifies', relationType: 'supports' }
-] as const;
-
-const THESIS_CLAIM_TYPES = new Set(['thesis', 'conclusion']);
-const OBJECTION_CLAIM_TYPES = new Set(['objection', 'counterargument', 'counter_argument']);
-const REPLY_CLAIM_TYPES = new Set(['response', 'reply', 'rebuttal']);
-
-function normalizeClaimType(claimType: string): string {
+function defaultNormalizeClaimType(claimType: string): string {
 	return claimType.trim().toLowerCase();
 }
 
-function isThesisClaimType(claimType: string): boolean {
-	return THESIS_CLAIM_TYPES.has(normalizeClaimType(claimType));
-}
-
-function isObjectionClaimType(claimType: string): boolean {
-	return OBJECTION_CLAIM_TYPES.has(normalizeClaimType(claimType));
-}
-
-function isReplyClaimType(claimType: string): boolean {
-	return REPLY_CLAIM_TYPES.has(normalizeClaimType(claimType));
+/** True when `claimType` matches any entry in `list` under the config normaliser. */
+function claimTypeMatches(
+	claimType: string,
+	list: string[],
+	normalize: (t: string) => string
+): boolean {
+	const norm = normalize(claimType);
+	return list.some((entry) => normalize(entry) === norm);
 }
 
 function selectMajorThesisIds(params: {
 	claims: RetrievedClaim[];
 	seedClaimIds: string[];
 	limit: number;
+	taxonomy: RetrievalConfig['claimTaxonomy'];
 }): string[] {
-	const { claims, seedClaimIds, limit } = params;
+	const { claims, seedClaimIds, limit, taxonomy } = params;
 	if (claims.length === 0 || limit <= 0) return [];
+	const normalize = taxonomy.normalize ?? defaultNormalizeClaimType;
 
 	const seedSet = new Set(seedClaimIds);
 	const thesisClaims = claims
-		.filter((claim) => isThesisClaimType(claim.claim_type))
+		.filter((claim) => claimTypeMatches(claim.claim_type, taxonomy.thesisTypes, normalize))
 		.sort((a, b) => {
 			const aSeed = seedSet.has(a.id) ? 1 : 0;
 			const bSeed = seedSet.has(b.id) ? 1 : 0;
@@ -312,10 +282,9 @@ function selectMajorThesisIds(params: {
 
 	// Fallback when claim typing is sparse: treat top seed/supportive claims as thesis anchors.
 	const fallbackClaims = claims
-		.filter((claim) => {
-			const type = normalizeClaimType(claim.claim_type);
-			return type === 'premise' || type === 'support' || type === 'methodological';
-		})
+		.filter((claim) =>
+			claimTypeMatches(claim.claim_type, taxonomy.thesisFallbackTypes, normalize)
+		)
 		.sort((a, b) => {
 			const aSeed = seedSet.has(a.id) ? 1 : 0;
 			const bSeed = seedSet.has(b.id) ? 1 : 0;
@@ -325,183 +294,40 @@ function selectMajorThesisIds(params: {
 	return fallbackClaims.slice(0, limit).map((claim) => claim.id);
 }
 
-function computeHopConfidenceThreshold(baseThreshold: number, hop: number): number {
-	const clampedBase = Math.max(0.2, Math.min(0.85, baseThreshold));
-	return Math.max(0.2, Math.min(0.9, clampedBase + (hop - 1) * 0.08));
+function computeHopConfidenceThreshold(
+	baseThreshold: number,
+	hop: number,
+	hc: RetrievalConfig['traversal']['hopConfidence']
+): number {
+	const clampedBase = Math.max(hc.baseFloor, Math.min(hc.baseCeil, baseThreshold));
+	return Math.max(hc.floor, Math.min(hc.ceil, clampedBase + (hop - 1) * hc.perHopIncrement));
 }
 
-function computeDomainExpansionWeight(params: {
-	targetDomain?: PhilosophicalDomain;
-	anchorDomain?: PhilosophicalDomain;
-	neighborDomain?: PhilosophicalDomain;
-}): number {
+function computeDomainExpansionWeight(
+	params: {
+		targetDomain?: string;
+		anchorDomain?: string;
+		neighborDomain?: string;
+	},
+	w: RetrievalConfig['traversal']['domainExpansionWeights']
+): number {
 	const { targetDomain, anchorDomain, neighborDomain } = params;
-	if (targetDomain && neighborDomain === targetDomain) return 1.05;
-	if (targetDomain && neighborDomain && neighborDomain !== targetDomain) return 0.72;
-	if (anchorDomain && neighborDomain && neighborDomain === anchorDomain) return 1.0;
-	if (anchorDomain && neighborDomain && neighborDomain !== anchorDomain) return 0.84;
-	return 0.92;
+	if (targetDomain && neighborDomain === targetDomain) return w.sameTarget;
+	if (targetDomain && neighborDomain && neighborDomain !== targetDomain) return w.offTarget;
+	if (anchorDomain && neighborDomain && neighborDomain === anchorDomain) return w.sameAnchor;
+	if (anchorDomain && neighborDomain && neighborDomain !== anchorDomain) return w.offAnchor;
+	return w.neutral;
 }
 
-function parseRelationStrengthWeight(strength?: string): number {
-	if (!strength) return 1;
+function parseRelationStrengthWeight(
+	strength: string | undefined,
+	w: RetrievalConfig['relations']['strengthWeights']
+): number {
+	if (!strength) return w.default;
 	const normalized = strength.toLowerCase();
-	if (normalized === 'strong') return 1.08;
-	if (normalized === 'weak') return 0.86;
-	return 1;
-}
-
-function toThinkerSummary(node: unknown): ThinkerSummary | null {
-	if (!node || typeof node !== 'object') return null;
-	const row = node as Record<string, unknown>;
-	const wikidata_id = typeof row.wikidata_id === 'string' ? row.wikidata_id : '';
-	const name = typeof row.name === 'string' ? row.name.trim() : '';
-	if (!name) return null;
-	return {
-		wikidata_id,
-		name,
-		birth_year: typeof row.birth_year === 'number' ? row.birth_year : null,
-		death_year: typeof row.death_year === 'number' ? row.death_year : null,
-		traditions: Array.isArray(row.traditions)
-			? row.traditions.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-			: []
-	};
-}
-
-function capThinkerContext(context: ThinkerContext, maxNodes = 10): ThinkerContext {
-	const seen = new Set<string>();
-	const take = (items: ThinkerSummary[]): ThinkerSummary[] => {
-		const result: ThinkerSummary[] = [];
-		for (const item of items) {
-			const key = item.wikidata_id || item.name.toLowerCase();
-			if (seen.has(key)) continue;
-			if (seen.size >= maxNodes) break;
-			seen.add(key);
-			result.push(item);
-		}
-		return result;
-	};
-	return {
-		direct_authors: take(context.direct_authors),
-		influences: take(context.influences),
-		teachers: take(context.teachers)
-	};
-}
-
-async function fetchThinkerContext(
-	store: GraphStore,
-	claimIds: string[]
-): Promise<ThinkerContext | null> {
-	if (!Array.isArray(claimIds) || claimIds.length === 0) return null;
-
-	try {
-		type ThinkerQueryResult = {
-			direct_authors?: unknown[];
-			influences?: unknown[];
-			teachers?: unknown[];
-		};
-
-		const result = await store.query<ThinkerQueryResult[]>(
-			`LET $source_ids = array::distinct((SELECT VALUE source FROM claim WHERE id INSIDE $claim_ids));
-			 LET $author_rows = (SELECT <-authored<-thinker AS thinkers FROM $source_ids FETCH thinkers);
-			 LET $direct_authors = array::flatten($author_rows.thinkers);
-			 LET $influence_rows = (SELECT ->influenced_by->thinker AS thinkers FROM $direct_authors.id FETCH thinkers);
-			 LET $teacher_rows = (SELECT ->student_of->thinker AS thinkers FROM $direct_authors.id FETCH thinkers);
-			 RETURN {
-			 	direct_authors: $direct_authors,
-			 	influences: array::flatten($influence_rows.thinkers),
-			 	teachers: array::flatten($teacher_rows.thinkers)
-			 };`,
-			{ claim_ids: claimIds }
-		);
-
-		const row = Array.isArray(result) ? result[0] : null;
-		if (!row) return null;
-
-		const directAuthors = (row.direct_authors ?? [])
-			.map((entry) => toThinkerSummary(entry))
-			.filter((entry): entry is ThinkerSummary => entry !== null);
-		const influences = (row.influences ?? [])
-			.map((entry) => toThinkerSummary(entry))
-			.filter((entry): entry is ThinkerSummary => entry !== null);
-		const teachers = (row.teachers ?? [])
-			.map((entry) => toThinkerSummary(entry))
-			.filter((entry): entry is ThinkerSummary => entry !== null);
-
-		if (directAuthors.length === 0 && influences.length === 0 && teachers.length === 0) {
-			return null;
-		}
-
-		return capThinkerContext(
-			{
-				direct_authors: directAuthors,
-				influences,
-				teachers
-			},
-			10
-		);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const lower = message.toLowerCase();
-		if (
-			(lower.includes('authored') ||
-				lower.includes('thinker') ||
-				lower.includes('influenced_by') ||
-				lower.includes('student_of')) &&
-			(lower.includes('table') ||
-				lower.includes('record') ||
-				lower.includes('not found') ||
-				lower.includes('does not exist') ||
-				lower.includes('invalid'))
-		) {
-			console.debug(
-				'[RETRIEVAL] Thinker enrichment unavailable (missing thinker graph tables); returning null'
-			);
-			return null;
-		}
-		console.debug('[RETRIEVAL] Thinker enrichment failed; returning null:', message);
-		return null;
-	}
-}
-
-function formatThinkerDisplayName(thinker: ThinkerSummary): string {
-	const years =
-		thinker.birth_year === null && thinker.death_year === null
-			? ''
-			: ` (${thinker.birth_year ?? '?'}-${thinker.death_year ?? '?'})`;
-	const tradition = thinker.traditions.length > 0 ? `, ${thinker.traditions[0]}` : '';
-	return `${thinker.name}${years}${tradition}`;
-}
-
-export function formatThinkerContextBlock(context: ThinkerContext | null): string {
-	if (!context) return '';
-
-	const directAuthors = context.direct_authors.filter((thinker) => thinker.name.trim().length > 0);
-	const influences = context.influences.filter((thinker) => thinker.name.trim().length > 0).slice(0, 5);
-	const teachers = context.teachers.filter((thinker) => thinker.name.trim().length > 0);
-
-	if (directAuthors.length === 0 && influences.length === 0 && teachers.length === 0) {
-		return '';
-	}
-
-	const lines: string[] = [];
-	lines.push('PHILOSOPHICAL LINEAGE CONTEXT (advisory — heuristic data from Wikidata)');
-	lines.push('(sourced from Wikidata thinker graph — advisory context only)');
-	lines.push('');
-
-	if (directAuthors.length > 0) {
-		lines.push(
-			`Authors of retrieved sources: ${directAuthors.map((thinker) => formatThinkerDisplayName(thinker)).join(', ')}`
-		);
-	}
-	if (influences.length > 0) {
-		lines.push(`Influences in this lineage: ${influences.map((thinker) => formatThinkerDisplayName(thinker)).join(', ')}`);
-	}
-	if (teachers.length > 0) {
-		lines.push(`Teachers in this lineage: ${teachers.map((thinker) => formatThinkerDisplayName(thinker)).join(', ')}`);
-	}
-
-	return lines.join('\n');
+	if (normalized === 'strong') return w.strong;
+	if (normalized === 'weak') return w.weak;
+	return w.default;
 }
 
 // ─── Main retrieval function ───────────────────────────────────────────────
@@ -531,8 +357,10 @@ export async function retrieveContext(
 		hybridMode = 'auto',
 		enrichWithThinkerContext = false
 	} = options;
-	const traversalMaxHops = Math.max(1, maxHops ?? (topK >= 10 ? 3 : topK <= 3 ? 1 : 2));
-	const traversalClaimCap = Math.max(topK, maxClaims ?? (topK >= 10 ? 120 : topK <= 3 ? 32 : 72));
+	const config = options.config ?? philosophyRetrievalConfig;
+	const normalizeType = config.claimTaxonomy.normalize ?? defaultNormalizeClaimType;
+	const traversalMaxHops = Math.max(1, maxHops ?? config.traversal.defaultMaxHops(topK));
+	const traversalClaimCap = Math.max(topK, maxClaims ?? config.traversal.defaultClaimCap(topK));
 
 	try {
 		// ── Step 1: Embed the query ──────────────────────────────────
@@ -555,9 +383,12 @@ export async function retrieveContext(
 		// Lexical path: exact-term matching for philosophy-specific phrases.
 		// Fusion: reciprocal-rank fusion + lightweight rerank.
 		const densePool = domain || minConfidence > 0 ? topK * 4 : topK * 3;
-		const lexicalTerms = hybridMode === 'dense_only' ? [] : extractLexicalTerms(userQuery);
+		const lexicalTerms =
+			hybridMode === 'dense_only' ? [] : extractLexicalTerms(userQuery, config.lexical.knownPhrases);
 		const corpusLevelQuery =
-			hybridMode === 'dense_only' ? false : detectCorpusLevelQuery(userQuery);
+			hybridMode === 'dense_only'
+				? false
+				: detectCorpusLevelQuery(userQuery, config.lexical.corpusLevelSignals);
 		const queryDecomposition: RetrievalQueryDecompositionTrace = {
 			focus_mode: corpusLevelQuery ? 'corpus_overview' : 'focused',
 			domain_filter: domain,
@@ -593,7 +424,7 @@ export async function retrieveContext(
 			id: string;
 			text: string;
 			claim_type: string;
-			domain: PhilosophicalDomain;
+			domain: string;
 			confidence: number;
 			embedding?: number[] | null;
 			position_in_source: number;
@@ -735,8 +566,8 @@ export async function retrieveContext(
 							lexicalSeedClaims.push({
 								id: row.id,
 								text: row.text,
-								claim_type: 'premise',
-								domain: 'ethics' as PhilosophicalDomain,
+								claim_type: config.domain.fallbackClaimType,
+								domain: config.domain.fallbackDomain,
 								confidence: row.confidence ?? 0.5,
 								position_in_source: 0,
 								section_context: null,
@@ -909,10 +740,13 @@ export async function retrieveContext(
 			candidates: vettedSeedPool,
 			topK,
 			queryEmbedding,
-			...(isRetrievalKgBalanceEnabled()
+			roles: config.seedRoles,
+			...(config.originBalance.enabled && isRetrievalKgBalanceEnabled()
 				? {
 						kgBalance: {
-							idealOrigin: IDEAL_RETRIEVAL_ORIGIN_FRACTIONS,
+							idealOrigin: config.originBalance.idealFractions,
+							originStrength: config.originBalance.originStrength,
+							domainStrength: config.originBalance.domainStrength,
 							domainsInPool,
 							getOrigin: (c) =>
 								resolveOriginBucket(c.source_url ?? null, c.source_source_type ?? null),
@@ -954,7 +788,7 @@ export async function retrieveContext(
 			id: string;
 			text: string;
 			claim_type: string;
-			domain: PhilosophicalDomain;
+			domain: string;
 			confidence: number;
 			position_in_source: number;
 			review_state?: string;
@@ -1022,14 +856,14 @@ export async function retrieveContext(
 			return true;
 		};
 
-		const maxNewClaimsPerHop = topK >= 10 ? 48 : topK <= 3 ? 12 : 28;
-		const beamWidthPerHop = topK >= 10 ? 44 : topK <= 3 ? 10 : 24;
-		const beamQueryLimitPerTable = topK >= 10 ? 260 : topK <= 3 ? 64 : 140;
-		const hopDecayFactor = traversalMaxHops <= 1 ? 1 : 0.78;
+		const maxNewClaimsPerHop = config.traversal.beam.newPerHop(topK);
+		const beamWidthPerHop = config.traversal.beam.width(topK);
+		const beamQueryLimitPerTable = config.traversal.beam.queryLimitPerTable(topK);
+		const hopDecayFactor = traversalMaxHops <= 1 ? 1 : config.traversal.hopDecayFactor;
 		const traversalBaseConfidence =
-			minConfidence > 0 ? Math.max(0.3, Math.min(0.8, minConfidence)) : 0.38;
+			minConfidence > 0 ? Math.max(0.3, Math.min(0.8, minConfidence)) : config.traversal.baseConfidence;
 		const traversalConfidenceThresholds = Array.from({ length: traversalMaxHops }, (_, idx) =>
-			computeHopConfidenceThreshold(traversalBaseConfidence, idx + 1)
+			computeHopConfidenceThreshold(traversalBaseConfidence, idx + 1, config.traversal.hopConfidence)
 		);
 		let frontier = new Set(seedClaimIds);
 		const nativeNeighborIds = await fetchNativeGraphNeighbors(store, {
@@ -1057,7 +891,7 @@ export async function retrieveContext(
 				}
 			>();
 
-			for (const spec of RELATION_TRAVERSAL_BEAM_SPECS) {
+			for (const spec of config.relations.traversalEdges) {
 				try {
 					const rows = await store.query<TraversalEdgeRow[]>(
 						`SELECT
@@ -1113,12 +947,20 @@ export async function retrieveContext(
 						}
 
 						const anchor = allGraphClaims.get(anchorId);
-						const domainWeight = computeDomainExpansionWeight({
-							targetDomain: domain,
-							anchorDomain: anchor?.domain,
-							neighborDomain: neighbor.domain
-						});
-						const strengthWeight = parseRelationStrengthWeight(strength);
+						const domainWeight = config.domain.enabled
+							? computeDomainExpansionWeight(
+									{
+										targetDomain: domain,
+										anchorDomain: anchor?.domain,
+										neighborDomain: neighbor.domain
+									},
+									config.traversal.domainExpansionWeights
+								)
+							: 1;
+						const strengthWeight = parseRelationStrengthWeight(
+							strength,
+							config.relations.strengthWeights
+						);
 						const anchorWeight = 0.7 + 0.3 * (anchor?.confidence ?? 0.6);
 						const score =
 							Math.max(0.01, neighbor.confidence ?? 0.5) *
@@ -1242,7 +1084,7 @@ export async function retrieveContext(
 			if (selectedClaimIds.length > 0) {
 				try {
 					const argRefs = await store.query<Array<{ arg_id?: string | { id?: string } }>>(
-						`SELECT out.id AS arg_id FROM part_of WHERE in INSIDE $claim_ids LIMIT 200`,
+						`SELECT out.id AS arg_id FROM ${config.arguments.membershipEdge} WHERE in INSIDE $claim_ids LIMIT 200`,
 						{ claim_ids: selectedClaimIds }
 					);
 					if (argRefs && Array.isArray(argRefs)) {
@@ -1274,7 +1116,7 @@ export async function retrieveContext(
 					id: string;
 					text: string;
 					claim_type: string;
-					domain: PhilosophicalDomain;
+					domain: string;
 					confidence: number;
 					position_in_source: number;
 					review_state?: string;
@@ -1288,18 +1130,14 @@ export async function retrieveContext(
 					`SELECT
 						in.{id, text, claim_type, domain, confidence, position_in_source, review_state, source.{id, title, author}} AS in,
 						role
-					FROM part_of
+					FROM ${config.arguments.membershipEdge}
 					WHERE out INSIDE $arg_ids AND ${argumentClaimReviewFilter}`,
 					{ arg_ids: Array.from(argumentIds) }
 				);
 
 				if (memberRows && Array.isArray(memberRows)) {
-					const roleRank = (role: string): number => {
-						if (role === 'conclusion') return 0;
-						if (role === 'key_premise') return 1;
-						if (role === 'supporting_premise') return 2;
-						return 3;
-					};
+					const roleRank = (role: string): number =>
+						config.arguments.membershipRoleRank[role] ?? 3;
 					const sorted = [...memberRows].sort((a, b) => {
 						const rankDelta = roleRank(a.role) - roleRank(b.role);
 						if (rankDelta !== 0) return rankDelta;
@@ -1363,11 +1201,12 @@ export async function retrieveContext(
 		};
 		const contradictionNeighborCache = new Map<string, Promise<GraphClaim[]>>();
 		const replyNeighborCache = new Map<string, Promise<GraphClaim[]>>();
-		const majorThesisLimit = Math.max(1, Math.min(3, Math.ceil(topK / 4)));
+		const majorThesisLimit = config.closure.enabled ? config.closure.maxMajorTheses(topK) : 0;
 		const majorThesisIds = selectMajorThesisIds({
 			claims: Array.from(allGraphClaims.values()),
 			seedClaimIds,
-			limit: majorThesisLimit
+			limit: majorThesisLimit,
+			taxonomy: config.claimTaxonomy
 		});
 		let closureClaimsAdded = 0;
 		let closureObjectionsAdded = 0;
@@ -1425,7 +1264,7 @@ export async function retrieveContext(
 		};
 
 		const fetchRelationNeighbors = async (
-			table: 'contradicts' | 'responds_to',
+			table: string,
 			claimId: string,
 			cache: Map<string, Promise<GraphClaim[]>>
 		): Promise<GraphClaim[]> => {
@@ -1512,14 +1351,14 @@ export async function retrieveContext(
 			}
 
 			const contradictionNeighbors = await fetchRelationNeighbors(
-				'contradicts',
+				config.relations.contradictionEdge,
 				thesisId,
 				contradictionNeighborCache
 			);
 			const objectionCandidate = await pickClosureCandidate(
 				contradictionNeighbors,
 				thesisId,
-				isObjectionClaimType
+				(ct) => claimTypeMatches(ct, config.claimTaxonomy.objectionTypes, normalizeType)
 			);
 			if (objectionCandidate) {
 				const objectionId =
@@ -1539,14 +1378,14 @@ export async function retrieveContext(
 					unit.objection_claim_id = objectionId;
 
 					const replyNeighbors = await fetchRelationNeighbors(
-						'responds_to',
+						config.relations.replyEdge,
 						objectionId,
 						replyNeighborCache
 					);
 					const replyCandidate = await pickClosureCandidate(
 						replyNeighbors,
 						objectionId,
-						isReplyClaimType
+						(ct) => claimTypeMatches(ct, config.claimTaxonomy.replyTypes, normalizeType)
 					);
 					if (replyCandidate) {
 						const replyId =
@@ -1612,7 +1451,7 @@ export async function retrieveContext(
 				note?: string;
 			};
 
-			for (const { table, relationType } of RELATION_FETCH_SPECS) {
+			for (const { table, relationType } of config.relations.fetchEdges) {
 				try {
 					const rels = await store.query<RelRow[]>(
 						`SELECT in, out, $table AS relation_type, strength, note
@@ -1684,7 +1523,7 @@ export async function retrieveContext(
 					id: string;
 					name: string;
 					tradition: string | null;
-					domain: PhilosophicalDomain;
+					domain: string;
 					summary: string;
 					member_claims: Array<{
 						text: string;
@@ -1695,7 +1534,7 @@ export async function retrieveContext(
 				const argRows = await store.query<ArgRow[]>(
 					`SELECT
 						*,
-						<-part_of<-claim.{text, role: <-part_of[WHERE out = $arg_id].role} AS member_claims
+						<-${config.arguments.membershipEdge}<-claim.{text, role: <-${config.arguments.membershipEdge}[WHERE out = $arg_id].role} AS member_claims
 					FROM $arg_id`,
 					{ arg_id: argId }
 				);
@@ -1717,16 +1556,16 @@ export async function retrieveContext(
 
 				const partOfRels = await store.query<PartOfRow[]>(
 					`SELECT in, role, in.text AS claim_text
-					FROM part_of
+					FROM ${config.arguments.membershipEdge}
 					WHERE out = $arg_id`,
 					{ arg_id: argId }
 				);
 
 				if (partOfRels && Array.isArray(partOfRels)) {
 					for (const po of partOfRels) {
-						if (po.role === 'conclusion' && po.claim_text) {
+						if (po.role === config.arguments.conclusionRole && po.claim_text) {
 							conclusionText = po.claim_text;
-						} else if (po.role === 'key_premise' && po.claim_text) {
+						} else if (po.role === config.arguments.keyPremiseRole && po.claim_text) {
 							keyPremises.push(po.claim_text);
 						}
 					}
@@ -1736,7 +1575,7 @@ export async function retrieveContext(
 					id: typeof arg.id === 'object' ? String(arg.id) : arg.id,
 					name: arg.name,
 					tradition: arg.tradition,
-					domain: arg.domain as PhilosophicalDomain,
+					domain: arg.domain as string,
 					summary: arg.summary,
 					conclusion_text: conclusionText,
 					key_premises: keyPremises
@@ -1751,12 +1590,12 @@ export async function retrieveContext(
 
 		console.log(`[RETRIEVAL] ${arguments_.length} arguments assembled`);
 		let thinkerContext: ThinkerContext | null = null;
-		if (enrichWithThinkerContext) {
+		if (enrichWithThinkerContext && config.entityEnrichment) {
 			const claimIdsForThinkerContext = claims.map((claim) => claim.id).filter(Boolean);
-			thinkerContext = await fetchThinkerContext(store, claimIdsForThinkerContext);
+			thinkerContext = await config.entityEnrichment.fetch(store, claimIdsForThinkerContext);
 		}
 		const traversalEdgePriors: Partial<Record<string, number>> = Object.fromEntries(
-			RELATION_TRAVERSAL_BEAM_SPECS.map((spec) => [spec.table, spec.edgePrior])
+			config.relations.traversalEdges.map((spec) => [spec.table, spec.edgePrior])
 		);
 		const pruningSummary: RetrievalPruningSummaryTrace = {
 			claims_by_reason: {
@@ -1814,13 +1653,13 @@ export async function retrieveContext(
 				lexical_terms: lexicalTerms.slice(0, 8),
 				corpus_level_query: corpusLevelQuery,
 				seed_balance_stats: seedSet.stats,
-				traversal_mode: 'beam_trusted_v1',
+				traversal_mode: config.traversal.mode,
 				traversal_max_hops: traversalMaxHops,
 				traversal_hop_decay: hopDecayFactor,
 				traversal_base_confidence_threshold: traversalBaseConfidence,
 				traversal_confidence_thresholds: traversalConfidenceThresholds,
-				traversal_domain_aware: true,
-				traversal_trusted_edges_only: true,
+				traversal_domain_aware: config.domain.enabled,
+				traversal_trusted_edges_only: config.traversal.trustedEdgesOnly,
 				traversal_edge_priors: traversalEdgePriors,
 				query_decomposition: queryDecomposition,
 				seed_claims: seedTrace,
@@ -1858,19 +1697,19 @@ export async function retrieveContext(
  * Returns a human-readable representation of the retrieved argument graph
  * that the model can use as grounding context for its three-pass analysis.
  */
-export function buildContextBlock(result: RetrievalResult): string {
+export function buildContextBlock(
+	result: RetrievalResult,
+	config: RetrievalConfig = philosophyRetrievalConfig
+): string {
 	if (!result.claims || result.claims.length === 0) {
 		return 'No knowledge base context available for this query.';
 	}
 
 	const lines: string[] = [];
 
-	lines.push('=== PHILOSOPHICAL KNOWLEDGE GRAPH CONTEXT ===');
+	lines.push(config.presentation.header);
 	lines.push('');
-	lines.push(
-		'The following are structured claims from SOPHIA\'s curated philosophical knowledge graph. ' +
-		'Use these as your philosophical foundation, noting their typed logical relations and source attributions.'
-	);
+	lines.push(config.presentation.intro);
 	lines.push('');
 
 	// ── Claims with IDs and Relations ──
@@ -1927,7 +1766,7 @@ export function buildContextBlock(result: RetrievalResult): string {
 
 	lines.push('=== END KNOWLEDGE GRAPH CONTEXT ===');
 	lines.push('');
-	lines.push('Use Google Search to verify, challenge, or extend these claims with current sources.');
+	lines.push(config.presentation.footer);
 
 	return lines.join('\n');
 }

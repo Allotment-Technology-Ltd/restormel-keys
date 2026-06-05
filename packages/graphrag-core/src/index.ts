@@ -16,11 +16,34 @@ export {
 
 export {
   constructSeedSet,
+  DEFAULT_SEED_ROLES,
   type SeedCandidate,
   type SeedBalanceStats,
   type SeedRole,
+  type SeedRoleConfig,
   type SeedSetConstructionResult,
 } from "./seed-set-constructor.js";
+
+export {
+  philosophyRetrievalConfig,
+  formatThinkerContextBlock,
+  type RetrievalConfig,
+  type ClaimTaxonomyConfig,
+  type RelationsConfig,
+  type RelationTraversalEdge,
+  type RelationFetchEdge,
+  type ArgumentsConfig,
+  type TraversalConfig,
+  type ClosureConfig,
+  type DomainConfig,
+  type OriginBalanceConfig,
+  type LexicalConfig,
+  type VerificationConfig,
+  type EntityEnrichmentConfig,
+  type PresentationConfig,
+  type ThinkerContext,
+  type ThinkerSummary,
+} from "./config.js";
 
 export {
   IDEAL_RETRIEVAL_ORIGIN_FRACTIONS,
@@ -49,12 +72,9 @@ export {
   retrieveContext,
   retrieveContextFromSeed,
   buildContextBlock,
-  formatThinkerContextBlock,
   type RetrievedClaim,
   type RetrievedRelation,
   type RetrievedArgument,
-  type ThinkerSummary,
-  type ThinkerContext,
   type RejectedClaimReasonCode,
   type RejectedRelationReasonCode,
   type RejectedClaimCandidate,

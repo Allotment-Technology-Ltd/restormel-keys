@@ -4,7 +4,23 @@ import {
   type RetrievalOriginBalanceKey,
 } from "./kg-balance.js";
 
-export type SeedRole = 'support' | 'objection' | 'reply' | 'definition_distinction';
+/** Role identifier — a plain string so hosts can define their own role taxonomy. */
+export type SeedRole = string;
+
+/**
+ * Domain-supplied seed-role taxonomy. The default (`DEFAULT_SEED_ROLES`) reproduces SOPHIA's
+ * support / objection / reply / definition_distinction model; a host can pass any role set.
+ */
+export interface SeedRoleConfig {
+  /** Roles in priority order (first is treated as the primary / majority role). */
+  order: SeedRole[];
+  /** Classify a candidate into one of `order`. */
+  classify: (candidate: { claim_type: string; text: string }) => SeedRole;
+  /** Target quota per role for a given topK. */
+  defaultQuotas: (topK: number) => Record<SeedRole, number>;
+  /** Two roles whose joint presence signals a balanced (non-mono) perspective. */
+  diversityPair: [SeedRole, SeedRole];
+}
 
 export interface SeedCandidate extends HybridCandidate {
   claim_type: string;
@@ -42,8 +58,6 @@ export interface SeedSetConstructionResult<T extends SeedCandidate> {
   stats: SeedBalanceStats;
 }
 
-const ROLE_ORDER: SeedRole[] = ['support', 'objection', 'reply', 'definition_distinction'];
-
 function normalizeText(text: string): string[] {
   return text
     .toLowerCase()
@@ -51,6 +65,46 @@ function normalizeText(text: string): string[] {
     .split(/\s+/)
     .filter(Boolean);
 }
+
+/** SOPHIA's philosophy seed-role taxonomy (the default when a host supplies none). */
+export const DEFAULT_SEED_ROLES: SeedRoleConfig = {
+  order: ['support', 'objection', 'reply', 'definition_distinction'],
+  classify: (candidate) => {
+    const claimType = candidate.claim_type.toLowerCase();
+    if (claimType === 'objection') return 'objection';
+    if (claimType === 'response' || claimType === 'reply') return 'reply';
+    if (claimType === 'definition' || normalizeText(candidate.text).includes('distinction')) {
+      return 'definition_distinction';
+    }
+    return 'support';
+  },
+  defaultQuotas: (topK) => {
+    const quotas: Record<SeedRole, number> = {
+      support: 0,
+      objection: 0,
+      reply: 0,
+      definition_distinction: 0,
+    };
+    if (topK >= 4) {
+      quotas.support = 1;
+      quotas.objection = 1;
+      quotas.reply = 1;
+      quotas.definition_distinction = 1;
+      quotas.support += topK - 4;
+    } else if (topK === 3) {
+      quotas.support = 1;
+      quotas.objection = 1;
+      quotas.reply = 1;
+    } else if (topK === 2) {
+      quotas.support = 1;
+      quotas.objection = 1;
+    } else {
+      quotas.support = 1;
+    }
+    return quotas;
+  },
+  diversityPair: ['objection', 'reply'],
+};
 
 function cosineSimilarity(a?: number[] | null, b?: number[] | null): number {
   if (!a || !b || a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
@@ -83,23 +137,10 @@ function pairwiseSimilarity(a: SeedCandidate, b: SeedCandidate): number {
   return tokenOverlapSimilarity(a.text, b.text);
 }
 
-function roleForCandidate(candidate: SeedCandidate): SeedRole {
-  const claimType = candidate.claim_type.toLowerCase();
-  if (claimType === 'objection') return 'objection';
-  if (claimType === 'response' || claimType === 'reply') return 'reply';
-  if (claimType === 'definition' || normalizeText(candidate.text).includes('distinction')) {
-    return 'definition_distinction';
-  }
-  return 'support';
-}
-
-function makeEmptyRoleCounts(): Record<SeedRole, number> {
-  return {
-    support: 0,
-    objection: 0,
-    reply: 0,
-    definition_distinction: 0
-  };
+function makeEmptyRoleCounts(order: SeedRole[]): Record<SeedRole, number> {
+  const counts: Record<SeedRole, number> = {};
+  for (const role of order) counts[role] = 0;
+  return counts;
 }
 
 function makeEmptyOriginCounts(): Record<RetrievalOriginBalanceKey, number> {
@@ -119,55 +160,44 @@ function averagePairwiseSimilarity(candidates: SeedCandidate[]): number {
   return pairs === 0 ? 0 : sum / pairs;
 }
 
-function hasObjectionReplyPresence(roleCounts: Record<SeedRole, number>): boolean {
-  return roleCounts.objection > 0 && roleCounts.reply > 0;
+function hasDiversityPresence(
+  roleCounts: Record<SeedRole, number>,
+  pair: [SeedRole, SeedRole]
+): boolean {
+  return (roleCounts[pair[0]] ?? 0) > 0 && (roleCounts[pair[1]] ?? 0) > 0;
 }
 
-function isMonoPerspective(roleCounts: Record<SeedRole, number>, total: number): boolean {
+function isMonoPerspective(
+  roleCounts: Record<SeedRole, number>,
+  total: number,
+  order: SeedRole[]
+): boolean {
   if (total === 0) return true;
-  return roleCounts.support >= total || Math.max(...ROLE_ORDER.map((role) => roleCounts[role])) >= total * 0.85;
-}
-
-function computeDefaultQuotas(topK: number): Record<SeedRole, number> {
-  const quotas: Record<SeedRole, number> = makeEmptyRoleCounts();
-  if (topK >= 4) {
-    quotas.support = 1;
-    quotas.objection = 1;
-    quotas.reply = 1;
-    quotas.definition_distinction = 1;
-    quotas.support += topK - 4;
-  } else if (topK === 3) {
-    quotas.support = 1;
-    quotas.objection = 1;
-    quotas.reply = 1;
-  } else if (topK === 2) {
-    quotas.support = 1;
-    quotas.objection = 1;
-  } else {
-    quotas.support = 1;
-  }
-  return quotas;
+  const primary = order[0];
+  const primaryCount = roleCounts[primary] ?? 0;
+  const maxCount = Math.max(0, ...order.map((role) => roleCounts[role] ?? 0));
+  return primaryCount >= total || maxCount >= total * 0.85;
 }
 
 function adaptQuotasToPool(
   quotas: Record<SeedRole, number>,
   poolCounts: Record<SeedRole, number>,
-  topK: number
+  topK: number,
+  order: SeedRole[]
 ): Record<SeedRole, number> {
   const adapted: Record<SeedRole, number> = { ...quotas };
   let used = 0;
-  for (const role of ROLE_ORDER) {
-    adapted[role] = Math.min(adapted[role], poolCounts[role]);
+  for (const role of order) {
+    adapted[role] = Math.min(adapted[role] ?? 0, poolCounts[role] ?? 0);
     used += adapted[role];
   }
   if (used >= topK) return adapted;
 
-  const topUpOrder: SeedRole[] = ['support', 'objection', 'reply', 'definition_distinction'];
   while (used < topK) {
     let topped = false;
-    for (const role of topUpOrder) {
-      if (adapted[role] < poolCounts[role]) {
-        adapted[role] += 1;
+    for (const role of order) {
+      if ((adapted[role] ?? 0) < (poolCounts[role] ?? 0)) {
+        adapted[role] = (adapted[role] ?? 0) + 1;
         used += 1;
         topped = true;
         if (used >= topK) break;
@@ -189,33 +219,39 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
   topK: number;
   queryEmbedding?: number[];
   mmrLambda?: number;
+  /** Seed-role taxonomy (defaults to SOPHIA's philosophy roles). */
+  roles?: SeedRoleConfig;
   /**
    * Optional inquiry-time balance: ideal origin mix + uniform domain targets among domains
-   * present in the candidate pool (see `knowledgeGraphRetrievalBalance.ts`).
+   * present in the candidate pool (see `kg-balance.ts`).
    */
   kgBalance?: {
     idealOrigin: Record<RetrievalOriginBalanceKey, number>;
     domainsInPool: Set<string>;
     getOrigin: (c: T) => RetrievalOriginBalanceKey;
     getDomainKey: (c: T) => string;
+    originStrength?: number;
+    domainStrength?: number;
   };
 }): SeedSetConstructionResult<T> {
   const { candidates, topK, queryEmbedding, mmrLambda = 0.72, kgBalance } = params;
+  const roles = params.roles ?? DEFAULT_SEED_ROLES;
+  const roleOrder = roles.order;
   const cappedCandidates = candidates.slice(0, Math.max(topK * 4, topK));
   const targetSize = Math.min(topK, cappedCandidates.length);
-  const roleCountsPool = makeEmptyRoleCounts();
+  const roleCountsPool = makeEmptyRoleCounts(roleOrder);
   const candidateRole = new Map<string, SeedRole>();
   for (const candidate of cappedCandidates) {
-    const role = roleForCandidate(candidate);
+    const role = roles.classify(candidate);
     candidateRole.set(candidate.id, role);
-    roleCountsPool[role] += 1;
+    roleCountsPool[role] = (roleCountsPool[role] ?? 0) + 1;
   }
 
-  const defaultQuotas = computeDefaultQuotas(targetSize);
-  const adaptedQuotas = adaptQuotasToPool(defaultQuotas, roleCountsPool, targetSize);
+  const defaultQuotas = roles.defaultQuotas(targetSize);
+  const adaptedQuotas = adaptQuotasToPool(defaultQuotas, roleCountsPool, targetSize, roleOrder);
   const selected: T[] = [];
   const selectedIds = new Set<string>();
-  const roleCountsSelected = makeEmptyRoleCounts();
+  const roleCountsSelected = makeEmptyRoleCounts(roleOrder);
   const selectedOriginCounts = makeEmptyOriginCounts();
   const selectedDomainCounts = new Map<string, number>();
   const relevanceById = new Map<string, number>();
@@ -227,12 +263,12 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
     const remaining = cappedCandidates.filter((candidate) => !selectedIds.has(candidate.id));
     if (remaining.length === 0) break;
 
-    const unmetRoles = ROLE_ORDER.filter(
-      (role) => roleCountsSelected[role] < adaptedQuotas[role]
+    const unmetRoles = roleOrder.filter(
+      (role) => (roleCountsSelected[role] ?? 0) < (adaptedQuotas[role] ?? 0)
     );
     const roleRestricted =
       unmetRoles.length > 0
-        ? remaining.filter((candidate) => unmetRoles.includes(candidateRole.get(candidate.id) ?? 'support'))
+        ? remaining.filter((candidate) => unmetRoles.includes(candidateRole.get(candidate.id) ?? roleOrder[0]))
         : remaining;
     const pool = roleRestricted.length > 0 ? roleRestricted : remaining;
 
@@ -254,7 +290,9 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
           selectedDomainCounts,
           totalSelected: totalSel,
           idealOrigin: kgBalance.idealOrigin,
-          domainsInPool: kgBalance.domainsInPool
+          domainsInPool: kgBalance.domainsInPool,
+          ...(kgBalance.originStrength !== undefined ? { originStrength: kgBalance.originStrength } : {}),
+          ...(kgBalance.domainStrength !== undefined ? { domainStrength: kgBalance.domainStrength } : {}),
         });
       } else if (kgBalance && totalSel === 0) {
         balanceMult = 1;
@@ -269,8 +307,8 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
     if (!best) break;
     selected.push(best);
     selectedIds.add(best.id);
-    const role = candidateRole.get(best.id) ?? 'support';
-    roleCountsSelected[role] += 1;
+    const role = candidateRole.get(best.id) ?? roleOrder[0];
+    roleCountsSelected[role] = (roleCountsSelected[role] ?? 0) + 1;
     if (kgBalance) {
       const o = kgBalance.getOrigin(best);
       selectedOriginCounts[o] += 1;
@@ -280,13 +318,14 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
   }
 
   const baseline = cappedCandidates.slice(0, targetSize);
-  const baselineRoleCounts = makeEmptyRoleCounts();
+  const baselineRoleCounts = makeEmptyRoleCounts(roleOrder);
   for (const candidate of baseline) {
-    baselineRoleCounts[candidateRole.get(candidate.id) ?? 'support'] += 1;
+    const role = candidateRole.get(candidate.id) ?? roleOrder[0];
+    baselineRoleCounts[role] = (baselineRoleCounts[role] ?? 0) + 1;
   }
 
-  const quotaSatisfiedRoles = ROLE_ORDER.filter(
-    (role) => roleCountsSelected[role] >= adaptedQuotas[role]
+  const quotaSatisfiedRoles = roleOrder.filter(
+    (role) => (roleCountsSelected[role] ?? 0) >= (adaptedQuotas[role] ?? 0)
   );
 
   const kgStats =
@@ -297,7 +336,7 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
           domains_in_pool: [...kgBalance.domainsInPool].sort(),
           selected_domain_counts: Object.fromEntries(
             [...selectedDomainCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-          )
+          ),
         }
       : undefined;
 
@@ -312,11 +351,11 @@ export function constructSeedSet<T extends SeedCandidate>(params: {
       quota_satisfied_roles: quotaSatisfiedRoles,
       avg_pairwise_similarity_before: averagePairwiseSimilarity(baseline),
       avg_pairwise_similarity_after: averagePairwiseSimilarity(selected),
-      objection_reply_presence_before: hasObjectionReplyPresence(baselineRoleCounts),
-      objection_reply_presence_after: hasObjectionReplyPresence(roleCountsSelected),
-      mono_perspective_before: isMonoPerspective(baselineRoleCounts, baseline.length),
-      mono_perspective_after: isMonoPerspective(roleCountsSelected, selected.length),
-      ...(kgStats ? { kg_balance: kgStats } : {})
-    }
+      objection_reply_presence_before: hasDiversityPresence(baselineRoleCounts, roles.diversityPair),
+      objection_reply_presence_after: hasDiversityPresence(roleCountsSelected, roles.diversityPair),
+      mono_perspective_before: isMonoPerspective(baselineRoleCounts, baseline.length, roleOrder),
+      mono_perspective_after: isMonoPerspective(roleCountsSelected, selected.length, roleOrder),
+      ...(kgStats ? { kg_balance: kgStats } : {}),
+    },
   };
 }
