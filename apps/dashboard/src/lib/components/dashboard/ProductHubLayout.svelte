@@ -4,6 +4,9 @@
   export let tabs: { href: string; label: string; exact: boolean }[];
   /** Hide hub tabs during focused flows (e.g. pipeline setup wizard). */
   export let hideTabs = false;
+  /** Tap-prefetch Connect hub tabs on intentional navigation (avoids hover fan-out on heavy routes). */
+  export let prefetchTabs = false;
+  export let ariaBusy = false;
 
   import { page } from "$app/stores";
 
@@ -16,13 +19,14 @@
 </script>
 
 {#if !hideTabs}
-<nav class="hub-tabs" aria-label={ariaLabel}>
+<nav class="hub-tabs" aria-label={ariaLabel} aria-busy={ariaBusy}>
   {#each tabs as tab}
     <a
       href={tab.href}
       class="hub-tab"
       class:hub-tab-active={isActive(tab.href, tab.exact)}
       aria-current={isActive(tab.href, tab.exact) ? "page" : undefined}
+      data-sveltekit-preload-data={prefetchTabs ? "tap" : undefined}
     >
       {tab.label}
     </a>

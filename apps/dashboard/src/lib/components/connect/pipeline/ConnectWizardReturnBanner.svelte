@@ -1,44 +1,46 @@
 <script lang="ts">
   import {
-    pipelineWizardHref,
     pipelineWizardStepLabel,
-    type PipelineWizardStepId,
+    returnContextHref,
+    type BuilderReturnContext,
   } from "$lib/connect/pipeline-config";
 
-  export let step: PipelineWizardStepId;
+  export let context: Extract<BuilderReturnContext, { kind: "pipeline-setup" }>;
 
-  $: returnHref = pipelineWizardHref(step);
-  $: stepLabel = pipelineWizardStepLabel(step);
+  $: returnHref = returnContextHref(context);
+  $: stepLabel = pipelineWizardStepLabel(context.step);
 </script>
 
-<div class="wizard-return" role="status">
+<nav class="wizard-return" aria-label="Return to pipeline setup">
   <a class="wizard-return-link" href={returnHref}>← Back to pipeline setup</a>
   <span class="wizard-return-meta">Step: {stepLabel}</span>
-</div>
+</nav>
 
 <style>
   .wizard-return {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-2) var(--space-4);
+    min-height: 40px;
     margin: 0 0 var(--space-4);
-    padding: var(--space-2) var(--space-3);
-    border: var(--brut-border-micro, 1px) solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: color-mix(in oklab, var(--rm-sage) 10%, var(--rm-surface));
+    padding: 0 var(--space-3);
+    background: var(--color-bg);
+    border-bottom: var(--border);
   }
   .wizard-return-link {
-    color: var(--rm-text);
-    font-weight: 700;
-    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    color: var(--color-ink);
     text-decoration: none;
   }
   .wizard-return-link:hover {
     text-decoration: underline;
   }
   .wizard-return-meta {
-    color: var(--rm-muted);
-    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-faint);
   }
 </style>

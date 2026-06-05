@@ -14,10 +14,10 @@ import {
 import {
   connectIngestStatusHint,
   connectValidateIngestStartRequest,
-  connectValidateRetrieveRequest,
   connectValidateVerifyRequest,
   connectProxyPost,
 } from "./connect-tools-logic.js";
+import { registerConnectAgentTools } from "./connect-agent-tools.js";
 import { ROUTING_CAPABILITIES } from "./routing-capabilities.js";
 import {
   getEnabledSuiteToolNames,
@@ -354,41 +354,7 @@ export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolMo
     },
   );
 
-  reg(
-    "connect.retrieve",
-    {
-      description:
-        "Validate a Knowledge Retrieve REST payload (POST /connect/v1/retrieve). Optional hosted proxy via RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY.",
-      inputSchema: connectRequestJsonInput,
-      outputSchema: connectValidatedOutput,
-    },
-    async (args: { requestJson: string }) => {
-      const base = process.env.RESTORMEL_CONNECT_API_BASE?.trim();
-      const key = process.env.RESTORMEL_GATEWAY_KEY?.trim();
-      if (base && key) {
-        let body: unknown;
-        try {
-          body = JSON.parse(args.requestJson) as unknown;
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          const structuredContent = { ok: false, code: "RST_CONNECT_JSON", message: msg };
-          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
-        }
-        const proxied = await connectProxyPost({ baseUrl: base, gatewayKey: key, path: "/connect/v1/retrieve", body });
-        if (!proxied.ok) {
-          const structuredContent = proxied;
-          return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
-        }
-        const structuredContent = { ok: true, validated: true, upstreamStatus: proxied.status, upstream: proxied.json };
-        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
-      }
-      const r = await connectValidateRetrieveRequest(args.requestJson);
-      const structuredContent = r.ok
-        ? { ...r, note: "Set RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY to execute against hosted REST." }
-        : r;
-      return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
-    },
-  );
+  registerConnectAgentTools(server, reg);
 
   reg(
     "connect.ingest.start",

@@ -15,6 +15,7 @@ function row(
       ? { id: `${key}-route`, name: key, status: "active", isPublished: true, enabled }
       : null,
     visualHref: null,
+    activeModel: null,
   };
 }
 

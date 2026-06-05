@@ -5,6 +5,8 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ExtractionGenerate } from "./extract.js";
+import type { ConnectQualityPreset } from "./quality-preset.js";
+import { composeStageSystemPrompt, type GraphIngestContext } from "./prompt-compose.js";
 
 export type UnitValidationStatus = "ok" | "weak" | "unsupported";
 
@@ -28,34 +30,34 @@ function readValidationBatchSize(): number {
   return Math.min(Math.max(Math.floor(raw), 5), 50);
 }
 
-export function buildValidationSystemPrompt(pack: ConnectDomainPack): string {
-  const o = pack.ontology;
-  const parts: string[] = [];
-  if (pack.prompts?.validation?.trim()) {
-    parts.push(pack.prompts.validation.trim());
-  } else {
-    parts.push(
-      `You validate extracted ${o.unit_noun}s for the domain "${pack.title}". Your job is to catch hallucinations and serious misreadings — not to nitpick faithful paraphrases.`,
-    );
-  }
-  parts.push(
-    `For each ${o.unit_noun}, return a status:\n` +
-      `- "ok": supported by the source, including fair paraphrase, summarization, or an inference clearly grounded in the text\n` +
-      `- "weak": materially overstated, missing an important qualification, or only loosely related to the source\n` +
-      `- "unsupported": contradicts the source or adds claims with no basis in the text`,
-  );
-  parts.push(
-    `Calibrate toward "ok" when the idea is reasonably faithful. Reserve "weak" and "unsupported" for cases that would mislead a reader.`,
-  );
-  parts.push(
-    `Return STRICT JSON only:\n{ "results": [{ "ref": "<unit ref>", "status": "ok|weak|unsupported", "note": "<short reason or omit>" }] }\n` +
-      `Include one result for every listed ref — do not omit units.`,
-  );
-  return parts.join("\n\n");
+export function buildValidationSystemPrompt(
+  pack: ConnectDomainPack,
+  opts?: { qualityPreset?: ConnectQualityPreset; graphContext?: GraphIngestContext },
+): string {
+  return composeStageSystemPrompt({
+    pack,
+    stage: "validation",
+    qualityPreset: opts?.qualityPreset ?? pack.quality_preset ?? "production",
+    graphContext: opts?.graphContext,
+  });
 }
 
-export function buildValidationUserPrompt(units: ValidationInput[], sourceText: string): string {
+export function buildValidationUserPrompt(
+  units: ValidationInput[],
+  sourceText: string,
+  opts?: { sourceTextByRef?: Map<string, string> },
+): string {
   const list = units.map((u) => `- ${u.ref}: ${u.text}`).join("\n");
+  if (opts?.sourceTextByRef?.size) {
+    const chunks = units
+      .map((u) => {
+        const chunk = opts.sourceTextByRef!.get(u.ref);
+        return chunk ? `[${u.ref} passage]\n${chunk.slice(0, 8000)}` : null;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+    return `SOURCE PASSAGES (per unit):\n${chunks}\n\nUNITS TO ASSESS:\n${list}`;
+  }
   return `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO ASSESS:\n${list}`;
 }
 
@@ -150,10 +152,18 @@ export async function validateUnitsBatch(args: {
   sourceText: string;
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+  graphContext?: GraphIngestContext;
+  sourceTextByRef?: Map<string, string>;
 }): Promise<UnitValidation[]> {
   if (args.units.length === 0) return [];
-  const system = buildValidationSystemPrompt(args.pack);
-  const user = buildValidationUserPrompt(args.units, args.sourceText);
+  const system = buildValidationSystemPrompt(args.pack, {
+    qualityPreset: args.qualityPreset,
+    graphContext: args.graphContext,
+  });
+  const user = buildValidationUserPrompt(args.units, args.sourceText, {
+    sourceTextByRef: args.sourceTextByRef,
+  });
   const raw = await args.generate({ system, user });
   return parseValidationResponse(raw);
 }
@@ -163,6 +173,9 @@ export async function validateUnits(args: {
   sourceText: string;
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+  graphContext?: GraphIngestContext;
+  sourceTextByRef?: Map<string, string>;
 }): Promise<UnitValidation[]> {
   if (args.units.length === 0) return [];
 

@@ -5,10 +5,12 @@
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
   import { page } from "$app/stores";
+  import { marketingShellPropsFromPage } from "$lib/marketing-shell-props";
   import { absoluteUrl } from "$lib/seo";
 
-  $: user = $page.data.user;
-  $: pathname = $page.url.pathname;
+  $: shell = marketingShellPropsFromPage($page);
+  $: user = shell.user;
+  $: pathname = shell.pathname;
   $: skipMarketingShell =
     pathname.startsWith("/keys/dashboard") || pathname.startsWith("/keys/admin");
 
@@ -43,14 +45,14 @@
 {#if skipMarketingShell}
   <div class="marketing-page app-chrome">
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    <SiteHeader {user} />
+    <SiteHeader {user} {pathname} />
     <main id="main-content" class="app-main dashboard-chrome-main">
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter moduleFlags={shell.moduleFlags} suiteModulesForUi={shell.suiteModulesForUi} />
   </div>
 {:else}
-  <SuiteMarketingLayout>
+  <SuiteMarketingLayout {...shell}>
     <slot />
   </SuiteMarketingLayout>
 {/if}

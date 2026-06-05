@@ -5,6 +5,7 @@
   export let data: {
     adminUsers: AdminUserListRow[];
     operatorEmails: import("$lib/server/service-admin-emails").ServiceAdminEmailRow[];
+    operatorEmailsMigrationRequired?: boolean;
     adminUsersError: string | null;
   };
 
@@ -108,12 +109,18 @@
 <p class="page-desc">
   Service owners can grant or revoke <strong>dashboard operator</strong> access (stored in <code>service_admins</code>).
   Primary operator emails from configuration always retain operator access. Add operator emails below before
-  someone signs in for the first time.
+  someone signs in for the first time. The table lists users who have signed in (app <code>users</code> mirror).
 </p>
 
 <section class="operator-emails" aria-labelledby="operator-emails-heading">
   <h2 id="operator-emails-heading" class="section-title">Operator emails</h2>
   <p class="section-desc">These emails receive administrator access on their next sign-in (without editing env vars).</p>
+  {#if data.operatorEmailsMigrationRequired}
+    <p class="banner-error" role="alert">
+      Operator email grants need migration <code>042_founders_access_and_admin_emails.sql</code>. From the repo root:
+      <code>export DATABASE_URL=… && bash scripts/apply-dashboard-migrations.sh</code>
+    </p>
+  {/if}
   <form class="operator-form" on:submit|preventDefault={addOperatorEmail}>
     <label class="operator-label">
       <span class="sr-only">Email address</span>

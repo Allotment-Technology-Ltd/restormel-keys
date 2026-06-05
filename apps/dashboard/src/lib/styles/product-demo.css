@@ -8,16 +8,19 @@
 }
 
 .product-demo-eyebrow {
-  display: inline-flex;
+  display: block;
+  width: 100%;
   font-family: var(--font-mono);
   font-size: var(--text-mono-sm);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  border: var(--border);
-  padding: 3px 10px;
-  margin-bottom: var(--space-4);
+  border: none;
+  border-bottom: 2px solid var(--color-ink);
+  padding: 0 0 0.5rem;
+  margin-bottom: 1.5rem;
   color: var(--color-ink);
+  background: transparent;
 }
 
 .product-demo-title {
@@ -43,10 +46,43 @@
 
 .product-demo-frame-wrap {
   position: relative;
-  border: var(--border);
-  box-shadow: var(--shadow-md);
+  border: 2px solid var(--color-ink);
+  box-shadow: 6px 6px 0 var(--color-ink);
   background: var(--color-bg);
   overflow: hidden;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+.product-demo-frame-wrap:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+
+.product-demo-frame-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+.product-demo-frame-stamp {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.product-demo-frame-chrome-mark {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  opacity: 0.85;
 }
 
 .product-demo-frame {
@@ -474,5 +510,10 @@
   .product-demo-timer-fill {
     animation: none;
     transform: scaleX(0.35);
+  }
+  .product-demo-frame-wrap,
+  .product-demo-frame-wrap:hover {
+    transform: none;
+    box-shadow: 6px 6px 0 var(--color-ink);
   }
 }

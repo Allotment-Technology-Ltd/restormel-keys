@@ -1,4 +1,6 @@
-import { browser } from "$app/environment";
+// Use typeof window to check for browser environment instead of $app/environment
+// to avoid SSR issues where $app/environment might not be available.
+const browser = typeof window !== "undefined";
 
 export type SeoMeta = {
   title: string;

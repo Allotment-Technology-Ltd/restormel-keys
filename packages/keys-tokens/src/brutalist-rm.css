@@ -20,6 +20,8 @@
   --color-yellow: #ffd600;
   --color-yellow-dark: #e6bf00;
   --color-blue: #1a3f8a;
+  /** Text/icons on --color-blue fills (WCAG-friendly on #1A3F8A). Do not use --color-ink on blue backgrounds. */
+  --color-on-blue: #fffef0;
 
   /* ── Ink ── */
   --color-ink: #0c0c0c;
@@ -113,8 +115,10 @@
   --rm-text: var(--color-ink);
   --rm-muted: var(--color-ink-muted);
   --rm-dim: var(--color-ink-faint);
+  /** Links, tags, chart strokes — not primary button fills (use --color-yellow). */
   --rm-sage: var(--color-blue);
   --rm-sage-bg: var(--color-yellow);
+  --rm-on-sage: var(--color-on-blue);
 
   --rm-font-display: var(--font-display);
   --rm-font-ui: var(--font-body);

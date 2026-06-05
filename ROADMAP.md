@@ -27,10 +27,11 @@ PostHog **`restormel-module-*`** flags gate non-core surfaces (MVP default: **Ke
 | Area | Shipped in repo | Still open |
 |------|-----------------|------------|
 | **Ingest REST** | `POST/GET /connect/v1/ingest/jobs*`, dashboard BFF, `@restormel/connect-core` stages, hosted worker → BYO Surreal/Postgres graph | OpenAPI GA; SOPHIA worker cutover to hosted REST; wave-1 staging parity; entity linking (e.g. thinker/authored) |
-| **Operator ingest** | Pipeline wizard, domain packs, Graph Designer, source docs/connectors, per-stage Keys routes, graph explorer, validation review, graph re-validation jobs | Ingest GA hardening (validation at scale, provenance, observability) |
+| **Operator ingest** | Pipeline wizard, domain packs, Graph Designer, source docs/connectors, per-stage Keys routes, graph explorer, validation review, graph re-validation jobs | Ingest GA hardening (validation at scale, provenance, observability); **graph re-embedding** (dimension/model migration — extract from SOPHIA) |
 | **Verify REST** | `POST /connect/v1/verify` → `@restormel/reasoning-core` | Operator smoke polish |
-| **Retrieve REST** | `POST /connect/v1/retrieve` → `@restormel/graphrag-core` (hybrid/seed/context in package) | **Retrieve GA:** Keys-routed embeddings, workspace graph index populated, non-degraded retrieve; dashboard operator smoke + SOPHIA grounding parity |
+| **Retrieve REST** | `POST /connect/v1/retrieve` → structured `graph` + `context_pack` (BYO Surreal); Keys-routed embeddings; MCP `connect.search` / `connect.get_context_for` | Non-degraded retrieve on populated BYO graphs (operator smoke); `connect.verify_claim` / `connect.explore` (v1.1) |
 | **Packages** | `@restormel/connect-core`, `@restormel/graphrag-core`, `@restormel/reasoning-core`, `@restormel/context-packs` | Integrator default remains REST/MCP; packages for adapters/self-host |
+| **Managed graphs (roadmap)** | — | Optional Restormel-hosted graph index (zero Surreal ops); gated on product/legal sign-off — **not MVP** |
 
 **Next Connect milestones (public roadmap: `/roadmap`):** (1) **Reliable agent grounding** — retrieval that consistently returns the right context from the workspace graph; (2) **Trust you can ship on** — validation, provenance, and review at scale; (3) **Faster first graph** — onboarding for teams without a platform group; (4) **Embed without rebuilding** — stable integrator surfaces. Technical programme: [CONNECT-PRODUCT.md](docs/restormel/CONNECT-PRODUCT.md).
 

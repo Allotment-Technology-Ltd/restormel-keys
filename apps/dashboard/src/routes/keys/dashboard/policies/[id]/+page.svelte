@@ -442,10 +442,6 @@
     border: none;
     cursor: pointer;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .rule-preview {
     font-size: var(--text-xs);
     background: var(--rm-surface-raised);

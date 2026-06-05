@@ -6,6 +6,7 @@
 import {
   DEFAULT_GENERIC_DOMAIN_PACK,
   ConnectDomainPackSchema,
+  ConnectPackArchetypeSchema,
   PHILOSOPHY_DOMAIN_PACK,
   type ConnectDomainPack,
   type ConnectDomainPackUpsert,
@@ -19,6 +20,10 @@ import {
   upsertConnectStageRoutingConfig,
   type ConnectDomainPackRecord,
 } from "$lib/server/neon";
+import {
+  assertEmbeddingDimensionsAllowed,
+  getWorkspaceEmbeddingLock,
+} from "$lib/server/connect/embedding-contract";
 
 function msToIso(ms: number): string {
   return new Date(ms).toISOString();
@@ -37,6 +42,12 @@ export function domainPackRecordToApi(row: ConnectDomainPackRecord): ConnectDoma
     passage_profile: row.passageProfile,
     ...(row.entityLinking ? { entity_linking: row.entityLinking } : {}),
     embedding: row.embedding,
+    quality_preset: row.qualityPreset === "starter" ? "starter" : "production",
+    cross_model_validation: row.crossModelValidation,
+    ...(row.archetype && ConnectPackArchetypeSchema.safeParse(row.archetype).success
+      ? { archetype: row.archetype as ConnectDomainPack["archetype"] }
+      : {}),
+    prompt_template_version: row.promptTemplateVersion,
     is_builtin: row.isBuiltin,
     created_at: msToIso(row.createdAt),
     updated_at: msToIso(row.updatedAt),
@@ -55,6 +66,10 @@ async function seedBuiltinPack(workspaceId: string, pack: ConnectDomainPackUpser
     passageProfile: pack.passage_profile,
     entityLinking: pack.entity_linking ?? null,
     embedding: pack.embedding,
+    qualityPreset: pack.quality_preset ?? "production",
+    crossModelValidation: pack.cross_model_validation !== false,
+    archetype: pack.archetype ?? null,
+    promptTemplateVersion: pack.prompt_template_version ?? 1,
     isBuiltin: true,
   });
 }
@@ -70,10 +85,29 @@ export async function listDomainPacksForUi(workspaceId: string): Promise<Connect
   return rows.map(domainPackRecordToApi);
 }
 
+export type DomainPackMutationError = "not_found" | "builtin" | "slug_change" | "embedding_dimensions_locked";
+
+async function assertPackEmbeddingAllowed(
+  workspaceId: string,
+  embedding: ConnectDomainPackUpsert["embedding"],
+): Promise<{ ok: true } | { error: DomainPackMutationError; message: string }> {
+  const dimensions = embedding?.dimensions ?? 1024;
+  const lock = await getWorkspaceEmbeddingLock(workspaceId).catch(() => null);
+  const check = assertEmbeddingDimensionsAllowed({ requestedDimensions: dimensions, lock });
+  if (!check.ok) {
+    return { error: "embedding_dimensions_locked", message: check.message };
+  }
+  return { ok: true };
+}
+
 export async function saveDomainPack(
   workspaceId: string,
   input: ConnectDomainPackUpsert,
 ): Promise<ConnectDomainPack> {
+  const embedCheck = await assertPackEmbeddingAllowed(workspaceId, input.embedding);
+  if ("error" in embedCheck) {
+    throw new Error(embedCheck.message);
+  }
   const row = await upsertConnectDomainPack({
     workspaceId,
     slug: input.slug,
@@ -85,6 +119,10 @@ export async function saveDomainPack(
     passageProfile: input.passage_profile,
     entityLinking: input.entity_linking ?? null,
     embedding: input.embedding,
+    qualityPreset: input.quality_preset ?? "production",
+    crossModelValidation: input.cross_model_validation !== false,
+    archetype: input.archetype ?? null,
+    promptTemplateVersion: input.prompt_template_version ?? 1,
     isBuiltin: false,
   });
   return domainPackRecordToApi(row);
@@ -97,8 +135,6 @@ export async function getDomainPackForUi(
   const row = await getConnectDomainPackById({ id: packId, workspaceId });
   return row ? domainPackRecordToApi(row) : null;
 }
-
-export type DomainPackMutationError = "not_found" | "builtin" | "slug_change";
 
 export async function updateDomainPack(
   workspaceId: string,

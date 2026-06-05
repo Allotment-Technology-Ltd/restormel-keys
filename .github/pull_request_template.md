@@ -14,11 +14,17 @@
 - [ ] Low (docs/process only)
 - [ ] Higher (describe below)
 
+## Pre-PR security gate
+- [ ] N/A (no code / no security-sensitive docs)
+- [ ] Ran [pre-PR security review](docs/guides/pre-pr-security-review.md) — gate **PASS** (restormel-high-risk-security + hygiene scripts; Aikido if MCP connected)
+- [ ] Neon operator 2FA org policy confirmed (only if migrations/production DB/access docs changed)
+
 ## Reliability impact
 - [ ] None
 - [ ] Describe if relevant
 
 ## Checks run
+- [ ] Pre-PR security ([guide](docs/guides/pre-pr-security-review.md))
 - [ ] `scripts/check-repo-hygiene.sh`
 - [ ] `scripts/review-docs.sh`
 - [ ] `scripts/check-secrets.sh`

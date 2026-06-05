@@ -3,6 +3,9 @@
   import { githubRepoUrl, keysDocsUrl, keysHomeUrl } from "$lib/testing/site.js";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
   import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
+  import type { ModuleFlags } from "$lib/module-flags-types";
+
+  export let moduleFlags: ModuleFlags;
 
   const goalYamlExample = `suites:
   - id: web-critical
@@ -48,7 +51,7 @@
   </section>
 
   <div class="container">
-    <EcosystemStrip variant="compact" />
+    <EcosystemStrip variant="compact" {moduleFlags} />
   </div>
 
   <section class="section section-alt" aria-labelledby="yaml-heading">

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import ConnectGraphExplorer from "$lib/components/connect/ConnectGraphExplorer.svelte";
+  import ConnectGraphPageSkeleton from "$lib/components/connect/ConnectGraphPageSkeleton.svelte";
 
   export let data: {
-    graph: {
+    graph: Promise<{
       store?: "postgres" | "surreal" | "none";
       storeLabel?: string;
       targetStatus?: "untested" | "error";
@@ -34,13 +34,17 @@
         sourceKind: string | null;
         author: string | null;
       }[];
-    } | null;
-    revalidate: {
-      enabled: boolean;
-      routes: { id: string; name: string; isDefault: boolean }[];
-      defaultRouteId: string | null;
-    } | null;
+      unitsPagination?: {
+        offset: number;
+        limit: number;
+        loaded: number;
+        total: number | null;
+        hasMore: boolean;
+      };
+    } | null>;
   };
+
+  const explorerImport = () => import("$lib/components/connect/ConnectGraphExplorer.svelte");
 </script>
 
 <svelte:head>
@@ -48,8 +52,20 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-{#if !data.graph}
-  <p class="brut-muted" role="status">Sign in to view your graph.</p>
-{:else}
-  <ConnectGraphExplorer graph={data.graph} revalidate={data.revalidate} />
-{/if}
+{#await data.graph}
+  <ConnectGraphPageSkeleton />
+{:then graph}
+  {#if !graph}
+    <p class="brut-muted" role="status">Sign in to view your graph.</p>
+  {:else}
+    {#await explorerImport()}
+      <ConnectGraphPageSkeleton />
+    {:then { default: ConnectGraphExplorer }}
+      <ConnectGraphExplorer {graph} />
+    {:catch}
+      <p class="brut-muted" role="alert">Could not load the graph explorer. Refresh the page to try again.</p>
+    {/await}
+  {/if}
+{:catch}
+  <p class="brut-muted" role="alert">Could not load your graph. Refresh the page to try again.</p>
+{/await}

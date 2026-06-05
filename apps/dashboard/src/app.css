@@ -5,6 +5,7 @@
  */
 @import "@restormel/keys-tokens/brutalist-rm.css";
 @import "./lib/styles/brutalist-utilities.css";
+@import "./lib/styles/site-brutalist.css";
 @import "./lib/styles/dashboard-surfaces.css";
 
 :root {

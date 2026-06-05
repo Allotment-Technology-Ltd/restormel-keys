@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
+import { setAuthReturnCookie } from "$lib/server/auth-return-cookie";
 import { env } from "$env/dynamic/private";
 
 /** Collect all Set-Cookie values from a response (handles multi-value headers). */
@@ -19,7 +20,11 @@ function normaliseCookie(cookie: string): string {
     .replace(/;\s*Path=[^;]+/gi, "; Path=/");
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, cookies }) => {
+  setAuthReturnCookie(cookies, {
+    redirect: url.searchParams.get("redirect"),
+    template: url.searchParams.get("template"),
+  });
   const neonAuthBase = (env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
   if (!neonAuthBase) {
     return json({ error: "Neon Auth not configured" }, { status: 503 });

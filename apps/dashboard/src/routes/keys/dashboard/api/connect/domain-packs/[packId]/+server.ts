@@ -50,7 +50,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
       { status: 400 },
     );
   }
-  const result = await updateDomainPack(ctx.workspaceId, params.packId, parsed.data);
+  let result;
+  try {
+    result = await updateDomainPack(ctx.workspaceId, params.packId, parsed.data);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not update domain pack.";
+    if (message.includes("embeddings at")) {
+      return json({ error: "embedding_dimensions_locked", message }, { status: 409 });
+    }
+    return json({ error: "save_failed", message }, { status: 500 });
+  }
   if ("error" in result) {
     if (result.error === "not_found") {
       return json({ error: "not_found", message: "Domain pack not found." }, { status: 404 });

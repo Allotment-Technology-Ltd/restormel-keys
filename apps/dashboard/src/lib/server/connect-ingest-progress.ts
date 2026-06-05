@@ -19,11 +19,34 @@ import {
   type ConnectIngestJobRecord,
 } from "$lib/server/connect-ingest-jobs";
 
+export type GraphRepairProgress = {
+  job_kind: "graph_revalidate";
+  mode: "validate" | "validate_and_remediate";
+  phase: "loading" | "validating" | "remediating" | "storing" | "done";
+  units_total: number;
+  units_processed: number;
+  sources_total: number;
+  sources_done: number;
+  batches_total?: number;
+  batches_done?: number;
+  repaired?: number;
+  dropped?: number;
+  skipped_no_source?: number;
+  quarantine_before?: number;
+  quarantine_after?: number;
+  preview_only_sources?: number;
+  sources_remediation_failed?: number;
+  last_error?: string;
+  last_error_at?: string;
+  last_activity_at: string;
+};
+
 export type ConnectIngestProgressSnapshot = {
   percent: number;
   processed: number;
   total: number;
   execution_mode?: "stub" | "full";
+  graph_repair?: GraphRepairProgress;
 };
 
 const STAGE_TAGS: Record<ConnectIngestStage, string> = {
@@ -121,9 +144,82 @@ export class ConnectIngestProgressReporter {
   private stages: ConnectIngestStageProgress[];
   private currentAction = "";
   private currentStage: ConnectIngestStage | null = null;
+  private graphRepair: GraphRepairProgress | null = null;
 
   constructor(private job: ConnectIngestJobRecord) {
     this.stages = parseStages(job.stages);
+  }
+
+  /** Initialize graph re-validation / auto-remediation unit progress overlay. */
+  initGraphRepair(args: {
+    mode: GraphRepairProgress["mode"];
+    units_total: number;
+    sources_total: number;
+    quarantine_before?: number;
+  }): void {
+    const now = new Date().toISOString();
+    this.graphRepair = {
+      job_kind: "graph_revalidate",
+      mode: args.mode,
+      phase: "loading",
+      units_total: Math.max(0, args.units_total),
+      units_processed: 0,
+      sources_total: Math.max(1, args.sources_total),
+      sources_done: 0,
+      repaired: 0,
+      dropped: 0,
+      skipped_no_source: 0,
+      preview_only_sources: 0,
+      sources_remediation_failed: 0,
+      ...(args.quarantine_before != null ? { quarantine_before: args.quarantine_before } : {}),
+      last_activity_at: now,
+    };
+  }
+
+  /** Merge graph repair counters; bumps last_activity_at on every call. */
+  async setGraphRepair(patch: Partial<GraphRepairProgress>): Promise<void> {
+    if (!this.graphRepair) return;
+    const now = new Date().toISOString();
+    this.graphRepair = {
+      ...this.graphRepair,
+      ...patch,
+      last_activity_at: now,
+      ...(patch.last_error ? { last_error_at: now } : {}),
+    };
+    await this.persist("running");
+  }
+
+  getGraphRepair(): GraphRepairProgress | null {
+    return this.graphRepair;
+  }
+
+  private snapshotForGraphRepair(nowMs?: number): ConnectIngestProgressSnapshot {
+    const gr = this.graphRepair!;
+    const unitsTotal = Math.max(1, gr.units_total);
+    const unitsProcessed = Math.min(unitsTotal, Math.max(0, gr.units_processed));
+    const percent = Math.min(100, Math.round((unitsProcessed / unitsTotal) * 100));
+    const eta_seconds = computeConnectIngestEtaSeconds({
+      runStartedAtMs: this.stageStartedAtMs,
+      processed: unitsProcessed,
+      total: unitsTotal,
+      nowMs,
+    });
+    if (this.activeStage === "validating" || this.activeStage === "remediating") {
+      this.stages = mergeStageProgress(this.stages, this.activeStage, {
+        progress: {
+          percent,
+          processed: unitsProcessed,
+          total: unitsTotal,
+          ...(eta_seconds != null ? { eta_seconds } : {}),
+        },
+      });
+    }
+    return {
+      percent,
+      processed: unitsProcessed,
+      total: unitsTotal,
+      graph_repair: { ...gr },
+    };
   }
 
   private currentStageMetrics(nowMs?: number): ConnectIngestStageProgressMetrics {
@@ -136,6 +232,7 @@ export class ConnectIngestProgressReporter {
   }
 
   private snapshot(nowMs?: number): ConnectIngestProgressSnapshot {
+    if (this.graphRepair) return this.snapshotForGraphRepair(nowMs);
     const stageIdx = this.activeStage ? stageIndex(this.activeStage) : stageIndex(this.currentStage ?? "extracting");
     const intra = this.stageTotal > 0 ? this.stageProcessed / this.stageTotal : 0;
     const completedStages = this.stages.filter(
@@ -174,6 +271,19 @@ export class ConnectIngestProgressReporter {
   }
 
   async log(tag: string, body: string): Promise<void> {
+    if (this.graphRepair) {
+      this.graphRepair = {
+        ...this.graphRepair,
+        last_activity_at: new Date().toISOString(),
+      };
+      await appendConnectIngestJobLog({
+        jobId: this.job.id,
+        line: formatBracketLogLine(tag, body),
+      });
+      // Keep unit-progress overlay in sync with log lines (heartbeats, standalone messages).
+      await this.persist("running");
+      return;
+    }
     await appendConnectIngestJobLog({
       jobId: this.job.id,
       line: formatBracketLogLine(tag, body),
@@ -210,11 +320,33 @@ export class ConnectIngestProgressReporter {
     await this.persist("running");
   }
 
-  async tick(stage: ConnectIngestStage, message: string, bump = 1): Promise<void> {
+  async tick(
+    stage: ConnectIngestStage,
+    message: string,
+    bump = 1,
+    graphRepairPatch?: Partial<GraphRepairProgress>,
+  ): Promise<void> {
     if (this.activeStage === stage) {
       this.stageProcessed = Math.min(this.stageTotal, this.stageProcessed + bump);
     }
+    if (this.graphRepair && graphRepairPatch) {
+      const now = new Date().toISOString();
+      this.graphRepair = {
+        ...this.graphRepair,
+        ...graphRepairPatch,
+        last_activity_at: now,
+        ...(graphRepairPatch.last_error ? { last_error_at: now } : {}),
+      };
+    }
     this.applyFocus(stage, message);
+    if (this.graphRepair) {
+      await appendConnectIngestJobLog({
+        jobId: this.job.id,
+        line: formatBracketLogLine(stageBracketTag(stage), message),
+      });
+      await this.persist("running");
+      return;
+    }
     await this.log(stageBracketTag(stage), message);
     await this.persist("running");
   }
@@ -276,7 +408,11 @@ export class ConnectIngestProgressReporter {
     await this.persist("failed", { error });
   }
 
-  async complete(summary: string, executionMode: "stub" | "full" = "stub"): Promise<void> {
+  async complete(
+    summary: string,
+    executionMode: "stub" | "full" = "stub",
+    extraProgress?: Record<string, unknown>,
+  ): Promise<void> {
     const nowIso = new Date().toISOString();
     this.stages = this.stages.map((row) =>
       row.status === "completed" || row.status === "skipped" || row.status === "failed"
@@ -296,18 +432,36 @@ export class ConnectIngestProgressReporter {
         "Preview mode — no records written to your graph store. Connect Surreal in the pipeline wizard and restart the run.",
       );
     }
+    const doneRepair = this.graphRepair
+      ? {
+          ...this.graphRepair,
+          phase: "done" as const,
+          units_processed: this.graphRepair.units_total,
+          last_activity_at: new Date().toISOString(),
+        }
+      : undefined;
     await updateConnectIngestJobById({
       id: this.job.id,
       status: "completed",
       currentStage: null,
       currentAction: summary,
       stages: this.stages,
-      progress: {
-        percent: 100,
-        processed: CONNECT_INGEST_PIPELINE_STAGES.length,
-        total: CONNECT_INGEST_PIPELINE_STAGES.length,
-        execution_mode: executionMode,
-      },
+      progress: doneRepair
+        ? {
+            percent: 100,
+            processed: doneRepair.units_total,
+            total: doneRepair.units_total,
+            execution_mode: executionMode,
+            graph_repair: doneRepair,
+            ...(extraProgress ?? {}),
+          }
+        : {
+            percent: 100,
+            processed: CONNECT_INGEST_PIPELINE_STAGES.length,
+            total: CONNECT_INGEST_PIPELINE_STAGES.length,
+            execution_mode: executionMode,
+            ...(extraProgress ?? {}),
+          },
     });
   }
 

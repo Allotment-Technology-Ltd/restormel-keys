@@ -1,11 +1,13 @@
 <script lang="ts">
   import SuiteMarketingLayout from "$lib/components/suite/SuiteMarketingLayout.svelte";
+  import { marketingShellPropsFromPage } from "$lib/marketing-shell-props";
   import { page } from "$app/stores";
 
-  $: fullBleed = $page.url.pathname === "/";
+  $: shell = marketingShellPropsFromPage($page);
+  $: fullBleed = shell.pathname === "/";
 </script>
 
-<SuiteMarketingLayout>
+<SuiteMarketingLayout {...shell}>
   {#if fullBleed}
     <slot />
   {:else}

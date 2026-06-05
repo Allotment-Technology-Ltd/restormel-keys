@@ -22,6 +22,8 @@ Marketing, docs, and dashboard use **`@restormel/keys-tokens/brutalist-rm.css`**
 
 Legacy `--rm-*` and `--brut-*` aliases map to these values. Visual reference: [docs/reference/restormel_redesign.html](./reference/restormel_redesign.html).
 
+**Marketing ledger** (section rhythm from `/use-cases`): implemented in [`apps/dashboard/src/lib/styles/marketing-ledger.css`](../apps/dashboard/src/lib/styles/marketing-ledger.css) — yellow slabs, inverted tags, ink left-rule leads, mono stat chips, 4px offset card shadows. See [design-system-index.md](./design-system-index.md#marketing-ledger-reference-use-cases).
+
 The sections below document the **original dark embeddable palette** (`base.css` / `--rk-*`) retained for KeyManager and Web Components hosts.
 
 ## Overview

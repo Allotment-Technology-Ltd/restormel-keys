@@ -27,7 +27,7 @@
     </div>
   </section>
 
-  <EcosystemStrip variant="full" />
+  <EcosystemStrip variant="full" moduleFlags={flags} />
 
   <!-- Integration Cards -->
   <section id="integrations" class="section" aria-labelledby="cards-heading">
@@ -173,10 +173,6 @@
     text-decoration: none;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-primary:hover {
     opacity: 0.9;
   }
@@ -241,8 +237,8 @@
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     font-size: var(--text-sm);
     font-weight: 600;
     flex-shrink: 0;

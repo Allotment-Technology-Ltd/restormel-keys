@@ -3,6 +3,10 @@
   import { GITHUB_REPO_URL } from "$lib/site-nav";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
   import EcosystemStrip from "$lib/components/integrations/EcosystemStrip.svelte";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
 
   const discussionsUrl = `${GITHUB_REPO_URL}/discussions`;
   const npmGraphCore = "https://www.npmjs.com/package/@restormel/graph-core";
@@ -46,16 +50,18 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
 
   const helloInstall = "pnpm add @restormel/graph-core @restormel/graph-elements";
 
-  const helloSnippet = `<script type="module">
-  import "@restormel/graph-elements";
-  const el = document.querySelector("rg-graph-canvas");
-  el.nodes = [
-    { id: "a", type: "claim", label: "Node A" },
-    { id: "b", type: "claim", label: "Node B" },
-  ];
-  el.edges = [{ from: "a", to: "b", type: "supports" }];
-<\/script>
-<rg-graph-canvas width="560" height="320"></rg-graph-canvas>`;
+  const helloSnippet = [
+    "\u003cscript type=\"module\"\u003e",
+    '  import "@restormel/graph-elements";',
+    '  const el = document.querySelector("rg-graph-canvas");',
+    "  el.nodes = [",
+    '    { id: "a", type: "claim", label: "Node A" },',
+    '    { id: "b", type: "claim", label: "Node B" },',
+    "  ];",
+    '  el.edges = [{ from: "a", to: "b", type: "supports" }];',
+    "\u003c/script\u003e",
+    '<rg-graph-canvas width="560" height="320"></rg-graph-canvas>',
+  ].join("\n");
 </script>
 
 <svelte:head>
@@ -88,7 +94,7 @@ export function toGraphData(snapshot: YourDomainSnapshot): GraphData {
   </section>
 
   <div class="container">
-    <EcosystemStrip variant="compact" />
+    <EcosystemStrip variant="compact" moduleFlags={flags} />
   </div>
 
   <section class="use-cases section-alt" aria-labelledby="use-cases-heading">

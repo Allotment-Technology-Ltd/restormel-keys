@@ -73,11 +73,12 @@
   font-family: var(--font-mono);
   font-size: var(--text-mono-md);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   background: var(--color-yellow);
   border: var(--border);
   padding: 4px 10px;
+  box-shadow: 3px 3px 0 var(--color-ink);
   margin-bottom: var(--space-4);
   color: var(--color-ink);
 }
@@ -109,7 +110,8 @@
   box-shadow: var(--shadow-md);
   text-decoration: none;
   color: inherit;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+  box-shadow: 4px 4px 0 var(--color-ink);
 }
 
 a.marketing-card:hover,
@@ -118,7 +120,7 @@ a.diff-card:hover,
 a.product-card:hover,
 a.integration-card:hover {
   transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 6px 6px 0 var(--color-ink);
   text-decoration: none;
 }
 

@@ -1,9 +1,11 @@
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { proxyAuthRequest, baseUrl } from "$lib/server/auth";
+import { buildPostAuthLocation, consumeAuthReturnCookie } from "$lib/server/auth-return-cookie";
 import { redirect } from "@sveltejs/kit";
 
-export const GET: RequestHandler = async ({ url, request }) => {
+export const GET: RequestHandler = async ({ url, request, cookies }) => {
+  const authReturn = consumeAuthReturnCookie(cookies);
   if (!baseUrl()) {
     throw redirect(302, DASHBOARD_BASE + "/?error=auth-not-configured");
   }
@@ -37,7 +39,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 
   console.log("[auth] redeem: forwarding", setCookies.length, "cookie(s) to browser");
 
-  const target = `${url.origin}${DASHBOARD_BASE}/`;
+  const target = buildPostAuthLocation(url.origin, authReturn, `${DASHBOARD_BASE}/`);
   const response = new Response(null, {
     status: 302,
     headers: { Location: target },

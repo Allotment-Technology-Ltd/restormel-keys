@@ -1,10 +1,9 @@
 <script lang="ts">
   import { developerPortalUrl } from "$lib/developer-portal-url";
-  import { page } from "$app/stores";
   import RestormelLogo from "$lib/components/RestormelLogo.svelte";
-  import { SUITE_MODULES } from "$lib/suite/suite-modules";
   import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
-  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import type { ModuleFlags } from "$lib/module-flags-types";
+  import type { SuiteModule } from "$lib/suite/suite-modules";
   import {
     capabilityLinksFromModules,
     companyNavLinks,
@@ -13,10 +12,13 @@
     SUITE_DOCS_HREF,
   } from "$lib/site-nav";
 
+  export let moduleFlags: ModuleFlags;
+  export let suiteModulesForUi: SuiteModule[];
+
   $: portalUrl = developerPortalUrl();
   $: devLinks = developerLinks(portalUrl);
-  $: capabilityLinks = capabilityLinksFromModules($page.data.suiteModulesForUi ?? SUITE_MODULES);
-  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
+  $: capabilityLinks = capabilityLinksFromModules(suiteModulesForUi);
+  $: flags = moduleFlags;
   $: showIntegrationCatalog = integrationCatalogForFlags(flags).length > 0;
 </script>
 

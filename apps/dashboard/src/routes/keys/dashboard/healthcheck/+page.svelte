@@ -259,7 +259,6 @@
   .pro-desc { margin: 0 0 var(--space-3); color: var(--rm-muted); }
   .pro-actions { display: flex; gap: var(--space-2); margin: 0; }
   .btn { display: inline-block; padding: 0.5rem 0.9rem; border-radius: var(--rm-radius); border: 1px solid var(--rm-border); }
-  .btn-primary { background: var(--rm-sage); color: var(--rm-bg); border-color: transparent; }
   .btn-secondary { background: var(--rm-surface-raised); color: var(--rm-text); }
   .sr-only {
     position: absolute;

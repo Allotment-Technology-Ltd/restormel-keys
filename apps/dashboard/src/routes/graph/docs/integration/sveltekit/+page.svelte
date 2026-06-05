@@ -15,15 +15,18 @@
   const verifyCommands = `npm view @restormel/graph-core version
 npm view @restormel/ui-graph-svelte version`;
 
-  const viteConfig = `import { sveltekit } from "@sveltejs/kit/vite";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [sveltekit()],
-  ssr: {
-    noExternal: ["@restormel/ui-graph-svelte", "@restormel/graph-core"],
-  },
-});`;
+  // Split string literals so Vite's static-import crawler does not treat doc samples as deps.
+  const viteConfig = [
+    'import { sveltekit } from "@sveltejs/kit/vite";',
+    'import { defineConfig } from "' + "vite" + '";',
+    "",
+    "export default defineConfig({",
+    "  plugins: [sveltekit()],",
+    "  ssr: {",
+    '    noExternal: ["@restormel/ui-graph-svelte", "@restormel/graph-core"],',
+    "  },",
+    "});",
+  ].join("\n");
 
   const closeScript = "</scr" + "ipt>";
   const minimalExample = [

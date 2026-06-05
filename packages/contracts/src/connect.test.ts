@@ -5,10 +5,12 @@ import {
   ConnectDomainPackUpsertSchema,
   ConnectGraphTargetSchema,
   ConnectGraphTargetUpsertSchema,
+  ConnectGraphLinkSourcesRequestSchema,
   ConnectGraphRevalidateRequestSchema,
   ConnectIngestJobCreateRequestSchema,
   ConnectPipelineProfileUpsertSchema,
   ConnectRetrieveRequestSchema,
+  ConnectRetrieveResponseSchema,
   ConnectVerifyRequestSchema,
   PHILOSOPHY_DOMAIN_PACK
 } from './connect.js';
@@ -33,6 +35,70 @@ describe('@restormel/contracts/connect', () => {
     expect(parsed.depth).toBe('standard');
   });
 
+  it('parses Connect retrieve response with context_pack and graph', () => {
+    const parsed = ConnectRetrieveResponseSchema.parse({
+      contract_version: CONNECT_API_CONTRACT_VERSION,
+      request_id: 'req-1',
+      context_block: '=== CONTEXT ===',
+      context_pack: {
+        analysis: {
+          block: 'analysis block',
+          stats: {
+            token_budget: 900,
+            estimated_tokens: 100,
+            truncated: false,
+            claim_count: 2,
+            relation_count: 1,
+            argument_count: 0
+          }
+        },
+        critique: {
+          block: 'critique',
+          stats: {
+            token_budget: 860,
+            estimated_tokens: 80,
+            truncated: false,
+            claim_count: 1,
+            relation_count: 0,
+            argument_count: 0
+          }
+        },
+        synthesis: {
+          block: 'synthesis',
+          stats: {
+            token_budget: 1040,
+            estimated_tokens: 120,
+            truncated: false,
+            claim_count: 2,
+            relation_count: 1,
+            argument_count: 0
+          }
+        }
+      },
+      graph: {
+        claims: [
+          {
+            id: 'claim:1',
+            text: 'Virtue is a mean.',
+            claim_type: 'premise',
+            domain: 'ethics',
+            source_title: 'Nicomachean Ethics',
+            confidence: 0.9
+          }
+        ],
+        relations: [],
+        arguments: [],
+        seed_claim_ids: ['claim:1']
+      },
+      metadata: {
+        claims_retrieved: 1,
+        arguments_retrieved: 0,
+        retrieval_degraded: false
+      }
+    });
+    expect(parsed.graph?.claims).toHaveLength(1);
+  });
+
   it('parses graph re-validation request with default scope', () => {
     const parsed = ConnectGraphRevalidateRequestSchema.parse({ scope: 'unchecked' });
     expect(parsed.scope).toBe('unchecked');
@@ -45,6 +111,26 @@ describe('@restormel/contracts/connect', () => {
       validation_route_id: routeId
     });
     expect(parsed.validation_route_id).toBe(routeId);
+  });
+
+  it('parses auto-remediation scopes', () => {
+    expect(
+      ConnectGraphRevalidateRequestSchema.parse({
+        scope: 'quarantine',
+        mode: 'validate_and_remediate'
+      }).scope
+    ).toBe('quarantine');
+    expect(
+      ConnectGraphRevalidateRequestSchema.parse({
+        scope: 'unsupported',
+        mode: 'validate_and_remediate'
+      }).scope
+    ).toBe('unsupported');
+  });
+
+  it('parses graph source-link request with default scope', () => {
+    const parsed = ConnectGraphLinkSourcesRequestSchema.parse({});
+    expect(parsed.scope).toBe('unlinked_only');
   });
 
   it('parses Connect ingest job create request', () => {

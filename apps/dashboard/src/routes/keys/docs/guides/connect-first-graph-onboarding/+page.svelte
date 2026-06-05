@@ -43,7 +43,7 @@
     </li>
     <li>
       <strong>First ingest</strong> — start a run on
-      <a href="/keys/dashboard/connect/pipeline?step=run">Pipeline → Run</a> (requires
+      <a href="/keys/dashboard/connect/pipeline?step=launch">Pipeline → Review &amp; launch</a> (requires
       <code class="inline-code">CONNECT_INGEST_WORKER_MODE=full</code> on the worker).
     </li>
     <li>

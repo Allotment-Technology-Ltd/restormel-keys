@@ -469,10 +469,6 @@
     text-decoration: none;
     display: inline-block;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .policy-list {
     list-style: none;
     padding: 0;

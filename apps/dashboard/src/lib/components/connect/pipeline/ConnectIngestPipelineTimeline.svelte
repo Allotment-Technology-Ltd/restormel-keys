@@ -1,8 +1,6 @@
 <script lang="ts">
-  import {
-    buildConnectPipelineStageRows,
-    type ConnectIngestStageProgress,
-  } from "@restormel/connect-core";
+  import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
+  import { buildConnectPipelineStageRows } from "@restormel/connect-core/ingest/pipeline-focus";
   import { formatIngestEta, resolveIngestStageDisplayStatus } from "$lib/connect/ingest-progress-ui";
 
   export let stages: ConnectIngestStageProgress[] = [];
@@ -44,6 +42,9 @@
             {row.progress.percent}% · ETA {stageEtaLabel(row.progress)}
             {#if row.progress.total > 1}
               · {row.progress.processed}/{row.progress.total}
+            {/if}
+            {#if row.isCurrent && currentAction}
+              · {currentAction}
             {/if}
           </span>
         {:else if (status === "completed" || status === "skipped") && row.progress?.total}

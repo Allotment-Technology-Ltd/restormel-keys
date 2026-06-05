@@ -6,6 +6,8 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import { buildExtractionSystemPrompt, buildExtractionUserPrompt } from "./extraction-prompt.js";
+import type { ConnectQualityPreset } from "./quality-preset.js";
+import type { GraphIngestContext } from "./prompt-compose.js";
 
 export interface ExtractedUnit {
   id: string;
@@ -196,8 +198,13 @@ export async function extractGraph(args: {
   text: string;
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+  graphContext?: GraphIngestContext;
 }): Promise<ExtractionResult> {
-  const system = buildExtractionSystemPrompt(args.pack);
+  const system = buildExtractionSystemPrompt(args.pack, {
+    qualityPreset: args.qualityPreset,
+    graphContext: args.graphContext,
+  });
   const user = buildExtractionUserPrompt(args.text);
   const raw = await args.generate({ system, user });
   const { units, relations } = parseExtractionResponse(raw);

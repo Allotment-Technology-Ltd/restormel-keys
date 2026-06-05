@@ -17,6 +17,7 @@ import {
   updateUnitTextPostgres,
   updateUnitValidationPostgres,
 } from "$lib/server/neon";
+import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 
 export interface StoredUnit {
@@ -28,10 +29,16 @@ export interface StoredUnit {
 
 export interface GraphWriter {
   readonly provider: "postgres" | "surreal";
-  writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }): Promise<string | null>;
+  writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }): Promise<string>;
   writeUnitsAndRelations(args: {
-    sourceId: string | null;
-    units: { localId: string; text: string; unitType: string | null; domain: string | null }[];
+    sourceId: string;
+    units: {
+      localId: string;
+      text: string;
+      unitType: string | null;
+      domain: string | null;
+      sourceChunkIndex?: number;
+    }[];
     relations: { fromLocalId: string; toLocalId: string; relationType: string }[];
   }): Promise<{ units: StoredUnit[]; relations: number }>;
   storeGroups(groups: { name: string; summary: string | null; members: { unitId: string; role: string | null }[] }[]): Promise<{ groups: number }>;
@@ -64,14 +71,21 @@ class PostgresGraphWriter implements GraphWriter {
   }
 
   async writeUnitsAndRelations(args: {
-    sourceId: string | null;
-    units: { localId: string; text: string; unitType: string | null; domain: string | null }[];
+    sourceId: string;
+    units: {
+      localId: string;
+      text: string;
+      unitType: string | null;
+      domain: string | null;
+      sourceChunkIndex?: number;
+    }[];
     relations: { fromLocalId: string; toLocalId: string; relationType: string }[];
   }): Promise<{ units: StoredUnit[]; relations: number }> {
+    const sourceId = requireGraphUnitSourceId(args.sourceId);
     const stored = await storeExtractedGraphPostgres({
       workspaceId: this.workspaceId,
       domainPackId: this.domainPackId,
-      sourceId: args.sourceId,
+      sourceId,
       units: args.units,
       relations: args.relations,
     });
@@ -161,20 +175,31 @@ class SurrealGraphWriter implements GraphWriter {
   }
 
   async writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }) {
-    return this.createReturningId(ident(this.schema.source_table, "source"), {
+    const id = await this.createReturningId(ident(this.schema.source_table, "source"), {
       title: s.title,
       url: s.url,
       text_preview: s.textPreview,
       source_kind: s.sourceKind,
       ingested_at: new Date().toISOString(),
     });
+    if (!id) {
+      throw new Error("Could not persist ingest source record in Surreal graph store.");
+    }
+    return id;
   }
 
   async writeUnitsAndRelations(args: {
-    sourceId: string | null;
-    units: { localId: string; text: string; unitType: string | null; domain: string | null }[];
+    sourceId: string;
+    units: {
+      localId: string;
+      text: string;
+      unitType: string | null;
+      domain: string | null;
+      sourceChunkIndex?: number;
+    }[];
     relations: { fromLocalId: string; toLocalId: string; relationType: string }[];
   }): Promise<{ units: StoredUnit[]; relations: number }> {
+    const sourceId = requireGraphUnitSourceId(args.sourceId);
     const unitTable = ident(this.schema.unit_table, "unit");
     const stored: StoredUnit[] = [];
     const idByLocal = new Map<string, string>();
@@ -184,7 +209,8 @@ class SurrealGraphWriter implements GraphWriter {
         text: u.text,
         unit_type: u.unitType,
         domain: u.domain,
-        source: args.sourceId,
+        source: sourceId,
+        ...(u.sourceChunkIndex != null ? { source_chunk_index: u.sourceChunkIndex } : {}),
       });
       if (!id) continue;
       idByLocal.set(u.localId, id);
@@ -260,15 +286,27 @@ class SurrealGraphWriter implements GraphWriter {
 
   async setValidation(results: { unitId: string; status: string; note: string | null }[]) {
     let n = 0;
+    let failures = 0;
     for (const r of results) {
       try {
         await this.store.query(
           `UPDATE ${surrealRecordRef(r.unitId)} MERGE { validation_status: ${JSON.stringify(r.status)}, validation_note: ${JSON.stringify(r.note)} };`,
         );
         n += 1;
-      } catch {
-        // skip
+      } catch (err) {
+        failures += 1;
+        if (failures <= 3) {
+          console.warn(
+            `[connect-graph-writer] validation UPDATE failed for ${r.unitId}:`,
+            err instanceof Error ? err.message : err,
+          );
+        }
       }
+    }
+    if (failures > 0) {
+      console.warn(
+        `[connect-graph-writer] ${failures} validation UPDATE(s) failed (${n} ok)`,
+      );
     }
     return n;
   }

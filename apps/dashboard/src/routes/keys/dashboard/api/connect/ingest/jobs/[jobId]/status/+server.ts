@@ -38,6 +38,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
   const lastId = logRows.length > 0 ? logRows[logRows.length - 1]!.id : since;
 
   return json({
+    workspace_id: ctx.workspaceId,
     job: connectIngestJobRecordToApi(row, { includeSources: false }),
     log_lines: logRows.map((r) => r.line),
     log_line_total: logLineTotal,

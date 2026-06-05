@@ -3,6 +3,7 @@
  * Falls back to legacy OPENAI_API_KEY + model chains when routing is not configured.
  */
 import type { ExtractionGenerate, EmbeddingPort } from "@restormel/connect-core";
+import type { EmbeddingPort as GraphRagEmbeddingPort } from "@restormel/graphrag-core";
 import {
   CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE,
   type ConnectModelStage,
@@ -18,7 +19,10 @@ import {
   makeStageGenerate,
 } from "$lib/server/connect/llm-generate";
 import { getConnectStageModels } from "$lib/server/neon";
-import type { ConnectRouteExecutionContext } from "$lib/server/connect/stage-routing";
+import {
+  resolveKnowledgeRouteExecutionContext,
+  type ConnectRouteExecutionContext,
+} from "$lib/server/connect/stage-routing";
 
 export type StageGenerates = {
   extraction: ExtractionGenerate;
@@ -28,6 +32,20 @@ export type StageGenerates = {
 };
 
 const MAX_ROUTE_ATTEMPTS = 12;
+
+/** Keep upstream LLM error when route retry exhausts fallback steps. */
+export function mergeRouteResolveFailure(
+  lastErr: unknown,
+  attemptNumber: number,
+  failure: { message?: string; code: string },
+): Error {
+  const resolverMsg = failure.message ?? failure.code;
+  const prior = lastErr instanceof Error ? lastErr.message.trim() : "";
+  if (attemptNumber > 0 && prior && /no further steps/i.test(resolverMsg)) {
+    return new Error(`Route fallback exhausted after: ${prior}`);
+  }
+  return new Error(resolverMsg);
+}
 
 async function callResolvedChat(args: {
   ctx: ConnectRouteExecutionContext;
@@ -60,7 +78,7 @@ async function callResolvedChat(args: {
     );
 
     if (!outcome.ok) {
-      lastErr = new Error(outcome.failure.message ?? outcome.failure.code);
+      lastErr = mergeRouteResolveFailure(lastErr, attemptNumber, outcome.failure);
       break;
     }
 
@@ -173,7 +191,7 @@ async function embedViaRoute(
     });
 
     if (!outcome.ok) {
-      lastErr = new Error(outcome.failure.message ?? outcome.failure.code);
+      lastErr = mergeRouteResolveFailure(lastErr, attemptNumber, outcome.failure);
       break;
     }
 
@@ -219,7 +237,8 @@ async function embedViaRoute(
     }
 
     try {
-      return await knowledgeEmbedWithKey(texts, modelId, keyOutcome.apiKey, pt);
+      const upstreamModel = await resolveVendorOpenAiChatModelId(pt, modelId);
+      return await knowledgeEmbedWithKey(texts, upstreamModel, keyOutcome.apiKey, pt);
     } catch (e) {
       lastErr = e;
       attemptNumber++;
@@ -290,25 +309,47 @@ function makeRouteStageGenerate(
   return ({ system, user }) => callResolvedChat({ ctx, stage, system, user, jsonMode: true });
 }
 
-/** Validation LLM call with optional route override (graph re-validation). */
-export function buildValidationStageGenerate(
+function withRouteOverride(
   routeCtx: ConnectRouteExecutionContext,
-  validationRouteId?: string | null,
-): ExtractionGenerate {
-  if (!validationRouteId?.trim()) {
-    return makeRouteStageGenerate(routeCtx, "validation");
-  }
-  const ctx: ConnectRouteExecutionContext = {
+  stage: ConnectModelStage,
+  routeId?: string | null,
+): ConnectRouteExecutionContext {
+  if (!routeId?.trim()) return routeCtx;
+  return {
     ...routeCtx,
     routing: {
       ...routeCtx.routing,
       routes: {
         ...routeCtx.routing.routes,
-        validation: validationRouteId.trim(),
+        [stage]: routeId.trim(),
       },
     },
   };
-  return makeRouteStageGenerate(ctx, "validation");
+}
+
+/** Validation LLM call with optional route override (graph re-validation). */
+export function buildValidationStageGenerate(
+  routeCtx: ConnectRouteExecutionContext,
+  validationRouteId?: string | null,
+): ExtractionGenerate {
+  return makeRouteStageGenerate(withRouteOverride(routeCtx, "validation", validationRouteId), "validation");
+}
+
+/** Remediation LLM call with optional route override (graph auto-remediation). */
+export function buildRemediationStageGenerate(
+  routeCtx: ConnectRouteExecutionContext,
+  remediationRouteId?: string | null,
+): ExtractionGenerate {
+  return makeRouteStageGenerate(withRouteOverride(routeCtx, "remediation", remediationRouteId), "remediation");
+}
+
+/** Embedding port with optional route override (graph embed backfill). */
+export function buildEmbedStagePort(
+  routeCtx: ConnectRouteExecutionContext,
+  embeddingRouteId?: string | null,
+): EmbeddingPort {
+  const ctx = withRouteOverride(routeCtx, "embedding", embeddingRouteId);
+  return (texts) => embedViaRoute(ctx, texts);
 }
 
 /** Build stage generates + embedder from Keys routing, with legacy env/model fallback. */
@@ -353,3 +394,32 @@ export async function isConnectIngestLlmReady(args: {
 }
 
 export { knowledgeLlmModel } from "$lib/server/connect/llm-generate";
+
+/** Embedder for Connect Retrieve — Keys embedding route with legacy OPENAI_API_KEY fallback. */
+export async function buildGraphRagEmbedder(args: {
+  workspaceId: string;
+  userId: string;
+  projectId?: string | null;
+}): Promise<GraphRagEmbeddingPort> {
+  const routeCtx = await resolveKnowledgeRouteExecutionContext({
+    workspaceId: args.workspaceId,
+    userId: args.userId,
+    projectId: args.projectId,
+  });
+  if (routeCtx) {
+    return {
+      embedQuery: async (text: string) => {
+        const vectors = await embedViaRoute(routeCtx, [text]);
+        return vectors[0] ?? [];
+      },
+    };
+  }
+  const legacy = await getConnectStageModels(args.workspaceId);
+  const batch = makeEmbedder(legacy.embedding);
+  return {
+    embedQuery: async (text: string) => {
+      const vectors = await batch([text]);
+      return vectors[0] ?? [];
+    },
+  };
+}

@@ -1,5 +1,9 @@
 <script lang="ts">
   import LandingPage from "$lib/testing/components/site/LandingPage.svelte";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+
+  $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
 </script>
 
 <svelte:head>
@@ -10,4 +14,4 @@
   />
 </svelte:head>
 
-<LandingPage />
+<LandingPage moduleFlags={flags} />

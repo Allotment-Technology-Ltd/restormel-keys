@@ -3,7 +3,6 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import RestormelLogo from "$lib/components/RestormelLogo.svelte";
-  import { page } from "$app/stores";
   import {
     companyNavLinks,
     developerLinks,
@@ -22,14 +21,16 @@
   export let rightHref: string | null = null;
   export let user: { uid: string; email?: string | null; name?: string | null; isServiceAdmin?: boolean } | null =
     null;
+  /** Current path from parent layout (`$page.url.pathname`). */
+  export let pathname = "/";
 
   let mobileOpen = false;
   let productOpen = false;
   let companyOpen = false;
   let developersOpen = false;
 
-  $: path = $page.url.pathname.replace(/\/$/, "") || "/";
-  $: if ($page.url.pathname) {
+  $: path = pathname.replace(/\/$/, "") || "/";
+  $: if (pathname) {
     mobileOpen = false;
     productOpen = false;
     companyOpen = false;
@@ -322,7 +323,7 @@
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-ink);
     text-decoration: none;
@@ -330,16 +331,19 @@
     min-height: 3.5rem;
     display: inline-flex;
     align-items: center;
-    transition: background 0.08s ease;
+    border-bottom: 2px solid transparent;
+    transition: border-color 100ms ease, color 100ms ease;
   }
   .site-header-links > li > a:hover {
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--color-ink);
+    border-bottom-color: var(--color-ink);
   }
   .site-header-links > li > a.active {
     color: var(--color-ink);
     font-weight: 800;
-    background: var(--color-yellow);
+    background: transparent;
+    border-bottom-color: var(--color-ink);
   }
   .nav-dropdown-wrap {
     position: relative;
@@ -352,7 +356,7 @@
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-ink);
     cursor: pointer;
@@ -360,7 +364,8 @@
     min-height: 3.5rem;
     display: flex;
     align-items: center;
-    transition: background 0.08s ease;
+    border-bottom: 2px solid transparent;
+    transition: border-color 100ms ease;
   }
   .nav-summary::-webkit-details-marker {
     display: none;
@@ -371,13 +376,15 @@
     opacity: 0.75;
   }
   .nav-summary:hover {
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--color-ink);
+    border-bottom-color: var(--color-ink);
   }
   .nav-summary-active {
     color: var(--color-ink);
     font-weight: 800;
-    background: var(--color-yellow);
+    background: transparent;
+    border-bottom-color: var(--color-ink);
   }
   .nav-dropdown-panel {
     position: absolute;
@@ -422,6 +429,15 @@
     flex-shrink: 0;
     padding-left: var(--space-3);
     margin-left: var(--space-2);
+  }
+
+  .site-header-right :global(.btn-primary) {
+    box-shadow: 3px 3px 0 var(--color-yellow);
+  }
+
+  .site-header-right :global(.btn-primary:hover) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--color-yellow);
   }
   .site-header-right-text {
     font-size: var(--text-sm);

@@ -1,0 +1,197 @@
+/**
+ * Neo-brutalist attitude pass — marketing + module landings (visual treatment).
+ * Uses existing brutalist-rm tokens; no new palette values.
+ */
+
+.marketing-page,
+.marketing-page-pad.module-landing,
+.marketing-sections {
+  --mkt-shadow-ink: 4px 4px 0 var(--color-ink);
+  --mkt-shadow-yellow: 4px 4px 0 var(--color-yellow);
+  --mkt-shadow-lift: 6px 6px 0 var(--color-ink);
+  --mkt-btn-shadow: 3px 3px 0 var(--color-ink);
+  --mkt-transition: 100ms ease;
+}
+
+/* ── Buttons (marketing) ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn {
+  border-radius: 0;
+  transition: transform var(--mkt-transition), box-shadow var(--mkt-transition);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-primary {
+  box-shadow: var(--mkt-btn-shadow);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-primary:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-primary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-outline,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-secondary {
+  box-shadow: var(--mkt-btn-shadow);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-outline:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-secondary:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-outline:active,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+
+/* ── Cards (shared marketing patterns) ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .marketing-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .intent-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .diff-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .integration-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) [data-card] {
+  border-radius: 0;
+  transition: transform var(--mkt-transition), box-shadow var(--mkt-transition);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.marketing-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.intent-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.diff-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.product-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.integration-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-card:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .hero-visual:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .preview-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--mkt-shadow-lift);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .marketing-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .intent-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .diff-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .integration-card {
+  box-shadow: var(--mkt-shadow-ink);
+}
+
+/* Dark feature panels — yellow hard shadow */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .preview-card-head,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-card-head {
+  border: 2px solid var(--code-bg);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .preview-card,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .preview-card[data-card] {
+  box-shadow: var(--mkt-shadow-yellow);
+}
+
+/* ── Code blocks (marketing) ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-code,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) pre.product-code,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .preview-card-body {
+  border-radius: 0;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-code {
+  border: 2px solid var(--code-bg);
+  box-shadow: 3px 3px 0 var(--color-yellow);
+  padding-left: calc(1rem + 3px);
+  border-left: 3px solid var(--color-yellow);
+}
+
+/* ── Dividers — cuts, not fades ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .site-header-mobile-divider {
+  height: 0;
+  border: none;
+  border-top: 2px solid var(--color-ink);
+  background: transparent;
+  margin: var(--space-2) 0;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .hero-flow-svg .flow-tick {
+  stroke: var(--color-ink);
+  stroke-width: 2;
+  opacity: 1;
+}
+
+/* ── Product demo: brutalist chrome + stepper (marketing frame only) ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-btn,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-num {
+  border-radius: 0;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-active .wizard-step-btn {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  font-weight: 800;
+  box-shadow: var(--mkt-btn-shadow);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-btn {
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline button.wizard-step-btn:hover {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-connector {
+  height: 2px;
+  background: var(--color-ink);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo .demo-route-visual {
+  border-radius: 0;
+  border-width: 2px;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo-eyebrow,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo .suite-section-tag {
+  letter-spacing: 0.15em;
+}
+
+/* ── Proof gallery + stack rail (module landings) ── */
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .proof-gallery-frame,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .stack-rail-outer-stamp {
+  border-radius: 0;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .proof-gallery-frame:hover,
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .stack-rail-outer-stamp:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--mkt-shadow-lift);
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .proof-card:hover {
+  z-index: 1;
+}
+
+:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .proof-link:hover {
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-primary:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-outline:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .btn-secondary:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.marketing-card:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.intent-card:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.diff-card:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.product-card:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) a.integration-card:hover,
+  :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-card:hover {
+    transform: none;
+  }
+}

@@ -3,7 +3,15 @@
  * and return units, relationships, and quality warnings — WITHOUT writing to any
  * store. Lets operators tune the domain pack before spending tokens on a full run.
  */
-import { chunkDocument, extractGraph, type ExtractionResult } from "@restormel/connect-core";
+import {
+  chunkDocument,
+  extractGraph,
+  evaluateExtractionGate,
+  type ExtractionResult,
+  type ExtractedUnit,
+  type ExtractedRelation,
+} from "@restormel/connect-core";
+import { loadGraphIngestContext } from "$lib/server/connect/graph-ingest-context";
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import {
   getConnectDomainPackById,
@@ -97,20 +105,64 @@ export async function previewExtraction(args: {
   }
 
   const chunks = chunkDocument(sample.text, pack.chunking).slice(0, MAX_PREVIEW_CHUNKS);
-  const previewText = chunks.length ? chunks.map((c) => c.text).join("\n\n") : sample.text.slice(0, 8000);
+  const graphContext = await loadGraphIngestContext(args.workspaceId);
+  const preset = pack.quality_preset ?? "production";
 
   try {
     const { generates } = await buildKnowledgeStageGenerates({
       workspaceId: args.workspaceId,
       routeCtx,
     });
-    const result = await extractGraph({ text: previewText, pack, generate: generates.extraction });
+    const mergedUnits: ExtractedUnit[] = [];
+    const mergedRelations: ExtractedRelation[] = [];
+    const mergedWarnings: ExtractionResult["warnings"] = [];
+    const chunkTexts = chunks.length ? chunks : [{ text: sample.text.slice(0, 8000), index: 0 }];
+    for (let i = 0; i < chunkTexts.length; i++) {
+      const chunk = chunkTexts[i]!;
+      const extraction = await extractGraph({
+        text: chunk.text,
+        pack,
+        generate: generates.extraction,
+        qualityPreset: preset,
+        graphContext,
+      });
+      const gate = evaluateExtractionGate(
+        extraction.warnings,
+        preset,
+        pack.ontology.schema_mode,
+      );
+      if (!gate.allowPersist) continue;
+      const offset = mergedUnits.length;
+      for (const u of extraction.units) {
+        mergedUnits.push({ ...u, id: `c${i}_${u.id}` });
+      }
+      for (const r of extraction.relations) {
+        mergedRelations.push({
+          from: `c${i}_${r.from}`,
+          to: `c${i}_${r.to}`,
+          relation: r.relation,
+        });
+      }
+      mergedWarnings.push(...extraction.warnings);
+      if (offset === mergedUnits.length) {
+        mergedWarnings.push({
+          code: "no_units",
+          severity: "warning",
+          message: `Chunk ${i + 1} produced no units after gate.`,
+        });
+      }
+    }
+    const result: ExtractionResult = {
+      units: mergedUnits,
+      relations: mergedRelations,
+      warnings: mergedWarnings,
+    };
     return {
       ok: true,
       result,
       pack: { slug: pack.slug, title: pack.title, schema_mode: pack.ontology.schema_mode },
       sampled_from: sample.name,
-      chunks_previewed: chunks.length || 1,
+      chunks_previewed: chunkTexts.length,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "extraction failed";

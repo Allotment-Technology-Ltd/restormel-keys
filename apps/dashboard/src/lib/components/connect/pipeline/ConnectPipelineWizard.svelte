@@ -1,23 +1,35 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { goto, invalidate } from "$app/navigation";
   import { page } from "$app/stores";
+  import { tick } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     PIPELINE_WIZARD_STEPS,
     type PipelineRunDefaults,
     type PipelineWizardProgress,
     type PipelineWizardStepId,
-    withWizardReturn,
   } from "$lib/connect/pipeline-config";
-  import ConnectGraphStorePanel from "$lib/components/connect/pipeline/ConnectGraphStorePanel.svelte";
-  import ConnectDomainPacksPanel from "$lib/components/connect/pipeline/ConnectDomainPacksPanel.svelte";
-  import ConnectSourcesPanel from "$lib/components/connect/pipeline/ConnectSourcesPanel.svelte";
-  import ConnectPipelineRunStep from "$lib/components/connect/pipeline/ConnectPipelineRunStep.svelte";
+  import PipelineWizardStepper from "$lib/components/connect/pipeline/PipelineWizardStepper.svelte";
+
+  const storePanelImport = () => import("$lib/components/connect/pipeline/ConnectGraphStorePanel.svelte");
+  const domainPanelImport = () => import("$lib/components/connect/pipeline/ConnectDomainPacksPanel.svelte");
+  const sourcesPanelImport = () => import("$lib/components/connect/pipeline/ConnectSourcesPanel.svelte");
+  const launchStepImport = () =>
+    import("$lib/components/connect/pipeline/ConnectPipelineReviewLaunch.svelte");
+  import { onMount } from "svelte";
+  import {
+    getUseCaseById,
+    isUseCaseId,
+    PENDING_TEMPLATE_STORAGE_KEY,
+  } from "$lib/content/use-cases";
 
   type WizardData = {
     step: PipelineWizardStepId;
     wizard: PipelineWizardProgress | null;
     runDefaults: PipelineRunDefaults | null;
+    modelsReady?: boolean;
+    phase?: "initial" | "operational";
+    workspaceId?: string;
   };
 
   export let data: WizardData;
@@ -25,12 +37,13 @@
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   $: step = data.step;
+  $: journeyPhase = data.phase ?? "initial";
   $: progress = data.wizard;
   $: runDefaults = data.runDefaults;
   $: stepIndex = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === step);
   $: current = PIPELINE_WIZARD_STEPS[stepIndex] ?? PIPELINE_WIZARD_STEPS[0];
   $: isFirst = stepIndex <= 0;
-  $: isLast = stepIndex >= PIPELINE_WIZARD_STEPS.length - 1;
+  $: showRepeatRunKicker = journeyPhase === "operational" && Boolean(progress?.hasGraph);
 
   function stepDone(id: PipelineWizardStepId): boolean {
     if (!progress) return false;
@@ -38,8 +51,7 @@
     if (id === "store") return progress.hasGraphStore;
     if (id === "domain") return stepIndex > idx || progress.hasCustomPack || Boolean(progress.selectedDomainPackId);
     if (id === "sources") return stepIndex > idx || progress.selectedDocumentCount > 0;
-    if (id === "ready") return stepIndex > idx;
-    if (id === "run") return false;
+    if (id === "launch") return stepIndex > idx;
     return false;
   }
 
@@ -49,14 +61,21 @@
     return progress.hasGraphStore;
   }
 
+  async function scrollToWizardBody() {
+    await tick();
+    document.querySelector(".wizard-body")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function goToStep(id: PipelineWizardStepId, replace = false) {
     const url = new URL($page.url);
     url.searchParams.set("step", id);
-    goto(`${url.pathname}?${url.searchParams.toString()}`, { replaceState: replace, keepFocus: true, invalidateAll: true });
+    goto(`${url.pathname}?${url.searchParams.toString()}`, { replaceState: replace, keepFocus: true }).then(
+      scrollToWizardBody,
+    );
   }
 
   function goNext() {
-    if (isLast) return;
+    if (stepIndex >= PIPELINE_WIZARD_STEPS.length - 1) return;
     goToStep(PIPELINE_WIZARD_STEPS[stepIndex + 1].id);
   }
 
@@ -65,175 +84,203 @@
     goToStep(PIPELINE_WIZARD_STEPS[stepIndex - 1].id);
   }
 
-  function onPanelUpdated() {
-    goto($page.url.pathname + $page.url.search, { invalidateAll: true, keepFocus: true });
+  async function onPanelUpdated() {
+    const wsId = data.workspaceId;
+    if (!wsId) return;
+    await invalidate(`app:connect-pipeline:${wsId}`);
+    if (step === "store" || step === "sources") {
+      void invalidate(`app:connect-hub:${wsId}`);
+    }
   }
 
-  $: canContinue = step !== "store" || Boolean(progress?.hasGraphStore);
-  $: runStepCanStart = Boolean(runDefaults?.documents.length);
+  $: modelsReady = Boolean(data.modelsReady ?? progress?.modelsReady);
+  $: canContinueStore = Boolean(progress?.hasGraphStore);
+  $: canContinueDomain = Boolean(progress?.selectedDomainPackId || progress?.hasCustomPack || domainCanContinue);
+  $: canContinueSources = (progress?.selectedDocumentCount ?? 0) > 0;
+  $: runStepCanStart = Boolean(runDefaults?.documents.length) && modelsReady;
 
-  let runStep: ConnectPipelineRunStep | undefined;
+  let domainCanContinue = false;
+  let launchStep: { submitRun: () => void } | undefined;
   let runSubmitting = false;
+
+  let pendingTemplateId: string | null = null;
+  let pendingTemplateTitle: string | null = null;
+
+  onMount(() => {
+    const fromUrl = $page.url.searchParams.get("template");
+    const fromStorage =
+      typeof sessionStorage !== "undefined"
+        ? sessionStorage.getItem(PENDING_TEMPLATE_STORAGE_KEY)
+        : null;
+    const id = fromUrl && isUseCaseId(fromUrl) ? fromUrl : fromStorage && isUseCaseId(fromStorage) ? fromStorage : null;
+    if (id) {
+      pendingTemplateId = id;
+      pendingTemplateTitle = getUseCaseById(id)?.title ?? id;
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(PENDING_TEMPLATE_STORAGE_KEY, id);
+      }
+    }
+  });
+
+  $: showTemplateBanner =
+    Boolean(pendingTemplateId) && step !== "domain" && Boolean(progress?.hasGraphStore);
+
+  function goToDomainForTemplate() {
+    goToStep("domain");
+  }
+
+  function onDomainStepState(event: CustomEvent<{ canContinue: boolean }>) {
+    domainCanContinue = event.detail.canContinue;
+  }
 </script>
 
 {#if !progress}
   <p class="notice" role="status">Sign in to set up your pipeline.</p>
 {:else}
-  <nav class="wizard-stepper" aria-label="Pipeline setup progress">
-    <ol class="wizard-steps">
-      {#each PIPELINE_WIZARD_STEPS as s, i (s.id)}
-        {@const done = stepDone(s.id)}
-        {@const active = s.id === step}
-        {@const reachable = stepReachable(i)}
-        <li class="wizard-step" class:wizard-step-active={active} class:wizard-step-done={done && !active}>
-          {#if reachable && !active}
-            <button type="button" class="wizard-step-btn" on:click={() => goToStep(s.id)} aria-current={active ? "step" : undefined}>
-              <span class="wizard-step-num" aria-hidden="true">{done && !active ? "✓" : i + 1}</span>
-              <span class="wizard-step-label">{s.label}</span>
-            </button>
-          {:else}
-            <span class="wizard-step-btn" aria-current={active ? "step" : undefined}>
-              <span class="wizard-step-num" aria-hidden="true">{done && !active ? "✓" : i + 1}</span>
-              <span class="wizard-step-label">{s.label}</span>
-            </span>
-          {/if}
-        </li>
-        {#if i < PIPELINE_WIZARD_STEPS.length - 1}
-          <li class="wizard-connector" aria-hidden="true"></li>
-        {/if}
-      {/each}
-    </ol>
+  {#if showTemplateBanner}
+    <div class="notice template-banner" role="status">
+      You came from the <strong>{pendingTemplateTitle}</strong> template — finish setup and we'll pre-fill your domain
+      config at the Domain step.
+      <button type="button" class="btn btn-outline btn-sm template-banner-btn" on:click={goToDomainForTemplate}>
+        Go to Domain step →
+      </button>
+    </div>
+  {:else if pendingTemplateId && !progress?.hasGraphStore}
+    <div class="notice template-banner" role="status">
+      Template <strong>{pendingTemplateTitle}</strong> selected — connect a graph store first; we'll pre-fill domain
+      config at step 2.
+    </div>
+  {/if}
+
+  <PipelineWizardStepper currentStep={step} onNavigate={goToStep} />
+
+  <nav class="wizard-crumb" aria-label="Breadcrumb">
+    <a href={CONNECT_BASE}>Connect home</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page">Setup · {current.label}</span>
   </nav>
 
   <header class="wizard-header">
-    <p class="wizard-kicker">Step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}</p>
+    <p class="wizard-kicker">
+      {#if showRepeatRunKicker}
+        Repeat run · step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
+      {:else}
+        Step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
+      {/if}
+    </p>
     <h2 class="wizard-title">{current.title}</h2>
-    <p class="wizard-lead">{current.lead}</p>
+    {#if journeyPhase === "initial"}
+      <p class="wizard-lead">{current.lead}</p>
+    {/if}
   </header>
 
   <div class="wizard-body">
     {#if step === "store"}
-      <ConnectGraphStorePanel embedded wizardStep={step} on:updated={onPanelUpdated} />
+      {#await storePanelImport()}
+        <p class="wizard-panel-loading" role="status">Loading graph store panel…</p>
+      {:then { default: ConnectGraphStorePanel }}
+        <ConnectGraphStorePanel embedded on:updated={onPanelUpdated} />
+      {:catch}
+        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+      {/await}
     {:else if step === "domain"}
-      <ConnectDomainPacksPanel embedded wizardStep={step} on:updated={onPanelUpdated} />
+      {#await domainPanelImport()}
+        <p class="wizard-panel-loading" role="status">Loading domain packs…</p>
+      {:then { default: ConnectDomainPacksPanel }}
+        <ConnectDomainPacksPanel
+          embedded
+          wizardStep={step}
+          {modelsReady}
+          on:updated={onPanelUpdated}
+          on:stepState={onDomainStepState}
+        />
+      {:catch}
+        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+      {/await}
     {:else if step === "sources"}
-      <ConnectSourcesPanel embedded wizardStep={step} on:updated={onPanelUpdated} />
-    {:else if step === "run" && runDefaults}
-      <ConnectPipelineRunStep bind:this={runStep} bind:submitting={runSubmitting} {runDefaults} onBack={() => goToStep("sources")} />
-    {:else}
-      <section class="wizard-ready" aria-labelledby="ready-heading">
-        <h3 id="ready-heading" class="visually-hidden">Setup summary</h3>
-        <ul class="wizard-summary">
-          <li class="wizard-summary-row">
-            <span class="wizard-summary-label">Graph store</span>
-            <span class="wizard-summary-value">
-              {#if progress.hasGraphStore}
-                <span class="badge status-success">connected</span>
-                {progress.graphStoreLabel}
-              {:else}
-                Not configured
-              {/if}
-            </span>
-          </li>
-          <li class="wizard-summary-row">
-            <span class="wizard-summary-label">Domain pack</span>
-            <span class="wizard-summary-value">
-              {progress.packTitle ?? "Built-in generic"}
-              {#if progress.hasCustomPack}<span class="badge status-muted">custom</span>{/if}
-            </span>
-          </li>
-          <li class="wizard-summary-row">
-            <span class="wizard-summary-label">Documents</span>
-            <span class="wizard-summary-value">
-              {#if progress.selectedDocumentCount > 0}
-                {progress.selectedDocumentCount} selected for next run
-                {#if progress.parsedDocumentCount > progress.selectedDocumentCount}
-                  <span class="badge status-muted">{progress.parsedDocumentCount} parsed total</span>
-                {/if}
-              {:else if progress.parsedDocumentCount > 0}
-                {progress.parsedDocumentCount} parsed — select documents in Sources
-              {:else if progress.connectionCount > 0}
-                {progress.connectionCount} connection{progress.connectionCount === 1 ? "" : "s"} — import files in Sources
-              {:else}
-                None yet — add in Sources before you run
-              {/if}
-            </span>
-          </li>
-          <li class="wizard-summary-row">
-            <span class="wizard-summary-label">Domain packs</span>
-            <span class="wizard-summary-value">
-              Switch pack on the Run step — save multiple custom packs under Domain.
-            </span>
-          </li>
-        </ul>
-        <p class="field-hint">
-          Need different models per stage?
-          <a href={withWizardReturn(CONNECT_BASE + "/models", "ready")}>Configure Models &amp; keys</a>
-          — you'll return to this review step when done.
-        </p>
-      </section>
+      {#await sourcesPanelImport()}
+        <p class="wizard-panel-loading" role="status">Loading sources…</p>
+      {:then { default: ConnectSourcesPanel }}
+        <ConnectSourcesPanel embedded wizardStep={step} on:updated={onPanelUpdated} />
+      {:catch}
+        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+      {/await}
+    {:else if step === "launch" && runDefaults}
+      {#await launchStepImport()}
+        <p class="wizard-panel-loading" role="status">Loading review…</p>
+      {:then { default: ConnectPipelineReviewLaunch }}
+        <ConnectPipelineReviewLaunch
+          bind:this={launchStep}
+          bind:submitting={runSubmitting}
+          {runDefaults}
+          {progress}
+          {modelsReady}
+          onBack={() => goToStep("sources")}
+        />
+      {:catch}
+        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+      {/await}
     {/if}
   </div>
 
-  {#if step === "ready"}
-    <footer class="wizard-footer">
-      <div class="wizard-footer-left">
-        <button type="button" class="btn btn-secondary" on:click={goBack}>Back</button>
-      </div>
-      <div class="wizard-footer-right">
-        <button type="button" class="btn btn-primary" on:click={() => goToStep("run")}>Start your run</button>
-      </div>
-    </footer>
-  {:else if step === "run"}
-    <footer class="wizard-footer">
-      <div class="wizard-footer-left">
-        <button type="button" class="btn btn-secondary" on:click={() => goToStep("ready")}>Back</button>
-      </div>
-      <div class="wizard-footer-right">
+  <footer class="wizard-footer">
+    <div class="wizard-footer-left">
+      {#if isFirst}
+        <a class="btn btn-outline btn-sm" href={CONNECT_BASE}>Back</a>
+      {:else}
+        <button type="button" class="btn btn-outline btn-sm" on:click={goBack}>Back</button>
+      {/if}
+    </div>
+    <div class="wizard-footer-right">
+      {#if step === "launch"}
         {#if runDefaults}
           <button
             type="button"
-            class="btn btn-primary"
+            class="btn btn-primary btn-lg"
             disabled={!runStepCanStart || runSubmitting}
-            on:click={() => runStep?.submitRun()}
+            title={!runStepCanStart ? "Select documents and configure routes to start" : undefined}
+            on:click={() => launchStep?.submitRun()}
           >
-            {runSubmitting ? "Starting…" : "Start run"}
+            {runSubmitting ? "Starting…" : "START RUN →"}
           </button>
         {/if}
-      </div>
-    </footer>
-  {:else}
-    <footer class="wizard-footer">
-      <div class="wizard-footer-left">
-        {#if !isFirst}
-          <button type="button" class="btn btn-secondary" on:click={goBack}>Back</button>
-        {/if}
-      </div>
-      <div class="wizard-footer-right">
-        {#if !current.required}
-          <button type="button" class="btn btn-secondary" on:click={goNext}>Skip for now</button>
-        {/if}
-        <button type="button" class="btn btn-primary" on:click={goNext} disabled={!canContinue}>
-          Continue
+      {:else if step === "store"}
+        <button
+          type="button"
+          class="btn btn-primary"
+          on:click={goNext}
+          disabled={!canContinueStore}
+          title={!canContinueStore ? "Connect your graph store to continue" : undefined}
+        >
+          Store confirmed → Continue
         </button>
-      </div>
-    </footer>
-    {#if step === "store" && !canContinue}
-      <p class="wizard-hint" role="status">Connect a graph store to continue.</p>
-    {/if}
-  {/if}
+      {:else if step === "domain"}
+        {#if !current.required}
+          <button type="button" class="btn btn-outline btn-sm" on:click={goNext}>Skip for now</button>
+        {/if}
+        <button
+          type="button"
+          class="btn btn-primary"
+          on:click={goNext}
+          disabled={!canContinueDomain}
+          title={!canContinueDomain ? "Select or generate a domain pack to continue" : undefined}
+        >
+          Domain selected → Continue
+        </button>
+      {:else if step === "sources"}
+        {#if !current.required}
+          <button type="button" class="btn btn-outline btn-sm" on:click={goNext}>Skip for now</button>
+        {/if}
+        <button
+          type="button"
+          class="btn btn-primary"
+          on:click={goNext}
+          disabled={!canContinueSources}
+          title={!canContinueSources ? "Select at least one document to continue" : undefined}
+        >
+          Sources ready → Continue ({progress.selectedDocumentCount} document{progress.selectedDocumentCount === 1 ? "" : "s"})
+        </button>
+      {/if}
+    </div>
+  </footer>
 {/if}
-
-<style>
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-</style>

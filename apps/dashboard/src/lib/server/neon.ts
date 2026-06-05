@@ -14,6 +14,11 @@ import {
 import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 import { normalizeConnectIngestStages } from "@restormel/connect-core";
 import { reconcileConnectIngestJobStagesForApi } from "$lib/connect/ingest-progress-ui";
+import {
+  buildProductionG2SampleJob,
+  parseStoredProductionQualityReport,
+  summarizeG2Aggregate,
+} from "$lib/server/connect/ingest-quality-gates-data";
 
 const KEY_PREFIX = "rk_";
 
@@ -564,6 +569,49 @@ export async function getProjectById(projectId: string): Promise<Project | null>
 }
 
 /** List environments for a project (caller must own project). */
+export type ProjectWithEnvironments = {
+  id: string;
+  name: string;
+  environments: { id: string; name: string; type: string }[];
+};
+
+/** Single query: projects + environments for dashboard layout (avoids N+1 listEnvironments). */
+export async function listProjectsWithEnvironments(userId: string): Promise<ProjectWithEnvironments[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      p.id AS "projectId",
+      p.name AS "projectName",
+      p.created_at AS "projectCreatedAt",
+      e.id AS "envId",
+      e.name AS "envName",
+      e.type AS "envType"
+    FROM projects p
+    LEFT JOIN environments e ON e.project_id = p.id
+    WHERE p.user_id = ${userId}
+    ORDER BY p.created_at DESC, e.type ASC
+  `;
+  const byProject = new Map<string, ProjectWithEnvironments>();
+  for (const row of rows) {
+    const r = row as {
+      projectId: string;
+      projectName: string;
+      envId: string | null;
+      envName: string | null;
+      envType: string | null;
+    };
+    let entry = byProject.get(r.projectId);
+    if (!entry) {
+      entry = { id: r.projectId, name: r.projectName, environments: [] };
+      byProject.set(r.projectId, entry);
+    }
+    if (r.envId && r.envName && r.envType) {
+      entry.environments.push({ id: r.envId, name: r.envName, type: r.envType });
+    }
+  }
+  return [...byProject.values()];
+}
+
 export async function listEnvironments(projectId: string, userId: string): Promise<Environment[]> {
   const project = await getProject(projectId, userId);
   if (!project) return [];
@@ -2287,6 +2335,10 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_knowledge_domain_packs_workspace
       ON knowledge_domain_packs (workspace_id, updated_at DESC)
     `;
+    await sql`ALTER TABLE knowledge_domain_packs ADD COLUMN IF NOT EXISTS quality_preset TEXT NOT NULL DEFAULT 'production'`;
+    await sql`ALTER TABLE knowledge_domain_packs ADD COLUMN IF NOT EXISTS cross_model_validation BOOLEAN NOT NULL DEFAULT true`;
+    await sql`ALTER TABLE knowledge_domain_packs ADD COLUMN IF NOT EXISTS archetype TEXT`;
+    await sql`ALTER TABLE knowledge_domain_packs ADD COLUMN IF NOT EXISTS prompt_template_version INTEGER NOT NULL DEFAULT 1`;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_pipeline_profiles (
         id TEXT PRIMARY KEY,
@@ -2389,6 +2441,61 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`CREATE INDEX IF NOT EXISTS idx_knowledge_graph_group_members_unit ON knowledge_graph_group_members (unit_id)`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_status TEXT`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_note TEXT`;
+    await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS source_chunk_index INTEGER`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_review_signals (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        unit_id TEXT,
+        ai_status TEXT,
+        ai_flag_reason TEXT,
+        human_status TEXT NOT NULL,
+        human_note TEXT,
+        ai_flag_theme TEXT,
+        human_note_theme TEXT,
+        verdict_delta TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        domain_pack_id TEXT,
+        pack_archetype TEXT,
+        pack_slug TEXT,
+        quality_preset TEXT,
+        schema_mode TEXT,
+        unit_type TEXT,
+        source_kind TEXT,
+        ingest_job_id TEXT,
+        time_since_ingest_complete_ms BIGINT,
+        created_at BIGINT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_review_signals_archetype_delta
+      ON knowledge_review_signals (pack_archetype, verdict_delta, created_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_review_signals_ingest_job
+      ON knowledge_review_signals (ingest_job_id, created_at DESC)
+    `;
+    await sql`ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_ingest_quality_runs (
+        id TEXT PRIMARY KEY,
+        window_days INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        fired JSONB NOT NULL DEFAULT '[]'::jsonb,
+        brief_markdown TEXT,
+        applied_actions JSONB,
+        created_by_user_id TEXT,
+        created_at BIGINT NOT NULL,
+        applied_at BIGINT,
+        CONSTRAINT knowledge_ingest_quality_runs_status_check CHECK (
+          status IN ('evaluated', 'applied', 'failed')
+        )
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_ingest_quality_runs_created
+      ON knowledge_ingest_quality_runs (created_at DESC)
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_source_documents (
         id TEXT PRIMARY KEY,
@@ -2411,6 +2518,7 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_knowledge_source_documents_workspace
       ON knowledge_source_documents (workspace_id, created_at DESC)
     `;
+    await sql`ALTER TABLE knowledge_source_documents ADD COLUMN IF NOT EXISTS provenance JSONB`;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_sources (
         id TEXT PRIMARY KEY,
@@ -4873,11 +4981,49 @@ export async function updateHostedRuntimeJobById(params: {
   return rows.length > 0;
 }
 
+export type ConnectIngestJobQualityReport = {
+  preset?: string;
+  ok_pct?: number;
+  quarantine_count?: number;
+  quarantine_pct?: number;
+  weak_pct?: number;
+  unsupported_pct?: number;
+  pack_readiness_warnings?: string[];
+  extraction_warning_count?: number;
+  stub_warning?: string | null;
+  kg_audit?: { trust_score?: number; total_issues?: number } | null;
+  next_actions?: string[];
+};
+
+export type GraphRepairJobProgress = {
+  job_kind: "graph_revalidate";
+  mode: "validate" | "validate_and_remediate";
+  phase: "loading" | "validating" | "remediating" | "storing" | "done";
+  units_total: number;
+  units_processed: number;
+  sources_total: number;
+  sources_done: number;
+  batches_total?: number;
+  batches_done?: number;
+  repaired?: number;
+  dropped?: number;
+  skipped_no_source?: number;
+  quarantine_before?: number;
+  quarantine_after?: number;
+  preview_only_sources?: number;
+  sources_remediation_failed?: number;
+  last_error?: string;
+  last_error_at?: string;
+  last_activity_at: string;
+};
+
 export type ConnectIngestJobProgress = {
   percent: number;
   processed: number;
   total: number;
   execution_mode?: "stub" | "full";
+  quality_report?: ConnectIngestJobQualityReport;
+  graph_repair?: GraphRepairJobProgress;
 };
 
 export type ConnectIngestJobRecord = {
@@ -4904,6 +5050,115 @@ function msToIso(ms: number): string {
   return new Date(ms).toISOString();
 }
 
+function parseConnectIngestJobQualityReport(raw: unknown): ConnectIngestJobQualityReport | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const rec = raw as Record<string, unknown>;
+  const kgRaw = rec.kg_audit;
+  let kg_audit: ConnectIngestJobQualityReport["kg_audit"];
+  if (kgRaw && typeof kgRaw === "object" && !Array.isArray(kgRaw)) {
+    const kg = kgRaw as Record<string, unknown>;
+    kg_audit = {
+      ...(typeof kg.trust_score === "number" ? { trust_score: kg.trust_score } : {}),
+      ...(typeof kg.total_issues === "number" ? { total_issues: kg.total_issues } : {}),
+    };
+  }
+  const nextRaw = rec.next_actions;
+  const next_actions = Array.isArray(nextRaw)
+    ? nextRaw.filter((item): item is string => typeof item === "string")
+    : undefined;
+  const readinessRaw = rec.pack_readiness_warnings;
+  const pack_readiness_warnings = Array.isArray(readinessRaw)
+    ? readinessRaw.filter((item): item is string => typeof item === "string")
+    : undefined;
+  const report: ConnectIngestJobQualityReport = {
+    ...(typeof rec.preset === "string" ? { preset: rec.preset } : {}),
+    ...(typeof rec.ok_pct === "number" ? { ok_pct: rec.ok_pct } : {}),
+    ...(typeof rec.quarantine_count === "number" ? { quarantine_count: rec.quarantine_count } : {}),
+    ...(typeof rec.quarantine_pct === "number" ? { quarantine_pct: rec.quarantine_pct } : {}),
+    ...(typeof rec.weak_pct === "number" ? { weak_pct: rec.weak_pct } : {}),
+    ...(typeof rec.unsupported_pct === "number" ? { unsupported_pct: rec.unsupported_pct } : {}),
+    ...(pack_readiness_warnings && pack_readiness_warnings.length > 0
+      ? { pack_readiness_warnings }
+      : {}),
+    ...(typeof rec.extraction_warning_count === "number"
+      ? { extraction_warning_count: rec.extraction_warning_count }
+      : {}),
+    ...(rec.stub_warning === null || typeof rec.stub_warning === "string"
+      ? { stub_warning: rec.stub_warning as string | null }
+      : {}),
+    ...(kg_audit && Object.keys(kg_audit).length > 0 ? { kg_audit } : {}),
+    ...(next_actions && next_actions.length > 0 ? { next_actions } : {}),
+  };
+  return Object.keys(report).length > 0 ? report : undefined;
+}
+
+function parseGraphRepairJobProgress(raw: unknown): GraphRepairJobProgress | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const rec = raw as Record<string, unknown>;
+  if (rec.job_kind !== "graph_revalidate") return undefined;
+  const mode = rec.mode === "validate" || rec.mode === "validate_and_remediate" ? rec.mode : null;
+  const phase =
+    rec.phase === "loading" ||
+    rec.phase === "validating" ||
+    rec.phase === "remediating" ||
+    rec.phase === "storing" ||
+    rec.phase === "done"
+      ? rec.phase
+      : null;
+  const unitsTotal = Number(rec.units_total);
+  const unitsProcessed = Number(rec.units_processed);
+  const sourcesTotal = Number(rec.sources_total);
+  const sourcesDone = Number(rec.sources_done);
+  const lastActivity =
+    typeof rec.last_activity_at === "string" && rec.last_activity_at.trim()
+      ? rec.last_activity_at.trim()
+      : null;
+  if (
+    !mode ||
+    !phase ||
+    !Number.isFinite(unitsTotal) ||
+    !Number.isFinite(unitsProcessed) ||
+    !Number.isFinite(sourcesTotal) ||
+    !Number.isFinite(sourcesDone) ||
+    !lastActivity
+  ) {
+    return undefined;
+  }
+  const numOpt = (key: string) => {
+    const n = Number(rec[key]);
+    return Number.isFinite(n) ? Math.max(0, Math.round(n)) : undefined;
+  };
+  return {
+    job_kind: "graph_revalidate",
+    mode,
+    phase,
+    units_total: Math.max(0, Math.round(unitsTotal)),
+    units_processed: Math.max(0, Math.round(unitsProcessed)),
+    sources_total: Math.max(1, Math.round(sourcesTotal)),
+    sources_done: Math.max(0, Math.round(sourcesDone)),
+    ...(numOpt("batches_total") != null ? { batches_total: numOpt("batches_total") } : {}),
+    ...(numOpt("batches_done") != null ? { batches_done: numOpt("batches_done") } : {}),
+    ...(numOpt("repaired") != null ? { repaired: numOpt("repaired") } : {}),
+    ...(numOpt("dropped") != null ? { dropped: numOpt("dropped") } : {}),
+    ...(numOpt("skipped_no_source") != null ? { skipped_no_source: numOpt("skipped_no_source") } : {}),
+    ...(numOpt("quarantine_before") != null ? { quarantine_before: numOpt("quarantine_before") } : {}),
+    ...(numOpt("quarantine_after") != null ? { quarantine_after: numOpt("quarantine_after") } : {}),
+    ...(numOpt("preview_only_sources") != null
+      ? { preview_only_sources: numOpt("preview_only_sources") }
+      : {}),
+    ...(numOpt("sources_remediation_failed") != null
+      ? { sources_remediation_failed: numOpt("sources_remediation_failed") }
+      : {}),
+    ...(typeof rec.last_error === "string" && rec.last_error.trim()
+      ? { last_error: rec.last_error.trim() }
+      : {}),
+    ...(typeof rec.last_error_at === "string" && rec.last_error_at.trim()
+      ? { last_error_at: rec.last_error_at.trim() }
+      : {}),
+    last_activity_at: lastActivity,
+  };
+}
+
 function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const rec = raw as Record<string, unknown>;
@@ -4913,6 +5168,8 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
   if (!Number.isFinite(percent) || !Number.isFinite(processed) || !Number.isFinite(total)) {
     return null;
   }
+  const quality_report = parseConnectIngestJobQualityReport(rec.quality_report);
+  const graph_repair = parseGraphRepairJobProgress(rec.graph_repair);
   return {
     percent: Math.min(100, Math.max(0, Math.round(percent))),
     processed: Math.max(0, Math.round(processed)),
@@ -4920,6 +5177,8 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
     ...(rec.execution_mode === "stub" || rec.execution_mode === "full"
       ? { execution_mode: rec.execution_mode }
       : {}),
+    ...(quality_report ? { quality_report } : {}),
+    ...(graph_repair ? { graph_repair } : {}),
   };
 }
 
@@ -5484,11 +5743,23 @@ export async function insertConnectGraphSourcePostgres(params: {
 export async function storeExtractedGraphPostgres(params: {
   workspaceId: string;
   domainPackId?: string | null;
-  sourceId?: string | null;
-  units: { localId: string; text: string; unitType?: string | null; domain?: string | null }[];
+  sourceId: string;
+  units: {
+    localId: string;
+    text: string;
+    unitType?: string | null;
+    domain?: string | null;
+    sourceChunkIndex?: number;
+  }[];
   relations: { fromLocalId: string; toLocalId: string; relationType: string }[];
 }): Promise<{ units: { id: string; text: string; type: string | null }[]; relations: number }> {
   await ensureIngestionRoutingSchema();
+  const sourceId = params.sourceId?.trim();
+  if (!sourceId) {
+    throw new Error(
+      "Graph units require a registered ingest source (source_id).",
+    );
+  }
   const sql = getSql();
   const now = Date.now();
   const idByLocal = new Map<string, string>();
@@ -5497,12 +5768,15 @@ export async function storeExtractedGraphPostgres(params: {
     if (!u.text?.trim()) continue;
     const dbId = crypto.randomUUID();
     idByLocal.set(u.localId, dbId);
+    const payload =
+      u.sourceChunkIndex != null ? JSON.stringify({ source_chunk_index: u.sourceChunkIndex }) : null;
     await sql`
       INSERT INTO knowledge_graph_units (
-        id, workspace_id, domain_pack_id, source_id, unit_type, domain, text, embedding, payload, created_at
+        id, workspace_id, domain_pack_id, source_id, unit_type, domain, text, embedding, payload, source_chunk_index, created_at
       ) VALUES (
-        ${dbId}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${params.sourceId ?? null},
-        ${u.unitType ?? null}, ${u.domain ?? null}, ${u.text}, NULL, NULL, ${now}
+        ${dbId}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${sourceId},
+        ${u.unitType ?? null}, ${u.domain ?? null}, ${u.text}, NULL, ${payload}::jsonb,
+        ${u.sourceChunkIndex ?? null}, ${now}
       )
     `;
     insertedUnits.push({ id: dbId, text: u.text, type: u.unitType ?? null });
@@ -5531,18 +5805,48 @@ export async function getConnectGraphStats(workspaceId: string): Promise<{
   relations: number;
   groups: number;
   embedded: number;
-  validation: { ok: number; weak: number; unsupported: number; unvalidated: number };
+  validation: {
+    ok: number;
+    weak: number;
+    unsupported: number;
+    unvalidated: number;
+    awaiting_triage: number;
+    unsupported_untriaged: number;
+  };
 }> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
-  const [unitRows, relRows, groupRows, embeddedRows, valRows] = await Promise.all([
+  const humanReviewPrefix = "Human review:%";
+  const [unitRows, relRows, groupRows, embeddedRows, valRows, triageRows] = await Promise.all([
     sql`SELECT count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId}`,
     sql`SELECT count(*)::int AS c FROM knowledge_graph_relations WHERE workspace_id = ${workspaceId}`,
     sql`SELECT count(*)::int AS c FROM knowledge_graph_groups WHERE workspace_id = ${workspaceId}`,
     sql`SELECT count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId} AND embedding IS NOT NULL`,
     sql`SELECT validation_status AS s, count(*)::int AS c FROM knowledge_graph_units WHERE workspace_id = ${workspaceId} GROUP BY validation_status`,
+    sql`
+      SELECT
+        count(*) FILTER (
+          WHERE validation_status IN ('weak', 'unsupported')
+            AND COALESCE(validation_note, '') NOT LIKE ${humanReviewPrefix}
+        )::int AS awaiting_triage,
+        count(*) FILTER (
+          WHERE validation_status = 'unsupported'
+            AND COALESCE(validation_note, '') NOT LIKE ${humanReviewPrefix}
+        )::int AS unsupported_untriaged
+      FROM knowledge_graph_units
+      WHERE workspace_id = ${workspaceId}
+    `,
   ]);
-  const validation = { ok: 0, weak: 0, unsupported: 0, unvalidated: 0 };
+  const validation = {
+    ok: 0,
+    weak: 0,
+    unsupported: 0,
+    unvalidated: 0,
+    awaiting_triage: Number((triageRows[0] as { awaiting_triage: number })?.awaiting_triage ?? 0),
+    unsupported_untriaged: Number(
+      (triageRows[0] as { unsupported_untriaged: number })?.unsupported_untriaged ?? 0,
+    ),
+  };
   for (const r of valRows as { s: string | null; c: number }[]) {
     const c = Number(r.c);
     if (r.s === "ok") validation.ok = c;
@@ -5562,7 +5866,7 @@ export async function getConnectGraphStats(workspaceId: string): Promise<{
 /** Read a slice of the graph for the explorer UI (Postgres spine). */
 export async function getConnectGraphExplorer(
   workspaceId: string,
-  opts?: { groupLimit?: number; unitLimit?: number },
+  opts?: { groupLimit?: number; unitLimit?: number; unitOffset?: number },
 ): Promise<{
   groups: { id: string; name: string; summary: string | null; members: { text: string; role: string | null; validationStatus: string | null }[] }[];
   units: {
@@ -5581,7 +5885,8 @@ export async function getConnectGraphExplorer(
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const groupLimit = Math.min(Math.max(opts?.groupLimit ?? 20, 1), 100);
-  const unitLimit = Math.min(Math.max(opts?.unitLimit ?? 50, 1), 200);
+  const unitLimit = Math.min(Math.max(opts?.unitLimit ?? 50, 1), 5000);
+  const unitOffset = Math.max(opts?.unitOffset ?? 0, 0);
 
   const groupRows = (await sql`
     SELECT id, name, summary FROM knowledge_graph_groups
@@ -5615,6 +5920,7 @@ export async function getConnectGraphExplorer(
     WHERE u.workspace_id = ${workspaceId}
     ORDER BY u.created_at DESC
     LIMIT ${unitLimit}
+    OFFSET ${unitOffset}
   `) as {
     id: string;
     text: string;
@@ -5712,6 +6018,377 @@ export async function deleteUnitPostgres(params: { workspaceId: string; unitId: 
   await sql`DELETE FROM knowledge_graph_units WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}`;
 }
 
+export type ConnectGraphUnitReviewRow = {
+  unitId: string;
+  validationStatus: string | null;
+  validationNote: string | null;
+  unitType: string | null;
+  domainPackId: string | null;
+  sourceId: string | null;
+};
+
+export async function getConnectGraphUnitForReview(params: {
+  workspaceId: string;
+  unitId: string;
+}): Promise<ConnectGraphUnitReviewRow | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, validation_status, validation_note, unit_type, domain_pack_id, source_id
+    FROM knowledge_graph_units
+    WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    unitId: String(row.id),
+    validationStatus: row.validation_status != null ? String(row.validation_status) : null,
+    validationNote: row.validation_note != null ? String(row.validation_note) : null,
+    unitType: row.unit_type != null ? String(row.unit_type) : null,
+    domainPackId: row.domain_pack_id != null ? String(row.domain_pack_id) : null,
+    sourceId: row.source_id != null ? String(row.source_id) : null,
+  };
+}
+
+export async function isWorkspaceIngestQualityTelemetryEnabled(
+  workspaceId: string,
+): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT settings FROM workspaces WHERE id = ${workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return true;
+  const settings = rows[0]?.settings;
+  if (settings && typeof settings === "object" && !Array.isArray(settings)) {
+    const flag = (settings as Record<string, unknown>).ingest_quality_telemetry;
+    if (flag === false) return false;
+  }
+  return true;
+}
+
+export type ConnectReviewSignalContext = {
+  telemetryEnabled: boolean;
+  ingestJobId: string | null;
+  sourceKind: string | null;
+  timeSinceIngestCompleteMs: number | null;
+};
+
+/** Resolve ingest job + G5 latency for a reviewed unit (Postgres graph spine). */
+export async function getConnectReviewSignalContext(params: {
+  workspaceId: string;
+  sourceId: string | null;
+  domainPackId: string | null;
+}): Promise<ConnectReviewSignalContext> {
+  await ensureIngestionRoutingSchema();
+  const telemetryEnabled = await isWorkspaceIngestQualityTelemetryEnabled(params.workspaceId);
+  if (!telemetryEnabled) {
+    return {
+      telemetryEnabled: false,
+      ingestJobId: null,
+      sourceKind: null,
+      timeSinceIngestCompleteMs: null,
+    };
+  }
+
+  const sql = getSql();
+  let ingestJobId: string | null = null;
+  let sourceKind: string | null = null;
+  let completedAtMs: number | null = null;
+
+  if (params.sourceId) {
+    const sourceRows = await sql`
+      SELECT job_id, source_kind FROM knowledge_graph_sources
+      WHERE id = ${params.sourceId} AND workspace_id = ${params.workspaceId}
+      LIMIT 1
+    `;
+    if (sourceRows.length > 0) {
+      const src = sourceRows[0] as Record<string, unknown>;
+      ingestJobId = src.job_id != null ? String(src.job_id) : null;
+      sourceKind = src.source_kind != null ? String(src.source_kind) : null;
+    }
+  }
+
+  if (ingestJobId) {
+    const jobRows = await sql`
+      SELECT updated_at FROM knowledge_ingest_jobs
+      WHERE id = ${ingestJobId} AND workspace_id = ${params.workspaceId} AND status = 'completed'
+      LIMIT 1
+    `;
+    if (jobRows.length > 0) {
+      completedAtMs = Number((jobRows[0] as Record<string, unknown>).updated_at);
+    } else {
+      ingestJobId = null;
+    }
+  }
+
+  if (completedAtMs == null) {
+    const fallback =
+      params.domainPackId != null
+        ? await sql`
+            SELECT id, updated_at FROM knowledge_ingest_jobs
+            WHERE workspace_id = ${params.workspaceId}
+              AND status = 'completed'
+              AND domain_pack_id = ${params.domainPackId}
+            ORDER BY updated_at DESC
+            LIMIT 1
+          `
+        : await sql`
+            SELECT id, updated_at FROM knowledge_ingest_jobs
+            WHERE workspace_id = ${params.workspaceId} AND status = 'completed'
+            ORDER BY updated_at DESC
+            LIMIT 1
+          `;
+    if (fallback.length > 0) {
+      const row = fallback[0] as Record<string, unknown>;
+      ingestJobId = String(row.id);
+      completedAtMs = Number(row.updated_at);
+    }
+  }
+
+  const timeSinceIngestCompleteMs =
+    completedAtMs != null && Number.isFinite(completedAtMs)
+      ? Math.max(0, Date.now() - completedAtMs)
+      : null;
+
+  return {
+    telemetryEnabled: true,
+    ingestJobId,
+    sourceKind,
+    timeSinceIngestCompleteMs,
+  };
+}
+
+export type ReviewSignalEvalRow = {
+  verdict_delta: string | null;
+  pack_archetype: string | null;
+  ai_flag_theme: string | null;
+  human_note_theme: string | null;
+  action_type: string | null;
+};
+
+export async function listReviewSignalsForEval(params: { days: number }): Promise<ReviewSignalEvalRow[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const since = Date.now() - params.days * 24 * 60 * 60 * 1000;
+  const rows = await sql`
+    SELECT verdict_delta, pack_archetype, ai_flag_theme, human_note_theme, action_type
+    FROM knowledge_review_signals
+    WHERE created_at >= ${since}
+  `;
+  return rows.map((row: Record<string, unknown>) => ({
+    verdict_delta: row.verdict_delta != null ? String(row.verdict_delta) : null,
+    pack_archetype: row.pack_archetype != null ? String(row.pack_archetype) : null,
+    ai_flag_theme: row.ai_flag_theme != null ? String(row.ai_flag_theme) : null,
+    human_note_theme: row.human_note_theme != null ? String(row.human_note_theme) : null,
+    action_type: row.action_type != null ? String(row.action_type) : null,
+  }));
+}
+
+export type IngestQualityRunRecord = {
+  id: string;
+  windowDays: number;
+  status: "evaluated" | "applied" | "failed";
+  fired: unknown;
+  briefMarkdown: string | null;
+  appliedActions: unknown;
+  createdByUserId: string | null;
+  createdAt: number;
+  appliedAt: number | null;
+};
+
+function mapIngestQualityRunRow(row: Record<string, unknown>): IngestQualityRunRecord {
+  return {
+    id: String(row.id),
+    windowDays: Number(row.window_days),
+    status: String(row.status) as IngestQualityRunRecord["status"],
+    fired: row.fired,
+    briefMarkdown: row.brief_markdown != null ? String(row.brief_markdown) : null,
+    appliedActions: row.applied_actions,
+    createdByUserId: row.created_by_user_id != null ? String(row.created_by_user_id) : null,
+    createdAt: Number(row.created_at),
+    appliedAt: row.applied_at != null ? Number(row.applied_at) : null,
+  };
+}
+
+export async function insertIngestQualityRun(params: {
+  windowDays: number;
+  status: "evaluated" | "applied" | "failed";
+  fired: unknown;
+  briefMarkdown: string | null;
+  createdByUserId: string | null;
+}): Promise<string> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await sql`
+    INSERT INTO knowledge_ingest_quality_runs (
+      id, window_days, status, fired, brief_markdown, created_by_user_id, created_at
+    ) VALUES (
+      ${id}, ${params.windowDays}, ${params.status},
+      ${JSON.stringify(params.fired)}, ${params.briefMarkdown}, ${params.createdByUserId}, ${now}
+    )
+  `;
+  return id;
+}
+
+export async function listIngestQualityRuns(params?: { limit?: number }): Promise<IngestQualityRunRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(50, Math.max(1, params?.limit ?? 20));
+  const rows = await sql`
+    SELECT * FROM knowledge_ingest_quality_runs
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((row) => mapIngestQualityRunRow(row as Record<string, unknown>));
+}
+
+export async function getIngestQualityRunById(runId: string): Promise<IngestQualityRunRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_ingest_quality_runs WHERE id = ${runId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapIngestQualityRunRow(rows[0] as Record<string, unknown>);
+}
+
+export async function markIngestQualityRunApplied(params: {
+  runId: string;
+  appliedActions: unknown;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE knowledge_ingest_quality_runs
+    SET status = 'applied', applied_actions = ${JSON.stringify(params.appliedActions)}, applied_at = ${now}
+    WHERE id = ${params.runId}
+  `;
+}
+
+export async function listProductionG2SampleJobs(params: {
+  limit: number;
+}): Promise<import("./connect/ingest-quality-gates-data").ProductionG2SampleJob[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(20, Math.max(1, params.limit));
+  const rows = await sql`
+    SELECT id, workspace_id, project_id, label, updated_at, progress
+    FROM knowledge_ingest_jobs
+    WHERE status = 'completed'
+    ORDER BY updated_at DESC
+    LIMIT ${limit * 3}
+  `;
+  const jobs: import("./connect/ingest-quality-gates-data").ProductionG2SampleJob[] = [];
+  for (const row of rows) {
+    if (jobs.length >= limit) break;
+    const progressRaw = row.progress;
+    const qualityRaw =
+      progressRaw &&
+      typeof progressRaw === "object" &&
+      !Array.isArray(progressRaw) &&
+      "quality_report" in progressRaw
+        ? (progressRaw as Record<string, unknown>).quality_report
+        : undefined;
+    const report = parseStoredProductionQualityReport(qualityRaw);
+    if (!report) continue;
+    jobs.push(
+      buildProductionG2SampleJob({
+        id: String(row.id),
+        workspaceId: String(row.workspace_id),
+        projectId: row.project_id != null ? String(row.project_id) : null,
+        label: row.label != null ? String(row.label) : null,
+        updatedAt: Number(row.updated_at),
+        report,
+      }),
+    );
+  }
+  return jobs;
+}
+
+export async function getRecentProductionG2Metrics(params: { limit: number }): Promise<{
+  ok_pct: number;
+  unsupported_pct: number;
+  sample_jobs: number;
+}> {
+  const jobs = await listProductionG2SampleJobs(params);
+  const aggregate = summarizeG2Aggregate(jobs);
+  return {
+    ok_pct: aggregate.ok_pct,
+    unsupported_pct: aggregate.unsupported_pct,
+    sample_jobs: aggregate.sample_jobs,
+  };
+}
+
+export async function bumpBuiltinPackPromptVersionsByArchetypes(params: {
+  archetypes: string[];
+}): Promise<
+  { id: string; slug: string; archetype: string | null; promptTemplateVersion: number }[]
+> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const archetypes = [...new Set(params.archetypes.map((a) => a.trim()).filter(Boolean))];
+  if (archetypes.length === 0) return [];
+
+  const rows = await sql`
+    UPDATE knowledge_domain_packs
+    SET prompt_template_version = prompt_template_version + 1, updated_at = ${Date.now()}
+    WHERE is_builtin = true AND archetype = ANY(${archetypes})
+    RETURNING id, slug, archetype, prompt_template_version
+  `;
+  return rows.map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    slug: String(row.slug),
+    archetype: row.archetype != null ? String(row.archetype) : null,
+    promptTemplateVersion: Number(row.prompt_template_version ?? 1),
+  }));
+}
+
+export async function insertKnowledgeReviewSignal(params: {
+  workspaceId: string;
+  unitId: string;
+  aiStatus: string | null;
+  aiFlagReason: string | null;
+  humanStatus: string;
+  humanNote: string | null;
+  aiFlagTheme: string;
+  humanNoteTheme: string;
+  verdictDelta: string;
+  actionType: string;
+  domainPackId: string | null;
+  packArchetype: string | null;
+  packSlug: string | null;
+  qualityPreset: string | null;
+  schemaMode: string | null;
+  unitType: string | null;
+  sourceKind: string | null;
+  ingestJobId: string | null;
+  timeSinceIngestCompleteMs: number | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    INSERT INTO knowledge_review_signals (
+      id, workspace_id, unit_id, ai_status, ai_flag_reason, human_status, human_note,
+      ai_flag_theme, human_note_theme, verdict_delta, action_type,
+      domain_pack_id, pack_archetype, pack_slug, quality_preset, schema_mode, unit_type,
+      source_kind, ingest_job_id, time_since_ingest_complete_ms, created_at
+    ) VALUES (
+      ${crypto.randomUUID()}, ${params.workspaceId}, ${params.unitId},
+      ${params.aiStatus}, ${params.aiFlagReason}, ${params.humanStatus}, ${params.humanNote},
+      ${params.aiFlagTheme}, ${params.humanNoteTheme}, ${params.verdictDelta}, ${params.actionType},
+      ${params.domainPackId}, ${params.packArchetype}, ${params.packSlug}, ${params.qualityPreset},
+      ${params.schemaMode}, ${params.unitType}, ${params.sourceKind}, ${params.ingestJobId},
+      ${params.timeSinceIngestCompleteMs}, ${now}
+    )
+  `;
+}
+
 /** Store groups + memberships (grouping stage). `members.unitId` are existing unit ids. */
 export async function storeGroupsPostgres(params: {
   workspaceId: string;
@@ -5780,6 +6457,10 @@ export type ConnectDomainPackRecord = {
   passageProfile: unknown;
   entityLinking: unknown;
   embedding: unknown;
+  qualityPreset: string;
+  crossModelValidation: boolean;
+  archetype: string | null;
+  promptTemplateVersion: number;
   isBuiltin: boolean;
   createdAt: number;
   updatedAt: number;
@@ -5798,6 +6479,10 @@ function mapConnectDomainPackRow(row: Record<string, unknown>): ConnectDomainPac
     passageProfile: row.passage_profile,
     entityLinking: row.entity_linking ?? null,
     embedding: row.embedding,
+    qualityPreset: row.quality_preset != null ? String(row.quality_preset) : "production",
+    crossModelValidation: row.cross_model_validation !== false,
+    archetype: row.archetype != null ? String(row.archetype) : null,
+    promptTemplateVersion: Number(row.prompt_template_version ?? 1),
     isBuiltin: Boolean(row.is_builtin),
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
@@ -5839,6 +6524,10 @@ export async function upsertConnectDomainPack(params: {
   passageProfile: unknown;
   entityLinking?: unknown;
   embedding: unknown;
+  qualityPreset?: string;
+  crossModelValidation?: boolean;
+  archetype?: string | null;
+  promptTemplateVersion?: number;
   isBuiltin?: boolean;
 }): Promise<ConnectDomainPackRecord> {
   await ensureIngestionRoutingSchema();
@@ -5851,14 +6540,20 @@ export async function upsertConnectDomainPack(params: {
   const passageJson = JSON.stringify(params.passageProfile ?? {});
   const entityJson = params.entityLinking != null ? JSON.stringify(params.entityLinking) : null;
   const embeddingJson = JSON.stringify(params.embedding ?? {});
+  const qualityPreset = params.qualityPreset ?? "production";
+  const crossModelValidation = params.crossModelValidation !== false;
+  const archetype = params.archetype ?? null;
+  const promptTemplateVersion = params.promptTemplateVersion ?? 1;
   await sql`
     INSERT INTO knowledge_domain_packs (
       id, workspace_id, slug, title, description, ontology, prompts, graph_schema,
-      passage_profile, entity_linking, embedding, is_builtin, created_at, updated_at
+      passage_profile, entity_linking, embedding, quality_preset, cross_model_validation,
+      archetype, prompt_template_version, is_builtin, created_at, updated_at
     ) VALUES (
       ${id}, ${params.workspaceId}, ${params.slug}, ${params.title}, ${params.description ?? null},
       ${ontologyJson}::jsonb, ${promptsJson}::jsonb, ${graphSchemaJson}::jsonb,
       ${passageJson}::jsonb, ${entityJson}::jsonb, ${embeddingJson}::jsonb,
+      ${qualityPreset}, ${crossModelValidation}, ${archetype}, ${promptTemplateVersion},
       ${params.isBuiltin ?? false}, ${now}, ${now}
     )
     ON CONFLICT (workspace_id, slug) DO UPDATE SET
@@ -5870,6 +6565,10 @@ export async function upsertConnectDomainPack(params: {
       passage_profile = EXCLUDED.passage_profile,
       entity_linking = EXCLUDED.entity_linking,
       embedding = EXCLUDED.embedding,
+      quality_preset = EXCLUDED.quality_preset,
+      cross_model_validation = EXCLUDED.cross_model_validation,
+      archetype = COALESCE(EXCLUDED.archetype, knowledge_domain_packs.archetype),
+      prompt_template_version = EXCLUDED.prompt_template_version,
       updated_at = ${now}
   `;
   const rows = await sql`
@@ -5988,10 +6687,12 @@ export type ConnectSourceDocumentRecord = {
   status: string;
   error: string | null;
   parserProvider: string | null;
+  provenance: Record<string, unknown> | null;
   createdAt: number;
 };
 
 function mapConnectSourceDocumentRow(row: Record<string, unknown>): ConnectSourceDocumentRecord {
+  const prov = row.provenance;
   return {
     id: String(row.id),
     workspaceId: String(row.workspace_id),
@@ -6005,6 +6706,8 @@ function mapConnectSourceDocumentRow(row: Record<string, unknown>): ConnectSourc
     status: String(row.status),
     error: row.error != null ? String(row.error) : null,
     parserProvider: row.parser_provider != null ? String(row.parser_provider) : null,
+    provenance:
+      prov && typeof prov === "object" && !Array.isArray(prov) ? (prov as Record<string, unknown>) : null,
     createdAt: Number(row.created_at),
   };
 }
@@ -6022,21 +6725,158 @@ export async function insertConnectSourceDocument(params: {
   status: "parsed" | "failed" | "pending";
   error?: string | null;
   parserProvider?: string | null;
+  provenance?: Record<string, unknown> | null;
 }): Promise<ConnectSourceDocumentRecord> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const now = Date.now();
+  const provenanceJson =
+    params.provenance && Object.keys(params.provenance).length > 0
+      ? JSON.stringify(params.provenance)
+      : null;
   await sql`
     INSERT INTO knowledge_source_documents (
-      id, workspace_id, source_kind, name, mime, url, text, char_count, chunk_count, status, error, parser_provider, created_at
+      id, workspace_id, source_kind, name, mime, url, text, char_count, chunk_count, status, error, parser_provider, provenance, created_at
     ) VALUES (
       ${params.id}, ${params.workspaceId}, ${params.sourceKind}, ${params.name}, ${params.mime ?? null},
       ${params.url ?? null}, ${params.text ?? null}, ${params.charCount}, ${params.chunkCount}, ${params.status},
-      ${params.error ?? null}, ${params.parserProvider ?? null}, ${now}
+      ${params.error ?? null}, ${params.parserProvider ?? null}, ${provenanceJson}::jsonb, ${now}
     )
   `;
   const rows = await sql`SELECT * FROM knowledge_source_documents WHERE id = ${params.id} LIMIT 1`;
   return mapConnectSourceDocumentRow(rows[0] as Record<string, unknown>);
+}
+
+/** All graph spine sources for a workspace (metadata only). */
+export async function listConnectGraphSourcesForWorkspace(
+  workspaceId: string,
+): Promise<
+  {
+    id: string;
+    title: string | null;
+    url: string | null;
+    textPreview: string | null;
+    sourceKind: string | null;
+    jobId: string | null;
+  }[]
+> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT id, title, url, text_preview, source_kind, job_id
+    FROM knowledge_graph_sources
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+    LIMIT 500
+  `) as {
+    id: string;
+    title: string | null;
+    url: string | null;
+    text_preview: string | null;
+    source_kind: string | null;
+    job_id: string | null;
+  }[];
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    url: r.url,
+    textPreview: r.text_preview,
+    sourceKind: r.source_kind,
+    jobId: r.job_id,
+  }));
+}
+
+/** Parsed pipeline documents with full text for automated source matching. */
+export async function listParsedConnectSourceDocumentTextsForWorkspace(
+  workspaceId: string,
+  limit = 200,
+): Promise<{ id: string; name: string; url: string | null; text: string }[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const cap = Math.min(Math.max(limit, 1), 500);
+  const rows = (await sql`
+    SELECT id, name, url, text
+    FROM knowledge_source_documents
+    WHERE workspace_id = ${workspaceId}
+      AND status = 'parsed'
+      AND text IS NOT NULL
+    ORDER BY created_at DESC
+    LIMIT ${cap}
+  `) as { id: string; name: string; url: string | null; text: string | null }[];
+  return rows
+    .filter((r) => typeof r.text === "string" && r.text.trim().length > 0)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      text: r.text!.trim(),
+    }));
+}
+
+/** Ideas likely missing usable source provenance (legacy spine rows or empty metadata). */
+export async function countGraphUnitsNeedingSourceLink(workspaceId: string): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT count(*)::int AS c
+    FROM knowledge_graph_units u
+    JOIN knowledge_graph_sources s
+      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+    WHERE u.workspace_id = ${workspaceId}
+      AND (
+        s.source_kind = 'legacy'
+        OR (
+          s.text_preview IS NULL
+          AND s.url IS NULL
+          AND coalesce(s.title, '') NOT ILIKE '%http%'
+        )
+      )
+  `) as { c: number }[];
+  return Number(rows[0]?.c ?? 0);
+}
+
+export async function findConnectGraphSourceByTitleOrUrl(params: {
+  workspaceId: string;
+  title?: string | null;
+  url?: string | null;
+}): Promise<string | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const url = params.url?.trim();
+  if (url) {
+    const byUrl = (await sql`
+      SELECT id FROM knowledge_graph_sources
+      WHERE workspace_id = ${params.workspaceId} AND url = ${url}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { id: string }[];
+    if (byUrl[0]?.id) return byUrl[0].id;
+  }
+  const title = params.title?.trim();
+  if (title) {
+    const byTitle = (await sql`
+      SELECT id FROM knowledge_graph_sources
+      WHERE workspace_id = ${params.workspaceId} AND title = ${title}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `) as { id: string }[];
+    if (byTitle[0]?.id) return byTitle[0].id;
+  }
+  return null;
+}
+
+export async function updateUnitSourcePostgres(params: {
+  workspaceId: string;
+  unitId: string;
+  sourceId: string;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`
+    UPDATE knowledge_graph_units
+    SET source_id = ${params.sourceId}
+    WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}
+  `;
 }
 
 /** List documents for a workspace (without full text). */
@@ -6046,7 +6886,7 @@ export async function listConnectSourceDocumentsForWorkspace(
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const rows = await sql`
-    SELECT id, workspace_id, source_kind, name, mime, url, NULL AS text, char_count, chunk_count, status, error, parser_provider, created_at
+    SELECT id, workspace_id, source_kind, name, mime, url, provenance, NULL AS text, char_count, chunk_count, status, error, parser_provider, created_at
     FROM knowledge_source_documents
     WHERE workspace_id = ${workspaceId}
     ORDER BY created_at DESC

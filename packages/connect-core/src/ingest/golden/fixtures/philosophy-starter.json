@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "description": "Starter golden URLs for philosophy pack regression (Connect quality programme G7).",
+  "default_source_type": "web_article",
+  "items": [
+    {
+      "url": "https://plato.stanford.edu/entries/utilitarianism-history/",
+      "source_type": "web_article",
+      "why": "Structured SEP article — argument mining smoke test"
+    },
+    {
+      "url": "https://plato.stanford.edu/entries/consequentialism/",
+      "source_type": "web_article",
+      "why": "Relation density and domain vocabulary"
+    }
+  ]
+}

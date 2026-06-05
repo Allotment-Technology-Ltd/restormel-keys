@@ -1,0 +1,128 @@
+/**
+ * Site-wide neo-brutalist layer — marketing, docs, dashboard.
+ * Import after brutalist-rm.css + brutalist-utilities.css (app.css, marketing-shell.css).
+ */
+
+/* ── Stamps & frames (hero / proof / use-cases pattern) ── */
+.brut-stamp,
+.brut-frame-eyebrow {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-bg-deep);
+  color: var(--color-ink);
+}
+
+.brut-frame {
+  border: 2px solid var(--color-ink);
+  box-shadow: var(--shadow-md);
+  background: var(--color-surface);
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+.brut-frame:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Primary controls: yellow fill only (never blueprint blue) ── */
+.btn.btn-primary,
+a.btn.btn-primary,
+button.btn.btn-primary {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn.btn-primary:hover:not(:disabled),
+a.btn.btn-primary:hover {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+/* Selected tabs/pills — yellow highlight, not blue fill + cream text */
+.tab-btn.is-active,
+.fw-pill-active,
+.currency-option[aria-pressed="true"],
+.lifecycle-current,
+.step-done .step-marker,
+#tab-elements:checked ~ .code-framework-tabs .code-fw-tab-elements,
+#tab-svelte:checked ~ .code-framework-tabs .code-fw-tab-svelte,
+#tab-cli:checked ~ .code-framework-tabs .code-fw-tab-cli {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* Blue fills (progress, chart bars) — no text on fill */
+.progress-fill {
+  background: var(--color-blue);
+}
+
+/* Blueprint accent fill when text is present */
+.brut-blue-fill {
+  background: var(--color-blue);
+  color: var(--color-on-blue);
+  border-color: var(--color-ink);
+}
+
+/* Links stay blueprint on cream */
+a.brut-link-accent,
+.doc-content a {
+  color: var(--color-blue);
+}
+
+.doc-content a:hover {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+/* ── Docs shell ── */
+.marketing-shell :is(.doc-content, .docs-main) h2 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: var(--text-display-tracking);
+  border-bottom: 2px solid var(--color-ink);
+  padding-bottom: 0.35rem;
+}
+
+.marketing-shell :is(.doc-content, .docs-main) :is(.callout, .notice, aside) {
+  border: 2px solid var(--color-ink);
+  border-left-width: 4px;
+  border-left-color: var(--color-yellow);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  background: var(--color-surface);
+}
+
+.marketing-shell pre,
+.marketing-shell .codeblock {
+  border-radius: 0;
+  border: 2px solid var(--code-bg);
+  box-shadow: 3px 3px 0 var(--color-yellow);
+}
+
+/* ── Dashboard main ── */
+:is(.app-main, .main, .admin-main) :is(.panel, .card, .stat-card, .data-card, .page-card, .info-card, .form-card):hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
+}
+
+:is(.app-main, .main, .admin-main) :is(.panel, .card, .stat-card, .data-card, .page-card) {
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brut-frame:hover,
+  :is(.app-main, .main, .admin-main) :is(.panel, .card, .stat-card):hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+}

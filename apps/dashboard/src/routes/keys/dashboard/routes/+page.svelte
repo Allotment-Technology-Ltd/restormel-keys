@@ -457,11 +457,6 @@
     text-decoration: none;
     cursor: pointer;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    border-color: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .error-msg {
     color: var(--coral-alert);
     font-size: var(--text-sm);

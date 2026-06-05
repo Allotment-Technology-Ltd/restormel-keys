@@ -18,6 +18,7 @@ import {
   type ConnectGraphTargetRecord,
 } from "$lib/server/neon";
 import { looksLikeSurrealJwt, parseSurrealConnectionString } from "$lib/server/connect/connection-string";
+import { validateOutboundSurrealEndpoint } from "$lib/server/connect/outbound-surreal-endpoint";
 
 export { parseSurrealConnectionString };
 
@@ -116,6 +117,11 @@ export async function saveGraphTarget(
     // First-time save without auth material is allowed (anonymous Surreal), so no hard error here.
   }
 
+  const endpointCheck = validateOutboundSurrealEndpoint(input.endpoint);
+  if (!endpointCheck.ok) {
+    return { ok: false, status: 400, error: "invalid_endpoint", message: endpointCheck.message };
+  }
+
   const row = await upsertConnectGraphTarget({
     workspaceId,
     provider: input.provider,
@@ -154,6 +160,9 @@ function extractSurrealSignInToken(data: unknown): string | null {
 export async function surrealSignIn(
   conn: SurrealHttpConn,
 ): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  const endpointCheck = validateOutboundSurrealEndpoint(conn.endpoint);
+  if (!endpointCheck.ok) return { ok: false, error: endpointCheck.message };
+
   const username = conn.username?.trim() ?? "";
   const password = conn.password?.trim() ?? "";
   if (!username || !password) {
@@ -344,6 +353,9 @@ export async function surrealHttpQuery(params: {
   bearerToken?: string | null;
   sql: string;
 }): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  const endpointCheck = validateOutboundSurrealEndpoint(params.endpoint);
+  if (!endpointCheck.ok) return { ok: false, error: endpointCheck.message };
+
   const base = surrealHttpBase(params.endpoint);
   const url = base.endsWith("/sql") ? base : `${base}/sql`;
   const headers: Record<string, string> = {
@@ -383,7 +395,29 @@ export async function surrealHttpQuery(params: {
       res.status === 401
         ? " Check credentials, or use a Surreal Cloud token (leave Username empty)."
         : "";
-    return { ok: false, error: `Surreal HTTP ${res.status}${hint}` };
+    let detail = "";
+    try {
+      const raw = await res.text();
+      if (raw.trim()) {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          if (Array.isArray(parsed)) {
+            const first = parsed[0] as { result?: string; message?: string } | undefined;
+            detail = String(first?.result ?? first?.message ?? "").trim();
+          } else if (parsed && typeof parsed === "object") {
+            const rec = parsed as Record<string, unknown>;
+            detail = String(rec.message ?? rec.error ?? rec.result ?? "").trim();
+          }
+        } catch {
+          detail = raw.trim();
+        }
+        if (detail.length > 240) detail = `${detail.slice(0, 240)}…`;
+        if (detail) detail = ` — ${detail}`;
+      }
+    } catch {
+      // ignore body read errors
+    }
+    return { ok: false, error: `Surreal HTTP ${res.status}${hint}${detail}` };
   }
   try {
     const data = (await res.json()) as unknown;

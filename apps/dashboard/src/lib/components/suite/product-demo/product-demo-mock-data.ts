@@ -1,4 +1,4 @@
-import type { ConnectIngestStageProgress } from "@restormel/connect-core";
+import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
 
 /** Mid-flight ingest run — mirrors ConnectIngestRunConsole at ~71%. */
 export const DEMO_INGEST_JOB = {
@@ -102,3 +102,23 @@ export const DEMO_GRAPH_STATS = {
   relations: 2100,
   verifiedPct: 94,
 };
+
+/** Abbreviated MCP config for marketing demo (no real secrets). */
+export const DEMO_MCP_SNIPPET = `{
+  "mcpServers": {
+    "restormel": {
+      "command": "npx",
+      "args": ["-y", "@restormel/mcp"],
+      "env": {
+        "RESTORMEL_CONNECT_API_BASE": "https://restormel.dev",
+        "RESTORMEL_GATEWAY_KEY": "rk_…your-key",
+        "RESTORMEL_WORKSPACE_ID": "…workspace-uuid"
+      }
+    }
+  }
+}`;
+
+export const DEMO_MCP_TOOL_RESULT = `connect.search("Gutenberg press")
+→ claims: 12 · relations: 8
+→ context_pack: analysis / critique / synthesis
+metadata.retrieval_degraded: false`;

@@ -1,16 +1,21 @@
 import type { AdminUserListRow } from "$lib/admin-user-list";
 import type { PageServerLoad } from "./$types";
 import { listUsersForServiceOwnerAdmin } from "$lib/server/admin-users";
-import { listServiceAdminEmails } from "$lib/server/service-admin-emails";
+import {
+  isServiceAdminEmailsTableReady,
+  listServiceAdminEmails,
+} from "$lib/server/service-admin-emails";
 import type { ServiceAdminEmailRow } from "$lib/server/service-admin-emails";
 
 export const load: PageServerLoad = async () => {
   try {
     const adminUsers = await listUsersForServiceOwnerAdmin();
-    const operatorEmails = await listServiceAdminEmails();
+    const operatorEmailsReady = await isServiceAdminEmailsTableReady();
+    const operatorEmails = operatorEmailsReady ? await listServiceAdminEmails() : [];
     return {
       adminUsers,
       operatorEmails,
+      operatorEmailsMigrationRequired: !operatorEmailsReady,
       adminUsersError: null as string | null,
     };
   } catch (e) {
@@ -19,8 +24,9 @@ export const load: PageServerLoad = async () => {
     return {
       adminUsers: [] as AdminUserListRow[],
       operatorEmails: [] as ServiceAdminEmailRow[],
+      operatorEmailsMigrationRequired: false,
       adminUsersError:
-        "Could not load users. Ensure DATABASE_URL points at the database that holds Better Auth tables (`user`, `service_admins`) and that migrations have been applied.",
+        "Could not load users. Ensure DATABASE_URL points at the database with app tables (`users`, `service_admins`) and that migrations have been applied.",
     };
   }
 };

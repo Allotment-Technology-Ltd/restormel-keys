@@ -47,6 +47,7 @@ export {
 
 export {
   retrieveContext,
+  retrieveContextFromSeed,
   buildContextBlock,
   formatThinkerContextBlock,
   type RetrievedClaim,

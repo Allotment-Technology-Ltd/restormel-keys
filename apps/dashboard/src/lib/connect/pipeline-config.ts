@@ -69,8 +69,22 @@ export type SourceDocument = {
   created_at: string;
 };
 
-/** Query param: pipeline wizard step to return to after a side task (models, integrations, route builder). */
+export const CONNECT_MODELS_BASE = DASHBOARD_BASE + "/connect/models";
+export const CONNECT_GRAPH_BASE = DASHBOARD_BASE + "/connect/graph";
+
+/** Query param: where to return after a side task (models, integrations, route builder). */
+export const RETURN_TO_QUERY = "returnTo";
+/** Paired with `returnTo=pipeline-setup` — wizard step to restore. */
+export const RETURN_STEP_QUERY = "step";
+
+/** @deprecated Use RETURN_TO_QUERY — legacy alias kept for bookmark compatibility. */
 export const WIZARD_STEP_QUERY = "wizard_step";
+
+export type BuilderReturnContext =
+  | { kind: "ingest-routes" }
+  | { kind: "graph-auto-remediate" }
+  | { kind: "graph-embed-backfill" }
+  | { kind: "pipeline-setup"; step: PipelineWizardStepId };
 
 export const PIPELINE_WIZARD_STEPS = [
   {
@@ -95,20 +109,16 @@ export const PIPELINE_WIZARD_STEPS = [
     required: false,
   },
   {
-    id: "ready",
-    label: "Review",
-    title: "Review your pipeline",
-    lead: "Confirm the graph store, domain pack, and documents you configured. When you're happy, name and start your run.",
-    required: false,
-  },
-  {
-    id: "run",
-    label: "Run",
-    title: "Name your run",
-    lead: "Give this ingest run a label so you can find it later. Your pipeline settings from the previous steps apply automatically.",
+    id: "launch",
+    label: "Review & launch",
+    title: "Ready to run",
+    lead: "Here's what your ingest run will process. Start when you're ready — this may take several minutes.",
     required: false,
   },
 ] as const;
+
+/** Legacy wizard step ids — redirect to `launch`. */
+export const LEGACY_PIPELINE_WIZARD_STEP_IDS = ["ready", "run"] as const;
 
 export type PipelineWizardStepId = (typeof PIPELINE_WIZARD_STEPS)[number]["id"];
 
@@ -121,6 +131,9 @@ export type PipelineWizardProgress = {
   connectionCount: number;
   parsedDocumentCount: number;
   selectedDocumentCount: number;
+  hasGraph: boolean;
+  agentReady: boolean;
+  modelsReady?: boolean;
 };
 
 export type PipelineRunPackOption = {
@@ -143,6 +156,12 @@ export type PipelineRunDefaults = {
   defaultStopAfterStage: string | null;
 };
 
+export function isLegacyPipelineWizardStep(
+  value: string | null,
+): value is (typeof LEGACY_PIPELINE_WIZARD_STEP_IDS)[number] {
+  return value === "ready" || value === "run";
+}
+
 export function isPipelineWizardStep(value: string | null): value is PipelineWizardStepId {
   return PIPELINE_WIZARD_STEPS.some((s) => s.id === value);
 }
@@ -160,12 +179,101 @@ export function pipelineWizardStepLabel(step: PipelineWizardStepId): string {
   return PIPELINE_WIZARD_STEPS.find((s) => s.id === step)?.label ?? step;
 }
 
-/** Append wizard return context to dashboard links opened from the pipeline wizard. */
+export function parseReturnTo(params: URLSearchParams): BuilderReturnContext | null {
+  const returnTo = params.get(RETURN_TO_QUERY);
+  if (returnTo === "ingest-routes") {
+    return { kind: "ingest-routes" };
+  }
+  if (returnTo === "graph-auto-remediate") {
+    return { kind: "graph-auto-remediate" };
+  }
+  if (returnTo === "graph-embed-backfill") {
+    return { kind: "graph-embed-backfill" };
+  }
+  if (returnTo === "pipeline-setup") {
+    const step = params.get(RETURN_STEP_QUERY);
+    if (isPipelineWizardStep(step)) {
+      return { kind: "pipeline-setup", step };
+    }
+    return null;
+  }
+  /** Legacy: wizard_step without returnTo */
+  const legacyStep = params.get(WIZARD_STEP_QUERY);
+  if (isPipelineWizardStep(legacyStep)) {
+    return { kind: "pipeline-setup", step: legacyStep };
+  }
+  return null;
+}
+
+export function withReturnTo(href: string, ctx: BuilderReturnContext): string {
+  const url = new URL(href, "https://restormel.local");
+  if (ctx.kind === "ingest-routes") {
+    url.searchParams.set(RETURN_TO_QUERY, "ingest-routes");
+    url.searchParams.delete(RETURN_STEP_QUERY);
+    url.searchParams.delete(WIZARD_STEP_QUERY);
+  } else if (ctx.kind === "graph-auto-remediate") {
+    url.searchParams.set(RETURN_TO_QUERY, "graph-auto-remediate");
+    url.searchParams.delete(RETURN_STEP_QUERY);
+    url.searchParams.delete(WIZARD_STEP_QUERY);
+  } else if (ctx.kind === "graph-embed-backfill") {
+    url.searchParams.set(RETURN_TO_QUERY, "graph-embed-backfill");
+    url.searchParams.delete(RETURN_STEP_QUERY);
+    url.searchParams.delete(WIZARD_STEP_QUERY);
+  } else {
+    url.searchParams.set(RETURN_TO_QUERY, "pipeline-setup");
+    url.searchParams.set(RETURN_STEP_QUERY, ctx.step);
+    url.searchParams.delete(WIZARD_STEP_QUERY);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
+export function returnContextHref(ctx: BuilderReturnContext): string {
+  if (ctx.kind === "ingest-routes") {
+    return CONNECT_MODELS_BASE;
+  }
+  if (ctx.kind === "graph-auto-remediate") {
+    return `${CONNECT_GRAPH_BASE}?workspace=tools`;
+  }
+  if (ctx.kind === "graph-embed-backfill") {
+    return `${CONNECT_GRAPH_BASE}?workspace=tools&focus=embed`;
+  }
+  return pipelineWizardHref(ctx.step);
+}
+
+export function returnContextBackLabel(ctx: BuilderReturnContext): string {
+  if (ctx.kind === "ingest-routes") {
+    return "← Back to Ingest Routes";
+  }
+  if (ctx.kind === "graph-auto-remediate") {
+    return "← Back to auto-remediate";
+  }
+  if (ctx.kind === "graph-embed-backfill") {
+    return "← Back to embed missing ideas";
+  }
+  return `← Back to pipeline setup — Step: ${pipelineWizardStepLabel(ctx.step)}`;
+}
+
+export function returnContextFromLabel(ctx: BuilderReturnContext): string {
+  if (ctx.kind === "ingest-routes") {
+    return "From: Ingest Routes";
+  }
+  if (ctx.kind === "graph-auto-remediate") {
+    return "From: Graph auto-remediate";
+  }
+  if (ctx.kind === "graph-embed-backfill") {
+    return "From: Embed missing ideas";
+  }
+  return "From: Pipeline setup";
+}
+
+export function isRouteBuilderPath(pathname: string): boolean {
+  return /^\/keys\/dashboard\/projects\/[^/]+\/routes\/[^/]+$/.test(pathname);
+}
+
+/** @deprecated Use withReturnTo with pipeline-setup context. */
 export function withWizardReturn(href: string, wizardStep: PipelineWizardStepId | null | undefined): string {
   if (!wizardStep) return href;
-  const url = new URL(href, "https://restormel.local");
-  url.searchParams.set(WIZARD_STEP_QUERY, wizardStep);
-  return `${url.pathname}${url.search}`;
+  return withReturnTo(href, { kind: "pipeline-setup", step: wizardStep });
 }
 
 export function isPipelineWizardPath(pathname: string): boolean {

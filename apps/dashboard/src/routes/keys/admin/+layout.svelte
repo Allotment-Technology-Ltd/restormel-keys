@@ -43,6 +43,22 @@
       >
         Package registry
       </a>
+      <a
+        class="admin-nav-link"
+        class:admin-nav-link-active={active(ADMIN_BASE + "/ingest-quality/gates")}
+        href={ADMIN_BASE + "/ingest-quality/gates"}
+        aria-current={active(ADMIN_BASE + "/ingest-quality/gates") ? "page" : undefined}
+      >
+        Quality gates
+      </a>
+      <a
+        class="admin-nav-link"
+        class:admin-nav-link-active={path === ADMIN_BASE + "/ingest-quality"}
+        href={ADMIN_BASE + "/ingest-quality"}
+        aria-current={path === ADMIN_BASE + "/ingest-quality" ? "page" : undefined}
+      >
+        Ingest quality
+      </a>
     </nav>
     <a class="admin-back" href={CONNECT_HUB_HREF}>← Connect hub</a>
   </aside>

@@ -23,6 +23,10 @@ vi.mock("$lib/server/connect-ingest-jobs", () => ({
   getConnectIngestJobForWorkspace: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("$lib/server/neon", () => ({
+  getConnectGraphTargetForWorkspace: vi.fn().mockResolvedValue(null),
+}));
+
 const workspaceId = "550e8400-e29b-41d4-a716-446655440000";
 const projectId = "660e8400-e29b-41d4-a716-446655440001";
 
@@ -81,6 +85,7 @@ describe("POST /connect/v1/retrieve", () => {
     expect(data.contract_version).toBe("2026-06-01");
     expect(data.context_block).toBeDefined();
     expect(data.metadata.retrieval_degraded).toBe(true);
+    expect(data.metadata.retrieval_degraded_code).toBe("graph_target_not_configured");
   });
 });
 

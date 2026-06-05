@@ -65,7 +65,7 @@ pnpm exec keys doctor`;
   {/if}
 
   <div class="container keys-eco-wrap">
-    <EcosystemStrip variant="compact" />
+    <EcosystemStrip variant="compact" moduleFlags={flags} />
   </div>
 
   <section class="section section-intents section-alt" aria-labelledby="intent-heading">
@@ -377,10 +377,6 @@ pnpm exec keys doctor`;
     text-decoration: none;
     font-weight: var(--font-medium);
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-primary:hover {
     filter: brightness(1.1);
   }
@@ -655,13 +651,13 @@ pnpm exec keys doctor`;
   #tab-rest:checked ~ .code-framework-tabs .code-fw-tab-rest,
   #tab-elements:checked ~ .code-framework-tabs .code-fw-tab-elements,
   #tab-cli:checked ~ .code-framework-tabs .code-fw-tab-cli {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     border-color: var(--rm-sage);
   }
   .fw-pill-active {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     border-color: var(--rm-sage);
   }
   .intent-grid {

@@ -34,6 +34,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
   return json(
     {
       data: {
+        keyId: result.keyId,
         rawKey: result.rawKey,
         keyPrefix: result.keyPrefix,
         type: "gateway" as const,

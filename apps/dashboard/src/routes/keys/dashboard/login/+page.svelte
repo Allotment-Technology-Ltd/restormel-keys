@@ -1,8 +1,33 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { safeDashboardRedirectPath } from "$lib/dashboard-entry";
   import AppLogo from "$lib/components/AppLogo.svelte";
+  import { isUseCaseId, PENDING_TEMPLATE_STORAGE_KEY } from "$lib/content/use-cases";
 
   // All GitHub sign-in is initiated on the server via /api/auth/initiate/github.
+
+  $: redirectParam = $page.url.searchParams.get("redirect");
+  $: templateParam = $page.url.searchParams.get("template");
+  $: safeRedirect = redirectParam ? safeDashboardRedirectPath(redirectParam) : "";
+  $: safeTemplate = templateParam && isUseCaseId(templateParam) ? templateParam : "";
+
+  $: initiateAction =
+    DASHBOARD_BASE +
+    "/api/auth/initiate/github" +
+    (safeRedirect || safeTemplate
+      ? `?${new URLSearchParams({
+          ...(safeRedirect ? { redirect: safeRedirect } : {}),
+          ...(safeTemplate ? { template: safeTemplate } : {}),
+        }).toString()}`
+      : "");
+
+  onMount(() => {
+    if (safeTemplate && typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(PENDING_TEMPLATE_STORAGE_KEY, safeTemplate);
+    }
+  });
 </script>
 
 <div class="login-page">
@@ -18,7 +43,12 @@
     <p class="login-desc login-desc-secondary">
       Already applied? Sign in with GitHub — if your cohort is not approved yet, you will land on a pending page.
     </p>
-    <form action={DASHBOARD_BASE + "/api/auth/initiate/github"} method="get" class="login-form">
+    {#if safeTemplate}
+      <p class="login-template-note" role="status">
+        Template selected — after sign-in we’ll open Connect and pre-fill your domain config.
+      </p>
+    {/if}
+    <form action={initiateAction} method="get" class="login-form">
       <button type="submit" class="btn btn-primary login-btn">Sign in with GitHub</button>
     </form>
     <a href="/" class="back-link">← Back to Restormel</a>
@@ -63,6 +93,15 @@
   }
   .login-desc-secondary {
     margin-bottom: var(--space-6);
+  }
+  .login-template-note {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3);
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--brut-ink);
+    background: color-mix(in srgb, var(--brut-blue) 10%, var(--brut-white));
+    border: 1px solid var(--brut-ink);
   }
   .login-form {
     margin: 0 0 var(--space-4);

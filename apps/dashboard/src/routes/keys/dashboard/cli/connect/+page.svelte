@@ -135,8 +135,8 @@
     padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
     border: none;
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     font-weight: 600;
     cursor: pointer;
     font-size: var(--text-sm);

@@ -98,8 +98,4 @@
     text-decoration: none;
     display: inline-block;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
 </style>

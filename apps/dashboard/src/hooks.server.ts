@@ -3,8 +3,10 @@
  * Session: uid, email. Gateway key: uid = project owner, projectIdForKey, keyId. Management key: workspaceId, keyId.
  * Adds X-Session-Cookie for proxy when response sets cookie.
  */
-import type { Handle } from "@sveltejs/kit";
+import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { json, redirect } from "@sveltejs/kit";
+import { agentLogServer } from "$lib/debug/agent-log.server";
+import { perfSpan } from "$lib/debug/server-perf";
 import { getSession } from "$lib/server/auth";
 import { upsertUser } from "$lib/server/db";
 import { getBearerToken } from "$lib/server/bearer";
@@ -15,6 +17,7 @@ import {
   isFoundersGateExemptPath,
   requiresFoundersCircleAccess,
 } from "$lib/server/founders-access-gate";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { resolveModuleFlags } from "$lib/server/module-flags";
 import { moduleDisabledRedirectPath } from "$lib/server/module-gates";
 
@@ -42,7 +45,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   let authSessionCookies: string[] = [];
   try {
+    const endSession = perfSpan("hooks", "getSession");
     const { data: session, setCookies } = await getSession(event.request, event.url.host);
+    endSession();
     authSessionCookies = setCookies;
     if (session?.user) {
       const email = session.user.email ?? null;
@@ -111,7 +116,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   const user = event.locals.user;
 
   const distinctId = user?.uid ?? event.cookies.get("ph_distinct_id") ?? "restormel-anonymous";
-  event.locals.moduleFlags = await resolveModuleFlags(distinctId);
+  try {
+    event.locals.moduleFlags = await resolveModuleFlags(distinctId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[module-flags] resolve failed:", msg.slice(0, 120));
+    event.locals.moduleFlags = { ...MVP_MODULE_DEFAULTS };
+  }
 
   const moduleRedirect = moduleDisabledRedirectPath(pathname, event.locals.moduleFlags);
   if (moduleRedirect && !pathname.startsWith("/keys/dashboard/api") && !pathname.startsWith("/v1/")) {
@@ -128,7 +139,32 @@ export const handle: Handle = async ({ event, resolve }) => {
     throw redirect(302, `${event.url.origin}/founders/pending`);
   }
 
-  const response = await resolve(event);
+  let response: Response;
+  try {
+    response = await resolve(event);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // #region agent log
+    agentLogServer(
+      "hooks.server.ts:resolve-throw",
+      "resolve threw",
+      { pathname, msg: msg.slice(0, 200) },
+      "H4"
+    );
+    // #endregion
+    throw e;
+  }
+
+  if (pathname === "/" || pathname === "") {
+    // #region agent log
+    agentLogServer(
+      "hooks.server.ts:resolve-done",
+      "GET / SSR completed",
+      { status: response.status, contentType: response.headers.get("content-type")?.slice(0, 40) ?? null },
+      "H4"
+    );
+    // #endregion
+  }
 
   /** Machine clients under the Gateway Key API tree should not receive HTML error pages. */
   if (
@@ -175,6 +211,24 @@ export const handle: Handle = async ({ event, resolve }) => {
     statusText: response.statusText,
     headers,
   });
+};
+
+export const handleError: HandleServerError = ({ error, event, status }) => {
+  const msg = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  console.error("[server-error]", event.url.pathname, status, msg);
+  agentLogServer(
+    "hooks.server.ts:handleError",
+    "server error",
+    {
+      pathname: event.url.pathname,
+      status,
+      msg: msg.slice(0, 500),
+      stack: stack?.slice(0, 4000),
+    },
+    "H4"
+  );
+  return { message: "Internal Error" };
 };
 
 /** Deployment `config` belongs on `+layout.server.ts` / `+page.server.ts` / `+server.ts` (adapter-vercel), not here. */

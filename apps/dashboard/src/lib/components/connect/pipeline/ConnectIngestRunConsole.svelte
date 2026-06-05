@@ -1,22 +1,60 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { goto } from "$app/navigation";
-  import {
-    CONNECT_INGEST_PIPELINE_STAGES,
-    type ConnectIngestStageProgress,
-  } from "@restormel/connect-core";
+  import { goto, invalidate } from "$app/navigation";
+  import { CONNECT_INGEST_PIPELINE_STAGES } from "@restormel/connect-core/ingest/job-record";
+  import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
-  import BrutalBadge from "$lib/components/brutalist/BrutalBadge.svelte";
   import ConnectIngestPipelineTimeline from "$lib/components/connect/pipeline/ConnectIngestPipelineTimeline.svelte";
-  import { ingestStatusVariant } from "$lib/connect/ingest-progress-ui";
+  import ConnectGraphRepairProgress from "$lib/components/connect/pipeline/ConnectGraphRepairProgress.svelte";
+  import {
+    formatRunDuration,
+    ingestStatusLabel,
+    trustScoreDescriptor,
+    unitsSupportedDescriptor,
+  } from "$lib/connect/ingest-quality-display";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+
+  type GraphRepairProgress = {
+    job_kind: "graph_revalidate";
+    mode: "validate" | "validate_and_remediate";
+    phase: "loading" | "validating" | "remediating" | "storing" | "done";
+    units_total: number;
+    units_processed: number;
+    sources_total: number;
+    sources_done: number;
+    batches_total?: number;
+    batches_done?: number;
+    repaired?: number;
+    dropped?: number;
+    skipped_no_source?: number;
+    quarantine_before?: number;
+    quarantine_after?: number;
+    preview_only_sources?: number;
+    sources_remediation_failed?: number;
+    last_error?: string;
+    last_error_at?: string;
+    last_activity_at: string;
+  };
 
   type JobProgress = {
     percent: number;
     processed: number;
     total: number;
     execution_mode?: "stub" | "full";
+    graph_repair?: GraphRepairProgress;
+    quality_report?: {
+      preset?: string;
+      ok_pct?: number;
+      quarantine_count?: number;
+      quarantine_pct?: number;
+      weak_pct?: number;
+      unsupported_pct?: number;
+      stub_warning?: string | null;
+      kg_audit?: { trust_score?: number; total_issues?: number } | null;
+      next_actions?: string[];
+    };
   };
   type Job = {
     id: string;
@@ -27,11 +65,18 @@
     progress?: JobProgress;
     stages?: ConnectIngestStageProgress[];
     error?: string;
+    created_at?: string;
+    updated_at?: string;
   };
 
   export let jobId: string;
   export let statusApiBase: string;
   export let fromPipeline = false;
+  /** Set when opened from graph tools (refreshes graph data when the run completes). */
+  export let fromGraph = false;
+  /** Distinguishes graph repair jobs started from the explorer Tools panel. */
+  export let graphTask: "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill" | null =
+    null;
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
@@ -45,14 +90,17 @@
   let cancelling = false;
   let restarting = false;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
-  let logEl: HTMLPreElement | undefined;
+  let logEl: HTMLDivElement | undefined;
+  let graphDataInvalidated = false;
+  let graphWorkspaceId: string | null = null;
+  let refreshingGraph = false;
 
   $: jobsApiBase = statusApiBase.replace(/\/status$/, "");
 
   $: percent = job?.progress?.percent ?? 0;
-  $: statusVariant = ingestStatusVariant(job?.status ?? "pending");
   $: active = job?.status === "pending" || job?.status === "running";
-  $: pollMs = active ? 750 : 4000;
+  $: isGraphRepairTask = graphTask === "auto-remediate" || graphTask === "revalidate";
+  $: pollMs = active ? 1500 : 4000;
   $: canCancel = job?.status === "pending" || job?.status === "running";
   $: isStubPreview =
     job?.progress?.execution_mode === "stub" ||
@@ -70,6 +118,25 @@
 
   $: showCompletedGraphCta =
     job?.status === "completed" && !isStubPreview && job?.progress?.execution_mode === "full";
+
+  $: showCompletedLinkSourcesBanner =
+    graphTask === "link-sources" && showCompletedGraphCta;
+
+  $: isCompleted = job?.status === "completed";
+  $: isInProgress = job?.status === "pending" || job?.status === "running";
+  $: startingRun = isInProgress && loading && logLines.length === 0;
+  $: graphRepair = job?.progress?.graph_repair ?? null;
+  $: stagesComplete = job?.progress?.processed ?? 0;
+  $: stagesTotal = job?.progress?.total ?? CONNECT_INGEST_PIPELINE_STAGES.length;
+  $: showGraphRepairPanel = Boolean(graphRepair && isGraphRepairTask);
+  $: trustScore = job?.progress?.quality_report?.kg_audit?.trust_score;
+  $: okPct = job?.progress?.quality_report?.ok_pct;
+  $: trustDesc = trustScoreDescriptor(trustScore);
+  $: unitsDesc = unitsSupportedDescriptor(okPct);
+  $: runDurationLabel =
+    isCompleted && job?.created_at && job?.updated_at
+      ? formatRunDuration(new Date(job.updated_at).getTime() - new Date(job.created_at).getTime())
+      : "";
 
   async function cancelJob() {
     if (!job || !canCancel) return;
@@ -109,7 +176,11 @@
         actionMsg = "Restart succeeded but no new run id was returned.";
         return;
       }
-      const suffix = fromPipeline ? "?from=pipeline" : "";
+      const suffix = fromPipeline
+        ? "?from=pipeline"
+        : fromGraph
+          ? `?from=graph${graphTask ? `&task=${graphTask}` : ""}`
+          : "";
       await goto(`${CONNECT_BASE}/ingest/${newId}${suffix}`);
     } catch {
       actionMsg = "Network error while restarting.";
@@ -135,6 +206,22 @@
       }
       const d = await res.json();
       job = d.job ?? null;
+      if (typeof d.workspace_id === "string") {
+        graphWorkspaceId = d.workspace_id;
+      }
+      if (
+        fromGraph &&
+        !graphDataInvalidated &&
+        job?.status === "completed" &&
+        job?.progress?.execution_mode === "full"
+      ) {
+        graphDataInvalidated = true;
+        const wsId = graphWorkspaceId;
+        if (wsId) {
+          void invalidate(`app:connect-graph:${wsId}`);
+          void invalidate(`app:connect-hub:${wsId}`);
+        }
+      }
       if (Array.isArray(d.log_lines) && d.log_lines.length > 0) {
         logLines = [...logLines, ...d.log_lines];
         if (logLines.length > 600) logLines = logLines.slice(-600);
@@ -165,6 +252,20 @@
     void loadLive(false);
   }
 
+  async function refreshGraphReview() {
+    if (refreshingGraph) return;
+    refreshingGraph = true;
+    try {
+      if (graphWorkspaceId) {
+        await invalidate(`app:connect-graph:${graphWorkspaceId}`);
+        await invalidate(`app:connect-hub:${graphWorkspaceId}`);
+      }
+      await goto(`${CONNECT_BASE}/graph`);
+    } finally {
+      refreshingGraph = false;
+    }
+  }
+
   onDestroy(() => {
     if (pollTimer) clearTimeout(pollTimer);
   });
@@ -176,43 +277,72 @@
   {:else if error}
     <p class="run-error" role="alert">{error}</p>
   {:else if job}
-    <header class="run-head">
+    <header class="run-head" class:run-head-active={isInProgress}>
       <div>
-        <p class="run-kicker">{fromPipeline ? "Pipeline run" : "Ingest run"}</p>
         <h1 id="run-console-heading" class="run-title">{job.label ?? "Ingest run"}</h1>
         <p class="run-meta">
-          <BrutalBadge variant={statusVariant} label={job.status} />
+          <span class="run-status-badge" class:run-status-badge-active={isInProgress} class:run-status-badge-done={isCompleted}>
+            {#if isInProgress}
+              <span class="run-status-pulse" aria-hidden="true"></span>
+            {/if}
+            {ingestStatusLabel(job.status)}
+          </span>
           <code class="run-id">{job.id}</code>
         </p>
-      </div>
-      <div class="run-actions">
-        {#if canCancel}
-          <button type="button" class="btn btn-danger" on:click={cancelJob} disabled={cancelling}>
-            {cancelling ? "Cancelling…" : "Cancel run"}
-          </button>
+        {#if runDurationLabel}
+          <p class="run-duration">{runDurationLabel}</p>
         {/if}
-        {#if showCompletedGraphCta}
-          <a class="btn btn-primary" href={CONNECT_BASE + "/graph"}>View graph</a>
-        {/if}
-        {#if canRestart}
-          <button type="button" class="btn btn-secondary" on:click={restartJob} disabled={restarting}>
-            {restarting ? "Starting…" : runAgainLabel}
-          </button>
-        {/if}
-        <a class="btn btn-secondary" href={pipelineWizardHref("sources")}>Next run setup</a>
       </div>
     </header>
+
+    {#if startingRun}
+      <p class="run-starting" role="status">Starting your run…</p>
+    {/if}
 
     {#if actionMsg}
       <p class="run-notice" role="status">{actionMsg}</p>
     {/if}
 
-    {#if showCompletedGraphCta}
+    {#if showCompletedLinkSourcesBanner}
+      <div class="run-success" role="status">
+        <strong>Source linking complete.</strong>
+        Matched ideas now have source titles and links in your graph store.
+        <button
+          type="button"
+          class="btn btn-primary run-refresh-btn"
+          on:click={refreshGraphReview}
+          disabled={refreshingGraph}
+        >
+          {refreshingGraph ? "Refreshing…" : "Refresh graph review"}
+        </button>
+        to reload the idea list with updated provenance. Counts on this page already refreshed in the background.
+      </div>
+    {/if}
+
+    {#if showCompletedGraphCta && graphTask !== "link-sources"}
       <div class="run-success" role="status">
         <strong>Run complete.</strong>
-        Your graph store should now have new units and relationships.
-        <a href={CONNECT_BASE + "/graph"}>Open the graph explorer</a>
-        to review them, or use <strong>Next run setup</strong> to change documents or domain pack before another ingest.
+        {#if graphTask === "auto-remediate"}
+          Auto-remediation finished — repaired ideas were re-validated and re-embedded when routes allowed.
+          Items still in quarantine need human review.
+          <a href={CONNECT_BASE + "/graph?filter=review"}>Return to quarantine queue</a>
+          (this page already reloaded graph data). Check the log for repaired, dropped, and skipped counts.
+        {:else if graphTask === "embed-backfill"}
+          Embed backfill finished — missing ideas were vectorized when the embedding route succeeded.
+          <a href={CONNECT_BASE + "/graph?workspace=tools&focus=embed"}>Return to graph review</a>
+          to confirm the embedded count (this page already reloaded graph data). Check the log for batch errors.
+        {:else if graphTask === "revalidate" || fromGraph}
+          Validation statuses were written to your graph store when source text was available.
+          <a href={CONNECT_BASE + "/graph"}>Return to graph review</a>
+          to refresh the Supported / Unchecked counts (this page already reloaded graph data).
+          If counts are unchanged, open the log below for “Skipped … no source text” lines.
+        {:else}
+          Your graph store should now have new units and relationships.
+          <a href={CONNECT_BASE + "/graph"}>Open the graph explorer</a>
+          to review them, then
+          <a href={CONNECT_MCP_HREF}>connect your agent via MCP</a>.
+          Use <strong>Next run setup</strong> to change documents or domain pack before another ingest.
+        {/if}
       </div>
     {/if}
 
@@ -221,7 +351,71 @@
         <strong>Preview run — nothing was written to your graph store.</strong>
         This run only simulated pipeline progress. With Surreal connected in the pipeline wizard, new runs
         write to your database automatically. Use <strong>Restart run</strong> or
-        <a href={pipelineWizardHref("run")}>start a new run</a>.
+        <a href={pipelineWizardHref("launch")}>start a new run</a>.
+      </div>
+    {/if}
+
+    {#if job.progress?.quality_report && isCompleted}
+      <div class="run-quality-scorecard" role="region" aria-label="Run quality report">
+        {#if job.progress.quality_report.stub_warning}
+          <p class="run-warn" role="status">{job.progress.quality_report.stub_warning}</p>
+        {/if}
+        <div class="quality-metrics">
+          <article class="quality-metric quality-metric--{trustDesc.tint}">
+            <span class="quality-metric-label">Trust score</span>
+            <span class="quality-metric-value">{trustScore ?? "—"}</span>
+            <span class="quality-metric-desc">{trustDesc.label}</span>
+          </article>
+          <article class="quality-metric quality-metric--{unitsDesc.tint}">
+            <span class="quality-metric-label">Units supported</span>
+            <span class="quality-metric-value">{okPct ?? 0}%</span>
+            <span class="quality-metric-desc">After remediation</span>
+          </article>
+          <article class="quality-metric">
+            <span class="quality-metric-label">Total units</span>
+            <span class="quality-metric-value">{job.progress.processed ?? "—"}</span>
+            <span class="quality-metric-desc">{unitsDesc.label}</span>
+          </article>
+        </div>
+      </div>
+
+      <div class="run-next-actions" role="region" aria-labelledby="next-actions-heading">
+        <h2 id="next-actions-heading" class="run-next-actions-title">What to do next</h2>
+        <ol class="run-next-list">
+          {#if (trustScore ?? 0) < 80}
+            <li class="run-next-item run-next-item-primary">
+              <span class="run-next-num">1</span>
+              <span class="run-next-text">Review weak units in the graph explorer</span>
+              <a class="btn btn-primary btn-sm" href={CONNECT_BASE + "/graph?filter=review"}>Open quarantine queue →</a>
+            </li>
+            <li class="run-next-item">
+              <span class="run-next-num">2</span>
+              <span class="run-next-text">Explore what was captured</span>
+              <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/graph"}>View graph →</a>
+            </li>
+            <li class="run-next-item">
+              <span class="run-next-num">3</span>
+              <span class="run-next-text">Connect an agent to start querying</span>
+              <a class="btn btn-outline btn-sm" href={CONNECT_MCP_HREF}>Set up agent →</a>
+            </li>
+          {:else}
+            <li class="run-next-item run-next-item-primary">
+              <span class="run-next-num">1</span>
+              <span class="run-next-text">Explore what was captured</span>
+              <a class="btn btn-primary btn-sm" href={CONNECT_BASE + "/graph"}>View graph →</a>
+            </li>
+            <li class="run-next-item">
+              <span class="run-next-num">2</span>
+              <span class="run-next-text">Connect an agent to start querying</span>
+              <a class="btn btn-outline btn-sm" href={CONNECT_MCP_HREF}>Set up agent →</a>
+            </li>
+            <li class="run-next-item">
+              <span class="run-next-num">3</span>
+              <span class="run-next-text">Run again with more documents</span>
+              <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>New run →</a>
+            </li>
+          {/if}
+        </ol>
       </div>
     {/if}
 
@@ -229,53 +423,97 @@
       <p class="run-error" role="alert">{job.error}</p>
     {/if}
 
-    <div class="run-grid">
-      <BrutalCard fill="canvas" title="Progress">
-        <div class="progress-panel">
-          <div class="progress-readout" aria-live="polite">
-            <span class="progress-pct">{percent}<span class="progress-pct-suffix">%</span></span>
-            <span class="progress-eta">Run progress</span>
+    <div class="run-grid" class:run-grid-active={isInProgress}>
+      <BrutalCard fill="canvas" title={showGraphRepairPanel ? "Unit progress" : "Progress"}>
+        {#if showGraphRepairPanel && graphRepair}
+          <ConnectGraphRepairProgress
+            graphRepair={graphRepair}
+            jobStatus={job.status}
+            jobUpdatedAt={job.updated_at}
+            percent={percent}
+          />
+        {:else}
+          <div class="progress-panel">
+            <div class="progress-readout" aria-live="polite">
+              <span class="progress-pct">{percent}<span class="progress-pct-suffix">%</span></span>
+              <span class="progress-eta">{isInProgress ? "Running" : "Run progress"}</span>
+            </div>
+            <div
+              class="progress-track"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={percent}
+              aria-label="Ingest progress"
+            >
+              <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
+              <div class="progress-segments" aria-hidden="true">
+                {#each CONNECT_INGEST_PIPELINE_STAGES as _}
+                  <span></span>
+                {/each}
+              </div>
+            </div>
+            {#if job.progress}
+              <p class="run-muted progress-detail">
+                {stagesComplete} of {stagesTotal} stages complete
+              </p>
+            {/if}
           </div>
+        {/if}
+        {#if showGraphRepairPanel}
           <div
-            class="progress-track"
+            class="progress-track progress-track-compact"
             role="progressbar"
             aria-valuemin="0"
             aria-valuemax="100"
             aria-valuenow={percent}
-            aria-label="Ingest progress"
+            aria-label="Graph repair progress"
           >
-            <div class="progress-fill" style:width="{percent}%"></div>
-            <div class="progress-segments" aria-hidden="true">
-              {#each CONNECT_INGEST_PIPELINE_STAGES as _}
-                <span></span>
-              {/each}
-            </div>
+            <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
           </div>
-          {#if job.progress}
-            <p class="run-muted progress-detail">
-              {job.progress.processed} of {job.progress.total} stages complete
-            </p>
-          {/if}
-        </div>
+        {/if}
       </BrutalCard>
 
-      <BrutalCard fill="white" title="Pipeline">
-        <p class="run-muted pipeline-lede">Stage state from the worker — current stage, ETA, and per-stage progress.</p>
-        <ConnectIngestPipelineTimeline
-          stages={job.stages ?? []}
-          currentStageKey={job.current_stage}
-          currentAction={job.current_action}
-          jobStatus={job.status}
-        />
-      </BrutalCard>
-
-      <BrutalCard fill="white" title="Activity log">
-        <p class="run-muted log-meta">
-          {logLines.length} lines shown · {logLineTotal} total buffered
-        </p>
-        <pre class="log-screen" bind:this={logEl} tabindex="0" aria-label="Ingest activity log">{logLines.join("\n") || "— awaiting worker output —"}</pre>
-      </BrutalCard>
+      {#if isCompleted}
+        <details class="run-collapsible">
+          <summary>Show pipeline details ↓</summary>
+          <BrutalCard fill="white" title="Pipeline">
+            <ConnectIngestPipelineTimeline
+              stages={job.stages ?? []}
+              currentStageKey={job.current_stage}
+              currentAction={job.current_action}
+              jobStatus={job.status}
+            />
+          </BrutalCard>
+        </details>
+      {:else}
+        <BrutalCard fill="white" title="Pipeline">
+          <ConnectIngestPipelineTimeline
+            stages={job.stages ?? []}
+            currentStageKey={job.current_stage}
+            currentAction={job.current_action}
+            jobStatus={job.status}
+          />
+        </BrutalCard>
+      {/if}
     </div>
+
+    {#if !startingRun}
+      <details class="run-collapsible run-log-collapsible" open={isGraphRepairTask && isInProgress}>
+        <summary>Activity log ({logLines.length} lines) ↓</summary>
+        <div class="log-screen" role="region" aria-label="Ingest activity log" bind:this={logEl}>
+          <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+        </div>
+      </details>
+    {/if}
+
+    {#if canCancel}
+      <p class="run-cancel-wrap">
+        <button type="button" class="run-cancel-link" on:click={cancelJob} disabled={cancelling}>
+          {cancelling ? "Cancelling…" : "Cancel run"}
+        </button>
+      </p>
+    {/if}
   {/if}
 </section>
 
@@ -325,6 +563,11 @@
     font-weight: 600;
   }
 
+  .run-success .run-refresh-btn {
+    margin: var(--space-2) var(--space-2) 0 0;
+    vertical-align: baseline;
+  }
+
   .run-success {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);
@@ -351,8 +594,184 @@
 
   .run-title {
     margin: 0 0 var(--space-2);
-    font-size: var(--text-2xl);
+    font-family: var(--font-display, var(--font-sans));
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 900;
     color: var(--rm-text);
+  }
+
+  .run-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    text-transform: capitalize;
+    border: var(--border);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .run-status-badge-active,
+  .run-status-badge-done {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+  }
+
+  .run-status-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-ink);
+    animation: run-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes run-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .run-duration {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--rm-muted);
+  }
+
+  .run-starting {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    animation: run-pulse 1.5s ease-in-out infinite;
+  }
+
+  .progress-fill-yellow {
+    background: var(--color-yellow) !important;
+  }
+
+  .quality-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--space-3);
+  }
+
+  .quality-metric {
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .quality-metric-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .quality-metric-value {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .quality-metric-desc {
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+
+  .quality-metric--red .quality-metric-desc {
+    color: var(--coral-alert);
+  }
+
+  .quality-metric--yellow .quality-metric-desc {
+    color: var(--color-ink);
+  }
+
+  .quality-metric--green .quality-metric-desc {
+    color: var(--rm-sage);
+  }
+
+  .run-next-actions {
+    border: var(--border);
+    background: var(--color-yellow);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+  }
+
+  .run-next-actions-title {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-base);
+    font-weight: 700;
+  }
+
+  .run-next-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .run-next-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .run-next-num {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    min-width: 1.25rem;
+  }
+
+  .run-next-text {
+    flex: 1;
+    min-width: 12rem;
+  }
+
+  .run-collapsible summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .run-cancel-wrap {
+    margin: var(--space-4) 0 0;
+    text-align: center;
+  }
+
+  .run-cancel-link {
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-faint);
+    cursor: pointer;
+    text-decoration: underline;
+    min-height: 44px;
+  }
+
+  @media (min-width: 960px) {
+    .run-grid-active {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
   .run-meta {
@@ -436,6 +855,11 @@
     box-shadow: inset 2px 2px 0 color-mix(in oklab, var(--brut-ink) 12%, transparent);
   }
 
+  .progress-track-compact {
+    margin-top: var(--space-3);
+    height: 0.75rem;
+  }
+
   .progress-fill {
     position: absolute;
     inset: 0 auto 0 0;
@@ -480,7 +904,6 @@
   }
 
   .log-screen {
-    margin: 0;
     max-height: 22rem;
     overflow: auto;
     padding: var(--space-3);
@@ -490,8 +913,13 @@
     font-family: var(--rm-font-mono);
     font-size: 0.75rem;
     line-height: 1.45;
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 15%, transparent);
+  }
+  .log-screen-pre {
+    margin: 0;
+    font: inherit;
+    color: inherit;
     white-space: pre-wrap;
     word-break: break-word;
-    box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 15%, transparent);
   }
 </style>

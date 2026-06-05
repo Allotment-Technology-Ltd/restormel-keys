@@ -15,7 +15,7 @@
       <span class="pipeline-exit-note">Setup wizard — side tasks open in place with a return link.</span>
     </p>
     <h1 id="pipeline-heading" class="h1">Set up your pipeline</h1>
-    <p class="lede">Five short steps — graph store, domain, sources, review, then start your run.</p>
+    <p class="lede">Graph store, domain, sources, and review &amp; launch — then use the MCP tab to wire agents.</p>
     <slot />
   </section>
 </div>

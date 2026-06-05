@@ -1,13 +1,16 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     CONNECT_PIPELINE_API,
+    withReturnTo,
     type DocRef,
     type SourceConnection,
     type SourceDocument,
     type PipelineWizardStepId,
   } from "$lib/connect/pipeline-config";
   import { formatDocMeta, formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
+  import ConnectSourceDocumentPreCheck from "$lib/components/connect/ConnectSourceDocumentPreCheck.svelte";
 
   export let embedded = false;
   export let wizardStep: PipelineWizardStepId | null = null;
@@ -50,9 +53,9 @@
   let crawlError = false;
 
   let pageUrl = "";
-  let importingPage = false;
   let pageUrlMsg: string | null = null;
   let pageUrlError = false;
+  let urlPreCheck: ConnectSourceDocumentPreCheck;
 
   let loadingStarter = false;
   let starterMsg: string | null = null;
@@ -71,6 +74,11 @@
 
   $: parsedDocuments = documents.filter((d) => d.status === "parsed");
   $: selectedDocCount = parsedDocuments.filter((d) => selectedDocIds[d.id]).length;
+  $: allParsedSelected = parsedDocuments.length > 0 && selectedDocCount === parsedDocuments.length;
+  const INTEGRATIONS_HREF = withReturnTo(DASHBOARD_BASE + "/integrations", {
+    kind: "pipeline-setup",
+    step: wizardStep ?? "sources",
+  });
 
   function syncSelectionUi() {
     const next: Record<string, boolean> = { ...selectedDocIds };
@@ -351,41 +359,19 @@
     }
   }
 
-  async function importPageUrl() {
-    const url = pageUrl.trim();
-    if (!url) return;
-    importingPage = true;
-    pageUrlMsg = null;
+  async function onUrlDocumentImported(
+    event: CustomEvent<{ id: string; name: string; status: string; chunk_count?: number }>,
+  ) {
+    const doc = event.detail;
     pageUrlError = false;
-    try {
-      const res = await fetch(API_BASE + "/sources/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "url", url, content_encoding: "utf8" }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        pageUrlError = true;
-        pageUrlMsg = d.message ?? `Import failed (HTTP ${res.status}).`;
-        return;
-      }
-      const doc = d.document;
-      if (doc?.status === "failed") {
-        pageUrlError = true;
-        pageUrlMsg = doc.error ?? "Could not parse this page.";
-      } else {
-        pageUrlMsg = `Imported “${doc?.name ?? "page"}” (${doc?.chunk_count ?? 0} chunk(s)).`;
-        pageUrl = "";
-      }
-      await loadDocuments();
-      if (doc?.id) await includeImportedDocs([doc]);
-      notifyUpdated();
-    } catch {
-      pageUrlError = true;
-      pageUrlMsg = "Network error while importing page.";
-    } finally {
-      importingPage = false;
-    }
+    pageUrlMsg =
+      doc.status === "failed"
+        ? "Could not parse this page."
+        : `Imported “${doc.name}” (${doc.chunk_count ?? 0} chunk(s)).`;
+    pageUrl = "";
+    await loadDocuments();
+    if (doc.id && doc.status === "parsed") await includeImportedDocs([doc]);
+    notifyUpdated();
   }
 
   async function runCrawl() {
@@ -472,9 +458,6 @@
 
     <div class="starter-corpus">
       <h3 class="preview-sub">First graph starter corpus</h3>
-      <p class="muted">
-        Three short philosophy demo passages (Restormel-authored, CC0). Use these with Graph Designer and your first ingest run.
-      </p>
       {#if starterMsg}
         <p class:err={starterError} class:notice={!starterError} role="status">{starterMsg}</p>
       {/if}
@@ -485,9 +468,10 @@
           disabled={loadingStarter}
           on:click={loadStarterCorpus}
         >
-          {loadingStarter ? "Loading…" : starterLoaded ? "Reload starter corpus" : "Load starter corpus (3 documents)"}
+          {loadingStarter ? "Loading…" : starterLoaded ? "Reload starter documents" : "Load 3 starter documents"}
         </button>
       </div>
+      <p class="field-hint">Restormel-authored CC0 passages — safe to use for first runs and demos.</p>
     </div>
 
     <section class="doc-inventory" aria-labelledby="doc-inventory-heading">
@@ -503,12 +487,17 @@
           {/if}
         </span>
       </div>
+      {#if allParsedSelected}
+        <p class="sources-select-banner" role="status">
+          All documents selected — deselect any you want to exclude from this run.
+        </p>
+      {/if}
       {#if parsedDocuments.length > 0}
         <div class="doc-selection-actions">
-          <button type="button" class="btn btn-inline btn-secondary" disabled={savingSelection} on:click={selectAllParsed}>
+          <button type="button" class="btn btn-inline btn-outline" disabled={savingSelection} on:click={selectAllParsed}>
             Select all parsed
           </button>
-          <button type="button" class="btn btn-inline btn-secondary" disabled={savingSelection} on:click={clearDocSelection}>
+          <button type="button" class="btn btn-inline btn-outline" disabled={savingSelection} on:click={clearDocSelection}>
             Clear selection
           </button>
         </div>
@@ -522,7 +511,19 @@
           <p class:err={documentsNoticeError} class:notice={!documentsNoticeError} role="status">{documentsNotice}</p>
         {/if}
         {#if documents.length === 0}
-          <p class="muted">No documents yet — load the starter corpus or import from a connection below.</p>
+          <div class="sources-empty" role="status">
+            <span class="sources-empty-icon" aria-hidden="true">□</span>
+            <h4 class="sources-empty-title">No documents yet</h4>
+            <p class="sources-empty-body">Load the starter corpus to try your first run, or import a URL below.</p>
+            <button
+              type="button"
+              class="btn btn-primary"
+              disabled={loadingStarter}
+              on:click={loadStarterCorpus}
+            >
+              {loadingStarter ? "Loading…" : "Load 3 starter documents"}
+            </button>
+          </div>
         {:else}
         <ul class="doc-inventory-list">
           {#each documents as doc (doc.id)}
@@ -537,24 +538,29 @@
                   />
                   <span class="visually-hidden">Include in next run</span>
                 </label>
+              {:else}
+                <span class="doc-select-spacer" aria-hidden="true"></span>
               {/if}
               <div class="doc-inventory-main">
-                <span class="doc-name" title={doc.name}>{doc.name}</span>
-                <span class="doc-inventory-meta">{formatDocMeta(doc)}</span>
-              </div>
-              <div class="doc-inventory-tags">
-                <span class="badge status-muted">{formatSourceKind(doc.source_kind, doc.name)}</span>
-                <span class="badge {pipelineStatusClass(doc.status)}">{doc.status}</span>
+                <div class="doc-title-row">
+                  <span class="doc-name" title={doc.name}>{doc.name}</span>
+                  <span class="tag tag-source">{formatSourceKind(doc.source_kind, doc.name)}</span>
+                  <span class="tag tag-status tag-status-{doc.status === 'parsed' ? 'ok' : 'err'}">
+                    {doc.status === "parsed" ? "Parsed" : doc.status === "failed" ? "Error" : doc.status}
+                  </span>
+                </div>
+                <span class="doc-inventory-meta">{doc.chunk_count} chunks · {doc.char_count.toLocaleString()} chars</span>
               </div>
               {#if doc.status === "failed" && doc.error}
                 <span class="doc-inventory-error" title={doc.error}>{doc.error}</span>
               {/if}
               <button
                 type="button"
-                class="btn btn-inline btn-secondary doc-remove"
+                class="doc-remove-btn"
+                aria-label="Remove {doc.name}"
                 on:click={() => deleteDocument(doc.id, doc.name)}
               >
-                Remove
+                ×
               </button>
             </li>
           {/each}
@@ -566,9 +572,9 @@
     <section class="page-import" aria-labelledby="page-import-heading">
       <h3 id="page-import-heading" class="preview-sub">Import a web page</h3>
       <p class="muted">
-        Fetch and parse one URL — no link following. Use this for a Stanford Encyclopedia entry, a docs page, or any single article.
+        Fetch and parse one URL — no link following. Preview metadata (title, authors, canonical link) before the full parse.
       </p>
-      <form class="form" on:submit|preventDefault={importPageUrl}>
+      <div class="form">
         <label class="field">
           <span class="field-label">Page URL</span>
           <input
@@ -576,33 +582,57 @@
             type="url"
             bind:value={pageUrl}
             placeholder="https://plato.stanford.edu/entries/existentialism/"
-            required
           />
         </label>
+        <div class="page-import-actions">
+          <ConnectSourceDocumentPreCheck
+            bind:this={urlPreCheck}
+            apiBase={API_BASE}
+            mode="url"
+            bind:url={pageUrl}
+            on:imported={onUrlDocumentImported}
+          />
+          <details class="preview-hint-details">
+            <summary>Why preview metadata first?</summary>
+            <p class="field-hint">
+              Preview shows title, authors, and canonical URL before a full parse — useful when the page title differs from what you expect.
+            </p>
+          </details>
+        </div>
         {#if pageUrlMsg}
           <p class:err={pageUrlError} class:notice={!pageUrlError} role="status">{pageUrlMsg}</p>
         {/if}
-        <div class="actions">
-          <button type="submit" class="btn btn-primary" disabled={importingPage || !pageUrl.trim()}>
-            {importingPage ? "Importing…" : "Import page"}
-          </button>
-        </div>
-      </form>
+      </div>
     </section>
 
-    <div class="connect-row">
-      <button type="button" class="btn btn-secondary" on:click={() => (showS3Form = !showS3Form)}>
-        {showS3Form ? "Cancel S3" : "Add S3 bucket"}
+    <div class="connector-cards">
+      <button type="button" class="connector-card" on:click={() => (showS3Form = !showS3Form)}>
+        <span class="connector-card-name">S3 bucket</span>
+        <span class="connector-card-state">Add connection</span>
       </button>
       {#if connProviders.google_drive}
-        <a class="btn btn-secondary" href={API_BASE + "/sources/connectors/google/authorize"} data-sveltekit-reload>Connect Google Drive</a>
+        <a class="connector-card" href={API_BASE + "/sources/connectors/google/authorize"} data-sveltekit-reload>
+          <span class="connector-card-name">Google Drive</span>
+          <span class="connector-card-state">Connect →</span>
+        </a>
       {:else}
-        <button type="button" class="btn btn-secondary" disabled title="Set GOOGLE_OAUTH_CLIENT_ID/SECRET">Google Drive (not configured)</button>
+        <div class="connector-card connector-card-muted">
+          <span class="connector-card-name">Google Drive</span>
+          <span class="connector-card-state">Not configured</span>
+          <a class="connector-card-setup" href={INTEGRATIONS_HREF}>Set up →</a>
+        </div>
       {/if}
       {#if connProviders.sharepoint}
-        <a class="btn btn-secondary" href={API_BASE + "/sources/connectors/microsoft/authorize"} data-sveltekit-reload>Connect SharePoint / OneDrive</a>
+        <a class="connector-card" href={API_BASE + "/sources/connectors/microsoft/authorize"} data-sveltekit-reload>
+          <span class="connector-card-name">SharePoint</span>
+          <span class="connector-card-state">Connect →</span>
+        </a>
       {:else}
-        <button type="button" class="btn btn-secondary" disabled title="Set MS_OAUTH_CLIENT_ID/SECRET">SharePoint (not configured)</button>
+        <div class="connector-card connector-card-muted">
+          <span class="connector-card-name">SharePoint</span>
+          <span class="connector-card-state">Not configured</span>
+          <a class="connector-card-setup" href={INTEGRATIONS_HREF}>Set up →</a>
+        </div>
       {/if}
     </div>
 

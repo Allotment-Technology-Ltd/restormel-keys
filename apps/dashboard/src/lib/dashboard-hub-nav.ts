@@ -6,12 +6,16 @@ import { CONNECT_HUB_HREF, TESTING_HUB_HREF } from "$lib/nav-config";
 
 export type HubTab = { href: string; label: string; exact: boolean };
 
+/** Canonical Connect MCP / agent wiring screen (hub tab). */
+export const CONNECT_MCP_HREF = CONNECT_HUB_HREF + "/mcp";
+
 export const CONNECT_HUB_TABS: HubTab[] = [
   { href: CONNECT_HUB_HREF, label: "Home", exact: true },
-  { href: CONNECT_HUB_HREF + "/models", label: "Models & keys", exact: false },
-  { href: CONNECT_HUB_HREF + "/pipeline", label: "Pipeline", exact: false },
+  { href: CONNECT_HUB_HREF + "/models", label: "Ingest routes", exact: false },
+  { href: CONNECT_HUB_HREF + "/pipeline", label: "Setup", exact: false },
   { href: CONNECT_HUB_HREF + "/ingest", label: "Runs", exact: false },
   { href: CONNECT_HUB_HREF + "/graph", label: "Graph", exact: false },
+  { href: CONNECT_MCP_HREF, label: "Agents", exact: true },
 ];
 
 export const TESTING_HUB_TABS: HubTab[] = [

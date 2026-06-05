@@ -2,6 +2,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { invalidateAll } from "$app/navigation";
   import { page } from "$app/stores";
+  import { tick, onMount } from "svelte";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { DIRECT_PROVIDER_CONNECT_CARDS } from "$lib/route-step-providers";
   import type { IntegrationSummary } from "./+page.server";
@@ -26,14 +27,25 @@
 
   let connecting = false;
   let connectError = "";
-  let providerType = "openai";
+  /** null until the user picks a provider tile (avoids looking pre-filled on landing). */
+  let providerType: string | null = null;
   let otherProviderType = "";
   let displayName = "";
   let credentialRef = "";
   /** One-time hosted API key; encrypted at rest when server is configured. Cleared after successful submit. */
   let apiKey = "";
 
-  $: effectiveProviderType = providerType === "other" ? otherProviderType.trim() : providerType;
+  $: effectiveProviderType =
+    !providerType ? "" : providerType === "other" ? otherProviderType.trim() : providerType;
+  $: providerReady = Boolean(
+    providerType && (providerType !== "other" || otherProviderType.trim()),
+  );
+  $: selectedProviderLabel =
+    !providerType
+      ? ""
+      : providerType === "other"
+        ? otherProviderType.trim() || "Other"
+        : (PROVIDER_CARDS.find((c) => c.value === providerType)?.label ?? providerType);
   $: canConnect = Boolean(
     effectiveProviderType &&
       displayName.trim() &&
@@ -45,9 +57,46 @@
   }
 
   function selectProvider(value: string) {
+    if (providerType !== value) {
+      displayName = "";
+      credentialRef = "";
+      apiKey = "";
+    }
     providerType = value;
     if (value !== "other") otherProviderType = "";
+    connectError = "";
+    void focusConnectStep2();
   }
+
+  async function focusConnectStep2() {
+    await tick();
+    if (!providerReady) return;
+    document.getElementById("connect-step-2")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const label = document.getElementById("integration-label");
+    if (label instanceof HTMLInputElement) {
+      label.removeAttribute("readonly");
+      label.focus();
+    }
+  }
+
+  function resetConnectForm() {
+    providerType = null;
+    otherProviderType = "";
+    displayName = "";
+    credentialRef = "";
+    apiKey = "";
+    connectError = "";
+  }
+
+  /** Browsers ignore autocomplete=off on password fields; readonly-until-focus blocks silent autofill. */
+  function unlockAutofillGuard(e: FocusEvent) {
+    const el = e.currentTarget;
+    if (el instanceof HTMLInputElement) el.removeAttribute("readonly");
+  }
+
+  onMount(() => {
+    if (!providerType) resetConnectForm();
+  });
 
   function startJourney(kind: "openrouter" | "vercel_ai_gateway" | "portkey" | "direct") {
     connectError = "";
@@ -64,11 +113,13 @@
       displayName = "Portkey";
       credentialRef = "";
     } else {
-      providerType = "openai";
-      displayName = "Direct providers";
+      providerType = null;
+      displayName = "";
       credentialRef = "";
+      jumpToForm();
+      return;
     }
-    jumpToForm();
+    void focusConnectStep2();
   }
 
   async function connectProvider() {
@@ -219,49 +270,106 @@
   <section class="section" aria-labelledby="connect-heading">
     <h2 id="connect-heading" class="section-title">Add a connection</h2>
     <p class="section-desc">
-      Step 1 pick provider, Step 2 name it, Step 3 paste a hosted API key <em>or</em> a vault reference (non-secret label).
+      Pick a provider first — name and credential fields appear after that.
     </p>
     {#if connectError}
       <p class="error-msg" role="alert">{connectError}</p>
     {/if}
-    <form class="connect-form" onsubmit={(e) => { e.preventDefault(); connectProvider(); }}>
-      <div class="wizard-row">
+    <form
+      class="connect-form"
+      autocomplete="off"
+      data-1p-ignore
+      data-lpignore="true"
+      onsubmit={(e) => { e.preventDefault(); connectProvider(); }}
+    >
+      <div class="wizard-row" id="connect-step-1">
         <p class="wizard-step">Step 1</p>
         <p class="wizard-title">Provider</p>
-        <div class="provider-grid">
+        <p class="provider-selection-hint" aria-live="polite">
+          {#if !providerType}
+            Choose a provider to continue.
+          {:else if providerType === "other" && !otherProviderType.trim()}
+            Selected: <strong>Other</strong> — enter your integration type below to unlock the next steps.
+          {:else}
+            Selected: <strong>{selectedProviderLabel}</strong> — add a display name and credential below.
+          {/if}
+        </p>
+        <div class="provider-grid" role="radiogroup" aria-label="Provider">
           {#each PROVIDER_CARDS as opt}
-            <button type="button" class="provider-btn" class:provider-btn-active={providerType === opt.value} onclick={() => selectProvider(opt.value)}>
-              {opt.label}
+            <button
+              type="button"
+              class="provider-btn"
+              class:provider-btn-active={providerType === opt.value}
+              role="radio"
+              aria-checked={providerType === opt.value}
+              onclick={() => selectProvider(opt.value)}
+            >
+              <span class="provider-btn-label">{opt.label}</span>
+              {#if providerType === opt.value}
+                <span class="provider-btn-check" aria-hidden="true">Selected</span>
+              {/if}
             </button>
           {/each}
         </div>
       </div>
       {#if providerType === "other"}
-        <div class="form-row">
-          <label for="other-type">Integration type value</label>
-          <input id="other-type" type="text" bind:value={otherProviderType} class="input" placeholder="e.g. custom_provider" />
+        <div class="form-row wizard-row-nested">
+          <label for="integration-other-type">Integration type value</label>
+          <input
+            id="integration-other-type"
+            name="integration-other-type"
+            type="text"
+            bind:value={otherProviderType}
+            class="input"
+            placeholder="e.g. custom_provider"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            readonly
+            onfocus={unlockAutofillGuard}
+            oninput={() => {
+              if (otherProviderType.trim()) void focusConnectStep2();
+            }}
+          />
         </div>
       {/if}
-      <div class="wizard-row">
+      {#if providerReady}
+      {#key providerType}
+      <div class="wizard-row" id="connect-step-2">
         <p class="wizard-step">Step 2</p>
         <div class="form-row">
-          <label for="display-name" class="wizard-title">Display name</label>
-          <input id="display-name" type="text" bind:value={displayName} class="input" placeholder="e.g. Production OpenAI" />
+          <label for="integration-label" class="wizard-title">Display name for {selectedProviderLabel}</label>
+          <input
+            id="integration-label"
+            name="integration-label"
+            type="text"
+            bind:value={displayName}
+            class="input"
+            placeholder="e.g. Production OpenAI"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            readonly
+            onfocus={unlockAutofillGuard}
+          />
         </div>
       </div>
       <div class="wizard-row">
         <p class="wizard-step">Step 3a</p>
         <div class="form-row">
-          <label for="api-key" class="wizard-title">Hosted API key (optional)</label>
+          <label for="integration-api-key" class="wizard-title">Hosted API key (optional)</label>
           <input
-            id="api-key"
+            id="integration-api-key"
+            name="integration-api-key"
             type="password"
             bind:value={apiKey}
             class="input"
             placeholder="Paste once — never shown again after save"
-            autocomplete="off"
+            autocomplete="new-password"
             autocapitalize="off"
             spellcheck="false"
+            readonly
+            onfocus={unlockAutofillGuard}
           />
           <p class="helper">Encrypted at rest when the deployment is configured. Leave blank if you only use a vault reference below.</p>
         </div>
@@ -269,8 +377,20 @@
       <div class="wizard-row">
         <p class="wizard-step">Step 3b</p>
         <div class="form-row">
-          <label for="credential-ref" class="wizard-title">Credential reference (optional)</label>
-          <input id="credential-ref" type="text" bind:value={credentialRef} class="input" placeholder="e.g. sm://prod/openai" autocomplete="off" />
+          <label for="integration-credential-ref" class="wizard-title">Credential reference (optional)</label>
+          <input
+            id="integration-credential-ref"
+            name="integration-credential-ref"
+            type="text"
+            bind:value={credentialRef}
+            class="input"
+            placeholder="e.g. sm://prod/openai"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            readonly
+            onfocus={unlockAutofillGuard}
+          />
           <p class="helper">Non-secret label from your secrets manager. Use when you are not storing a hosted key in Restormel.</p>
         </div>
       </div>
@@ -279,6 +399,8 @@
           {connecting ? "Connecting…" : "Connect"}
         </button>
       {/if}
+      {/key}
+      {/if}
     </form>
   </section>
 
@@ -286,7 +408,7 @@
     <section class="section" aria-labelledby="list-heading">
       <div class="list-head">
         <h2 id="list-heading" class="section-title">Your connections</h2>
-        <button type="button" class="btn btn-primary" onclick={jumpToForm}>+ Add connection</button>
+        <button type="button" class="btn btn-primary" onclick={() => { resetConnectForm(); jumpToForm(); }}>+ Add connection</button>
       </div>
       <ul class="integration-list">
         {#each data.integrations as int}
@@ -373,20 +495,75 @@
   }
   .provider-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
     gap: var(--space-2);
   }
+  .provider-selection-hint {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .provider-selection-hint strong {
+    color: var(--rm-text);
+    font-weight: 600;
+  }
   .provider-btn {
-    border: 1px solid var(--rm-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: 2.75rem;
+    border: 2px solid var(--rm-border);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
     padding: var(--space-2);
     font-size: var(--text-sm);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .provider-btn:hover {
+    border-color: var(--rm-text);
+    color: var(--rm-text);
+  }
+  .provider-btn:focus-visible {
+    outline: 2px solid var(--rm-sage);
+    outline-offset: 2px;
   }
   .provider-btn-active {
-    border-color: var(--rm-sage);
+    border-color: var(--rm-text);
+    background: var(--rm-sage-bg, var(--rm-surface));
     color: var(--rm-text);
+    box-shadow: 0 0 0 1px var(--rm-text);
+    font-weight: 600;
+  }
+  .provider-btn-label {
+    line-height: 1.2;
+    text-align: center;
+  }
+  .provider-btn-check {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--rm-sage);
+  }
+  .wizard-row-nested {
+    margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+    padding: 0 var(--space-3) var(--space-3);
+  }
+  .wizard-row-nested label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--rm-text);
+    margin-bottom: var(--space-1);
   }
   .helper {
     margin: var(--space-1) 0 0;
@@ -423,10 +600,6 @@
     background: var(--rm-surface);
     color: var(--rm-text);
     border: 1px solid var(--rm-border);
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
   }
   .btn-primary:disabled {
     opacity: 0.7;

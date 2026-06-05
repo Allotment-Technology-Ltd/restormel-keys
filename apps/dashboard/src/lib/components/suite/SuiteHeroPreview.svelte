@@ -30,10 +30,10 @@
     </div>
     <div class="preview-card-body">
       <div><span class="code-key">graph:</span> <span class="code-val">847 ideas · 2.1k edges</span></div>
-      <div><span class="code-key">retrieve:</span> <span class="code-val">depth: standard</span></div>
-      <div><span class="code-key">agent:</span> <span class="code-val">tool call + context pack</span></div>
-      <div><span class="code-key">verify:</span> <span class="code-val">→ 94% claims supported</span></div>
-      <div class="code-comment"># ingest · retrieve · verify</div>
+      <div><span class="code-key">explorer:</span> <span class="code-val">94% claims supported</span></div>
+      <div><span class="code-key">mcp:</span> <span class="code-val">connect.search → context pack</span></div>
+      <div><span class="code-key">store:</span> <span class="code-val">BYO Surreal (your infra)</span></div>
+      <div class="code-comment"># ingest · graph · agents</div>
     </div>
   </div>
 </div>
@@ -46,13 +46,17 @@
   }
 
   .preview-label {
+    display: block;
+    width: 100%;
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--color-ink-faint);
-    margin: 0 0 0.25rem;
+    color: var(--color-ink);
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid var(--color-ink);
   }
 
   .preview-label-spaced {
@@ -61,9 +65,16 @@
 
   .preview-card {
     background: var(--color-surface);
-    border: var(--border);
-    box-shadow: var(--shadow-sm);
+    border: 2px solid var(--color-ink);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--color-yellow);
     overflow: hidden;
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+
+  .preview-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--color-yellow);
   }
 
   .preview-card-head {
@@ -72,7 +83,7 @@
     justify-content: space-between;
     gap: var(--space-2);
     padding: 0.6rem 0.875rem;
-    border-bottom: var(--border);
+    border-bottom: 2px solid var(--code-bg);
     background: var(--color-ink);
     color: var(--color-surface);
   }

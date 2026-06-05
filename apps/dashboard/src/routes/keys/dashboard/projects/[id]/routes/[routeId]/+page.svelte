@@ -14,9 +14,12 @@
   import { buildRouteFlowSegments, routeFlowSegmentListToStepIds } from "$lib/route-flow-segments";
   import { getPrimaryChainEnableBlockMessage } from "$lib/route-flow-primary-enable-guard";
   import { page } from "$app/stores";
+  import ConnectBuilderReturnBar from "$lib/components/connect/ConnectBuilderReturnBar.svelte";
+  import { parseReturnTo } from "$lib/connect/pipeline-config";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
 
+  $: returnContext = parseReturnTo($page.url.searchParams);
   $: guardrailsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).guardrails;
   $: modelPoolsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).modelPools;
 
@@ -77,6 +80,8 @@
     modelCatalog: { id: string; name: string }[];
     /** Model ids that have an eligible `provider_model_variants` row for each dashboard provider key. */
     modelIdsByProvider: Record<string, string[]>;
+    recommendedModelIds?: string[];
+    catalogSeedVersion?: string;
     modelLifecycleWarnings: {
       id: string;
       canonicalName: string;
@@ -96,6 +101,22 @@
     }
     await invalidate(`app:route-detail:${data.route.id}`);
   }
+
+  onMount(() => {
+    if (!browser || data.route?.workload !== data.ingestionWorkload) return;
+    const openai = data.modelIdsByProvider?.openai ?? [];
+    const recommended = data.recommendedModelIds ?? [];
+    const missingRecommended = recommended.some((id) => !openai.includes(id));
+    const ver = data.catalogSeedVersion ?? "";
+    const prevVer = sessionStorage.getItem("rk-ingest-catalog-version");
+    const catalogVersionChanged = Boolean(ver && prevVer && prevVer !== ver);
+    if (missingRecommended || catalogVersionChanged) {
+      if (ver) sessionStorage.setItem("rk-ingest-catalog-version", ver);
+      void refreshRouteDetail();
+    } else if (ver && !prevVer) {
+      sessionStorage.setItem("rk-ingest-catalog-version", ver);
+    }
+  });
 
   let inspectorSaving = false;
   /** True while `RouteFlowCanvas` is applying the map (PUT graph / invalidate). */
@@ -198,13 +219,23 @@
   function modelIdsForProvider(pref: string | null | undefined): string[] {
     const p = (pref ?? "").trim() || "openai";
     const by = data.modelIdsByProvider;
-    if (by && typeof by === "object" && Array.isArray(by[p])) return by[p] as string[];
-    return data.modelOptions ?? [];
+    let ids: string[] =
+      by && typeof by === "object" && Array.isArray(by[p]) ? (by[p] as string[]) : (data.modelOptions ?? []);
+    if (data.route?.workload === data.ingestionWorkload && data.recommendedModelIds?.length) {
+      const rec = data.recommendedModelIds.filter((id) => ids.includes(id));
+      const rest = ids.filter((id) => !rec.includes(id));
+      ids = [...rec, ...rest];
+    }
+    return ids;
   }
 
   function modelCatalogLabel(modelId: string): string {
     const row = data.modelCatalog?.find((m) => m.id === modelId);
-    return row?.name ?? modelId;
+    const base = row?.name ?? modelId;
+    if (data.recommendedModelIds?.includes(modelId)) {
+      return `${base} (recommended)`;
+    }
+    return base;
   }
 
   /** Add-step dialog: drop model if it does not exist for the chosen provider. */
@@ -1561,6 +1592,9 @@
   <p><a href={DASHBOARD_BASE + "/routes"} class="back-link">← Back to Routes</a></p>
 {:else}
   <div class="route-editor-shell">
+    {#if returnContext}
+      <ConnectBuilderReturnBar context={returnContext} />
+    {/if}
     <header class="route-page-header">
       <div class="route-page-top">
         <div class="route-page-heading">
@@ -3015,10 +3049,6 @@
     cursor: pointer;
     text-decoration: none;
     display: inline-block;
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
   }
   .btn-secondary {
     background: var(--rm-surface);

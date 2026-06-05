@@ -35,12 +35,25 @@
     >.
   </p>
 
-  <h2 id="mcp">MCP tools</h2>
+  <h2 id="mcp">MCP tools (BYO graph — hero path)</h2>
   <p>
-    <code>@restormel/mcp</code> registers <code>connect.verify</code>, <code>connect.retrieve</code>,
-    <code>connect.ingest.start</code>, and <code>connect.ingest.status</code>. Set
-    <code>RESTORMEL_CONNECT_API_BASE</code> + <code>RESTORMEL_GATEWAY_KEY</code> to proxy verify/retrieve to hosted
-    REST from MCP.
+    Configure a <strong>Bring-Your-Own SurrealDB</strong> graph store in the Connect hub first. Then wire agents with
+    <code>@restormel/mcp</code>:
+  </p>
+  <ul>
+    <li><code>connect.search</code> — semantic search → structured claims, relations, and pass-specific <code>context_pack</code></li>
+    <li><code>connect.get_context_for</code> — topic + optional <code>seed_claim_id</code> from the graph explorer</li>
+    <li><code>connect.retrieve</code> — deprecated alias of <code>connect.search</code></li>
+    <li><code>connect.verify</code>, <code>connect.ingest.*</code> — verify and ingest job helpers</li>
+  </ul>
+  <p>
+    Env: <code>RESTORMEL_CONNECT_API_BASE</code> (e.g. <code>https://restormel.dev</code>),
+    <code>RESTORMEL_GATEWAY_KEY</code> (<code>rk_…</code>), <code>RESTORMEL_WORKSPACE_ID</code>. HTTP mirror:
+    <code>POST /keys/dashboard/api/connect/invoke</code> with <code>{`{ "tool": "connect.search", "payload": { … } }`}</code>.
+  </p>
+  <p>
+    Restormel does <strong>not</strong> host your graph corpus in MVP — your Surreal endpoint must be reachable from
+    hosted retrieve. See <a href="/keys/docs/integrations/mcp">MCP integration guide</a>.
   </p>
 
   <h2>Operator hub</h2>

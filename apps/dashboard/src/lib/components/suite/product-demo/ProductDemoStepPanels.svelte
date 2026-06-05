@@ -2,7 +2,7 @@
   import type { DemoStepId } from "./product-demo-data";
   import BrutalBadge from "$lib/components/brutalist/BrutalBadge.svelte";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
-  import RouteFlowCanvas from "$lib/components/dashboard/RouteFlowCanvas.svelte";
+  import ProductDemoRoutePreview from "./ProductDemoRoutePreview.svelte";
   import ConnectIngestPipelineTimeline from "$lib/components/connect/pipeline/ConnectIngestPipelineTimeline.svelte";
   import { ingestStatusVariant } from "$lib/connect/ingest-progress-ui";
   import {
@@ -12,11 +12,11 @@
     DEMO_DOMAIN_INTENT,
     DEMO_GRAPH_STATS,
     DEMO_GRAPH_UNITS,
+    DEMO_MCP_SNIPPET,
+    DEMO_MCP_TOOL_RESULT,
     DEMO_INGEST_JOB,
     DEMO_INGEST_STAGES,
     DEMO_PROVIDER_OPTIONS,
-    DEMO_ROUTE_STEP_LINKS,
-    DEMO_ROUTE_STEPS,
   } from "./product-demo-mock-data";
 
   export let stepId: DemoStepId;
@@ -60,16 +60,8 @@
   {:else if stepId === "routes"}
     <h2 class="page-title">production-default</h2>
     <p class="page-desc">Build your resolve chain visually — primary model, fallbacks, and parallel branches.</p>
-    <div class="route-visual-panel demo-route-visual" role="region" aria-label="Route flow map">
-      <RouteFlowCanvas
-        preview
-        projectId="demo"
-        routeId="demo"
-        steps={[...DEMO_ROUTE_STEPS]}
-        stepLinks={DEMO_ROUTE_STEP_LINKS}
-        flowLayout={null}
-        entryStepId={DEMO_ROUTE_STEPS[0].id}
-      />
+    <div class="route-visual-panel demo-route-visual">
+      <ProductDemoRoutePreview />
     </div>
     <div class="card demo-route-draft" aria-hidden="true">
       <p class="card-desc"><strong>dev-experimental</strong> — draft route (add models from the map…)</p>
@@ -201,7 +193,9 @@
     <header class="wizard-header">
       <p class="wizard-kicker">Graph explorer</p>
       <h2 class="wizard-title">Explore and verify the graph</h2>
-      <p class="wizard-lead">Review supported ideas, flagged claims, and provenance before shipping agent context.</p>
+      <p class="wizard-lead">
+        Review supported ideas, flagged claims, and provenance. When you are satisfied, open the MCP tab to wire agents.
+      </p>
     </header>
     <div class="demo-graph-bento" aria-label="Graph statistics">
       <div class="demo-graph-stat">
@@ -234,8 +228,36 @@
       </ul>
       <div class="actions">
         <span class="btn btn-primary demo-static-btn">Open graph explorer</span>
+        <span class="demo-next-hint" aria-hidden="true">Next → MCP tab</span>
       </div>
     </BrutalCard>
+  {:else if stepId === "agents"}
+    <header class="wizard-header">
+      <p class="wizard-kicker">Agents · MCP</p>
+      <h2 class="wizard-title">Launch agents on your graph</h2>
+      <p class="wizard-lead">
+        Your corpus stays on <strong>Bring-Your-Own Surreal</strong>. Add one MCP snippet — Cursor, Claude Desktop, or
+        any MCP host — then call <code>connect.search</code> for structured context packs.
+      </p>
+    </header>
+    <div class="demo-mcp-layout">
+      <BrutalCard fill="white" title="Tools">
+        <ul class="demo-mcp-tools">
+          <li><code class="demo-mcp-tool">connect.search</code> — semantic search → context pack</li>
+          <li><code class="demo-mcp-tool">connect.get_context_for</code> — topic or seed claim traversal</li>
+        </ul>
+      </BrutalCard>
+      <BrutalCard fill="white" title="mcp.json snippet">
+        <pre class="demo-mcp-pre" aria-label="Sample MCP configuration"><code>{DEMO_MCP_SNIPPET}</code></pre>
+      </BrutalCard>
+    </div>
+    <BrutalCard fill="white" title="Sample tool result">
+      <pre class="demo-mcp-result" aria-label="Sample connect.search response"><code>{DEMO_MCP_TOOL_RESULT}</code></pre>
+    </BrutalCard>
+    <div class="actions demo-mcp-actions">
+      <span class="btn btn-primary demo-static-btn">Copy MCP snippet</span>
+      <span class="demo-static-link">Connect hub · Dev tools</span>
+    </div>
   {/if}
 </div>
 
@@ -305,6 +327,53 @@
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.03em;
+  }
+  .demo-next-hint {
+    display: block;
+    margin-top: var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--rm-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .demo-mcp-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  @media (max-width: 720px) {
+    .demo-mcp-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  .demo-mcp-tools {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    color: var(--rm-text);
+  }
+  .demo-mcp-tool {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+  .demo-mcp-pre,
+  .demo-mcp-result {
+    margin: 0;
+    padding: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.55;
+    overflow-x: auto;
+    background: var(--color-bg);
+    border: var(--border-thin);
+  }
+  .demo-mcp-actions {
+    margin-top: var(--space-3);
   }
   .wizard-title {
     margin: var(--space-1) 0 var(--space-2);

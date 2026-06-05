@@ -483,10 +483,6 @@
     text-decoration: none;
     display: inline-block;
   }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
-  }
   .btn-primary:hover {
     opacity: 0.95;
   }

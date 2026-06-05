@@ -28,7 +28,7 @@ Resolution order in code (any match grants operator status):
 
 ## User management (UI)
 
-Service owners signed in with a **session** open **`/keys/admin`** (avatar menu → **Admin**, or **Profile** link when you are an operator). The admin console is separate from the end-user dashboard sidebar; it includes **User management** and **Package registry** insights. The user list toggles **`service_admins`** membership. **Primary email allowlist** accounts cannot be demoted via the UI (change `RESTORMEL_SERVICE_OWNER_EMAILS` or Neon configuration instead). You cannot remove your own operator flag via the UI (use another operator account).
+Service owners signed in with a **session** open **`/keys/admin`** (avatar menu → **Admin**, or **Profile** link when you are an operator). The admin console is separate from the end-user dashboard sidebar; it includes **User management** and **Package registry** insights. The user list shows signed-in accounts from the app **`users`** mirror (populated on each Neon Auth session via `upsertUser`), enriched from Better Auth **`"user"`** when that table is populated; toggles **`service_admins`** membership. **Primary email allowlist** accounts cannot be demoted via the UI (change `RESTORMEL_SERVICE_OWNER_EMAILS` or Neon configuration instead). You cannot remove your own operator flag via the UI (use another operator account).
 
 API (canonical): **`GET /keys/admin/api/users`**, **`PATCH /keys/admin/api/users/{userId}`** with body `{ "serviceOwner": true | false }` — session + operator only. Legacy paths **`/keys/dashboard/api/admin/users`** remain supported for existing automation.
 

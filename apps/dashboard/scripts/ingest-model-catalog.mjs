@@ -14,6 +14,7 @@ import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { catalogSeedEpochMs } from "./catalog-seed-epoch.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -65,7 +66,7 @@ async function upsertModels(sql, models) {
         ${m.id}, ${m.canonicalName}, ${m.family ?? null}, ${m.lifecycleState ?? null}, ${m.description ?? null},
         ${m.contextWindow ?? null}, ${m.maxOutputTokens ?? null}, ${m.supportsTools ?? null}, ${m.supportsStructuredOutput ?? null}, ${m.supportsMcp ?? null},
         ${modalities}, ${capabilities}, ${m.editorialSummary ?? null},
-        ${m.deprecationDate ?? null}, ${m.retirementDate ?? null}, ${m.replacementModelId ?? null}, ${m.sourceLastVerifiedAt ?? null}
+        ${catalogSeedEpochMs(m.deprecationDate)}, ${catalogSeedEpochMs(m.retirementDate)}, ${m.replacementModelId ?? null}, ${catalogSeedEpochMs(m.sourceLastVerifiedAt)}
       )
       ON CONFLICT (id) DO UPDATE SET
         canonical_name = EXCLUDED.canonical_name,
@@ -102,7 +103,7 @@ async function upsertVariants(sql, models) {
           availability_status, pricing_ref, rate_limit_ref, source_last_verified_at
         ) VALUES (
           ${variantId}, ${m.id}, ${v.providerIntegrationType}, ${v.providerModelId},
-          ${v.availabilityStatus ?? null}, ${v.pricingRef ?? null}, ${v.rateLimitRef ?? null}, ${v.sourceLastVerifiedAt ?? null}
+          ${v.availabilityStatus ?? null}, ${v.pricingRef ?? null}, ${v.rateLimitRef ?? null}, ${catalogSeedEpochMs(v.sourceLastVerifiedAt)}
         )
         ON CONFLICT (id) DO UPDATE SET
           provider_model_id = EXCLUDED.provider_model_id,

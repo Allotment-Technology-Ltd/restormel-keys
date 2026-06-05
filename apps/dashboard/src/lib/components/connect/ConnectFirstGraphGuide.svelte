@@ -1,6 +1,6 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { pipelineWizardHref, withWizardReturn } from "$lib/connect/pipeline-config";
+  import { pipelineWizardHref, withReturnTo } from "$lib/connect/pipeline-config";
   import {
     FIRST_GRAPH_ONBOARDING_DOC_HREF,
     type FirstGraphGuideState,
@@ -59,7 +59,7 @@
           { label: "Voyage (embeddings)", href: "https://www.voyageai.com/" },
           { label: "Vercel AI Gateway", href: "https://vercel.com/docs/ai-gateway" },
         ],
-        dashboardHref: withWizardReturn(`${CONNECT_BASE}/models`, "sources"),
+        dashboardHref: withReturnTo(`${CONNECT_BASE}/models`, { kind: "pipeline-setup", step: "sources" }),
         dashboardLabel: "Open Models & keys",
         body:
           "Add at least two model capabilities: one chat model for extraction, grouping, validation, and remediation, and one embedding model. " +
@@ -100,7 +100,7 @@
             href: "https://github.com/restormel/restormel-keys/blob/main/docs/runbooks/connect-ingest-hosted-worker.md",
           },
         ],
-        dashboardHref: pipelineWizardHref("run"),
+        dashboardHref: pipelineWizardHref("launch"),
         dashboardLabel: "Start ingest run",
         body:
           "Name your run, select your domain pack and starter documents, then start. Production deployments need CONNECT_INGEST_WORKER_MODE=full on the ingest worker.",
@@ -113,7 +113,7 @@
         before: [],
         dashboardHref: `${CONNECT_BASE}/graph`,
         dashboardLabel: "Browse knowledge graph",
-        body: "Review extracted ideas, connections, groups, and validation results. Monitor stage progress from the Runs tab if your job is still running.",
+        body: "Review extracted ideas, connections, groups, and validation results. Watch live ingest progress from the Runs tab if your job is still running.",
       },
     ];
   }

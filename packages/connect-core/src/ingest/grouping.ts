@@ -5,6 +5,8 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ExtractionGenerate } from "./extract.js";
+import type { ConnectQualityPreset } from "./quality-preset.js";
+import { composeStageSystemPrompt } from "./prompt-compose.js";
 
 export interface GroupingUnitInput {
   ref: string;
@@ -23,26 +25,15 @@ export interface ExtractedGroup {
   members: GroupedMember[];
 }
 
-export function buildGroupingSystemPrompt(pack: ConnectDomainPack): string {
-  const o = pack.ontology;
-  const parts: string[] = [];
-  if (pack.prompts?.grouping?.trim()) {
-    parts.push(pack.prompts.grouping.trim());
-  } else {
-    parts.push(
-      `Group related ${o.unit_noun}s into ${o.group_noun}s for the domain "${pack.title}". Each ${o.group_noun} is a coherent whole (e.g. a complete argument, case, or topic), not an arbitrary bucket.`,
-    );
-  }
-  if (o.group_roles.length) {
-    parts.push(
-      `Assign each member a role from: ${o.group_roles.join(", ")}.` +
-        (o.schema_mode === "strict" ? " Use only these roles." : ""),
-    );
-  }
-  parts.push(
-    `Return STRICT JSON only:\n{ "groups": [{ "name": "<short name>", "summary": "<one sentence>", "members": [{ "ref": "<unit ref>", "role": "<role or omit>" }] }] }\nReference units only by the provided refs. Omit a ${o.unit_noun} that does not belong to any ${o.group_noun}.`,
-  );
-  return parts.join("\n\n");
+export function buildGroupingSystemPrompt(
+  pack: ConnectDomainPack,
+  opts?: { qualityPreset?: ConnectQualityPreset },
+): string {
+  return composeStageSystemPrompt({
+    pack,
+    stage: "grouping",
+    qualityPreset: opts?.qualityPreset ?? pack.quality_preset ?? "production",
+  });
 }
 
 export function buildGroupingUserPrompt(units: GroupingUnitInput[]): string {
@@ -101,9 +92,10 @@ export async function groupUnits(args: {
   units: GroupingUnitInput[];
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
 }): Promise<ExtractedGroup[]> {
   if (args.units.length === 0) return [];
-  const system = buildGroupingSystemPrompt(args.pack);
+  const system = buildGroupingSystemPrompt(args.pack, { qualityPreset: args.qualityPreset });
   const user = buildGroupingUserPrompt(args.units);
   const raw = await args.generate({ system, user });
   return parseGroupingResponse(raw);

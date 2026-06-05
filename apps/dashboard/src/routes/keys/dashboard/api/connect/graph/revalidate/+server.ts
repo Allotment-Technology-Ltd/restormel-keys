@@ -3,8 +3,8 @@
  */
 import { json } from "@sveltejs/kit";
 import { randomUUID } from "node:crypto";
-import { ConnectGraphRevalidateRequestSchema } from "@restormel/contracts/connect";
 import { buildInitialConnectIngestJob } from "@restormel/connect-core";
+import { parseGraphRevalidateRequest } from "$lib/server/connect/graph-revalidate-request";
 import {
   appendConnectIngestJobLog,
   connectIngestJobRecordToApi,
@@ -18,7 +18,8 @@ import {
   buildGraphRevalidateJobSources,
   parseGraphRevalidateJobMeta,
 } from "$lib/server/connect/graph-revalidate-job";
-import { loadConnectGraphView } from "$lib/server/connect/graph-explorer-service";
+import { graphRevalidateEmptyMessage } from "$lib/server/connect/graph-revalidate-guards";
+import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import {
   isKnowledgeSessionFailure,
   resolveKnowledgeSessionContext,
@@ -27,20 +28,6 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ locals, request }) => {
   try {
-    if (typeof ConnectGraphRevalidateRequestSchema?.safeParse !== "function") {
-      console.error(
-        "[connect/graph/revalidate] ConnectGraphRevalidateRequestSchema missing — run pnpm -w --filter @restormel/contracts build",
-      );
-      return json(
-        {
-          error: "service_unavailable",
-          message:
-            "Re-validation API is out of date. Restart the dev server (pnpm --filter dashboard dev rebuilds contracts).",
-        },
-        { status: 503 },
-      );
-    }
-
     const ctx = await resolveKnowledgeSessionContext(locals);
     if (isKnowledgeSessionFailure(ctx)) {
       return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
@@ -53,10 +40,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       return json({ error: "invalid_json", message: "Request body must be JSON." }, { status: 400 });
     }
 
-    const parsed = ConnectGraphRevalidateRequestSchema.safeParse(body);
+    const parsed = parseGraphRevalidateRequest(body);
     if (!parsed.success) {
       return json(
-        { error: "invalid_request", message: parsed.error.issues.map((i) => i.message).join("; ") },
+        { error: "invalid_request", message: parsed.error.issues.map((issue) => issue.message).join("; ") },
         { status: 400 },
       );
     }
@@ -69,12 +56,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       );
     }
 
-    const graph = await loadConnectGraphView(ctx.workspaceId);
-    if (!graph.stats || graph.stats.units === 0) {
-      return json(
-        { error: "empty_graph", message: "Your graph has no ideas to re-validate yet." },
-        { status: 400 },
-      );
+    const stats = await resolveConnectGraphStats(ctx.workspaceId);
+    const emptyMessage = graphRevalidateEmptyMessage(stats, parsed.data.scope);
+    if (emptyMessage) {
+      return json({ error: "empty_graph", message: emptyMessage }, { status: 400 });
     }
 
     let projectId: string | null = null;
@@ -89,18 +74,29 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       projectId = match.id;
     }
 
-    const domainPackId = parsed.data.domain_pack_id ?? graph.domainPackId ?? null;
+    const domainPackId = parsed.data.domain_pack_id ?? null;
 
     const jobId = randomUUID();
+    const dateLabel = new Date().toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const isAutoRemediate = parsed.data.mode === "validate_and_remediate";
     const label =
       parsed.data.label?.trim() ||
-      `Graph re-validation — ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+      (isAutoRemediate
+        ? `Graph auto-remediation — ${dateLabel}`
+        : `Graph re-validation — ${dateLabel}`);
+    const stopAfterStage = isAutoRemediate ? "remediating" : "validating";
 
     const sources = buildGraphRevalidateJobSources({
       kind: "graph_revalidate",
       validation_route_id: parsed.data.validation_route_id ?? null,
+      remediation_route_id: parsed.data.remediation_route_id ?? null,
       domain_pack_id: domainPackId,
       scope: parsed.data.scope,
+      mode: parsed.data.mode,
     });
     if (!parseGraphRevalidateJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build re-validation job." }, { status: 500 });
@@ -110,7 +106,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       id: jobId,
       workspace_id: ctx.workspaceId,
       label,
-      stop_after_stage: "validating",
+      stop_after_stage: stopAfterStage,
     });
 
     await insertConnectIngestJob({
@@ -120,17 +116,25 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       label,
       stages: job.stages ?? [],
       sources,
-      stopAfterStage: "validating",
+      stopAfterStage,
       domainPackId,
       graphTargetId: target.id ?? null,
     });
 
+    const logParts = [
+      isAutoRemediate ? "Auto-remediation queued" : "Re-validation queued",
+      `scope: ${parsed.data.scope}`,
+      `mode: ${parsed.data.mode}`,
+    ];
+    if (parsed.data.validation_route_id) logParts.push("custom validation route");
+    if (parsed.data.remediation_route_id) logParts.push("custom remediation route");
+    if (stats?.validation.awaiting_triage != null) {
+      logParts.push(`quarantine before: ${stats.validation.awaiting_triage}`);
+    }
+
     await appendConnectIngestJobLog({
       jobId,
-      line: formatBracketLogLine(
-        "VALIDATE",
-        `Re-validation queued — scope: ${parsed.data.scope}${parsed.data.validation_route_id ? ", custom validation route" : ""}`,
-      ),
+      line: formatBracketLogLine(isAutoRemediate ? "REMEDIATE" : "VALIDATE", logParts.join(" — ")),
     });
 
     scheduleConnectIngestWorkerDrain();

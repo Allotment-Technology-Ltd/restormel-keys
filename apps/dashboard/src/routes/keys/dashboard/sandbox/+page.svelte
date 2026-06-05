@@ -562,8 +562,8 @@
     cursor: pointer;
   }
   .tab-btn.is-active {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
+    background: var(--color-yellow);
+    color: var(--color-ink);
     border-color: var(--rm-sage);
   }
   .panel {
@@ -635,10 +635,6 @@
   .btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;
-  }
-  .btn-primary {
-    background: var(--rm-sage);
-    color: var(--rm-bg);
   }
   .btn-secondary {
     background: var(--rm-surface-raised);

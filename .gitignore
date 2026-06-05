@@ -32,6 +32,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Dashboard dev diagnostics (homepage debug capture)
+apps/dashboard/.dev/
+apps/dashboard/.analyze/
+
 # Logs and temp
 *.log
 .tmp/
