@@ -18,14 +18,16 @@ import {
 } from "../retrieve-context.js";
 import type { RetrievalConfig, ReasoningClass } from "../config.js";
 import type { GraphRagDeps } from "../ports.js";
+import { defaultTokenizer, packContext, type Tokenizer } from "./token-budget.js";
+import {
+  summariseSubgraph,
+  type SummariseSubgraphResult,
+} from "./summarise.js";
 
 /** Reasoning mode for {@link RetrievalOrchestrator.findRelevantSubgraph}. */
 export type ReasoningMode = "semantic" | "causal" | "temporal";
 
-/** Token estimator. Defaults to a chars/4 heuristic; inject a real tokenizer to be exact. */
-export type Tokenizer = (text: string) => number;
-
-const defaultTokenizer: Tokenizer = (text) => Math.ceil(text.length / 4);
+export type { Tokenizer } from "./token-budget.js";
 
 /** Uniform audit envelope returned by every orchestrator operation. */
 export interface OrchestratorTrace {
@@ -137,7 +139,7 @@ export class RetrievalOrchestrator {
       verificationPolicy: params.verificationPolicy,
       config: this.config,
     });
-    return this.assemble("retrieve_context", result);
+    return this.assemble("retrieve_context", result, params.maxTokens);
   }
 
   /** Graph expansion from explicit seed nodes — where graph-RAG beats vector-RAG. */
@@ -152,7 +154,7 @@ export class RetrievalOrchestrator {
       verificationPolicy: params.verificationPolicy,
       config,
     });
-    return this.assemble("expand_context", result);
+    return this.assemble("expand_context", result, params.maxTokens);
   }
 
   /** Topic-driven subgraph; causal/temporal modes re-weight edge priors by reasoning class. */
@@ -164,9 +166,25 @@ export class RetrievalOrchestrator {
       verificationPolicy: params.verificationPolicy,
       config,
     });
-    const out = this.assemble("find_relevant_subgraph", result);
+    const out = this.assemble("find_relevant_subgraph", result, params.maxTokens);
     out.trace.reasoning_mode = mode;
     return out;
+  }
+
+  /** Condense a retrieved subgraph under a token budget (optionally LLM-summarising clusters). */
+  async summariseSubgraph(params: {
+    subgraph: CuratedSubgraph;
+    maxTokens: number;
+    llmCallback?: (cluster: RetrievedClaim[]) => Promise<string>;
+  }): Promise<SummariseSubgraphResult> {
+    return summariseSubgraph({
+      nodes: params.subgraph.claims,
+      edges: params.subgraph.relations,
+      seedClaimIds: params.subgraph.seed_claim_ids,
+      maxTokens: params.maxTokens,
+      tokenizer: this.tokenizer,
+      llmCallback: params.llmCallback,
+    });
   }
 
   /** Path reasoning between two nodes; ranked paths, or empty with a reason. */
@@ -233,18 +251,40 @@ export class RetrievalOrchestrator {
 
   private assemble(
     operation: OrchestratorTrace["operation"],
-    result: RetrievalResult
+    result: RetrievalResult,
+    maxTokens?: number
   ): OrchestratorResult {
-    const context_block = buildContextBlock(result, this.config);
+    let claims = result.claims;
+    let relations = result.relations;
+    let nodesDropped = 0;
+    let tokensUsed = 0;
+
+    if (maxTokens !== undefined) {
+      const packed = packContext({
+        claims,
+        relations,
+        seedClaimIds: result.seed_claim_ids,
+        maxTokens,
+        tokenizer: this.tokenizer,
+        priorityRelationTypes: ["supports", this.config.relations.contradictionEdge],
+      });
+      claims = packed.claims;
+      relations = packed.relations;
+      nodesDropped = packed.nodesDropped;
+      tokensUsed = packed.tokensUsed;
+    }
+
+    const context_block = buildContextBlock({ ...result, claims, relations }, this.config);
+    if (maxTokens === undefined) tokensUsed = this.tokenizer(context_block);
+
     const trace: OrchestratorTrace = {
       operation,
       seed_count: result.seed_claim_ids.length,
       hops: result.trace?.traversal_max_hops ?? 0,
-      claim_count: result.claims.length,
-      relation_count: result.relations.length,
-      tokens_used: this.tokenizer(context_block),
-      // TODO(Phase 4): packContext applies the maxTokens budget and sets nodes_dropped.
-      nodes_dropped: 0,
+      claim_count: claims.length,
+      relation_count: relations.length,
+      tokens_used: tokensUsed,
+      nodes_dropped: nodesDropped,
       verification: result.trace?.verification_summary,
       degraded: result.degraded,
       degraded_reason: result.degraded_reason,
@@ -252,8 +292,8 @@ export class RetrievalOrchestrator {
     return {
       context_block,
       subgraph: {
-        claims: result.claims,
-        relations: result.relations,
+        claims,
+        relations,
         arguments: result.arguments,
         seed_claim_ids: result.seed_claim_ids,
         evidence_passages: result.evidence_passages,
@@ -277,9 +317,8 @@ export class RetrievalOrchestrator {
 
   private withReasoningMode(mode: ReasoningMode): RetrievalConfig {
     if (mode === "semantic") return this.config;
-    // Re-weight edges toward the matching reasoning class. Edges declare reasoningClass
-    // in their config (Phase 4 populates it for the philosophy pack); until then this is
-    // a no-op for packs without that metadata.
+    // Re-weight edges toward the matching reasoning class (Phase 4). Edges declare their
+    // reasoningClass in config; packs without that metadata simply see no re-weighting.
     const target = mode as ReasoningClass;
     const traversalEdges = this.config.relations.traversalEdges.map((e) =>
       e.reasoningClass === target ? { ...e, edgePrior: e.edgePrior * REASONING_BOOST } : e

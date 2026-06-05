@@ -366,15 +366,20 @@ export const philosophyRetrievalConfig: RetrievalConfig = {
     thesisFallbackTypes: ["premise", "support", "methodological"],
   },
   relations: {
+    // reasoningClass rationale (Phase 4):
+    //  - depends_on  → causal:    A depends on B is a dependency/grounding relation.
+    //  - responds_to → temporal:  reply-to-objection is a dialectical sequence over time.
+    //  - supports / contradicts / exemplifies → semantic: agreement, conflict, instantiation.
+    //  - defines / qualifies / refines → structural: definitional / scope-shaping relations.
     traversalEdges: [
-      { table: "supports", edgePrior: 1.04 },
-      { table: "contradicts", edgePrior: 1.16 },
-      { table: "depends_on", edgePrior: 0.92 },
-      { table: "responds_to", edgePrior: 1.2 },
-      { table: "defines", edgePrior: 0.9 },
-      { table: "qualifies", edgePrior: 0.88 },
-      { table: "refines", edgePrior: 0.86 },
-      { table: "exemplifies", edgePrior: 0.82 },
+      { table: "supports", edgePrior: 1.04, reasoningClass: "semantic" },
+      { table: "contradicts", edgePrior: 1.16, reasoningClass: "semantic" },
+      { table: "depends_on", edgePrior: 0.92, reasoningClass: "causal" },
+      { table: "responds_to", edgePrior: 1.2, reasoningClass: "temporal" },
+      { table: "defines", edgePrior: 0.9, reasoningClass: "structural" },
+      { table: "qualifies", edgePrior: 0.88, reasoningClass: "structural" },
+      { table: "refines", edgePrior: 0.86, reasoningClass: "structural" },
+      { table: "exemplifies", edgePrior: 0.82, reasoningClass: "semantic" },
     ],
     fetchEdges: [
       { table: "supports", relationType: "supports" },
