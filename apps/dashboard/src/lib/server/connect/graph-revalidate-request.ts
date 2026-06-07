@@ -29,6 +29,8 @@ export const GraphRevalidateRequestSchema = z.object({
   max_units: z.number().int().min(1).max(100_000).optional(),
   /** Auto-enqueue the next batch until the scope is clear (overnight / background). */
   continue_in_background: z.boolean().optional(),
+  /** Readiness-run cohort id — process only this run's stamped units. */
+  cohort_run_id: z.string().optional(),
 });
 
 export type GraphRevalidateRequest = z.infer<typeof GraphRevalidateRequestSchema>;

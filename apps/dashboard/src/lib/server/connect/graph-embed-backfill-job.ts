@@ -9,6 +9,8 @@ export type GraphEmbedBackfillJobMeta = {
   /** When uniform_target, also re-embeds vectors that are not at target_dimensions. */
   scope?: GraphEmbedBackfillScope;
   target_dimensions?: number | null;
+  /** Readiness-run cohort id — embed only units stamped to this run. */
+  cohort_run_id?: string | null;
 };
 
 export function buildGraphEmbedBackfillJobSources(meta: GraphEmbedBackfillJobMeta): unknown[] {
@@ -49,6 +51,10 @@ export function parseGraphEmbedBackfillJobMeta(sources: unknown): GraphEmbedBack
         : null,
     ...(scope ? { scope } : {}),
     ...(targetDimensions ? { target_dimensions: targetDimensions } : {}),
+    cohort_run_id:
+      typeof rec.cohort_run_id === "string" && rec.cohort_run_id.trim()
+        ? rec.cohort_run_id.trim()
+        : null,
   };
 }
 

@@ -23,6 +23,7 @@ describe("graph-revalidate-job", () => {
       mode: "validate",
       max_units: null,
       continue_in_background: false,
+      cohort_run_id: null,
     });
   });
 
@@ -44,6 +45,7 @@ describe("graph-revalidate-job", () => {
       mode: "validate_and_remediate",
       max_units: null,
       continue_in_background: false,
+      cohort_run_id: null,
     });
   });
 
@@ -66,6 +68,7 @@ describe("graph-revalidate-job", () => {
       mode: "validate",
       max_units: null,
       continue_in_background: false,
+      cohort_run_id: null,
     });
   });
 
@@ -80,5 +83,16 @@ describe("graph-revalidate-job", () => {
     const meta = parseGraphRevalidateJobMeta(sources);
     expect(meta?.max_units).toBe(2000);
     expect(meta?.continue_in_background).toBe(true);
+  });
+
+  it("round-trips a readiness cohort run id", () => {
+    const sources = buildGraphRevalidateJobSources({
+      kind: "graph_revalidate",
+      scope: "linked",
+      mode: "validate",
+      cohort_run_id: "run-abc-123",
+    });
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.cohort_run_id).toBe("run-abc-123");
   });
 });

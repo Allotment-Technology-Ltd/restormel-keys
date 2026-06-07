@@ -352,6 +352,12 @@ export async function runGraphEmbedBackfill(args: {
   const targetDimensions =
     meta.target_dimensions ?? pack?.embedding?.dimensions ?? null;
 
+  let cohortUnitIds: Set<string> | null = null;
+  if (meta.cohort_run_id) {
+    const { listReadinessRunUnitIds } = await import("$lib/server/neon");
+    cohortUnitIds = new Set(await listReadinessRunUnitIds(meta.cohort_run_id));
+  }
+
   for (const stage of SKIP_STAGES) {
     await reporter.skipStage(stage, "Skipped for embedding backfill");
   }
@@ -391,7 +397,12 @@ export async function runGraphEmbedBackfill(args: {
       targetDimensions,
     })) {
       for (let i = 0; i < page.length; i += EMBED_PROCESS_BATCH) {
-        const batch = page.slice(i, i + EMBED_PROCESS_BATCH);
+        const sliced = page.slice(i, i + EMBED_PROCESS_BATCH);
+        // Cohort runs only embed units stamped to the run.
+        const batch = cohortUnitIds
+          ? sliced.filter((u) => cohortUnitIds!.has(u.id))
+          : sliced;
+        if (batch.length === 0) continue;
         scanned += batch.length;
         await reporter.tick(
           "embedding",

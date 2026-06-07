@@ -1056,6 +1056,40 @@
           {/if}
         </div>
       {/if}
+
+      <div class="wizard-nav" aria-label="Step navigation">
+        <button
+          type="button"
+          class="wizard-nav-btn brut-focus"
+          disabled={!canGoPrev}
+          on:click={goPrev}
+        >
+          ← Back
+        </button>
+        <span class="wizard-nav-meta">
+          {#if currentStep === "complete"}
+            Overview
+          {:else if recommendedStep !== "complete" && recommendedStep !== currentStep}
+            <button
+              type="button"
+              class="wizard-nav-suggest brut-focus"
+              on:click={() => navigateToStep(recommendedStep)}
+            >
+              Jump to suggested: {STEP_META[recommendedStep].label}
+            </button>
+          {:else}
+            Step {currentStepIndex + 1} of {stepsTotal}
+          {/if}
+        </span>
+        <button
+          type="button"
+          class="wizard-nav-btn brut-focus"
+          disabled={!canGoNext}
+          on:click={goNext}
+        >
+          {currentNavIndex === navSequence.length - 2 ? "Finish →" : "Next →"}
+        </button>
+      </div>
     </section>
   </div>
 </section>
@@ -1255,7 +1289,8 @@
     background: var(--brut-canvas, #f3ead0);
   }
 
-  .wizard-step--satisfied .wizard-step-btn {
+  /* Every applicable step is a navigable button now. */
+  .wizard-step-btn {
     display: contents;
     cursor: pointer;
     background: none;
@@ -1267,14 +1302,29 @@
     width: 100%;
   }
 
-  .wizard-step--satisfied:has(.wizard-step-btn:hover),
-  .wizard-step--satisfied:has(.wizard-step-btn:focus-visible) {
+  .wizard-step:has(.wizard-step-btn:hover),
+  .wizard-step:has(.wizard-step-btn:focus-visible) {
     background: color-mix(in oklab, var(--brut-neon, #e8ff47) 35%, var(--brut-canvas, #f3ead0));
     outline: none;
   }
 
+  .wizard-step--active:has(.wizard-step-btn:hover),
+  .wizard-step--active:has(.wizard-step-btn:focus-visible) {
+    background: var(--brut-neon, #e8ff47);
+  }
+
   .wizard-step--pending {
-    opacity: 0.62;
+    opacity: 0.72;
+  }
+
+  /* The recommended next step gets a dashed accent edge so it reads as a hint, not a lock. */
+  .wizard-step--suggested {
+    box-shadow: inset 0 -4px 0 0 color-mix(in oklab, var(--brut-ink) 45%, transparent);
+  }
+
+  .wizard-step--suggested .wizard-step-state {
+    color: var(--color-ink);
+    font-weight: 700;
   }
 
   .wizard-step-head {
@@ -1375,6 +1425,66 @@
     line-height: 1.45;
     color: color-mix(in oklab, var(--color-ink) 78%, transparent);
     max-width: 58ch;
+  }
+
+  .wizard-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: var(--brut-border-micro) dashed var(--brut-ink);
+  }
+
+  .wizard-nav-btn {
+    min-height: 44px;
+    padding: 0.4rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  .wizard-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .wizard-nav-btn:not(:disabled):hover,
+  .wizard-nav-btn:not(:disabled):focus-visible {
+    background: var(--brut-neon, #e8ff47);
+    outline: none;
+  }
+
+  .wizard-nav-meta {
+    flex: 1 1 auto;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: color-mix(in oklab, var(--color-ink) 65%, transparent);
+  }
+
+  .wizard-nav-suggest {
+    font: inherit;
+    color: var(--color-ink);
+    background: none;
+    border: none;
+    padding: 0.25rem 0.4rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .wizard-nav-suggest:hover,
+  .wizard-nav-suggest:focus-visible {
+    background: var(--brut-neon, #e8ff47);
+    outline: none;
   }
 
   .wizard-success {

@@ -379,7 +379,13 @@ export const ConnectGraphRevalidateRequestSchema = z.object({
    * After a capped run, automatically enqueue the next batch until the scope is
    * clear — lets a big backlog drain unattended (overnight / background).
    */
-  continue_in_background: z.boolean().optional()
+  continue_in_background: z.boolean().optional(),
+  /**
+   * Readiness-run cohort id. When set, the job only processes units stamped as
+   * members of that run (knowledge_readiness_run_units), so a named pass can take
+   * its specific cohort through validation independent of the global backlog.
+   */
+  cohort_run_id: z.string().optional()
 });
 export type ConnectGraphRevalidateRequest = z.infer<typeof ConnectGraphRevalidateRequestSchema>;
 
@@ -391,7 +397,9 @@ export const ConnectGraphLinkSourcesRequestSchema = z.object({
   label: z.string().min(1).max(200).optional(),
   domain_pack_id: z.string().uuid().optional(),
   scope: ConnectGraphLinkSourcesScopeSchema.default('unlinked_only'),
-  project_id: z.string().uuid().optional()
+  project_id: z.string().uuid().optional(),
+  /** Readiness-run cohort id — link only this run's stamped units. */
+  cohort_run_id: z.string().optional()
 });
 export type ConnectGraphLinkSourcesRequest = z.infer<typeof ConnectGraphLinkSourcesRequestSchema>;
 

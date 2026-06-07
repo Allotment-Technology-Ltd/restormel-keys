@@ -107,6 +107,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       mode: parsed.data.mode,
       max_units: parsed.data.max_units ?? null,
       continue_in_background: parsed.data.continue_in_background ?? false,
+      cohort_run_id: parsed.data.cohort_run_id ?? null,
     });
     if (!parseGraphRevalidateJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build re-validation job." }, { status: 500 });

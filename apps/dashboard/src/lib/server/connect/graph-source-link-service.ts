@@ -651,6 +651,12 @@ export async function runGraphSourceLinking(args: {
     await reporter.skipStage(stage, "Skipped for automated source linking");
   }
 
+  let cohortUnitIds: Set<string> | null = null;
+  if (meta.cohort_run_id) {
+    const { listReadinessRunUnitIds } = await import("$lib/server/neon");
+    cohortUnitIds = new Set(await listReadinessRunUnitIds(meta.cohort_run_id));
+  }
+
   await reporter.beginStage("storing", "Loading ideas and source catalog", 1);
   let units: LinkUnitRow[] = [];
   let surrealUnitsTotal = 0;
@@ -714,6 +720,12 @@ export async function runGraphSourceLinking(args: {
   const processUnit = (unit: LinkUnitRow) => {
     scanned += 1;
     sinceLastTick += 1;
+
+    // Cohort runs only link units stamped to the run.
+    if (cohortUnitIds && !cohortUnitIds.has(unit.id)) {
+      skipped += 1;
+      return;
+    }
 
     if (!unitNeedsLinkForJob(unit, meta.scope)) {
       skipped += 1;
@@ -834,6 +846,56 @@ export async function runGraphSourceLinking(args: {
     "full",
   );
   return { linked: linkedReported, scanned, candidates: candidates.length };
+}
+
+/**
+ * Resolve the next `limit` still-unlinked unit ids (no source edge), in stable
+ * id order. Used to define a readiness-run cohort up front: the resolved ids are
+ * stamped into knowledge_readiness_run_units, then every step (link/embed/validate)
+ * scopes to that set. Ids are canonicalized via formatSurrealRecordId so they
+ * match the ids the three services filter against.
+ */
+export async function resolveNextUnlinkedUnitIds(
+  workspaceId: string,
+  limit: number,
+): Promise<string[]> {
+  const cap = Math.min(Math.max(Math.floor(limit), 1), 100_000);
+  const target = await getConnectGraphTargetForWorkspace(workspaceId);
+  if (!target) return [];
+
+  if (target.provider === "surreal") {
+    const pack = await resolveWorkspaceDomainPack(workspaceId, null);
+    const store = await buildWorkspaceGraphStore(workspaceId);
+    if (!pack || !store) return [];
+    const unitTable = tableIdent(pack.graph_schema.unit_table, "unit");
+    const ids: string[] = [];
+    await streamSurrealUnitRowsAll<Record<string, unknown>>(
+      store,
+      (l, start) => surrealSourceLinkUnitsQuery(unitTable, l, start, { unlinkedOnly: true }),
+      async (page) => {
+        for (const row of page) {
+          const unit = mapSurrealRowToLinkUnit(row);
+          if (!unit) continue;
+          if (unit.sourceKey) continue; // already linked
+          ids.push(unit.id);
+          if (ids.length >= cap) return true;
+        }
+      },
+    );
+    return ids.slice(0, cap);
+  }
+
+  const { getSql, ensureIngestionRoutingSchema } = await import("$lib/server/neon");
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT u.id
+    FROM knowledge_graph_units u
+    WHERE u.workspace_id = ${workspaceId} AND u.source_id IS NULL
+    ORDER BY u.created_at ASC, u.id ASC
+    LIMIT ${cap}
+  `) as { id: string }[];
+  return rows.map((r) => r.id);
 }
 
 export async function countSurrealUnitsNeedingSourceLink(

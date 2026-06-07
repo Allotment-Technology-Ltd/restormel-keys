@@ -153,6 +153,7 @@ async function loadPostgresRevalidateGroups(
   workspaceId: string,
   scope: ConnectGraphRevalidateScope,
   maxUnits: number | null,
+  cohortUnitIds: Set<string> | null,
 ): Promise<RevalidateLoadResult> {
   const { getSql, ensureIngestionRoutingSchema } = await import("$lib/server/neon");
   await ensureIngestionRoutingSchema();
@@ -249,6 +250,8 @@ async function loadPostgresRevalidateGroups(
 
     if (!rows.length) break;
     for (const row of rows) {
+      // Cohort runs scope to their stamped membership set (store-neutral filter).
+      if (cohortUnitIds && !cohortUnitIds.has(row.id)) continue;
       appendUnitToGroup(bySource, row, scope);
       if (maxUnits != null && countLoadedUnits(bySource) >= maxUnits) {
         hadMore = true;
@@ -268,6 +271,7 @@ async function loadSurrealRevalidateGroups(
   pack: ConnectDomainPack,
   scope: ConnectGraphRevalidateScope,
   maxUnits: number | null,
+  cohortUnitIds: Set<string> | null,
 ): Promise<RevalidateLoadResult> {
   const store = await buildWorkspaceGraphStore(workspaceId);
   if (!store) return { groups: [], hadMore: false };
@@ -298,6 +302,9 @@ async function loadSurrealRevalidateGroups(
         const unitId =
           formatSurrealRecordId(row.id) ?? (typeof row.id === "string" ? row.id : null);
         if (!unitId) continue;
+
+        // Cohort runs scope to their stamped membership set.
+        if (cohortUnitIds && !cohortUnitIds.has(unitId)) continue;
 
         const unit: RevalidateUnit = {
           id: unitId,
@@ -349,11 +356,12 @@ async function loadRevalidateGroups(
   pack: ConnectDomainPack,
   scope: ConnectGraphRevalidateScope,
   maxUnits: number | null,
+  cohortUnitIds: Set<string> | null,
 ): Promise<RevalidateLoadResult> {
   if (target.provider === "surreal") {
-    return loadSurrealRevalidateGroups(workspaceId, pack, scope, maxUnits);
+    return loadSurrealRevalidateGroups(workspaceId, pack, scope, maxUnits, cohortUnitIds);
   }
-  return loadPostgresRevalidateGroups(workspaceId, scope, maxUnits);
+  return loadPostgresRevalidateGroups(workspaceId, scope, maxUnits, cohortUnitIds);
 }
 
 const SKIP_STAGES_VALIDATE_ONLY = ["extracting", "relating", "grouping", "embedding", "remediating"] as const;
@@ -484,12 +492,22 @@ export async function runGraphRevalidation(args: {
       `Batch run — processing up to ${maxUnits.toLocaleString()} ${meta.scope} unit(s) this run${meta.continue_in_background ? "; will auto-continue in the background until the backlog is clear" : ""}.`,
     );
   }
+  let cohortUnitIds: Set<string> | null = null;
+  if (meta.cohort_run_id) {
+    const { listReadinessRunUnitIds } = await import("$lib/server/neon");
+    cohortUnitIds = new Set(await listReadinessRunUnitIds(meta.cohort_run_id));
+    await reporter.log(
+      "VALIDATE",
+      `Readiness run cohort — restricting to ${cohortUnitIds.size.toLocaleString()} stamped idea(s).`,
+    );
+  }
   const { groups, hadMore } = await loadRevalidateGroups(
     job.workspaceId,
     target,
     pack,
     meta.scope,
     maxUnits,
+    cohortUnitIds,
   );
   const unitCount = groups.reduce((n, g) => n + g.units.length, 0);
 

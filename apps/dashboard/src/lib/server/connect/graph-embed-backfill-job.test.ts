@@ -15,6 +15,7 @@ describe("graph embed backfill job meta", () => {
       kind: "graph_embed_backfill",
       embedding_route_id: "11111111-1111-4111-8111-111111111111",
       domain_pack_id: null,
+      cohort_run_id: null,
     });
   });
 

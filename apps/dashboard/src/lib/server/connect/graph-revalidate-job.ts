@@ -27,6 +27,8 @@ export type GraphRevalidateJobMeta = {
   max_units?: number | null;
   /** Auto-enqueue the next batch until the scope is clear. */
   continue_in_background?: boolean;
+  /** Readiness-run cohort id — process only units stamped to this run. */
+  cohort_run_id?: string | null;
 };
 
 export function buildGraphRevalidateJobSources(meta: GraphRevalidateJobMeta): unknown[] {
@@ -86,6 +88,10 @@ export function parseGraphRevalidateJobMeta(sources: unknown): GraphRevalidateJo
         ? Math.floor(rec.max_units)
         : null,
     continue_in_background: rec.continue_in_background === true,
+    cohort_run_id:
+      typeof rec.cohort_run_id === "string" && rec.cohort_run_id.trim()
+        ? rec.cohort_run_id.trim()
+        : null,
   };
 }
 

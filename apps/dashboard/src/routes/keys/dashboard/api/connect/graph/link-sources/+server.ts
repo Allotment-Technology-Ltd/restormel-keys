@@ -85,6 +85,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       kind: "graph_link_sources",
       domain_pack_id: domainPackId,
       scope: parsed.data.scope,
+      cohort_run_id: parsed.data.cohort_run_id ?? null,
     });
     if (!parseGraphLinkSourcesJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build source-linking job." }, { status: 500 });

@@ -108,6 +108,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       domain_pack_id: domainPackId,
       scope,
       target_dimensions: options.health.targetDimensions,
+      cohort_run_id: parsed.data.cohort_run_id ?? null,
     });
     if (!parseGraphEmbedBackfillJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build embed backfill job." }, { status: 500 });

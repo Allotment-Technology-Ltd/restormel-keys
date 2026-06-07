@@ -2290,6 +2290,48 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_job_logs_job_seq
       ON knowledge_ingest_job_logs (job_id, id)
     `;
+    // Readiness runs: a named pass that takes a cohort (the next N unlinked ideas)
+    // through link → embed → validate, with durable per-step status + quality rollup.
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_readiness_runs (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        domain_pack_id TEXT,
+        label TEXT NOT NULL,
+        size_target INTEGER NOT NULL,
+        size_actual INTEGER,
+        status TEXT NOT NULL DEFAULT 'draft',
+        link_job_id TEXT,
+        embed_job_id TEXT,
+        validate_job_id TEXT,
+        quality_summary JSONB,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT knowledge_readiness_runs_status_check CHECK (
+          status IN ('draft', 'linking', 'linked', 'embedding', 'embedded', 'validating', 'complete', 'archived')
+        )
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_readiness_runs_workspace_updated
+      ON knowledge_readiness_runs (workspace_id, updated_at DESC)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_readiness_runs_workspace_status
+      ON knowledge_readiness_runs (workspace_id, status)
+    `;
+    // Cohort membership (store-neutral: units may live in Postgres or Surreal).
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_readiness_run_units (
+        run_id TEXT NOT NULL REFERENCES knowledge_readiness_runs(id) ON DELETE CASCADE,
+        unit_id TEXT NOT NULL,
+        PRIMARY KEY (run_id, unit_id)
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_readiness_run_units_unit
+      ON knowledge_readiness_run_units (unit_id)
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_graph_targets (
         id TEXT PRIMARY KEY,
@@ -5917,6 +5959,198 @@ export async function bulkCleanupIngestJobsForWorkspace(params: {
     : [];
 
   return { cancelled: cancelledRows.length, deleted: deletedRows.length };
+}
+
+// ─── Readiness runs (cohort passes through link → embed → validate) ──────────
+
+export type ReadinessRunStatus =
+  | "draft"
+  | "linking"
+  | "linked"
+  | "embedding"
+  | "embedded"
+  | "validating"
+  | "complete"
+  | "archived";
+
+export type ReadinessRunQualitySummary = {
+  ok: number;
+  weak: number;
+  unsupported: number;
+  unvalidated: number;
+  okPct?: number;
+};
+
+export type ReadinessRunRecord = {
+  id: string;
+  workspaceId: string;
+  domainPackId: string | null;
+  label: string;
+  sizeTarget: number;
+  sizeActual: number | null;
+  status: ReadinessRunStatus;
+  linkJobId: string | null;
+  embedJobId: string | null;
+  validateJobId: string | null;
+  qualitySummary: ReadinessRunQualitySummary | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapReadinessRunRow(row: Record<string, unknown>): ReadinessRunRecord {
+  const qualityRaw = row.quality_summary;
+  let qualitySummary: ReadinessRunQualitySummary | null = null;
+  if (qualityRaw && typeof qualityRaw === "object" && !Array.isArray(qualityRaw)) {
+    const q = qualityRaw as Record<string, unknown>;
+    const num = (k: string) => (typeof q[k] === "number" ? (q[k] as number) : 0);
+    qualitySummary = {
+      ok: num("ok"),
+      weak: num("weak"),
+      unsupported: num("unsupported"),
+      unvalidated: num("unvalidated"),
+      ...(typeof q.okPct === "number" ? { okPct: q.okPct } : {}),
+    };
+  }
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    domainPackId: row.domain_pack_id == null ? null : String(row.domain_pack_id),
+    label: String(row.label),
+    sizeTarget: Number(row.size_target),
+    sizeActual: row.size_actual == null ? null : Number(row.size_actual),
+    status: String(row.status) as ReadinessRunStatus,
+    linkJobId: row.link_job_id == null ? null : String(row.link_job_id),
+    embedJobId: row.embed_job_id == null ? null : String(row.embed_job_id),
+    validateJobId: row.validate_job_id == null ? null : String(row.validate_job_id),
+    qualitySummary,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function insertReadinessRun(params: {
+  id: string;
+  workspaceId: string;
+  domainPackId?: string | null;
+  label: string;
+  sizeTarget: number;
+}): Promise<ReadinessRunRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    INSERT INTO knowledge_readiness_runs (
+      id, workspace_id, domain_pack_id, label, size_target, status, created_at, updated_at
+    )
+    VALUES (
+      ${params.id}, ${params.workspaceId}, ${params.domainPackId ?? null},
+      ${params.label}, ${params.sizeTarget}, ${"draft"}, ${now}, ${now}
+    )
+    RETURNING *
+  `;
+  return mapReadinessRunRow(rows[0] as Record<string, unknown>);
+}
+
+export async function listReadinessRunsForWorkspace(params: {
+  workspaceId: string;
+  includeArchived?: boolean;
+  limit?: number;
+}): Promise<ReadinessRunRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+  const rows = params.includeArchived
+    ? await sql`
+        SELECT * FROM knowledge_readiness_runs
+        WHERE workspace_id = ${params.workspaceId}
+        ORDER BY updated_at DESC
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT * FROM knowledge_readiness_runs
+        WHERE workspace_id = ${params.workspaceId} AND status <> 'archived'
+        ORDER BY updated_at DESC
+        LIMIT ${limit}
+      `;
+  return rows.map((row) => mapReadinessRunRow(row as Record<string, unknown>));
+}
+
+export async function getReadinessRun(params: {
+  runId: string;
+  workspaceId: string;
+}): Promise<ReadinessRunRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_readiness_runs
+    WHERE id = ${params.runId} AND workspace_id = ${params.workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapReadinessRunRow(rows[0] as Record<string, unknown>);
+}
+
+/**
+ * Patch a readiness run. Uses COALESCE(new, existing) semantics — passing `null`
+ * (or omitting a field) leaves the column unchanged. We never need to clear these
+ * back to null once set, so this is sufficient and avoids fragment composition.
+ */
+export async function updateReadinessRun(params: {
+  runId: string;
+  workspaceId: string;
+  status?: ReadinessRunStatus;
+  sizeActual?: number | null;
+  linkJobId?: string | null;
+  embedJobId?: string | null;
+  validateJobId?: string | null;
+  qualitySummary?: ReadinessRunQualitySummary | null;
+}): Promise<ReadinessRunRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const qualityJson =
+    params.qualitySummary != null ? JSON.stringify(params.qualitySummary) : null;
+  const rows = await sql`
+    UPDATE knowledge_readiness_runs
+    SET
+      status = COALESCE(${params.status ?? null}, status),
+      size_actual = COALESCE(${params.sizeActual ?? null}::integer, size_actual),
+      link_job_id = COALESCE(${params.linkJobId ?? null}, link_job_id),
+      embed_job_id = COALESCE(${params.embedJobId ?? null}, embed_job_id),
+      validate_job_id = COALESCE(${params.validateJobId ?? null}, validate_job_id),
+      quality_summary = COALESCE(${qualityJson}::jsonb, quality_summary),
+      updated_at = ${now}
+    WHERE id = ${params.runId} AND workspace_id = ${params.workspaceId}
+    RETURNING *
+  `;
+  if (rows.length === 0) return null;
+  return mapReadinessRunRow(rows[0] as Record<string, unknown>);
+}
+
+/** Stamp cohort membership (idempotent). Returns the number of newly-added units. */
+export async function addReadinessRunUnits(params: {
+  runId: string;
+  unitIds: string[];
+}): Promise<number> {
+  if (params.unitIds.length === 0) return 0;
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO knowledge_readiness_run_units (run_id, unit_id)
+    SELECT ${params.runId}, unnest(${params.unitIds}::text[])
+    ON CONFLICT (run_id, unit_id) DO NOTHING
+    RETURNING unit_id
+  `;
+  return rows.length;
+}
+
+export async function listReadinessRunUnitIds(runId: string): Promise<string[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT unit_id FROM knowledge_readiness_run_units WHERE run_id = ${runId}
+  `;
+  return rows.map((row) => String((row as Record<string, unknown>).unit_id));
 }
 
 // ─── Knowledge graph targets (Bring-Your-Own store) ──────────────────────────

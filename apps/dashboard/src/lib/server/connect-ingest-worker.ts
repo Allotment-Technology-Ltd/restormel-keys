@@ -73,6 +73,52 @@ function parseStages(raw: unknown): ConnectIngestStageProgress[] {
     });
 }
 
+/**
+ * Advance a readiness run's status as its cohort jobs run. No-op when the job
+ * isn't part of a run (cohortRunId null) or the update fails — run tracking must
+ * never break job processing.
+ */
+async function advanceReadinessRunPhase(
+  workspaceId: string,
+  cohortRunId: string | null | undefined,
+  phase: "linking" | "linked" | "embedding" | "embedded" | "validating",
+): Promise<void> {
+  if (!cohortRunId) return;
+  try {
+    const { markReadinessRunPhase } = await import(
+      "$lib/server/connect/readiness-runs-service"
+    );
+    await markReadinessRunPhase({ runId: cohortRunId, workspaceId, phase });
+  } catch {
+    // Run tracking is best-effort.
+  }
+}
+
+/** Mark a readiness run complete and roll up its cohort's validation quality. */
+async function finishReadinessRunValidation(
+  workspaceId: string,
+  cohortRunId: string | null | undefined,
+): Promise<void> {
+  if (!cohortRunId) return;
+  try {
+    const { markReadinessRunPhase, rollupReadinessRunQuality } = await import(
+      "$lib/server/connect/readiness-runs-service"
+    );
+    const qualitySummary = await rollupReadinessRunQuality({
+      runId: cohortRunId,
+      workspaceId,
+    });
+    await markReadinessRunPhase({
+      runId: cohortRunId,
+      workspaceId,
+      phase: "complete",
+      qualitySummary,
+    });
+  } catch {
+    // Run tracking is best-effort.
+  }
+}
+
 export async function processConnectIngestJobRecord(
   job: ConnectIngestJobRecord
 ): Promise<void> {
@@ -86,6 +132,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, linkSourcesMeta.cohort_run_id, "linking");
       try {
         await runGraphSourceLinking({ job, meta: linkSourcesMeta, reporter });
       } catch (err) {
@@ -95,6 +142,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await advanceReadinessRunPhase(job.workspaceId, linkSourcesMeta.cohort_run_id, "linked");
       return;
     }
 
@@ -106,6 +154,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, embedBackfillMeta.cohort_run_id, "embedding");
       try {
         await runGraphEmbedBackfill({ job, meta: embedBackfillMeta, reporter });
       } catch (err) {
@@ -115,6 +164,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await advanceReadinessRunPhase(job.workspaceId, embedBackfillMeta.cohort_run_id, "embedded");
       return;
     }
 
@@ -126,6 +176,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, revalidateMeta.cohort_run_id, "validating");
       try {
         await runGraphRevalidation({ job, meta: revalidateMeta, reporter });
       } catch (err) {
@@ -135,6 +186,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await finishReadinessRunValidation(job.workspaceId, revalidateMeta.cohort_run_id);
       return;
     }
 

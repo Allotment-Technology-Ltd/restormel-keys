@@ -18,6 +18,8 @@
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
   import ConnectGraphReadinessWizard from "$lib/components/connect/ConnectGraphReadinessWizard.svelte";
+  import ConnectReadinessLibrary from "$lib/components/connect/ConnectReadinessLibrary.svelte";
+  import type { ReadinessRunSummary } from "$lib/components/connect/ConnectReadinessLibrary.svelte";
   import {
     formatHumanReviewNote,
     isAwaitingHumanTriage,
@@ -317,6 +319,80 @@
   let catalogLinkStepComplete = false;
   let readinessEmbedStepComplete = false;
 
+  // Readiness library: named cohort passes. activeRunId === null means "whole
+  // workspace" (the original global-backlog behaviour); a run id scopes every
+  // link/embed/validate dispatch to that run's stamped cohort.
+  let readinessRuns: ReadinessRunSummary[] = [];
+  let activeRunId: string | null = null;
+  let runsLoading = false;
+  let runsError: string | null = null;
+  let creatingRun = false;
+  $: activeRun = activeRunId ? readinessRuns.find((r) => r.id === activeRunId) ?? null : null;
+
+  async function loadReadinessRuns() {
+    runsLoading = true;
+    runsError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        runsError = typeof body.message === "string" ? body.message : "Could not load readiness runs.";
+        return;
+      }
+      readinessRuns = Array.isArray(body.runs) ? body.runs : [];
+      if (activeRunId && !readinessRuns.some((r) => r.id === activeRunId)) activeRunId = null;
+    } catch {
+      runsError = "Network error while loading readiness runs.";
+    } finally {
+      runsLoading = false;
+    }
+  }
+
+  async function createReadinessRun(size: number) {
+    if (creatingRun || !(size > 0)) return;
+    creatingRun = true;
+    runsError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          size_target: size,
+          ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        runsError = typeof body.message === "string" ? body.message : "Could not create readiness run.";
+        return;
+      }
+      if (typeof body.warning === "string") runsError = body.warning;
+      await loadReadinessRuns();
+      if (body.run?.id && (body.run.sizeActual ?? 0) > 0) {
+        activeRunId = body.run.id;
+        scrollToGraphReadinessWizard();
+      }
+    } catch {
+      runsError = "Network error while creating readiness run.";
+    } finally {
+      creatingRun = false;
+    }
+  }
+
+  async function archiveReadinessRun(runId: string) {
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive" }),
+      });
+      if (res.ok && activeRunId === runId) activeRunId = null;
+      await loadReadinessRuns();
+    } catch {
+      runsError = "Network error while archiving readiness run.";
+    }
+  }
+
   $: graphReadinessToolsLoading =
     linkSourcesOptionsLoading || embedOptionsLoading || revalidateOptionsLoading;
 
@@ -569,6 +645,7 @@
     seedDiscoverFromServerCatalog();
     void refreshDiscoverIfNeeded();
     void loadInitialUnits();
+    void loadReadinessRuns();
     if (workspaceMode === "tools") {
       void ensureToolsOptions().then(() => {
         if (get(page).url.searchParams.get("focus") === "embed") {
@@ -1355,6 +1432,7 @@
         body: JSON.stringify({
           scope: linkSourcesScope,
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -1602,6 +1680,7 @@
           scope: embedOptions.recommendedScope,
           ...(embedRouteId ? { embedding_route_id: embedRouteId } : {}),
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -1638,12 +1717,15 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scope: validateScope,
+          scope: activeRunId ? "linked" : validateScope,
           mode: "validate",
           ...(batchSize > 0 ? { max_units: batchSize } : {}),
-          ...(validateScope === "unchecked" ? { continue_in_background: continueInBackground } : {}),
+          ...(!activeRunId && validateScope === "unchecked"
+            ? { continue_in_background: continueInBackground }
+            : {}),
           ...(revalidateRouteId ? { validation_route_id: revalidateRouteId } : {}),
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -2635,6 +2717,25 @@
               Loading tool options… the readiness wizard is available below while counts refresh.
             </p>
           {/if}
+          <ConnectReadinessLibrary
+            runs={readinessRuns}
+            {activeRunId}
+            loading={runsLoading}
+            creating={creatingRun}
+            error={runsError}
+            on:select={(e) => { activeRunId = e.detail.runId; }}
+            on:create={(e) => createReadinessRun(e.detail.size)}
+            on:archive={(e) => archiveReadinessRun(e.detail.runId)}
+          />
+          {#if activeRun}
+            <p class="readiness-active-run brut-muted" role="status">
+              Wizard scoped to <strong>{activeRun.label}</strong> ({(activeRun.sizeActual ?? activeRun.sizeTarget).toLocaleString()}
+              ideas). Link, embed, and validate below apply only to this cohort.
+              <button type="button" class="readiness-active-clear brut-focus" on:click={() => { activeRunId = null; }}>
+                Switch to whole workspace
+              </button>
+            </p>
+          {/if}
           <div class="revalidate-panel" id="graph-readiness-wizard" bind:this={graphReadinessWizardEl}>
             <ConnectGraphReadinessWizard
               graphStore={graph.store ?? "none"}
@@ -3445,6 +3546,35 @@
 
   .revalidate-panel {
     margin-top: var(--space-4);
+  }
+
+  .readiness-active-run {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    border-left-width: 4px;
+    background: color-mix(in oklab, var(--brut-neon, #e8ff47) 18%, var(--brut-white));
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .readiness-active-clear {
+    margin-left: var(--space-2);
+    font: inherit;
+    font-weight: 700;
+    color: var(--color-ink);
+    background: none;
+    border: none;
+    padding: 0.1rem 0.3rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .readiness-active-clear:hover,
+  .readiness-active-clear:focus-visible {
+    background: var(--brut-neon, #e8ff47);
+    outline: none;
   }
 
   .readiness-blocker-list {
