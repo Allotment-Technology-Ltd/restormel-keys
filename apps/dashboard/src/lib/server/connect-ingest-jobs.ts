@@ -9,6 +9,8 @@ export {
   claimNextPendingConnectIngestJob,
   updateConnectIngestJobById,
   cancelConnectIngestJobForWorkspace,
+  deleteConnectIngestJobForWorkspace,
+  bulkCleanupIngestJobsForWorkspace,
   appendConnectIngestJobLog,
   listConnectIngestJobLogsSince,
   countConnectIngestJobLogs,

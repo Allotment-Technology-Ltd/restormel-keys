@@ -41,6 +41,10 @@
         total: number | null;
         hasMore: boolean;
       };
+      sourceCatalogStatus?: {
+        pipelineCatalogCount: number;
+        sourcesInPipeline: boolean;
+      };
     } | null>;
   };
 

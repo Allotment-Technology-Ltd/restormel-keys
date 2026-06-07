@@ -91,23 +91,39 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     ? { section: bannerSection, label: dashboardUiSectionLabel(bannerSection) }
     : null;
 
-  let projectContexts: {
+  type ProjectContextRow = {
     id: string;
     name: string;
     environments: { id: string; name: string; type: string }[];
-  }[] = [];
+  };
+
+  const isConnectRoute =
+    pathAfterBase === "/connect" || pathAfterBase.startsWith("/connect/");
+
+  let projectContexts: ProjectContextRow[] | Promise<ProjectContextRow[]> = [];
 
   let journeySignals: { integrationCount: number; gatewayKeyCount: number } | null = null;
   let workspaceId: string | null = null;
 
   if (locals.user) {
-    try {
-      const endProjects = perfSpan("dashboard/layout", "listProjectsWithEnvironments");
-      projectContexts = await listProjectsWithEnvironments(locals.user.uid);
-      endProjects();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "unknown error";
-      console.error("[dashboard layout] project context load failed:", msg.slice(0, 120));
+    const loadProjectContexts = async (): Promise<ProjectContextRow[]> => {
+      try {
+        const endProjects = perfSpan("dashboard/layout", "listProjectsWithEnvironments");
+        const rows = await listProjectsWithEnvironments(locals.user!.uid);
+        endProjects();
+        return rows;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "unknown error";
+        console.error("[dashboard layout] project context load failed:", msg.slice(0, 120));
+        return [];
+      }
+    };
+
+    if (isConnectRoute) {
+      // Stream project nav data — don't block Connect SSR on a slow Neon round-trip.
+      projectContexts = loadProjectContexts();
+    } else {
+      projectContexts = await loadProjectContexts();
     }
 
     try {

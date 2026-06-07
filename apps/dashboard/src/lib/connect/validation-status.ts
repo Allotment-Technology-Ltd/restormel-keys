@@ -61,6 +61,8 @@ export function matchesGraphRevalidateScope(
   const status = normalizeValidationStatus(validationStatus);
   if (scope === "all") return true;
   if (scope === "unchecked") return isUncheckedValidationStatus(validationStatus);
+  // "linked" means unchecked AND has a source link — source filter is applied at query level
+  if (scope === "linked") return isUncheckedValidationStatus(validationStatus);
   if (scope === "flagged") return status === "weak" || status === "unsupported";
   if (scope === "quarantine") return isAwaitingHumanTriage(validationStatus, validationNote);
   if (scope === "unsupported") {

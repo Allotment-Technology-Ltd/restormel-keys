@@ -292,7 +292,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "latest_run",
       title: input.latestJob.label ? `Active run: ${input.latestJob.label}` : "Active ingest run",
       description: `Status: ${input.latestJob.status}. Watch stage-by-stage progress in the run console.`,
-      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}`,
+      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}?from=hub`,
       cta: "Watch live progress",
     });
   } else if (input.latestJob) {
@@ -300,7 +300,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "latest_run",
       title: input.latestJob.label ? `Latest run: ${input.latestJob.label}` : "Latest ingest run",
       description: `Status: ${input.latestJob.status}. Open the run console for logs and results.`,
-      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}`,
+      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}?from=hub`,
       cta: "Open run",
     });
   } else {

@@ -22,12 +22,18 @@
   let error: string | null = null;
   let jobs: Job[] = [];
   let statusFilter = "all";
+  let bulkCleaning = false;
+  let bulkCleanError: string | null = null;
+  let bulkCleanResult: { cancelled: number; deleted: number } | null = null;
+  let deletingIds = new Set<string>();
 
   $: filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
+  $: stuckCount = jobs.filter((j) => j.status === "running" || j.status === "pending" || j.status === "failed" || j.status === "cancelled").length;
 
   async function load() {
     loading = true;
     error = null;
+    bulkCleanResult = null;
     try {
       const res = await fetch(API);
       if (res.status === 401) {
@@ -58,8 +64,45 @@
     return "status-muted";
   }
 
+  function canCancel(status: string): boolean {
+    return status === "running" || status === "pending";
+  }
+
   function canRestart(status: string): boolean {
     return status === "failed" || status === "cancelled";
+  }
+
+  async function cancelJob(jobId: string) {
+    try {
+      const res = await fetch(`${API}/${jobId}/cancel`, { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        error = d.message ?? `Could not cancel run (HTTP ${res.status}).`;
+        return;
+      }
+      jobs = jobs.map((j) => (j.id === jobId ? { ...j, status: "cancelled" } : j));
+    } catch {
+      error = "Network error while cancelling.";
+    }
+  }
+
+  async function deleteJob(jobId: string) {
+    deletingIds = new Set([...deletingIds, jobId]);
+    try {
+      const res = await fetch(`${API}/${jobId}`, { method: "DELETE" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        error = d.message ?? `Could not delete run (HTTP ${res.status}).`;
+        return;
+      }
+      jobs = jobs.filter((j) => j.id !== jobId);
+    } catch {
+      error = "Network error while deleting.";
+    } finally {
+      const next = new Set(deletingIds);
+      next.delete(jobId);
+      deletingIds = next;
+    }
   }
 
   async function restartJob(jobId: string) {
@@ -74,6 +117,31 @@
       if (newId) await goto(`${CONNECT_BASE}/ingest/${newId}`);
     } catch {
       error = "Network error while restarting.";
+    }
+  }
+
+  async function bulkClean() {
+    if (bulkCleaning) return;
+    bulkCleaning = true;
+    bulkCleanError = null;
+    bulkCleanResult = null;
+    try {
+      const res = await fetch(API, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete_statuses: ["running", "cancelled", "failed"] }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        bulkCleanError = d.message ?? `Cleanup failed (HTTP ${res.status}).`;
+        return;
+      }
+      bulkCleanResult = { cancelled: d.cancelled ?? 0, deleted: d.deleted ?? 0 };
+      await load();
+    } catch {
+      bulkCleanError = "Network error during cleanup.";
+    } finally {
+      bulkCleaning = false;
     }
   }
 </script>
@@ -105,7 +173,28 @@
       </select>
     </label>
     <button type="button" class="btn btn-secondary" on:click={load} disabled={loading}>Refresh</button>
+    {#if stuckCount > 0}
+      <button
+        type="button"
+        class="btn btn-danger"
+        on:click={bulkClean}
+        disabled={bulkCleaning}
+        title="Cancel all running/pending jobs and delete all failed, cancelled, and stuck runs"
+      >
+        {bulkCleaning ? "Cleaning…" : `Clear stuck & failed (${stuckCount})`}
+      </button>
+    {/if}
   </div>
+
+  {#if bulkCleanResult}
+    <p class="clean-result" role="status">
+      Cleaned up — {bulkCleanResult.deleted} job{bulkCleanResult.deleted === 1 ? "" : "s"} deleted
+      {#if bulkCleanResult.cancelled > 0}, {bulkCleanResult.cancelled} cancelled first{/if}.
+    </p>
+  {/if}
+  {#if bulkCleanError}
+    <p class="err" role="alert">{bulkCleanError}</p>
+  {/if}
 
   {#if loading}
     <BrutalLoadingState message="Loading ingest runs — fetching your workspace jobs" rows={5} />
@@ -133,15 +222,35 @@
             </span>
           </a>
           <code class="job-id">{job.id.slice(0, 8)}</code>
-          {#if canRestart(job.status)}
+          <div class="job-actions">
+            {#if canCancel(job.status)}
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                on:click|stopPropagation={() => cancelJob(job.id)}
+              >
+                Cancel
+              </button>
+            {/if}
+            {#if canRestart(job.status)}
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                on:click|stopPropagation={() => restartJob(job.id)}
+              >
+                Restart
+              </button>
+            {/if}
             <button
               type="button"
-              class="btn btn-secondary btn-sm"
-              on:click|stopPropagation={() => restartJob(job.id)}
+              class="btn btn-danger btn-sm"
+              disabled={deletingIds.has(job.id)}
+              on:click|stopPropagation={() => deleteJob(job.id)}
+              aria-label="Delete this job"
             >
-              Restart
+              {deletingIds.has(job.id) ? "…" : "Delete"}
             </button>
-          {/if}
+          </div>
         </li>
       {/each}
     </ul>
@@ -172,6 +281,7 @@
     align-items: flex-end;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
+    flex-wrap: wrap;
   }
   .filter {
     display: inline-flex;
@@ -183,6 +293,28 @@
   .filter .input {
     width: auto;
     min-width: 8rem;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--coral-alert, #c0392b);
+    border: 1px solid var(--coral-alert, #c0392b);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--coral-alert, #c0392b);
+    color: #fff;
+  }
+  .btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .clean-result {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    background: var(--rm-surface);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
   }
   .muted {
     color: var(--rm-muted);
@@ -217,6 +349,12 @@
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-3) var(--space-4);
+  }
+  .job-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
   }
   .job .btn-sm {
     font-size: var(--text-xs);
@@ -256,4 +394,8 @@
     color: var(--rm-dim);
     font-size: var(--text-xs);
   }
+  .status-success { border-color: var(--neon-accent, #2ecc71); color: var(--neon-accent, #2ecc71); }
+  .status-error   { border-color: var(--coral-alert, #c0392b); color: var(--coral-alert, #c0392b); }
+  .status-warning { border-color: var(--gold-accent, #f1c40f); color: var(--rm-text); }
+  .status-muted   { border-color: var(--rm-border); color: var(--rm-muted); }
 </style>

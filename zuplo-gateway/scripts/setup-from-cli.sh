@@ -5,6 +5,8 @@
 #   - ZUPLO_API_KEY (required): Portal → Settings → API Keys
 #   - KEYS_BACKEND_URL (required): dashboard base URL, e.g. https://restormel.dev/keys/dashboard (no trailing slash)
 #   - KEYS_BACKEND_API_KEY (required for backend auth): backend key sk-rk-... from Keys dashboard; set in Zuplo as secret
+#   - KEYS_SITE_ORIGIN (optional): site root for /keys/v1, /graph/v1, /connect/v1 forwards, e.g. https://restormel.dev (no trailing slash). Default: https://restormel.dev
+#   - ALLOWED_CORS_ORIGINS (optional): comma-separated origins for the restormel-cors policy. Default: https://restormel.dev,https://*.restormel.dev
 #   - Optional: ZUPLO_ACCOUNT_NAME, ZUPLO_PROJECT_NAME, ZUPLO_BRANCH (default main)
 #
 # Usage:
@@ -32,6 +34,9 @@ fi
 
 PROJECT_NAME="${ZUPLO_PROJECT_NAME:-restormel-keys-gateway}"
 BRANCH="${ZUPLO_BRANCH:-main}"
+# Site origin for /keys/v1, /graph/v1, /connect/v1 forwards; CORS origins for the restormel-cors policy.
+KEYS_SITE_ORIGIN="${KEYS_SITE_ORIGIN:-https://restormel.dev}"
+ALLOWED_CORS_ORIGINS="${ALLOWED_CORS_ORIGINS:-https://restormel.dev,https://*.restormel.dev}"
 
 cd "$GATEWAY_DIR"
 
@@ -69,6 +74,8 @@ set_var() {
 
 set_var "KEYS_BACKEND_URL" "$KEYS_BACKEND_URL" "false"
 set_var "KEYS_BACKEND_API_KEY" "$KEYS_BACKEND_API_KEY" "true"
+set_var "KEYS_SITE_ORIGIN" "$KEYS_SITE_ORIGIN" "false"
+set_var "ALLOWED_CORS_ORIGINS" "$ALLOWED_CORS_ORIGINS" "false"
 
 echo ""
 echo "Deploying gateway (project: $PROJECT_NAME, environment: $BRANCH)..."

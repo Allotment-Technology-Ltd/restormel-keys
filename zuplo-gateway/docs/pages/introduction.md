@@ -1,8 +1,27 @@
 ---
+title: Restormel API Reference
 description: Restormel Keys Cloud API — gateway and developer portal.
 ---
 
-# Introduction
+# Restormel API Reference
+
+`Route. Ingest. Retrieve. Verify.`
+
+The Restormel API gives you programmatic access to Keys routing, knowledge graph
+ingestion, verified retrieval, and agent context — using your own provider keys,
+your own graph store, and your own data. **No proxy. No lock-in.**
+
+## Start here
+
+- **[Ingest your first document](/api)** — create a Knowledge Ingest job: `POST /connect/v1/ingest/jobs`
+- **[Query your knowledge graph](/api)** — higher-order retrieval via the orchestrator: `POST /connect/v1/graph`
+- **[Get your API key](/my-keys)** — your consumer key (`zpka_…`) for the gateway
+
+> All API requests require a consumer key (`zpka_…`) passed as
+> `Authorization: Bearer {key}`. Generate yours on the [My Consumer Key](/my-keys)
+> page (sign in with GitHub).
+
+---
 
 **You are in the API portal** (Gateway reference and Try it). To leave this site: use the **On restormel.dev** tab in the nav for **Keys**, **Documentation**, or **Dashboard** — or click the Restormel logo to return to the product home.
 

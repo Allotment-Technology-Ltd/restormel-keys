@@ -24,7 +24,10 @@ fi
 
 # Trim trailing slash
 GATEWAY_URL="${GATEWAY_URL%/}"
-TEST_URL="$GATEWAY_URL/api/health"
+# /api/health is public (no auth). /api/projects requires a valid consumer key,
+# so it is used to verify the api-key policy still rejects missing/invalid keys.
+HEALTH_URL="$GATEWAY_URL/api/health"
+PROTECTED_URL="$GATEWAY_URL/api/projects"
 
 PASS=0
 FAIL=0
@@ -41,27 +44,35 @@ report() {
 echo "Launch checklist: $GATEWAY_URL"
 echo ""
 
-# 1. No API key → 401
-HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$TEST_URL")
-if [[ "$HTTP" == "401" ]]; then
-  report "PASS" "No Authorization header → 401"
+# 1. Health is public → 200 for any caller (no Authorization header)
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
+if [[ "$HTTP" == "200" ]]; then
+  report "PASS" "Public health (no Authorization header) → 200"
 else
-  report "FAIL" "No Authorization header → expected 401, got $HTTP"
+  report "FAIL" "Public health (no Authorization header) → expected 200, got $HTTP"
 fi
 
-# 2. Invalid key → 401
-HTTP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer zpka_invalid_test_key" "$TEST_URL")
+# 2. Protected route, no API key → 401
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$PROTECTED_URL")
 if [[ "$HTTP" == "401" ]]; then
-  report "PASS" "Invalid consumer key → 401"
+  report "PASS" "Protected route, no Authorization header → 401"
 else
-  report "FAIL" "Invalid consumer key → expected 401, got $HTTP"
+  report "FAIL" "Protected route, no Authorization header → expected 401, got $HTTP"
 fi
 
-# 3. Valid consumer key → 200 (or 2xx)
+# 3. Protected route, invalid key → 401
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer zpka_invalid_test_key" "$PROTECTED_URL")
+if [[ "$HTTP" == "401" ]]; then
+  report "PASS" "Protected route, invalid consumer key → 401"
+else
+  report "FAIL" "Protected route, invalid consumer key → expected 401, got $HTTP"
+fi
+
+# 4. Valid consumer key → 2xx
 if [[ -z "$ZUPLO_CONSUMER_KEY" ]]; then
-  report "FAIL" "Valid consumer key → 200 (skip: ZUPLO_CONSUMER_KEY not set in .env)"
+  report "FAIL" "Valid consumer key → 2xx (skip: ZUPLO_CONSUMER_KEY not set in .env)"
 else
-  HTTP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ZUPLO_CONSUMER_KEY" "$TEST_URL")
+  HTTP=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $ZUPLO_CONSUMER_KEY" "$PROTECTED_URL")
   if [[ "$HTTP" =~ ^2 ]]; then
     report "PASS" "Valid consumer key → $HTTP"
   else

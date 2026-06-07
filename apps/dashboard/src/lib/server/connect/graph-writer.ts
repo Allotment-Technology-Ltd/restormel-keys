@@ -129,6 +129,25 @@ function ident(name: string, fallback: string): string {
   return SAFE_IDENT.test(s) ? s : fallback;
 }
 
+/** Walk nested Surreal HTTP result shapes from CREATE … RETURN id. */
+export function extractCreatedRecordId(res: unknown): string | null {
+  const queue: unknown[] = [res];
+  while (queue.length > 0) {
+    const item = queue.shift();
+    if (Array.isArray(item)) {
+      for (const child of item) queue.push(child);
+      continue;
+    }
+    const direct = formatSurrealRecordId(item);
+    if (direct) return direct;
+    if (item && typeof item === "object") {
+      const nested = formatSurrealRecordId((item as Record<string, unknown>).id);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
 /** Parse Surreal record ids returned by CREATE … RETURN id (string or RecordId object). */
 export function formatSurrealRecordId(value: unknown): string | null {
   if (typeof value === "string" && value.includes(":")) return value;
@@ -162,20 +181,12 @@ class SurrealGraphWriter implements GraphWriter {
 
   private async createReturningId(table: string, content: Record<string, unknown>): Promise<string | null> {
     const res = await this.store.query<unknown>(`CREATE ${table} CONTENT ${JSON.stringify(content)} RETURN id;`);
-    const rows = Array.isArray(res) ? res : [];
-    for (const row of rows) {
-      const direct = formatSurrealRecordId(row);
-      if (direct) return direct;
-      if (row && typeof row === "object" && !Array.isArray(row)) {
-        const nested = formatSurrealRecordId((row as Record<string, unknown>).id);
-        if (nested) return nested;
-      }
-    }
-    return null;
+    return extractCreatedRecordId(res);
   }
 
   async writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }) {
-    const id = await this.createReturningId(ident(this.schema.source_table, "source"), {
+    const table = ident(this.schema.source_table, "source");
+    const id = await this.createReturningId(table, {
       title: s.title,
       url: s.url,
       text_preview: s.textPreview,
@@ -183,7 +194,10 @@ class SurrealGraphWriter implements GraphWriter {
       ingested_at: new Date().toISOString(),
     });
     if (!id) {
-      throw new Error("Could not persist ingest source record in Surreal graph store.");
+      throw new Error(
+        `Could not persist ingest source record in Surreal graph store (table: ${table}). ` +
+          "If this came from a graph-imported pipeline catalog entry, re-import sources in the readiness wizard so provenance links back to your existing Surreal records.",
+      );
     }
     return id;
   }
@@ -268,9 +282,10 @@ class SurrealGraphWriter implements GraphWriter {
   async setEmbeddings(pairs: { unitId: string; vector: number[] }[]) {
     let n = 0;
     let failures = 0;
+    const vectorField = ident(this.schema.unit_vector_field ?? "embedding", "embedding");
     for (const p of pairs) {
       try {
-        await this.store.query(`UPDATE ${surrealRecordRef(p.unitId)} MERGE { embedding: ${JSON.stringify(p.vector)} };`);
+        await this.store.query(`UPDATE ${surrealRecordRef(p.unitId)} MERGE { ${vectorField}: ${JSON.stringify(p.vector)} };`);
         n += 1;
       } catch {
         failures += 1;

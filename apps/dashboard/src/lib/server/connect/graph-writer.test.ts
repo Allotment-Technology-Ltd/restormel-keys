@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSurrealRecordId, surrealRecordRef } from "./graph-writer";
+import { extractCreatedRecordId, formatSurrealRecordId, surrealRecordRef } from "./graph-writer";
 
 describe("formatSurrealRecordId", () => {
   it("parses string record ids", () => {
@@ -12,6 +12,12 @@ describe("formatSurrealRecordId", () => {
 
   it("parses rows with nested id field", () => {
     expect(formatSurrealRecordId({ id: "claim:abc123", text: "hello" })).toBe("claim:abc123");
+  });
+});
+
+describe("extractCreatedRecordId", () => {
+  it("returns null for empty results", () => {
+    expect(extractCreatedRecordId([])).toBeNull();
   });
 });
 

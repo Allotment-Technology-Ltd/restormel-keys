@@ -313,7 +313,9 @@ Restore your real Gateway Key after testing.
 
 ## Step 2.6 — (Optional) Use the npm package resolve middleware instead of HTTP
 
-If your backend is Node/TypeScript and you prefer to resolve locally (no HTTP call to the dashboard), you can use the `createResolveMiddleware` from `@restormel/keys/server` directly. This uses the same routing engine but runs in-process.
+> **Deprecated path (2026-06):** `@restormel/keys` in-process resolve is maintenance-only until 2026-12-01. New integrations should use the Keys REST endpoint from Step 2.2–2.4. This section is kept for reference for existing apps already on `@restormel/keys`.
+
+If your backend is Node/TypeScript and you are on an existing `@restormel/keys` integration and prefer to resolve locally (no HTTP call to the dashboard), you can use `createResolveMiddleware` from `@restormel/keys/server` directly. This uses the same routing engine but runs in-process.
 
 This approach is useful if:
 - You want zero added latency from a network call.

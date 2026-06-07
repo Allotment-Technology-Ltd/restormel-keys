@@ -18,15 +18,45 @@ import {
   deleteConnectDomainPack,
   getConnectStageRoutingConfig,
   upsertConnectStageRoutingConfig,
+  getConnectGraphTargetForWorkspace,
+  updateConnectGraphTargetBundle,
   type ConnectDomainPackRecord,
 } from "$lib/server/neon";
 import {
   assertEmbeddingDimensionsAllowed,
   getWorkspaceEmbeddingLock,
 } from "$lib/server/connect/embedding-contract";
+import {
+  isSourceTablePatchAllowed,
+  type SourceTextSchemaPatch,
+} from "$lib/server/connect/source-text-schema-probe";
 
 function msToIso(ms: number): string {
   return new Date(ms).toISOString();
+}
+
+/** Resolve the domain pack for graph operations (BYO schema import, philosophy, generic, or first). */
+export async function resolveWorkspaceDomainPack(
+  workspaceId: string,
+  packId?: string | null,
+): Promise<ConnectDomainPack | null> {
+  let packRecord = packId
+    ? await getConnectDomainPackById({ id: packId, workspaceId })
+    : null;
+  if (!packRecord) {
+    const packs = await listConnectDomainPacksForWorkspace(workspaceId);
+    packRecord =
+      packs.find((p) => p.slug === "philosophy") ??
+      packs.find((p) => p.slug === "generic") ??
+      packs[0] ??
+      null;
+  }
+  if (!packRecord) return null;
+  try {
+    return domainPackRecordToApi(packRecord);
+  } catch {
+    return null;
+  }
 }
 
 export function domainPackRecordToApi(row: ConnectDomainPackRecord): ConnectDomainPack {
@@ -128,6 +158,84 @@ export async function saveDomainPack(
   return domainPackRecordToApi(row);
 }
 
+/**
+ * Persist the detected embedding vector field onto a (non-builtin) pack's schema,
+ * so re-embed writes and dense retrieval target the same field a Bring-Your-Own
+ * graph already uses. No-op for builtin packs (shared, never mutated).
+ */
+/** Merge detected source/passage text mapping onto a non-builtin domain pack. */
+export async function persistDomainPackSourceTextMapping(
+  workspaceId: string,
+  packId: string,
+  patch: Record<string, unknown>,
+): Promise<ConnectDomainPack | null> {
+  const row = await getConnectDomainPackById({ id: packId, workspaceId });
+  if (!row || row.isBuiltin) return null;
+  const existingPack = domainPackRecordToApi(row);
+  if (!isSourceTablePatchAllowed(existingPack, patch as SourceTextSchemaPatch)) {
+    return null;
+  }
+  const currentSchema =
+    row.graphSchema && typeof row.graphSchema === "object" && !Array.isArray(row.graphSchema)
+      ? (row.graphSchema as Record<string, unknown>)
+      : {};
+  const nextSchema = { ...currentSchema, ...patch };
+  const unchanged = Object.entries(patch).every(
+    ([key, value]) => currentSchema[key] === value,
+  );
+  if (unchanged) return domainPackRecordToApi(row);
+
+  const updated = await upsertConnectDomainPack({
+    workspaceId,
+    slug: row.slug,
+    title: row.title,
+    description: row.description ?? null,
+    ontology: row.ontology,
+    prompts: row.prompts ?? {},
+    graphSchema: nextSchema,
+    passageProfile: row.passageProfile,
+    entityLinking: row.entityLinking ?? null,
+    embedding: row.embedding,
+    qualityPreset: row.qualityPreset === "starter" ? "starter" : "production",
+    crossModelValidation: row.crossModelValidation,
+    archetype: row.archetype ?? null,
+    promptTemplateVersion: row.promptTemplateVersion,
+    isBuiltin: false,
+  });
+  return domainPackRecordToApi(updated);
+}
+
+export async function persistDomainPackVectorField(
+  workspaceId: string,
+  packId: string,
+  field: string,
+): Promise<void> {
+  const row = await getConnectDomainPackById({ id: packId, workspaceId });
+  if (!row || row.isBuiltin) return;
+  const currentSchema =
+    row.graphSchema && typeof row.graphSchema === "object" && !Array.isArray(row.graphSchema)
+      ? (row.graphSchema as Record<string, unknown>)
+      : {};
+  if (currentSchema.unit_vector_field === field) return;
+  await upsertConnectDomainPack({
+    workspaceId,
+    slug: row.slug,
+    title: row.title,
+    description: row.description ?? null,
+    ontology: row.ontology,
+    prompts: row.prompts ?? {},
+    graphSchema: { ...currentSchema, unit_vector_field: field },
+    passageProfile: row.passageProfile,
+    entityLinking: row.entityLinking ?? null,
+    embedding: row.embedding,
+    qualityPreset: row.qualityPreset === "starter" ? "starter" : "production",
+    crossModelValidation: row.crossModelValidation,
+    archetype: row.archetype ?? null,
+    promptTemplateVersion: row.promptTemplateVersion,
+    isBuiltin: false,
+  });
+}
+
 export async function getDomainPackForUi(
   workspaceId: string,
   packId: string,
@@ -188,6 +296,15 @@ export async function setSelectedDomainPackId(
   if (packId) next.default_domain_pack_id = packId;
   else delete next.default_domain_pack_id;
   await upsertConnectStageRoutingConfig(workspaceId, next);
+  // Mirror onto the active graph so its saved bundle tracks this choice.
+  const active = await getConnectGraphTargetForWorkspace(workspaceId);
+  if (active) {
+    await updateConnectGraphTargetBundle({
+      graphTargetId: active.id,
+      workspaceId,
+      defaultDomainPackId: packId,
+    });
+  }
   return { ok: true };
 }
 
@@ -223,6 +340,17 @@ export async function setIngestDocumentSelection(
   if (documentIds && documentIds.length > 0) next.ingest_document_ids = documentIds;
   else delete next.ingest_document_ids;
   await upsertConnectStageRoutingConfig(workspaceId, next);
+  // Mirror onto the active graph so its saved bundle tracks this selection.
+  const active = await getConnectGraphTargetForWorkspace(workspaceId);
+  if (active) {
+    await updateConnectGraphTargetBundle({
+      graphTargetId: active.id,
+      workspaceId,
+      settingsPatch: {
+        ingest_document_ids: documentIds && documentIds.length > 0 ? documentIds : null,
+      },
+    });
+  }
 }
 
 /** Resolve which parsed documents to include in the next ingest run. */

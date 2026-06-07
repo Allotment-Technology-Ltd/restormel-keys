@@ -66,6 +66,13 @@
   --text-display-line-height: 0.95;
   --text-display-tracking: -0.01em;
 
+  /* ── Tier 1 display (responsive, "uncomfortably large") ──
+     Hero = page titles / primary status. Metric = primary numbers
+     (trust score, run %, idea counts). Both stay >= 48px at all widths. */
+  --text-display-hero: clamp(3.5rem, 7vw, 6rem); /* 56–96px */
+  --text-display-metric: clamp(3rem, 6vw, 4.5rem); /* 48–72px */
+  --text-display-metric-sm: clamp(3rem, 5vw, 3.75rem); /* 48–60px bento */
+
   --text-body-lg: 16px;
   --text-body-md: 15px;
   --text-body-sm: 14px;
@@ -104,7 +111,8 @@
   --brut-shadow: var(--shadow-md);
   --brut-shadow-hover: var(--shadow-sm);
   --brut-shadow-none: none;
-  --brut-transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+  --brut-transition:
+    transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
   --brut-font: var(--font-mono);
 
   /* ── Semantic --rm-* aliases ── */

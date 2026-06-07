@@ -2,13 +2,15 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectSetupLedger from "$lib/components/connect/ConnectSetupLedger.svelte";
+  import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
-  import type { ConnectHubPayload } from "$lib/server/connect/connect-hub-load";
+  import type { ConnectHubPayload, ConnectGraphPulse } from "$lib/server/connect/connect-hub-load";
   import { page } from "$app/stores";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   export let data: {
     hub: Promise<ConnectHubPayload | null>;
+    graphPulse: Promise<ConnectGraphPulse | null>;
   };
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
@@ -26,6 +28,8 @@
     Everything in Restormel flows through Connect: add documents, configure Keys-backed AI routes, run ingest,
     and serve verified context to agents via REST or MCP — Testing and Graph plug in when you need them.
   </p>
+
+  <ConnectGraphSwitcher />
 
 {#await data.hub}
   <ConnectPageSkeleton variant="hub" />
@@ -89,6 +93,7 @@
         {requiredDone}
         {requiredTotal}
         stats={journey.stats}
+        pulse={data.graphPulse}
         latestJob={journey.latestJob}
         {activeRun}
         graphHref="{CONNECT_BASE}/graph"
@@ -113,13 +118,31 @@
     max-width: 52rem;
     padding: 0.5rem 0 2rem;
   }
+  /* Tier 2 — mono kicker */
   .hub-eyebrow {
-    font-size: 0.8125rem;
-    color: var(--rm-dim);
-    margin: 0 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    margin: 0 0 var(--space-3);
   }
+  /* Tier 1 — page hero */
+  .hub h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-display-hero);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: var(--text-display-tracking);
+    line-height: var(--text-display-line-height);
+    margin: 0 0 var(--space-4);
+    color: var(--color-ink);
+  }
+  /* Tier 3 — prose */
   .hub-lead {
-    line-height: 1.55;
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-line-height);
     margin: 0 0 1.25rem;
     color: var(--rm-muted);
   }

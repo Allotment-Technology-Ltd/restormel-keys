@@ -21,6 +21,8 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: "00000000-0000-4000-8000-000000000001",
       scope: "unchecked",
       mode: "validate",
+      max_units: null,
+      continue_in_background: false,
     });
   });
 
@@ -40,6 +42,8 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: null,
       scope: "quarantine",
       mode: "validate_and_remediate",
+      max_units: null,
+      continue_in_background: false,
     });
   });
 
@@ -60,6 +64,21 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: null,
       scope: "unchecked",
       mode: "validate",
+      max_units: null,
+      continue_in_background: false,
     });
+  });
+
+  it("round-trips batch + background fields", () => {
+    const sources = buildGraphRevalidateJobSources({
+      kind: "graph_revalidate",
+      scope: "unchecked",
+      mode: "validate",
+      max_units: 2000,
+      continue_in_background: true,
+    });
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.max_units).toBe(2000);
+    expect(meta?.continue_in_background).toBe(true);
   });
 });

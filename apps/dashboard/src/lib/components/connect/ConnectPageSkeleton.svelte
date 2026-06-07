@@ -1,7 +1,7 @@
 <script lang="ts">
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
 
-  export let variant: "hub" | "graph" | "models" | "pipeline" | "mcp" | "ingest" | "default" = "default";
+  export let variant: "hub" | "graph" | "models" | "pipeline" | "mcp" | "ingest" | "proof" | "default" = "default";
 
   const copy: Record<typeof variant, { message: string; rows: number }> = {
     hub: { message: "Loading your workspace…", rows: 0 },
@@ -10,6 +10,7 @@
     pipeline: { message: "Loading pipeline setup — store, sources, and run defaults", rows: 4 },
     mcp: { message: "Loading agent setup — gateway keys and MCP snippets", rows: 3 },
     ingest: { message: "Loading ingest runs", rows: 4 },
+    proof: { message: "Loading Proof — pitting the raw model against your graph", rows: 4 },
     default: { message: "Loading Connect", rows: 3 },
   };
 

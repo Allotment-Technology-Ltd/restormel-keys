@@ -42,7 +42,7 @@
 
   .brutal-page-title {
     font-family: var(--font-display);
-    font-size: var(--text-display-md);
+    font-size: var(--text-display-hero);
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: var(--text-display-tracking);

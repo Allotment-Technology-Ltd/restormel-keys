@@ -47,8 +47,12 @@ paths:
   /api/health:
     get:
       summary: Health check
+      description: >-
+        Public liveness check. No authentication required; returns 200 for any
+        caller (including unauthenticated and invalid-key requests).
       operationId: getHealth
       tags: [System]
+      security: []
       responses:
         "200":
           description: Service is healthy

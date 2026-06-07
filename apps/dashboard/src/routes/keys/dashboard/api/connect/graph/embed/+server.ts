@@ -56,9 +56,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     }
 
     const options = await loadGraphEmbedBackfillOptions(ctx.workspaceId, ctx.userId);
-    if (!options?.enabled || options.unembeddedCount === 0) {
+    if (!options?.enabled || !options.health.actionNeeded || options.workCount === 0) {
       return json(
-        { error: "nothing_to_embed", message: "All ideas in your graph already have embedding vectors." },
+        {
+          error: "nothing_to_embed",
+          message:
+            "All ideas already have uniform embedding vectors at the target dimension for this graph.",
+        },
         { status: 400 },
       );
     }
@@ -95,10 +99,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         year: "numeric",
       })}`;
 
+    const scope =
+      parsed.data.scope ??
+      (options.recommendedScope === "uniform_target" ? "uniform_target" : "missing_only");
     const sources = buildGraphEmbedBackfillJobSources({
       kind: "graph_embed_backfill",
       embedding_route_id: parsed.data.embedding_route_id ?? null,
       domain_pack_id: domainPackId,
+      scope,
+      target_dimensions: options.health.targetDimensions,
     });
     if (!parseGraphEmbedBackfillJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build embed backfill job." }, { status: 500 });
@@ -125,7 +134,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
     const logParts = [
       "Embed backfill queued",
-      `${options.unembeddedCount.toLocaleString()} idea(s) missing vectors`,
+      scope === "uniform_target"
+        ? `${options.workCount.toLocaleString()} idea(s) to uniform ${options.health.targetDimensions}d`
+        : `${options.unembeddedCount.toLocaleString()} idea(s) missing vectors`,
     ];
     if (parsed.data.embedding_route_id) logParts.push("custom embedding route");
 

@@ -9,6 +9,7 @@ import { z } from "zod";
 export const GraphRevalidateScopeSchema = z.enum([
   "all",
   "unchecked",
+  "linked",
   "flagged",
   "quarantine",
   "unsupported",
@@ -24,6 +25,10 @@ export const GraphRevalidateRequestSchema = z.object({
   scope: GraphRevalidateScopeSchema.default("unchecked"),
   mode: GraphRevalidateModeSchema.default("validate"),
   project_id: z.string().uuid().optional(),
+  /** Cap on units processed per run (bounded batches for a large backlog). */
+  max_units: z.number().int().min(1).max(100_000).optional(),
+  /** Auto-enqueue the next batch until the scope is clear (overnight / background). */
+  continue_in_background: z.boolean().optional(),
 });
 
 export type GraphRevalidateRequest = z.infer<typeof GraphRevalidateRequestSchema>;

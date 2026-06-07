@@ -4,7 +4,7 @@
 **Date:** March 2026
 **Status:** Ready for implementation
 
-> **Current implementation note:** parts of this historical build-pack describe earlier multi-app plans. Canonical current-state architecture is in `ARCHITECTURE.md` and `STATUS.md` (single-app `apps/dashboard`; `apps/site` archived).
+> **This document is a historical build-pack (v3.0, March 2026).** Significant decisions have changed since it was written — notably auth (Neon Auth, not Firebase), hosting (Vercel, not GCP/Cloudflare), database (Neon Postgres, not Firestore), and the npm integration surface (Keys REST + `@restormel/keys-elements`, not in-process `@restormel/keys`). The "Key decisions" table and "What we're lifting from SOPHIA" table below reflect the original plan, **not the current production stack**. Canonical current-state architecture is in `ARCHITECTURE.md` and `STATUS.md` (single-app `apps/dashboard`; `apps/site` archived).
 
 ---
 
@@ -91,6 +91,19 @@ Documentation lives in the Svelte/SvelteKit app (`/keys/docs/` and `/keys/docs/w
 ---
 
 ## Key decisions (quick reference)
+
+> **Warning — historical only.** Several of these decisions were superseded during implementation. Do not use this table as a reference for the current stack. See `ARCHITECTURE.md` and `STATUS.md` for current decisions.
+>
+> | Decision | Original plan | Current production |
+> |----------|--------------|-------------------|
+> | Cloud infrastructure | GCP (Cloud Run, Firestore) | **Vercel** (functions + Edge) |
+> | Database | Firestore | **Neon Postgres** |
+> | Auth | Firebase Auth (GitHub sign-in) | **Neon Auth** (GitHub sign-in) |
+> | Static hosting | Cloudflare Pages | **Vercel** |
+> | npm integration surface | `@restormel/keys` in-process core | **Keys REST** + `@restormel/keys-elements` |
+> | UI framework priority | Next.js (P0) → React → SvelteKit → Web Components | **Web Components** (`@restormel/keys-elements`) canonical; React/Svelte deprecated |
+
+Original planned decisions (for historical reference):
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|

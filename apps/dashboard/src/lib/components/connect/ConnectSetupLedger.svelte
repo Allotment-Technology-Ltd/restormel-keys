@@ -11,12 +11,13 @@
   import { trustScoreDescriptor } from "$lib/connect/ingest-quality-display";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import type { ConnectHubPayload } from "$lib/server/connect/connect-hub-load";
+  import type { ConnectGraphPulse, ConnectHubPayload } from "$lib/server/connect/connect-hub-load";
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   type SetupStep = ConnectHubPayload["journey"]["steps"][number];
   type GraphStats = NonNullable<ConnectHubPayload["journey"]["stats"]>;
+  type GraphHealth = NonNullable<ConnectHubPayload["setupHealth"]>["graphHealth"];
   type LatestJob = NonNullable<ConnectHubPayload["journey"]["latestJob"]>;
 
   export let setupHealth: NonNullable<ConnectHubPayload["setupHealth"]>;
@@ -28,9 +29,35 @@
   export let requiredDone = 0;
   export let requiredTotal = 0;
   export let stats: GraphStats | null = null;
+  /** Streamed authoritative graph counts; updates only the pulse band when it resolves. */
+  export let pulse: Promise<ConnectGraphPulse | null> | null = null;
   export let latestJob: LatestJob | null = null;
   export let activeRun = false;
   export let graphHref: string;
+
+  // The pulse band shows cached values immediately, then swaps to the streamed
+  // authoritative counts when they arrive — so the rest of the page stays usable.
+  let freshPulse: ConnectGraphPulse | null = null;
+  let pulseLoading = false;
+  let subscribedPulse: Promise<ConnectGraphPulse | null> | null = null;
+  $: if (pulse && pulse !== subscribedPulse) {
+    subscribedPulse = pulse;
+    freshPulse = null;
+    pulseLoading = true;
+    pulse
+      .then((p) => {
+        freshPulse = p;
+      })
+      .finally(() => {
+        pulseLoading = false;
+      });
+  }
+  $: effectiveStats = (freshPulse ? freshPulse.stats : stats) as GraphStats | null;
+  $: effectiveGraphHealth = (freshPulse
+    ? freshPulse.graphHealth
+    : setupHealth.graphHealth) as GraphHealth;
+  // True while we have no numbers yet and the authoritative load is still running.
+  $: pulsePending = pulseLoading && !effectiveStats;
 
   const RAILS: {
     key: keyof Omit<ConnectHubPayload["setupHealth"], "graphHealth">;
@@ -66,13 +93,33 @@
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }
 
+  /** Exact value (for title / aria) — full grouped digits. */
+  function exactCount(n: number): string {
+    return n.toLocaleString();
+  }
+
+  /**
+   * Consistent compact display for every metric cell: plain integer under 1,000,
+   * otherwise one-decimal compact (3.4K, 22.5K, 34.0K, 1.2M). Always short enough
+   * to fit the cell at the display font — never truncated with an ellipsis.
+   */
+  function formatPulseCount(n: number): string {
+    if (!Number.isFinite(n)) return "0";
+    if (Math.abs(n) < 1000) return String(Math.round(n));
+    return new Intl.NumberFormat("en", {
+      notation: "compact",
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(n);
+  }
+
   $: railsLive = RAILS.filter((r) => setupHealth[r.key]).length;
   $: railsTotal = RAILS.length;
   $: allRailsLive = railsLive === railsTotal;
   $: journeyDone = journeySteps.filter((s) => s.status === "done").length;
   $: journeyTotal = journeySteps.length;
-  $: graphHealth = setupHealth.graphHealth;
-  $: hasGraph = Boolean(stats && stats.units > 0);
+  $: graphHealth = effectiveGraphHealth;
+  $: hasGraph = Boolean(effectiveStats && effectiveStats.units > 0);
   $: ledgerShowsGraphCta = Boolean(graphHealth);
   $: ledgerShowsLatestRun = Boolean(latestJob);
   $: primaryAction = resolveConnectHubPrimaryAction({ phase, nextStep, operationalActions });
@@ -84,7 +131,7 @@
   });
   $: allJourneyComplete = journeyTotal > 0 && journeyDone === journeyTotal;
   $: pct = requiredTotal > 0 ? Math.round((requiredDone / requiredTotal) * 100) : 0;
-  $: latestRunHref = latestJob ? `${CONNECT_BASE}/ingest/${latestJob.id}` : null;
+  $: latestRunHref = latestJob ? `${CONNECT_BASE}/ingest/${latestJob.id}?from=hub` : null;
   $: hasAuditIssues = Boolean(graphHealth && graphHealth.total_issues > 0);
   $: trustLabel = graphHealth ? trustScoreDescriptor(graphHealth.trust_score).label : "";
 </script>
@@ -105,11 +152,11 @@
     </div>
     <div class="ledger-cap-side">
       <div class="ledger-cap-badges" aria-label="Setup counters">
-        <BrutalBadge variant="blue" label="{railsLive}/{railsTotal} rails" />
+        <BrutalBadge variant="secondary" label="{railsLive}/{railsTotal} rails" />
         {#if phase === "initial"}
-          <BrutalBadge variant="neon" label="{requiredDone}/{requiredTotal} req" />
+          <BrutalBadge variant="secondary" label="{requiredDone}/{requiredTotal} req" />
         {:else if journeyTotal > 0}
-          <BrutalBadge variant="neon" label="{journeyDone}/{journeyTotal} steps" />
+          <BrutalBadge variant="secondary" label="{journeyDone}/{journeyTotal} steps" />
         {/if}
       </div>
       <BrutalButton variant="primary" href={primaryAction.href}>
@@ -166,21 +213,25 @@
           {/if}
         </article>
 
-        {#if hasGraph && stats}
+        {#if hasGraph && effectiveStats}
           {#each [
-            { label: "Ideas", value: stats.units },
-            { label: "Links", value: stats.relations },
-            { label: "Groups", value: stats.groups },
-            { label: "Embed", value: stats.embedded },
+            { label: "Ideas", value: effectiveStats.units },
+            { label: "Links", value: effectiveStats.relations },
+            { label: "Groups", value: effectiveStats.groups },
+            { label: "Embed", value: effectiveStats.embedded },
           ] as metric (metric.label)}
             <article class="pulse-stat">
-              <span class="pulse-stat-num">{metric.value.toLocaleString()}</span>
+              <span
+                class="pulse-stat-num"
+                title="{exactCount(metric.value)} {metric.label.toLowerCase()}"
+                aria-label="{exactCount(metric.value)} {metric.label.toLowerCase()}"
+              >{formatPulseCount(metric.value)}</span>
               <span class="pulse-stat-label">{metric.label}</span>
             </article>
           {/each}
         {:else}
           {#each ["Ideas", "Links", "Groups", "Embed"] as label (label)}
-            <article class="pulse-stat pulse-stat-dim">
+            <article class="pulse-stat pulse-stat-dim" class:pulse-stat-loading={pulsePending} aria-busy={pulsePending}>
               <span class="pulse-stat-num">—</span>
               <span class="pulse-stat-label">{label}</span>
             </article>
@@ -188,17 +239,17 @@
         {/if}
 
         <div class="pulse-footer">
-          {#if hasGraph && stats && stats.validation.ok + stats.validation.weak + stats.validation.unsupported > 0}
+          {#if hasGraph && effectiveStats && effectiveStats.validation.ok + effectiveStats.validation.weak + effectiveStats.validation.unsupported > 0}
             <div class="validation-chips" aria-label="Validation mix">
-              <span class="validation-pill validation-pill-ok">{stats.validation.ok} ok</span>
-              {#if stats.validation.weak > 0}
-                <span class="validation-pill validation-pill-weak">{stats.validation.weak} weak</span>
+              <span class="validation-pill validation-pill-ok">{effectiveStats.validation.ok} ok</span>
+              {#if effectiveStats.validation.weak > 0}
+                <span class="validation-pill validation-pill-weak">{effectiveStats.validation.weak} weak</span>
               {/if}
-              {#if stats.validation.unsupported > 0}
-                <span class="validation-pill validation-pill-bad">{stats.validation.unsupported} bad</span>
+              {#if effectiveStats.validation.unsupported > 0}
+                <span class="validation-pill validation-pill-bad">{effectiveStats.validation.unsupported} bad</span>
               {/if}
-              {#if stats.validation.unvalidated > 0}
-                <span class="validation-pill validation-pill-ok">{stats.validation.unvalidated} ?</span>
+              {#if effectiveStats.validation.unvalidated > 0}
+                <span class="validation-pill validation-pill-ok">{effectiveStats.validation.unvalidated} ?</span>
               {/if}
             </div>
           {/if}
@@ -211,14 +262,14 @@
             >
               <span class="run-chip-kicker">{activeRun ? "Live run" : "Last run"}</span>
               <span class="run-chip-label">{latestJob.label ?? "Ingest job"}</span>
-              <BrutalBadge variant={activeRun ? "neon" : "blue"} label={latestJob.status} />
+              <BrutalBadge variant="secondary" label={latestJob.status} />
             </a>
           {/if}
 
           <div class="pulse-footer-actions" aria-label="Resolve graph issues">
             {#if graphHealth?.issues?.length}
               {#each graphHealth.issues as issue, index (issue.kind)}
-                <BrutalButton variant={index === 0 ? "primary" : "blue"} href={issue.actionHref}>
+                <BrutalButton variant="blue" href={issue.actionHref}>
                   {issue.actionLabel} →
                 </BrutalButton>
               {/each}
@@ -340,7 +391,7 @@
                 {#if step.status === "done"}
                   <span class="ledger-step-done-label">Done ✓</span>
                 {:else}
-                  <BrutalButton variant={step.id === nextStepId ? "neon" : "canvas"} href={step.href}>
+                  <BrutalButton variant={step.id === nextStepId ? "outline" : "canvas"} href={step.href}>
                     {step.id === nextStepId && phase === "initial" ? "Continue setup →" : step.cta}
                   </BrutalButton>
                 {/if}
@@ -384,7 +435,7 @@
     border: var(--border);
     border-radius: 0;
     box-shadow: var(--shadow-lg);
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-8) var(--space-5);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -402,6 +453,12 @@
     gap: var(--space-3);
   }
 
+  /* Button inside yellow banner must be inverted to remain visible */
+  .ledger-cap :global(.brutal-btn-primary) {
+    background: var(--color-ink);
+    color: var(--color-surface);
+  }
+
   .ledger-kicker {
     margin: 0 0 var(--space-1);
     font-family: var(--font-mono);
@@ -414,13 +471,13 @@
 
   .ledger-headline {
     margin: 0;
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(1.75rem, 4.5vw, 2.5rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric);
     font-weight: 900;
-    line-height: 0.95;
+    line-height: var(--text-display-line-height);
     color: var(--color-ink);
     text-transform: uppercase;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--text-display-tracking);
   }
 
   .ledger-cap-badges {
@@ -454,7 +511,7 @@
 
   .ledger-progress-fill {
     height: 100%;
-    background: var(--color-yellow);
+    background: var(--color-ink);
     transition: width 0.25s ease;
   }
 
@@ -498,13 +555,13 @@
     --pulse-trust-muted: var(--color-bg);
     --pulse-trust-faint: color-mix(in oklab, var(--color-bg) 92%, var(--color-surface));
     --pulse-trust-accent: var(--color-yellow);
-    padding: var(--space-4);
+    padding: var(--space-6);
     border-right: var(--border);
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: var(--space-2);
-    min-height: 8rem;
+    min-height: 10rem;
   }
 
   .pulse-trust-empty {
@@ -535,9 +592,11 @@
   }
 
   .pulse-trust-score-num {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(2rem, 8vw, 3rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric);
     font-weight: 900;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
     color: var(--pulse-trust-ink);
   }
 
@@ -571,16 +630,17 @@
   }
 
   .pulse-stat {
-    background: var(--color-yellow);
+    background: var(--color-surface);
     color: var(--color-ink);
-    padding: var(--space-3);
+    padding: var(--space-4);
     border-right: var(--border);
     border-bottom: var(--border);
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: var(--space-1);
-    min-height: 4.5rem;
+    min-height: 7rem;
+    min-width: 0;
   }
 
   .pulse-stat-dim {
@@ -588,12 +648,33 @@
     color: var(--color-ink-muted);
   }
 
+  .pulse-stat-loading {
+    animation: pulse-stat-shimmer 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse-stat-shimmer {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-stat-loading {
+      animation: none;
+    }
+  }
+
   .pulse-stat-num {
-    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    /* Sized to fit the longest compact value (e.g. 999.9K) without truncation. */
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
     font-weight: 900;
-    font-family: var(--font-mono);
-    line-height: 1;
+    font-family: var(--font-display);
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
     color: var(--color-ink);
+    white-space: nowrap;
   }
 
   .pulse-stat-label {
@@ -666,7 +747,7 @@
 
   .validation-pill-weak {
     border: var(--border);
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--color-ink);
     box-shadow: none;
   }
@@ -692,7 +773,7 @@
   }
 
   .run-chip-active {
-    background: color-mix(in oklab, var(--color-yellow) 40%, var(--color-bg));
+    background: var(--color-surface);
     border: var(--border);
     box-shadow: var(--shadow-md);
   }
@@ -756,12 +837,12 @@
   }
 
   .rail-seg-ok {
-    background: color-mix(in oklab, var(--color-yellow) 45%, var(--color-bg));
+    background: var(--color-surface);
   }
 
   .rail-seg-glyph {
     font-family: var(--font-mono);
-    font-size: 1.25rem;
+    font-size: 0.875rem;
     line-height: 1;
     color: var(--color-ink-muted);
   }
@@ -837,11 +918,12 @@
 
   .pulse-issues-lead {
     margin: 0 0 var(--space-1);
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric-sm);
     font-weight: 900;
     color: var(--pulse-trust-accent);
-    line-height: 1;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
   }
 
   .pulse-issues-kicker {
@@ -921,7 +1003,7 @@
     text-transform: uppercase;
     padding: var(--space-1) var(--space-2);
     border: var(--border-thin);
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--color-ink);
     white-space: nowrap;
   }
@@ -940,11 +1022,13 @@
 
   .pulse-issue-title {
     margin: 0;
-    font-family: var(--font-display, var(--font-sans));
-    font-size: var(--text-base);
-    font-weight: 800;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
     color: var(--color-ink);
-    line-height: 1.2;
+    line-height: 1.3;
   }
 
   .pulse-issue-detail {
@@ -974,12 +1058,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-1);
+    gap: 2px;
     text-decoration: none;
     color: inherit;
     width: 100%;
-    padding: var(--space-3) var(--space-2);
-    min-height: 44px;
+    padding: var(--space-2) var(--space-2);
+    min-height: 40px;
     cursor: pointer;
   }
 
@@ -1088,7 +1172,7 @@
   .ledger-steps-count {
     padding: 2px 8px;
     border: var(--border-thin);
-    background: var(--color-yellow);
+    background: transparent;
     font-size: var(--text-mono-sm);
     color: var(--color-ink);
   }
@@ -1117,7 +1201,7 @@
   .ledger-step-next {
     border: var(--border);
     box-shadow: var(--shadow-md);
-    background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-bg));
+    background: var(--color-surface);
   }
 
   .ledger-step-done {

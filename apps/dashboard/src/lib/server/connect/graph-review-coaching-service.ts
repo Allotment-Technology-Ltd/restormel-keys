@@ -267,10 +267,11 @@ export async function loadGraphReviewCoaching(params: {
   }
 
   let surrealFullText: string | null = null;
-  if (unit.surrealSourceKey) {
+  const pack = await resolvePack(params.workspaceId, packId);
+  if (unit.surrealSourceKey && pack) {
     const store = await buildWorkspaceGraphStore(params.workspaceId);
     if (store) {
-      const hints = await fetchSurrealSourceRecordText(store, unit.surrealSourceKey);
+      const hints = await fetchSurrealSourceRecordText(store, unit.surrealSourceKey, pack);
       unit.sourceTitle = unit.sourceTitle ?? hints.title;
       unit.sourceUrl = unit.sourceUrl ?? hints.url;
       unit.sourcePreview = unit.sourcePreview ?? hints.textPreview;

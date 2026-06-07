@@ -1,18 +1,20 @@
-import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
+import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
+import { resolveWorkspaceDomainPack } from "$lib/server/connect/domain-pack-service";
+import { countSurrealUnitsNeedingSourceLink } from "$lib/server/connect/graph-source-link-service";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import {
   countGraphUnitsNeedingSourceLink,
-  getConnectGraphStats,
+  countParsedConnectSourceDocumentsForWorkspace,
   getConnectGraphTargetForWorkspace,
-  listConnectDomainPacksForWorkspace,
   listConnectGraphSourcesForWorkspace,
   listConnectIngestJobsForWorkspace,
-  listParsedConnectSourceDocumentTextsForWorkspace,
 } from "$lib/server/neon";
 
 export type GraphSourceLinkOptions = {
   enabled: boolean;
   unitsNeedingLink: number;
+  /** Partial scan or aggregate miss — prefer provenance audit counts when set. */
+  estimate?: boolean;
   candidateSources: number;
   totalUnits: number;
 };
@@ -26,26 +28,40 @@ function parseJobSourceCount(raw: unknown): number {
 export async function loadGraphSourceLinkOptions(
   workspaceId: string,
 ): Promise<GraphSourceLinkOptions | null> {
-  const [stats, target, unitsNeedingLink, graphSources, parsedDocs, jobs] = await Promise.all([
-    getConnectGraphStats(workspaceId).catch(() => null),
+  const [stats, target, graphSources, parsedDocCount, jobs] = await Promise.all([
+    peekConnectGraphStats(workspaceId).catch(() => null),
     getConnectGraphTargetForWorkspace(workspaceId),
-    countGraphUnitsNeedingSourceLink(workspaceId).catch(() => 0),
     listConnectGraphSourcesForWorkspace(workspaceId).catch(() => []),
-    listParsedConnectSourceDocumentTextsForWorkspace(workspaceId, 200).catch(() => []),
+    countParsedConnectSourceDocumentsForWorkspace(workspaceId).catch(() => 0),
     listConnectIngestJobsForWorkspace({ workspaceId, limit: 20 }).catch(() => []),
   ]);
+
+  let unitsNeedingLink = 0;
+  let unitsNeedingLinkEstimate = false;
+  if (target?.provider === "surreal") {
+    const pack = await resolveWorkspaceDomainPack(workspaceId);
+    if (pack) {
+      const counted = await countSurrealUnitsNeedingSourceLink(workspaceId, pack).catch(() => ({
+        count: 0,
+        estimate: false,
+      }));
+      unitsNeedingLink = counted.count;
+      unitsNeedingLinkEstimate = counted.estimate;
+    }
+  } else {
+    unitsNeedingLink = await countGraphUnitsNeedingSourceLink(workspaceId).catch(() => 0);
+  }
 
   if (!stats || stats.units === 0 || !target) return null;
 
   const jobSourceCount = jobs.reduce((n, job) => n + parseJobSourceCount(job.sources), 0);
   let surrealSourceCount = 0;
-  if (target.provider === "surreal") {
-    const packs = await listConnectDomainPacksForWorkspace(workspaceId).catch(() => []);
-    const packRow = packs[0] ?? null;
+  const hasPipelineCatalog = graphSources.length > 0 || parsedDocCount > 0;
+  if (target.provider === "surreal" && !hasPipelineCatalog) {
+    const pack = await resolveWorkspaceDomainPack(workspaceId);
     const store = await buildWorkspaceGraphStore(workspaceId);
-    if (store && packRow) {
+    if (store && pack) {
       try {
-        const pack = domainPackRecordToApi(packRow);
         const table = pack.graph_schema.source_table.toLowerCase().replace(/[^a-z0-9]+/g, "_");
         const rows = await store.query<{ count?: number }[]>(
           `SELECT count() AS count FROM ${table} GROUP ALL;`,
@@ -58,11 +74,12 @@ export async function loadGraphSourceLinkOptions(
   }
 
   const candidateSources =
-    graphSources.length + parsedDocs.length + jobSourceCount + surrealSourceCount;
+    graphSources.length + parsedDocCount + jobSourceCount + surrealSourceCount;
 
   return {
     enabled: candidateSources > 0 || unitsNeedingLink > 0,
     unitsNeedingLink,
+    estimate: unitsNeedingLinkEstimate || undefined,
     candidateSources,
     totalUnits: stats.units,
   };

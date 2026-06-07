@@ -79,7 +79,7 @@
 
 .brut-pressable:active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--color-ink);
+  box-shadow: 3px 3px 0 var(--color-ink);
 }
 
 .card,
@@ -112,7 +112,7 @@
   .brut-transition,
   .card,
   [data-card] {
-    transition: none;
+    transition: opacity 40ms ease;
   }
   .brut-pressable:hover,
   .brut-pressable:active,
