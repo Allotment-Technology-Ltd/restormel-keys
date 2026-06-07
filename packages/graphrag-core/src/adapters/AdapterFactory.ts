@@ -10,9 +10,9 @@
  * The doc's idealised `new SurrealDBAdapter(config)` is reconciled here: the factory
  * reads the *type* from config and wires the host-provided driver bits.
  *
- * Foundation introduced in Build 1C. Only SurrealDB is implemented today; Neo4j /
- * Weaviate / Neptune / ArangoDB resolve to a clear {@link GraphStoreAdapterNotImplementedError}
- * until their adapters land in Sprint 1+.
+ * Foundation introduced in Build 1C; Neo4j added in Multi-DB Sprint 1 (Build 2A).
+ * SurrealDB and Neo4j are implemented; Weaviate / Neptune / ArangoDB resolve to a
+ * clear {@link GraphStoreAdapterNotImplementedError} until their adapters land.
  */
 import type { GraphStore } from "../ports.js";
 import {
@@ -21,14 +21,16 @@ import {
   type GraphStoreConnectionConfig,
 } from "./GraphStoreAdapter.js";
 import { SurrealDBAdapter } from "./surrealdb/SurrealDBAdapter.js";
+import { Neo4jAdapter, type Neo4jDriverLike } from "./neo4j/Neo4jAdapter.js";
+import type { Neo4jSchemaOptions } from "./neo4j/neo4j-schema.js";
 
 /** Thrown when a config selects an adapter type whose implementation has not shipped yet. */
 export class GraphStoreAdapterNotImplementedError extends Error {
   readonly adapterType: GraphStoreAdapterType;
   constructor(adapterType: GraphStoreAdapterType) {
     super(
-      `GraphStoreAdapter "${adapterType}" is not implemented yet. SurrealDB is the only ` +
-        `adapter available in Build 1C; ${adapterType} lands in a later multi-DB sprint.`,
+      `GraphStoreAdapter "${adapterType}" is not implemented yet. SurrealDB and Neo4j are ` +
+        `available; ${adapterType} lands in a later multi-DB sprint.`,
     );
     this.name = "GraphStoreAdapterNotImplementedError";
     this.adapterType = adapterType;
@@ -37,7 +39,8 @@ export class GraphStoreAdapterNotImplementedError extends Error {
 
 /**
  * Host-supplied driver bits the factory needs to construct driver-backed adapters.
- * Each field is consumed only by the adapter that needs it (SurrealDB → `surrealStore`).
+ * Each field is consumed only by the adapter that needs it (SurrealDB → `surrealStore`,
+ * Neo4j → `neo4jDriver`; when omitted the Neo4j adapter builds its own from config at connect()).
  */
 export interface AdapterFactoryDeps {
   /** Ready-to-use GraphStore backing the SurrealDB adapter (graphrag-core has no driver). */
@@ -46,6 +49,10 @@ export interface AdapterFactoryDeps {
   defaultEdgeTables?: string[];
   /** Node table name (SurrealDB; defaults to "claim"). */
   nodeTable?: string;
+  /** Optional pre-built Neo4j driver (tests / hosts that own the driver lifecycle). */
+  neo4jDriver?: Neo4jDriverLike;
+  /** Optional Neo4j schema options (node label, embedding dimensions). */
+  neo4jSchema?: Neo4jSchemaOptions;
 }
 
 /** The default config applied when a workspace has no explicit `graph_store_config`. */
@@ -97,6 +104,10 @@ export function createGraphStoreAdapter(
       });
     }
     case "neo4j":
+      return new Neo4jAdapter({
+        ...(deps.neo4jDriver ? { driver: deps.neo4jDriver } : {}),
+        ...(deps.neo4jSchema ? { schema: deps.neo4jSchema } : {}),
+      });
     case "weaviate":
     case "neptune":
     case "arangodb":

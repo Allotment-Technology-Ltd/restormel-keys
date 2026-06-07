@@ -133,6 +133,25 @@ export {
 } from "./adapters/surrealdb/SurrealDBAdapter.js";
 
 export {
+  Neo4jAdapter,
+  reciprocalRankFusion,
+  type Neo4jAdapterDeps,
+  type Neo4jDriverLike,
+  type Neo4jSessionLike,
+  type Neo4jQueryResultLike,
+  type Neo4jRecordLike,
+} from "./adapters/neo4j/Neo4jAdapter.js";
+
+export {
+  buildNeo4jSchemaStatements,
+  escapeCypherIdentifier,
+  CLAIM_LABEL,
+  NEO4J_INDEX_NAMES,
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  type Neo4jSchemaOptions,
+} from "./adapters/neo4j/neo4j-schema.js";
+
+export {
   createGraphStoreAdapter,
   resolveGraphStoreAdapterType,
   normalizeGraphStoreConfig,

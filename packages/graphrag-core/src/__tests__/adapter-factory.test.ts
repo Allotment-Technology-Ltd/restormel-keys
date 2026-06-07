@@ -8,7 +8,20 @@ import {
   DEFAULT_GRAPH_STORE_CONFIG,
 } from "../adapters/AdapterFactory.js";
 import { SurrealDBAdapter } from "../adapters/surrealdb/SurrealDBAdapter.js";
+import { Neo4jAdapter, type Neo4jDriverLike } from "../adapters/neo4j/Neo4jAdapter.js";
 import type { GraphStoreConnectionConfig } from "../adapters/GraphStoreAdapter.js";
+
+const fakeNeo4jDriver: Neo4jDriverLike = {
+  session() {
+    return {
+      async run() {
+        return { records: [] };
+      },
+      async close() {},
+    };
+  },
+  async close() {},
+};
 
 const fakeStore: GraphStore = {
   async query<T>(): Promise<T> {
@@ -79,8 +92,20 @@ describe("AdapterFactory", () => {
       expect(() => createGraphStoreAdapter(null, {})).toThrow(/requires a host-provided GraphStore/);
     });
 
+    it("builds a Neo4jAdapter for a neo4j config", () => {
+      const config: GraphStoreConnectionConfig = {
+        type: "neo4j",
+        connectionString: "bolt://localhost:7687",
+        schemaMode: "fresh",
+        credentials: { username: "neo4j", password: "x" },
+      };
+      const adapter = createGraphStoreAdapter(config, { neo4jDriver: fakeNeo4jDriver });
+      expect(adapter).toBeInstanceOf(Neo4jAdapter);
+      expect(adapter.adapterType).toBe("neo4j");
+    });
+
     it("throws GraphStoreAdapterNotImplementedError for not-yet-built adapters", () => {
-      for (const type of ["neo4j", "weaviate", "neptune", "arangodb"] as const) {
+      for (const type of ["weaviate", "neptune", "arangodb"] as const) {
         const config: GraphStoreConnectionConfig = { type, schemaMode: "fresh", credentials: {} };
         expect(() => createGraphStoreAdapter(config, { surrealStore: fakeStore })).toThrow(
           GraphStoreAdapterNotImplementedError,
