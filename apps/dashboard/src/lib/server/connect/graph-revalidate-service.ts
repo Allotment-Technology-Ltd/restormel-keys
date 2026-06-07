@@ -446,6 +446,8 @@ export async function runGraphRevalidation(args: {
   repaired: number;
   dropped: number;
   embedded: number;
+  /** Verdicts written this run, tallied in-memory (source of truth for run quality). */
+  validationCounts: { ok: number; weak: number; unsupported: number };
 }> {
   const { job, meta, reporter } = args;
   const autoRemediate = meta.mode === "validate_and_remediate";
@@ -527,7 +529,15 @@ export async function runGraphRevalidation(args: {
     await reporter.skipStage("storing", "Nothing to update");
     const label = autoRemediate ? "Auto-remediation complete — 0 units matched" : "Re-validation complete — 0 units matched";
     await reporter.complete(label, "full");
-    return { validated: 0, units: 0, sources: 0, repaired: 0, dropped: 0, embedded: 0 };
+    return {
+      validated: 0,
+      units: 0,
+      sources: 0,
+      repaired: 0,
+      dropped: 0,
+      embedded: 0,
+      validationCounts: { ok: 0, weak: 0, unsupported: 0 },
+    };
   }
 
   const validationGenerate: ExtractionGenerate = buildValidationStageGenerate(
@@ -543,6 +553,7 @@ export async function runGraphRevalidation(args: {
     : null;
 
   let validated = 0;
+  const valCounts = { ok: 0, weak: 0, unsupported: 0 };
   let repaired = 0;
   let dropped = 0;
   let embedded = 0;
@@ -593,6 +604,7 @@ export async function runGraphRevalidation(args: {
           note: "Accepted — graph-native provenance (trusted without AI check)",
         })),
       );
+      valCounts.ok += group.units.length;
       unitsDone += group.units.length;
       await reporter.setGraphRepair({ units_processed: unitsDone, sources_done: sourceIndex });
       continue;
@@ -677,6 +689,11 @@ export async function runGraphRevalidation(args: {
     validated += await writer.setValidation(
       results.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
     );
+    for (const r of results) {
+      if (r.status === "ok") valCounts.ok += 1;
+      else if (r.status === "weak") valCounts.weak += 1;
+      else if (r.status === "unsupported") valCounts.unsupported += 1;
+    }
 
     if (autoRemediate && remediationGenerate) {
       const pass = await runGraphRemediationPass({
@@ -785,7 +802,15 @@ export async function runGraphRevalidation(args: {
 
   await reporter.complete(summary, "full");
 
-  return { validated, units: unitCount, sources: groups.length, repaired, dropped, embedded };
+  return {
+    validated,
+    units: unitCount,
+    sources: groups.length,
+    repaired,
+    dropped,
+    embedded,
+    validationCounts: valCounts,
+  };
 }
 
 /**

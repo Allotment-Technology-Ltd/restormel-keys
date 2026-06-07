@@ -98,16 +98,20 @@ async function advanceReadinessRunPhase(
 async function finishReadinessRunValidation(
   workspaceId: string,
   cohortRunId: string | null | undefined,
+  counts?: { ok: number; weak: number; unsupported: number },
 ): Promise<void> {
   if (!cohortRunId) return;
   try {
-    const { markReadinessRunPhase, rollupReadinessRunQuality } = await import(
-      "$lib/server/connect/readiness-runs-service"
-    );
-    const qualitySummary = await rollupReadinessRunQuality({
-      runId: cohortRunId,
-      workspaceId,
-    });
+    const { markReadinessRunPhase, rollupReadinessRunQuality, summariseReadinessRunCounts } =
+      await import("$lib/server/connect/readiness-runs-service");
+    // Prefer the in-memory tally from the run (authoritative, no store read-back).
+    // Fall back to a re-query only when no verdicts were tallied (e.g. trust mode
+    // skipped everything, or an older job shape without counts).
+    const tallied = counts ? counts.ok + counts.weak + counts.unsupported : 0;
+    const qualitySummary =
+      counts && tallied > 0
+        ? await summariseReadinessRunCounts({ runId: cohortRunId, workspaceId, counts })
+        : await rollupReadinessRunQuality({ runId: cohortRunId, workspaceId });
     await markReadinessRunPhase({
       runId: cohortRunId,
       workspaceId,
@@ -177,8 +181,9 @@ export async function processConnectIngestJobRecord(
         return;
       }
       await advanceReadinessRunPhase(job.workspaceId, revalidateMeta.cohort_run_id, "validating");
+      let revalidateResult: Awaited<ReturnType<typeof runGraphRevalidation>> | null = null;
       try {
-        await runGraphRevalidation({ job, meta: revalidateMeta, reporter });
+        revalidateResult = await runGraphRevalidation({ job, meta: revalidateMeta, reporter });
       } catch (err) {
         if (err instanceof IngestConfigError) {
           await reporter.fail(null, err.message);
@@ -186,7 +191,11 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
-      await finishReadinessRunValidation(job.workspaceId, revalidateMeta.cohort_run_id);
+      await finishReadinessRunValidation(
+        job.workspaceId,
+        revalidateMeta.cohort_run_id,
+        revalidateResult?.validationCounts,
+      );
       return;
     }
 

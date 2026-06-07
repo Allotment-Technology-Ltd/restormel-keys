@@ -14,6 +14,7 @@ import {
   insertReadinessRun,
   addReadinessRunUnits,
   updateReadinessRun,
+  getReadinessRun,
   listReadinessRunsForWorkspace,
   listReadinessRunUnitIds,
   type ReadinessRunRecord,
@@ -102,6 +103,27 @@ function classifyValidationStatus(raw: unknown): "ok" | "weak" | "unsupported" |
   if (s === "weak") return "weak";
   if (s === "unsupported") return "unsupported";
   return "unvalidated";
+}
+
+/**
+ * Build a quality summary from verdict counts tallied in-memory during the
+ * validation run (the source of truth — no re-query, no store-read-back). The
+ * cohort's `sizeActual` fills in how many were left unvalidated (e.g. skipped
+ * for no source text).
+ */
+export async function summariseReadinessRunCounts(params: {
+  runId: string;
+  workspaceId: string;
+  counts: { ok: number; weak: number; unsupported: number };
+}): Promise<ReadinessRunQualitySummary> {
+  const checked = params.counts.ok + params.counts.weak + params.counts.unsupported;
+  const run = await getReadinessRun({
+    runId: params.runId,
+    workspaceId: params.workspaceId,
+  }).catch(() => null);
+  const size = run?.sizeActual ?? checked;
+  const unvalidated = Math.max(0, size - checked);
+  return summariseValidationCounts({ ...params.counts, unvalidated });
 }
 
 /**
