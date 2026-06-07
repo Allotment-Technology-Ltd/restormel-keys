@@ -9,8 +9,11 @@ import {
 import {
   claimNextPendingConnectIngestJob,
   updateConnectIngestJobById,
+  getConnectIngestJobForWorkspace,
   type ConnectIngestJobRecord,
 } from "$lib/server/connect-ingest-jobs";
+import { toPublicConnectIngestQualityReport } from "$lib/server/neon";
+import { dispatchConnectIngestWebhooks } from "$lib/server/connect-v1/connect-webhook-delivery";
 import {
   ConnectIngestProgressReporter,
   runStubIngestWithProgress,
@@ -35,7 +38,7 @@ import {
 import { resolveKnowledgeRouteExecutionContextForWorker } from "$lib/server/connect/stage-routing";
 import { getConnectGraphTargetForWorkspace, getConnectDomainPackById } from "$lib/server/neon";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
-import { getConnectGraphStats } from "$lib/server/neon";
+import { getConnectGraphStats, invalidateConnectGraphStatsCache } from "$lib/server/neon";
 import { buildRunQualityReport } from "$lib/server/connect/run-quality-report";
 import { assessPackReadiness } from "$lib/server/connect/pack-readiness";
 import {
@@ -296,7 +299,35 @@ export async function processConnectIngestJobRecord(
   } catch (err) {
     const message = err instanceof Error ? err.message : "ingest_worker_failed";
     await reporter.fail(null, message.slice(0, 500));
+  } finally {
+    // Any job (ingest / re-validate / embed / link) may have changed the graph —
+    // drop the cached stats so the next Connect load recomputes fresh counts.
+    await invalidateConnectGraphStatsCache({ workspaceId: job.workspaceId }).catch(() => {});
+    // Fire ingest webhooks once the job has reached a terminal state (I1).
+    await maybeDispatchConnectIngestWebhooks(job).catch((e) => {
+      console.error("[connect-webhook] dispatch hook failed", e);
+    });
   }
+}
+
+/** Re-read the job's terminal state and fire registered webhooks (fire-and-forget). */
+async function maybeDispatchConnectIngestWebhooks(job: ConnectIngestJobRecord): Promise<void> {
+  const fresh = await getConnectIngestJobForWorkspace({
+    jobId: job.id,
+    workspaceId: job.workspaceId,
+    ...(job.projectId ? { projectId: job.projectId } : {}),
+  });
+  if (!fresh || (fresh.status !== "completed" && fresh.status !== "failed")) return;
+  const qualityReport = toPublicConnectIngestQualityReport(fresh.progress?.quality_report, {
+    stages: fresh.stages,
+    updatedAtMs: fresh.updatedAt,
+  });
+  dispatchConnectIngestWebhooks({
+    jobId: fresh.id,
+    workspaceId: fresh.workspaceId,
+    status: fresh.status,
+    qualityReport,
+  });
 }
 
 export async function runConnectIngestWorkerOnce(): Promise<boolean> {

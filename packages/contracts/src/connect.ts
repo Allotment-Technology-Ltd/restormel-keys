@@ -350,6 +350,7 @@ export type ConnectIngestJobDashboardCreate = z.infer<typeof ConnectIngestJobDas
 export const ConnectGraphRevalidateScopeSchema = z.enum([
   'all',
   'unchecked',
+  'linked',
   'flagged',
   'quarantine',
   'unsupported'
@@ -368,7 +369,17 @@ export const ConnectGraphRevalidateRequestSchema = z.object({
   domain_pack_id: z.string().uuid().optional(),
   scope: ConnectGraphRevalidateScopeSchema.default('unchecked'),
   mode: ConnectGraphRevalidateModeSchema.default('validate'),
-  project_id: z.string().uuid().optional()
+  project_id: z.string().uuid().optional(),
+  /**
+   * Cap on units processed per run, so a large backlog is cleared in bounded
+   * batches (predictable cost, survives worker time limits). Omit to process all.
+   */
+  max_units: z.number().int().min(1).max(100_000).optional(),
+  /**
+   * After a capped run, automatically enqueue the next batch until the scope is
+   * clear — lets a big backlog drain unattended (overnight / background).
+   */
+  continue_in_background: z.boolean().optional()
 });
 export type ConnectGraphRevalidateRequest = z.infer<typeof ConnectGraphRevalidateRequestSchema>;
 
@@ -617,6 +628,24 @@ export const ConnectIngestJobStageProgressSchema = z.object({
   progress: ConnectIngestStageProgressMetricsSchema.optional(),
 });
 
+/**
+ * Public ingest quality report (C2). Curated, stable projection of the internal
+ * run quality report — surfaces trust score and the supported/weak/unsupported
+ * validation breakdown so external consumers can gate on graph quality without
+ * the operator-only internals (next_actions, pack readiness, percentages).
+ */
+export const ConnectIngestQualityReportSchema = z.object({
+  trust_score: z.number().min(0).max(100),
+  supported_count: z.number().int().nonnegative(),
+  weak_count: z.number().int().nonnegative(),
+  unsupported_count: z.number().int().nonnegative(),
+  total_count: z.number().int().nonnegative(),
+  remediation_applied: z.boolean(),
+  assessed_at: z.string().datetime(),
+});
+
+export type ConnectIngestQualityReport = z.infer<typeof ConnectIngestQualityReportSchema>;
+
 export const ConnectIngestJobSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -636,6 +665,8 @@ export const ConnectIngestJobSchema = z.object({
   pipeline_profile_id: z.string().uuid().optional(),
   domain_pack_id: z.string().uuid().optional(),
   graph_target_id: z.string().uuid().optional(),
+  /** Curated quality report (present once a run reaches a terminal state with graph stats). */
+  quality_report: ConnectIngestQualityReportSchema.nullable().optional(),
   error: z.string().optional()
 });
 
@@ -667,6 +698,102 @@ export const ConnectIngestJobLiveStatusResponseSchema = z.object({
 export type ConnectIngestJobLiveStatusResponse = z.infer<
   typeof ConnectIngestJobLiveStatusResponseSchema
 >;
+
+// ─── Public live log streaming (I11) ─────────────────────────────────────────
+//
+// GET /connect/v1/ingest/jobs/{jobId}/logs?since=&limit= — incremental, paginated
+// worker log lines for external consumers (the operator BFF stream, but public).
+
+export const ConnectIngestJobLogLineSchema = z.object({
+  /** Monotonic cursor — pass the response's next_since back as ?since= to page forward. */
+  index: z.number().int().nonnegative(),
+  timestamp: z.string().datetime(),
+  /** Bracket tag the worker emitted (EXTRACT, RELATE, STORE, INGEST, FATAL, …). */
+  stage: z.string(),
+  level: z.enum(["info", "warn", "error"]),
+  message: z.string(),
+});
+
+export type ConnectIngestJobLogLine = z.infer<typeof ConnectIngestJobLogLineSchema>;
+
+export const ConnectIngestJobLogsResponseSchema = z.object({
+  contract_version: ConnectApiContractVersionSchema,
+  job_id: z.string().uuid(),
+  log_lines: z.array(ConnectIngestJobLogLineSchema),
+  /** Cursor to pass as ?since= on the next poll (highest index returned). */
+  next_since: z.number().int().nonnegative(),
+  /** Total log lines recorded for the job (for progress UIs). */
+  total: z.number().int().nonnegative(),
+});
+
+export type ConnectIngestJobLogsResponse = z.infer<typeof ConnectIngestJobLogsResponseSchema>;
+
+// ─── Ingest webhooks (I1) ────────────────────────────────────────────────────
+//
+// Workspace-scoped outbound webhooks fired when an ingest job reaches a terminal
+// state. Payloads are HMAC-SHA256 signed (X-Restormel-Signature: sha256=<hex>).
+
+export const ConnectWebhookEventSchema = z.enum([
+  "job.completed",
+  "job.failed",
+  "job.quality_below_threshold",
+]);
+
+export type ConnectWebhookEvent = z.infer<typeof ConnectWebhookEventSchema>;
+
+export const ConnectWebhookCreateRequestSchema = z.object({
+  workspace_id: z.string().uuid(),
+  project_id: z.string().uuid().optional(),
+  url: z.string().url().max(2048),
+  events: z.array(ConnectWebhookEventSchema).min(1),
+  /** Trust-score threshold (0–100) for job.quality_below_threshold. Default 70. */
+  quality_threshold: z.number().min(0).max(100).optional(),
+  /** Caller-supplied signing secret; one is generated and returned when omitted. */
+  secret: z.string().min(16).max(256).optional(),
+});
+
+export type ConnectWebhookCreateRequest = z.infer<typeof ConnectWebhookCreateRequestSchema>;
+
+export const ConnectWebhookSchema = z.object({
+  webhook_id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  url: z.string().url(),
+  events: z.array(ConnectWebhookEventSchema),
+  quality_threshold: z.number().min(0).max(100).nullable().optional(),
+  active: z.boolean(),
+  created_at: z.string().datetime(),
+});
+
+export type ConnectWebhook = z.infer<typeof ConnectWebhookSchema>;
+
+/** Registration response — includes the signing_secret exactly once. */
+export const ConnectWebhookCreateResponseSchema = ConnectWebhookSchema.extend({
+  signing_secret: z.string(),
+});
+
+export type ConnectWebhookCreateResponse = z.infer<typeof ConnectWebhookCreateResponseSchema>;
+
+export const ConnectWebhookListResponseSchema = z.object({
+  contract_version: ConnectApiContractVersionSchema,
+  webhooks: z.array(ConnectWebhookSchema),
+});
+
+export type ConnectWebhookListResponse = z.infer<typeof ConnectWebhookListResponseSchema>;
+
+/** Delivered webhook envelope (documents the payload third parties receive). */
+export const ConnectWebhookDeliveryPayloadSchema = z.object({
+  webhook_id: z.string().uuid(),
+  event: ConnectWebhookEventSchema,
+  timestamp: z.string().datetime(),
+  data: z.object({
+    job_id: z.string().uuid(),
+    workspace_id: z.string().uuid(),
+    status: ConnectIngestJobStatusSchema,
+    quality_report: ConnectIngestQualityReportSchema.nullable().optional(),
+  }),
+});
+
+export type ConnectWebhookDeliveryPayload = z.infer<typeof ConnectWebhookDeliveryPayloadSchema>;
 
 // ─── Domain Pack (domain-agnostic ingestion configuration) ───────────────────
 //
@@ -771,7 +898,19 @@ export const ConnectGraphSchemaMapSchema = z.object({
   /** Edge linking a unit to a group, carrying a role. */
   part_of_edge: z.string().min(1).max(60).default('part_of'),
   /** Relation edge table names (must align with ontology.relation_types). */
-  relation_edges: z.array(z.string().min(1).max(60)).max(100).default([])
+  relation_edges: z.array(z.string().min(1).max(60)).max(100).default([]),
+  /**
+   * Field on the unit table holding the embedding vector. Configurable so a
+   * Bring-Your-Own graph that stored vectors under a different name (e.g. `vector`)
+   * is recognised for stats, re-embed, and dense retrieval. Auto-detected on import.
+   */
+  unit_vector_field: z.string().min(1).max(60).default('embedding'),
+  /** Optional inline field on the source table holding full document text. */
+  source_text_field: z.string().min(1).max(60).optional(),
+  /** Field on the passage table holding passage/chunk text (default `text`). */
+  passage_text_field: z.string().min(1).max(60).optional(),
+  /** Field on the passage table linking to a source record (default `source`). */
+  passage_source_field: z.string().min(1).max(60).optional()
 });
 
 export type ConnectGraphSchemaMap = z.infer<typeof ConnectGraphSchemaMapSchema>;
@@ -920,7 +1059,8 @@ export const DEFAULT_GENERIC_DOMAIN_PACK: ConnectDomainPackUpsert = {
     unit_table: 'statement',
     group_table: 'topic',
     part_of_edge: 'part_of',
-    relation_edges: ['supports', 'contradicts', 'depends_on', 'relates_to']
+    relation_edges: ['supports', 'contradicts', 'depends_on', 'relates_to'],
+    unit_vector_field: 'embedding'
   },
   passage_profile: {
     marker_lexicon: [],
@@ -993,7 +1133,8 @@ export const PHILOSOPHY_DOMAIN_PACK: ConnectDomainPackUpsert = {
     unit_table: 'claim',
     group_table: 'argument',
     part_of_edge: 'part_of',
-    relation_edges: ['supports', 'contradicts', 'depends_on', 'responds_to', 'defines', 'qualifies']
+    relation_edges: ['supports', 'contradicts', 'depends_on', 'responds_to', 'defines', 'qualifies'],
+    unit_vector_field: 'embedding'
   },
   passage_profile: {
     marker_lexicon: ['therefore', 'however', 'objection', 'counterargument', 'it follows that', 'suppose that'],
@@ -1034,16 +1175,38 @@ export const ConnectGraphConnectionPublicSchema = z.object({
 
 export type ConnectGraphConnectionPublic = z.infer<typeof ConnectGraphConnectionPublicSchema>;
 
+/**
+ * Per-graph bundle: settings that switch in lockstep with the active graph so an
+ * operator can move between graph stores without re-entering anything. The domain
+ * pack carries the graph's schema/ontology; the rest restores the last run setup.
+ */
+export const ConnectGraphBundleSchema = z.object({
+  /** Domain pack (schema/ontology/table mapping) used for this graph's ingest + retrieval. */
+  default_domain_pack_id: z.string().uuid().optional(),
+  /** Source documents selected for this graph's next ingest run (null/absent = all parsed). */
+  ingest_document_ids: z.array(z.string()).optional(),
+  /** Pipeline stage to stop after for this graph's runs. */
+  default_stop_after_stage: ConnectIngestStageSchema.optional()
+});
+
+export type ConnectGraphBundle = z.infer<typeof ConnectGraphBundleSchema>;
+
 /** Graph target as returned to the UI — never includes the secret. */
 export const ConnectGraphTargetSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
+  /** Friendly name for the saved graph (Graph Library card title). */
+  label: z.string().max(120).optional(),
+  /** True when this is the workspace's active graph (drives retrieval/ingest/MCP). */
+  is_active: z.boolean().default(false),
   provider: ConnectGraphProviderSchema,
   connection: ConnectGraphConnectionPublicSchema,
   /** Postgres only: reuse the dashboard's Neon connection (one-click, zero credentials). */
   use_dashboard_database: z.boolean().default(false),
   /** True when an encrypted secret (password/token) is stored. */
   secret_set: z.boolean(),
+  /** Per-graph settings that travel with this graph when it is activated. */
+  bundle: ConnectGraphBundleSchema.default({}),
   status: ConnectGraphTargetStatusSchema,
   last_tested_at: z.string().datetime().optional(),
   last_error: z.string().optional(),
@@ -1053,15 +1216,22 @@ export const ConnectGraphTargetSchema = z.object({
 
 export type ConnectGraphTarget = z.infer<typeof ConnectGraphTargetSchema>;
 
-/** Upsert payload — includes the secret (write-only; never echoed back). */
+/**
+ * Upsert payload — includes the secret (write-only; never echoed back). Used for
+ * both creating a new Graph Library entry and editing an existing one (by id).
+ */
 export const ConnectGraphTargetUpsertSchema = z.object({
+  /** Friendly name for the saved graph. Defaults to namespace/database when omitted. */
+  label: z.string().min(1).max(120).optional(),
   provider: ConnectGraphProviderSchema.default('surreal'),
   endpoint: z.string().url().max(500),
   namespace: z.string().min(1).max(120),
   database: z.string().min(1).max(120),
   username: z.string().min(1).max(120).optional(),
   /** Password/token; encrypted at rest. Omit to keep the existing secret. */
-  secret: z.string().min(1).max(2000).optional()
+  secret: z.string().min(1).max(2000).optional(),
+  /** Domain pack to bundle with this graph. */
+  default_domain_pack_id: z.string().uuid().optional()
 });
 
 export type ConnectGraphTargetUpsert = z.infer<typeof ConnectGraphTargetUpsertSchema>;

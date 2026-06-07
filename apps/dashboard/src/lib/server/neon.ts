@@ -2360,6 +2360,27 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN endpoint DROP NOT NULL`;
     await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN namespace DROP NOT NULL`;
     await sql`ALTER TABLE knowledge_graph_targets ALTER COLUMN database DROP NOT NULL`;
+    // Graph Library: allow many saved graphs per workspace (one active at a time).
+    await sql`ALTER TABLE knowledge_graph_targets DROP CONSTRAINT IF EXISTS knowledge_graph_targets_workspace_unique`;
+    await sql`ALTER TABLE knowledge_graph_targets ADD COLUMN IF NOT EXISTS label TEXT`;
+    await sql`ALTER TABLE knowledge_graph_targets ADD COLUMN IF NOT EXISTS default_domain_pack_id TEXT REFERENCES knowledge_domain_packs(id) ON DELETE SET NULL`;
+    await sql`ALTER TABLE knowledge_graph_targets ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb`;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_targets_workspace
+      ON knowledge_graph_targets (workspace_id, updated_at DESC)
+    `;
+    // Cache of computed graph stats per saved graph — avoids re-scanning a large BYO
+    // store on every Connect tab load (full count() scans took minutes on big graphs).
+    await sql`
+      CREATE TABLE IF NOT EXISTS knowledge_graph_stats_cache (
+        workspace_id TEXT NOT NULL,
+        graph_target_id TEXT NOT NULL,
+        stats JSONB NOT NULL,
+        domain_pack_id TEXT,
+        computed_at BIGINT NOT NULL,
+        PRIMARY KEY (workspace_id, graph_target_id)
+      )
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_graph_sources (
         id TEXT PRIMARY KEY,
@@ -4646,6 +4667,202 @@ export async function listWorkspaceWebhooksForDelivery(
   return out;
 }
 
+// --- Connect ingest webhooks (public /connect/v1/webhooks; I1) ---
+
+export type ConnectWebhookRecord = {
+  id: string;
+  workspaceId: string;
+  projectId: string | null;
+  url: string;
+  events: string[];
+  qualityThreshold: number | null;
+  active: boolean;
+  createdAt: number;
+};
+
+function parseJsonStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string") {
+    try {
+      const p = JSON.parse(value) as unknown;
+      if (Array.isArray(p)) return p.map(String);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function mapConnectWebhookRow(r: Record<string, unknown>): ConnectWebhookRecord {
+  return {
+    id: String(r.id),
+    workspaceId: String(r.workspaceId ?? r.workspace_id),
+    projectId: r.projectId != null ? String(r.projectId) : null,
+    url: String(r.url),
+    events: parseJsonStringArray(r.events),
+    qualityThreshold: r.qualityThreshold != null ? Number(r.qualityThreshold) : null,
+    active: Boolean(r.active),
+    createdAt: Number(r.createdAt) || 0,
+  };
+}
+
+export async function createConnectWebhook(params: {
+  workspaceId: string;
+  projectId?: string | null;
+  url: string;
+  events: string[];
+  qualityThreshold?: number | null;
+  signingSecretPlaintext: string;
+}): Promise<{ ok: true; record: ConnectWebhookRecord } | { ok: false; error: string }> {
+  const enc = encryptProviderSecret(params.signingSecretPlaintext);
+  if (!enc.ok) return { ok: false, error: enc.error };
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const eventsJson = JSON.stringify(params.events.length ? params.events : ["job.completed"]);
+  const p = enc.payload;
+  await sql`
+    INSERT INTO connect_webhooks (
+      id, workspace_id, project_id, url, events, quality_threshold,
+      signing_secret_ciphertext, signing_secret_iv, signing_secret_auth_tag, signing_secret_encryption_version,
+      active, created_at
+    )
+    VALUES (
+      ${id}, ${params.workspaceId}, ${params.projectId ?? null}, ${params.url}, ${eventsJson},
+      ${params.qualityThreshold ?? null},
+      ${p.ciphertextB64}, ${p.ivB64}, ${p.authTagB64}, ${p.encryptionVersion},
+      TRUE, ${createdAt}
+    )
+  `;
+  return {
+    ok: true,
+    record: {
+      id,
+      workspaceId: params.workspaceId,
+      projectId: params.projectId ?? null,
+      url: params.url,
+      events: params.events,
+      qualityThreshold: params.qualityThreshold ?? null,
+      active: true,
+      createdAt,
+    },
+  };
+}
+
+export async function listConnectWebhooks(workspaceId: string): Promise<ConnectWebhookRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", project_id AS "projectId", url, events,
+           quality_threshold AS "qualityThreshold", active, created_at AS "createdAt"
+    FROM connect_webhooks
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapConnectWebhookRow);
+}
+
+export async function getConnectWebhook(
+  workspaceId: string,
+  webhookId: string,
+): Promise<ConnectWebhookRecord | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", project_id AS "projectId", url, events,
+           quality_threshold AS "qualityThreshold", active, created_at AS "createdAt"
+    FROM connect_webhooks
+    WHERE id = ${webhookId} AND workspace_id = ${workspaceId}
+    LIMIT 1
+  `;
+  const row = (rows as Record<string, unknown>[])[0];
+  return row ? mapConnectWebhookRow(row) : null;
+}
+
+export async function deleteConnectWebhook(
+  workspaceId: string,
+  webhookId: string,
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM connect_webhooks
+    WHERE id = ${webhookId} AND workspace_id = ${workspaceId}
+    RETURNING id
+  `;
+  return (rows as { id: string }[]).length > 0;
+}
+
+/** Internal: active webhooks for `workspaceId` subscribed to `event`, with decrypted secrets. */
+export async function listConnectWebhooksForDelivery(
+  workspaceId: string,
+  event: string,
+): Promise<
+  { id: string; url: string; events: string[]; qualityThreshold: number | null; signingSecretPlaintext: string }[]
+> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, url, events, quality_threshold AS "qualityThreshold",
+           signing_secret_ciphertext AS "signingSecretCiphertext",
+           signing_secret_iv AS "signingSecretIv",
+           signing_secret_auth_tag AS "signingSecretAuthTag",
+           signing_secret_encryption_version AS "signingSecretEncryptionVersion"
+    FROM connect_webhooks
+    WHERE workspace_id = ${workspaceId} AND active = TRUE
+  `;
+  const out: {
+    id: string;
+    url: string;
+    events: string[];
+    qualityThreshold: number | null;
+    signingSecretPlaintext: string;
+  }[] = [];
+  for (const raw of rows as Record<string, unknown>[]) {
+    const events = parseJsonStringArray(raw.events);
+    if (!events.includes(event)) continue;
+    const dec = decryptProviderSecret({
+      credentialCiphertext: raw.signingSecretCiphertext as string | null,
+      credentialIv: raw.signingSecretIv as string | null,
+      credentialAuthTag: raw.signingSecretAuthTag as string | null,
+      encryptionVersion: Number(raw.signingSecretEncryptionVersion ?? 0),
+    });
+    if (!dec.ok) continue;
+    out.push({
+      id: String(raw.id),
+      url: String(raw.url),
+      events,
+      qualityThreshold: raw.qualityThreshold != null ? Number(raw.qualityThreshold) : null,
+      signingSecretPlaintext: dec.secret,
+    });
+  }
+  return out;
+}
+
+export async function recordConnectWebhookDelivery(params: {
+  webhookId: string;
+  workspaceId: string;
+  jobId: string | null;
+  event: string;
+  attempt: number;
+  ok: boolean;
+  statusCode?: number | null;
+  error?: string | null;
+  durationMs?: number | null;
+}): Promise<void> {
+  try {
+    const sql = getSql();
+    await sql`
+      INSERT INTO connect_webhook_deliveries (
+        id, webhook_id, workspace_id, job_id, event, attempt, ok, status_code, error, duration_ms, created_at
+      )
+      VALUES (
+        ${crypto.randomUUID()}, ${params.webhookId}, ${params.workspaceId}, ${params.jobId ?? null},
+        ${params.event}, ${params.attempt}, ${params.ok}, ${params.statusCode ?? null},
+        ${params.error ? params.error.slice(0, 2000) : null}, ${params.durationMs ?? null}, ${Date.now()}
+      )
+    `;
+  } catch (e) {
+    console.error("[connect-webhook] recordConnectWebhookDelivery failed:", e);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Founders Circle applications (PII in payload — no raw logging)
 // ---------------------------------------------------------------------------
@@ -4993,6 +5210,9 @@ export type ConnectIngestJobQualityReport = {
   stub_warning?: string | null;
   kg_audit?: { trust_score?: number; total_issues?: number } | null;
   next_actions?: string[];
+  /** Validation breakdown counts (retained for the public quality_report projection). */
+  validation?: { ok: number; weak: number; unsupported: number; unvalidated: number };
+  units?: number;
 };
 
 export type GraphRepairJobProgress = {
@@ -5070,6 +5290,18 @@ function parseConnectIngestJobQualityReport(raw: unknown): ConnectIngestJobQuali
   const pack_readiness_warnings = Array.isArray(readinessRaw)
     ? readinessRaw.filter((item): item is string => typeof item === "string")
     : undefined;
+  const validationRaw = rec.validation;
+  let validation: ConnectIngestJobQualityReport["validation"];
+  if (validationRaw && typeof validationRaw === "object" && !Array.isArray(validationRaw)) {
+    const vr = validationRaw as Record<string, unknown>;
+    const num = (k: string) => (typeof vr[k] === "number" ? (vr[k] as number) : 0);
+    validation = {
+      ok: num("ok"),
+      weak: num("weak"),
+      unsupported: num("unsupported"),
+      unvalidated: num("unvalidated"),
+    };
+  }
   const report: ConnectIngestJobQualityReport = {
     ...(typeof rec.preset === "string" ? { preset: rec.preset } : {}),
     ...(typeof rec.ok_pct === "number" ? { ok_pct: rec.ok_pct } : {}),
@@ -5088,8 +5320,55 @@ function parseConnectIngestJobQualityReport(raw: unknown): ConnectIngestJobQuali
       : {}),
     ...(kg_audit && Object.keys(kg_audit).length > 0 ? { kg_audit } : {}),
     ...(next_actions && next_actions.length > 0 ? { next_actions } : {}),
+    ...(validation ? { validation } : {}),
+    ...(typeof rec.units === "number" ? { units: rec.units } : {}),
   };
   return Object.keys(report).length > 0 ? report : undefined;
+}
+
+/**
+ * Project the internal quality report onto the public ConnectIngestQualityReport
+ * contract (C2). `remediation_applied` is read from the job's remediating stage
+ * status; `assessed_at` is the job's terminal update timestamp.
+ */
+export function toPublicConnectIngestQualityReport(
+  report: ConnectIngestJobQualityReport | undefined,
+  args: { stages: unknown; updatedAtMs: number },
+): {
+  trust_score: number;
+  supported_count: number;
+  weak_count: number;
+  unsupported_count: number;
+  total_count: number;
+  remediation_applied: boolean;
+  assessed_at: string;
+} | null {
+  if (!report) return null;
+  const v = report.validation;
+  const supported = v?.ok ?? 0;
+  const weak = v?.weak ?? 0;
+  const unsupported = v?.unsupported ?? 0;
+  const unvalidated = v?.unvalidated ?? 0;
+  const total = report.units ?? supported + weak + unsupported + unvalidated;
+  const trust = report.kg_audit?.trust_score;
+  const remediationApplied = Array.isArray(args.stages)
+    ? args.stages.some(
+        (s) =>
+          s != null &&
+          typeof s === "object" &&
+          (s as Record<string, unknown>).stage === "remediating" &&
+          (s as Record<string, unknown>).status === "completed",
+      )
+    : false;
+  return {
+    trust_score: typeof trust === "number" ? Math.min(100, Math.max(0, trust)) : 0,
+    supported_count: supported,
+    weak_count: weak,
+    unsupported_count: unsupported,
+    total_count: total,
+    remediation_applied: remediationApplied,
+    assessed_at: msToIso(args.updatedAtMs),
+  };
 }
 
 function parseGraphRepairJobProgress(raw: unknown): GraphRepairJobProgress | undefined {
@@ -5201,8 +5480,13 @@ export function connectIngestJobRecordToApi(
   pipeline_profile_id?: string;
   domain_pack_id?: string;
   graph_target_id?: string;
+  quality_report?: ReturnType<typeof toPublicConnectIngestQualityReport>;
   error?: string;
 } {
+  const qualityReport = toPublicConnectIngestQualityReport(row.progress?.quality_report, {
+    stages: row.stages,
+    updatedAtMs: row.updatedAt,
+  });
   return {
     id: row.id,
     workspace_id: row.workspaceId,
@@ -5223,6 +5507,7 @@ export function connectIngestJobRecordToApi(
     ...(row.pipelineProfileId ? { pipeline_profile_id: row.pipelineProfileId } : {}),
     ...(row.domainPackId ? { domain_pack_id: row.domainPackId } : {}),
     ...(row.graphTargetId ? { graph_target_id: row.graphTargetId } : {}),
+    ...(qualityReport ? { quality_report: qualityReport } : {}),
     ...(row.error ? { error: row.error } : {}),
   };
 }
@@ -5583,17 +5868,71 @@ export async function cancelConnectIngestJobForWorkspace(params: {
   return rows.length > 0;
 }
 
+/** Hard-delete a workspace-scoped job. Returns true if a row was deleted. */
+export async function deleteConnectIngestJobForWorkspace(params: {
+  jobId: string;
+  workspaceId: string;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM knowledge_ingest_jobs
+    WHERE id = ${params.jobId}
+      AND workspace_id = ${params.workspaceId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Bulk clean up a workspace's ingest job list.
+ * - Cancels all pending/running jobs.
+ * - Deletes jobs matching the given statuses.
+ * Returns counts of cancelled and deleted rows.
+ */
+export async function bulkCleanupIngestJobsForWorkspace(params: {
+  workspaceId: string;
+  /** Statuses to delete (e.g. ['cancelled', 'failed', 'running']). */
+  deleteStatuses: string[];
+}): Promise<{ cancelled: number; deleted: number }> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+
+  const cancelledRows = await sql`
+    UPDATE knowledge_ingest_jobs
+    SET status = 'cancelled', updated_at = ${now}
+    WHERE workspace_id = ${params.workspaceId}
+      AND status IN ('pending', 'running')
+    RETURNING id
+  `;
+
+  const deletedRows = params.deleteStatuses.length > 0
+    ? await sql`
+        DELETE FROM knowledge_ingest_jobs
+        WHERE workspace_id = ${params.workspaceId}
+          AND status = ANY(${params.deleteStatuses}::text[])
+        RETURNING id
+      `
+    : [];
+
+  return { cancelled: cancelledRows.length, deleted: deletedRows.length };
+}
+
 // ─── Knowledge graph targets (Bring-Your-Own store) ──────────────────────────
 
 export type ConnectGraphTargetRecord = {
   id: string;
   workspaceId: string;
+  label: string | null;
   provider: string;
   endpoint: string | null;
   namespace: string | null;
   database: string | null;
   username: string | null;
   useDashboardDatabase: boolean;
+  defaultDomainPackId: string | null;
+  settings: Record<string, unknown>;
   secretCiphertext: string | null;
   secretIv: string | null;
   secretAuthTag: string | null;
@@ -5606,15 +5945,22 @@ export type ConnectGraphTargetRecord = {
 };
 
 function mapConnectGraphTargetRow(row: Record<string, unknown>): ConnectGraphTargetRecord {
+  const settings = row.settings;
   return {
     id: String(row.id),
     workspaceId: String(row.workspace_id),
+    label: row.label != null ? String(row.label) : null,
     provider: String(row.provider),
     endpoint: row.endpoint != null ? String(row.endpoint) : null,
     namespace: row.namespace != null ? String(row.namespace) : null,
     database: row.database != null ? String(row.database) : null,
     username: row.username != null ? String(row.username) : null,
     useDashboardDatabase: Boolean(row.use_dashboard_database),
+    defaultDomainPackId: row.default_domain_pack_id != null ? String(row.default_domain_pack_id) : null,
+    settings:
+      settings && typeof settings === "object" && !Array.isArray(settings)
+        ? (settings as Record<string, unknown>)
+        : {},
     secretCiphertext: row.secret_ciphertext != null ? String(row.secret_ciphertext) : null,
     secretIv: row.secret_iv != null ? String(row.secret_iv) : null,
     secretAuthTag: row.secret_auth_tag != null ? String(row.secret_auth_tag) : null,
@@ -5627,26 +5973,79 @@ function mapConnectGraphTargetRow(row: Record<string, unknown>): ConnectGraphTar
   };
 }
 
-export async function getConnectGraphTargetForWorkspace(
+/** Read the active-graph pointer stored in the workspace stage-routing config. */
+async function readActiveGraphTargetId(workspaceId: string): Promise<string | null> {
+  const raw = await getConnectStageRoutingConfig(workspaceId);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const id = (raw as Record<string, unknown>).active_graph_target_id;
+  return typeof id === "string" && id ? id : null;
+}
+
+/** List every saved graph for a workspace (Graph Library), most-recently-updated first. */
+export async function listConnectGraphTargetsForWorkspace(
   workspaceId: string,
-): Promise<ConnectGraphTargetRecord | null> {
+): Promise<ConnectGraphTargetRecord[]> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId} LIMIT 1
+    SELECT * FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId} ORDER BY updated_at DESC
+  `;
+  return rows.map((r) => mapConnectGraphTargetRow(r as Record<string, unknown>));
+}
+
+export async function getConnectGraphTargetById(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<ConnectGraphTargetRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_graph_targets WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} LIMIT 1
   `;
   if (rows.length === 0) return null;
   return mapConnectGraphTargetRow(rows[0] as Record<string, unknown>);
 }
 
+/**
+ * The workspace's *active* graph target — what retrieval, ingest, and the MCP
+ * orchestrator all read. Resolves the active-graph pointer, falling back to the
+ * most-recently-updated saved graph (back-compat for single-target workspaces).
+ */
+export async function getConnectGraphTargetForWorkspace(
+  workspaceId: string,
+): Promise<ConnectGraphTargetRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const activeId = await readActiveGraphTargetId(workspaceId);
+  if (activeId) {
+    const active = await getConnectGraphTargetById({ id: activeId, workspaceId });
+    if (active) return active;
+  }
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId}
+    ORDER BY updated_at DESC LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectGraphTargetRow(rows[0] as Record<string, unknown>);
+}
+
+/**
+ * Create a new saved graph (Graph Library entry) when `id` is omitted, or update
+ * an existing one in place when `id` is supplied. Never overwrites a sibling graph.
+ */
 export async function upsertConnectGraphTarget(params: {
+  /** Existing graph id to update; omit to create a new saved graph. */
+  id?: string;
   workspaceId: string;
+  label?: string | null;
   provider: string;
   endpoint?: string | null;
   namespace?: string | null;
   database?: string | null;
   username?: string | null;
   useDashboardDatabase?: boolean;
+  defaultDomainPackId?: string | null;
+  settings?: Record<string, unknown>;
   /** Initial status (e.g. 'ok' for the one-click dashboard-Neon path). */
   status?: "untested" | "ok" | "error";
   /** Encrypted secret payload; omit to keep an existing secret. */
@@ -5660,35 +6059,49 @@ export async function upsertConnectGraphTarget(params: {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const now = Date.now();
-  const existing = await getConnectGraphTargetForWorkspace(params.workspaceId);
-  const id = existing?.id ?? crypto.randomUUID();
+  const existing = params.id
+    ? await getConnectGraphTargetById({ id: params.id, workspaceId: params.workspaceId })
+    : null;
+  const id = existing?.id ?? params.id ?? crypto.randomUUID();
   const setSecret = params.secret != null;
   const cipher = setSecret ? params.secret!.ciphertext : (existing?.secretCiphertext ?? null);
   const iv = setSecret ? params.secret!.iv : (existing?.secretIv ?? null);
   const tag = setSecret ? params.secret!.authTag : (existing?.secretAuthTag ?? null);
   const version = setSecret ? params.secret!.encryptionVersion : (existing?.secretEncryptionVersion ?? 0);
   const createdAt = existing?.createdAt ?? now;
-  const useDash = params.useDashboardDatabase ?? false;
+  const useDash = params.useDashboardDatabase ?? existing?.useDashboardDatabase ?? false;
+  const label = params.label !== undefined ? params.label : (existing?.label ?? null);
+  const packId =
+    params.defaultDomainPackId !== undefined
+      ? params.defaultDomainPackId
+      : (existing?.defaultDomainPackId ?? null);
+  const settings = params.settings ?? existing?.settings ?? {};
+  const settingsJson = JSON.stringify(settings);
   // Preserve last connectivity status on partial updates (save without explicit status).
   const status = params.status ?? existing?.status ?? "untested";
   await sql`
     INSERT INTO knowledge_graph_targets (
-      id, workspace_id, provider, endpoint, namespace, database, username, use_dashboard_database,
+      id, workspace_id, label, provider, endpoint, namespace, database, username, use_dashboard_database,
+      default_domain_pack_id, settings,
       secret_ciphertext, secret_iv, secret_auth_tag, secret_encryption_version,
       status, last_tested_at, last_error, created_at, updated_at
     ) VALUES (
-      ${id}, ${params.workspaceId}, ${params.provider}, ${params.endpoint ?? null}, ${params.namespace ?? null},
+      ${id}, ${params.workspaceId}, ${label}, ${params.provider}, ${params.endpoint ?? null}, ${params.namespace ?? null},
       ${params.database ?? null}, ${params.username ?? null}, ${useDash},
+      ${packId}, ${settingsJson}::jsonb,
       ${cipher}, ${iv}, ${tag}, ${version},
       ${status}, NULL, NULL, ${createdAt}, ${now}
     )
-    ON CONFLICT (workspace_id) DO UPDATE SET
+    ON CONFLICT (id) DO UPDATE SET
+      label = ${label},
       provider = EXCLUDED.provider,
       endpoint = EXCLUDED.endpoint,
       namespace = EXCLUDED.namespace,
       database = EXCLUDED.database,
       username = EXCLUDED.username,
       use_dashboard_database = EXCLUDED.use_dashboard_database,
+      default_domain_pack_id = ${packId},
+      settings = ${settingsJson}::jsonb,
       secret_ciphertext = ${cipher},
       secret_iv = ${iv},
       secret_auth_tag = ${tag},
@@ -5697,9 +6110,126 @@ export async function upsertConnectGraphTarget(params: {
       last_error = NULL,
       updated_at = ${now}
   `;
-  const updated = await getConnectGraphTargetForWorkspace(params.workspaceId);
+  const updated = await getConnectGraphTargetById({ id, workspaceId: params.workspaceId });
   if (!updated) throw new Error("graph target upsert failed");
   return updated;
+}
+
+export async function deleteConnectGraphTarget(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM knowledge_graph_targets WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Patch a graph's bundle (domain pack + settings snapshot) without touching its
+ * connection, secret, or connectivity status. Used to keep a graph's saved
+ * settings tracking live edits while it is the workspace's active graph.
+ */
+export async function updateConnectGraphTargetBundle(params: {
+  graphTargetId: string;
+  workspaceId: string;
+  /** undefined = leave unchanged; null = clear. */
+  defaultDomainPackId?: string | null;
+  /** Shallow-merged into settings; keys set to null are removed. */
+  settingsPatch?: Record<string, unknown>;
+}): Promise<void> {
+  const existing = await getConnectGraphTargetById({
+    id: params.graphTargetId,
+    workspaceId: params.workspaceId,
+  });
+  if (!existing) return;
+  const settings: Record<string, unknown> = { ...existing.settings };
+  if (params.settingsPatch) {
+    for (const [k, v] of Object.entries(params.settingsPatch)) {
+      if (v === null || v === undefined) delete settings[k];
+      else settings[k] = v;
+    }
+  }
+  const packId =
+    params.defaultDomainPackId !== undefined
+      ? params.defaultDomainPackId
+      : existing.defaultDomainPackId;
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE knowledge_graph_targets
+    SET default_domain_pack_id = ${packId},
+        settings = ${JSON.stringify(settings)}::jsonb,
+        updated_at = ${now}
+    WHERE id = ${params.graphTargetId} AND workspace_id = ${params.workspaceId}
+  `;
+}
+
+export type ConnectGraphStatsCacheRecord = {
+  stats: unknown;
+  domainPackId: string | null;
+  computedAt: number;
+};
+
+export async function getConnectGraphStatsCache(params: {
+  workspaceId: string;
+  graphTargetId: string;
+}): Promise<ConnectGraphStatsCacheRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT stats, domain_pack_id, computed_at
+    FROM knowledge_graph_stats_cache
+    WHERE workspace_id = ${params.workspaceId} AND graph_target_id = ${params.graphTargetId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as { stats: unknown; domain_pack_id: unknown; computed_at: unknown };
+  return {
+    stats: row.stats,
+    domainPackId: row.domain_pack_id != null ? String(row.domain_pack_id) : null,
+    computedAt: Number(row.computed_at),
+  };
+}
+
+export async function setConnectGraphStatsCache(params: {
+  workspaceId: string;
+  graphTargetId: string;
+  stats: unknown;
+  domainPackId: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const json = JSON.stringify(params.stats ?? null);
+  await sql`
+    INSERT INTO knowledge_graph_stats_cache (workspace_id, graph_target_id, stats, domain_pack_id, computed_at)
+    VALUES (${params.workspaceId}, ${params.graphTargetId}, ${json}::jsonb, ${params.domainPackId}, ${now})
+    ON CONFLICT (workspace_id, graph_target_id) DO UPDATE SET
+      stats = ${json}::jsonb,
+      domain_pack_id = ${params.domainPackId},
+      computed_at = ${now}
+  `;
+}
+
+/** Drop cached stats so the next load recomputes (call after ingest/revalidate/embed changes the graph). */
+export async function invalidateConnectGraphStatsCache(params: {
+  workspaceId: string;
+  graphTargetId?: string;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  if (params.graphTargetId) {
+    await sql`
+      DELETE FROM knowledge_graph_stats_cache
+      WHERE workspace_id = ${params.workspaceId} AND graph_target_id = ${params.graphTargetId}
+    `;
+  } else {
+    await sql`DELETE FROM knowledge_graph_stats_cache WHERE workspace_id = ${params.workspaceId}`;
+  }
 }
 
 /** Connectivity check against the dashboard's own Neon database (one-click Postgres target). */
@@ -6421,10 +6951,16 @@ export async function storeGroupsPostgres(params: {
 
 export async function updateConnectGraphTargetStatus(params: {
   workspaceId: string;
+  /** Specific graph to update; defaults to the workspace's active graph. */
+  graphTargetId?: string;
   status: "untested" | "ok" | "error";
   lastError?: string | null;
 }): Promise<void> {
   await ensureIngestionRoutingSchema();
+  const targetId =
+    params.graphTargetId ??
+    (await getConnectGraphTargetForWorkspace(params.workspaceId))?.id;
+  if (!targetId) return;
   const sql = getSql();
   const now = Date.now();
   await sql`
@@ -6433,14 +6969,8 @@ export async function updateConnectGraphTargetStatus(params: {
         last_error = ${params.lastError ?? null},
         last_tested_at = ${now},
         updated_at = ${now}
-    WHERE workspace_id = ${params.workspaceId}
+    WHERE id = ${targetId} AND workspace_id = ${params.workspaceId}
   `;
-}
-
-export async function deleteConnectGraphTarget(workspaceId: string): Promise<void> {
-  await ensureIngestionRoutingSchema();
-  const sql = getSql();
-  await sql`DELETE FROM knowledge_graph_targets WHERE workspace_id = ${workspaceId}`;
 }
 
 // ─── Knowledge domain packs ──────────────────────────────────────────────────
@@ -6786,31 +7316,88 @@ export async function listConnectGraphSourcesForWorkspace(
   }));
 }
 
+/** Count parsed pipeline documents (no text payload — for options/audit panels). */
+export async function countParsedConnectSourceDocumentsForWorkspace(
+  workspaceId: string,
+): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT count(*)::int AS c
+    FROM knowledge_source_documents
+    WHERE workspace_id = ${workspaceId}
+      AND status = 'parsed'
+      AND text IS NOT NULL
+      AND btrim(text) <> ''
+  `) as { c: number }[];
+  return Number(rows[0]?.c ?? 0);
+}
+
+/** Count parsed pipeline documents imported from a BYO graph source catalog. */
+export async function countGraphImportedCatalogSources(workspaceId: string): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT count(*)::int AS c
+    FROM knowledge_source_documents
+    WHERE workspace_id = ${workspaceId}
+      AND status = 'parsed'
+      AND source_kind = 'graph_import'
+      AND text IS NOT NULL
+      AND btrim(text) <> ''
+  `) as { c: number }[];
+  return Number(rows[0]?.c ?? 0);
+}
+
 /** Parsed pipeline documents with full text for automated source matching. */
 export async function listParsedConnectSourceDocumentTextsForWorkspace(
   workspaceId: string,
   limit = 200,
-): Promise<{ id: string; name: string; url: string | null; text: string }[]> {
+): Promise<
+  {
+    id: string;
+    name: string;
+    url: string | null;
+    text: string;
+    sourceKind: string | null;
+    provenance: Record<string, unknown> | null;
+  }[]
+> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const cap = Math.min(Math.max(limit, 1), 500);
   const rows = (await sql`
-    SELECT id, name, url, text
+    SELECT id, name, url, text, source_kind, provenance
     FROM knowledge_source_documents
     WHERE workspace_id = ${workspaceId}
       AND status = 'parsed'
       AND text IS NOT NULL
     ORDER BY created_at DESC
     LIMIT ${cap}
-  `) as { id: string; name: string; url: string | null; text: string | null }[];
+  `) as {
+    id: string;
+    name: string;
+    url: string | null;
+    text: string | null;
+    source_kind: string | null;
+    provenance: unknown;
+  }[];
   return rows
     .filter((r) => typeof r.text === "string" && r.text.trim().length > 0)
-    .map((r) => ({
-      id: r.id,
-      name: r.name,
-      url: r.url,
-      text: r.text!.trim(),
-    }));
+    .map((r) => {
+      const prov =
+        r.provenance && typeof r.provenance === "object" && !Array.isArray(r.provenance)
+          ? (r.provenance as Record<string, unknown>)
+          : null;
+      return {
+        id: r.id,
+        name: r.name,
+        url: r.url,
+        text: r.text!.trim(),
+        sourceKind: typeof r.source_kind === "string" ? r.source_kind : null,
+        provenance: prov,
+      };
+    });
 }
 
 /** Ideas likely missing usable source provenance (legacy spine rows or empty metadata). */
