@@ -1717,7 +1717,9 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scope: activeRunId ? "linked" : validateScope,
+          // A cohort run validates its stamped members; scope stays "unchecked"
+          // and the cohort_run_id filter narrows to just that cohort.
+          scope: activeRunId ? "unchecked" : validateScope,
           mode: "validate",
           ...(batchSize > 0 ? { max_units: batchSize } : {}),
           ...(!activeRunId && validateScope === "unchecked"

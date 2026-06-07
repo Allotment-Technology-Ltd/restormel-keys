@@ -8,6 +8,7 @@ import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-p
 import { IngestConfigError, buildJobWriter } from "$lib/server/connect/ingest-full-runner";
 import type { GraphLinkSourcesJobMeta } from "$lib/server/connect/graph-source-link-job";
 import { resolveConnectSourceText } from "$lib/server/connect/connect-source-text-resolve";
+import { isUncheckedValidationStatus } from "$lib/connect/validation-status";
 import {
   inferSourceTextQualityForLink,
   pickBestPreparedSourceMatch,
@@ -657,6 +658,11 @@ export async function runGraphSourceLinking(args: {
   if (meta.cohort_run_id) {
     const { listReadinessRunUnitIds } = await import("$lib/server/neon");
     cohortUnitIds = new Set(await listReadinessRunUnitIds(meta.cohort_run_id));
+    if (cohortUnitIds.size === 0) {
+      // Empty cohort — nothing to link; skip the (expensive) catalog build and finish.
+      await reporter.complete("Source linking complete — cohort is empty", "full");
+      return { linked: 0, scanned: 0, candidates: 0 };
+    }
   }
 
   await reporter.beginStage("storing", "Loading ideas and source catalog", 1);
@@ -851,13 +857,18 @@ export async function runGraphSourceLinking(args: {
 }
 
 /**
- * Resolve the next `limit` still-unlinked unit ids (no source edge), in stable
- * id order. Used to define a readiness-run cohort up front: the resolved ids are
- * stamped into knowledge_readiness_run_units, then every step (link/embed/validate)
+ * Resolve the next `limit` unit ids that still need readiness work — i.e. units
+ * that are not yet validated (unchecked). Validation is the terminal step of the
+ * journey, so "unchecked" is the meaningful backlog: a graph can be fully linked
+ * (graph-native provenance) yet entirely unvalidated. Within a run, the link and
+ * embed steps still handle any cohort members that also need linking/embedding.
+ *
+ * Used to define a readiness-run cohort up front: the resolved ids are stamped
+ * into knowledge_readiness_run_units, then every step (link/embed/validate)
  * scopes to that set. Ids are canonicalized via formatSurrealRecordId so they
  * match the ids the three services filter against.
  */
-export async function resolveNextUnlinkedUnitIds(
+export async function resolveNextCohortUnitIds(
   workspaceId: string,
   limit: number,
 ): Promise<string[]> {
@@ -873,13 +884,15 @@ export async function resolveNextUnlinkedUnitIds(
     const ids: string[] = [];
     await streamSurrealUnitRowsAll<Record<string, unknown>>(
       store,
-      (l, start) => surrealSourceLinkUnitsQuery(unitTable, l, start, { unlinkedOnly: true }),
+      (l, start) => surrealRevalidateUnitsQuery(unitTable, l, start, false),
       async (page) => {
         for (const row of page) {
-          const unit = mapSurrealRowToLinkUnit(row);
-          if (!unit) continue;
-          if (unit.sourceKey) continue; // already linked
-          ids.push(unit.id);
+          const status = typeof row.validation_status === "string" ? row.validation_status : null;
+          if (!isUncheckedValidationStatus(status)) continue;
+          const id =
+            formatSurrealRecordId(row.id) ?? (typeof row.id === "string" ? row.id : null);
+          if (!id) continue;
+          ids.push(id);
           if (ids.length >= cap) return true;
         }
       },
@@ -893,7 +906,8 @@ export async function resolveNextUnlinkedUnitIds(
   const rows = (await sql`
     SELECT u.id
     FROM knowledge_graph_units u
-    WHERE u.workspace_id = ${workspaceId} AND u.source_id IS NULL
+    WHERE u.workspace_id = ${workspaceId}
+      AND (u.validation_status IS NULL OR LOWER(u.validation_status) NOT IN ('ok', 'weak', 'unsupported'))
     ORDER BY u.created_at ASC, u.id ASC
     LIMIT ${cap}
   `) as { id: string }[];

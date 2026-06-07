@@ -49,19 +49,25 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       : null;
   const label = typeof rec.label === "string" ? rec.label : undefined;
 
-  const run = await createReadinessRun({
-    workspaceId: ctx.workspaceId,
-    sizeTarget,
-    domainPackId,
-    label,
-  });
+  let run;
+  try {
+    run = await createReadinessRun({
+      workspaceId: ctx.workspaceId,
+      sizeTarget,
+      domainPackId,
+      label,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not build the cohort.";
+    return json({ error: "cohort_resolution_failed", message }, { status: 502 });
+  }
 
   if ((run.sizeActual ?? 0) === 0) {
     return json(
       {
         run,
         warning:
-          "No unlinked ideas were available to form a cohort — the graph may be fully linked already.",
+          "No unchecked ideas were available to form a cohort — the graph may be fully validated already.",
       },
       { status: 201 },
     );

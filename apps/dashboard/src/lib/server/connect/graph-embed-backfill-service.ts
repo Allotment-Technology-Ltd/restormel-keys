@@ -362,6 +362,15 @@ export async function runGraphEmbedBackfill(args: {
     await reporter.skipStage(stage, "Skipped for embedding backfill");
   }
 
+  // Empty cohort — nothing to embed; finish without streaming the whole graph.
+  if (cohortUnitIds && cohortUnitIds.size === 0) {
+    await reporter.skipStage("embedding", "Cohort is empty");
+    await reporter.beginStage("storing", "Finalizing", 1);
+    await reporter.completeStage("storing", "Nothing to embed");
+    await reporter.complete("Embed backfill complete — cohort is empty", "full");
+    return { embedded: 0, scanned: 0 };
+  }
+
   const total = await countEmbedWorkUnits({
     workspaceId: job.workspaceId,
     target,

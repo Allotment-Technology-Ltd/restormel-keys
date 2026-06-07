@@ -501,14 +501,12 @@ export async function runGraphRevalidation(args: {
       `Readiness run cohort — restricting to ${cohortUnitIds.size.toLocaleString()} stamped idea(s).`,
     );
   }
-  const { groups, hadMore } = await loadRevalidateGroups(
-    job.workspaceId,
-    target,
-    pack,
-    meta.scope,
-    maxUnits,
-    cohortUnitIds,
-  );
+  // An empty cohort would otherwise scan the whole graph to find zero members —
+  // short-circuit to a clean "nothing to do" completion instead.
+  const { groups, hadMore } =
+    cohortUnitIds && cohortUnitIds.size === 0
+      ? { groups: [] as Awaited<ReturnType<typeof loadRevalidateGroups>>["groups"], hadMore: false }
+      : await loadRevalidateGroups(job.workspaceId, target, pack, meta.scope, maxUnits, cohortUnitIds);
   const unitCount = groups.reduce((n, g) => n + g.units.length, 0);
 
   const scopedQuarantineBefore =

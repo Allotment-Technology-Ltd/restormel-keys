@@ -3,6 +3,7 @@
  * Session: uid, email. Gateway key: uid = project owner, projectIdForKey, keyId. Management key: workspaceId, keyId.
  * Adds X-Session-Cookie for proxy when response sets cookie.
  */
+import { randomUUID } from "node:crypto";
 import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { json, redirect } from "@sveltejs/kit";
 import { agentLogServer } from "$lib/debug/agent-log.server";
@@ -167,30 +168,68 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   /** Machine clients under the Gateway Key API tree should not receive HTML error pages. */
-  if (
+  const isApiPath =
     event.url.pathname.startsWith("/keys/dashboard/api") ||
     event.url.pathname.startsWith("/keys/admin/api") ||
     event.url.pathname.startsWith("/keys/v1/") ||
     event.url.pathname.startsWith("/graph/v1/") ||
     event.url.pathname.startsWith("/connect/v1/") ||
-    event.url.pathname.startsWith("/v1/")
-  ) {
+    event.url.pathname.startsWith("/v1/");
+
+  // X-Request-Id: echo from gateway or generate a fresh UUID for all Connect/Keys API paths.
+  const requestId =
+    event.request.headers.get("X-Request-Id") ??
+    (isApiPath &&
+    (event.url.pathname.startsWith("/connect/v1/") ||
+      event.url.pathname.startsWith("/keys/v1/") ||
+      event.url.pathname.startsWith("/graph/v1/"))
+      ? randomUUID()
+      : null);
+
+  if (isApiPath) {
     const ct = response.headers.get("content-type") ?? "";
     if (response.status >= 400 && ct.includes("text/html")) {
       const status = response.status;
-      const body =
+      const body: Record<string, unknown> =
         status === 404
           ? { error: "not_found", message: "No matching API route" }
           : { error: "internal_error", message: "Request failed" };
-      return json(body, { status });
+      if (requestId) body.request_id = requestId;
+      return json(body, { status, headers: requestId ? { "X-Request-Id": requestId } : undefined });
+    }
+    // Inject request_id into existing JSON error bodies for Connect/Keys/Graph API paths.
+    if (
+      requestId &&
+      response.status >= 400 &&
+      ct.includes("application/json") &&
+      (event.url.pathname.startsWith("/connect/v1/") ||
+        event.url.pathname.startsWith("/keys/v1/") ||
+        event.url.pathname.startsWith("/graph/v1/"))
+    ) {
+      try {
+        const errBody = (await response.json()) as Record<string, unknown>;
+        if (typeof errBody === "object" && errBody !== null && !("request_id" in errBody)) {
+          errBody.request_id = requestId;
+        }
+        const headers = new Headers(response.headers);
+        headers.set("X-Request-Id", requestId);
+        return new Response(JSON.stringify(errBody), {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
+      } catch {
+        // fall through if body cannot be parsed
+      }
     }
   }
 
   if (authSessionCookies.length === 0) {
     const setCookie = response.headers.get("Set-Cookie");
-    if (setCookie) {
+    if (setCookie || requestId) {
       const headers = new Headers(response.headers);
-      headers.set("X-Session-Cookie", setCookie);
+      if (setCookie) headers.set("X-Session-Cookie", setCookie);
+      if (requestId) headers.set("X-Request-Id", requestId);
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
@@ -206,6 +245,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
   const marker = response.headers.get("Set-Cookie") ?? authSessionCookies[0];
   if (marker) headers.set("X-Session-Cookie", marker);
+  if (requestId) headers.set("X-Request-Id", requestId);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

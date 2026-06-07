@@ -50,11 +50,13 @@ describe("POST /graph/v1/layout", () => {
 });
 
 describe("GET /graph/v1/snapshots/{snapshotId}", () => {
-  it("returns 404 until hosted persistence (Phase 6)", async () => {
+  it("returns 501 not_implemented until hosted persistence (Phase 6)", async () => {
     const { GET } = await import("./snapshots/[snapshotId]/+server");
     const res = await GET({
       params: { snapshotId: "demo-snapshot-1" },
     } as unknown as Parameters<typeof GET>[0]);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(501);
+    const body = await res.json();
+    expect(body.error).toBe("not_implemented");
   });
 });

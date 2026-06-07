@@ -20,7 +20,7 @@ import {
   type ReadinessRunStatus,
   type ReadinessRunQualitySummary,
 } from "$lib/server/connect/readiness-runs";
-import { resolveNextUnlinkedUnitIds } from "$lib/server/connect/graph-source-link-service";
+import { resolveNextCohortUnitIds } from "$lib/server/connect/graph-source-link-service";
 
 /** Create a run, resolve its cohort (next N unlinked), and stamp membership. */
 export async function createReadinessRun(params: {
@@ -31,6 +31,10 @@ export async function createReadinessRun(params: {
 }): Promise<ReadinessRunRecord> {
   const { randomUUID } = await import("node:crypto");
   const sizeTarget = Math.min(Math.max(Math.floor(params.sizeTarget), 1), 100_000);
+
+  // Resolve the cohort BEFORE creating the run — a resolution failure then surfaces
+  // as an error instead of leaving behind a misleading empty (0-member) run.
+  const unitIds = await resolveNextCohortUnitIds(params.workspaceId, sizeTarget);
 
   const existing = await listReadinessRunsForWorkspace({
     workspaceId: params.workspaceId,
@@ -48,7 +52,6 @@ export async function createReadinessRun(params: {
     sizeTarget,
   });
 
-  const unitIds = await resolveNextUnlinkedUnitIds(params.workspaceId, sizeTarget).catch(() => []);
   if (unitIds.length > 0) {
     await addReadinessRunUnits({ runId: run.id, unitIds });
   }

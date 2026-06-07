@@ -15,8 +15,11 @@ import {
   insertConnectIngestJob,
   connectIngestJobRecordToApi,
   listConnectIngestJobsForWorkspace,
+  countConnectIngestJobsForWorkspace,
   listConnectIngestJobLogsSince,
   countConnectIngestJobLogs,
+  getIdempotencyKey,
+  storeIdempotencyKey,
 } from "$lib/server/connect-ingest-jobs";
 
 /** Parse a stored bracket-tagged worker log line (`[TAG] message`) into structured fields. */
@@ -47,6 +50,8 @@ export type ConnectIngestHandlerOutcome =
 export async function handleConnectIngestCreate(args: {
   locals: App.Locals;
   body: unknown;
+  /** Value of the Idempotency-Key request header (if present). */
+  idempotencyKey?: string | null;
 }): Promise<ConnectIngestHandlerOutcome> {
   const parsed = ConnectIngestJobCreateRequestSchema.safeParse(args.body);
   if (!parsed.success) {
@@ -69,6 +74,14 @@ export async function handleConnectIngestCreate(args: {
     return { ok: false, status: auth.status, body: { error: auth.error, message: auth.message } };
   }
 
+  // Idempotency check: replay cached response for same key within 24 hours.
+  if (args.idempotencyKey) {
+    const cached = await getIdempotencyKey({ workspaceId: auth.workspaceId, key: args.idempotencyKey });
+    if (cached) {
+      return { ok: true, status: cached.status, body: cached.body };
+    }
+  }
+
   const jobId = randomUUID();
   const job = buildInitialConnectIngestJob({
     id: jobId,
@@ -88,7 +101,7 @@ export async function handleConnectIngestCreate(args: {
   });
 
   const validated = ConnectIngestJobSchema.parse(job);
-  return {
+  const outcome: ConnectIngestHandlerOutcome = {
     ok: true,
     status: 201,
     body: {
@@ -96,12 +109,28 @@ export async function handleConnectIngestCreate(args: {
       job: validated,
     },
   };
+
+  // Persist idempotency result so duplicate requests within 24 hours get the same response.
+  if (args.idempotencyKey) {
+    await storeIdempotencyKey({
+      workspaceId: auth.workspaceId,
+      key: args.idempotencyKey,
+      status: outcome.status,
+      body: outcome.body,
+    });
+  }
+
+  return outcome;
 }
 
 export async function handleConnectIngestList(args: {
   locals: App.Locals;
   workspaceId: string | null;
   projectId?: string;
+  /** Max results per page (default 20, max 100). */
+  limit?: number | null;
+  /** Opaque cursor from a previous response's next_cursor field. */
+  cursor?: string | null;
 }): Promise<ConnectIngestHandlerOutcome> {
   if (!args.workspaceId) {
     return {
@@ -120,11 +149,32 @@ export async function handleConnectIngestList(args: {
     return { ok: false, status: auth.status, body: { error: auth.error, message: auth.message } };
   }
 
-  const rows = await listConnectIngestJobsForWorkspace({
-    workspaceId: auth.workspaceId,
-    projectId: auth.projectId,
-  });
-  const jobs = rows.map((row) => ConnectIngestJobSchema.parse(connectIngestJobRecordToApi(row)));
+  const pageSize = Math.min(Math.max(args.limit ?? 20, 1), 100);
+
+  const [rows, total_count] = await Promise.all([
+    listConnectIngestJobsForWorkspace({
+      workspaceId: auth.workspaceId,
+      projectId: auth.projectId,
+      limit: pageSize,
+      cursor: args.cursor ?? undefined,
+    }),
+    countConnectIngestJobsForWorkspace({
+      workspaceId: auth.workspaceId,
+      projectId: auth.projectId,
+    }),
+  ]);
+
+  // listConnectIngestJobsForWorkspace fetches pageSize+1 to detect next page.
+  const hasNext = rows.length > pageSize;
+  const pageRows = hasNext ? rows.slice(0, pageSize) : rows;
+  const jobs = pageRows.map((row) => ConnectIngestJobSchema.parse(connectIngestJobRecordToApi(row)));
+
+  let next_cursor: string | null = null;
+  if (hasNext && pageRows.length > 0) {
+    const last = pageRows[pageRows.length - 1];
+    const cursorPayload = `${new Date(last.createdAt).toISOString()}|${last.id}`;
+    next_cursor = Buffer.from(cursorPayload).toString("base64url");
+  }
 
   return {
     ok: true,
@@ -132,6 +182,8 @@ export async function handleConnectIngestList(args: {
     body: {
       contract_version: CONNECT_API_CONTRACT_VERSION,
       jobs,
+      next_cursor,
+      total_count,
     },
   };
 }

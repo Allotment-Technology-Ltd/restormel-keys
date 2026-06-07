@@ -6,6 +6,7 @@ export {
   insertConnectIngestJob,
   connectIngestJobRecordToApi,
   listConnectIngestJobsForWorkspace,
+  countConnectIngestJobsForWorkspace,
   claimNextPendingConnectIngestJob,
   updateConnectIngestJobById,
   cancelConnectIngestJobForWorkspace,
@@ -14,6 +15,8 @@ export {
   appendConnectIngestJobLog,
   listConnectIngestJobLogsSince,
   countConnectIngestJobLogs,
+  getIdempotencyKey,
+  storeIdempotencyKey,
   type ConnectIngestJobRecord,
   type ConnectIngestJobProgress,
 } from "$lib/server/neon";

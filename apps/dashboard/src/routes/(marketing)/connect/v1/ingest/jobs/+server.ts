@@ -16,17 +16,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   } catch {
     return json({ error: "invalid_json" }, { status: 400 });
   }
-  const outcome = await handleConnectIngestCreate({ locals, body });
+  const idempotencyKey = request.headers.get("Idempotency-Key");
+  const outcome = await handleConnectIngestCreate({ locals, body, idempotencyKey });
   return json(outcome.body, { status: outcome.status });
 };
 
 export const GET: RequestHandler = async ({ url, locals }) => {
   const workspaceId = url.searchParams.get("workspace_id");
   const projectId = url.searchParams.get("project_id") ?? undefined;
+  const limitRaw = url.searchParams.get("limit");
+  const limit = limitRaw !== null ? parseInt(limitRaw, 10) : null;
+  const cursor = url.searchParams.get("cursor");
   const outcome = await handleConnectIngestList({
     locals,
     workspaceId,
     projectId,
+    limit: Number.isFinite(limit) ? limit : null,
+    cursor,
   });
   return json(outcome.body, { status: outcome.status });
 };

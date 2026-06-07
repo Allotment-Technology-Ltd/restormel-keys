@@ -687,6 +687,16 @@ export const ConnectIngestJobCreateResponseSchema = z.object({
 
 export type ConnectIngestJobCreateResponse = z.infer<typeof ConnectIngestJobCreateResponseSchema>;
 
+export const ConnectIngestJobListResponseSchema = z.object({
+  contract_version: ConnectApiContractVersionSchema,
+  jobs: z.array(ConnectIngestJobSchema),
+  /** Opaque cursor; pass as ?cursor= to fetch the next page. Null when no further pages. */
+  next_cursor: z.string().nullable(),
+  total_count: z.number().int().nonnegative(),
+});
+
+export type ConnectIngestJobListResponse = z.infer<typeof ConnectIngestJobListResponseSchema>;
+
 export const ConnectIngestJobStatusResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   job: ConnectIngestJobSchema

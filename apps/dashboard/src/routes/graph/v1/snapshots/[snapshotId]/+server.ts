@@ -13,11 +13,9 @@ export const GET: RequestHandler = async ({ params }) => {
 
   return json(
     {
-      error: "snapshot_not_found",
-      message:
-        "Hosted graph snapshot storage is not available yet. Pass snapshot inline to POST /graph/v1/layout, or use in-app GraphData until Phase 6 operator persistence.",
-      snapshotId,
+      error: "not_implemented",
+      message: "Graph snapshots are not yet available. See restormel.dev/changelog for updates.",
     },
-    { status: 404 }
+    { status: 501 }
   );
 };

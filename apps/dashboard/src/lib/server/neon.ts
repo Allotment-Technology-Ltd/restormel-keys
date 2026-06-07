@@ -5621,27 +5621,144 @@ export async function insertConnectIngestJob(params: {
 export async function listConnectIngestJobsForWorkspace(params: {
   workspaceId: string;
   projectId?: string;
+  /** Max rows to return (default 20, max 100). Fetch limit+1 to detect next page. */
   limit?: number;
+  /** Opaque base64url cursor encoding `createdAt_iso|id` from the last row of the previous page. */
+  cursor?: string;
 }): Promise<ConnectIngestJobRecord[]> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
-  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
+
+  // Decode cursor into keyset components.
+  let cursorCreatedAt: Date | null = null;
+  let cursorId: string | null = null;
+  if (params.cursor) {
+    try {
+      const decoded = Buffer.from(params.cursor, "base64url").toString("utf8");
+      const sep = decoded.lastIndexOf("|");
+      if (sep > 0) {
+        cursorCreatedAt = new Date(decoded.slice(0, sep));
+        cursorId = decoded.slice(sep + 1);
+        if (isNaN(cursorCreatedAt.getTime()) || !cursorId) {
+          cursorCreatedAt = null;
+          cursorId = null;
+        }
+      }
+    } catch {
+      // invalid cursor — ignore and start from beginning
+    }
+  }
+
+  const hasCursor = cursorCreatedAt !== null && cursorId !== null;
+  // Fetch limit+1 so the handler can detect whether a next page exists.
+  const fetchLimit = limit + 1;
+
+  const rows = hasCursor
+    ? params.projectId
+      ? await sql`
+          SELECT *
+          FROM knowledge_ingest_jobs
+          WHERE workspace_id = ${params.workspaceId}
+            AND project_id = ${params.projectId}
+            AND (
+              created_at < ${cursorCreatedAt!}
+              OR (created_at = ${cursorCreatedAt!} AND id < ${cursorId!})
+            )
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${fetchLimit}
+        `
+      : await sql`
+          SELECT *
+          FROM knowledge_ingest_jobs
+          WHERE workspace_id = ${params.workspaceId}
+            AND (
+              created_at < ${cursorCreatedAt!}
+              OR (created_at = ${cursorCreatedAt!} AND id < ${cursorId!})
+            )
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${fetchLimit}
+        `
+    : params.projectId
+      ? await sql`
+          SELECT *
+          FROM knowledge_ingest_jobs
+          WHERE workspace_id = ${params.workspaceId} AND project_id = ${params.projectId}
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${fetchLimit}
+        `
+      : await sql`
+          SELECT *
+          FROM knowledge_ingest_jobs
+          WHERE workspace_id = ${params.workspaceId}
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${fetchLimit}
+        `;
+  return rows.map((row) => mapConnectIngestJobRow(row as Record<string, unknown>));
+}
+
+export async function countConnectIngestJobsForWorkspace(params: {
+  workspaceId: string;
+  projectId?: string;
+}): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
   const rows = params.projectId
     ? await sql`
-        SELECT *
+        SELECT COUNT(*)::int AS n
         FROM knowledge_ingest_jobs
         WHERE workspace_id = ${params.workspaceId} AND project_id = ${params.projectId}
-        ORDER BY updated_at DESC
-        LIMIT ${limit}
       `
     : await sql`
-        SELECT *
+        SELECT COUNT(*)::int AS n
         FROM knowledge_ingest_jobs
         WHERE workspace_id = ${params.workspaceId}
-        ORDER BY updated_at DESC
-        LIMIT ${limit}
       `;
-  return rows.map((row) => mapConnectIngestJobRow(row as Record<string, unknown>));
+  return (rows[0] as Record<string, unknown>)?.n as number ?? 0;
+}
+
+/** Returns the cached response for an idempotency key, or null if not found / expired. */
+export async function getIdempotencyKey(params: {
+  workspaceId: string;
+  key: string;
+}): Promise<{ status: number; body: Record<string, unknown> } | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT response_status, response_body
+    FROM connect_ingest_idempotency_keys
+    WHERE workspace_id = ${params.workspaceId}
+      AND idempotency_key = ${params.key}
+      AND expires_at > NOW()
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const row = rows[0] as Record<string, unknown>;
+  return {
+    status: row.response_status as number,
+    body: row.response_body as Record<string, unknown>,
+  };
+}
+
+/** Stores an idempotency key result with a 24-hour TTL. Upserts to handle races. */
+export async function storeIdempotencyKey(params: {
+  workspaceId: string;
+  key: string;
+  status: number;
+  body: Record<string, unknown>;
+}): Promise<void> {
+  const sql = getSql();
+  await sql`
+    INSERT INTO connect_ingest_idempotency_keys
+      (workspace_id, idempotency_key, response_status, response_body, expires_at)
+    VALUES (
+      ${params.workspaceId},
+      ${params.key},
+      ${params.status},
+      ${JSON.stringify(params.body)},
+      NOW() + INTERVAL '24 hours'
+    )
+    ON CONFLICT (workspace_id, idempotency_key) DO NOTHING
+  `;
 }
 
 export async function getConnectIngestJobForWorkspace(params: {
