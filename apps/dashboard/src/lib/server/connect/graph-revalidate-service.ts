@@ -800,6 +800,21 @@ export async function runGraphRevalidation(args: {
     );
   }
 
+  // The run changed validation_status on the store — force-recompute the stats
+  // cache so the graph breakdown reflects the new verdicts immediately. Without
+  // this the cache stays "authoritative" for its TTL and the breakdown keeps
+  // showing the stale pre-run counts (the recurring "0 supported" symptom).
+  if (validated > 0) {
+    try {
+      const { resolveConnectGraphStats } = await import(
+        "$lib/server/connect/graph-explorer-service"
+      );
+      await resolveConnectGraphStats(job.workspaceId, { forceRefresh: true });
+    } catch {
+      // Best-effort; the cache refreshes on its own TTL otherwise.
+    }
+  }
+
   await reporter.complete(summary, "full");
 
   return {
