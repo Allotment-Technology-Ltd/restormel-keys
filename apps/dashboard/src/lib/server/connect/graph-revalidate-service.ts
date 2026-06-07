@@ -451,6 +451,9 @@ export async function runGraphRevalidation(args: {
 }> {
   const { job, meta, reporter } = args;
   const autoRemediate = meta.mode === "validate_and_remediate";
+  // Remediate-only: act on verdicts already in the store; no LLM validation pass.
+  const remediateOnly = meta.mode === "remediate";
+  const runRemediation = autoRemediate || remediateOnly;
   const target = await getConnectGraphTargetForWorkspace(job.workspaceId);
   if (!target) throw new IngestConfigError("graph_target_not_configured");
 
@@ -544,13 +547,17 @@ export async function runGraphRevalidation(args: {
     routeCtx,
     meta.validation_route_id,
   );
-  const remediationGenerate = autoRemediate
+  const remediationGenerate = runRemediation
     ? buildRemediationStageGenerate(routeCtx, meta.remediation_route_id)
     : null;
 
-  const stageKit = autoRemediate
+  const stageKit = runRemediation
     ? await buildKnowledgeStageGenerates({ workspaceId: job.workspaceId, routeCtx })
     : null;
+  const remediationStrictness = {
+    level: meta.remediation_strictness ?? "balanced",
+    ...(meta.remediation_threshold != null ? { threshold: meta.remediation_threshold } : {}),
+  };
 
   let validated = 0;
   const valCounts = { ok: 0, weak: 0, unsupported: 0 };
@@ -651,51 +658,65 @@ export async function runGraphRevalidation(args: {
     }
 
     const textById = new Map(group.units.map((u) => [u.id, u.text]));
-    const unitInputs = group.units.map((u) => ({ ref: u.id, text: u.text }));
 
-    const stopHeartbeat = startGraphRepairHeartbeat(reporter, () => {
-      const gr = reporter.getGraphRepair();
-      const batchDone = gr?.batches_done ?? 0;
-      const batchTotal = gr?.batches_total ?? "?";
-      const processed = gr?.units_processed ?? unitsDone;
-      return `Still working on source ${sourceIndex}/${groups.length} — batch ${batchDone}/${batchTotal} · ${processed}/${unitCount} ideas`;
-    });
+    let results: { ref: string; status: string; note?: string | null }[];
+    if (remediateOnly) {
+      // Act on verdicts already in the store — no validation LLM call.
+      results = group.units.map((u) => ({
+        ref: u.id,
+        status: u.validationStatus ?? "unsupported",
+        note: u.validationNote ?? null,
+      }));
+      unitsDone += group.units.length;
+      await reporter.setGraphRepair({ units_processed: unitsDone, sources_done: sourceIndex });
+    } else {
+      const unitInputs = group.units.map((u) => ({ ref: u.id, text: u.text }));
 
-    let results: UnitValidation[];
-    try {
-      const outcome = await validateUnitsWithProgress({
-        units: unitInputs,
-        sourceText: resolved.text,
-        pack,
-        generate: validationGenerate,
-        reporter,
-        sourceIndex,
-        sourcesTotal: groups.length,
-        sourceLabel,
-        unitsDoneBefore: unitsDone,
-        unitCount,
+      const stopHeartbeat = startGraphRepairHeartbeat(reporter, () => {
+        const gr = reporter.getGraphRepair();
+        const batchDone = gr?.batches_done ?? 0;
+        const batchTotal = gr?.batches_total ?? "?";
+        const processed = gr?.units_processed ?? unitsDone;
+        return `Still working on source ${sourceIndex}/${groups.length} — batch ${batchDone}/${batchTotal} · ${processed}/${unitCount} ideas`;
       });
-      results = outcome.results;
-      unitsDone += outcome.unitsValidated;
-    } finally {
-      stopHeartbeat();
+
+      let validations: UnitValidation[];
+      try {
+        const outcome = await validateUnitsWithProgress({
+          units: unitInputs,
+          sourceText: resolved.text,
+          pack,
+          generate: validationGenerate,
+          reporter,
+          sourceIndex,
+          sourcesTotal: groups.length,
+          sourceLabel,
+          unitsDoneBefore: unitsDone,
+          unitCount,
+        });
+        validations = outcome.results;
+        unitsDone += outcome.unitsValidated;
+      } finally {
+        stopHeartbeat();
+      }
+
+      await reporter.setGraphRepair({
+        units_processed: unitsDone,
+        sources_done: sourceIndex,
+      });
+
+      validated += await writer.setValidation(
+        validations.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
+      );
+      for (const r of validations) {
+        if (r.status === "ok") valCounts.ok += 1;
+        else if (r.status === "weak") valCounts.weak += 1;
+        else if (r.status === "unsupported") valCounts.unsupported += 1;
+      }
+      results = validations;
     }
 
-    await reporter.setGraphRepair({
-      units_processed: unitsDone,
-      sources_done: sourceIndex,
-    });
-
-    validated += await writer.setValidation(
-      results.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
-    );
-    for (const r of results) {
-      if (r.status === "ok") valCounts.ok += 1;
-      else if (r.status === "weak") valCounts.weak += 1;
-      else if (r.status === "unsupported") valCounts.unsupported += 1;
-    }
-
-    if (autoRemediate && remediationGenerate) {
+    if (runRemediation && remediationGenerate) {
       const pass = await runGraphRemediationPass({
         validationResults: results,
         textById,
@@ -707,6 +728,7 @@ export async function runGraphRevalidation(args: {
         embed: stageKit?.embed,
         reporter,
         sourceLabel,
+        strictness: remediationStrictness,
       });
       repaired += pass.repaired;
       dropped += pass.dropped;
@@ -732,7 +754,7 @@ export async function runGraphRevalidation(args: {
     `${validated}/${unitCount} validation row(s) persisted${skippedUnits > 0 ? ` (${skippedUnits} skipped — no source text)` : ""}`,
   );
 
-  if (!autoRemediate) {
+  if (!runRemediation) {
     await reporter.skipStage("remediating", "Validate-only mode");
   }
 
@@ -753,8 +775,9 @@ export async function runGraphRevalidation(args: {
       ? ` Quarantine: ${scopedQuarantineBefore} → ${quarantineAfter}.`
       : "";
 
-  const remediateSummary = autoRemediate
-    ? ` ${repaired} repaired, ${dropped} dropped${embedded > 0 ? `, ${embedded} re-embedded` : ""}.`
+  const opVerb = remediateOnly ? "Remediation" : autoRemediate ? "Auto-remediation" : "Re-validation";
+  const remediateSummary = runRemediation
+    ? ` ${repaired} repaired, ${dropped} excluded${embedded > 0 ? `, ${embedded} re-embedded` : ""}.`
     : "";
 
   const previewSummary =
@@ -767,14 +790,15 @@ export async function runGraphRevalidation(args: {
       ? ` ${sourcesRemediationFailed} source(s) failed remediation — check activity log for upstream model errors.`
       : "";
 
+  const updatedCount = remediateOnly ? repaired + dropped : validated;
   const summary =
     skippedUnits > 0
-      ? `${autoRemediate ? "Auto-remediation" : "Re-validation"} finished — ${validated}/${unitCount} unit(s) updated; ${skippedUnits} skipped (could not load source text).${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`
-      : `${autoRemediate ? "Auto-remediation" : "Re-validation"} complete — ${validated}/${unitCount} unit(s) updated.${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`;
+      ? `${opVerb} finished — ${updatedCount}/${unitCount} idea(s) updated; ${skippedUnits} skipped (could not load source text).${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`
+      : `${opVerb} complete — ${updatedCount}/${unitCount} idea(s) updated.${remediateSummary}${previewSummary}${remediationFailSummary}${quarantineDelta} Refresh graph review to see new counts.`;
 
   // Auto-continue: this was a capped batch, more matching units remain, and we made
   // real progress — enqueue the next batch so a large backlog drains unattended.
-  const madeProgress = validated > 0 || repaired > 0;
+  const madeProgress = validated > 0 || repaired > 0 || dropped > 0;
   if (meta.continue_in_background && hadMore && madeProgress) {
     try {
       const nextJobId = await enqueueGraphRevalidateJob({
@@ -793,7 +817,7 @@ export async function runGraphRevalidation(args: {
         `Could not queue the next background batch — run again to continue. ${err instanceof Error ? err.message : ""}`.trim(),
       );
     }
-  } else if (validated === 0 && unitCount > 0) {
+  } else if (!remediateOnly && validated === 0 && unitCount > 0) {
     await reporter.log(
       "VALIDATE",
       "No validation statuses were written. Check run logs above for skipped sources, Surreal credentials, and that Pipeline → Sources still has parsed documents for this graph.",
@@ -804,7 +828,7 @@ export async function runGraphRevalidation(args: {
   // cache so the graph breakdown reflects the new verdicts immediately. Without
   // this the cache stays "authoritative" for its TTL and the breakdown keeps
   // showing the stale pre-run counts (the recurring "0 supported" symptom).
-  if (validated > 0) {
+  if (validated > 0 || repaired > 0 || dropped > 0) {
     try {
       const { resolveConnectGraphStats } = await import(
         "$lib/server/connect/graph-explorer-service"

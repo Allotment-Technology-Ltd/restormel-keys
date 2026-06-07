@@ -1,4 +1,5 @@
 import type {
+  ConnectGraphRemediationStrictness,
   ConnectGraphRevalidateMode,
   ConnectGraphRevalidateScope,
 } from "@restormel/contracts/connect";
@@ -14,7 +15,17 @@ const VALID_SCOPES = new Set<ConnectGraphRevalidateScope>([
   "unsupported",
 ]);
 
-const VALID_MODES = new Set<ConnectGraphRevalidateMode>(["validate", "validate_and_remediate"]);
+const VALID_MODES = new Set<ConnectGraphRevalidateMode>([
+  "validate",
+  "validate_and_remediate",
+  "remediate",
+]);
+
+const VALID_STRICTNESS = new Set<ConnectGraphRemediationStrictness>([
+  "conservative",
+  "balanced",
+  "strict",
+]);
 
 export type GraphRevalidateJobMeta = {
   kind: typeof CONNECT_GRAPH_REVALIDATE_JOB_KIND;
@@ -25,6 +36,10 @@ export type GraphRevalidateJobMeta = {
   mode: ConnectGraphRevalidateMode;
   /** "ai" runs the LLM check; "trust_provenance" accepts graph-native ideas with no LLM. */
   validation_mode?: "ai" | "trust_provenance";
+  /** Remediation aggressiveness (modes "remediate" / "validate_and_remediate"). */
+  remediation_strictness?: ConnectGraphRemediationStrictness;
+  /** Min model confidence (0-1) before a remediation action applies. */
+  remediation_threshold?: number | null;
   /** Cap on units processed this run (bounded batch). */
   max_units?: number | null;
   /** Auto-enqueue the next batch until the scope is clear. */
@@ -37,14 +52,14 @@ export function buildGraphRevalidateJobSources(meta: GraphRevalidateJobMeta): un
   const label =
     meta.mode === "validate_and_remediate"
       ? "Connect graph auto-remediation (validate + remediate)."
-      : "Connect graph re-validation (no new extraction).";
-  return [
-    {
-      text: label,
-      title: meta.mode === "validate_and_remediate" ? "Graph auto-remediation" : "Graph re-validation",
-      _connect_job: meta,
-    },
-  ];
+      : meta.mode === "remediate"
+        ? "Connect graph remediation (flagged ideas, no re-validation)."
+        : "Connect graph re-validation (no new extraction).";
+  const title =
+    meta.mode === "validate_and_remediate" || meta.mode === "remediate"
+      ? "Graph auto-remediation"
+      : "Graph re-validation";
+  return [{ text: label, title, _connect_job: meta }];
 }
 
 function parseScope(raw: unknown): ConnectGraphRevalidateScope {
@@ -86,6 +101,18 @@ export function parseGraphRevalidateJobMeta(sources: unknown): GraphRevalidateJo
     scope: parseScope(rec.scope),
     mode: parseMode(rec.mode),
     validation_mode: rec.validation_mode === "trust_provenance" ? "trust_provenance" : "ai",
+    remediation_strictness:
+      typeof rec.remediation_strictness === "string" &&
+      VALID_STRICTNESS.has(rec.remediation_strictness as ConnectGraphRemediationStrictness)
+        ? (rec.remediation_strictness as ConnectGraphRemediationStrictness)
+        : "balanced",
+    remediation_threshold:
+      typeof rec.remediation_threshold === "number" &&
+      Number.isFinite(rec.remediation_threshold) &&
+      rec.remediation_threshold >= 0 &&
+      rec.remediation_threshold <= 1
+        ? rec.remediation_threshold
+        : null,
     max_units:
       typeof rec.max_units === "number" && Number.isFinite(rec.max_units) && rec.max_units > 0
         ? Math.floor(rec.max_units)

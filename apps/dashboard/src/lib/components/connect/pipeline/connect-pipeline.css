@@ -206,11 +206,11 @@
     padding: var(--space-2) var(--space-3);
   }
   .connect-pipeline .pack-selected {
-    border-left: 4px solid var(--color-yellow);
+    border-left: 4px solid var(--color-ink);
     background: var(--color-surface);
   }
   .connect-pipeline .pack-selected .pack-select-label input[type="radio"] {
-    accent-color: var(--color-yellow);
+    accent-color: var(--color-ink);
   }
   .connect-pipeline .pack-select-label {
     display: flex;
@@ -814,7 +814,7 @@
   font-size: 1.1rem;
   line-height: 1;
   flex-shrink: 0;
-  color: var(--color-yellow);
+  color: var(--color-ink);
 }
 .connect-pipeline .store-status-card-error .store-status-glyph {
   color: var(--color-ink);
@@ -1083,7 +1083,7 @@
 .connect-pipeline .preflight-bullet {
   font-family: var(--font-mono);
   flex-shrink: 0;
-  color: var(--color-yellow);
+  color: var(--color-ink);
 }
 .connect-pipeline .preflight-bullet-warn {
   color: var(--color-ink);

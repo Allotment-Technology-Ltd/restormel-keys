@@ -59,12 +59,12 @@
   }
 
   .brutal-card-title {
-    font-family: var(--font-display);
-    font-size: var(--text-display-sm);
-    font-weight: 900;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: var(--text-display-tracking);
-    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-mono-tracking);
+    line-height: 1.2;
     margin: 0 0 0.75rem;
   }
 

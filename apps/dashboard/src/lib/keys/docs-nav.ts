@@ -21,6 +21,7 @@ export type DocsNavBlock =
 export const keysDocsNavBlocks: DocsNavBlock[] = [
   { kind: "link", href: "/docs", label: "Restormel docs" },
   { kind: "link", href: "/keys", label: "Keys" },
+  { kind: "link", href: "/keys/docs/api-reference", label: "API reference" },
   {
     kind: "section",
     label: "Start",

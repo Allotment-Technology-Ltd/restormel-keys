@@ -202,7 +202,7 @@ a {
 }
 
 a:hover {
-  background: var(--color-yellow);
+  text-decoration-thickness: 3px;
 }
 
 button {

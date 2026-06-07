@@ -5,6 +5,7 @@
 
   export let span = 1;
   export let full = false;
+  export let dense = false;
   export let fill: Fill = "canvas";
   export let label: string | undefined = undefined;
   export let children: Snippet;
@@ -24,6 +25,7 @@
 <section
   class="brutal-bento-cell {fillClass}"
   class:bento-full={full}
+  class:bento-dense={dense}
   style="--cell-span: {span}"
   role="listitem"
   aria-label={label}
@@ -43,6 +45,10 @@
 
   .bento-full {
     grid-column: 1 / -1;
+  }
+
+  .bento-dense {
+    padding: var(--space-2);
   }
 
   .brutal-bento-label {

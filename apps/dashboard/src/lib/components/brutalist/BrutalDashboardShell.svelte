@@ -296,10 +296,11 @@
 
   .brutal-topbar-title {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 900;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--text-mono-tracking);
   }
 
   .brutal-topbar-nav {
@@ -354,7 +355,7 @@
 
   .brutal-main {
     flex: 1;
-    padding: 1rem;
+    padding: var(--space-6);
     background: var(--brut-canvas);
   }
 

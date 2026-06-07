@@ -105,7 +105,12 @@
   }
 
   .pipeline-step--done {
-    opacity: 0.72;
+    background: var(--brut-ink);
+    color: var(--brut-white);
+  }
+
+  .pipeline-step--done .pipeline-status::before {
+    content: "✓ ";
   }
 
   .pipeline-idx {

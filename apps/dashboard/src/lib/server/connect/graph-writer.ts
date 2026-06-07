@@ -46,7 +46,12 @@ export interface GraphWriter {
   setValidation(results: { unitId: string; status: string; note: string | null }[]): Promise<number>;
   updateUnitText(unitId: string, text: string): Promise<void>;
   deleteUnit(unitId: string): Promise<void>;
+  /** Soft-exclude: mark removed (hidden from retrieval/queue) but keep the record. Reversible. */
+  excludeUnit(unitId: string, note: string): Promise<void>;
 }
+
+/** Sentinel validation_status for soft-excluded ideas — kept in the store, out of active use. */
+export const REMOVED_VALIDATION_STATUS = "removed" as const;
 
 // ── Postgres ──────────────────────────────────────────────────────────────────
 
@@ -118,6 +123,13 @@ class PostgresGraphWriter implements GraphWriter {
 
   deleteUnit(unitId: string) {
     return deleteUnitPostgres({ workspaceId: this.workspaceId, unitId });
+  }
+
+  async excludeUnit(unitId: string, note: string) {
+    await updateUnitValidationPostgres({
+      workspaceId: this.workspaceId,
+      results: [{ unitId, status: REMOVED_VALIDATION_STATUS, note }],
+    });
   }
 }
 
@@ -352,6 +364,19 @@ class SurrealGraphWriter implements GraphWriter {
 
   async deleteUnit(unitId: string) {
     await this.store.query(`DELETE ${surrealRecordRef(unitId)};`);
+  }
+
+  async excludeUnit(unitId: string, note: string) {
+    const unitTable = ident(this.schema.unit_table, "unit");
+    await this.store
+      .query(
+        `DEFINE FIELD IF NOT EXISTS validation_status ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS validation_note ON TABLE ${unitTable} TYPE option<string>;`,
+      )
+      .catch(() => {});
+    await this.store.query(
+      `UPDATE ${surrealRecordRef(unitId)} MERGE { validation_status: ${JSON.stringify(REMOVED_VALIDATION_STATUS)}, validation_note: ${JSON.stringify(note)} };`,
+    );
   }
 }
 

@@ -203,6 +203,12 @@
   let flashingReviewAction: ReviewVerdictAction | null = null;
   let revalidateRouteId = "";
   let remediationRouteId = "";
+  // Remediation run controls (mode "remediate").
+  let remediateStrictness: "conservative" | "balanced" | "strict" = "balanced";
+  /** null = use the level's default confidence threshold. */
+  let remediateThreshold: number | null = null;
+  let remediateBatchSize = 500;
+  let remediateContinueInBackground = false;
   $: if (revalidateOptions?.defaultRouteId && !revalidateRouteId) {
     revalidateRouteId = revalidateOptions.defaultRouteId;
   }
@@ -841,6 +847,14 @@
 
   $: graphReadinessComplete =
     catalogComplete && linkReadinessComplete && embedReadinessComplete && validateReadinessComplete;
+
+  // Remediation unlocks as soon as ≥1 idea has been checked (a verdict exists).
+  $: checkedCount = stats
+    ? stats.validation.ok + stats.validation.weak + stats.validation.unsupported
+    : 0;
+  $: remediationUnlocked = checkedCount > 0;
+  // Ideas "ready for remediation" — flagged (weak/unsupported) and not yet human-triaged.
+  $: remediableCount = quarantineCount > 0 ? quarantineCount : unsupportedUntriagedCount;
 
   $: graphReadinessBlockers = (() => {
     const blockers: string[] = [];
@@ -1770,7 +1784,13 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scope,
-          mode: "validate_and_remediate",
+          // Remediate ideas already flagged in the store — no re-validation pass.
+          mode: "remediate",
+          remediation_strictness: remediateStrictness,
+          ...(remediateThreshold != null ? { remediation_threshold: remediateThreshold } : {}),
+          ...(remediateBatchSize > 0 ? { max_units: remediateBatchSize } : {}),
+          ...(remediateContinueInBackground ? { continue_in_background: true } : {}),
+          // Repaired ideas are re-validated with this route; remediation uses the other.
           ...(revalidateRouteId ? { validation_route_id: revalidateRouteId } : {}),
           ...(remediationRouteId ? { remediation_route_id: remediationRouteId } : {}),
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
@@ -2858,20 +2878,15 @@
 
         {#if revalidateOptionsLoading && workspaceMode === "tools"}
           <p class="revalidate-lede brut-muted" role="status">Loading auto-remediation options…</p>
-        {:else if revalidateOptions?.enabled && !graphReadinessComplete}
+        {:else if revalidateOptions?.enabled && !remediationUnlocked}
           <div class="revalidate-panel">
             <BrutalCard fill="canvas" title="Auto-remediate quarantine (locked)">
               <p class="revalidate-lede brut-muted">
-                Auto-remediation runs after your graph passes readiness — sources in the pipeline,
-                ideas linked and embedded, and the unchecked validation backlog cleared.
+                Remediation unlocks as soon as at least one idea has been validated. Run a
+                validation pass first — then come back to repair or remove the ideas it flags.
               </p>
-              <ul class="readiness-blocker-list">
-                {#each graphReadinessBlockers as blocker}
-                  <li>{blocker}</li>
-                {/each}
-              </ul>
               <p class="revalidate-note brut-muted">
-                Use the readiness wizard above to complete the remaining steps first.
+                Validate ideas in the readiness wizard above (a single cohort is enough to unlock this).
               </p>
             </BrutalCard>
           </div>
@@ -2880,8 +2895,10 @@
             <div class="revalidate-panel">
               <BrutalCard fill="neon" title="Auto-remediate quarantine">
                 <p class="revalidate-lede brut-muted">
-                  Re-run validation and remediation on quarantined ideas — repair faithful wording, drop unsupportable
-                  claims, and re-embed repairs. Items still flagged afterward stay in quarantine for your review.
+                  Remediate ideas already flagged weak/unsupported — repair faithful wording, soft-exclude
+                  ideas with no basis in the source, and re-embed repairs. No re-validation pass, so it only
+                  touches ideas you've already checked. Excluded ideas are hidden from retrieval but kept
+                  (reversible), never deleted.
                 </p>
                 {#if ideasNeedingSourceLink > 0}
                   <p class="revalidate-note brut-muted">
@@ -2937,7 +2954,58 @@
                       {/if}
                     </select>
                   </label>
+                  <label class="revalidate-field" for="auto-remediate-strictness">
+                    <span class="revalidate-label">Strictness</span>
+                    <select
+                      id="auto-remediate-strictness"
+                      class="revalidate-input brut-focus"
+                      bind:value={remediateStrictness}
+                      disabled={autoRemediating}
+                    >
+                      <option value="conservative">Conservative — repair only, never remove</option>
+                      <option value="balanced">Balanced — repair + remove baseless ideas</option>
+                      <option value="strict">Strict — repair, remove all still-unsupported</option>
+                    </select>
+                  </label>
+                  <label class="revalidate-field" for="auto-remediate-threshold">
+                    <span class="revalidate-label">
+                      Confidence threshold {remediateThreshold == null ? "(level default)" : `(${remediateThreshold})`}
+                    </span>
+                    <input
+                      id="auto-remediate-threshold"
+                      class="revalidate-input brut-focus"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={remediateThreshold ?? { conservative: 0.8, balanced: 0.6, strict: 0.4 }[remediateStrictness]}
+                      disabled={autoRemediating}
+                      on:input={(e) => (remediateThreshold = Number((e.currentTarget as HTMLInputElement).value))}
+                    />
+                  </label>
+                  <label class="revalidate-field" for="auto-remediate-batch">
+                    <span class="revalidate-label">Batch size (ideas per run)</span>
+                    <input
+                      id="auto-remediate-batch"
+                      class="revalidate-input brut-focus"
+                      type="number"
+                      min="1"
+                      max="100000"
+                      step="50"
+                      bind:value={remediateBatchSize}
+                      disabled={autoRemediating}
+                    />
+                  </label>
                 </div>
+                <label class="revalidate-check brut-focus" for="auto-remediate-continue">
+                  <input
+                    id="auto-remediate-continue"
+                    type="checkbox"
+                    bind:checked={remediateContinueInBackground}
+                    disabled={autoRemediating}
+                  />
+                  <span>Keep remediating in the background until the selected scope is clear</span>
+                </label>
                 <div class="revalidate-route-links" aria-label="Route management">
                   <a class="revalidate-link brut-focus" href={modelsManageHref}>Manage ingest routes</a>
                   {#if validationRouteEditHref}
@@ -2989,9 +3057,19 @@
                     </button>
                   {/if}
                   <p class="revalidate-note brut-muted">
-                    Opens the ingest run console — validation statuses update when the job completes.
+                    Processes up to {remediateBatchSize.toLocaleString()} flagged idea{remediateBatchSize === 1 ? "" : "s"} per run
+                    {remediateContinueInBackground ? " (auto-continues until the scope is clear)" : ""}. Opens the ingest run console.
                   </p>
                 </div>
+              </BrutalCard>
+            </div>
+          {:else}
+            <div class="revalidate-panel">
+              <BrutalCard fill="canvas" title="Auto-remediate quarantine">
+                <p class="revalidate-lede brut-muted">
+                  Nothing to remediate — every idea checked so far is supported. Flagged
+                  (weak/unsupported) ideas will appear here for repair or removal as you validate more.
+                </p>
               </BrutalCard>
             </div>
           {/if}

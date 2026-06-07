@@ -127,7 +127,10 @@
 
 <details class="first-graph-guide" bind:open={expanded}>
   <summary class="guide-summary">
-    <span class="guide-summary-title">First graph setup</span>
+    <span class="guide-summary-header">
+      <span class="guide-summary-title">First graph setup</span>
+      <span class="guide-counter" aria-label="{completedPhases} of {phases.length} phases complete">{completedPhases}/{phases.length}</span>
+    </span>
     <span class="guide-summary-meta">
       ~30 min · includes third-party accounts · {completedPhases} of {phases.length} phases complete
     </span>
@@ -175,7 +178,7 @@
 
               <div class="guide-block">
                 <h3 class="guide-block-title">In the dashboard</h3>
-                <a class="btn btn-primary" href={phase.dashboardHref}>{phase.dashboardLabel}</a>
+                <a class="btn btn-outline" href={phase.dashboardHref}>{phase.dashboardLabel}</a>
               </div>
 
               <p class="guide-done-when">
@@ -204,6 +207,20 @@
     flex-direction: column;
     gap: var(--space-1);
   }
+  .guide-summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .guide-counter {
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric);
+    font-weight: 900;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
+    color: var(--rm-text);
+  }
   .guide-summary::-webkit-details-marker {
     display: none;
   }
@@ -216,7 +233,7 @@
     color: var(--rm-muted);
   }
   .guide-body {
-    padding: 0 var(--space-4) var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-4);
     border-top: 1px solid var(--rm-border);
   }
   .guide-lead {
@@ -231,7 +248,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
   }
   .guide-phase {
     border: 1px solid var(--rm-border);
@@ -269,9 +286,12 @@
   }
   .guide-phase-title {
     flex: 1;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
     color: var(--rm-text);
-    font-weight: 600;
-    font-size: var(--text-sm);
   }
   .guide-phase-panel {
     padding: 0 var(--space-4) var(--space-4);

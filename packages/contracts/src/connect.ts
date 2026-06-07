@@ -357,8 +357,23 @@ export const ConnectGraphRevalidateScopeSchema = z.enum([
 ]);
 export type ConnectGraphRevalidateScope = z.infer<typeof ConnectGraphRevalidateScopeSchema>;
 
-export const ConnectGraphRevalidateModeSchema = z.enum(['validate', 'validate_and_remediate']);
+export const ConnectGraphRevalidateModeSchema = z.enum([
+  'validate',
+  'validate_and_remediate',
+  // Remediate ideas already flagged weak/unsupported — no re-validation pass.
+  'remediate'
+]);
 export type ConnectGraphRevalidateMode = z.infer<typeof ConnectGraphRevalidateModeSchema>;
+
+/** Remediation aggressiveness: repair-only (conservative) → repair + remove unsupported (strict). */
+export const ConnectGraphRemediationStrictnessSchema = z.enum([
+  'conservative',
+  'balanced',
+  'strict'
+]);
+export type ConnectGraphRemediationStrictness = z.infer<
+  typeof ConnectGraphRemediationStrictnessSchema
+>;
 
 export const ConnectGraphRevalidateRequestSchema = z.object({
   label: z.string().min(1).max(200).optional(),
@@ -375,6 +390,10 @@ export const ConnectGraphRevalidateRequestSchema = z.object({
    * for pre-existing/curated graphs where re-validation would only burn tokens.
    */
   validation_mode: z.enum(['ai', 'trust_provenance']).default('ai'),
+  /** Remediation aggressiveness (mode "remediate" / "validate_and_remediate"). */
+  remediation_strictness: ConnectGraphRemediationStrictnessSchema.default('balanced'),
+  /** Min model confidence (0-1) before a remediation action applies; defaults per level. */
+  remediation_threshold: z.number().min(0).max(1).optional(),
   project_id: z.string().uuid().optional(),
   /**
    * Cap on units processed per run, so a large backlog is cleared in bounded

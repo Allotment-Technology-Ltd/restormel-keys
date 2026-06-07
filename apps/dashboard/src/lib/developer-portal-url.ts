@@ -1,9 +1,11 @@
 /**
- * Zuplo-hosted Developer Portal (Gateway API reference, Try it, consumer key).
- * Set PUBLIC_KEYS_DEVELOPER_PORTAL_URL in env if the portal host changes.
+ * Canonical API reference (Scalar, rendered from the live OpenAPI spec), served
+ * in-site at /keys/docs/api-reference. Previously the Zuplo-hosted zudoku portal,
+ * which is retired as a docs surface. Override with PUBLIC_KEYS_DEVELOPER_PORTAL_URL
+ * only if the reference is ever hosted elsewhere.
  */
 export function developerPortalUrl(): string {
   const raw = import.meta.env.PUBLIC_KEYS_DEVELOPER_PORTAL_URL;
   if (typeof raw === "string" && raw.trim()) return raw.trim().replace(/\/$/, "");
-  return "https://restormel-keys-gateway-main-bc13eba.zuplo.site";
+  return "/keys/docs/api-reference";
 }
