@@ -383,6 +383,14 @@
     return "pending";
   }
 
+  /** Action-oriented rail label for clickable steps (every applicable step is now navigable). */
+  function railActionLabel(status: RailStatus | "active", isRecommended: boolean): string {
+    if (status === "active") return "current step";
+    if (status === "satisfied") return "re-run";
+    if (isRecommended) return "suggested";
+    return "go to step";
+  }
+
   $: embedButtonLabel = (() => {
     if (embeddingBackfill) return "Starting…";
     const work = embedWorkCount || unembeddedCount;
@@ -467,15 +475,25 @@
       <ol class="wizard-stepper-list" role="list">
         {#each ALL_STEPS as stepId, i (stepId)}
           {@const status = stepStatuses[i]}
+          {@const isRecommended = stepId === recommendedStep && status !== "active"}
           <li
             class="wizard-step wizard-step--{status}"
+            class:wizard-step--suggested={isRecommended}
             aria-current={status === "active" ? "step" : undefined}
           >
-            {#if status === "satisfied" && !stepNotApplicable(stepId)}
+            {#if stepNotApplicable(stepId)}
+              <div class="wizard-step-head">
+                <span class="wizard-step-glyph" aria-hidden="true">{railGlyph(status)}</span>
+                <span class="wizard-step-num" aria-hidden="true">{i + 1}</span>
+              </div>
+              <span class="wizard-step-label">{STEP_META[stepId].label}</span>
+              <span class="wizard-step-state">{railStateLabel(status)}</span>
+            {:else}
               <button
                 type="button"
                 class="wizard-step-btn brut-focus"
-                aria-label="Return to {STEP_META[stepId].label} step"
+                aria-label="Go to {STEP_META[stepId].label} step"
+                aria-current={status === "active" ? "step" : undefined}
                 on:click={() => navigateToStep(stepId)}
               >
                 <div class="wizard-step-head">
@@ -483,18 +501,11 @@
                   <span class="wizard-step-num" aria-hidden="true">{i + 1}</span>
                 </div>
                 <span class="wizard-step-label">{STEP_META[stepId].label}</span>
-                <span class="wizard-step-state">re-run</span>
+                <span class="wizard-step-state">{railActionLabel(status, isRecommended)}</span>
               </button>
-            {:else}
-              <div class="wizard-step-head">
-                <span class="wizard-step-glyph" aria-hidden="true">{railGlyph(status)}</span>
-                <span class="wizard-step-num" aria-hidden="true">{i + 1}</span>
-              </div>
-              <span class="wizard-step-label">{STEP_META[stepId].label}</span>
-              <span class="wizard-step-state">{railStateLabel(status)}</span>
             {/if}
             <span class="visually-hidden">
-              {STEP_META[stepId].label} — {railStateLabel(status)}
+              {STEP_META[stepId].label} — {railActionLabel(status, isRecommended)}
             </span>
           </li>
         {/each}
