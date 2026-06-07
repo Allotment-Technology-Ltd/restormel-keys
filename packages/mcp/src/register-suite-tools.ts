@@ -16,8 +16,10 @@ import {
   connectValidateIngestStartRequest,
   connectValidateVerifyRequest,
   connectProxyPost,
+  connectProxyGet,
 } from "./connect-tools-logic.js";
 import { registerConnectAgentTools } from "./connect-agent-tools.js";
+import { registerConnectKnowledgeTools } from "./connect-knowledge-tools.js";
 import { ROUTING_CAPABILITIES } from "./routing-capabilities.js";
 import {
   getEnabledSuiteToolNames,
@@ -355,18 +357,41 @@ export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolMo
   );
 
   registerConnectAgentTools(server, reg);
+  registerConnectKnowledgeTools(server, reg);
 
   reg(
     "connect.ingest.start",
     {
       description:
-        "Validate a Knowledge Ingest job create payload (POST /connect/v1/ingest/jobs). Act tier — returns 501 upstream until Phase 5b persistence.",
+        "Create a Knowledge Ingest job (POST /connect/v1/ingest/jobs). Act tier. Requires RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY to execute; validates the payload first.",
       inputSchema: connectRequestJsonInput,
       outputSchema: connectValidatedOutput,
     },
     async (args: { requestJson: string }) => {
-      const r = await connectValidateIngestStartRequest(args.requestJson);
-      const structuredContent = r;
+      // Validate the payload shape before touching the network.
+      const validated = await connectValidateIngestStartRequest(args.requestJson);
+      if (!validated.ok) {
+        return { content: [{ type: "text" as const, text: JSON.stringify(validated, null, 2) }], structuredContent: validated };
+      }
+
+      const base = process.env.RESTORMEL_CONNECT_API_BASE?.trim();
+      const key = process.env.RESTORMEL_GATEWAY_KEY?.trim();
+      if (!base || !key) {
+        const structuredContent = {
+          ok: false as const,
+          code: "RST_CONNECT_NO_GATEWAY",
+          message:
+            "Set RESTORMEL_GATEWAY_KEY and RESTORMEL_CONNECT_API_BASE to create ingest jobs via POST /connect/v1/ingest/jobs.",
+        };
+        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+      }
+
+      const body = JSON.parse(args.requestJson) as unknown; // already validated as JSON above
+      const proxied = await connectProxyPost({ baseUrl: base, gatewayKey: key, path: "/connect/v1/ingest/jobs", body });
+      if (!proxied.ok) {
+        return { content: [{ type: "text" as const, text: JSON.stringify(proxied, null, 2) }], structuredContent: proxied };
+      }
+      const structuredContent = { ok: true as const, validated: true, stage: "ingest_start", upstreamStatus: proxied.status, upstream: proxied.json };
       return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
     },
   );
@@ -374,13 +399,52 @@ export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolMo
   reg(
     "connect.ingest.status",
     {
-      description: "Validate job id for Knowledge Ingest status (GET /connect/v1/ingest/jobs/{jobId}). Read tier.",
-      inputSchema: { jobId: z.string().describe("Ingest job UUID.") },
+      description:
+        "Poll Knowledge Ingest job status (GET /connect/v1/ingest/jobs/{jobId}). Read tier. Requires RESTORMEL_CONNECT_API_BASE + RESTORMEL_GATEWAY_KEY and a workspace id.",
+      inputSchema: {
+        jobId: z.string().describe("Ingest job UUID."),
+        workspaceId: z.string().optional().describe("Workspace UUID. Defaults to RESTORMEL_WORKSPACE_ID."),
+      },
       outputSchema: connectValidatedOutput,
     },
-    async (args: { jobId: string }) => {
-      const r = connectIngestStatusHint(args.jobId);
-      const structuredContent = r;
+    async (args: { jobId: string; workspaceId?: string }) => {
+      const hint = connectIngestStatusHint(args.jobId);
+      if (!hint.ok) {
+        return { content: [{ type: "text" as const, text: JSON.stringify(hint, null, 2) }], structuredContent: hint };
+      }
+
+      const base = process.env.RESTORMEL_CONNECT_API_BASE?.trim();
+      const key = process.env.RESTORMEL_GATEWAY_KEY?.trim();
+      if (!base || !key) {
+        const structuredContent = {
+          ok: false as const,
+          code: "RST_CONNECT_NO_GATEWAY",
+          message:
+            "Set RESTORMEL_GATEWAY_KEY and RESTORMEL_CONNECT_API_BASE to poll ingest jobs via GET /connect/v1/ingest/jobs/{jobId}.",
+        };
+        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+      }
+
+      const workspaceId = (args.workspaceId ?? process.env.RESTORMEL_WORKSPACE_ID)?.trim();
+      if (!workspaceId) {
+        const structuredContent = {
+          ok: false as const,
+          code: "RST_CONNECT_NO_WORKSPACE",
+          message: "Provide workspaceId or set RESTORMEL_WORKSPACE_ID — the status endpoint is workspace-scoped.",
+        };
+        return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
+      }
+
+      const proxied = await connectProxyGet({
+        baseUrl: base,
+        gatewayKey: key,
+        path: `/connect/v1/ingest/jobs/${encodeURIComponent(hint.jobId)}`,
+        query: { workspace_id: workspaceId },
+      });
+      if (!proxied.ok) {
+        return { content: [{ type: "text" as const, text: JSON.stringify(proxied, null, 2) }], structuredContent: proxied };
+      }
+      const structuredContent = { ok: true as const, validated: true, upstreamStatus: proxied.status, upstream: proxied.json };
       return { content: [{ type: "text" as const, text: JSON.stringify(structuredContent, null, 2) }], structuredContent };
     },
   );

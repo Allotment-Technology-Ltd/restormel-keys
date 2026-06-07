@@ -12,6 +12,7 @@ import {
   listConnectIngestJobsForWorkspace,
   getConnectIngestJobForWorkspace,
   appendConnectIngestJobLog,
+  bulkCleanupIngestJobsForWorkspace,
 } from "$lib/server/connect-ingest-jobs";
 import { formatBracketLogLine } from "$lib/connect/bracket-log-timeline";
 import { scheduleConnectIngestWorkerDrain } from "$lib/server/connect-ingest-worker";
@@ -107,4 +108,31 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
   const row = await getConnectIngestJobForWorkspace({ jobId, workspaceId: ctx.workspaceId });
   return json({ job: row ? connectIngestJobRecordToApi(row, { includeSources: true }) : null }, { status: 201 });
+};
+
+/**
+ * Bulk cleanup: cancels all pending/running jobs, then hard-deletes jobs by status.
+ * Body: { delete_statuses?: string[] } — defaults to ['cancelled','failed'].
+ */
+export const DELETE: RequestHandler = async ({ locals, request }) => {
+  const ctx = await resolveKnowledgeSessionContext(locals);
+  if (isKnowledgeSessionFailure(ctx)) {
+    return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
+  }
+  let deleteStatuses: string[] = ["cancelled", "failed", "running"];
+  try {
+    const body = await request.json().catch(() => ({}));
+    if (Array.isArray(body?.delete_statuses)) {
+      deleteStatuses = (body.delete_statuses as unknown[])
+        .filter((s): s is string => typeof s === "string")
+        .filter((s) => ["pending", "running", "cancelled", "failed", "completed"].includes(s));
+    }
+  } catch {
+    // use defaults
+  }
+  const result = await bulkCleanupIngestJobsForWorkspace({
+    workspaceId: ctx.workspaceId,
+    deleteStatuses,
+  });
+  return json({ cancelled: result.cancelled, deleted: result.deleted });
 };

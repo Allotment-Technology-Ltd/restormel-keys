@@ -9,8 +9,11 @@ import {
 import {
   claimNextPendingConnectIngestJob,
   updateConnectIngestJobById,
+  getConnectIngestJobForWorkspace,
   type ConnectIngestJobRecord,
 } from "$lib/server/connect-ingest-jobs";
+import { toPublicConnectIngestQualityReport } from "$lib/server/neon";
+import { dispatchConnectIngestWebhooks } from "$lib/server/connect-v1/connect-webhook-delivery";
 import {
   ConnectIngestProgressReporter,
   runStubIngestWithProgress,
@@ -35,7 +38,7 @@ import {
 import { resolveKnowledgeRouteExecutionContextForWorker } from "$lib/server/connect/stage-routing";
 import { getConnectGraphTargetForWorkspace, getConnectDomainPackById } from "$lib/server/neon";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
-import { getConnectGraphStats } from "$lib/server/neon";
+import { getConnectGraphStats, invalidateConnectGraphStatsCache } from "$lib/server/neon";
 import { buildRunQualityReport } from "$lib/server/connect/run-quality-report";
 import { assessPackReadiness } from "$lib/server/connect/pack-readiness";
 import {
@@ -70,6 +73,52 @@ function parseStages(raw: unknown): ConnectIngestStageProgress[] {
     });
 }
 
+/**
+ * Advance a readiness run's status as its cohort jobs run. No-op when the job
+ * isn't part of a run (cohortRunId null) or the update fails — run tracking must
+ * never break job processing.
+ */
+async function advanceReadinessRunPhase(
+  workspaceId: string,
+  cohortRunId: string | null | undefined,
+  phase: "linking" | "linked" | "embedding" | "embedded" | "validating",
+): Promise<void> {
+  if (!cohortRunId) return;
+  try {
+    const { markReadinessRunPhase } = await import(
+      "$lib/server/connect/readiness-runs-service"
+    );
+    await markReadinessRunPhase({ runId: cohortRunId, workspaceId, phase });
+  } catch {
+    // Run tracking is best-effort.
+  }
+}
+
+/** Mark a readiness run complete and roll up its cohort's validation quality. */
+async function finishReadinessRunValidation(
+  workspaceId: string,
+  cohortRunId: string | null | undefined,
+): Promise<void> {
+  if (!cohortRunId) return;
+  try {
+    const { markReadinessRunPhase, rollupReadinessRunQuality } = await import(
+      "$lib/server/connect/readiness-runs-service"
+    );
+    const qualitySummary = await rollupReadinessRunQuality({
+      runId: cohortRunId,
+      workspaceId,
+    });
+    await markReadinessRunPhase({
+      runId: cohortRunId,
+      workspaceId,
+      phase: "complete",
+      qualitySummary,
+    });
+  } catch {
+    // Run tracking is best-effort.
+  }
+}
+
 export async function processConnectIngestJobRecord(
   job: ConnectIngestJobRecord
 ): Promise<void> {
@@ -83,6 +132,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, linkSourcesMeta.cohort_run_id, "linking");
       try {
         await runGraphSourceLinking({ job, meta: linkSourcesMeta, reporter });
       } catch (err) {
@@ -92,6 +142,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await advanceReadinessRunPhase(job.workspaceId, linkSourcesMeta.cohort_run_id, "linked");
       return;
     }
 
@@ -103,6 +154,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, embedBackfillMeta.cohort_run_id, "embedding");
       try {
         await runGraphEmbedBackfill({ job, meta: embedBackfillMeta, reporter });
       } catch (err) {
@@ -112,6 +164,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await advanceReadinessRunPhase(job.workspaceId, embedBackfillMeta.cohort_run_id, "embedded");
       return;
     }
 
@@ -123,6 +176,7 @@ export async function processConnectIngestJobRecord(
         await runStubIngestWithProgress(job, parseStages(job.stages));
         return;
       }
+      await advanceReadinessRunPhase(job.workspaceId, revalidateMeta.cohort_run_id, "validating");
       try {
         await runGraphRevalidation({ job, meta: revalidateMeta, reporter });
       } catch (err) {
@@ -132,6 +186,7 @@ export async function processConnectIngestJobRecord(
         }
         throw err;
       }
+      await finishReadinessRunValidation(job.workspaceId, revalidateMeta.cohort_run_id);
       return;
     }
 
@@ -296,7 +351,35 @@ export async function processConnectIngestJobRecord(
   } catch (err) {
     const message = err instanceof Error ? err.message : "ingest_worker_failed";
     await reporter.fail(null, message.slice(0, 500));
+  } finally {
+    // Any job (ingest / re-validate / embed / link) may have changed the graph —
+    // drop the cached stats so the next Connect load recomputes fresh counts.
+    await invalidateConnectGraphStatsCache({ workspaceId: job.workspaceId }).catch(() => {});
+    // Fire ingest webhooks once the job has reached a terminal state (I1).
+    await maybeDispatchConnectIngestWebhooks(job).catch((e) => {
+      console.error("[connect-webhook] dispatch hook failed", e);
+    });
   }
+}
+
+/** Re-read the job's terminal state and fire registered webhooks (fire-and-forget). */
+async function maybeDispatchConnectIngestWebhooks(job: ConnectIngestJobRecord): Promise<void> {
+  const fresh = await getConnectIngestJobForWorkspace({
+    jobId: job.id,
+    workspaceId: job.workspaceId,
+    ...(job.projectId ? { projectId: job.projectId } : {}),
+  });
+  if (!fresh || (fresh.status !== "completed" && fresh.status !== "failed")) return;
+  const qualityReport = toPublicConnectIngestQualityReport(fresh.progress?.quality_report, {
+    stages: fresh.stages,
+    updatedAtMs: fresh.updatedAt,
+  });
+  dispatchConnectIngestWebhooks({
+    jobId: fresh.id,
+    workspaceId: fresh.workspaceId,
+    status: fresh.status,
+    qualityReport,
+  });
 }
 
 export async function runConnectIngestWorkerOnce(): Promise<boolean> {

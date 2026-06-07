@@ -6,7 +6,7 @@ import { authorizeKnowledgeWorkspaceRequest } from "./auth.js";
 import { executeConnectRetrieve } from "./retrieve-service.js";
 
 export type ConnectRetrieveHandlerOutcome =
-  | { ok: true; status: 200; body: import("@restormel/contracts/connect").ConnectRetrieveResponse; requestId: string }
+  | { ok: true; status: 200 | 206; body: import("@restormel/contracts/connect").ConnectRetrieveResponse; requestId: string }
   | { ok: false; status: number; body: Record<string, unknown> };
 
 export async function handleKnowledgeRetrieve(args: {
@@ -43,5 +43,7 @@ export async function handleKnowledgeRetrieve(args: {
   if (!outcome.ok) {
     return { ok: false, status: outcome.status, body: outcome.body };
   }
-  return { ok: true, status: 200, body: outcome.body, requestId: args.requestId };
+  // HTTP 206 Partial Content when retrieval is degraded (O2).
+  const status = outcome.body.metadata?.retrieval_degraded ? 206 : 200;
+  return { ok: true, status, body: outcome.body, requestId: args.requestId };
 }

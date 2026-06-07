@@ -205,7 +205,7 @@ describe("POST …/runtime/invoke", () => {
     expect(body.data.runtimeContractVersion).toBe(RUNTIME_INVOKE_CONTRACT_VERSION);
     expect(body.data.runtimeSwitchEvalVersion).toBe(RUNTIME_SWITCH_EVAL_VERSION);
     expect(body.data.content).toBe("Hello from model");
-    expect(body.data.contractVersion).toBe(RESOLVE_SIMULATE_CONTRACT_VERSION);
+    expect(body.data.contract_version).toBe(RESOLVE_SIMULATE_CONTRACT_VERSION);
     expect(body.data.usage.totalTokens).toBe(15);
     expect(body.data.runtimeSteps).toHaveLength(1);
   });

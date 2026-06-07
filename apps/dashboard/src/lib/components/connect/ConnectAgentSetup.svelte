@@ -312,8 +312,14 @@
 
   <h3>MCP (<code>@restormel/mcp</code>)</h3>
   <p class="hint">
-    Tools: <code>connect.search</code>, <code>connect.get_context_for</code>. HTTP mirror:
-    <code>POST {DASHBOARD_BASE}/api/connect/invoke</code> (session or Gateway key).
+    Search tools: <code>connect.search</code>, <code>connect.get_context_for</code> (HTTP mirror:
+    <code>POST {DASHBOARD_BASE}/api/connect/invoke</code>, session or Gateway key).
+  </p>
+  <p class="hint">
+    Graph orchestrator tools: <code>connect.graph.retrieve_context</code>, <code>connect.graph.expand_context</code>,
+    <code>connect.graph.find_relevant_subgraph</code>, <code>connect.graph.find_paths</code>,
+    <code>connect.graph.summarise_subgraph</code> — curated subgraphs/paths, supported-only by default
+    (REST: <code>POST /connect/v1/graph</code>). See the <a href="/connect/docs">Connect API docs</a>.
   </p>
   {#if snippetReady}
     <p class="snippet-ready" role="status">Snippet below includes your new key — copy it into your MCP host config.</p>

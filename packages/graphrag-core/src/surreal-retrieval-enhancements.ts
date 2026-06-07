@@ -1,5 +1,9 @@
 import type { GraphStore } from "./ports.js";
 
+const DEFAULT_UNIT_TABLE = "claim";
+const DEFAULT_PASSAGE_TABLE = "passage";
+const DEFAULT_GROUNDED_IN_EDGE = "grounded_in";
+
 export function isRetrievalBm25Enabled(): boolean {
   const v = (process.env.RETRIEVAL_USE_BM25 ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
@@ -16,16 +20,19 @@ export async function fetchBm25ClaimCandidates(
     terms: string[];
     limit: number;
     reviewFilter: string;
+    /** Unit table name (default `claim`). */
+    unitTable?: string;
   }
 ): Promise<Array<{ id: string; text: string; confidence: number }>> {
   if (params.terms.length === 0) return [];
+  const unitTable = params.unitTable ?? DEFAULT_UNIT_TABLE;
   const searchQuery = params.terms.slice(0, 8).join(" ");
   try {
     const rows = await store.query<Array<{ id: string; text: string; confidence: number }>>(
-      `SELECT id, text, confidence FROM claim
-			 WHERE text @@ $q AND ${params.reviewFilter}
-			 ORDER BY confidence DESC
-			 LIMIT $limit`,
+      `SELECT id, text, confidence FROM ${unitTable}
+        WHERE text @@ $q AND ${params.reviewFilter}
+        ORDER BY confidence DESC
+        LIMIT $limit`,
       { q: searchQuery, limit: params.limit }
     );
     return rows ?? [];
@@ -39,22 +46,27 @@ export async function fetchNativeGraphNeighbors(
   params: {
     seedIds: string[];
     limit: number;
+    /** Unit table name (default `claim`). */
+    unitTable?: string;
+    /** Relation edge tables to traverse in both directions (default supports/contradicts/depends_on/responds_to). */
+    relationEdges?: string[];
   }
 ): Promise<string[]> {
   if (!isRetrievalNativeGraphEnabled() || params.seedIds.length === 0) return [];
+  const unitTable = params.unitTable ?? DEFAULT_UNIT_TABLE;
+  const edges =
+    params.relationEdges && params.relationEdges.length > 0
+      ? params.relationEdges
+      : ["depends_on", "supports", "contradicts", "responds_to"];
+  const traversals = edges
+    .flatMap((edge) => [`->${edge}->${unitTable}`, `<-${edge}<-${unitTable}`])
+    .join(", ");
   try {
     const rows = await store.query<Array<{ neighbors?: Array<{ id?: string }> }>>(
-      `SELECT array::distinct(
-				array::flatten([
-					->depends_on->claim,
-					->supports->claim,
-					<-contradicts<-claim,
-					->responds_to->claim
-				])
-			) AS neighbors
-			FROM claim
-			WHERE id INSIDE $seed_ids
-			LIMIT $limit`,
+      `SELECT array::distinct(array::flatten([${traversals}])) AS neighbors
+        FROM ${unitTable}
+        WHERE id INSIDE $seed_ids
+        LIMIT $limit`,
       { seed_ids: params.seedIds, limit: params.limit }
     );
     const out = new Set<string>();
@@ -69,12 +81,16 @@ export async function fetchNativeGraphNeighbors(
   }
 }
 
-export async function ensureClaimSearchIndex(db: { query: (sql: string) => Promise<unknown> }): Promise<void> {
+export async function ensureClaimSearchIndex(
+  db: { query: (sql: string) => Promise<unknown> },
+  opts?: { unitTable?: string }
+): Promise<void> {
   if (!isRetrievalBm25Enabled()) return;
+  const unitTable = opts?.unitTable ?? DEFAULT_UNIT_TABLE;
   await db.query(`
-		DEFINE ANALYZER IF NOT EXISTS claim_english TOKENIZERS blank,class FILTERS lowercase,ascii;
-		DEFINE INDEX IF NOT EXISTS claim_search ON claim FIELDS text SEARCH ANALYZER claim_english BM25;
-	`);
+    DEFINE ANALYZER IF NOT EXISTS ${unitTable}_english TOKENIZERS blank,class FILTERS lowercase,ascii;
+    DEFINE INDEX IF NOT EXISTS ${unitTable}_search ON ${unitTable} FIELDS text SEARCH ANALYZER ${unitTable}_english BM25;
+  `);
 }
 
 export function isRetrievalPassageGroundedEnabled(): boolean {
@@ -98,18 +114,27 @@ export async function fetchPassageGroundedClaimIds(
     queryEmbedding: number[];
     limit: number;
     reviewFilter: string;
+    /** Unit table name (default `claim`). */
+    unitTable?: string;
+    /** Passage table name (default `passage`). */
+    passageTable?: string;
+    /** Passage→unit grounding edge (default `grounded_in`). */
+    groundedInEdge?: string;
   }
 ): Promise<string[]> {
   if (!isRetrievalPassageGroundedEnabled()) return [];
+  const unitTable = params.unitTable ?? DEFAULT_UNIT_TABLE;
+  const passageTable = params.passageTable ?? DEFAULT_PASSAGE_TABLE;
+  const groundedInEdge = params.groundedInEdge ?? DEFAULT_GROUNDED_IN_EDGE;
   try {
     const rows = await store.query<Array<{ claim_ids?: string[] }>>(
-      `SELECT array::distinct(array::flatten(<-grounded_in<-claim.id)) AS claim_ids
-			 FROM (
-				SELECT id FROM passage
-				WHERE embedding <|$limit,64|> $query_embedding
-				LIMIT $limit
-			 )
-			 WHERE claim_ids != NONE`,
+      `SELECT array::distinct(array::flatten(<-${groundedInEdge}<-${unitTable}.id)) AS claim_ids
+        FROM (
+          SELECT id FROM ${passageTable}
+          WHERE embedding <|$limit,64|> $query_embedding
+          LIMIT $limit
+        )
+        WHERE claim_ids != NONE`,
       { query_embedding: params.queryEmbedding, limit: params.limit }
     );
     const out = new Set<string>();
@@ -130,25 +155,34 @@ export async function fetchTaxonomySeedClaimIds(
     terms: string[];
     limit: number;
     reviewFilter: string;
+    /** Unit table name (default `claim`). */
+    unitTable?: string;
+    /** Taxonomy subject edge (default `about_subject`). */
+    subjectEdge?: string;
+    /** Author/entity edge (default `authored`). */
+    authorEdge?: string;
   }
 ): Promise<string[]> {
   if (!isRetrievalTaxonomyRoutingEnabled() || params.terms.length === 0) return [];
+  const unitTable = params.unitTable ?? DEFAULT_UNIT_TABLE;
+  const subjectEdge = params.subjectEdge ?? "about_subject";
+  const authorEdge = params.authorEdge ?? "authored";
   const needles = params.terms.slice(0, 6).map((t) => t.toLowerCase());
   try {
     const rows = await store.query<Array<{ id?: string }>>(
-      `SELECT id FROM claim
-			 WHERE ${params.reviewFilter}
-			 AND (
-				id IN (
-					SELECT VALUE in FROM about_subject
-					WHERE out.name ~ $needle OR out.slug ~ $needle
-				)
-				OR id IN (
-					SELECT VALUE in FROM authored
-					WHERE out.name ~ $needle OR out.canonical_name ~ $needle
-				)
-			 )
-			 LIMIT $limit`,
+      `SELECT id FROM ${unitTable}
+        WHERE ${params.reviewFilter}
+        AND (
+          id IN (
+            SELECT VALUE in FROM ${subjectEdge}
+            WHERE out.name ~ $needle OR out.slug ~ $needle
+          )
+          OR id IN (
+            SELECT VALUE in FROM ${authorEdge}
+            WHERE out.name ~ $needle OR out.canonical_name ~ $needle
+          )
+        )
+        LIMIT $limit`,
       { needle: needles[0], limit: params.limit }
     );
     return (rows ?? []).map((r) => String(r.id)).filter(Boolean);
@@ -157,22 +191,32 @@ export async function fetchTaxonomySeedClaimIds(
   }
 }
 
-export async function ensurePassageEmbeddingIndex(db: { query: (sql: string) => Promise<unknown> }): Promise<void> {
+export async function ensurePassageEmbeddingIndex(
+  db: { query: (sql: string) => Promise<unknown> },
+  opts?: { passageTable?: string }
+): Promise<void> {
   if (!isRetrievalPassageGroundedEnabled()) return;
+  const passageTable = opts?.passageTable ?? DEFAULT_PASSAGE_TABLE;
   await db.query(`
-		DEFINE INDEX IF NOT EXISTS passage_embedding ON passage FIELDS embedding HNSW DIMENSION 768 DIST COSINE;
-	`);
+    DEFINE INDEX IF NOT EXISTS ${passageTable}_embedding ON ${passageTable} FIELDS embedding HNSW DIMENSION 768 DIST COSINE;
+  `);
 }
 
-export async function ensureClaimAcceptPassageEvent(db: { query: (sql: string) => Promise<unknown> }): Promise<void> {
+export async function ensureClaimAcceptPassageEvent(
+  db: { query: (sql: string) => Promise<unknown> },
+  opts?: { unitTable?: string; passageTable?: string; groundedInEdge?: string }
+): Promise<void> {
   if (!isKgEnforcePassageOnAcceptEnabled()) return;
+  const unitTable = opts?.unitTable ?? DEFAULT_UNIT_TABLE;
+  const passageTable = opts?.passageTable ?? DEFAULT_PASSAGE_TABLE;
+  const groundedInEdge = opts?.groundedInEdge ?? DEFAULT_GROUNDED_IN_EDGE;
   await db.query(`
-		DEFINE EVENT IF NOT EXISTS claim_accept_requires_passage ON claim
-		WHEN $event = 'CREATE' OR $event = 'UPDATE'
-		THEN {
-			IF $after.review_state = 'accepted' AND count(<-grounded_in<-passage WHERE in = $after.id) = 0 {
-				THROW 'accepted claims must link to at least one passage';
-			};
-		};
-	`);
+    DEFINE EVENT IF NOT EXISTS ${unitTable}_accept_requires_passage ON ${unitTable}
+    WHEN $event = 'CREATE' OR $event = 'UPDATE'
+    THEN {
+      IF $after.review_state = 'accepted' AND count(<-${groundedInEdge}<-${passageTable} WHERE in = $after.id) = 0 {
+        THROW 'accepted ${unitTable}s must link to at least one ${passageTable}';
+      };
+    };
+  `);
 }

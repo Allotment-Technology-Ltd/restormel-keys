@@ -8,6 +8,7 @@ import type { GraphStore } from "@restormel/graphrag-core";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { slugify } from "$lib/server/connect/designer-map";
+import { VECTOR_FIELD_CANDIDATES } from "$lib/server/connect/surreal-graph-units-load";
 
 export type SurrealTableKind = "normal" | "relation" | "unknown";
 
@@ -20,6 +21,8 @@ export type SurrealTableIntrospection = {
   relation_out?: string;
   has_text_field?: boolean;
   embedding_dim_sample?: number;
+  /** Field name the embedding vector was found under (e.g. `embedding`, `vector`). */
+  embedding_field_sample?: string;
 };
 
 export type SurrealSchemaSuggestion = {
@@ -176,6 +179,8 @@ export function buildDomainPackFromSurrealSchema(args: {
   description?: string;
   mapping: SurrealSchemaSuggestion;
   embeddingDimensions?: number;
+  /** Field the unit table stores embeddings under (detected during introspection). */
+  vectorField?: string;
 }): ConnectDomainPackUpsert {
   const gen = DEFAULT_GENERIC_DOMAIN_PACK;
   const unitNoun = args.mapping.unit_table.replace(/_/g, " ");
@@ -208,6 +213,7 @@ export function buildDomainPackFromSurrealSchema(args: {
       group_table: tableIdent(args.mapping.group_table, "group"),
       part_of_edge: tableIdent(args.mapping.part_of_edge, "part_of"),
       relation_edges: args.mapping.relation_edges.map((e) => tableIdent(e, "relates_to")),
+      unit_vector_field: args.vectorField ?? "embedding",
     },
     passage_profile: gen.passage_profile,
     chunking: gen.chunking,
@@ -233,27 +239,46 @@ async function tableCount(store: GraphStore, table: string): Promise<number> {
   }
 }
 
+const TEXT_FIELD_PROBE = ["text", "body", "content", "full_text", "raw_text"] as const;
+
 async function tableHasTextField(store: GraphStore, table: string): Promise<boolean> {
   if (!SAFE_IDENT.test(table)) return false;
-  try {
-    const rows = await store.query<{ text?: string }[]>(`SELECT text FROM ${table} LIMIT 1;`);
-    return rows.some((r) => typeof r.text === "string");
-  } catch {
-    return false;
+  for (const field of TEXT_FIELD_PROBE) {
+    try {
+      const rows = await store.query<Record<string, unknown>[]>(
+        `SELECT ${field} FROM ${table} WHERE ${field} IS NOT NONE LIMIT 1;`,
+      );
+      if (rows.some((r) => typeof r[field] === "string" && String(r[field]).trim())) {
+        return true;
+      }
+    } catch {
+      // try next field
+    }
   }
+  return false;
 }
 
-async function sampleEmbeddingDim(store: GraphStore, table: string): Promise<number | undefined> {
-  if (!SAFE_IDENT.test(table)) return undefined;
-  try {
-    const rows = await store.query<{ dim?: number }[]>(
-      `SELECT array::len(embedding) AS dim FROM ${table} WHERE embedding IS NOT NONE LIMIT 1;`,
-    );
-    const dim = rows[0]?.dim;
-    return typeof dim === "number" && dim > 0 ? dim : undefined;
-  } catch {
-    return undefined;
+/**
+ * Sample the embedding vector's dimension and the field it lives under. Probes
+ * common field names so a BYO graph storing vectors as `vector` (etc.) is detected.
+ */
+async function sampleEmbedding(
+  store: GraphStore,
+  table: string,
+): Promise<{ dim?: number; field?: string }> {
+  if (!SAFE_IDENT.test(table)) return {};
+  for (const field of VECTOR_FIELD_CANDIDATES) {
+    try {
+      const rows = await store.query<{ dim?: number }[]>(
+        `SELECT array::len(${field}) AS dim FROM ${table} WHERE ${field} IS NOT NONE LIMIT 1;`,
+      );
+      const dim = rows[0]?.dim;
+      if (typeof dim === "number" && dim > 0) return { dim, field };
+    } catch {
+      // try the next candidate
+    }
   }
+  return {};
 }
 
 type InfoForDb = { tables?: Record<string, string> };
@@ -330,8 +355,8 @@ export async function introspectSurrealGraphSchema(
     const count = await tableCount(store, name);
     const has_text_field =
       parsed.kind === "normal" ? await tableHasTextField(store, name) : undefined;
-    const embedding_dim_sample =
-      parsed.kind === "normal" ? await sampleEmbeddingDim(store, name) : undefined;
+    const embeddingSample =
+      parsed.kind === "normal" ? await sampleEmbedding(store, name) : {};
     tables.push({
       name,
       kind: parsed.kind,
@@ -340,20 +365,43 @@ export async function introspectSurrealGraphSchema(
       relation_in: parsed.relation_in,
       relation_out: parsed.relation_out,
       has_text_field,
-      embedding_dim_sample,
+      embedding_dim_sample: embeddingSample.dim,
+      embedding_field_sample: embeddingSample.field,
     });
   }
 
   const { suggested, warnings: suggestionWarnings } = suggestGraphSchemaFromTables(tables);
   const warnings = [...introspectionWarnings, ...suggestionWarnings];
+
+  const sourceRow = tables.find((t) => t.name === suggested.source_table);
+  const passageRow = tables.find((t) => t.name === suggested.passage_table);
+  const passageBackedText = Boolean(
+    sourceRow && passageRow && !sourceRow.has_text_field && passageRow.has_text_field,
+  );
+  if (passageBackedText) {
+    warnings.push(
+      "Full text is stored in the passage table, not on source records. Connect will resolve source text from linked passages during graph scans and re-validation.",
+    );
+  }
   const unitRow = tables.find((t) => t.name === suggested.unit_table);
   const title = `Surreal — ${suggested.unit_table} / ${suggested.group_table}`;
-  const draft = buildDomainPackFromSurrealSchema({
+  let draft = buildDomainPackFromSurrealSchema({
     title,
     slug: `${suggested.unit_table}-surreal`,
     mapping: suggested,
     embeddingDimensions: unitRow?.embedding_dim_sample,
+    vectorField: unitRow?.embedding_field_sample,
   });
+  if (passageBackedText) {
+    draft = {
+      ...draft,
+      graph_schema: {
+        ...draft.graph_schema,
+        passage_text_field: draft.graph_schema.passage_text_field ?? "text",
+        passage_source_field: draft.graph_schema.passage_source_field ?? "source",
+      },
+    };
+  }
 
   return {
     ok: true,
@@ -384,5 +432,7 @@ export function mergeSurrealSchemaImport(args: {
     mapping,
     embeddingDimensions: args.introspection.tables.find((t) => t.name === mapping.unit_table)
       ?.embedding_dim_sample,
+    vectorField: args.introspection.tables.find((t) => t.name === mapping.unit_table)
+      ?.embedding_field_sample,
   });
 }

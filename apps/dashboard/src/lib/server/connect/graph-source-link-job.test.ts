@@ -15,6 +15,7 @@ describe("graph-source-link-job", () => {
       kind: "graph_link_sources",
       domain_pack_id: "00000000-0000-4000-8000-000000000001",
       scope: "unlinked_only",
+      cohort_run_id: null,
     });
   });
 });

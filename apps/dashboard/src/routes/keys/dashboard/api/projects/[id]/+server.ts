@@ -18,29 +18,29 @@ async function getProjectForRequest(
 }
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const project = await getProjectForRequest(params.id, locals);
-  if (!project) return json({ error: "Not found" }, { status: 404 });
+  if (!project) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   return json({ data: project });
 };
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const project = await getProjectForRequest(params.id, locals);
-  if (!project) return json({ error: "Not found" }, { status: 404 });
+  if (!project) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const name = typeof body.name === "string" ? body.name.trim() : undefined;
-  if (name === undefined) return json({ error: "Missing name" }, { status: 400 });
+  if (name === undefined) return json({ error: "invalid_request", message: "Missing name" }, { status: 400 });
   const ok = await updateProject(params.id, project.userId, name);
-  if (!ok) return json({ error: "Not found" }, { status: 404 });
+  if (!ok) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   return json({ ok: true });
 };
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const project = await getProjectForRequest(params.id, locals);
-  if (!project) return json({ error: "Not found" }, { status: 404 });
+  if (!project) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   const ok = await deleteProject(params.id, project.userId);
-  if (!ok) return json({ error: "Not found" }, { status: 404 });
+  if (!ok) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   return json({ ok: true });
 };

@@ -74,6 +74,8 @@
   export let fromPipeline = false;
   /** Set when opened from graph tools (refreshes graph data when the run completes). */
   export let fromGraph = false;
+  /** Set when opened from the Connect hub — back link returns to /connect. */
+  export let fromHub = false;
   /** Distinguishes graph repair jobs started from the explorer Tools panel. */
   export let graphTask: "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill" | null =
     null;
@@ -91,6 +93,8 @@
   let restarting = false;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let logEl: HTMLDivElement | undefined;
+  /** User-controlled collapse — never one-way `open={expr}` or polling resets the panel. */
+  let logOpen = true;
   let graphDataInvalidated = false;
   let graphWorkspaceId: string | null = null;
   let refreshingGraph = false;
@@ -100,6 +104,7 @@
   $: percent = job?.progress?.percent ?? 0;
   $: active = job?.status === "pending" || job?.status === "running";
   $: isGraphRepairTask = graphTask === "auto-remediate" || graphTask === "revalidate";
+  $: isEmbedBackfill = graphTask === "embed-backfill";
   $: pollMs = active ? 1500 : 4000;
   $: canCancel = job?.status === "pending" || job?.status === "running";
   $: isStubPreview =
@@ -180,7 +185,9 @@
         ? "?from=pipeline"
         : fromGraph
           ? `?from=graph${graphTask ? `&task=${graphTask}` : ""}`
-          : "";
+          : fromHub
+            ? "?from=hub"
+            : "";
       await goto(`${CONNECT_BASE}/ingest/${newId}${suffix}`);
     } catch {
       actionMsg = "Network error while restarting.";
@@ -249,6 +256,7 @@
   $: if (jobId) {
     since = 0;
     logLines = [];
+    logOpen = true;
     void loadLive(false);
   }
 
@@ -295,8 +303,17 @@
       </div>
     </header>
 
+    {#if isEmbedBackfill && !isCompleted}
+      <div class="run-context-banner" role="note">
+        <strong>Re-embed — graph maintenance, not a new ingest.</strong>
+        This fills in missing embedding vectors for ideas already in your graph so semantic search and
+        agent retrieval can use them. It does <em>not</em> re-extract or re-ingest your documents, and only
+        the embedding stage runs — the other pipeline stages are skipped.
+      </div>
+    {/if}
+
     {#if startingRun}
-      <p class="run-starting" role="status">Starting your run…</p>
+      <p class="run-starting" role="status">{isEmbedBackfill ? "Starting re-embed…" : "Starting your run…"}</p>
     {/if}
 
     {#if actionMsg}
@@ -455,7 +472,11 @@
             </div>
             {#if job.progress}
               <p class="run-muted progress-detail">
-                {stagesComplete} of {stagesTotal} stages complete
+                {#if isEmbedBackfill}
+                  Embedding stage only — other pipeline stages are skipped for re-embed.
+                {:else}
+                  {stagesComplete} of {stagesTotal} stages complete
+                {/if}
               </p>
             {/if}
           </div>
@@ -499,12 +520,64 @@
     </div>
 
     {#if !startingRun}
-      <details class="run-collapsible run-log-collapsible" open={isGraphRepairTask && isInProgress}>
-        <summary>Activity log ({logLines.length} lines) ↓</summary>
-        <div class="log-screen" role="region" aria-label="Ingest activity log" bind:this={logEl}>
-          <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+      {#if isInProgress}
+        <section class="run-log-panel" aria-labelledby="run-log-heading">
+          <h2 id="run-log-heading" class="run-log-heading">
+            Activity log
+            <span class="run-log-count">({logLines.length} lines)</span>
+          </h2>
+          <div
+            id="run-log-screen"
+            class="log-screen"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-labelledby="run-log-heading"
+            bind:this={logEl}
+          >
+            <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+          </div>
+        </section>
+      {:else if logOpen}
+        <section class="run-log-panel" aria-labelledby="run-log-heading">
+          <div class="run-log-panel-head">
+            <h2 id="run-log-heading" class="run-log-heading">
+              Activity log
+              <span class="run-log-count">({logLines.length} lines)</span>
+            </h2>
+            <button
+              type="button"
+              class="run-log-collapse-btn brut-focus"
+              aria-expanded="true"
+              aria-controls="run-log-screen"
+              on:click={() => (logOpen = false)}
+            >
+              Collapse log
+            </button>
+          </div>
+          <div
+            id="run-log-screen"
+            class="log-screen"
+            role="log"
+            aria-labelledby="run-log-heading"
+            bind:this={logEl}
+          >
+            <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+          </div>
+        </section>
+      {:else}
+        <div class="run-log-collapsed">
+          <button
+            type="button"
+            class="run-log-expand-btn brut-focus"
+            aria-expanded="false"
+            aria-controls="run-log-screen"
+            on:click={() => (logOpen = true)}
+          >
+            Activity log ({logLines.length} lines) — expand
+          </button>
         </div>
-      </details>
+      {/if}
     {/if}
 
     {#if canCancel}
@@ -578,6 +651,20 @@
     line-height: 1.5;
   }
 
+  .run-context-banner {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: var(--brut-border-width) solid var(--rm-border);
+    background: color-mix(in oklab, var(--color-blue, #1b3b6f) 8%, var(--brut-white));
+    color: var(--rm-text);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .run-context-banner strong {
+    display: block;
+    margin-bottom: var(--space-1);
+  }
+
   .run-success a {
     color: inherit;
     font-weight: 600;
@@ -594,9 +681,12 @@
 
   .run-title {
     margin: 0 0 var(--space-2);
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric);
     font-weight: 900;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
+    text-transform: uppercase;
     color: var(--rm-text);
   }
 
@@ -606,14 +696,20 @@
     gap: var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
-    text-transform: capitalize;
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
     border: var(--border);
     padding: var(--space-1) var(--space-2);
   }
 
-  .run-status-badge-active,
+  .run-status-badge-active {
+    background: var(--color-ink);
+    color: var(--color-yellow);
+  }
+
   .run-status-badge-done {
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--color-ink);
   }
 
@@ -650,7 +746,7 @@
   }
 
   .progress-fill-yellow {
-    background: var(--color-yellow) !important;
+    background: var(--color-ink) !important;
   }
 
   .quality-metrics {
@@ -678,10 +774,11 @@
   }
 
   .quality-metric-value {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric-sm);
     font-weight: 900;
-    line-height: 1;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
   }
 
   .quality-metric-desc {
@@ -703,7 +800,7 @@
 
   .run-next-actions {
     border: var(--border);
-    background: var(--color-yellow);
+    background: var(--color-surface);
     box-shadow: var(--shadow-sm);
     padding: var(--space-4);
   }
@@ -750,6 +847,57 @@
     min-height: 44px;
     display: flex;
     align-items: center;
+  }
+
+  .run-log-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .run-log-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .run-log-heading {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .run-log-count {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--rm-muted);
+  }
+
+  .run-log-collapse-btn,
+  .run-log-expand-btn {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    cursor: pointer;
+  }
+
+  .run-log-expand-btn {
+    width: 100%;
+    text-align: left;
+  }
+
+  .run-log-collapsed {
+    margin: 0;
   }
 
   .run-cancel-wrap {
@@ -819,6 +967,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    padding: var(--space-6) var(--space-5);
+    border: var(--border);
+    box-shadow: var(--shadow-md);
+    background: var(--color-surface);
   }
 
   .progress-readout {
@@ -830,10 +982,11 @@
   }
 
   .progress-pct {
-    font-size: clamp(2rem, 5vw, 3rem);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1;
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric);
+    font-weight: 900;
+    letter-spacing: var(--text-display-tracking);
+    line-height: var(--text-display-line-height);
   }
 
   .progress-pct-suffix {
@@ -842,9 +995,10 @@
   }
 
   .progress-eta {
-    font-size: var(--text-sm);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--text-mono-tracking);
   }
 
   .progress-track {
@@ -906,13 +1060,13 @@
   .log-screen {
     max-height: 22rem;
     overflow: auto;
-    padding: var(--space-3);
+    padding: var(--space-2);
     border: var(--brut-border-width) solid var(--brut-ink);
     background: #0a1f0a;
     color: #7dff7d;
     font-family: var(--rm-font-mono);
-    font-size: 0.75rem;
-    line-height: 1.45;
+    font-size: 0.6875rem;
+    line-height: 1.35;
     box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 15%, transparent);
   }
   .log-screen-pre {

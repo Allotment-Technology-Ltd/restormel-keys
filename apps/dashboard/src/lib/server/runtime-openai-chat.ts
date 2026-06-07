@@ -165,3 +165,114 @@ export async function postOpenAiCompatibleChat(args: {
     },
   };
 }
+
+/** Raised by {@link streamOpenAiCompatibleChat} with a client-safe (no-secret) message. */
+export class OpenAiChatStreamError extends Error {
+  constructor(
+    message: string,
+    readonly httpStatus: number,
+  ) {
+    super(message);
+    this.name = "OpenAiChatStreamError";
+  }
+}
+
+function redactSecrets(text: string): string {
+  return text.replace(/sk-[a-zA-Z0-9-]+/g, "[redacted]");
+}
+
+/**
+ * Streaming counterpart of {@link postOpenAiCompatibleChat}: posts with `stream: true`
+ * and yields assistant text deltas as they arrive over the OpenAI-compatible SSE wire
+ * (`data: {choices:[{delta:{content}}]}` … `data: [DONE]`). Throws {@link OpenAiChatStreamError}
+ * with a redacted message on any upstream failure. No npm SDK — raw fetch + SSE parse so we
+ * stay aligned with the existing BYOK chat path and add zero dependencies.
+ */
+export async function* streamOpenAiCompatibleChat(args: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  messages: ChatMessage[];
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}): AsyncGenerator<string, void, unknown> {
+  const timeoutMs = args.timeoutMs ?? 120_000;
+  const url = `${args.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const combined =
+    args.signal != null ? AbortSignal.any([args.signal, timeoutSignal]) : timeoutSignal;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${args.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: args.model, messages: args.messages, stream: true }),
+      signal: combined,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "network_error";
+    const friendly =
+      msg.includes("aborted") || msg.includes("timeout")
+        ? "upstream_timeout"
+        : "upstream_network_error";
+    throw new OpenAiChatStreamError(friendly, 0);
+  }
+
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    if (res.status === 429) {
+      const retryAfter = res.headers.get("Retry-After");
+      throw new OpenAiChatStreamError(
+        `upstream_rate_limit${retryAfter ? `; retry_after_s=${retryAfter}` : ""}`,
+        429,
+      );
+    }
+    let message = "upstream_error";
+    try {
+      const parsed = JSON.parse(detail) as Record<string, unknown>;
+      const err = parsed.error;
+      if (err && typeof err === "object" && typeof (err as { message?: unknown }).message === "string") {
+        message = (err as { message: string }).message;
+      } else if (typeof parsed.message === "string") {
+        message = parsed.message;
+      }
+    } catch {
+      /* non-JSON error body; keep generic */
+    }
+    throw new OpenAiChatStreamError(redactSecrets(message).slice(0, 200), res.status || 0);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let idx: number;
+    // SSE frames are separated by a blank line; process complete frames only.
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      const rawLine = buffer.slice(0, idx).replace(/\r$/, "");
+      buffer = buffer.slice(idx + 1);
+      const line = rawLine.trim();
+      if (!line || line.startsWith(":")) continue; // keep-alive / comment
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") return;
+      let json: { choices?: Array<{ delta?: { content?: unknown } }> };
+      try {
+        json = JSON.parse(payload);
+      } catch {
+        continue; // partial/non-JSON keep-alive
+      }
+      const delta = json.choices?.[0]?.delta?.content;
+      if (typeof delta === "string" && delta.length > 0) yield delta;
+    }
+  }
+}

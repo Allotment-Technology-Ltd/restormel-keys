@@ -128,3 +128,25 @@ export async function connectProxyPost(args: {
   }
   return { ok: true, status: res.status, json };
 }
+
+export async function connectProxyGet(args: {
+  baseUrl: string;
+  gatewayKey: string;
+  path: string;
+  query?: Record<string, string>;
+}): Promise<{ ok: true; status: number; json: unknown } | ConnectToolError> {
+  const base = args.baseUrl.replace(/\/$/, "");
+  const qs = args.query ? new URLSearchParams(args.query).toString() : "";
+  const url = qs ? `${base}${args.path}?${qs}` : `${base}${args.path}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${args.gatewayKey}` },
+  });
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    return { ok: false, code: "RST_CONNECT_UPSTREAM", message: `Upstream returned non-JSON (${res.status})` };
+  }
+  return { ok: true, status: res.status, json };
+}

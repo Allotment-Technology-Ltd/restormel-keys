@@ -36,7 +36,8 @@ Use this table to fill `zuplo-gateway/.env` and any script env. **Do not commit 
 |----------|-----------------|
 | **ZUPLO_API_KEY** | Zuplo Portal → **Settings** → **API Keys**. Create or copy a key with access to the project. |
 | **KEYS_BACKEND_URL** | Backend base URL, **no trailing slash**. Current: `https://restormel.dev/keys/dashboard`. Used for Zuplo `/api/*` forwards. |
-| **KEYS_SITE_ORIGIN** | Site root, **no trailing slash**. Current: `https://restormel.dev`. Used for Zuplo **`/keys/v1/*`** forwards (Phase 1+). |
+| **KEYS_SITE_ORIGIN** | Site root, **no trailing slash**. Current: `https://restormel.dev`. Used for Zuplo **`/keys/v1/*`**, **`/graph/v1/*`**, and **`/connect/v1/*`** forwards (Phase 1+). Default: `https://restormel.dev`. |
+| **ALLOWED_CORS_ORIGINS** | Comma-separated origins for the `restormel-cors` gateway CORS policy (supports wildcards). Default: `https://restormel.dev,https://*.restormel.dev`. |
 | **KEYS_BACKEND_API_KEY** | Create in the **Keys dashboard**: [Sign in](https://restormel.dev/keys/dashboard/login) → create/select a project → create a Gateway key. Use that key only in Zuplo (as secret). Format: `rk_...`. |
 | **ZUPLO_ACCOUNT_NAME** | From the Portal URL: `portal.zuplo.com/<ACCOUNT_NAME>/restormel-keys-gateway`. Example: `silver_profitable_wasp`. |
 | **ZUPLO_PROJECT_NAME** | `restormel-keys-gateway` (default in scripts). |
@@ -156,12 +157,13 @@ Run these checks to meet the gate:
 
 | Check | Expected |
 |-------|----------|
-| **Missing auth** | Request to Zuplo with no consumer key → **401** from Zuplo. |
-| **Invalid key** | Request to Zuplo with invalid or revoked consumer key → **401** from Zuplo. |
-| **Valid consumer key** | Request to Zuplo with valid consumer key → Zuplo forwards to dashboard with backend key → **200** (or appropriate response) from dashboard. |
+| **Public health** | Request to `GET /api/health` with **no** consumer key → **200** `{ status: "ok", ... }`. Health is public (no auth) so it can be used as an unauthenticated liveness probe. |
+| **Missing auth** | Request to a **protected** route (e.g. `GET /api/projects`) with no consumer key → **401** from Zuplo. |
+| **Invalid key** | Request to a protected route with invalid or revoked consumer key → **401** from Zuplo. |
+| **Valid consumer key** | Request to a protected route with valid consumer key → Zuplo forwards to dashboard with backend key → **200** (or appropriate response) from dashboard. |
 | **Direct backend rejects zpka_** | Request **directly** to the dashboard (bypassing Zuplo) with `Authorization: Bearer zpka_...` → dashboard returns **401** or **403** (dashboard must not accept Zuplo consumer keys). |
 
-**Important:** Opening the **gateway URL** (e.g. `https://restormel-keys-gateway-main-….zuplo.app/`) in a browser with no consumer key will always return **401 Unauthorized — No Authorization Header**. That is expected. Use the **Dev Portal** URL for docs and “Try it”; call the gateway with a consumer key in the `Authorization` header (or as configured in your API Key policy) for API requests.
+**Important:** Opening a **protected** gateway path (e.g. `https://restormel-keys-gateway-main-….zuplo.app/api/projects`) in a browser with no consumer key will return **401 Unauthorized — No Authorization Header**. That is expected. The exception is `GET /api/health`, which is **public** and returns **200** without a key. Use the **Dev Portal** URL for docs and “Try it”; call the gateway with a consumer key in the `Authorization` header (or as configured in your API Key policy) for API requests.
 
 Ensure the dashboard is configured so that:
 
@@ -179,15 +181,15 @@ Use this checklist to confirm Zuplo is **fully configured for launch**. Complete
 | 1 | **Project** | Zuplo project **`restormel-keys-gateway`** exists. Portal or CLI. |
 | 2 | **Routes** | Routes deployed: path `/(.*)` (url-pattern), URL Forward to `${env.KEYS_BACKEND_URL}`, methods GET, POST, PUT, PATCH, DELETE. Code → routes.oas.json matches §2 and §8.3. |
 | 3 | **Policies** | All four inbound policies attached in order: api-key-inbound → rate-limit-inbound → quota-inbound → inject-backend-auth. Code → policies.json. **API key bucket:** `api-key-inbound` uses a `bucketName` that is project-specific. If you created the project in the portal, the bucket ID is in Portal → Project → Settings → Project Information (or API Key Service). If deploy fails or keys are rejected, ensure `config/policies.json` uses the bucket for this project (or define policies in the Portal and export per §8.5). |
-| 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `rk_...`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
+| 4 | **Env vars (per environment)** | For **main** (and for **Working Copy** or any other branch environment you use): **KEYS_BACKEND_URL** (backend base URL, no trailing slash), **KEYS_BACKEND_API_KEY** (secret, `rk_...`), **KEYS_SITE_ORIGIN** (site root for `/keys/v1`, `/graph/v1`, `/connect/v1`; default `https://restormel.dev`), **ALLOWED_CORS_ORIGINS** (CORS origins; default `https://restormel.dev,https://*.restormel.dev`). Portal → Settings → Environment Variables, or CLI `zuplo variable create/update` per §8.6. |
 | 5 | **Backend key** | Backend Gateway key created in the Keys dashboard (Vercel); same key set as **KEYS_BACKEND_API_KEY** in Zuplo. Dashboard accepts this key and rejects `zpka_...` on direct calls (§7). |
 | 6 | **Developer portal** | Developer portal **enabled**. OpenAPI spec **added or imported** (e.g. from [docs/api/openapi.yaml](../api/openapi.yaml) or a minimal spec with paths `/api/health`, `/api/projects`, etc.). Portal shows API reference and auth (API key) so developers can try the API. §5. |
 | 7 | **At least one consumer** | At least one API key **consumer** created (Portal → API Key Service or script `zuplo-gateway/scripts/create-consumer-and-test.sh`). Clients use the issued `zpka_...` key to call the gateway. |
 | 8 | **Validation (§7)** | All four checks passed: no key → 401; invalid key → 401; valid key → 200 (or appropriate backend response); direct backend with `zpka_...` → 401/403. |
 | 9 | **Other environments** | If you use **Working Copy** (or any non-main branch environment): that environment has the **same** routes and policies (same `routes.oas.json` in the branch or same deploy), and **env vars set for that environment**. Otherwise you see “no routes” or holding page. §11. |
-| 10 | **CORS** | If clients call the gateway **from a browser**, CORS is configured (e.g. route not “Deny All Origins”). For server-to-server only, default is fine. §2.1. |
+| 10 | **CORS** | Browser clients are supported via the `restormel-cors` policy (`config/policies.json` → `corsPolicies`), referenced by every route as `corsPolicy: "restormel-cors"`. Origins come from **ALLOWED_CORS_ORIGINS** (default `https://restormel.dev,https://*.restormel.dev`); methods `GET, POST, DELETE, OPTIONS`; headers `Authorization, Content-Type, X-Workspace-Id, X-Request-Id`; exposed `X-Request-Id, X-RateLimit-*`; `maxAge` 86400. §2.1. |
 
-When all items are done, Zuplo is ready for launch: gateway returns 401 without a key, 200 with a valid consumer key; dev portal shows docs; backend receives only the backend key.
+When all items are done, Zuplo is ready for launch: protected routes return 401 without a key and 200 with a valid consumer key; `GET /api/health` is public (200 without a key); dev portal shows docs; backend receives only the backend key.
 
 ---
 
@@ -201,6 +203,39 @@ When all items are done, Zuplo is ready for launch: gateway returns 401 without 
 | Backend key env | `KEYS_BACKEND_API_KEY` (secret; `rk_...`) |
 | Consumer keys | Issued by Zuplo; used by clients; never sent to backend. |
 | Direct backend | Dashboard must reject `zpka_` keys. |
+
+---
+
+## C1 — Per-Consumer Backend Identity (`X-Consumer-Id`)
+
+**Goal:** Allow the backend to log and audit requests by Zuplo consumer (one consumer = one
+workspace). The header `X-Consumer-Id: {consumer_name}` should be forwarded on every authenticated
+request so the backend can correlate logs per consumer without needing access to raw Zuplo consumer
+keys.
+
+**Approach:** When a Zuplo consumer is provisioned via `ensureZuploConsumer` (see
+`apps/dashboard/src/lib/server/zuplo-consumer.ts`), the consumer `name` is stable and derived from
+the workspace id (`ws_{workspaceId}`). The `inject-backend-auth` policy (Set Headers) in
+`zuplo-gateway/config/policies.json` can be extended to forward this consumer-derived value.
+
+**Limitation:** Zuplo's built-in `Set Headers` policy sets **static** header values (environment
+variables or literals). It does not support injecting a per-request, per-consumer dynamic value such
+as the consumer name or a UUID. Zuplo does expose a `consumer.name` (or `consumer.id`) at the
+policy layer via custom code policies, but native `api-key-inbound` + `set-headers-inbound` does not
+forward it automatically.
+
+**Recommended path:**
+
+1. Replace the static `inject-backend-auth` policy with a **custom Zuplo module policy**
+   (TypeScript) placed in `zuplo-gateway/modules/inject-backend-auth.ts`. That module can read
+   `context.consumer.name` (from the Zuplo runtime after `api-key-inbound` runs) and set
+   `X-Consumer-Id` plus the backend `Authorization` header before forwarding.
+2. Until the custom module is in place, the consumer name is included in every consumer provisioning
+   call as `metadata.workspaceId` (see `zuplo-consumer.ts`) and is recoverable from Zuplo audit
+   logs, but is **not** forwarded to the backend as a request header.
+
+**Current status:** Not yet implemented as a custom module. Track as a follow-up: create
+`zuplo-gateway/modules/inject-backend-auth.ts` using `ZuploContext.consumer` to set the header.
 
 For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md) and [extraction-vercel](../reference/extraction-vercel.md).
 
@@ -242,6 +277,8 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
    - **ZUPLO_API_KEY** — Portal → Settings → API Keys.
    - **KEYS_BACKEND_URL** — Dashboard base URL, no trailing slash. Current: `https://restormel.dev/keys/dashboard`.
    - **KEYS_BACKEND_API_KEY** — Backend key (`rk_...`) from the Keys dashboard (Vercel): create an API key for a project; use it only in Zuplo as a secret.
+   - **KEYS_SITE_ORIGIN** (optional) — Site root, no trailing slash. Default: `https://restormel.dev`. Used for `/keys/v1/*`, `/graph/v1/*`, and `/connect/v1/*` forwards.
+   - **ALLOWED_CORS_ORIGINS** (optional) — Comma-separated origins for the `restormel-cors` CORS policy. Default: `https://restormel.dev,https://*.restormel.dev`.
 
 3. **Run the setup script** from repo root:
    ```bash
@@ -251,9 +288,12 @@ To set Zuplo env vars and deploy from the repo without using the Portal for vari
    export ZUPLO_API_KEY="<your-portal-api-key>"
    export KEYS_BACKEND_URL="https://restormel.dev/keys/dashboard"
    export KEYS_BACKEND_API_KEY="rk_..."
+   # Optional (defaults shown):
+   export KEYS_SITE_ORIGIN="https://restormel.dev"
+   export ALLOWED_CORS_ORIGINS="https://restormel.dev,https://*.restormel.dev"
    ./scripts/setup-from-cli.sh
    ```
-   The script creates/updates `KEYS_BACKEND_URL` and `KEYS_BACKEND_API_KEY` in Zuplo for the `main` branch, then deploys with `--no-verify-remote` (required when the project lives in a monorepo subfolder). Optional: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`.
+   The script creates/updates `KEYS_BACKEND_URL`, `KEYS_BACKEND_API_KEY`, `KEYS_SITE_ORIGIN`, and `ALLOWED_CORS_ORIGINS` in Zuplo for the `main` branch, then deploys with `--no-verify-remote` (required when the project lives in a monorepo subfolder). `KEYS_SITE_ORIGIN` and `ALLOWED_CORS_ORIGINS` fall back to their defaults if unset. Optional: `ZUPLO_ACCOUNT_NAME`, `ZUPLO_PROJECT_NAME`, `ZUPLO_BRANCH`.
 
 4. **Create a consumer** (Portal → API Key Service, or `./scripts/create-consumer-and-test.sh` with `ZUPLO_ACCOUNT_NAME`, `ZUPLO_BUCKET_NAME`, `GATEWAY_URL` set).
 

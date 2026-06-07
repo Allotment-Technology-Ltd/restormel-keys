@@ -1,5 +1,3 @@
-import type { PhilosophicalDomain } from "@restormel/contracts/domains";
-
 /** Target mix for inquiry-time retrieval seed selection (not operator dataset metrics). */
 export type RetrievalOriginBalanceKey = "sep" | "gutenberg" | "other";
 
@@ -34,7 +32,7 @@ function normalizeFractions<T extends string>(w: Record<T, number>): Record<T, n
 /** Multiplicative boost for MMR relevance (1 = neutral). Uses deficit vs ideal fractions. */
 export function computeKgBalanceMultiplier(params: {
   origin: RetrievalOriginBalanceKey;
-  domain: PhilosophicalDomain | string | null | undefined;
+  domain: string | null | undefined;
   selectedOriginCounts: Record<RetrievalOriginBalanceKey, number>;
   selectedDomainCounts: Map<string, number>;
   totalSelected: number;

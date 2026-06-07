@@ -6,19 +6,19 @@ import { dashboardProjectScopeForApi } from "$lib/server/dashboard-project-api-s
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const scope = await dashboardProjectScopeForApi(locals, params.id);
-  if (!scope) return json({ error: "Not found" }, { status: 404 });
+  if (!scope) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   const keys = await listApiKeys(scope.projectId, scope.userId);
   return json({ data: keys.map((k) => ({ ...k, type: "gateway" as const })) });
 };
 
 export const POST: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const scope = await dashboardProjectScopeForApi(locals, params.id);
-  if (!scope) return json({ error: "Not found" }, { status: 404 });
+  if (!scope) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   const result = await createApiKey(scope.projectId, scope.userId);
-  if (!result) return json({ error: "Not found" }, { status: 404 });
+  if (!result) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
 
   // Best-effort: ensure a Zuplo consumer exists for this workspace so the developer portal can "Try it".
   // Never log keys; never fail key creation if Zuplo provisioning is down.
@@ -45,13 +45,13 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   const scope = await dashboardProjectScopeForApi(locals, params.id);
-  if (!scope) return json({ error: "Not found" }, { status: 404 });
+  if (!scope) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const keyId = typeof body.keyId === "string" ? body.keyId : undefined;
-  if (!keyId) return json({ error: "Missing keyId" }, { status: 400 });
+  if (!keyId) return json({ error: "invalid_request", message: "Missing keyId" }, { status: 400 });
   const ok = await deleteApiKey(scope.projectId, keyId, scope.userId);
-  if (!ok) return json({ error: "Not found" }, { status: 404 });
+  if (!ok) return json({ error: "not_found", message: "Key not found" }, { status: 404 });
   return json({ ok: true });
 };

@@ -245,6 +245,7 @@
         <ul class="demo-mcp-tools">
           <li><code class="demo-mcp-tool">connect.search</code> — semantic search → context pack</li>
           <li><code class="demo-mcp-tool">connect.get_context_for</code> — topic or seed claim traversal</li>
+          <li><code class="demo-mcp-tool">connect.graph.*</code> — expand, find paths, reasoning-mode subgraphs (supported-only)</li>
         </ul>
       </BrutalCard>
       <BrutalCard fill="white" title="mcp.json snippet">

@@ -77,6 +77,7 @@
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    transition: background-color 300ms ease, color 300ms ease;
   }
 
   .pipeline-meta {
@@ -112,7 +113,13 @@
   }
 
   .pipeline-status {
-    text-transform: capitalize;
+    text-transform: uppercase;
     color: var(--rm-dim);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pipeline-step {
+      transition: none;
+    }
   }
 </style>

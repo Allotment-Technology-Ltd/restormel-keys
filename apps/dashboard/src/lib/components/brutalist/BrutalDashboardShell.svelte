@@ -194,11 +194,12 @@
   }
 
   .brutal-nav-link:hover {
-    background: var(--brut-neon);
+    background: var(--color-bg-deep);
   }
 
   .brutal-nav-link-active {
-    background: var(--color-yellow);
+    background: var(--color-ink);
+    color: var(--color-surface);
     font-weight: 900;
   }
 
@@ -288,7 +289,8 @@
     font-family: inherit;
     font-size: 0.6875rem;
     font-weight: 800;
-    background: var(--brut-neon);
+    background: var(--color-surface);
+    border: var(--border);
     color: var(--brut-ink);
   }
 
@@ -337,7 +339,8 @@
     flex-wrap: wrap;
     padding: 0.5rem 1rem;
     border-bottom: var(--brut-border-micro) solid var(--brut-ink);
-    background: var(--brut-neon);
+    background: var(--color-ink);
+    color: var(--color-surface);
     font-size: 0.6875rem;
     font-weight: 700;
   }
@@ -346,7 +349,7 @@
     margin-left: auto;
     font-weight: 900;
     text-decoration: underline;
-    color: var(--brut-ink);
+    color: var(--color-yellow);
   }
 
   .brutal-main {

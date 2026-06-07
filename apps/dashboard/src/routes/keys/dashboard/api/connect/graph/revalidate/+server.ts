@@ -19,6 +19,7 @@ import {
   parseGraphRevalidateJobMeta,
 } from "$lib/server/connect/graph-revalidate-job";
 import { graphRevalidateEmptyMessage } from "$lib/server/connect/graph-revalidate-guards";
+import { assertGraphReadyForAutoRemediation } from "$lib/server/connect/graph-readiness";
 import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import {
   isKnowledgeSessionFailure,
@@ -54,6 +55,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         { error: "graph_target_not_configured", message: "Connect a graph store before re-validating." },
         { status: 400 },
       );
+    }
+
+    if (parsed.data.mode === "validate_and_remediate") {
+      const readiness = await assertGraphReadyForAutoRemediation(ctx.workspaceId);
+      if (!readiness.ok) {
+        return json({ error: "graph_not_ready", message: readiness.message }, { status: 409 });
+      }
     }
 
     const stats = await resolveConnectGraphStats(ctx.workspaceId);
@@ -97,6 +105,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       domain_pack_id: domainPackId,
       scope: parsed.data.scope,
       mode: parsed.data.mode,
+      max_units: parsed.data.max_units ?? null,
+      continue_in_background: parsed.data.continue_in_background ?? false,
+      cohort_run_id: parsed.data.cohort_run_id ?? null,
     });
     if (!parseGraphRevalidateJobMeta(sources)) {
       return json({ error: "internal_error", message: "Could not build re-validation job." }, { status: 500 });

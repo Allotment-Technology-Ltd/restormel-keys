@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  inferSourceTextQualityForLink,
   isLegacyGraphSource,
+  pickBestPreparedSourceMatch,
   pickBestSourceMatch,
+  prepareSourceMatchCandidates,
   scoreIdeaSourceMatch,
   unitNeedsSourceLink,
 } from "./graph-source-link-matcher";
@@ -29,6 +32,36 @@ describe("pickBestSourceMatch", () => {
   });
 });
 
+describe("prepareSourceMatchCandidates / pickBestPreparedSourceMatch", () => {
+  it("matches the same winner as the unprepared path", () => {
+    const idea = "Socrates taught that virtue is a kind of knowledge.";
+    const candidates = [
+      { graphSourceId: "a", text: "Plato wrote about forms and ideals." },
+      {
+        graphSourceId: "b",
+        text: "Socrates taught that virtue is a kind of knowledge and no one errs willingly.",
+      },
+    ];
+    const unprepared = pickBestSourceMatch(idea, candidates);
+    const prepared = pickBestPreparedSourceMatch(idea, prepareSourceMatchCandidates(candidates));
+    expect(prepared?.candidate.graphSourceId).toBe(unprepared?.candidate.graphSourceId);
+    expect(prepared?.score).toBe(unprepared?.score);
+  });
+});
+
+describe("inferSourceTextQualityForLink", () => {
+  it("treats fetched inline source bodies as full quality", () => {
+    expect(
+      inferSourceTextQualityForLink({
+        textPreview: null,
+        sourceTitle: "Ethics",
+        sourceUrl: null,
+        sourceInlineText: "Full chapter text from Surreal FETCH.",
+      }),
+    ).toBe("full");
+  });
+});
+
 describe("unitNeedsSourceLink", () => {
   it("flags legacy placeholder sources", () => {
     expect(
@@ -40,5 +73,29 @@ describe("unitNeedsSourceLink", () => {
       }),
     ).toBe(true);
     expect(isLegacyGraphSource({ sourceKind: "legacy", sourceTitle: "x" })).toBe(true);
+  });
+
+  it("does not re-link ideas that already have a Surreal source edge", () => {
+    expect(
+      unitNeedsSourceLink({
+        sourceKind: null,
+        sourceTitle: null,
+        sourceUrl: null,
+        sourceKey: "source:ethics-nicomachean",
+        resolvedQuality: "missing",
+      }),
+    ).toBe(false);
+  });
+
+  it("still flags ideas with no source edge", () => {
+    expect(
+      unitNeedsSourceLink({
+        sourceKind: null,
+        sourceTitle: null,
+        sourceUrl: null,
+        sourceKey: null,
+        resolvedQuality: "missing",
+      }),
+    ).toBe(true);
   });
 });

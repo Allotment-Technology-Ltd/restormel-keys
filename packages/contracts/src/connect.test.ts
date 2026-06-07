@@ -8,6 +8,11 @@ import {
   ConnectGraphLinkSourcesRequestSchema,
   ConnectGraphRevalidateRequestSchema,
   ConnectIngestJobCreateRequestSchema,
+  ConnectIngestJobSchema,
+  ConnectIngestQualityReportSchema,
+  ConnectIngestJobLogsResponseSchema,
+  ConnectWebhookCreateRequestSchema,
+  ConnectWebhookCreateResponseSchema,
   ConnectPipelineProfileUpsertSchema,
   ConnectRetrieveRequestSchema,
   ConnectRetrieveResponseSchema,
@@ -201,5 +206,84 @@ describe('@restormel/contracts/connect', () => {
       default_stop_after_stage: 'extracting'
     });
     expect(parsed.default_stop_after_stage).toBe('extracting');
+  });
+
+  it('accepts an ingest job with a curated quality_report (C2)', () => {
+    const report = {
+      trust_score: 82,
+      supported_count: 40,
+      weak_count: 5,
+      unsupported_count: 2,
+      total_count: 47,
+      remediation_applied: true,
+      assessed_at: '2026-06-07T10:00:00.000Z'
+    };
+    expect(ConnectIngestQualityReportSchema.parse(report).trust_score).toBe(82);
+    const job = ConnectIngestJobSchema.parse({
+      id: workspaceId,
+      workspace_id: workspaceId,
+      status: 'completed',
+      created_at: '2026-06-07T09:00:00.000Z',
+      updated_at: '2026-06-07T10:00:00.000Z',
+      quality_report: report
+    });
+    expect(job.quality_report?.supported_count).toBe(40);
+  });
+
+  it('allows quality_report to be null', () => {
+    const job = ConnectIngestJobSchema.parse({
+      id: workspaceId,
+      workspace_id: workspaceId,
+      status: 'running',
+      created_at: '2026-06-07T09:00:00.000Z',
+      updated_at: '2026-06-07T09:30:00.000Z',
+      quality_report: null
+    });
+    expect(job.quality_report).toBeNull();
+  });
+
+  it('parses a live log streaming response (I11)', () => {
+    const parsed = ConnectIngestJobLogsResponseSchema.parse({
+      contract_version: CONNECT_API_CONTRACT_VERSION,
+      job_id: workspaceId,
+      log_lines: [
+        { index: 12, timestamp: '2026-06-07T10:00:00.000Z', stage: 'EXTRACT', level: 'info', message: 'Extracting graph units' },
+        { index: 13, timestamp: '2026-06-07T10:00:01.000Z', stage: 'FATAL', level: 'error', message: 'boom' }
+      ],
+      next_since: 13,
+      total: 13
+    });
+    expect(parsed.log_lines).toHaveLength(2);
+    expect(parsed.next_since).toBe(13);
+  });
+
+  it('parses a webhook registration request and response (I1)', () => {
+    const req = ConnectWebhookCreateRequestSchema.parse({
+      workspace_id: workspaceId,
+      url: 'https://example.com/hook',
+      events: ['job.completed', 'job.quality_below_threshold'],
+      quality_threshold: 75
+    });
+    expect(req.events).toContain('job.quality_below_threshold');
+
+    const res = ConnectWebhookCreateResponseSchema.parse({
+      webhook_id: workspaceId,
+      workspace_id: workspaceId,
+      url: 'https://example.com/hook',
+      events: ['job.completed'],
+      active: true,
+      created_at: '2026-06-07T10:00:00.000Z',
+      signing_secret: 'whsec_abcdef0123456789'
+    });
+    expect(res.signing_secret).toMatch(/^whsec_/);
+  });
+
+  it('rejects a webhook request with an unknown event', () => {
+    const bad = ConnectWebhookCreateRequestSchema.safeParse({
+      workspace_id: workspaceId,
+      url: 'https://example.com/hook',
+      events: ['job.exploded']
+    });
+    expect(bad.success).toBe(false);
   });
 });

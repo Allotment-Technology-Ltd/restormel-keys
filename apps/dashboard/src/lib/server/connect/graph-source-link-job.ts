@@ -6,6 +6,8 @@ export type GraphLinkSourcesJobMeta = {
   kind: typeof CONNECT_GRAPH_LINK_SOURCES_JOB_KIND;
   domain_pack_id?: string | null;
   scope: ConnectGraphLinkSourcesScope;
+  /** Readiness-run cohort id — link only units stamped to this run. */
+  cohort_run_id?: string | null;
 };
 
 export function buildGraphLinkSourcesJobSources(meta: GraphLinkSourcesJobMeta): unknown[] {
@@ -36,6 +38,10 @@ export function parseGraphLinkSourcesJobMeta(sources: unknown): GraphLinkSources
         ? rec.domain_pack_id.trim()
         : null,
     scope,
+    cohort_run_id:
+      typeof rec.cohort_run_id === "string" && rec.cohort_run_id.trim()
+        ? rec.cohort_run_id.trim()
+        : null,
   };
 }
 

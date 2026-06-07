@@ -15,7 +15,20 @@ Restormel Connect is the **fourth suite product**: connect structured corpora vi
 | --- | --- | --- | --- |
 | **Connect Ingest** | Pipelines, operators | Async jobs | `POST /connect/v1/ingest/jobs` |
 | **Connect Retrieve** | RAG, agents, apps | Sync | `POST /connect/v1/retrieve` (structured `graph` + `context_pack`), MCP `connect.search`, `connect.get_context_for` (BYO Surreal) |
+| **Connect Graph orchestrator** | Agents, copilots | Sync | `POST /connect/v1/graph` (retrieve / expand / subgraph / paths / summarise), MCP `connect.graph.*` — curated, ranked, token-budgeted context with per-query verification policy |
 | **Connect Verify** | QA, governance, agents | Sync | `POST /connect/v1/verify`, MCP `connect.verify` |
+
+### Graph orchestrator (higher-order retrieval)
+
+`POST /connect/v1/graph` / MCP `connect.graph.*` wrap `@restormel/graphrag-core`'s `RetrievalOrchestrator`:
+
+- **retrieve_context** — vector-seeded, graph-expanded context (primary entry point).
+- **expand_context** — graph expansion from explicit seed node ids.
+- **find_relevant_subgraph** — `semantic` | `causal` | `temporal` reasoning modes (re-weight edge priors).
+- **find_paths** — ranked reasoning paths between two nodes.
+- **summarise_subgraph** — condense a subgraph under a token budget (seeds preserved).
+
+**Trust promise:** all operations default to **supported-only** retrieval (flagged excluded); callers opt into weak/unsupported via `verification_policy`. Every response carries an audit `trace` (seed count, hops, `tokens_used`, `nodes_dropped`, verification counts). The active `RetrievalConfig` (domain pack) is resolved per workspace, so one surface serves any domain.
 
 ---
 

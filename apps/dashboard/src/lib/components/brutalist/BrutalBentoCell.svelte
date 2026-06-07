@@ -47,10 +47,11 @@
 
   .brutal-bento-label {
     margin: 0 0 var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 900;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--text-mono-tracking);
   }
 
   @media (max-width: 900px) {

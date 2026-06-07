@@ -54,6 +54,11 @@
     group_roles: "summary, key_point, supporting_detail",
     unit_table: "statement",
     group_table: "topic",
+    source_table: "source",
+    passage_table: "passage",
+    source_text_field: "",
+    passage_text_field: "",
+    passage_source_field: "",
     schema_mode: "guided",
     embedding_model: "voyage-3",
     embedding_dimensions: 1024,
@@ -82,6 +87,11 @@
     group_roles: "summary, key_point, supporting_detail",
     unit_table: "statement",
     group_table: "topic",
+    source_table: "source",
+    passage_table: "passage",
+    source_text_field: "",
+    passage_text_field: "",
+    passage_source_field: "",
     schema_mode: "guided",
     embedding_model: "voyage-3",
     embedding_dimensions: 1024,
@@ -124,12 +134,17 @@
         schema_mode: np.schema_mode,
       },
       graph_schema: {
-        source_table: "source",
-        passage_table: "passage",
+        source_table: np.source_table.trim() || "source",
+        passage_table: np.passage_table.trim() || "passage",
         unit_table: np.unit_table.trim() || "statement",
         group_table: np.group_table.trim() || "topic",
         part_of_edge: "part_of",
         relation_edges: relationNames,
+        ...(np.source_text_field.trim() ? { source_text_field: np.source_text_field.trim() } : {}),
+        ...(np.passage_text_field.trim() ? { passage_text_field: np.passage_text_field.trim() } : {}),
+        ...(np.passage_source_field.trim()
+          ? { passage_source_field: np.passage_source_field.trim() }
+          : {}),
       },
       passage_profile: { marker_lexicon: [], min_passage_chars: 400, max_passage_chars: 6000 },
       embedding: {
@@ -160,7 +175,15 @@
       relationship_patterns?: { from_unit_type: string; relation: string; to_unit_type: string }[];
       schema_mode?: string;
     };
-    graph_schema?: { unit_table?: string; group_table?: string };
+    graph_schema?: {
+      unit_table?: string;
+      group_table?: string;
+      source_table?: string;
+      passage_table?: string;
+      source_text_field?: string;
+      passage_text_field?: string;
+      passage_source_field?: string;
+    };
     embedding?: { model?: string; dimensions?: number };
     quality_preset?: "production" | "starter";
     cross_model_validation?: boolean;
@@ -180,6 +203,11 @@
       group_roles: (o.group_roles ?? []).join(", "),
       unit_table: pack.graph_schema?.unit_table ?? "unit",
       group_table: pack.graph_schema?.group_table ?? "group",
+      source_table: pack.graph_schema?.source_table ?? "source",
+      passage_table: pack.graph_schema?.passage_table ?? "passage",
+      source_text_field: pack.graph_schema?.source_text_field ?? "",
+      passage_text_field: pack.graph_schema?.passage_text_field ?? "",
+      passage_source_field: pack.graph_schema?.passage_source_field ?? "",
       schema_mode: o.schema_mode ?? "guided",
       embedding_model: pack.embedding?.model ?? "voyage-3",
       embedding_dimensions: pack.embedding?.dimensions ?? 1024,
@@ -370,6 +398,8 @@
       group_noun: schemaMapping.group_table.replace(/_/g, " "),
       unit_table: schemaMapping.unit_table,
       group_table: schemaMapping.group_table,
+      source_table: schemaMapping.source_table,
+      passage_table: schemaMapping.passage_table,
       relation_types: schemaMapping.relation_edges.join(", "),
     };
     showPackCreator = true;
@@ -550,6 +580,11 @@
         group_roles: (o.group_roles ?? []).join(", "),
         unit_table: draft.graph_schema?.unit_table ?? "unit",
         group_table: draft.graph_schema?.group_table ?? "group",
+        source_table: draft.graph_schema?.source_table ?? "source",
+        passage_table: draft.graph_schema?.passage_table ?? "passage",
+        source_text_field: draft.graph_schema?.source_text_field ?? "",
+        passage_text_field: draft.graph_schema?.passage_text_field ?? "",
+        passage_source_field: draft.graph_schema?.passage_source_field ?? "",
         schema_mode: o.schema_mode ?? "guided",
         embedding_model: draft.embedding?.model ?? "voyage-3",
         embedding_dimensions: draft.embedding?.dimensions ?? 1024,
@@ -803,6 +838,10 @@
               <input class="input" type="text" bind:value={schemaMapping.source_table} />
             </label>
             <label class="field">
+              <span class="field-label">Passage table</span>
+              <input class="input" type="text" bind:value={schemaMapping.passage_table} />
+            </label>
+            <label class="field">
               <span class="field-label">Part-of edge</span>
               <input class="input" type="text" bind:value={schemaMapping.part_of_edge} />
             </label>
@@ -992,6 +1031,37 @@
             <input class="input" type="text" bind:value={np.group_table} />
           </label>
         </div>
+        <details class="source-text-mapping">
+          <summary class="field-label">Source text mapping (BYO Surreal)</summary>
+          <p class="field-hint">
+            When full text lives in a passage table (not on source records), set table and field names here so
+            graph scans and re-validation can resolve source content.
+          </p>
+          <div class="row">
+            <label class="field">
+              <span class="field-label">Source table</span>
+              <input class="input" type="text" bind:value={np.source_table} />
+            </label>
+            <label class="field">
+              <span class="field-label">Passage table</span>
+              <input class="input" type="text" bind:value={np.passage_table} />
+            </label>
+          </div>
+          <div class="row">
+            <label class="field">
+              <span class="field-label">Source text field (optional)</span>
+              <input class="input" type="text" bind:value={np.source_text_field} placeholder="text" />
+            </label>
+            <label class="field">
+              <span class="field-label">Passage text field (optional)</span>
+              <input class="input" type="text" bind:value={np.passage_text_field} placeholder="text" />
+            </label>
+            <label class="field">
+              <span class="field-label">Passage → source field (optional)</span>
+              <input class="input" type="text" bind:value={np.passage_source_field} placeholder="source" />
+            </label>
+          </div>
+        </details>
         <div class="row">
           <label class="field">
             <span class="field-label">Quality preset</span>

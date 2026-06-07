@@ -45,6 +45,31 @@
     },
     {
       pillar: "Connect",
+      name: "connect.graph.retrieve_context",
+      desc: "Graph orchestrator: vector + graph retrieval, token-budgeted. Supported-only by default.",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.graph.expand_context",
+      desc: "Expand from explicit seed node ids (optional edge-type filter).",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.graph.find_relevant_subgraph",
+      desc: "Topic subgraph with semantic / causal / temporal reasoning modes.",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.graph.find_paths",
+      desc: "Ranked reasoning paths between two graph nodes.",
+    },
+    {
+      pillar: "Connect",
+      name: "connect.graph.summarise_subgraph",
+      desc: "Condense a subgraph under a max_tokens budget (seeds preserved).",
+    },
+    {
+      pillar: "Connect",
       name: "connect.verify",
       desc: "Claim verification via hosted REST (BYOK LLM routes).",
     },

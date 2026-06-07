@@ -10,7 +10,7 @@ import {
 import { resolveConnectJourneyPhase, resolveDefaultPipelineStep } from "$lib/connect/connect-journey";
 import { listProviderIntegrations } from "$lib/server/db";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
-import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
+import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import {
   listDomainPacksForUi,
@@ -156,7 +156,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
         getSelectedDomainPackId(workspace.id),
         getIngestDocumentSelection(workspace.id),
         listProviderIntegrations(workspace.id).catch(() => []),
-        resolveConnectGraphStats(workspace.id).catch(() => null),
+        peekConnectGraphStats(workspace.id).catch(() => null),
       ]);
 
     const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;

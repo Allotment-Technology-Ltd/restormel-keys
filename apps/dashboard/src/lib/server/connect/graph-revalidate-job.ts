@@ -8,6 +8,7 @@ export const CONNECT_GRAPH_REVALIDATE_JOB_KIND = "graph_revalidate" as const;
 const VALID_SCOPES = new Set<ConnectGraphRevalidateScope>([
   "all",
   "unchecked",
+  "linked",
   "flagged",
   "quarantine",
   "unsupported",
@@ -22,6 +23,12 @@ export type GraphRevalidateJobMeta = {
   domain_pack_id?: string | null;
   scope: ConnectGraphRevalidateScope;
   mode: ConnectGraphRevalidateMode;
+  /** Cap on units processed this run (bounded batch). */
+  max_units?: number | null;
+  /** Auto-enqueue the next batch until the scope is clear. */
+  continue_in_background?: boolean;
+  /** Readiness-run cohort id — process only units stamped to this run. */
+  cohort_run_id?: string | null;
 };
 
 export function buildGraphRevalidateJobSources(meta: GraphRevalidateJobMeta): unknown[] {
@@ -76,6 +83,15 @@ export function parseGraphRevalidateJobMeta(sources: unknown): GraphRevalidateJo
         : null,
     scope: parseScope(rec.scope),
     mode: parseMode(rec.mode),
+    max_units:
+      typeof rec.max_units === "number" && Number.isFinite(rec.max_units) && rec.max_units > 0
+        ? Math.floor(rec.max_units)
+        : null,
+    continue_in_background: rec.continue_in_background === true,
+    cohort_run_id:
+      typeof rec.cohort_run_id === "string" && rec.cohort_run_id.trim()
+        ? rec.cohort_run_id.trim()
+        : null,
   };
 }
 

@@ -144,6 +144,7 @@ export function buildDomainPackDraft(input: unknown, opts?: { fallbackTitle?: st
       group_table: identifier(groupNoun, "group"),
       part_of_edge: "part_of",
       relation_edges: relationEdges,
+      unit_vector_field: "embedding",
     },
     passage_profile: {
       marker_lexicon: markerLexicon,

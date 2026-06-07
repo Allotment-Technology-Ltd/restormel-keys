@@ -1,4 +1,15 @@
 {
+  "corsPolicies": [
+    {
+      "name": "restormel-cors",
+      "allowedOrigins": "$env(ALLOWED_CORS_ORIGINS)",
+      "allowedMethods": ["GET", "POST", "DELETE", "OPTIONS"],
+      "allowedHeaders": ["Authorization", "Content-Type", "X-Workspace-Id", "X-Request-Id"],
+      "exposeHeaders": ["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+      "maxAge": 86400,
+      "allowCredentials": true
+    }
+  ],
   "policies": [
     {
       "name": "api-key-inbound",

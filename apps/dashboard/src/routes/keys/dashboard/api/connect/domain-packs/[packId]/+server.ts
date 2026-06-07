@@ -19,7 +19,20 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   if (isKnowledgeSessionFailure(ctx)) {
     return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
   }
-  const pack = await getDomainPackForUi(ctx.workspaceId, params.packId);
+  let pack;
+  try {
+    pack = await getDomainPackForUi(ctx.workspaceId, params.packId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Database unavailable.";
+    console.error("[domain-packs GET] load failed:", message.slice(0, 120));
+    return json(
+      {
+        error: "db_unavailable",
+        message: "Could not reach the workspace database. Check DATABASE_URL and retry.",
+      },
+      { status: 503 },
+    );
+  }
   if (!pack) {
     return json({ error: "not_found", message: "Domain pack not found." }, { status: 404 });
   }

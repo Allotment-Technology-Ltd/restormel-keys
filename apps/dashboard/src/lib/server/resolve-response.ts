@@ -46,7 +46,7 @@ export function buildResolveSuccessData(args: {
   const modelId = resolved.modelId ?? null;
 
   return {
-    contractVersion: RESOLVE_SIMULATE_CONTRACT_VERSION,
+    contract_version: RESOLVE_SIMULATE_CONTRACT_VERSION,
     traceId,
     routeId: resolved.route.id,
     routeName: resolved.route.name,

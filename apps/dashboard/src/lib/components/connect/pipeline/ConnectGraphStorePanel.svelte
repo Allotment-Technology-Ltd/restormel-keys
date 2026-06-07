@@ -51,6 +51,118 @@
   let neonMsg: string | null = null;
   let neonError = false;
 
+  // ── Multi-database selector (Build 2A) ──────────────────────────────
+  type DbKind = "surrealdb" | "neo4j" | "weaviate" | "neptune";
+  let dbKind: DbKind = "surrealdb";
+  const DB_KINDS: DbKind[] = ["surrealdb", "neo4j", "weaviate", "neptune"];
+  const COMING_SOON: DbKind[] = ["weaviate", "neptune"];
+  const DB_LABELS: Record<DbKind, string> = {
+    surrealdb: "SurrealDB",
+    neo4j: "Neo4j",
+    weaviate: "Weaviate",
+    neptune: "Neptune",
+  };
+
+  // Neo4j connection form + saved config state.
+  let neo4jUri = "";
+  let neo4jUsername = "neo4j";
+  let neo4jPassword = "";
+  let neo4jDatabase = "neo4j";
+  let neo4jSecretSet = false;
+  let neo4jSaving = false;
+  let neo4jTesting = false;
+  let neo4jMsg: string | null = null;
+  let neo4jError = false;
+  const GRAPH_STORE_CONFIG_API = API_BASE + "/pipeline/graph-store-config";
+
+  async function loadNeo4jConfig() {
+    try {
+      const res = await fetch(GRAPH_STORE_CONFIG_API);
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d.config?.type === "neo4j") {
+        neo4jUri = d.config.connection_string ?? "";
+        neo4jUsername = d.config.username ?? "neo4j";
+        neo4jDatabase = d.config.database ?? "neo4j";
+        neo4jSecretSet = Boolean(d.config.secret_set);
+        dbKind = "neo4j"; // a saved Neo4j config wins the initial selection
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  function selectDb(kind: DbKind) {
+    if (COMING_SOON.includes(kind)) return;
+    dbKind = kind;
+  }
+
+  async function saveNeo4j() {
+    neo4jSaving = true;
+    neo4jMsg = null;
+    neo4jError = false;
+    try {
+      const res = await fetch(GRAPH_STORE_CONFIG_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "neo4j",
+          connection_string: neo4jUri.trim(),
+          database: neo4jDatabase.trim() || "neo4j",
+          username: neo4jUsername.trim() || "neo4j",
+          ...(neo4jPassword.trim() ? { secret: neo4jPassword.trim() } : {}),
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        neo4jError = true;
+        neo4jMsg = d.message ?? `Could not save (HTTP ${res.status}).`;
+        return;
+      }
+      neo4jSecretSet = Boolean(d.config?.secret_set);
+      neo4jPassword = "";
+      neo4jError = !(d.test?.ok ?? false);
+      neo4jMsg = d.test?.ok
+        ? "Saved — connection healthy."
+        : `Saved, but connection test failed: ${d.test?.error ?? "unknown error"}`;
+      notifyUpdated();
+    } catch {
+      neo4jError = true;
+      neo4jMsg = "Network error while saving.";
+    } finally {
+      neo4jSaving = false;
+    }
+  }
+
+  async function testNeo4j() {
+    neo4jTesting = true;
+    neo4jMsg = null;
+    neo4jError = false;
+    try {
+      const res = await fetch(GRAPH_STORE_CONFIG_API + "/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "neo4j",
+          connection_string: neo4jUri.trim(),
+          database: neo4jDatabase.trim() || "neo4j",
+          username: neo4jUsername.trim() || "neo4j",
+          ...(neo4jPassword.trim() ? { secret: neo4jPassword.trim() } : { use_saved_secret: neo4jSecretSet }),
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      neo4jError = !(d.ok ?? false);
+      neo4jMsg = d.ok ? "Connection succeeded." : `Connection failed: ${d.error ?? "unknown error"}`;
+    } catch {
+      neo4jError = true;
+      neo4jMsg = "Network error while testing.";
+    } finally {
+      neo4jTesting = false;
+    }
+  }
+
+  $: neo4jCanTest = Boolean(neo4jUri.trim() && (neo4jPassword.trim() || neo4jSecretSet));
+
   function applyParsedToForm(parsed: typeof parsedPreview) {
     if (!parsed) return;
     parsedPreview = parsed;
@@ -266,6 +378,7 @@
 
   onMount(() => {
     loadGraphTarget();
+    loadNeo4jConfig();
   });
 </script>
 
@@ -289,6 +402,24 @@
       </p>
     {/if}
 
+    <div class="db-selector" role="group" aria-label="Graph database type">
+      {#each DB_KINDS as kind (kind)}
+        <button
+          type="button"
+          class="db-chip"
+          class:db-chip-active={dbKind === kind}
+          class:db-chip-soon={COMING_SOON.includes(kind)}
+          aria-pressed={dbKind === kind}
+          disabled={COMING_SOON.includes(kind)}
+          on:click={() => selectDb(kind)}
+        >
+          {DB_LABELS[kind]}
+          {#if COMING_SOON.includes(kind)}<span class="db-chip-soon-tag">soon</span>{/if}
+        </button>
+      {/each}
+    </div>
+
+    {#if dbKind === "surrealdb"}
     <div
       class="store-status-card"
       class:store-status-card-ok={storeConnected}
@@ -432,5 +563,95 @@
         </div>
       </form>
     {/if}
+    {:else if dbKind === "neo4j"}
+      <form class="form" on:submit|preventDefault={saveNeo4j}>
+        <p class="card-desc">
+          Connect an existing Neo4j 5.x graph (Aura or self-hosted). Restormel writes claims as
+          <code>:Claim</code> nodes with a vector index for retrieval.
+          {#if neo4jSecretSet}<span class="badge ok">configured</span>{/if}
+        </p>
+        <label class="field">
+          <span class="field-label">Bolt / connection URI</span>
+          <input
+            class="input"
+            type="text"
+            bind:value={neo4jUri}
+            autocomplete="off"
+            placeholder="neo4j+s://xxxx.databases.neo4j.io or bolt://host:7687"
+            required
+          />
+          <span class="field-hint">Use <code>neo4j+s://</code> for Aura, <code>bolt://</code> for self-hosted.</span>
+        </label>
+        <div class="row">
+          <label class="field">
+            <span class="field-label">Username</span>
+            <input class="input" type="text" bind:value={neo4jUsername} autocomplete="off" placeholder="neo4j" />
+          </label>
+          <label class="field">
+            <span class="field-label">Database</span>
+            <input class="input" type="text" bind:value={neo4jDatabase} autocomplete="off" placeholder="neo4j" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">
+            Password {#if neo4jSecretSet}<span class="field-hint">(leave blank to keep)</span>{/if}
+          </span>
+          <input
+            class="input"
+            type="password"
+            bind:value={neo4jPassword}
+            autocomplete="new-password"
+            placeholder="••••••••"
+          />
+        </label>
+        {#if neo4jMsg}
+          <p class:err={neo4jError} class:notice={!neo4jError} role="status">{neo4jMsg}</p>
+        {/if}
+        <p class="field-hint">Test runs <code>healthCheck()</code> against the database without writing anything.</p>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" disabled={neo4jSaving || !neo4jUri.trim()}>
+            {neo4jSaving ? "Saving…" : "Save graph store"}
+          </button>
+          <button type="button" class="btn btn-secondary" on:click={testNeo4j} disabled={neo4jTesting || !neo4jCanTest}>
+            {neo4jTesting ? "Testing…" : "Test connection"}
+          </button>
+        </div>
+      </form>
+    {/if}
   </div>
 {/if}
+
+<style>
+  .db-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .db-chip {
+    position: relative;
+    padding: 0.4rem 0.85rem;
+    border: 2px solid var(--rm-border, #111);
+    background: var(--rm-surface, #fff);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .db-chip-active {
+    background: var(--rm-accent, #111);
+    color: var(--rm-on-accent, #fff);
+  }
+  .db-chip-soon,
+  .db-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .db-chip-soon-tag {
+    margin-left: 0.4rem;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.8;
+  }
+</style>

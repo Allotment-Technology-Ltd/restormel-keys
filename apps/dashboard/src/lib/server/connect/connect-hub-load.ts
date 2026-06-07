@@ -9,7 +9,11 @@ import {
 } from "$lib/connect/connect-journey";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
-import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
+import {
+  peekConnectGraphStatsForView,
+  resolveConnectGraphStats,
+  type ConnectGraphStatsView,
+} from "$lib/server/connect/graph-explorer-service";
 import { listDomainPacksForUi } from "$lib/server/connect/domain-pack-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { listConnections } from "$lib/server/connect/connections-service";
@@ -69,7 +73,7 @@ export async function loadConnectHubPage(
     const userId = event.locals.user.uid;
 
     const endParallel = perfSpan("connect/hub", "parallelQueries");
-    const [target, packs, documents, connections, jobs, integrations, stats, starterDocs] =
+    const [target, packs, documents, connections, jobs, integrations, statsResult, starterDocs] =
       await Promise.all([
         getGraphTargetForUi(wsId),
         listDomainPacksForUi(wsId),
@@ -77,10 +81,12 @@ export async function loadConnectHubPage(
         listConnections(wsId),
         listConnectIngestJobsForWorkspace({ workspaceId: wsId }),
         listProviderIntegrations(wsId).catch(() => []),
-        resolveConnectGraphStats(wsId).catch(() => null),
+        // Cached stats or a fast unit count — full aggregates stream via graphPulse.
+        peekConnectGraphStatsForView(wsId).catch(() => null),
         listStarterCorpusDocuments(wsId),
       ]);
     endParallel();
+    const stats = statsResult?.stats ?? null;
 
     const llmReady = isLlmConfigured();
     const modelsStatus = await computeConnectModelsReady({
@@ -182,6 +188,35 @@ export async function loadConnectHubPage(
     };
     endHub();
     return payload;
+  } catch {
+    return null;
+  }
+}
+
+export type ConnectGraphPulse = {
+  stats: ConnectGraphStatsView | null;
+  graphHealth: ReturnType<typeof graphStatsToHealthSummary> | null;
+};
+
+/**
+ * Authoritative graph stats for the pulse band — recomputes the full aggregates
+ * (relations, groups, embedded, validation) when the cache is cold/stale. Streamed
+ * separately from the hub shell, which shows the fast unit-count skeleton meanwhile.
+ */
+export async function loadConnectGraphPulse(
+  event: Pick<ServerLoadEvent, "locals" | "parent">,
+): Promise<ConnectGraphPulse | null> {
+  if (!event.locals.user || event.locals.user.authType !== "session") {
+    return null;
+  }
+  try {
+    const workspace = await requireConnectWorkspace(
+      event.locals,
+      event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
+    );
+    const stats = await resolveConnectGraphStats(workspace.id).catch(() => null);
+    const graphHealth = stats ? graphStatsToHealthSummary(stats) : null;
+    return { stats, graphHealth };
   } catch {
     return null;
   }

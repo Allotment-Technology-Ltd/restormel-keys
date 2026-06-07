@@ -1,8 +1,14 @@
 /**
  * Resolve full or preview source text for graph unit review / re-validation.
  */
+import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { GraphStore } from "@restormel/graphrag-core";
 import { surrealRecordRef } from "$lib/server/connect/graph-writer";
+import {
+  buildSourceSelectClause,
+  extractSourcePreviewText,
+  resolveSurrealSourceFullText,
+} from "$lib/server/connect/surreal-source-text";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
 
 export type ConnectSourceTextQuality = "full" | "preview" | "missing";
@@ -72,6 +78,7 @@ export async function resolveConnectSourceText(args: {
 export async function fetchSurrealSourceRecordText(
   store: GraphStore,
   sourceKey: string,
+  pack: ConnectDomainPack,
 ): Promise<{
   title: string | null;
   url: string | null;
@@ -81,33 +88,25 @@ export async function fetchSurrealSourceRecordText(
   const empty = { title: null, url: null, textPreview: null, fullText: null };
   if (!sourceKey || sourceKey === "__unknown__" || !sourceKey.includes(":")) return empty;
   try {
-    const rows = await store.query<
-      {
-        title?: string;
-        url?: string;
-        text_preview?: string;
-        text?: string;
-        body?: string;
-        content?: string;
-      }[]
-    >(
-      `SELECT title, url, text_preview, text, body, content FROM ${surrealRecordRef(sourceKey)};`,
+    const select = buildSourceSelectClause(pack);
+    const rows = await store.query<Record<string, unknown>[]>(
+      `SELECT ${select} FROM ${surrealRecordRef(sourceKey)};`,
     );
     const row = rows[0];
     if (!row) return empty;
-    const full =
-      (typeof row.text === "string" && row.text.trim()) ||
-      (typeof row.body === "string" && row.body.trim()) ||
-      (typeof row.content === "string" && row.content.trim()) ||
-      null;
+
+    const resolved = await resolveSurrealSourceFullText({
+      store,
+      pack,
+      sourceRow: row,
+      sourceId: sourceKey,
+    });
+
     return {
       title: typeof row.title === "string" && row.title.trim() ? row.title.trim() : null,
       url: typeof row.url === "string" && row.url.trim() ? row.url.trim() : null,
-      textPreview:
-        typeof row.text_preview === "string" && row.text_preview.trim()
-          ? row.text_preview.trim()
-          : null,
-      fullText: full,
+      textPreview: extractSourcePreviewText(row),
+      fullText: resolved.quality === "full" ? resolved.text : null,
     };
   } catch {
     return empty;

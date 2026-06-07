@@ -36,7 +36,7 @@
   $: currentPath = $page.url.pathname;
   $: title = topbarTitle(currentPath);
   $: contextualHelp = contextualHelpForPath(currentPath);
-  $: projectContexts = $page.data.projectContexts ?? [];
+  $: projectContextsSource = $page.data.projectContexts ?? [];
   $: workNavForUi = ($page.data.workNavForUi ?? []) as NavItem[];
   $: moduleFlags = $page.data.moduleFlags ?? null;
   $: navGroupsForLayout = ($page.data.navGroupsForUi ?? NAV_GROUPS) as NavGroup[];
@@ -180,7 +180,13 @@
         {#if !projectsNavHidden}
           <div class="nav-section nav-section-scope">
             <p class="nav-section-label" id="nav-scope-label">Project</p>
-            <ProjectContextSwitcher projects={projectContexts} {moduleFlags} labelledBy="nav-scope-label" />
+            {#await Promise.resolve(projectContextsSource)}
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+            {:then projectContexts}
+              <ProjectContextSwitcher projects={projectContexts ?? []} {moduleFlags} labelledBy="nav-scope-label" />
+            {:catch}
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+            {/await}
           </div>
         {/if}
 

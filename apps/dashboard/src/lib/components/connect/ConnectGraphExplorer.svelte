@@ -17,6 +17,9 @@
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
+  import ConnectGraphReadinessWizard from "$lib/components/connect/ConnectGraphReadinessWizard.svelte";
+  import ConnectReadinessLibrary from "$lib/components/connect/ConnectReadinessLibrary.svelte";
+  import type { ReadinessRunSummary } from "$lib/components/connect/ConnectReadinessLibrary.svelte";
   import {
     formatHumanReviewNote,
     isAwaitingHumanTriage,
@@ -77,6 +80,8 @@
     domainPackTitle?: string | null;
     reviewEnabled?: boolean;
     stats: Stats | null;
+    /** True while the quick unit-count skeleton is being served; relations/groups/embedded are not yet computed. */
+    statsPartial?: boolean;
     groups: Group[];
     units: Unit[];
     unitsLoadError?: string | null;
@@ -86,6 +91,10 @@
       loaded: number;
       total: number | null;
       hasMore: boolean;
+    };
+    sourceCatalogStatus?: {
+      pipelineCatalogCount: number;
+      sourcesInPipeline: boolean;
     };
   };
 
@@ -202,9 +211,16 @@
   }
   let autoRemediating = false;
   let revalidateError: string | null = null;
+  // Batch validation of the "unchecked" backlog (overnight / background friendly).
+  let batchValidating = false;
+  let batchValidateError: string | null = null;
+  let batchSize = 2000;
+  let continueInBackground = true;
+  let validateScope: "unchecked" | "linked" = "unchecked";
   let linkSourcesOptions: {
     enabled: boolean;
     unitsNeedingLink: number;
+    estimate?: boolean;
     candidateSources: number;
     totalUnits: number;
   } | null = null;
@@ -212,12 +228,357 @@
   let linkSourcesScope: "unlinked_only" | "all" = "unlinked_only";
   let linkingSources = false;
   let linkSourcesError: string | null = null;
+  let provenanceAudit: import("$lib/connect/graph-provenance-audit-types").ProvenanceAuditView | null =
+    null;
+  let provenanceAuditLoading = false;
+  let provenanceAuditError: string | null = null;
+  // Source catalog discovery — for BYO graphs not created by Restormel
+  type DiscoveredSource = {
+    key: string;
+    title: string | null;
+    url: string | null;
+    kind: string | null;
+    hasFullText: boolean;
+    hasPreviewText: boolean;
+    textOrigin?: "inline" | "passage" | "preview_only" | "none";
+    passageCount?: number;
+  };
+  type DiscoverScanMeta = {
+    sourceTable: string;
+    passageTable: string;
+    inlineFields: string[];
+    passageTextField: string;
+    passageSourceField: string;
+  };
+  type PackMappingFields = {
+    source_table: string;
+    passage_table: string;
+    source_text_field?: string;
+    passage_text_field?: string;
+    passage_source_field?: string;
+  };
+  type PackSuggestion = {
+    packId: string;
+    packTitle: string;
+    packSlug: string;
+    canAutoApply: boolean;
+    reason: string;
+    confidence: "high" | "medium" | "low";
+    changes: string[];
+    current?: PackMappingFields;
+    suggested?: PackMappingFields;
+  };
+  type DiscoverResult = {
+    storeType: string;
+    sources: DiscoveredSource[];
+    total: number;
+    withText: number;
+    withoutText: number;
+    withPassageText?: number;
+    withInlineText?: number;
+    scanMeta?: DiscoverScanMeta;
+    domainPackId?: string;
+    packTitle?: string;
+    packEditable?: boolean;
+    currentMapping?: PackMappingFields;
+    packSuggestion?: PackSuggestion | null;
+    packSynced?: boolean;
+    mappingInvalid?: boolean;
+    pipelineCatalogCount?: number;
+    importAlreadySatisfied?: boolean;
+  };
+  type ImportResult = {
+    imported: number;
+    skipped: number;
+    alreadyPresent: number;
+    error?: string;
+    message?: string;
+  };
+  let discoverResult: DiscoverResult | null = null;
+  let discoveringLoading = false;
+  let discoveringError: string | null = null;
+  let syncingPack = false;
+  let syncPackError: string | null = null;
+  let packMappingForm: PackMappingFields = {
+    source_table: "source",
+    passage_table: "passage",
+    source_text_field: "",
+    passage_text_field: "",
+    passage_source_field: "",
+  };
+  let packMappingEditable = true;
+  let packMappingTitle = "";
+  let packMappingLoaded = false;
+  let packMappingLoading = false;
+  let packMappingLoadError: string | null = null;
+  let savingMapping = false;
+  let saveMappingError: string | null = null;
+  let importingLoading = false;
+  let importResult: ImportResult | null = null;
+  let importError: string | null = null;
+  let catalogLinkStepComplete = false;
+  let readinessEmbedStepComplete = false;
+
+  // Readiness library: named cohort passes. activeRunId === null means "whole
+  // workspace" (the original global-backlog behaviour); a run id scopes every
+  // link/embed/validate dispatch to that run's stamped cohort.
+  let readinessRuns: ReadinessRunSummary[] = [];
+  let activeRunId: string | null = null;
+  let runsLoading = false;
+  let runsError: string | null = null;
+  let creatingRun = false;
+  $: activeRun = activeRunId ? readinessRuns.find((r) => r.id === activeRunId) ?? null : null;
+
+  async function loadReadinessRuns() {
+    runsLoading = true;
+    runsError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        runsError = typeof body.message === "string" ? body.message : "Could not load readiness runs.";
+        return;
+      }
+      readinessRuns = Array.isArray(body.runs) ? body.runs : [];
+      if (activeRunId && !readinessRuns.some((r) => r.id === activeRunId)) activeRunId = null;
+    } catch {
+      runsError = "Network error while loading readiness runs.";
+    } finally {
+      runsLoading = false;
+    }
+  }
+
+  async function createReadinessRun(size: number) {
+    if (creatingRun || !(size > 0)) return;
+    creatingRun = true;
+    runsError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          size_target: size,
+          ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        runsError = typeof body.message === "string" ? body.message : "Could not create readiness run.";
+        return;
+      }
+      if (typeof body.warning === "string") runsError = body.warning;
+      await loadReadinessRuns();
+      if (body.run?.id && (body.run.sizeActual ?? 0) > 0) {
+        activeRunId = body.run.id;
+        scrollToGraphReadinessWizard();
+      }
+    } catch {
+      runsError = "Network error while creating readiness run.";
+    } finally {
+      creatingRun = false;
+    }
+  }
+
+  async function archiveReadinessRun(runId: string) {
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs/${runId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive" }),
+      });
+      if (res.ok && activeRunId === runId) activeRunId = null;
+      await loadReadinessRuns();
+    } catch {
+      runsError = "Network error while archiving readiness run.";
+    }
+  }
+
+  $: graphReadinessToolsLoading =
+    linkSourcesOptionsLoading || embedOptionsLoading || revalidateOptionsLoading;
+
+  let toolsOptionsLoaded = false;
+  let toolsOptionsLoadInFlight = false;
+
+  const TOOLS_OPTIONS_TIMEOUT_MS = 25_000;
+
+  async function fetchToolsJson(url: string): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TOOLS_OPTIONS_TIMEOUT_MS);
+    try {
+      return await fetch(url, { credentials: "include", signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function seedDiscoverFromServerCatalog() {
+    const catalog = graph.sourceCatalogStatus;
+    if (!catalog?.sourcesInPipeline || discoverResult) return;
+    discoverResult = {
+      storeType: graph.store ?? "surreal",
+      sources: [],
+      total: 0,
+      withText: 0,
+      withoutText: 0,
+      pipelineCatalogCount: catalog.pipelineCatalogCount,
+      importAlreadySatisfied: true,
+      domainPackId: graph.domainPackId ?? undefined,
+      packTitle: graph.domainPackTitle ?? undefined,
+    };
+  }
+
+  async function refreshDiscoverIfNeeded() {
+    if (graph.store !== "surreal") return;
+    if (graph.sourceCatalogStatus?.sourcesInPipeline) {
+      seedDiscoverFromServerCatalog();
+      return;
+    }
+    const needsDiscoverRefresh =
+      !discoverResult ||
+      discoverResult.importAlreadySatisfied == null ||
+      (discoverResult.withText > 0 &&
+        (discoverResult.pipelineCatalogCount ?? 0) < discoverResult.withText);
+    if (needsDiscoverRefresh) {
+      await discoverSources({ autoSyncPack: false });
+    }
+  }
+
+  async function ensureToolsOptions() {
+    if (!graph.reviewEnabled || !graph.stats?.units) return;
+    if (toolsOptionsLoaded || toolsOptionsLoadInFlight) return;
+    toolsOptionsLoadInFlight = true;
+    linkSourcesOptionsLoading = true;
+    embedOptionsLoading = true;
+    if (graph.store === "surreal") provenanceAuditLoading = true;
+    if (!revalidateOptions?.enabled) revalidateOptionsLoading = true;
+    try {
+      const bundledRes = await fetchToolsJson(`${CONNECT_PIPELINE_API}/graph/tools-options`);
+      const data = bundledRes ? await bundledRes.json().catch(() => ({})) : {};
+      if (bundledRes?.ok) {
+        if (!revalidateOptions?.enabled && data.revalidate) {
+          revalidateOptions = data.revalidate;
+          if (data.revalidate.defaultRouteId && !revalidateRouteId) {
+            revalidateRouteId = data.revalidate.defaultRouteId;
+          }
+          if (data.revalidate.defaultRemediationRouteId && !remediationRouteId) {
+            remediationRouteId = data.revalidate.defaultRemediationRouteId;
+          }
+        }
+        if (data.linkSources) {
+          linkSourcesOptions = data.linkSources;
+        } else if (data.provenanceAudit && graph.stats?.units) {
+          linkSourcesOptions = {
+            enabled: data.provenanceAudit.verdict !== "native",
+            unitsNeedingLink: data.provenanceAudit.needsEdgeRepair,
+            estimate: data.provenanceAudit.verdict === "unknown" || undefined,
+            candidateSources: 1,
+            totalUnits: graph.stats.units,
+          };
+        }
+        if (data.embedBackfill) {
+          embedOptions = data.embedBackfill;
+          if (data.embedBackfill.defaultRouteId && !embedRouteId) {
+            embedRouteId = data.embedBackfill.defaultRouteId;
+          }
+        }
+        if (graph.store === "surreal") {
+          provenanceAuditError = null;
+          if (data.provenanceAudit) {
+            provenanceAudit = data.provenanceAudit;
+          } else {
+            provenanceAuditError = "Could not load provenance audit.";
+          }
+        }
+      } else if (data.provenanceAudit && graph.stats?.units) {
+        linkSourcesOptions = {
+          enabled: data.provenanceAudit.verdict !== "native",
+          unitsNeedingLink: data.provenanceAudit.needsEdgeRepair,
+          estimate: data.provenanceAudit.verdict === "unknown" || undefined,
+          candidateSources: 1,
+          totalUnits: graph.stats.units,
+        };
+        if (graph.store === "surreal") {
+          provenanceAuditError =
+            typeof data.message === "string"
+              ? data.message
+              : "Could not load provenance audit.";
+        }
+      }
+      toolsOptionsLoaded = true;
+    } catch {
+      provenanceAuditError = "Provenance audit timed out — expand the panel to retry after refresh.";
+      // Partial tool panels still render with page stats when options time out.
+    } finally {
+      revalidateOptionsLoading = false;
+      linkSourcesOptionsLoading = false;
+      embedOptionsLoading = false;
+      provenanceAuditLoading = false;
+      toolsOptionsLoadInFlight = false;
+    }
+  }
+
+  const graphReadinessStorageKey = () =>
+    `connect:graph-readiness-wizard:${graph.domainPackId ?? "default"}`;
+
+  function restoreGraphReadinessState() {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(graphReadinessStorageKey());
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        discoverResult?: DiscoverResult;
+        importResult?: ImportResult;
+        catalogLinkStepComplete?: boolean;
+        readinessEmbedStepComplete?: boolean;
+      };
+      if (saved.discoverResult && !discoverResult) discoverResult = saved.discoverResult;
+      if (saved.importResult && !importResult) importResult = saved.importResult;
+      if (saved.catalogLinkStepComplete) catalogLinkStepComplete = true;
+      if (saved.readinessEmbedStepComplete) readinessEmbedStepComplete = true;
+    } catch {
+      // ignore corrupt session snapshot
+    }
+  }
+
+  function persistGraphReadinessState() {
+    if (typeof sessionStorage === "undefined") return;
+    if (!discoverResult && !importResult && !catalogLinkStepComplete && !readinessEmbedStepComplete) {
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        graphReadinessStorageKey(),
+        JSON.stringify({
+          discoverResult,
+          importResult,
+          catalogLinkStepComplete,
+          readinessEmbedStepComplete,
+        }),
+      );
+    } catch {
+      // quota / private mode
+    }
+  }
+
+  $: persistGraphReadinessState();
   let embedOptions: {
     enabled: boolean;
     unembeddedCount: number;
+    workCount: number;
     totalUnits: number;
     embeddedCount: number;
     embedReady: boolean;
+    recommendedScope: "missing_only" | "uniform_target";
+    health: {
+      targetDimensions: number;
+      dimensionBuckets: { dimensions: number; count: number }[];
+      dominantDimension: number | null;
+      hasMixedDimensions: boolean;
+      mismatchedDimensionCount: number;
+      workCount: number;
+      actionNeeded: boolean;
+      actionReason: "missing" | "mixed" | "wrong_dimension" | "none";
+    };
     routes: {
       id: string;
       name: string;
@@ -232,7 +593,13 @@
   let embedRouteId = "";
   let embeddingBackfill = false;
   let embedError: string | null = null;
-  let embedBackfillToolEl: HTMLDivElement | undefined;
+  let graphReadinessWizardEl: HTMLDivElement | undefined;
+
+  function scrollToGraphReadinessWizard() {
+    requestAnimationFrame(() => {
+      graphReadinessWizardEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   $: if (embedOptions?.defaultRouteId && !embedRouteId) {
     embedRouteId = embedOptions.defaultRouteId;
   }
@@ -250,7 +617,14 @@
   let reviewCoachingCache: Record<string, GraphReviewCoaching> = {};
 
   type WorkspaceMode = "triage" | "clusters" | "tools";
-  let workspaceMode: WorkspaceMode = "triage";
+  // Resolve synchronously so the correct tab renders on first paint — no flash.
+  let workspaceMode: WorkspaceMode = (() => {
+    try {
+      return get(page).url.searchParams.get("workspace") === "tools" ? "tools" : "triage";
+    } catch {
+      return "triage";
+    }
+  })();
   let selectedGroupId: string | null = null;
   /** When set, the review queue only shows ideas that belong to this cluster. */
   let groupScopeId: string | null = null;
@@ -266,63 +640,28 @@
     includeRevalidate: Boolean(revalidateOptions?.enabled),
   });
 
-  onMount(async () => {
-    const pageUrl = get(page).url;
-    if (pageUrl.searchParams.get("workspace") === "tools") {
-      workspaceMode = "tools";
-    }
-    if (!graph.reviewEnabled || !graph.stats?.units) return;
-    revalidateOptionsLoading = !revalidateOptions?.enabled;
-    linkSourcesOptionsLoading = true;
-    embedOptionsLoading = true;
-    try {
-      const [revalidateRes, linkRes, embedRes] = await Promise.all([
-        revalidateOptions?.enabled
-          ? null
-          : fetch(`${CONNECT_PIPELINE_API}/graph/revalidate/options`, { credentials: "include" }),
-        fetch(`${CONNECT_PIPELINE_API}/graph/link-sources/options`, { credentials: "include" }),
-        fetch(`${CONNECT_PIPELINE_API}/graph/embed/options`, { credentials: "include" }),
-      ]);
-      if (revalidateRes) {
-        const data = await revalidateRes.json().catch(() => ({}));
-        if (revalidateRes.ok && data.revalidate) {
-          revalidateOptions = data.revalidate;
-          if (data.revalidate.defaultRouteId && !revalidateRouteId) {
-            revalidateRouteId = data.revalidate.defaultRouteId;
-          }
-          if (data.revalidate.defaultRemediationRouteId && !remediationRouteId) {
-            remediationRouteId = data.revalidate.defaultRemediationRouteId;
-          }
+  onMount(() => {
+    restoreGraphReadinessState();
+    seedDiscoverFromServerCatalog();
+    void refreshDiscoverIfNeeded();
+    void loadInitialUnits();
+    void loadReadinessRuns();
+    if (workspaceMode === "tools") {
+      void ensureToolsOptions().then(() => {
+        if (get(page).url.searchParams.get("focus") === "embed") {
+          scrollToGraphReadinessWizard();
         }
-      }
-      if (linkRes) {
-        const linkData = await linkRes.json().catch(() => ({}));
-        if (linkRes.ok && linkData.linkSources) {
-          linkSourcesOptions = linkData.linkSources;
-        }
-      }
-      if (embedRes) {
-        const embedData = await embedRes.json().catch(() => ({}));
-        if (embedRes.ok && embedData.embedBackfill) {
-          embedOptions = embedData.embedBackfill;
-          if (embedData.embedBackfill.defaultRouteId && !embedRouteId) {
-            embedRouteId = embedData.embedBackfill.defaultRouteId;
-          }
-        }
-      }
-    } catch {
-      // Tool panels stay hidden when options cannot load.
-    } finally {
-      revalidateOptionsLoading = false;
-      linkSourcesOptionsLoading = false;
-      embedOptionsLoading = false;
-      if (pageUrl.searchParams.get("focus") === "embed") {
-        requestAnimationFrame(() => {
-          embedBackfillToolEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      }
+      });
     }
   });
+
+  $: if (workspaceMode === "tools" && graph.reviewEnabled && graph.stats?.units) {
+    void ensureToolsOptions();
+  }
+
+  $: if (graph.reviewEnabled && graph.stats?.units && graph.units.length === 0 && !initialUnitsLoaded) {
+    void loadInitialUnits();
+  }
 
   $: units = sortGraphUnitsForReview(
     [...graph.units, ...extraUnits]
@@ -368,6 +707,51 @@
     unitOverrides = {};
     removedIds = {};
     statsDelta = emptyStatsDelta();
+    initialUnitsLoaded = graph.units.length > 0;
+  }
+
+  let initialUnitsLoading = false;
+  let initialUnitsLoaded = graph.units.length > 0;
+  let initialUnitsAttempted = false;
+
+  async function fetchUnitsPage(offset: number, limit: number): Promise<Unit[]> {
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit),
+    });
+    if (graph.domainPackId) params.set("domain_pack_id", graph.domainPackId);
+    const res = await fetch(`${CONNECT_PIPELINE_API}/graph/units?${params.toString()}`, {
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message ?? `Could not load ideas (HTTP ${res.status}).`);
+    }
+    if (data.units_load_error) {
+      loadMoreError = data.units_load_error;
+    }
+    return Array.isArray(data.units) ? (data.units as Unit[]) : [];
+  }
+
+  async function loadInitialUnits() {
+    if (initialUnitsLoading || initialUnitsLoaded || initialUnitsAttempted) return;
+    if (!graph.stats?.units || graph.units.length > 0) {
+      initialUnitsLoaded = graph.units.length > 0;
+      return;
+    }
+    initialUnitsAttempted = true;
+    initialUnitsLoading = true;
+    loadMoreError = null;
+    try {
+      const incoming = await fetchUnitsPage(0, unitsPagination?.limit ?? 150);
+      extraUnits = incoming;
+      initialUnitsLoaded = true;
+    } catch (err) {
+      loadMoreError =
+        err instanceof Error ? err.message : "Network error while loading ideas.";
+    } finally {
+      initialUnitsLoading = false;
+    }
   }
 
   async function loadMoreUnits() {
@@ -375,27 +759,12 @@
     loadingMoreUnits = true;
     loadMoreError = null;
     try {
-      const params = new URLSearchParams({
-        offset: String(units.length),
-        limit: String(unitsPagination?.limit ?? 150),
-      });
-      if (graph.domainPackId) params.set("domain_pack_id", graph.domainPackId);
-      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/units?${params.toString()}`, {
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        loadMoreError = data.message ?? `Could not load more ideas (HTTP ${res.status}).`;
-        return;
-      }
-      const incoming = Array.isArray(data.units) ? (data.units as Unit[]) : [];
+      const incoming = await fetchUnitsPage(units.length, unitsPagination?.limit ?? 150);
       const seen = new Set(units.map((u) => u.id));
       extraUnits = [...extraUnits, ...incoming.filter((u) => !seen.has(u.id))];
-      if (data.units_load_error) {
-        loadMoreError = data.units_load_error;
-      }
-    } catch {
-      loadMoreError = "Network error while loading more ideas.";
+    } catch (err) {
+      loadMoreError =
+        err instanceof Error ? err.message : "Network error while loading more ideas.";
     } finally {
       loadingMoreUnits = false;
     }
@@ -407,12 +776,81 @@
     isAwaitingHumanTriage(u.validationStatus, u.validationNote),
   ).length;
   $: unembeddedCount =
-    embedOptions?.unembeddedCount ?? Math.max(0, (stats?.units ?? 0) - (stats?.embedded ?? 0));
+    embedOptions?.workCount ??
+    embedOptions?.unembeddedCount ??
+    Math.max(0, (stats?.units ?? 0) - (stats?.embedded ?? 0));
 
   $: quarantineCount =
     stats?.validation.awaiting_triage ?? revalidateOptions?.quarantineCount ?? loadedNeedsReviewCount;
   $: needsReviewCount = quarantineCount;
   $: uncheckedCount = stats ? stats.validation.unvalidated : 0;
+
+  $: sourcesInPipeline = Boolean(
+    graph.sourceCatalogStatus?.sourcesInPipeline ||
+      discoverResult?.importAlreadySatisfied ||
+      (discoverResult?.pipelineCatalogCount ?? 0) > 0,
+  );
+
+  $: catalogImportSatisfied = Boolean(
+    sourcesInPipeline ||
+      discoverResult?.importAlreadySatisfied ||
+      (discoverResult?.withText &&
+        discoverResult.withText > 0 &&
+        (discoverResult.pipelineCatalogCount ?? 0) >= discoverResult.withText) ||
+      (importResult &&
+        !importResult.error &&
+        (importResult.imported > 0 || importResult.alreadyPresent > 0)),
+  );
+
+  $: catalogComplete = Boolean(
+    graph.store !== "surreal" ||
+      catalogImportSatisfied ||
+      provenanceAudit?.verdict === "native" ||
+      (linkSourcesOptions != null &&
+        linkSourcesOptions.unitsNeedingLink === 0 &&
+        !linkSourcesOptions.estimate &&
+        linkSourcesOptions.candidateSources > 0),
+  );
+
+  $: ideasNeedingSourceLink =
+    provenanceAudit?.verdict === "native"
+      ? 0
+      : (provenanceAudit?.needsEdgeRepair ?? linkSourcesOptions?.unitsNeedingLink ?? 0);
+
+  $: linkReadinessComplete =
+    catalogLinkStepComplete ||
+    provenanceAudit?.verdict === "native" ||
+    (provenanceAudit != null &&
+      provenanceAudit.verdict !== "unknown" &&
+      provenanceAudit.needsEdgeRepair === 0) ||
+    (linkSourcesOptions != null &&
+      linkSourcesOptions.unitsNeedingLink === 0 &&
+      !linkSourcesOptions.estimate);
+
+  $: embedReadinessComplete =
+    readinessEmbedStepComplete ||
+    (graph.stats != null &&
+      graph.stats.units > 0 &&
+      graph.stats.embedded >= graph.stats.units) ||
+    (embedOptions != null && !embedOptions.health.actionNeeded);
+
+  $: validateReadinessComplete = uncheckedCount === 0;
+
+  $: graphReadinessComplete =
+    catalogComplete && linkReadinessComplete && embedReadinessComplete && validateReadinessComplete;
+
+  $: graphReadinessBlockers = (() => {
+    const blockers: string[] = [];
+    if (graph.store === "surreal" && !catalogComplete) {
+      blockers.push("Import source text into the pipeline catalog.");
+    }
+    if (!linkReadinessComplete) blockers.push("Link ideas to source text.");
+    if (!embedReadinessComplete) blockers.push("Embed all ideas at one vector dimension.");
+    if (!validateReadinessComplete) {
+      blockers.push("Validate unchecked ideas in the readiness wizard.");
+    }
+    return blockers;
+  })();
   $: unsupportedUntriagedCount =
     stats?.validation.unsupported_untriaged ??
     revalidateOptions?.unsupportedUntriagedCount ??
@@ -972,7 +1410,19 @@
   }
 
   async function startSourceLinking() {
-    if (!linkSourcesOptions?.enabled || linkingSources) return;
+    if (linkingSources) return;
+    if (!linkSourcesOptions) {
+      linkSourcesError =
+        "Source linking options are still loading. Wait a moment and try again, or refresh the page.";
+      return;
+    }
+    if (!linkSourcesOptions.enabled) {
+      linkSourcesError =
+        linkSourcesOptions.candidateSources === 0
+          ? "No source text in the catalog yet — scan and import sources in the readiness wizard first."
+          : "No ideas need linking for the current scope. Try scope “All ideas” if you want to re-match everything.";
+      return;
+    }
     linkSourcesError = null;
     linkingSources = true;
     try {
@@ -982,6 +1432,7 @@
         body: JSON.stringify({
           scope: linkSourcesScope,
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -1000,6 +1451,7 @@
         linkSourcesError = "Source linking started but no job id was returned.";
         return;
       }
+      catalogLinkStepComplete = true;
       await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=link-sources`);
     } catch {
       linkSourcesError = "Network error while starting source linking.";
@@ -1008,8 +1460,216 @@
     }
   }
 
+  function defaultPassageTextField(mapping: PackMappingFields): string {
+    if (!mapping.passage_table?.trim()) return mapping.passage_text_field ?? "";
+    return mapping.passage_text_field?.trim() || "text";
+  }
+
+  function applyMappingToForm(mapping: PackMappingFields) {
+    packMappingForm = {
+      source_table: mapping.source_table,
+      passage_table: mapping.passage_table,
+      source_text_field: mapping.source_text_field ?? "",
+      passage_text_field: defaultPassageTextField(mapping),
+      passage_source_field: mapping.passage_source_field ?? "",
+    };
+  }
+
+  function applySuggestionToForm() {
+    const suggested = discoverResult?.packSuggestion?.suggested;
+    if (suggested) applyMappingToForm(suggested);
+  }
+
+  function syncPackMetaFromDiscover(data: DiscoverResult) {
+    if (data.packTitle) packMappingTitle = data.packTitle;
+    if (typeof data.packEditable === "boolean") packMappingEditable = data.packEditable;
+    if (data.currentMapping) applyMappingToForm(data.currentMapping);
+  }
+
+  async function ensurePackMappingLoaded() {
+    const packId = graph.domainPackId;
+    if (!packId || packMappingLoaded || packMappingLoading) return;
+    packMappingLoading = true;
+    packMappingLoadError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/domain-packs/${encodeURIComponent(packId)}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        packMappingLoadError =
+          typeof data.message === "string" ? data.message : "Could not load domain pack mapping.";
+        return;
+      }
+      const pack = data.pack as {
+        title?: string;
+        is_builtin?: boolean;
+        graph_schema?: PackMappingFields & { unit_table?: string };
+      };
+      if (pack?.title) packMappingTitle = pack.title;
+      packMappingEditable = !pack?.is_builtin;
+      if (pack?.graph_schema) {
+        applyMappingToForm({
+          source_table: pack.graph_schema.source_table ?? "source",
+          passage_table: pack.graph_schema.passage_table ?? "passage",
+          source_text_field: pack.graph_schema.source_text_field ?? "",
+          passage_text_field: pack.graph_schema.passage_text_field ?? "",
+          passage_source_field: pack.graph_schema.passage_source_field ?? "",
+        });
+      }
+      packMappingLoaded = true;
+    } catch {
+      packMappingLoadError = "Network error while loading domain pack mapping.";
+    } finally {
+      packMappingLoading = false;
+    }
+  }
+
+  async function savePackMappingAndRescan() {
+    const packId =
+      discoverResult?.domainPackId ?? discoverResult?.packSuggestion?.packId ?? graph.domainPackId;
+    if (!packId || savingMapping) return;
+    savingMapping = true;
+    saveMappingError = null;
+    discoveringError = null;
+    try {
+      const mapping: PackMappingFields = {
+        source_table: packMappingForm.source_table.trim(),
+        passage_table: packMappingForm.passage_table.trim(),
+      };
+      const sourceTextField = packMappingForm.source_text_field?.trim();
+      const passageTextField = packMappingForm.passage_text_field?.trim();
+      const passageSourceField = packMappingForm.passage_source_field?.trim();
+      if (sourceTextField) mapping.source_text_field = sourceTextField;
+      if (passageTextField) mapping.passage_text_field = passageTextField;
+      if (passageSourceField) mapping.passage_source_field = passageSourceField;
+
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/sources`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain_pack_id: packId, mapping }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        saveMappingError = data.message ?? `Could not save mapping (HTTP ${res.status}).`;
+        return;
+      }
+      discoverResult = data as DiscoverResult;
+      syncPackMetaFromDiscover(discoverResult);
+      syncPackError = null;
+    } catch {
+      saveMappingError = "Network error while saving domain pack mapping.";
+    } finally {
+      savingMapping = false;
+    }
+  }
+
+  $: if (graph.reviewEnabled && graph.stats?.units && graph.domainPackId) {
+    void ensurePackMappingLoaded();
+  }
+
+  async function discoverSources(opts?: { autoSyncPack?: boolean }) {
+    if (discoveringLoading) return;
+    discoveringLoading = true;
+    discoveringError = null;
+    syncPackError = null;
+    try {
+      const params = new URLSearchParams();
+      if (graph.domainPackId) params.set("domain_pack_id", graph.domainPackId);
+      if (opts?.autoSyncPack) params.set("auto_sync_pack", "1");
+      const qs = params.toString();
+      const res = await fetch(
+        `${CONNECT_PIPELINE_API}/graph/sources${qs ? `?${qs}` : ""}`,
+        { credentials: "include" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        discoveringError = data.message ?? `Could not scan graph sources (HTTP ${res.status}).`;
+        return;
+      }
+      discoverResult = data as DiscoverResult;
+      syncPackMetaFromDiscover(discoverResult);
+      packMappingLoaded = true;
+      if ((data as DiscoverResult).withText === 0) importResult = null;
+    } catch {
+      discoveringError = "Network error while scanning graph sources.";
+    } finally {
+      discoveringLoading = false;
+    }
+  }
+
+  async function syncPackFromScan() {
+    const packId = discoverResult?.domainPackId ?? discoverResult?.packSuggestion?.packId ?? graph.domainPackId;
+    if (!packId || syncingPack) return;
+    syncingPack = true;
+    syncPackError = null;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/sources`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain_pack_id: packId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        syncPackError = data.message ?? `Could not update domain pack (HTTP ${res.status}).`;
+        return;
+      }
+      discoverResult = data as DiscoverResult;
+      syncPackMetaFromDiscover(discoverResult);
+    } catch {
+      syncPackError = "Network error while updating the domain pack.";
+    } finally {
+      syncingPack = false;
+    }
+  }
+
+  async function importSources() {
+    if (importingLoading) return;
+    importingLoading = true;
+    importError = null;
+    try {
+      const packId =
+        discoverResult?.domainPackId ?? discoverResult?.packSuggestion?.packId ?? graph.domainPackId;
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/sources`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(packId ? { domain_pack_id: packId } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        importError = data.message ?? `Import failed (HTTP ${res.status}).`;
+        return;
+      }
+      importResult = data as ImportResult;
+      if (importResult.error && importResult.message) {
+        importError = importResult.message;
+      }
+      await discoverSources({ autoSyncPack: false });
+      // Refresh link-sources options so the wizard can advance to the link step
+      linkSourcesOptionsLoading = true;
+      try {
+        const optRes = await fetch(`${CONNECT_PIPELINE_API}/graph/link-sources/options`, {
+          credentials: "include",
+        });
+        if (optRes.ok) {
+          const optData = await optRes.json().catch(() => ({}));
+          if (optData.linkSources) linkSourcesOptions = optData.linkSources;
+        }
+      } finally {
+        linkSourcesOptionsLoading = false;
+      }
+    } catch {
+      importError = "Network error while importing sources.";
+    } finally {
+      importingLoading = false;
+    }
+  }
+
   async function startEmbedBackfill() {
-    if (!embedOptions?.enabled || embeddingBackfill) return;
+    if (!embedOptions?.enabled || !embedOptions.health.actionNeeded || embeddingBackfill) return;
     embedError = null;
     embeddingBackfill = true;
     try {
@@ -1017,8 +1677,10 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          scope: embedOptions.recommendedScope,
           ...(embedRouteId ? { embedding_route_id: embedRouteId } : {}),
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -1037,11 +1699,57 @@
         embedError = "Embed backfill started but no job id was returned.";
         return;
       }
+      readinessEmbedStepComplete = true;
       await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=embed-backfill`);
     } catch {
       embedError = "Network error while starting embed backfill.";
     } finally {
       embeddingBackfill = false;
+    }
+  }
+
+  async function startBatchValidation() {
+    if (!revalidateOptions?.enabled || batchValidating) return;
+    batchValidateError = null;
+    batchValidating = true;
+    try {
+      const res = await fetch(`${CONNECT_PIPELINE_API}/graph/revalidate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // A cohort run validates its stamped members; scope stays "unchecked"
+          // and the cohort_run_id filter narrows to just that cohort.
+          scope: activeRunId ? "unchecked" : validateScope,
+          mode: "validate",
+          ...(batchSize > 0 ? { max_units: batchSize } : {}),
+          ...(!activeRunId && validateScope === "unchecked"
+            ? { continue_in_background: continueInBackground }
+            : {}),
+          ...(revalidateRouteId ? { validation_route_id: revalidateRouteId } : {}),
+          ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
+          ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        batchValidateError =
+          typeof body.message === "string"
+            ? body.message
+            : typeof body.error === "string"
+              ? body.error.replace(/_/g, " ")
+              : `Could not start validation (HTTP ${res.status}).`;
+        return;
+      }
+      const jobId = body.job?.id;
+      if (!jobId) {
+        batchValidateError = "Validation started but no job id was returned.";
+        return;
+      }
+      await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=revalidate`);
+    } catch {
+      batchValidateError = "Network error while starting validation.";
+    } finally {
+      batchValidating = false;
     }
   }
 
@@ -1095,7 +1803,13 @@
     description="Inspect ideas extracted from your sources, confirm AI validation, and keep agent context trustworthy. {storeLabel}{graph.domainPackTitle ? ` · pack: ${graph.domainPackTitle}` : ''}."
   />
 
-  {#if !stats || stats.units === 0}
+  {#if !stats && graph.store === "surreal" && !graph.targetStatus}
+    <BrutalCard fill="canvas" title="Loading graph">
+      <p class="brut-muted" role="status" aria-busy="true">
+        Connecting to your SurrealDB store and loading graph counts…
+      </p>
+    </BrutalCard>
+  {:else if !stats || stats.units === 0}
     <BrutalCard fill="canvas" title="Empty graph">
       <p class="brut-muted">
         {#if graph.store === "surreal"}
@@ -1126,42 +1840,47 @@
       <BrutalBentoCell fill="white" label="Ideas">
         <p class="bento-stat">{stats.units.toLocaleString()}</p>
       </BrutalBentoCell>
-      <BrutalBentoCell
-        fill={workspaceMode === "triage" ? "blue" : "white"}
-        label="Connections"
-      >
+      <BrutalBentoCell fill="white" label="Connections">
         <div class="bento-stat-stack">
-          <p class="bento-stat">{stats.relations.toLocaleString()}</p>
+          {#if graph.statsPartial && stats.relations === 0}
+            <p class="bento-stat bento-stat--calculating" aria-label="Calculating…">—</p>
+          {:else}
+            <p class="bento-stat">{stats.relations.toLocaleString()}</p>
+          {/if}
           {#if workspaceMode === "triage"}
             <span class="bento-stat-hint">↓ Review below</span>
           {/if}
         </div>
       </BrutalBentoCell>
       <BrutalBentoCell fill="canvas" label="Groups">
-        <button
-          type="button"
-          class="bento-stat-btn brut-focus"
-          disabled={stats.groups === 0}
-          aria-label="Open clusters view ({stats.groups} groups)"
-          on:click={() => {
-            workspaceMode = "clusters";
-            if (graph.groups.length > 0) selectedGroupId = graph.groups[0].id;
-          }}
-        >
-          <span class="bento-stat">{stats.groups.toLocaleString()}</span>
-        </button>
+        {#if graph.statsPartial && stats.groups === 0}
+          <p class="bento-stat bento-stat--calculating" aria-label="Calculating…">—</p>
+        {:else}
+          <button
+            type="button"
+            class="bento-stat-btn brut-focus"
+            disabled={stats.groups === 0}
+            aria-label="Open clusters view ({stats.groups} groups)"
+            on:click={() => {
+              workspaceMode = "clusters";
+              if (graph.groups.length > 0) selectedGroupId = graph.groups[0].id;
+            }}
+          >
+            <span class="bento-stat">{stats.groups.toLocaleString()}</span>
+          </button>
+        {/if}
       </BrutalBentoCell>
       <BrutalBentoCell fill="neon" label="Embedded">
-        {#if unembeddedCount > 0}
+        {#if graph.statsPartial && stats.embedded === 0}
+          <p class="bento-stat bento-stat--calculating" aria-label="Calculating…">—</p>
+        {:else if unembeddedCount > 0}
           <button
             type="button"
             class="bento-stat-btn brut-focus"
             aria-label="{stats.embedded.toLocaleString()} embedded — {unembeddedCount.toLocaleString()} missing — open embed tool"
             on:click={() => {
               workspaceMode = "tools";
-              requestAnimationFrame(() => {
-                embedBackfillToolEl?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
+              scrollToGraphReadinessWizard();
             }}
           >
             <div class="bento-stat-stack">
@@ -1354,7 +2073,9 @@
             </p>
           {/if}
           {#if stats && stats.units > 0}
-            <p class="units-load-meta" role="status">{unitsLoadedLabel}</p>
+            <p class="units-load-meta" role="status" aria-busy={initialUnitsLoading}>
+              {initialUnitsLoading ? "Loading first page of ideas…" : unitsLoadedLabel}
+            </p>
             {#if hasMoreUnits}
               <button
                 type="button"
@@ -1515,7 +2236,9 @@
         {#if filteredUnits.length === 0}
           <BrutalCard fill="canvas">
             <p class="brut-muted">
-              {#if unitsLoadError}
+              {#if initialUnitsLoading}
+                Loading ideas from your graph store…
+              {:else if unitsLoadError}
                 Fix the error above, then refresh. Stats may still reflect your full graph even when the review list cannot load.
               {:else if queueScope === "review" && !verdictFilter && needsReviewCount > 0 && units.length < (stats?.units ?? 0)}
                 Your graph has {needsReviewCount.toLocaleString()} flagged idea{needsReviewCount === 1 ? "" : "s"}, but
@@ -1990,152 +2713,115 @@
           </div>
         </details>
 
-        {#if embedOptionsLoading}
-          <p class="revalidate-lede brut-muted" role="status">Loading embed backfill options…</p>
-        {:else if embedOptions?.enabled}
-          <div class="revalidate-panel" id="embed-backfill-tool" bind:this={embedBackfillToolEl}>
-            <BrutalCard fill="blue" title="Embed missing ideas">
-              <p class="revalidate-lede brut-muted">
-                {embedOptions.unembeddedCount.toLocaleString()} of {embedOptions.totalUnits.toLocaleString()} ideas lack
-                embedding vectors — semantic search and agent retrieval skip them until you embed them here.
-              </p>
-              {#if !embedOptions.embedReady}
-                <p class="revalidate-note brut-muted">
-                  Publish an embedding ingestion route in AI models &amp; keys before running embed backfill.
-                </p>
-              {/if}
-              {#if embedOptions.previewUnits.length > 0}
-                <div class="embed-preview" aria-label="Sample unembedded ideas">
-                  <p class="revalidate-label">Sample unembedded ideas</p>
-                  <ul class="embed-preview-list">
-                    {#each embedOptions.previewUnits as unit (unit.id)}
-                      <li class="embed-preview-item">
-                        <span class="embed-preview-text">{unit.text}</span>
-                      </li>
-                    {/each}
-                  </ul>
-                </div>
-              {/if}
-              <div class="revalidate-form">
-                <label class="revalidate-field" for="embed-backfill-route">
-                  <span class="revalidate-label">Embedding route</span>
-                  <select
-                    id="embed-backfill-route"
-                    class="revalidate-input brut-focus"
-                    bind:value={embedRouteId}
-                    disabled={embeddingBackfill || !embedOptions.embedReady}
-                  >
-                    {#if (embedOptions.routes ?? []).length === 0}
-                      <option value="">Workspace default</option>
-                    {:else}
-                      <option value="">Workspace default routing</option>
-                      {#each embedOptions.routes as route (route.id)}
-                        <option value={route.id}>
-                          {route.name}{route.isDefault ? " (workspace default)" : ""}
-                        </option>
-                      {/each}
-                    {/if}
-                  </select>
-                </label>
-              </div>
-              <div class="revalidate-route-links" aria-label="Embedding route management">
-                <a class="revalidate-link brut-focus" href={embedModelsManageHref}>Manage ingest routes</a>
-                {#if embedRouteEditHref}
-                  <a class="revalidate-link brut-focus" href={embedRouteEditHref}>
-                    Edit embedding route
-                    {#if selectedEmbedRoute?.activeModel}
-                      ({selectedEmbedRoute.activeModel.provider}/{selectedEmbedRoute.activeModel.modelId})
-                    {/if}
-                  </a>
-                {/if}
-              </div>
-              <p class="revalidate-note brut-muted">
-                Route pick applies only to this run — saved workspace ingestion routes stay unchanged.
-              </p>
-              {#if embedError}
-                <BrutalErrorBanner title="Embed backfill not started" message={embedError} />
-              {/if}
-              <div class="revalidate-actions">
-                <button
-                  type="button"
-                  class="brutal-btn brut-pressable brut-focus brut-fill-blue revalidate-btn"
-                  disabled={embeddingBackfill || !embedOptions.embedReady}
-                  on:click={startEmbedBackfill}
-                >
-                  {embeddingBackfill
-                    ? "Starting…"
-                    : `Embed ${embedOptions.unembeddedCount.toLocaleString()} missing idea${embedOptions.unembeddedCount === 1 ? "" : "s"}`}
-                </button>
-                <p class="revalidate-note brut-muted">
-                  Opens the ingest run console — embedded count updates when the job completes.
-                </p>
-              </div>
-            </BrutalCard>
+        {#if graph.reviewEnabled && graph.stats?.units}
+          {#if graphReadinessToolsLoading}
+            <p class="revalidate-lede brut-muted" role="status">
+              Loading tool options… the readiness wizard is available below while counts refresh.
+            </p>
+          {/if}
+          <ConnectReadinessLibrary
+            runs={readinessRuns}
+            {activeRunId}
+            loading={runsLoading}
+            creating={creatingRun}
+            error={runsError}
+            on:select={(e) => { activeRunId = e.detail.runId; }}
+            on:create={(e) => createReadinessRun(e.detail.size)}
+            on:archive={(e) => archiveReadinessRun(e.detail.runId)}
+          />
+          {#if activeRun}
+            <p class="readiness-active-run brut-muted" role="status">
+              Wizard scoped to <strong>{activeRun.label}</strong> ({(activeRun.sizeActual ?? activeRun.sizeTarget).toLocaleString()}
+              ideas). Link, embed, and validate below apply only to this cohort.
+              <button type="button" class="readiness-active-clear brut-focus" on:click={() => { activeRunId = null; }}>
+                Switch to whole workspace
+              </button>
+            </p>
+          {/if}
+          <div class="revalidate-panel" id="graph-readiness-wizard" bind:this={graphReadinessWizardEl}>
+            <ConnectGraphReadinessWizard
+              graphStore={graph.store ?? "none"}
+              sourcesInPipeline={sourcesInPipeline}
+              initialPipelineCatalogCount={graph.sourceCatalogStatus?.pipelineCatalogCount ?? 0}
+              bind:packMappingForm
+              bind:linkSourcesScope
+              bind:embedRouteId
+              bind:batchSize
+              bind:continueInBackground
+              bind:validateScope
+              bind:revalidateRouteId
+              {packMappingTitle}
+              {packMappingEditable}
+              {packMappingLoading}
+              {packMappingLoadError}
+              {savingMapping}
+              {saveMappingError}
+              {discoveringLoading}
+              {discoveringError}
+              {discoverResult}
+              {syncingPack}
+              {syncPackError}
+              {importingLoading}
+              {importError}
+              {importResult}
+              {linkSourcesOptions}
+              {linkingSources}
+              {linkSourcesError}
+              {provenanceAudit}
+              {provenanceAuditLoading}
+              {provenanceAuditError}
+              linkStepComplete={catalogLinkStepComplete}
+              embedEnabled={Boolean(embedOptions?.enabled ?? graph.stats?.units)}
+              unembeddedCount={embedOptions?.unembeddedCount ?? 0}
+              embedWorkCount={embedOptions?.workCount ?? 0}
+              embedHealth={embedOptions?.health ?? null}
+              embedRecommendedScope={embedOptions?.recommendedScope ?? "missing_only"}
+              embedReady={embedOptions?.embedReady ?? true}
+              embedRoutes={embedOptions?.routes ?? []}
+              embedModelsManageHref={embedModelsManageHref}
+              embedRouteEditHref={embedRouteEditHref}
+              selectedEmbedRouteLabel={selectedEmbedRoute?.activeModel
+                ? `${selectedEmbedRoute.activeModel.provider}/${selectedEmbedRoute.activeModel.modelId}`
+                : null}
+              {embeddingBackfill}
+              {embedError}
+              embedStepComplete={readinessEmbedStepComplete}
+              revalidateEnabled={revalidateOptions?.enabled ?? true}
+              {uncheckedCount}
+              revalidateRoutes={revalidateOptions?.routes ?? []}
+              {batchValidating}
+              {batchValidateError}
+              on:scan={(e) => discoverSources(e.detail)}
+              on:saveMapping={savePackMappingAndRescan}
+              on:applySuggestion={applySuggestionToForm}
+              on:syncPack={syncPackFromScan}
+              on:import={importSources}
+              on:linkSources={startSourceLinking}
+              on:embed={startEmbedBackfill}
+              on:validate={startBatchValidation}
+            />
           </div>
         {/if}
 
-        {#if linkSourcesOptionsLoading}
-          <p class="revalidate-lede brut-muted" role="status">Loading graph repair tools…</p>
-        {:else if linkSourcesOptions?.enabled}
-          <div class="revalidate-panel">
-            <BrutalCard fill="white" title="Find sources for ideas">
-              <p class="revalidate-lede brut-muted">
-                Automatically match ideas to the best available source text from your graph spine,
-                pipeline documents, and recent ingest runs. Use this when provenance is missing on an
-                existing knowledge graph.
-              </p>
-              <div class="revalidate-form">
-                <label class="revalidate-field" for="link-sources-scope">
-                  <span class="revalidate-label">Scope</span>
-                  <select
-                    id="link-sources-scope"
-                    class="revalidate-input brut-focus"
-                    bind:value={linkSourcesScope}
-                    disabled={linkingSources}
-                  >
-                    <option value="unlinked_only">
-                      Missing provenance only ({linkSourcesOptions.unitsNeedingLink.toLocaleString()})
-                    </option>
-                    <option value="all">All ideas ({linkSourcesOptions.totalUnits.toLocaleString()})</option>
-                  </select>
-                </label>
-              </div>
-              <p class="revalidate-note brut-muted">
-                {linkSourcesOptions.candidateSources.toLocaleString()} source
-                {linkSourcesOptions.candidateSources === 1 ? "" : "s"} in the matching catalog.
-              </p>
-              {#if linkSourcesError}
-                <BrutalErrorBanner title="Source linking not started" message={linkSourcesError} />
-              {/if}
-              <div class="revalidate-actions">
-                <button
-                  type="button"
-                  class="brutal-btn brut-pressable brut-focus brut-fill-neon revalidate-btn"
-                  disabled={linkingSources}
-                  on:click={startSourceLinking}
-                >
-                  {linkingSources ? "Starting…" : "Find sources for ideas"}
-                </button>
-                <p class="revalidate-note brut-muted">
-                  Opens the ingest run console — source titles and links update when the job completes.
-                </p>
-              </div>
-            </BrutalCard>
-          </div>
-        {:else if graph.reviewEnabled && graph.stats?.units}
-          <div class="revalidate-panel">
-            <BrutalCard fill="canvas" title="Find sources for ideas">
-              <p class="brut-muted">
-                Add parsed documents in Pipeline → Sources or complete an ingest run so automated matching
-                has source text to search.
-              </p>
-              <BrutalButton variant="blue" href={pipelineWizardHref("sources")}>Pipeline sources</BrutalButton>
-            </BrutalCard>
-          </div>
-        {/if}
-
-        {#if revalidateOptionsLoading}
+        {#if revalidateOptionsLoading && workspaceMode === "tools"}
           <p class="revalidate-lede brut-muted" role="status">Loading auto-remediation options…</p>
+        {:else if revalidateOptions?.enabled && !graphReadinessComplete}
+          <div class="revalidate-panel">
+            <BrutalCard fill="canvas" title="Auto-remediate quarantine (locked)">
+              <p class="revalidate-lede brut-muted">
+                Auto-remediation runs after your graph passes readiness — sources in the pipeline,
+                ideas linked and embedded, and the unchecked validation backlog cleared.
+              </p>
+              <ul class="readiness-blocker-list">
+                {#each graphReadinessBlockers as blocker}
+                  <li>{blocker}</li>
+                {/each}
+              </ul>
+              <p class="revalidate-note brut-muted">
+                Use the readiness wizard above to complete the remaining steps first.
+              </p>
+            </BrutalCard>
+          </div>
         {:else if revalidateOptions?.enabled}
           {#if quarantineCount > 0 || unsupportedUntriagedCount > 0}
             <div class="revalidate-panel">
@@ -2144,10 +2830,10 @@
                   Re-run validation and remediation on quarantined ideas — repair faithful wording, drop unsupportable
                   claims, and re-embed repairs. Items still flagged afterward stay in quarantine for your review.
                 </p>
-                {#if linkSourcesOptions?.enabled && linkSourcesOptions.unitsNeedingLink > 0}
+                {#if ideasNeedingSourceLink > 0}
                   <p class="revalidate-note brut-muted">
-                    {linkSourcesOptions.unitsNeedingLink.toLocaleString()} idea
-                    {linkSourcesOptions.unitsNeedingLink === 1 ? "" : "s"} lack linked source text — run
+                    {ideasNeedingSourceLink.toLocaleString()} idea
+                    {ideasNeedingSourceLink === 1 ? "" : "s"} lack linked source text — run
                     <strong>Find sources for ideas</strong> first for better remediation coverage.
                   </p>
                 {/if}
@@ -2277,10 +2963,21 @@
 
   .bento-stat {
     margin: 0;
-    font-size: var(--text-3xl);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric-sm);
     font-weight: 900;
-    letter-spacing: -0.02em;
-    line-height: 1;
+    letter-spacing: var(--text-display-tracking);
+    line-height: var(--text-display-line-height);
+  }
+
+  .bento-stat--calculating {
+    opacity: 0.35;
+    animation: bento-stat-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes bento-stat-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.65; }
   }
 
   .bento-stat-stack {
@@ -2352,7 +3049,7 @@
     flex-direction: column;
     gap: 0.125rem;
     border: var(--brut-border-micro) solid var(--brut-ink);
-    padding: var(--space-2);
+    padding: var(--space-3) var(--space-4);
     background: var(--brut-white);
     text-align: left;
     cursor: pointer;
@@ -2502,7 +3199,8 @@
   }
 
   .workspace-tab-active {
-    background: var(--color-yellow);
+    background: var(--color-ink);
+    color: var(--color-surface);
     box-shadow: var(--brut-shadow-none);
     transform: translate(3px, 3px);
   }
@@ -2534,7 +3232,7 @@
     margin-bottom: var(--space-3);
     padding: var(--space-2) var(--space-3);
     border: var(--brut-border-micro) solid var(--brut-ink);
-    background: var(--color-yellow);
+    background: var(--color-surface);
     font-size: var(--text-sm);
   }
 
@@ -2724,7 +3422,7 @@
 
   .member-row:not(:disabled):hover,
   .member-row:not(:disabled):focus-visible {
-    background: var(--color-yellow);
+    background: var(--color-bg-deep);
   }
 
   .member-row-text {
@@ -2852,6 +3550,46 @@
     margin-top: var(--space-4);
   }
 
+  .readiness-active-run {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    border-left-width: 4px;
+    background: color-mix(in oklab, var(--brut-neon, #e8ff47) 18%, var(--brut-white));
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .readiness-active-clear {
+    margin-left: var(--space-2);
+    font: inherit;
+    font-weight: 700;
+    color: var(--color-ink);
+    background: none;
+    border: none;
+    padding: 0.1rem 0.3rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .readiness-active-clear:hover,
+  .readiness-active-clear:focus-visible {
+    background: var(--brut-neon, #e8ff47);
+    outline: none;
+  }
+
+  .readiness-blocker-list {
+    margin: 0 0 var(--space-3);
+    padding-left: 1.25rem;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .readiness-blocker-list li + li {
+    margin-top: var(--space-1);
+  }
+
   .revalidate-lede {
     margin: 0 0 var(--space-3);
     font-size: var(--text-sm);
@@ -2865,10 +3603,61 @@
     margin-bottom: var(--space-3);
   }
 
+  .source-pack-mapping-panel {
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+  }
+
+  .source-pack-mapping-summary {
+    cursor: pointer;
+    list-style: none;
+    margin-bottom: var(--space-2);
+  }
+
+  .source-pack-mapping-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .source-pack-mapping-pack {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .source-pack-mapping-form {
+    margin-top: var(--space-2);
+  }
+
+  .source-pack-sync-panel {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px dashed var(--brut-border);
+  }
+
+  .source-pack-sync-changes {
+    margin: 0 0 var(--space-2);
+    padding-left: 1.25rem;
+    font-size: var(--text-xs);
+  }
+
   .revalidate-field {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+  }
+
+  .revalidate-check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+  .revalidate-check input {
+    margin-top: 0.2em;
   }
 
   .revalidate-label {
@@ -2921,6 +3710,60 @@
 
   .revalidate-link:hover {
     color: var(--color-accent);
+  }
+
+  .source-catalog-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .source-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 6rem;
+  }
+  .source-stat-n {
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .source-stat-label {
+    font-size: var(--text-xs);
+    color: var(--brut-muted-text, var(--color-ink));
+    opacity: 0.7;
+  }
+  .source-stat-ok .source-stat-n { color: var(--color-accent, #2ecc71); }
+  .source-stat-warn .source-stat-n { color: var(--color-warning, #e67e22); }
+  .source-import-result {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--brut-border);
+    border-radius: var(--brut-radius, 2px);
+    font-size: var(--text-xs);
+    color: var(--brut-muted-text, var(--color-ink));
+  }
+  .source-no-text-detail {
+    margin-top: var(--space-3);
+  }
+  .source-no-text-detail summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .source-no-text-detail summary::-webkit-details-marker { display: none; }
+  .source-no-text-list {
+    margin: var(--space-2) 0 0 var(--space-4);
+    padding: 0;
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
   .bento-stat-hint--warn {
@@ -2987,10 +3830,11 @@
 
   .panel-title {
     margin: 0 0 var(--space-1);
-    font-size: var(--text-lg);
-    font-weight: 900;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--text-mono-tracking);
   }
 
   .panel-lede {
@@ -3091,7 +3935,8 @@
   }
 
   .queue-filter--scope.queue-filter-active {
-    background: var(--color-yellow);
+    background: var(--color-ink);
+    color: var(--color-surface);
     box-shadow: var(--brut-shadow-hover);
     transform: translate(2px, 2px);
   }
@@ -3130,8 +3975,9 @@
   }
 
   .queue-filter--weak.queue-filter-active {
-    background: var(--color-yellow);
+    background: var(--color-surface);
     border-left: 4px solid var(--color-yellow);
+    box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-yellow) 55%, var(--brut-ink));
     transform: translate(2px, 2px);
   }
 
@@ -3295,7 +4141,7 @@
     letter-spacing: 0.1em;
     padding: 0.125rem 0.375rem;
     border: 2px solid var(--brut-ink);
-    background: var(--color-yellow);
+    background: transparent;
     color: var(--brut-ink);
   }
 
@@ -3446,16 +4292,25 @@
     font: inherit;
     box-shadow: var(--brut-shadow);
     transition:
-      transform 150ms ease-out,
-      opacity 150ms ease-out,
-      box-shadow var(--brut-transition),
-      border-color var(--brut-transition);
+      transform 200ms ease-in,
+      opacity 150ms ease-in,
+      box-shadow 80ms ease,
+      border-color 80ms ease;
     overflow: hidden;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .unit-row {
+      transition: opacity 75ms ease;
+    }
+    .unit-row-exiting {
+      transform: none !important;
+    }
+  }
+
   .unit-row:hover {
-    box-shadow: var(--brut-shadow-hover);
-    transform: translate(2px, 2px);
+    box-shadow: var(--shadow-lg);
+    transform: translate(-2px, -2px);
   }
 
   .unit-row-selected {
@@ -3480,15 +4335,15 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: capitalize;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
     color: var(--color-ink);
   }
 
   .unit-row-inner {
     position: relative;
     display: block;
-    padding: var(--space-3);
+    padding: var(--space-2) var(--space-3);
     background: var(--verdict-surface, var(--color-surface));
     min-width: 0;
   }

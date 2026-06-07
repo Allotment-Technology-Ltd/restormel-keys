@@ -1,9 +1,16 @@
 export const CONNECT_GRAPH_EMBED_BACKFILL_JOB_KIND = "graph_embed_backfill" as const;
 
+export type GraphEmbedBackfillScope = "missing_only" | "uniform_target";
+
 export type GraphEmbedBackfillJobMeta = {
   kind: typeof CONNECT_GRAPH_EMBED_BACKFILL_JOB_KIND;
   embedding_route_id?: string | null;
   domain_pack_id?: string | null;
+  /** When uniform_target, also re-embeds vectors that are not at target_dimensions. */
+  scope?: GraphEmbedBackfillScope;
+  target_dimensions?: number | null;
+  /** Readiness-run cohort id — embed only units stamped to this run. */
+  cohort_run_id?: string | null;
 };
 
 export function buildGraphEmbedBackfillJobSources(meta: GraphEmbedBackfillJobMeta): unknown[] {
@@ -24,6 +31,14 @@ export function parseGraphEmbedBackfillJobMeta(sources: unknown): GraphEmbedBack
   if (!jobMeta || typeof jobMeta !== "object" || Array.isArray(jobMeta)) return null;
   const rec = jobMeta as Record<string, unknown>;
   if (rec.kind !== CONNECT_GRAPH_EMBED_BACKFILL_JOB_KIND) return null;
+  const scopeRaw = rec.scope;
+  const scope: GraphEmbedBackfillScope | undefined =
+    scopeRaw === "uniform_target" ? "uniform_target" : scopeRaw === "missing_only" ? "missing_only" : undefined;
+  const targetDimensions =
+    typeof rec.target_dimensions === "number" && rec.target_dimensions > 0
+      ? rec.target_dimensions
+      : null;
+
   return {
     kind: CONNECT_GRAPH_EMBED_BACKFILL_JOB_KIND,
     embedding_route_id:
@@ -33,6 +48,12 @@ export function parseGraphEmbedBackfillJobMeta(sources: unknown): GraphEmbedBack
     domain_pack_id:
       typeof rec.domain_pack_id === "string" && rec.domain_pack_id.trim()
         ? rec.domain_pack_id.trim()
+        : null,
+    ...(scope ? { scope } : {}),
+    ...(targetDimensions ? { target_dimensions: targetDimensions } : {}),
+    cohort_run_id:
+      typeof rec.cohort_run_id === "string" && rec.cohort_run_id.trim()
+        ? rec.cohort_run_id.trim()
         : null,
   };
 }

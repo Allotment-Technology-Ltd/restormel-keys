@@ -233,7 +233,7 @@ export const GET: RequestHandler = async ({ url }) => {
     : null;
 
   return json({
-    contractVersion: CONTRACT_VERSION,
+    contract_version: CONTRACT_VERSION,
     source: "restormel-keys",
     generatedAt: new Date().toISOString(),
     compatibility: CATALOG_COMPATIBILITY,

@@ -308,7 +308,10 @@
     border: 1px solid var(--rm-border);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-2);
-    font-size: var(--text-xs);
-    text-transform: capitalize;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    font-size: var(--text-mono-sm);
   }
 </style>

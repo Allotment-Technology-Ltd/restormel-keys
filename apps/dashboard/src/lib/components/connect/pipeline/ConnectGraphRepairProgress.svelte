@@ -176,9 +176,11 @@
   }
 
   .graph-repair-count {
-    font-family: var(--font-display, var(--font-sans));
-    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-family: var(--font-display);
+    font-size: var(--text-display-metric-sm);
     font-weight: 900;
+    line-height: var(--text-display-line-height);
+    letter-spacing: var(--text-display-tracking);
     color: var(--rm-text);
   }
 

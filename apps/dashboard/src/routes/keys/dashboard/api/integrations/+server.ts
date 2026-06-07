@@ -12,14 +12,14 @@ import { bootstrapRestormelTestingIntegration } from "$lib/server/testing-bootst
 
 export const GET: RequestHandler = async ({ locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!ctx) return json({ error: "unauthorized", message: "Session or management key required" }, { status: 401 });
   const list = await listProviderIntegrations(ctx.workspaceId);
   return json({ data: list });
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!ctx) return json({ error: "unauthorized", message: "Session or management key required" }, { status: 401 });
   let body: { providerType?: string; displayName?: string; credentialRef?: string; apiKey?: string };
   try {
     body = (await request.json()) as typeof body;

@@ -73,6 +73,34 @@
   </tbody>
 </table>
 
+<h2 class="docs-h2">Connect knowledge &amp; graph tools</h2>
+<p class="docs-p">
+  With a <strong>Bring-Your-Own SurrealDB</strong> graph store configured in the Connect hub, the same MCP server
+  exposes retrieval tools over your workspace knowledge graph. These return curated, ranked, token-budgeted context —
+  structured claims, relations and paths, never raw rows. Set <code class="inline-code">RESTORMEL_CONNECT_API_BASE</code>,
+  <code class="inline-code">RESTORMEL_GATEWAY_KEY</code> and <code class="inline-code">RESTORMEL_WORKSPACE_ID</code>.
+</p>
+<table class="tools-table">
+  <thead>
+    <tr><th>Tool</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>connect.search</code></td><td>Semantic search → claims, relations, pass-specific context packs</td></tr>
+    <tr><td><code>connect.get_context_for</code></td><td>Topic + optional seed claim id from the graph explorer</td></tr>
+    <tr><td><code>connect.graph.retrieve_context</code></td><td>Primary retrieval: vector + graph traversal, token-budgeted subgraph + trace</td></tr>
+    <tr><td><code>connect.graph.expand_context</code></td><td>Graph expansion from explicit seed node ids (optional edge-type filter)</td></tr>
+    <tr><td><code>connect.graph.find_relevant_subgraph</code></td><td>Topic subgraph with semantic / causal / temporal reasoning modes</td></tr>
+    <tr><td><code>connect.graph.find_paths</code></td><td>Ranked reasoning paths between two graph nodes</td></tr>
+    <tr><td><code>connect.graph.summarise_subgraph</code></td><td>Condense a subgraph under a token budget (seeds preserved)</td></tr>
+    <tr><td><code>connect.verify</code> / <code>connect.ingest.*</code></td><td>Claim verification + ingest job helpers</td></tr>
+  </tbody>
+</table>
+<p class="docs-p">
+  <strong>Trust promise:</strong> every <code>connect.graph.*</code> tool defaults to <strong>supported-only</strong>
+  retrieval — weak/unsupported claims are excluded unless you pass <code class="inline-code">verification_policy.include</code>.
+  Full reference: <a href="/connect/docs">Connect API docs</a> (Graph orchestrator).
+</p>
+
 <h2 class="docs-h2">How MCP maps to Restormel Keys</h2>
 <p class="docs-p">
   MCP exposes Restormel’s core building blocks to agent workflows. These tools correspond to

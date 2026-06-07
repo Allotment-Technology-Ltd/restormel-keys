@@ -5,7 +5,7 @@ import {
   resolveKnowledgeRouteExecutionContext,
   type ConnectValidationRouteOption,
 } from "$lib/server/connect/stage-routing";
-import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
+import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 
 export type GraphRevalidateOptions = {
   enabled: boolean;
@@ -23,7 +23,7 @@ export async function loadGraphRevalidateOptions(
   workspaceId: string,
   userId: string,
 ): Promise<GraphRevalidateOptions | null> {
-  const stats = await resolveConnectGraphStats(workspaceId).catch(() => null);
+  const stats = await peekConnectGraphStats(workspaceId).catch(() => null);
   if (!stats || stats.units === 0) return null;
 
   const routeCtx = await resolveKnowledgeRouteExecutionContext({ workspaceId, userId });
