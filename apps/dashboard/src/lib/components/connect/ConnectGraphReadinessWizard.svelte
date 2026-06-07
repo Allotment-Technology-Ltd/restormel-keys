@@ -132,6 +132,10 @@
   export let revalidateRouteId = "";
   export let revalidateRoutes: RouteOption[] = [];
   export let validateScope: "unchecked" | "linked" = "unchecked";
+  /** "ai" = LLM faithfulness check; "trust_provenance" = accept graph-native ideas, no LLM. */
+  export let validateMode: "ai" | "trust_provenance" = "ai";
+  /** When set, the validate step is scoped to a readiness-run cohort (overrides the global backlog copy). */
+  export let cohortContext: { label: string; size: number } | null = null;
   export let batchValidating = false;
   export let batchValidateError: string | null = null;
 
@@ -414,6 +418,16 @@
   $: batchEstimate = batchSize > 0 ? Math.ceil(uncheckedCount / batchSize) : 1;
   $: validateBatchCount = Math.min(batchSize || uncheckedCount, uncheckedCount);
   $: validateScopeLabel = validateScope === "linked" ? "linked" : "unchecked";
+
+  // Pre-existing / bring-your-own graphs (Surreal) default to the no-LLM trust path —
+  // these are connected, already-curated graphs where re-validation just burns tokens.
+  // Keyed on the store (always known) rather than the async provenance audit, so the
+  // default is reliable even when the operator jumps straight to the validate step.
+  // Once the operator picks a mode themselves, stop overriding it.
+  let validateModeTouched = false;
+  $: if (!validateModeTouched) {
+    validateMode = graphStore === "surreal" ? "trust_provenance" : "ai";
+  }
 </script>
 
 <section class="readiness-wizard" aria-label="Prepare knowledge graph">
@@ -966,28 +980,68 @@
           </div>
         {/if}
 
-        <aside class="wizard-estimate" aria-label="Validation batch estimate">
-          <span class="wizard-estimate-num">{batchEstimate}</span>
-          <div class="wizard-estimate-copy">
-            <span class="wizard-estimate-label">
-              batch{batchEstimate === 1 ? "" : "es"} to clear backlog
-            </span>
-            <span class="wizard-estimate-meta brut-muted">
-              {exactCount(uncheckedCount)} unchecked at batch size {exactCount(batchSize)}
-            </span>
-          </div>
-        </aside>
+        {#if cohortContext}
+          <aside class="wizard-estimate" aria-label="Cohort validation">
+            <span class="wizard-estimate-num">{cohortContext.size.toLocaleString()}</span>
+            <div class="wizard-estimate-copy">
+              <span class="wizard-estimate-label">
+                cohort idea{cohortContext.size === 1 ? "" : "s"} to validate
+              </span>
+              <span class="wizard-estimate-meta brut-muted">
+                {cohortContext.label} — validates this cohort only, not the global backlog
+              </span>
+            </div>
+          </aside>
+        {:else}
+          <aside class="wizard-estimate" aria-label="Validation batch estimate">
+            <span class="wizard-estimate-num">{batchEstimate}</span>
+            <div class="wizard-estimate-copy">
+              <span class="wizard-estimate-label">
+                batch{batchEstimate === 1 ? "" : "es"} to clear backlog
+              </span>
+              <span class="wizard-estimate-meta brut-muted">
+                {exactCount(uncheckedCount)} unchecked at batch size {exactCount(batchSize)}
+              </span>
+            </div>
+          </aside>
+        {/if}
 
         <fieldset class="wizard-fieldset" disabled={batchValidating}>
           <legend class="wizard-fieldset-legend">Validation run</legend>
+          <label class="wizard-field wizard-field-wide" for="rw-validate-mode">
+            <span class="wizard-field-label">Method</span>
+            <select
+              id="rw-validate-mode"
+              class="wizard-input brut-focus"
+              bind:value={validateMode}
+              on:change={() => (validateModeTouched = true)}
+            >
+              <option value="trust_provenance">Trust existing provenance — free, no AI</option>
+              <option value="ai">AI check against source text — uses tokens</option>
+            </select>
+          </label>
+          {#if validateMode === "trust_provenance"}
+            <p class="wizard-note brut-muted">
+              Accepts ideas already linked to a source as <strong>supported</strong> without calling a
+              model — best for a pre-existing or curated graph. Ideas with no source link stay
+              unchecked. No tokens used.
+            </p>
+          {:else}
+            <p class="wizard-note brut-muted">
+              Sends each idea and its resolved source text to your validation model to check
+              faithfulness. Most accurate, but consumes tokens.
+            </p>
+          {/if}
           <div class="wizard-form">
-            <label class="wizard-field" for="rw-validate-scope">
-              <span class="wizard-field-label">Scope</span>
-              <select id="rw-validate-scope" class="wizard-input brut-focus" bind:value={validateScope}>
-                <option value="unchecked">All unchecked ideas</option>
-                <option value="linked">Linked ideas only (has source text)</option>
-              </select>
-            </label>
+            {#if !cohortContext}
+              <label class="wizard-field" for="rw-validate-scope">
+                <span class="wizard-field-label">Scope</span>
+                <select id="rw-validate-scope" class="wizard-input brut-focus" bind:value={validateScope}>
+                  <option value="unchecked">All unchecked ideas</option>
+                  <option value="linked">Linked ideas only (has source text)</option>
+                </select>
+              </label>
+            {/if}
             <label class="wizard-field" for="rw-batch-size">
               <span class="wizard-field-label">Batch size</span>
               <input
@@ -1000,23 +1054,25 @@
                 bind:value={batchSize}
               />
             </label>
-            <label class="wizard-field" for="rw-validate-route">
-              <span class="wizard-field-label">Validation route</span>
-              <select id="rw-validate-route" class="wizard-input brut-focus" bind:value={revalidateRouteId}>
-                {#if revalidateRoutes.length === 0}
-                  <option value="">Workspace default</option>
-                {:else}
-                  <option value="">Workspace default routing</option>
-                  {#each revalidateRoutes as route (route.id)}
-                    <option value={route.id}>
-                      {route.name}{route.isDefault ? " (default)" : ""}
-                    </option>
-                  {/each}
-                {/if}
-              </select>
-            </label>
+            {#if validateMode === "ai"}
+              <label class="wizard-field" for="rw-validate-route">
+                <span class="wizard-field-label">Validation route</span>
+                <select id="rw-validate-route" class="wizard-input brut-focus" bind:value={revalidateRouteId}>
+                  {#if revalidateRoutes.length === 0}
+                    <option value="">Workspace default</option>
+                  {:else}
+                    <option value="">Workspace default routing</option>
+                    {#each revalidateRoutes as route (route.id)}
+                      <option value={route.id}>
+                        {route.name}{route.isDefault ? " (default)" : ""}
+                      </option>
+                    {/each}
+                  {/if}
+                </select>
+              </label>
+            {/if}
           </div>
-          {#if validateScope === "unchecked"}
+          {#if validateScope === "unchecked" && !cohortContext}
             <label class="wizard-check brut-focus" for="rw-continue-bg">
               <input
                 id="rw-continue-bg"
@@ -1041,11 +1097,26 @@
             disabled={batchValidating}
             on:click={() => dispatch("validate")}
           >
-            {batchValidating
-              ? "Starting…"
-              : `Validate ${validateBatchCount.toLocaleString()} ${validateScopeLabel}${continueInBackground && validateScope === "unchecked" ? " + continue" : ""}`}
+            {#if batchValidating}
+              Starting…
+            {:else if validateMode === "trust_provenance"}
+              {#if cohortContext}
+                Trust cohort ({cohortContext.size.toLocaleString()} ideas) — no AI
+              {:else}
+                Trust {validateBatchCount.toLocaleString()} linked ideas — no AI
+              {/if}
+            {:else if cohortContext}
+              Validate cohort ({cohortContext.size.toLocaleString()} ideas)
+            {:else}
+              Validate {validateBatchCount.toLocaleString()} {validateScopeLabel}{continueInBackground && validateScope === "unchecked" ? " + continue" : ""}
+            {/if}
           </button>
-          {#if validateScope === "unchecked"}
+          {#if cohortContext}
+            <p class="wizard-note brut-muted">
+              Validates only this cohort's ideas. When it finishes, the run is marked complete and you
+              can start the next one.
+            </p>
+          {:else if validateScope === "unchecked"}
             <p class="wizard-note brut-muted">
               Background mode chains batches overnight — safe to leave this tab open or return later.
             </p>

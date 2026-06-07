@@ -17,6 +17,15 @@ export const GraphRevalidateScopeSchema = z.enum([
 
 export const GraphRevalidateModeSchema = z.enum(["validate", "validate_and_remediate"]);
 
+/**
+ * How verdicts are produced:
+ * - "ai": check each idea against its resolved source text with the LLM (default).
+ * - "trust_provenance": accept graph-native ideas (those already linked to a source)
+ *   as supported WITHOUT any LLM call — for pre-existing/curated graphs where the
+ *   provenance is trusted and re-validation would just burn tokens.
+ */
+export const GraphValidationModeSchema = z.enum(["ai", "trust_provenance"]);
+
 export const GraphRevalidateRequestSchema = z.object({
   label: z.string().min(1).max(200).optional(),
   validation_route_id: z.string().uuid().optional(),
@@ -24,6 +33,7 @@ export const GraphRevalidateRequestSchema = z.object({
   domain_pack_id: z.string().uuid().optional(),
   scope: GraphRevalidateScopeSchema.default("unchecked"),
   mode: GraphRevalidateModeSchema.default("validate"),
+  validation_mode: GraphValidationModeSchema.default("ai"),
   project_id: z.string().uuid().optional(),
   /** Cap on units processed per run (bounded batches for a large backlog). */
   max_units: z.number().int().min(1).max(100_000).optional(),

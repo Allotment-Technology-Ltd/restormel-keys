@@ -446,6 +446,8 @@ export async function runGraphRevalidation(args: {
   repaired: number;
   dropped: number;
   embedded: number;
+  /** Verdicts written this run, tallied in-memory (source of truth for run quality). */
+  validationCounts: { ok: number; weak: number; unsupported: number };
 }> {
   const { job, meta, reporter } = args;
   const autoRemediate = meta.mode === "validate_and_remediate";
@@ -527,7 +529,15 @@ export async function runGraphRevalidation(args: {
     await reporter.skipStage("storing", "Nothing to update");
     const label = autoRemediate ? "Auto-remediation complete — 0 units matched" : "Re-validation complete — 0 units matched";
     await reporter.complete(label, "full");
-    return { validated: 0, units: 0, sources: 0, repaired: 0, dropped: 0, embedded: 0 };
+    return {
+      validated: 0,
+      units: 0,
+      sources: 0,
+      repaired: 0,
+      dropped: 0,
+      embedded: 0,
+      validationCounts: { ok: 0, weak: 0, unsupported: 0 },
+    };
   }
 
   const validationGenerate: ExtractionGenerate = buildValidationStageGenerate(
@@ -543,6 +553,7 @@ export async function runGraphRevalidation(args: {
     : null;
 
   let validated = 0;
+  const valCounts = { ok: 0, weak: 0, unsupported: 0 };
   let repaired = 0;
   let dropped = 0;
   let embedded = 0;
@@ -559,6 +570,8 @@ export async function runGraphRevalidation(args: {
   );
   await reporter.setGraphRepair({ phase: "validating" });
 
+  const trustProvenance = meta.validation_mode === "trust_provenance";
+
   for (const group of groups) {
     sourceIndex += 1;
     const sourceLabel = group.title ?? group.sourceKey;
@@ -568,6 +581,34 @@ export async function runGraphRevalidation(args: {
       1,
       { sources_done: sourceIndex, phase: "validating" },
     );
+
+    // Trust-provenance mode: no LLM, no source-text fetch. Ideas that are already
+    // linked to a real source (graph-native provenance) are accepted as supported;
+    // ideas with no source edge can't be trusted and are left unchecked.
+    if (trustProvenance) {
+      if (group.sourceKey === "__unknown__") {
+        skippedUnits += group.units.length;
+        unitsDone += group.units.length;
+        const gr = reporter.getGraphRepair();
+        await reporter.setGraphRepair({
+          units_processed: unitsDone,
+          sources_done: sourceIndex,
+          skipped_no_source: (gr?.skipped_no_source ?? 0) + group.units.length,
+        });
+        continue;
+      }
+      validated += await writer.setValidation(
+        group.units.map((u) => ({
+          unitId: u.id,
+          status: "ok" as const,
+          note: "Accepted — graph-native provenance (trusted without AI check)",
+        })),
+      );
+      valCounts.ok += group.units.length;
+      unitsDone += group.units.length;
+      await reporter.setGraphRepair({ units_processed: unitsDone, sources_done: sourceIndex });
+      continue;
+    }
 
     const surrealHints =
       surrealStore && pack
@@ -648,6 +689,11 @@ export async function runGraphRevalidation(args: {
     validated += await writer.setValidation(
       results.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
     );
+    for (const r of results) {
+      if (r.status === "ok") valCounts.ok += 1;
+      else if (r.status === "weak") valCounts.weak += 1;
+      else if (r.status === "unsupported") valCounts.unsupported += 1;
+    }
 
     if (autoRemediate && remediationGenerate) {
       const pass = await runGraphRemediationPass({
@@ -754,9 +800,32 @@ export async function runGraphRevalidation(args: {
     );
   }
 
+  // The run changed validation_status on the store — force-recompute the stats
+  // cache so the graph breakdown reflects the new verdicts immediately. Without
+  // this the cache stays "authoritative" for its TTL and the breakdown keeps
+  // showing the stale pre-run counts (the recurring "0 supported" symptom).
+  if (validated > 0) {
+    try {
+      const { resolveConnectGraphStats } = await import(
+        "$lib/server/connect/graph-explorer-service"
+      );
+      await resolveConnectGraphStats(job.workspaceId, { forceRefresh: true });
+    } catch {
+      // Best-effort; the cache refreshes on its own TTL otherwise.
+    }
+  }
+
   await reporter.complete(summary, "full");
 
-  return { validated, units: unitCount, sources: groups.length, repaired, dropped, embedded };
+  return {
+    validated,
+    units: unitCount,
+    sources: groups.length,
+    repaired,
+    dropped,
+    embedded,
+    validationCounts: valCounts,
+  };
 }
 
 /**

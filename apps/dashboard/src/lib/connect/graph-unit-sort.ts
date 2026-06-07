@@ -5,11 +5,13 @@ import {
 
 function reviewPriority(status: string | null | undefined): number {
   const s = normalizeValidationStatus(status);
+  // Validated ideas surface first (problems before supported), unchecked last —
+  // so a just-completed validation run is visible without hunting through the backlog.
   if (s === "unsupported") return 0;
   if (s === "weak") return 1;
-  if (isUncheckedValidationStatus(status)) return 2;
-  if (s === "ok") return 3;
-  return 2;
+  if (s === "ok") return 2;
+  if (isUncheckedValidationStatus(status)) return 3;
+  return 3;
 }
 
 export type GraphUnitSortable = {

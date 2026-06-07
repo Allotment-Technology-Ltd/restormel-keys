@@ -93,14 +93,13 @@ export async function loadSurrealProvenanceAggregateCounts(
   store: GraphStore,
   unitTable: string,
 ): Promise<SurrealProvenanceAggregateCounts> {
-  const [totalUnits, unlinkedPrimary, legacyPrimary, graphLinkedPrimary] = await Promise.all([
+  // Only cheap field-presence aggregates. Counting legacy placeholders needs
+  // `source.source_kind` — a per-row dereference of the linked source record that
+  // does ~N sub-fetches and times out on large (30k+) graphs. We omit it from the
+  // hot audit path; linking/validation still surface placeholder issues downstream.
+  const [totalUnits, unlinkedPrimary, graphLinkedPrimary] = await Promise.all([
     surrealTableCount(store, unitTable),
     surrealCountWhere(store, unitTable, "source IS NONE"),
-    surrealCountWhere(
-      store,
-      unitTable,
-      "source IS NOT NONE AND source.source_kind = 'legacy'",
-    ),
     surrealCountWhere(store, unitTable, "source IS NOT NONE"),
   ]);
 
@@ -108,28 +107,22 @@ export async function loadSurrealProvenanceAggregateCounts(
     unlinkedPrimary ??
     (await surrealCountWhere(store, unitTable, "source = NONE"));
 
-  const legacyPlaceholder =
-    legacyPrimary ??
-    (await surrealCountWhere(store, unitTable, "source.source_kind = 'legacy'"));
-
   let graphLinked = graphLinkedPrimary;
   if (graphLinked == null) {
     graphLinked = await surrealCountWhere(store, unitTable, "source != NONE");
   }
 
   const total = totalUnits ?? 0;
-  const legacy = legacyPlaceholder ?? 0;
 
   let unlinkedCount = unlinked;
   if (unlinkedCount == null && graphLinked != null && total > 0) {
-    unlinkedCount = Math.max(0, total - graphLinked - legacy);
+    unlinkedCount = Math.max(0, total - graphLinked);
   }
 
-  const aggregatesOk =
-    unlinkedCount != null || legacyPlaceholder != null || graphLinked != null;
+  const aggregatesOk = unlinkedCount != null || graphLinked != null;
 
   const resolvedUnlinked = unlinkedCount ?? 0;
-  const needsEdgeRepair = resolvedUnlinked + legacy;
+  const needsEdgeRepair = resolvedUnlinked;
 
   if (graphLinked == null && total > 0 && aggregatesOk) {
     graphLinked = Math.max(0, total - needsEdgeRepair);
@@ -139,7 +132,7 @@ export async function loadSurrealProvenanceAggregateCounts(
     unitTable,
     totalUnits: total,
     unlinked: resolvedUnlinked,
-    legacyPlaceholder: legacy,
+    legacyPlaceholder: 0,
     graphLinked: graphLinked ?? Math.max(0, total - needsEdgeRepair),
     needsEdgeRepair,
     aggregatesOk,

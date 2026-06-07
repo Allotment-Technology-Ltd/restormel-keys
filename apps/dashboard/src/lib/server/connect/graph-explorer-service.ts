@@ -620,6 +620,37 @@ async function surrealValidationCounts(
   return out;
 }
 
+/**
+ * Recompute ONLY the validation breakdown + triage counts from the live store.
+ * These change on every validate run, so they must not be trapped behind the
+ * structural-stats cache (relations/groups/embedded) and its TTL — otherwise the
+ * breakdown keeps showing stale 0s after a run. Cheap: one GROUP BY + two counts,
+ * no per-row dereference. Best-effort — returns null on any error so callers fall
+ * back to the cached validation mix.
+ */
+export async function refreshSurrealValidationBreakdown(
+  store: GraphStore,
+  unitTable: string,
+  unitFallback: number,
+): Promise<ConnectGraphStatsView["validation"] | null> {
+  try {
+    const [counts, triage] = await Promise.all([
+      surrealValidationCounts(store, unitTable, unitFallback),
+      surrealTriageCounts(store, unitTable),
+    ]);
+    return {
+      ok: counts.ok,
+      weak: counts.weak,
+      unsupported: counts.unsupported,
+      unvalidated: counts.unvalidated,
+      awaiting_triage: triage.awaiting_triage,
+      unsupported_untriaged: triage.unsupported_untriaged,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function loadSurrealGraphStats(
   workspaceId: string,
   pack: ConnectDomainPack,
@@ -1067,11 +1098,26 @@ export async function loadConnectGraphView(
       resolveCachedStatsPackId(workspaceId, target.id).catch(() => null),
       resolveActiveDomainPackForGraph(workspaceId),
     ]);
-    const stats = statsResult?.stats ?? null;
+    let stats = statsResult?.stats ?? null;
     const statsPartial = statsResult?.partial ?? false;
     const pack =
       (statsPackId ? await loadDomainPackById(workspaceId, statsPackId) : null) ?? activePack;
     const graphStore = store ?? (deferUnits ? null : await buildWorkspaceGraphStore(workspaceId));
+
+    // The validation breakdown changes on every validate run; recompute it live and
+    // overlay so the page never serves a stale cached 0/0/0 (structural counts —
+    // relations/groups/embedded — stay cached). Cheap aggregate, best-effort.
+    if (stats && pack) {
+      const vStore = graphStore ?? (await buildWorkspaceGraphStore(workspaceId).catch(() => null));
+      if (vStore) {
+        const freshValidation = await refreshSurrealValidationBreakdown(
+          vStore,
+          tableIdent(pack.graph_schema.unit_table, "unit"),
+          stats.units,
+        );
+        if (freshValidation) stats = { ...stats, validation: freshValidation };
+      }
+    }
 
     if (pack && graphStore && stats) {
       const view = await loadSurrealGraphView(workspaceId, pack, stats, graphStore, {

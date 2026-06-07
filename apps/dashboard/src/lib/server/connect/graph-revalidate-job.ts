@@ -23,6 +23,8 @@ export type GraphRevalidateJobMeta = {
   domain_pack_id?: string | null;
   scope: ConnectGraphRevalidateScope;
   mode: ConnectGraphRevalidateMode;
+  /** "ai" runs the LLM check; "trust_provenance" accepts graph-native ideas with no LLM. */
+  validation_mode?: "ai" | "trust_provenance";
   /** Cap on units processed this run (bounded batch). */
   max_units?: number | null;
   /** Auto-enqueue the next batch until the scope is clear. */
@@ -83,6 +85,7 @@ export function parseGraphRevalidateJobMeta(sources: unknown): GraphRevalidateJo
         : null,
     scope: parseScope(rec.scope),
     mode: parseMode(rec.mode),
+    validation_mode: rec.validation_mode === "trust_provenance" ? "trust_provenance" : "ai",
     max_units:
       typeof rec.max_units === "number" && Number.isFinite(rec.max_units) && rec.max_units > 0
         ? Math.floor(rec.max_units)

@@ -369,6 +369,12 @@ export const ConnectGraphRevalidateRequestSchema = z.object({
   domain_pack_id: z.string().uuid().optional(),
   scope: ConnectGraphRevalidateScopeSchema.default('unchecked'),
   mode: ConnectGraphRevalidateModeSchema.default('validate'),
+  /**
+   * Verdict source: "ai" runs the LLM faithfulness check (default); "trust_provenance"
+   * accepts graph-native ideas (already linked to a source) as supported with no LLM —
+   * for pre-existing/curated graphs where re-validation would only burn tokens.
+   */
+  validation_mode: z.enum(['ai', 'trust_provenance']).default('ai'),
   project_id: z.string().uuid().optional(),
   /**
    * Cap on units processed per run, so a large backlog is cleared in bounded
