@@ -627,13 +627,16 @@ export async function retrieveContext(
 			rejectedClaimsByKey.set(key, candidate);
 		};
 
+		const vectorField = schema.vectorField ?? 'embedding';
+		const embeddingProjection =
+			vectorField === 'embedding' ? 'embedding' : `${vectorField} AS embedding`;
 		const rowProjection = `SELECT
 			id,
 			text,
 			claim_type,
 			domain,
 			confidence,
-			embedding,
+			${embeddingProjection},
 			position_in_source,
 			review_state,
 			verification_state,
@@ -661,7 +664,7 @@ export async function retrieveContext(
 				FROM (
 					SELECT *
 					FROM ${schema.unitTable}
-					WHERE embedding ${op} $query_embedding
+					WHERE ${vectorField} ${op} $query_embedding
 				)
 				${postWhere}
 				LIMIT ${densePool}`;

@@ -95,6 +95,52 @@ export {
 
 export { emptyGraphData, type GraphData } from "./empty-graph.js";
 
+// ── Multi-database GraphStoreAdapter foundation (Build 1C) ──
+export {
+  type GraphStoreAdapter,
+  type GraphStoreAdapterType,
+  type GraphStoreCapabilities,
+  type GraphStoreCredentials,
+  type GraphStoreConnectionConfig,
+  type GraphStoreHealthResult,
+  type SchemaMappings,
+  type GraphNode,
+  type GraphEdge,
+  type ScoredNode,
+  type GraphSubgraph,
+  type GraphPath,
+  type GraphPathStep,
+  type NodeFilter,
+  type ExpansionOptions,
+  type DomainPackSchema,
+  type DiscoveredSchema,
+  type DiscoveredNodeType,
+  type DiscoveredEdgeType,
+  type WorkspaceGraphStats,
+  type VerificationBreakdown,
+  type VerificationState,
+} from "./adapters/GraphStoreAdapter.js";
+
+export {
+  SURREALDB_CAPABILITIES,
+  NEO4J_CAPABILITIES,
+  WEAVIATE_CAPABILITIES,
+} from "./adapters/capabilities.js";
+
+export {
+  SurrealDBAdapter,
+  type SurrealDBAdapterDeps,
+} from "./adapters/surrealdb/SurrealDBAdapter.js";
+
+export {
+  createGraphStoreAdapter,
+  resolveGraphStoreAdapterType,
+  normalizeGraphStoreConfig,
+  GraphStoreAdapterNotImplementedError,
+  DEFAULT_GRAPH_STORE_CONFIG,
+  type AdapterFactoryDeps,
+} from "./adapters/AdapterFactory.js";
+
 export {
   RetrievalOrchestrator,
   type ReasoningMode,

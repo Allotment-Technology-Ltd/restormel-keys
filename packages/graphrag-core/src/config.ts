@@ -192,6 +192,8 @@ export interface SchemaConfig {
   groupTable: string;
   /** Edge linking a passage to the unit it grounds (default `grounded_in`). Opt-in features only. */
   groundedInEdge?: string;
+  /** Field on the unit table holding the embedding vector (default `embedding`). */
+  vectorField?: string;
 }
 
 export interface RetrievalConfig {

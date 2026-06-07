@@ -17,6 +17,13 @@ vi.mock("$lib/server/neon", () => ({
     .mockResolvedValue({ provider: "surreal", status: "ok" }),
 }));
 
+// Simulate a workspace with a domain pack configured (post-1C: no philosophy fallback —
+// an unresolved pack yields HTTP 422 domain_pack_required, so the test must supply a config).
+vi.mock("$lib/server/connect-v1/workspace-retrieval-config", async () => {
+  const { philosophyRetrievalConfig } = await import("@restormel/graphrag-core");
+  return { resolveWorkspaceRetrievalConfig: vi.fn().mockResolvedValue(philosophyRetrievalConfig) };
+});
+
 vi.mock("$lib/server/connect/stage-route-generate", () => ({
   buildGraphRagEmbedder: vi.fn().mockResolvedValue({ embedQuery: async () => [1, 0, 0] }),
 }));

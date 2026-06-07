@@ -160,6 +160,7 @@ export function mapDomainPackToRetrievalConfig(pack: ConnectDomainPack): Retriev
       passageTable: graphSchema.passage_table,
       sourceTable: graphSchema.source_table,
       groupTable: graphSchema.group_table,
+      vectorField: graphSchema.unit_vector_field,
     },
     // Thinker/Wikidata enrichment is philosophy-specific and unused by the orchestrator path.
     entityEnrichment: undefined,

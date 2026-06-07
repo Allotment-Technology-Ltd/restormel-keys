@@ -155,6 +155,17 @@ export async function executeConnectGraphOp(args: {
 
   const deps: GraphRagDeps = { store, embedder, resolveOriginBucket: () => "other" };
   const config = await resolveWorkspaceRetrievalConfig(args.auth.workspaceId);
+  if (!config) {
+    return {
+      ok: false,
+      status: 422,
+      body: {
+        error: "domain_pack_required",
+        message:
+          "This workspace has no domain pack configured. Complete pipeline setup before querying the knowledge graph.",
+      },
+    };
+  }
   const orchestrator = new RetrievalOrchestrator(config, deps);
   const verificationPolicy = mapVerificationPolicy(request.verification_policy);
 
