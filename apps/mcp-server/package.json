@@ -1,0 +1,37 @@
+{
+  "name": "@restormel/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone MCP knowledge server — connects @restormel/graphrag-core directly to a graph store (no hosted REST API).",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "restormel-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@restormel/graphrag-core": "workspace:*",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

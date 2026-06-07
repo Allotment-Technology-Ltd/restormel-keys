@@ -758,8 +758,8 @@
   .quality-metric {
     border: var(--border);
     background: var(--color-surface);
-    box-shadow: var(--shadow-sm);
-    padding: var(--space-3);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-4);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -807,8 +807,11 @@
 
   .run-next-actions-title {
     margin: 0 0 var(--space-3);
-    font-size: var(--text-base);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
     font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
   }
 
   .run-next-list {

@@ -667,8 +667,7 @@
   }
 
   .pulse-stat-num {
-    /* Sized to fit the longest compact value (e.g. 999.9K) without truncation. */
-    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    font-size: var(--text-display-metric);
     font-weight: 900;
     font-family: var(--font-display);
     line-height: var(--text-display-line-height);
@@ -1216,8 +1215,11 @@
   }
 
   .ledger-step-title {
-    font-size: var(--text-sm);
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
     color: var(--color-ink);
   }
 
