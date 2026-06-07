@@ -25,6 +25,10 @@ on:
         description: 'Re-run model catalog JSON seed on production DB (requires DASHBOARD_DATABASE_URL_PROD)'
         type: boolean
         default: false
+      deploy_gateway:
+        description: 'Deploy the Zuplo gateway (gateway-only) to production (requires ZUPLO_API_KEY)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -311,24 +315,30 @@ jobs:
   deploy-zuplo-gateway:
     name: Deploy Zuplo gateway (prod)
     runs-on: ubuntu-latest
-    needs: [changes, test]
-    # Auto-deploy the gateway when its config changes land on main. The dev portal
-    # is retired (docs live in-app via Scalar), so the build is gateway-only — the
+    # Only depends on `changes` — NOT the dashboard `test` job, which is skipped
+    # for gateway-only changes (it's gated on `code` paths). The dev portal is
+    # retired (docs live in-app via Scalar), so the build is gateway-only — the
     # deploy-gateway.mjs wrapper deploys and judges success from the Zuplo API
-    # (the api stage must be `success`; the dev-portal stage is `skipped`). Skips
-    # cleanly until the ZUPLO_API_KEY secret is set.
+    # (api stage must be `success`; dev-portal is `skipped`). This job validates
+    # the spec itself and skips cleanly until the ZUPLO_API_KEY secret is set.
+    # Runs on a gateway change merged to main, or on-demand via workflow_dispatch.
+    needs: [changes]
     if: |
       always() &&
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.changes.result == 'success' &&
-      needs.changes.outputs.zuplo_gateway == 'true' &&
-      needs.test.result == 'success'
+      (
+        (github.event_name == 'push' && needs.changes.outputs.zuplo_gateway == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy_gateway == true)
+      )
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 20
+      - name: Validate gateway OpenAPI (routes.oas.json)
+        working-directory: zuplo-gateway
+        run: node scripts/check-openapi.mjs
       - name: Deploy gateway to Zuplo (main, gateway-only)
         env:
           ZUPLO_API_KEY: ${{ secrets.ZUPLO_API_KEY }}
