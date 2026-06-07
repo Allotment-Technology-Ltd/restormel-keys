@@ -6,7 +6,7 @@
 
 This phase puts Restormel's embeddable components into your app so end-users can select models and (optionally) manage their own provider credentials. By the end, your app shows a ModelSelector filtered by your policies and a KeyManager for BYOK, both wired to your backend.
 
-> **Package availability** — The UI packages (`@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements`) may **not be published to npm yet** and can return **404** from `npm view`. Before installing, verify: `npm view @restormel/keys-svelte version` (and the same for `keys-react`, `keys-elements`). If any return 404, use the **headless path** until they are published: keep `@restormel/keys` only, implement a server-side allowed-models proxy (e.g. `GET /api/allowed-models`) backed by Restormel evaluate, and use your own model picker UI. See [npm packages](../reference/npm-packages.md) for verify-before-install and 404 handling.
+> **Keys MVP (2026-06) — canonical UI path:** Use **`@restormel/keys-elements`** (Web Components: `<rk-model-selector>`, `<rk-key-manager>`, `<rk-cost-estimator>`) for all frameworks. `@restormel/keys-svelte` and `@restormel/keys-react` are deprecated (maintenance-only until 2026-12-01) — do not start new integrations on those packages. The in-app walkthrough at [/keys/docs/walkthrough/phase-5-ui](https://restormel.dev/keys/docs/walkthrough/phase-5-ui) is the canonical public version. Verify before installing: `npm view @restormel/keys-elements version`. See [npm packages](../reference/npm-packages.md).
 
 ---
 
@@ -25,35 +25,73 @@ Most apps that reached this phase want **ModelSelector**. **KeyManager** is for 
 
 ---
 
-## Step 5.2 — Embed ModelSelector (Next.js / React)
+## Step 5.2 — Embed ModelSelector (Web Components — all frameworks)
 
-**`app/settings/page.tsx`** (server component):
+`@restormel/keys-elements` is the canonical UI package for all frameworks. Install it:
 
-```tsx
-// app/settings/page.tsx
-import { KeysProvider } from '@restormel/keys-react';
-import { openaiProvider, anthropicProvider, googleProvider } from '@restormel/keys';
-import { ModelSelectorClient } from './ModelSelectorClient';
-
-export default function SettingsPage() {
-  const config = { keys: [], routing: { defaultProvider: 'openai' } };
-  const options = { providers: [openaiProvider, anthropicProvider, googleProvider] };
-
-  return (
-    <KeysProvider config={config} options={options}>
-      <h1>Model settings</h1>
-      <ModelSelectorClient />
-    </KeysProvider>
-  );
-}
+```bash
+pnpm add @restormel/keys-elements
 ```
 
-**`app/settings/ModelSelectorClient.tsx`** (client component):
+**HTML / Astro / Vanilla:**
+
+```html
+<script type="module">
+  import '@restormel/keys-elements';
+  const el = document.querySelector('rk-model-selector');
+  // Wire allowed models from your server-side allowed-models endpoint
+  fetch('/api/allowed-models').then(r => r.json()).then(({ models }) => {
+    el.models = models;
+  });
+  el.addEventListener('rk-model-selected', (e) => {
+    const { modelId, providerId } = e.detail;
+    fetch('/api/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelId, providerId }),
+    });
+  });
+</script>
+
+<rk-model-selector></rk-model-selector>
+```
+
+**React (Next.js) — using Web Components:**
+
+> The `@restormel/keys-react` wrapper is deprecated. Use `@restormel/keys-elements` via a dynamic import so the custom element registers in the browser only:
 
 ```tsx
 // app/settings/ModelSelectorClient.tsx
 'use client';
 
+import { useEffect, useRef } from 'react';
+
+export function ModelSelectorClient() {
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    import('@restormel/keys-elements');
+    fetch('/api/allowed-models').then(r => r.json()).then(({ models }) => {
+      if (ref.current) (ref.current as any).models = models;
+    });
+    ref.current?.addEventListener('rk-model-selected', (e: any) => {
+      const { modelId, providerId } = e.detail;
+      fetch('/api/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId, providerId }),
+      });
+    });
+  }, []);
+
+  return <rk-model-selector ref={ref} />;
+}
+```
+
+**OLD deprecated React import (do not use for new integrations):**
+
+```tsx
+// ❌ Deprecated — do not use for new integrations
 import { ModelSelector, useKeysContext } from '@restormel/keys-react';
 import { openaiProvider, anthropicProvider, googleProvider } from '@restormel/keys';
 
@@ -103,78 +141,76 @@ A model selection UI grouped by provider. Each model shows its availability base
 
 ## Step 5.3 — Embed ModelSelector (SvelteKit)
 
+> `@restormel/keys-svelte` is deprecated. Use `@restormel/keys-elements` (Web Components):
+
 ```svelte
 <!-- src/routes/settings/+page.svelte -->
 <script lang="ts">
-  import { ModelSelector } from '@restormel/keys-svelte';
-  import { createKeys, openaiProvider, anthropicProvider, googleProvider } from '@restormel/keys';
+  import { onMount } from 'svelte';
+  let el: HTMLElement;
 
-  const keys = createKeys(
-    { keys: [], routing: { defaultProvider: 'openai' } },
-    { providers: [openaiProvider, anthropicProvider, googleProvider] }
-  );
-
-  const providers = [openaiProvider, anthropicProvider, googleProvider];
-
-  function handleSelect(modelId: string, providerId: string) {
-    // Example: save to backend; request-scoped selection is equally valid
-    fetch('/api/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId, providerId }),
-    });
-  }
-</script>
-
-<h1>Model settings</h1>
-<ModelSelector {keys} {providers} onSelect={handleSelect} />
-```
-
-### You'll see
-
-The same model selection UI as the React version, rendered natively in Svelte.
-
-### How to test
-
-Same as Step 5.2: navigate to the settings page, confirm rendering, click a model, verify the callback.
-
----
-
-## Step 5.4 — Embed ModelSelector (Web Components / vanilla)
-
-For frameworks not covered by the React or Svelte wrappers, use the Web Components directly:
-
-```html
-<!-- In your HTML or template -->
-<script type="module">
-  import '@restormel/keys-elements';
-  import { createKeys, openaiProvider, anthropicProvider, googleProvider } from '@restormel/keys';
-
-  const keys = createKeys(
-    { keys: [], routing: { defaultProvider: 'openai' } },
-    { providers: [openaiProvider, anthropicProvider, googleProvider] }
-  );
-
-  const el = document.querySelector('rk-model-selector');
-  el.keys = keys;
-  el.providers = [openaiProvider, anthropicProvider, googleProvider];
-
-  el.addEventListener('rk-model-selected', (e) => {
-    const { modelId, providerId } = e.detail;
-    // Example: persist preference; request-scoped selection is equally valid
-    fetch('/api/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId, providerId }),
+  onMount(async () => {
+    await import('@restormel/keys-elements');
+    const { models } = await fetch('/api/allowed-models').then(r => r.json());
+    (el as any).models = models;
+    el.addEventListener('rk-model-selected', (e: any) => {
+      const { modelId, providerId } = e.detail;
+      fetch('/api/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId, providerId }),
+      });
     });
   });
 </script>
 
-<rk-model-selector></rk-model-selector>
+<h1>Model settings</h1>
+<rk-model-selector bind:this={el}></rk-model-selector>
+```
+
+### You'll see
+
+A model selection UI with policy-filtered models. Users click a model to trigger `rk-model-selected`.
+
+### How to test
+
+Navigate to the settings page, confirm rendering, click a model, verify the callback fires.
+
+---
+
+## Step 5.4 — Wire allowed models from the server
+
+For all framework paths, the model list shown to users should come from your **server-side allowed-models endpoint**, not hardcoded provider lists. This keeps the Gateway Key server-side:
+
+```typescript
+// Example: GET /api/allowed-models (server endpoint)
+// Calls Restormel policy evaluate with your Gateway Key
+export async function GET({ locals }) {
+  const res = await fetch(`${RESTORMEL_KEYS_BASE}/keys/v1/policies/evaluate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESTORMEL_GATEWAY_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ projectId: RESTORMEL_PROJECT_ID, workload: 'chat' }),
+  });
+  const { allowedModels } = await res.json();
+  return new Response(JSON.stringify({ models: allowedModels }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+```
+
+Pass the result to your `<rk-model-selector>`:
+
+```js
+fetch('/api/allowed-models').then(r => r.json()).then(({ models }) => {
+  document.querySelector('rk-model-selector').models = models;
+});
 ```
 
 > **Pitfall**
-> Web Components require setting object props (`keys`, `providers`) via JavaScript properties, not HTML attributes. HTML attributes only work for primitives like `user-id`. See [Framework compatibility](/keys/docs/compatibility) for the full list.
+> Web Components require setting object props (`models`) via JavaScript properties, not HTML attributes. HTML attributes only work for primitives. See [Framework compatibility](/keys/docs/compatibility) for the full list.
 
 ### You'll see
 
@@ -229,67 +265,30 @@ Add a `model_allowlist` policy that excludes one model (e.g. block `gpt-3.5-turb
 
 If your app lets end-users bring their own API keys, embed the KeyManager component. It provides a settings panel for users to add, validate, list, and remove their provider credentials. **KeyManager sits on top of your own storage and validation endpoints** — you implement and own `POST /api/keys`, `DELETE /api/keys/:id`, and any server-side validation; KeyManager is the UI layer that calls them via `onKeyAdded` and `onKeyRemoved`.
 
-**Next.js / React:**
+**All frameworks — Web Components (`@restormel/keys-elements`):**
 
-```tsx
-// app/settings/KeyManagerClient.tsx
-'use client';
-
-import { KeyManager, useKeysContext } from '@restormel/keys-react';
-import { openaiProvider, anthropicProvider } from '@restormel/keys';
-
-export function KeyManagerClient({ userId }: { userId: string }) {
-  const { keys } = useKeysContext();
-
-  return (
-    <KeyManager
-      keys={keys}
-      userId={userId}
-      providers={[openaiProvider, anthropicProvider]}
-      onKeyAdded={(key, apiKey) => {
-        // Persist to your backend
-        fetch('/api/keys', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: key.provider, label: key.label }),
-        });
-      }}
-      onKeyRemoved={(keyId) => {
-        fetch(`/api/keys/${keyId}`, { method: 'DELETE' });
-      }}
-    />
-  );
-}
-```
-
-**SvelteKit:**
-
-```svelte
-<script lang="ts">
-  import { KeyManager } from '@restormel/keys-svelte';
-  // ... keys instance and providers setup as in Step 5.3
-
-  function handleKeyAdded(key, apiKey) {
+```html
+<script type="module">
+  import '@restormel/keys-elements';
+  const el = document.querySelector('rk-key-manager');
+  el.providers = ['openai', 'anthropic'];
+  el.addEventListener('rk-key-added', (e) => {
+    const { provider, label, apiKey } = e.detail;
     fetch('/api/keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: key.provider, label: key.label }),
+      body: JSON.stringify({ provider, label }),
     });
-  }
-
-  function handleKeyRemoved(keyId) {
-    fetch(`/api/keys/${keyId}`, { method: 'DELETE' });
-  }
+  });
+  el.addEventListener('rk-key-removed', (e) => {
+    fetch(`/api/keys/${e.detail.keyId}`, { method: 'DELETE' });
+  });
 </script>
 
-<KeyManager
-  {keys}
-  userId={$page.data.userId}
-  providers={[openaiProvider, anthropicProvider]}
-  onKeyAdded={handleKeyAdded}
-  onKeyRemoved={handleKeyRemoved}
-/>
+<rk-key-manager></rk-key-manager>
 ```
+
+> **Deprecated examples:** `@restormel/keys-react` and `@restormel/keys-svelte` KeyManager wrappers are deprecated. Use `<rk-key-manager>` from `@restormel/keys-elements` for all frameworks.
 
 > **Security**
 > The KeyManager validates keys client-side by making a lightweight test call to the provider. Raw key material is never sent to Restormel. Your backend should store only hashed keys and metadata (provider, label, key prefix). Use a secure server-side storage adapter; never log or expose raw keys.
@@ -366,8 +365,8 @@ Change a token (e.g. `--rk-accent`) to something visually distinct (hot pink). C
 >
 > 1. Read the routing inventory (`docs/restormel-integration/00-routing-inventory.md`) to find the **existing model picker and/or BYOK UI**. **Replace** that UI with the packaged components (do not leave the old picker in place).
 > 2. Based on your framework:
->    - **Next.js/React:** Create a client component wrapping `ModelSelector` from `@restormel/keys-react` inside a `KeysProvider`. Use `next/dynamic` with `ssr: false` for the client component. See `packages/react/README.md` for the exact pattern.
->    - **SvelteKit:** Import `ModelSelector` from `@restormel/keys-svelte` directly. Create the `keys` instance with `createKeys`.
+>    - **All frameworks:** Use `@restormel/keys-elements` (`<rk-model-selector>`). Import the package dynamically in browser context. Wire `rk-model-selected` event to call your preferences API.
+>    - Do NOT use `@restormel/keys-react` or `@restormel/keys-svelte` for new integrations (deprecated).
 >    - **Web Components:** Import `@restormel/keys-elements`, set `keys` and `providers` as properties on the `<rk-model-selector>` element.
 > 3. Wire `onSelect` (or `rk-model-selected`) to your backend. Either **request-scoped** (pass modelId/providerId per request; no preferences endpoint) or **persisted** (e.g. `POST /api/preferences`); both are valid — choose per product.
 > 4. If BYOK is needed: embed `KeyManager` with `onKeyAdded` and `onKeyRemoved` wired to your key API. Use server-side validation (no raw provider calls from browser). See `docs/reference/sophia-integration.md` KeyStorage pattern.
