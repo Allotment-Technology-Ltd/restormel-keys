@@ -71,7 +71,7 @@
       <p class="lib-kicker">Connect · readiness library</p>
       <h3 class="lib-title">Readiness runs</h3>
       <p class="lib-lede">
-        Take a cohort — the next N unlinked ideas — through link → embed → validate as one
+        Take a cohort — the next N unchecked ideas — through link → embed → validate as one
         named pass. Spot-check quality before committing the whole backlog.
       </p>
     </div>

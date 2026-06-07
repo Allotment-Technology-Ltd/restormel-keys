@@ -13,6 +13,7 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: "00000000-0000-4000-8000-000000000001",
       scope: "unchecked",
       mode: "validate",
+      validation_mode: "ai",
     });
     expect(parseGraphRevalidateJobMeta(sources)).toEqual({
       kind: "graph_revalidate",
@@ -21,6 +22,7 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: "00000000-0000-4000-8000-000000000001",
       scope: "unchecked",
       mode: "validate",
+      validation_mode: "ai",
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -35,6 +37,7 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: null,
       scope: "quarantine",
       mode: "validate_and_remediate",
+      validation_mode: "ai",
     });
     expect(parseGraphRevalidateJobMeta(sources)).toEqual({
       kind: "graph_revalidate",
@@ -43,6 +46,7 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: null,
       scope: "quarantine",
       mode: "validate_and_remediate",
+      validation_mode: "ai",
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -66,6 +70,7 @@ describe("graph-revalidate-job", () => {
       domain_pack_id: null,
       scope: "unchecked",
       mode: "validate",
+      validation_mode: "ai",
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -77,6 +82,7 @@ describe("graph-revalidate-job", () => {
       kind: "graph_revalidate",
       scope: "unchecked",
       mode: "validate",
+      validation_mode: "ai",
       max_units: 2000,
       continue_in_background: true,
     });
@@ -90,9 +96,27 @@ describe("graph-revalidate-job", () => {
       kind: "graph_revalidate",
       scope: "linked",
       mode: "validate",
+      validation_mode: "ai",
       cohort_run_id: "run-abc-123",
     });
     const meta = parseGraphRevalidateJobMeta(sources);
     expect(meta?.cohort_run_id).toBe("run-abc-123");
+  });
+
+  it("round-trips trust-provenance validation mode", () => {
+    const sources = buildGraphRevalidateJobSources({
+      kind: "graph_revalidate",
+      scope: "unchecked",
+      mode: "validate",
+      validation_mode: "trust_provenance",
+    });
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.validation_mode).toBe("trust_provenance");
+  });
+
+  it("defaults validation mode to ai when omitted", () => {
+    const sources = [{ _connect_job: { kind: "graph_revalidate", scope: "unchecked" } }];
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.validation_mode).toBe("ai");
   });
 });

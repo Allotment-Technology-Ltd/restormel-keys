@@ -78,13 +78,17 @@ export function surrealExplorerUnitsQuery(
   start: number,
   variant: SurrealExplorerQueryVariant,
 ): string {
+  // Validated ideas first: a real verdict (ok/weak/unsupported) sorts ahead of
+  // NONE/unchecked under DESC, so the first page surfaces freshly-validated ideas
+  // instead of burying them in raw store order. Also makes START paging stable.
+  const order = " ORDER BY validation_status DESC";
   if (variant === "star") {
-    return `SELECT * FROM ${unitTable} LIMIT ${limit} START ${start};`;
+    return `SELECT * FROM ${unitTable}${order} LIMIT ${limit} START ${start};`;
   }
   if (variant === "enriched") {
-    return `SELECT id, text, validation_status, validation_note, source.title AS source_title, source.url AS source_url, source FROM ${unitTable} FETCH source LIMIT ${limit} START ${start};`;
+    return `SELECT id, text, validation_status, validation_note, source.title AS source_title, source.url AS source_url, source FROM ${unitTable}${order} FETCH source LIMIT ${limit} START ${start};`;
   }
-  return `SELECT id, text, validation_status, source FROM ${unitTable} LIMIT ${limit} START ${start};`;
+  return `SELECT id, text, validation_status, source FROM ${unitTable}${order} LIMIT ${limit} START ${start};`;
 }
 
 export function surrealRevalidateUnitsQuery(

@@ -559,6 +559,8 @@ export async function runGraphRevalidation(args: {
   );
   await reporter.setGraphRepair({ phase: "validating" });
 
+  const trustProvenance = meta.validation_mode === "trust_provenance";
+
   for (const group of groups) {
     sourceIndex += 1;
     const sourceLabel = group.title ?? group.sourceKey;
@@ -568,6 +570,33 @@ export async function runGraphRevalidation(args: {
       1,
       { sources_done: sourceIndex, phase: "validating" },
     );
+
+    // Trust-provenance mode: no LLM, no source-text fetch. Ideas that are already
+    // linked to a real source (graph-native provenance) are accepted as supported;
+    // ideas with no source edge can't be trusted and are left unchecked.
+    if (trustProvenance) {
+      if (group.sourceKey === "__unknown__") {
+        skippedUnits += group.units.length;
+        unitsDone += group.units.length;
+        const gr = reporter.getGraphRepair();
+        await reporter.setGraphRepair({
+          units_processed: unitsDone,
+          sources_done: sourceIndex,
+          skipped_no_source: (gr?.skipped_no_source ?? 0) + group.units.length,
+        });
+        continue;
+      }
+      validated += await writer.setValidation(
+        group.units.map((u) => ({
+          unitId: u.id,
+          status: "ok" as const,
+          note: "Accepted — graph-native provenance (trusted without AI check)",
+        })),
+      );
+      unitsDone += group.units.length;
+      await reporter.setGraphRepair({ units_processed: unitsDone, sources_done: sourceIndex });
+      continue;
+    }
 
     const surrealHints =
       surrealStore && pack

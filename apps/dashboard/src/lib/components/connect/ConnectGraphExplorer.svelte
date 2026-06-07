@@ -217,6 +217,9 @@
   let batchSize = 2000;
   let continueInBackground = true;
   let validateScope: "unchecked" | "linked" = "unchecked";
+  // Pre-existing BYO (Surreal) graphs default to the free, no-LLM trust path.
+  let validateMode: "ai" | "trust_provenance" =
+    graph?.store === "surreal" ? "trust_provenance" : "ai";
   let linkSourcesOptions: {
     enabled: boolean;
     unitsNeedingLink: number;
@@ -1330,7 +1333,7 @@
       submitReview(unit, status);
       exitingUnitId = null;
       if (nextId) selectedId = nextId;
-    }, 150);
+    }, 250);
   }
 
   function submitReview(unit: Unit, status: "ok" | "weak" | "unsupported") {
@@ -1406,7 +1409,7 @@
           revertRemoveOptimistic(snapshot);
           actionError = "Network error while removing this idea.";
         });
-    }, 150);
+    }, 250);
   }
 
   async function startSourceLinking() {
@@ -1721,11 +1724,15 @@
           // and the cohort_run_id filter narrows to just that cohort.
           scope: activeRunId ? "unchecked" : validateScope,
           mode: "validate",
+          validation_mode: validateMode,
           ...(batchSize > 0 ? { max_units: batchSize } : {}),
           ...(!activeRunId && validateScope === "unchecked"
             ? { continue_in_background: continueInBackground }
             : {}),
-          ...(revalidateRouteId ? { validation_route_id: revalidateRouteId } : {}),
+          // Trust mode uses no LLM, so a validation route is irrelevant.
+          ...(validateMode === "ai" && revalidateRouteId
+            ? { validation_route_id: revalidateRouteId }
+            : {}),
           ...(graph.domainPackId ? { domain_pack_id: graph.domainPackId } : {}),
           ...(activeRunId ? { cohort_run_id: activeRunId } : {}),
         }),
@@ -2729,7 +2736,7 @@
             on:create={(e) => createReadinessRun(e.detail.size)}
             on:archive={(e) => archiveReadinessRun(e.detail.runId)}
           />
-          {#if activeRun}
+          {#if activeRun && activeRun.status !== "complete"}
             <p class="readiness-active-run brut-muted" role="status">
               Wizard scoped to <strong>{activeRun.label}</strong> ({(activeRun.sizeActual ?? activeRun.sizeTarget).toLocaleString()}
               ideas). Link, embed, and validate below apply only to this cohort.
@@ -2738,6 +2745,47 @@
               </button>
             </p>
           {/if}
+          {#if activeRun && activeRun.status === "complete"}
+            {@const q = activeRun.qualitySummary}
+            <div class="revalidate-panel cohort-complete-panel">
+              <p class="cohort-complete-kicker">Readiness run complete</p>
+              <h3 class="cohort-complete-title">{activeRun.label} ✓</h3>
+              {#if (activeRun.sizeActual ?? 0) === 0}
+                <p class="cohort-complete-lede">
+                  This run has no ideas — it was created before a cohort could be formed. Archive it
+                  and start a new run.
+                </p>
+              {:else}
+                <p class="cohort-complete-lede">
+                  {(activeRun.sizeActual ?? activeRun.sizeTarget).toLocaleString()} ideas taken through the journey.
+                  {#if q}
+                    <strong>{q.ok.toLocaleString()}</strong> supported,
+                    <strong>{q.weak.toLocaleString()}</strong> weak,
+                    <strong>{q.unsupported.toLocaleString()}</strong> unsupported{#if q.okPct != null} ({q.okPct}% supported){/if}.
+                  {:else}
+                    Open <strong>Triage ideas</strong> to review the results.
+                  {/if}
+                </p>
+              {/if}
+              <div class="cohort-complete-actions">
+                <button
+                  type="button"
+                  class="brutal-btn brutal-btn-primary brut-pressable brut-focus"
+                  disabled={creatingRun}
+                  on:click={() => createReadinessRun(activeRun?.sizeTarget ?? 100)}
+                >
+                  {creatingRun ? "Creating…" : `Start next run · next ${(activeRun.sizeTarget ?? 100).toLocaleString()} ideas`}
+                </button>
+                <button
+                  type="button"
+                  class="brutal-btn brutal-btn-outline brut-pressable brut-focus"
+                  on:click={() => { activeRunId = null; }}
+                >
+                  Switch to whole workspace
+                </button>
+              </div>
+            </div>
+          {:else}
           <div class="revalidate-panel" id="graph-readiness-wizard" bind:this={graphReadinessWizardEl}>
             <ConnectGraphReadinessWizard
               graphStore={graph.store ?? "none"}
@@ -2749,6 +2797,10 @@
               bind:batchSize
               bind:continueInBackground
               bind:validateScope
+              bind:validateMode
+              cohortContext={activeRun
+                ? { label: activeRun.label, size: activeRun.sizeActual ?? activeRun.sizeTarget }
+                : null}
               bind:revalidateRouteId
               {packMappingTitle}
               {packMappingEditable}
@@ -2801,6 +2853,7 @@
               on:validate={startBatchValidation}
             />
           </div>
+          {/if}
         {/if}
 
         {#if revalidateOptionsLoading && workspaceMode === "tools"}
@@ -3577,6 +3630,45 @@
   .readiness-active-clear:focus-visible {
     background: var(--brut-neon, #e8ff47);
     outline: none;
+  }
+
+  .cohort-complete-panel {
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: color-mix(in oklab, var(--brut-neon, #e8ff47) 20%, var(--brut-white));
+    box-shadow: var(--brut-shadow-sm);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .cohort-complete-kicker {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  }
+
+  .cohort-complete-title {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: var(--text-display-tracking);
+  }
+
+  .cohort-complete-lede {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    max-width: 60ch;
+  }
+
+  .cohort-complete-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   .readiness-blocker-list {

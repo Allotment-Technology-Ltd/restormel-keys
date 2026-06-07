@@ -78,10 +78,68 @@ export async function markReadinessRunPhase(params: {
   }).catch(() => null);
 }
 
+/** Tally raw validation_status values into a cohort quality summary. */
+function summariseValidationCounts(counts: {
+  ok: number;
+  weak: number;
+  unsupported: number;
+  unvalidated: number;
+}): ReadinessRunQualitySummary {
+  const { ok, weak, unsupported, unvalidated } = counts;
+  const total = ok + weak + unsupported + unvalidated;
+  return {
+    ok,
+    weak,
+    unsupported,
+    unvalidated,
+    ...(total > 0 ? { okPct: Math.round((ok / total) * 100) } : {}),
+  };
+}
+
+function classifyValidationStatus(raw: unknown): "ok" | "weak" | "unsupported" | "unvalidated" {
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (s === "ok") return "ok";
+  if (s === "weak") return "weak";
+  if (s === "unsupported") return "unsupported";
+  return "unvalidated";
+}
+
 /**
- * Best-effort cohort validation breakdown for the run's quality summary.
- * Postgres only (plain unit ids); returns null for Surreal / on any error, in
- * which case the run still completes without a stored quality summary.
+ * Surreal cohort breakdown. Fetches the cohort's records directly by id
+ * (`SELECT … FROM <rec>, <rec>, …`) so it never scans the whole graph. Only
+ * well-formed `table:id` refs are queried (best-effort — exotic ids are skipped).
+ */
+async function rollupSurrealCohortQuality(
+  workspaceId: string,
+  unitIds: string[],
+): Promise<ReadinessRunQualitySummary | null> {
+  const { buildWorkspaceGraphStore } = await import("$lib/server/connect/surreal-graph-store");
+  const store = await buildWorkspaceGraphStore(workspaceId);
+  if (!store) return null;
+  const SAFE_RECORD_ID = /^[A-Za-z_][A-Za-z0-9_]*:[A-Za-z0-9_:-]+$/;
+  const safe = unitIds.filter((id) => SAFE_RECORD_ID.test(id));
+  if (safe.length === 0) return null;
+
+  const counts = { ok: 0, weak: 0, unsupported: 0, unvalidated: 0 };
+  const CHUNK = 200;
+  let sawAny = false;
+  for (let i = 0; i < safe.length; i += CHUNK) {
+    const fromList = safe.slice(i, i + CHUNK).join(", ");
+    const rows = await store.query<Record<string, unknown>[]>(
+      `SELECT validation_status FROM ${fromList};`,
+    );
+    for (const row of Array.isArray(rows) ? rows : []) {
+      sawAny = true;
+      counts[classifyValidationStatus((row as Record<string, unknown>).validation_status)] += 1;
+    }
+  }
+  return sawAny ? summariseValidationCounts(counts) : null;
+}
+
+/**
+ * Best-effort cohort validation breakdown for the run's quality summary. Works
+ * for both Postgres (grouped count) and Surreal (targeted record fetch). Returns
+ * null on any error, in which case the run still completes without a summary.
  */
 export async function rollupReadinessRunQuality(params: {
   runId: string;
@@ -90,6 +148,13 @@ export async function rollupReadinessRunQuality(params: {
   try {
     const unitIds = await listReadinessRunUnitIds(params.runId);
     if (unitIds.length === 0) return null;
+
+    const { getConnectGraphTargetForWorkspace } = await import("$lib/server/neon");
+    const target = await getConnectGraphTargetForWorkspace(params.workspaceId).catch(() => null);
+    if (target?.provider === "surreal") {
+      return await rollupSurrealCohortQuality(params.workspaceId, unitIds);
+    }
+
     const { getSql, ensureIngestionRoutingSchema } = await import("$lib/server/neon");
     await ensureIngestionRoutingSchema();
     const sql = getSql();
@@ -102,26 +167,11 @@ export async function rollupReadinessRunQuality(params: {
     `) as { validation_status: string | null; n: number }[];
     if (rows.length === 0) return null;
 
-    let ok = 0;
-    let weak = 0;
-    let unsupported = 0;
-    let unvalidated = 0;
+    const counts = { ok: 0, weak: 0, unsupported: 0, unvalidated: 0 };
     for (const row of rows) {
-      const s = (row.validation_status ?? "").trim().toLowerCase();
-      if (s === "ok") ok += row.n;
-      else if (s === "weak") weak += row.n;
-      else if (s === "unsupported") unsupported += row.n;
-      else unvalidated += row.n;
+      counts[classifyValidationStatus(row.validation_status)] += row.n;
     }
-    const checked = ok + weak + unsupported;
-    const total = checked + unvalidated;
-    return {
-      ok,
-      weak,
-      unsupported,
-      unvalidated,
-      ...(total > 0 ? { okPct: Math.round((ok / total) * 100) } : {}),
-    };
+    return summariseValidationCounts(counts);
   } catch {
     return null;
   }

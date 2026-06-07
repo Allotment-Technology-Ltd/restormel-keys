@@ -105,6 +105,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       domain_pack_id: domainPackId,
       scope: parsed.data.scope,
       mode: parsed.data.mode,
+      validation_mode: parsed.data.validation_mode,
       max_units: parsed.data.max_units ?? null,
       continue_in_background: parsed.data.continue_in_background ?? false,
       cohort_run_id: parsed.data.cohort_run_id ?? null,
