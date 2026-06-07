@@ -108,7 +108,7 @@ describe("GET /api/catalog", () => {
     const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.contractVersion).toBe("2026-03-26.catalog.v6");
+    expect(body.contract_version).toBe("2026-03-26.catalog.v6");
     expect(body.compatibility).toMatchObject({
       minCliVersion: "0.1.4",
       minCoreDashboardVersion: "0.2.7",

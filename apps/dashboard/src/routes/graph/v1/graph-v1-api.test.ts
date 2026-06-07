@@ -3,31 +3,49 @@
  */
 import { describe, it, expect } from "vitest";
 
+const layoutBody = JSON.stringify({
+  snapshot: {
+    nodes: [
+      { id: "a", type: "source", label: "A" },
+      { id: "b", type: "claim", label: "B" },
+    ],
+    edges: [{ from: "a", to: "b", type: "contains" }],
+  },
+  width: 800,
+  height: 600,
+});
+
 describe("POST /graph/v1/layout", () => {
-  it("returns layout JSON for valid snapshot", async () => {
+  it("returns layout JSON for valid snapshot when authenticated", async () => {
     const { POST } = await import("./layout/+server");
     const res = await POST({
       request: new Request("http://localhost", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          snapshot: {
-            nodes: [
-              { id: "a", type: "source", label: "A" },
-              { id: "b", type: "claim", label: "B" },
-            ],
-            edges: [{ from: "a", to: "b", type: "contains" }],
-          },
-          width: 800,
-          height: 600,
-        }),
+        body: layoutBody,
       }),
+      // I4: layout now requires auth (gateway key / management key / session).
+      locals: { user: { uid: "u1", authType: "session" } },
     } as unknown as Parameters<typeof POST>[0]);
 
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.layout.positions.a).toBeDefined();
     expect(data.layout.positions.b).toBeDefined();
+  });
+
+  it("rejects unauthenticated requests with 401 (I4)", async () => {
+    const { POST } = await import("./layout/+server");
+    const res = await POST({
+      request: new Request("http://localhost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: layoutBody,
+      }),
+      locals: {},
+    } as unknown as Parameters<typeof POST>[0]);
+
+    expect(res.status).toBe(401);
   });
 });
 

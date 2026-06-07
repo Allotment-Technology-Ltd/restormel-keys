@@ -7939,7 +7939,7 @@ function mapManagementKeyRow(r: Record<string, unknown>): ManagementKeyRecord {
 export async function listManagementKeys(workspaceId: string): Promise<ManagementKeyRecord[]> {
   const sql = getSql();
   const rows = await sql`
-    SELECT id, workspace_id AS "workspaceId", label, key_prefix AS "keyPrefix",
+    SELECT id, workspace_id AS "workspaceId", name AS label, key_prefix AS "keyPrefix",
            COALESCE(status, 'active') AS status,
            created_at AS "createdAt", last_used_at AS "lastUsedAt"
     FROM management_keys
@@ -7967,7 +7967,7 @@ export async function createManagementKey(params: {
   const label = params.label?.trim() || null;
   const sql = getSql();
   await sql`
-    INSERT INTO management_keys (id, workspace_id, label, key_prefix, key_hash, status, created_at)
+    INSERT INTO management_keys (id, workspace_id, name, key_prefix, key_hash, status, created_at)
     VALUES (${id}, ${params.workspaceId}, ${label}, ${keyPrefix}, ${keyHash}, 'active', ${createdAt})
   `;
   try {

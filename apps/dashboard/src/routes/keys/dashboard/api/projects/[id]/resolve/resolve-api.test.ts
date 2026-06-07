@@ -170,7 +170,7 @@ describe("POST /api/projects/[id]/resolve", () => {
       providerType: "openai",
       modelId: "gpt-4o",
       explanation: expect.any(String),
-      contractVersion: RESOLVE_SIMULATE_CONTRACT_VERSION,
+      contract_version: RESOLVE_SIMULATE_CONTRACT_VERSION,
     });
     expect(insertRequestLog).toHaveBeenCalledWith(
       expect.objectContaining({

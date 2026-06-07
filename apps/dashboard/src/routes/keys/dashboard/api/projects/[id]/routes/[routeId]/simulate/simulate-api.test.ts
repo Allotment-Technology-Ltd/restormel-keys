@@ -126,7 +126,7 @@ describe("POST /api/projects/[id]/routes/[routeId]/simulate", () => {
     expect(body.data).toMatchObject({
       selectedStepId: "s1",
       wouldRun: true,
-      contractVersion: RESOLVE_SIMULATE_CONTRACT_VERSION,
+      contract_version: RESOLVE_SIMULATE_CONTRACT_VERSION,
     });
     expect(Array.isArray(body.data.stepDiagnostics)).toBe(true);
     expect(Array.isArray(body.data.perStepEstimates)).toBe(true);

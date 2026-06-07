@@ -92,7 +92,8 @@ describe("POST /connect/v1/retrieve", () => {
       },
     } as unknown as Parameters<typeof POST>[0]);
 
-    expect(res.status).toBe(200);
+    // O2: degraded retrieval now returns HTTP 206 Partial Content (was 200).
+    expect(res.status).toBe(206);
     const data = await res.json();
     expect(data.contract_version).toBe("2026-06-01");
     expect(data.context_block).toBeDefined();

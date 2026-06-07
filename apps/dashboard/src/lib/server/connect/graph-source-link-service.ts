@@ -30,6 +30,7 @@ import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-stor
 import {
   pickSurrealUnitText,
   streamSurrealUnitRowsAll,
+  surrealRevalidateUnitsQuery,
   surrealSourceLinkUnitsQuery,
 } from "$lib/server/connect/surreal-graph-units-load";
 import {
@@ -332,6 +333,7 @@ async function loadSurrealGraphSources(
     textPreview: string | null;
     sourceKind: string | null;
     fullText: string | null;
+    resolvedPreview: string | null;
   }[]
 > {
   const sourceTable = tableIdent(pack.graph_schema.source_table, "source");
