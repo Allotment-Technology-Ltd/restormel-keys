@@ -312,11 +312,11 @@ jobs:
     name: Deploy Zuplo gateway (prod)
     runs-on: ubuntu-latest
     needs: [changes, test]
-    # Auto-deploy the gateway when its config changes land on main. CI currently
-    # only validated the spec — this is the missing deploy step. The job skips
-    # cleanly until the ZUPLO_API_KEY secret is set (add it once Zuplo's
-    # dev-portal build limit is resolved, otherwise the deploy's dev-portal stage
-    # will fail — see scripts/apply-zudoku-ui-patches.mjs notes).
+    # Auto-deploy the gateway when its config changes land on main. The dev portal
+    # is retired (docs live in-app via Scalar), so the build is gateway-only — the
+    # deploy-gateway.mjs wrapper deploys and judges success from the Zuplo API
+    # (the api stage must be `success`; the dev-portal stage is `skipped`). Skips
+    # cleanly until the ZUPLO_API_KEY secret is set.
     if: |
       always() &&
       github.event_name == 'push' &&
@@ -329,9 +329,11 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 20
-      - name: Deploy gateway to Zuplo (main environment)
+      - name: Deploy gateway to Zuplo (main, gateway-only)
         env:
           ZUPLO_API_KEY: ${{ secrets.ZUPLO_API_KEY }}
+          ZUPLO_ENVIRONMENT: main
+          ZUPLO_DEPLOYMENT_NAME: restormel-keys-gateway-main-bc13eba
         working-directory: zuplo-gateway
         run: |
           set -euo pipefail
@@ -340,8 +342,4 @@ jobs:
             echo "Add the secret in repo settings to enable auto-deploy on main."
             exit 0
           fi
-          npx --yes zuplo@^6 deploy \
-            --api-key "$ZUPLO_API_KEY" \
-            --account silver_profitable_wasp \
-            --project restormel-keys-gateway \
-            --environment main
+          node scripts/deploy-gateway.mjs

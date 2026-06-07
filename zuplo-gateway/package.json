@@ -4,7 +4,7 @@
   "private": true,
   "description": "Zuplo gateway config for Restormel Keys API (config-as-code)",
   "scripts": {
-    "deploy": "zuplo deploy"
+    "deploy": "node scripts/deploy-gateway.mjs"
   },
   "devDependencies": {
     "zuplo": "^6.67.25"
