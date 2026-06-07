@@ -907,7 +907,7 @@ export async function resolveNextCohortUnitIds(
     SELECT u.id
     FROM knowledge_graph_units u
     WHERE u.workspace_id = ${workspaceId}
-      AND (u.validation_status IS NULL OR LOWER(u.validation_status) NOT IN ('ok', 'weak', 'unsupported'))
+      AND (u.validation_status IS NULL OR LOWER(u.validation_status) NOT IN ('ok', 'weak', 'unsupported', 'removed'))
     ORDER BY u.created_at ASC, u.id ASC
     LIMIT ${cap}
   `) as { id: string }[];

@@ -31,6 +31,32 @@ function remediationErrorHint(message: string): string {
   return message;
 }
 
+const DEFAULT_REMEDIATION_THRESHOLD = {
+  conservative: 0.8,
+  balanced: 0.6,
+  strict: 0.4,
+} as const;
+
+type RemediationEffect = "repair" | "exclude" | "keep";
+
+/**
+ * Resolve what to actually do with a flagged idea, given the model's suggested fix,
+ * the idea's current verdict, and the operator's strictness level + confidence threshold.
+ */
+function resolveRemediationEffect(
+  fix: { action: "repair" | "drop" | "keep"; text?: string; confidence?: number },
+  status: string | null | undefined,
+  level: "conservative" | "balanced" | "strict",
+  threshold: number,
+): RemediationEffect {
+  const confident = (fix.confidence ?? 1) >= threshold;
+  if (fix.action === "repair" && fix.text && confident) return "repair";
+  // Strict sweeps every still-unsupported idea that couldn't be repaired.
+  if (level === "strict" && (status ?? "").toLowerCase() === "unsupported") return "exclude";
+  if (fix.action === "drop" && confident && level !== "conservative") return "exclude";
+  return "keep";
+}
+
 export async function runGraphRemediationPass(args: {
   validationResults: ValidationResultRef[];
   textById: Map<string, string>;
@@ -42,6 +68,13 @@ export async function runGraphRemediationPass(args: {
   embed?: EmbeddingPort;
   reporter?: ConnectIngestProgressReporter;
   sourceLabel?: string;
+  /**
+   * Action policy. Conservative: repair only, never remove. Balanced: repair +
+   * soft-exclude ideas the model drops. Strict: repair + soft-exclude every idea
+   * still unsupported. `threshold` is the min model confidence (0-1) to act;
+   * defaults per level when omitted.
+   */
+  strictness?: { level: "conservative" | "balanced" | "strict"; threshold?: number };
 }): Promise<{
   repaired: number;
   dropped: number;
@@ -51,6 +84,10 @@ export async function runGraphRemediationPass(args: {
 }> {
   const { validationResults, textById, sourceText, pack, writer, reporter } = args;
   const preset = resolveQualityPreset(pack).preset;
+
+  const level = args.strictness?.level ?? "balanced";
+  const threshold = args.strictness?.threshold ?? DEFAULT_REMEDIATION_THRESHOLD[level];
+  const statusByRef = new Map(validationResults.map((r) => [r.ref, r.status]));
 
   const weak = validationResults
     .filter((r) => r.status === "weak" || r.status === "unsupported")
@@ -113,23 +150,28 @@ export async function runGraphRemediationPass(args: {
     for (let fi = 0; fi < fixes.length; fi++) {
       const fix = fixes[fi]!;
       await reporter?.tick("remediating", `Remediation ${fi + 1}/${fixes.length}`);
-      if (fix.action === "repair" && fix.text) {
+      const effect = resolveRemediationEffect(fix, statusByRef.get(fix.ref), level, threshold);
+      if (effect === "repair" && fix.text) {
         await writer.updateUnitText(fix.ref, fix.text);
         textById.set(fix.ref, fix.text);
         repairedIds.push({ id: fix.ref, text: fix.text });
         repairedUnitIds.push(fix.ref);
         repaired += 1;
-      } else if (fix.action === "drop") {
-        await writer.deleteUnit(fix.ref);
+      } else if (effect === "exclude") {
+        // Soft-exclude: mark removed, keep the record (reversible) — never hard-delete.
+        await writer.excludeUnit(
+          fix.ref,
+          `Remediation (${level}): no basis in source — soft-excluded from retrieval.`,
+        );
         textById.delete(fix.ref);
         dropped += 1;
       }
-      if (reporter && (fix.action === "repair" || fix.action === "drop")) {
+      if (reporter && effect !== "keep") {
         const gr = reporter.getGraphRepair();
         await reporter.setGraphRepair({
           phase: "remediating",
-          repaired: (gr?.repaired ?? 0) + (fix.action === "repair" ? 1 : 0),
-          dropped: (gr?.dropped ?? 0) + (fix.action === "drop" ? 1 : 0),
+          repaired: (gr?.repaired ?? 0) + (effect === "repair" ? 1 : 0),
+          dropped: (gr?.dropped ?? 0) + (effect === "exclude" ? 1 : 0),
         });
       }
     }
@@ -158,7 +200,7 @@ export async function runGraphRemediationPass(args: {
     }
 
     await reporter?.setGraphRepair({ phase: "remediating" });
-    await reporter?.completeStage("remediating", `${repaired} repaired, ${dropped} dropped`);
+    await reporter?.completeStage("remediating", `${repaired} repaired, ${dropped} excluded`);
     return { repaired, dropped, embedded, repairedUnitIds, remediationFailed: false };
   } catch (err) {
     const detail = err instanceof Error ? err.message : "Remediation failed";

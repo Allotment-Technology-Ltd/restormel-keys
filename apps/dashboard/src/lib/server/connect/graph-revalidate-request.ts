@@ -15,7 +15,21 @@ export const GraphRevalidateScopeSchema = z.enum([
   "unsupported",
 ]);
 
-export const GraphRevalidateModeSchema = z.enum(["validate", "validate_and_remediate"]);
+export const GraphRevalidateModeSchema = z.enum([
+  "validate",
+  "validate_and_remediate",
+  // Remediate ideas already flagged weak/unsupported in the store — no re-validation pass.
+  "remediate",
+]);
+
+/**
+ * How aggressively remediation acts on flagged ideas:
+ * - "conservative": repair (rewrite) only; never remove. Highest confidence bar.
+ * - "balanced": repair, and soft-exclude ideas the model finds have no basis in the source.
+ * - "strict": repair where possible, soft-exclude everything still unsupported. Lowest bar.
+ * Each level sets a default confidence threshold the operator can override.
+ */
+export const GraphRemediationStrictnessSchema = z.enum(["conservative", "balanced", "strict"]);
 
 /**
  * How verdicts are produced:
@@ -34,6 +48,10 @@ export const GraphRevalidateRequestSchema = z.object({
   scope: GraphRevalidateScopeSchema.default("unchecked"),
   mode: GraphRevalidateModeSchema.default("validate"),
   validation_mode: GraphValidationModeSchema.default("ai"),
+  /** Remediation aggressiveness (mode "remediate" / "validate_and_remediate"). */
+  remediation_strictness: GraphRemediationStrictnessSchema.default("balanced"),
+  /** Min model confidence (0-1) before an action is applied; defaults per strictness level. */
+  remediation_threshold: z.number().min(0).max(1).optional(),
   project_id: z.string().uuid().optional(),
   /** Cap on units processed per run (bounded batches for a large backlog). */
   max_units: z.number().int().min(1).max(100_000).optional(),

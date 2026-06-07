@@ -14,7 +14,11 @@ export function normalizeValidationStatus(raw: string | null | undefined): strin
 /** Matches graph explorer "Unchecked" counts and filters. */
 export function isUncheckedValidationStatus(raw: string | null | undefined): boolean {
   const s = normalizeValidationStatus(raw);
-  return s !== "ok" && s !== "weak" && s !== "unsupported";
+  // "removed" = soft-excluded by remediation; neither a live verdict nor unchecked,
+  // so it must not be re-cohorted, re-validated, or counted as backlog.
+  return (
+    s !== "ok" && s !== "weak" && s !== "unsupported" && s?.toLowerCase() !== "removed"
+  );
 }
 
 export function isKnownValidationStatus(s: string | null): s is KnownValidationStatus {

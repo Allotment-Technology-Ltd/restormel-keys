@@ -23,6 +23,8 @@ describe("graph-revalidate-job", () => {
       scope: "unchecked",
       mode: "validate",
       validation_mode: "ai",
+      remediation_strictness: "balanced",
+      remediation_threshold: null,
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -47,6 +49,8 @@ describe("graph-revalidate-job", () => {
       scope: "quarantine",
       mode: "validate_and_remediate",
       validation_mode: "ai",
+      remediation_strictness: "balanced",
+      remediation_threshold: null,
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -71,6 +75,8 @@ describe("graph-revalidate-job", () => {
       scope: "unchecked",
       mode: "validate",
       validation_mode: "ai",
+      remediation_strictness: "balanced",
+      remediation_threshold: null,
       max_units: null,
       continue_in_background: false,
       cohort_run_id: null,
@@ -118,5 +124,27 @@ describe("graph-revalidate-job", () => {
     const sources = [{ _connect_job: { kind: "graph_revalidate", scope: "unchecked" } }];
     const meta = parseGraphRevalidateJobMeta(sources);
     expect(meta?.validation_mode).toBe("ai");
+  });
+
+  it("round-trips remediate mode with strictness + threshold", () => {
+    const sources = buildGraphRevalidateJobSources({
+      kind: "graph_revalidate",
+      scope: "quarantine",
+      mode: "remediate",
+      validation_mode: "ai",
+      remediation_strictness: "strict",
+      remediation_threshold: 0.5,
+    });
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.mode).toBe("remediate");
+    expect(meta?.remediation_strictness).toBe("strict");
+    expect(meta?.remediation_threshold).toBe(0.5);
+  });
+
+  it("defaults strictness to balanced and threshold to null", () => {
+    const sources = [{ _connect_job: { kind: "graph_revalidate", scope: "quarantine", mode: "remediate" } }];
+    const meta = parseGraphRevalidateJobMeta(sources);
+    expect(meta?.remediation_strictness).toBe("balanced");
+    expect(meta?.remediation_threshold).toBeNull();
   });
 });

@@ -21,6 +21,8 @@ export interface RemediationResult {
   action: RemediationAction;
   /** Corrected text when action === "repair". */
   text?: string;
+  /** Model's confidence (0-1) in the chosen action; used to gate by a strictness threshold. */
+  confidence?: number;
 }
 
 /** Short refs per batch so the model echoes ids reliably (not Surreal record ids). */
@@ -47,7 +49,10 @@ export function buildRemediationUserPrompt(units: RemediationInput[], sourceText
   const list = units
     .map((u) => `- ${u.ref}${u.note ? ` (issue: ${u.note})` : ""}: ${u.text}`)
     .join("\n");
-  return `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO REMEDIATE:\n${list}`;
+  return (
+    `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO REMEDIATE:\n${list}\n\n` +
+    `For each unit also return "confidence": a number 0-1 for how sure you are of the chosen action.`
+  );
 }
 
 export function buildRemediationBatchInputs(
@@ -126,7 +131,16 @@ export function parseRemediationResponse(raw: string): RemediationResult[] {
     const a = typeof rec.action === "string" ? rec.action.trim() : "";
     const action: RemediationAction = a === "repair" || a === "drop" || a === "keep" ? a : "keep";
     const text = typeof rec.text === "string" ? rec.text.trim() : "";
-    out.push({ ref, action, ...(action === "repair" && text ? { text } : {}) });
+    const confidence =
+      typeof rec.confidence === "number" && Number.isFinite(rec.confidence)
+        ? Math.min(1, Math.max(0, rec.confidence))
+        : undefined;
+    out.push({
+      ref,
+      action,
+      ...(action === "repair" && text ? { text } : {}),
+      ...(confidence !== undefined ? { confidence } : {}),
+    });
   }
   return out;
 }

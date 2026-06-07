@@ -90,13 +90,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       day: "numeric",
       year: "numeric",
     });
-    const isAutoRemediate = parsed.data.mode === "validate_and_remediate";
+    const runsRemediation =
+      parsed.data.mode === "validate_and_remediate" || parsed.data.mode === "remediate";
     const label =
       parsed.data.label?.trim() ||
-      (isAutoRemediate
-        ? `Graph auto-remediation — ${dateLabel}`
-        : `Graph re-validation — ${dateLabel}`);
-    const stopAfterStage = isAutoRemediate ? "remediating" : "validating";
+      (parsed.data.mode === "remediate"
+        ? `Graph remediation — ${dateLabel}`
+        : parsed.data.mode === "validate_and_remediate"
+          ? `Graph auto-remediation — ${dateLabel}`
+          : `Graph re-validation — ${dateLabel}`);
+    const stopAfterStage = runsRemediation ? "remediating" : "validating";
 
     const sources = buildGraphRevalidateJobSources({
       kind: "graph_revalidate",
@@ -106,6 +109,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       scope: parsed.data.scope,
       mode: parsed.data.mode,
       validation_mode: parsed.data.validation_mode,
+      remediation_strictness: parsed.data.remediation_strictness,
+      remediation_threshold: parsed.data.remediation_threshold ?? null,
       max_units: parsed.data.max_units ?? null,
       continue_in_background: parsed.data.continue_in_background ?? false,
       cohort_run_id: parsed.data.cohort_run_id ?? null,
@@ -134,9 +139,14 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     });
 
     const logParts = [
-      isAutoRemediate ? "Auto-remediation queued" : "Re-validation queued",
+      parsed.data.mode === "remediate"
+        ? "Remediation queued"
+        : runsRemediation
+          ? "Auto-remediation queued"
+          : "Re-validation queued",
       `scope: ${parsed.data.scope}`,
       `mode: ${parsed.data.mode}`,
+      ...(runsRemediation ? [`strictness: ${parsed.data.remediation_strictness}`] : []),
     ];
     if (parsed.data.validation_route_id) logParts.push("custom validation route");
     if (parsed.data.remediation_route_id) logParts.push("custom remediation route");
@@ -146,7 +156,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
     await appendConnectIngestJobLog({
       jobId,
-      line: formatBracketLogLine(isAutoRemediate ? "REMEDIATE" : "VALIDATE", logParts.join(" — ")),
+      line: formatBracketLogLine(runsRemediation ? "REMEDIATE" : "VALIDATE", logParts.join(" — ")),
     });
 
     scheduleConnectIngestWorkerDrain();
