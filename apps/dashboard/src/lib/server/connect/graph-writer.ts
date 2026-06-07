@@ -300,30 +300,48 @@ class SurrealGraphWriter implements GraphWriter {
   }
 
   async setValidation(results: { unitId: string; status: string; note: string | null }[]) {
-    let n = 0;
-    let failures = 0;
+    if (results.length === 0) return 0;
+    const unitTable = ident(this.schema.unit_table, "unit");
+    // A pre-existing SCHEMAFULL graph silently DROPS writes to undefined fields —
+    // the UPDATE returns the record (no error) but the new field never sticks, so
+    // reads keep showing "unchecked". Ensure the verdict fields exist first.
+    await this.store
+      .query(
+        `DEFINE FIELD IF NOT EXISTS validation_status ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS validation_note ON TABLE ${unitTable} TYPE option<string>;`,
+      )
+      .catch(() => {
+        // Older SurrealDB without IF NOT EXISTS, or SCHEMALESS — writes work regardless.
+      });
+
+    let persisted = 0;
+    let missed = 0;
+    let firstMiss: { unitId: string; got: unknown } | null = null;
     for (const r of results) {
       try {
-        await this.store.query(
-          `UPDATE ${surrealRecordRef(r.unitId)} MERGE { validation_status: ${JSON.stringify(r.status)}, validation_note: ${JSON.stringify(r.note)} };`,
+        // RETURN AFTER so we can verify the field actually landed (not silently dropped).
+        const res = await this.store.query<Array<Record<string, unknown>>>(
+          `UPDATE ${surrealRecordRef(r.unitId)} MERGE { validation_status: ${JSON.stringify(r.status)}, validation_note: ${JSON.stringify(r.note)} } RETURN AFTER;`,
         );
-        n += 1;
-      } catch (err) {
-        failures += 1;
-        if (failures <= 3) {
-          console.warn(
-            `[connect-graph-writer] validation UPDATE failed for ${r.unitId}:`,
-            err instanceof Error ? err.message : err,
-          );
+        const rec = Array.isArray(res) ? res[0] : undefined;
+        if (rec && rec.validation_status === r.status) {
+          persisted += 1;
+        } else {
+          missed += 1;
+          if (!firstMiss) firstMiss = { unitId: r.unitId, got: rec?.validation_status ?? null };
         }
+      } catch (err) {
+        missed += 1;
+        if (!firstMiss) firstMiss = { unitId: r.unitId, got: `error: ${err instanceof Error ? err.message : err}` };
       }
     }
-    if (failures > 0) {
+    if (missed > 0) {
       console.warn(
-        `[connect-graph-writer] ${failures} validation UPDATE(s) failed (${n} ok)`,
+        `[connect-graph-writer] ${missed}/${results.length} validation write(s) did NOT persist on table "${unitTable}" ` +
+          `(sample id=${firstMiss?.unitId}, read-back=${JSON.stringify(firstMiss?.got)})`,
       );
     }
-    return n;
+    return persisted;
   }
 
   async updateUnitText(unitId: string, text: string) {
