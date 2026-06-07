@@ -9,7 +9,7 @@ import {
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 
 export const GET: RequestHandler = async ({ locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   let projects;
   if (locals.user.authType === "gateway_key" && locals.user.projectIdForKey) {
     const project = await getProject(locals.user.projectIdForKey, locals.user.uid);
@@ -23,9 +23,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
   if (locals.user.authType === "gateway_key" || locals.user.authType === "management_key") {
-    return json({ error: "Key auth cannot create projects" }, { status: 403 });
+    return json({ error: "forbidden", message: "Key auth cannot create projects" }, { status: 403 });
   }
   const ent = await getWorkspaceEntitlements(locals);
   if (ent && ent.plan === "free") {

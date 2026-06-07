@@ -2,8 +2,8 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Restormel Keys API",
-    "version": "1.0.0",
-    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev)."
+    "version": "1.1.0",
+    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev).\n\nChangelog:\n- 1.1.0 (2026-06-07): [O1 BREAKING] contractVersion field renamed to contract_version (snake_case) in resolve, simulate, and catalog responses. Update any consumers reading this field. [O2 BREAKING] /connect/v1/retrieve now returns HTTP 206 (Partial Content) instead of 200 when retrieval_degraded:true. [I4] /graph/v1/layout now requires authentication (gateway key, management key, or session). [I5] New /keys/v1/management-keys endpoints (POST/GET/DELETE) for management key lifecycle. [I9] GET /keys/v1/connections and GET /keys/v1/connections/{connectionId} now accept gateway keys (read-only)."
   },
   "servers": [
     { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
@@ -409,7 +409,7 @@
     "/graph/v1/layout": {
       "post": {
         "summary": "Compute Contract v0 orbital layout (Graph v1)",
-        "description": "Stateless layout from inline GraphData snapshot. Same semantics as in-process computeLayout in @restormel/graph-core.",
+        "description": "Stateless layout from inline GraphData snapshot. Same semantics as in-process computeLayout in @restormel/graph-core. Auth required (I4, 2026-06-07): gateway key, management key, or session.",
         "operationId": "graphV1Layout",
         "tags": ["Knowledge graph"],
         "requestBody": {
@@ -418,7 +418,8 @@
         },
         "responses": {
           "200": { "description": "Layout positions", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "400": { "description": "Invalid snapshot" }
+          "400": { "description": "Invalid snapshot" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
@@ -490,7 +491,8 @@
           "content": { "application/json": { "schema": { "type": "object" } } }
         },
         "responses": {
-          "200": { "description": "Context block + retrieval metadata" }
+          "200": { "description": "Context block + retrieval metadata (graph store fully resolved)" },
+          "206": { "description": "[O2, 2026-06-07] Partial Content: retrieval_degraded:true in metadata (graph store not configured, unreachable, or empty). Body shape is identical to 200. Deprecated: previously returned 200 for degraded responses." }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
@@ -772,6 +774,123 @@
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/management-keys": {
+      "get": {
+        "summary": "List management keys (Keys v1)",
+        "description": "List management keys for the authenticated workspace. Session auth required.",
+        "operationId": "keysV1ListManagementKeys",
+        "tags": ["KeysV1"],
+        "responses": {
+          "200": { "description": "List of management key records (prefix only; no raw key)", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      },
+      "post": {
+        "summary": "Issue management key (Keys v1)",
+        "description": "Issue a management key scoped to the caller's workspace. Session auth required. Raw key shown once. Management keys are workspace-scoped; gateway keys are project-scoped.",
+        "operationId": "keysV1CreateManagementKey",
+        "tags": ["KeysV1"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "label": { "type": "string", "description": "Optional friendly label" } } }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Management key created; raw key returned once",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/management-keys/{keyId}": {
+      "delete": {
+        "summary": "Revoke management key (Keys v1)",
+        "description": "Revoke a management key by ID. Session auth required. Only the workspace owner may revoke.",
+        "operationId": "keysV1RevokeManagementKey",
+        "tags": ["KeysV1"],
+        "parameters": [{ "name": "keyId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/connections": {
+      "get": {
+        "summary": "List source connections (Keys v1)",
+        "description": "Read-only. Returns source connections for the caller's workspace. Auth: gateway key, management key, or session (I9).",
+        "operationId": "keysV1ListConnections",
+        "tags": ["KeysV1"],
+        "responses": {
+          "200": { "description": "List of source connections", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/keys/v1/connections/{connectionId}": {
+      "get": {
+        "summary": "Get source connection (Keys v1)",
+        "description": "Read-only. Returns a single source connection by ID for the caller's workspace. Auth: gateway key, management key, or session (I9).",
+        "operationId": "keysV1GetConnection",
+        "tags": ["KeysV1"],
+        "parameters": [{ "name": "connectionId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Source connection", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",

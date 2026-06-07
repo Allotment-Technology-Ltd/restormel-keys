@@ -171,8 +171,17 @@ paths:
             schema:
               $ref: '#/components/schemas/ConnectRetrieveRequest'
       responses:
-        '501':
-          description: Not implemented until Phase 6
+        '200':
+          description: Context block + retrieval metadata (graph store fully resolved)
+        '206':
+          description: |
+            [O2, 2026-06-07 — BREAKING] Partial Content: retrieval_degraded:true in metadata.
+            Body shape is identical to 200. Graph store not configured, unreachable, or returned
+            no claims. Previously this condition returned HTTP 200 — consumers MUST now handle 206.
+        '400':
+          description: Invalid request (validation failure)
+        '401':
+          description: Unauthorized
 
   /connect/v1/graph:
     post:

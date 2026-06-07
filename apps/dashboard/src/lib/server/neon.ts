@@ -7902,3 +7902,124 @@ export async function deleteConnectSourceConnection(params: { id: string; worksp
   const sql = getSql();
   await sql`DELETE FROM knowledge_sources WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}`;
 }
+
+// ---------------------------------------------------------------------------
+// Management keys (project-scoped; issued via session auth)
+// ---------------------------------------------------------------------------
+
+const MANAGEMENT_KEY_PREFIX = "rmk_";
+
+export type ManagementKeyRecord = {
+  id: string;
+  workspaceId: string;
+  /** Friendly label set by the issuing user (optional). */
+  label: string | null;
+  keyPrefix: string;
+  status: "active" | "revoked";
+  createdAt: number;
+  lastUsedAt: number | null;
+};
+
+function mapManagementKeyRow(r: Record<string, unknown>): ManagementKeyRecord {
+  return {
+    id: r.id as string,
+    workspaceId: r.workspaceId as string,
+    label: (r.label as string | null) ?? null,
+    keyPrefix: r.keyPrefix as string,
+    status: ((r.status as string) === "revoked" ? "revoked" : "active") as ManagementKeyRecord["status"],
+    createdAt: Number(r.createdAt),
+    lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
+  };
+}
+
+/**
+ * List management keys for a workspace (session auth only).
+ * Scoping model: management keys are workspace-level; gateway keys are project-level.
+ */
+export async function listManagementKeys(workspaceId: string): Promise<ManagementKeyRecord[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", label, key_prefix AS "keyPrefix",
+           COALESCE(status, 'active') AS status,
+           created_at AS "createdAt", last_used_at AS "lastUsedAt"
+    FROM management_keys
+    WHERE workspace_id = ${workspaceId}
+    ORDER BY created_at DESC
+  `;
+  return rows.map((r) => mapManagementKeyRow(r as Record<string, unknown>));
+}
+
+/**
+ * Create a management key scoped to the given workspace.
+ * Returns the raw key once; caller must display it to the user. Only prefix + hash are stored.
+ * Session auth required (never callable via gateway or management key).
+ */
+export async function createManagementKey(params: {
+  workspaceId: string;
+  label?: string;
+  actorId: string;
+}): Promise<{ rawKey: string; keyPrefix: string; keyId: string }> {
+  const rawKey = MANAGEMENT_KEY_PREFIX + randomBytes(24).toString("base64url");
+  const keyHash = hashKey(rawKey);
+  const keyPrefix = rawKey.slice(0, 12) + "…";
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const label = params.label?.trim() || null;
+  const sql = getSql();
+  await sql`
+    INSERT INTO management_keys (id, workspace_id, label, key_prefix, key_hash, status, created_at)
+    VALUES (${id}, ${params.workspaceId}, ${label}, ${keyPrefix}, ${keyHash}, 'active', ${createdAt})
+  `;
+  try {
+    await insertAuditEvent({
+      workspaceId: params.workspaceId,
+      actorId: params.actorId,
+      actorType: "user",
+      eventType: "management_key_created",
+      targetType: "management_key",
+      targetId: id,
+      summary: `Management key created${label ? `: ${label}` : ""}`,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    console.error("[audit] management_key_created:", msg.slice(0, 80));
+  }
+  return { rawKey, keyPrefix, keyId: id };
+}
+
+/**
+ * Revoke (soft-delete) a management key. Returns true if found and revoked.
+ * Session auth required.
+ */
+export async function revokeManagementKey(params: {
+  keyId: string;
+  workspaceId: string;
+  actorId: string;
+}): Promise<boolean> {
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    UPDATE management_keys
+    SET status = 'revoked', last_used_at = COALESCE(last_used_at, ${now})
+    WHERE id = ${params.keyId} AND workspace_id = ${params.workspaceId}
+    RETURNING id
+  `;
+  const revoked = Array.isArray(rows) && rows.length > 0;
+  if (revoked) {
+    try {
+      await insertAuditEvent({
+        workspaceId: params.workspaceId,
+        actorId: params.actorId,
+        actorType: "user",
+        eventType: "management_key_revoked",
+        targetType: "management_key",
+        targetId: params.keyId,
+        summary: "Management key revoked",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] management_key_revoked:", msg.slice(0, 80));
+    }
+  }
+  return revoked;
+}

@@ -33,8 +33,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (!outcome.ok) {
     return json(outcome.body, { status: outcome.status, headers: { ...DEPRECATION_HEADERS } });
   }
+  // 206 Partial Content when retrieval_degraded:true (O2 breaking change),
+  // retaining the deprecation headers (C3) on every response.
   return json(outcome.body, {
-    status: 200,
+    status: outcome.status,
     headers: { "X-Request-Id": id, ...DEPRECATION_HEADERS },
   });
 };

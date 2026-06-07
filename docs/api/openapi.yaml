@@ -13,8 +13,10 @@ info:
     **Two HTTP surfaces:** (1) **Zuplo Gateway** — control-plane CRUD (projects, keys); use **consumer key** (`zpka_...`, `apiKey` scheme).
     (2) **Dashboard API** on the dashboard host — resolve, routes/steps, policies, catalog, **project model index**; use **Gateway Key** (`rk_...`, `gatewayKey` scheme). See each operation’s `security` and `servers` — Dashboard-only paths are documented under the dashboard server URL.
 
-    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contractVersion` `2026-04-16` and return stable
+    **Dashboard resolve contract:** `POST .../resolve` success payloads use `contract_version` `2026-04-16` and return stable
     machine-readable `error` codes with aligned HTTP statuses (see that operation).
+
+    **Breaking change (O1, 2026-06-07):** The `contractVersion` field in resolve, simulate, and catalog responses has been renamed to `contract_version` (snake_case) for consistency with the Connect v1 API. Update any consumers that read this field. The `runtimeContractVersion` and `runtimeSwitchEvalVersion` fields in runtime/invoke responses are unchanged (camelCase) for now.
 
     **Gateway Key JSON base (dashboard host):** `https://restormel.dev/keys/dashboard` — machine clients should expect
     `application/json` for errors under `/api/...` (including unknown routes and many server failures).
@@ -376,7 +378,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-04-16" }
+                      contract_version: { type: string, example: "2026-04-16", description: "snake_case; renamed from contractVersion (O1, 2026-06-07)" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string, description: Matched route ID }
                       routeName: { type: string, description: Matched route name }
@@ -452,7 +454,7 @@ paths:
 
         **Auth:** Same as resolve — Gateway key or session; project scoping unchanged.
 
-        **Response:** `data` includes `runtimeContractVersion`, **`runtimeSwitchEvalVersion`**, `content` (final assistant text), aggregated `usage`, optional `runtimeSteps[]` (per-step token usage and skipped steps, including `upstream_failed_advancing`), and resolve-aligned fields (`contractVersion`, route, provider/model for the **last** executed step, etc.). Raw API keys are never returned.
+        **Response:** `data` includes `runtimeContractVersion`, **`runtimeSwitchEvalVersion`**, `content` (final assistant text), aggregated `usage`, optional `runtimeSteps[]` (per-step token usage and skipped steps, including `upstream_failed_advancing`), and resolve-aligned fields (`contract_version`, route, provider/model for the **last** executed step, etc.). Raw API keys are never returned.
 
         **Stable error codes** (JSON `error` field):
         | HTTP | `error` | Meaning |
@@ -536,9 +538,10 @@ paths:
                             totalTokens: { type: integer, nullable: true }
                             skipped: { type: boolean }
                             skipReason: { type: string }
-                      contractVersion:
+                      contract_version:
                         type: string
                         example: "2026-04-16"
+                        description: "snake_case; renamed from contractVersion (O1, 2026-06-07)"
                       content: { type: string, description: Assistant message text from upstream choices[0].message.content }
                       usage:
                         type: object
@@ -836,7 +839,7 @@ paths:
       operationId: getCanonicalCatalog
       tags: [Dashboard API]
       description: |
-        Versioned feed (`contractVersion`, currently `2026-03-26.catalog.v6`); see docs/guides/canonical-catalog and catalog-governance.
+        Versioned feed (`contract_version`, currently `2026-03-26.catalog.v6`); see docs/guides/canonical-catalog and catalog-governance. Note: field renamed from `contractVersion` (O1, 2026-06-07 — breaking change).
         Each `data[]` model may include `deprecationDate`, `retirementDate` (ISO 8601), and `replacementModelId` when set in the database.
       parameters:
         - name: lifecycleState
@@ -1424,7 +1427,7 @@ paths:
                   data:
                     type: object
                     properties:
-                      contractVersion: { type: string, example: "2026-04-16" }
+                      contract_version: { type: string, example: "2026-04-16", description: "snake_case; renamed from contractVersion (O1, 2026-06-07)" }
                       traceId: { type: string, nullable: true }
                       routeId: { type: string }
                       routeName: { type: string }
@@ -1572,7 +1575,7 @@ paths:
           description: When true, include catalogCrowdHints (aggregated catalog observation counts per step model pair; read-only)
       responses:
         "200":
-          description: Route + steps + contextual policy binding summary (`contractVersion` on payload)
+          description: Route + steps + contextual policy binding summary (`contract_version` on payload)
           content:
             application/json:
               schema:
@@ -2175,7 +2178,7 @@ components:
         message: { type: string }
     RouteResolveMetadata:
       type: object
-      description: Route fields returned on successful resolve (`contractVersion` 2026-04-16+)
+      description: Route fields returned on successful resolve (`contract_version` 2026-04-16+)
       properties:
         id: { type: string }
         environmentId: { type: string }

@@ -204,6 +204,39 @@ When all items are done, Zuplo is ready for launch: protected routes return 401 
 | Consumer keys | Issued by Zuplo; used by clients; never sent to backend. |
 | Direct backend | Dashboard must reject `zpka_` keys. |
 
+---
+
+## C1 — Per-Consumer Backend Identity (`X-Consumer-Id`)
+
+**Goal:** Allow the backend to log and audit requests by Zuplo consumer (one consumer = one
+workspace). The header `X-Consumer-Id: {consumer_name}` should be forwarded on every authenticated
+request so the backend can correlate logs per consumer without needing access to raw Zuplo consumer
+keys.
+
+**Approach:** When a Zuplo consumer is provisioned via `ensureZuploConsumer` (see
+`apps/dashboard/src/lib/server/zuplo-consumer.ts`), the consumer `name` is stable and derived from
+the workspace id (`ws_{workspaceId}`). The `inject-backend-auth` policy (Set Headers) in
+`zuplo-gateway/config/policies.json` can be extended to forward this consumer-derived value.
+
+**Limitation:** Zuplo's built-in `Set Headers` policy sets **static** header values (environment
+variables or literals). It does not support injecting a per-request, per-consumer dynamic value such
+as the consumer name or a UUID. Zuplo does expose a `consumer.name` (or `consumer.id`) at the
+policy layer via custom code policies, but native `api-key-inbound` + `set-headers-inbound` does not
+forward it automatically.
+
+**Recommended path:**
+
+1. Replace the static `inject-backend-auth` policy with a **custom Zuplo module policy**
+   (TypeScript) placed in `zuplo-gateway/modules/inject-backend-auth.ts`. That module can read
+   `context.consumer.name` (from the Zuplo runtime after `api-key-inbound` runs) and set
+   `X-Consumer-Id` plus the backend `Authorization` header before forwarding.
+2. Until the custom module is in place, the consumer name is included in every consumer provisioning
+   call as `metadata.workspaceId` (see `zuplo-consumer.ts`) and is recoverable from Zuplo audit
+   logs, but is **not** forwarded to the backend as a request header.
+
+**Current status:** Not yet implemented as a custom module. Track as a follow-up: create
+`zuplo-gateway/modules/inject-backend-auth.ts` using `ZuploContext.consumer` to set the header.
+
 For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md) and [extraction-vercel](../reference/extraction-vercel.md).
 
 ---

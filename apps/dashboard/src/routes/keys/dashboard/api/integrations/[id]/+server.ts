@@ -9,20 +9,20 @@ import {
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!ctx) return json({ error: "unauthorized", message: "Session or management key required" }, { status: 401 });
   const integration = await getProviderIntegration(params.id, ctx.workspaceId);
-  if (!integration) return json({ error: "Not found" }, { status: 404 });
+  if (!integration) return json({ error: "not_found", message: "Integration not found" }, { status: 404 });
   return json({ data: integration });
 };
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!ctx) return json({ error: "unauthorized", message: "Session or management key required" }, { status: 401 });
   let body: { displayName?: string; status?: string };
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return json({ error: "Invalid JSON" }, { status: 400 });
+    return json({ error: "invalid_json", message: "Request body must be valid JSON" }, { status: 400 });
   }
   const updates: { displayName?: string; status?: string } = {};
   if (typeof body.displayName === "string") updates.displayName = body.displayName.trim();
@@ -33,17 +33,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     updates,
     { actorId: ctx.actorId, actorType: ctx.actorType }
   );
-  if (!updated) return json({ error: "Not found" }, { status: 404 });
+  if (!updated) return json({ error: "not_found", message: "Integration not found" }, { status: 404 });
   return json({ data: updated });
 };
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
   const ctx = await getWorkspaceAndActor(locals);
-  if (!ctx) return json({ error: "Unauthorized" }, { status: 401 });
+  if (!ctx) return json({ error: "unauthorized", message: "Session or management key required" }, { status: 401 });
   const deleted = await deleteProviderIntegration(params.id, ctx.workspaceId, {
     actorId: ctx.actorId,
     actorType: ctx.actorType,
   });
-  if (!deleted) return json({ error: "Not found" }, { status: 404 });
+  if (!deleted) return json({ error: "not_found", message: "Integration not found" }, { status: 404 });
   return json({ ok: true });
 };
