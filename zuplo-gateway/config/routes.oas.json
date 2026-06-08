@@ -3,7 +3,7 @@
   "info": {
     "title": "Restormel Keys API",
     "version": "1.6.0",
-    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev).\n\nRate-limit headers: all endpoints with rate-limit-inbound in their policy stack emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset on every response. Zuplo emits these automatically; no backend change required.\n\nChangelog:\n- 1.7.0 (2026-06-08): [4B] Provenance audit trace export. POST /connect/v1/retrieve and POST /connect/v1/graph now return a trace_id. New GET /connect/v1/traces/{traceId} returns the structured, versioned ProvenanceTrace; GET /connect/v1/traces/{traceId}/export?format=json downloads it. Traces are retained for 90 days.\n- 1.6.0 (2026-06-07): [C1] Cursor pagination on GET /connect/v1/ingest/jobs (?limit, ?cursor, next_cursor, total_count). [C2] Idempotency-Key header support on POST /connect/v1/ingest/jobs (24-hour TTL). [C3] X-Request-Id header on all Connect v1, Keys v1, and Graph v1 responses (echoed in error envelopes as request_id). [C4] Rate-limit response headers documented (X-RateLimit-Limit/Remaining/Reset — Zuplo already emits). [C5] GET /graph/v1/snapshots/{snapshotId} now returns 501 not_implemented instead of 404 (Graph snapshots planned for Phase 6). [1A] Connect v1 ingest/retrieve/verify API with workspace-scoped persistence. [1B] Keys v1 routing surface. [1C] GraphStoreAdapter unification + RetrievalConfig. [1D] Ingest contract completion: quality reports, log streaming, outbound webhooks. [2A] Neo4j adapter + graph store config panel. [2B] O1/O2 breaking changes: contract_version snake_case, /connect/v1/retrieve 206 on degraded.\n- 1.1.0 (2026-06-07): [O1 BREAKING] contractVersion field renamed to contract_version (snake_case) in resolve, simulate, and catalog responses. Update any consumers reading this field. [O2 BREAKING] /connect/v1/retrieve now returns HTTP 206 (Partial Content) instead of 200 when retrieval_degraded:true. [I4] /graph/v1/layout now requires authentication (gateway key, management key, or session). [I5] New /keys/v1/management-keys endpoints (POST/GET/DELETE) for management key lifecycle. [I9] GET /keys/v1/connections and GET /keys/v1/connections/{connectionId} now accept gateway keys (read-only)."
+    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev).\n\nRate-limit headers: all endpoints with rate-limit-inbound in their policy stack emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset on every response. Zuplo emits these automatically; no backend change required.\n\nChangelog:\n- 1.8.0 (2026-06-08): [4C] Verification rule set v1. New GET /connect/v1/verification-rules returns the rule set active for a workspace (six-dimension weights + strict/balanced/lenient policies); GET /connect/v1/verification-rules/built-in returns the built-in Restormel Core v1 definition.\n- 1.7.0 (2026-06-08): [4B] Provenance audit trace export. POST /connect/v1/retrieve and POST /connect/v1/graph now return a trace_id. New GET /connect/v1/traces/{traceId} returns the structured, versioned ProvenanceTrace; GET /connect/v1/traces/{traceId}/export?format=json downloads it. Traces are retained for 90 days.\n- 1.6.0 (2026-06-07): [C1] Cursor pagination on GET /connect/v1/ingest/jobs (?limit, ?cursor, next_cursor, total_count). [C2] Idempotency-Key header support on POST /connect/v1/ingest/jobs (24-hour TTL). [C3] X-Request-Id header on all Connect v1, Keys v1, and Graph v1 responses (echoed in error envelopes as request_id). [C4] Rate-limit response headers documented (X-RateLimit-Limit/Remaining/Reset — Zuplo already emits). [C5] GET /graph/v1/snapshots/{snapshotId} now returns 501 not_implemented instead of 404 (Graph snapshots planned for Phase 6). [1A] Connect v1 ingest/retrieve/verify API with workspace-scoped persistence. [1B] Keys v1 routing surface. [1C] GraphStoreAdapter unification + RetrievalConfig. [1D] Ingest contract completion: quality reports, log streaming, outbound webhooks. [2A] Neo4j adapter + graph store config panel. [2B] O1/O2 breaking changes: contract_version snake_case, /connect/v1/retrieve 206 on degraded.\n- 1.1.0 (2026-06-07): [O1 BREAKING] contractVersion field renamed to contract_version (snake_case) in resolve, simulate, and catalog responses. Update any consumers reading this field. [O2 BREAKING] /connect/v1/retrieve now returns HTTP 206 (Partial Content) instead of 200 when retrieval_degraded:true. [I4] /graph/v1/layout now requires authentication (gateway key, management key, or session). [I5] New /keys/v1/management-keys endpoints (POST/GET/DELETE) for management key lifecycle. [I9] GET /keys/v1/connections and GET /keys/v1/connections/{connectionId} now accept gateway keys (read-only)."
   },
   "servers": [
     { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
@@ -14,6 +14,7 @@
     { "name": "Knowledge graph", "description": "Higher-order retrieval, expansion, path-finding, and graph layout over your workspace knowledge graph." },
     { "name": "Ingest jobs", "description": "Create and poll Knowledge Ingest jobs that build your graph from sources." },
     { "name": "Provenance traces", "description": "Fetch and export the structured audit trace produced on every retrieval query (90-day retention)." },
+    { "name": "Verification rules", "description": "Inspect the verification rule set (six-dimension scoring weights and policies) active for a workspace." },
     { "name": "Verification", "description": "Claim extraction, reasoning evaluation, and constitution checks." },
     { "name": "Model routing", "description": "Resolve providers/models, list the model catalog, and evaluate routing policies." },
     { "name": "API keys & auth", "description": "Manage projects and Gateway keys (rk_…) used to call the API." },
@@ -775,6 +776,57 @@
         }
       }
     },
+    "/connect/v1/verification-rules": {
+      "get": {
+        "summary": "Active verification rule set (Connect v1)",
+        "operationId": "knowledgeV1VerificationRules",
+        "tags": ["Verification rules"],
+        "description": "Returns the verification rule set in force for the workspace: the workspace's domain-pack override (inline dimension weights or a referenced rule set id) falling back to the built-in Restormel Core v1.",
+        "parameters": [
+          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The active verification rule set",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerificationRuleSet" } } }
+          },
+          "400": { "description": "Invalid request" }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+        }
+      }
+    },
+    "/connect/v1/verification-rules/built-in": {
+      "get": {
+        "summary": "Built-in verification rule set (Connect v1)",
+        "operationId": "knowledgeV1VerificationRulesBuiltIn",
+        "tags": ["Verification rules"],
+        "description": "Returns the built-in Restormel Core v1 rule set definition (static, public reference config).",
+        "responses": {
+          "200": {
+            "description": "The built-in core verification rule set",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerificationRuleSet" } } }
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+          },
+          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound"] }
+        }
+      }
+    },
     "/connect/v1/webhooks": {
       "post": {
         "summary": "Register a Connect ingest webhook (Connect v1)",
@@ -1016,6 +1068,45 @@
       }
     },
     "schemas": {
+      "VerificationRuleSet": {
+        "type": "object",
+        "description": "A versioned verification rule set: how each of the six reasoning dimensions is weighted and the policies that classify a claim as supported / weak / unsupported. Scores are on a 0–1 scale.",
+        "required": ["id", "name", "version", "description", "dimensions", "policies"],
+        "properties": {
+          "id": { "type": "string", "example": "restormel-core-v1" },
+          "name": { "type": "string", "example": "Restormel Core v1" },
+          "version": { "type": "string", "example": "1.0.0" },
+          "description": { "type": "string" },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "logical_structure" },
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "weight": { "type": "number", "description": "0–1; weights across the six dimensions sum to 1.0." },
+                "prompt_template": { "type": "string" },
+                "passing_threshold": { "type": "number" }
+              }
+            }
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string", "enum": ["strict", "balanced", "lenient"] },
+                "min_overall_score": { "type": "number", "description": "Overall score (0–1) at/above which a claim is supported." },
+                "weak_threshold": { "type": "number", "description": "At/above this (but below min_overall_score) a claim is weak; below it, unsupported." },
+                "dimension_overrides": { "type": "object", "additionalProperties": { "type": "number" } }
+              }
+            }
+          },
+          "domain_hints": { "type": "array", "items": { "type": "string" } }
+        }
+      },
       "ProvenanceTrace": {
         "type": "object",
         "description": "Structured, versioned audit trace for a retrieval query. schema_version is bumped only on breaking changes; consumers must tolerate unknown fields.",

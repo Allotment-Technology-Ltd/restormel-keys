@@ -31,6 +31,7 @@ npx @restormel/validate
 | `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
 | `keys replay <traceId\|traceFile>` | Replay a past Connect retrieval against the current graph and diff the results (`--diff`, `--compare`, `--output json\|pretty\|markdown`) |
+| `keys rules show` / `keys rules list` | Inspect the verification rule set (six-dimension weights + strict/balanced/lenient policies) active for your workspace |
 
 ### Replay a retrieval (provenance traces)
 

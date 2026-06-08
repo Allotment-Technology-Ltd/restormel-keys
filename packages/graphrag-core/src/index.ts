@@ -185,3 +185,15 @@ export {
   type SynthesizedNode,
   type CondensedNode,
 } from "./orchestrator/index.js";
+
+export {
+  RESTORMEL_CORE_RULE_SET,
+  RESTORMEL_CORE_RULE_SET_ID,
+  BUILT_IN_RULE_SETS,
+  getBuiltInRuleSet,
+  dimensionWeightSum,
+  resolveVerificationRuleSet,
+  classifyByPolicy,
+  selectPolicy,
+  type ClaimVerificationClass,
+} from "./verification/rules/index.js";

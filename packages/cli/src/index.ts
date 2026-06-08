@@ -16,6 +16,7 @@ import { registerPatch } from "./commands/patch.js";
 import { registerCatalog } from "./commands/catalog.js";
 import { registerLogin } from "./commands/login.js";
 import { registerReplay } from "./commands/replay.js";
+import { registerRules } from "./commands/rules.js";
 
 const program = new Command();
 program
@@ -38,5 +39,6 @@ registerCatalog(program);
 registerPatch(program);
 registerLogin(program);
 registerReplay(program);
+registerRules(program);
 
 program.parse();
