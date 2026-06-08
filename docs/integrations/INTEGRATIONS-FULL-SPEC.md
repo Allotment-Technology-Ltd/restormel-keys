@@ -210,6 +210,12 @@ Connect Restormel to your agent workflow.
 
 Implementation workflow runbook: [runbooks/aaif-implementation-workflow.md](../runbooks/aaif-implementation-workflow.md)
 
+Canonical types live in `@restormel/aaif` (`packages/aaif/src/types.ts`). The package has **zero
+runtime dependencies** and is the **single source of truth** for `RestormelSuiteToolName` /
+`RESTORMEL_SUITE_TOOL_NAMES` (`@restormel/mcp` re-exports them — Stage 5B / I10). The blocks below
+mirror the current types; all fields beyond the core are additive and optional, so older consumers
+remain compatible.
+
 ### Request
 
 ```typescript
@@ -219,19 +225,17 @@ type AAIFRequest = {
   constraints?: {
     maxCost?: number;
     latency?: "low" | "balanced" | "high";
-    tokens?: {
-      inputTokensM?: number;
-      outputTokensM?: number;
-    };
+    tokens?: { inputTokensM?: number; outputTokensM?: number };
   };
-  user?: {
-    id: string;
-    plan?: string;
-  };
-  routing?: {
-    model?: string;
-    provider?: string;
-  };
+  user?: { id: string; plan?: string };
+  /** Routing hints used by the runtime helper to align routing + pricing. */
+  routing?: { model?: string; provider?: string };
+  /** Pass-through context aligned with dashboard `POST …/resolve` (workload/stage, retry attempts). */
+  routingContext?: AAIFRoutingContext;
+  /** Optional typed copy of resolve/simulate chain rows for logging or downstream agents. */
+  routingPlan?: AAIFRoutingPlan;
+  /** Optional declaration of third-party products in the host environment (Neon, Vercel, gateways…). */
+  integrationStack?: AAIFIntegrationStack; // { schemaVersion: "1"; templateId?; components: {id; role?}[] }
 };
 ```
 
@@ -240,14 +244,19 @@ type AAIFRequest = {
 ```typescript
 type AAIFResponse = {
   output: string;
+  /** Numeric vector when task is `embedding` (avoids JSON round-trips on `output`). */
+  embedding?: number[];
+  /** Explicit text alias; mirrors `output` for non-embedding tasks. */
+  outputText?: string;
   provider: string;
   model: string;
   cost: number;
-  routing: {
-    reason: string;
-  };
+  routing: { reason: string };
 };
 ```
+
+Runtime validation: `isAAIFRequest` / `isAAIFResponse` (`@restormel/aaif`) are forward-compatible —
+they validate the known fields and tolerate unknown/extra fields.
 
 ## 9. MCP Tool Surface
 
