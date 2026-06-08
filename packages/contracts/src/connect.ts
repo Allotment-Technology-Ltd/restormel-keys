@@ -137,6 +137,8 @@ export type ConnectContextPack = z.infer<typeof ConnectContextPackSchema>;
 export const ConnectRetrieveResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
+  /** Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}. */
+  trace_id: z.string().optional(),
   context_block: z.string(),
   context_pack: ConnectContextPackSchema.optional(),
   graph: ConnectRetrieveGraphSchema.optional(),
@@ -267,6 +269,8 @@ export type ConnectGraphTraceSummary = z.infer<typeof ConnectGraphTraceSummarySc
 export const ConnectGraphOpResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
+  /** Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}. */
+  trace_id: z.string().optional(),
   operation: ConnectGraphOperationSchema,
   context_block: z.string().optional(),
   subgraph: z

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Provenance audit trace export (Stage 4B):** every `POST /connect/v1/retrieve` and `/connect/v1/graph` query now stores a versioned `ProvenanceTrace` (`@restormel/contracts/provenance-trace`, `schema_version 1.0`) and returns its `trace_id`. New `GET /connect/v1/traces/{traceId}` and `…/export?format=json` endpoints (Gateway-key/session auth, workspace-scoped, 404 on cross-tenant). Postgres migration `054_connect_provenance_traces.sql` (90-day retention). Dashboard Proof panel surfaces an **Export trace** link for the most recent graph-grounded query. Zuplo routes + `ProvenanceTrace` schema (gateway changelog `1.7.0`). Docs: "Provenance traces" section in the Connect API reference. Foundation for `restormel replay`.
 - **Admin user management:** User list reads from app `users` mirror (Neon Auth session upserts) with optional Better Auth `"user"` enrichment — fixes empty table on Neon Auth deployments.
 - **Connect ingest quality (admin):** Manual threshold evaluate/apply loop at `/keys/admin/ingest-quality` — replaces GitHub Actions weekly workflow; bumps builtin `prompt_template_version` in Postgres (G2-gated). Migration `049_knowledge_ingest_quality_runs.sql`.
 - **Connect use-case templates:** Suite marketing page at `/use-cases`, homepage teaser, Founders proof block, and in-product domain template pills on the Connect pipeline Domain step with `?template=` preserved through dashboard login.

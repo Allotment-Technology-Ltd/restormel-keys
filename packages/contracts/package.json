@@ -31,6 +31,7 @@
     "./schema-version": { "types": "./dist/schema-version.d.ts", "import": "./dist/schema-version.js" },
     "./trace": { "types": "./dist/trace.d.ts", "import": "./dist/trace.js" },
     "./trace-ingestion": { "types": "./dist/trace-ingestion.d.ts", "import": "./dist/trace-ingestion.js" },
+    "./provenance-trace": { "types": "./dist/provenance-trace.d.ts", "import": "./dist/provenance-trace.js" },
     "./verification": { "types": "./dist/verification.d.ts", "import": "./dist/verification.js" }
   },
   "scripts": {

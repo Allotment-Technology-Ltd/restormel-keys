@@ -18,6 +18,7 @@ export type StreamComparisonArgs = {
   signal?: AbortSignal;
   onModel?: (model: { provider: string; model: string }) => void;
   onRetrieval?: (summary: RetrievalSummary) => void;
+  onTrace?: (trace: { traceId: string; exportUrl: string }) => void;
   onDelta?: (text: string) => void;
 };
 
@@ -25,7 +26,7 @@ export class ComparisonStreamError extends Error {}
 
 export async function streamComparison(
   args: StreamComparisonArgs,
-): Promise<{ text: string; retrieval?: RetrievalSummary }> {
+): Promise<{ text: string; retrieval?: RetrievalSummary; traceExportUrl?: string }> {
   const res = await fetch(`${args.connectBase}/proof/api/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -49,6 +50,7 @@ export async function streamComparison(
   let buffer = "";
   let text = "";
   let retrieval: RetrievalSummary | undefined;
+  let traceExportUrl: string | undefined;
 
   const handle = (event: ComparisonStreamEvent): void => {
     switch (event.type) {
@@ -58,6 +60,10 @@ export async function streamComparison(
       case "retrieval":
         retrieval = event.summary;
         args.onRetrieval?.(event.summary);
+        break;
+      case "trace":
+        traceExportUrl = event.exportUrl;
+        args.onTrace?.({ traceId: event.traceId, exportUrl: event.exportUrl });
         break;
       case "delta":
         text += event.text;
@@ -88,5 +94,5 @@ export async function streamComparison(
     }
   }
 
-  return { text, retrieval };
+  return { text, retrieval, traceExportUrl };
 }
