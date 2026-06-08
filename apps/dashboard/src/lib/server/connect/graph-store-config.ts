@@ -1,11 +1,11 @@
 /**
- * Multi-database graph store config (Build 2A) persisted to workspaces.graph_store_config
- * (the JSONB column added in 1C migration 051). Holds the workspace's selected
- * GraphStoreAdapter type + connection details; the secret is encrypted at rest with
- * the existing provider-credential pattern and never echoed back.
+ * Multi-database graph store config (Build 2A; Weaviate added in Sprint 2 / Build 5A) persisted to
+ * workspaces.graph_store_config (the JSONB column added in 1C migration 051). Holds the workspace's
+ * selected GraphStoreAdapter type + connection details; the secret is encrypted at rest with the
+ * existing provider-credential pattern and never echoed back.
  *
- * SurrealDB continues to use the dedicated graph-target flow (graph-target-service);
- * this module covers the new adapters — Neo4j today.
+ * SurrealDB continues to use the dedicated graph-target flow (graph-target-service); this module
+ * covers the driver-backed adapters — Neo4j and Weaviate.
  */
 import { Neo4jAdapter, type GraphStoreHealthResult } from "@restormel/graphrag-core";
 import { getSql } from "$lib/server/neon";
@@ -15,49 +15,69 @@ import {
   type EncryptedCredentialPayload,
 } from "$lib/server/credential-crypto";
 
-export type GraphStoreConfigType = "neo4j";
+export type GraphStoreConfigType = "neo4j" | "weaviate";
 
-/** Shape persisted in the JSONB column. The password lives only in `secret_enc`. */
-interface StoredGraphStoreConfig {
-  type: GraphStoreConfigType;
+/** Shape persisted in the JSONB column. The password/API key lives only in `secret_enc`. */
+interface StoredNeo4jConfig {
+  type: "neo4j";
   connection_string: string;
   database: string;
   username: string;
   secret_enc?: EncryptedCredentialPayload | null;
   updated_at: number;
 }
+interface StoredWeaviateConfig {
+  type: "weaviate";
+  endpoint: string;
+  collection_prefix: string;
+  secret_enc?: EncryptedCredentialPayload | null;
+  updated_at: number;
+}
+type StoredGraphStoreConfig = StoredNeo4jConfig | StoredWeaviateConfig;
 
 /** Redacted view returned to the UI — no secret material. */
 export interface GraphStoreConfigUiView {
   type: GraphStoreConfigType;
-  connection_string: string;
-  database: string;
-  username: string;
+  // Neo4j
+  connection_string?: string;
+  database?: string;
+  username?: string;
+  // Weaviate
+  endpoint?: string;
+  collection_prefix?: string;
   secret_set: boolean;
   updated_at: number;
 }
 
-export interface GraphStoreConfigUpsert {
-  type: GraphStoreConfigType;
-  connectionString: string;
-  database?: string;
-  username?: string;
-  /** Plaintext password/token; omit to keep an existing saved secret. */
-  password?: string;
-}
+export type GraphStoreConfigUpsert =
+  | { type: "neo4j"; connectionString: string; database?: string; username?: string; password?: string }
+  | { type: "weaviate"; endpoint: string; collectionPrefix?: string; password?: string };
 
 function parseStored(raw: unknown): StoredGraphStoreConfig | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const rec = raw as Record<string, unknown>;
-  if (rec.type !== "neo4j") return null;
-  return {
-    type: "neo4j",
-    connection_string: String(rec.connection_string ?? ""),
-    database: String(rec.database ?? "neo4j"),
-    username: String(rec.username ?? "neo4j"),
-    secret_enc: (rec.secret_enc ?? null) as EncryptedCredentialPayload | null,
-    updated_at: Number(rec.updated_at ?? 0),
-  };
+  const secret_enc = (rec.secret_enc ?? null) as EncryptedCredentialPayload | null;
+  const updated_at = Number(rec.updated_at ?? 0);
+  if (rec.type === "neo4j") {
+    return {
+      type: "neo4j",
+      connection_string: String(rec.connection_string ?? ""),
+      database: String(rec.database ?? "neo4j"),
+      username: String(rec.username ?? "neo4j"),
+      secret_enc,
+      updated_at,
+    };
+  }
+  if (rec.type === "weaviate") {
+    return {
+      type: "weaviate",
+      endpoint: String(rec.endpoint ?? ""),
+      collection_prefix: String(rec.collection_prefix ?? ""),
+      secret_enc,
+      updated_at,
+    };
+  }
+  return null;
 }
 
 async function readStored(workspaceId: string): Promise<StoredGraphStoreConfig | null> {
@@ -73,11 +93,20 @@ export async function getWorkspaceGraphStoreConfigForUi(
 ): Promise<GraphStoreConfigUiView | null> {
   const stored = await readStored(workspaceId);
   if (!stored) return null;
+  if (stored.type === "neo4j") {
+    return {
+      type: "neo4j",
+      connection_string: stored.connection_string,
+      database: stored.database,
+      username: stored.username,
+      secret_set: Boolean(stored.secret_enc),
+      updated_at: stored.updated_at,
+    };
+  }
   return {
-    type: stored.type,
-    connection_string: stored.connection_string,
-    database: stored.database,
-    username: stored.username,
+    type: "weaviate",
+    endpoint: stored.endpoint,
+    collection_prefix: stored.collection_prefix,
     secret_set: Boolean(stored.secret_enc),
     updated_at: stored.updated_at,
   };
@@ -89,7 +118,8 @@ export async function saveWorkspaceGraphStoreConfig(
 ): Promise<{ ok: true } | { ok: false; status: number; error: string; message: string }> {
   const existing = await readStored(workspaceId);
 
-  let secret_enc = existing?.secret_enc ?? null;
+  // Keep an existing secret only when the saved config is the same adapter type.
+  let secret_enc = existing?.type === input.type ? existing.secret_enc ?? null : null;
   if (input.password && input.password.trim()) {
     const enc = encryptProviderSecret(input.password.trim());
     if (!enc.ok) {
@@ -98,14 +128,23 @@ export async function saveWorkspaceGraphStoreConfig(
     secret_enc = enc.payload;
   }
 
-  const stored: StoredGraphStoreConfig = {
-    type: input.type,
-    connection_string: input.connectionString.trim(),
-    database: (input.database ?? "neo4j").trim() || "neo4j",
-    username: (input.username ?? "neo4j").trim() || "neo4j",
-    secret_enc,
-    updated_at: Date.now(),
-  };
+  const stored: StoredGraphStoreConfig =
+    input.type === "neo4j"
+      ? {
+          type: "neo4j",
+          connection_string: input.connectionString.trim(),
+          database: (input.database ?? "neo4j").trim() || "neo4j",
+          username: (input.username ?? "neo4j").trim() || "neo4j",
+          secret_enc,
+          updated_at: Date.now(),
+        }
+      : {
+          type: "weaviate",
+          endpoint: input.endpoint.trim().replace(/\/$/, ""),
+          collection_prefix: (input.collectionPrefix ?? "").trim(),
+          secret_enc,
+          updated_at: Date.now(),
+        };
 
   const sql = getSql();
   await sql`
@@ -134,30 +173,38 @@ function decryptStoredSecret(stored: StoredGraphStoreConfig): string | null {
 export async function testSavedGraphStoreConfig(workspaceId: string): Promise<GraphStoreHealthResult> {
   const stored = await readStored(workspaceId);
   if (!stored) return { ok: false, error: "No graph store config saved for this workspace." };
-  const password = decryptStoredSecret(stored) ?? "";
+  const secret = decryptStoredSecret(stored) ?? "";
+  if (stored.type === "weaviate") {
+    return runWeaviateHealthCheck({ endpoint: stored.endpoint, apiKey: secret });
+  }
   return runNeo4jHealthCheck({
     connectionString: stored.connection_string,
     database: stored.database,
     username: stored.username,
-    password,
+    password: secret,
   });
 }
 
 /** Test a draft config (form values) without persisting. Falls back to the saved secret when asked. */
 export async function testGraphStoreConfigDraft(
   workspaceId: string,
-  draft: { connectionString: string; database?: string; username?: string; password?: string; useSavedSecret?: boolean },
+  draft:
+    | { type?: "neo4j"; connectionString: string; database?: string; username?: string; password?: string; useSavedSecret?: boolean }
+    | { type: "weaviate"; endpoint: string; password?: string; useSavedSecret?: boolean },
 ): Promise<GraphStoreHealthResult> {
-  let password = draft.password?.trim() ?? "";
-  if (!password && draft.useSavedSecret) {
+  let secret = draft.password?.trim() ?? "";
+  if (!secret && draft.useSavedSecret) {
     const stored = await readStored(workspaceId);
-    password = (stored && decryptStoredSecret(stored)) || "";
+    secret = (stored && decryptStoredSecret(stored)) || "";
+  }
+  if ("endpoint" in draft) {
+    return runWeaviateHealthCheck({ endpoint: draft.endpoint.trim(), apiKey: secret });
   }
   return runNeo4jHealthCheck({
     connectionString: draft.connectionString.trim(),
     database: (draft.database ?? "neo4j").trim() || "neo4j",
     username: (draft.username ?? "neo4j").trim() || "neo4j",
-    password,
+    password: secret,
   });
 }
 
@@ -181,5 +228,26 @@ async function runNeo4jHealthCheck(args: {
     return { ok: false, error: error instanceof Error ? error.message : "Connection failed." };
   } finally {
     await adapter.disconnect().catch(() => undefined);
+  }
+}
+
+/**
+ * Weaviate readiness probe. graphrag-core ships no Weaviate driver, so rather than build a full
+ * client shim just to test connectivity, hit Weaviate's standard readiness endpoint
+ * (GET /v1/.well-known/ready) with the API key. A 200 means the instance is reachable and ready.
+ */
+async function runWeaviateHealthCheck(args: { endpoint: string; apiKey: string }): Promise<GraphStoreHealthResult> {
+  const started = Date.now();
+  const base = args.endpoint.trim().replace(/\/$/, "");
+  if (!base) return { ok: false, error: "Weaviate endpoint is required." };
+  try {
+    const res = await fetch(`${base}/v1/.well-known/ready`, {
+      headers: args.apiKey ? { Authorization: `Bearer ${args.apiKey}` } : {},
+    });
+    return res.ok
+      ? { ok: true, latencyMs: Date.now() - started }
+      : { ok: false, latencyMs: Date.now() - started, error: `Weaviate readiness check returned HTTP ${res.status}.` };
+  } catch (error) {
+    return { ok: false, latencyMs: Date.now() - started, error: error instanceof Error ? error.message : "Connection failed." };
   }
 }

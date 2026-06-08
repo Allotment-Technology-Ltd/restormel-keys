@@ -55,7 +55,7 @@
   type DbKind = "surrealdb" | "neo4j" | "weaviate" | "neptune";
   let dbKind: DbKind = "surrealdb";
   const DB_KINDS: DbKind[] = ["surrealdb", "neo4j", "weaviate", "neptune"];
-  const COMING_SOON: DbKind[] = ["weaviate", "neptune"];
+  const COMING_SOON: DbKind[] = ["neptune"];
   const DB_LABELS: Record<DbKind, string> = {
     surrealdb: "SurrealDB",
     neo4j: "Neo4j",
@@ -75,7 +75,17 @@
   let neo4jError = false;
   const GRAPH_STORE_CONFIG_API = API_BASE + "/pipeline/graph-store-config";
 
-  async function loadNeo4jConfig() {
+  // Weaviate connection form + saved config state (Sprint 2 / Build 5A).
+  let weaviateEndpoint = "";
+  let weaviateApiKey = "";
+  let weaviatePrefix = "";
+  let weaviateSecretSet = false;
+  let weaviateSaving = false;
+  let weaviateTesting = false;
+  let weaviateMsg: string | null = null;
+  let weaviateError = false;
+
+  async function loadGraphStoreConfig() {
     try {
       const res = await fetch(GRAPH_STORE_CONFIG_API);
       if (!res.ok) return;
@@ -86,11 +96,79 @@
         neo4jDatabase = d.config.database ?? "neo4j";
         neo4jSecretSet = Boolean(d.config.secret_set);
         dbKind = "neo4j"; // a saved Neo4j config wins the initial selection
+      } else if (d.config?.type === "weaviate") {
+        weaviateEndpoint = d.config.endpoint ?? "";
+        weaviatePrefix = d.config.collection_prefix ?? "";
+        weaviateSecretSet = Boolean(d.config.secret_set);
+        dbKind = "weaviate";
       }
     } catch {
       // non-fatal
     }
   }
+
+  async function saveWeaviate() {
+    weaviateSaving = true;
+    weaviateMsg = null;
+    weaviateError = false;
+    try {
+      const res = await fetch(GRAPH_STORE_CONFIG_API, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "weaviate",
+          endpoint: weaviateEndpoint.trim(),
+          collection_prefix: weaviatePrefix.trim(),
+          ...(weaviateApiKey.trim() ? { secret: weaviateApiKey.trim() } : {}),
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        weaviateError = true;
+        weaviateMsg = d.message ?? `Could not save (HTTP ${res.status}).`;
+        return;
+      }
+      weaviateSecretSet = Boolean(d.config?.secret_set);
+      weaviateApiKey = "";
+      weaviateError = !(d.test?.ok ?? false);
+      weaviateMsg = d.test?.ok
+        ? "Saved — connection healthy."
+        : `Saved, but connection test failed: ${d.test?.error ?? "unknown error"}`;
+      notifyUpdated();
+    } catch {
+      weaviateError = true;
+      weaviateMsg = "Network error while saving.";
+    } finally {
+      weaviateSaving = false;
+    }
+  }
+
+  async function testWeaviate() {
+    weaviateTesting = true;
+    weaviateMsg = null;
+    weaviateError = false;
+    try {
+      const res = await fetch(GRAPH_STORE_CONFIG_API + "/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "weaviate",
+          endpoint: weaviateEndpoint.trim(),
+          ...(weaviateApiKey.trim() ? { secret: weaviateApiKey.trim() } : { use_saved_secret: weaviateSecretSet }),
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      weaviateError = !(d.ok ?? false);
+      weaviateMsg = d.ok ? "Connection succeeded." : `Connection failed: ${d.error ?? "unknown error"}`;
+    } catch {
+      weaviateError = true;
+      weaviateMsg = "Network error while testing.";
+    } finally {
+      weaviateTesting = false;
+    }
+  }
+
+  $: weaviateCanTest = Boolean(weaviateEndpoint.trim() && (weaviateApiKey.trim() || weaviateSecretSet));
 
   function selectDb(kind: DbKind) {
     if (COMING_SOON.includes(kind)) return;
@@ -378,7 +456,7 @@
 
   onMount(() => {
     loadGraphTarget();
-    loadNeo4jConfig();
+    loadGraphStoreConfig();
   });
 </script>
 
@@ -614,6 +692,58 @@
           </button>
           <button type="button" class="btn btn-secondary" on:click={testNeo4j} disabled={neo4jTesting || !neo4jCanTest}>
             {neo4jTesting ? "Testing…" : "Test connection"}
+          </button>
+        </div>
+      </form>
+    {:else if dbKind === "weaviate"}
+      <form class="form" on:submit|preventDefault={saveWeaviate}>
+        <p class="card-desc">
+          Connect an existing Weaviate instance (Cloud or self-hosted). Restormel adds its
+          verification layer on top — best-in-class vector + BM25 hybrid search, with graph
+          traversal handled at the application layer (max depth 2).
+          {#if weaviateSecretSet}<span class="badge ok">configured</span>{/if}
+        </p>
+        <label class="field">
+          <span class="field-label">REST endpoint</span>
+          <input
+            class="input"
+            type="url"
+            bind:value={weaviateEndpoint}
+            autocomplete="off"
+            placeholder="https://your-cluster.weaviate.network"
+            required
+          />
+          <span class="field-hint">Your Weaviate REST URL (the readiness probe is <code>/v1/.well-known/ready</code>).</span>
+        </label>
+        <div class="row">
+          <label class="field">
+            <span class="field-label">
+              API key {#if weaviateSecretSet}<span class="field-hint">(leave blank to keep)</span>{/if}
+            </span>
+            <input
+              class="input"
+              type="password"
+              bind:value={weaviateApiKey}
+              autocomplete="new-password"
+              placeholder="••••••••"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">Collection prefix (optional)</span>
+            <input class="input" type="text" bind:value={weaviatePrefix} autocomplete="off" placeholder="Acme" />
+            <span class="field-hint">Nodes → <code>{weaviatePrefix || ""}Claim</code>, edges → <code>{weaviatePrefix || ""}Edge</code>.</span>
+          </label>
+        </div>
+        {#if weaviateMsg}
+          <p class:err={weaviateError} class:notice={!weaviateError} role="status">{weaviateMsg}</p>
+        {/if}
+        <p class="field-hint">Test runs Weaviate's readiness probe against the endpoint without writing anything.</p>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" disabled={weaviateSaving || !weaviateEndpoint.trim()}>
+            {weaviateSaving ? "Saving…" : "Save graph store"}
+          </button>
+          <button type="button" class="btn btn-secondary" on:click={testWeaviate} disabled={weaviateTesting || !weaviateCanTest}>
+            {weaviateTesting ? "Testing…" : "Test connection"}
           </button>
         </div>
       </form>
