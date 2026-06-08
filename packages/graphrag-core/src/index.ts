@@ -152,6 +152,17 @@ export {
 } from "./adapters/neo4j/neo4j-schema.js";
 
 export {
+  WeaviateAdapter,
+  WEAVIATE_NODE_PROPERTY_KEYS,
+  type WeaviateAdapterDeps,
+  type WeaviateClientLike,
+  type WeaviateObjectLike,
+  type WeaviateScored,
+  type WeaviateFilter,
+  type WeaviateCollectionInfo,
+} from "./adapters/weaviate/WeaviateAdapter.js";
+
+export {
   createGraphStoreAdapter,
   resolveGraphStoreAdapterType,
   normalizeGraphStoreConfig,
