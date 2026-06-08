@@ -5,6 +5,7 @@
  */
 import { z } from 'zod';
 import { VerificationRequestSchema } from './verification.js';
+import { DomainPackVerificationRulesSchema } from './verification-rules.js';
 
 /** Epoch for Connect REST request/response envelopes (independent of Zod schema version). */
 export const CONNECT_API_CONTRACT_VERSION = '2026-06-01' as const;
@@ -137,6 +138,8 @@ export type ConnectContextPack = z.infer<typeof ConnectContextPackSchema>;
 export const ConnectRetrieveResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
+  /** Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}. */
+  trace_id: z.string().optional(),
   context_block: z.string(),
   context_pack: ConnectContextPackSchema.optional(),
   graph: ConnectRetrieveGraphSchema.optional(),
@@ -267,6 +270,8 @@ export type ConnectGraphTraceSummary = z.infer<typeof ConnectGraphTraceSummarySc
 export const ConnectGraphOpResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
+  /** Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}. */
+  trace_id: z.string().optional(),
   operation: ConnectGraphOperationSchema,
   context_block: z.string().optional(),
   subgraph: z
@@ -1030,6 +1035,11 @@ export const ConnectDomainPackSchema = z.object({
   parser: ConnectParserProfileSchema.optional(),
   entity_linking: ConnectEntityLinkingSchema.optional(),
   embedding: ConnectEmbeddingContractSchema,
+  /**
+   * Optional verification rule-set override (Stage 4C). Reference a named rule set by id, or
+   * supply inline dimension-weight overrides. Omitted ⇒ the built-in "Restormel Core v1" applies.
+   */
+  verification_rules: DomainPackVerificationRulesSchema.optional(),
   is_builtin: z.boolean().default(false),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime()

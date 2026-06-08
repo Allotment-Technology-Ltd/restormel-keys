@@ -16,10 +16,11 @@ import {
 import type { RequestHandler } from "./$types";
 
 const TestBodySchema = z.object({
-  type: z.literal("neo4j").optional(),
+  type: z.enum(["neo4j", "weaviate"]).optional(),
   connection_string: z.string().min(1).max(2000).optional(),
   database: z.string().min(1).max(120).optional(),
   username: z.string().min(1).max(120).optional(),
+  endpoint: z.string().min(1).max(2000).optional(),
   secret: z.string().min(1).max(4000).optional(),
   use_saved_secret: z.boolean().optional(),
 });
@@ -42,18 +43,25 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ ok: false, message: parsed.error.issues.map((i) => i.message).join("; ") }, { status: 400 });
   }
 
-  // No connection string → test the saved config.
-  if (!parsed.data.connection_string) {
+  // No draft connection details → test the saved config.
+  if (!parsed.data.connection_string && !parsed.data.endpoint) {
     const saved = await testSavedGraphStoreConfig(ctx.workspaceId);
     return json(saved, { status: saved.ok ? 200 : 502 });
   }
 
-  const result = await testGraphStoreConfigDraft(ctx.workspaceId, {
-    connectionString: parsed.data.connection_string,
-    database: parsed.data.database,
-    username: parsed.data.username,
-    password: parsed.data.secret,
-    useSavedSecret: parsed.data.use_saved_secret,
-  });
+  const result = parsed.data.endpoint
+    ? await testGraphStoreConfigDraft(ctx.workspaceId, {
+        type: "weaviate",
+        endpoint: parsed.data.endpoint,
+        password: parsed.data.secret,
+        useSavedSecret: parsed.data.use_saved_secret,
+      })
+    : await testGraphStoreConfigDraft(ctx.workspaceId, {
+        connectionString: parsed.data.connection_string!,
+        database: parsed.data.database,
+        username: parsed.data.username,
+        password: parsed.data.secret,
+        useSavedSecret: parsed.data.use_saved_secret,
+      });
   return json(result, { status: result.ok ? 200 : 502 });
 };

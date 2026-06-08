@@ -107,6 +107,7 @@ export async function executeConnectRetrieve(args: {
   const response: ConnectRetrieveResponse = {
     contract_version: CONNECT_API_CONTRACT_VERSION,
     request_id: requestId,
+    ...(body.trace_id ? { trace_id: body.trace_id } : {}),
     context_block: body.context_block ?? "",
     context_pack: degraded || !subgraph ? undefined : buildConnectContextPackFromSubgraph(subgraph, request.depth),
     graph: degraded || !subgraph ? undefined : connectGraphSubgraphToGraph(subgraph),

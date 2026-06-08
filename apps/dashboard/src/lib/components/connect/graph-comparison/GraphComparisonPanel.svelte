@@ -10,6 +10,7 @@
   import ComparisonQuestion from "./ComparisonQuestion.svelte";
   import ResponsePanel from "./ResponsePanel.svelte";
   import QualityDeltaPanel from "./QualityDelta.svelte";
+  import ExportTraceLink from "./ExportTraceLink.svelte";
 
   export let graphNodeCount = 0;
   export let hasGraph = false;
@@ -23,6 +24,7 @@
     text: string;
     model: { provider: string; model: string } | null;
     retrieval: RetrievalSummary | null;
+    traceExportUrl: string | null;
     error: string | null;
   };
 
@@ -31,6 +33,7 @@
     text: "",
     model: null,
     retrieval: null,
+    traceExportUrl: null,
     error: null,
   });
 
@@ -77,11 +80,12 @@
       text: "",
       model: null,
       retrieval: null,
+      traceExportUrl: null,
       error: null,
     });
 
     try {
-      const { retrieval } = await streamComparison({
+      const { retrieval, traceExportUrl } = await streamComparison({
         connectBase,
         mode,
         question: lastQuestion,
@@ -90,12 +94,14 @@
         signal: ac.signal,
         onModel: (m) => updatePanel(mode, (p) => ({ ...p, model: m })),
         onRetrieval: (s) => updatePanel(mode, (p) => ({ ...p, retrieval: s, status: "streaming" })),
+        onTrace: (t) => updatePanel(mode, (p) => ({ ...p, traceExportUrl: t.exportUrl })),
         onDelta: (t) => updatePanel(mode, (p) => ({ ...p, text: p.text + t, status: "streaming" })),
       });
       updatePanel(mode, (p) => ({
         ...p,
         status: "complete",
         retrieval: retrieval ?? p.retrieval,
+        traceExportUrl: traceExportUrl ?? p.traceExportUrl,
       }));
     } catch (e) {
       if (ac.signal.aborted) return; // superseded by a newer run
@@ -248,6 +254,12 @@
       />
     </div>
 
+    {#if panelGraph.status === "complete" && panelGraph.traceExportUrl}
+      <div class="trace-row">
+        <ExportTraceLink href={panelGraph.traceExportUrl} />
+      </div>
+    {/if}
+
     {#if delta}
       <QualityDeltaPanel {delta} />
     {:else if deltaLoading}
@@ -308,6 +320,11 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-4);
+  }
+
+  .trace-row {
+    display: flex;
+    justify-content: flex-end;
   }
 
   .delta-pending {

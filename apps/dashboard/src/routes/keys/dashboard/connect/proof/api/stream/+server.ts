@@ -12,8 +12,14 @@ import {
   resolveByokChatTarget,
   streamByokChat,
 } from "$lib/server/graph-comparison/byok-chat";
-import { retrieveStructured } from "$lib/server/graph-comparison/retrieve-structured";
+import {
+  retrieveStructured,
+  COMPARISON_VERIFICATION_POLICY,
+} from "$lib/server/graph-comparison/retrieve-structured";
 import { toRetrievalSummary } from "$lib/server/graph-comparison/provenance";
+import { buildProvenanceTraceFromRetrieval } from "$lib/server/connect-v1/provenance-trace-builder";
+import { insertProvenanceTrace } from "$lib/server/connect-traces";
+import { getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
 import type { ComparisonStreamEvent } from "$lib/connect/graph-comparison-types";
 
 const RAW_SYSTEM = "Answer the following question directly and accurately.";
@@ -107,6 +113,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             maxClaims: 24,
           });
           send({ type: "retrieval", summary: toRetrievalSummary(retrieval.result) });
+
+          // Persist a provenance trace and surface an export link (Stage 4B). Best-effort:
+          // never let trace storage break the comparison stream.
+          if (!retrieval.degraded && retrieval.result.claims.length > 0) {
+            try {
+              const traceId = crypto.randomUUID();
+              const trace = buildProvenanceTraceFromRetrieval({
+                traceId,
+                query: question,
+                workspaceId: workspace.id,
+                domainPack: (await getSelectedDomainPackId(workspace.id)) ?? "unknown",
+                graphStoreType: "surreal",
+                queriedAt: new Date().toISOString(),
+                verificationPolicy: COMPARISON_VERIFICATION_POLICY,
+                tokenBudget: 0,
+                retrieval: retrieval.result,
+                timing: { seedMs: 0, expansionMs: 0, rankingMs: 0, totalMs: 0 },
+              });
+              await insertProvenanceTrace({ trace, projectId: ctx.projectId });
+              const params = new URLSearchParams({ format: "json", workspace_id: workspace.id });
+              if (ctx.projectId) params.set("project_id", ctx.projectId);
+              send({ type: "trace", traceId, exportUrl: `/connect/v1/traces/${traceId}/export?${params}` });
+            } catch {
+              /* best-effort trace persistence */
+            }
+          }
           system = GRAPH_SYSTEM;
           userMessage = retrieval.contextBlock
             ? `${question}\n\nKNOWLEDGE CONTEXT:\n${retrieval.contextBlock}`

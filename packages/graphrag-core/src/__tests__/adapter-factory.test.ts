@@ -105,12 +105,18 @@ describe("AdapterFactory", () => {
     });
 
     it("throws GraphStoreAdapterNotImplementedError for not-yet-built adapters", () => {
-      for (const type of ["weaviate", "neptune", "arangodb"] as const) {
+      for (const type of ["neptune", "arangodb"] as const) {
         const config: GraphStoreConnectionConfig = { type, schemaMode: "fresh", credentials: {} };
         expect(() => createGraphStoreAdapter(config, { surrealStore: fakeStore })).toThrow(
           GraphStoreAdapterNotImplementedError,
         );
       }
+    });
+
+    it("constructs a WeaviateAdapter for type: 'weaviate' (Sprint 2)", () => {
+      const config: GraphStoreConnectionConfig = { type: "weaviate", schemaMode: "fresh", credentials: {} };
+      const adapter = createGraphStoreAdapter(config, { surrealStore: fakeStore });
+      expect(adapter.adapterType).toBe("weaviate");
     });
   });
 });

@@ -25,8 +25,11 @@ import {
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { buildGraphRagEmbedder } from "$lib/server/connect/stage-route-generate";
+import { getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
+import { insertProvenanceTrace } from "$lib/server/connect-traces";
 import type { ConnectV1AuthScope } from "./auth.js";
 import { resolveWorkspaceRetrievalConfig } from "./workspace-retrieval-config.js";
+import { buildProvenanceTrace } from "./provenance-trace-builder.js";
 
 const emptyGraphStore: GraphStore = {
   async query<T>(_sql: string, _vars?: Record<string, unknown>): Promise<T> {
@@ -92,10 +95,12 @@ function subgraphResponse(
   request: ConnectGraphOpRequest,
   requestId: string,
   result: OrchestratorResult,
+  traceId?: string,
 ): ConnectGraphOpResponse {
   return {
     contract_version: CONNECT_API_CONTRACT_VERSION,
     request_id: requestId,
+    ...(traceId ? { trace_id: traceId } : {}),
     operation: request.operation,
     context_block: result.context_block,
     subgraph: {
@@ -169,11 +174,54 @@ export async function executeConnectGraphOp(args: {
   const orchestrator = new RetrievalOrchestrator(config, deps);
   const verificationPolicy = mapVerificationPolicy(request.verification_policy);
 
+  // ── Provenance trace context (Stage 4B) ──
+  const graphStoreType = targetRow?.provider ?? "none";
+  // Trace metadata only — a lookup failure must never break retrieval.
+  let domainPack = "unknown";
+  try {
+    domainPack = (await getSelectedDomainPackId(args.auth.workspaceId)) ?? "unknown";
+  } catch {
+    domainPack = "unknown";
+  }
+
+  /**
+   * Build + persist a provenance trace for a subgraph-producing op. Returns the trace_id only
+   * when storage succeeds (a returned id is always retrievable). Best-effort: a failure here
+   * never breaks the retrieval response — the query simply comes back without a trace_id.
+   */
+  const persistTrace = async (
+    queryText: string,
+    result: OrchestratorResult,
+    totalMs: number,
+    tokenBudget: number,
+  ): Promise<string | undefined> => {
+    const traceId = crypto.randomUUID();
+    try {
+      const trace = buildProvenanceTrace({
+        traceId,
+        query: queryText,
+        workspaceId: args.auth.workspaceId,
+        domainPack,
+        graphStoreType,
+        queriedAt: new Date().toISOString(),
+        verificationPolicy,
+        tokenBudget,
+        result,
+        timing: { seedMs: 0, expansionMs: 0, rankingMs: 0, totalMs },
+      });
+      await insertProvenanceTrace({ trace, projectId: args.auth.projectId });
+      return traceId;
+    } catch {
+      return undefined;
+    }
+  };
+
   switch (request.operation) {
     case "retrieve_context": {
       if (!request.query) {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "query is required for retrieve_context" } };
       }
+      const startedAt = Date.now();
       const result = await orchestrator.retrieveContext({
         query: request.query,
         topK: request.top_k,
@@ -182,13 +230,15 @@ export async function executeConnectGraphOp(args: {
         domain: request.domain,
         verificationPolicy,
       });
-      return { ok: true, body: subgraphResponse(request, requestId, result) };
+      const traceId = await persistTrace(request.query, result, Date.now() - startedAt, request.max_tokens ?? 0);
+      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
     }
 
     case "expand_context": {
       if (!request.seed_node_ids || request.seed_node_ids.length === 0) {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "seed_node_ids is required for expand_context" } };
       }
+      const startedAt = Date.now();
       const result = await orchestrator.expandContext({
         seedNodeIds: request.seed_node_ids,
         depth: request.depth ?? request.max_depth,
@@ -196,13 +246,15 @@ export async function executeConnectGraphOp(args: {
         verificationPolicy,
         maxTokens: request.max_tokens,
       });
-      return { ok: true, body: subgraphResponse(request, requestId, result) };
+      const traceId = await persistTrace(request.query ?? "", result, Date.now() - startedAt, request.max_tokens ?? 0);
+      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
     }
 
     case "find_relevant_subgraph": {
       if (!request.topic) {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "topic is required for find_relevant_subgraph" } };
       }
+      const startedAt = Date.now();
       const result = await orchestrator.findRelevantSubgraph({
         topic: request.topic,
         reasoningMode: request.reasoning_mode,
@@ -210,7 +262,8 @@ export async function executeConnectGraphOp(args: {
         verificationPolicy,
         maxTokens: request.max_tokens,
       });
-      return { ok: true, body: subgraphResponse(request, requestId, result) };
+      const traceId = await persistTrace(request.topic, result, Date.now() - startedAt, request.max_tokens ?? 0);
+      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
     }
 
     case "find_paths": {
@@ -239,6 +292,7 @@ export async function executeConnectGraphOp(args: {
     case "summarise_subgraph": {
       // Retrieve a subgraph (from query or seeds), then condense it under the token budget.
       const maxTokens = request.max_tokens ?? 1500;
+      const startedAt = Date.now();
       let retrieved: OrchestratorResult;
       if (request.seed_node_ids && request.seed_node_ids.length > 0) {
         retrieved = await orchestrator.expandContext({
@@ -269,11 +323,19 @@ export async function executeConnectGraphOp(args: {
       summaryTrace.claim_count = summary.nodes.length;
       summaryTrace.relation_count = summary.edges.length;
 
+      const traceId = await persistTrace(
+        request.query ?? request.topic ?? "",
+        retrieved,
+        Date.now() - startedAt,
+        maxTokens,
+      );
+
       return {
         ok: true,
         body: {
           contract_version: CONNECT_API_CONTRACT_VERSION,
           request_id: requestId,
+          ...(traceId ? { trace_id: traceId } : {}),
           operation: request.operation,
           subgraph: {
             claims: summary.nodes.map(toGraphNode),

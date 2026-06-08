@@ -16,13 +16,21 @@ import {
 } from "$lib/server/connect/session-context";
 import type { RequestHandler } from "./$types";
 
-const UpsertSchema = z.object({
-  type: z.literal("neo4j"),
-  connection_string: z.string().min(1).max(2000),
-  database: z.string().min(1).max(120).optional(),
-  username: z.string().min(1).max(120).optional(),
-  secret: z.string().min(1).max(4000).optional(),
-});
+const UpsertSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("neo4j"),
+    connection_string: z.string().min(1).max(2000),
+    database: z.string().min(1).max(120).optional(),
+    username: z.string().min(1).max(120).optional(),
+    secret: z.string().min(1).max(4000).optional(),
+  }),
+  z.object({
+    type: z.literal("weaviate"),
+    endpoint: z.string().min(1).max(2000),
+    collection_prefix: z.string().max(120).optional(),
+    secret: z.string().min(1).max(4000).optional(),
+  }),
+]);
 
 export const GET: RequestHandler = async ({ locals }) => {
   const ctx = await resolveKnowledgeSessionContext(locals);
@@ -51,13 +59,23 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
       { status: 400 },
     );
   }
-  const result = await saveWorkspaceGraphStoreConfig(ctx.workspaceId, {
-    type: parsed.data.type,
-    connectionString: parsed.data.connection_string,
-    database: parsed.data.database,
-    username: parsed.data.username,
-    password: parsed.data.secret,
-  });
+  const result = await saveWorkspaceGraphStoreConfig(
+    ctx.workspaceId,
+    parsed.data.type === "neo4j"
+      ? {
+          type: "neo4j",
+          connectionString: parsed.data.connection_string,
+          database: parsed.data.database,
+          username: parsed.data.username,
+          password: parsed.data.secret,
+        }
+      : {
+          type: "weaviate",
+          endpoint: parsed.data.endpoint,
+          collectionPrefix: parsed.data.collection_prefix,
+          password: parsed.data.secret,
+        },
+  );
   if (!result.ok) {
     return json({ error: result.error, message: result.message }, { status: result.status });
   }

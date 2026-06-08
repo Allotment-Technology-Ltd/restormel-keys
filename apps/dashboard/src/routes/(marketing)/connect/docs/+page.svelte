@@ -25,6 +25,8 @@
     <li id="ingest"><code>POST /connect/v1/ingest/jobs</code> — create ingest job (workspace-scoped persistence)</li>
     <li><code>GET /connect/v1/ingest/jobs</code> — list jobs for a workspace</li>
     <li><code>GET /connect/v1/ingest/jobs/{`{jobId}`}</code> — job status and stage progress</li>
+    <li id="traces"><code>GET /connect/v1/traces/{`{traceId}`}</code> — fetch a stored provenance trace</li>
+    <li><code>GET /connect/v1/traces/{`{traceId}`}/export?format=json</code> — download a provenance trace as JSON</li>
   </ul>
 
   <h2 id="graph-orchestrator">Graph orchestrator</h2>
@@ -49,6 +51,31 @@
   <p>
     Pass <code>max_tokens</code> on any operation to fit your model's context window; <code>trace.tokens_used</code> and
     <code>trace.nodes_dropped</code> report the budgeting outcome.
+  </p>
+
+  <h2 id="provenance-traces">Provenance traces</h2>
+  <p>
+    Every <code>POST /connect/v1/retrieve</code> and <code>POST /connect/v1/graph</code> query stores a full audit
+    trace and returns its <code>trace_id</code> in the response. Fetch the structured document later with
+    <code>GET /connect/v1/traces/{`{traceId}`}</code>, or download it with
+    <code>GET /connect/v1/traces/{`{traceId}`}/export?format=json</code> (sets <code>Content-Disposition</code> so it
+    saves as a file). Both take the same <code>workspace_id</code> (and optional <code>project_id</code>) query
+    parameters and Gateway-key auth as the rest of Connect v1.
+  </p>
+  <p><strong>What a trace contains</strong> (<code>schema_version 1.0</code>, from <code>@restormel/contracts/provenance-trace</code>):</p>
+  <ul>
+    <li>the <code>query</code>, <code>domain_pack</code>, <code>graph_store_type</code>, and the <code>verification_policy</code> actually applied;</li>
+    <li><code>seeds</code> — the entry-point claims chosen by vector/lexical search;</li>
+    <li><code>expansion</code> — the traversal band(s): depth, claims traversed, relations kept, edge types;</li>
+    <li><code>claims</code> — a per-claim verdict for every claim considered: whether it was <code>included</code>, its <code>verification_state</code>/<code>trust_score</code>/<code>confidence_score</code>, its <code>hop_depth</code> and <code>edge_path</code>, and (when excluded) the <code>exclusion_reason</code>;</li>
+    <li><code>result</code> — claims retrieved vs filtered, tokens used vs budget, whether the context was truncated;</li>
+    <li><code>timing</code> — total wall-clock duration (sub-phase timings are reserved in 1.0).</li>
+  </ul>
+  <p>
+    <strong>Retention:</strong> traces are kept for <strong>90 days</strong>, then pruned. <strong>Use them to</strong>
+    debug why a claim was (or was not) returned, audit the trust filter on a specific answer, compare retrieval quality
+    across queries, and — with <code>restormel replay</code> — deterministically reproduce an agent's retrieval. A trace
+    owned by another workspace returns <code>404</code>.
   </p>
 
   <h2 id="contract">Contract</h2>

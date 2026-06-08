@@ -34,8 +34,13 @@ export type {
   StackLayer,
 } from "./integration-stack-catalog.js";
 
-/** Horizon suite MCP tool names (duplicated here so `@restormel/aaif` builds without `@restormel/mcp`). */
-export type { RestormelSuiteToolName } from "./suite-tool-names.js";
+/** Horizon suite MCP tool names — single source of truth (Stage 5B / I10); `@restormel/mcp` re-exports these. */
+export {
+  RESTORMEL_SUITE_TOOL_NAMES,
+  getEnabledSuiteToolNames,
+  type RestormelSuiteToolName,
+  type SuiteToolModuleFlags,
+} from "./suite-tool-names.js";
 
 export { isAAIFRequest, isAAIFResponse } from "./validate.js";
 
