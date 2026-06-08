@@ -15,12 +15,13 @@ import { registerRouting } from "./commands/routing.js";
 import { registerPatch } from "./commands/patch.js";
 import { registerCatalog } from "./commands/catalog.js";
 import { registerLogin } from "./commands/login.js";
+import { registerReplay } from "./commands/replay.js";
 
 const program = new Command();
 program
   .name("keys")
   .description(
-    "Restormel Keys CLI — init, login, add keys, validate, doctor, cost estimate, models, routing, catalog, patch"
+    "Restormel Keys CLI — init, login, add keys, validate, doctor, cost estimate, models, routing, catalog, patch, replay"
   )
   .version("0.1.9");
 
@@ -36,5 +37,6 @@ registerRouting(program);
 registerCatalog(program);
 registerPatch(program);
 registerLogin(program);
+registerReplay(program);
 
 program.parse();

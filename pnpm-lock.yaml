@@ -402,6 +402,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@restormel/contracts':
+        specifier: workspace:^0.1.1
+        version: link:../contracts
       '@restormel/doctor':
         specifier: workspace:^0.1.16
         version: link:../doctor

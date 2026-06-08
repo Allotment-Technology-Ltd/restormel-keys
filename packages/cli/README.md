@@ -30,6 +30,26 @@ npx @restormel/validate
 | `keys login` | Device login: browser-approved Gateway key in the terminal (OAuth-style device flow) |
 | `keys patch` | One-command patch upgrade for installed Restormel packages + optional catalog verification |
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
+| `keys replay <traceId\|traceFile>` | Replay a past Connect retrieval against the current graph and diff the results (`--diff`, `--compare`, `--output json\|pretty\|markdown`) |
+
+### Replay a retrieval (provenance traces)
+
+Every Connect `POST /connect/v1/retrieve` and `/connect/v1/graph` query returns a `trace_id`.
+`keys replay` re-runs that exact query — same verification policy, depth, and token budget — against
+the current graph and reports which claims are **stable**, **changed/removed**, or **new**. This
+deterministically reproduces an agent's retrieval and surfaces graph drift.
+
+```bash
+# By trace id (needs RESTORMEL_GATEWAY_KEY + RESTORMEL_WORKSPACE_ID, or run `keys login`)
+keys replay 7b9f… --diff
+
+# From a saved trace file, as JSON or markdown
+keys replay ./trace.json --output json
+keys replay ./trace.json --compare --output markdown
+```
+
+Traces are retained for 90 days; for older queries, replay a locally saved trace file. A drift
+warning is emitted when more than half the original claims changed since the trace was recorded.
 
 ### Canonical catalog (public feed)
 
