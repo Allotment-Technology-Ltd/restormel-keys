@@ -158,6 +158,24 @@ export {
   type ExtractionGateDecision,
 } from "./ingest/extraction-gates.js";
 
+export {
+  contentHash,
+  bindEvidenceSpan,
+  verifyEvidenceSpan,
+  bindUnitsEvidence,
+  type EvidenceSpan,
+  type EvidenceBinding,
+  type EvidenceMatchKind,
+  type SpanVerification,
+  type UnitEvidenceBinding,
+} from "./ingest/evidence-binding.js";
+
+export {
+  deriveLayer1State,
+  type ClaimVerificationState,
+  type Layer1StateInput,
+} from "./ingest/verification-state.js";
+
 export { extractLinks, parseSitemapUrls, sitemapUrlFor } from "./ingest/crawl.js";
 
 export {

@@ -185,10 +185,11 @@ function remediationActionBlock(pack: ConnectDomainPack): string {
 
 export const EXTRACTION_OUTPUT_CONTRACT = `Return STRICT JSON only (no prose):
 {
-  "units": [{ "id": "u1", "text": "<one complete unit>", "type": "<unit type or omit>", "domain": "<domain or omit>", "evidence": "<short quote or paraphrase anchor or omit>" }],
+  "units": [{ "id": "u1", "text": "<one complete unit>", "type": "<unit type or omit>", "domain": "<domain or omit>", "evidence": "<the supporting sentence(s), copied VERBATIM from the passage>" }],
   "relations": [{ "from": "u1", "relation": "<relation type>", "to": "u2" }]
 }
-Each unit id must be unique and referenced by relations. Keep each unit a complete idea, never a fragment. Omit units you cannot anchor to the passage.`;
+Each unit id must be unique and referenced by relations. Keep each unit a complete idea, never a fragment.
+"evidence" is REQUIRED for every unit: copy the exact supporting text character-for-character from the passage — do not paraphrase, do not abbreviate, do not merge distant sentences. A unit whose evidence cannot be located verbatim in the passage cannot be marked supported. Omit units you cannot quote support for.`;
 
 export const RELATIONS_OUTPUT_CONTRACT = `Return STRICT JSON only:
 { "relations": [{ "from": "<unit id>", "relation": "<relation type>", "to": "<unit id>" }] }
