@@ -17,34 +17,43 @@ tests + docs, typecheck/test green, repro or demo command included in the PR bod
 **The claims-integrity rule (non-negotiable).** Restormel must be able to verify *in the
 way the marketing says it does*. The G2 bar and trust score report the pipeline's
 **self-judgment**; they say nothing about whether the judge itself catches fabricated or
-subtly-wrong claims. Therefore: (a) verifier efficacy is measured against ground truth
-(Stage 1.0a) before any positioning work, (b) every public claim maps to an automated,
-continuously-running piece of evidence in the claims ledger (Stage 1.0b), and (c) Stage
-1.3 marketing may only use ledger rows marked **proven**. If measured efficacy does not
-support a phrase, the phrase changes — not the measurement.
+subtly-wrong claims. The architectural answer is
+[ADR: Evidence-Bound Verification](decisions/evidence-bound-verification.md) — every claim
+bound to quoted evidence spans with source-version hashes (deterministically re-checkable,
+Layer 1) plus a narrow span-scoped entailment judge with abstention (Layer 2). Therefore:
+(a) verifier efficacy is measured against ground truth (Stage 1.0a) before and after EBV
+lands, (b) every public claim maps to an automated, continuously-running piece of evidence
+in the claims ledger (Stage 1.0b), and (c) Stage 1.3 marketing may only use ledger rows
+marked **proven**. If measured efficacy does not support a phrase, the phrase changes —
+not the measurement. The falsifiability test for any surface that says "verified": a
+skeptical user can click through to the quoted span in the source and check it themselves.
 
 **Sequencing.**
 
 | Order | Stage | Pivot | Depends on |
 |---|---|---|---|
 | 0 | Focus cuts (checklist, no agent) | — | — |
-| 1 | 1.0a Verifier efficacy benchmark (ground truth) | P1 | — |
-| 2 | 1.1 Verified-context API surface | P1 | — |
-| 3 | 1.2 Trust scorecard | P1 | 1.1 |
-| 4 | 2.1 Headless `connect eval` CLI | P2 | — (parallel with 1.x) |
-| 5 | 1.0b Marketing claims ledger | P1 | 1.0a |
-| 6 | 2.2 Quality baseline + regression diff | P2 | 2.1 |
-| 7 | 1.3 Marketing reposition | P1 | 1.0b, 1.1, 1.2 |
-| 8 | 2.3 CI gate (GitHub Action + Forgejo; runs 1.0a efficacy too) | P2 | 2.2 |
-| 9 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
-| 10 | 1.4 Spine observability hardening (H1/H3) | P1 | — |
-| 11 | 2.4 Regression history dashboard | P2 | 2.3 |
-| 12 | 3.1 Verified-memory design ADR (STOP-gated) | P3 | — |
-| 13 | 3.2 Incremental re-ingest | P3 | 3.1 |
-| 14 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
-| 15 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
-| 16 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
-| 17 | 4.3 AAIF verification envelope | P4 | 4.1 |
+| 1 | 1.0a Verifier efficacy benchmark (baseline vs CURRENT validator) | P1 | — |
+| 2 | EBV ADR sign-off (human review of docs/decisions/evidence-bound-verification.md) | P1 | — |
+| 3 | 1.0c EBV Layer 1 — evidence binding + deterministic verification | P1 | EBV ADR |
+| 4 | 1.0d EBV Layer 2 — span-scoped entailment + abstention/review | P1 | 1.0c |
+| 5 | 1.0a′ re-run benchmark post-EBV (same harness; before/after is the proof) | P1 | 1.0d |
+| 6 | 2.1 Headless `connect eval` CLI | P2 | — (parallel with 1.0c/d) |
+| 7 | 1.0b Marketing claims ledger | P1 | 1.0a′ |
+| 8 | 1.1 Verified-context API surface (envelope carries evidence per ADR) | P1 | 1.0c |
+| 9 | 1.2 Trust scorecard (incl. % evidence-bound) | P1 | 1.1 |
+| 10 | 2.2 Quality baseline + regression diff | P2 | 2.1 |
+| 11 | 1.3 Marketing reposition | P1 | 1.0b, 1.1, 1.2 |
+| 12 | 2.3 CI gate (GitHub Action + Forgejo; runs efficacy weekly) | P2 | 2.2 |
+| 13 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
+| 14 | 1.4 Spine observability hardening (H1/H3) | P1 | — |
+| 15 | 2.4 Regression history dashboard | P2 | 2.3 |
+| 16 | 3.1 Verified-memory design ADR (builds on EBV source-version hashes) | P3 | 1.0c |
+| 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
+| 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
+| 19 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
+| 20 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
+| 21 | 4.3 AAIF verification envelope | P4 | 4.1 |
 
 ---
 
@@ -112,6 +121,80 @@ harness + fixtures + a results snapshot (dated, model-versioned), not the keys.
 Use effort: xhigh.
 ```
 
+### Stage 1.0c — EBV Layer 1: evidence binding + deterministic verification
+
+```
+ROLE
+Senior engineer implementing Layer 1 of the signed-off Evidence-Bound Verification ADR
+(docs/decisions/evidence-bound-verification.md). If the ADR is not signed off, STOP.
+
+TARGET
+Every extracted claim carries evidence spans (exact quote + char offsets + source-version
+content hash); a deterministic post-extraction step verifies each span exists at its
+offsets in the cited source version; verification states become
+supported|inferred|unverified|contradicted|excluded with an unverified→review queue.
+A claim with no bindable evidence can never be "supported".
+
+FIRST
+Read the ADR in full. Then: extraction contract + analyzeExtraction (extract.ts,
+prompt-compose.ts EXTRACTION_OUTPUT_CONTRACT — the evidence? field exists), the passage
+schema fields in domain packs (passage_table, source_text_field, passage_text_field),
+both graph writers (graph-writer.ts), provenance-trace contracts, and the
+verification-rules engine (packages/graphrag-core/src/verification/rules/) — Layer 1
+checks belong there as declarative rules.
+
+ACCEPTANCE CRITERIA
+- Extraction prompts require supporting quotes; the binder resolves quotes to offsets
+  with exact match after normalization, bounded fuzzy fallback recorded as fuzzy.
+- Source versions get content hashes at parse time; bindings record the hash.
+- Deterministic re-check is exposed as a pure function AND a verification rule, runnable
+  without any LLM (extend the no-keys repro-script idiom with an EBV script).
+- Misattribution is structurally caught: a test plants a quote from source B cited
+  against source A and the binding fails.
+- States persisted by both writers; unverified claims enter a reviewable state — reuse
+  the existing reversible soft-exclude machinery for storage; if a genuinely new state
+  column/table is required on user-owned Surreal schemas, STOP and propose the migration.
+- Backfill command for existing graphs: bind where recoverable, else mark unverified —
+  never silently demote to excluded or silently keep as supported.
+- connect-core + dashboard typecheck/tests green; new unit tests for binder edge cases
+  (unicode/whitespace normalization, repeated quotes, near-duplicate spans).
+
+Use effort: xhigh. Layer 1 only — do NOT touch the LLM validation stage in this run.
+```
+
+### Stage 1.0d — EBV Layer 2: span-scoped entailment with abstention
+
+```
+ROLE
+Senior engineer replacing prefix-batch validation with span-scoped entailment per the
+EBV ADR. Requires Stage 1.0c merged.
+
+TARGET
+The validation stage becomes: per claim, judge "does THIS bound span entail THIS claim?"
+(claim + its 1–3 spans only — no 12k source prefix). Verdicts: entailed | not_entailed |
+abstain + confidence, recorded with model id, prompt version, timestamp. Abstention and
+low confidence route to the review queue (never laundered into weak). Cross-model
+routing retained (judge family ≠ extractor family, plan.ts).
+
+ACCEPTANCE CRITERIA
+- The fail-safe coverage semantics from PR #189 are preserved exactly: an omitted or
+  unparseable verdict is a coverage gap, never a pass.
+- Verdict metadata (model, prompt version, time) lands in the provenance trace; the
+  same claim can be re-judged later and both verdicts retained (audit history).
+- k-sample self-consistency available behind a pack/preset flag for high-stakes packs;
+  disagreement → review.
+- Batching is per-passage (multiple claims sharing a span may share a call) — show the
+  cost comparison vs the old validator in the PR using the 1.0a harness corpus.
+- Remediation integration: "repair" re-binds evidence for repaired text before it can
+  return to supported (re-validate already exists; re-bind is the new requirement).
+- Old validation path stays available behind a flag for one release for comparison runs,
+  then is removed (note the removal condition in the PR).
+- Run the Stage 1.0a harness and report before/after numbers verbatim in the PR.
+
+Use effort: xhigh. STOP if the entailment task needs a new model route capability that
+plan.ts cannot express — propose the routing change first.
+```
+
 ### Stage 1.0b — Marketing claims ledger (every public claim maps to evidence)
 
 ```
@@ -177,9 +260,11 @@ FIRST
 
 ACCEPTANCE CRITERIA
 - A single documented response envelope (in @restormel/contracts) for "verified claim":
-  { claim, status, citation, trace_ref, trust_score? } — reuse existing contract types;
-  do NOT invent parallel shapes. If a needed field has no existing source of truth,
-  STOP and ask before adding schema.
+  { claim, state, evidence: [{quote, offsets, source_ref, source_hash}], judge?: {model,
+  prompt_version, confidence, at}, citation, trace_ref, trust_score? } — per the EBV ADR
+  (docs/decisions/evidence-bound-verification.md); reuse existing contract types, do NOT
+  invent parallel shapes. If a needed field has no existing source of truth, STOP and
+  ask before adding schema.
 - Connect v1 retrieve responses include the envelope per returned unit; unverified or
   excluded units are flagged, never silently blended.
 - One canonical guide at /keys/docs/guides/verified-context explaining: the pipeline's
