@@ -123,6 +123,12 @@ export interface GraphSubgraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   seedNodeIds: string[];
+  /**
+   * Adapter advisories surfaced into the retrieval trace — e.g. an adapter that clamped a
+   * requested traversal depth to its `maxTraversalDepth`. Empty/undefined when there is nothing
+   * to report.
+   */
+  warnings?: string[];
 }
 
 export interface GraphPathStep {

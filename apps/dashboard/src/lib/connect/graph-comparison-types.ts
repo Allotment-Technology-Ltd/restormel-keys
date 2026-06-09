@@ -52,6 +52,7 @@ export type QualityDelta = {
 export type ComparisonStreamEvent =
   | { type: "model"; provider: string; model: string }
   | { type: "retrieval"; summary: RetrievalSummary }
+  | { type: "trace"; traceId: string; exportUrl: string }
   | { type: "delta"; text: string }
   | { type: "complete"; text: string }
   | { type: "error"; message: string };
