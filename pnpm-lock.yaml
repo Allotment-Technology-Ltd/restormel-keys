@@ -402,6 +402,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@restormel/connect-core':
+        specifier: workspace:^0.1.0
+        version: link:../connect-core
       '@restormel/contracts':
         specifier: workspace:^0.1.1
         version: link:../contracts

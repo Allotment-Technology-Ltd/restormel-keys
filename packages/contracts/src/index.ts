@@ -4,6 +4,7 @@ export * from './domains.js';
 export * from './enrichment.js';
 export * from './ingestion.js';
 export * from './connect.js';
+export * from './connect-eval.js';
 export * from './knowledge.js';
 export * from './learn.js';
 export * from './passes.js';

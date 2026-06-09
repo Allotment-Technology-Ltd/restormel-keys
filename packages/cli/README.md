@@ -32,6 +32,7 @@ npx @restormel/validate
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
 | `keys replay <traceId\|traceFile>` | Replay a past Connect retrieval against the current graph and diff the results (`--diff`, `--compare`, `--output json\|pretty\|markdown`) |
 | `keys rules show` / `keys rules list` | Inspect the verification rule set (six-dimension weights + strict/balanced/lenient policies) active for your workspace |
+| `keys connect eval` | Headless G2 quality verdict for Connect ingest (`--job`, `--counts`, `--stdin`, `--output json\|pretty`) with stable exit codes — CI-friendly |
 
 ### Replay a retrieval (provenance traces)
 
@@ -51,6 +52,60 @@ keys replay ./trace.json --compare --output markdown
 
 Traces are retained for 90 days; for older queries, replay a locally saved trace file. A drift
 warning is emitted when more than half the original claims changed since the trace was recorded.
+
+### Headless quality eval (Connect)
+
+`keys connect eval` judges a Connect graph's ingest quality against the published G2 bar
+(**≥ 90% supported, ≤ 2% unsupported** — the same `computeG2Metrics`/`assertG2Targets` math the
+pipeline itself uses) and emits a versioned JSON verdict (`@restormel/contracts/connect-eval`)
+plus a human-readable summary. Built for CI: the exit code is the contract.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Pass — quality bar met |
+| `1` | Quality fail — `reasons` lists each breached bar |
+| `2` | Config/usage error (bad flags, missing key/workspace, unreadable input, API error) |
+
+**Remote mode** (default) reads the latest ingest run's public quality report from the
+gateway-key-authed `GET /connect/v1/ingest/jobs` API — no dashboard session needed:
+
+```bash
+# Latest assessed run in the workspace (needs RESTORMEL_GATEWAY_KEY + RESTORMEL_WORKSPACE_ID, or `keys login`)
+keys connect eval --workspace <workspace-id>
+
+# A specific ingest job, as JSON for CI logs
+keys connect eval --job <job-id> --output json
+```
+
+**Local mode** evaluates a counts document produced by a run's quality report or any pipeline —
+no network, fully deterministic:
+
+```bash
+# {ok,weak,unsupported} counts (optional: trust_score, coverage_gaps, fingerprint)
+keys connect eval --counts ./counts.json
+
+# Or pipe a saved quality report (the GET /connect/v1/ingest/jobs job.quality_report object)
+cat quality-report.json | keys connect eval --stdin --output json
+```
+
+Verdict shape (schema version `1.0`):
+
+```json
+{
+  "schema_version": "1.0",
+  "evaluated_at": "2026-06-09T12:00:00.000Z",
+  "source": { "kind": "ingest_job", "workspace_id": "…", "job_id": "…", "assessed_at": "…" },
+  "g2": { "ok": 95, "weak": 3, "unsupported": 1, "ok_pct": 96, "unsupported_pct": 1 },
+  "targets": { "ok_pct_min": 90, "unsupported_pct_max": 2 },
+  "trust_score": 88,
+  "pass": true,
+  "reasons": []
+}
+```
+
+`coverage_gaps` and `fingerprint` are carried through when the producing pipeline supplies them.
+**Stage 2.2 adds `--baseline <file|ref>` diffing** (regression detection against a saved verdict,
+keyed by source-set fingerprint) on top of this verdict contract.
 
 ### Canonical catalog (public feed)
 

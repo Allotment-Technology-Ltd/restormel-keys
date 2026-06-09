@@ -40,6 +40,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@restormel/connect-core": "workspace:^0.1.0",
     "@restormel/contracts": "workspace:^0.1.1",
     "@restormel/doctor": "workspace:^0.1.16",
     "@restormel/keys": "workspace:^0.2.20",
