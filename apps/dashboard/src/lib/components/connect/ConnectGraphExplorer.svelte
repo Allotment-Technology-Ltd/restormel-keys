@@ -1739,9 +1739,11 @@
           scope: activeRunId ? "unchecked" : validateScope,
           mode: "validate",
           validation_mode: validateMode,
-          ...(batchSize > 0 ? { max_units: batchSize } : {}),
-          ...(!activeRunId && validateScope === "unchecked"
-            ? { continue_in_background: continueInBackground }
+          // A bounded batch must be allowed to auto-continue for ANY scope (and for
+          // cohort runs) — otherwise only the first batch ever runs and the rest of
+          // the backlog is silently left behind.
+          ...(batchSize > 0
+            ? { max_units: batchSize, continue_in_background: continueInBackground }
             : {}),
           // Trust mode uses no LLM, so a validation route is irrelevant.
           ...(validateMode === "ai" && revalidateRouteId

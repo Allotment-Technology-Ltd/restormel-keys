@@ -38,7 +38,8 @@ import {
 import { resolveKnowledgeRouteExecutionContextForWorker } from "$lib/server/connect/stage-routing";
 import { getConnectGraphTargetForWorkspace, getConnectDomainPackById } from "$lib/server/neon";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
-import { getConnectGraphStats, invalidateConnectGraphStatsCache } from "$lib/server/neon";
+import { invalidateConnectGraphStatsCache } from "$lib/server/neon";
+import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { buildRunQualityReport } from "$lib/server/connect/run-quality-report";
 import { assessPackReadiness } from "$lib/server/connect/pack-readiness";
 import {
@@ -285,13 +286,29 @@ export async function processConnectIngestJobRecord(
           await reporter.fail(null, "production_run_zero_units");
           return;
         }
-        const graphStats = await getConnectGraphStats(job.workspaceId).catch(() => null);
-        const validation = graphStats?.validation ?? {
-          ok: 0,
-          weak: 0,
-          unsupported: 0,
-          unvalidated: stats.units,
-        };
+        // Store-aware stats: a Surreal BYO store isn't visible to the Postgres-spine
+        // query, so a force-refresh recomputes counts against the store that was
+        // actually written. Falls back to the run's in-memory verdict tally if the
+        // store can't be read — otherwise Surreal runs always reported "0% supported,
+        // no trust score" even on a clean ingest.
+        const graphStats = await resolveConnectGraphStats(job.workspaceId, {
+          forceRefresh: true,
+        }).catch(() => null);
+        const storeStatsUsable = !!graphStats && graphStats.units > 0;
+        const tally = stats.validation;
+        const validation = storeStatsUsable
+          ? graphStats!.validation
+          : {
+              ok: tally.ok,
+              weak: tally.weak,
+              unsupported: tally.unsupported,
+              unvalidated: Math.max(0, stats.units - tally.ok - tally.weak - tally.unsupported),
+            };
+        const effectiveGraphStats = storeStatsUsable
+          ? graphStats!
+          : stats.units > 0
+            ? { units: stats.units, embedded: stats.embedded, validation }
+            : undefined;
         const qualityReport = buildRunQualityReport({
           preset: quality.preset,
           executionMode: "full",
@@ -299,7 +316,7 @@ export async function processConnectIngestJobRecord(
           relations: stats.relations,
           embedded: stats.embedded,
           validation,
-          graphStats: graphStats ?? undefined,
+          graphStats: effectiveGraphStats,
           packReadinessWarnings: packApi ? assessPackReadiness(packApi) : [],
         });
         await captureServerPostHogEvent(

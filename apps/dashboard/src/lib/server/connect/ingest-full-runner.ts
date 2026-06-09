@@ -12,7 +12,6 @@ import {
   extractGraph,
   evaluateExtractionGate,
   groupUnits,
-  validateUnits,
   shouldRunStage,
   resolveQualityPreset,
   readMaxChunksForPreset,
@@ -21,6 +20,13 @@ import {
   type EmbeddingPort,
   type GraphIngestContext,
 } from "@restormel/connect-core";
+import {
+  buildValidationBatchInputs,
+  validateUnitsBatch,
+  remapValidationBatchResults,
+  finalizeValidationCoverage,
+  type UnitValidation,
+} from "@restormel/connect-core/ingest/validation";
 import { loadGraphIngestContext } from "$lib/server/connect/graph-ingest-context";
 import {
   getConnectDomainPackById,
@@ -40,6 +46,19 @@ import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-p
 export class IngestConfigError extends Error {}
 
 const SAFE_TABLE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const FULL_STAGE_HEARTBEAT_MS = 20_000;
+
+/** Re-persist progress every ~20s so a slow LLM stage keeps the operator UI alive. */
+function startStageHeartbeat(
+  reporter: ConnectIngestProgressReporter | undefined,
+  getMessage: () => string,
+): () => void {
+  if (!reporter) return () => {};
+  const id = setInterval(() => {
+    void reporter.heartbeat(getMessage());
+  }, FULL_STAGE_HEARTBEAT_MS);
+  return () => clearInterval(id);
+}
 
 type IngestSource = {
   url?: string;
@@ -143,6 +162,8 @@ export async function runFullExtraction(args: {
   validated: number;
   repaired: number;
   dropped: number;
+  /** Store-neutral verdict tally (pre-remediation) for the run quality report. */
+  validation: { ok: number; weak: number; unsupported: number };
 }> {
   const { job, writer, reporter } = args;
   const pack = await resolveDomainPack(job);
@@ -176,6 +197,9 @@ export async function runFullExtraction(args: {
   let totalValidated = 0;
   let totalRepaired = 0;
   let totalDropped = 0;
+  // Store-neutral verdict tally — the authoritative source for the run's supported %
+  // (a Surreal BYO store isn't visible to the Postgres-spine stats query).
+  const validationBreakdown = { ok: 0, weak: 0, unsupported: 0 };
   // Final unit text for embedding (mutated by remediation), keyed by id.
   const embedText = new Map<string, string>();
 
@@ -302,18 +326,57 @@ export async function runFullExtraction(args: {
     }
 
     if (shouldRunStage("validating", stop)) {
-      await reporter?.beginStage("validating", `Validating ${sourceUnits.length} units`, 1);
-      let validationResults: Awaited<ReturnType<typeof validateUnits>> | null = null;
+      const unitInputs = sourceUnits.map((u) => ({ ref: u.id, text: u.text }));
+      // Pace the stage by unit count and tick per batch so percent/ETA actually
+      // move and the activity log streams — the old single-call stage looked frozen
+      // for minutes while hundreds of units were checked.
+      await reporter?.beginStage(
+        "validating",
+        `Validating ${unitInputs.length} unit(s) from ${title}`,
+        Math.max(1, unitInputs.length),
+      );
+      let validationResults: UnitValidation[] | null = null;
       try {
-        validationResults = await validateUnits({
-          units: sourceUnits.map((u) => ({ ref: u.id, text: u.text })),
-          sourceText: src.text,
-          pack,
-          generate: args.generates.validation,
-          qualityPreset: preset,
-          graphContext,
-          sourceTextByRef: chunkTextByUnitId,
-        });
+        const batches = buildValidationBatchInputs(unitInputs);
+        await reporter?.log(
+          "VALIDATE",
+          `Checking ${unitInputs.length} idea(s) against the source in ${batches.length} batch(es) — may take a few minutes`,
+        );
+        const merged: UnitValidation[] = [];
+        let validateDone = 0;
+        const stopHeartbeat = startStageHeartbeat(
+          reporter,
+          () =>
+            `Still validating ${title} — ${validateDone}/${unitInputs.length} idea(s) checked`,
+        );
+        try {
+          for (let bi = 0; bi < batches.length; bi++) {
+            const { batchUnits, refToUnitId } = batches[bi]!;
+            const parsed = await validateUnitsBatch({
+              units: batchUnits,
+              sourceText: src.text,
+              pack,
+              generate: args.generates.validation,
+              qualityPreset: preset,
+              graphContext,
+            });
+            merged.push(...remapValidationBatchResults(parsed, refToUnitId));
+            validateDone += batchUnits.length;
+            await reporter?.tick(
+              "validating",
+              `Validated batch ${bi + 1}/${batches.length} · ${validateDone}/${unitInputs.length} idea(s)`,
+              batchUnits.length,
+            );
+          }
+        } finally {
+          stopHeartbeat();
+        }
+        validationResults = finalizeValidationCoverage(unitInputs, merged);
+        for (const r of validationResults) {
+          if (r.status === "ok") validationBreakdown.ok += 1;
+          else if (r.status === "weak") validationBreakdown.weak += 1;
+          else if (r.status === "unsupported") validationBreakdown.unsupported += 1;
+        }
         totalValidated += await writer.setValidation(
           validationResults.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
         );
@@ -396,6 +459,7 @@ export async function runFullExtraction(args: {
     validated: totalValidated,
     repaired: totalRepaired,
     dropped: totalDropped,
+    validation: { ...validationBreakdown },
   };
 }
 
