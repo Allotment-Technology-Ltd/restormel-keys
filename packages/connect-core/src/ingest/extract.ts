@@ -14,6 +14,8 @@ export interface ExtractedUnit {
   text: string;
   type?: string;
   domain?: string;
+  /** Verbatim supporting quote from the passage (EBV Layer 1 binds + verifies it). */
+  evidence?: string;
 }
 
 export interface ExtractedRelation {
@@ -79,6 +81,7 @@ export function parseExtractionResponse(raw: string): { units: ExtractedUnit[]; 
       text,
       ...(typeof rec.type === "string" && rec.type.trim() ? { type: rec.type.trim() } : {}),
       ...(typeof rec.domain === "string" && rec.domain.trim() ? { domain: rec.domain.trim() } : {}),
+      ...(typeof rec.evidence === "string" && rec.evidence.trim() ? { evidence: rec.evidence.trim() } : {}),
     });
   }
 
