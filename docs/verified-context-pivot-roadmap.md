@@ -14,26 +14,37 @@ bounded scope, acceptance criteria, STOP gates, verification commands. Fire one 
 agent run; review the PR; then fire the next. Definition of done for every stage: PR with
 tests + docs, typecheck/test green, repro or demo command included in the PR body.
 
+**The claims-integrity rule (non-negotiable).** Restormel must be able to verify *in the
+way the marketing says it does*. The G2 bar and trust score report the pipeline's
+**self-judgment**; they say nothing about whether the judge itself catches fabricated or
+subtly-wrong claims. Therefore: (a) verifier efficacy is measured against ground truth
+(Stage 1.0a) before any positioning work, (b) every public claim maps to an automated,
+continuously-running piece of evidence in the claims ledger (Stage 1.0b), and (c) Stage
+1.3 marketing may only use ledger rows marked **proven**. If measured efficacy does not
+support a phrase, the phrase changes — not the measurement.
+
 **Sequencing.**
 
 | Order | Stage | Pivot | Depends on |
 |---|---|---|---|
 | 0 | Focus cuts (checklist, no agent) | — | — |
-| 1 | 1.1 Verified-context API surface | P1 | — |
-| 2 | 1.2 Trust scorecard | P1 | 1.1 |
-| 3 | 2.1 Headless `connect eval` CLI | P2 | — (parallel with 1.x) |
-| 4 | 2.2 Quality baseline + regression diff | P2 | 2.1 |
-| 5 | 1.3 Marketing reposition | P1 | 1.1, 1.2 |
-| 6 | 2.3 CI gate (GitHub Action + Forgejo) | P2 | 2.2 |
-| 7 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
-| 8 | 1.4 Spine observability hardening (H1/H3) | P1 | — |
-| 9 | 2.4 Regression history dashboard | P2 | 2.3 |
-| 10 | 3.1 Verified-memory design ADR (STOP-gated) | P3 | — |
-| 11 | 3.2 Incremental re-ingest | P3 | 3.1 |
-| 12 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1 |
-| 13 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
-| 14 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
-| 15 | 4.3 AAIF verification envelope | P4 | 4.1 |
+| 1 | 1.0a Verifier efficacy benchmark (ground truth) | P1 | — |
+| 2 | 1.1 Verified-context API surface | P1 | — |
+| 3 | 1.2 Trust scorecard | P1 | 1.1 |
+| 4 | 2.1 Headless `connect eval` CLI | P2 | — (parallel with 1.x) |
+| 5 | 1.0b Marketing claims ledger | P1 | 1.0a |
+| 6 | 2.2 Quality baseline + regression diff | P2 | 2.1 |
+| 7 | 1.3 Marketing reposition | P1 | 1.0b, 1.1, 1.2 |
+| 8 | 2.3 CI gate (GitHub Action + Forgejo; runs 1.0a efficacy too) | P2 | 2.2 |
+| 9 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
+| 10 | 1.4 Spine observability hardening (H1/H3) | P1 | — |
+| 11 | 2.4 Regression history dashboard | P2 | 2.3 |
+| 12 | 3.1 Verified-memory design ADR (STOP-gated) | P3 | — |
+| 13 | 3.2 Incremental re-ingest | P3 | 3.1 |
+| 14 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
+| 15 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
+| 16 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
+| 17 | 4.3 AAIF verification envelope | P4 | 4.1 |
 
 ---
 
@@ -50,6 +61,98 @@ tests + docs, typecheck/test green, repro or demo command included in the PR bod
 ---
 
 ## Pivot 1 — The Verified Context Layer (front the spine)
+
+### Stage 1.0a — Verifier efficacy benchmark (prove the gate catches what we claim)
+
+```
+ROLE
+You are a senior engineer building ground-truth measurement of the validation stage
+ITSELF. The pipeline's G2 metrics report what the validator concluded; this stage
+measures whether the validator's conclusions are correct.
+
+TARGET
+A labeled benchmark proving (or disproving, honestly) that Connect's validation stage
+catches bad claims: fixtures where we KNOW which claims are unsupported because we
+planted them, and a harness reporting validator recall/precision per difficulty tier
+and per model route.
+
+FIRST
+Read packages/connect-core/src/ingest/validation.ts, golden-eval.ts (fixture shape,
+fingerprinting), plan.ts (cross-model validation routing — validator deliberately a
+different model family than the extractor), the philosophy starter fixture, and
+scripts/reviews/connect-ingest-failopen-repro.ts for the no-keys harness idiom.
+
+ACCEPTANCE CRITERIA
+- A labeled fixture set under packages/connect-core/src/ingest/golden/fixtures/:
+  Restormel-authored (or CC0) source texts paired with claim sets labeled
+  supported / unsupported, with planted bad claims at three tiers —
+  (1) fabricated (no basis in source), (2) overstated (source says less),
+  (3) misattributed (true elsewhere in the corpus, wrong source). Tier 3 is the one
+  competitors fail; do not skip it because it is hard to author.
+- An efficacy harness (script under scripts/, or `keys connect eval --efficacy` if
+  Stage 2.1 has landed) that runs the real validateUnits path against the fixtures and
+  reports, in versioned JSON: recall on planted-bad per tier, precision on known-good
+  (false-flag rate), per route/model, cross-model vs same-model delta, and verdict
+  calibration (how often "weak" vs "unsupported" is assigned to each tier).
+- Repeatability: N-run variance reported (LLM judges are stochastic); the harness
+  supports --runs N and reports mean ± spread.
+- STOP-and-ask gate: propose the minimum publishable bars (e.g. "fabricated-tier
+  recall ≥ X%, false-flag rate ≤ Y%") with the measured numbers in hand — a human
+  signs off on the bars. Do not pick the bars unilaterally, and do not tune prompts
+  to the benchmark in this stage (that is a follow-up with a held-out split).
+- The PR reports the measured numbers verbatim, including failures. If efficacy is
+  poor, that IS the deliverable — it redirects Stage 1.3's language and creates the
+  prompt-improvement backlog.
+
+PROCESS
+pnpm --filter @restormel/connect-core typecheck && test; harness run output quoted in
+the PR. Requires live model keys for the real measurement — run locally, commit the
+harness + fixtures + a results snapshot (dated, model-versioned), not the keys.
+
+Use effort: xhigh.
+```
+
+### Stage 1.0b — Marketing claims ledger (every public claim maps to evidence)
+
+```
+ROLE
+Engineer-writer creating the contract between what Restormel says and what it can prove.
+
+TARGET
+docs/verified-context-claims-ledger.md: a table where every public marketing claim maps
+to (a) the precise measurable assertion behind it, (b) the automated evidence — a test,
+benchmark, repro script, or CI gate that runs continuously, (c) current status:
+proven | partial | unproven. Stage 1.3 and Stage 4.2 copy may only use "proven" rows.
+
+FIRST
+Read the Stage 1.0a results, packages/connect-core/src/__tests__/stages.test.ts +
+golden-eval.test.ts (the fail-safe coverage proofs from PR #189),
+scripts/reviews/connect-ingest-failopen-repro.ts, the provenance-trace and
+verification-rules tests, and assertG2Targets.
+
+ACCEPTANCE CRITERIA
+- Seed rows at minimum (each phrased as the marketing-facing sentence, then the
+  assertion, then the evidence pointer):
+  · "Every claim is validated against its source" → coverage finalizers default
+    omitted units to non-passing (stages.test.ts, repro C1) → proven.
+  · "Unsupported claims are excluded, not blended" → remediation fail-safe + orchestrator
+    soft-exclude + (post-4.1) MCP strict mode test → status as measured.
+  · "A different model family checks the extraction" → plan.ts routing test → verify one
+    exists; if not, write it in this stage.
+  · "The validator catches fabricated claims" → Stage 1.0a fabricated-tier recall ≥
+    signed-off bar, re-run in CI → status from the benchmark.
+  · "Every claim carries a provenance trace" → Stage 1.1 envelope test → status.
+  · "Published quality bar: ≥90% supported, ≤2% unsupported" → assertG2Targets +
+    (post-2.3) CI gate → status.
+- Each "proven" row names the exact test/command a skeptic can run.
+- Rows that are partial/unproven get an owner stage in this roadmap (link it).
+- A PR-template note (or CONTRIBUTING section) requiring marketing-copy PRs to cite
+  ledger rows; the restormel-suite-integrations-marketing skill register is updated to
+  reference the ledger as canonical truth.
+- No code changes beyond any missing test identified above.
+
+Use effort: high.
+```
 
 ### Stage 1.1 — Verified-context API surface
 
@@ -140,9 +243,14 @@ quality-gated knowledge for agents in regulated domains. Keys is repositioned as
 control plane FOR verified context; gateway comparisons are removed, not rebutted.
 
 ACCEPTANCE CRITERIA
+- Every quality/verification claim on the page cites a row in
+  docs/verified-context-claims-ledger.md with status "proven" — quote the row in the PR.
+  If a phrase you want has no proven row, weaken the phrase or STOP and flag the gap;
+  never ship the phrase on a partial/unproven row.
 - Hero + proof section demonstrating "why did the agent say that?": claim → citation →
   trace export, using the Stage 1.1 guide as canonical truth (link, don't duplicate).
-- The G2 bar and trust score stated as published, testable quality bars.
+- The G2 bar and trust score stated as published, testable quality bars; verifier
+  efficacy numbers (Stage 1.0a) stated with their measurement date and model versions.
 - One regulated-industry use case block (legal/pharma/finance) with the audit-trail angle.
 - No invented benchmarks or competitor claims; same-links compliance per the integration
   docs hub rules.
@@ -265,6 +373,10 @@ ACCEPTANCE CRITERIA
 - Dogfood: wire it into THIS repo's CI against the philosophy starter fixture so every
   PR to connect-core proves the gate works (non-blocking warn mode initially; flag to
   flip to blocking later — note the flip condition in the PR body).
+- Claims-integrity wiring: a scheduled (weekly) run executes the Stage 1.0a efficacy
+  benchmark and fails if any signed-off bar regresses — this is what keeps the claims
+  ledger's "proven" rows continuously true as models/routes change. The run updates a
+  dated results snapshot the ledger links to.
 - Docs page: /keys/docs/guides/context-regression-ci.
 
 Use effort: xhigh.
@@ -472,9 +584,15 @@ Use effort: xhigh.
 
 - **One stage per agent run**, PR-reviewed before the next fires. Stages marked
   STOP-gated must end at the gate even if the agent is confident.
-- **Re-baseline this doc** after stages 1.2, 2.3, and 3.1 land — each materially changes
-  what later prompts should reference.
-- **Marketing (1.3) waits for 1.1 + 1.2** so the site never claims what the API can't show.
+- **Claims integrity is the standing gate**: no public claim ships without a
+  claims-ledger row marked proven; the efficacy benchmark (1.0a) re-runs on a schedule
+  (2.3) so "proven" stays true as models change. If a model/route change drops a bar,
+  the marketing copy is treated as broken until the bar recovers or the copy is updated.
+- **Re-baseline this doc** after stages 1.0a, 1.2, 2.3, and 3.1 land — each materially
+  changes what later prompts should reference (1.0a especially: its measured numbers
+  decide how strong Stage 1.3's language is allowed to be).
+- **Marketing (1.3) waits for 1.0b + 1.1 + 1.2** so the site never claims what the API
+  can't show or the benchmark can't support.
 - Keep the dogfood loop: every pipeline-quality stage must extend
   scripts/reviews/connect-ingest-failopen-repro.ts or add a sibling script proving the
   behavior without live keys where feasible.
