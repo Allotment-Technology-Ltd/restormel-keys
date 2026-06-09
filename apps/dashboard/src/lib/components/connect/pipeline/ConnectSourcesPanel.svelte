@@ -11,6 +11,7 @@
   } from "$lib/connect/pipeline-config";
   import { formatDocMeta, formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import ConnectSourceDocumentPreCheck from "$lib/components/connect/ConnectSourceDocumentPreCheck.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
 
   export let embedded = false;
   export let wizardStep: PipelineWizardStepId | null = null;
@@ -24,8 +25,10 @@
 
   let loading = true;
   let loadError: string | null = null;
+  let loadErrorAuth = false;
 
   let connections: SourceConnection[] = [];
+  let connNotice: string | null = null;
   let connProviders = { s3: true, google_drive: false, sharepoint: false };
   let connBanner: { ok: boolean; text: string } | null = null;
   let showS3Form = false;
@@ -46,6 +49,8 @@
   let browseSel: Record<string, boolean> = {};
   let browsing = false;
   let browseMsg: string | null = null;
+  /** Distinguishes a real failure from an empty browse result ("No documents found."). */
+  let browseError = false;
   let importing = false;
   let crawl = { root_url: "", max_pages: 10, same_host_only: true, use_sitemap: true };
   let crawling = false;
@@ -125,16 +130,28 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const d = await res.json();
-        selectionExplicit = d.document_ids !== null;
+      if (!res.ok) {
+        await resyncSelectionAfterFailure();
+        return;
       }
+      const d = await res.json();
+      selectionExplicit = d.document_ids !== null;
+      documentsNotice = null;
+      documentsNoticeError = false;
       notifyUpdated();
     } catch {
-      // ignore
+      await resyncSelectionAfterFailure();
     } finally {
       savingSelection = false;
     }
+  }
+
+  /** A failed save must not leave the checkboxes claiming a selection the server never got. */
+  async function resyncSelectionAfterFailure() {
+    documentsNotice = "Could not save your selection — it has been reset to the last saved state. Try again.";
+    documentsNoticeError = true;
+    await loadSelection();
+    syncSelectionUi();
   }
 
   async function setDocSelected(docId: string, checked: boolean) {
@@ -192,10 +209,12 @@
   async function loadConnections() {
     loading = true;
     loadError = null;
+    loadErrorAuth = false;
     try {
       const res = await fetch(API_BASE + "/sources/connections");
       if (res.status === 401) {
         loadError = "Sign in to manage sources.";
+        loadErrorAuth = true;
         return;
       }
       if (res.ok) {
@@ -268,8 +287,14 @@
 
   async function deleteConnection(id: string) {
     if (!confirm("Remove this connection?")) return;
+    connNotice = null;
     try {
-      await fetch(API_BASE + "/sources/connections/" + id, { method: "DELETE" });
+      const res = await fetch(API_BASE + "/sources/connections/" + id, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        connNotice = d.message ?? "Could not remove the connection. Try again.";
+        return;
+      }
       if (browseConnId === id) {
         browseConnId = null;
         browseRefs = [];
@@ -278,7 +303,7 @@
       await loadDocuments();
       notifyUpdated();
     } catch {
-      // ignore
+      connNotice = "Network error while removing the connection. Try again.";
     }
   }
 
@@ -307,18 +332,23 @@
     browseConnId = id;
     browsing = true;
     browseMsg = null;
+    browseError = false;
     browseRefs = [];
     browseSel = {};
     try {
       const res = await fetch(API_BASE + "/sources/connections/" + id + "/browse");
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        browseError = true;
         browseMsg = d.message ?? `Could not browse (HTTP ${res.status}).`;
         return;
       }
       browseRefs = d.refs ?? [];
-      if (browseRefs.length === 0) browseMsg = "No documents found.";
+      if (browseRefs.length === 0) {
+        browseMsg = "No documents found in this connection — check the bucket and prefix.";
+      }
     } catch {
+      browseError = true;
       browseMsg = "Network error while browsing.";
     } finally {
       browsing = false;
@@ -329,11 +359,13 @@
     if (!browseConnId) return;
     const refs = browseRefs.filter((r) => browseSel[r.id]);
     if (refs.length === 0) {
+      browseError = true;
       browseMsg = "Select at least one document to import.";
       return;
     }
     importing = true;
     browseMsg = null;
+    browseError = false;
     try {
       const res = await fetch(API_BASE + "/sources/connections/" + browseConnId + "/import", {
         method: "POST",
@@ -342,17 +374,20 @@
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        browseError = true;
         browseMsg = d.message ?? `Import failed (HTTP ${res.status}).`;
         return;
       }
       const docs = d.documents ?? [];
       const failed = docs.filter((x: { status: string }) => x.status === "failed").length;
+      browseError = failed > 0;
       browseMsg = `Imported ${docs.length - failed} document(s)${failed ? `, ${failed} failed` : ""}.`;
       browseSel = {};
       await loadDocuments();
       await includeImportedDocs(docs);
       notifyUpdated();
     } catch {
+      browseError = true;
       browseMsg = "Network error while importing.";
     } finally {
       importing = false;
@@ -442,7 +477,14 @@
 {#if loading}
   <p class="muted" role="status">Loading sources…</p>
 {:else if loadError}
-  <p class="err" role="alert">{loadError}</p>
+  <BrutalErrorBanner title="Sources" message={loadError} />
+  <div class="actions">
+    {#if loadErrorAuth}
+      <a class="btn btn-primary btn-sm" href="{DASHBOARD_BASE}/login">Sign in</a>
+    {:else}
+      <button type="button" class="btn btn-primary btn-sm" on:click={loadConnections}>Try again</button>
+    {/if}
+  </div>
 {:else}
   <div class="wizard-panel" class:card={!embedded}>
     {#if !embedded}
@@ -453,13 +495,13 @@
       </p>
     {/if}
     {#if connBanner}
-      <p class:err={!connBanner.ok} class:notice={connBanner.ok} role="status">{connBanner.text}</p>
+      <p class:err={!connBanner.ok} class:notice={connBanner.ok} role={connBanner.ok ? "status" : "alert"}>{connBanner.text}</p>
     {/if}
 
     <div class="starter-corpus">
       <h3 class="preview-sub">First graph starter corpus</h3>
       {#if starterMsg}
-        <p class:err={starterError} class:notice={!starterError} role="status">{starterMsg}</p>
+        <p class:err={starterError} class:notice={!starterError} role={starterError ? "alert" : "status"}>{starterMsg}</p>
       {/if}
       <div class="actions">
         <button
@@ -508,7 +550,7 @@
         <p class="err" role="alert">{documentsError}</p>
       {:else}
         {#if documentsNotice}
-          <p class:err={documentsNoticeError} class:notice={!documentsNoticeError} role="status">{documentsNotice}</p>
+          <p class:err={documentsNoticeError} class:notice={!documentsNoticeError} role={documentsNoticeError ? "alert" : "status"}>{documentsNotice}</p>
         {/if}
         {#if documents.length === 0}
           <div class="sources-empty" role="status">
@@ -600,7 +642,7 @@
           </details>
         </div>
         {#if pageUrlMsg}
-          <p class:err={pageUrlError} class:notice={!pageUrlError} role="status">{pageUrlMsg}</p>
+          <p class:err={pageUrlError} class:notice={!pageUrlError} role={pageUrlError ? "alert" : "status"}>{pageUrlMsg}</p>
         {/if}
       </div>
     </section>
@@ -651,13 +693,16 @@
           <label class="field"><span class="field-label">Access key ID</span><input class="input" bind:value={s3.access_key_id} autocomplete="off" required /></label>
           <label class="field"><span class="field-label">Secret access key</span><input class="input" type="password" bind:value={s3.secret_access_key} autocomplete="new-password" required /></label>
         </div>
-        {#if s3Msg}<p class:err={s3Error} class:notice={!s3Error} role="status">{s3Msg}</p>{/if}
+        {#if s3Msg}<p class:err={s3Error} class:notice={!s3Error} role={s3Error ? "alert" : "status"}>{s3Msg}</p>{/if}
         <div class="actions">
           <button type="submit" class="btn btn-primary" disabled={savingS3}>{savingS3 ? "Saving…" : "Save S3 connection"}</button>
         </div>
       </form>
     {/if}
 
+    {#if connNotice}
+      <p class="err" role="alert">{connNotice}</p>
+    {/if}
     {#if connections.length > 0}
       <ul class="packs">
         {#each connections as c (c.id)}
@@ -681,8 +726,10 @@
         <h3 class="preview-sub">Browse &amp; import</h3>
         {#if browsing}
           <p class="muted" role="status">Loading…</p>
-        {:else if browseMsg && browseRefs.length === 0}
-          <p class:err={true} role="status">{browseMsg}</p>
+        {:else if browseRefs.length === 0}
+          {#if browseMsg}
+            <p class:err={browseError} class:notice={!browseError} role={browseError ? "alert" : "status"}>{browseMsg}</p>
+          {/if}
         {:else}
           <ul class="docs">
             {#each browseRefs as r (r.id)}
@@ -695,7 +742,9 @@
               </li>
             {/each}
           </ul>
-          {#if browseMsg}<p class:notice={true} role="status">{browseMsg}</p>{/if}
+          {#if browseMsg}
+            <p class:err={browseError} class:notice={!browseError} role={browseError ? "alert" : "status"}>{browseMsg}</p>
+          {/if}
           <div class="actions">
             <button type="button" class="btn btn-primary" on:click={importSelected} disabled={importing}>{importing ? "Importing…" : "Import selected"}</button>
           </div>
@@ -715,7 +764,7 @@
           <label class="field"><span class="field-label" style="display:flex;gap:var(--space-2);align-items:center;"><input type="checkbox" bind:checked={crawl.same_host_only} /> Same host only</span></label>
           <label class="field"><span class="field-label" style="display:flex;gap:var(--space-2);align-items:center;"><input type="checkbox" bind:checked={crawl.use_sitemap} /> Use sitemap.xml</span></label>
         </div>
-        {#if crawlMsg}<p class:err={crawlError} class:notice={!crawlError} role="status">{crawlMsg}</p>{/if}
+        {#if crawlMsg}<p class:err={crawlError} class:notice={!crawlError} role={crawlError ? "alert" : "status"}>{crawlMsg}</p>{/if}
         <div class="actions">
           <button type="submit" class="btn btn-primary" disabled={crawling || !crawl.root_url.trim()}>{crawling ? "Crawling…" : "Crawl & import"}</button>
         </div>

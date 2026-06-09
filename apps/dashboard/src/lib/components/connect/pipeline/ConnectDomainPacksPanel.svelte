@@ -15,6 +15,7 @@
   } from "$lib/connect/first-graph-guide";
   import ConnectDomainTemplateSelector from "$lib/components/connect/ConnectDomainTemplateSelector.svelte";
   import type { UseCase } from "$lib/content/use-cases";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
 
   export let embedded = false;
   export let wizardStep: PipelineWizardStepId | null = null;
@@ -31,6 +32,7 @@
 
   let loading = true;
   let loadError: string | null = null;
+  let loadErrorAuth = false;
 
   let packs: DomainPack[] = [];
   let embeddingLock: { dimensions: number; embeddedUnitCount: number; model?: string } | null = null;
@@ -445,10 +447,12 @@
   async function loadPacks() {
     loading = true;
     loadError = null;
+    loadErrorAuth = false;
     try {
       const res = await fetch(API_BASE + "/domain-packs");
       if (res.status === 401) {
         loadError = "Sign in to manage domain packs.";
+        loadErrorAuth = true;
         return;
       }
       if (res.ok) {
@@ -643,7 +647,9 @@
 
   let lastDispatchedCanContinue: boolean | null = null;
   $: {
-    const canContinue = Boolean(selectedPackId) || draftGenerated || showPackCreator;
+    // Honest gate: a pack is selected or a draft exists. Merely opening the creator
+    // disclosure must not light up "Domain selected → Continue".
+    const canContinue = Boolean(selectedPackId) || draftGenerated;
     if (canContinue !== lastDispatchedCanContinue) {
       lastDispatchedCanContinue = canContinue;
       dispatch("stepState", { canContinue });
@@ -660,7 +666,14 @@
 {#if loading}
   <p class="muted" role="status">Loading domain packs…</p>
 {:else if loadError}
-  <p class="err" role="alert">{loadError}</p>
+  <BrutalErrorBanner title="Domain packs" message={loadError} />
+  <div class="actions">
+    {#if loadErrorAuth}
+      <a class="btn btn-primary btn-sm" href="{DASHBOARD_BASE}/login">Sign in</a>
+    {:else}
+      <button type="button" class="btn btn-primary btn-sm" on:click={loadPacks}>Try again</button>
+    {/if}
+  </div>
 {:else}
   <div class="wizard-panel" class:card={!embedded}>
     {#if !embedded}
@@ -679,7 +692,7 @@
     {/if}
 
     {#if packMsg}
-      <p class:err={packMsgError} class:notice={!packMsgError} role="status">{packMsg}</p>
+      <p class:err={packMsgError} class:notice={!packMsgError} role={packMsgError ? "alert" : "status"}>{packMsg}</p>
     {/if}
 
     <section class="domain-section-a" aria-labelledby="pack-picker-heading">
@@ -758,7 +771,10 @@
           {/each}
         </ul>
     {:else}
-      <p class="muted">No domain packs yet.</p>
+      <p class="muted">
+        No domain packs yet — <a href="#design-new-heading">design one with AI below</a> or create a
+        custom pack.
+      </p>
     {/if}
 
       <details class="disclosure surreal-import-accordion">
@@ -786,7 +802,7 @@
         </div>
       {/if}
       {#if schemaMsg}
-        <p class:err={schemaError} class:notice={!schemaError} role="status">{schemaMsg}</p>
+        <p class:err={schemaError} class:notice={!schemaError} role={schemaError ? "alert" : "status"}>{schemaMsg}</p>
       {/if}
       {#if schemaWarnings.length > 0}
         <ul class="schema-warnings">
@@ -913,7 +929,7 @@
         <span class="field-label">Domain name (optional)</span>
         <input class="input" type="text" bind:value={designDomain} placeholder="e.g. case law, clinical trials, product specs" />
       </label>
-      {#if designMsg}<p class:err={designError} class:notice={!designError} role="status">{designMsg}</p>{/if}
+      {#if designMsg}<p class:err={designError} class:notice={!designError} role={designError ? "alert" : "status"}>{designMsg}</p>{/if}
       {#if designSampled.length > 0}
         <p class="field-hint">Sampled: {designSampled.join(", ")}</p>
       {/if}
@@ -1111,7 +1127,7 @@
             support 256–2048d (default 1024).
           </p>
         {/if}
-        {#if packMsg && showPackCreator}<p class:err={packMsgError} class:notice={!packMsgError} role="status">{packMsg}</p>{/if}
+        {#if packMsg && showPackCreator}<p class:err={packMsgError} class:notice={!packMsgError} role={packMsgError ? "alert" : "status"}>{packMsg}</p>{/if}
         <div class="actions">
           {#if editingPackId}
             <button type="button" class="btn btn-secondary" on:click={() => { resetPackForm(); showPackCreator = false; }}>

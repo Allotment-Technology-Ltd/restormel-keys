@@ -23,6 +23,9 @@
     PENDING_TEMPLATE_STORAGE_KEY,
   } from "$lib/content/use-cases";
 
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
+
   type WizardData = {
     step: PipelineWizardStepId;
     wizard: PipelineWizardProgress | null;
@@ -30,6 +33,7 @@
     modelsReady?: boolean;
     phase?: "initial" | "operational";
     workspaceId?: string;
+    loadFailed?: boolean;
   };
 
   export let data: WizardData;
@@ -45,25 +49,28 @@
   $: isFirst = stepIndex <= 0;
   $: showRepeatRunKicker = journeyPhase === "operational" && Boolean(progress?.hasGraph);
 
-  function stepDone(id: PipelineWizardStepId): boolean {
-    if (!progress) return false;
-    const idx = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === id);
-    if (id === "store") return progress.hasGraphStore;
-    if (id === "domain") return stepIndex > idx || progress.hasCustomPack || Boolean(progress.selectedDomainPackId);
-    if (id === "sources") return stepIndex > idx || progress.selectedDocumentCount > 0;
-    if (id === "launch") return stepIndex > idx;
+  // Real completion per step (not position): drives the stepper's ✓ marks so a
+  // deep link to a later step can't show unconfigured steps as done.
+  function stepDone(p: PipelineWizardProgress, id: PipelineWizardStepId): boolean {
+    if (id === "store") return p.hasGraphStore;
+    if (id === "domain") return p.hasCustomPack || Boolean(p.selectedDomainPackId);
+    if (id === "sources") return p.selectedDocumentCount > 0;
     return false;
   }
 
-  function stepReachable(index: number): boolean {
-    if (!progress) return index === 0;
-    if (index === 0) return true;
-    return progress.hasGraphStore;
-  }
+  $: completedStepIds = progress
+    ? PIPELINE_WIZARD_STEPS.filter((s) => stepDone(progress!, s.id)).map((s) => s.id)
+    : [];
+  // The server redirects non-store steps until a graph store exists; mirror that here.
+  $: laterStepsReachable = Boolean(progress?.hasGraphStore);
 
   async function scrollToWizardBody() {
     await tick();
-    document.querySelector(".wizard-body")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reduceMotion =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document
+      .querySelector(".wizard-body")
+      ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   }
 
   function goToStep(id: PipelineWizardStepId, replace = false) {
@@ -97,11 +104,13 @@
   $: canContinueStore = Boolean(progress?.hasGraphStore);
   $: canContinueDomain = Boolean(progress?.selectedDomainPackId || progress?.hasCustomPack || domainCanContinue);
   $: canContinueSources = (progress?.selectedDocumentCount ?? 0) > 0;
-  $: runStepCanStart = Boolean(runDefaults?.documents.length) && modelsReady;
 
   let domainCanContinue = false;
   let launchStep: { submitRun: () => void } | undefined;
   let runSubmitting = false;
+  // Single source of truth for the START RUN gate — bound from the launch panel so
+  // the footer can't drift from the panel's own canStart logic.
+  let runCanStart = false;
 
   let pendingTemplateId: string | null = null;
   let pendingTemplateTitle: string | null = null;
@@ -122,11 +131,20 @@
     }
   });
 
+  // Once the user has visited the Domain step, the selector there has consumed the
+  // template (it clears storage and strips the URL param) — stop promising a pre-fill.
+  let templateHandled = false;
+  $: if (step === "domain" && pendingTemplateId) templateHandled = true;
+
   $: showTemplateBanner =
-    Boolean(pendingTemplateId) && step !== "domain" && Boolean(progress?.hasGraphStore);
+    Boolean(pendingTemplateId) && !templateHandled && step !== "domain" && Boolean(progress?.hasGraphStore);
 
   function goToDomainForTemplate() {
     goToStep("domain");
+  }
+
+  function retryLoad() {
+    if (typeof location !== "undefined") location.reload();
   }
 
   function onDomainStepState(event: CustomEvent<{ canContinue: boolean }>) {
@@ -135,7 +153,21 @@
 </script>
 
 {#if !progress}
-  <p class="notice" role="status">Sign in to set up your pipeline.</p>
+  {#if data.loadFailed}
+    <BrutalErrorBanner
+      title="Pipeline setup"
+      message="Could not load your pipeline setup. Your configuration is unchanged — try again."
+    />
+    <div class="wizard-fallback-actions">
+      <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Try again</button>
+      <a class="btn btn-outline btn-sm" href={CONNECT_BASE}>Connect home</a>
+    </div>
+  {:else}
+    <p class="notice" role="status">Sign in to set up your pipeline.</p>
+    <div class="wizard-fallback-actions">
+      <a class="btn btn-primary btn-sm" href="{DASHBOARD_BASE}/login">Sign in</a>
+    </div>
+  {/if}
 {:else}
   {#if showTemplateBanner}
     <div class="notice template-banner" role="status">
@@ -152,7 +184,12 @@
     </div>
   {/if}
 
-  <PipelineWizardStepper currentStep={step} onNavigate={goToStep} />
+  <PipelineWizardStepper
+    currentStep={step}
+    onNavigate={goToStep}
+    completedIds={completedStepIds}
+    navigable={laterStepsReachable}
+  />
 
   <nav class="wizard-crumb" aria-label="Breadcrumb">
     <a href={CONNECT_BASE}>Connect home</a>
@@ -177,15 +214,18 @@
   <div class="wizard-body">
     {#if step === "store"}
       {#await storePanelImport()}
-        <p class="wizard-panel-loading" role="status">Loading graph store panel…</p>
+        <BrutalLoadingState message="Loading graph store panel…" rows={3} />
       {:then { default: ConnectGraphStorePanel }}
         <ConnectGraphStorePanel embedded on:updated={onPanelUpdated} />
       {:catch}
-        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+        <BrutalErrorBanner title="Graph store step" message="Could not load this step." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
       {/await}
     {:else if step === "domain"}
       {#await domainPanelImport()}
-        <p class="wizard-panel-loading" role="status">Loading domain packs…</p>
+        <BrutalLoadingState message="Loading domain packs…" rows={3} />
       {:then { default: ConnectDomainPacksPanel }}
         <ConnectDomainPacksPanel
           embedded
@@ -195,30 +235,40 @@
           on:stepState={onDomainStepState}
         />
       {:catch}
-        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+        <BrutalErrorBanner title="Domain step" message="Could not load this step." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
       {/await}
     {:else if step === "sources"}
       {#await sourcesPanelImport()}
-        <p class="wizard-panel-loading" role="status">Loading sources…</p>
+        <BrutalLoadingState message="Loading sources…" rows={3} />
       {:then { default: ConnectSourcesPanel }}
         <ConnectSourcesPanel embedded wizardStep={step} on:updated={onPanelUpdated} />
       {:catch}
-        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+        <BrutalErrorBanner title="Sources step" message="Could not load this step." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
       {/await}
     {:else if step === "launch" && runDefaults}
       {#await launchStepImport()}
-        <p class="wizard-panel-loading" role="status">Loading review…</p>
+        <BrutalLoadingState message="Loading review…" rows={3} />
       {:then { default: ConnectPipelineReviewLaunch }}
         <ConnectPipelineReviewLaunch
           bind:this={launchStep}
           bind:submitting={runSubmitting}
+          bind:canStart={runCanStart}
           {runDefaults}
           {progress}
           {modelsReady}
           onBack={() => goToStep("sources")}
         />
       {:catch}
-        <p class="wizard-panel-error" role="alert">Could not load this step. Refresh and try again.</p>
+        <BrutalErrorBanner title="Review step" message="Could not load this step." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
       {/await}
     {/if}
   </div>
@@ -237,8 +287,8 @@
           <button
             type="button"
             class="btn btn-primary btn-lg"
-            disabled={!runStepCanStart || runSubmitting}
-            title={!runStepCanStart ? "Select documents and configure routes to start" : undefined}
+            disabled={!runCanStart || runSubmitting}
+            title={!runCanStart ? "Select documents, a domain pack, and configure routes to start" : undefined}
             on:click={() => launchStep?.submitRun()}
           >
             {runSubmitting ? "Starting…" : "START RUN →"}

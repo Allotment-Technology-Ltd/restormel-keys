@@ -7,6 +7,8 @@
   } from "$lib/connect/pipeline-config";
   import { pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
 
   export let embedded = false;
 
@@ -21,6 +23,7 @@
 
   let loading = true;
   let loadError: string | null = null;
+  let loadErrorAuth = false;
 
   let target: GraphTarget = null;
   let endpoint = "";
@@ -30,6 +33,7 @@
   let secret = "";
   let savingTarget = false;
   let targetMsg: string | null = null;
+  let targetErr = false;
   let testing = false;
   let testMsg: string | null = null;
   let testError = false;
@@ -268,10 +272,12 @@
   async function loadGraphTarget() {
     loading = true;
     loadError = null;
+    loadErrorAuth = false;
     try {
       const tRes = await fetch(API_BASE + "/pipeline/graph-target");
       if (tRes.status === 401) {
         loadError = "Sign in to configure the graph store.";
+        loadErrorAuth = true;
         return;
       }
       if (tRes.ok) {
@@ -300,6 +306,7 @@
   async function saveTarget() {
     savingTarget = true;
     targetMsg = null;
+    targetErr = false;
     try {
       const res = await fetch(API_BASE + "/pipeline/graph-target", {
         method: "PUT",
@@ -315,14 +322,17 @@
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        targetErr = true;
         targetMsg = d.message ?? `Could not save (HTTP ${res.status}).`;
         return;
       }
       applyTargetToForm(d.target ?? null);
       secret = "";
+      targetErr = !(d.test?.ok ?? true);
       targetMsg = d.test?.message ?? "Graph store saved.";
       notifyUpdated();
     } catch {
+      targetErr = true;
       targetMsg = "Network error while saving.";
     } finally {
       savingTarget = false;
@@ -463,7 +473,14 @@
 {#if loading}
   <p class="muted" role="status">Loading graph store…</p>
 {:else if loadError}
-  <p class="err" role="alert">{loadError}</p>
+  <BrutalErrorBanner title="Graph store" message={loadError} />
+  <div class="actions">
+    {#if loadErrorAuth}
+      <a class="btn btn-primary btn-sm" href="{DASHBOARD_BASE}/login">Sign in</a>
+    {:else}
+      <button type="button" class="btn btn-primary btn-sm" on:click={loadGraphTarget}>Try again</button>
+    {/if}
+  </div>
 {:else}
   <div class="wizard-panel" class:card={!embedded} aria-labelledby={embedded ? undefined : "store-heading"}>
     {#if !embedded}
@@ -537,7 +554,7 @@
           {connectingNeon ? "Connecting…" : "Use Neon"}
         </button>
       </div>
-      {#if neonMsg}<p class:err={neonError} class:notice={!neonError} role="status">{neonMsg}</p>{/if}
+      {#if neonMsg}<p class:err={neonError} class:notice={!neonError} role={neonError ? "alert" : "status"}>{neonMsg}</p>{/if}
 
       <p class="or-sep"><span>or bring your own SurrealDB</span></p>
     {/if}
@@ -559,7 +576,7 @@
           <a href="https://surrealdb.com/docs/build/deployment/surrealdb-cloud/connecting/via-sdk" target="_blank" rel="noopener noreferrer">Where to find this</a>.
         </span>
       </label>
-      {#if connMsg}<p class:err={connError} class:notice={!connError} role="status">{connMsg}</p>{/if}
+      {#if connMsg}<p class:err={connError} class:notice={!connError} role={connError ? "alert" : "status"}>{connMsg}</p>{/if}
       {#if parsedPreview}
         <div class="parsed-preview" role="status" aria-label="Parsed connection details">
           <p class="parsed-preview-title">Parsed from your paste</p>
@@ -625,9 +642,9 @@
           Surreal Cloud CLI tokens: leave <strong>Username</strong> empty and paste the token here.
           Namespace or database <code>DEFINE USER</code> accounts: enter username and password — Connect signs in via Surreal’s HTTP API before testing or ingesting.
         </p>
-        {#if targetMsg}<p class="notice" role="status">{targetMsg}</p>{/if}
+        {#if targetMsg}<p class:err={targetErr} class:notice={!targetErr} role={targetErr ? "alert" : "status"}>{targetMsg}</p>{/if}
         {#if testMsg}
-          <p class:err={testError} class:notice={!testError} role="status">{testMsg}</p>
+          <p class:err={testError} class:notice={!testError} role={testError ? "alert" : "status"}>{testMsg}</p>
         {/if}
         {#if target?.last_error}<p class="err">Last error: {target.last_error}</p>{/if}
         <p class="field-hint">Test uses the values above without saving. Use <strong>Save graph store</strong> to persist.</p>
@@ -642,6 +659,11 @@
       </form>
     {/if}
     {:else if dbKind === "neo4j"}
+      <p class="notice" role="status">
+        Ingest runs don't write to Neo4j yet — your settings are saved and testable now, ready for
+        adapter support. To continue the wizard, connect <strong>SurrealDB</strong> or use the
+        <strong>workspace Neon database</strong>.
+      </p>
       <form class="form" on:submit|preventDefault={saveNeo4j}>
         <p class="card-desc">
           Connect an existing Neo4j 5.x graph (Aura or self-hosted). Restormel writes claims as
@@ -683,7 +705,7 @@
           />
         </label>
         {#if neo4jMsg}
-          <p class:err={neo4jError} class:notice={!neo4jError} role="status">{neo4jMsg}</p>
+          <p class:err={neo4jError} class:notice={!neo4jError} role={neo4jError ? "alert" : "status"}>{neo4jMsg}</p>
         {/if}
         <p class="field-hint">Test runs <code>healthCheck()</code> against the database without writing anything.</p>
         <div class="actions">
@@ -696,6 +718,11 @@
         </div>
       </form>
     {:else if dbKind === "weaviate"}
+      <p class="notice" role="status">
+        Ingest runs don't write to Weaviate yet — your settings are saved and testable now, ready for
+        adapter support. To continue the wizard, connect <strong>SurrealDB</strong> or use the
+        <strong>workspace Neon database</strong>.
+      </p>
       <form class="form" on:submit|preventDefault={saveWeaviate}>
         <p class="card-desc">
           Connect an existing Weaviate instance (Cloud or self-hosted). Restormel adds its
@@ -735,7 +762,7 @@
           </label>
         </div>
         {#if weaviateMsg}
-          <p class:err={weaviateError} class:notice={!weaviateError} role="status">{weaviateMsg}</p>
+          <p class:err={weaviateError} class:notice={!weaviateError} role={weaviateError ? "alert" : "status"}>{weaviateMsg}</p>
         {/if}
         <p class="field-hint">Test runs Weaviate's readiness probe against the endpoint without writing anything.</p>
         <div class="actions">

@@ -80,6 +80,8 @@ function resolveRunDefaults(params: {
       title: p.title,
       ...(p.description ? { description: p.description } : {}),
       is_builtin: p.is_builtin,
+      quality_preset: p.quality_preset ?? "production",
+      cross_model_validation: p.cross_model_validation !== false,
     })),
     selectedDomainPackId: chosenPack?.id ?? null,
     defaultStopAfterStage: matchingProfile?.defaultStopAfterStage ?? null,
@@ -225,6 +227,15 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
   } catch (e) {
     if (e && typeof e === "object" && "status" in e && "location" in e) throw e;
     const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
-    return { step, wizard: null, runDefaults: null, modelsReady: false, phase: "initial" as const };
+    // Signed-in load failure — distinct from the signed-out shape above so the UI
+    // can show an error with a retry instead of a misleading sign-in prompt.
+    return {
+      step,
+      wizard: null,
+      runDefaults: null,
+      modelsReady: false,
+      phase: "initial" as const,
+      loadFailed: true,
+    };
   }
 };

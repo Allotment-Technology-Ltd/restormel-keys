@@ -1117,6 +1117,24 @@
   flex-shrink: 0;
   align-self: center;
 }
+.connect-pipeline .run-forecast-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.connect-pipeline .run-forecast-warn {
+  color: var(--coral-alert);
+  font-weight: 600;
+}
+.connect-pipeline .wizard-fallback-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+}
 .connect-pipeline .run-estimate {
   border: var(--border);
   background: var(--color-bg);
