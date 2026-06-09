@@ -27,6 +27,15 @@ function splitBlocks(markdown: string): string[] {
   return blocks;
 }
 
+/** Last `overlap` chars of a chunk, trimmed to start on a word boundary. */
+function overlapTail(text: string, overlap: number): string {
+  if (overlap <= 0) return "";
+  if (text.length <= overlap) return text;
+  const raw = text.slice(-overlap);
+  const ws = raw.search(/\s/);
+  return ws >= 0 ? raw.slice(ws + 1).trimStart() : raw;
+}
+
 /** Naive sentence splitter (no lookbehind, ES2019-safe). */
 function splitSentences(text: string): string[] {
   const matches = text.match(/[^.!?\n]+[.!?]*\s*/g);
@@ -125,6 +134,18 @@ export function chunkDocument(
         prev.text = `${prev.text}\n\n${last.text}`;
         chunks.pop();
       }
+    }
+  }
+
+  // Carry the previous chunk's tail across each boundary so cross-boundary
+  // relations stay extractable. Applied after packing/merging (backwards, so
+  // every tail comes from the neighbor's own text, not an earlier carry);
+  // chunks may exceed max_chars by up to the (capped) overlap.
+  const overlap = Math.min(profile.overlap_chars, Math.floor(profile.max_chars / 2));
+  if (overlap > 0) {
+    for (let i = chunks.length - 1; i >= 1; i--) {
+      const tail = overlapTail(chunks[i - 1].text, overlap);
+      if (tail) chunks[i].text = `${tail}\n\n${chunks[i].text}`;
     }
   }
 

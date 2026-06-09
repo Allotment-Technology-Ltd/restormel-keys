@@ -34,6 +34,15 @@ function readRemediationBatchSize(): number {
   return Math.min(Math.max(Math.floor(raw), 5), 50);
 }
 
+/** Cap on whole-source context passed to the model (chars); shares the validation dial. */
+const SOURCE_CONTEXT_CHARS = 12000;
+
+function readSourceContextChars(): number {
+  const raw = Number(process.env.CONNECT_SOURCE_CONTEXT_CHARS ?? SOURCE_CONTEXT_CHARS);
+  if (!Number.isFinite(raw)) return SOURCE_CONTEXT_CHARS;
+  return Math.max(Math.floor(raw), 1000);
+}
+
 export function buildRemediationSystemPrompt(
   pack: ConnectDomainPack,
   opts?: { qualityPreset?: ConnectQualityPreset },
@@ -50,7 +59,7 @@ export function buildRemediationUserPrompt(units: RemediationInput[], sourceText
     .map((u) => `- ${u.ref}${u.note ? ` (issue: ${u.note})` : ""}: ${u.text}`)
     .join("\n");
   return (
-    `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO REMEDIATE:\n${list}\n\n` +
+    `SOURCE TEXT:\n${sourceText.slice(0, readSourceContextChars())}\n\nUNITS TO REMEDIATE:\n${list}\n\n` +
     `For each unit also return "confidence": a number 0-1 for how sure you are of the chosen action.`
   );
 }
@@ -100,7 +109,10 @@ export function finalizeRemediationCoverage(
   }
   for (const unit of units) {
     if (byRef.has(unit.ref)) continue;
-    byRef.set(unit.ref, { ref: unit.ref, action: "keep" });
+    // Fail-safe: these inputs are already validation-flagged; an omitted verdict must
+    // not persist them as if remediation chose "keep". "drop" maps to a reversible
+    // soft-exclude downstream, still gated by the orchestrator's strictness policy.
+    byRef.set(unit.ref, { ref: unit.ref, action: "drop" });
   }
   return units.map((unit) => byRef.get(unit.ref)!);
 }

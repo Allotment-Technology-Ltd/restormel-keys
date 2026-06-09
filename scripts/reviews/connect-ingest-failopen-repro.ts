@@ -29,8 +29,8 @@ function hr(title: string): void {
   console.log("\n" + "═".repeat(72) + "\n" + title + "\n" + "─".repeat(72));
 }
 
-/* ───────────────────────── C1 + C3: validation fails open ───────────────────────── */
-hr("C1/C3 — validation: omitted units default to 'ok', inflating ok_pct");
+/* ───────────────────────── C1 + C3: validation now fails safe ───────────────────────── */
+hr("C1/C3 (FIXED) — validation: omitted units default to 'weak', ok_pct honest");
 
 // 5 extracted units sent to the validator.
 const units: ValidationInput[] = [
@@ -64,12 +64,13 @@ console.log(
 );
 console.log(`  G2 ok_pct = ${g2.ok_pct}%  (G2 bar: >= 90%)`);
 console.log(
-  "  ⇒ Two unvalidated claims (incl. a false one) were marked 'ok' and counted toward\n" +
-    "    the quality bar. The model never judged them. ok_pct reads green; reality is worse.",
+  "  ⇒ The two unvalidated claims (incl. a false one) now finalize as 'weak' with a\n" +
+    "    coverage_gap note, so they flow to remediation instead of into the graph as 'ok',\n" +
+    "    and ok_pct reflects the real coverage (60%, below the bar) instead of a green 100%.",
 );
 
-/* ───────────────────────── C2: remediation fails open ───────────────────────── */
-hr("C2 — remediation: omitted units default to 'keep'");
+/* ───────────────────────── C2: remediation now fails safe ───────────────────────── */
+hr("C2 (FIXED) — remediation: omitted units default to 'drop', not 'keep'");
 
 const weakUnits: RemediationInput[] = [
   { ref: "w1", text: "Sidgwick proved utilitarianism is self-evident.", note: "overstated" },
@@ -80,12 +81,13 @@ const remediationReturned: RemediationResult[] = [];
 const remFinal = finalizeRemediationCoverage(weakUnits, remediationReturned);
 for (const r of remFinal) console.log(`  ${r.ref}: ${r.action}`);
 console.log(
-  "  ⇒ Both flagged-weak units default to 'keep' and persist unchanged — the self-healing\n" +
-    "    stage silently no-ops instead of dropping/holding for review.",
+  "  ⇒ Both flagged-weak units now default to 'drop': the orchestrator maps that to a\n" +
+    "    reversible soft-exclude (strictness policy still applies), instead of silently\n" +
+    "    persisting known-weak units as if remediation succeeded.",
 );
 
-/* ───────────────────────── H1: malformed JSON silently loses the batch, then C1 marks it ok ───────────────────────── */
-hr("H1 — loose-JSON parse silently drops verdicts on truncated output (then C1 fills 'ok')");
+/* ───────────────────────── H1: malformed JSON still loses the batch, but C1 now fails it safe ───────────────────────── */
+hr("H1 — loose-JSON parse drops verdicts on truncated output (coverage gap now fails safe)");
 
 // A response truncated mid-array (max_tokens / network cut). Note the dangling object.
 const truncated =
@@ -102,13 +104,14 @@ const h1Units: ValidationInput[] = [
 const h1Final = finalizeValidationCoverage(h1Units, parsed);
 console.log(`  After finalize, persisted statuses: ${h1Final.map((v) => `${v.ref}=${v.status}`).join(", ")}`);
 console.log(
-  "  ⇒ Brace-slice can't recover the truncated array, so the WHOLE batch is lost silently —\n" +
-    "    including v2='unsupported'. Coverage finalize (C1) then stamps every unit 'ok'.\n" +
-    "    A truncated verdict batch flips a known-unsupported claim to supported.",
+  "  ⇒ Brace-slice still can't recover the truncated array, so the batch is lost — but\n" +
+    "    coverage finalize now stamps every lost unit 'weak' (coverage_gap), not 'ok'.\n" +
+    "    A truncated verdict batch no longer flips a known-unsupported claim to supported;\n" +
+    "    the silent-parse-loss itself (H1) remains open as a separate finding.",
 );
 
-/* ───────────────────────── H4: structure-aware chunking drops overlap ───────────────────────── */
-hr("H4 — structure_aware chunking has no overlap; cross-boundary relations are unrecoverable");
+/* ───────────────────────── H4: structure-aware chunking now honors overlap ───────────────────────── */
+hr("H4 (FIXED) — structure_aware chunking honors overlap_chars across boundaries");
 
 /** Largest k where a's last k chars == b's first k chars (the real carried-over overlap region). */
 function boundaryOverlap(a: string, b: string): number {
@@ -139,16 +142,18 @@ console.log(`  Same doc, requested overlap_chars=${profile.overlap_chars}:`);
 console.log(`    structure_aware → ${structureChunks.length} chunks, boundary overlap = ${structOverlap} chars`);
 console.log(`    fixed          → ${fixedChunks.length} chunks, boundary overlap = ${fixedOverlap} chars`);
 console.log(
-  `  ⇒ structure_aware carries ${structOverlap} chars across the boundary (overlap_chars ignored);\n` +
-    `    only 'fixed' honors it (${fixedOverlap} chars). With zero overlap, the two related units land\n` +
-    "    in separate chunks with no shared context, so the B-refutes-A relation can never be\n" +
-    "    extracted → a guaranteed orphan / missing edge.",
+  `  ⇒ structure_aware now carries ${structOverlap} chars across the boundary (was 0 —\n` +
+    `    overlap_chars was ignored); 'fixed' still honors it too (${fixedOverlap} chars). The two\n` +
+    "    related units now share boundary context, so the B-refutes-A relation is extractable.",
 );
 
 hr("Summary");
 console.log(
-  "  Confirmed by execution: C1, C2, C3, H1, H4 reproduce with no model involved — they are\n" +
-    "  pipeline-logic defects, not model-quality issues. See docs/reviews/connect-ingest-context.md\n" +
-    "  §6 for the full candidate list and severity. This script makes no claims about M1–M4/L1–L2;\n" +
-    "  extend it to ground those before fixing.",
+  "  C1/C2/C3 are FIXED: omitted validation verdicts finalize as 'weak' (coverage_gap),\n" +
+    "  omitted remediation verdicts finalize as 'drop', and G2 ok_pct no longer counts\n" +
+    "  never-judged units as ok. H4 is FIXED: structure_aware chunking carries overlap_chars\n" +
+    "  across boundaries. H2 is mitigated: the 12k source cap is now tunable via\n" +
+    "  CONNECT_SOURCE_CONTEXT_CHARS. H1's consequence is defused by C1/C2 (lost batches fail\n" +
+    "  safe), but the silent loose-JSON parse loss itself remains open, as do H3/M1/M3/M4/L1.\n" +
+    "  See docs/reviews/connect-ingest-context.md §6; extend this script to ground new findings.",
 );

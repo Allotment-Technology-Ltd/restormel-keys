@@ -54,7 +54,7 @@ describe("validation", () => {
       { ref: "u2", status: "weak" },
     ]);
   });
-  it("batches short refs and fills omitted units as ok", async () => {
+  it("batches short refs and fails omitted units safe as weak (coverage gap)", async () => {
     const { buildValidationBatchInputs, finalizeValidationCoverage, remapValidationBatchResults } =
       await import("../ingest/validation.js");
     const units = [
@@ -69,8 +69,41 @@ describe("validation", () => {
     const finalized = finalizeValidationCoverage(units, remapped);
     expect(finalized).toEqual([
       { ref: "claim:aaa", status: "weak", note: "vague" },
-      { ref: "claim:bbb", status: "ok", note: "Assumed supported (validator omitted this unit)" },
+      { ref: "claim:bbb", status: "weak", note: "coverage_gap: validator omitted this unit" },
     ]);
+  });
+  it("source-context cap honors CONNECT_SOURCE_CONTEXT_CHARS", async () => {
+    const { buildValidationUserPrompt } = await import("../ingest/validation.js");
+    const longSource = "s".repeat(20000);
+    const units = [{ ref: "v1", text: "claim" }];
+    const before = process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+    try {
+      delete process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+      const def = buildValidationUserPrompt(units, longSource);
+      expect(def).toContain("s".repeat(12000));
+      expect(def).not.toContain("s".repeat(12001));
+      process.env.CONNECT_SOURCE_CONTEXT_CHARS = "15000";
+      const raised = buildValidationUserPrompt(units, longSource);
+      expect(raised).toContain("s".repeat(15000));
+      expect(raised).not.toContain("s".repeat(15001));
+    } finally {
+      if (before === undefined) delete process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+      else process.env.CONNECT_SOURCE_CONTEXT_CHARS = before;
+    }
+  });
+  it("leaves model-judged verdicts untouched when coverage is complete", async () => {
+    const { finalizeValidationCoverage } = await import("../ingest/validation.js");
+    const units = [
+      { ref: "claim:aaa", text: "A" },
+      { ref: "claim:bbb", text: "B" },
+      { ref: "claim:ccc", text: "C" },
+    ];
+    const judged = [
+      { ref: "claim:aaa", status: "ok" as const },
+      { ref: "claim:bbb", status: "weak" as const, note: "vague" },
+      { ref: "claim:ccc", status: "unsupported" as const },
+    ];
+    expect(finalizeValidationCoverage(units, judged)).toEqual(judged);
   });
 });
 
@@ -92,7 +125,7 @@ describe("remediation", () => {
       { ref: "u3", action: "keep" },
     ]);
   });
-  it("batches short refs and fills omitted units as keep", async () => {
+  it("batches short refs and fails omitted units safe as drop (not keep)", async () => {
     const { buildRemediationBatchInputs, finalizeRemediationCoverage, remapRemediationBatchResults } =
       await import("../ingest/remediation.js");
     const units = [
@@ -110,8 +143,20 @@ describe("remediation", () => {
     const finalized = finalizeRemediationCoverage(units, remapped);
     expect(finalized).toEqual([
       { ref: "claim:aaa", action: "repair", text: "fixed A" },
-      { ref: "claim:bbb", action: "keep" },
+      { ref: "claim:bbb", action: "drop" },
     ]);
+  });
+  it("leaves model-judged actions untouched when coverage is complete", async () => {
+    const { finalizeRemediationCoverage } = await import("../ingest/remediation.js");
+    const units = [
+      { ref: "claim:aaa", text: "A", note: "weak" },
+      { ref: "claim:bbb", text: "B", note: "unsupported" },
+    ];
+    const judged = [
+      { ref: "claim:aaa", action: "keep" as const, confidence: 0.9 },
+      { ref: "claim:bbb", action: "drop" as const, confidence: 0.8 },
+    ];
+    expect(finalizeRemediationCoverage(units, judged)).toEqual(judged);
   });
   it("splits large weak-unit sets into multiple batches", async () => {
     const { buildRemediationBatchInputs, REMEDIATION_BATCH_SIZE } = await import("../ingest/remediation.js");
