@@ -102,10 +102,12 @@ export function finalizeValidationCoverage(
   }
   for (const unit of units) {
     if (byRef.has(unit.ref)) continue;
+    // Fail-safe: a unit the validator never judged must not pass the quality gate —
+    // "weak" routes it to remediation instead of into the graph as supported.
     byRef.set(unit.ref, {
       ref: unit.ref,
-      status: "ok",
-      note: "Assumed supported (validator omitted this unit)",
+      status: "weak",
+      note: "coverage_gap: validator omitted this unit",
     });
   }
   return units.map((unit) => byRef.get(unit.ref)!);

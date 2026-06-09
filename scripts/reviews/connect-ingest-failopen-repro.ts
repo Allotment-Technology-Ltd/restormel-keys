@@ -29,8 +29,8 @@ function hr(title: string): void {
   console.log("\n" + "═".repeat(72) + "\n" + title + "\n" + "─".repeat(72));
 }
 
-/* ───────────────────────── C1 + C3: validation fails open ───────────────────────── */
-hr("C1/C3 — validation: omitted units default to 'ok', inflating ok_pct");
+/* ───────────────────────── C1 + C3: validation now fails safe ───────────────────────── */
+hr("C1/C3 (FIXED) — validation: omitted units default to 'weak', ok_pct honest");
 
 // 5 extracted units sent to the validator.
 const units: ValidationInput[] = [
@@ -64,12 +64,13 @@ console.log(
 );
 console.log(`  G2 ok_pct = ${g2.ok_pct}%  (G2 bar: >= 90%)`);
 console.log(
-  "  ⇒ Two unvalidated claims (incl. a false one) were marked 'ok' and counted toward\n" +
-    "    the quality bar. The model never judged them. ok_pct reads green; reality is worse.",
+  "  ⇒ The two unvalidated claims (incl. a false one) now finalize as 'weak' with a\n" +
+    "    coverage_gap note, so they flow to remediation instead of into the graph as 'ok',\n" +
+    "    and ok_pct reflects the real coverage (60%, below the bar) instead of a green 100%.",
 );
 
-/* ───────────────────────── C2: remediation fails open ───────────────────────── */
-hr("C2 — remediation: omitted units default to 'keep'");
+/* ───────────────────────── C2: remediation now fails safe ───────────────────────── */
+hr("C2 (FIXED) — remediation: omitted units default to 'drop', not 'keep'");
 
 const weakUnits: RemediationInput[] = [
   { ref: "w1", text: "Sidgwick proved utilitarianism is self-evident.", note: "overstated" },
@@ -80,12 +81,13 @@ const remediationReturned: RemediationResult[] = [];
 const remFinal = finalizeRemediationCoverage(weakUnits, remediationReturned);
 for (const r of remFinal) console.log(`  ${r.ref}: ${r.action}`);
 console.log(
-  "  ⇒ Both flagged-weak units default to 'keep' and persist unchanged — the self-healing\n" +
-    "    stage silently no-ops instead of dropping/holding for review.",
+  "  ⇒ Both flagged-weak units now default to 'drop': the orchestrator maps that to a\n" +
+    "    reversible soft-exclude (strictness policy still applies), instead of silently\n" +
+    "    persisting known-weak units as if remediation succeeded.",
 );
 
-/* ───────────────────────── H1: malformed JSON silently loses the batch, then C1 marks it ok ───────────────────────── */
-hr("H1 — loose-JSON parse silently drops verdicts on truncated output (then C1 fills 'ok')");
+/* ───────────────────────── H1: malformed JSON still loses the batch, but C1 now fails it safe ───────────────────────── */
+hr("H1 — loose-JSON parse drops verdicts on truncated output (coverage gap now fails safe)");
 
 // A response truncated mid-array (max_tokens / network cut). Note the dangling object.
 const truncated =
@@ -102,9 +104,10 @@ const h1Units: ValidationInput[] = [
 const h1Final = finalizeValidationCoverage(h1Units, parsed);
 console.log(`  After finalize, persisted statuses: ${h1Final.map((v) => `${v.ref}=${v.status}`).join(", ")}`);
 console.log(
-  "  ⇒ Brace-slice can't recover the truncated array, so the WHOLE batch is lost silently —\n" +
-    "    including v2='unsupported'. Coverage finalize (C1) then stamps every unit 'ok'.\n" +
-    "    A truncated verdict batch flips a known-unsupported claim to supported.",
+  "  ⇒ Brace-slice still can't recover the truncated array, so the batch is lost — but\n" +
+    "    coverage finalize now stamps every lost unit 'weak' (coverage_gap), not 'ok'.\n" +
+    "    A truncated verdict batch no longer flips a known-unsupported claim to supported;\n" +
+    "    the silent-parse-loss itself (H1) remains open as a separate finding.",
 );
 
 /* ───────────────────────── H4: structure-aware chunking drops overlap ───────────────────────── */
@@ -147,8 +150,9 @@ console.log(
 
 hr("Summary");
 console.log(
-  "  Confirmed by execution: C1, C2, C3, H1, H4 reproduce with no model involved — they are\n" +
-    "  pipeline-logic defects, not model-quality issues. See docs/reviews/connect-ingest-context.md\n" +
-    "  §6 for the full candidate list and severity. This script makes no claims about M1–M4/L1–L2;\n" +
-    "  extend it to ground those before fixing.",
+  "  C1/C2/C3 are FIXED: omitted validation verdicts finalize as 'weak' (coverage_gap),\n" +
+    "  omitted remediation verdicts finalize as 'drop', and G2 ok_pct no longer counts\n" +
+    "  never-judged units as ok. H1 (silent loose-JSON parse loss) and H4 (structure_aware\n" +
+    "  overlap) still reproduce above and remain open. See docs/reviews/connect-ingest-context.md\n" +
+    "  §6 for the full candidate list; extend this script to ground any new finding.",
 );

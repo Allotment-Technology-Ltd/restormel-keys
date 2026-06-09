@@ -100,7 +100,10 @@ export function finalizeRemediationCoverage(
   }
   for (const unit of units) {
     if (byRef.has(unit.ref)) continue;
-    byRef.set(unit.ref, { ref: unit.ref, action: "keep" });
+    // Fail-safe: these inputs are already validation-flagged; an omitted verdict must
+    // not persist them as if remediation chose "keep". "drop" maps to a reversible
+    // soft-exclude downstream, still gated by the orchestrator's strictness policy.
+    byRef.set(unit.ref, { ref: unit.ref, action: "drop" });
   }
   return units.map((unit) => byRef.get(unit.ref)!);
 }
