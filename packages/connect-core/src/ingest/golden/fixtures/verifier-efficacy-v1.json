@@ -1,0 +1,393 @@
+{
+  "version": 1,
+  "description": "Verifier efficacy ground truth (Stage 1.0a). Restormel-authored source texts (CC0) with labeled claims: supported, plus planted bad claims at three tiers — fabricated (no basis in any corpus source), overstated (source says strictly less), misattributed (supported by a DIFFERENT corpus source than the one cited). Labels are certain because both texts and claims are authored together. Scored by scripts/reviews/verifier-efficacy.ts. v1 includes a HARD TIER: src-survey-long exceeds the validator's 12k-char source window; claims marked beyond_window have their evidence (or related content) past the truncation point, probing the H2 fail-open behavior.",
+  "authored_by": "Restormel (original prose, CC0) — 2026-06-09",
+  "sources": [
+    {
+      "id": "src-utilitarianism",
+      "title": "The Utilitarian Calculus",
+      "text": "Classical utilitarianism begins with Jeremy Bentham, who proposed that the rightness of an action is determined solely by its consequences for aggregate happiness. Bentham introduced a felicific calculus: a method for estimating the value of a pleasure or pain by dimensions such as intensity, duration, certainty, and extent. On his account, pleasure and pain are the only intrinsic measures of value, and every person's happiness counts equally in the aggregate.\n\nJohn Stuart Mill revised the doctrine in two important ways. First, he distinguished higher pleasures, those of the intellect and imagination, from lower, bodily pleasures. Mill argued that people acquainted with both kinds tend, in his experience, to prefer the higher, though he conceded that circumstance and temperament can pull judgment the other way. Second, Mill placed greater weight on the secondary principles of common morality, treating them as accumulated guidance about which actions generally promote happiness, to be set aside only when such principles conflict.\n\nLater writers distinguished act utilitarianism, which evaluates each action directly by its consequences, from rule utilitarianism, which evaluates actions by conformity to rules whose general adoption would maximize happiness. Critics have pressed the demandingness objection: if every action must maximize aggregate happiness, ordinary projects and partial attachments seem morally suspect. Some utilitarians reply that adopting less demanding decision procedures may itself be what maximizes happiness, since agents who constantly calculate tend to miscalculate.\n\nThe tradition's distinctive commitments remain: impartial aggregation, the comparability of welfare across persons, and the denial that any act is right or wrong independently of its consequences.",
+      "license": "CC0"
+    },
+    {
+      "id": "src-deontology",
+      "title": "Duty and the Categorical Imperative",
+      "text": "Immanuel Kant grounded morality not in consequences but in the form of practical reason itself. The central notion is the categorical imperative, a requirement that binds rational agents unconditionally, in contrast with hypothetical imperatives that bind only relative to some desired end. Kant offered several formulations. The universal law formulation directs an agent to act only on maxims that could be willed as universal laws. The humanity formulation directs agents to treat humanity, in oneself or in another, always as an end and never merely as a means.\n\nFor Kant, an action has moral worth when it is done from duty rather than from inclination. A shopkeeper who deals honestly merely because honesty is profitable acts in conformity with duty, but not from duty; the action is right, yet it lacks moral worth. This distinction has been widely debated, and some readers take Kant to undervalue actions done gladly from sympathetic feeling, though others argue the texts allow inclination to accompany duty so long as duty alone is the determining ground.\n\nKant held that moral requirements are knowable a priori: their authority does not rest on experience of consequences. Lying, on his account, cannot be universalized without contradiction, because a world in which everyone lies when convenient is a world in which assertion loses its point. Critics respond that the universalization test is sensitive to how maxims are described, and that with sufficiently specific maxims, intuitively wrong actions appear to pass.\n\nWhat the view rules out is clear: no calculation of aggregate benefit can, by itself, justify treating a person merely as a means.",
+      "license": "CC0"
+    },
+    {
+      "id": "src-virtue",
+      "title": "Virtue and the Mean",
+      "text": "Aristotle's ethics asks not first what to do, but what kind of person to be. The highest human good is eudaimonia, often rendered as flourishing: an active life of the soul in accordance with virtue, sustained over a complete life. Virtues of character, such as courage, temperance, and generosity, are acquired by habituation: we become just by doing just actions, much as builders become builders by building.\n\nEach virtue of character, Aristotle says, lies in a mean between two vices, one of excess and one of deficiency. Courage stands between rashness and cowardice; generosity between prodigality and meanness. He is careful to note that the mean is relative to us and to circumstances, not an arithmetic midpoint, and that some actions, such as murder, admit of no mean at all.\n\nDiscerning the mean requires phronesis, practical wisdom: an acquired capacity to deliberate well about what conduces to living well as a whole. Practical wisdom cannot be reduced to rules; it is developed through experience and corrected perception. For this reason Aristotle says the young can be skilled in geometry but are rarely practically wise, since practical wisdom requires acquaintance with particulars that only time supplies.\n\nThe theory ties virtue to feeling as well as action: the temperate person is not one who resists bad desires, but one whose desires have been shaped so that acting well is pleasant. Moral education, on this picture, is the education of pleasure and pain.",
+      "license": "CC0"
+    },
+    {
+      "id": "src-survey-long",
+      "title": "A Survey of Ethical Theories",
+      "text": "Ethical theory, as surveyed here, is the systematic attempt to say what makes actions right or wrong, lives good or bad, and institutions just or unjust, in a way that survives reflective scrutiny. The survey that follows is organised by family of theory rather than by historical sequence. Its aim is not adjudication but cartography: to set out, for each family, the central organising idea, the standard internal divisions, and the objections that have most shaped its development. A reader should come away knowing not which theory is true, but what each theory must claim, and what it must give up, in order to remain itself. Throughout, the survey distinguishes between a theory's criterion of rightness, which says what makes acts right, and its decision procedure, which says how agents should actually deliberate; conflating the two is the most common error in applied discussion, since several traditions explicitly deny that their criterion should be used in everyday reasoning.\n\nConsequentialist theories hold that the rightness of an action is fixed entirely by the value of its outcomes. The best-known member of the family evaluates acts one by one against the totality of their consequences, while rule-oriented variants evaluate acts indirectly, by asking whether they conform to rules whose general acceptance would produce the best outcomes. Beyond this familiar division the family is wider than introductory treatments suggest. Satisficing versions deny that agents are required to bring about the best outcome, requiring only outcomes that are good enough, and thereby attempt to disarm the objection that maximising theories are intolerably demanding. Scalar versions go further and abandon the deontic categories of required and forbidden altogether, holding only that actions are better or worse than their alternatives, with no threshold at which wrongness begins. Global versions extend consequentialist assessment beyond acts to motives, dispositions, and institutional structures, asking of each whether its presence makes outcomes better. The persistent objections are structural rather than incidental. The aggregation worry is that summing value across persons licenses imposing severe costs on a few whenever the many gain enough in total. The integrity worry is that an agent required always to produce the best outcome cannot maintain the projects and commitments that make a human life recognisably her own. The epistemic worry is that the consequences of any act ramify indefinitely, so that the theory's criterion can never actually be applied. Defenders respond by separating criterion from decision procedure: the theory may be true as an account of rightness even if agents do best, by its own lights, deliberating with rough rules and settled dispositions rather than calculation.\n\nDeontological alternatives deny that outcomes are the whole story. One influential strand holds that moral life is structured by a plurality of basic duties, none reducible to the others: duties of fidelity arising from one's own past undertakings, duties of reparation arising from one's past wrongs, duties of gratitude, of justice, of beneficence, of self-improvement, and of non-injury. Each such duty is conditional in the sense that it can be outweighed: a duty binds so far as it goes, and what one ought to do all things considered depends on which duty is weightiest in the situation at hand. On this pluralist picture, duties can conflict, and no fixed ranking resolves every conflict in advance; judgement, case by case, is ineliminable. A second strand grounds moral requirements in what could be justified to each person affected. On such contractual views, an act is wrong if it would be disallowed by any set of principles that no one could reasonably reject as a basis for general agreement. The notion of reasonable rejection does substantive work: a principle may be rejected because of the burdens it places on some position, but not merely because rejecting it would be convenient for the rejector. Threshold variants of deontology accept that constraints against harming may give way when the stakes become catastrophic, holding that constraints are genuine but not absolute. The standing objections mirror the family's commitments. Pluralists are pressed to explain how unranked duties yield determinate verdicts without collapsing into intuition-mongering. Contractualists are pressed on aggregation in the opposite direction: if each person can reject a principle only on her own behalf, the view appears unable to explain why saving the greater number is so much as relevant.\n\nThe question of moral status asks to whom, or to what, moral consideration is owed. The narrowest answers confine full status to persons, understood as beings capable of reflective agency; wider answers extend status to all sentient creatures, on the ground that the capacity to suffer, not the capacity to reason, is what makes treatment matter; the widest answers extend some consideration to species, ecosystems, or living things as such. The survey treats two extensions as live areas of work. The first concerns non-human animals, where the central dispute is whether equal consideration of interests implies anything like equal treatment, given the very different interests that different creatures have. The second concerns future generations, where the difficulty is structural rather than sentimental: policies adopted now determine not only the welfare but the identity of the people who will later exist, so that complaints on behalf of particular future individuals are hard to formulate, since those individuals would not have existed under the alternative policy. This non-identity structure forces a choice between impersonal principles, which evaluate outcomes without reference to who exists in them, and person-affecting principles, which insist that wrongness requires a wronged party.\n\nMoral epistemology asks how ethical claims are known, if they are known at all. The dominant method in the analytic tradition proceeds by mutual adjustment: particular considered judgements are tested against candidate principles, principles are revised when they conflict with judgements that survive scrutiny, and judgements are abandoned when they conflict with principles that explain everything else. The state aimed at, in which principles and judgements have been brought into coherence with one another and with background theory, is called reflective equilibrium; the method's defenders regard it as the only honest description of how ethical inquiry actually proceeds, while its critics object that coherence among judgements that share a distorted origin yields only systematised distortion. That objection has been sharpened into debunking arguments: if our moral intuitions are best explained by evolutionary pressures or cultural transmission rather than by sensitivity to moral truth, then agreement among them is no evidence of truth. Replies divide between those who deny the explanatory premise, those who accept it for some intuitions while quarantining others, and those who conclude that the demand for intuition-independent foundations is itself confused, since every domain of inquiry ultimately rests on judgements it cannot independently certify.\n\nBeneath normative theory lies the metaethical question of what moral claims are. Realists hold that some moral claims are true independently of anyone's attitudes, and divide over whether the truths are natural facts, discoverable in principle by the sciences, or non-natural facts known by reflection. Expressivists hold that moral claims express practical attitudes rather than describe facts, and have laboured to explain how sentences that merely express attitudes can nevertheless embed in logical contexts, figure in valid arguments, and be the objects of disagreement. Error theorists agree with realists about what moral claims purport to do and with expressivists that the purport fails: on their view, first-order moral claims are systematically false, and the open question is what, if anything, should be done with a discourse so diagnosed, with answers ranging from abolition to deliberate fictionalism. Constructivists occupy a middle position, holding that moral truths are fixed by what idealised agents would agree to or endorse, so that objectivity is secured without attitude-independent fact. The survey takes no position among these, but notes that normative theorising has proven remarkably insensitive to metaethical result: practitioners of every normative family can be found in every metaethical camp.\n\nQuestions of moral responsibility run alongside questions of rightness and are not settled by them. To judge an act wrong is one thing; to judge its agent blameworthy is another, and the gap between the two is where excuses live. The survey distinguishes three broad positions on what responsibility requires. Reactive-attitude accounts hold that being responsible is a matter of being an appropriate target of attitudes such as resentment, indignation, and gratitude, so that the practices of holding responsible are not answerable to some prior metaphysical fact but partly constitute the fact. Control-based accounts hold that an agent is responsible for what lies within her control, and refine the requirement into guidance control, the capacity to recognise and respond to reasons, as distinct from the stronger and perhaps unsatisfiable demand for ultimate origination of one's character. Attributability accounts hold that an agent is responsible for what expresses her evaluative stance, her cares and commitments, whether or not she could have done otherwise at the moment of action. The families diverge sharply over manipulation cases, in which an agent's values have been covertly engineered: control theorists must say where in the history the engineering undermines responsibility, while attributability theorists must explain why origin matters at all if the resulting stance is genuinely the agent's own.\n\nA parallel body of work concerns value theory and well-being, the question of what makes a life go well for the one living it. Hedonist answers identify well-being with the balance of pleasant over unpleasant experience, and face the experience-machine style objection that people stably prefer contact with reality to indistinguishable simulation. Desire-satisfaction answers identify well-being with getting what one wants, and face the problem of defective desires: desires formed under deprivation, manipulation, or simple misinformation seem poor measures of benefit, which pushes the view toward idealisation, and idealisation pushes it away from the actual person whose well-being was to be explained. Objective-list answers hold that certain goods, such as knowledge, achievement, friendship, and autonomy, benefit a person whether or not she wants them, and face the alienation objection that a good which leaves its possessor entirely cold seems a strange benefit. Hybrid views, on which well-being requires both an objective good and a subjective endorsement of it, trade the simplicity of the pure views for resistance to their counterexamples. The survey notes that the choice among these accounts matters practically as well as theoretically: measures of social progress, the design of institutions, and the evaluation of paternalist policy all presuppose, usually silently, some answer to the question of what benefit is.\n\nA final preliminary concerns the applied turn. Since the late twentieth century, ethical theory has been increasingly tested against concrete domains: clinical medicine, war, migration, data and computation, and the treatment of the biosphere. The traffic runs in both directions. Theories supply structure to domains that would otherwise be governed by unexamined custom; domains supply counterexamples and pressure-cases that reshape theory. The survey's view is that this traffic is the discipline's health, and that a theory which cannot be brought to bear on any concrete question has ceased to be a theory of anything.\n\nThe ethics of care begins from the observation that moral life is lived first in relationships of dependency: between parents and children, the well and the ill, the strong and the frail. Where impartialist theories model the moral agent as one rational contractor among equals, care ethics models her as already embedded in particular relationships that make claims on her precisely because they are hers. The tradition distinguishes caring-for, the direct, responsive engagement with a particular other whose needs one meets, from caring-about, the more general concern one may have for distant others or for causes; the distinction matters because the tradition treats caring-for as the primary phenomenon and warns against moral theories that let concern for humanity at large substitute for answering the person in front of you. Care ethicists criticise impartialist moral theories for abstracting away from particular relationships, arguing that what is owed to one's own child is not usefully represented as the impartial claim of one anonymous person among billions. Several writers in this tradition suggest that justice and care are complementary rather than rival frameworks, each correcting the other's characteristic blindness, though others resist any synthesis, holding that care reconceives the moral domain rather than supplementing it.\n\nMoral particularism, the survey's final stop, challenges an assumption shared by every family so far: that moral thought is in the business of principles at all. The particularist's central doctrine is a holism of reasons: a feature that counts in favour of an action in one case may count against it, or count for nothing, in another, depending on what else is true. That a remark would amuse is sometimes a reason to make it and sometimes, at a funeral, a reason not to; that an act was requested can favour it, unless the request was itself extorted. If reasons behave holistically, then exceptionless principles linking natural features to moral verdicts will be hostage to the next case, and competent moral judgement consists not in subsuming cases under rules but in discerning how the features present here, in this case, bear on what to do. Critics reply that some features seem stubbornly invariant, and some particularists allow that a few considerations, the causing of gratuitous pain being the usual example, function as default reasons, carrying their normal valence unless something about the case explains why they should not. Even so qualified, particularism relocates moral competence from theory to perception, and its lasting influence has been to make every other family explain what principles are for.\n\nThe survey closes where it began, with method. Each family canvassed here earns its place not by refuting the others but by keeping alive a consideration the others are tempted to suppress: outcomes matter; persons may not be merely used; character and relationship are not afterthoughts; and the particular case outruns every formula. A reader persuaded by none of them entirely has understood the field.",
+      "license": "CC0"
+    }
+  ],
+  "claims": [
+    {
+      "id": "u-s1",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "Bentham held that the rightness of an action is determined solely by its consequences for aggregate happiness.",
+      "rationale": "Directly stated in paragraph 1 of the cited source."
+    },
+    {
+      "id": "u-s2",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "Bentham's felicific calculus estimates the value of pleasures and pains by dimensions including intensity, duration, certainty, and extent.",
+      "rationale": "Directly stated in paragraph 1."
+    },
+    {
+      "id": "u-s3",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "Mill distinguished higher pleasures of the intellect from lower, bodily pleasures.",
+      "rationale": "Directly stated in paragraph 2."
+    },
+    {
+      "id": "u-s4",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "Rule utilitarianism evaluates actions by conformity to rules whose general adoption would maximize happiness.",
+      "rationale": "Directly stated in paragraph 3."
+    },
+    {
+      "id": "u-s5",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "The demandingness objection says that if every action must maximize aggregate happiness, ordinary projects and partial attachments seem morally suspect.",
+      "rationale": "Directly stated in paragraph 3."
+    },
+    {
+      "id": "u-s6",
+      "source_id": "src-utilitarianism",
+      "label": "supported",
+      "text": "Utilitarianism is committed to impartial aggregation and the comparability of welfare across persons.",
+      "rationale": "Directly stated in the closing paragraph."
+    },
+    {
+      "id": "u-o1",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "Mill demonstrated that all people invariably prefer higher pleasures to lower ones.",
+      "rationale": "Overstated: the source says people acquainted with both 'tend, in his experience' to prefer the higher, and explicitly concedes judgment can go the other way. 'Demonstrated', 'all', and 'invariably' exceed the text."
+    },
+    {
+      "id": "u-o2",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "Utilitarians agree that adopting less demanding decision procedures maximizes happiness.",
+      "rationale": "Overstated: the source says 'some utilitarians reply' that this 'may' be so — hedged and partial, not agreed doctrine."
+    },
+    {
+      "id": "u-f1",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "text": "Bentham later abandoned the felicific calculus and endorsed a theory of natural rights.",
+      "rationale": "Fabricated: no basis in any corpus source; nothing about Bentham abandoning anything or endorsing natural rights appears anywhere."
+    },
+    {
+      "id": "u-f2",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "text": "Mill wrote that the felicific calculus should be administered by a government bureau of public happiness.",
+      "rationale": "Fabricated: invented institutional detail with no basis in any corpus source."
+    },
+    {
+      "id": "u-m1",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-deontology",
+      "text": "An action has moral worth when it is done from duty rather than from inclination.",
+      "rationale": "Misattributed: true claim, but supported by the deontology source (paragraph 2), not the cited utilitarianism source, which never discusses duty or inclination."
+    },
+    {
+      "id": "u-m2",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-virtue",
+      "text": "Virtues of character are acquired by habituation: we become just by doing just actions.",
+      "rationale": "Misattributed: supported by the virtue source (paragraph 1), not the cited utilitarianism source."
+    },
+    {
+      "id": "d-s1",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "The categorical imperative binds rational agents unconditionally, unlike hypothetical imperatives which bind only relative to a desired end.",
+      "rationale": "Directly stated in paragraph 1."
+    },
+    {
+      "id": "d-s2",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "The humanity formulation directs agents to treat humanity always as an end and never merely as a means.",
+      "rationale": "Directly stated in paragraph 1."
+    },
+    {
+      "id": "d-s3",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "Kant's honest shopkeeper acts in conformity with duty but not from duty, so the action lacks moral worth.",
+      "rationale": "Directly stated in paragraph 2."
+    },
+    {
+      "id": "d-s4",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "Kant held that moral requirements are knowable a priori, independent of experience of consequences.",
+      "rationale": "Directly stated in paragraph 3."
+    },
+    {
+      "id": "d-s5",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "Critics object that the universalization test is sensitive to how maxims are described.",
+      "rationale": "Directly stated in paragraph 3."
+    },
+    {
+      "id": "d-s6",
+      "source_id": "src-deontology",
+      "label": "supported",
+      "text": "On Kant's view, no calculation of aggregate benefit can by itself justify treating a person merely as a means.",
+      "rationale": "Directly stated in the closing paragraph."
+    },
+    {
+      "id": "d-o1",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "Kant's texts settle that actions done gladly from sympathetic feeling have no moral worth.",
+      "rationale": "Overstated: the source presents this as debated — 'some readers take Kant to undervalue' such actions while 'others argue the texts allow inclination to accompany duty'. Nothing is settled."
+    },
+    {
+      "id": "d-o2",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "The universalization test conclusively proves that every act of lying is wrong in all circumstances.",
+      "rationale": "Overstated: the source gives Kant's view that lying cannot be universalized, then immediately reports the maxim-description objection; 'conclusively proves' and 'all circumstances' exceed the text."
+    },
+    {
+      "id": "d-f1",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "text": "Kant wrote the Groundwork as a direct reply to Mill's utilitarianism.",
+      "rationale": "Fabricated (and anachronistic): no corpus source mentions the Groundwork or any reply to Mill."
+    },
+    {
+      "id": "d-f2",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "text": "Kant allowed that lying is permissible when it would clearly maximize aggregate happiness.",
+      "rationale": "Fabricated: no basis in the cited source, which states the opposite orientation (no aggregate calculation can justify treating persons merely as means)."
+    },
+    {
+      "id": "d-m1",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-utilitarianism",
+      "text": "Act utilitarianism evaluates each action directly by its consequences.",
+      "rationale": "Misattributed: supported by the utilitarianism source (paragraph 3), not the cited deontology source."
+    },
+    {
+      "id": "d-m2",
+      "source_id": "src-deontology",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-virtue",
+      "text": "Practical wisdom cannot be reduced to rules and is developed through experience and corrected perception.",
+      "rationale": "Misattributed: supported by the virtue source (paragraph 3), not the cited deontology source."
+    },
+    {
+      "id": "v-s1",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "Eudaimonia is an active life of the soul in accordance with virtue, sustained over a complete life.",
+      "rationale": "Directly stated in paragraph 1."
+    },
+    {
+      "id": "v-s2",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "Courage stands between rashness and cowardice as a mean between excess and deficiency.",
+      "rationale": "Directly stated in paragraph 2."
+    },
+    {
+      "id": "v-s3",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "Aristotle held that some actions, such as murder, admit of no mean at all.",
+      "rationale": "Directly stated in paragraph 2."
+    },
+    {
+      "id": "v-s4",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "Aristotle says the young are rarely practically wise because practical wisdom requires acquaintance with particulars that only time supplies.",
+      "rationale": "Directly stated in paragraph 3."
+    },
+    {
+      "id": "v-s5",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "The temperate person is not one who resists bad desires but one whose desires have been shaped so that acting well is pleasant.",
+      "rationale": "Directly stated in paragraph 4."
+    },
+    {
+      "id": "v-s6",
+      "source_id": "src-virtue",
+      "label": "supported",
+      "text": "On Aristotle's picture, moral education is the education of pleasure and pain.",
+      "rationale": "Directly stated in paragraph 4."
+    },
+    {
+      "id": "v-o1",
+      "source_id": "src-virtue",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "Aristotle defined the mean as the exact arithmetic midpoint between two vices.",
+      "rationale": "Overstated/distorted: the source explicitly says the mean is relative to us and circumstances, 'not an arithmetic midpoint'."
+    },
+    {
+      "id": "v-f1",
+      "source_id": "src-virtue",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "text": "Aristotle taught that pleasure is the sole intrinsic good and pain the sole intrinsic evil.",
+      "rationale": "Fabricated against the cited source: nothing in the virtue source supports hedonism (that framing exists only as Bentham's view in a different source, with different wording and attribution)."
+    },
+    {
+      "id": "v-m1",
+      "source_id": "src-virtue",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-deontology",
+      "text": "A world in which everyone lies when convenient is a world in which assertion loses its point.",
+      "rationale": "Misattributed: supported nearly verbatim by the deontology source (paragraph 3), not the cited virtue source."
+    },
+    {
+      "id": "v-m2",
+      "source_id": "src-virtue",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-utilitarianism",
+      "text": "Every person's happiness counts equally in the aggregate.",
+      "rationale": "Misattributed: supported by the utilitarianism source (paragraph 1), not the cited virtue source."
+    },
+    {
+      "id": "l-s1",
+      "source_id": "src-survey-long",
+      "label": "supported",
+      "text": "The survey describes reflective equilibrium as the state in which principles and considered judgements have been brought into coherence through mutual adjustment.",
+      "rationale": "Supported, early-window: stated in the moral epistemology section, well before the 12k cutoff."
+    },
+    {
+      "id": "l-s2",
+      "source_id": "src-survey-long",
+      "label": "supported",
+      "text": "On the pluralist deontological picture, duties can conflict and no fixed ranking resolves every conflict in advance.",
+      "rationale": "Supported, early-window: stated in the deontological alternatives section."
+    },
+    {
+      "id": "l-s3",
+      "source_id": "src-survey-long",
+      "label": "supported",
+      "beyond_window": true,
+      "text": "The survey distinguishes caring-for, direct responsive engagement with a particular other, from caring-about, more general concern for distant others or causes.",
+      "rationale": "Supported, but the evidence lies in the ethics-of-care section BEYOND the 12k window. A truncated validator cannot see it; affirming it is failing open, flagging it is safe."
+    },
+    {
+      "id": "l-s4",
+      "source_id": "src-survey-long",
+      "label": "supported",
+      "beyond_window": true,
+      "text": "Care ethicists criticise impartialist moral theories for abstracting away from particular relationships.",
+      "rationale": "Supported; evidence beyond the 12k window (ethics-of-care section)."
+    },
+    {
+      "id": "l-s5",
+      "source_id": "src-survey-long",
+      "label": "supported",
+      "beyond_window": true,
+      "text": "The particularist holism of reasons says a feature that counts in favour of an action in one case may count against it, or count for nothing, in another.",
+      "rationale": "Supported; evidence beyond the 12k window (particularism section)."
+    },
+    {
+      "id": "l-f1",
+      "source_id": "src-survey-long",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "beyond_window": true,
+      "text": "The survey reports that the ethics of care originated in nineteenth-century hospital administration reform.",
+      "rationale": "Fabricated: no basis in any corpus source. Related topic (care ethics) appears only beyond the window, so a truncated validator cannot check either way; affirming is failing open."
+    },
+    {
+      "id": "l-f2",
+      "source_id": "src-survey-long",
+      "label": "unsupported",
+      "tier": "fabricated",
+      "beyond_window": true,
+      "text": "According to the survey, moral particularism was formally axiomatised in deontic logic during the 1990s.",
+      "rationale": "Fabricated: no basis anywhere; related topic appears only beyond the window."
+    },
+    {
+      "id": "l-o1",
+      "source_id": "src-survey-long",
+      "label": "unsupported",
+      "tier": "overstated",
+      "beyond_window": true,
+      "text": "Particularists agree that the causing of gratuitous pain is always a decisive reason against an action.",
+      "rationale": "Overstated: the source says SOME particularists allow it as a DEFAULT reason carrying normal valence unless explained away — not 'agree', not 'always', not 'decisive'. The hedge is beyond the window."
+    },
+    {
+      "id": "l-o2",
+      "source_id": "src-survey-long",
+      "label": "unsupported",
+      "tier": "overstated",
+      "beyond_window": true,
+      "text": "The survey concludes that justice and care have been definitively unified into a single framework.",
+      "rationale": "Overstated: the source says several writers SUGGEST complementarity while others resist any synthesis; nothing is concluded or definitive. Hedge beyond the window."
+    },
+    {
+      "id": "l-m1",
+      "source_id": "src-survey-long",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-deontology",
+      "text": "An action performed merely because honesty is profitable conforms with duty but is not done from duty.",
+      "rationale": "Misattributed (subtle): the survey discusses deontology at length, making this plausible — but the shopkeeper point exists only in the Kant source. Tests topical-plausibility shortcuts."
+    },
+    {
+      "id": "v-m3",
+      "source_id": "src-virtue",
+      "label": "unsupported",
+      "tier": "misattributed",
+      "evidence_source_id": "src-survey-long",
+      "text": "A consideration that counts in favour of an action in one case may count against it in another.",
+      "rationale": "Misattributed (subtle): plausible next to Aristotelian particularity/phronesis, but stated only in the survey's particularism section, not the cited virtue source."
+    },
+    {
+      "id": "u-o3",
+      "source_id": "src-utilitarianism",
+      "label": "unsupported",
+      "tier": "overstated",
+      "text": "Mill held that the secondary principles of common morality may never be set aside.",
+      "rationale": "Overstated (subtle): the source says they are 'to be set aside only when such principles conflict' — a permitted exception the claim erases with 'never'."
+    }
+  ]
+}
