@@ -1,0 +1,21 @@
+# Forgejo CI — Stage 1 proof that the self-hosted `docker` runner builds the
+# pnpm monorepo green. Faithful subset: install + build the platform packages.
+#
+# Intentionally NOT ported from .github/workflows/ci.yml (yet): the path-filter
+# matrix, security composite actions, the Vercel deploy job, the production DB
+# migration job (apply-dashboard-migrations-prod), and the Zuplo gateway deploy.
+# Those are Vercel-specific or Stage 2+ concerns (the dashboard moves to Coolify)
+# and each needs its own decision — see INFRA-RUNBOOK.md (restormel section).
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Build platform packages
+        run: pnpm run build:platform-packages

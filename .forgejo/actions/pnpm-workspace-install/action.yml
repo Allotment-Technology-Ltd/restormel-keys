@@ -1,0 +1,32 @@
+name: "PNPM workspace install"
+description: >-
+  Forgejo port of .github/actions/pnpm-workspace-install. Sets up Node and pnpm
+  (via corepack), then runs `pnpm install --frozen-lockfile` at the repo root.
+  Caller must checkout first. Uses corepack instead of pnpm/action-setup because
+  pnpm/* is not mirrored on code.forgejo.org and the GitHub SHA pins do not exist
+  there. Node is set up first, then corepack activates pnpm against that Node.
+inputs:
+  node-version:
+    description: "Node.js version"
+    required: false
+    default: "20"
+  pnpm-version:
+    description: "pnpm major.minor.patch (must match root package.json packageManager)"
+    required: false
+    default: "9.0.0"
+runs:
+  using: composite
+  steps:
+    - uses: https://code.forgejo.org/actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Enable pnpm (corepack)
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare "pnpm@${{ inputs.pnpm-version }}" --activate
+        node --version
+        pnpm --version
+    - name: Install (frozen lockfile)
+      shell: bash
+      run: pnpm install --frozen-lockfile

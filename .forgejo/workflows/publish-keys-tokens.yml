@@ -1,0 +1,26 @@
+# Forgejo port of .github/workflows/publish-keys-tokens.yml.
+# Publish @restormel/keys-tokens to npmjs on tag tokens-v* (e.g. tokens-v0.1.1).
+# Source: packages/keys-tokens (merged from restormel-platform).
+name: Publish tokens
+on:
+  push:
+    tags:
+      - "tokens-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Build @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Publish @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens publish --access public --no-git-checks

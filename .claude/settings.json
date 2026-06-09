@@ -1,5 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "neon@claude-plugins-official": true,
+    "vercel-plugin@vercel-vercel-plugin": true,
+    "posthog@claude-plugins-official": true
+  },
   "hooks": {
     "SessionStart": [
       {
