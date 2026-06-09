@@ -1,0 +1,71 @@
+# Forgejo port of .github/workflows/publish-graph.yml.
+# Publish @restormel/graph-core, @restormel/ui-graph-svelte, @restormel/graph-elements to npmjs on tag graph-v*.
+#
+# Phase 7 maintenance window (2026-06-01 → 2026-12-01): @restormel/ui-graph-svelte is bugfix-only;
+# graph-elements + Graph REST are the preferred integrator path. npm deprecate ui-graph-svelte at window close.
+# Runbook: docs/runbooks/npm-maintenance-window.md
+#
+# Order: graph-core first, then ui-graph-svelte (pnpm rewrites workspace:* on graph-core to semver).
+# Same registry/org pattern as Keys (`@restormel/*`). Requires org secret NPM_TOKEN.
+name: Publish Graph packages
+on:
+  push:
+    tags:
+      - "graph-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run publish --dry-run only (no npm upload)."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-graph-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: docker
+    env:
+      GRAPH_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+
+      - name: PNPM install
+        uses: ./.forgejo/actions/pnpm-workspace-install
+
+      - name: Test + build graph packages
+        run: |
+          pnpm --filter @restormel/graph-core test
+          pnpm --filter @restormel/graph-core run build
+          pnpm --filter @restormel/ui-graph-svelte run build
+          pnpm --filter @restormel/graph-elements run build
+          pnpm --filter @restormel/graph-elements test
+
+      - name: Tarball consumer smoke (graph demo)
+        run: bash scripts/smoke-graph-packages-consumer.sh
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            exit 1
+          fi
+          printf '%s\n' "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          EXTRA=""
+          if [ "${GRAPH_PUBLISH_DRY_RUN}" = "true" ]; then
+            EXTRA="--dry-run"
+            echo "Dry run only."
+          fi
+          pnpm --filter @restormel/graph-core publish --access public --no-git-checks ${EXTRA}
+          pnpm --filter @restormel/ui-graph-svelte publish --access public --no-git-checks ${EXTRA}
+          pnpm --filter @restormel/graph-elements publish --access public --no-git-checks ${EXTRA}
+          if [ "${GRAPH_PUBLISH_DRY_RUN}" != "true" ]; then
+            npm access set status=public @restormel/graph-elements
+          fi
