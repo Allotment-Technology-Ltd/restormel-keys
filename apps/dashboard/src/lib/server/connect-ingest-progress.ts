@@ -29,6 +29,9 @@ export type GraphRepairProgress = {
   sources_done: number;
   batches_total?: number;
   batches_done?: number;
+  /** Remediation work model (weak/unsupported units the run attempts to repair). */
+  remediation_units_total?: number;
+  remediation_units_done?: number;
   repaired?: number;
   dropped?: number;
   skipped_no_source?: number;
@@ -197,21 +200,43 @@ export class ConnectIngestProgressReporter {
     const gr = this.graphRepair!;
     const unitsTotal = Math.max(1, gr.units_total);
     const unitsProcessed = Math.min(unitsTotal, Math.max(0, gr.units_processed));
-    const percent = Math.min(100, Math.round((unitsProcessed / unitsTotal) * 100));
-    const eta_seconds = computeConnectIngestEtaSeconds({
-      runStartedAtMs: this.stageStartedAtMs,
-      processed: unitsProcessed,
-      total: unitsTotal,
-      nowMs,
-    });
-    if (this.activeStage === "validating" || this.activeStage === "remediating") {
-      this.stages = mergeStageProgress(this.stages, this.activeStage, {
+
+    // Two-pass work model. When a run also remediates, validation can't own the
+    // whole bar — otherwise a single-source graph hits 100% the moment validation
+    // ends and then sits frozen (with a collapsing ETA) all through remediation.
+    // Once remediation begins (remediation_units_total > 0) validation owns 0–80%
+    // and remediation fills 80–98%; the final 2% is the storing/finalise step.
+    const remTotal = Math.max(0, gr.remediation_units_total ?? 0);
+    const remDone = Math.min(remTotal, Math.max(0, gr.remediation_units_done ?? 0));
+    const valFraction = unitsProcessed / unitsTotal;
+    const percent =
+      remTotal > 0
+        ? Math.min(98, Math.round(valFraction * 80 + (remDone / remTotal) * 18))
+        : Math.min(100, Math.round(valFraction * 100));
+
+    // The currently-running stage gets an honest per-stage progress row. Validation
+    // is unit-paced (units_processed/total). Remediation is paced by its own stage
+    // counters (set via beginStage + per-batch ticks) so its ETA reflects the slow
+    // LLM passes, not the instant apply loop.
+    if (this.activeStage === "validating") {
+      const eta_seconds = computeConnectIngestEtaSeconds({
+        runStartedAtMs: this.stageStartedAtMs,
+        processed: unitsProcessed,
+        total: unitsTotal,
+        nowMs,
+      });
+      const valPercent = Math.min(100, Math.round(valFraction * 100));
+      this.stages = mergeStageProgress(this.stages, "validating", {
         progress: {
-          percent,
+          percent: valPercent,
           processed: unitsProcessed,
           total: unitsTotal,
           ...(eta_seconds != null ? { eta_seconds } : {}),
         },
+      });
+    } else if (this.activeStage === "remediating") {
+      this.stages = mergeStageProgress(this.stages, "remediating", {
+        progress: this.currentStageMetrics(nowMs),
       });
     }
     return {
@@ -288,6 +313,19 @@ export class ConnectIngestProgressReporter {
       jobId: this.job.id,
       line: formatBracketLogLine(tag, body),
     });
+  }
+
+  /**
+   * Re-persist progress mid-stage so a slow stage (e.g. a multi-minute LLM batch)
+   * keeps the UI alive — the ETA recomputes from elapsed time and an optional
+   * message lands in the activity log. Safe to call from a timer.
+   */
+  async heartbeat(message?: string): Promise<void> {
+    if (message) {
+      if (this.activeStage) this.applyFocus(this.activeStage, message);
+      await this.log(this.activeStage ? stageBracketTag(this.activeStage) : "INGEST", message);
+    }
+    await this.persist("running");
   }
 
   async setAction(action: string): Promise<void> {

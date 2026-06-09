@@ -9,6 +9,8 @@
     sources_done: number;
     batches_total?: number;
     batches_done?: number;
+    remediation_units_total?: number;
+    remediation_units_done?: number;
     repaired?: number;
     dropped?: number;
     skipped_no_source?: number;
@@ -86,7 +88,11 @@
     isRunning && graphRepair.phase !== "done" && graphRepair.phase !== "loading"
       ? Math.max(1, Math.min(graphRepair.sources_done, graphRepair.sources_total))
       : graphRepair.sources_done;
-  $: secondaryLine = `Source ${activeSource} of ${graphRepair.sources_total}${batchLine}`;
+  $: remediationLine =
+    graphRepair.phase === "remediating" && (graphRepair.remediation_units_total ?? 0) > 0
+      ? ` · ${graphRepair.remediation_units_done ?? 0}/${graphRepair.remediation_units_total} weak idea(s) remediated`
+      : "";
+  $: secondaryLine = `Source ${activeSource} of ${graphRepair.sources_total}${batchLine}${remediationLine}`;
 </script>
 
 <div class="graph-repair" role="region" aria-label="Graph repair unit progress">

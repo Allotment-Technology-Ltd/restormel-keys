@@ -21,6 +21,19 @@ import type { GraphWriter } from "$lib/server/connect/graph-writer";
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
 export type ValidationResultRef = { ref: string; status: string; note?: string | null };
 
+const REMEDIATE_HEARTBEAT_MS = 20_000;
+
+/** Re-persist progress every ~20s so a slow remediation batch keeps the UI alive. */
+function startRemediateHeartbeat(
+  reporter: ConnectIngestProgressReporter,
+  getMessage: () => string,
+): () => void {
+  const id = setInterval(() => {
+    void reporter.heartbeat(getMessage());
+  }, REMEDIATE_HEARTBEAT_MS);
+  return () => clearInterval(id);
+}
+
 const ROUTE_EXHAUSTED_HINT =
   "Check remediation route has a fallback step, or inspect the upstream model error above.";
 
@@ -98,7 +111,13 @@ export async function runGraphRemediationPass(args: {
     return { repaired: 0, dropped: 0, embedded: 0, repairedUnitIds: [], remediationFailed: false };
   }
 
-  await reporter?.setGraphRepair({ phase: "remediating" });
+  // Register this source's weak units as remediation work so the headline progress
+  // bar accounts for the remediation pass (not just validation) and keeps moving.
+  const grAtStart = reporter?.getGraphRepair();
+  await reporter?.setGraphRepair({
+    phase: "remediating",
+    remediation_units_total: (grAtStart?.remediation_units_total ?? 0) + weak.length,
+  });
   await reporter?.beginStage("remediating", "Remediating weak units", Math.max(1, weak.length));
 
   let repaired = 0;
@@ -112,28 +131,45 @@ export async function runGraphRemediationPass(args: {
     let fixes: RemediationResult[];
 
     if (useBatchLoop) {
-      await reporter!.setGraphRepair({ batches_total: batches.length, batches_done: 0 });
       const sourceHint = args.sourceLabel ? ` (${args.sourceLabel})` : "";
+      await reporter!.setGraphRepair({ batches_total: batches.length, batches_done: 0 });
       await reporter!.log(
         "REMEDIATE",
         `Calling remediation model — ${weak.length} weak idea(s) in ${batches.length} batch(es)${sourceHint} (may take several minutes)`,
       );
+      const remDoneBase = reporter!.getGraphRepair()?.remediation_units_done ?? 0;
       const merged: RemediationResult[] = [];
-      for (let bi = 0; bi < batches.length; bi++) {
-        const { batchUnits, refToUnitId } = batches[bi]!;
-        await reporter!.tick(
-          "remediating",
-          `Remediating · batch ${bi + 1}/${batches.length} · ${batchUnits.length} idea(s)${sourceHint}`,
-        );
-        const parsed = await remediateUnitsBatch({
-          units: batchUnits,
-          sourceText,
-          pack,
-          generate: args.remediationGenerate,
-          qualityPreset: preset,
-        });
-        merged.push(...remapRemediationBatchResults(parsed, refToUnitId));
-        await reporter!.setGraphRepair({ batches_done: bi + 1 });
+      let doneInSource = 0;
+      const stopHeartbeat = startRemediateHeartbeat(
+        reporter!,
+        () => `Still remediating${sourceHint} — ${doneInSource}/${weak.length} idea(s) processed`,
+      );
+      try {
+        for (let bi = 0; bi < batches.length; bi++) {
+          const { batchUnits, refToUnitId } = batches[bi]!;
+          const parsed = await remediateUnitsBatch({
+            units: batchUnits,
+            sourceText,
+            pack,
+            generate: args.remediationGenerate,
+            qualityPreset: preset,
+          });
+          merged.push(...remapRemediationBatchResults(parsed, refToUnitId));
+          doneInSource += batchUnits.length;
+          // Tick AFTER the slow LLM call, paced by real units — so the stage
+          // progress + ETA track the model passes, not the instant apply loop.
+          await reporter!.tick(
+            "remediating",
+            `Remediated batch ${bi + 1}/${batches.length} · ${doneInSource}/${weak.length} idea(s)${sourceHint}`,
+            batchUnits.length,
+            {
+              batches_done: bi + 1,
+              remediation_units_done: remDoneBase + doneInSource,
+            },
+          );
+        }
+      } finally {
+        stopHeartbeat();
       }
       fixes = finalizeRemediationCoverage(weak, merged);
     } else {
@@ -146,10 +182,11 @@ export async function runGraphRemediationPass(args: {
       });
     }
 
+    // Apply the model's decisions. This loop is fast (writes only) — it must NOT
+    // tick the stage, or the bar would race to 100% in milliseconds and collapse
+    // the ETA the moment the slow model passes finished.
     const repairedIds: { id: string; text: string }[] = [];
-    for (let fi = 0; fi < fixes.length; fi++) {
-      const fix = fixes[fi]!;
-      await reporter?.tick("remediating", `Remediation ${fi + 1}/${fixes.length}`);
+    for (const fix of fixes) {
       const effect = resolveRemediationEffect(fix, statusByRef.get(fix.ref), level, threshold);
       if (effect === "repair" && fix.text) {
         await writer.updateUnitText(fix.ref, fix.text);
@@ -166,14 +203,14 @@ export async function runGraphRemediationPass(args: {
         textById.delete(fix.ref);
         dropped += 1;
       }
-      if (reporter && effect !== "keep") {
-        const gr = reporter.getGraphRepair();
-        await reporter.setGraphRepair({
-          phase: "remediating",
-          repaired: (gr?.repaired ?? 0) + (effect === "repair" ? 1 : 0),
-          dropped: (gr?.dropped ?? 0) + (effect === "exclude" ? 1 : 0),
-        });
-      }
+    }
+    if (reporter && (repaired > 0 || dropped > 0)) {
+      const gr = reporter.getGraphRepair();
+      await reporter.setGraphRepair({
+        phase: "remediating",
+        repaired: (gr?.repaired ?? 0) + repaired,
+        dropped: (gr?.dropped ?? 0) + dropped,
+      });
     }
 
     if (repairedIds.length > 0) {

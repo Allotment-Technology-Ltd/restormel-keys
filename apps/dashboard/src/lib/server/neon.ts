@@ -5267,6 +5267,8 @@ export type GraphRepairJobProgress = {
   sources_done: number;
   batches_total?: number;
   batches_done?: number;
+  remediation_units_total?: number;
+  remediation_units_done?: number;
   repaired?: number;
   dropped?: number;
   skipped_no_source?: number;
@@ -5459,6 +5461,12 @@ function parseGraphRepairJobProgress(raw: unknown): GraphRepairJobProgress | und
     sources_done: Math.max(0, Math.round(sourcesDone)),
     ...(numOpt("batches_total") != null ? { batches_total: numOpt("batches_total") } : {}),
     ...(numOpt("batches_done") != null ? { batches_done: numOpt("batches_done") } : {}),
+    ...(numOpt("remediation_units_total") != null
+      ? { remediation_units_total: numOpt("remediation_units_total") }
+      : {}),
+    ...(numOpt("remediation_units_done") != null
+      ? { remediation_units_done: numOpt("remediation_units_done") }
+      : {}),
     ...(numOpt("repaired") != null ? { repaired: numOpt("repaired") } : {}),
     ...(numOpt("dropped") != null ? { dropped: numOpt("dropped") } : {}),
     ...(numOpt("skipped_no_source") != null ? { skipped_no_source: numOpt("skipped_no_source") } : {}),
