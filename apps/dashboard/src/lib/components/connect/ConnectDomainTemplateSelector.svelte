@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from "svelte";
   import { page } from "$app/stores";
+  import { replaceState } from "$app/navigation";
   import {
     CONNECT_TEMPLATE_PILLS_DISMISSED_KEY,
     PENDING_TEMPLATE_STORAGE_KEY,
@@ -31,11 +32,17 @@
     }
   }
 
+  function scrollBehavior(): ScrollBehavior {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+  }
+
   function applyTemplate(template: UseCase, scroll = false) {
     activeTemplateId = template.id;
     dispatch("select", template);
     if (scroll && intentAnchor) {
-      intentAnchor.scrollIntoView({ behavior: "smooth", block: "center" });
+      intentAnchor.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
     }
   }
 
@@ -69,9 +76,16 @@
       if (template) {
         applyTemplate(template, false);
         clearPendingTemplate();
+        // Strip the consumed param so revisiting this step can't silently re-apply
+        // the template over the user's edits (it survives wizard step navigation).
+        if (urlTemplate) {
+          const url = new URL($page.url);
+          url.searchParams.delete("template");
+          replaceState(url, $page.state);
+        }
         await tick();
         if (intentAnchor) {
-          intentAnchor.scrollIntoView({ behavior: "smooth", block: "center" });
+          intentAnchor.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
         }
       }
     }

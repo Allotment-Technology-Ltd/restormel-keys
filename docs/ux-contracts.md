@@ -55,6 +55,10 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 | **Analytics**        | Request count, latency, error rate, usage by provider/model/route. |
 | **Logs & Traces**    | Request-level logs from the gateway. |
 | **Dashboard**        | The app at restormel.dev/keys/dashboard (not "admin" or "portal"). |
+| **Graph store**      | Where a Connect knowledge graph persists: the workspace Neon database or a connected SurrealDB (Neo4j/Weaviate configs are saved ahead of adapter support). Not "graph database connection" or "target" in UI copy. |
+| **Domain pack**      | The ontology + prompts + tables that govern how documents become a graph. Not "schema pack" or "ontology pack". |
+| **Ingest run**       | One execution of the Connect pipeline over selected documents. Not "job" or "import" in UI copy. |
+| **Models & keys**    | Connect's page for ingest routes and provider keys (`/keys/dashboard/connect/models`). Distinct from the suite-wide **Model Catalog**. |
 | Sign in        | Auth CTA (not “Login”, “Log in”). |
 | Cloud API      | The HTTP API exposed via Zuplo gateway. |
 | Zuplo gateway  | The gateway that fronts the Cloud API; consumer keys `zpka_...`, backend key is a Gateway Key `rk_...`. |

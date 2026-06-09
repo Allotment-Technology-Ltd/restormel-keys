@@ -16,6 +16,8 @@
   export let modelsReady = true;
   export let onBack: () => void;
   export let submitting = false;
+  /** Bound by the wizard footer so its START RUN gate can't drift from this panel's. */
+  export let canStart = false;
 
   const dispatch = createEventDispatcher<{ started: void }>();
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
@@ -72,7 +74,10 @@
   }
 
   async function startRun() {
-    if (!canStart) return;
+    if (!canStart) {
+      error = "Select documents, a domain pack, and configure routes before starting.";
+      return;
+    }
     error = null;
     submitting = true;
     try {
@@ -109,7 +114,17 @@
     }
   }
 
-  $: estimatedCalls = Math.max(runDefaults.documents.length * 4, runDefaults.documents.length);
+  $: totalChunks = runDefaults.documents.reduce((sum, d) => sum + (d.chunk_count || 0), 0);
+  // Extraction + relations are roughly per-chunk passes; validation/grouping/remediation
+  // add batched calls on top, so this is a floor, not a promise.
+  $: estimatedCalls = Math.max(totalChunks * 2, runDefaults.documents.length * 4);
+  $: estimatedTime =
+    totalChunks <= 30 ? "~3–8 min" : totalChunks <= 120 ? "~10–25 min" : "30+ min — large corpus";
+
+  // Quality expectations come from the selected pack (G2 bar: ok_pct >= 90, unsupported <= 2,
+  // see packages/connect-core golden-eval).
+  $: forecastPreset = selectedPack?.quality_preset ?? "production";
+  $: forecastCrossModel = selectedPack?.cross_model_validation !== false;
 </script>
 
 {#if runDefaults.documents.length === 0}
@@ -226,14 +241,38 @@
         </label>
       </details>
 
+      <aside class="run-estimate run-forecast" aria-label="Expected quality">
+        <p class="run-forecast-title">What to expect</p>
+        <div class="run-estimate-row">
+          <span class="run-estimate-label">Quality preset</span>
+          <span class="run-estimate-value" class:run-forecast-warn={forecastPreset === "starter"}>
+            {#if forecastPreset === "starter"}
+              Demo (Starter) — reduced chunk coverage, skips some production gates; not for agent-facing graphs
+            {:else}
+              Production — every claim validated against the source, weak claims remediated
+            {/if}
+          </span>
+        </div>
+        <div class="run-estimate-row">
+          <span class="run-estimate-label">Cross-model validation</span>
+          <span class="run-estimate-value">
+            {forecastCrossModel ? "On — a different model family judges the extraction" : "Off — extractor output is judged by the same family"}
+          </span>
+        </div>
+        <div class="run-estimate-row">
+          <span class="run-estimate-label">Quality bar</span>
+          <span class="run-estimate-value">≥90% of claims supported, ≤2% unsupported (G2) — reported after the run</span>
+        </div>
+      </aside>
+
       <aside class="run-estimate" aria-label="Run estimates">
         <div class="run-estimate-row">
           <span class="run-estimate-label">Estimated run time</span>
-          <span class="run-estimate-value">~3–8 min depending on document size</span>
+          <span class="run-estimate-value">{estimatedTime} ({totalChunks} chunk{totalChunks === 1 ? "" : "s"})</span>
         </div>
         <div class="run-estimate-row">
           <span class="run-estimate-label">Estimated LLM calls</span>
-          <span class="run-estimate-value">~{estimatedCalls} calls across {runDefaults.documents.length} document{runDefaults.documents.length === 1 ? "" : "s"}</span>
+          <span class="run-estimate-value">~{estimatedCalls}+ across {runDefaults.documents.length} document{runDefaults.documents.length === 1 ? "" : "s"}</span>
         </div>
         <div class="run-estimate-row">
           <span class="run-estimate-label">Models used</span>

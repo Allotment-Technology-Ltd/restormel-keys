@@ -91,7 +91,7 @@ export const PIPELINE_WIZARD_STEPS = [
     id: "store",
     label: "Graph store",
     title: "Choose where your graph lives",
-    lead: "Agents need a durable home for ideas and relationships. Use your workspace database in one click, or connect SurrealDB you manage.",
+    lead: "Agents need a durable home for ideas and relationships. Use your workspace database in one click, or connect SurrealDB you manage — ingest runs write to one of these today. Neo4j and Weaviate settings can be saved ahead of adapter support.",
     required: true,
   },
   {
@@ -142,6 +142,8 @@ export type PipelineRunPackOption = {
   title: string;
   description?: string;
   is_builtin: boolean;
+  quality_preset?: "production" | "starter";
+  cross_model_validation?: boolean;
 };
 
 export type PipelineRunDefaults = {
