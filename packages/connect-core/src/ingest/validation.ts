@@ -30,6 +30,15 @@ function readValidationBatchSize(): number {
   return Math.min(Math.max(Math.floor(raw), 5), 50);
 }
 
+/** Cap on whole-source context passed to the judge (chars); a hard truncation ceiling. */
+export const SOURCE_CONTEXT_CHARS = 12000;
+
+function readSourceContextChars(): number {
+  const raw = Number(process.env.CONNECT_SOURCE_CONTEXT_CHARS ?? SOURCE_CONTEXT_CHARS);
+  if (!Number.isFinite(raw)) return SOURCE_CONTEXT_CHARS;
+  return Math.max(Math.floor(raw), 1000);
+}
+
 export function buildValidationSystemPrompt(
   pack: ConnectDomainPack,
   opts?: { qualityPreset?: ConnectQualityPreset; graphContext?: GraphIngestContext },
@@ -58,7 +67,7 @@ export function buildValidationUserPrompt(
       .join("\n\n");
     return `SOURCE PASSAGES (per unit):\n${chunks}\n\nUNITS TO ASSESS:\n${list}`;
   }
-  return `SOURCE TEXT:\n${sourceText.slice(0, 12000)}\n\nUNITS TO ASSESS:\n${list}`;
+  return `SOURCE TEXT:\n${sourceText.slice(0, readSourceContextChars())}\n\nUNITS TO ASSESS:\n${list}`;
 }
 
 export function buildValidationBatchInputs(

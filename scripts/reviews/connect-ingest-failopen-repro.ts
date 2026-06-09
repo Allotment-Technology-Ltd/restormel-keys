@@ -110,8 +110,8 @@ console.log(
     "    the silent-parse-loss itself (H1) remains open as a separate finding.",
 );
 
-/* ───────────────────────── H4: structure-aware chunking drops overlap ───────────────────────── */
-hr("H4 — structure_aware chunking has no overlap; cross-boundary relations are unrecoverable");
+/* ───────────────────────── H4: structure-aware chunking now honors overlap ───────────────────────── */
+hr("H4 (FIXED) — structure_aware chunking honors overlap_chars across boundaries");
 
 /** Largest k where a's last k chars == b's first k chars (the real carried-over overlap region). */
 function boundaryOverlap(a: string, b: string): number {
@@ -142,17 +142,18 @@ console.log(`  Same doc, requested overlap_chars=${profile.overlap_chars}:`);
 console.log(`    structure_aware → ${structureChunks.length} chunks, boundary overlap = ${structOverlap} chars`);
 console.log(`    fixed          → ${fixedChunks.length} chunks, boundary overlap = ${fixedOverlap} chars`);
 console.log(
-  `  ⇒ structure_aware carries ${structOverlap} chars across the boundary (overlap_chars ignored);\n` +
-    `    only 'fixed' honors it (${fixedOverlap} chars). With zero overlap, the two related units land\n` +
-    "    in separate chunks with no shared context, so the B-refutes-A relation can never be\n" +
-    "    extracted → a guaranteed orphan / missing edge.",
+  `  ⇒ structure_aware now carries ${structOverlap} chars across the boundary (was 0 —\n` +
+    `    overlap_chars was ignored); 'fixed' still honors it too (${fixedOverlap} chars). The two\n` +
+    "    related units now share boundary context, so the B-refutes-A relation is extractable.",
 );
 
 hr("Summary");
 console.log(
   "  C1/C2/C3 are FIXED: omitted validation verdicts finalize as 'weak' (coverage_gap),\n" +
     "  omitted remediation verdicts finalize as 'drop', and G2 ok_pct no longer counts\n" +
-    "  never-judged units as ok. H1 (silent loose-JSON parse loss) and H4 (structure_aware\n" +
-    "  overlap) still reproduce above and remain open. See docs/reviews/connect-ingest-context.md\n" +
-    "  §6 for the full candidate list; extend this script to ground any new finding.",
+    "  never-judged units as ok. H4 is FIXED: structure_aware chunking carries overlap_chars\n" +
+    "  across boundaries. H2 is mitigated: the 12k source cap is now tunable via\n" +
+    "  CONNECT_SOURCE_CONTEXT_CHARS. H1's consequence is defused by C1/C2 (lost batches fail\n" +
+    "  safe), but the silent loose-JSON parse loss itself remains open, as do H3/M1/M3/M4/L1.\n" +
+    "  See docs/reviews/connect-ingest-context.md §6; extend this script to ground new findings.",
 );

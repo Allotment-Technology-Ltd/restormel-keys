@@ -72,6 +72,25 @@ describe("validation", () => {
       { ref: "claim:bbb", status: "weak", note: "coverage_gap: validator omitted this unit" },
     ]);
   });
+  it("source-context cap honors CONNECT_SOURCE_CONTEXT_CHARS", async () => {
+    const { buildValidationUserPrompt } = await import("../ingest/validation.js");
+    const longSource = "s".repeat(20000);
+    const units = [{ ref: "v1", text: "claim" }];
+    const before = process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+    try {
+      delete process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+      const def = buildValidationUserPrompt(units, longSource);
+      expect(def).toContain("s".repeat(12000));
+      expect(def).not.toContain("s".repeat(12001));
+      process.env.CONNECT_SOURCE_CONTEXT_CHARS = "15000";
+      const raised = buildValidationUserPrompt(units, longSource);
+      expect(raised).toContain("s".repeat(15000));
+      expect(raised).not.toContain("s".repeat(15001));
+    } finally {
+      if (before === undefined) delete process.env.CONNECT_SOURCE_CONTEXT_CHARS;
+      else process.env.CONNECT_SOURCE_CONTEXT_CHARS = before;
+    }
+  });
   it("leaves model-judged verdicts untouched when coverage is complete", async () => {
     const { finalizeValidationCoverage } = await import("../ingest/validation.js");
     const units = [

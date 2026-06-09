@@ -34,6 +34,36 @@ describe("chunkDocument", () => {
     const chunks = chunkDocument(text, { strategy: "fixed", min_chars: 50, max_chars: 100, overlap_chars: 0 });
     expect(chunks.length).toBe(5);
   });
+
+  it("structure_aware carries overlap_chars across chunk boundaries", () => {
+    const doc =
+      "Paragraph A. Bentham holds that pleasure is the only intrinsic good. " +
+      "This hedonistic axiom is the foundation of his entire system.\n\n" +
+      "Paragraph B. Nozick's experience-machine argument refutes that axiom directly, " +
+      "showing we value more than felt pleasure.";
+    const chunks = chunkDocument(doc, {
+      strategy: "structure_aware",
+      min_chars: 40,
+      max_chars: 160,
+      overlap_chars: 40,
+    });
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < chunks.length; i++) {
+      const head = chunks[i].text.split("\n\n")[0];
+      expect(head.length).toBeGreaterThan(0);
+      expect(head.length).toBeLessThanOrEqual(40);
+      expect(chunks[i - 1].text.endsWith(head)).toBe(true);
+    }
+  });
+
+  it("structure_aware with overlap_chars 0 is unchanged", () => {
+    const para = "Lorem ipsum dolor sit amet. ".repeat(6).trim();
+    const md = [para, para, para].join("\n\n");
+    expect(chunkDocument(md, profile)).toEqual(chunkDocument(md, { ...profile, overlap_chars: 0 }));
+    for (const c of chunkDocument(md, profile)) {
+      expect(c.text.length).toBeLessThanOrEqual(profile.max_chars);
+    }
+  });
 });
 
 describe("builtinDocumentParser", () => {
