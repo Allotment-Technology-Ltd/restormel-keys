@@ -31,18 +31,24 @@ fi
 
 # stdout → added to the agent's context.
 cat <<'CONTEXT'
-Connect ingestion review environment is ready.
+Connect review environment is ready. Entry points (docs/reviews/):
 
-Start here:
-  docs/reviews/connect-ingest-context.md        — reviewer context pack (read first)
-  docs/reviews/connect-ingest-review-prompts.md — sweep + bounded-fix prompts
+  connect-ingest-context.md         — ingestion reviewer context pack (read first)
+  connect-ingest-review-prompts.md  — sweep + bounded-fix prompts (ingestion)
+  connect-ingest-failopen-fix.md    — ready-to-run fix prompt for the C1–C3 fail-open cluster
+  connect-wizard-ux-review.md       — UX/UI review kit for the setup wizard
 
-Runnable (no LLM keys needed for the repro):
-  pnpm exec tsx scripts/reviews/connect-ingest-failopen-repro.ts   # proves the fail-open findings
+Ingestion review (no LLM keys needed for the repro):
+  pnpm exec tsx scripts/reviews/connect-ingest-failopen-repro.ts
   pnpm --filter @restormel/connect-core typecheck
   pnpm --filter @restormel/connect-core test
 
-Review scope: packages/connect-core/src/ingest/**, stages/**, kg-audit/**
+Wizard UX review:
+  pnpm --filter dashboard run check     # static svelte-check (builds deps via precheck; slow)
+  pnpm --filter dashboard run dev       # rendered, best-effort (needs backend/auth for populated state)
+
+Scope: ingestion = packages/connect-core/src/{ingest,stages,kg-audit}/**
+       wizard UX  = apps/dashboard/src/lib/components/connect/pipeline/**
 CONTEXT
 
 exit 0
