@@ -7,12 +7,28 @@ is an empty category with a Gartner digital-provenance tailwind, and Restormel's
 spine (validation → remediation fail-safe gates, G2 bar, trust score, provenance traces,
 verification rules, cross-model validation) already enforces it end-to-end.
 
-**How to use this doc.** Each stage is independently shippable and carries a ready-to-fire
-prompt for a repo-grounded agent (Fable 5 / Opus via CLI), in the same style as
-[`docs/reviews/connect-ingest-failopen-fix.md`](reviews/connect-ingest-failopen-fix.md) —
-bounded scope, acceptance criteria, STOP gates, verification commands. Fire one stage per
-agent run; review the PR; then fire the next. Definition of done for every stage: PR with
-tests + docs, typecheck/test green, repro or demo command included in the PR body.
+## Delivery protocol (how we run this)
+
+1. **One stage per agent run.** Each stage carries a ready-to-fire, self-contained prompt
+   (same style as [`docs/reviews/connect-ingest-failopen-fix.md`](reviews/connect-ingest-failopen-fix.md)
+   — bounded scope, acceptance criteria, STOP gates, verification commands). The delivered
+   prompt inlines every context pointer a cold agent needs (files to read, how to run, the
+   ADR, the no-keys harness idiom) so the agent needs nothing beyond the repo.
+2. **Definition of done per stage:** PR with tests + docs, typecheck/test green, a repro or
+   demo command in the PR body.
+3. **End every run by naming the next prompt.** The agent's final message states which stage
+   the user should commit to next (and any prerequisite that must clear first), so the user
+   has an explicit go/no-go.
+4. **Findings are raised as questions, not silently actioned.** If during a run the agent
+   finds something that changes scope, sequencing, or a downstream prompt, it STOPs and
+   raises it as a question to the user. Proposed changes are prioritised against the rest of
+   the roadmap; affected downstream prompts are adjusted *before* proceeding. The roadmap is
+   the single source of truth and is edited when a decision lands.
+5. **Live-key boundary.** Keyless agent runs deliver code + fixtures + stub-tested harness +
+   the exact run command. Measurements that need live model keys (efficacy numbers, the
+   STOP-gated bar sign-off) are a human/CI step run by whoever holds the keys; the agent does
+   not hold or commit keys. A stage's keyed and keyless portions may be split if that keeps a
+   single agent run shippable.
 
 **The claims-integrity rule (non-negotiable).** Restormel must be able to verify *in the
 way the marketing says it does*. The G2 bar and trust score report the pipeline's
@@ -33,8 +49,8 @@ skeptical user can click through to the quoted span in the source and check it t
 | Order | Stage | Pivot | Depends on |
 |---|---|---|---|
 | 0 | Focus cuts (checklist, no agent) | — | — |
-| 1 | 1.0a Verifier efficacy benchmark (baseline vs CURRENT validator) | P1 | — |
-| 2 | EBV ADR sign-off (human review of docs/decisions/evidence-bound-verification.md) | P1 | — |
+| 2 | ✅ EBV ADR sign-off — **approved 2026-06-09** | P1 | — |
+| 1 | 1.0a Verifier efficacy benchmark (baseline vs CURRENT validator) ← **NEXT** | P1 | — |
 | 3 | 1.0c EBV Layer 1 — evidence binding + deterministic verification | P1 | EBV ADR |
 | 4 | 1.0d EBV Layer 2 — span-scoped entailment + abstention/review | P1 | 1.0c |
 | 5 | 1.0a′ re-run benchmark post-EBV (same harness; before/after is the proof) | P1 | 1.0d |
@@ -81,42 +97,62 @@ measures whether the validator's conclusions are correct.
 
 TARGET
 A labeled benchmark proving (or disproving, honestly) that Connect's validation stage
-catches bad claims: fixtures where we KNOW which claims are unsupported because we
-planted them, and a harness reporting validator recall/precision per difficulty tier
-and per model route.
+catches bad claims, measured under FULL CROSS-MODEL routing (validator family ≠ extractor
+family — the production property the marketing claim depends on). Fixtures where we KNOW
+which claims are unsupported because we planted them, and a harness reporting validator
+recall/precision per difficulty tier, per family pairing, and same-model vs cross-model.
 
 FIRST
-Read packages/connect-core/src/ingest/validation.ts, golden-eval.ts (fixture shape,
-fingerprinting), plan.ts (cross-model validation routing — validator deliberately a
-different model family than the extractor), the philosophy starter fixture, and
-scripts/reviews/connect-ingest-failopen-repro.ts for the no-keys harness idiom.
+- packages/connect-core/src/ingest/validation.ts (validateUnits / validateUnitsBatch —
+  the real path; DI generate of type ExtractionGenerate) and golden-eval.ts (fixture
+  shape, computeG2Metrics, fingerprinting).
+- plan.ts (how cross-model validation routing is expressed — validator deliberately a
+  different family than the extractor).
+- apps/dashboard/src/lib/server/connect/stage-route-generate.ts and llm-generate.ts:
+  the production wiring that builds per-stage ExtractionGenerate functions bound to
+  resolved routes (StageGenerates.validation vs .extraction). This is how cross-family
+  independence is realized; the benchmark must exercise it, not a single-provider proxy.
+- scripts/reviews/connect-ingest-failopen-repro.ts for the harness/script idiom (note:
+  that one is no-keys; THIS harness needs live keys for ≥2 families).
 
 ACCEPTANCE CRITERIA
-- A labeled fixture set under packages/connect-core/src/ingest/golden/fixtures/:
-  Restormel-authored (or CC0) source texts paired with claim sets labeled
-  supported / unsupported, with planted bad claims at three tiers —
-  (1) fabricated (no basis in source), (2) overstated (source says less),
-  (3) misattributed (true elsewhere in the corpus, wrong source). Tier 3 is the one
-  competitors fail; do not skip it because it is hard to author.
-- An efficacy harness (script under scripts/, or `keys connect eval --efficacy` if
-  Stage 2.1 has landed) that runs the real validateUnits path against the fixtures and
-  reports, in versioned JSON: recall on planted-bad per tier, precision on known-good
-  (false-flag rate), per route/model, cross-model vs same-model delta, and verdict
-  calibration (how often "weak" vs "unsupported" is assigned to each tier).
-- Repeatability: N-run variance reported (LLM judges are stochastic); the harness
-  supports --runs N and reports mean ± spread.
-- STOP-and-ask gate: propose the minimum publishable bars (e.g. "fabricated-tier
-  recall ≥ X%, false-flag rate ≤ Y%") with the measured numbers in hand — a human
-  signs off on the bars. Do not pick the bars unilaterally, and do not tune prompts
-  to the benchmark in this stage (that is a follow-up with a held-out split).
-- The PR reports the measured numbers verbatim, including failures. If efficacy is
-  poor, that IS the deliverable — it redirects Stage 1.3's language and creates the
-  prompt-improvement backlog.
+- Labeled fixture set under packages/connect-core/src/ingest/golden/fixtures/:
+  Restormel-authored (or CC0) source texts with claim sets labeled supported/unsupported,
+  planted bad claims at three tiers — (1) fabricated (no basis), (2) overstated (source
+  says less), (3) misattributed (true ELSEWHERE in the corpus, cited to the wrong source).
+  Tier 3 is the one competitors fail and the one EBV must structurally fix later; author
+  it properly, do not skip it.
+- Cross-model harness: runs the real validateUnits path with a validation-stage generate
+  bound to a DIFFERENT family than the extraction generate. PREFER driving the production
+  route stack (stage-route-generate) so the measured path == the shipped path; if standing
+  up the workspace/route config proves disproportionate to a benchmark, STOP and ask before
+  falling back to a harness-level multi-family adapter. Report per family-pairing AND a
+  same-model control (validator family == extractor family) so the cross-model DELTA is the
+  headline number.
+- Versioned JSON output: recall on planted-bad per tier, precision on known-good
+  (false-flag rate), per pairing, cross-model vs same-model delta, verdict calibration
+  (weak vs unsupported per tier). Harness supports --runs N; reports mean ± spread
+  (judges are stochastic).
+- PREREQUISITES the PR must document: which two families/routes were used, their model
+  versions, and the workspace/route setup (so the run is reproducible). Keys are NEVER
+  committed.
+- STOP-and-ask gate: propose minimum publishable bars (e.g. fabricated-tier recall ≥ X%,
+  cross-model misattribution recall ≥ Z%, false-flag ≤ Y%) WITH measured numbers in hand;
+  a human signs off. Do not pick bars unilaterally; do not tune prompts to the benchmark
+  here (that is a later stage with a held-out split).
+- The PR reports measured numbers verbatim, including failures. Poor efficacy IS a valid
+  deliverable — it sets how strong Stage 1.3's language may be and seeds the EBV urgency.
+
+LIVE-KEY BOUNDARY (per the delivery protocol)
+This stage splits cleanly: the agent run delivers fixtures + harness + stub-tested code +
+the documented run command + route/workspace setup notes (keyless, shippable as a PR). The
+keyed cross-model measurement and the bar sign-off are the human/CI step run by whoever
+holds the family-A and family-B keys. Do not block the PR on the agent possessing keys.
 
 PROCESS
-pnpm --filter @restormel/connect-core typecheck && test; harness run output quoted in
-the PR. Requires live model keys for the real measurement — run locally, commit the
-harness + fixtures + a results snapshot (dated, model-versioned), not the keys.
+pnpm --filter @restormel/connect-core typecheck && test (harness unit-tested with a
+deterministic stub generate); then the keyed run, output quoted in the PR + committed as a
+dated, model-versioned results snapshot.
 
 Use effort: xhigh.
 ```
@@ -459,9 +495,11 @@ ACCEPTANCE CRITERIA
   PR to connect-core proves the gate works (non-blocking warn mode initially; flag to
   flip to blocking later — note the flip condition in the PR body).
 - Claims-integrity wiring: a scheduled (weekly) run executes the Stage 1.0a efficacy
-  benchmark and fails if any signed-off bar regresses — this is what keeps the claims
-  ledger's "proven" rows continuously true as models/routes change. The run updates a
-  dated results snapshot the ledger links to.
+  benchmark UNDER CROSS-MODEL ROUTING (≥2 model families' keys provisioned as CI secrets)
+  and fails if any signed-off bar regresses — this is what keeps the claims ledger's
+  "proven" rows continuously true as models/routes change. The run updates a dated results
+  snapshot the ledger links to. Note the cross-model key cost in the PR; if weekly
+  cross-model CI is too costly, propose a cheaper cadence/sampling and flag for sign-off.
 - Docs page: /keys/docs/guides/context-regression-ci.
 
 Use effort: xhigh.
