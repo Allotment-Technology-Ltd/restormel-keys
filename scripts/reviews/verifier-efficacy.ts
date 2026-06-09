@@ -45,18 +45,22 @@ import {
 // chain under CJS conditions, and @restormel/contracts exports only types/import.
 import { PHILOSOPHY_DOMAIN_PACK } from "../../packages/contracts/src/connect.js";
 
-type ModelSpec = { family: "openai" | "anthropic" | "google"; model: string };
+type ModelSpec = { family: "openai" | "anthropic" | "google" | "together"; model: string };
 
 const DEFAULT_MODELS: Record<ModelSpec["family"], string> = {
   openai: "gpt-4o-mini",
   anthropic: "claude-haiku-4-5-20251001",
   google: "gemini-2.0-flash",
+  // Together serves open-weights families (Llama/Qwen/DeepSeek/…) behind one key — a
+  // genuinely different model family from an OpenAI extractor for the cross check.
+  // Override via together:<any Together chat model id>.
+  together: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
 };
 
 function parseSpec(raw: string): ModelSpec {
   const [family, ...rest] = raw.split(":");
-  if (family !== "openai" && family !== "anthropic" && family !== "google") {
-    throw new Error(`Unknown family "${family}" (use openai|anthropic|google[:model])`);
+  if (family !== "openai" && family !== "anthropic" && family !== "google" && family !== "together") {
+    throw new Error(`Unknown family "${family}" (use openai|anthropic|google|together[:model])`);
   }
   return { family, model: rest.join(":") || DEFAULT_MODELS[family] };
 }
@@ -69,10 +73,14 @@ function requireEnv(name: string, alt?: string): string {
 
 /** Bind an ExtractionGenerate directly to a provider chat API (temperature 0). */
 function makeGenerate(spec: ModelSpec): ExtractionGenerate {
-  if (spec.family === "openai") {
-    const key = requireEnv("OPENAI_API_KEY");
+  if (spec.family === "openai" || spec.family === "together") {
+    // Together is OpenAI-compatible; only base URL + key env differ.
+    const baseUrl =
+      spec.family === "together" ? "https://api.together.xyz/v1" : "https://api.openai.com/v1";
+    const key =
+      spec.family === "together" ? requireEnv("TOGETHER_API_KEY") : requireEnv("OPENAI_API_KEY");
     return async ({ system, user }) => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({
@@ -85,7 +93,8 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
           ],
         }),
       });
-      if (!res.ok) throw new Error(`openai ${spec.model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      if (!res.ok)
+        throw new Error(`${spec.family} ${spec.model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
       const d = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       return d.choices?.[0]?.message?.content ?? "";
     };
