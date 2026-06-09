@@ -1,0 +1,109 @@
+# Forgejo port of .github/workflows/publish.yml.
+# Publish public packages to npmjs on tag keys-v* (e.g. keys-v0.2.0).
+# Graph packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`) use tag graph-v* → publish-graph.yml.
+#
+# Phase 7 maintenance window (2026-06-01 → 2026-12-01): @restormel/keys, keys-svelte, keys-react are
+# bugfix-only (patch semver). Prefer keys-elements + Keys REST for new integrations. npm deprecate at window close.
+# Runbook: docs/runbooks/npm-maintenance-window.md
+#
+# Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
+#   → @restormel/aaif → @restormel/mcp (with platform deps + tests) → doctor → validate → keys-cli.
+# keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
+# does not block publishing keys-svelte (previously aaif ran first and aborted the job).
+#
+# Forgejo notes vs the GitHub original:
+#   - runs-on: docker (node:20-bookworm runner label from Stage 0; node 20 + npm + git baked in).
+#   - pnpm + Node come from ./.forgejo/actions/pnpm-workspace-install (corepack, not pnpm/action-setup).
+#   - NPM_TOKEN is an ORG-level Forgejo Actions secret. Registry stays public npmjs (UK/EU move is git+CI only).
+#   - Provenance is omitted: npm only accepts provenance for public GitHub repos (private repo = 422).
+name: Publish
+on:
+  push:
+    tags:
+      - 'keys-v*'
+
+jobs:
+  publish:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+
+      - name: Test
+        run: pnpm --filter @restormel/keys test
+      - name: Build
+        run: pnpm --filter @restormel/keys run build
+      - name: Publish @restormel/keys to npm
+        working-directory: packages/core
+        run: npm publish --access public
+
+      - name: Test @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte test
+      - name: Build @restormel/keys-svelte
+        run: pnpm --filter @restormel/keys-svelte run build
+      - name: Republish smoke (pack + external consumer build)
+        run: bash scripts/smoke-keys-svelte-republish.sh
+      - name: Publish @restormel/keys-svelte to npm
+        run: pnpm --filter @restormel/keys-svelte publish --access public --no-git-checks
+
+      # --- @restormel/keys-elements (Web Components — depends on keys + keys-svelte) ---
+      - name: Test @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements test
+      - name: Build @restormel/keys-elements
+        run: pnpm --filter @restormel/keys-elements run build
+      - name: Publish @restormel/keys-elements to npm
+        run: pnpm --filter @restormel/keys-elements publish --access public --no-git-checks
+
+      # --- @restormel/keys-react (React wrappers — depends on keys + keys-elements; peer react ≥18) ---
+      - name: Test @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react test
+      - name: Build @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react run build
+      - name: Publish @restormel/keys-react to npm
+        run: pnpm --filter @restormel/keys-react publish --access public --no-git-checks
+
+      - name: Build @restormel/aaif
+        run: pnpm --filter @restormel/aaif run build
+      - name: Publish @restormel/aaif to npm
+        run: pnpm --filter @restormel/aaif publish --access public --no-git-checks
+
+      - name: Build deps for @restormel/mcp
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
+      - name: Test @restormel/mcp
+        run: pnpm --filter @restormel/mcp run test
+      - name: Build @restormel/mcp
+        run: pnpm --filter @restormel/mcp run build
+      # pnpm publish rewrites workspace:* on @restormel/keys to semver
+      - name: Publish @restormel/mcp to npm
+        run: pnpm --filter @restormel/mcp publish --access public --no-git-checks
+
+      - name: Build @restormel/doctor
+        run: pnpm --filter @restormel/doctor run build
+      # pnpm publish applies the same workspace dep rewrites as other packages; raw npm publish
+      # warned about bin name normalization for restormel-doctor.
+      - name: Publish @restormel/doctor to npm
+        run: pnpm --filter @restormel/doctor publish --access public --no-git-checks
+
+      - name: Build @restormel/validate
+        run: pnpm --filter @restormel/validate run build
+      # pnpm publish rewrites workspace:^ (validate depends on @restormel/keys)
+      - name: Publish @restormel/validate to npm
+        run: pnpm --filter @restormel/validate publish --access public --no-git-checks
+
+      - name: Test @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli test
+      - name: Build @restormel/keys-cli
+        run: pnpm --filter @restormel/keys-cli run build
+      # pnpm publish rewrites workspace:^ deps to semver; npm publish leaves workspace:* broken on consumers.
+      - name: Publish @restormel/keys-cli to npm
+        run: pnpm --filter @restormel/keys-cli publish --access public --no-git-checks
