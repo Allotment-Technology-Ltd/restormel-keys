@@ -2,6 +2,14 @@
  * Neon (Postgres) storage: workspaces, projects, environments, api_keys (Gateway keys).
  * No raw Gateway keys stored; prefix + hash only. See security-baseline.
  * Schema: 001_initial, 002_better_auth, 003_workspaces_and_environments.
+ *
+ * Stage 1.7 — deploy-time migrations:
+ * Runtime DDL ensure* functions are gated by CONNECT_RUNTIME_DDL.
+ *   CONNECT_RUNTIME_DDL=1 (default in dev): ensure* functions run DDL as before.
+ *   CONNECT_RUNTIME_DDL=0 (default in production via NODE_ENV=production):
+ *     ensure* functions skip DDL and instead verify the schema_migrations
+ *     high-water-mark once per boot, throwing loudly if the schema is behind.
+ * See scripts/apply-migrations.mts for the CI runner.
  */
 import { env } from "$env/dynamic/private";
 import { neon } from "@neondatabase/serverless";
@@ -19,6 +27,79 @@ import {
   parseStoredProductionQualityReport,
   summarizeG2Aggregate,
 } from "$lib/server/connect/ingest-quality-gates-data";
+
+// ---------------------------------------------------------------------------
+// Stage 1.7 — Runtime DDL gate
+// ---------------------------------------------------------------------------
+//
+// runtimeDdlEnabled() returns true when the ensure* functions should run DDL.
+// In production (NODE_ENV=production or CONNECT_RUNTIME_DDL=0) the ensures are
+// no-ops and schemaBootAssert() fires instead (once per process, lazy).
+//
+// Override: set CONNECT_RUNTIME_DDL=1 to force-enable DDL in production (e.g.
+// for a one-time recovery), or CONNECT_RUNTIME_DDL=0 to test prod mode locally.
+
+function runtimeDdlEnabled(): boolean {
+  const override = process.env.CONNECT_RUNTIME_DDL;
+  if (override === "1") return true;
+  if (override === "0") return false;
+  // Default: ON in dev, OFF in production.
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
+ * The highest migration filename that must be present in schema_migrations for
+ * the current codebase to work correctly.  Update this constant whenever a new
+ * migration adds tables/columns that neon.ts functions depend on at runtime.
+ *
+ * The assertion fires once per process boot when runtimeDdlEnabled() is false.
+ */
+const REQUIRED_MIGRATION = "059_schema_migrations_tracking.sql";
+
+let schemaBootAsserted: Promise<void> | null = null;
+
+/**
+ * Assert that the production schema is up to date with REQUIRED_MIGRATION.
+ * Runs at most once per process; throws loudly if the high-water mark is behind
+ * so that the health-check fails and the deploy does not go live with a stale DB.
+ */
+async function assertSchemaUpToDate(): Promise<void> {
+  if (schemaBootAsserted) return schemaBootAsserted;
+  schemaBootAsserted = (async () => {
+    const sql = getSql();
+    let rows: { filename: string }[];
+    try {
+      rows = (await sql`
+        SELECT filename FROM schema_migrations
+        ORDER BY filename DESC
+        LIMIT 1
+      `) as { filename: string }[];
+    } catch {
+      throw new Error(
+        `[deploy-time-migrations] schema_migrations table does not exist. ` +
+          `Run the migration runner (pnpm --filter dashboard run migrate) before starting production. ` +
+          `Required: ${REQUIRED_MIGRATION}`,
+      );
+    }
+    const hwm = rows[0]?.filename ?? "";
+    if (hwm < REQUIRED_MIGRATION) {
+      throw new Error(
+        `[deploy-time-migrations] Schema is behind. ` +
+          `High-water mark: "${hwm || "(none)"}". ` +
+          `Required: "${REQUIRED_MIGRATION}". ` +
+          `Run: pnpm --filter dashboard run migrate`,
+      );
+    }
+  })();
+  return schemaBootAsserted;
+}
+
+/** Reset the cached boot assertion (test helper only). */
+export function _resetSchemaBootAssertForTesting(): void {
+  schemaBootAsserted = null;
+}
+
+// ---------------------------------------------------------------------------
 
 const KEY_PREFIX = "rk_";
 
@@ -1467,6 +1548,10 @@ let ensuredCatalogProviderIdColumn: Promise<void> | null = null;
 async function ensureCatalogProviderIdColumn(): Promise<void> {
   if (ensuredCatalogProviderIdColumn) return ensuredCatalogProviderIdColumn;
   ensuredCatalogProviderIdColumn = (async () => {
+    if (!runtimeDdlEnabled()) {
+      await assertSchemaUpToDate();
+      return;
+    }
     const sql = getSql();
     await sql`ALTER TABLE provider_model_variants ADD COLUMN IF NOT EXISTS catalog_provider_id TEXT`;
     await sql`
@@ -1717,6 +1802,10 @@ let ensuredProjectModelBindingsSchema: Promise<void> | null = null;
 async function ensureProjectModelBindingsSchema(): Promise<void> {
   if (ensuredProjectModelBindingsSchema) return ensuredProjectModelBindingsSchema;
   ensuredProjectModelBindingsSchema = (async () => {
+    if (!runtimeDdlEnabled()) {
+      await assertSchemaUpToDate();
+      return;
+    }
     const sql = getSql();
     await sql`
       CREATE TABLE IF NOT EXISTS project_model_bindings (
@@ -2073,10 +2162,17 @@ let ensuredIngestionRoutingSchema: Promise<void> | null = null;
 /**
  * Self-heal for older environments where migrations 012/013 were not applied yet.
  * Keeps runtime routing endpoints operational instead of failing with undefined-column errors.
+ *
+ * Stage 1.7: when CONNECT_RUNTIME_DDL=0 (production default), this function skips all DDL
+ * and verifies the schema_migrations high-water-mark instead.  See runtimeDdlEnabled().
  */
 export async function ensureIngestionRoutingSchema(): Promise<void> {
   if (ensuredIngestionRoutingSchema) return ensuredIngestionRoutingSchema;
   ensuredIngestionRoutingSchema = (async () => {
+    if (!runtimeDdlEnabled()) {
+      await assertSchemaUpToDate();
+      return;
+    }
     const sql = getSql();
     await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS enabled BOOLEAN DEFAULT true`;
     await sql`ALTER TABLE routes ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1`;

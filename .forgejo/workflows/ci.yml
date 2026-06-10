@@ -1,11 +1,15 @@
 # Forgejo CI — Stage 1 proof that the self-hosted `docker` runner builds the
 # pnpm monorepo green. Faithful subset: install + build the platform packages.
 #
+# Stage 1.7: the `apply-migrations` job runs the idempotent TS migration runner
+# against the Forgejo-environment DB when FORGEJO_DATABASE_URL is set (secret).
+# If the secret is absent the step is skipped cleanly — zero friction for
+# operators who haven't wired the DB yet.
+#
 # Intentionally NOT ported from .github/workflows/ci.yml (yet): the path-filter
-# matrix, security composite actions, the Vercel deploy job, the production DB
-# migration job (apply-dashboard-migrations-prod), and the Zuplo gateway deploy.
-# Those are Vercel-specific or Stage 2+ concerns (the dashboard moves to Coolify)
-# and each needs its own decision — see INFRA-RUNBOOK.md (restormel section).
+# matrix, security composite actions, the Vercel deploy job, and the Zuplo
+# gateway deploy. Those are Vercel-specific or Stage 2+ concerns (the dashboard
+# moves to Coolify) and each needs its own decision — see INFRA-RUNBOOK.md.
 name: CI
 on:
   push:
@@ -19,3 +23,27 @@ jobs:
       - uses: ./.forgejo/actions/pnpm-workspace-install
       - name: Build platform packages
         run: pnpm run build:platform-packages
+
+  apply-migrations:
+    name: Apply dashboard migrations (Forgejo DB)
+    runs-on: docker
+    # Only run on push to main; skip on PRs to avoid concurrent writers.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build]
+    concurrency:
+      group: forgejo-dashboard-postgres
+      cancel-in-progress: false
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Apply dashboard migrations (Forgejo DB)
+        env:
+          FORGEJO_DATABASE_URL: ${{ secrets.FORGEJO_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${FORGEJO_DATABASE_URL:-}" ]]; then
+            echo "FORGEJO_DATABASE_URL not set — skipping (set secret to enable)."
+            exit 0
+          fi
+          export DATABASE_URL="$FORGEJO_DATABASE_URL"
+          pnpm --filter dashboard run migrate
