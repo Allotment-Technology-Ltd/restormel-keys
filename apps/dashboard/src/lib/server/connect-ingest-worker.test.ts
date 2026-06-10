@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("$lib/server/connect-ingest-jobs", () => ({
   claimNextPendingConnectIngestJob: vi.fn(),
+  heartbeatConnectIngestJobLease: vi.fn(async () => true),
+  reclaimStaleRunningConnectIngestJobs: vi.fn(async () => []),
   updateConnectIngestJobById: vi.fn(),
-  appendConnectIngestJobLog: vi.fn(),
+  appendConnectIngestJobLog: vi.fn(async () => 1),
+  getConnectIngestJobForWorkspace: vi.fn(async () => null),
+  CONNECT_INGEST_DEFAULT_LEASE_MS: 300_000,
 }));
 
 describe("connect-ingest-worker", () => {
@@ -55,6 +59,104 @@ describe("connect-ingest-worker", () => {
     expect(updateConnectIngestJobById).toHaveBeenCalled();
     const last = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
     expect(last?.status).toBe("completed");
+  });
+});
+
+describe("durable runs (Stage 1.6) — lease, heartbeat, reclaim", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.CONNECT_INGEST_WORKER_MODE = "stub";
+    process.env.CONNECT_INGEST_STUB_PAUSE_MS = "0";
+    delete process.env.CONNECT_INGEST_LEASE_MS;
+    delete process.env.CONNECT_INGEST_WORKER_HEARTBEAT_MS;
+  });
+
+  it("claims with a worker id + lease so the row is reclaimable on stall", async () => {
+    const { claimNextPendingConnectIngestJob } = await import("$lib/server/connect-ingest-jobs");
+    vi.mocked(claimNextPendingConnectIngestJob).mockResolvedValue(null);
+    const { runConnectIngestWorkerOnce } = await import("$lib/server/connect-ingest-worker");
+    await runConnectIngestWorkerOnce();
+    expect(claimNextPendingConnectIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workerId: expect.stringContaining("ingest-"),
+        leaseMs: expect.any(Number),
+      }),
+    );
+  });
+
+  it("worker-loop heartbeat extends the lease on an interval until stopped", async () => {
+    vi.useFakeTimers();
+    try {
+      const { heartbeatConnectIngestJobLease } = await import("$lib/server/connect-ingest-jobs");
+      const { startConnectIngestWorkerHeartbeat } = await import(
+        "$lib/server/connect-ingest-worker"
+      );
+      const stop = startConnectIngestWorkerHeartbeat(
+        { id: "job-1", workerId: "w-1" },
+        { intervalMs: 1_000, leaseMs: 60_000 },
+      );
+      await vi.advanceTimersByTimeAsync(3_500);
+      expect(heartbeatConnectIngestJobLease).toHaveBeenCalledTimes(3);
+      expect(heartbeatConnectIngestJobLease).toHaveBeenCalledWith({
+        id: "job-1",
+        workerId: "w-1",
+        leaseMs: 60_000,
+      });
+      stop();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(heartbeatConnectIngestJobLease).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drain honors lease expiry: reclaims stale running jobs BEFORE claiming", async () => {
+    const { claimNextPendingConnectIngestJob, reclaimStaleRunningConnectIngestJobs } =
+      await import("$lib/server/connect-ingest-jobs");
+    vi.mocked(claimNextPendingConnectIngestJob).mockResolvedValue(null);
+    const { runConnectIngestWorkerLoop } = await import("$lib/server/connect-ingest-worker");
+    await runConnectIngestWorkerLoop(2);
+    expect(reclaimStaleRunningConnectIngestJobs).toHaveBeenCalledTimes(1);
+    const reclaimOrder = vi.mocked(reclaimStaleRunningConnectIngestJobs).mock
+      .invocationCallOrder[0]!;
+    const claimOrder = vi.mocked(claimNextPendingConnectIngestJob).mock.invocationCallOrder[0]!;
+    expect(reclaimOrder).toBeLessThan(claimOrder);
+  });
+
+  it("a reclaimed run gets an operator-visible 'reclaimed after stall' console event", async () => {
+    const { reclaimStaleRunningConnectIngestJobs, appendConnectIngestJobLog } = await import(
+      "$lib/server/connect-ingest-jobs"
+    );
+    vi.mocked(reclaimStaleRunningConnectIngestJobs).mockResolvedValue([
+      {
+        id: "job-9",
+        workspaceId: "ws-1",
+        projectId: null,
+        status: "failed",
+        label: null,
+        currentStage: null,
+        currentAction: "Reclaimed after stall",
+        progress: null,
+        stages: [],
+        sources: [],
+        stopAfterStage: null,
+        pipelineProfileId: null,
+        domainPackId: null,
+        graphTargetId: null,
+        error: "worker_lost: reclaimed after stall — no worker heartbeat before lease expiry",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ]);
+    const { reclaimStaleConnectIngestRuns } = await import("$lib/server/connect-ingest-worker");
+    const n = await reclaimStaleConnectIngestRuns();
+    expect(n).toBe(1);
+    expect(appendConnectIngestJobLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-9",
+        line: expect.stringContaining("reclaimed after stall"),
+      }),
+    );
   });
 });
 

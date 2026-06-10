@@ -22,6 +22,8 @@ import {
   readMaxChunksForPreset,
   effectiveStopAfterStage,
   planIncrementalReingest,
+  completedStageOrderRank,
+  laterCompletedStage,
   ENTAILMENT_BATCH_SIZE,
   type EntailmentInput,
   type EvidenceBinding,
@@ -213,6 +215,8 @@ export async function runFullExtraction(args: {
     changedClaims: number;
     removedClaims: number;
   };
+  /** Sources skipped via the durable resume checkpoint (Stage 1.6) — no LLM re-spend. */
+  resumedSourcesSkipped: number;
 }> {
   const { job, writer, reporter } = args;
   const pack = await resolveDomainPack(job);
@@ -237,6 +241,38 @@ export async function runFullExtraction(args: {
   /** Grouping is LLM-heavy; validation runs on all extracted units in batches. */
   const GROUPING_UNIT_CAP = 80;
   const sources = parseSources(job.sources);
+
+  // ── Stage 1.6 durable resume ─────────────────────────────────────────────────
+  // A run reclaimed after a stall is re-queued IN PLACE with its checkpoint in
+  // progress.resume. Sources counted in `sources_done` finished every per-source
+  // LLM stage (extract → … → remediate) before the stall — skip them entirely so
+  // a resume never re-spends completed LLM stages. Stage ranks come from the
+  // connect-core resume-stage helpers (completedStageOrderRank/laterCompletedStage).
+  //
+  // NOTE on ordering: this runner embeds AFTER validate/remediate (unlike the
+  // SOPHIA pipeline order in INGEST_PIPELINE_STAGES_ORDER, where embedding sits
+  // before validating). The post-source tail (embed + finalize) is therefore
+  // checkpointed as "storing" — the only rank strictly above every per-source stage.
+  const resume = job.progress?.resume ?? null;
+  const resumeSourcesDone = Math.min(
+    Math.max(0, Math.round(resume?.sources_done ?? 0)),
+    sources.length,
+  );
+  const tailAlreadyDone =
+    resumeSourcesDone >= sources.length &&
+    completedStageOrderRank(resume?.last_stage_completed) >=
+      completedStageOrderRank("storing");
+  /** Deepest per-source stage the stop gate lets this run reach. */
+  const perSourceLastStage = (["remediating", "validating", "grouping", "relating"] as const).find(
+    (stage) => stage === "relating" || shouldRunStage(stage, stop),
+  )!;
+  let checkpointStage: string | null = resume?.last_stage_completed ?? null;
+  if (resumeSourcesDone > 0) {
+    await reporter?.log(
+      "INGEST",
+      `Resuming from checkpoint — ${resumeSourcesDone}/${sources.length} source(s) already completed; their LLM stages will not re-run.`,
+    );
+  }
 
   let chunkBudget = maxChunks;
   let totalUnits = 0;
@@ -263,8 +299,25 @@ export async function runFullExtraction(args: {
     );
   }
 
-  for (const src of sources) {
+  /** Durable checkpoint: every per-source LLM stage for sources[0..idx] is done. */
+  const markSourceCheckpoint = async (idx: number) => {
+    checkpointStage = laterCompletedStage(checkpointStage, perSourceLastStage);
+    await reporter?.setResumeCheckpoint({
+      sources_done: idx + 1,
+      last_stage_completed: checkpointStage,
+    });
+  };
+
+  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
+    const src = sources[sourceIndex]!;
     const title = src.title ?? src.url ?? "untitled";
+    if (sourceIndex < resumeSourcesDone) {
+      await reporter?.log(
+        "INGEST",
+        `Checkpoint — skipping completed source ${sourceIndex + 1}/${sources.length}: ${title}`,
+      );
+      continue;
+    }
     // Stage 3.2: stable source identity + content hash decide first-time ingest vs
     // unchanged re-ingest (skip entirely) vs changed re-ingest (diff this source only).
     const probeHash = src.text?.trim() ? await contentHash(src.text) : null;
@@ -301,7 +354,10 @@ export async function runFullExtraction(args: {
       prior ? `Source changed — re-ingesting: ${title}` : `Source registered — ${title}`,
     );
 
-    if (!src.text?.trim() || chunkBudget <= 0) continue;
+    if (!src.text?.trim() || chunkBudget <= 0) {
+      await markSourceCheckpoint(sourceIndex);
+      continue;
+    }
 
     // EBV Layer 1: pin this source version once; all evidence spans bind against it.
     // (probeHash — and therefore sourceKey via the content fallback — is non-null here:
@@ -456,6 +512,7 @@ export async function runFullExtraction(args: {
     if (sourceUnits.length === 0) {
       // A changed document that now yields no claims still supersedes its prior ones.
       await applySupersessions(new Map());
+      await markSourceCheckpoint(sourceIndex);
       continue;
     }
 
@@ -734,10 +791,26 @@ export async function runFullExtraction(args: {
       await reporter?.skipStage("validating", "Stop-after gate");
       await reporter?.skipStage("remediating", "Stop-after gate");
     }
+
+    await markSourceCheckpoint(sourceIndex);
   }
 
   let embedded = 0;
-  if (args.embed && embedText.size > 0 && shouldRunStage("embedding", stop)) {
+  if (resumeSourcesDone > 0 && !tailAlreadyDone) {
+    // Embedding runs at the END of a run, so units from checkpointed sources never
+    // got vectors before the stall and are not re-embedded here (their LLM stages
+    // are not re-run). Operator-visible pointer to the recovery tool:
+    await reporter?.log(
+      "EMBED",
+      `Resumed run — vectors for the ${resumeSourcesDone} checkpointed source(s) may be missing; run an embedding backfill if coverage is low.`,
+    );
+  }
+  if (tailAlreadyDone) {
+    await reporter?.skipStage(
+      "embedding",
+      "Checkpoint — embeddings completed before the stall",
+    );
+  } else if (args.embed && embedText.size > 0 && shouldRunStage("embedding", stop)) {
     const entries = [...embedText.entries()];
     await reporter?.beginStage("embedding", `Embedding ${entries.length} unit(s)`, 1);
     try {
@@ -765,6 +838,13 @@ export async function runFullExtraction(args: {
 
   await reporter?.beginStage("storing", "Finalizing graph persistence", 1);
   await reporter?.completeStage("storing", "Graph records persisted");
+  // Tail checkpoint: embed + finalize done — a reclaim past this point resumes to
+  // a no-op instead of re-embedding (see the ordering note above).
+  checkpointStage = laterCompletedStage(checkpointStage, "storing");
+  await reporter?.setResumeCheckpoint({
+    sources_done: sources.length,
+    last_stage_completed: checkpointStage,
+  });
 
   return {
     sources: sources.length,
@@ -778,6 +858,7 @@ export async function runFullExtraction(args: {
     dropped: totalDropped,
     validation: { ...validationBreakdown },
     reingest: { ...reingest },
+    resumedSourcesSkipped: resumeSourcesDone,
   };
 }
 
