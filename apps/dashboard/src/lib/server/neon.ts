@@ -7008,6 +7008,80 @@ export async function updateConnectClaimVersionStatesPostgres(params: {
   return n;
 }
 
+/**
+ * EBV breakdown for the trust scorecard (Postgres spine): current claim versions
+ * (valid_to IS NULL) grouped by verification_state and evidence_status, plus the
+ * latest entailment judgment timestamp. Counts cover only units with EBV rows —
+ * the scorecard treats the remainder as unverified / unbound (fail-safe).
+ */
+export async function getConnectClaimVersionBreakdownPostgres(workspaceId: string): Promise<{
+  verificationStates: Record<string, number>;
+  evidenceStatuses: Record<string, number>;
+  lastJudgedAt: string | null;
+}> {
+  await ensureConnectClaimVersionsSchema();
+  await ensureConnectClaimJudgmentsSchema();
+  const sql = getSql();
+  const [stateRows, evidenceRows, judgedRows] = await Promise.all([
+    sql`
+      SELECT verification_state AS k, count(*)::int AS c FROM connect_claim_versions
+      WHERE workspace_id = ${workspaceId} AND valid_to IS NULL
+      GROUP BY verification_state
+    `,
+    sql`
+      SELECT evidence_status AS k, count(*)::int AS c FROM connect_claim_versions
+      WHERE workspace_id = ${workspaceId} AND valid_to IS NULL
+      GROUP BY evidence_status
+    `,
+    sql`
+      SELECT max(judged_at) AS latest FROM connect_claim_judgments
+      WHERE workspace_id = ${workspaceId}
+    `,
+  ]);
+  const toRecord = (rows: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const r of rows as { k: string | null; c: number }[]) {
+      if (r.k) out[r.k] = Number(r.c);
+    }
+    return out;
+  };
+  const latestRaw = (judgedRows[0] as { latest: string | Date | null } | undefined)?.latest ?? null;
+  const lastJudgedAt =
+    latestRaw instanceof Date ? latestRaw.toISOString() : latestRaw ? String(latestRaw) : null;
+  return {
+    verificationStates: toRecord(stateRows),
+    evidenceStatuses: toRecord(evidenceRows),
+    lastJudgedAt,
+  };
+}
+
+/**
+ * Coverage-gap counts for the trust scorecard (Postgres spine, PR #189 semantics):
+ * units whose validation note records a validator/judge omission ("coverage_gap: …")
+ * and units soft-excluded by remediation (incl. omitted verdicts defaulted to drop).
+ */
+export async function getConnectGraphCoverageCountsPostgres(workspaceId: string): Promise<{
+  validatorGaps: number;
+  remediationDrops: number;
+}> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      count(*) FILTER (WHERE validation_note LIKE 'coverage_gap%')::int AS validator_gaps,
+      count(*) FILTER (
+        WHERE validation_status = 'removed' AND validation_note LIKE 'Remediation (%'
+      )::int AS remediation_drops
+    FROM knowledge_graph_units
+    WHERE workspace_id = ${workspaceId}
+  `;
+  const row = rows[0] as { validator_gaps: number; remediation_drops: number } | undefined;
+  return {
+    validatorGaps: Number(row?.validator_gaps ?? 0),
+    remediationDrops: Number(row?.remediation_drops ?? 0),
+  };
+}
+
 /** Set per-unit validation results (validation stage). */
 export async function updateUnitValidationPostgres(params: {
   workspaceId: string;

@@ -16,6 +16,7 @@ export * from './reasoning-object.js';
 export * from './schema-version.js';
 export * from './trace.js';
 export * from './trace-ingestion.js';
+export * from './trust-scorecard.js';
 export * from './provenance-trace.js';
 export * from './verification.js';
 export * from './verification-rules.js';

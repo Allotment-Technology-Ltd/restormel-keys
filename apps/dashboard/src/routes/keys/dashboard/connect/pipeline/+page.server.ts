@@ -11,6 +11,7 @@ import { resolveConnectJourneyPhase, resolveDefaultPipelineStep } from "$lib/con
 import { listProviderIntegrations } from "$lib/server/db";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
+import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import {
   listDomainPacksForUi,
@@ -212,10 +213,19 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
           })
         : null;
 
+    // Launch step "What to expect": the previous run's trust scorecard, when a graph
+    // already exists. Peek-only (cached stats — never scans a BYO store) so the wizard
+    // stays fast; best-effort, and absence never gates the run.
+    const previousScorecard =
+      step === "launch" && hasGraph
+        ? await loadConnectTrustScorecard(workspace.id, { statsMode: "peek" }).catch(() => null)
+        : null;
+
     const payload = {
       step,
       wizard,
       runDefaults,
+      previousScorecard,
       modelsReady: modelsStatus.modelsReady,
       phase,
       workspaceId: workspace.id,
