@@ -9,6 +9,7 @@ import type { ConnectDomainPack, ConnectSourceProvenance } from "@restormel/cont
 import { provenancePreviewText } from "$lib/server/connect/source-document-provenance";
 import {
   chunkDocument,
+  contentHash,
   extractGraph,
   evaluateExtractionGate,
   groupUnits,
@@ -16,10 +17,16 @@ import {
   resolveQualityPreset,
   readMaxChunksForPreset,
   effectiveStopAfterStage,
+  type EvidenceBinding,
   type ExtractionGenerate,
   type EmbeddingPort,
   type GraphIngestContext,
 } from "@restormel/connect-core";
+import {
+  buildEvidenceRows,
+  buildVerificationStateRows,
+  type EvidenceRow,
+} from "$lib/server/connect/evidence-persist";
 import {
   buildValidationBatchInputs,
   validateUnitsBatch,
@@ -218,6 +225,12 @@ export async function runFullExtraction(args: {
 
     if (!src.text?.trim() || chunkBudget <= 0) continue;
 
+    // EBV Layer 1: pin this source version once; all evidence spans bind against it.
+    const sourceHash = await contentHash(src.text);
+    const evidenceRows: EvidenceRow[] = [];
+    const bindingByUnitId = new Map<string, EvidenceBinding>();
+    const evidenceCounts = { bound: 0, unbound: 0, no_evidence: 0 };
+
     const sourceUnits: { id: string; text: string; type: string | null; chunkIndex: number }[] = [];
     const chunkTextByUnitId = new Map<string, string>();
     const chunks = chunkDocument(src.text, pack.chunking).slice(0, chunkBudget);
@@ -288,6 +301,17 @@ export async function runFullExtraction(args: {
         chunkTextByUnitId.set(u.id, chunk.text);
         embedText.set(u.id, u.text);
       }
+      const chunkEvidence = buildEvidenceRows({
+        extractedUnits: extraction.units,
+        storedUnits: stored.units,
+        sourceText: src.text,
+        sourceHash,
+      });
+      evidenceRows.push(...chunkEvidence.rows);
+      for (const [id, b] of chunkEvidence.bindingByUnitId) bindingByUnitId.set(id, b);
+      evidenceCounts.bound += chunkEvidence.counts.bound;
+      evidenceCounts.unbound += chunkEvidence.counts.unbound;
+      evidenceCounts.no_evidence += chunkEvidence.counts.no_evidence;
     }
     await reporter?.completeStage(
       "extracting",
@@ -297,6 +321,17 @@ export async function runFullExtraction(args: {
     await reporter?.completeStage("relating", "Relation pass complete");
 
     if (sourceUnits.length === 0) continue;
+
+    if (evidenceRows.length > 0) {
+      const ev = await writer.setEvidence({ sourceHash, bindings: evidenceRows });
+      await reporter?.log(
+        "EXTRACT",
+        `Evidence: ${evidenceCounts.bound}/${evidenceRows.length} bound` +
+          (evidenceCounts.unbound ? `, ${evidenceCounts.unbound} unbound` : "") +
+          (evidenceCounts.no_evidence ? `, ${evidenceCounts.no_evidence} without a quote` : "") +
+          (ev.missed > 0 ? ` — ${ev.missed} write(s) not persisted (store schema; see EBV docs)` : ""),
+      );
+    }
     const cappedForGrouping = sourceUnits.slice(0, GROUPING_UNIT_CAP);
     const textById = new Map(sourceUnits.map((u) => [u.id, u.text]));
 
@@ -379,6 +414,18 @@ export async function runFullExtraction(args: {
         }
         totalValidated += await writer.setValidation(
           validationResults.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
+        );
+        // EBV: compose verdicts with Layer-1 bindings — never "supported" without a span.
+        const stateRows = buildVerificationStateRows({
+          verdicts: validationResults.map((r) => ({ unitId: r.ref, status: r.status })),
+          bindingByUnitId,
+        });
+        const st = await writer.setVerificationStates(stateRows.states);
+        await reporter?.log(
+          "VALIDATE",
+          `Verification states: ${stateRows.counts.supported} supported, ${stateRows.counts.inferred} inferred, ` +
+            `${stateRows.counts.unverified} unverified` +
+            (st.missed > 0 ? ` — ${st.missed} write(s) not persisted (store schema)` : ""),
         );
         await reporter?.completeStage(
           "validating",

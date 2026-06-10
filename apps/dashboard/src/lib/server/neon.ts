@@ -6864,6 +6864,92 @@ export async function updateUnitEmbeddingsPostgres(params: {
   return n;
 }
 
+let claimVersionsSchemaEnsured = false;
+/** CREATE TABLE IF NOT EXISTS mirror of migrations/055_connect_claim_versions.sql (dev safety). */
+async function ensureConnectClaimVersionsSchema(): Promise<void> {
+  if (claimVersionsSchemaEnsured) return;
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS connect_claim_versions (
+      id                  BIGSERIAL   PRIMARY KEY,
+      workspace_id        TEXT        NOT NULL,
+      unit_id             TEXT        NOT NULL,
+      claim_key           TEXT,
+      version_no          INT         NOT NULL DEFAULT 1,
+      text                TEXT        NOT NULL,
+      evidence_quote      TEXT,
+      span_start          INT,
+      span_end            INT,
+      evidence_match      TEXT,
+      evidence_status     TEXT        NOT NULL,
+      source_hash         TEXT,
+      verification_state  TEXT        NOT NULL DEFAULT 'unverified',
+      judged_by           TEXT,
+      judged_at           TIMESTAMPTZ,
+      valid_from          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      valid_to            TIMESTAMPTZ,
+      superseded_by       BIGINT,
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_unit ON connect_claim_versions (workspace_id, unit_id) WHERE valid_to IS NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_state ON connect_claim_versions (workspace_id, verification_state) WHERE valid_to IS NULL`;
+  claimVersionsSchemaEnsured = true;
+}
+
+export type ConnectClaimVersionInsert = {
+  unitId: string;
+  text: string;
+  evidenceQuote: string | null;
+  spanStart: number | null;
+  spanEnd: number | null;
+  evidenceMatch: string | null;
+  evidenceStatus: "bound" | "unbound" | "no_evidence";
+  sourceHash: string | null;
+};
+
+/** EBV Layer 1: insert version-1 claim rows with their evidence bindings (post-extraction). */
+export async function insertConnectClaimVersionsPostgres(params: {
+  workspaceId: string;
+  rows: ConnectClaimVersionInsert[];
+}): Promise<number> {
+  if (params.rows.length === 0) return 0;
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  let n = 0;
+  for (const r of params.rows) {
+    await sql`
+      INSERT INTO connect_claim_versions
+        (workspace_id, unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
+      VALUES
+        (${params.workspaceId}, ${r.unitId}, ${r.text}, ${r.evidenceQuote}, ${r.spanStart}, ${r.spanEnd},
+         ${r.evidenceMatch}, ${r.evidenceStatus}, ${r.sourceHash})
+    `;
+    n += 1;
+  }
+  return n;
+}
+
+/** EBV Layer 1: set verification state on the CURRENT version of each unit (post-validation). */
+export async function updateConnectClaimVersionStatesPostgres(params: {
+  workspaceId: string;
+  states: { unitId: string; state: string; judgedBy?: string | null }[];
+}): Promise<number> {
+  if (params.states.length === 0) return 0;
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  let n = 0;
+  for (const s of params.states) {
+    await sql`
+      UPDATE connect_claim_versions
+      SET verification_state = ${s.state}, judged_by = ${s.judgedBy ?? null}, judged_at = NOW()
+      WHERE workspace_id = ${params.workspaceId} AND unit_id = ${s.unitId} AND valid_to IS NULL
+    `;
+    n += 1;
+  }
+  return n;
+}
+
 /** Set per-unit validation results (validation stage). */
 export async function updateUnitValidationPostgres(params: {
   workspaceId: string;
