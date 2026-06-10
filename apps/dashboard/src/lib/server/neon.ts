@@ -7082,6 +7082,106 @@ export async function getConnectGraphCoverageCountsPostgres(workspaceId: string)
   };
 }
 
+// ── Stage 2.4: connect_eval_verdicts (quality-history timeline) ─────────────
+
+let evalVerdictsSchemaEnsured = false;
+/** CREATE TABLE IF NOT EXISTS mirror of migrations/057_connect_eval_verdicts.sql (dev safety). */
+async function ensureConnectEvalVerdictsSchema(): Promise<void> {
+  if (evalVerdictsSchemaEnsured) return;
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS connect_eval_verdicts (
+      id              BIGSERIAL   PRIMARY KEY,
+      workspace_id    TEXT        NOT NULL,
+      source          TEXT        NOT NULL,
+      evaluated_at    TIMESTAMPTZ NOT NULL,
+      pass            BOOLEAN     NOT NULL,
+      verdict_schema  TEXT        NOT NULL,
+      verdict         JSONB       NOT NULL,
+      diff            JSONB,
+      recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_eval_verdicts_workspace ON connect_eval_verdicts (workspace_id, evaluated_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_eval_verdicts_pass ON connect_eval_verdicts (workspace_id, pass, evaluated_at DESC)`;
+  evalVerdictsSchemaEnsured = true;
+}
+
+export type ConnectEvalVerdictRow = {
+  id: string;
+  workspaceId: string;
+  source: string;
+  evaluatedAt: string;
+  pass: boolean;
+  verdictSchema: string;
+  verdict: unknown;
+  diff: unknown | null;
+  recordedAt: string;
+};
+
+/** Stage 2.4: persist one eval verdict to the workspace quality-history timeline. */
+export async function insertConnectEvalVerdict(params: {
+  workspaceId: string;
+  source: string;
+  evaluatedAt: string;
+  pass: boolean;
+  verdictSchema: string;
+  verdict: unknown;
+  diff: unknown | null;
+}): Promise<{ id: string; recordedAt: string }> {
+  await ensureConnectEvalVerdictsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO connect_eval_verdicts
+      (workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff)
+    VALUES
+      (${params.workspaceId}, ${params.source}, ${params.evaluatedAt}, ${params.pass},
+       ${params.verdictSchema}, ${JSON.stringify(params.verdict)}, ${params.diff ? JSON.stringify(params.diff) : null})
+    RETURNING id, recorded_at
+  `;
+  const row = rows[0] as { id: string | number; recorded_at: Date | string };
+  const recordedAt = row.recorded_at instanceof Date ? row.recorded_at.toISOString() : String(row.recorded_at);
+  return { id: String(row.id), recordedAt };
+}
+
+/** Stage 2.4: list eval-verdict history for a workspace, newest first. */
+export async function listConnectEvalVerdicts(params: {
+  workspaceId: string;
+  limit?: number;
+  /** Offset-based pagination cursor (the id of the last seen row — exclusive upper bound). */
+  beforeId?: string | null;
+}): Promise<ConnectEvalVerdictRow[]> {
+  await ensureConnectEvalVerdictsSchema();
+  const sql = getSql();
+  const limit = Math.min(params.limit ?? 50, 200);
+  const rows = params.beforeId
+    ? await sql`
+        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at
+        FROM connect_eval_verdicts
+        WHERE workspace_id = ${params.workspaceId} AND id < ${params.beforeId}
+        ORDER BY evaluated_at DESC, id DESC
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at
+        FROM connect_eval_verdicts
+        WHERE workspace_id = ${params.workspaceId}
+        ORDER BY evaluated_at DESC, id DESC
+        LIMIT ${limit}
+      `;
+  return (rows as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    workspaceId: String(r.workspace_id),
+    source: String(r.source),
+    evaluatedAt: r.evaluated_at instanceof Date ? r.evaluated_at.toISOString() : String(r.evaluated_at),
+    pass: Boolean(r.pass),
+    verdictSchema: String(r.verdict_schema),
+    verdict: r.verdict,
+    diff: r.diff ?? null,
+    recordedAt: r.recorded_at instanceof Date ? r.recorded_at.toISOString() : String(r.recorded_at),
+  }));
+}
+
 /** Set per-unit validation results (validation stage). */
 export async function updateUnitValidationPostgres(params: {
   workspaceId: string;
