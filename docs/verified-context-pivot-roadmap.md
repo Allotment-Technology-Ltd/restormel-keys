@@ -50,11 +50,11 @@ skeptical user can click through to the quoted span in the source and check it t
 |---|---|---|---|
 | 0 | Focus cuts (checklist, no agent) | — | — |
 | 2 | ✅ EBV ADR sign-off — **approved 2026-06-09** | P1 | — |
-| 1 | 1.0a Verifier efficacy benchmark (baseline vs CURRENT validator) ← **NEXT** | P1 | — |
-| 3 | 1.0c EBV Layer 1 — evidence binding + deterministic verification | P1 | EBV ADR |
-| 4 | 1.0d EBV Layer 2 — span-scoped entailment + abstention/review | P1 | 1.0c |
+| 1 | ✅ 1.0a Verifier efficacy benchmark — **measured + bars signed off 2026-06-10** (see below) | P1 | — |
+| 3 | ✅ 1.0c EBV Layer 1 — core (PR #194) + dashboard wiring (PR #199) | P1 | EBV ADR |
+| 4 | 1.0d EBV Layer 2 — span-scoped entailment + abstention/review ← **NEXT** | P1 | 1.0c |
 | 5 | 1.0a′ re-run benchmark post-EBV (same harness; before/after is the proof) | P1 | 1.0d |
-| 6 | 2.1 Headless `connect eval` CLI | P2 | — (parallel with 1.0c/d) |
+| 6 | ✅ 2.1 Headless `connect eval` CLI (PR #197) | P2 | — (parallel with 1.0c/d) |
 | 7 | 1.0b Marketing claims ledger | P1 | 1.0a′ |
 | 8 | 1.1 Verified-context API surface (envelope carries evidence per ADR) | P1 | 1.0c |
 | 9 | 1.2 Trust scorecard (incl. % evidence-bound) | P1 | 1.1 |
@@ -64,12 +64,32 @@ skeptical user can click through to the quoted span in the source and check it t
 | 13 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
 | 14 | 1.4 Spine observability hardening (H1/H3) | P1 | — |
 | 15 | 2.4 Regression history dashboard | P2 | 2.3 |
-| 16 | 3.1 Verified-memory design ADR (builds on EBV source-version hashes) | P3 | 1.0c |
+| 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
 | 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
 | 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
 | 19 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
 | 20 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
 | 21 | 4.3 AAIF verification envelope | P4 | 4.1 |
+
+**Stage 1.0a — measured baseline + signed-off bars (2026-06-10).** Snapshot:
+[`scripts/reviews/verifier-efficacy-results-2026-06-10.json`](../scripts/reviews/verifier-efficacy-results-2026-06-10.json)
+(PR #202; with-extraction, 3 runs; extractor `openai:gpt-4o-mini`; validators
+`openai:gpt-4o-mini` same-model control, `together:meta-llama/Llama-3.3-70B-Instruct-Turbo`
+cross-model). Measured: cross-model recall 100% on all three planted-bad tiers
+(fabricated/overstated/misattributed), false-flag 14.5%, affirm-unseen (fail-open probe) 0%;
+same-model recall 100%/83.3%/83.3%, false-flag 4.3%, **affirm-unseen 66.7%**; cross−same
+all-bad strict recall delta **+11.6pp**. Publishable bars **signed off by the product owner
+2026-06-10** (claims-ledger rows may cite them as proven once 2.3 re-runs them in CI):
+
+- fabricated-tier recall ≥ 95% (cross-model, measured 100%)
+- cross-model misattribution recall ≥ 90% (measured 100%)
+- false-flag rate ≤ 15% (cross-model, measured 14.5%)
+- affirm-unseen (fail-open probe) = 0% under cross-model routing (measured 0%)
+
+Bars are bound to cross-model routing — the same-model control (66.7% affirm-unseen) is
+the measured argument for why routing validator family ≠ extractor family is the product
+default, not an option. A model/route change that drops any bar breaks the ledger's
+"proven" status until it recovers (operating note below).
 
 ---
 
