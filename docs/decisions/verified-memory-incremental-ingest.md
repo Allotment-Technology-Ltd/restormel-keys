@@ -128,6 +128,15 @@ rule: never silently demote, never silently keep). `valid_from = ingested_at`,
 1. Surreal placement: is a Restormel-created `restormel_claim_versions` table in the user's
    BYO database acceptable, or must version chains live only in the Postgres spine even for
    Surreal graphs (split-brain risk)?
+
+   **DECIDED (product owner, 2026-06-10): the user chooses.** It is their database, so a
+   workspace/store-level setting (default **off**) governs whether Restormel may create a
+   `restormel_claim_versions` table in the BYO Surreal database. Opt-in enabled → full
+   incremental re-ingest with version chains in the user's store; opt-out (default) →
+   the Stage 3.2 behavior: re-ingest degrades to full ingest with an explicit per-run
+   operator log, and no Restormel-owned table is created. The setting is surfaced in the
+   store-connection step of the setup wizard with an honest explanation of what the table
+   stores and that it is additive-only. Implementation: roadmap Stage 3.2b.
 2. When the extractor re-quotes the *same sentence with slightly different boundaries*
    (one extra clause), `claim_key` changes and we get a new claim instead of a new version.
    Accept for v1 (deterministic, slightly over-creates claims) or add a bounded
