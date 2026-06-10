@@ -336,6 +336,84 @@ describe('planIngestionStage', () => {
     expect(plan.routingSource).toBe('requested');
   });
 
+  it('routes validation to an independent model family by default (cross-model check)', async () => {
+    // Claims-ledger evidence ("A different model family checks the extraction"):
+    // with no operator pins and a Google credential present, the planner requests the
+    // Gemini family for validation precisely so the judge is NOT the extraction family.
+    process.env.GOOGLE_AI_API_KEY = 'test-key';
+    delete process.env.INGEST_VALIDATION_PREFER_INDEPENDENT;
+    delete process.env.INGEST_PIN_PROVIDER_VALIDATION;
+    delete process.env.INGEST_PIN_MODEL_VALIDATION;
+    try {
+      mockResolveReasoningModelRoute.mockResolvedValue({
+        model: Symbol('model'),
+        provider: 'vertex',
+        modelId: 'gemini-3-flash-preview',
+        credentialSource: 'byok',
+        supportsGrounding: false,
+        routingSource: 'requested',
+        resolvedExplanation: 'independent validation family'
+      });
+
+      const { planIngestionStage } = await import('../ingest/plan.js');
+      const plan = await planIngestionStage(
+        'validation',
+        {
+          sourceTitle: 'Ethics',
+          estimatedTokens: 8_000,
+          claimCount: 40,
+          preferredProvider: 'auto'
+        },
+        createTestDeps()
+      );
+
+      expect(mockResolveReasoningModelRoute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestedProvider: 'vertex',
+          requestedModelId: 'gemini-3-flash-preview'
+        })
+      );
+      expect(plan.provider).toBe('vertex');
+    } finally {
+      delete process.env.GOOGLE_AI_API_KEY;
+    }
+  });
+
+  it('cross-model default yields to explicit operator pins', async () => {
+    process.env.GOOGLE_AI_API_KEY = 'test-key';
+    process.env.INGEST_PIN_PROVIDER_VALIDATION = 'openai';
+    process.env.INGEST_PIN_MODEL_VALIDATION = 'gpt-4o-mini';
+    try {
+      mockResolveReasoningModelRoute.mockResolvedValue({
+        model: Symbol('model'),
+        provider: 'openai',
+        modelId: 'gpt-4o-mini',
+        credentialSource: 'byok',
+        supportsGrounding: false,
+        routingSource: 'requested',
+        resolvedExplanation: 'operator pin'
+      });
+
+      const { planIngestionStage } = await import('../ingest/plan.js');
+      await planIngestionStage(
+        'validation',
+        { sourceTitle: 'Ethics', estimatedTokens: 8_000, preferredProvider: 'auto' },
+        createTestDeps()
+      );
+
+      expect(mockResolveReasoningModelRoute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestedProvider: 'openai',
+          requestedModelId: 'gpt-4o-mini'
+        })
+      );
+    } finally {
+      delete process.env.GOOGLE_AI_API_KEY;
+      delete process.env.INGEST_PIN_PROVIDER_VALIDATION;
+      delete process.env.INGEST_PIN_MODEL_VALIDATION;
+    }
+  });
+
   it('keeps embeddings on the fixed Vertex embedding pipeline', async () => {
     const { planIngestionStage } = await import('../ingest/plan.js');
     const plan = await planIngestionStage(
