@@ -20,6 +20,27 @@ export function knowledgeLlmModel(): string {
 
 export class LlmNotConfiguredError extends Error {}
 
+/**
+ * Hard per-request deadline for legacy (non-route) LLM calls. The route path
+ * (postOpenAiCompatibleChat) already aborts at 180s; without this the legacy fetch
+ * could hang on a wedged upstream connection forever and the whole ingest run with
+ * it — the job stays "running" with no progress and no error.
+ */
+export function connectLlmTimeoutMs(): number {
+  const raw = Number(process.env.CONNECT_LLM_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : 180_000;
+}
+
+/** Embedding requests are smaller; default to a tighter deadline (env-overridable). */
+export function connectEmbedTimeoutMs(): number {
+  const raw = Number(process.env.CONNECT_EMBED_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : 120_000;
+}
+
+function timeoutMessage(kind: string, ms: number): string {
+  return `${kind} request timed out after ${ms}ms`;
+}
+
 /** Single chat completion. `jsonMode` requests strict JSON output. */
 export async function generateChat(input: {
   system: string;
@@ -30,19 +51,29 @@ export async function generateChat(input: {
 }): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new LlmNotConfiguredError("OPENAI_API_KEY is not configured");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: input.model ?? knowledgeLlmModel(),
-      temperature: input.temperature ?? 0.1,
-      ...(input.jsonMode ? { response_format: { type: "json_object" } } : {}),
-      messages: [
-        { role: "system", content: input.system },
-        { role: "user", content: input.user },
-      ],
-    }),
-  });
+  const timeoutMs = connectLlmTimeoutMs();
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: input.model ?? knowledgeLlmModel(),
+        temperature: input.temperature ?? 0.1,
+        ...(input.jsonMode ? { response_format: { type: "json_object" } } : {}),
+        messages: [
+          { role: "system", content: input.system },
+          { role: "user", content: input.user },
+        ],
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+      throw new Error(timeoutMessage("LLM", timeoutMs));
+    }
+    throw e;
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`LLM request failed (HTTP ${res.status}). ${detail.slice(0, 160)}`.trim());
@@ -90,13 +121,23 @@ export async function knowledgeEmbed(texts: string[], model?: string): Promise<n
   const useModel = model?.trim() || embeddingModel();
   const out: number[][] = [];
   const BATCH = 96;
+  const timeoutMs = connectEmbedTimeoutMs();
   for (let i = 0; i < texts.length; i += BATCH) {
     const batch = texts.slice(i, i + BATCH);
-    const res = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: useModel, input: batch }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: useModel, input: batch }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (e) {
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+        throw new Error(timeoutMessage("Embedding", timeoutMs));
+      }
+      throw e;
+    }
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(`Embedding request failed (HTTP ${res.status}). ${detail.slice(0, 160)}`.trim());
