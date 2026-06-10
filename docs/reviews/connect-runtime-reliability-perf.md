@@ -167,7 +167,7 @@ neon.ts:6692) has **no cache and no dedupe**, so a hub load runs those aggregate
 **Fix shipped ✅ (index):** `knowledge_graph_units (workspace_id, validation_status)` —
 the validation GROUP BY and the triage FILTER counts are the heaviest of the six spine
 aggregates and previously had only `(workspace_id, created_at)` to work with
-(`migrations/057_connect_graph_hot_path_indexes.sql`, mirrored in the dev ensure block).
+(`migrations/058_connect_graph_hot_path_indexes.sql`, mirrored in the dev ensure block).
 
 **Proposed (not done):** (a) reuse the `knowledge_graph_stats_cache` plumbing (TTL +
 worker-side `invalidateConnectGraphStatsCache`, already called in the worker `finally`)
