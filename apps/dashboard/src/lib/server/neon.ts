@@ -6930,6 +6930,64 @@ export async function insertConnectClaimVersionsPostgres(params: {
   return n;
 }
 
+let claimJudgmentsSchemaEnsured = false;
+/** CREATE TABLE IF NOT EXISTS mirror of migrations/056_connect_claim_judgments.sql (dev safety). */
+async function ensureConnectClaimJudgmentsSchema(): Promise<void> {
+  if (claimJudgmentsSchemaEnsured) return;
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS connect_claim_judgments (
+      id              BIGSERIAL   PRIMARY KEY,
+      workspace_id    TEXT        NOT NULL,
+      unit_id         TEXT        NOT NULL,
+      verdict         TEXT        NOT NULL,
+      confidence      REAL,
+      note            TEXT,
+      judge_model     TEXT,
+      prompt_version  INT         NOT NULL,
+      judged_at       TIMESTAMPTZ NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_judgments_unit ON connect_claim_judgments (workspace_id, unit_id, judged_at DESC)`;
+  claimJudgmentsSchemaEnsured = true;
+}
+
+export type ConnectClaimJudgmentInsert = {
+  unitId: string;
+  verdict: string;
+  confidence: number | null;
+  note: string | null;
+  judgeModel: string | null;
+  promptVersion: number;
+  judgedAt: string;
+};
+
+/**
+ * EBV Layer 2: append entailment judgments (audit history — never updates prior rows,
+ * so a re-judged claim retains every verdict with its judge model + prompt version).
+ */
+export async function insertConnectClaimJudgmentsPostgres(params: {
+  workspaceId: string;
+  rows: ConnectClaimJudgmentInsert[];
+}): Promise<number> {
+  if (params.rows.length === 0) return 0;
+  await ensureConnectClaimJudgmentsSchema();
+  const sql = getSql();
+  let n = 0;
+  for (const r of params.rows) {
+    await sql`
+      INSERT INTO connect_claim_judgments
+        (workspace_id, unit_id, verdict, confidence, note, judge_model, prompt_version, judged_at)
+      VALUES
+        (${params.workspaceId}, ${r.unitId}, ${r.verdict}, ${r.confidence}, ${r.note},
+         ${r.judgeModel}, ${r.promptVersion}, ${r.judgedAt})
+    `;
+    n += 1;
+  }
+  return n;
+}
+
 /** EBV Layer 1: set verification state on the CURRENT version of each unit (post-validation). */
 export async function updateConnectClaimVersionStatesPostgres(params: {
   workspaceId: string;

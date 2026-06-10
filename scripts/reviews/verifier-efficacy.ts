@@ -17,6 +17,12 @@
  *                      validate planted claims MIXED among extracted units — realistic
  *                      batch composition; the cross-model vs same-model delta comes from
  *                      pairing validator families against the fixed extractor family.
+ *   --ebv              Stage 1.0d before/after: ALSO run the EBV Layer 1+2 path — quote
+ *                      retrieval (extractor family, mirrors the extraction evidence
+ *                      contract) → deterministic binding → span-scoped entailment
+ *                      (validator family) — and report both paths side by side with
+ *                      call/char cost counters. A coverage-gap abstention scores as
+ *                      "omitted" (never a catch); a structural no-bind scores as a flag.
  *
  * Usage (keys via env: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY|GEMINI_API_KEY):
  *   pnpm exec tsx scripts/reviews/verifier-efficacy.ts \
@@ -38,9 +44,19 @@ import {
   collectValidationVerdicts,
   scoreOutcomes,
   validateEfficacyFixture,
+  type ClaimVerdict,
   type EfficacyFixture,
   type EfficacyRunResult,
 } from "../../packages/connect-core/src/ingest/verifier-efficacy.js";
+import {
+  bindEvidenceSpan,
+  contentHash,
+  type EvidenceBinding,
+} from "../../packages/connect-core/src/ingest/evidence-binding.js";
+import {
+  judgeEntailment,
+  type UnitEntailment,
+} from "../../packages/connect-core/src/ingest/entailment.js";
 // Imported from contracts SOURCE (not the package subpath): tsx resolves this script's
 // chain under CJS conditions, and @restormel/contracts exports only types/import.
 import { PHILOSOPHY_DOMAIN_PACK } from "../../packages/contracts/src/connect.js";
@@ -165,6 +181,107 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
   };
 }
 
+/** Live-call cost counters, recorded per path so legacy vs EBV is apples-to-apples. */
+type GenStats = { calls: number; in_chars: number; out_chars: number };
+const newStats = (): GenStats => ({ calls: 0, in_chars: 0, out_chars: 0 });
+
+function withCounter(gen: ExtractionGenerate, stats: GenStats): ExtractionGenerate {
+  return async (args) => {
+    stats.calls += 1;
+    stats.in_chars += args.system.length + args.user.length;
+    const out = await gen(args);
+    stats.out_chars += out.length;
+    return out;
+  };
+}
+
+const EVIDENCE_RETRIEVAL_SYSTEM =
+  `You are an evidence retriever. For each claim, copy the exact sentence(s) from the ` +
+  `SOURCE TEXT that support it — character-for-character, no paraphrase, no abbreviation. ` +
+  `If nothing in the source supports the claim, return an empty string for it. ` +
+  `Return STRICT JSON only:\n` +
+  `{ "results": [{ "ref": "<ref>", "quote": "<verbatim quote or empty string>" }] }\n` +
+  `Include one result for every listed ref.`;
+
+function parseQuoteResponse(raw: string): Map<string, string> {
+  const out = new Map<string, string>();
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    const s = raw.indexOf("{");
+    const e = raw.lastIndexOf("}");
+    if (s < 0 || e <= s) return out;
+    try {
+      obj = JSON.parse(raw.slice(s, e + 1));
+    } catch {
+      return out;
+    }
+  }
+  const results = Array.isArray((obj as Record<string, unknown>)?.results)
+    ? ((obj as Record<string, unknown>).results as unknown[])
+    : [];
+  for (const r of results) {
+    if (!r || typeof r !== "object") continue;
+    const rec = r as Record<string, unknown>;
+    if (typeof rec.ref === "string" && rec.ref.trim()) {
+      out.set(rec.ref.trim(), typeof rec.quote === "string" ? rec.quote : "");
+    }
+  }
+  return out;
+}
+
+/**
+ * EBV step 1+Layer 1 (once per extractor — deterministic given the quotes): retrieve a
+ * verbatim supporting quote for every fixture claim from its CITED source (mirrors the
+ * extraction contract's mandatory evidence field), then bind deterministically.
+ * Misattributed claims structurally fail here: their quote cannot bind to the cited source.
+ */
+async function retrieveAndBindEvidence(args: {
+  fixture: EfficacyFixture;
+  extractorGen: ExtractionGenerate;
+}): Promise<Map<string, EvidenceBinding>> {
+  const bindings = new Map<string, EvidenceBinding>();
+  for (const src of args.fixture.sources) {
+    const claims = args.fixture.claims.filter((c) => c.source_id === src.id);
+    if (claims.length === 0) continue;
+    const sourceHash = await contentHash(src.text);
+    const BATCH = 10;
+    for (let off = 0; off < claims.length; off += BATCH) {
+      const slice = claims.slice(off, off + BATCH);
+      const user =
+        `SOURCE TEXT:\n${src.text}\n\nCLAIMS:\n` +
+        slice.map((c) => `- ${c.id}: ${c.text}`).join("\n");
+      const raw = await args.extractorGen({ system: EVIDENCE_RETRIEVAL_SYSTEM, user });
+      const quotes = parseQuoteResponse(raw);
+      for (const c of slice) {
+        bindings.set(
+          c.id,
+          bindEvidenceSpan({
+            quote: quotes.get(c.id) ?? "",
+            sourceText: src.text,
+            sourceHash,
+          }),
+        );
+      }
+    }
+  }
+  return bindings;
+}
+
+/**
+ * Map an entailment outcome onto the harness verdict scale. Strict-recall honesty:
+ * a coverage-gap abstention is "omitted" (never a catch); a structural no-bind or a
+ * deliberate abstention is an actively-returned flag ("weak"-equivalent).
+ */
+function ebvToClaimVerdict(r: UnitEntailment): ClaimVerdict {
+  if (r.verdict === "entailed") {
+    return r.confidence !== null && r.confidence < 0.5 ? "weak" : "ok";
+  }
+  if (r.verdict === "not_entailed") return "unsupported";
+  return r.note?.startsWith("coverage_gap") ? "omitted" : "weak";
+}
+
 function hydratePack() {
   return {
     id: "00000000-0000-4000-8000-000000000000",
@@ -194,6 +311,7 @@ type Args = {
   extractor: ModelSpec;
   runs: number;
   withExtraction: boolean;
+  ebv: boolean;
   fixturePath: string;
   out: string;
   maxExtractedUnits: number;
@@ -206,6 +324,7 @@ function parseArgs(argv: string[]): Args {
     extractor: parseSpec("openai"),
     runs: 3,
     withExtraction: false,
+    ebv: false,
     fixturePath: path.join(
       here,
       "../../packages/connect-core/src/ingest/golden/fixtures/verifier-efficacy-v1.json",
@@ -219,6 +338,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--extractor") args.extractor = parseSpec(argv[++i]);
     else if (a === "--runs") args.runs = Math.max(1, Number(argv[++i]) || 1);
     else if (a === "--with-extraction") args.withExtraction = true;
+    else if (a === "--ebv") args.ebv = true;
     else if (a === "--fixture") args.fixturePath = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--max-extracted") args.maxExtractedUnits = Math.max(0, Number(argv[++i]) || 0);
@@ -256,20 +376,44 @@ async function main() {
     }
   }
 
+  // EBV (Stage 1.0d): quote retrieval + deterministic binding, once per extractor —
+  // the bindings are shared across validators/runs (Layer 1 is deterministic).
+  let ebvBindings: Map<string, EvidenceBinding> | null = null;
+  const ebvRetrievalStats = newStats();
+  if (args.ebv) {
+    ebvBindings = await retrieveAndBindEvidence({
+      fixture,
+      extractorGen: withCounter(makeGenerate(args.extractor), ebvRetrievalStats),
+    });
+    const counts = { bound: 0, unbound: 0, no_evidence: 0 };
+    for (const b of ebvBindings.values()) counts[b.status] += 1;
+    console.log(
+      `[ebv-bind] ${counts.bound} bound, ${counts.unbound} unbound, ${counts.no_evidence} no-quote ` +
+        `(retrieval via ${args.extractor.family}:${args.extractor.model}, ${ebvRetrievalStats.calls} call(s))`,
+    );
+  }
+
   const pairings: {
     validator: ModelSpec;
     relationship: "cross_model" | "same_model" | "claims_only";
     runs: EfficacyRunResult[];
+    legacyCost: GenStats;
+    ebvRuns: EfficacyRunResult[];
+    ebvCost: GenStats;
   }[] = [];
 
   for (const validator of args.validators) {
-    const validatorGen = makeGenerate(validator);
-    const relationship = !args.withExtraction
+    const relationship = !args.withExtraction && !args.ebv
       ? "claims_only"
       : validator.family === args.extractor.family
         ? "same_model"
         : "cross_model";
+    const legacyCost = newStats();
+    const ebvCost = newStats();
+    const validatorGen = withCounter(makeGenerate(validator), legacyCost);
+    const ebvValidatorGen = withCounter(makeGenerate(validator), ebvCost);
     const runs: EfficacyRunResult[] = [];
+    const ebvRuns: EfficacyRunResult[] = [];
     for (let run = 0; run < args.runs; run++) {
       const verdictsAll = new Map<string, "ok" | "weak" | "unsupported" | "omitted">();
       for (const src of fixture.sources) {
@@ -294,25 +438,75 @@ async function main() {
           `bad-recall(strict)=${pct(scored.all_bad.recall_strict)} false-flag=${pct(scored.supported.false_flag_rate)}` +
           (scored.unscored.length ? ` UNSCORED=${scored.unscored.length}` : ""),
       );
+
+      if (args.ebv && ebvBindings) {
+        const inputs = fixture.claims.map((c) => {
+          const b = ebvBindings!.get(c.id);
+          return {
+            ref: c.id,
+            claim: c.text,
+            spans: b?.status === "bound" ? [b.span.quote] : [],
+          };
+        });
+        const { results } = await judgeEntailment({
+          inputs,
+          generate: ebvValidatorGen,
+          modelId: `${validator.family}:${validator.model}`,
+        });
+        const ebvVerdicts = new Map<string, ClaimVerdict>();
+        for (const r of results) ebvVerdicts.set(r.ref, ebvToClaimVerdict(r));
+        const ebvScored = scoreOutcomes(fixture.claims, ebvVerdicts);
+        ebvRuns.push(ebvScored);
+        console.log(
+          `[run ${run + 1}/${args.runs}] ${validator.family}:${validator.model} (${relationship}) EBV ` +
+            `bad-recall(strict)=${pct(ebvScored.all_bad.recall_strict)} false-flag=${pct(ebvScored.supported.false_flag_rate)}`,
+        );
+      }
     }
-    pairings.push({ validator, relationship, runs });
+    pairings.push({ validator, relationship, runs, legacyCost, ebvRuns, ebvCost });
   }
 
+  const bindingCounts = (() => {
+    if (!ebvBindings) return null;
+    const counts = { bound: 0, unbound: 0, no_evidence: 0 };
+    for (const b of ebvBindings.values()) counts[b.status] += 1;
+    return counts;
+  })();
+
   const report = {
-    schema_version: 1,
+    schema_version: args.ebv ? 2 : 1,
     generated_at: new Date().toISOString(),
     fixture: { path: path.relative(process.cwd(), args.fixturePath), version: fixture.version, claims: fixture.claims.length },
     config: {
       mode: args.withExtraction ? "with-extraction" : "claims-only",
-      extractor: args.withExtraction ? `${args.extractor.family}:${args.extractor.model}` : null,
+      ebv: args.ebv,
+      extractor: args.withExtraction || args.ebv ? `${args.extractor.family}:${args.extractor.model}` : null,
       runs: args.runs,
       validation_batch_size_env: process.env.CONNECT_VALIDATION_BATCH_SIZE ?? null,
     },
+    ...(args.ebv
+      ? {
+          ebv_binding: {
+            counts: bindingCounts,
+            retrieval_cost: ebvRetrievalStats,
+          },
+        }
+      : {}),
     pairings: pairings.map((p) => ({
       validator: `${p.validator.family}:${p.validator.model}`,
       relationship: p.relationship,
       aggregated: aggregateRuns(p.runs),
       runs: p.runs,
+      ...(args.ebv
+        ? {
+            cost_legacy: p.legacyCost,
+            ebv: {
+              aggregated: aggregateRuns(p.ebvRuns),
+              runs: p.ebvRuns,
+              cost: p.ebvCost,
+            },
+          }
+        : {}),
     })),
     cross_model_delta: (() => {
       const cross = pairings.filter((p) => p.relationship === "cross_model");
@@ -344,6 +538,31 @@ async function main() {
     console.log(
       `cross-model − same-model (all-bad strict recall): ${pct(report.cross_model_delta.all_bad_recall_strict_cross_minus_same)}`,
     );
+  }
+  if (args.ebv) {
+    console.log(`\n══ EBV (Layer 1 bind + span-scoped entailment) — before/after vs legacy ══`);
+    if (bindingCounts) {
+      console.log(
+        `bindings: ${bindingCounts.bound} bound, ${bindingCounts.unbound} unbound, ` +
+          `${bindingCounts.no_evidence} no-quote (retrieval: ${ebvRetrievalStats.calls} call(s), ` +
+          `${Math.round(ebvRetrievalStats.in_chars / 1000)}k chars in)`,
+      );
+    }
+    for (const p of pairings) {
+      const a = aggregateRuns(p.ebvRuns);
+      console.log(
+        `${`${p.validator.family}:${p.validator.model}`.padEnd(40)} ${p.relationship.padEnd(12)} EBV ` +
+          `fabricated=${pct(a.tiers.fabricated.recall_strict.mean)}±${pct(a.tiers.fabricated.recall_strict.stddev)} ` +
+          `overstated=${pct(a.tiers.overstated.recall_strict.mean)}±${pct(a.tiers.overstated.recall_strict.stddev)} ` +
+          `misattributed=${pct(a.tiers.misattributed.recall_strict.mean)}±${pct(a.tiers.misattributed.recall_strict.stddev)} ` +
+          `false-flag=${pct(a.supported_false_flag_rate.mean)}`,
+      );
+      console.log(
+        `${" ".repeat(40)} cost/run: legacy ${Math.round(p.legacyCost.in_chars / args.runs / 1000)}k chars in ` +
+          `(${(p.legacyCost.calls / args.runs).toFixed(1)} calls) vs EBV ${Math.round(p.ebvCost.in_chars / args.runs / 1000)}k chars in ` +
+          `(${(p.ebvCost.calls / args.runs).toFixed(1)} calls)`,
+      );
+    }
   }
   console.log(`Report written to ${path.relative(process.cwd(), args.out)}`);
 }

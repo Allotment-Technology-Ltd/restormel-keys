@@ -19,6 +19,12 @@ export type ConnectQualityPresetConfig = {
   requirePreviewOnPackChange: boolean;
   /** Warn when validation route would match extraction (cross-model). */
   requireCrossModelValidation: boolean;
+  /**
+   * EBV Layer 2: entailment samples per claim (k-sample self-consistency; disagreement
+   * abstains → review). 1 = single sample; high-stakes packs opt up via
+   * CONNECT_ENTAILMENT_K (see readEntailmentKForPreset).
+   */
+  entailmentK: number;
 };
 
 const STARTER: ConnectQualityPresetConfig = {
@@ -28,6 +34,7 @@ const STARTER: ConnectQualityPresetConfig = {
   minStopAfterStage: null,
   requirePreviewOnPackChange: false,
   requireCrossModelValidation: false,
+  entailmentK: 1,
 };
 
 const PRODUCTION: ConnectQualityPresetConfig = {
@@ -37,7 +44,15 @@ const PRODUCTION: ConnectQualityPresetConfig = {
   minStopAfterStage: "remediating",
   requirePreviewOnPackChange: true,
   requireCrossModelValidation: true,
+  entailmentK: 1,
 };
+
+/** Env override for high-stakes runs (bounded 1–5); falls back to the preset's k. */
+export function readEntailmentKForPreset(config: ConnectQualityPresetConfig): number {
+  const raw = Number(process.env.CONNECT_ENTAILMENT_K ?? config.entailmentK);
+  if (!Number.isFinite(raw)) return config.entailmentK;
+  return Math.min(Math.max(Math.floor(raw), 1), 5);
+}
 
 export function resolveQualityPreset(pack: ConnectDomainPack | null | undefined): ConnectQualityPresetConfig {
   const raw = pack?.quality_preset;

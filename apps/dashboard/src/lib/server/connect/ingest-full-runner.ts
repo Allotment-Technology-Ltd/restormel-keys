@@ -10,20 +10,27 @@ import { provenancePreviewText } from "$lib/server/connect/source-document-prove
 import {
   chunkDocument,
   contentHash,
+  entailmentToLegacyStatus,
   extractGraph,
   evaluateExtractionGate,
   groupUnits,
+  judgeEntailment,
   shouldRunStage,
   resolveQualityPreset,
+  readEntailmentKForPreset,
   readMaxChunksForPreset,
   effectiveStopAfterStage,
+  ENTAILMENT_BATCH_SIZE,
+  type EntailmentInput,
   type EvidenceBinding,
   type ExtractionGenerate,
   type EmbeddingPort,
   type GraphIngestContext,
+  type UnitEntailment,
 } from "@restormel/connect-core";
 import {
   buildEvidenceRows,
+  buildLayer2StateRows,
   buildVerificationStateRows,
   type EvidenceRow,
 } from "$lib/server/connect/evidence-persist";
@@ -51,6 +58,16 @@ import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flag
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
 
 export class IngestConfigError extends Error {}
+
+/**
+ * EBV Layer 2 (Stage 1.0d) span-scoped entailment is the DEFAULT validation path.
+ * The legacy prefix-batch validator stays available for ONE release for comparison
+ * runs via CONNECT_LEGACY_VALIDATION=1. Removal condition: delete the legacy branch
+ * once the 1.0a′ post-EBV benchmark snapshot is committed and its bars signed off.
+ */
+function useLegacyValidation(): boolean {
+  return process.env.CONNECT_LEGACY_VALIDATION === "1";
+}
 
 const SAFE_TABLE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const FULL_STAGE_HEARTBEAT_MS = 20_000;
@@ -159,6 +176,8 @@ export async function runFullExtraction(args: {
   generates: StageGenerates;
   embed?: EmbeddingPort;
   reporter?: ConnectIngestProgressReporter;
+  /** Resolved validation-route model id, recorded with every entailment verdict. */
+  validationModelId?: string | null;
 }): Promise<{
   sources: number;
   units: number;
@@ -371,42 +390,122 @@ export async function runFullExtraction(args: {
         Math.max(1, unitInputs.length),
       );
       let validationResults: UnitValidation[] | null = null;
+      // EBV Layer 2: abstained claims route to the review queue, never remediation.
+      let abstainedIds = new Set<string>();
       try {
-        const batches = buildValidationBatchInputs(unitInputs);
-        await reporter?.log(
-          "VALIDATE",
-          `Checking ${unitInputs.length} idea(s) against the source in ${batches.length} batch(es) — may take a few minutes`,
-        );
-        const merged: UnitValidation[] = [];
-        let validateDone = 0;
-        const stopHeartbeat = startStageHeartbeat(
-          reporter,
-          () =>
-            `Still validating ${title} — ${validateDone}/${unitInputs.length} idea(s) checked`,
-        );
-        try {
-          for (let bi = 0; bi < batches.length; bi++) {
-            const { batchUnits, refToUnitId } = batches[bi]!;
-            const parsed = await validateUnitsBatch({
-              units: batchUnits,
-              sourceText: src.text,
-              pack,
-              generate: args.generates.validation,
-              qualityPreset: preset,
-              graphContext,
-            });
-            merged.push(...remapValidationBatchResults(parsed, refToUnitId));
-            validateDone += batchUnits.length;
-            await reporter?.tick(
-              "validating",
-              `Validated batch ${bi + 1}/${batches.length} · ${validateDone}/${unitInputs.length} idea(s)`,
-              batchUnits.length,
+        if (useLegacyValidation()) {
+          const batches = buildValidationBatchInputs(unitInputs);
+          await reporter?.log(
+            "VALIDATE",
+            `LEGACY validator (CONNECT_LEGACY_VALIDATION=1): checking ${unitInputs.length} idea(s) in ${batches.length} batch(es)`,
+          );
+          const merged: UnitValidation[] = [];
+          let validateDone = 0;
+          const stopHeartbeat = startStageHeartbeat(
+            reporter,
+            () =>
+              `Still validating ${title} — ${validateDone}/${unitInputs.length} idea(s) checked`,
+          );
+          try {
+            for (let bi = 0; bi < batches.length; bi++) {
+              const { batchUnits, refToUnitId } = batches[bi]!;
+              const parsed = await validateUnitsBatch({
+                units: batchUnits,
+                sourceText: src.text,
+                pack,
+                generate: args.generates.validation,
+                qualityPreset: preset,
+                graphContext,
+              });
+              merged.push(...remapValidationBatchResults(parsed, refToUnitId));
+              validateDone += batchUnits.length;
+              await reporter?.tick(
+                "validating",
+                `Validated batch ${bi + 1}/${batches.length} · ${validateDone}/${unitInputs.length} idea(s)`,
+                batchUnits.length,
+              );
+            }
+          } finally {
+            stopHeartbeat();
+          }
+          validationResults = finalizeValidationCoverage(unitInputs, merged);
+          // EBV: compose verdicts with Layer-1 bindings — never "supported" without a span.
+          const stateRows = buildVerificationStateRows({
+            verdicts: validationResults.map((r) => ({ unitId: r.ref, status: r.status })),
+            bindingByUnitId,
+          });
+          const st = await writer.setVerificationStates(stateRows.states);
+          await reporter?.log(
+            "VALIDATE",
+            `Verification states: ${stateRows.counts.supported} supported, ${stateRows.counts.inferred} inferred, ` +
+              `${stateRows.counts.unverified} unverified` +
+              (st.missed > 0 ? ` — ${st.missed} write(s) not persisted (store schema)` : ""),
+          );
+        } else {
+          // EBV Layer 2 (Stage 1.0d): per claim, judge ONLY "does its bound span entail
+          // it" — no source prefix. Unbound claims abstain locally (review) at no cost.
+          const inputs: EntailmentInput[] = sourceUnits.map((u) => {
+            const b = bindingByUnitId.get(u.id);
+            return {
+              ref: u.id,
+              claim: u.text,
+              spans: b?.status === "bound" ? [b.span.quote] : [],
+            };
+          });
+          const kSamples = readEntailmentKForPreset(quality);
+          await reporter?.log(
+            "VALIDATE",
+            `Span-scoped entailment: judging ${inputs.length} claim(s) against their bound evidence` +
+              (kSamples > 1 ? ` (k=${kSamples} self-consistency)` : ""),
+          );
+          const judged: UnitEntailment[] = [];
+          let judgeMeta: Awaited<ReturnType<typeof judgeEntailment>>["meta"] | null = null;
+          let entailDone = 0;
+          const stopHeartbeat = startStageHeartbeat(
+            reporter,
+            () => `Still validating ${title} — ${entailDone}/${inputs.length} claim(s) judged`,
+          );
+          try {
+            for (let off = 0; off < inputs.length; off += ENTAILMENT_BATCH_SIZE) {
+              const slice = inputs.slice(off, off + ENTAILMENT_BATCH_SIZE);
+              const res = await judgeEntailment({
+                inputs: slice,
+                generate: args.generates.validation,
+                kSamples,
+                modelId: args.validationModelId ?? null,
+              });
+              judged.push(...res.results);
+              judgeMeta = judgeMeta ?? res.meta;
+              entailDone += slice.length;
+              await reporter?.tick(
+                "validating",
+                `Judged ${entailDone}/${inputs.length} claim(s)`,
+                slice.length,
+              );
+            }
+          } finally {
+            stopHeartbeat();
+          }
+          validationResults = judged.map((r) => ({
+            ref: r.ref,
+            status: entailmentToLegacyStatus(r),
+            ...(r.note ? { note: r.note } : {}),
+          }));
+          if (judgeMeta) {
+            const l2 = buildLayer2StateRows({ results: judged, bindingByUnitId, meta: judgeMeta });
+            abstainedIds = new Set(l2.abstained);
+            const st = await writer.setVerificationStates(l2.states);
+            const audit = await writer.recordJudgments(l2.judgments);
+            await reporter?.log(
+              "VALIDATE",
+              `Verification states: ${l2.counts.supported} supported, ${l2.counts.inferred} inferred, ` +
+                `${l2.counts.unverified} unverified` +
+                (abstainedIds.size > 0 ? ` (${abstainedIds.size} abstained → review)` : "") +
+                (st.missed > 0 ? ` — ${st.missed} state write(s) not persisted` : "") +
+                (audit.missed > 0 ? ` — ${audit.missed} judgment write(s) not persisted` : ""),
             );
           }
-        } finally {
-          stopHeartbeat();
         }
-        validationResults = finalizeValidationCoverage(unitInputs, merged);
         for (const r of validationResults) {
           if (r.status === "ok") validationBreakdown.ok += 1;
           else if (r.status === "weak") validationBreakdown.weak += 1;
@@ -414,18 +513,6 @@ export async function runFullExtraction(args: {
         }
         totalValidated += await writer.setValidation(
           validationResults.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
-        );
-        // EBV: compose verdicts with Layer-1 bindings — never "supported" without a span.
-        const stateRows = buildVerificationStateRows({
-          verdicts: validationResults.map((r) => ({ unitId: r.ref, status: r.status })),
-          bindingByUnitId,
-        });
-        const st = await writer.setVerificationStates(stateRows.states);
-        await reporter?.log(
-          "VALIDATE",
-          `Verification states: ${stateRows.counts.supported} supported, ${stateRows.counts.inferred} inferred, ` +
-            `${stateRows.counts.unverified} unverified` +
-            (st.missed > 0 ? ` — ${st.missed} write(s) not persisted (store schema)` : ""),
         );
         await reporter?.completeStage(
           "validating",
@@ -438,8 +525,11 @@ export async function runFullExtraction(args: {
       }
 
       if (validationResults && shouldRunStage("remediating", stop)) {
+        // Abstentions are review-queue items (unverified), NOT remediation inputs —
+        // remediating an abstained claim would launder uncertainty into repair/drop.
+        const remediable = validationResults.filter((r) => !abstainedIds.has(r.ref));
         const pass = await runGraphRemediationPass({
-          validationResults,
+          validationResults: remediable,
           textById,
           sourceText: src.text,
           pack,
@@ -447,6 +537,13 @@ export async function runFullExtraction(args: {
           validationGenerate: args.generates.validation,
           remediationGenerate: args.generates.remediation,
           reporter,
+          ebv: useLegacyValidation()
+            ? undefined
+            : {
+                bindingByUnitId,
+                kSamples: readEntailmentKForPreset(quality),
+                modelId: args.validationModelId ?? null,
+              },
         });
         for (const id of pass.repairedUnitIds) {
           const text = textById.get(id);
