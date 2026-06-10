@@ -172,9 +172,30 @@ export {
 
 export {
   deriveLayer1State,
+  deriveLayer2State,
+  entailmentToLegacyStatus,
   type ClaimVerificationState,
   type Layer1StateInput,
+  type Layer2StateInput,
 } from "./ingest/verification-state.js";
+
+export {
+  ENTAILMENT_PROMPT_VERSION,
+  ENTAILMENT_LOW_CONFIDENCE,
+  ENTAILMENT_BATCH_SIZE,
+  buildEntailmentSystemPrompt,
+  buildEntailmentUserPrompt,
+  buildEntailmentBatchInputs,
+  remapEntailmentBatchResults,
+  finalizeEntailmentCoverage,
+  parseEntailmentResponse,
+  resolveSelfConsistency,
+  judgeEntailment,
+  type EntailmentVerdict,
+  type EntailmentInput,
+  type UnitEntailment,
+  type EntailmentJudgeMeta,
+} from "./ingest/entailment.js";
 
 export { extractLinks, parseSitemapUrls, sitemapUrlFor } from "./ingest/crawl.js";
 
@@ -228,6 +249,7 @@ export {
   CONNECT_QUALITY_PRESET_DEFAULT,
   resolveQualityPreset,
   readMaxChunksForPreset,
+  readEntailmentKForPreset,
   effectiveStopAfterStage,
   starterPresetWarning,
   type ConnectQualityPreset,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildEvidenceRows, buildVerificationStateRows } from "./evidence-persist";
+import {
+  buildEvidenceRows,
+  buildLayer2StateRows,
+  buildVerificationStateRows,
+} from "./evidence-persist";
+import type { EntailmentJudgeMeta } from "@restormel/connect-core";
 
 const SOURCE =
   "Bentham introduced a felicific calculus. Every person's happiness counts equally in the aggregate.";
@@ -62,5 +67,58 @@ describe("buildVerificationStateRows", () => {
     expect(counts.inferred).toBe(2);
     expect(counts.unverified).toBe(1);
     expect(states[0].judgedBy).toBe("openai:gpt-4o-mini");
+  });
+});
+
+describe("buildLayer2StateRows", () => {
+  const META: EntailmentJudgeMeta = {
+    model_id: "together:llama-3.3-70b",
+    prompt_version: 1,
+    judged_at: "2026-06-10T12:00:00.000Z",
+    samples: 1,
+  };
+
+  it("composes entailment verdicts with bindings and emits audit judgments", () => {
+    const { bindingByUnitId } = buildEvidenceRows({
+      extractedUnits: [
+        { id: "u1", evidence: "Every person's happiness counts equally in the aggregate." },
+        { id: "u2", evidence: "nowhere quote" },
+      ],
+      storedUnits: [
+        { id: "kg:aaa", localId: "u1", text: "t" },
+        { id: "kg:bbb", localId: "u2", text: "t" },
+      ],
+      sourceText: SOURCE,
+      sourceHash: HASH,
+    });
+    const out = buildLayer2StateRows({
+      results: [
+        { ref: "kg:aaa", verdict: "entailed", confidence: 0.9 },
+        { ref: "kg:bbb", verdict: "entailed", confidence: 0.9 }, // unbound → inferred
+        { ref: "kg:aaa", verdict: "entailed", confidence: 0.2 }, // low conf → unverified
+        { ref: "kg:bbb", verdict: "not_entailed", confidence: 0.8 },
+        { ref: "kg:aaa", verdict: "abstain", confidence: null, note: "coverage_gap" },
+      ],
+      bindingByUnitId,
+      meta: META,
+    });
+    expect(out.states.map((s) => s.state)).toEqual([
+      "supported",
+      "inferred",
+      "unverified",
+      "unverified",
+      "unverified",
+    ]);
+    expect(out.abstained).toEqual(["kg:aaa"]);
+    expect(out.states[0]!.judgedBy).toBe("together:llama-3.3-70b#pv1");
+    expect(out.judgments).toHaveLength(5);
+    expect(out.judgments[0]).toMatchObject({
+      unitId: "kg:aaa",
+      verdict: "entailed",
+      judgeModel: "together:llama-3.3-70b",
+      promptVersion: 1,
+      judgedAt: META.judged_at,
+    });
+    expect(out.judgments[4]).toMatchObject({ verdict: "abstain", note: "coverage_gap" });
   });
 });

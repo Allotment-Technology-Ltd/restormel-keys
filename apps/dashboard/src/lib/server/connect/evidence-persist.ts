@@ -6,9 +6,12 @@
 import {
   bindEvidenceSpan,
   deriveLayer1State,
+  deriveLayer2State,
   type ClaimVerificationState,
+  type EntailmentJudgeMeta,
   type EvidenceBinding,
   type ExtractedUnit,
+  type UnitEntailment,
   type UnitValidationStatus,
 } from "@restormel/connect-core";
 
@@ -76,4 +79,65 @@ export function buildVerificationStateRows(args: {
     return { unitId: v.unitId, state, judgedBy: args.judgedBy ?? null };
   });
   return { states, counts };
+}
+
+export type JudgmentRow = {
+  unitId: string;
+  verdict: UnitEntailment["verdict"];
+  confidence: number | null;
+  note: string | null;
+  judgeModel: string | null;
+  promptVersion: number;
+  judgedAt: string;
+};
+
+/**
+ * EBV Layer 2 (Stage 1.0d): compose span-scoped entailment verdicts with Layer-1
+ * bindings into verification states, plus append-only judgment rows (audit history —
+ * a re-judged claim keeps every prior verdict). `supported` requires bound AND entailed.
+ */
+export function buildLayer2StateRows(args: {
+  results: UnitEntailment[];
+  bindingByUnitId: Map<string, EvidenceBinding>;
+  meta: EntailmentJudgeMeta;
+}): {
+  states: StateRow[];
+  judgments: JudgmentRow[];
+  counts: Record<ClaimVerificationState, number>;
+  abstained: string[];
+} {
+  const counts: Record<ClaimVerificationState, number> = {
+    supported: 0,
+    inferred: 0,
+    unverified: 0,
+    contradicted: 0,
+    excluded: 0,
+  };
+  const judgedBy = `${args.meta.model_id ?? "unknown"}#pv${args.meta.prompt_version}`;
+  const abstained: string[] = [];
+  const states: StateRow[] = [];
+  const judgments: JudgmentRow[] = [];
+  for (const r of args.results) {
+    const binding =
+      args.bindingByUnitId.get(r.ref) ??
+      ({ status: "unbound", reason: "quote_not_found" } as EvidenceBinding);
+    const state = deriveLayer2State({
+      binding,
+      verdict: r.verdict,
+      confidence: r.confidence,
+    });
+    counts[state] += 1;
+    if (r.verdict === "abstain") abstained.push(r.ref);
+    states.push({ unitId: r.ref, state, judgedBy });
+    judgments.push({
+      unitId: r.ref,
+      verdict: r.verdict,
+      confidence: r.confidence,
+      note: r.note ?? null,
+      judgeModel: args.meta.model_id,
+      promptVersion: args.meta.prompt_version,
+      judgedAt: args.meta.judged_at,
+    });
+  }
+  return { states, judgments, counts, abstained };
 }

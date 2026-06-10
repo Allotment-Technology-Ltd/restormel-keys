@@ -3,13 +3,16 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import {
+  judgeEntailment,
   remediateUnits,
   resolveQualityPreset,
   validateUnits,
+  type EvidenceBinding,
   type ExtractionGenerate,
   type EmbeddingPort,
   type UnitValidation,
 } from "@restormel/connect-core";
+import { buildLayer2StateRows } from "$lib/server/connect/evidence-persist";
 import {
   buildRemediationBatchInputs,
   remediateUnitsBatch,
@@ -88,6 +91,16 @@ export async function runGraphRemediationPass(args: {
    * defaults per level when omitted.
    */
   strictness?: { level: "conservative" | "balanced" | "strict"; threshold?: number };
+  /**
+   * EBV Layer 2 (Stage 1.0d): when set, repaired text is re-judged span-scoped against
+   * its bound evidence before it can return to supported — repair re-binds, it never
+   * re-enters the graph on the repair model's say-so alone.
+   */
+  ebv?: {
+    bindingByUnitId: Map<string, EvidenceBinding>;
+    kSamples: number;
+    modelId: string | null;
+  };
 }): Promise<{
   repaired: number;
   dropped: number;
@@ -224,6 +237,37 @@ export async function runGraphRemediationPass(args: {
       await writer.setValidation(
         revalidated.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
       );
+
+      if (args.ebv) {
+        // EBV re-bind: the repaired claim must be entailed by its ORIGINAL bound span
+        // before its verification state can say supported again. A repair the evidence
+        // no longer covers lands in review (unverified), not back in the graph as ok.
+        const { results, meta } = await judgeEntailment({
+          inputs: repairedIds.map((u) => {
+            const b = args.ebv!.bindingByUnitId.get(u.id);
+            return {
+              ref: u.id,
+              claim: u.text,
+              spans: b?.status === "bound" ? [b.span.quote] : [],
+            };
+          }),
+          generate: args.validationGenerate,
+          kSamples: args.ebv.kSamples,
+          modelId: args.ebv.modelId,
+        });
+        const l2 = buildLayer2StateRows({
+          results,
+          bindingByUnitId: args.ebv.bindingByUnitId,
+          meta,
+        });
+        await writer.setVerificationStates(l2.states);
+        await writer.recordJudgments(l2.judgments);
+        await reporter?.log(
+          "REMEDIATE",
+          `Re-judged ${results.length} repaired claim(s) against bound evidence: ` +
+            `${l2.counts.supported} supported, ${l2.counts.inferred} inferred, ${l2.counts.unverified} unverified`,
+        );
+      }
 
       if (args.embed) {
         const vectors = await args.embed(repairedIds.map((u) => u.text));

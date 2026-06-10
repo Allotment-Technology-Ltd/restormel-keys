@@ -10,6 +10,7 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ConnectGraphTargetRecord } from "$lib/server/neon";
 import {
   deleteUnitPostgres,
+  insertConnectClaimJudgmentsPostgres,
   insertConnectClaimVersionsPostgres,
   insertConnectGraphSourcePostgres,
   storeExtractedGraphPostgres,
@@ -59,6 +60,21 @@ export interface GraphWriter {
   /** EBV: persist per-unit verification state (supported|inferred|unverified|…). */
   setVerificationStates(
     states: { unitId: string; state: ClaimVerificationState; judgedBy?: string | null }[],
+  ): Promise<{ persisted: number; missed: number }>;
+  /**
+   * EBV Layer 2: append entailment judgments (audit history — every verdict retained
+   * with judge model + prompt version + timestamp; re-judging never overwrites).
+   */
+  recordJudgments(
+    rows: {
+      unitId: string;
+      verdict: string;
+      confidence: number | null;
+      note: string | null;
+      judgeModel: string | null;
+      promptVersion: number;
+      judgedAt: string;
+    }[],
   ): Promise<{ persisted: number; missed: number }>;
   updateUnitText(unitId: string, text: string): Promise<void>;
   deleteUnit(unitId: string): Promise<void>;
@@ -161,6 +177,24 @@ class PostgresGraphWriter implements GraphWriter {
       states,
     });
     return { persisted, missed: states.length - persisted };
+  }
+
+  async recordJudgments(
+    rows: {
+      unitId: string;
+      verdict: string;
+      confidence: number | null;
+      note: string | null;
+      judgeModel: string | null;
+      promptVersion: number;
+      judgedAt: string;
+    }[],
+  ) {
+    const persisted = await insertConnectClaimJudgmentsPostgres({
+      workspaceId: this.workspaceId,
+      rows,
+    });
+    return { persisted, missed: rows.length - persisted };
   }
 
   updateUnitText(unitId: string, text: string) {
@@ -495,6 +529,54 @@ class SurrealGraphWriter implements GraphWriter {
       console.warn(
         `[connect-graph-writer] ${missed}/${states.length} verification-state write(s) did NOT persist on table "${unitTable}" ` +
           `(sample id=${firstMiss?.unitId}, read-back=${JSON.stringify(firstMiss?.got)}).`,
+      );
+    }
+    return { persisted, missed };
+  }
+
+  async recordJudgments(
+    rows: {
+      unitId: string;
+      verdict: string;
+      confidence: number | null;
+      note: string | null;
+      judgeModel: string | null;
+      promptVersion: number;
+      judgedAt: string;
+    }[],
+  ) {
+    if (rows.length === 0) return { persisted: 0, missed: 0 };
+    // Append-only audit table alongside the pack's unit table. CREATE (never UPDATE)
+    // so re-judging retains every prior verdict.
+    let persisted = 0;
+    let missed = 0;
+    let firstErr: string | null = null;
+    for (const r of rows) {
+      const payload = {
+        unit: r.unitId,
+        verdict: r.verdict,
+        confidence: r.confidence,
+        note: r.note,
+        judge_model: r.judgeModel,
+        prompt_version: r.promptVersion,
+        judged_at: r.judgedAt,
+      };
+      try {
+        const res = await this.store.query<Array<Record<string, unknown>>>(
+          `CREATE connect_claim_judgment CONTENT ${JSON.stringify(payload)} RETURN AFTER;`,
+        );
+        const rec = Array.isArray(res) ? res[0] : undefined;
+        if (rec && rec.verdict === r.verdict) persisted += 1;
+        else missed += 1;
+      } catch (err) {
+        missed += 1;
+        if (!firstErr) firstErr = err instanceof Error ? err.message : String(err);
+      }
+    }
+    if (missed > 0) {
+      console.warn(
+        `[connect-graph-writer] ${missed}/${rows.length} judgment write(s) did NOT persist ` +
+          `on "connect_claim_judgment"${firstErr ? ` (first error: ${firstErr.slice(0, 120)})` : ""}.`,
       );
     }
     return { persisted, missed };
