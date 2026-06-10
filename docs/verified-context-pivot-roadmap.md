@@ -63,8 +63,8 @@ skeptical user can click through to the quoted span in the source and check it t
 | 12 | ✅ 2.3 CI gate (PR #211) — `connect-eval-github-action` + Forgejo variant, dogfooded warn-mode on Connect-pipeline PRs, weekly cross-model efficacy workflow enforcing the signed-off bars | P2 | 2.2 |
 | 13 | ✅ 4.1 Verified-retrieval MCP tool (PR #TBD) | P4 | 1.1 |
 | 14 | ✅ 1.4 Spine observability hardening — H1/H3 closed (PR #208) | P1 | — |
-| 14a | **1.5 Ingest runtime reliability + dashboard performance** (PRIORITY — added 2026-06-10) | P1 | — |
-| 15 | 2.4 Regression history dashboard | P2 | 2.3 |
+| 14a | ✅ 1.5 Ingest runtime reliability + dashboard performance — freeze causes fixed, P1 follow-ups documented (PR #220) | P1 | — |
+| 15 | ✅ 2.4 Regression history dashboard (PR #217) | P2 | 2.3 |
 | 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
 | 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
 | 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
