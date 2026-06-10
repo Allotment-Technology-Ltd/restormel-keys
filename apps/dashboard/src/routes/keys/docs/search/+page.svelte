@@ -45,6 +45,11 @@
       tags: "verified context connect evidence provenance trace audit verification rules g2 trust score claims envelope ebv",
     },
     {
+      title: "Context-regression CI",
+      href: "/keys/docs/guides/context-regression-ci",
+      tags: "ci gate github action forgejo connect eval baseline regression tolerance sticky comment quality bar g2 efficacy weekly cross-model exit codes",
+    },
+    {
       title: "Cloud API",
       href: "/keys/docs/cloud-api",
       tags: "api resolve policies routes openapi gateway key models bindings project index allowlist ingestion picker",
