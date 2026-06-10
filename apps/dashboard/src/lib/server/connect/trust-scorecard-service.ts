@@ -36,6 +36,7 @@ import {
   resolveSurrealGraphReadContext,
   surrealCountWhere,
   type ConnectGraphStatsView,
+  type ConnectStatsRequestMemo,
   type SurrealGraphReadContext,
 } from "$lib/server/connect/graph-explorer-service";
 import { REMOVED_VALIDATION_STATUS } from "$lib/server/connect/graph-writer";
@@ -219,6 +220,12 @@ export type LoadConnectTrustScorecardOpts = {
    * step stays fast; it can return null on a cold cache even when a graph exists.
    */
   statsMode?: "resolve" | "peek";
+  /**
+   * Per-request stats memo shared across concurrent hub load functions.
+   * When provided, resolveConnectGraphStats reuses an already-in-flight resolution
+   * instead of issuing a second store scan (F6: scorecard + pulse share one result).
+   */
+  requestMemo?: ConnectStatsRequestMemo;
 };
 
 /**
@@ -232,7 +239,9 @@ export async function loadConnectTrustScorecard(
   const stats =
     opts?.statsMode === "peek"
       ? await peekConnectGraphStats(workspaceId).catch(() => null)
-      : await resolveConnectGraphStats(workspaceId).catch(() => null);
+      : await resolveConnectGraphStats(workspaceId, {
+          requestMemo: opts?.requestMemo,
+        }).catch(() => null);
   if (!stats || stats.units <= 0) return null;
 
   const surrealCtx = await resolveSurrealGraphReadContext(workspaceId).catch(() => null);

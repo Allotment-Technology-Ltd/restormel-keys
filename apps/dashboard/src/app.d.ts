@@ -37,6 +37,17 @@ declare global {
       };
       /** Suite module flags (PostHog + env override). */
       moduleFlags?: import("$lib/module-flags-types").ModuleFlags;
+      /**
+       * Per-request stats memo: a single Promise<ConnectGraphStatsView | null> shared
+       * across all streamed loads within one hub page request (pulse + scorecard + any
+       * other consumer). Keyed by workspaceId so a multi-tenant request never mixes
+       * results. Populated by the first caller of resolveConnectGraphStats; subsequent
+       * callers within the same request reuse it without a second store scan.
+       */
+      connectStatsRequestMemo?: Map<
+        string,
+        Promise<import("$lib/server/connect/graph-explorer-service").ConnectGraphStatsView | null>
+      >;
     }
     interface PageData {
       user?: {
