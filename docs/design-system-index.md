@@ -42,6 +42,7 @@ Vendor logos are **optional credibility signals**, not decoration. **Canonical r
 | [COMPONENT-INVENTORY.md](./COMPONENT-INVENTORY.md) | Full component inventory (atoms, molecules, organisms, graph components, templates) with variants and props. |
 | [documentation-strategy.md](./documentation-strategy.md) | Single coherent doc journey, agent-readability, compulsory same links (Dashboard/Sign in), runbooks and in-app docs alignment. |
 | [guides/third-party-brand-marks.md](./guides/third-party-brand-marks.md) | Vendor logos: sourcing, tokens, a11y, trademark-neutral copy; complements Brand and logo usage above. |
+| [guides/midjourney-cursor-mcp.md](./guides/midjourney-cursor-mcp.md) | Optional Midjourney MCP for agent-generated hero/OG art; subscription vs API billing; links to Cursor skills. |
 | [ux-contracts.md](./ux-contracts.md) | Shared navigation model, copy registry (product nouns, CTA grammar), and state conventions (loading/error/empty/success) across site, docs, dashboard, and embeddable surfaces. |
 
 ## Implementation
