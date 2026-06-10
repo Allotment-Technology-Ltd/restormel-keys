@@ -693,18 +693,98 @@ async function loadSurrealGraphStats(
   };
 }
 
+/**
+ * How long a cached Surreal stats entry (with units > 0) is treated as fresh.
+ * Env-tunable: CONNECT_STATS_TTL_MS (legacy alias: RESTORMEL_GRAPH_STATS_CACHE_TTL_MS).
+ * Default: 5 minutes.
+ */
 const STATS_CACHE_TTL_MS = (() => {
-  const raw = Number(process.env.RESTORMEL_GRAPH_STATS_CACHE_TTL_MS);
+  const raw =
+    Number(process.env.CONNECT_STATS_TTL_MS) ||
+    Number(process.env.RESTORMEL_GRAPH_STATS_CACHE_TTL_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : 5 * 60_000;
 })();
+
+/**
+ * How long a "all packs returned 0 units" result suppresses the expensive multi-pack
+ * probe fan-out.  A misconfigured workspace would wait at most this long before the
+ * probe re-runs when the pack is corrected.
+ * Env-tunable: CONNECT_PACK_PROBE_NEG_TTL_MS.  Default: 2 minutes.
+ */
+const PACK_PROBE_NEG_TTL_MS = (() => {
+  const raw = Number(process.env.CONNECT_PACK_PROBE_NEG_TTL_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : 2 * 60_000;
+})();
+
+/**
+ * Short-lived in-process Postgres spine stats cache.
+ * Avoids the 6-aggregate Neon round-trip being repeated 2–3× per hub load
+ * (F6: pulse + scorecard + any other consumer all called getConnectGraphStats separately).
+ *
+ * TTL reuses CONNECT_STATS_TTL_MS — the same staleness guarantee as the Surreal path.
+ * Cleared when forceRefresh is passed so post-ingest refreshes always get live data.
+ *
+ * In-flight deduplication: concurrent callers within the same Node.js tick share a
+ * single Promise so even without the TTL cache the Neon round-trip happens at most once.
+ */
+const postgresStatsByWorkspace = new Map<
+  string,
+  { stats: ConnectGraphStatsView | null; at: number }
+>();
+
+const postgresStatsInFlight = new Map<string, Promise<ConnectGraphStatsView | null>>();
+
+async function getConnectGraphStatsWithCache(
+  workspaceId: string,
+  forceRefresh?: boolean,
+): Promise<ConnectGraphStatsView | null> {
+  if (!forceRefresh) {
+    const hit = postgresStatsByWorkspace.get(workspaceId);
+    if (hit && Date.now() - hit.at < STATS_CACHE_TTL_MS) return hit.stats;
+    const inFlight = postgresStatsInFlight.get(workspaceId);
+    if (inFlight) return inFlight;
+  }
+  const job = getConnectGraphStats(workspaceId)
+    .catch(() => null as ConnectGraphStatsView | null)
+    .then((stats) => {
+      postgresStatsByWorkspace.set(workspaceId, { stats, at: Date.now() });
+      postgresStatsInFlight.delete(workspaceId);
+      return stats;
+    });
+  if (!forceRefresh) postgresStatsInFlight.set(workspaceId, job);
+  return job;
+}
+
+/** Evict the Postgres stats cache for a workspace (e.g. after a completed ingest run). */
+export function invalidateConnectGraphStatsCache(workspaceId: string): void {
+  postgresStatsByWorkspace.delete(workspaceId);
+  postgresStatsInFlight.delete(workspaceId);
+}
+
+/**
+ * Negative-result sentinel stored alongside stats cache.
+ * When all packs returned 0 units the fan-out result is "negative".  We record
+ * when that happened so subsequent loads within PACK_PROBE_NEG_TTL_MS skip the
+ * expensive probe and serve the 0-unit result from cache immediately.
+ *
+ * Not mixed into surrealStatsCacheIsAuthoritative — authoritative needs > 0 units.
+ * This is a separate suppression gate before triggering the full fan-out.
+ */
+const probeNegativeResultAt = new Map<string, number>();
 
 /**
  * Compute Surreal stats for the active domain pack, reusing a single store/session.
  * Only falls back to scanning other packs (BYO schema auto-detect) when the active
  * pack returns zero units — so the common case is one pack, not N.
+ *
+ * Negative-result TTL (F7): when the multi-pack probe previously returned all-zeros
+ * within CONNECT_PACK_PROBE_NEG_TTL_MS, the fan-out is suppressed and the stale
+ * zero result is served immediately.  This stops misconfigured workspaces from
+ * issuing 4+ full-table count()s per pack on every stats refresh.
  */
 async function computeSurrealStats(
   workspaceId: string,
+  opts?: { forceRefresh?: boolean },
 ): Promise<{ stats: ConnectGraphStatsView; domainPackId: string | null } | null> {
   const store = await buildWorkspaceGraphStore(workspaceId);
   if (!store) return null;
@@ -717,12 +797,22 @@ async function computeSurrealStats(
     const r = await loadSurrealGraphStats(workspaceId, activePack, store);
     // Fast path: the active pack matches real data — no need to probe the others.
     if (r && r.stats.units > 0) {
+      probeNegativeResultAt.delete(workspaceId);
       await persistDetectedVectorField(workspaceId, activePack, r.detectedVectorField);
       return { stats: r.stats, domainPackId: activePack.id };
     }
     if (r) {
       best = { stats: r.stats, domainPackId: activePack.id };
       bestUnits = r.stats.units;
+    }
+  }
+
+  // Negative-result TTL: skip the multi-pack probe if a previous scan already found
+  // zero units for all packs within the suppression window.  forceRefresh overrides.
+  if (!opts?.forceRefresh) {
+    const negAt = probeNegativeResultAt.get(workspaceId);
+    if (negAt !== undefined && Date.now() - negAt < PACK_PROBE_NEG_TTL_MS) {
+      return best; // serve 0-unit result without re-probing every pack
     }
   }
 
@@ -740,6 +830,14 @@ async function computeSurrealStats(
       await persistDetectedVectorField(workspaceId, pack, r.detectedVectorField);
     }
   }
+
+  // Record a negative result so the next load within the TTL skips this fan-out.
+  if (bestUnits <= 0) {
+    probeNegativeResultAt.set(workspaceId, Date.now());
+  } else {
+    probeNegativeResultAt.delete(workspaceId);
+  }
+
   return best;
 }
 
@@ -881,11 +979,13 @@ const inFlightSurrealStatsCompute = new Map<
 function computeAndCacheSurrealStats(
   workspaceId: string,
   graphTargetId: string,
+  forceRefresh?: boolean,
 ): Promise<{ stats: ConnectGraphStatsView; domainPackId: string | null } | null> {
-  const existing = inFlightSurrealStatsCompute.get(workspaceId);
+  // forceRefresh bypasses the in-flight dedupe so a fresh computation is guaranteed.
+  const existing = forceRefresh ? undefined : inFlightSurrealStatsCompute.get(workspaceId);
   if (existing) return existing;
   const job = (async () => {
-    const computed = await computeSurrealStats(workspaceId);
+    const computed = await computeSurrealStats(workspaceId, { forceRefresh });
     if (computed) {
       await setConnectGraphStatsCache({
         workspaceId,
@@ -896,21 +996,60 @@ function computeAndCacheSurrealStats(
     }
     return computed;
   })().finally(() => inFlightSurrealStatsCompute.delete(workspaceId));
-  inFlightSurrealStatsCompute.set(workspaceId, job);
+  if (!forceRefresh) inFlightSurrealStatsCompute.set(workspaceId, job);
   return job;
 }
 
-/** Stats from the workspace graph store (Surreal or Postgres spine) — used by Connect hub and MCP setup. */
+/**
+ * Type for the per-request memo that collapses redundant stats resolutions.
+ * Pass an instance shared across all load functions within the same request.
+ */
+export type ConnectStatsRequestMemo = Map<string, Promise<ConnectGraphStatsView | null>>;
+
+/**
+ * Stats from the workspace graph store (Surreal or Postgres spine) — used by Connect hub and MCP setup.
+ *
+ * Per-request deduplication (F6): when a `requestMemo` is provided, subsequent calls
+ * within the same request reuse the in-flight Promise without issuing a second store
+ * scan.  The memo is keyed by workspaceId; forceRefresh evicts it so post-ingest
+ * refreshes always get live data.
+ */
 export async function resolveConnectGraphStats(
   workspaceId: string,
-  opts?: { forceRefresh?: boolean },
+  opts?: { forceRefresh?: boolean; requestMemo?: ConnectStatsRequestMemo },
 ): Promise<ConnectGraphStatsView | null> {
+  const memo = opts?.requestMemo;
+  const forceRefresh = opts?.forceRefresh ?? false;
+
+  // Request-scoped deduplication: if a memo is provided and already has a promise for
+  // this workspace, reuse it (unless force-refresh, which must bypass everything).
+  if (memo && !forceRefresh) {
+    const hit = memo.get(workspaceId);
+    if (hit) return hit;
+  }
+
+  const statsPromise = _resolveConnectGraphStatsImpl(workspaceId, { forceRefresh });
+
+  // Store in memo before awaiting so concurrent callers within the same request
+  // immediately get the same promise rather than starting a second resolution.
+  if (memo && !forceRefresh) {
+    memo.set(workspaceId, statsPromise);
+  }
+
+  return statsPromise;
+}
+
+async function _resolveConnectGraphStatsImpl(
+  workspaceId: string,
+  opts: { forceRefresh: boolean },
+): Promise<ConnectGraphStatsView | null> {
+  const { forceRefresh } = opts;
   const target = await getConnectGraphTargetForWorkspace(workspaceId);
 
   if (isConfiguredSurrealTarget(target)) {
     // Serve cached stats when fresh — full count() scans on a large BYO graph are slow,
     // and recomputing them on every Connect tab load is the dominant cost we're avoiding.
-    if (!opts?.forceRefresh) {
+    if (!forceRefresh) {
       const cached = await getConnectGraphStatsCache({
         workspaceId,
         graphTargetId: target.id,
@@ -919,7 +1058,7 @@ export async function resolveConnectGraphStats(
         return (cached!.stats ?? null) as ConnectGraphStatsView | null;
       }
     }
-    const computed = await computeAndCacheSurrealStats(workspaceId, target.id);
+    const computed = await computeAndCacheSurrealStats(workspaceId, target.id, forceRefresh);
     if (computed) return computed.stats;
     // Computation failed (e.g. store unreachable) — fall back to any stale cache.
     const stale = await getConnectGraphStatsCache({
@@ -929,12 +1068,13 @@ export async function resolveConnectGraphStats(
     return stale ? ((stale.stats ?? null) as ConnectGraphStatsView | null) : null;
   }
 
+  // Postgres spine path — cache the result within process to avoid repeating the 6-aggregate
+  // query for every consumer in the same hub load (pulse + scorecard).
   if (target?.provider === "postgres" && target.useDashboardDatabase) {
-    return getConnectGraphStats(workspaceId).catch(() => null);
+    return getConnectGraphStatsWithCache(workspaceId, forceRefresh);
   }
 
-  const stats = await getConnectGraphStats(workspaceId).catch(() => null);
-  return stats;
+  return getConnectGraphStatsWithCache(workspaceId, forceRefresh);
 }
 
 /**

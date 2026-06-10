@@ -13,6 +13,7 @@ import {
   peekConnectGraphStatsForView,
   resolveConnectGraphStats,
   type ConnectGraphStatsView,
+  type ConnectStatsRequestMemo,
 } from "$lib/server/connect/graph-explorer-service";
 import { listDomainPacksForUi } from "$lib/server/connect/domain-pack-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
@@ -205,6 +206,9 @@ export type ConnectGraphPulse = {
  * Authoritative graph stats for the pulse band — recomputes the full aggregates
  * (relations, groups, embedded, validation) when the cache is cold/stale. Streamed
  * separately from the hub shell, which shows the fast unit-count skeleton meanwhile.
+ *
+ * Per-request deduplication (F6): reads the shared stats memo from event.locals so
+ * this call and the concurrent scorecard load share one resolution promise.
  */
 export async function loadConnectGraphPulse(
   event: Pick<ServerLoadEvent, "locals" | "parent">,
@@ -217,7 +221,8 @@ export async function loadConnectGraphPulse(
       event.locals,
       event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
     );
-    const stats = await resolveConnectGraphStats(workspace.id).catch(() => null);
+    const requestMemo = event.locals.connectStatsRequestMemo as ConnectStatsRequestMemo | undefined;
+    const stats = await resolveConnectGraphStats(workspace.id, { requestMemo }).catch(() => null);
     const graphHealth = stats ? graphStatsToHealthSummary(stats) : null;
     return { stats, graphHealth };
   } catch {
@@ -230,6 +235,9 @@ export async function loadConnectGraphPulse(
  * out or the graph has no units yet (panel empty state); REJECTS on workspace/store
  * read failures so the panel can render its error state with a recovery action —
  * unlike the pulse, a failure here must not masquerade as "no graph yet".
+ *
+ * Per-request deduplication (F6): passes the shared stats memo from event.locals so
+ * the scorecard reuses the same stats resolution as the concurrent pulse load.
  */
 export async function loadConnectTrustScorecardPanel(
   event: Pick<ServerLoadEvent, "locals" | "parent">,
@@ -241,7 +249,8 @@ export async function loadConnectTrustScorecardPanel(
     event.locals,
     event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
   );
-  return loadConnectTrustScorecard(workspace.id);
+  const requestMemo = event.locals.connectStatsRequestMemo as ConnectStatsRequestMemo | undefined;
+  return loadConnectTrustScorecard(workspace.id, { requestMemo });
 }
 
 /**
