@@ -52,10 +52,10 @@ skeptical user can click through to the quoted span in the source and check it t
 | 2 | ✅ EBV ADR sign-off — **approved 2026-06-09** | P1 | — |
 | 1 | ✅ 1.0a Verifier efficacy benchmark — **measured + bars signed off 2026-06-10** (see below) | P1 | — |
 | 3 | ✅ 1.0c EBV Layer 1 — core (PR #194) + dashboard wiring (PR #199) | P1 | EBV ADR |
-| 4 | 1.0d EBV Layer 2 — span-scoped entailment + abstention/review ← **NEXT** | P1 | 1.0c |
-| 5 | 1.0a′ re-run benchmark post-EBV (same harness; before/after is the proof) | P1 | 1.0d |
+| 4 | ✅ 1.0d EBV Layer 2 — span-scoped entailment + abstention/review (PR #204) | P1 | 1.0c |
+| 5 | ✅ 1.0a′ post-EBV before/after — **accepted 2026-06-10** ([snapshot](../scripts/reviews/verifier-efficacy-results-2026-06-10-ebv.json), PR #204: misattributed 83.3→100% same-model, false-flag 14.5→4.3% cross-model, ~3× cheaper/run) | P1 | 1.0d |
 | 6 | ✅ 2.1 Headless `connect eval` CLI (PR #197) | P2 | — (parallel with 1.0c/d) |
-| 7 | 1.0b Marketing claims ledger | P1 | 1.0a′ |
+| 7 | 1.0b Marketing claims ledger ← **NEXT** | P1 | 1.0a′ |
 | 8 | 1.1 Verified-context API surface (envelope carries evidence per ADR) | P1 | 1.0c |
 | 9 | 1.2 Trust scorecard (incl. % evidence-bound) | P1 | 1.1 |
 | 10 | 2.2 Quality baseline + regression diff | P2 | 2.1 |
