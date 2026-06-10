@@ -40,6 +40,11 @@
       tags: "integrations neon vercel openrouter portkey zuplo github actions stack ecosystem third party index",
     },
     {
+      title: "Verified context",
+      href: "/keys/docs/guides/verified-context",
+      tags: "verified context connect evidence provenance trace audit verification rules g2 trust score claims envelope ebv",
+    },
+    {
       title: "Cloud API",
       href: "/keys/docs/cloud-api",
       tags: "api resolve policies routes openapi gateway key models bindings project index allowlist ingestion picker",

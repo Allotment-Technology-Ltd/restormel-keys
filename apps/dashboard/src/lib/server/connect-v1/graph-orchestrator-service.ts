@@ -30,6 +30,7 @@ import { insertProvenanceTrace } from "$lib/server/connect-traces";
 import type { ConnectV1AuthScope } from "./auth.js";
 import { resolveWorkspaceRetrievalConfig } from "./workspace-retrieval-config.js";
 import { buildProvenanceTrace } from "./provenance-trace-builder.js";
+import { buildVerifiedClaims, type VerifiedClaimSourceClaim } from "./verified-claims.js";
 
 const emptyGraphStore: GraphStore = {
   async query<T>(_sql: string, _vars?: Record<string, unknown>): Promise<T> {
@@ -189,6 +190,33 @@ export async function executeConnectGraphOp(args: {
    * when storage succeeds (a returned id is always retrievable). Best-effort: a failure here
    * never breaks the retrieval response — the query simply comes back without a trace_id.
    */
+  /**
+   * Stage 1.1 — attach a verified-claim envelope per returned unit (state, evidence
+   * spans, judge attribution, citation, trace link). Best-effort exposure of persisted
+   * EBV data: a failure here never breaks retrieval and can only demote, never promote
+   * (see verified-claims.ts). Mutates the response body in place.
+   */
+  const attachVerifiedClaims = async (
+    body: ConnectGraphOpResponse,
+    claims: VerifiedClaimSourceClaim[],
+    traceId?: string,
+  ): Promise<void> => {
+    if (claims.length === 0) return;
+    try {
+      const { envelopes, summary } = await buildVerifiedClaims({
+        store,
+        unitTable: config.schema.unitTable,
+        vocabulary: config.verification,
+        claims,
+        traceId,
+      });
+      body.verified_claims = envelopes;
+      body.metadata.verification_summary = summary;
+    } catch {
+      // Envelope enrichment is additive — retrieval still answers without it.
+    }
+  };
+
   const persistTrace = async (
     queryText: string,
     result: OrchestratorResult,
@@ -231,7 +259,9 @@ export async function executeConnectGraphOp(args: {
         verificationPolicy,
       });
       const traceId = await persistTrace(request.query, result, Date.now() - startedAt, request.max_tokens ?? 0);
-      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
+      const body = subgraphResponse(request, requestId, result, traceId);
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      return { ok: true, body };
     }
 
     case "expand_context": {
@@ -247,7 +277,9 @@ export async function executeConnectGraphOp(args: {
         maxTokens: request.max_tokens,
       });
       const traceId = await persistTrace(request.query ?? "", result, Date.now() - startedAt, request.max_tokens ?? 0);
-      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
+      const body = subgraphResponse(request, requestId, result, traceId);
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      return { ok: true, body };
     }
 
     case "find_relevant_subgraph": {
@@ -263,7 +295,9 @@ export async function executeConnectGraphOp(args: {
         maxTokens: request.max_tokens,
       });
       const traceId = await persistTrace(request.topic, result, Date.now() - startedAt, request.max_tokens ?? 0);
-      return { ok: true, body: subgraphResponse(request, requestId, result, traceId) };
+      const body = subgraphResponse(request, requestId, result, traceId);
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      return { ok: true, body };
     }
 
     case "find_paths": {
@@ -330,33 +364,32 @@ export async function executeConnectGraphOp(args: {
         maxTokens,
       );
 
-      return {
-        ok: true,
-        body: {
-          contract_version: CONNECT_API_CONTRACT_VERSION,
-          request_id: requestId,
-          ...(traceId ? { trace_id: traceId } : {}),
-          operation: request.operation,
-          subgraph: {
-            claims: summary.nodes.map(toGraphNode),
-            relations: summary.edges,
-            arguments: retrieved.subgraph.arguments.map((a) => ({
-              id: a.id,
-              name: a.name,
-              tradition: a.tradition,
-              summary: a.summary,
-              conclusion_text: a.conclusion_text,
-              key_premises: a.key_premises,
-            })),
-            seed_claim_ids: retrieved.subgraph.seed_claim_ids,
-          },
-          trace: summaryTrace,
-          metadata: {
-            retrieval_degraded: retrieved.trace.degraded,
-            retrieval_degraded_reason: retrieved.trace.degraded_reason,
-          },
+      const body: ConnectGraphOpResponse = {
+        contract_version: CONNECT_API_CONTRACT_VERSION,
+        request_id: requestId,
+        ...(traceId ? { trace_id: traceId } : {}),
+        operation: request.operation,
+        subgraph: {
+          claims: summary.nodes.map(toGraphNode),
+          relations: summary.edges,
+          arguments: retrieved.subgraph.arguments.map((a) => ({
+            id: a.id,
+            name: a.name,
+            tradition: a.tradition,
+            summary: a.summary,
+            conclusion_text: a.conclusion_text,
+            key_premises: a.key_premises,
+          })),
+          seed_claim_ids: retrieved.subgraph.seed_claim_ids,
+        },
+        trace: summaryTrace,
+        metadata: {
+          retrieval_degraded: retrieved.trace.degraded,
+          retrieval_degraded_reason: retrieved.trace.degraded_reason,
         },
       };
+      await attachVerifiedClaims(body, summary.nodes, traceId);
+      return { ok: true, body };
     }
 
     default:

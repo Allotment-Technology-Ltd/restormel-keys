@@ -111,9 +111,15 @@ export async function executeConnectRetrieve(args: {
     context_block: body.context_block ?? "",
     context_pack: degraded || !subgraph ? undefined : buildConnectContextPackFromSubgraph(subgraph, request.depth),
     graph: degraded || !subgraph ? undefined : connectGraphSubgraphToGraph(subgraph),
+    // Stage 1.1: verified-claim envelope per returned unit (state, evidence, judge,
+    // citation, trace link) — see @restormel/contracts/verified-claim and the EBV ADR.
+    ...(body.verified_claims ? { verified_claims: body.verified_claims } : {}),
     metadata: {
       claims_retrieved: claimsCount,
       arguments_retrieved: subgraph?.arguments.length ?? 0,
+      ...(body.metadata.verification_summary
+        ? { verification_summary: body.metadata.verification_summary }
+        : {}),
       retrieval_degraded: degraded,
       retrieval_degraded_reason: degradedReason,
       retrieval_degraded_code: degradedCode,

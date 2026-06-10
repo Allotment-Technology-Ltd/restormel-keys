@@ -19,3 +19,4 @@ export * from './trace-ingestion.js';
 export * from './provenance-trace.js';
 export * from './verification.js';
 export * from './verification-rules.js';
+export * from './verified-claim.js';

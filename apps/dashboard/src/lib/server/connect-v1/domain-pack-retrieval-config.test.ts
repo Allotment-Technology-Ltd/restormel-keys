@@ -72,4 +72,22 @@ describe("mapDomainPackToRetrievalConfig", () => {
     // 'assertion' is the thesis-like unit type.
     expect(cfg.claimTaxonomy.thesisTypes).toContain("assertion");
   });
+
+  it("classifies EBV verification states alongside the legacy vocabulary (Stage 1.1)", () => {
+    const cfg = mapDomainPackToRetrievalConfig(asPack(DEFAULT_GENERIC_DOMAIN_PACK));
+
+    // require_verified / strict policies must admit EBV `supported` claims…
+    expect(cfg.verification.supportedStates).toEqual(
+      expect.arrayContaining(["validated", "supported"]),
+    );
+    // …and must treat contradicted/excluded as flagged.
+    expect(cfg.verification.flaggedStates).toEqual(
+      expect.arrayContaining(["flagged", "contradicted", "excluded"]),
+    );
+    // inferred/unverified stay in the middle (weak) category — opt-in only, always labeled.
+    expect(cfg.verification.supportedStates).not.toContain("inferred");
+    expect(cfg.verification.supportedStates).not.toContain("unverified");
+    expect(cfg.verification.flaggedStates).not.toContain("inferred");
+    expect(cfg.verification.flaggedStates).not.toContain("unverified");
+  });
 });
