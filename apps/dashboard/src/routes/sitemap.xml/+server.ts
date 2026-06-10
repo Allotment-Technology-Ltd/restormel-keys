@@ -32,6 +32,7 @@ const ALL_STATIC_PATHS = [
   "/keys/docs/guides/integration-vs-hosted-vault",
   "/keys/docs/guides/canonical-catalog",
   "/keys/docs/guides/integration-catalog",
+  "/keys/docs/guides/verified-context",
   "/keys/docs/guides/third-party-brand-marks",
   "/keys/docs/compatibility",
   "/keys/docs/cloud-api",

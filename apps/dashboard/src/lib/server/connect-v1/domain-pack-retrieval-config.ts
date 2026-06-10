@@ -155,6 +155,23 @@ export function mapDomainPackToRetrievalConfig(pack: ConnectDomainPack): Retriev
       corpusLevelSignals: NEUTRAL_CORPUS_SIGNALS,
       knownPhrases: pack.passage_profile.marker_lexicon ?? [],
     },
+    // Verification vocabulary: the philosophy preset predates EBV (validated/flagged).
+    // The writers now persist EBV states (evidence-bound-verification.md), so classify
+    // them too — `supported` is high-trust; `contradicted`/`excluded` are flagged.
+    // `inferred`/`unverified` deliberately stay in the middle (weak) category: they are
+    // served only when a query opts in, and the verified-claim envelope labels them.
+    verification: {
+      ...philosophyRetrievalConfig.verification,
+      supportedStates: unique([
+        ...philosophyRetrievalConfig.verification.supportedStates,
+        "supported",
+      ]),
+      flaggedStates: unique([
+        ...philosophyRetrievalConfig.verification.flaggedStates,
+        "contradicted",
+        "excluded",
+      ]),
+    },
     schema: {
       unitTable: graphSchema.unit_table,
       passageTable: graphSchema.passage_table,

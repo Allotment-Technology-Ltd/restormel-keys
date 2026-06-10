@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { VerificationRequestSchema } from './verification.js';
 import { DomainPackVerificationRulesSchema } from './verification-rules.js';
+import { VerifiedClaimEnvelopeSchema, VerifiedClaimSummarySchema } from './verified-claim.js';
 
 /** Epoch for Connect REST request/response envelopes (independent of Zod schema version). */
 export const CONNECT_API_CONTRACT_VERSION = '2026-06-01' as const;
@@ -143,9 +144,18 @@ export const ConnectRetrieveResponseSchema = z.object({
   context_block: z.string(),
   context_pack: ConnectContextPackSchema.optional(),
   graph: ConnectRetrieveGraphSchema.optional(),
+  /**
+   * Verified-claim envelope per returned unit (matched by `claim.id`, not position) —
+   * verification state, bound evidence spans, judge attribution, citation, and the
+   * provenance trace link. See ./verified-claim.ts and the EBV ADR. Unverified or
+   * excluded units are flagged by `state`, never silently blended.
+   */
+  verified_claims: z.array(VerifiedClaimEnvelopeSchema).optional(),
   metadata: z.object({
     claims_retrieved: z.number().int().nonnegative(),
     arguments_retrieved: z.number().int().nonnegative(),
+    /** Per-state counts over `verified_claims` (quick non-supported gate). */
+    verification_summary: VerifiedClaimSummarySchema.optional(),
     retrieval_degraded: z.boolean().optional(),
     retrieval_degraded_reason: z.string().optional(),
     retrieval_degraded_code: z
@@ -283,10 +293,17 @@ export const ConnectGraphOpResponseSchema = z.object({
     })
     .optional(),
   paths: z.array(ConnectGraphPathSchema).optional(),
+  /**
+   * Verified-claim envelope per subgraph claim (matched by `claim.id`) — see
+   * ./verified-claim.ts and docs/decisions/evidence-bound-verification.md.
+   */
+  verified_claims: z.array(VerifiedClaimEnvelopeSchema).optional(),
   trace: ConnectGraphTraceSummarySchema,
   metadata: z.object({
     retrieval_degraded: z.boolean().optional(),
-    retrieval_degraded_reason: z.string().optional()
+    retrieval_degraded_reason: z.string().optional(),
+    /** Per-state counts over `verified_claims` (quick non-supported gate). */
+    verification_summary: VerifiedClaimSummarySchema.optional()
   })
 });
 export type ConnectGraphOpResponse = z.infer<typeof ConnectGraphOpResponseSchema>;
