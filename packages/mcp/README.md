@@ -91,6 +91,61 @@ For **Restormel Testing** HTTP resolve checks (`testing.resolve_probe`), set **`
 
 For **Restormel Connect** knowledge tools, set `RESTORMEL_CONNECT_API_BASE`, `RESTORMEL_GATEWAY_KEY` and `RESTORMEL_WORKSPACE_ID` (BYO Surreal graph store configured in the Connect hub). Search tools — `connect.search`, `connect.get_context_for` — return structured context packs. The graph orchestrator tools — `connect.graph.retrieve_context`, `connect.graph.expand_context`, `connect.graph.find_relevant_subgraph`, `connect.graph.find_paths`, `connect.graph.summarise_subgraph` — proxy to `POST /connect/v1/graph` and return curated, ranked, token-budgeted subgraphs/paths with an audit trace. **They default to supported-only retrieval** (the trust promise); pass `verification_policy.include` (e.g. `["supported","weak"]`) to widen.
 
+### `connect.retrieve_verified` — verified-claim envelopes (Stage 4.1)
+
+The flagship verified-context retrieval tool. Returns results as **verified-claim envelopes** (`VerifiedClaimEnvelope` from `@restormel/contracts`) — each carrying the claim text, its EBV verification state, bound evidence spans (verbatim quote + character offsets + source-version hash), entailment judge attribution, source citation, and a provenance trace export URL.
+
+**Modes:**
+
+| Mode | Behaviour |
+|---|---|
+| `strict` (default) | Returns **only `supported` claims** — fully evidence-bound (EBV Layer 1) and entailed (EBV Layer 2). Safe to present as verified facts. |
+| `annotated` | Returns **all claims** with their state (`supported\|inferred\|unverified\|contradicted\|excluded`). Non-supported claims are labeled, never silently blended. Use when you need the full picture. |
+
+**How to cite** (mandatory when using this tool's output):
+
+1. Quote verbatim from `evidence[].quote` — do NOT paraphrase.
+2. Attribute to the claim's `citation` field: `(Source: <citation>)`.
+3. Include `trace_export_url` as the audit link: `[trace](<trace_export_url>)`.
+4. In `annotated` mode, never present `inferred`/`unverified`/`contradicted`/`excluded` claims as confirmed facts; label them (e.g. "reportedly", "unconfirmed", "disputed").
+
+**Example:**
+
+```json
+{
+  "query": "cross-model validation policy",
+  "mode": "strict",
+  "workspace_id": "<your-workspace-id>"
+}
+```
+
+Response excerpt:
+
+```json
+{
+  "ok": true,
+  "tool_version": "1.0.0",
+  "mode": "strict",
+  "claims": [
+    {
+      "claim": { "id": "claim:abc", "text": "Validation uses a different model family by default." },
+      "state": "supported",
+      "evidence": [{ "quote": "...", "offsets": [0, 51], "source_ref": "source:plan-doc", "source_hash": "sha256:...", "match": "exact" }],
+      "judge": { "model": "together:llama-3.3-70b", "prompt_version": 1, "confidence": 0.97, "at": "2026-06-10T10:00:00Z" },
+      "citation": "Restormel Plan Document (2026)",
+      "trace_ref": "/connect/v1/traces/trace-001",
+      "trace_export_url": "https://restormel.dev/connect/v1/traces/trace-001/export",
+      "trust_score": 92
+    }
+  ],
+  "total_retrieved": 10,
+  "total_after_mode_filter": 8,
+  "verification_summary": { "supported": 8, "inferred": 1, "unverified": 1 }
+}
+```
+
+The `trace_export_url` links to the `GET /connect/v1/traces/{traceId}/export` route — auditors can fetch the full provenance audit document from there.
+
 See repo runbook [docs/runbooks/mcp-implementation-workflow.md](../../docs/runbooks/mcp-implementation-workflow.md) for the full server-side journey (evaluate vs control-plane bases, trust boundaries, and links to Cloud API / dashboard docs).
 
 ## Programmatic use

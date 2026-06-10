@@ -61,7 +61,7 @@ skeptical user can click through to the quoted span in the source and check it t
 | 10 | ✅ 2.2 Quality baseline + regression diff (PR #207 — exit 3 = regression) | P2 | 2.1 |
 | 11 | ✅ 1.3 Marketing reposition + docs/OpenAPI audit (PR #216) | P1 | 1.0b, 1.1, 1.2 |
 | 12 | ✅ 2.3 CI gate (PR #211) — `connect-eval-github-action` + Forgejo variant, dogfooded warn-mode on Connect-pipeline PRs, weekly cross-model efficacy workflow enforcing the signed-off bars | P2 | 2.2 |
-| 13 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
+| 13 | ✅ 4.1 Verified-retrieval MCP tool (PR #TBD) | P4 | 1.1 |
 | 14 | ✅ 1.4 Spine observability hardening — H1/H3 closed (PR #208) | P1 | — |
 | 14a | **1.5 Ingest runtime reliability + dashboard performance** (PRIORITY — added 2026-06-10) | P1 | — |
 | 15 | 2.4 Regression history dashboard | P2 | 2.3 |
