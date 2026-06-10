@@ -10,6 +10,7 @@
     type PipelineWizardStepId,
   } from "$lib/connect/pipeline-config";
   import PipelineWizardStepper from "$lib/components/connect/pipeline/PipelineWizardStepper.svelte";
+  import type { ConnectTrustScorecard } from "@restormel/contracts";
 
   const storePanelImport = () => import("$lib/components/connect/pipeline/ConnectGraphStorePanel.svelte");
   const domainPanelImport = () => import("$lib/components/connect/pipeline/ConnectDomainPacksPanel.svelte");
@@ -30,6 +31,7 @@
     step: PipelineWizardStepId;
     wizard: PipelineWizardProgress | null;
     runDefaults: PipelineRunDefaults | null;
+    previousScorecard?: ConnectTrustScorecard | null;
     modelsReady?: boolean;
     phase?: "initial" | "operational";
     workspaceId?: string;
@@ -262,6 +264,7 @@
           {runDefaults}
           {progress}
           {modelsReady}
+          previousScorecard={data.previousScorecard ?? null}
           onBack={() => goToStep("sources")}
         />
       {:catch}

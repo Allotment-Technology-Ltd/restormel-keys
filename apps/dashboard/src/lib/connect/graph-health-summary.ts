@@ -65,8 +65,16 @@ function buildIssueDisplays(
   });
 }
 
-export function graphStatsToHealthSummary(stats: GraphHealthStatsInput): GraphHealthSummary | null {
-  if (stats.units <= 0) return null;
+/**
+ * Canonical mapping from graph explorer stats to kg-audit trust-score inputs.
+ * Shared by the hub pulse summary, the run quality report, and the per-graph
+ * trust scorecard so the trust score is the same number on every surface.
+ */
+export function graphStatsToKgAuditInputs(stats: GraphHealthStatsInput): {
+  metrics: KgAuditMetrics;
+  issues: KgAuditIssueDraft[];
+  ok_pct: number;
+} {
   const denom = stats.validation.ok + stats.validation.weak + stats.validation.unsupported;
   const ok_pct = denom > 0 ? Math.round((stats.validation.ok / denom) * 100) : 0;
   const metrics: KgAuditMetrics = {
@@ -78,13 +86,19 @@ export function graphStatsToHealthSummary(stats: GraphHealthStatsInput): GraphHe
     vector_index: { ok: stats.embedded > 0 },
     relation_totals: { supports: stats.relations ?? 0, contradicts: 0 },
   };
-  const drafts: KgAuditIssueDraft[] = [];
+  const issues: KgAuditIssueDraft[] = [];
   if (ok_pct < OK_RATE_TARGET_PCT && denom > 0) {
-    drafts.push({ kind: "low_ok_rate", severity: "medium", message: `${ok_pct}% ok` });
+    issues.push({ kind: "low_ok_rate", severity: "medium", message: `${ok_pct}% ok` });
   }
   if (stats.embedded < stats.units) {
-    drafts.push({ kind: "missing_embeddings", severity: "high", message: "Missing embeddings" });
+    issues.push({ kind: "missing_embeddings", severity: "high", message: "Missing embeddings" });
   }
+  return { metrics, issues, ok_pct };
+}
+
+export function graphStatsToHealthSummary(stats: GraphHealthStatsInput): GraphHealthSummary | null {
+  if (stats.units <= 0) return null;
+  const { metrics, issues: drafts, ok_pct } = graphStatsToKgAuditInputs(stats);
   const summary = buildAuditSummary(metrics, drafts, 3);
   const issues = buildIssueDisplays(stats, ok_pct, drafts);
   return {

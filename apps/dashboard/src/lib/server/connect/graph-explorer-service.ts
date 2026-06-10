@@ -424,7 +424,7 @@ async function discoverBestUnitCount(
 }
 
 /** Single aggregate count with a WHERE clause; null when the query fails. */
-async function surrealCountWhere(
+export async function surrealCountWhere(
   store: GraphStore,
   table: string,
   where: string,
@@ -755,6 +755,34 @@ async function persistDetectedVectorField(
 ): Promise<void> {
   if (!detectedField || detectedField === pack.graph_schema.unit_vector_field) return;
   await persistDomainPackVectorField(workspaceId, pack.id, detectedField).catch(() => {});
+}
+
+export type SurrealGraphReadContext = {
+  store: GraphStore;
+  pack: ConnectDomainPack;
+  unitTable: string;
+};
+
+/**
+ * Read context for aggregate readers (trust scorecard, audits) against the active
+ * Surreal graph: the store session plus the unit table of the pack the cached stats
+ * were computed with (so aggregate counts line up with resolveConnectGraphStats),
+ * falling back to the workspace's selected/active pack. Null when no configured
+ * Surreal target, unreachable store, or no pack.
+ */
+export async function resolveSurrealGraphReadContext(
+  workspaceId: string,
+): Promise<SurrealGraphReadContext | null> {
+  const target = await getConnectGraphTargetForWorkspace(workspaceId);
+  if (!isConfiguredSurrealTarget(target)) return null;
+  const store = await buildWorkspaceGraphStore(workspaceId);
+  if (!store) return null;
+  const statsPackId = await resolveCachedStatsPackId(workspaceId, target.id).catch(() => null);
+  const pack =
+    (statsPackId ? await loadDomainPackById(workspaceId, statsPackId) : null) ??
+    (await resolveActiveDomainPackForGraph(workspaceId));
+  if (!pack) return null;
+  return { store, pack, unitTable: tableIdent(pack.graph_schema.unit_table, "unit") };
 }
 
 type QuickGraphStatsResult = {

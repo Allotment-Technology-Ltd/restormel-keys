@@ -3,14 +3,17 @@
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectSetupLedger from "$lib/components/connect/ConnectSetupLedger.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
+  import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
   import type { ConnectHubPayload, ConnectGraphPulse } from "$lib/server/connect/connect-hub-load";
+  import type { ConnectTrustScorecard as ConnectTrustScorecardData } from "@restormel/contracts";
   import { page } from "$app/stores";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   export let data: {
     hub: Promise<ConnectHubPayload | null>;
     graphPulse: Promise<ConnectGraphPulse | null>;
+    scorecard: Promise<ConnectTrustScorecardData | null>;
   };
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
@@ -99,6 +102,8 @@
         graphHref="{CONNECT_BASE}/graph"
       />
     {/if}
+
+    <ConnectTrustScorecard scorecard={data.scorecard} />
 
     <p class="hub-links-row">
       <a href="/keys/docs/guides/connect-first-graph-onboarding">First graph guide</a>

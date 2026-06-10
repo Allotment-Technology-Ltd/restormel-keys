@@ -22,6 +22,8 @@ import { isCredentialEncryptionConfigured } from "$lib/server/credential-crypto"
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
 import { listStarterCorpusDocuments } from "$lib/server/connect/starter-corpus";
 import { graphStatsToHealthSummary } from "$lib/server/connect/kg-audit-summary";
+import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
+import type { ConnectTrustScorecard } from "@restormel/contracts";
 import { listProviderIntegrations } from "$lib/server/db";
 import { perfSpan } from "$lib/debug/server-perf";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
@@ -220,4 +222,23 @@ export async function loadConnectGraphPulse(
   } catch {
     return null;
   }
+}
+
+/**
+ * Streamed trust scorecard for the hub panel (Stage 1.2). Resolves null when signed
+ * out or the graph has no units yet (panel empty state); REJECTS on workspace/store
+ * read failures so the panel can render its error state with a recovery action —
+ * unlike the pulse, a failure here must not masquerade as "no graph yet".
+ */
+export async function loadConnectTrustScorecardPanel(
+  event: Pick<ServerLoadEvent, "locals" | "parent">,
+): Promise<ConnectTrustScorecard | null> {
+  if (!event.locals.user || event.locals.user.authType !== "session") {
+    return null;
+  }
+  const workspace = await requireConnectWorkspace(
+    event.locals,
+    event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
+  );
+  return loadConnectTrustScorecard(workspace.id);
 }

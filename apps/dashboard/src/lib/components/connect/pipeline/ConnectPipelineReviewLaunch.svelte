@@ -10,6 +10,7 @@
     type PipelineRunDefaults,
     type PipelineWizardProgress,
   } from "$lib/connect/pipeline-config";
+  import type { ConnectTrustScorecard } from "@restormel/contracts";
 
   export let runDefaults: PipelineRunDefaults;
   export let progress: PipelineWizardProgress;
@@ -18,6 +19,8 @@
   export let submitting = false;
   /** Bound by the wizard footer so its START RUN gate can't drift from this panel's. */
   export let canStart = false;
+  /** Previous run's trust scorecard (Stage 1.2) — shown in "What to expect" when a graph exists. */
+  export let previousScorecard: ConnectTrustScorecard | null = null;
 
   const dispatch = createEventDispatcher<{ started: void }>();
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
@@ -263,6 +266,21 @@
           <span class="run-estimate-label">Quality bar</span>
           <span class="run-estimate-value">≥90% of claims supported, ≤2% unsupported (G2) — reported after the run</span>
         </div>
+        {#if previousScorecard}
+          <div class="run-estimate-row">
+            <span class="run-estimate-label">Current graph scorecard</span>
+            <span class="run-estimate-value">
+              Trust score <strong>{previousScorecard.trust_score}/100</strong> ·
+              {previousScorecard.g2.ok_pct}% supported ·
+              {previousScorecard.evidence.bound_pct}% evidence-bound ·
+              {previousScorecard.embedding.pct}% embedded
+              {#if previousScorecard.last_verified_at}
+                · last verified {new Date(previousScorecard.last_verified_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+              {/if}
+              — this run adds to the same graph; the scorecard on the Connect hub updates when it completes.
+            </span>
+          </div>
+        {/if}
       </aside>
 
       <aside class="run-estimate" aria-label="Run estimates">

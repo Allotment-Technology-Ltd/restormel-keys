@@ -281,11 +281,14 @@ export {
 
 export {
   computeTrustScore,
+  computeTrustScoreBreakdown,
   buildAuditSummary,
   TRUST_SCORE_FORMULA,
   type KgAuditMetrics,
   type KgAuditIssueDraft,
   type KgAuditSummary,
+  type TrustScoreFactor,
+  type TrustScoreBreakdown,
 } from "./kg-audit/trust-score.js";
 
 export {

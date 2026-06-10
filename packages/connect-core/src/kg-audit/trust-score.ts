@@ -43,7 +43,37 @@ function pct(numerator: number, denominator: number): number {
   return Math.max(0, Math.min(1, numerator / denominator));
 }
 
-export function computeTrustScore(metrics: KgAuditMetrics, issues: KgAuditIssueDraft[]): number {
+/** One weighted component of the trust score — supports "what lowered this score" surfaces. */
+export type TrustScoreFactor = {
+  id:
+    | "embedding_coverage"
+    | "verification_coverage"
+    | "orphan_rate"
+    | "vector_index"
+    | "relation_health"
+    | "issue_penalty";
+  label: string;
+  /** Weight of the factor (maximum points it can contribute to the 0–100 score). */
+  max_points: number;
+  /** Points attained (0 ≤ points ≤ max_points). */
+  points: number;
+};
+
+export type TrustScoreBreakdown = {
+  /** The score, identical to computeTrustScore (rounded clamp of the factor sum). */
+  score: number;
+  factors: TrustScoreFactor[];
+};
+
+/**
+ * Factor-level trust score: the same v1 formula as computeTrustScore, with the
+ * per-factor attainment exposed so a scorecard can explain what lowered the score.
+ * Single source of truth — computeTrustScore delegates here.
+ */
+export function computeTrustScoreBreakdown(
+  metrics: KgAuditMetrics,
+  issues: KgAuditIssueDraft[],
+): TrustScoreBreakdown {
   const accepted = metrics.accepted_claims ?? 0;
   const unverified = metrics.accepted_unverified ?? 0;
   const missingEmb = metrics.accepted_missing_embedding ?? 0;
@@ -72,15 +102,51 @@ export function computeTrustScore(metrics: KgAuditMetrics, issues: KgAuditIssueD
   const highIssues = issues.filter((i) => i.severity === "high").length;
   const issuePenalty = Math.max(0, 1 - highIssues / 20);
 
-  const raw =
-    WEIGHTS.embedding_coverage * embeddingCoverage +
-    WEIGHTS.verification_coverage * verificationCoverage +
-    WEIGHTS.orphan_penalty * orphanRate +
-    WEIGHTS.vector_index * (vectorOk ? 1 : 0) +
-    WEIGHTS.relation_health * relationHealth +
-    WEIGHTS.issue_penalty * issuePenalty;
+  const factors: TrustScoreFactor[] = [
+    {
+      id: "embedding_coverage",
+      label: "Embedding coverage",
+      max_points: WEIGHTS.embedding_coverage,
+      points: WEIGHTS.embedding_coverage * embeddingCoverage,
+    },
+    {
+      id: "verification_coverage",
+      label: "Verification coverage",
+      max_points: WEIGHTS.verification_coverage,
+      points: WEIGHTS.verification_coverage * verificationCoverage,
+    },
+    {
+      id: "orphan_rate",
+      label: "Low orphan rate",
+      max_points: WEIGHTS.orphan_penalty,
+      points: WEIGHTS.orphan_penalty * orphanRate,
+    },
+    {
+      id: "vector_index",
+      label: "Vector index",
+      max_points: WEIGHTS.vector_index,
+      points: WEIGHTS.vector_index * (vectorOk ? 1 : 0),
+    },
+    {
+      id: "relation_health",
+      label: "Relation balance",
+      max_points: WEIGHTS.relation_health,
+      points: WEIGHTS.relation_health * relationHealth,
+    },
+    {
+      id: "issue_penalty",
+      label: "High-severity issue density",
+      max_points: WEIGHTS.issue_penalty,
+      points: WEIGHTS.issue_penalty * issuePenalty,
+    },
+  ];
 
-  return Math.round(Math.max(0, Math.min(100, raw)));
+  const raw = factors.reduce((sum, f) => sum + f.points, 0);
+  return { score: Math.round(Math.max(0, Math.min(100, raw))), factors };
+}
+
+export function computeTrustScore(metrics: KgAuditMetrics, issues: KgAuditIssueDraft[]): number {
+  return computeTrustScoreBreakdown(metrics, issues).score;
 }
 
 export function buildAuditSummary(

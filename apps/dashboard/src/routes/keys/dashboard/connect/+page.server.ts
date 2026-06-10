@@ -1,11 +1,16 @@
 import type { PageServerLoad } from "./$types";
-import { loadConnectHubPage, loadConnectGraphPulse } from "$lib/server/connect/connect-hub-load";
+import {
+  loadConnectHubPage,
+  loadConnectGraphPulse,
+  loadConnectTrustScorecardPanel,
+} from "$lib/server/connect/connect-hub-load";
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.user || event.locals.user.authType !== "session") {
     return {
       hub: Promise.resolve(null),
       graphPulse: Promise.resolve(null),
+      scorecard: Promise.resolve(null),
     };
   }
   return {
@@ -13,5 +18,7 @@ export const load: PageServerLoad = async (event) => {
     hub: loadConnectHubPage(event),
     // Streamed — authoritative graph counts fill the pulse band when ready.
     graphPulse: loadConnectGraphPulse(event),
+    // Streamed — per-graph trust scorecard panel (Stage 1.2).
+    scorecard: loadConnectTrustScorecardPanel(event),
   };
 };
