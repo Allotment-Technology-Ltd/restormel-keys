@@ -2,24 +2,63 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Restormel Keys API",
-    "version": "1.6.0",
-    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev).\n\nRate-limit headers: all endpoints with rate-limit-inbound in their policy stack emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset on every response. Zuplo emits these automatically; no backend change required.\n\nChangelog:\n- 1.9.0 (2026-06-10): [1.1] Verified-context envelope. POST /connect/v1/retrieve and POST /connect/v1/graph responses now carry verified_claims (one VerifiedClaim per returned unit: EBV verification state supported|inferred|unverified|contradicted|excluded, bound evidence spans with offsets + source-version hash, latest entailment judge attribution, citation, provenance trace link, trust score) plus metadata.verification_summary per-state counts. Additive, backward compatible. Guide: /keys/docs/guides/verified-context.\n- 1.8.0 (2026-06-08): [4C] Verification rule set v1. New GET /connect/v1/verification-rules returns the rule set active for a workspace (six-dimension weights + strict/balanced/lenient policies); GET /connect/v1/verification-rules/built-in returns the built-in Restormel Core v1 definition.\n- 1.7.0 (2026-06-08): [4B] Provenance audit trace export. POST /connect/v1/retrieve and POST /connect/v1/graph now return a trace_id. New GET /connect/v1/traces/{traceId} returns the structured, versioned ProvenanceTrace; GET /connect/v1/traces/{traceId}/export?format=json downloads it. Traces are retained for 90 days.\n- 1.6.0 (2026-06-07): [C1] Cursor pagination on GET /connect/v1/ingest/jobs (?limit, ?cursor, next_cursor, total_count). [C2] Idempotency-Key header support on POST /connect/v1/ingest/jobs (24-hour TTL). [C3] X-Request-Id header on all Connect v1, Keys v1, and Graph v1 responses (echoed in error envelopes as request_id). [C4] Rate-limit response headers documented (X-RateLimit-Limit/Remaining/Reset — Zuplo already emits). [C5] GET /graph/v1/snapshots/{snapshotId} now returns 501 not_implemented instead of 404 (Graph snapshots planned for Phase 6). [1A] Connect v1 ingest/retrieve/verify API with workspace-scoped persistence. [1B] Keys v1 routing surface. [1C] GraphStoreAdapter unification + RetrievalConfig. [1D] Ingest contract completion: quality reports, log streaming, outbound webhooks. [2A] Neo4j adapter + graph store config panel. [2B] O1/O2 breaking changes: contract_version snake_case, /connect/v1/retrieve 206 on degraded.\n- 1.1.0 (2026-06-07): [O1 BREAKING] contractVersion field renamed to contract_version (snake_case) in resolve, simulate, and catalog responses. Update any consumers reading this field. [O2 BREAKING] /connect/v1/retrieve now returns HTTP 206 (Partial Content) instead of 200 when retrieval_degraded:true. [I4] /graph/v1/layout now requires authentication (gateway key, management key, or session). [I5] New /keys/v1/management-keys endpoints (POST/GET/DELETE) for management key lifecycle. [I9] GET /keys/v1/connections and GET /keys/v1/connections/{connectionId} now accept gateway keys (read-only)."
+    "version": "2.0.0",
+    "description": "Zuplo Gateway API for Restormel Keys. Consumer keys (zpka_...) authenticate at the edge; inbound policies forward to the dashboard with a backend Gateway key (rk_...). Control-plane CRUD uses /api/* on KEYS_BACKEND_URL. Runtime hot paths (Phase 1+) use /keys/v1/* on KEYS_SITE_ORIGIN (site root, e.g. https://restormel.dev).\n\nRate-limit headers: all endpoints with rate-limit-inbound in their policy stack emit X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset on every response. Zuplo emits these automatically; no backend change required.\n\nChangelog:\n- 2.0.0 (2026-06-10): [1.2] Trust scorecard endpoint. New GET /connect/v1/graph/scorecard returns the persistent per-graph quality scorecard: trust score (0\u2013100) with factor breakdown, G2 metrics vs the published bar, EBV verification-state counts (supported|inferred|unverified|contradicted|excluded), evidence-binding coverage (% bound), coverage gaps, embedding coverage, and last-verified-at. Auth: same Gateway-key / management-key / session as other Connect v1 reads. Null scorecard when the workspace\u2019s active graph has no units yet.\n- 1.9.0 (2026-06-10): [1.1] Verified-context envelope. POST /connect/v1/retrieve and POST /connect/v1/graph responses now carry verified_claims (one VerifiedClaim per returned unit: EBV verification state supported|inferred|unverified|contradicted|excluded, bound evidence spans with offsets + source-version hash, latest entailment judge attribution, citation, provenance trace link, trust score) plus metadata.verification_summary per-state counts. Additive, backward compatible. Guide: /keys/docs/guides/verified-context.\n- 1.8.0 (2026-06-08): [4C] Verification rule set v1. New GET /connect/v1/verification-rules returns the rule set active for a workspace (six-dimension weights + strict/balanced/lenient policies); GET /connect/v1/verification-rules/built-in returns the built-in Restormel Core v1 definition.\n- 1.7.0 (2026-06-08): [4B] Provenance audit trace export. POST /connect/v1/retrieve and POST /connect/v1/graph now return a trace_id. New GET /connect/v1/traces/{traceId} returns the structured, versioned ProvenanceTrace; GET /connect/v1/traces/{traceId}/export?format=json downloads it. Traces are retained for 90 days.\n- 1.6.0 (2026-06-07): [C1] Cursor pagination on GET /connect/v1/ingest/jobs (?limit, ?cursor, next_cursor, total_count). [C2] Idempotency-Key header support on POST /connect/v1/ingest/jobs (24-hour TTL). [C3] X-Request-Id header on all Connect v1, Keys v1, and Graph v1 responses (echoed in error envelopes as request_id). [C4] Rate-limit response headers documented (X-RateLimit-Limit/Remaining/Reset \u2014 Zuplo already emits). [C5] GET /graph/v1/snapshots/{snapshotId} now returns 501 not_implemented instead of 404 (Graph snapshots planned for Phase 6). [1A] Connect v1 ingest/retrieve/verify API with workspace-scoped persistence. [1B] Keys v1 routing surface. [1C] GraphStoreAdapter unification + RetrievalConfig. [1D] Ingest contract completion: quality reports, log streaming, outbound webhooks. [2A] Neo4j adapter + graph store config panel. [2B] O1/O2 breaking changes: contract_version snake_case, /connect/v1/retrieve 206 on degraded.\n- 1.1.0 (2026-06-07): [O1 BREAKING] contractVersion field renamed to contract_version (snake_case) in resolve, simulate, and catalog responses. Update any consumers reading this field. [O2 BREAKING] /connect/v1/retrieve now returns HTTP 206 (Partial Content) instead of 200 when retrieval_degraded:true. [I4] /graph/v1/layout now requires authentication (gateway key, management key, or session). [I5] New /keys/v1/management-keys endpoints (POST/GET/DELETE) for management key lifecycle. [I9] GET /keys/v1/connections and GET /keys/v1/connections/{connectionId} now accept gateway keys (read-only)."
   },
   "servers": [
-    { "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app" },
-    { "url": "https://restormel-keys-gateway-working-co-185f3e3.zuplo.app" }
+    {
+      "url": "https://restormel-keys-gateway-main-bc13eba.zuplo.app"
+    },
+    {
+      "url": "https://restormel-keys-gateway-working-co-185f3e3.zuplo.app"
+    }
   ],
-  "security": [{ "consumerKey": [] }],
+  "security": [
+    {
+      "consumerKey": []
+    }
+  ],
   "tags": [
-    { "name": "Knowledge graph", "description": "Higher-order retrieval, expansion, path-finding, and graph layout over your workspace knowledge graph." },
-    { "name": "Ingest jobs", "description": "Create and poll Knowledge Ingest jobs that build your graph from sources." },
-    { "name": "Provenance traces", "description": "Fetch and export the structured audit trace produced on every retrieval query (90-day retention)." },
-    { "name": "Verification rules", "description": "Inspect the verification rule set (six-dimension scoring weights and policies) active for a workspace." },
-    { "name": "Verification", "description": "Claim extraction, reasoning evaluation, and constitution checks." },
-    { "name": "Model routing", "description": "Resolve providers/models, list the model catalog, and evaluate routing policies." },
-    { "name": "API keys & auth", "description": "Manage projects and Gateway keys (rk_…) used to call the API." },
-    { "name": "Suite", "description": "Read-only suite tools mirrored over HTTP (docs, testing, observability, graph, state)." },
-    { "name": "System", "description": "Service health and operational endpoints." }
+    {
+      "name": "Knowledge graph",
+      "description": "Higher-order retrieval, expansion, path-finding, and graph layout over your workspace knowledge graph."
+    },
+    {
+      "name": "Graph quality",
+      "description": "Per-graph trust scorecard: quality metrics, EBV verification coverage, and factor breakdown at any point in time."
+    },
+    {
+      "name": "Ingest jobs",
+      "description": "Create and poll Knowledge Ingest jobs that build your graph from sources."
+    },
+    {
+      "name": "Provenance traces",
+      "description": "Fetch and export the structured audit trace produced on every retrieval query (90-day retention)."
+    },
+    {
+      "name": "Verification rules",
+      "description": "Inspect the verification rule set (six-dimension scoring weights and policies) active for a workspace."
+    },
+    {
+      "name": "Verification",
+      "description": "Claim extraction, reasoning evaluation, and constitution checks."
+    },
+    {
+      "name": "Model routing",
+      "description": "Resolve providers/models, list the model catalog, and evaluate routing policies."
+    },
+    {
+      "name": "API keys & auth",
+      "description": "Manage projects and Gateway keys (rk_\u2026) used to call the API."
+    },
+    {
+      "name": "Suite",
+      "description": "Read-only suite tools mirrored over HTTP (docs, testing, observability, graph, state)."
+    },
+    {
+      "name": "System",
+      "description": "Service health and operational endpoints."
+    }
   ],
   "paths": {
     "/api/health": {
@@ -27,7 +66,9 @@
         "summary": "Health check",
         "description": "Returns gateway health status. No auth required.",
         "operationId": "getHealth",
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -37,8 +78,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string", "example": "ok" },
-                    "service": { "type": "string", "example": "keys-dashboard" }
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "service": {
+                      "type": "string",
+                      "example": "keys-dashboard"
+                    }
                   }
                 }
               }
@@ -50,7 +97,11 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
           "policies": {
             "inbound": []
@@ -63,34 +114,63 @@
         "summary": "Invoke read-only suite tool (HTTP mirror of MCP)",
         "description": "Runs a Horizon Phase 1 suite read tool on the dashboard origin (docs canonical resolve, testing config validate, trace summarize, graph fixture validate, state memory preview). Request body: { tool, payload? }. See repo docs/integrations/restormel-suite-tool-envelope.schema.json.",
         "operationId": "postSuiteInvoke",
-        "tags": ["Suite"],
+        "tags": [
+          "Suite"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/SuiteToolRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/SuiteToolRequest"
+              }
             }
           }
         },
         "responses": {
           "200": {
             "description": "Tool result JSON (structuredContent-equivalent; may include ok:false and code for tool-level errors)",
-            "content": { "application/json": { "schema": { "type": "object" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid envelope or missing required payload fields",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -99,7 +179,9 @@
         "summary": "List projects",
         "description": "Returns all projects in the authenticated workspace.",
         "operationId": "listProjects",
-        "tags": ["Model routing"],
+        "tags": [
+          "Model routing"
+        ],
         "responses": {
           "200": {
             "description": "List of projects",
@@ -108,34 +190,60 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } }
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
           "policies": {
-            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
           }
         }
       },
       "post": {
         "summary": "Create project",
         "operationId": "createProject",
-        "tags": ["Model routing"],
+        "tags": [
+          "Model routing"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "type": "object", "properties": { "name": { "type": "string", "description": "Project display name" } } }
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Project display name"
+                  }
+                }
+              }
             }
           }
         },
@@ -144,21 +252,39 @@
             "description": "Project created",
             "content": {
               "application/json": {
-                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Project"
+                    }
+                  }
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
           "policies": {
-            "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"]
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
           }
         }
       }
@@ -167,67 +293,195 @@
       "get": {
         "summary": "Get project",
         "operationId": "getProject",
-        "tags": ["Model routing"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "Model routing"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Project details",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Project"
+                    }
+                  }
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "patch": {
         "summary": "Update project",
         "operationId": "updateProject",
-        "tags": ["Model routing"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "Model routing"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" } } } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "delete": {
         "summary": "Delete project",
         "operationId": "deleteProject",
-        "tags": ["Model routing"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "Model routing"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -235,31 +489,82 @@
       "get": {
         "summary": "List Gateway Keys for a project",
         "operationId": "listProjectKeys",
-        "tags": ["API keys & auth"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "API keys & auth"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of Gateway keys (masked)",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/KeyInfo" } } } } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/KeyInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "post": {
         "summary": "Create Gateway Key",
         "operationId": "createApiKey",
-        "tags": ["API keys & auth"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "API keys & auth"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "Key created; raw key returned once in response",
@@ -271,8 +576,13 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "rawKey": { "type": "string", "description": "Shown only once; store securely" },
-                        "keyPrefix": { "type": "string" }
+                        "rawKey": {
+                          "type": "string",
+                          "description": "Shown only once; store securely"
+                        },
+                        "keyPrefix": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
@@ -280,40 +590,107 @@
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "delete": {
         "summary": "Revoke API key",
         "operationId": "deleteApiKey",
-        "tags": ["API keys & auth"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "API keys & auth"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
-          "content": { "application/json": { "schema": { "type": "object", "properties": { "keyId": { "type": "string", "description": "Key ID to revoke" } } } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyId": {
+                    "type": "string",
+                    "description": "Key ID to revoke"
+                  }
+                }
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_BACKEND_URL}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_BACKEND_URL}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -322,18 +699,40 @@
         "summary": "Global model catalog (Keys v1)",
         "description": "Canonical provider+model catalog. Public read; same semantics as GET /keys/dashboard/api/catalog.",
         "operationId": "keysV1Catalog",
-        "tags": ["Model routing"],
+        "tags": [
+          "Model routing"
+        ],
         "responses": {
-          "200": { "description": "Catalog payload", "content": { "application/json": { "schema": { "type": "object" } } } }
+          "200": {
+            "description": "Catalog payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -342,18 +741,40 @@
         "summary": "List catalog models (Keys v1)",
         "description": "Paged model list. Same semantics as GET /keys/dashboard/api/models.",
         "operationId": "keysV1Models",
-        "tags": ["Model routing"],
+        "tags": [
+          "Model routing"
+        ],
         "responses": {
-          "200": { "description": "Model list", "content": { "application/json": { "schema": { "type": "object" } } } }
+          "200": {
+            "description": "Model list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -362,24 +783,71 @@
         "summary": "Resolve provider/model for a project (Keys v1)",
         "description": "Runtime route resolution. Gateway key must be scoped to projectId. Same semantics as POST /keys/dashboard/api/projects/{id}/resolve.",
         "operationId": "keysV1Resolve",
-        "tags": ["Model routing"],
-        "parameters": [{ "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "Model routing"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "properties": { "environmentId": { "type": "string" } }, "required": ["environmentId"] } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "environmentId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "environmentId"
+                ]
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Resolved route", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "200": {
+            "description": "Resolved route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -388,23 +856,53 @@
         "summary": "Evaluate guard rails (Keys v1)",
         "description": "Policy evaluation for a model/context. Same semantics as POST /keys/dashboard/api/policies/evaluate.",
         "operationId": "keysV1PoliciesEvaluate",
-        "tags": ["Model routing"],
+        "tags": [
+          "Model routing"
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Evaluation result", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "200": {
+            "description": "Evaluation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -413,24 +911,56 @@
         "summary": "Compute Contract v0 orbital layout (Graph v1)",
         "description": "Stateless layout from inline GraphData snapshot. Same semantics as in-process computeLayout in @restormel/graph-core. Auth required (I4, 2026-06-07): gateway key, management key, or session.",
         "operationId": "graphV1Layout",
-        "tags": ["Knowledge graph"],
+        "tags": [
+          "Knowledge graph"
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Layout positions", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "400": { "description": "Invalid snapshot" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "200": {
+            "description": "Layout positions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid snapshot"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -439,8 +969,19 @@
         "summary": "Read hosted graph snapshot metadata (Graph v1)",
         "description": "Returns 501 Not Implemented until Phase 6 operator persistence ships. Use POST /graph/v1/layout with an inline snapshot today. See restormel.dev/changelog for updates.",
         "operationId": "graphV1GetSnapshot",
-        "tags": ["Knowledge graph"],
-        "parameters": [{ "name": "snapshotId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "Knowledge graph"
+        ],
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "501": {
             "description": "Graph snapshots not yet available (Phase 6)",
@@ -449,8 +990,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "error": { "type": "string", "example": "not_implemented" },
-                    "message": { "type": "string", "example": "Graph snapshots are not yet available. See restormel.dev/changelog for updates." }
+                    "error": {
+                      "type": "string",
+                      "example": "not_implemented"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Graph snapshots are not yet available. See restormel.dev/changelog for updates."
+                    }
                   }
                 }
               }
@@ -462,9 +1009,20 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -473,46 +1031,28 @@
         "summary": "Connect Verify (Connect v1)",
         "description": "Claim extraction, reasoning evaluation, and constitution checks via @restormel/reasoning-core.",
         "operationId": "knowledgeV1Verify",
-        "tags": ["Verification"],
+        "tags": [
+          "Verification"
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
-        },
-        "responses": {
-          "200": { "description": "Verification result envelope" },
-          "400": { "description": "Invalid request" },
-          "503": { "description": "Verify routes or credentials not configured" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/retrieve": {
-      "post": {
-        "summary": "Connect Retrieve (Connect v1) — deprecated",
-        "description": "Deprecated: use POST /connect/v1/graph for full orchestrator support and domain-pack-aware retrieval. This endpoint will be removed in v2.\n\nGraph-aware context assembly via @restormel/graphrag-core (workspace graph index when configured).\n\n[1.1, 2026-06-10] Verified context: responses now carry `verified_claims` — one VerifiedClaim envelope per returned unit (EBV verification state, bound evidence spans with offsets and source-version hash, judge attribution, citation, provenance trace link, trust score) — plus `metadata.verification_summary` per-state counts. Unverified or excluded units are flagged by state, never silently blended. Guide: /keys/docs/guides/verified-context.",
-        "operationId": "knowledgeV1Retrieve",
-        "deprecated": true,
-        "tags": ["Knowledge graph"],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
-            "description": "Context block + retrieval metadata (graph store fully resolved), with a VerifiedClaim envelope per returned unit",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectRetrieveResponse" } } }
+            "description": "Verification result envelope"
           },
-          "206": {
-            "description": "[O2, 2026-06-07] Partial Content: retrieval_degraded:true in metadata (graph store not configured, unreachable, or empty). Body shape is identical to 200. Deprecated: previously returned 200 for degraded responses.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectRetrieveResponse" } } }
+          "400": {
+            "description": "Invalid request"
+          },
+          "503": {
+            "description": "Verify routes or credentials not configured"
           }
         },
         "x-zuplo-route": {
@@ -520,37 +1060,209 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
-    "/connect/v1/graph": {
+    "/connect/v1/retrieve": {
       "post": {
-        "summary": "Connect Graph retrieval (Connect v1)",
-        "description": "Higher-order graph retrieval via the RetrievalOrchestrator. Supports retrieve_context, expand_context, find_relevant_subgraph, find_paths, and summarise_subgraph operations. Preferred over /connect/v1/retrieve for all new integrations.\n\n[1.1, 2026-06-10] Verified context: subgraph-producing operations now carry `verified_claims` — one VerifiedClaim envelope per returned unit (EBV verification state, bound evidence spans with offsets and source-version hash, judge attribution, citation, provenance trace link, trust score) — plus `metadata.verification_summary` per-state counts. Unverified or excluded units are flagged by state, never silently blended. Guide: /keys/docs/guides/verified-context.",
-        "operationId": "knowledgeV1Graph",
-        "tags": ["Knowledge graph"],
+        "summary": "Connect Retrieve (Connect v1) \u2014 deprecated",
+        "description": "Deprecated: use POST /connect/v1/graph for full orchestrator support and domain-pack-aware retrieval. This endpoint will be removed in v2.\n\nGraph-aware context assembly via @restormel/graphrag-core (workspace graph index when configured).\n\n[1.1, 2026-06-10] Verified context: responses now carry `verified_claims` \u2014 one VerifiedClaim envelope per returned unit (EBV verification state, bound evidence spans with offsets and source-version hash, judge attribution, citation, provenance trace link, trust score) \u2014 plus `metadata.verification_summary` per-state counts. Unverified or excluded units are flagged by state, never silently blended. Guide: /keys/docs/guides/verified-context.",
+        "operationId": "knowledgeV1Retrieve",
+        "deprecated": true,
+        "tags": [
+          "Knowledge graph"
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
-            "description": "Context block, subgraph/paths, trace, and retrieval metadata, with a VerifiedClaim envelope per returned unit",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectGraphOpResponse" } } }
+            "description": "Context block + retrieval metadata (graph store fully resolved), with a VerifiedClaim envelope per returned unit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectRetrieveResponse"
+                }
+              }
+            }
           },
-          "400": { "description": "Invalid request" }
+          "206": {
+            "description": "[O2, 2026-06-07] Partial Content: retrieval_degraded:true in metadata (graph store not configured, unreachable, or empty). Body shape is identical to 200. Deprecated: previously returned 200 for degraded responses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectRetrieveResponse"
+                }
+              }
+            }
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/graph": {
+      "post": {
+        "summary": "Connect Graph retrieval (Connect v1)",
+        "description": "Higher-order graph retrieval via the RetrievalOrchestrator. Supports retrieve_context, expand_context, find_relevant_subgraph, find_paths, and summarise_subgraph operations. Preferred over /connect/v1/retrieve for all new integrations.\n\n[1.1, 2026-06-10] Verified context: subgraph-producing operations now carry `verified_claims` \u2014 one VerifiedClaim envelope per returned unit (EBV verification state, bound evidence spans with offsets and source-version hash, judge attribution, citation, provenance trace link, trust score) \u2014 plus `metadata.verification_summary` per-state counts. Unverified or excluded units are flagged by state, never silently blended. Guide: /keys/docs/guides/verified-context.",
+        "operationId": "knowledgeV1Graph",
+        "tags": [
+          "Knowledge graph"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Context block, subgraph/paths, trace, and retrieval metadata, with a VerifiedClaim envelope per returned unit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectGraphOpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/graph/scorecard": {
+      "get": {
+        "summary": "Trust scorecard (Connect v1)",
+        "description": "Returns the persistent per-graph quality scorecard for the workspace's active graph.\n\nThe scorecard is inspectable at any time \u2014 not only in the run console after an ingest. Fields:\n- `trust_score` (0\u2013100) with weighted factor breakdown (the \"what lowered this score\" list)\n- `g2` \u2014 validated ok/weak/unsupported counts and percentages\n- `targets` \u2014 the published bar (ok \u2265 90%, unsupported \u2264 2%)\n- `verification_states` \u2014 per-EBV-state unit counts (supported|inferred|unverified|contradicted|excluded)\n- `evidence` \u2014 Layer-1 evidence-binding breakdown: bound/unbound/no_evidence counts, `bound_pct`\n- `coverage` \u2014 coverage-gap counts (validator_gaps, remediation_drops; null if the store could not answer)\n- `embedding` \u2014 embedded/units/pct\n- `last_verified_at` \u2014 latest EBV entailment timestamp or last run quality assessment; null for never-validated graphs\n\nReturns `{ scorecard: null }` when the workspace's active graph has no units yet.\n\nGuide: /keys/docs/guides/verified-context",
+        "operationId": "connectV1GraphScorecard",
+        "tags": [
+          "Graph quality"
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "description": "Workspace ID whose active graph scorecard to return.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "description": "Optional project ID for project-scoped auth (management-key path).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scorecard for the workspace active graph (null when no units exist)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectTrustScorecardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid workspace_id"
+          },
+          "401": {
+            "description": "Unauthorized \u2014 missing or invalid Gateway key"
+          },
+          "502": {
+            "description": "Graph store unreachable \u2014 could not compute scorecard"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -559,88 +1271,160 @@
         "summary": "Create Connect Ingest job (Connect v1)",
         "description": "Creates a new knowledge ingest job. Supports idempotency: include an `Idempotency-Key` header (any unique string, max 256 chars) to safely retry without creating duplicate jobs. The same key returns the original 201 response for 24 hours.",
         "operationId": "knowledgeV1IngestCreateJob",
-        "tags": ["Ingest jobs"],
+        "tags": [
+          "Ingest jobs"
+        ],
         "parameters": [
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
             "description": "Caller-supplied idempotency key. Duplicate requests with the same key within 24 hours return the original response.",
-            "schema": { "type": "string", "maxLength": 256 }
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            }
           }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
         },
         "responses": {
           "201": {
             "description": "Job created and persisted",
             "headers": {
-              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
-              "X-RateLimit-Limit": { "$ref": "#/components/headers/X-RateLimit-Limit" },
-              "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" },
-              "X-RateLimit-Reset": { "$ref": "#/components/headers/X-RateLimit-Reset" }
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
             },
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "contract_version": { "type": "string", "example": "2026-06-01" },
-                    "job": { "$ref": "#/components/schemas/ConnectIngestJob" }
+                    "contract_version": {
+                      "type": "string",
+                      "example": "2026-06-01"
+                    },
+                    "job": {
+                      "$ref": "#/components/schemas/ConnectIngestJob"
+                    }
                   }
                 }
               }
             }
           },
-          "400": { "description": "Invalid request" }
+          "400": {
+            "description": "Invalid request"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "get": {
         "summary": "List Connect Ingest jobs (Connect v1)",
         "description": "Returns a cursor-paginated list of ingest jobs for the workspace. Use `limit` and `cursor` for paging; carry `next_cursor` from each response as `cursor` in the next request.",
         "operationId": "knowledgeV1IngestListJobs",
-        "tags": ["Ingest jobs"],
+        "tags": [
+          "Ingest jobs"
+        ],
         "parameters": [
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "limit",
             "in": "query",
             "required": false,
             "description": "Max results per page. Default 20, max 100.",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
           },
           {
             "name": "cursor",
             "in": "query",
             "required": false,
             "description": "Opaque pagination cursor from the previous response's next_cursor field.",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Paginated jobs for the workspace",
             "headers": {
-              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
-              "X-RateLimit-Limit": { "$ref": "#/components/headers/X-RateLimit-Limit" },
-              "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" },
-              "X-RateLimit-Reset": { "$ref": "#/components/headers/X-RateLimit-Reset" }
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              }
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ConnectIngestJobListResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectIngestJobListResponse"
+                }
               }
             }
           }
@@ -650,9 +1434,20 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -660,11 +1455,37 @@
       "get": {
         "summary": "Connect Ingest job status (Connect v1)",
         "operationId": "knowledgeV1IngestJobStatus",
-        "tags": ["Ingest jobs"],
+        "tags": [
+          "Ingest jobs"
+        ],
         "parameters": [
-          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -674,155 +1495,20 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "contract_version": { "type": "string", "example": "2026-06-01" },
-                    "job": { "$ref": "#/components/schemas/ConnectIngestJob" }
+                    "contract_version": {
+                      "type": "string",
+                      "example": "2026-06-01"
+                    },
+                    "job": {
+                      "$ref": "#/components/schemas/ConnectIngestJob"
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/ingest/jobs/{jobId}/logs": {
-      "get": {
-        "summary": "Stream Connect Ingest job logs (Connect v1)",
-        "operationId": "knowledgeV1IngestJobLogs",
-        "tags": ["Ingest jobs"],
-        "description": "Incremental, paginated worker log lines. Poll with the previous response's next_since cursor.",
-        "parameters": [
-          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "since", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0 }, "description": "Log line cursor; return lines after this index." },
-          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Log lines",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectIngestJobLogs" } } }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/traces/{traceId}": {
-      "get": {
-        "summary": "Get a provenance trace (Connect v1)",
-        "operationId": "knowledgeV1GetTrace",
-        "tags": ["Provenance traces"],
-        "description": "Returns the structured, versioned ProvenanceTrace stored for a retrieval query (POST /connect/v1/retrieve or /connect/v1/graph returns its trace_id). Traces are retained for 90 days.",
-        "parameters": [
-          { "name": "traceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Provenance trace",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProvenanceTrace" } } }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/traces/{traceId}/export": {
-      "get": {
-        "summary": "Export a provenance trace (Connect v1)",
-        "operationId": "knowledgeV1ExportTrace",
-        "tags": ["Provenance traces"],
-        "description": "Downloadable provenance trace. Sets Content-Disposition so the trace saves as a JSON file. Only format=json is supported.",
-        "parameters": [
-          { "name": "traceId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "format", "in": "query", "required": false, "schema": { "type": "string", "enum": ["json"], "default": "json" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Downloadable provenance trace (application/json)",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProvenanceTrace" } } }
-          },
-          "400": { "description": "Unsupported format" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/verification-rules": {
-      "get": {
-        "summary": "Active verification rule set (Connect v1)",
-        "operationId": "knowledgeV1VerificationRules",
-        "tags": ["Verification rules"],
-        "description": "Returns the verification rule set in force for the workspace: the workspace's domain-pack override (inline dimension weights or a referenced rule set id) falling back to the built-in Restormel Core v1.",
-        "parameters": [
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "The active verification rule set",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerificationRuleSet" } } }
-          },
-          "400": { "description": "Invalid request" }
-        },
-        "x-zuplo-route": {
-          "corsPolicy": "restormel-cors",
-          "handler": {
-            "export": "urlForwardHandler",
-            "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
-          },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
-        }
-      }
-    },
-    "/connect/v1/verification-rules/built-in": {
-      "get": {
-        "summary": "Built-in verification rule set (Connect v1)",
-        "operationId": "knowledgeV1VerificationRulesBuiltIn",
-        "tags": ["Verification rules"],
-        "description": "Returns the built-in Restormel Core v1 rule set definition (static, public reference config).",
-        "responses": {
-          "200": {
-            "description": "The built-in core verification rule set",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerificationRuleSet" } } }
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         },
         "x-zuplo-route": {
@@ -830,9 +1516,382 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/ingest/jobs/{jobId}/logs": {
+      "get": {
+        "summary": "Stream Connect Ingest job logs (Connect v1)",
+        "operationId": "knowledgeV1IngestJobLogs",
+        "tags": [
+          "Ingest jobs"
+        ],
+        "description": "Incremental, paginated worker log lines. Poll with the previous response's next_since cursor.",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Log line cursor; return lines after this index."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log lines",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectIngestJobLogs"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/traces/{traceId}": {
+      "get": {
+        "summary": "Get a provenance trace (Connect v1)",
+        "operationId": "knowledgeV1GetTrace",
+        "tags": [
+          "Provenance traces"
+        ],
+        "description": "Returns the structured, versioned ProvenanceTrace stored for a retrieval query (POST /connect/v1/retrieve or /connect/v1/graph returns its trace_id). Traces are retained for 90 days.",
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provenance trace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvenanceTrace"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/traces/{traceId}/export": {
+      "get": {
+        "summary": "Export a provenance trace (Connect v1)",
+        "operationId": "knowledgeV1ExportTrace",
+        "tags": [
+          "Provenance traces"
+        ],
+        "description": "Downloadable provenance trace. Sets Content-Disposition so the trace saves as a JSON file. Only format=json is supported.",
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json"
+              ],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Downloadable provenance trace (application/json)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvenanceTrace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported format"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/verification-rules": {
+      "get": {
+        "summary": "Active verification rule set (Connect v1)",
+        "operationId": "knowledgeV1VerificationRules",
+        "tags": [
+          "Verification rules"
+        ],
+        "description": "Returns the verification rule set in force for the workspace: the workspace's domain-pack override (inline dimension weights or a referenced rule set id) falling back to the built-in Restormel Core v1.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The active verification rule set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationRuleSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
+        }
+      }
+    },
+    "/connect/v1/verification-rules/built-in": {
+      "get": {
+        "summary": "Built-in verification rule set (Connect v1)",
+        "operationId": "knowledgeV1VerificationRulesBuiltIn",
+        "tags": [
+          "Verification rules"
+        ],
+        "description": "Returns the built-in Restormel Core v1 rule set definition (static, public reference config).",
+        "responses": {
+          "200": {
+            "description": "The built-in core verification rule set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationRuleSet"
+                }
+              }
+            }
+          }
+        },
+        "x-zuplo-route": {
+          "corsPolicy": "restormel-cors",
+          "handler": {
+            "export": "urlForwardHandler",
+            "module": "$import(@zuplo/runtime)",
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
+          },
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound"
+            ]
+          }
         }
       }
     },
@@ -840,36 +1899,81 @@
       "post": {
         "summary": "Register a Connect ingest webhook (Connect v1)",
         "operationId": "knowledgeV1WebhookCreate",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "description": "Register an outbound webhook fired when an ingest job reaches a terminal state. Payloads are HMAC-SHA256 signed (X-Restormel-Signature: sha256=<hex>). The signing_secret is returned exactly once.",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectWebhookCreateRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectWebhookCreateRequest"
+              }
+            }
+          }
         },
         "responses": {
           "201": {
             "description": "Webhook registered",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectWebhookCreateResponse" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectWebhookCreateResponse"
+                }
+              }
+            }
           },
-          "400": { "description": "Invalid request" }
+          "400": {
+            "description": "Invalid request"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "get": {
         "summary": "List Connect ingest webhooks (Connect v1)",
         "operationId": "knowledgeV1WebhookList",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -879,8 +1983,16 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "contract_version": { "type": "string", "example": "2026-06-01" },
-                    "webhooks": { "type": "array", "items": { "$ref": "#/components/schemas/ConnectWebhook" } }
+                    "contract_version": {
+                      "type": "string",
+                      "example": "2026-06-01"
+                    },
+                    "webhooks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConnectWebhook"
+                      }
+                    }
                   }
                 }
               }
@@ -892,9 +2004,20 @@
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -902,50 +2025,136 @@
       "get": {
         "summary": "Get a Connect ingest webhook (Connect v1)",
         "operationId": "knowledgeV1WebhookGet",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
-          { "name": "webhookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "webhookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Webhook",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectWebhook" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectWebhook"
+                }
+              }
+            }
           },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "delete": {
         "summary": "Delete a Connect ingest webhook (Connect v1)",
         "operationId": "knowledgeV1WebhookDelete",
-        "tags": ["Webhooks"],
+        "tags": [
+          "Webhooks"
+        ],
         "parameters": [
-          { "name": "webhookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "workspace_id", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "project_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "webhookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Webhook deleted" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Webhook deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "restormel-cors",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -954,48 +2163,101 @@
         "summary": "List management keys (Keys v1)",
         "description": "List management keys for the authenticated workspace. Session auth required.",
         "operationId": "keysV1ListManagementKeys",
-        "tags": ["KeysV1"],
+        "tags": [
+          "KeysV1"
+        ],
         "responses": {
-          "200": { "description": "List of management key records (prefix only; no raw key)", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "200": {
+            "description": "List of management key records (prefix only; no raw key)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       },
       "post": {
         "summary": "Issue management key (Keys v1)",
         "description": "Issue a management key scoped to the caller's workspace. Session auth required. Raw key shown once. Management keys are workspace-scoped; gateway keys are project-scoped.",
         "operationId": "keysV1CreateManagementKey",
-        "tags": ["KeysV1"],
+        "tags": [
+          "KeysV1"
+        ],
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": { "type": "object", "properties": { "label": { "type": "string", "description": "Optional friendly label" } } }
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "description": "Optional friendly label"
+                  }
+                }
+              }
             }
           }
         },
         "responses": {
           "201": {
             "description": "Management key created; raw key returned once",
-            "content": { "application/json": { "schema": { "type": "object" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -1004,21 +2266,61 @@
         "summary": "Revoke management key (Keys v1)",
         "description": "Revoke a management key by ID. Session auth required. Only the workspace owner may revoke.",
         "operationId": "keysV1RevokeManagementKey",
-        "tags": ["KeysV1"],
-        "parameters": [{ "name": "keyId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "KeysV1"
+        ],
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Revoked", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -1027,19 +2329,43 @@
         "summary": "List source connections (Keys v1)",
         "description": "Read-only. Returns source connections for the caller's workspace. Auth: gateway key, management key, or session (I9).",
         "operationId": "keysV1ListConnections",
-        "tags": ["KeysV1"],
+        "tags": [
+          "KeysV1"
+        ],
         "responses": {
-          "200": { "description": "List of source connections", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "200": {
+            "description": "List of source connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     },
@@ -1048,26 +2374,60 @@
         "summary": "Get source connection (Keys v1)",
         "description": "Read-only. Returns a single source connection by ID for the caller's workspace. Auth: gateway key, management key, or session (I9).",
         "operationId": "keysV1GetConnection",
-        "tags": ["KeysV1"],
-        "parameters": [{ "name": "connectionId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "tags": [
+          "KeysV1"
+        ],
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Source connection", "content": { "application/json": { "schema": { "type": "object" } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Source connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         },
         "x-zuplo-route": {
           "corsPolicy": "none",
           "handler": {
             "export": "urlForwardHandler",
             "module": "$import(@zuplo/runtime)",
-            "options": { "baseUrl": "${env.KEYS_SITE_ORIGIN}", "forwardSearch": true, "followRedirects": false }
+            "options": {
+              "baseUrl": "${env.KEYS_SITE_ORIGIN}",
+              "forwardSearch": true,
+              "followRedirects": false
+            }
           },
-          "policies": { "inbound": ["api-key-inbound", "rate-limit-inbound", "quota-inbound", "inject-backend-auth"] }
+          "policies": {
+            "inbound": [
+              "api-key-inbound",
+              "rate-limit-inbound",
+              "quota-inbound",
+              "inject-backend-auth"
+            ]
+          }
         }
       }
     }
-  }
-  ,
+  },
   "components": {
     "securitySchemes": {
       "consumerKey": {
@@ -1079,34 +2439,87 @@
     "schemas": {
       "VerifiedClaim": {
         "type": "object",
-        "description": "Verified-claim envelope (per the Evidence-Bound Verification ADR): one per returned unit on retrieval responses. Carries the full verification chain — claim, EBV state, bound evidence spans (quote + offsets + source-version hash, deterministically re-checkable without a model), latest entailment judge attribution, citation, provenance trace link, and trust score. A skeptical consumer can fetch the cited source version and check the quote at its offsets themselves.",
-        "required": ["claim", "state", "evidence", "citation", "trace_ref"],
+        "description": "Verified-claim envelope (per the Evidence-Bound Verification ADR): one per returned unit on retrieval responses. Carries the full verification chain \u2014 claim, EBV state, bound evidence spans (quote + offsets + source-version hash, deterministically re-checkable without a model), latest entailment judge attribution, citation, provenance trace link, and trust score. A skeptical consumer can fetch the cited source version and check the quote at its offsets themselves.",
+        "required": [
+          "claim",
+          "state",
+          "evidence",
+          "citation",
+          "trace_ref"
+        ],
         "properties": {
           "claim": {
             "type": "object",
-            "required": ["id", "text"],
+            "required": [
+              "id",
+              "text"
+            ],
             "properties": {
-              "id": { "type": "string", "description": "Graph record id of the claim." },
-              "text": { "type": "string" }
+              "id": {
+                "type": "string",
+                "description": "Graph record id of the claim."
+              },
+              "text": {
+                "type": "string"
+              }
             }
           },
           "state": {
             "type": "string",
-            "enum": ["supported", "inferred", "unverified", "contradicted", "excluded"],
+            "enum": [
+              "supported",
+              "inferred",
+              "unverified",
+              "contradicted",
+              "excluded"
+            ],
             "description": "EBV verification state. supported = evidence-bound (deterministic Layer-1 span check) AND entailed (Layer-2 judge); inferred = entailed but no directly bound span (always labeled as inference); unverified = judge abstained, low confidence, or no bindable evidence (review queue); contradicted = evidence entails the negation; excluded = reversible remediation/operator soft-exclude. Non-supported units are flagged, never silently blended."
           },
           "evidence": {
             "type": "array",
-            "description": "Bound evidence spans. Empty when no evidence could be bound — such a claim is at best inferred, never supported.",
+            "description": "Bound evidence spans. Empty when no evidence could be bound \u2014 such a claim is at best inferred, never supported.",
             "items": {
               "type": "object",
-              "required": ["quote", "offsets", "source_ref", "source_hash"],
+              "required": [
+                "quote",
+                "offsets",
+                "source_ref",
+                "source_hash"
+              ],
               "properties": {
-                "quote": { "type": "string", "description": "Evidence quote, verbatim as bound at extraction time." },
-                "offsets": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2, "description": "[start, end) character offsets into the ORIGINAL source version text." },
-                "source_ref": { "type": "string", "nullable": true, "description": "Graph record reference of the CITED source (e.g. source:abc123)." },
-                "source_hash": { "type": "string", "nullable": true, "description": "SHA-256 (hex) of the source version the span was bound against." },
-                "match": { "type": "string", "enum": ["exact", "normalized", "fuzzy"], "nullable": true, "description": "Match strictness; anything looser than exact is labeled, never hidden." }
+                "quote": {
+                  "type": "string",
+                  "description": "Evidence quote, verbatim as bound at extraction time."
+                },
+                "offsets": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "[start, end) character offsets into the ORIGINAL source version text."
+                },
+                "source_ref": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Graph record reference of the CITED source (e.g. source:abc123)."
+                },
+                "source_hash": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "SHA-256 (hex) of the source version the span was bound against."
+                },
+                "match": {
+                  "type": "string",
+                  "enum": [
+                    "exact",
+                    "normalized",
+                    "fuzzy"
+                  ],
+                  "nullable": true,
+                  "description": "Match strictness; anything looser than exact is labeled, never hidden."
+                }
               }
             }
           },
@@ -1114,52 +2527,122 @@
             "type": "object",
             "description": "Latest span-scoped entailment judgment (EBV Layer 2). Omitted when the claim has not been judged. Verdicts are recorded append-only with model id, prompt version, and timestamp, so every verdict is attributable and re-runnable.",
             "properties": {
-              "model": { "type": "string", "nullable": true },
-              "prompt_version": { "type": "integer" },
-              "confidence": { "type": "number", "nullable": true, "minimum": 0, "maximum": 1 },
-              "at": { "type": "string", "format": "date-time" }
+              "model": {
+                "type": "string",
+                "nullable": true
+              },
+              "prompt_version": {
+                "type": "integer"
+              },
+              "confidence": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0,
+                "maximum": 1
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              }
             }
           },
-          "citation": { "type": "string", "nullable": true, "description": "Human-readable source citation (the cited source's title)." },
-          "trace_ref": { "type": "string", "nullable": true, "description": "Provenance trace link for the query that returned this claim (/connect/v1/traces/{trace_id}); null when trace persistence was unavailable." },
-          "trust_score": { "type": "number", "nullable": true, "description": "Graph trust score 0–100 for this claim, when the graph supplies one." }
+          "citation": {
+            "type": "string",
+            "nullable": true,
+            "description": "Human-readable source citation (the cited source's title)."
+          },
+          "trace_ref": {
+            "type": "string",
+            "nullable": true,
+            "description": "Provenance trace link for the query that returned this claim (/connect/v1/traces/{trace_id}); null when trace persistence was unavailable."
+          },
+          "trust_score": {
+            "type": "number",
+            "nullable": true,
+            "description": "Graph trust score 0\u2013100 for this claim, when the graph supplies one."
+          }
         }
       },
       "VerificationSummary": {
         "type": "object",
-        "description": "Per-state counts over a response's verified_claims — gate on \"anything non-supported in this context?\" without scanning every envelope.",
+        "description": "Per-state counts over a response's verified_claims \u2014 gate on \"anything non-supported in this context?\" without scanning every envelope.",
         "properties": {
-          "supported": { "type": "integer", "minimum": 0 },
-          "inferred": { "type": "integer", "minimum": 0 },
-          "unverified": { "type": "integer", "minimum": 0 },
-          "contradicted": { "type": "integer", "minimum": 0 },
-          "excluded": { "type": "integer", "minimum": 0 }
+          "supported": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "inferred": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unverified": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "contradicted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excluded": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "ConnectRetrieveResponse": {
         "type": "object",
         "description": "ConnectRetrieveResponse (canonical Zod schema: @restormel/contracts/connect). Verified-context fields are additive: verified_claims + metadata.verification_summary.",
         "properties": {
-          "contract_version": { "type": "string", "example": "2026-06-01" },
-          "request_id": { "type": "string" },
-          "trace_id": { "type": "string", "description": "Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}." },
-          "context_block": { "type": "string" },
-          "context_pack": { "type": "object", "description": "Analysis/critique/synthesis context packs." },
-          "graph": { "type": "object", "description": "Returned subgraph (claims, relations, arguments, seed_claim_ids)." },
+          "contract_version": {
+            "type": "string",
+            "example": "2026-06-01"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "trace_id": {
+            "type": "string",
+            "description": "Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}."
+          },
+          "context_block": {
+            "type": "string"
+          },
+          "context_pack": {
+            "type": "object",
+            "description": "Analysis/critique/synthesis context packs."
+          },
+          "graph": {
+            "type": "object",
+            "description": "Returned subgraph (claims, relations, arguments, seed_claim_ids)."
+          },
           "verified_claims": {
             "type": "array",
             "description": "Verified-claim envelope per returned unit (matched by claim.id, not position).",
-            "items": { "$ref": "#/components/schemas/VerifiedClaim" }
+            "items": {
+              "$ref": "#/components/schemas/VerifiedClaim"
+            }
           },
           "metadata": {
             "type": "object",
             "properties": {
-              "claims_retrieved": { "type": "integer" },
-              "arguments_retrieved": { "type": "integer" },
-              "verification_summary": { "$ref": "#/components/schemas/VerificationSummary" },
-              "retrieval_degraded": { "type": "boolean" },
-              "retrieval_degraded_reason": { "type": "string" },
-              "retrieval_degraded_code": { "type": "string" }
+              "claims_retrieved": {
+                "type": "integer"
+              },
+              "arguments_retrieved": {
+                "type": "integer"
+              },
+              "verification_summary": {
+                "$ref": "#/components/schemas/VerificationSummary"
+              },
+              "retrieval_degraded": {
+                "type": "boolean"
+              },
+              "retrieval_degraded_reason": {
+                "type": "string"
+              },
+              "retrieval_degraded_code": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1168,49 +2651,119 @@
         "type": "object",
         "description": "ConnectGraphOpResponse (canonical Zod schema: @restormel/contracts/connect). Verified-context fields are additive: verified_claims + metadata.verification_summary.",
         "properties": {
-          "contract_version": { "type": "string", "example": "2026-06-01" },
-          "request_id": { "type": "string" },
-          "trace_id": { "type": "string", "description": "Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}." },
-          "operation": { "type": "string", "enum": ["retrieve_context", "expand_context", "find_relevant_subgraph", "find_paths", "summarise_subgraph"] },
-          "context_block": { "type": "string" },
-          "subgraph": { "type": "object", "description": "Curated subgraph; each claim also carries verification_state, trust_score, and verification_category." },
-          "paths": { "type": "array", "items": { "type": "object" } },
+          "contract_version": {
+            "type": "string",
+            "example": "2026-06-01"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "trace_id": {
+            "type": "string",
+            "description": "Provenance trace id; fetch the full audit trace at GET /connect/v1/traces/{trace_id}."
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "retrieve_context",
+              "expand_context",
+              "find_relevant_subgraph",
+              "find_paths",
+              "summarise_subgraph"
+            ]
+          },
+          "context_block": {
+            "type": "string"
+          },
+          "subgraph": {
+            "type": "object",
+            "description": "Curated subgraph; each claim also carries verification_state, trust_score, and verification_category."
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
           "verified_claims": {
             "type": "array",
             "description": "Verified-claim envelope per subgraph claim (matched by claim.id).",
-            "items": { "$ref": "#/components/schemas/VerifiedClaim" }
+            "items": {
+              "$ref": "#/components/schemas/VerifiedClaim"
+            }
           },
-          "trace": { "type": "object", "description": "Trace summary (seed/claim/relation counts, verification policy counts)." },
+          "trace": {
+            "type": "object",
+            "description": "Trace summary (seed/claim/relation counts, verification policy counts)."
+          },
           "metadata": {
             "type": "object",
             "properties": {
-              "retrieval_degraded": { "type": "boolean" },
-              "retrieval_degraded_reason": { "type": "string" },
-              "verification_summary": { "$ref": "#/components/schemas/VerificationSummary" }
+              "retrieval_degraded": {
+                "type": "boolean"
+              },
+              "retrieval_degraded_reason": {
+                "type": "string"
+              },
+              "verification_summary": {
+                "$ref": "#/components/schemas/VerificationSummary"
+              }
             }
           }
         }
       },
       "VerificationRuleSet": {
         "type": "object",
-        "description": "A versioned verification rule set: how each of the six reasoning dimensions is weighted and the policies that classify a claim as supported / weak / unsupported. Scores are on a 0–1 scale.",
-        "required": ["id", "name", "version", "description", "dimensions", "policies"],
+        "description": "A versioned verification rule set: how each of the six reasoning dimensions is weighted and the policies that classify a claim as supported / weak / unsupported. Scores are on a 0\u20131 scale.",
+        "required": [
+          "id",
+          "name",
+          "version",
+          "description",
+          "dimensions",
+          "policies"
+        ],
         "properties": {
-          "id": { "type": "string", "example": "restormel-core-v1" },
-          "name": { "type": "string", "example": "Restormel Core v1" },
-          "version": { "type": "string", "example": "1.0.0" },
-          "description": { "type": "string" },
+          "id": {
+            "type": "string",
+            "example": "restormel-core-v1"
+          },
+          "name": {
+            "type": "string",
+            "example": "Restormel Core v1"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          },
+          "description": {
+            "type": "string"
+          },
           "dimensions": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "string", "example": "logical_structure" },
-                "name": { "type": "string" },
-                "description": { "type": "string" },
-                "weight": { "type": "number", "description": "0–1; weights across the six dimensions sum to 1.0." },
-                "prompt_template": { "type": "string" },
-                "passing_threshold": { "type": "number" }
+                "id": {
+                  "type": "string",
+                  "example": "logical_structure"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "weight": {
+                  "type": "number",
+                  "description": "0\u20131; weights across the six dimensions sum to 1.0."
+                },
+                "prompt_template": {
+                  "type": "string"
+                },
+                "passing_threshold": {
+                  "type": "number"
+                }
               }
             }
           },
@@ -1219,39 +2772,100 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "string" },
-                "name": { "type": "string", "enum": ["strict", "balanced", "lenient"] },
-                "min_overall_score": { "type": "number", "description": "Overall score (0–1) at/above which a claim is supported." },
-                "weak_threshold": { "type": "number", "description": "At/above this (but below min_overall_score) a claim is weak; below it, unsupported." },
-                "dimension_overrides": { "type": "object", "additionalProperties": { "type": "number" } }
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "balanced",
+                    "lenient"
+                  ]
+                },
+                "min_overall_score": {
+                  "type": "number",
+                  "description": "Overall score (0\u20131) at/above which a claim is supported."
+                },
+                "weak_threshold": {
+                  "type": "number",
+                  "description": "At/above this (but below min_overall_score) a claim is weak; below it, unsupported."
+                },
+                "dimension_overrides": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                }
               }
             }
           },
-          "domain_hints": { "type": "array", "items": { "type": "string" } }
+          "domain_hints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "ProvenanceTrace": {
         "type": "object",
         "description": "Structured, versioned audit trace for a retrieval query. schema_version is bumped only on breaking changes; consumers must tolerate unknown fields.",
         "required": [
-          "schema_version", "trace_id", "query", "workspace_id", "domain_pack",
-          "graph_store_type", "queried_at", "verification_policy", "seeds", "expansion",
-          "result", "claims", "timing"
+          "schema_version",
+          "trace_id",
+          "query",
+          "workspace_id",
+          "domain_pack",
+          "graph_store_type",
+          "queried_at",
+          "verification_policy",
+          "seeds",
+          "expansion",
+          "result",
+          "claims",
+          "timing"
         ],
         "properties": {
-          "schema_version": { "type": "string", "example": "1.0" },
-          "trace_id": { "type": "string" },
-          "query": { "type": "string" },
-          "workspace_id": { "type": "string" },
-          "domain_pack": { "type": "string" },
-          "graph_store_type": { "type": "string", "example": "surreal" },
-          "queried_at": { "type": "string", "format": "date-time" },
+          "schema_version": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "domain_pack": {
+            "type": "string"
+          },
+          "graph_store_type": {
+            "type": "string",
+            "example": "surreal"
+          },
+          "queried_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "verification_policy": {
             "type": "object",
             "properties": {
-              "included_states": { "type": "array", "items": { "type": "string" } },
-              "min_trust_score": { "type": "number" },
-              "excluded_flagged": { "type": "boolean" }
+              "included_states": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min_trust_score": {
+                "type": "number"
+              },
+              "excluded_flagged": {
+                "type": "boolean"
+              }
             }
           },
           "seeds": {
@@ -1259,12 +2873,28 @@
             "items": {
               "type": "object",
               "properties": {
-                "claim_id": { "type": "string" },
-                "claim_text": { "type": "string" },
-                "source_ref": { "type": "string", "nullable": true },
-                "claim_type": { "type": "string", "nullable": true },
-                "domain": { "type": "string", "nullable": true },
-                "confidence_score": { "type": "number", "nullable": true }
+                "claim_id": {
+                  "type": "string"
+                },
+                "claim_text": {
+                  "type": "string"
+                },
+                "source_ref": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "claim_type": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "domain": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "confidence_score": {
+                  "type": "number",
+                  "nullable": true
+                }
               }
             }
           },
@@ -1273,21 +2903,42 @@
             "items": {
               "type": "object",
               "properties": {
-                "depth": { "type": "integer" },
-                "claims_traversed": { "type": "integer" },
-                "relations_traversed": { "type": "integer" },
-                "edge_types": { "type": "array", "items": { "type": "string" } }
+                "depth": {
+                  "type": "integer"
+                },
+                "claims_traversed": {
+                  "type": "integer"
+                },
+                "relations_traversed": {
+                  "type": "integer"
+                },
+                "edge_types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
           "result": {
             "type": "object",
             "properties": {
-              "claims_retrieved": { "type": "integer" },
-              "claims_filtered": { "type": "integer" },
-              "tokens_used": { "type": "integer" },
-              "token_budget": { "type": "integer" },
-              "truncated": { "type": "boolean" }
+              "claims_retrieved": {
+                "type": "integer"
+              },
+              "claims_filtered": {
+                "type": "integer"
+              },
+              "tokens_used": {
+                "type": "integer"
+              },
+              "token_budget": {
+                "type": "integer"
+              },
+              "truncated": {
+                "type": "boolean"
+              }
             }
           },
           "claims": {
@@ -1295,33 +2946,71 @@
             "items": {
               "type": "object",
               "properties": {
-                "claim_id": { "type": "string" },
-                "claim_text": { "type": "string", "description": "Truncated to 200 characters." },
-                "source_ref": { "type": "string", "nullable": true },
-                "verification_state": { "type": "string", "nullable": true },
-                "trust_score": { "type": "number", "nullable": true },
-                "confidence_score": { "type": "number", "nullable": true },
-                "included": { "type": "boolean" },
-                "exclusion_reason": { "type": "string" },
-                "hop_depth": { "type": "integer" },
-                "edge_path": { "type": "array", "items": { "type": "string" } }
+                "claim_id": {
+                  "type": "string"
+                },
+                "claim_text": {
+                  "type": "string",
+                  "description": "Truncated to 200 characters."
+                },
+                "source_ref": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "verification_state": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "trust_score": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "confidence_score": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "included": {
+                  "type": "boolean"
+                },
+                "exclusion_reason": {
+                  "type": "string"
+                },
+                "hop_depth": {
+                  "type": "integer"
+                },
+                "edge_path": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
           "timing": {
             "type": "object",
             "properties": {
-              "seed_ms": { "type": "number" },
-              "expansion_ms": { "type": "number" },
-              "ranking_ms": { "type": "number" },
-              "total_ms": { "type": "number" }
+              "seed_ms": {
+                "type": "number"
+              },
+              "expansion_ms": {
+                "type": "number"
+              },
+              "ranking_ms": {
+                "type": "number"
+              },
+              "total_ms": {
+                "type": "number"
+              }
             }
           }
         }
       },
       "SuiteToolRequest": {
         "type": "object",
-        "required": ["tool"],
+        "required": [
+          "tool"
+        ],
         "properties": {
           "tool": {
             "type": "string",
@@ -1342,20 +3031,39 @@
       "Error": {
         "type": "object",
         "properties": {
-          "error": { "type": "string" },
-          "detail": { "type": "string" }
+          "error": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
         }
       },
       "Project": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "91f652fb-fedc-4893-ae5e-025491ae5231" },
-          "name": { "type": "string", "example": "Sophia" },
-          "workspaceId": { "type": "string", "nullable": true },
-          "createdAt": { "type": "integer", "format": "int64", "description": "Epoch milliseconds." },
+          "id": {
+            "type": "string",
+            "example": "91f652fb-fedc-4893-ae5e-025491ae5231"
+          },
+          "name": {
+            "type": "string",
+            "example": "Sophia"
+          },
+          "workspaceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Epoch milliseconds."
+          },
           "environments": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/Environment" },
+            "items": {
+              "$ref": "#/components/schemas/Environment"
+            },
             "description": "Optional. Present when expanded by the backend."
           }
         }
@@ -1363,18 +3071,36 @@
       "Environment": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "prod" },
-          "name": { "type": "string", "example": "Production" }
+          "id": {
+            "type": "string",
+            "example": "prod"
+          },
+          "name": {
+            "type": "string",
+            "example": "Production"
+          }
         }
       },
       "KeyInfo": {
         "type": "object",
         "description": "A Gateway Key. Full key is shown only at creation time.",
         "properties": {
-          "id": { "type": "string" },
-          "keyPrefix": { "type": "string", "example": "rk_a3f..." },
-          "createdAt": { "type": "integer", "format": "int64", "description": "Epoch milliseconds." },
-          "type": { "type": "string", "example": "gateway" }
+          "id": {
+            "type": "string"
+          },
+          "keyPrefix": {
+            "type": "string",
+            "example": "rk_a3f..."
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Epoch milliseconds."
+          },
+          "type": {
+            "type": "string",
+            "example": "gateway"
+          }
         }
       },
       "QualityReport": {
@@ -1382,41 +3108,107 @@
         "description": "Ingest quality assessment. Nullable: present only once validation has run for the job.",
         "nullable": true,
         "properties": {
-          "trust_score": { "type": "number", "minimum": 0, "maximum": 100 },
-          "supported_count": { "type": "integer" },
-          "weak_count": { "type": "integer" },
-          "unsupported_count": { "type": "integer" },
-          "total_count": { "type": "integer" },
-          "remediation_applied": { "type": "boolean" },
-          "assessed_at": { "type": "string", "format": "date-time" }
+          "trust_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "supported_count": {
+            "type": "integer"
+          },
+          "weak_count": {
+            "type": "integer"
+          },
+          "unsupported_count": {
+            "type": "integer"
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "remediation_applied": {
+            "type": "boolean"
+          },
+          "assessed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ConnectIngestJobLogLine": {
         "type": "object",
         "properties": {
-          "index": { "type": "integer", "minimum": 0, "description": "Cursor; pass next_since back as ?since=." },
-          "timestamp": { "type": "string", "format": "date-time" },
-          "stage": { "type": "string", "example": "EXTRACT" },
-          "level": { "type": "string", "enum": ["info", "warn", "error"] },
-          "message": { "type": "string" }
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cursor; pass next_since back as ?since=."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stage": {
+            "type": "string",
+            "example": "EXTRACT"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warn",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
         }
       },
       "ConnectIngestJobLogs": {
         "type": "object",
         "properties": {
-          "contract_version": { "type": "string", "example": "2026-06-01" },
-          "job_id": { "type": "string", "format": "uuid" },
-          "log_lines": { "type": "array", "items": { "$ref": "#/components/schemas/ConnectIngestJobLogLine" } },
-          "next_since": { "type": "integer", "minimum": 0 },
-          "total": { "type": "integer", "minimum": 0 }
+          "contract_version": {
+            "type": "string",
+            "example": "2026-06-01"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "log_lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectIngestJobLogLine"
+            }
+          },
+          "next_since": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       },
       "ConnectIngestJobListResponse": {
         "type": "object",
-        "required": ["contract_version", "jobs", "next_cursor", "total_count"],
+        "required": [
+          "contract_version",
+          "jobs",
+          "next_cursor",
+          "total_count"
+        ],
         "properties": {
-          "contract_version": { "type": "string", "example": "2026-06-01" },
-          "jobs": { "type": "array", "items": { "$ref": "#/components/schemas/ConnectIngestJob" } },
+          "contract_version": {
+            "type": "string",
+            "example": "2026-06-01"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectIngestJob"
+            }
+          },
           "next_cursor": {
             "type": "string",
             "nullable": true,
@@ -1431,42 +3223,103 @@
       },
       "ConnectWebhookCreateRequest": {
         "type": "object",
-        "required": ["workspace_id", "url", "events"],
+        "required": [
+          "workspace_id",
+          "url",
+          "events"
+        ],
         "properties": {
-          "workspace_id": { "type": "string", "format": "uuid" },
-          "project_id": { "type": "string", "format": "uuid" },
-          "url": { "type": "string", "format": "uri" },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
           "events": {
             "type": "array",
             "minItems": 1,
-            "items": { "type": "string", "enum": ["job.completed", "job.failed", "job.quality_below_threshold"] }
+            "items": {
+              "type": "string",
+              "enum": [
+                "job.completed",
+                "job.failed",
+                "job.quality_below_threshold"
+              ]
+            }
           },
-          "quality_threshold": { "type": "number", "minimum": 0, "maximum": 100, "description": "Trust-score floor for job.quality_below_threshold. Default 70." },
-          "secret": { "type": "string", "minLength": 16, "maxLength": 256, "description": "Optional signing secret; generated when omitted." }
+          "quality_threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Trust-score floor for job.quality_below_threshold. Default 70."
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 256,
+            "description": "Optional signing secret; generated when omitted."
+          }
         }
       },
       "ConnectWebhook": {
         "type": "object",
         "properties": {
-          "webhook_id": { "type": "string", "format": "uuid" },
-          "workspace_id": { "type": "string", "format": "uuid" },
-          "url": { "type": "string", "format": "uri" },
+          "webhook_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
           "events": {
             "type": "array",
-            "items": { "type": "string", "enum": ["job.completed", "job.failed", "job.quality_below_threshold"] }
+            "items": {
+              "type": "string",
+              "enum": [
+                "job.completed",
+                "job.failed",
+                "job.quality_below_threshold"
+              ]
+            }
           },
-          "quality_threshold": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-          "active": { "type": "boolean" },
-          "created_at": { "type": "string", "format": "date-time" }
+          "quality_threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ConnectWebhookCreateResponse": {
         "allOf": [
-          { "$ref": "#/components/schemas/ConnectWebhook" },
+          {
+            "$ref": "#/components/schemas/ConnectWebhook"
+          },
           {
             "type": "object",
             "properties": {
-              "signing_secret": { "type": "string", "description": "Returned exactly once, at registration." }
+              "signing_secret": {
+                "type": "string",
+                "description": "Returned exactly once, at registration."
+              }
             }
           }
         ]
@@ -1474,65 +3327,395 @@
       "ConnectIngestJob": {
         "type": "object",
         "description": "A workspace-scoped Knowledge Ingest job, persisted to Postgres.",
-        "required": ["id", "workspace_id", "status", "created_at", "updated_at"],
+        "required": [
+          "id",
+          "workspace_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "workspace_id": { "type": "string", "format": "uuid" },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "status": {
             "type": "string",
-            "enum": ["pending", "running", "completed", "failed", "cancelled"]
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
           },
-          "label": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" },
-          "current_stage": { "type": "string" },
-          "current_action": { "type": "string", "maxLength": 500 },
+          "label": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current_stage": {
+            "type": "string"
+          },
+          "current_action": {
+            "type": "string",
+            "maxLength": 500
+          },
           "progress": {
             "type": "object",
             "properties": {
-              "percent": { "type": "number", "minimum": 0, "maximum": 100 },
-              "processed": { "type": "integer" },
-              "total": { "type": "integer" },
-              "execution_mode": { "type": "string", "enum": ["stub", "full"] }
+              "percent": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "processed": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "execution_mode": {
+                "type": "string",
+                "enum": [
+                  "stub",
+                  "full"
+                ]
+              }
             }
           },
-          "stages": { "type": "array", "items": { "type": "object" } },
-          "sources": { "type": "array", "items": { "type": "object" } },
-          "stop_after_stage": { "type": "string" },
-          "pipeline_profile_id": { "type": "string", "format": "uuid" },
-          "domain_pack_id": { "type": "string", "format": "uuid" },
-          "graph_target_id": { "type": "string", "format": "uuid" },
-          "quality_report": { "$ref": "#/components/schemas/QualityReport" },
-          "error": { "type": "string" }
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "stop_after_stage": {
+            "type": "string"
+          },
+          "pipeline_profile_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "domain_pack_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "graph_target_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quality_report": {
+            "$ref": "#/components/schemas/QualityReport"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "TrustScorecardFactor": {
+        "type": "object",
+        "description": "One weighted component of the kg-audit trust score. `points < max_points` is exactly \"what lowered this score\".",
+        "required": [
+          "id",
+          "label",
+          "max_points",
+          "points"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "embedding_coverage",
+              "verification_coverage",
+              "orphan_rate",
+              "vector_index",
+              "relation_health",
+              "issue_penalty"
+            ],
+            "description": "Factor identifier"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable factor name"
+          },
+          "max_points": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Maximum points this factor can contribute"
+          },
+          "points": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Points attained (0 \u2264 points \u2264 max_points)"
+          }
+        }
+      },
+      "TrustScorecardEvidence": {
+        "type": "object",
+        "description": "EBV Layer-1 evidence-binding breakdown. Units with no evidence_status in the store are counted as unbound (fail-safe).",
+        "required": [
+          "bound",
+          "unbound",
+          "no_evidence",
+          "bound_pct"
+        ],
+        "properties": {
+          "bound": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Units with a deterministically re-checkable bound span"
+          },
+          "unbound": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Units where binding was attempted but failed"
+          },
+          "no_evidence": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Units with no evidence spans attempted"
+          },
+          "bound_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "% of units with a bound span (integer 0\u2013100)"
+          }
+        }
+      },
+      "TrustScorecardCoverage": {
+        "type": "object",
+        "description": "Coverage-gap counts (PR #189 fail-safe semantics). Null means the graph store could not answer the count query.",
+        "required": [
+          "validator_gaps",
+          "remediation_drops"
+        ],
+        "properties": {
+          "validator_gaps": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true,
+            "description": "Units whose validation note records a validator/judge omission (\"coverage_gap: \u2026\")"
+          },
+          "remediation_drops": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true,
+            "description": "Units soft-excluded by remediation, including omitted verdicts defaulted to drop"
+          }
+        }
+      },
+      "ConnectTrustScorecard": {
+        "type": "object",
+        "description": "Per-graph trust scorecard. Productizes the run quality report into a persistent shape inspectable at any time.",
+        "required": [
+          "schema_version",
+          "generated_at",
+          "store",
+          "units",
+          "relations",
+          "trust_score",
+          "trust_formula",
+          "score_factors",
+          "g2",
+          "targets",
+          "embedding",
+          "evidence",
+          "verification_states",
+          "coverage",
+          "last_verified_at"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "example": "1.0",
+            "description": "Scorecard schema version; bumped only on breaking changes"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this scorecard was computed (ISO 8601)"
+          },
+          "store": {
+            "type": "string",
+            "enum": [
+              "postgres",
+              "surreal"
+            ],
+            "description": "Which graph store the scorecard was read from"
+          },
+          "units": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "relations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "trust_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "kg-audit trust score v1 (0\u2013100)"
+          },
+          "trust_formula": {
+            "type": "string",
+            "description": "Human-readable formula statement (TRUST_SCORE_FORMULA) for auditability"
+          },
+          "score_factors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrustScorecardFactor"
+            },
+            "description": "Weighted factor attainment \u2014 the \"what lowered this score\" breakdown"
+          },
+          "g2": {
+            "$ref": "#/components/schemas/QualityReport",
+            "description": "G2 validation breakdown (ok/weak/unsupported + percentages)"
+          },
+          "targets": {
+            "type": "object",
+            "description": "The published quality bar the graph is judged against (ok \u2265 90%, unsupported \u2264 2%)",
+            "properties": {
+              "ok_pct_min": {
+                "type": "integer"
+              },
+              "unsupported_pct_max": {
+                "type": "integer"
+              }
+            }
+          },
+          "embedding": {
+            "type": "object",
+            "required": [
+              "embedded",
+              "units",
+              "pct"
+            ],
+            "properties": {
+              "embedded": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "units": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pct": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Embedding coverage as integer percent of units"
+              }
+            }
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/TrustScorecardEvidence"
+          },
+          "verification_states": {
+            "$ref": "#/components/schemas/VerificationSummary"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/TrustScorecardCoverage"
+          },
+          "last_verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Latest EBV entailment timestamp or last run quality assessment. Null when neither exists."
+          }
+        }
+      },
+      "ConnectTrustScorecardResponse": {
+        "type": "object",
+        "description": "GET /connect/v1/graph/scorecard response envelope.",
+        "required": [
+          "contract_version",
+          "scorecard"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "description": "Connect API contract version"
+          },
+          "scorecard": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConnectTrustScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the workspace's active graph has no units yet (nothing to score)"
+          }
         }
       }
     },
     "headers": {
       "X-Request-Id": {
         "description": "Unique identifier for this request, echoed in error envelopes as request_id. Generated by the server if not present in the incoming request.",
-        "schema": { "type": "string", "format": "uuid" }
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       },
       "X-RateLimit-Limit": {
         "description": "Maximum requests allowed in the current window.",
-        "schema": { "type": "integer" }
+        "schema": {
+          "type": "integer"
+        }
       },
       "X-RateLimit-Remaining": {
         "description": "Requests remaining in the current window.",
-        "schema": { "type": "integer" }
+        "schema": {
+          "type": "integer"
+        }
       },
       "X-RateLimit-Reset": {
         "description": "Unix timestamp (seconds) when the current window resets.",
-        "schema": { "type": "integer" }
+        "schema": {
+          "type": "integer"
+        }
       }
     },
     "responses": {
       "Unauthorized": {
         "description": "Missing or invalid consumer key",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       },
       "NotFound": {
         "description": "Resource not found",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       }
     }
   }

@@ -1,4 +1,14 @@
 <script lang="ts">
+  /**
+   * Marketing claims ledger citations (docs/verified-context-claims-ledger.md):
+   * - "Every claim carries a provenance trace" → row #7 (proven)
+   * - "Published quality bar: ≥90% supported, ≤2% unsupported" → row #8 (proven)
+   * - "The validator catches fabricated claims" → row #6 (proven, continuously enforced)
+   * - "A different model family checks the extraction" → row #5 (proven)
+   * - "Every claim is validated against its source" → row #1 (proven)
+   * - "Verification cannot silently rot" → row #9 (proven)
+   */
+
   const heroThesisPanels = [
     {
       title: "What Keys actually is",
@@ -212,6 +222,85 @@
           </li>
         {/each}
       </ol>
+    </section>
+
+    <!-- 4b. Verified context — regulated-industry use case -->
+    <section id="verified-context" class="verified-block" aria-labelledby="verified-heading">
+      <p class="case-label">Capability · verified context for regulated domains</p>
+      <h2 id="verified-heading" class="case-name">Provenance-traced knowledge your auditors can check</h2>
+      <p class="case-one-liner">
+        Connect is the control plane for verified context — provenance-traced, quality-gated knowledge
+        served to agents in domains where "the AI said so" is not an acceptable citation.
+      </p>
+      <div class="verified-proof-strip" aria-label="Published quality bars">
+        <div class="verified-stat-item">
+          <span class="verified-stat">≥ 90%</span>
+          <span class="verified-stat-label">supported claims bar (G2 gate)</span>
+        </div>
+        <div class="verified-stat-item">
+          <span class="verified-stat">100%</span>
+          <span class="verified-stat-label">fabricated-claim recall<br/><span class="verified-stat-meta">2026-06-10 · cross-model · continuously re-run in CI</span></span>
+        </div>
+        <div class="verified-stat-item">
+          <span class="verified-stat">0%</span>
+          <span class="verified-stat-label">affirm-unseen under cross-model routing</span>
+        </div>
+      </div>
+      <p class="verified-ledger-note">
+        Numbers bound to: extractor <code class="inline-code">openai:gpt-4o-mini</code>, validator
+        <code class="inline-code">together:meta-llama/Llama-3.3-70B-Instruct-Turbo</code>.
+        Claims integrity enforced by the <a href="/keys/docs/guides/context-regression-ci#claims-integrity">weekly efficacy CI run</a>.
+      </p>
+      <dl class="case-meta verified-meta">
+        <div>
+          <dt>How it works</dt>
+          <dd>
+            Every extracted claim is bound to a verbatim quote, character offsets, and a SHA-256 of the source version.
+            A cross-model validator then judges each span. A claim without a bound span can never be
+            <code class="inline-code">supported</code>, regardless of what any judge said about it.
+          </dd>
+        </div>
+        <div>
+          <dt>Why cross-model matters</dt>
+          <dd>
+            The model that extracts claims never grades its own work. Under same-model routing,
+            the validator affirmed unseen claims 66.7% of the time. Under cross-model: 0%.
+            Cross-model routing is the product default, not an option.
+          </dd>
+        </div>
+        <div>
+          <dt>The audit trail</dt>
+          <dd>
+            Every retrieval query records a provenance trace: which claims were considered,
+            their verification states, and why anything was excluded.
+            Export it as JSON for your compliance file.
+          </dd>
+        </div>
+      </dl>
+      <div class="verified-industries">
+        <h3 class="case-h3">Regulated-domain patterns</h3>
+        <div class="verified-industry-grid">
+          <div class="verified-industry-card">
+            <span class="verified-industry-tag">Legal</span>
+            <p>Case law and regulatory corpus with claim-level provenance. Cited passages carry the exact source version — counsel can verify a quote in seconds, not hours.</p>
+          </div>
+          <div class="verified-industry-card">
+            <span class="verified-industry-tag">Pharma / Clinical</span>
+            <p>Trial data and clinical guidelines with per-claim verification state. Contradicted or unsupported statements are excluded from agent context; the exclusion log is part of the trace.</p>
+          </div>
+          <div class="verified-industry-card">
+            <span class="verified-industry-tag">Finance</span>
+            <p>Earnings, filings, and research reports gated to the published quality bar. The trust scorecard shows current verification coverage at any time, not only after an ingest run.</p>
+          </div>
+        </div>
+      </div>
+      <p class="case-links">
+        <a href="/keys/docs/guides/verified-context">Verified context guide</a>
+        <span aria-hidden="true"> · </span>
+        <a href="/connect">Restormel Connect</a>
+        <span aria-hidden="true"> · </span>
+        <a href="/keys/docs/guides/context-regression-ci">Context-regression CI</a>
+      </p>
     </section>
 
     <!-- 5a. PLOT — practical adoption / privacy extraction -->
@@ -777,6 +866,100 @@
     line-height: var(--leading-relaxed);
   }
 
+  /* Verified context block */
+  .verified-block {
+    padding: var(--space-7) var(--space-6);
+    border: 2px solid var(--brut-ink, #0C0C0C);
+    border-left-width: 6px;
+    border-left-color: var(--brut-yellow, #F5C518);
+    background: var(--brut-white, #fff);
+    box-shadow: 4px 4px 0 var(--brut-ink, #0C0C0C);
+  }
+  .verified-proof-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-5) 0 var(--space-3);
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--rm-border);
+    border-bottom: 1px solid var(--rm-border);
+  }
+  .verified-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .verified-stat {
+    font-family: var(--brut-font, var(--rm-font-display));
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--brut-ink, #0C0C0C);
+  }
+  .verified-stat-label {
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--rm-muted);
+    line-height: 1.4;
+  }
+  .verified-stat-meta {
+    display: block;
+    font-size: 0.9em;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--rm-dim);
+    margin-top: 2px;
+  }
+  .verified-ledger-note {
+    margin: 0 0 var(--space-5);
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    line-height: 1.5;
+  }
+  .verified-ledger-note a {
+    color: var(--brut-blue, var(--rm-sage));
+    font-weight: 600;
+  }
+  .verified-meta {
+    margin-bottom: var(--space-5);
+  }
+  .verified-industries {
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--rm-border);
+  }
+  .verified-industry-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .verified-industry-card {
+    padding: var(--space-4);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+  }
+  .verified-industry-tag {
+    display: inline-block;
+    margin-bottom: var(--space-2);
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--brut-ink, #0C0C0C);
+  }
+  .verified-industry-card p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: 1.55;
+  }
+
   /* PLOT: left-accent document */
   .case-plot {
     padding: var(--space-7) var(--space-6);
@@ -1051,6 +1234,12 @@
   }
 
   @media (max-width: 980px) {
+    .verified-proof-strip {
+      grid-template-columns: 1fr 1fr;
+    }
+    .verified-industry-grid {
+      grid-template-columns: 1fr;
+    }
     .hero-ledger {
       grid-template-columns: 1fr;
       gap: var(--space-6);
@@ -1097,6 +1286,12 @@
     .use-cases-page .container {
       padding: 0 var(--space-4);
       gap: var(--space-8);
+    }
+    .verified-proof-strip {
+      grid-template-columns: 1fr;
+    }
+    .verified-block {
+      padding: var(--space-5) var(--space-4);
     }
     .case-plot {
       padding: var(--space-5) var(--space-4);
