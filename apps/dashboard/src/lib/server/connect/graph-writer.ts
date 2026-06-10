@@ -10,13 +10,16 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ConnectGraphTargetRecord } from "$lib/server/neon";
 import {
   deleteUnitPostgres,
+  insertConnectClaimVersionsPostgres,
   insertConnectGraphSourcePostgres,
   storeExtractedGraphPostgres,
   storeGroupsPostgres,
+  updateConnectClaimVersionStatesPostgres,
   updateUnitEmbeddingsPostgres,
   updateUnitTextPostgres,
   updateUnitValidationPostgres,
 } from "$lib/server/neon";
+import type { EvidenceBinding, ClaimVerificationState } from "@restormel/connect-core";
 import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 
@@ -44,6 +47,19 @@ export interface GraphWriter {
   storeGroups(groups: { name: string; summary: string | null; members: { unitId: string; role: string | null }[] }[]): Promise<{ groups: number }>;
   setEmbeddings(pairs: { unitId: string; vector: number[] }[]): Promise<number>;
   setValidation(results: { unitId: string; status: string; note: string | null }[]): Promise<number>;
+  /**
+   * EBV Layer 1: persist per-unit evidence bindings (quote + offsets + source-version
+   * hash + match kind). Returns persisted/missed so callers surface capability gaps
+   * (e.g. SCHEMAFULL Surreal tables rejecting the fields) instead of failing silently.
+   */
+  setEvidence(args: {
+    sourceHash: string;
+    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
+  }): Promise<{ persisted: number; missed: number }>;
+  /** EBV: persist per-unit verification state (supported|inferred|unverified|…). */
+  setVerificationStates(
+    states: { unitId: string; state: ClaimVerificationState; judgedBy?: string | null }[],
+  ): Promise<{ persisted: number; missed: number }>;
   updateUnitText(unitId: string, text: string): Promise<void>;
   deleteUnit(unitId: string): Promise<void>;
   /** Soft-exclude: mark removed (hidden from retrieval/queue) but keep the record. Reversible. */
@@ -115,6 +131,36 @@ class PostgresGraphWriter implements GraphWriter {
 
   setValidation(results: { unitId: string; status: string; note: string | null }[]) {
     return updateUnitValidationPostgres({ workspaceId: this.workspaceId, results });
+  }
+
+  async setEvidence(args: {
+    sourceHash: string;
+    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
+  }) {
+    const persisted = await insertConnectClaimVersionsPostgres({
+      workspaceId: this.workspaceId,
+      rows: args.bindings.map((b) => ({
+        unitId: b.unitId,
+        text: b.text,
+        evidenceQuote: b.binding.status === "bound" ? b.binding.span.quote : null,
+        spanStart: b.binding.status === "bound" ? b.binding.span.start : null,
+        spanEnd: b.binding.status === "bound" ? b.binding.span.end : null,
+        evidenceMatch: b.binding.status === "bound" ? b.binding.span.match : null,
+        evidenceStatus: b.binding.status,
+        sourceHash: args.sourceHash,
+      })),
+    });
+    return { persisted, missed: args.bindings.length - persisted };
+  }
+
+  async setVerificationStates(
+    states: { unitId: string; state: ClaimVerificationState; judgedBy?: string | null }[],
+  ) {
+    const persisted = await updateConnectClaimVersionStatesPostgres({
+      workspaceId: this.workspaceId,
+      states,
+    });
+    return { persisted, missed: states.length - persisted };
   }
 
   updateUnitText(unitId: string, text: string) {
@@ -354,6 +400,104 @@ class SurrealGraphWriter implements GraphWriter {
       );
     }
     return persisted;
+  }
+
+  async setEvidence(args: {
+    sourceHash: string;
+    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
+  }) {
+    if (args.bindings.length === 0) return { persisted: 0, missed: 0 };
+    const unitTable = ident(this.schema.unit_table, "unit");
+    // Same SCHEMAFULL guard as setValidation: ensure the fields exist, then verify each
+    // write actually landed — degraded persistence must be visible, never silent.
+    await this.store
+      .query(
+        `DEFINE FIELD IF NOT EXISTS evidence_quote ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS evidence_start ON TABLE ${unitTable} TYPE option<number>; ` +
+          `DEFINE FIELD IF NOT EXISTS evidence_end ON TABLE ${unitTable} TYPE option<number>; ` +
+          `DEFINE FIELD IF NOT EXISTS evidence_match ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS evidence_status ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS evidence_source_hash ON TABLE ${unitTable} TYPE option<string>;`,
+      )
+      .catch(() => {
+        // Older SurrealDB without IF NOT EXISTS, or SCHEMALESS — writes work regardless.
+      });
+    let persisted = 0;
+    let missed = 0;
+    let firstMiss: { unitId: string; got: unknown } | null = null;
+    for (const b of args.bindings) {
+      const bound = b.binding.status === "bound" ? b.binding.span : null;
+      const payload = {
+        evidence_quote: bound?.quote ?? null,
+        evidence_start: bound?.start ?? null,
+        evidence_end: bound?.end ?? null,
+        evidence_match: bound?.match ?? null,
+        evidence_status: b.binding.status,
+        evidence_source_hash: args.sourceHash,
+      };
+      try {
+        const res = await this.store.query<Array<Record<string, unknown>>>(
+          `UPDATE ${surrealRecordRef(b.unitId)} MERGE ${JSON.stringify(payload)} RETURN AFTER;`,
+        );
+        const rec = Array.isArray(res) ? res[0] : undefined;
+        if (rec && rec.evidence_status === b.binding.status) {
+          persisted += 1;
+        } else {
+          missed += 1;
+          if (!firstMiss) firstMiss = { unitId: b.unitId, got: rec?.evidence_status ?? null };
+        }
+      } catch (err) {
+        missed += 1;
+        if (!firstMiss) firstMiss = { unitId: b.unitId, got: `error: ${err instanceof Error ? err.message : err}` };
+      }
+    }
+    if (missed > 0) {
+      console.warn(
+        `[connect-graph-writer] ${missed}/${args.bindings.length} evidence write(s) did NOT persist on table "${unitTable}" ` +
+          `(sample id=${firstMiss?.unitId}, read-back=${JSON.stringify(firstMiss?.got)}) — ` +
+          `SCHEMAFULL tables need the evidence_* fields defined; see the EBV docs.`,
+      );
+    }
+    return { persisted, missed };
+  }
+
+  async setVerificationStates(
+    states: { unitId: string; state: ClaimVerificationState; judgedBy?: string | null }[],
+  ) {
+    if (states.length === 0) return { persisted: 0, missed: 0 };
+    const unitTable = ident(this.schema.unit_table, "unit");
+    await this.store
+      .query(
+        `DEFINE FIELD IF NOT EXISTS verification_state ON TABLE ${unitTable} TYPE option<string>;`,
+      )
+      .catch(() => {});
+    let persisted = 0;
+    let missed = 0;
+    let firstMiss: { unitId: string; got: unknown } | null = null;
+    for (const s of states) {
+      try {
+        const res = await this.store.query<Array<Record<string, unknown>>>(
+          `UPDATE ${surrealRecordRef(s.unitId)} MERGE { verification_state: ${JSON.stringify(s.state)} } RETURN AFTER;`,
+        );
+        const rec = Array.isArray(res) ? res[0] : undefined;
+        if (rec && rec.verification_state === s.state) {
+          persisted += 1;
+        } else {
+          missed += 1;
+          if (!firstMiss) firstMiss = { unitId: s.unitId, got: rec?.verification_state ?? null };
+        }
+      } catch (err) {
+        missed += 1;
+        if (!firstMiss) firstMiss = { unitId: s.unitId, got: `error: ${err instanceof Error ? err.message : err}` };
+      }
+    }
+    if (missed > 0) {
+      console.warn(
+        `[connect-graph-writer] ${missed}/${states.length} verification-state write(s) did NOT persist on table "${unitTable}" ` +
+          `(sample id=${firstMiss?.unitId}, read-back=${JSON.stringify(firstMiss?.got)}).`,
+      );
+    }
+    return { persisted, missed };
   }
 
   async updateUnitText(unitId: string, text: string) {
