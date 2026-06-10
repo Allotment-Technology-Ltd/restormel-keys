@@ -65,6 +65,10 @@ skeptical user can click through to the quoted span in the source and check it t
 | 14 | ✅ 1.4 Spine observability hardening — H1/H3 closed (PR #208) | P1 | — |
 | 14a | ✅ 1.5 Ingest runtime reliability + dashboard performance — freeze causes fixed, P1 follow-ups documented (PR #220) | P1 | — |
 | 15 | ✅ 2.4 Regression history dashboard (PR #217) | P2 | 2.3 |
+| 15a | **1.6 Durable run execution** (HIGH PRIORITY — from the [Stage 1.5 review](reviews/connect-runtime-reliability-perf.md)) ← **NEXT** | P1 | 1.5 |
+| 15b | **1.7 Deploy-time migrations** (HIGH PRIORITY — review F5) | P1 | 1.5 |
+| 15c | **1.8 Stats caching + single resolution** (HIGH PRIORITY — review F6/F7) | P1 | 1.5 |
+| 15d | 1.9 Writer batching phase 2 (review F4 residue) | P1 | 1.5, 3.2 |
 | 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
 | 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
 | 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
@@ -464,6 +468,96 @@ Use effort: xhigh. STOP-and-ask gate as above — do not silently break public A
 ```
 
 ---
+
+## Stages 1.6–1.9 — runtime reliability follow-ups (added 2026-06-10, from the Stage 1.5 review)
+
+Source of truth for findings/evidence: [docs/reviews/connect-runtime-reliability-perf.md](reviews/connect-runtime-reliability-perf.md).
+
+### Stage 1.6 — Durable run execution (removes the P0 freeze class)
+
+```
+ROLE
+Senior engineer making ingest runs survive instance recycling. Review finding F1: runs
+execute as a detached promise inside a request invocation; a killed instance leaves the
+job 'running' forever (no stale reclaim). waitUntil (PR #220) extends the window but is
+not durability.
+
+TARGET
+Jobs carry a lease + heartbeat; a reclaim path returns stale 'running' jobs to a
+restartable state (never silently re-running side effects — resume must respect the
+existing resume-stage checkpoints); execution moves out of the request path (cron-drain
+route with maxDuration, designed so a Coolify worker can replace it per the infra
+migration). A frozen run becomes a visible, restartable failure.
+
+ACCEPTANCE
+- Lease/heartbeat columns via migration; claim honors lease expiry; reclaim marks the job
+  + run console with a clear 'reclaimed after stall' event (operator-visible, never silent).
+- Heartbeat is written by the worker loop, not the progress reporter alone.
+- Resume after reclaim reuses completed-stage checkpoints (resume-stage.ts) — no
+  double-spend on completed LLM stages.
+- Unit tests for lease expiry, reclaim, no-double-claim (two concurrent claimers), and
+  checkpointed resume. Dashboard check/tests green.
+Use effort: xhigh — concurrency correctness is the whole point.
+```
+
+### Stage 1.7 — Deploy-time migrations (review F5)
+
+```
+ROLE
+Senior engineer retiring the runtime DDL ensure (~120 sequential statements before the
+first query on cold start — the largest stats/dashboard latency contributor).
+
+TARGET
+Migrations under apps/dashboard/migrations/ are applied at deploy time (the CI job
+"Apply dashboard migrations" exists — make it authoritative); runtime ensure* functions
+become no-ops behind a flag default-off in production (kept for dev), with a startup
+assertion that the schema version matches.
+
+ACCEPTANCE
+- One migrations table tracking applied files; deploy workflow applies pending ones
+  before traffic shifts; .forgejo variant updated in the same PR.
+- Runtime ensures gated by CONNECT_RUNTIME_DDL (default on in dev, off in prod build);
+  prod boot verifies schema version and fails loudly with the missing-migration name.
+- Rollback note per migration documented. Dashboard check/tests green.
+```
+
+### Stage 1.8 — Stats caching + single resolution per request (review F6/F7)
+
+```
+ROLE
+Senior engineer collapsing redundant stats work per hub load.
+
+TARGET
+One stats resolution shared per request (hub pulse + scorecard + history reuse it); a
+short-TTL spine cache with explicit force-refresh preserved (PR #191 semantics); a
+negative-result TTL for Surreal domain-pack probing so cold caches stop probing every
+pack on every load.
+
+ACCEPTANCE
+- resolveConnectGraphStats called at most once per hub request (test asserts call count);
+  force-refresh path still bypasses caches.
+- Cache TTLs env-tunable; defaults documented; stale-while-refresh acceptable but never
+  stale force-refresh.
+- Measured before/after: count of spine/Surreal queries per hub load quoted in the PR.
+Dashboard check/tests green.
+```
+
+### Stage 1.9 — Writer batching phase 2 (review F4 residue; AFTER 3.2 merges)
+
+```
+ROLE
+Senior engineer finishing the round-trip elimination PR #220 started.
+
+TARGET
+Order-preserving batch insert for extraction writes; batched Surreal scripts for
+evidence/state/judgment writes with the per-unit read-back verification semantics
+preserved (degraded persistence stays visible, never silent).
+
+ACCEPTANCE
+- Round-trips per 300-unit source measured before/after and quoted in the PR.
+- persisted/missed reporting identical in shape and meaning; SCHEMAFULL warning intact.
+- Builds on Stage 3.2's merged writer changes — do not fork them.
+```
 
 ## Pivot 2 — Context Regression CI ("evals for your knowledge, not your prompts")
 
