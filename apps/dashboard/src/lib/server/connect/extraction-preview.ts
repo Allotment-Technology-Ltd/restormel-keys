@@ -126,10 +126,12 @@ export async function previewExtraction(args: {
         qualityPreset: preset,
         graphContext,
       });
+      // H3: same totals-aware gate as the full runner, so previews reflect real runs.
       const gate = evaluateExtractionGate(
         extraction.warnings,
         preset,
         pack.ontology.schema_mode,
+        { totals: { units: extraction.units.length, relations: extraction.relations.length } },
       );
       if (!gate.allowPersist) continue;
       const offset = mergedUnits.length;

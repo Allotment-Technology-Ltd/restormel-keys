@@ -155,8 +155,19 @@ export {
 
 export {
   evaluateExtractionGate,
+  EXTRACTION_GATE_THRESHOLDS,
   type ExtractionGateDecision,
+  type ExtractionGateThresholds,
 } from "./ingest/extraction-gates.js";
+
+export {
+  askBatchWithCoverageRetry,
+  omittedBatchRefs,
+  type BatchCoverageOutcome,
+  type BatchCoverageShortfall,
+  type CoverageShortfallHandler,
+  type ParsedBatchResponse,
+} from "./ingest/batch-coverage.js";
 
 export {
   contentHash,
@@ -189,6 +200,7 @@ export {
   remapEntailmentBatchResults,
   finalizeEntailmentCoverage,
   parseEntailmentResponse,
+  parseEntailmentResponseDetailed,
   resolveSelfConsistency,
   judgeEntailment,
   type EntailmentVerdict,
@@ -220,9 +232,11 @@ export {
   buildValidationUserPrompt,
   buildValidationBatchInputs,
   validateUnitsBatch,
+  validateUnitsBatchDetailed,
   remapValidationBatchResults,
   finalizeValidationCoverage,
   parseValidationResponse,
+  parseValidationResponseDetailed,
   validateUnits,
   type ValidationInput,
   type UnitValidation,
@@ -234,9 +248,11 @@ export {
   buildRemediationUserPrompt,
   buildRemediationBatchInputs,
   remediateUnitsBatch,
+  remediateUnitsBatchDetailed,
   remapRemediationBatchResults,
   finalizeRemediationCoverage,
   parseRemediationResponse,
+  parseRemediationResponseDetailed,
   remediateUnits,
   type RemediationInput,
   type RemediationResult,
