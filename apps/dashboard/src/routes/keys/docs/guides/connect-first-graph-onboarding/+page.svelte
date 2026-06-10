@@ -65,6 +65,8 @@
   <h2>Related</h2>
   <ul class="doc-ul">
     <li><a href="/connect/docs">Connect API docs</a></li>
+    <li><a href="/keys/docs/guides/verified-context">Verified context</a> — what "supported" means, the five EBV states, the verification chain on every response, and how to audit a claim yourself</li>
+    <li><a href="/keys/docs/guides/context-regression-ci">Context-regression CI</a> — gate PRs on graph quality with <code class="inline-code">keys connect eval --baseline</code></li>
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a></li>
     <li><a href="/keys/docs/guides/environment-vocabulary">Environment vocabulary</a></li>
   </ul>

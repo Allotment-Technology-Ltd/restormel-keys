@@ -72,8 +72,8 @@ export const SUITE_MODULES: SuiteModule[] = [
     product: "Restormel Connect",
     colorVar: "--brut-module-connect",
     summary:
-      "Stand up agent-ready knowledge infrastructure — wire documents into a structured graph, then serve verified context to agents via REST and MCP.",
-    proofLabel: "Agent context layer",
+      "The control plane for verified context — provenance-traced, quality-gated knowledge your agents can be held accountable to. Every claim carries bound evidence, a cross-model validation record, and an exportable audit trace.",
+    proofLabel: "Verified context",
     href: "/connect",
     runHref: DASHBOARD_BASE + "/connect",
     embedHref: "/connect/docs",

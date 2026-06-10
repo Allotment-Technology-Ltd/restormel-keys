@@ -54,11 +54,12 @@
         <p class="suite-hero-lead">
           {#if suiteExpanded}
             Route model requests with <strong>fallback chains</strong>, assure behavior in CI, embed reasoning graph
-            UIs, and stand up agent-ready knowledge infrastructure — in one signed-in workspace, with direct providers
-            and <strong>BYOK custody</strong>.
+            UIs, and serve agents <strong>verified context</strong> — provenance-traced, quality-gated knowledge
+            with audit trails. One signed-in workspace, with direct providers and <strong>BYOK custody</strong>.
           {:else}
-            Route model requests with <strong>fallback chains</strong> and stand up agent-ready knowledge
-            infrastructure — in one signed-in workspace, with direct providers and <strong>BYOK custody</strong>.
+            Route model requests with <strong>fallback chains</strong> and serve agents
+            <strong>verified context</strong> — provenance-traced, quality-gated knowledge with audit trails.
+            One signed-in workspace, with direct providers and <strong>BYOK custody</strong>.
           {/if}
         </p>
         <div class="suite-hero-ctas">
