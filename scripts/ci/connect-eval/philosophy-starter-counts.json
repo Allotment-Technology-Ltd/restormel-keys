@@ -1,0 +1,8 @@
+{
+  "$comment": "Gate-mechanics fixture for the connect-eval CI gate (Stage 2.3). These counts are a PINNED known-good claim distribution (100 claims) used to exercise `keys connect eval --baseline` end to end on every PR — they are NOT a live measurement of the philosophy starter graph. The source-set fingerprint is injected at run time by build-counts.mjs from PHILOSOPHY_STARTER_GOLDEN (packages/connect-core), so a change to the starter fixture or the fingerprint function surfaces as 'baseline superseded' in the PR comment, and a change to the G2 math or targets changes the verdict. Live measured quality arrives via remote mode (gateway key) — see the action README for the warn->block flip condition.",
+  "ok": 97,
+  "weak": 2,
+  "unsupported": 1,
+  "trust_score": 88,
+  "coverage_gaps": 0
+}

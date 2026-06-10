@@ -33,6 +33,7 @@ const ALL_STATIC_PATHS = [
   "/keys/docs/guides/canonical-catalog",
   "/keys/docs/guides/integration-catalog",
   "/keys/docs/guides/verified-context",
+  "/keys/docs/guides/context-regression-ci",
   "/keys/docs/guides/third-party-brand-marks",
   "/keys/docs/compatibility",
   "/keys/docs/cloud-api",

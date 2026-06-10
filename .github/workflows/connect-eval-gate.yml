@@ -1,0 +1,87 @@
+# Context-regression CI gate (Stage 2.3, verified-context roadmap) — dogfood.
+#
+# Every PR touching the Connect quality pipeline runs `keys connect eval --baseline`
+# against the philosophy-starter gate fixture via packages/connect-eval-github-action:
+#   - exit-code contract probes (pass=0, regression=3) prove the gate end to end;
+#   - the action posts/updates ONE sticky PR comment with the regression diff table.
+#
+# WARN MODE: `warn_only: 'true'` keeps the check green on quality fail/regression while
+# the team tunes the baseline. Flip condition (see PR + action README): switch to
+# 'false' once the gate evaluates a LIVE ingest (remote mode with RESTORMEL_GATEWAY_KEY)
+# instead of the pinned counts fixture, and the baseline has been re-saved from that run.
+#
+# Forgejo mirror: .forgejo/workflows/connect-eval-gate.yml is the same gate (the
+# .forgejo dir overrides .github there). Keep the two in sync.
+name: Connect eval gate
+on:
+  pull_request:
+    paths:
+      - 'packages/connect-core/**'
+      - 'packages/contracts/**'
+      - 'packages/cli/**'
+      - 'packages/connect-eval-github-action/**'
+      - 'scripts/ci/connect-eval/**'
+      - 'scripts/ci/check-efficacy-bars.*'
+      - '.github/workflows/connect-eval-gate.yml'
+
+permissions:
+  contents: read
+  pull-requests: write # sticky comment
+
+concurrency:
+  group: connect-eval-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+      - name: Build keys CLI + gate action
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/keys-tokens run build
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/connect-core run build
+          pnpm --filter @restormel/validate run build
+          pnpm --filter @restormel/doctor run build
+          pnpm --filter @restormel/keys-cli run build
+          pnpm --filter @restormel/connect-eval-github-action run build
+      - name: Validate connect-eval action.yml (YAML)
+        run: bash scripts/validate-connect-eval-github-action-yml.sh
+      - name: Gate action unit tests (comment + verdict helpers)
+        run: pnpm --filter @restormel/connect-eval-github-action run test
+      - name: Efficacy bar-checker unit tests
+        run: pnpm exec vitest run scripts/ci/check-efficacy-bars.test.mjs
+      - name: Build counts from the philosophy starter fixture (live fingerprint)
+        run: |
+          node scripts/ci/connect-eval/build-counts.mjs --out /tmp/connect-eval-counts.json
+          node scripts/ci/connect-eval/build-counts.mjs --out /tmp/connect-eval-regressed.json --regress
+      - name: Exit-code contract probes (0 pass / 3 regression)
+        run: |
+          set +e
+          node packages/cli/dist/index.js connect eval \
+            --counts /tmp/connect-eval-counts.json \
+            --baseline scripts/ci/connect-eval/philosophy-starter-baseline.json \
+            --output markdown > /dev/null
+          pass_code=$?
+          node packages/cli/dist/index.js connect eval \
+            --counts /tmp/connect-eval-regressed.json \
+            --baseline scripts/ci/connect-eval/philosophy-starter-baseline.json \
+            --output markdown > /dev/null
+          regress_code=$?
+          set -e
+          echo "pass probe exit=$pass_code (want 0) · regression probe exit=$regress_code (want 3)"
+          [ "$pass_code" -eq 0 ] && [ "$regress_code" -eq 3 ]
+      - name: Connect eval gate (warn mode, sticky PR comment)
+        uses: ./packages/connect-eval-github-action
+        with:
+          counts_path: /tmp/connect-eval-counts.json
+          baseline_path: scripts/ci/connect-eval/philosophy-starter-baseline.json
+          tolerance: '1'
+          warn_only: 'true' # flip to 'false' per the condition in the header comment
+          comment_discriminator: philosophy-starter
+          github_token: ${{ secrets.GITHUB_TOKEN }}

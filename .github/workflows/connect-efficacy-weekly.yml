@@ -1,0 +1,95 @@
+# Weekly claims-integrity run (Stage 2.3, verified-context roadmap).
+#
+# Re-measures the Stage 1.0a verifier-efficacy benchmark UNDER CROSS-MODEL ROUTING
+# (extraction on the OpenAI family, validation on OpenAI + Together — two genuinely
+# different model families) and FAILS if any signed-off bar regresses:
+#   fabricated recall >= 95% · cross-model misattribution recall >= 90% ·
+#   false-flag <= 15% · affirm-unseen 0% under cross-model routing (legacy window probe).
+# This keeps docs/verified-context-claims-ledger.md rows 5/6/8-adjacent continuously true
+# as models and routes change (ledger rule 3). On a red run: flip the citing ledger rows
+# to `broken` and treat dependent marketing copy as broken until the bar recovers.
+#
+# Secrets (user-provisioned, repo settings): OPENAI_API_KEY, TOGETHER_API_KEY.
+# Missing secrets FAIL the run — silently skipping would let the proven rows rot.
+#
+# Evidence snapshot: each run uploads `verifier-efficacy-results-<date>.json` as a dated
+# workflow artifact and prints the bar table in the step summary. Chosen over an
+# auto-commit PR because (a) Actions-created PRs require an org setting we do not control,
+# (b) unreviewed weekly commits would bypass the docs/evidence review path. To promote a
+# snapshot into the repo (the committed dated evidence the ledger links), download the
+# artifact and commit it under scripts/reviews/ — the run summary prints the command.
+#
+# Cost per run (measured from the 2026-06-10 snapshot's call/char counters, chars/4≈tokens):
+# OpenAI gpt-4o-mini ≈ $0.02 (extraction + retrieval + same-model pairing) and Together
+# Llama-3.3-70B-Instruct-Turbo ≈ $0.05 — well under $0.10/run, ~$0.40/month at weekly
+# cadence, so no cheaper cadence is needed.
+name: Connect verifier efficacy (weekly cross-model)
+
+on:
+  schedule:
+    - cron: '23 5 * * 1' # Mondays 05:23 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connect-efficacy-weekly
+  cancel-in-progress: false
+
+jobs:
+  efficacy:
+    runs-on: ubuntu-latest
+    # Scheduled runs only on the canonical repo (not forks).
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'Allotment-Technology-Ltd/restormel-keys'
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+      - name: Require cross-model keys
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+        run: |
+          missing=""
+          [ -z "${OPENAI_API_KEY:-}" ] && missing="OPENAI_API_KEY"
+          [ -z "${TOGETHER_API_KEY:-}" ] && missing="$missing TOGETHER_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repo secret(s):$missing — the claims-integrity run cannot measure cross-model efficacy. Provision them in repo settings."
+            exit 1
+          fi
+      - name: Snapshot name
+        id: snap
+        run: echo "name=verifier-efficacy-results-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Run verifier-efficacy harness (cross-model, EBV, 3 runs)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+        run: |
+          pnpm exec tsx scripts/reviews/verifier-efficacy.ts \
+            --extractor openai:gpt-4o-mini \
+            --validator openai:gpt-4o-mini \
+            --validator together:meta-llama/Llama-3.3-70B-Instruct-Turbo \
+            --with-extraction --ebv --runs 3 \
+            --out "${{ steps.snap.outputs.name }}.json"
+      - name: Check signed-off bars (fails on regression)
+        run: node scripts/ci/check-efficacy-bars.mjs "${{ steps.snap.outputs.name }}.json"
+      - name: How to promote this snapshot to committed ledger evidence
+        if: always()
+        run: |
+          {
+            echo ""
+            echo "To commit this snapshot as dated ledger evidence:"
+            echo '```'
+            echo "gh run download ${{ github.run_id }} -n ${{ steps.snap.outputs.name }} -D scripts/reviews/"
+            echo "git add scripts/reviews/${{ steps.snap.outputs.name }}.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload dated results snapshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.snap.outputs.name }}
+          path: ${{ steps.snap.outputs.name }}.json
+          if-no-files-found: ignore
+          retention-days: 90

@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "saved_at": "2026-06-10T12:01:35.071Z",
+  "fingerprint": "000000002e69e7d3",
+  "verdict": {
+    "schema_version": "1.0",
+    "evaluated_at": "2026-06-10T12:01:35.069Z",
+    "source": {
+      "kind": "counts_file",
+      "path": "/tmp/ce-counts.json"
+    },
+    "g2": {
+      "ok": 97,
+      "weak": 2,
+      "unsupported": 1,
+      "ok_pct": 97,
+      "unsupported_pct": 1
+    },
+    "targets": {
+      "ok_pct_min": 90,
+      "unsupported_pct_max": 2
+    },
+    "trust_score": 88,
+    "coverage_gaps": 0,
+    "fingerprint": "000000002e69e7d3",
+    "pass": true,
+    "reasons": []
+  }
+}

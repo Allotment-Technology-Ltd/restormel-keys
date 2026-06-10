@@ -1,0 +1,73 @@
+# Forgejo port of .github/workflows/connect-eval-gate.yml (Stage 2.3 context-regression
+# gate). Remember: .forgejo/workflows OVERRIDES .github/workflows on the Forgejo mirror,
+# so the gate must live here too or the mirror never runs it. Keep in sync with the
+# GitHub variant.
+#
+# Differences from the GitHub variant:
+#   - runs-on: docker (the Stage-1 self-hosted runner), checkout from code.forgejo.org;
+#   - triggers on push too (mirror-pushes rarely carry pull_request events); the sticky
+#     comment step inside the action degrades gracefully when there is no PR context —
+#     Forgejo serves the same GitHub-compatible issues API, so when a real Forgejo PR
+#     exists the comment works unchanged;
+#   - same warn-mode flip condition as the GitHub variant (see that file's header).
+name: Connect eval gate
+on:
+  push:
+    paths:
+      - 'packages/connect-core/**'
+      - 'packages/contracts/**'
+      - 'packages/cli/**'
+      - 'packages/connect-eval-github-action/**'
+      - 'scripts/ci/connect-eval/**'
+      - 'scripts/ci/check-efficacy-bars.*'
+      - '.forgejo/workflows/connect-eval-gate.yml'
+  pull_request:
+
+jobs:
+  eval-gate:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Build keys CLI + gate action
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/keys-tokens run build
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/connect-core run build
+          pnpm --filter @restormel/validate run build
+          pnpm --filter @restormel/doctor run build
+          pnpm --filter @restormel/keys-cli run build
+          pnpm --filter @restormel/connect-eval-github-action run build
+      - name: Gate action unit tests (comment + verdict helpers)
+        run: pnpm --filter @restormel/connect-eval-github-action run test
+      - name: Build counts from the philosophy starter fixture (live fingerprint)
+        run: |
+          node scripts/ci/connect-eval/build-counts.mjs --out /tmp/connect-eval-counts.json
+          node scripts/ci/connect-eval/build-counts.mjs --out /tmp/connect-eval-regressed.json --regress
+      - name: Exit-code contract probes (0 pass / 3 regression)
+        run: |
+          set +e
+          node packages/cli/dist/index.js connect eval \
+            --counts /tmp/connect-eval-counts.json \
+            --baseline scripts/ci/connect-eval/philosophy-starter-baseline.json \
+            --output markdown > /dev/null
+          pass_code=$?
+          node packages/cli/dist/index.js connect eval \
+            --counts /tmp/connect-eval-regressed.json \
+            --baseline scripts/ci/connect-eval/philosophy-starter-baseline.json \
+            --output markdown > /dev/null
+          regress_code=$?
+          set -e
+          echo "pass probe exit=$pass_code (want 0) · regression probe exit=$regress_code (want 3)"
+          [ "$pass_code" -eq 0 ] && [ "$regress_code" -eq 3 ]
+      - name: Connect eval gate (warn mode, sticky comment when PR context exists)
+        uses: ./packages/connect-eval-github-action
+        with:
+          counts_path: /tmp/connect-eval-counts.json
+          baseline_path: scripts/ci/connect-eval/philosophy-starter-baseline.json
+          tolerance: '1'
+          warn_only: 'true'
+          comment_discriminator: philosophy-starter
+          github_token: ${{ secrets.GITHUB_TOKEN }}
