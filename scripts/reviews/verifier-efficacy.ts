@@ -71,6 +71,31 @@ function requireEnv(name: string, alt?: string): string {
   return v;
 }
 
+/**
+ * fetch with bounded retry: transient network failures ("fetch failed", timeouts) and
+ * retryable HTTP statuses (429/5xx) get up to 3 further attempts with exponential
+ * backoff. A multi-minute keyed run must not be lost to one blip mid-batch.
+ */
+async function fetchWithRetry(url: string, init: RequestInit, label: string): Promise<Response> {
+  const delaysMs = [2000, 8000, 20000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if ((res.status === 429 || res.status >= 500) && attempt < delaysMs.length) {
+        console.warn(`[retry] ${label} HTTP ${res.status}; retrying in ${delaysMs[attempt]}ms`);
+        await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt >= delaysMs.length) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[retry] ${label} ${msg}; retrying in ${delaysMs[attempt]}ms`);
+      await new Promise((r) => setTimeout(r, delaysMs[attempt]));
+    }
+  }
+}
+
 /** Bind an ExtractionGenerate directly to a provider chat API (temperature 0). */
 function makeGenerate(spec: ModelSpec): ExtractionGenerate {
   if (spec.family === "openai" || spec.family === "together") {
@@ -80,7 +105,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
     const key =
       spec.family === "together" ? requireEnv("TOGETHER_API_KEY") : requireEnv("OPENAI_API_KEY");
     return async ({ system, user }) => {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
+      const res = await fetchWithRetry(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({
@@ -92,7 +117,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
             { role: "user", content: user },
           ],
         }),
-      });
+      }, `${spec.family} ${spec.model}`);
       if (!res.ok)
         throw new Error(`${spec.family} ${spec.model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
       const d = (await res.json()) as { choices?: { message?: { content?: string } }[] };
@@ -102,7 +127,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
   if (spec.family === "anthropic") {
     const key = requireEnv("ANTHROPIC_API_KEY");
     return async ({ system, user }) => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -116,7 +141,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
           system,
           messages: [{ role: "user", content: user }],
         }),
-      });
+      }, `anthropic ${spec.model}`);
       if (!res.ok) throw new Error(`anthropic ${spec.model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
       const d = (await res.json()) as { content?: { type: string; text?: string }[] };
       return d.content?.find((b) => b.type === "text")?.text ?? "";
@@ -125,7 +150,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
   const key = requireEnv("GOOGLE_API_KEY", "GEMINI_API_KEY");
   return async ({ system, user }) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${spec.model}:generateContent?key=${key}`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -133,7 +158,7 @@ function makeGenerate(spec: ModelSpec): ExtractionGenerate {
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: { temperature: 0, responseMimeType: "application/json" },
       }),
-    });
+    }, `google ${spec.model}`);
     if (!res.ok) throw new Error(`google ${spec.model} HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const d = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     return d.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
