@@ -21,6 +21,11 @@
  * route exactly as for the legacy validator (judge family ≠ extractor family).
  */
 import type { ExtractionGenerate } from "./extract.js";
+import {
+  askBatchWithCoverageRetry,
+  type CoverageShortfallHandler,
+  type ParsedBatchResponse,
+} from "./batch-coverage.js";
 
 /** Bump when the system/user prompt wording changes — recorded with every verdict. */
 export const ENTAILMENT_PROMPT_VERSION = 1;
@@ -158,18 +163,23 @@ export function finalizeEntailmentCoverage(
   return inputs.map((input) => byRef.get(input.ref)!);
 }
 
-export function parseEntailmentResponse(raw: string): UnitEntailment[] {
+/**
+ * H1: loose-JSON parse with an explicit failure signal. `parseFailed` is true when the
+ * response could not be parsed as JSON at all (truncated/garbled) — the whole batch is
+ * lost and the orchestrator should warn + re-ask before fail-safe abstention applies.
+ */
+export function parseEntailmentResponseDetailed(raw: string): ParsedBatchResponse<UnitEntailment> {
   let obj: unknown;
   try {
     obj = JSON.parse(raw);
   } catch {
     const s = raw.indexOf("{");
     const e = raw.lastIndexOf("}");
-    if (s < 0 || e <= s) return [];
+    if (s < 0 || e <= s) return { results: [], parseFailed: true };
     try {
       obj = JSON.parse(raw.slice(s, e + 1));
     } catch {
-      return [];
+      return { results: [], parseFailed: true };
     }
   }
   const resultsRaw = Array.isArray((obj as Record<string, unknown>)?.results)
@@ -198,7 +208,11 @@ export function parseEntailmentResponse(raw: string): UnitEntailment[] {
       ...(v !== verdict && v ? { note: `unparseable_verdict: "${v.slice(0, 40)}"` } : {}),
     });
   }
-  return out;
+  return { results: out, parseFailed: false };
+}
+
+export function parseEntailmentResponse(raw: string): UnitEntailment[] {
+  return parseEntailmentResponseDetailed(raw).results;
 }
 
 /** Strict-majority vote across k samples; disagreement abstains (→ review). */
@@ -247,6 +261,8 @@ export async function judgeEntailment(args: {
   kSamples?: number;
   /** Recorded in the returned meta when the caller knows the resolved model. */
   modelId?: string | null;
+  /** H1: called when a batch loses verdicts (before the single re-ask + fail-safe abstain). */
+  onCoverageShortfall?: CoverageShortfallHandler;
 }): Promise<{ results: UnitEntailment[]; meta: EntailmentJudgeMeta }> {
   const kSamples = Math.max(1, Math.floor(args.kSamples ?? 1));
   const meta: EntailmentJudgeMeta = {
@@ -270,14 +286,20 @@ export async function judgeEntailment(args: {
   const system = buildEntailmentSystemPrompt();
   const judged: UnitEntailment[] = [];
   for (const { batchInputs, refToUnitId } of buildEntailmentBatchInputs(judgeable)) {
-    const user = buildEntailmentUserPrompt(batchInputs);
     const samplesByRef = new Map<string, UnitEntailment[]>();
     for (let k = 0; k < kSamples; k++) {
-      const raw = await args.generate({ system, user });
-      const finalized = finalizeEntailmentCoverage(
-        batchInputs,
-        parseEntailmentResponse(raw),
-      );
+      // H1: a lost batch (truncated/garbled response or omitted refs) is re-asked
+      // exactly once per sample; refs still missing after that fall through to the
+      // fail-safe `abstain` coverage finalize (→ review), never a pass.
+      const asked = await askBatchWithCoverageRetry<EntailmentInput, UnitEntailment>({
+        inputs: batchInputs,
+        ask: async (inputs) => {
+          const raw = await args.generate({ system, user: buildEntailmentUserPrompt(inputs) });
+          return parseEntailmentResponseDetailed(raw);
+        },
+        ...(args.onCoverageShortfall ? { onShortfall: args.onCoverageShortfall } : {}),
+      });
+      const finalized = finalizeEntailmentCoverage(batchInputs, asked.results);
       for (const r of finalized) {
         const list = samplesByRef.get(r.ref) ?? [];
         list.push(r);

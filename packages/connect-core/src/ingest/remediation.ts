@@ -7,6 +7,11 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ExtractionGenerate } from "./extract.js";
 import type { ConnectQualityPreset } from "./quality-preset.js";
 import { composeStageSystemPrompt } from "./prompt-compose.js";
+import {
+  askBatchWithCoverageRetry,
+  type CoverageShortfallHandler,
+  type ParsedBatchResponse,
+} from "./batch-coverage.js";
 
 export interface RemediationInput {
   ref: string;
@@ -117,18 +122,23 @@ export function finalizeRemediationCoverage(
   return units.map((unit) => byRef.get(unit.ref)!);
 }
 
-export function parseRemediationResponse(raw: string): RemediationResult[] {
+/**
+ * H1: loose-JSON parse with an explicit failure signal. `parseFailed` is true when the
+ * response could not be parsed as JSON at all (truncated/garbled) — the whole batch is
+ * lost and the orchestrator should warn + re-ask before fail-safe defaults apply.
+ */
+export function parseRemediationResponseDetailed(raw: string): ParsedBatchResponse<RemediationResult> {
   let obj: unknown;
   try {
     obj = JSON.parse(raw);
   } catch {
     const s = raw.indexOf("{");
     const e = raw.lastIndexOf("}");
-    if (s < 0 || e <= s) return [];
+    if (s < 0 || e <= s) return { results: [], parseFailed: true };
     try {
       obj = JSON.parse(raw.slice(s, e + 1));
     } catch {
-      return [];
+      return { results: [], parseFailed: true };
     }
   }
   const resultsRaw = Array.isArray((obj as Record<string, unknown>)?.results)
@@ -154,7 +164,11 @@ export function parseRemediationResponse(raw: string): RemediationResult[] {
       ...(confidence !== undefined ? { confidence } : {}),
     });
   }
-  return out;
+  return { results: out, parseFailed: false };
+}
+
+export function parseRemediationResponse(raw: string): RemediationResult[] {
+  return parseRemediationResponseDetailed(raw).results;
 }
 
 /** Remediate one batch (short refs). Prefer {@link remediateUnits} for full weak-unit coverage. */
@@ -165,11 +179,22 @@ export async function remediateUnitsBatch(args: {
   generate: ExtractionGenerate;
   qualityPreset?: ConnectQualityPreset;
 }): Promise<RemediationResult[]> {
-  if (args.units.length === 0) return [];
+  return (await remediateUnitsBatchDetailed(args)).results;
+}
+
+/** {@link remediateUnitsBatch} with the H1 parse-failure signal for orchestrators. */
+export async function remediateUnitsBatchDetailed(args: {
+  units: RemediationInput[];
+  sourceText: string;
+  pack: ConnectDomainPack;
+  generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+}): Promise<ParsedBatchResponse<RemediationResult>> {
+  if (args.units.length === 0) return { results: [], parseFailed: false };
   const system = buildRemediationSystemPrompt(args.pack, { qualityPreset: args.qualityPreset });
   const user = buildRemediationUserPrompt(args.units, args.sourceText);
   const raw = await args.generate({ system, user });
-  return parseRemediationResponse(raw);
+  return parseRemediationResponseDetailed(raw);
 }
 
 export async function remediateUnits(args: {
@@ -178,21 +203,21 @@ export async function remediateUnits(args: {
   pack: ConnectDomainPack;
   generate: ExtractionGenerate;
   qualityPreset?: ConnectQualityPreset;
+  /** H1: called when a batch loses verdicts (before the single re-ask + fail-safe defaults). */
+  onCoverageShortfall?: CoverageShortfallHandler;
 }): Promise<RemediationResult[]> {
   if (args.units.length === 0) return [];
 
-  const batches = buildRemediationBatchInputs(args.units);
-  if (batches.length === 1) {
-    const { batchUnits, refToUnitId } = batches[0]!;
-    const parsed = await remediateUnitsBatch({ ...args, units: batchUnits });
-    const remapped = remapRemediationBatchResults(parsed, refToUnitId);
-    return finalizeRemediationCoverage(args.units, remapped);
-  }
-
   const merged: RemediationResult[] = [];
-  for (const { batchUnits, refToUnitId } of batches) {
-    const parsed = await remediateUnitsBatch({ ...args, units: batchUnits });
-    merged.push(...remapRemediationBatchResults(parsed, refToUnitId));
+  for (const { batchUnits, refToUnitId } of buildRemediationBatchInputs(args.units)) {
+    // H1: a lost batch (truncated/garbled response or omitted refs) is re-asked exactly
+    // once; refs still missing after that fall through to the fail-safe "drop" finalize.
+    const asked = await askBatchWithCoverageRetry<RemediationInput, RemediationResult>({
+      inputs: batchUnits,
+      ask: (units) => remediateUnitsBatchDetailed({ ...args, units }),
+      ...(args.onCoverageShortfall ? { onShortfall: args.onCoverageShortfall } : {}),
+    });
+    merged.push(...remapRemediationBatchResults(asked.results, refToUnitId));
   }
   return finalizeRemediationCoverage(args.units, merged);
 }

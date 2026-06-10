@@ -14,9 +14,16 @@
 import {
   finalizeValidationCoverage,
   parseValidationResponse,
+  parseValidationResponseDetailed,
   type ValidationInput,
   type UnitValidation,
 } from "../../packages/connect-core/src/ingest/validation.js";
+import { askBatchWithCoverageRetry } from "../../packages/connect-core/src/ingest/batch-coverage.js";
+import {
+  evaluateExtractionGate,
+  EXTRACTION_GATE_THRESHOLDS,
+} from "../../packages/connect-core/src/ingest/extraction-gates.js";
+import type { ExtractionWarning } from "../../packages/connect-core/src/ingest/extract.js";
 import {
   finalizeRemediationCoverage,
   type RemediationInput,
@@ -29,6 +36,8 @@ function hr(title: string): void {
   console.log("\n" + "═".repeat(72) + "\n" + title + "\n" + "─".repeat(72));
 }
 
+// Wrapped in main() because the H1 re-ask demo awaits (tsx compiles this file CJS — no TLA).
+async function main(): Promise<void> {
 /* ───────────────────────── C1 + C3: validation now fails safe ───────────────────────── */
 hr("C1/C3 (FIXED) — validation: omitted units default to 'weak', ok_pct honest");
 
@@ -86,28 +95,115 @@ console.log(
     "    persisting known-weak units as if remediation succeeded.",
 );
 
-/* ───────────────────────── H1: malformed JSON still loses the batch, but C1 now fails it safe ───────────────────────── */
-hr("H1 — loose-JSON parse drops verdicts on truncated output (coverage gap now fails safe)");
+/* ───────────────────────── H1: parse loss is now SIGNALLED, warned about, and re-asked once ───────────────────────── */
+hr("H1 (FIXED) — lost verdict batches are signalled, warned about, and re-asked once");
 
 // A response truncated mid-array (max_tokens / network cut). Note the dangling object.
 const truncated =
   '{"results":[{"ref":"v1","status":"ok"},{"ref":"v2","status":"unsupported"},{"ref":"v3","stat';
-const parsed = parseValidationResponse(truncated);
 console.log(`  Model intended verdicts for v1..v3, but the response was truncated at v3.`);
-console.log(`  parseValidationResponse returned ${parsed.length} verdict(s) — no error raised.`);
-// What the pipeline then persists for the units it asked about:
+console.log(
+  `  legacy parseValidationResponse: ${parseValidationResponse(truncated).length} verdict(s), no signal (the old H1).`,
+);
+const detailed = parseValidationResponseDetailed(truncated);
+console.log(
+  `  parseValidationResponseDetailed: ${detailed.results.length} verdict(s), parseFailed=${detailed.parseFailed} ← the batch-lost signal`,
+);
+
+// What the orchestrator (ingest-full-runner / graph-remediation-pass) now does with it:
+// warn with the omitted ref count, re-ask the lost refs EXACTLY ONCE, then let the
+// fail-safe coverage finalize stamp anything still missing.
 const h1Units: ValidationInput[] = [
   { ref: "v1", text: "..." },
   { ref: "v2", text: "..." },
   { ref: "v3", text: "..." },
 ];
-const h1Final = finalizeValidationCoverage(h1Units, parsed);
-console.log(`  After finalize, persisted statuses: ${h1Final.map((v) => `${v.ref}=${v.status}`).join(", ")}`);
+let h1Asks = 0;
+const h1 = await askBatchWithCoverageRetry<ValidationInput, UnitValidation>({
+  inputs: h1Units,
+  ask: async () => {
+    h1Asks += 1;
+    if (h1Asks === 1) return parseValidationResponseDetailed(truncated);
+    // The re-ask succeeds for v1+v2; the model omits v3 AGAIN (worst case).
+    return parseValidationResponseDetailed(
+      '{"results":[{"ref":"v1","status":"ok"},{"ref":"v2","status":"unsupported"}]}',
+    );
+  },
+  onShortfall: ({ omittedRefs, parseFailed }) => {
+    console.log(
+      `  [orchestrator log] Coverage shortfall — ${omittedRefs.length}/${h1Units.length} verdict(s) missing` +
+        (parseFailed ? " (response unparseable)" : "") +
+        " — re-asking once",
+    );
+  },
+});
+console.log(`  Model asked ${h1Asks} time(s) (re-ask happened exactly once, never twice).`);
+const h1Final = finalizeValidationCoverage(h1Units, h1.results);
 console.log(
-  "  ⇒ Brace-slice still can't recover the truncated array, so the batch is lost — but\n" +
-    "    coverage finalize now stamps every lost unit 'weak' (coverage_gap), not 'ok'.\n" +
-    "    A truncated verdict batch no longer flips a known-unsupported claim to supported;\n" +
-    "    the silent-parse-loss itself (H1) remains open as a separate finding.",
+  `  After re-ask + finalize, persisted statuses: ${h1Final.map((v) => `${v.ref}=${v.status}`).join(", ")}`,
+);
+console.log(
+  "  ⇒ The truncated batch is no longer a silent loss: the parser signals it, the\n" +
+    "    orchestrator logs a coverage-shortfall warning with the omitted ref count and\n" +
+    "    re-asks that batch exactly once. v1/v2 recover their real verdicts; only the\n" +
+    "    twice-omitted v3 falls through to the fail-safe 'weak' (coverage_gap) default.",
+);
+
+/* ───────────────────────── H3: orphan/dangling/no_relations warnings now gate ───────────────────────── */
+hr("H3 (FIXED) — extraction gate acts on orphan/dangling thresholds (preset-driven)");
+
+const w = (code: ExtractionWarning["code"], count?: number): ExtractionWarning => ({
+  code,
+  severity: "warning",
+  message: code,
+  ...(count != null ? { count } : {}),
+});
+
+console.log(
+  `  Preset thresholds (pack.quality_preset drives the preset — nothing hardcoded per call):`,
+);
+for (const preset of ["production", "starter"] as const) {
+  const t = EXTRACTION_GATE_THRESHOLDS[preset];
+  console.log(
+    `    ${preset.padEnd(10)} → mode=${t.mode}, orphan ratio > ${t.maxOrphanUnitRatio} (≥${t.orphanGateMinUnits} units), dangling ratio > ${t.maxDanglingRelationRatio}`,
+  );
+}
+
+// A disconnected chunk: 5 units, zero relations (the philosophy lesson).
+const orphanChunk = { warnings: [w("no_relations")], totals: { units: 5, relations: 0 } };
+// An incoherent chunk: 3 of 4 relations reference units that were never extracted.
+const danglingChunk = {
+  warnings: [w("dangling_relation", 3)],
+  totals: { units: 10, relations: 4 },
+};
+
+for (const [label, c] of [
+  ["all-orphan chunk (no_relations)", orphanChunk],
+  ["dangling relations 3/4", danglingChunk],
+] as const) {
+  const prod = evaluateExtractionGate(c.warnings, "production", "guided", { totals: c.totals });
+  const starter = evaluateExtractionGate(c.warnings, "starter", "guided", { totals: c.totals });
+  console.log(
+    `  ${label}:\n` +
+      `    production → allowPersist=${prod.allowPersist} (${(prod.breaches ?? []).join(", ") || "no breach"})\n` +
+      `    starter    → allowPersist=${starter.allowPersist}, warned: ${(starter.breaches ?? []).join(", ")}`,
+  );
+}
+
+// Strict-mode pattern violations: the old gate returned allowPersist:true with a
+// blocking-sounding reason ("strict_pattern_violation:N") — a contradiction. Resolved:
+// strict + production now BLOCKS; guided mode / starter preset stay lenient.
+const strictGate = evaluateExtractionGate([w("pattern_violation", 2)], "production", "strict", {
+  totals: { units: 5, relations: 5 },
+});
+console.log(
+  `  strict pattern_violation(2): production+strict → allowPersist=${strictGate.allowPersist} ` +
+    `(reason=${strictGate.reason}) — was allowPersist=true with reason "strict_pattern_violation:2"`,
+);
+console.log(
+  "  ⇒ Orphan/dangling/no_relations warnings now gate persist with preset-driven\n" +
+    "    thresholds (production blocks, starter warns via `breaches` the orchestrator\n" +
+    "    logs), and the strict pattern_violation contradiction is resolved to a block.",
 );
 
 /* ───────────────────────── H4: structure-aware chunking now honors overlap ───────────────────────── */
@@ -153,7 +249,14 @@ console.log(
     "  omitted remediation verdicts finalize as 'drop', and G2 ok_pct no longer counts\n" +
     "  never-judged units as ok. H4 is FIXED: structure_aware chunking carries overlap_chars\n" +
     "  across boundaries. H2 is mitigated: the 12k source cap is now tunable via\n" +
-    "  CONNECT_SOURCE_CONTEXT_CHARS. H1's consequence is defused by C1/C2 (lost batches fail\n" +
-    "  safe), but the silent loose-JSON parse loss itself remains open, as do H3/M1/M3/M4/L1.\n" +
-    "  See docs/reviews/connect-ingest-context.md §6; extend this script to ground new findings.",
+    "  CONNECT_SOURCE_CONTEXT_CHARS. H1 is FIXED: parsers signal a lost batch\n" +
+    "  (parse*ResponseDetailed.parseFailed), orchestrators log a coverage-shortfall warning\n" +
+    "  and re-ask the lost refs exactly once before the fail-safe defaults apply. H3 is\n" +
+    "  FIXED: the extraction gate now acts on orphan/dangling/no_relations with preset-driven\n" +
+    "  thresholds (production blocks, starter warns) and strict pattern_violation blocks.\n" +
+    "  Remaining open: M1/M3/M4/L1. See docs/reviews/connect-ingest-context.md §6; extend\n" +
+    "  this script to ground new findings.",
 );
+}
+
+void main();

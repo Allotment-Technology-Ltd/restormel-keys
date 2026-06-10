@@ -3,10 +3,12 @@
  */
 import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import {
+  askBatchWithCoverageRetry,
   judgeEntailment,
   remediateUnits,
   resolveQualityPreset,
   validateUnits,
+  type CoverageShortfallHandler,
   type EvidenceBinding,
   type ExtractionGenerate,
   type EmbeddingPort,
@@ -15,9 +17,10 @@ import {
 import { buildLayer2StateRows } from "$lib/server/connect/evidence-persist";
 import {
   buildRemediationBatchInputs,
-  remediateUnitsBatch,
+  remediateUnitsBatchDetailed,
   remapRemediationBatchResults,
   finalizeRemediationCoverage,
+  type RemediationInput,
   type RemediationResult,
 } from "@restormel/connect-core/ingest/remediation";
 import type { GraphWriter } from "$lib/server/connect/graph-writer";
@@ -45,6 +48,22 @@ function remediationErrorHint(message: string): string {
     return `${message} — ${ROUTE_EXHAUSTED_HINT}`;
   }
   return message;
+}
+
+/** H1: log a verdict-batch coverage shortfall (the batch is re-asked once by the callee). */
+function shortfallLogger(
+  reporter: ConnectIngestProgressReporter | undefined,
+  tag: "VALIDATE" | "REMEDIATE",
+  what: string,
+): CoverageShortfallHandler {
+  return async ({ omittedRefs, parseFailed }) => {
+    await reporter?.log(
+      tag,
+      `Coverage shortfall — ${what} omitted ${omittedRefs.length} verdict(s)` +
+        (parseFailed ? " (response unparseable)" : "") +
+        " — re-asking once",
+    );
+  };
 }
 
 const DEFAULT_REMEDIATION_THRESHOLD = {
@@ -160,14 +179,30 @@ export async function runGraphRemediationPass(args: {
       try {
         for (let bi = 0; bi < batches.length; bi++) {
           const { batchUnits, refToUnitId } = batches[bi]!;
-          const parsed = await remediateUnitsBatch({
-            units: batchUnits,
-            sourceText,
-            pack,
-            generate: args.remediationGenerate,
-            qualityPreset: preset,
+          // H1: a lost batch (unparseable/truncated response or omitted refs) is
+          // logged as a coverage shortfall and re-asked exactly once; refs still
+          // missing then fall through to the fail-safe "drop" coverage finalize.
+          const asked = await askBatchWithCoverageRetry<RemediationInput, RemediationResult>({
+            inputs: batchUnits,
+            ask: (units) =>
+              remediateUnitsBatchDetailed({
+                units,
+                sourceText,
+                pack,
+                generate: args.remediationGenerate,
+                qualityPreset: preset,
+              }),
+            onShortfall: async ({ omittedRefs, parseFailed }) => {
+              await reporter?.log(
+                "REMEDIATE",
+                `Coverage shortfall in batch ${bi + 1}/${batches.length} — ` +
+                  `${omittedRefs.length}/${batchUnits.length} verdict(s) missing` +
+                  (parseFailed ? " (response unparseable)" : "") +
+                  " — re-asking once",
+              );
+            },
           });
-          merged.push(...remapRemediationBatchResults(parsed, refToUnitId));
+          merged.push(...remapRemediationBatchResults(asked.results, refToUnitId));
           doneInSource += batchUnits.length;
           // Tick AFTER the slow LLM call, paced by real units — so the stage
           // progress + ETA track the model passes, not the instant apply loop.
@@ -192,6 +227,7 @@ export async function runGraphRemediationPass(args: {
         pack,
         generate: args.remediationGenerate,
         qualityPreset: preset,
+        onCoverageShortfall: shortfallLogger(reporter, "REMEDIATE", "remediation model"),
       });
     }
 
@@ -233,6 +269,7 @@ export async function runGraphRemediationPass(args: {
         pack,
         generate: args.validationGenerate,
         qualityPreset: preset,
+        onCoverageShortfall: shortfallLogger(reporter, "REMEDIATE", "re-validation"),
       });
       await writer.setValidation(
         revalidated.map((r) => ({ unitId: r.ref, status: r.status, note: r.note ?? null })),
@@ -254,6 +291,7 @@ export async function runGraphRemediationPass(args: {
           generate: args.validationGenerate,
           kSamples: args.ebv.kSamples,
           modelId: args.ebv.modelId,
+          onCoverageShortfall: shortfallLogger(reporter, "REMEDIATE", "re-judge"),
         });
         const l2 = buildLayer2StateRows({
           results,

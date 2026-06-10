@@ -7,6 +7,11 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ExtractionGenerate } from "./extract.js";
 import type { ConnectQualityPreset } from "./quality-preset.js";
 import { composeStageSystemPrompt, type GraphIngestContext } from "./prompt-compose.js";
+import {
+  askBatchWithCoverageRetry,
+  type CoverageShortfallHandler,
+  type ParsedBatchResponse,
+} from "./batch-coverage.js";
 
 export type UnitValidationStatus = "ok" | "weak" | "unsupported";
 
@@ -122,18 +127,23 @@ export function finalizeValidationCoverage(
   return units.map((unit) => byRef.get(unit.ref)!);
 }
 
-export function parseValidationResponse(raw: string): UnitValidation[] {
+/**
+ * H1: loose-JSON parse with an explicit failure signal. `parseFailed` is true when the
+ * response could not be parsed as JSON at all (truncated/garbled) — the whole batch is
+ * lost and the orchestrator should warn + re-ask before fail-safe defaults apply.
+ */
+export function parseValidationResponseDetailed(raw: string): ParsedBatchResponse<UnitValidation> {
   let obj: unknown;
   try {
     obj = JSON.parse(raw);
   } catch {
     const s = raw.indexOf("{");
     const e = raw.lastIndexOf("}");
-    if (s < 0 || e <= s) return [];
+    if (s < 0 || e <= s) return { results: [], parseFailed: true };
     try {
       obj = JSON.parse(raw.slice(s, e + 1));
     } catch {
-      return [];
+      return { results: [], parseFailed: true };
     }
   }
   const resultsRaw = Array.isArray((obj as Record<string, unknown>)?.results)
@@ -154,7 +164,11 @@ export function parseValidationResponse(raw: string): UnitValidation[] {
       ...(typeof rec.note === "string" && rec.note.trim() ? { note: rec.note.trim() } : {}),
     });
   }
-  return out;
+  return { results: out, parseFailed: false };
+}
+
+export function parseValidationResponse(raw: string): UnitValidation[] {
+  return parseValidationResponseDetailed(raw).results;
 }
 
 /** Validate one batch (short refs). Prefer {@link validateUnits} for full source coverage. */
@@ -167,7 +181,20 @@ export async function validateUnitsBatch(args: {
   graphContext?: GraphIngestContext;
   sourceTextByRef?: Map<string, string>;
 }): Promise<UnitValidation[]> {
-  if (args.units.length === 0) return [];
+  return (await validateUnitsBatchDetailed(args)).results;
+}
+
+/** {@link validateUnitsBatch} with the H1 parse-failure signal for orchestrators. */
+export async function validateUnitsBatchDetailed(args: {
+  units: ValidationInput[];
+  sourceText: string;
+  pack: ConnectDomainPack;
+  generate: ExtractionGenerate;
+  qualityPreset?: ConnectQualityPreset;
+  graphContext?: GraphIngestContext;
+  sourceTextByRef?: Map<string, string>;
+}): Promise<ParsedBatchResponse<UnitValidation>> {
+  if (args.units.length === 0) return { results: [], parseFailed: false };
   const system = buildValidationSystemPrompt(args.pack, {
     qualityPreset: args.qualityPreset,
     graphContext: args.graphContext,
@@ -176,7 +203,7 @@ export async function validateUnitsBatch(args: {
     sourceTextByRef: args.sourceTextByRef,
   });
   const raw = await args.generate({ system, user });
-  return parseValidationResponse(raw);
+  return parseValidationResponseDetailed(raw);
 }
 
 export async function validateUnits(args: {
@@ -187,21 +214,21 @@ export async function validateUnits(args: {
   qualityPreset?: ConnectQualityPreset;
   graphContext?: GraphIngestContext;
   sourceTextByRef?: Map<string, string>;
+  /** H1: called when a batch loses verdicts (before the single re-ask + fail-safe defaults). */
+  onCoverageShortfall?: CoverageShortfallHandler;
 }): Promise<UnitValidation[]> {
   if (args.units.length === 0) return [];
 
-  const batches = buildValidationBatchInputs(args.units);
-  if (batches.length === 1) {
-    const { batchUnits, refToUnitId } = batches[0]!;
-    const parsed = await validateUnitsBatch({ ...args, units: batchUnits });
-    const remapped = remapValidationBatchResults(parsed, refToUnitId);
-    return finalizeValidationCoverage(args.units, remapped);
-  }
-
   const merged: UnitValidation[] = [];
-  for (const { batchUnits, refToUnitId } of batches) {
-    const parsed = await validateUnitsBatch({ ...args, units: batchUnits });
-    merged.push(...remapValidationBatchResults(parsed, refToUnitId));
+  for (const { batchUnits, refToUnitId } of buildValidationBatchInputs(args.units)) {
+    // H1: a lost batch (truncated/garbled response or omitted refs) is re-asked exactly
+    // once; refs still missing after that fall through to the fail-safe "weak" finalize.
+    const asked = await askBatchWithCoverageRetry<ValidationInput, UnitValidation>({
+      inputs: batchUnits,
+      ask: (units) => validateUnitsBatchDetailed({ ...args, units }),
+      ...(args.onCoverageShortfall ? { onShortfall: args.onCoverageShortfall } : {}),
+    });
+    merged.push(...remapValidationBatchResults(asked.results, refToUnitId));
   }
   return finalizeValidationCoverage(args.units, merged);
 }

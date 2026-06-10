@@ -8,6 +8,7 @@
 import type { ConnectDomainPack, ConnectSourceProvenance } from "@restormel/contracts/connect";
 import { provenancePreviewText } from "$lib/server/connect/source-document-provenance";
 import {
+  askBatchWithCoverageRetry,
   chunkDocument,
   contentHash,
   entailmentToLegacyStatus,
@@ -27,6 +28,7 @@ import {
   type EmbeddingPort,
   type GraphIngestContext,
   type UnitEntailment,
+  type ValidationInput,
 } from "@restormel/connect-core";
 import {
   buildEvidenceRows,
@@ -36,7 +38,7 @@ import {
 } from "$lib/server/connect/evidence-persist";
 import {
   buildValidationBatchInputs,
-  validateUnitsBatch,
+  validateUnitsBatchDetailed,
   remapValidationBatchResults,
   finalizeValidationCoverage,
   type UnitValidation,
@@ -280,17 +282,26 @@ export async function runFullExtraction(args: {
           .join(", ");
         await reporter?.log("EXTRACT", `Chunk ${i + 1} warnings — ${summary}`);
       }
+      // H3: pass chunk totals so the orphan/dangling ratio gates apply (preset-driven
+      // thresholds: production blocks, starter warns via `breaches`).
       const gate = evaluateExtractionGate(
         extraction.warnings,
         preset,
         pack.ontology.schema_mode,
+        { totals: { units: extraction.units.length, relations: extraction.relations.length } },
       );
       if (!gate.allowPersist) {
         await reporter?.log(
           "EXTRACT",
-          `Chunk ${i + 1} skipped — production gate (${gate.reason ?? "blocked"})`,
+          `Chunk ${i + 1} skipped — production gate (${(gate.breaches ?? [gate.reason ?? "blocked"]).join(", ")})`,
         );
         continue;
+      }
+      if (gate.breaches?.length) {
+        await reporter?.log(
+          "EXTRACT",
+          `Chunk ${i + 1} quality gate warning (persisted, ${preset} preset) — ${gate.breaches.join(", ")}`,
+        );
       }
       const stored = await writer.writeUnitsAndRelations({
         sourceId,
@@ -409,15 +420,31 @@ export async function runFullExtraction(args: {
           try {
             for (let bi = 0; bi < batches.length; bi++) {
               const { batchUnits, refToUnitId } = batches[bi]!;
-              const parsed = await validateUnitsBatch({
-                units: batchUnits,
-                sourceText: src.text,
-                pack,
-                generate: args.generates.validation,
-                qualityPreset: preset,
-                graphContext,
+              // H1: a lost batch (unparseable/truncated response or omitted refs) is
+              // logged as a coverage shortfall and re-asked exactly once; refs still
+              // missing then fall through to the fail-safe "weak" coverage finalize.
+              const asked = await askBatchWithCoverageRetry<ValidationInput, UnitValidation>({
+                inputs: batchUnits,
+                ask: (units) =>
+                  validateUnitsBatchDetailed({
+                    units,
+                    sourceText: src.text!,
+                    pack,
+                    generate: args.generates.validation,
+                    qualityPreset: preset,
+                    graphContext,
+                  }),
+                onShortfall: async ({ omittedRefs, parseFailed }) => {
+                  await reporter?.log(
+                    "VALIDATE",
+                    `Coverage shortfall in batch ${bi + 1}/${batches.length} — ` +
+                      `${omittedRefs.length}/${batchUnits.length} verdict(s) missing` +
+                      (parseFailed ? " (response unparseable)" : "") +
+                      " — re-asking once",
+                  );
+                },
               });
-              merged.push(...remapValidationBatchResults(parsed, refToUnitId));
+              merged.push(...remapValidationBatchResults(asked.results, refToUnitId));
               validateDone += batchUnits.length;
               await reporter?.tick(
                 "validating",
@@ -473,6 +500,16 @@ export async function runFullExtraction(args: {
                 generate: args.generates.validation,
                 kSamples,
                 modelId: args.validationModelId ?? null,
+                // H1: a lost judge batch is logged and re-asked exactly once inside
+                // judgeEntailment; still-missing refs abstain (coverage_gap → review).
+                onCoverageShortfall: async ({ omittedRefs, parseFailed }) => {
+                  await reporter?.log(
+                    "VALIDATE",
+                    `Coverage shortfall — judge omitted ${omittedRefs.length} claim(s)` +
+                      (parseFailed ? " (response unparseable)" : "") +
+                      " — re-asking once",
+                  );
+                },
               });
               judged.push(...res.results);
               judgeMeta = judgeMeta ?? res.meta;
