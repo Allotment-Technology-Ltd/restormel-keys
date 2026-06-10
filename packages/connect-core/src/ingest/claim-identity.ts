@@ -28,19 +28,25 @@
  */
 import { contentHash, normalizeForMatch } from "./evidence-binding.js";
 
-/** Stable identity of a source document across ingest runs (NOT the per-run source row id). */
+/**
+ * Stable identity of a source document across ingest runs (NOT the per-run source row id).
+ * Returns null when the source carries no stable identity at all (anonymous pasted text) —
+ * a shared sentinel key there would make unrelated pastes supersede each other's claims;
+ * callers fall back to a content-derived key instead (same text ⇒ skip still works;
+ * different text ⇒ a new source, the safe pre-incremental behavior).
+ */
 export function deriveClaimSourceKey(args: {
   canonicalUrl?: string | null;
   url?: string | null;
   title?: string | null;
-}): string {
+}): string | null {
   const canonical = args.canonicalUrl?.trim();
   if (canonical) return `url:${canonical}`;
   const url = args.url?.trim();
   if (url) return `url:${url}`;
   const title = args.title?.trim();
   if (title) return `title:${normalizeForMatch(title)}`;
-  return "untitled";
+  return null;
 }
 
 /**

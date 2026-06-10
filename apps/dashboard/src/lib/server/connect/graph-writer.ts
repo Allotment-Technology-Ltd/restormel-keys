@@ -14,7 +14,7 @@ import {
   insertConnectClaimJudgmentsPostgres,
   insertConnectClaimVersionsPostgres,
   insertConnectGraphSourcePostgres,
-  listCurrentConnectClaimVersionsForSourcePostgres,
+  listCurrentConnectClaimVersionsForSourceKeyPostgres,
   storeExtractedGraphPostgres,
   storeGroupsPostgres,
   supersedeConnectClaimVersionsPostgres,
@@ -81,8 +81,12 @@ export interface GraphWriter {
   ): Promise<{ sourceId: string; contentHash: string | null } | null>;
   /** Stage 3.2: the only write an unchanged-source skip performs (last_seen_at touch). */
   touchSourceSeen(sourceId: string): Promise<void>;
-  /** Stage 3.2: current (valid_to IS NULL) claim versions attached to a source row. */
-  listCurrentClaimVersions(sourceId: string): Promise<PriorClaimVersion[]>;
+  /**
+   * Stage 3.2: current (valid_to IS NULL) claim versions across ALL prior source rows
+   * with this stable source key — so claims from an older generation are always part of
+   * the re-ingest diff, never silently kept.
+   */
+  listCurrentClaimVersions(sourceKey: string): Promise<PriorClaimVersion[]>;
   /**
    * Stage 3.2: close validity windows; superseded_by links forward when a successor
    * exists (null for removed claims). Reversible — never deletes version rows.
@@ -185,10 +189,10 @@ class PostgresGraphWriter implements GraphWriter {
     return touchConnectGraphSourceSeenPostgres({ workspaceId: this.workspaceId, id: sourceId });
   }
 
-  listCurrentClaimVersions(sourceId: string): Promise<PriorClaimVersion[]> {
-    return listCurrentConnectClaimVersionsForSourcePostgres({
+  listCurrentClaimVersions(sourceKey: string): Promise<PriorClaimVersion[]> {
+    return listCurrentConnectClaimVersionsForSourceKeyPostgres({
       workspaceId: this.workspaceId,
-      sourceId,
+      sourceKey,
     });
   }
 

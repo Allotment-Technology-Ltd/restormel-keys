@@ -7156,12 +7156,15 @@ export type ConnectCurrentClaimVersionRow = {
 };
 
 /**
- * Stage 3.2: current (valid_to IS NULL) claim versions attached to one source row,
- * joined with the unit's validation verdict — the prior side of the re-ingest diff.
+ * Stage 3.2: current (valid_to IS NULL) claim versions attached to ANY prior source row
+ * with this stable source key, joined with the unit's validation verdict — the prior side
+ * of the re-ingest diff. Keyed by source_key (not one source row id) so claims from an
+ * older generation can never be silently kept when an intermediate run registered a row
+ * without processing the document.
  */
-export async function listCurrentConnectClaimVersionsForSourcePostgres(params: {
+export async function listCurrentConnectClaimVersionsForSourceKeyPostgres(params: {
   workspaceId: string;
-  sourceId: string;
+  sourceKey: string;
 }): Promise<ConnectCurrentClaimVersionRow[]> {
   await ensureIngestionRoutingSchema();
   await ensureConnectClaimVersionsSchema();
@@ -7174,7 +7177,10 @@ export async function listCurrentConnectClaimVersionsForSourcePostgres(params: {
     JOIN knowledge_graph_units u
       ON u.id = ccv.unit_id AND u.workspace_id = ccv.workspace_id
     WHERE ccv.workspace_id = ${params.workspaceId}
-      AND u.source_id = ${params.sourceId}
+      AND u.source_id IN (
+        SELECT s.id FROM knowledge_graph_sources s
+        WHERE s.workspace_id = ${params.workspaceId} AND s.source_key = ${params.sourceKey}
+      )
       AND ccv.valid_to IS NULL
     ORDER BY ccv.id
   `;

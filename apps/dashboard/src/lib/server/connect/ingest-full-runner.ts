@@ -39,7 +39,7 @@ import {
   type EvidenceRow,
 } from "$lib/server/connect/evidence-persist";
 import {
-  buildCarriedStateRows,
+  buildCarriedValidationRows,
   buildClaimVersionBindings,
   buildSupersededUnitExclusions,
   buildSupersessionRows,
@@ -64,7 +64,11 @@ import {
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
-import { buildGraphWriter, type GraphWriter } from "$lib/server/connect/graph-writer";
+import {
+  buildGraphWriter,
+  REMOVED_VALIDATION_STATUS,
+  type GraphWriter,
+} from "$lib/server/connect/graph-writer";
 import { runGraphRemediationPass } from "$lib/server/connect/graph-remediation-pass";
 import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flags";
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
@@ -263,9 +267,13 @@ export async function runFullExtraction(args: {
     const title = src.title ?? src.url ?? "untitled";
     // Stage 3.2: stable source identity + content hash decide first-time ingest vs
     // unchanged re-ingest (skip entirely) vs changed re-ingest (diff this source only).
-    const sourceKey = sourceKeyForIngestSource(src);
     const probeHash = src.text?.trim() ? await contentHash(src.text) : null;
-    const prior = probeHash ? await writer.findSourceVersion(sourceKey) : null;
+    // Anonymous pasted text has no stable identity — key it by content so an unchanged
+    // re-paste still skips, while a different paste is simply a new source (it can
+    // never supersede an unrelated paste's claims).
+    const sourceKey =
+      sourceKeyForIngestSource(src) ?? (probeHash ? `content:${probeHash}` : null);
+    const prior = probeHash && sourceKey ? await writer.findSourceVersion(sourceKey) : null;
     if (prior?.contentHash && prior.contentHash === probeHash) {
       // ADR §3 step 1: hash unchanged ⇒ skip the document entirely — zero model calls,
       // zero writes beyond the last_seen_at touch.
@@ -274,6 +282,9 @@ export async function runFullExtraction(args: {
       reingest.unchangedSources += 1;
       continue;
     }
+    // Record content_hash only when this run will actually process the document —
+    // a budget-exhausted registration must not let a later run skip it as "unchanged".
+    const willProcess = Boolean(src.text?.trim()) && chunkBudget > 0;
     await reporter?.setAction(`Registering source — ${title}`);
     const sourceId = requireGraphUnitSourceId(
       await writer.writeSource({
@@ -282,7 +293,7 @@ export async function runFullExtraction(args: {
         textPreview: sourceTextPreview(src),
         sourceKind: src.url ? "url" : "text",
         sourceKey,
-        contentHash: probeHash,
+        contentHash: willProcess ? probeHash : null,
       }),
     );
     await reporter?.log(
@@ -293,8 +304,10 @@ export async function runFullExtraction(args: {
     if (!src.text?.trim() || chunkBudget <= 0) continue;
 
     // EBV Layer 1: pin this source version once; all evidence spans bind against it.
-    // (probeHash is non-null here: src.text passed the guard above.)
+    // (probeHash — and therefore sourceKey via the content fallback — is non-null here:
+    // src.text passed the guard above.)
     const sourceHash = probeHash as string;
+    const claimSourceKey = sourceKey as string;
     const evidenceRows: EvidenceRow[] = [];
     const bindingByUnitId = new Map<string, EvidenceBinding>();
     const evidenceCounts = { bound: 0, unbound: 0, no_evidence: 0 };
@@ -398,9 +411,10 @@ export async function runFullExtraction(args: {
     await reporter?.completeStage("relating", "Relation pass complete");
 
     // Stage 3.2: deterministic claim identity → carried/changed/added/removed diff
-    // against the prior source version's current claims (verified-memory ADR §3 step 2).
-    const priorClaims = prior ? await writer.listCurrentClaimVersions(prior.sourceId) : [];
-    const nextClaims = await computeNextClaims({ sourceKey, rows: evidenceRows });
+    // against ALL current claims under this stable source key (verified-memory ADR §3
+    // step 2) — keyed by source_key so older generations can never be silently kept.
+    const priorClaims = prior ? await writer.listCurrentClaimVersions(claimSourceKey) : [];
+    const nextClaims = await computeNextClaims({ sourceKey: claimSourceKey, rows: evidenceRows });
     const plan: ReingestPlan = planIncrementalReingest({ prior: priorClaims, next: nextClaims });
     const carriedUnitIds = new Set(plan.carried.map((c) => c.next.unitId));
     if (priorClaims.length > 0) {
@@ -423,9 +437,15 @@ export async function runFullExtraction(args: {
       const rows = buildSupersessionRows({ plan, versionIdByUnitId });
       if (rows.length === 0) return;
       const sup = await writer.supersedeClaimVersions(rows);
-      for (const ex of buildSupersededUnitExclusions(plan)) {
-        await writer.excludeUnit(ex.unitId, ex.note);
-      }
+      // Soft-exclude the prior unit records in ONE batched write (same remediation
+      // soft-exclude semantics as excludeUnit: hidden from retrieval, reversible).
+      await writer.setValidation(
+        buildSupersededUnitExclusions(plan).map((ex) => ({
+          unitId: ex.unitId,
+          status: REMOVED_VALIDATION_STATUS,
+          note: ex.note,
+        })),
+      );
       await reporter?.log(
         "INGEST",
         `Supersession chain — ${sup.persisted} prior claim version(s) closed` +
@@ -456,14 +476,14 @@ export async function runFullExtraction(args: {
       await applySupersessions(new Map());
     }
 
-    // Carry-forward (no model calls): unchanged claims keep their verification state
-    // and validation verdict on their new version's unit — they are never re-judged.
-    const carriedRows = buildCarriedStateRows(plan);
-    if (carriedRows.states.length > 0) {
-      const st = await writer.setVerificationStates(carriedRows.states);
-      if (carriedRows.validations.length > 0) {
-        totalValidated += await writer.setValidation(carriedRows.validations);
-        for (const v of carriedRows.validations) {
+    // Carry-forward (no model calls): unchanged claims keep their verification state,
+    // judge attribution and original judged_at — copied onto their new version rows at
+    // insert (setEvidence). Only the unit-level validation verdict still needs writing.
+    if (plan.carried.length > 0) {
+      const carriedValidations = buildCarriedValidationRows(plan);
+      if (carriedValidations.length > 0) {
+        totalValidated += await writer.setValidation(carriedValidations);
+        for (const v of carriedValidations) {
           if (v.status === "ok") validationBreakdown.ok += 1;
           else if (v.status === "weak") validationBreakdown.weak += 1;
           else if (v.status === "unsupported") validationBreakdown.unsupported += 1;
@@ -471,8 +491,7 @@ export async function runFullExtraction(args: {
       }
       await reporter?.log(
         "VALIDATE",
-        `${carriedRows.states.length} unchanged claim(s) carried forward — verification state kept, no re-judging` +
-          (st.missed > 0 ? ` — ${st.missed} state write(s) not persisted` : ""),
+        `${plan.carried.length} unchanged claim(s) carried forward — verification state kept, no re-judging`,
       );
     }
     const cappedForGrouping = sourceUnits.slice(0, GROUPING_UNIT_CAP);
@@ -587,7 +606,8 @@ export async function runFullExtraction(args: {
         } else {
           // EBV Layer 2 (Stage 1.0d): per claim, judge ONLY "does its bound span entail
           // it" — no source prefix. Unbound claims abstain locally (review) at no cost.
-          const inputs: EntailmentInput[] = sourceUnits.map((u) => {
+          // Stage 3.2: carried claims are excluded — their verdicts were copied above.
+          const inputs: EntailmentInput[] = unitsToJudge.map((u) => {
             const b = bindingByUnitId.get(u.id);
             return {
               ref: u.id,
@@ -757,6 +777,7 @@ export async function runFullExtraction(args: {
     repaired: totalRepaired,
     dropped: totalDropped,
     validation: { ...validationBreakdown },
+    reingest: { ...reingest },
   };
 }
 

@@ -22,17 +22,21 @@ import {
   type ReingestPlan,
 } from "@restormel/connect-core";
 import type { ClaimVersionBinding } from "$lib/server/connect/graph-writer";
-import type { EvidenceRow, StateRow } from "$lib/server/connect/evidence-persist";
+import type { EvidenceRow } from "$lib/server/connect/evidence-persist";
 
 /** Soft-exclusion note prefix for superseded prior units (greppable in audits). */
 export const SUPERSEDED_NOTE_PREFIX = "Superseded (re-ingest)";
 
-/** Stable cross-run identity of an ingest source (canonical url → url → title). */
+/**
+ * Stable cross-run identity of an ingest source (canonical url → url → title).
+ * Null for anonymous pasted text — the runner falls back to a content-derived key so
+ * unrelated pastes can never supersede each other's claims.
+ */
 export function sourceKeyForIngestSource(src: {
   url?: string;
   title?: string;
   provenance?: ConnectSourceProvenance;
-}): string {
+}): string | null {
   return deriveClaimSourceKey({
     canonicalUrl: src.provenance?.canonical_url ?? null,
     url: src.provenance?.url ?? src.url ?? null,
@@ -141,22 +145,17 @@ export function buildSupersededUnitExclusions(
 }
 
 /**
- * Carry-forward rows for the new units of unchanged claims: verification state (for the
- * claim-version/EBV surface) and the unit-level validation verdict, both copied from the
- * prior version — no model calls.
+ * Carry-forward rows for the new units of unchanged claims: the unit-level validation
+ * verdict, copied from the prior version — no model calls. (The claim-version surface —
+ * verification state, judge attribution AND original judged_at — is copied onto the new
+ * version row at insert via the binding's `carried` block; rewriting it through
+ * setVerificationStates would clobber the original judgment timestamp.)
  */
-export function buildCarriedStateRows(plan: ReingestPlan): {
-  states: StateRow[];
-  validations: { unitId: string; status: string; note: string | null }[];
-} {
-  const states: StateRow[] = [];
+export function buildCarriedValidationRows(
+  plan: ReingestPlan,
+): { unitId: string; status: string; note: string | null }[] {
   const validations: { unitId: string; status: string; note: string | null }[] = [];
   for (const { next, prior } of plan.carried) {
-    states.push({
-      unitId: next.unitId,
-      state: (prior.verificationState ?? "unverified") as StateRow["state"],
-      judgedBy: prior.judgedBy,
-    });
     if (prior.validationStatus) {
       validations.push({
         unitId: next.unitId,
@@ -165,5 +164,5 @@ export function buildCarriedStateRows(plan: ReingestPlan): {
       });
     }
   }
-  return { states, validations };
+  return validations;
 }

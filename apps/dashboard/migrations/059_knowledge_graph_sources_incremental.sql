@@ -13,3 +13,17 @@ ALTER TABLE knowledge_graph_sources ADD COLUMN IF NOT EXISTS last_seen_at BIGINT
 CREATE INDEX IF NOT EXISTS idx_knowledge_graph_sources_source_key
   ON knowledge_graph_sources (workspace_id, source_key, created_at DESC)
   WHERE source_key IS NOT NULL;
+
+-- Backfill: derive source_key for pre-3.2 rows so their claim generations participate in
+-- the re-ingest diff (otherwise an old generation would be silently kept alongside the
+-- new one). url is exact; title mirrors deriveClaimSourceKey's folding for the common
+-- cases (lowercase + whitespace collapse) — a title whose runtime normalization differs
+-- simply stays a "new source" on next ingest, the pre-3.2 status quo. content_hash stays
+-- NULL on backfilled rows, so the unchanged-source skip can never fire on stale data.
+UPDATE knowledge_graph_sources
+SET source_key = CASE
+  WHEN url IS NOT NULL AND btrim(url) <> '' THEN 'url:' || btrim(url)
+  WHEN title IS NOT NULL AND btrim(title) <> '' THEN 'title:' || lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))
+  ELSE NULL
+END
+WHERE source_key IS NULL;

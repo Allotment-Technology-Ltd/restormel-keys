@@ -35,7 +35,9 @@ describe("deriveClaimSourceKey", () => {
     expect(deriveClaimSourceKey({ title: "  Bentham —  Notes " })).toBe(
       deriveClaimSourceKey({ title: "bentham - notes" }),
     );
-    expect(deriveClaimSourceKey({})).toBe("untitled");
+    // No stable identity → null (callers fall back to a content-derived key), so two
+    // unrelated anonymous pastes can never supersede each other's claims.
+    expect(deriveClaimSourceKey({})).toBeNull();
   });
 });
 

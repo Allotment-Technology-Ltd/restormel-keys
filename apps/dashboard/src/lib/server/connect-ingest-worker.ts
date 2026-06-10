@@ -282,7 +282,13 @@ export async function processConnectIngestJobRecord(
           embed,
           reporter,
         });
-        if (quality.preset === "production" && stats.units === 0) {
+        // Stage 3.2: a re-ingest where every source was unchanged (hash match) is a
+        // legitimate near-no-op — zero new units is success there, not a failed run.
+        if (
+          quality.preset === "production" &&
+          stats.units === 0 &&
+          stats.reingest.unchangedSources === 0
+        ) {
           await reporter.fail(null, "production_run_zero_units");
           return;
         }
