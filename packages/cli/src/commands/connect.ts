@@ -1,35 +1,44 @@
 /**
- * `keys connect eval` — headless G2 quality verdict (Stage 2.1, Context Regression CI).
+ * `keys connect eval` — headless G2 quality verdict (Stage 2.1) + baseline regression
+ * diff (Stage 2.2, Context Regression CI).
  *
  * Evaluates Connect ingest quality against the published bar (≥90% supported,
  * ≤2% unsupported — CONNECT-INGEST-QUALITY-BAR) and emits a versioned JSON verdict
  * (@restormel/contracts/connect-eval) with stable exit codes:
- *   0 — pass · 1 — quality fail · 2 — config/usage error (packages/validate precedent).
+ *   0 — pass · 1 — quality fail · 2 — config/usage error · 3 — regression vs baseline
+ * (packages/validate precedent: 0/1/2 plus a distinct secondary-signal code).
  *
  * Remote mode (default) reads a run's public quality report from the gateway-key-authed
  * GET /connect/v1/ingest/jobs endpoints. Local mode (--counts/--stdin) evaluates a counts
- * document produced by any pipeline — no network, CI-friendly.
+ * document produced by any pipeline — no network, CI-friendly. `--baseline <file>` diffs
+ * against a saved baseline; `--save-baseline <file>` writes the committed-friendly artifact.
  */
 import type { Command } from "commander";
 import chalk from "chalk";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   ConnectIngestJobListResponseSchema,
   ConnectIngestJobStatusResponseSchema,
   type ConnectIngestJob,
 } from "@restormel/contracts/connect";
-import type { ConnectEvalVerdict } from "@restormel/contracts/connect-eval";
+import type { ConnectEvalDiff, ConnectEvalVerdict } from "@restormel/contracts/connect-eval";
 import {
   buildEvalVerdict,
   EVAL_EXIT_CONFIG_ERROR,
-  exitCodeForVerdict,
   parseCountsInput,
   pickLatestAssessedJob,
   verdictFromQualityReport,
 } from "../connect-eval.js";
-import { renderEval } from "../connect-eval-format.js";
+import {
+  buildBaseline,
+  computeEvalDiff,
+  DEFAULT_EVAL_TOLERANCE,
+  exitCodeForEval,
+  parseBaseline,
+} from "../connect-eval-baseline.js";
+import { renderEval, renderEvalDiff, type EvalOutputFormat } from "../connect-eval-format.js";
 
 interface ConnectEvalOptions {
   job?: string;
@@ -39,6 +48,9 @@ interface ConnectEvalOptions {
   workspace?: string;
   project?: string;
   siteBase?: string;
+  baseline?: string;
+  saveBaseline?: string;
+  tolerance?: string;
 }
 
 /** Config/usage error: message on stderr, exit code 2. Never used for a quality verdict. */
@@ -106,7 +118,7 @@ async function evaluateLocal(opts: ConnectEvalOptions): Promise<ConnectEvalVerdi
     failConfig(parsed.error);
     return null;
   }
-  const { counts, trust_score, coverage_gaps, fingerprint, assessed_at } = parsed.input;
+  const { counts, trust_score, coverage_gaps, fingerprint, assessed_at, unsupported_claims } = parsed.input;
   return buildEvalVerdict({
     counts,
     source: { ...source, ...(assessed_at ? { assessed_at } : {}) },
@@ -114,7 +126,27 @@ async function evaluateLocal(opts: ConnectEvalOptions): Promise<ConnectEvalVerdi
     trust_score,
     coverage_gaps,
     fingerprint,
+    unsupported_claims,
   });
+}
+
+/** Read and parse a stored baseline file (--baseline). Returns null after failConfig. */
+async function loadBaseline(path: string): Promise<ReturnType<typeof parseBaseline> | null> {
+  const abs = resolve(process.cwd(), path);
+  if (!existsSync(abs)) {
+    failConfig(`Baseline file not found: ${abs}`);
+    return null;
+  }
+  let raw: string;
+  try {
+    raw = await readFile(abs, "utf-8");
+  } catch (e) {
+    failConfig("Could not read baseline file:", e instanceof Error ? e.message : e);
+    return null;
+  }
+  const json = parseJsonDocument(raw, `Baseline file ${path}`);
+  if (json === undefined) return null;
+  return parseBaseline(json);
 }
 
 /** Remote mode: verdict from a run's quality report on the Connect v1 ingest-jobs API. */
@@ -201,18 +233,26 @@ export function registerConnect(program: Command): void {
 
   connect
     .command("eval")
-    .description("Evaluate Connect ingest quality against the published G2 bar (exit 0 pass / 1 fail / 2 config error)")
+    .description(
+      "Evaluate Connect ingest quality against the published G2 bar (exit 0 pass / 1 fail / 2 config error / 3 regression vs baseline)",
+    )
     .option("--job <id>", "evaluate a specific ingest job (default: the latest run with a quality report)")
     .option("--counts <file>", "local mode: evaluate a JSON counts file {ok,weak,unsupported} or a saved quality report")
     .option("--stdin", "local mode: read the counts JSON from stdin")
-    .option("--output <format>", "json | pretty", "pretty")
+    .option("--output <format>", "json | pretty | markdown", "pretty")
+    .option("--baseline <file>", "diff against a saved baseline (from --save-baseline); regressions exit 3")
+    .option("--save-baseline <file>", "write the current verdict as a committed-friendly baseline artifact")
+    .option(
+      "--tolerance <points>",
+      `allowed ok_pct/trust_score drop before flagging a regression (default ${DEFAULT_EVAL_TOLERANCE})`,
+    )
     .option("--workspace <id>", "Keys workspace id (default RESTORMEL_WORKSPACE_ID)")
     .option("--project <id>", "Keys project id (default RESTORMEL_PROJECT_ID)")
     .option("--site-base <url>", "Restormel site origin (default RESTORMEL_KEYS_BASE or https://restormel.dev)")
     .action(async (opts: ConnectEvalOptions) => {
-      const format = (opts.output ?? "pretty").toLowerCase();
-      if (!["pretty", "json"].includes(format)) {
-        failConfig(`Unknown --output ${opts.output}. Use pretty or json.`);
+      const format = (opts.output ?? "pretty").toLowerCase() as EvalOutputFormat;
+      if (!["pretty", "json", "markdown"].includes(format)) {
+        failConfig(`Unknown --output ${opts.output}. Use pretty, json, or markdown.`);
         return;
       }
       if (opts.counts && opts.stdin) {
@@ -223,12 +263,50 @@ export function registerConnect(program: Command): void {
         failConfig("--job evaluates a remote run and cannot be combined with --counts/--stdin.");
         return;
       }
+      let tolerance = DEFAULT_EVAL_TOLERANCE;
+      if (opts.tolerance !== undefined) {
+        tolerance = Number(opts.tolerance);
+        if (!Number.isFinite(tolerance) || tolerance < 0) {
+          failConfig(`--tolerance must be a non-negative number, got: ${opts.tolerance}`);
+          return;
+        }
+      }
 
       const verdict =
         opts.counts || opts.stdin ? await evaluateLocal(opts) : await evaluateRemote(opts);
       if (!verdict) return; // failConfig already set exit code 2
 
-      console.log(renderEval(verdict, format as "pretty" | "json"));
-      process.exitCode = exitCodeForVerdict(verdict);
+      let diff: ConnectEvalDiff | undefined;
+      if (opts.baseline) {
+        const parsed = await loadBaseline(opts.baseline);
+        if (!parsed) return; // failConfig already set exit code 2
+        if (!parsed.ok) {
+          failConfig(`Baseline file ${opts.baseline}: ${parsed.error}`);
+          return;
+        }
+        diff = computeEvalDiff({
+          baseline: parsed.baseline,
+          current: verdict,
+          comparedAt: new Date().toISOString(),
+          tolerance,
+        });
+        console.log(renderEvalDiff(verdict, diff, parsed.baseline.verdict, format));
+      } else {
+        console.log(renderEval(verdict, format));
+      }
+
+      if (opts.saveBaseline) {
+        const baseline = buildBaseline(verdict, new Date().toISOString());
+        const abs = resolve(process.cwd(), opts.saveBaseline);
+        try {
+          await writeFile(abs, JSON.stringify(baseline, null, 2) + "\n", "utf-8");
+        } catch (e) {
+          failConfig("Could not write baseline file:", e instanceof Error ? e.message : e);
+          return;
+        }
+        console.error(chalk.dim(`Baseline saved to ${abs}`));
+      }
+
+      process.exitCode = exitCodeForEval(verdict, diff);
     });
 }

@@ -38,6 +38,21 @@ export const ConnectEvalTargetsSchema = z.object({
 });
 export type ConnectEvalTargets = z.infer<typeof ConnectEvalTargetsSchema>;
 
+/**
+ * A claim cited by a verdict (claim-level regression diffing, Stage 2.2).
+ * Identity for diffing is `id` when the producing pipeline has a stable claim id,
+ * otherwise the normalized text + source_ref pair.
+ */
+export const ConnectEvalClaimRefSchema = z.object({
+  /** Stable claim identity (graph claim id) when the producing pipeline has one. */
+  id: z.string().min(1).optional(),
+  /** The claim text — cited verbatim in regression reports. */
+  text: z.string().min(1),
+  /** Where the claim came from (source URL / document ref). */
+  source_ref: z.string().min(1).optional()
+});
+export type ConnectEvalClaimRef = z.infer<typeof ConnectEvalClaimRefSchema>;
+
 /** What was evaluated — a workspace's ingest-run quality report, or counts supplied locally. */
 export const ConnectEvalSourceSchema = z.object({
   kind: z.enum(['ingest_job', 'counts_file', 'stdin']),
@@ -65,8 +80,76 @@ export const ConnectEvalVerdictSchema = z.object({
   coverage_gaps: z.number().int().nonnegative().optional(),
   /** Source-set fingerprint (goldenExtractionEvalFingerprint) when evaluating a golden fixture — Stage 2.2 keys baselines on it. */
   fingerprint: z.string().optional(),
+  /**
+   * Unsupported claims cited by the producing pipeline (claim text + source ref),
+   * enabling claim-identity regression diffing (Stage 2.2). Additive — no version bump.
+   */
+  unsupported_claims: z.array(ConnectEvalClaimRefSchema).optional(),
   pass: z.boolean(),
   /** Human-readable reasons the verdict failed; empty when pass is true. */
   reasons: z.array(z.string())
 });
 export type ConnectEvalVerdict = z.infer<typeof ConnectEvalVerdictSchema>;
+
+// ── Stage 2.2 — quality baseline + regression diff ──────────────────────────
+
+/** Current connect-eval baseline schema version. Bumped only on breaking changes. */
+export const CONNECT_EVAL_BASELINE_SCHEMA_VERSION = '1.0' as const;
+
+/**
+ * The committed-friendly baseline artifact written by `keys connect eval --save-baseline`.
+ * It embeds the full Stage 2.1 verdict (no parallel shape) and is keyed by the source-set
+ * fingerprint (goldenExtractionEvalFingerprint): a changed corpus is a new baseline, not
+ * a regression.
+ */
+export const ConnectEvalBaselineSchema = z.object({
+  schema_version: z.literal(CONNECT_EVAL_BASELINE_SCHEMA_VERSION),
+  /** When the baseline was saved (ISO 8601). */
+  saved_at: z.string(),
+  /** Source-set fingerprint the baseline is keyed by (mirrors verdict.fingerprint when known). */
+  fingerprint: z.string().optional(),
+  /** The verdict at baseline time — the exact Stage 2.1 contract shape. */
+  verdict: ConnectEvalVerdictSchema
+});
+export type ConnectEvalBaseline = z.infer<typeof ConnectEvalBaselineSchema>;
+
+/** Current connect-eval diff schema version. Bumped only on breaking changes. */
+export const CONNECT_EVAL_DIFF_SCHEMA_VERSION = '1.0' as const;
+
+/** Signed metric deltas: current − baseline. Optional dimensions appear only when both sides carry them. */
+export const ConnectEvalDeltasSchema = z.object({
+  ok_pct: z.number(),
+  unsupported_pct: z.number(),
+  trust_score: z.number().optional(),
+  coverage_gaps: z.number().int().optional()
+});
+export type ConnectEvalDeltas = z.infer<typeof ConnectEvalDeltasSchema>;
+
+/**
+ * The regression diff emitted by `keys connect eval --baseline`. `regression` is the
+ * CI signal (exit code 3): true when, under a matching fingerprint, ok_pct or trust_score
+ * dropped beyond tolerance, coverage gaps grew, or a NEW unsupported claim appeared
+ * (by claim identity, not count). When `fingerprint_changed` is true the corpus changed:
+ * regression checks are skipped and the baseline is superseded.
+ */
+export const ConnectEvalDiffSchema = z.object({
+  schema_version: z.literal(CONNECT_EVAL_DIFF_SCHEMA_VERSION),
+  /** When the comparison ran (ISO 8601). */
+  compared_at: z.string(),
+  baseline_saved_at: z.string(),
+  baseline_fingerprint: z.string().optional(),
+  current_fingerprint: z.string().optional(),
+  /** True when both fingerprints are known and differ — new corpus, baseline superseded. */
+  fingerprint_changed: z.boolean(),
+  /** Allowed drop (percentage points / score points) for ok_pct and trust_score before flagging. */
+  tolerance: z.number().nonnegative(),
+  deltas: ConnectEvalDeltasSchema,
+  /** False when either side carries no unsupported_claims list (claim-level diff unavailable). */
+  claims_compared: z.boolean(),
+  /** Claims unsupported now that were not unsupported at baseline time — the headline regression. */
+  new_unsupported_claims: z.array(ConnectEvalClaimRefSchema),
+  regression: z.boolean(),
+  /** Human-readable regression findings; empty when regression is false. */
+  regressions: z.array(z.string())
+});
+export type ConnectEvalDiff = z.infer<typeof ConnectEvalDiffSchema>;
