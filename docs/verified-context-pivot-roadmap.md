@@ -63,6 +63,7 @@ skeptical user can click through to the quoted span in the source and check it t
 | 12 | ✅ 2.3 CI gate (PR #211) — `connect-eval-github-action` + Forgejo variant, dogfooded warn-mode on Connect-pipeline PRs, weekly cross-model efficacy workflow enforcing the signed-off bars | P2 | 2.2 |
 | 13 | 4.1 Verified-retrieval MCP tool | P4 | 1.1 |
 | 14 | ✅ 1.4 Spine observability hardening — H1/H3 closed (PR #208) | P1 | — |
+| 14a | **1.5 Ingest runtime reliability + dashboard performance** (PRIORITY — added 2026-06-10) | P1 | — |
 | 15 | 2.4 Regression history dashboard | P2 | 2.3 |
 | 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
 | 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
@@ -399,6 +400,31 @@ ACCEPTANCE CRITERIA
 PROCESS
 svelte-check + visual pass; PR with before/after screenshots.
 Use effort: high.
+```
+
+### Stage 1.5 — Ingest runtime reliability + dashboard performance (added 2026-06-10, priority)
+
+```
+ROLE
+Senior engineer diagnosing three product-owner-reported runtime problems. Primarily a
+DIAGNOSIS stage with bounded high-confidence fixes; scope-changing findings are raised
+as questions per the delivery protocol.
+
+REPORTED PROBLEMS
+1. Ingestion/revalidation/remediation runs freeze randomly — no progress, no error.
+2. Graph stats take far too long to load.
+3. The dashboard is generally laggy — poor user experience.
+
+DELIVERABLES
+- docs/reviews/connect-runtime-reliability-perf.md: findings with evidence (file:line,
+  code path, mechanism), classified P0 (freeze) / P1 (major latency) / P2 (general lag),
+  a concrete proposed fix + risk per finding, and a "needs runtime data" telemetry list.
+- Bounded fixes in the same PR for high-confidence low-risk items only (timeouts on
+  unbounded LLM calls, batching per-row DB loops, missing indexes, duplicate query
+  collapse). No orchestrator restructuring; no fail-safe semantics changes.
+- connect-core + dashboard typecheck/tests green.
+
+Use effort: xhigh on the freeze diagnosis.
 ```
 
 ### Stage 1.4 — Spine observability hardening (closes review items H1/H3)
