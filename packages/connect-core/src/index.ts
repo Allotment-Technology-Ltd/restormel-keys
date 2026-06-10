@@ -174,12 +174,25 @@ export {
   bindEvidenceSpan,
   verifyEvidenceSpan,
   bindUnitsEvidence,
+  normalizeForMatch,
   type EvidenceSpan,
   type EvidenceBinding,
   type EvidenceMatchKind,
   type SpanVerification,
   type UnitEvidenceBinding,
 } from "./ingest/evidence-binding.js";
+
+export {
+  deriveClaimSourceKey,
+  computeClaimKey,
+  planIncrementalReingest,
+  buildSupersessionTrace,
+  type PriorClaimVersion,
+  type NextClaim,
+  type ReingestPlan,
+  type ClaimVersionChainRow,
+  type ClaimSupersessionTrace,
+} from "./ingest/claim-identity.js";
 
 export {
   deriveLayer1State,
