@@ -1,0 +1,634 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-10T07:25:21.566Z",
+  "fixture": {
+    "path": "packages/connect-core/src/ingest/golden/fixtures/verifier-efficacy-v1.json",
+    "version": 1,
+    "claims": 46
+  },
+  "config": {
+    "mode": "with-extraction",
+    "extractor": "openai:gpt-4o-mini",
+    "runs": 3,
+    "validation_batch_size_env": null
+  },
+  "pairings": [
+    {
+      "validator": "openai:gpt-4o-mini",
+      "relationship": "same_model",
+      "aggregated": {
+        "runs": 3,
+        "supported_false_flag_rate": {
+          "mean": 0.043478260869565216,
+          "stddev": 0.03549985134468374,
+          "min": 0,
+          "max": 0.08695652173913043,
+          "n": 3
+        },
+        "tiers": {
+          "fabricated": {
+            "recall_strict": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            }
+          },
+          "overstated": {
+            "recall_strict": {
+              "mean": 0.8333333333333334,
+              "stddev": 0.05892556509887896,
+              "min": 0.75,
+              "max": 0.875,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 0.8333333333333334,
+              "stddev": 0.05892556509887896,
+              "min": 0.75,
+              "max": 0.875,
+              "n": 3
+            }
+          },
+          "misattributed": {
+            "recall_strict": {
+              "mean": 0.8333333333333334,
+              "stddev": 0.05892556509887896,
+              "min": 0.75,
+              "max": 0.875,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 0.8333333333333334,
+              "stddev": 0.05892556509887896,
+              "min": 0.75,
+              "max": 0.875,
+              "n": 3
+            }
+          }
+        },
+        "all_bad_recall_strict": {
+          "mean": 0.8840579710144927,
+          "stddev": 0.02049584873004484,
+          "min": 0.8695652173913043,
+          "max": 0.9130434782608695,
+          "n": 3
+        },
+        "all_bad_recall_with_coverage": {
+          "mean": 0.8840579710144927,
+          "stddev": 0.02049584873004484,
+          "min": 0.8695652173913043,
+          "max": 0.9130434782608695,
+          "n": 3
+        },
+        "window_affirm_unseen_rate": {
+          "mean": 0.6666666666666666,
+          "stddev": 0.2721655269759087,
+          "min": 0.3333333333333333,
+          "max": 1,
+          "n": 3
+        },
+        "window_bad_late_recall_strict": {
+          "mean": 0.75,
+          "stddev": 0,
+          "min": 0.75,
+          "max": 0.75,
+          "n": 3
+        }
+      },
+      "runs": [
+        {
+          "supported": {
+            "total": 23,
+            "correct": 21,
+            "false_flag": 2,
+            "omitted": 0,
+            "false_flag_rate": 0.08695652173913043
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.875,
+              "recall_with_coverage": 0.875,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.875,
+              "recall_with_coverage": 0.875,
+              "verdict_weak": 1,
+              "verdict_unsupported": 6
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 21,
+            "defaulted_by_coverage": 0,
+            "missed": 2,
+            "recall_strict": 0.9130434782608695,
+            "recall_with_coverage": 0.9130434782608695,
+            "verdict_weak": 1,
+            "verdict_unsupported": 20
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 1,
+              "flagged": 2,
+              "omitted": 0,
+              "affirm_unseen_rate": 0.3333333333333333
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 3,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.75,
+              "recall_with_coverage": 0.75,
+              "verdict_weak": 0,
+              "verdict_unsupported": 3
+            }
+          },
+          "unscored": []
+        },
+        {
+          "supported": {
+            "total": 23,
+            "correct": 23,
+            "false_flag": 0,
+            "omitted": 0,
+            "false_flag_rate": 0
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 6,
+              "defaulted_by_coverage": 0,
+              "missed": 2,
+              "recall_strict": 0.75,
+              "recall_with_coverage": 0.75,
+              "verdict_weak": 1,
+              "verdict_unsupported": 5
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.875,
+              "recall_with_coverage": 0.875,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 20,
+            "defaulted_by_coverage": 0,
+            "missed": 3,
+            "recall_strict": 0.8695652173913043,
+            "recall_with_coverage": 0.8695652173913043,
+            "verdict_weak": 1,
+            "verdict_unsupported": 19
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 3,
+              "flagged": 0,
+              "omitted": 0,
+              "affirm_unseen_rate": 1
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 3,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.75,
+              "recall_with_coverage": 0.75,
+              "verdict_weak": 0,
+              "verdict_unsupported": 3
+            }
+          },
+          "unscored": []
+        },
+        {
+          "supported": {
+            "total": 23,
+            "correct": 22,
+            "false_flag": 1,
+            "omitted": 0,
+            "false_flag_rate": 0.043478260869565216
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.875,
+              "recall_with_coverage": 0.875,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 6,
+              "defaulted_by_coverage": 0,
+              "missed": 2,
+              "recall_strict": 0.75,
+              "recall_with_coverage": 0.75,
+              "verdict_weak": 0,
+              "verdict_unsupported": 6
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 20,
+            "defaulted_by_coverage": 0,
+            "missed": 3,
+            "recall_strict": 0.8695652173913043,
+            "recall_with_coverage": 0.8695652173913043,
+            "verdict_weak": 0,
+            "verdict_unsupported": 20
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 2,
+              "flagged": 1,
+              "omitted": 0,
+              "affirm_unseen_rate": 0.6666666666666666
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 3,
+              "defaulted_by_coverage": 0,
+              "missed": 1,
+              "recall_strict": 0.75,
+              "recall_with_coverage": 0.75,
+              "verdict_weak": 0,
+              "verdict_unsupported": 3
+            }
+          },
+          "unscored": []
+        }
+      ]
+    },
+    {
+      "validator": "together:meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "relationship": "cross_model",
+      "aggregated": {
+        "runs": 3,
+        "supported_false_flag_rate": {
+          "mean": 0.14492753623188406,
+          "stddev": 0.020495848730044855,
+          "min": 0.13043478260869565,
+          "max": 0.17391304347826086,
+          "n": 3
+        },
+        "tiers": {
+          "fabricated": {
+            "recall_strict": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            }
+          },
+          "overstated": {
+            "recall_strict": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            }
+          },
+          "misattributed": {
+            "recall_strict": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            },
+            "recall_with_coverage": {
+              "mean": 1,
+              "stddev": 0,
+              "min": 1,
+              "max": 1,
+              "n": 3
+            }
+          }
+        },
+        "all_bad_recall_strict": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "all_bad_recall_with_coverage": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "window_affirm_unseen_rate": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "window_bad_late_recall_strict": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        }
+      },
+      "runs": [
+        {
+          "supported": {
+            "total": 23,
+            "correct": 20,
+            "false_flag": 3,
+            "omitted": 0,
+            "false_flag_rate": 0.13043478260869565
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 1,
+              "verdict_unsupported": 7
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 8
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 23,
+            "defaulted_by_coverage": 0,
+            "missed": 0,
+            "recall_strict": 1,
+            "recall_with_coverage": 1,
+            "verdict_weak": 1,
+            "verdict_unsupported": 22
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 0,
+              "flagged": 3,
+              "omitted": 0,
+              "affirm_unseen_rate": 0
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 4,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 4
+            }
+          },
+          "unscored": []
+        },
+        {
+          "supported": {
+            "total": 23,
+            "correct": 20,
+            "false_flag": 3,
+            "omitted": 0,
+            "false_flag_rate": 0.13043478260869565
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 3,
+              "verdict_unsupported": 5
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 8
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 23,
+            "defaulted_by_coverage": 0,
+            "missed": 0,
+            "recall_strict": 1,
+            "recall_with_coverage": 1,
+            "verdict_weak": 3,
+            "verdict_unsupported": 20
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 0,
+              "flagged": 3,
+              "omitted": 0,
+              "affirm_unseen_rate": 0
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 4,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 4
+            }
+          },
+          "unscored": []
+        },
+        {
+          "supported": {
+            "total": 23,
+            "correct": 19,
+            "false_flag": 4,
+            "omitted": 0,
+            "false_flag_rate": 0.17391304347826086
+          },
+          "tiers": {
+            "fabricated": {
+              "total": 7,
+              "caught_by_verdict": 7,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 7
+            },
+            "overstated": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 1,
+              "verdict_unsupported": 7
+            },
+            "misattributed": {
+              "total": 8,
+              "caught_by_verdict": 8,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 8
+            }
+          },
+          "all_bad": {
+            "total": 23,
+            "caught_by_verdict": 23,
+            "defaulted_by_coverage": 0,
+            "missed": 0,
+            "recall_strict": 1,
+            "recall_with_coverage": 1,
+            "verdict_weak": 1,
+            "verdict_unsupported": 22
+          },
+          "window_probe": {
+            "supported_late": {
+              "total": 3,
+              "affirmed_unseen": 0,
+              "flagged": 3,
+              "omitted": 0,
+              "affirm_unseen_rate": 0
+            },
+            "bad_late": {
+              "total": 4,
+              "caught_by_verdict": 4,
+              "defaulted_by_coverage": 0,
+              "missed": 0,
+              "recall_strict": 1,
+              "recall_with_coverage": 1,
+              "verdict_weak": 0,
+              "verdict_unsupported": 4
+            }
+          },
+          "unscored": []
+        }
+      ]
+    }
+  ],
+  "cross_model_delta": {
+    "all_bad_recall_strict_cross_minus_same": 0.11594202898550732
+  }
+}
