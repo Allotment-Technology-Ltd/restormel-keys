@@ -65,3 +65,5 @@ docs/reference/allotment-technology-pitch-deck.md
 
 # Cursor plan artifacts (local-only)
 .cursor/plans/**
+# Local MCP secrets (use .cursor/mcp.json.example + ~/.cursor/mcp.json)
+.cursor/mcp.json
