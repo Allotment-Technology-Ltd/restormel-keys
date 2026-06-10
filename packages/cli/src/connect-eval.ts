@@ -15,7 +15,9 @@ import {
 } from "@restormel/connect-core/ingest/golden-eval";
 import {
   CONNECT_EVAL_VERDICT_SCHEMA_VERSION,
+  ConnectEvalClaimRefSchema,
   ConnectEvalVerdictSchema,
+  type ConnectEvalClaimRef,
   type ConnectEvalSource,
   type ConnectEvalVerdict,
 } from "@restormel/contracts/connect-eval";
@@ -38,6 +40,7 @@ export interface EvalCountsInput {
   coverage_gaps?: number;
   fingerprint?: string;
   assessed_at?: string;
+  unsupported_claims?: ConnectEvalClaimRef[];
 }
 
 export type ParseCountsResult =
@@ -107,6 +110,17 @@ export function parseCountsInput(json: unknown): ParseCountsResult {
     input.fingerprint = rec.fingerprint;
   }
   if (typeof rec.assessed_at === "string") input.assessed_at = rec.assessed_at;
+  if (rec.unsupported_claims !== undefined) {
+    const claims = ConnectEvalClaimRefSchema.array().safeParse(rec.unsupported_claims);
+    if (!claims.success) {
+      return {
+        ok: false,
+        error:
+          "unsupported_claims must be an array of { text, id?, source_ref? } objects with non-empty text.",
+      };
+    }
+    input.unsupported_claims = claims.data;
+  }
   return { ok: true, input };
 }
 
@@ -122,6 +136,7 @@ export function buildEvalVerdict(args: {
   trust_score?: number;
   coverage_gaps?: number;
   fingerprint?: string;
+  unsupported_claims?: ConnectEvalClaimRef[];
 }): ConnectEvalVerdict {
   const g2 = computeG2Metrics(args.counts);
   const { pass, reasons } = assertG2Targets(g2);
@@ -134,6 +149,7 @@ export function buildEvalVerdict(args: {
     ...(args.trust_score !== undefined ? { trust_score: args.trust_score } : {}),
     ...(args.coverage_gaps !== undefined ? { coverage_gaps: args.coverage_gaps } : {}),
     ...(args.fingerprint !== undefined ? { fingerprint: args.fingerprint } : {}),
+    ...(args.unsupported_claims !== undefined ? { unsupported_claims: args.unsupported_claims } : {}),
     pass,
     reasons,
   });

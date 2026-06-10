@@ -32,7 +32,7 @@ npx @restormel/validate
 | `keys catalog fetch` | Fetch public `GET /keys/dashboard/api/catalog` (summary or `--json`; optional `--base-url`, paging, `--include-unhealthy`, `--skip-allowlist`) |
 | `keys replay <traceId\|traceFile>` | Replay a past Connect retrieval against the current graph and diff the results (`--diff`, `--compare`, `--output json\|pretty\|markdown`) |
 | `keys rules show` / `keys rules list` | Inspect the verification rule set (six-dimension weights + strict/balanced/lenient policies) active for your workspace |
-| `keys connect eval` | Headless G2 quality verdict for Connect ingest (`--job`, `--counts`, `--stdin`, `--output json\|pretty`) with stable exit codes — CI-friendly |
+| `keys connect eval` | Headless G2 quality verdict for Connect ingest (`--job`, `--counts`, `--stdin`, `--output json\|pretty\|markdown`) plus baseline regression diffing (`--baseline`, `--save-baseline`, `--tolerance`) with stable exit codes — CI-friendly |
 
 ### Replay a retrieval (provenance traces)
 
@@ -62,9 +62,10 @@ plus a human-readable summary. Built for CI: the exit code is the contract.
 
 | Exit code | Meaning |
 |-----------|---------|
-| `0` | Pass — quality bar met |
-| `1` | Quality fail — `reasons` lists each breached bar |
+| `0` | Pass — quality bar met (and no regression when `--baseline` is used) |
+| `1` | Quality fail — `reasons` lists each breached bar (wins over a regression) |
 | `2` | Config/usage error (bad flags, missing key/workspace, unreadable input, API error) |
+| `3` | Regression vs baseline — bar met, but quality dropped beyond tolerance (`--baseline` only) |
 
 **Remote mode** (default) reads the latest ingest run's public quality report from the
 gateway-key-authed `GET /connect/v1/ingest/jobs` API — no dashboard session needed:
@@ -103,9 +104,61 @@ Verdict shape (schema version `1.0`):
 }
 ```
 
-`coverage_gaps` and `fingerprint` are carried through when the producing pipeline supplies them.
-**Stage 2.2 adds `--baseline <file|ref>` diffing** (regression detection against a saved verdict,
-keyed by source-set fingerprint) on top of this verdict contract.
+`coverage_gaps`, `fingerprint`, and `unsupported_claims` are carried through when the producing
+pipeline supplies them. `unsupported_claims` is an array of `{ id?, text, source_ref? }` objects —
+the claims the pipeline judged unsupported, cited by text + source ref — and is what powers
+claim-level regression diffing below.
+
+### Quality baseline + regression diff (Connect)
+
+`--save-baseline` writes the current verdict as a committed-friendly JSON artifact
+(`@restormel/contracts/connect-eval` → `ConnectEvalBaselineSchema`: `{ schema_version, saved_at,
+fingerprint?, verdict }`). `--baseline <file>` compares a later run against it and reports
+**regressions** — quality that dropped even though the absolute bar still passes:
+
+- `ok_pct` drop beyond `--tolerance` (default **1** point, absorbing integer rounding jitter)
+- **NEW unsupported claims** — by claim *identity* (the pipeline's claim `id`, else normalized
+  text + source ref), not count. Each new bad claim is cited with its text and source ref.
+- `trust_score` drop beyond `--tolerance`
+- new coverage gaps (any increase)
+
+Baselines are keyed by the source-set fingerprint (`goldenExtractionEvalFingerprint` in
+`@restormel/connect-core`): when the corpus changed, the baseline is **superseded**, not regressed —
+regression checks are skipped and the diff says to re-save.
+
+```bash
+# Save a baseline from a known-good run (commit baseline.json to your repo)
+keys connect eval --counts ./counts.json --save-baseline ./connect-eval-baseline.json
+
+# Later: diff a new run against it. Exit 3 on regression; markdown is PR-comment ready.
+keys connect eval --counts ./counts.json --baseline ./connect-eval-baseline.json --output markdown
+
+# Allow a wider drop before flagging
+keys connect eval --counts ./counts.json --baseline ./connect-eval-baseline.json --tolerance 3
+```
+
+Sample `--output markdown` diff (what a PR comment shows):
+
+```markdown
+| Metric | Baseline | Current | Δ | Status |
+|---|---:|---:|---:|:--|
+| ok % | 98% | 90% | -8 | ❌ regression |
+| unsupported % | 1% | 2% | +1 | — |
+| trust score | 95 | 80 | -15 | ❌ regression |
+| coverage gaps | 1 | 3 | +2 | ❌ regression |
+| new unsupported claims | — | 1 | — | ❌ regression |
+
+## New unsupported claims (1)
+
+| Claim | Source |
+|---|---|
+| Utilitarianism was first formalised in 1900. | https://plato.stanford.edu/entries/utilitarianism-history/ |
+```
+
+With `--output json` the payload is `{ verdict, diff }` — both versioned contracts
+(`ConnectEvalVerdictSchema`, `ConnectEvalDiffSchema`). Claim-level diffing runs only when both the
+baseline verdict and the current input carry an `unsupported_claims` list (remote quality reports
+do not yet include one); metric-level diffing always runs.
 
 ### Canonical catalog (public feed)
 

@@ -75,6 +75,14 @@ describe("parseCountsInput", () => {
     expect(parseCountsInput({ ok: 1, weak: 0, unsupported: 0, coverage_gaps: -1 }).ok).toBe(false);
     expect(parseCountsInput({ ok: 1, weak: 0, unsupported: 0, fingerprint: "" }).ok).toBe(false);
   });
+
+  it("accepts unsupported_claims (claim text + source ref) and rejects malformed entries", () => {
+    const claims = [{ id: "c-1", text: "A claim that went bad.", source_ref: "https://example.test/doc" }];
+    const res = parseCountsInput({ ok: 1, weak: 0, unsupported: 1, unsupported_claims: claims });
+    expect(res).toEqual({ ok: true, input: { counts: { ok: 1, weak: 0, unsupported: 1 }, unsupported_claims: claims } });
+    expect(parseCountsInput({ ok: 1, weak: 0, unsupported: 1, unsupported_claims: [{ text: "" }] }).ok).toBe(false);
+    expect(parseCountsInput({ ok: 1, weak: 0, unsupported: 1, unsupported_claims: "nope" }).ok).toBe(false);
+  });
 });
 
 describe("buildEvalVerdict", () => {
