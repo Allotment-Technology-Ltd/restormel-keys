@@ -23,8 +23,9 @@ import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
 import { listStarterCorpusDocuments } from "$lib/server/connect/starter-corpus";
 import { graphStatsToHealthSummary } from "$lib/server/connect/kg-audit-summary";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
-import type { ConnectTrustScorecard } from "@restormel/contracts";
+import type { ConnectTrustScorecard, ConnectEvalVerdictEntry } from "@restormel/contracts";
 import { listProviderIntegrations } from "$lib/server/db";
+import { listConnectEvalVerdicts } from "$lib/server/neon";
 import { perfSpan } from "$lib/debug/server-perf";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 
@@ -241,4 +242,31 @@ export async function loadConnectTrustScorecardPanel(
     event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
   );
   return loadConnectTrustScorecard(workspace.id);
+}
+
+/**
+ * Streamed quality-history panel for the Connect hub (Stage 2.4). Returns the 25
+ * most recent persisted eval verdicts, newest first. Resolves to an empty array
+ * when signed out or no verdicts have been recorded yet. REJECTS on storage errors
+ * so the panel can render its error state with a recovery action.
+ */
+export async function loadConnectQualityHistoryPanel(
+  event: Pick<ServerLoadEvent, "locals" | "parent">,
+): Promise<ConnectEvalVerdictEntry[]> {
+  if (!event.locals.user || event.locals.user.authType !== "session") {
+    return [];
+  }
+  const workspace = await requireConnectWorkspace(
+    event.locals,
+    event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
+  );
+  const rows = await listConnectEvalVerdicts({ workspaceId: workspace.id, limit: 25 });
+  return rows.map((row) => ({
+    id: row.id,
+    workspace_id: row.workspaceId,
+    recorded_at: row.recordedAt,
+    source: row.source as ConnectEvalVerdictEntry["source"],
+    verdict: row.verdict as ConnectEvalVerdictEntry["verdict"],
+    diff: (row.diff as ConnectEvalVerdictEntry["diff"]) ?? null,
+  }));
 }

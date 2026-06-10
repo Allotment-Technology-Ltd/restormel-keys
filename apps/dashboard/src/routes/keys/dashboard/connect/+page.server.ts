@@ -3,6 +3,7 @@ import {
   loadConnectHubPage,
   loadConnectGraphPulse,
   loadConnectTrustScorecardPanel,
+  loadConnectQualityHistoryPanel,
 } from "$lib/server/connect/connect-hub-load";
 
 export const load: PageServerLoad = async (event) => {
@@ -11,6 +12,7 @@ export const load: PageServerLoad = async (event) => {
       hub: Promise.resolve(null),
       graphPulse: Promise.resolve(null),
       scorecard: Promise.resolve(null),
+      qualityHistory: Promise.resolve([]),
     };
   }
   return {
@@ -20,5 +22,7 @@ export const load: PageServerLoad = async (event) => {
     graphPulse: loadConnectGraphPulse(event),
     // Streamed — per-graph trust scorecard panel (Stage 1.2).
     scorecard: loadConnectTrustScorecardPanel(event),
+    // Streamed — quality-history timeline (Stage 2.4).
+    qualityHistory: loadConnectQualityHistoryPanel(event),
   };
 };

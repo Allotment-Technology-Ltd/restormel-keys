@@ -153,3 +153,73 @@ export const ConnectEvalDiffSchema = z.object({
   regressions: z.array(z.string())
 });
 export type ConnectEvalDiff = z.infer<typeof ConnectEvalDiffSchema>;
+
+// ── Stage 2.4 — verdict history (persisted per-graph timeline) ───────────────
+
+/**
+ * A single persisted verdict entry in the quality-history timeline.
+ *
+ * Stores the full Stage 2.1 verdict (no parallel shape) plus the optional Stage 2.2
+ * regression diff for the run, and metadata describing how/where the verdict was
+ * produced (CLI, CI action, or an ingest run). The `id` is assigned by the server.
+ */
+export const ConnectEvalVerdictEntrySchema = z.object({
+  /** Server-assigned entry id (opaque string; stable for the life of the row). */
+  id: z.string().min(1),
+  /** Workspace the verdict belongs to. */
+  workspace_id: z.string().min(1),
+  /** ISO 8601 timestamp of when the server persisted this entry. */
+  recorded_at: z.string(),
+  /**
+   * How the verdict was produced.
+   *   - 'cli'        — `keys connect eval` (local or scripted run)
+   *   - 'ci_action'  — the Stage 2.3 GitHub / Forgejo connect-eval action
+   *   - 'ingest_run' — a dashboard pipeline ingest run that attached an eval
+   */
+  source: z.enum(['cli', 'ci_action', 'ingest_run']),
+  /** The full Stage 2.1 verdict (schema_version, g2, trust_score, pass, …). */
+  verdict: ConnectEvalVerdictSchema,
+  /**
+   * The Stage 2.2 regression diff, when the producing run compared against a baseline.
+   * Null for absolute-bar runs (no --baseline flag).
+   */
+  diff: ConnectEvalDiffSchema.nullable().optional()
+});
+export type ConnectEvalVerdictEntry = z.infer<typeof ConnectEvalVerdictEntrySchema>;
+
+/**
+ * Request body for POST /connect/v1/eval/verdicts — the CLI/Action calls this to
+ * persist a verdict to the workspace's history timeline.
+ */
+export const ConnectEvalVerdictIngestSchema = z.object({
+  /**
+   * How the verdict was produced. Callers MUST identify the origin so the dashboard
+   * can show "from CLI", "from CI action", etc.
+   */
+  source: z.enum(['cli', 'ci_action', 'ingest_run']),
+  /** The full Stage 2.1 verdict. */
+  verdict: ConnectEvalVerdictSchema,
+  /**
+   * The Stage 2.2 regression diff, when the run compared against a baseline.
+   * Omit (or pass null) for absolute-bar-only runs.
+   */
+  diff: ConnectEvalDiffSchema.nullable().optional()
+});
+export type ConnectEvalVerdictIngest = z.infer<typeof ConnectEvalVerdictIngestSchema>;
+
+/** POST /connect/v1/eval/verdicts response. */
+export const ConnectEvalVerdictIngestResponseSchema = z.object({
+  /** The persisted entry id. */
+  id: z.string().min(1),
+  /** ISO 8601 recorded_at assigned by the server. */
+  recorded_at: z.string()
+});
+export type ConnectEvalVerdictIngestResponse = z.infer<typeof ConnectEvalVerdictIngestResponseSchema>;
+
+/** GET /connect/v1/eval/verdicts response — paginated timeline, newest first. */
+export const ConnectEvalVerdictHistoryResponseSchema = z.object({
+  entries: z.array(ConnectEvalVerdictEntrySchema),
+  /** Cursor for the next page; absent when this is the last page. */
+  next_cursor: z.string().optional()
+});
+export type ConnectEvalVerdictHistoryResponse = z.infer<typeof ConnectEvalVerdictHistoryResponseSchema>;
