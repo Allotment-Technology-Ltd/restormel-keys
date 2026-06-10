@@ -2475,6 +2475,16 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_knowledge_graph_relations_workspace
       ON knowledge_graph_relations (workspace_id, created_at DESC)
     `;
+    // Hot-path indexes (dev mirror of migrations/057): unit-scoped relation deletes
+    // (remediation drops) scanned the whole workspace relation set without these.
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_relations_from_unit
+      ON knowledge_graph_relations (from_unit_id)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_relations_to_unit
+      ON knowledge_graph_relations (to_unit_id)
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_graph_groups (
         id TEXT PRIMARY KEY,
@@ -2505,6 +2515,16 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_status TEXT`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_note TEXT`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS source_chunk_index INTEGER`;
+    // Hot-path indexes (dev mirror of migrations/057): per-workspace validation
+    // aggregates/scans (stats, triage, re-validation scope) and source-grouped reads.
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_units_workspace_validation
+      ON knowledge_graph_units (workspace_id, validation_status)
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_units_source
+      ON knowledge_graph_units (source_id)
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_review_signals (
         id TEXT PRIMARY KEY,
@@ -6845,23 +6865,30 @@ export async function getConnectGraphExplorer(
   return { groups, units };
 }
 
-/** Set embeddings on units (embedding stage). */
+/**
+ * Set embeddings on units (embedding stage). Batched (chunks of 200 to keep the
+ * request payload bounded — vectors are large) instead of one round-trip per unit.
+ */
 export async function updateUnitEmbeddingsPostgres(params: {
   workspaceId: string;
   embeddings: { unitId: string; vector: number[] }[];
 }): Promise<number> {
+  if (params.embeddings.length === 0) return 0;
   await ensureIngestionRoutingSchema();
   const sql = getSql();
-  let n = 0;
-  for (const e of params.embeddings) {
-    const json = JSON.stringify(e.vector);
+  const BATCH = 200;
+  for (let i = 0; i < params.embeddings.length; i += BATCH) {
+    const slice = params.embeddings.slice(i, i + BATCH);
+    const unitIds = slice.map((e) => e.unitId);
+    const vectors = slice.map((e) => JSON.stringify(e.vector));
     await sql`
-      UPDATE knowledge_graph_units SET embedding = ${json}::jsonb
-      WHERE id = ${e.unitId} AND workspace_id = ${params.workspaceId}
+      UPDATE knowledge_graph_units g
+      SET embedding = u.vector::jsonb
+      FROM unnest(${unitIds}::text[], ${vectors}::text[]) AS u(unit_id, vector)
+      WHERE g.id = u.unit_id AND g.workspace_id = ${params.workspaceId}
     `;
-    n += 1;
   }
-  return n;
+  return params.embeddings.length;
 }
 
 let claimVersionsSchemaEnsured = false;
@@ -6908,7 +6935,11 @@ export type ConnectClaimVersionInsert = {
   sourceHash: string | null;
 };
 
-/** EBV Layer 1: insert version-1 claim rows with their evidence bindings (post-extraction). */
+/**
+ * EBV Layer 1: insert version-1 claim rows with their evidence bindings (post-extraction).
+ * Single multi-row statement via unnest — the Neon HTTP driver pays one network
+ * round-trip per query, so the previous per-row loop cost N round-trips per chunk.
+ */
 export async function insertConnectClaimVersionsPostgres(params: {
   workspaceId: string;
   rows: ConnectClaimVersionInsert[];
@@ -6916,18 +6947,25 @@ export async function insertConnectClaimVersionsPostgres(params: {
   if (params.rows.length === 0) return 0;
   await ensureConnectClaimVersionsSchema();
   const sql = getSql();
-  let n = 0;
-  for (const r of params.rows) {
-    await sql`
-      INSERT INTO connect_claim_versions
-        (workspace_id, unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
-      VALUES
-        (${params.workspaceId}, ${r.unitId}, ${r.text}, ${r.evidenceQuote}, ${r.spanStart}, ${r.spanEnd},
-         ${r.evidenceMatch}, ${r.evidenceStatus}, ${r.sourceHash})
-    `;
-    n += 1;
-  }
-  return n;
+  const unitIds = params.rows.map((r) => r.unitId);
+  const texts = params.rows.map((r) => r.text);
+  const quotes = params.rows.map((r) => r.evidenceQuote);
+  const starts = params.rows.map((r) => r.spanStart);
+  const ends = params.rows.map((r) => r.spanEnd);
+  const matches = params.rows.map((r) => r.evidenceMatch);
+  const statuses = params.rows.map((r) => r.evidenceStatus);
+  const hashes = params.rows.map((r) => r.sourceHash);
+  await sql`
+    INSERT INTO connect_claim_versions
+      (workspace_id, unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
+    SELECT ${params.workspaceId}, u.unit_id, u.text, u.evidence_quote, u.span_start, u.span_end,
+           u.evidence_match, u.evidence_status, u.source_hash
+    FROM unnest(
+      ${unitIds}::text[], ${texts}::text[], ${quotes}::text[], ${starts}::int[], ${ends}::int[],
+      ${matches}::text[], ${statuses}::text[], ${hashes}::text[]
+    ) AS u(unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
+  `;
+  return params.rows.length;
 }
 
 let claimJudgmentsSchemaEnsured = false;
@@ -6974,21 +7012,31 @@ export async function insertConnectClaimJudgmentsPostgres(params: {
   if (params.rows.length === 0) return 0;
   await ensureConnectClaimJudgmentsSchema();
   const sql = getSql();
-  let n = 0;
-  for (const r of params.rows) {
-    await sql`
-      INSERT INTO connect_claim_judgments
-        (workspace_id, unit_id, verdict, confidence, note, judge_model, prompt_version, judged_at)
-      VALUES
-        (${params.workspaceId}, ${r.unitId}, ${r.verdict}, ${r.confidence}, ${r.note},
-         ${r.judgeModel}, ${r.promptVersion}, ${r.judgedAt})
-    `;
-    n += 1;
-  }
-  return n;
+  const unitIds = params.rows.map((r) => r.unitId);
+  const verdicts = params.rows.map((r) => r.verdict);
+  const confidences = params.rows.map((r) => r.confidence);
+  const notes = params.rows.map((r) => r.note);
+  const judgeModels = params.rows.map((r) => r.judgeModel);
+  const promptVersions = params.rows.map((r) => r.promptVersion);
+  const judgedAts = params.rows.map((r) => r.judgedAt);
+  // Single multi-row INSERT (one Neon HTTP round-trip), append-only as before.
+  await sql`
+    INSERT INTO connect_claim_judgments
+      (workspace_id, unit_id, verdict, confidence, note, judge_model, prompt_version, judged_at)
+    SELECT ${params.workspaceId}, u.unit_id, u.verdict, u.confidence, u.note,
+           u.judge_model, u.prompt_version, u.judged_at
+    FROM unnest(
+      ${unitIds}::text[], ${verdicts}::text[], ${confidences}::real[], ${notes}::text[],
+      ${judgeModels}::text[], ${promptVersions}::int[], ${judgedAts}::timestamptz[]
+    ) AS u(unit_id, verdict, confidence, note, judge_model, prompt_version, judged_at)
+  `;
+  return params.rows.length;
 }
 
-/** EBV Layer 1: set verification state on the CURRENT version of each unit (post-validation). */
+/**
+ * EBV Layer 1: set verification state on the CURRENT version of each unit (post-validation).
+ * Single multi-row UPDATE ... FROM unnest (one Neon HTTP round-trip instead of one per unit).
+ */
 export async function updateConnectClaimVersionStatesPostgres(params: {
   workspaceId: string;
   states: { unitId: string; state: string; judgedBy?: string | null }[];
@@ -6996,16 +7044,16 @@ export async function updateConnectClaimVersionStatesPostgres(params: {
   if (params.states.length === 0) return 0;
   await ensureConnectClaimVersionsSchema();
   const sql = getSql();
-  let n = 0;
-  for (const s of params.states) {
-    await sql`
-      UPDATE connect_claim_versions
-      SET verification_state = ${s.state}, judged_by = ${s.judgedBy ?? null}, judged_at = NOW()
-      WHERE workspace_id = ${params.workspaceId} AND unit_id = ${s.unitId} AND valid_to IS NULL
-    `;
-    n += 1;
-  }
-  return n;
+  const unitIds = params.states.map((s) => s.unitId);
+  const states = params.states.map((s) => s.state);
+  const judgedBys = params.states.map((s) => s.judgedBy ?? null);
+  await sql`
+    UPDATE connect_claim_versions v
+    SET verification_state = u.state, judged_by = u.judged_by, judged_at = NOW()
+    FROM unnest(${unitIds}::text[], ${states}::text[], ${judgedBys}::text[]) AS u(unit_id, state, judged_by)
+    WHERE v.workspace_id = ${params.workspaceId} AND v.unit_id = u.unit_id AND v.valid_to IS NULL
+  `;
+  return params.states.length;
 }
 
 /**
@@ -7182,22 +7230,28 @@ export async function listConnectEvalVerdicts(params: {
   }));
 }
 
-/** Set per-unit validation results (validation stage). */
+/**
+ * Set per-unit validation results (validation stage). Batched into one multi-row
+ * UPDATE — the per-row loop cost one Neon HTTP round-trip per unit, which dominated
+ * the validation stage's persistence time on larger sources.
+ */
 export async function updateUnitValidationPostgres(params: {
   workspaceId: string;
   results: { unitId: string; status: string; note?: string | null }[];
 }): Promise<number> {
+  if (params.results.length === 0) return 0;
   await ensureIngestionRoutingSchema();
   const sql = getSql();
-  let n = 0;
-  for (const r of params.results) {
-    await sql`
-      UPDATE knowledge_graph_units SET validation_status = ${r.status}, validation_note = ${r.note ?? null}
-      WHERE id = ${r.unitId} AND workspace_id = ${params.workspaceId}
-    `;
-    n += 1;
-  }
-  return n;
+  const unitIds = params.results.map((r) => r.unitId);
+  const statuses = params.results.map((r) => r.status);
+  const notes = params.results.map((r) => r.note ?? null);
+  await sql`
+    UPDATE knowledge_graph_units g
+    SET validation_status = u.status, validation_note = u.note
+    FROM unnest(${unitIds}::text[], ${statuses}::text[], ${notes}::text[]) AS u(unit_id, status, note)
+    WHERE g.id = u.unit_id AND g.workspace_id = ${params.workspaceId}
+  `;
+  return params.results.length;
 }
 
 /** Replace a unit's text (remediation repair). */

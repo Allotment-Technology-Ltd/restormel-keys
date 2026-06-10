@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("$lib/server/connect-ingest-jobs", () => ({
   claimNextPendingConnectIngestJob: vi.fn(),
@@ -55,5 +55,27 @@ describe("connect-ingest-worker", () => {
     expect(updateConnectIngestJobById).toHaveBeenCalled();
     const last = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
     expect(last?.status).toBe("completed");
+  });
+});
+
+describe("vercelWaitUntil", () => {
+  const CTX_SYMBOL = Symbol.for("@vercel/request-context");
+
+  afterEach(() => {
+    delete (globalThis as Record<symbol, unknown>)[CTX_SYMBOL];
+  });
+
+  it("registers the drain with the Vercel request context when present", async () => {
+    const { vercelWaitUntil } = await import("$lib/server/connect-ingest-worker");
+    const waitUntil = vi.fn();
+    (globalThis as Record<symbol, unknown>)[CTX_SYMBOL] = { get: () => ({ waitUntil }) };
+    const p = Promise.resolve();
+    expect(vercelWaitUntil(p)).toBe(true);
+    expect(waitUntil).toHaveBeenCalledWith(p);
+  });
+
+  it("is a safe no-op outside Vercel", async () => {
+    const { vercelWaitUntil } = await import("$lib/server/connect-ingest-worker");
+    expect(vercelWaitUntil(Promise.resolve())).toBe(false);
   });
 });

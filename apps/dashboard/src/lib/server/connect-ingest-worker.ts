@@ -425,11 +425,35 @@ export async function runConnectIngestWorkerLoop(maxJobs: number): Promise<numbe
   return n;
 }
 
+/**
+ * Vercel request-context `waitUntil` (the same hook `@vercel/functions` uses,
+ * accessed via its public global symbol so we need no extra dependency). Without
+ * it, serverless/fluid compute may suspend the instance as soon as the HTTP
+ * response is flushed — killing the detached ingest drain mid-run with no error
+ * and leaving the job stuck in `running` (the "randomly frozen run" symptom).
+ * No-op outside Vercel (dev / self-hosted keep the plain detached promise).
+ */
+export function vercelWaitUntil(promise: Promise<unknown>): boolean {
+  try {
+    const ctx = (
+      globalThis as Record<symbol, { get?: () => { waitUntil?: (p: Promise<unknown>) => void } }>
+    )[Symbol.for("@vercel/request-context")]?.get?.();
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(promise);
+      return true;
+    }
+  } catch {
+    // Fall through — detached promise behavior unchanged.
+  }
+  return false;
+}
+
 /** Best-effort drain after job POST (dev / single-process hosting). */
 export function scheduleConnectIngestWorkerDrain(maxDrain = 4): void {
   queueMicrotask(() => {
-    void runConnectIngestWorkerLoop(maxDrain).catch((err) => {
+    const drain = runConnectIngestWorkerLoop(maxDrain).catch((err) => {
       console.error("[connect-ingest-worker] drain failed:", err);
     });
+    vercelWaitUntil(drain);
   });
 }

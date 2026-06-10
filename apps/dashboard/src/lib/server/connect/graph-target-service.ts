@@ -371,8 +371,13 @@ export async function surrealSignIn(
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        // Same deadline as /sql queries — a wedged sign-in must not hang ingest runs.
+        signal: AbortSignal.timeout(SURREAL_HTTP_TIMEOUT_MS),
       });
     } catch (e) {
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+        return { ok: false, error: `Surreal sign-in timed out after ${SURREAL_HTTP_TIMEOUT_MS}ms` };
+      }
       return { ok: false, error: e instanceof Error ? e.message : "network error" };
     }
 

@@ -14,6 +14,7 @@ import { findDecryptedApiKeyForResolvedProvider } from "$lib/server/runtime-invo
 import { openAiCompatibleChatBaseUrl, postOpenAiCompatibleChat } from "$lib/server/runtime-openai-chat";
 import { resolveVendorOpenAiChatModelId } from "$lib/server/runtime-model-upstream";
 import {
+  connectEmbedTimeoutMs,
   isLlmConfigured,
   makeEmbedder,
   makeStageGenerate,
@@ -32,6 +33,30 @@ export type StageGenerates = {
 };
 
 const MAX_ROUTE_ATTEMPTS = 12;
+
+/**
+ * Wall-clock ceiling for one logical stage call across ALL route fallback attempts.
+ * Each attempt may legitimately take up to its 180s upstream timeout, so 12 attempts
+ * against a wedged provider chain used to spin for ~36 minutes with zero operator
+ * feedback — indistinguishable from a frozen run. Fast failures (auth, missing key,
+ * 4xx) still get the full 12 attempts; only slow-timeout chains are cut short.
+ */
+export function routeRetryDeadlineMs(): number {
+  const raw = Number(process.env.CONNECT_ROUTE_RETRY_DEADLINE_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : 15 * 60_000;
+}
+
+/** True when the retry loop must stop and surface the last upstream error. */
+export function routeRetryDeadlineExceeded(startedAtMs: number, nowMs = Date.now()): boolean {
+  return nowMs - startedAtMs >= routeRetryDeadlineMs();
+}
+
+function routeRetryDeadlineError(lastErr: unknown): Error {
+  const prior = lastErr instanceof Error ? ` Last error: ${lastErr.message}` : "";
+  return new Error(
+    `Route retry deadline exceeded (${Math.round(routeRetryDeadlineMs() / 1000)}s) — giving up on remaining fallback steps.${prior}`,
+  );
+}
 
 /** Keep upstream LLM error when route retry exhausts fallback steps. */
 export function mergeRouteResolveFailure(
@@ -56,6 +81,7 @@ async function callResolvedChat(args: {
 }): Promise<string> {
   const ingestionStage = CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE[args.stage];
   const routeIdOverride = args.ctx.routing.routes?.[args.stage];
+  const startedAtMs = Date.now();
   let attemptNumber = 0;
   let previousFailure:
     | { selectedOrderIndex?: number | null; selectedStepId?: string | null }
@@ -63,6 +89,9 @@ async function callResolvedChat(args: {
   let lastErr: unknown;
 
   for (let i = 0; i < MAX_ROUTE_ATTEMPTS; i++) {
+    if (i > 0 && routeRetryDeadlineExceeded(startedAtMs)) {
+      throw routeRetryDeadlineError(lastErr);
+    }
     const outcome = await resolveRouteForExecution(
       args.ctx.projectId,
       args.ctx.environmentId,
@@ -174,6 +203,7 @@ async function embedViaRoute(
 
   const ingestionStage = CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE.embedding;
   const routeIdOverride = ctx.routing.routes?.embedding;
+  const startedAtMs = Date.now();
   let attemptNumber = 0;
   let previousFailure:
     | { selectedOrderIndex?: number | null; selectedStepId?: string | null }
@@ -181,6 +211,9 @@ async function embedViaRoute(
   let lastErr: unknown;
 
   for (let i = 0; i < MAX_ROUTE_ATTEMPTS; i++) {
+    if (i > 0 && routeRetryDeadlineExceeded(startedAtMs)) {
+      throw routeRetryDeadlineError(lastErr);
+    }
     const outcome = await resolveRouteForExecution(ctx.projectId, ctx.environmentId, ctx.userId, {
       routeId: routeIdOverride,
       workload: INGESTION_WORKLOAD,
@@ -285,13 +318,24 @@ async function knowledgeEmbedWithKey(
   }
   const out: number[][] = [];
   const BATCH = 96;
+  const timeoutMs = connectEmbedTimeoutMs();
   for (let i = 0; i < texts.length; i += BATCH) {
     const batch = texts.slice(i, i + BATCH);
-    const res = await fetch(`${base}/embeddings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, input: batch }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${base}/embeddings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, input: batch }),
+        // A wedged upstream must fail the stage, not hang the whole run silently.
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (e) {
+      if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+        throw new Error(`Embedding request timed out after ${timeoutMs}ms`);
+      }
+      throw e;
+    }
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(`Embedding request failed (HTTP ${res.status}). ${detail.slice(0, 160)}`.trim());
