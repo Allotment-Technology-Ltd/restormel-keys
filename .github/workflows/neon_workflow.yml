@@ -58,7 +58,7 @@ jobs:
     if: github.actor != 'dependabot[bot]' && github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           # neonctl v2 requires Node >= 22.
@@ -178,7 +178,7 @@ jobs:
       - name: Apply dashboard migrations
         if: env.SKIP_PREVIEW_DB != '1'
         run: bash scripts/apply-dashboard-migrations.sh
-      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
         if: env.SKIP_PREVIEW_DB != '1'
         with:
           version: 9.0.0

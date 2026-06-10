@@ -49,7 +49,7 @@ jobs:
       model_catalog_seed: ${{ steps.filter.outputs.model_catalog_seed }}
       zuplo_gateway: ${{ steps.filter.outputs.zuplo_gateway }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
         id: filter
         with:
@@ -95,7 +95,7 @@ jobs:
     if: needs.changes.outputs.repo == 'true' || needs.changes.outputs.docs == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: check-repo-hygiene.sh
         run: bash scripts/check-repo-hygiene.sh
       - name: review-docs.sh
@@ -112,7 +112,7 @@ jobs:
     if: needs.changes.outputs.docs == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: Review docs
         run: bash scripts/review-docs.sh
       - name: Docs update checklist
@@ -123,7 +123,7 @@ jobs:
     if: needs.changes.outputs.code == 'true' || needs.changes.outputs.repo == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
       - name: PNPM install
@@ -138,7 +138,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: PNPM install
         uses: ./.github/actions/pnpm-workspace-install
       - name: Test
@@ -187,7 +187,7 @@ jobs:
       (vars.RESTORMEL_PUBLISH_TESTING == 'true' || github.event_name == 'workflow_dispatch')
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: PNPM install
         uses: ./.github/actions/pnpm-workspace-install
       - name: Validate testing-github-action action.yml (YAML)
@@ -250,7 +250,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     needs: [changes]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: PNPM install
         uses: ./.github/actions/pnpm-workspace-install
       - name: Pack + demo-svelte build from tarballs
@@ -277,7 +277,7 @@ jobs:
            needs.changes.outputs.model_catalog_seed == 'true'))
       )
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: Install Postgres client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Apply dashboard migrations to production DB
@@ -332,7 +332,7 @@ jobs:
         (github.event_name == 'workflow_dispatch' && inputs.deploy_gateway == true)
       )
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 20
