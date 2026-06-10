@@ -10,6 +10,7 @@ description: >-
 
 ## Read first
 
+- [docs/verified-context-claims-ledger.md](../../../docs/verified-context-claims-ledger.md) — **canonical truth for every quality/verification claim**: copy may only state what a `proven` ledger row backs; cite row numbers in the PR (template section "Marketing claims").
 - [docs/documentation-strategy.md](../../../docs/documentation-strategy.md) — same links, doc map.
 - [docs/design-system-index.md](../../../docs/design-system-index.md) — layout, tokens, third-party marks (if present).
 
@@ -22,6 +23,7 @@ description: >-
 
 ## Checklist before merge
 
+- [ ] Every quality/verification phrase cites a **proven** row in the [claims ledger](../../../docs/verified-context-claims-ledger.md) (row numbers in the PR).
 - [ ] New links resolve in `apps/dashboard` routes.
 - [ ] No implied vendor partnership without legal review.
 - [ ] Copy matches [restormel-third-party-brand-marks](../restormel-third-party-brand-marks/SKILL.md) for logos and trademarks.

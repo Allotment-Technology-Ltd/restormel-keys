@@ -9,6 +9,12 @@
 - [ ] N/A
 - [ ] Updated: ___
 
+## Marketing claims (only if this PR touches marketing/landing/catalog copy)
+<!-- Quality/verification phrases may only ship on PROVEN rows of
+     docs/verified-context-claims-ledger.md — cite the row numbers backing each phrase. -->
+- [ ] N/A (no marketing copy)
+- [ ] Ledger rows cited: ___
+
 ## Security impact
 - [ ] None
 - [ ] Low (docs/process only)
