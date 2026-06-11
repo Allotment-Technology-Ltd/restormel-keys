@@ -19,9 +19,9 @@
     "seed:catalog": "node scripts/ingest-model-catalog.mjs",
     "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs",
     "sync:aizolo-seed": "node scripts/sync-aizolo-catalog-seed.mjs",
-    "migrate": "pnpm -w exec tsx --tsconfig ./tsconfig.json ./scripts/apply-migrations.mts",
-    "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./tsconfig.json ./scripts/hosted-runtime-worker.ts",
-    "connect-ingest-worker": "pnpm -w exec tsx --tsconfig ./tsconfig.json ./scripts/connect-ingest-worker.ts"
+    "migrate": "pnpm -w exec tsx --tsconfig ./apps/dashboard/tsconfig.json ./apps/dashboard/scripts/apply-migrations.mts",
+    "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/tsconfig.json ./apps/dashboard/scripts/hosted-runtime-worker.ts",
+    "connect-ingest-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker.ts"
   },
   "devDependencies": {
     "@testing-library/svelte": "^5.0.0",
