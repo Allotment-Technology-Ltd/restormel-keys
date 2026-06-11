@@ -8,6 +8,7 @@ import {
   remediateUnits,
   resolveQualityPreset,
   validateUnits,
+  type ClaimVerificationState,
   type CoverageShortfallHandler,
   type EvidenceBinding,
   type ExtractionGenerate,
@@ -125,6 +126,10 @@ export async function runGraphRemediationPass(args: {
   dropped: number;
   embedded: number;
   repairedUnitIds: string[];
+  /** Units soft-excluded by this pass (reversible; hidden from retrieval). */
+  droppedUnitIds: string[];
+  /** Final EBV states of repaired units after the span-scoped re-judge (ebv mode only). */
+  rejudgedStates: { unitId: string; state: ClaimVerificationState }[];
   remediationFailed: boolean;
 }> {
   const { validationResults, textById, sourceText, pack, writer, reporter } = args;
@@ -140,7 +145,15 @@ export async function runGraphRemediationPass(args: {
     .filter((u) => u.text);
 
   if (weak.length === 0) {
-    return { repaired: 0, dropped: 0, embedded: 0, repairedUnitIds: [], remediationFailed: false };
+    return {
+      repaired: 0,
+      dropped: 0,
+      embedded: 0,
+      repairedUnitIds: [],
+      droppedUnitIds: [],
+      rejudgedStates: [],
+      remediationFailed: false,
+    };
   }
 
   // Register this source's weak units as remediation work so the headline progress
@@ -156,6 +169,8 @@ export async function runGraphRemediationPass(args: {
   let dropped = 0;
   let embedded = 0;
   const repairedUnitIds: string[] = [];
+  const droppedUnitIds: string[] = [];
+  const rejudgedStates: { unitId: string; state: ClaimVerificationState }[] = [];
 
   try {
     const batches = buildRemediationBatchInputs(weak);
@@ -250,6 +265,7 @@ export async function runGraphRemediationPass(args: {
           `Remediation (${level}): no basis in source — soft-excluded from retrieval.`,
         );
         textById.delete(fix.ref);
+        droppedUnitIds.push(fix.ref);
         dropped += 1;
       }
     }
@@ -300,6 +316,7 @@ export async function runGraphRemediationPass(args: {
         });
         await writer.setVerificationStates(l2.states);
         await writer.recordJudgments(l2.judgments);
+        rejudgedStates.push(...l2.states.map((s) => ({ unitId: s.unitId, state: s.state })));
         await reporter?.log(
           "REMEDIATE",
           `Re-judged ${results.length} repaired claim(s) against bound evidence: ` +
@@ -320,13 +337,29 @@ export async function runGraphRemediationPass(args: {
 
     await reporter?.setGraphRepair({ phase: "remediating" });
     await reporter?.completeStage("remediating", `${repaired} repaired, ${dropped} excluded`);
-    return { repaired, dropped, embedded, repairedUnitIds, remediationFailed: false };
+    return {
+      repaired,
+      dropped,
+      embedded,
+      repairedUnitIds,
+      droppedUnitIds,
+      rejudgedStates,
+      remediationFailed: false,
+    };
   } catch (err) {
     const detail = err instanceof Error ? err.message : "Remediation failed";
     const fullDetail = remediationErrorHint(detail);
     await reporter?.log("REMEDIATE", `Remediation failed — ${fullDetail}`);
     await reporter?.setGraphRepair({ last_error: fullDetail });
     await reporter?.skipStage("remediating", `${detail.slice(0, 140)} — continuing`);
-    return { repaired, dropped, embedded, repairedUnitIds, remediationFailed: true };
+    return {
+      repaired,
+      dropped,
+      embedded,
+      repairedUnitIds,
+      droppedUnitIds,
+      rejudgedStates,
+      remediationFailed: true,
+    };
   }
 }
