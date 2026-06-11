@@ -425,6 +425,41 @@ export async function applyPaddleLifecycleUpdate(params: {
   `;
 }
 
+export type WorkspaceBillingState = {
+  workspaceId: string;
+  paddleCustomerId: string | null;
+  paddleSubscriptionId: string | null;
+  paddleSubscriptionStatus: string | null;
+};
+
+/**
+ * Fetch the Paddle billing identifiers for a workspace.
+ * Used by the billing page to determine whether a customer portal session can be generated.
+ */
+export async function getWorkspaceBillingState(
+  workspaceId: string
+): Promise<WorkspaceBillingState | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id,
+           paddle_customer_id     AS "paddleCustomerId",
+           paddle_subscription_id AS "paddleSubscriptionId",
+           paddle_subscription_status AS "paddleSubscriptionStatus"
+    FROM workspaces
+    WHERE id = ${workspaceId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    workspaceId: r.id,
+    paddleCustomerId: typeof r.paddleCustomerId === "string" ? r.paddleCustomerId : null,
+    paddleSubscriptionId: typeof r.paddleSubscriptionId === "string" ? r.paddleSubscriptionId : null,
+    paddleSubscriptionStatus:
+      typeof r.paddleSubscriptionStatus === "string" ? r.paddleSubscriptionStatus : null,
+  };
+}
+
 /** List projects for user (ownership via user_id; projects belong to user's workspace). */
 function mapProjectRow(r: {
   id: string;

@@ -81,6 +81,40 @@ export async function createCheckoutTransaction(params: {
   };
 }
 
+const SANDBOX_PORTAL = "https://sandbox-customer.paddle.com";
+const PRODUCTION_PORTAL = "https://customer.paddle.com";
+
+function getPortalBase(): string {
+  return getPaddleEnvironment() === "production" ? PRODUCTION_PORTAL : SANDBOX_PORTAL;
+}
+
+/**
+ * Generate a short-lived customer auth token and return the full portal URL.
+ * Requires PADDLE_API_KEY. The token is single-use and expires in 1 hour.
+ * Paddle docs: POST /customers/{customerId}/auth-token
+ */
+export async function createCustomerPortalUrl(customerId: string): Promise<string> {
+  const apiKey = getPaddleApiKey();
+  const res = await fetch(`${getApiBase()}/customers/${encodeURIComponent(customerId)}/auth-token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+  const payload = (await res.json().catch(() => ({}))) as PaddleApiResponse<{
+    customer_auth_token?: string;
+  }>;
+  if (!res.ok) {
+    const detail = payload?.error?.detail ?? payload?.error?.message ?? res.statusText;
+    throw new Error(`Paddle API error (${res.status}): ${detail}`);
+  }
+  const token = payload?.data?.customer_auth_token;
+  if (!token) throw new Error("Paddle customer auth token missing in response");
+  return `${getPortalBase()}/?customerAuthToken=${encodeURIComponent(token)}`;
+}
+
 function parseSignatureHeader(signatureHeader: string): { ts: string; h1: string } | null {
   const tokens = signatureHeader.split(";").map((p) => p.trim());
   let ts = "";

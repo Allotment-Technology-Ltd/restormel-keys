@@ -5,12 +5,44 @@
       projectLimit: number;
       monthlyRequestLimit: number;
       isServiceAdmin?: boolean;
+      isFounderUser?: boolean;
+      foundingProExpiresAt?: number | null;
     } | null;
+    paddleKeyConfigured: boolean;
+    hasCustomerId: boolean;
+    paddleSubscriptionStatus: string | null;
     invoices: Array<{ id: string; amount: string; issuedAt: string }>;
   };
 
   $: isPro = data.entitlements?.plan === "pro";
   $: isOp = data.entitlements?.isServiceAdmin === true;
+  $: isFounder = data.entitlements?.isFounderUser === true;
+
+  // Portal is actionable when: the Paddle API key is on this deployment AND the
+  // workspace has a customer ID (they have checked out at least once).
+  $: canOpenPortal = data.paddleKeyConfigured && data.hasCustomerId;
+
+  let portalLoading = false;
+  let portalError: string | null = null;
+
+  async function openPortal() {
+    portalLoading = true;
+    portalError = null;
+    try {
+      const res = await fetch("/keys/dashboard/api/billing/portal-session", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body?.url) {
+        portalError =
+          body?.error ?? "Unable to open billing portal. Please try again or contact support.";
+        return;
+      }
+      window.open(body.url, "_blank", "noopener,noreferrer");
+    } catch {
+      portalError = "Unable to open billing portal. Please check your connection and try again.";
+    } finally {
+      portalLoading = false;
+    }
+  }
 </script>
 
 <h1 class="page-title">Subscription & Billing</h1>
@@ -18,8 +50,8 @@
 
 {#if isOp}
   <p class="operator-banner" role="status">
-    You are signed in as a <strong>service operator</strong>. Subscription limits are waived for internal testing; this
-    is not end-customer billing.
+    You are signed in as a <strong>service operator</strong>. Subscription limits are waived for
+    internal testing; this is not end-customer billing.
   </p>
 {/if}
 
@@ -31,10 +63,40 @@
       <li>Projects: {data.entitlements?.projectLimit ?? 0}</li>
       <li>Monthly requests: {(data.entitlements?.monthlyRequestLimit ?? 0).toLocaleString()}</li>
     </ul>
+
     {#if isOp}
       <p class="muted small">No subscription required for operator accounts.</p>
+    {:else if isFounder && isPro}
+      <p class="muted small">
+        Pro access via the Founding Programme.
+        {#if data.entitlements?.foundingProExpiresAt}
+          Expires {new Date(data.entitlements.foundingProExpiresAt).toLocaleDateString()}.
+        {/if}
+      </p>
     {:else if isPro}
-      <a class="btn btn-primary" href="/keys/dashboard/billing">Manage subscription</a>
+      {#if canOpenPortal}
+        <button
+          class="btn btn-primary"
+          on:click={openPortal}
+          disabled={portalLoading}
+          aria-label="Open Paddle billing portal in a new tab"
+        >
+          {portalLoading ? "Opening…" : "Manage subscription"}
+        </button>
+      {:else}
+        <p class="muted small">
+          To update payment details, cancel, or download invoices, visit
+          <a
+            href="https://vendors.paddle.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-link"
+          >
+            Paddle's customer portal
+          </a>
+          — the link is in your receipt emails.
+        </p>
+      {/if}
     {:else}
       <a class="btn btn-primary" href="/keys/pricing">Upgrade to Pro</a>
     {/if}
@@ -42,20 +104,54 @@
 
   <article class="card">
     <h2>Invoices</h2>
-    {#if data.invoices.length === 0}
-      <p class="muted">No invoices yet - they will appear here when you subscribe to Pro.</p>
-    {:else}
+    {#if data.invoices.length > 0}
       <ul>
         {#each data.invoices as invoice}
           <li>{invoice.issuedAt} · {invoice.amount}</li>
         {/each}
       </ul>
+    {:else if isPro && !isFounder && !isOp}
+      <p class="muted">
+        Invoice history is available in the Paddle billing portal. Use the "Manage subscription"
+        button above, or find your receipts in email from Paddle.
+      </p>
+    {:else if isPro}
+      <p class="muted">No invoices — your Pro access is not via a paid subscription.</p>
+    {:else}
+      <p class="muted">No invoices yet. Invoices will appear here after your first payment.</p>
     {/if}
-    {#if isPro && !isOp}
-      <a class="btn btn-secondary" href="/keys/dashboard/billing">Open Paddle billing portal</a>
+
+    {#if canOpenPortal && isPro && !isOp && !isFounder}
+      <button
+        class="btn btn-secondary"
+        on:click={openPortal}
+        disabled={portalLoading}
+        aria-label="Open Paddle billing portal in a new tab"
+      >
+        {portalLoading ? "Opening…" : "Open Paddle billing portal"}
+      </button>
+    {/if}
+
+    {#if portalError}
+      <p class="error" role="alert">{portalError}</p>
     {/if}
   </article>
 </section>
+
+{#if data.paddleSubscriptionStatus && data.paddleSubscriptionStatus !== "active" && isPro && !isOp}
+  <p class="status-banner" role="status">
+    Subscription status: <strong>{data.paddleSubscriptionStatus}</strong>. If this is unexpected,
+    <a
+      href="https://vendors.paddle.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-link"
+    >
+      open the Paddle portal
+    </a>
+    or contact support.
+  </p>
+{/if}
 
 <style>
   .page-title {
@@ -70,7 +166,8 @@
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
   }
-  .operator-banner {
+  .operator-banner,
+  .status-banner {
     margin: 0 0 var(--space-4);
     padding: var(--space-3);
     border-radius: var(--rm-radius);
@@ -128,10 +225,30 @@
     border-radius: var(--rm-radius);
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--rm-sage, #6b7f6e);
+    color: var(--rm-on-sage, #fff);
   }
   .btn-secondary {
     border: 1px solid var(--rm-border);
     color: var(--rm-text);
     background: var(--rm-surface);
+  }
+  .inline-link {
+    color: var(--rm-text);
+    text-decoration: underline;
+  }
+  .error {
+    margin: var(--space-2) 0 0;
+    color: var(--rm-error, #c0392b);
+    font-size: var(--text-sm);
   }
 </style>
