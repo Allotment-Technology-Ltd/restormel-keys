@@ -18,6 +18,7 @@
   import { developerPortalUrl } from "$lib/developer-portal-url";
   import ProjectContextSwitcher from "$lib/components/dashboard/ProjectContextSwitcher.svelte";
   import FeedbackWidget from "$lib/components/FeedbackWidget.svelte";
+  import UserMenu from "$lib/components/UserMenu.svelte";
   import DashboardJourneyBanner from "$lib/components/dashboard/DashboardJourneyBanner.svelte";
   import ConnectWizardReturnBanner from "$lib/components/connect/pipeline/ConnectWizardReturnBanner.svelte";
   import MonitorComingSoonNav from "$lib/components/dashboard/MonitorComingSoonNav.svelte";
@@ -296,6 +297,11 @@
           <span class="topbar-help-sep" aria-hidden="true">·</span>
           <a href={SUITE_MAP_LINK.href} class="topbar-help-link">{SUITE_MAP_LINK.label}</a>
         </nav>
+        {#if user}
+          <div class="topbar-account">
+            <UserMenu {user} align="right" />
+          </div>
+        {/if}
       </header>
       <main class="main" data-sveltekit-preload-data="tap">
         {#if !user && !isAuthRoute}
@@ -554,6 +560,11 @@
   .topbar-help-sep {
     color: var(--rm-muted);
     user-select: none;
+  }
+  .topbar-account {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
   }
   .sidebar-footer {
     margin-top: var(--space-2);

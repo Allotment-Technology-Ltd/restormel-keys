@@ -105,7 +105,6 @@
           <div class="user-menu-email">{user.email}</div>
         {/if}
       </div>
-      <div class="user-menu-sep" aria-hidden="true"></div>
       {#if user.isServiceAdmin}
         <a class="user-menu-item" role="menuitem" href={ADMIN_BASE + "/users"} on:click={close}>Admin</a>
       {/if}
@@ -139,35 +138,36 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    border: 1px solid var(--rm-border);
-    background: var(--rm-bg);
-    color: var(--rm-text);
-    border-radius: var(--rm-radius);
-    padding: 0.25rem 0.5rem;
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    color: var(--brut-ink);
+    border-radius: 0;
+    padding: var(--space-1) var(--space-2);
+    min-height: 44px;
     cursor: pointer;
   }
 
   .user-menu-trigger:hover {
-    background: var(--rm-surface);
+    background: var(--brut-neon);
   }
 
   .user-menu-trigger:focus-visible {
-    outline: 2px solid var(--rm-sage);
+    outline: 2px solid var(--brut-ink);
     outline-offset: 2px;
   }
 
   .avatar {
     display: grid;
     place-items: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 999px;
-    background: color-mix(in oklab, var(--rm-sage) 18%, var(--rm-surface-raised));
-    border: 1px solid color-mix(in oklab, var(--rm-sage) 35%, var(--rm-border));
-    color: var(--rm-text);
-    font-family: var(--rm-font-ui);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0;
+    background: var(--brut-neon);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    color: var(--brut-ink);
+    font-family: var(--font-mono);
     font-size: var(--text-xs);
-    font-weight: 600;
+    font-weight: 900;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
@@ -177,20 +177,20 @@
   }
 
   .user-menu-caret {
-    color: var(--rm-muted);
+    color: var(--brut-ink);
     font-size: var(--text-xs);
-    margin-right: 0.15rem;
+    margin-right: 0.1rem;
   }
 
   .user-menu-popover {
     position: absolute;
-    top: calc(100% + 0.35rem);
+    top: calc(100% + 0.25rem);
     min-width: 14rem;
-    background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-    padding: var(--space-2);
+    background: var(--brut-white);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow);
+    padding: var(--space-1);
     z-index: var(--z-modal);
   }
 
@@ -203,14 +203,18 @@
   }
 
   .user-menu-header {
-    padding: var(--space-2) var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--brut-border-micro) solid var(--brut-ink);
+    margin-bottom: var(--space-1);
   }
 
   .user-menu-name {
-    font-family: var(--rm-font-ui);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--rm-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--brut-ink);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -227,34 +231,29 @@
     max-width: 18rem;
   }
 
-  .user-menu-sep {
-    height: 1px;
-    background: var(--rm-border);
-    margin: var(--space-2) 0;
-  }
-
   .user-menu-item {
     display: block;
     width: 100%;
-    padding: var(--space-2) var(--space-2);
-    border-radius: var(--rm-radius);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 0;
     font-size: var(--text-sm);
-    color: var(--rm-muted);
+    font-weight: 600;
+    color: var(--brut-ink);
     text-decoration: none;
   }
 
   .user-menu-item:hover,
   .user-menu-item:focus-visible {
-    background: var(--rm-sage-bg);
-    color: var(--rm-sage);
+    background: var(--brut-neon);
+    color: var(--brut-ink);
     outline: none;
     text-decoration: none;
   }
 
   .user-menu-danger:hover,
   .user-menu-danger:focus-visible {
-    background: color-mix(in oklab, var(--coral-alert, #c95c5c) 15%, transparent);
-    color: var(--coral-alert, #c95c5c);
+    background: var(--brut-coral);
+    color: var(--brut-ink);
   }
 </style>
 
