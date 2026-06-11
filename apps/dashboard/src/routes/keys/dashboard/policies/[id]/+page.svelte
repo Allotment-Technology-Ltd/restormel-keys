@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { invalidateAll } from "$app/navigation";
+  import VersionsPanel from "$lib/components/dashboard/VersionsPanel.svelte";
 
   export let data: {
     policy: {
@@ -286,6 +287,20 @@
         <p class="muted">{policyTestResult.detail}</p>
       </div>
     {/if}
+  </section>
+
+  <section class="section" aria-labelledby="versions-heading">
+    <h2 id="versions-heading" class="section-title">Versions</h2>
+    <p class="section-desc">
+      Publish this policy to make it live, or roll back to a prior version.
+    </p>
+    <VersionsPanel
+      historyUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/history`}
+      publishUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/publish`}
+      rollbackUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/rollback`}
+      entityNoun="policy"
+      onMutated={invalidateAll}
+    />
   </section>
 
   <section class="section">
