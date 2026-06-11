@@ -192,7 +192,11 @@ export async function loadConnectHubPage(
     };
     endHub();
     return payload;
-  } catch {
+  } catch (e) {
+    // null renders the hub's signed-out notice — log why so a backend failure
+    // (e.g. schema-gate or store error) is never silently misread as "not logged in".
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[connect-hub] loadConnectHubPage failed (rendering signed-out state):", msg.slice(0, 300));
     return null;
   }
 }
@@ -225,7 +229,9 @@ export async function loadConnectGraphPulse(
     const stats = await resolveConnectGraphStats(workspace.id, { requestMemo }).catch(() => null);
     const graphHealth = stats ? graphStatsToHealthSummary(stats) : null;
     return { stats, graphHealth };
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[connect-hub] loadConnectGraphPulse failed:", msg.slice(0, 300));
     return null;
   }
 }

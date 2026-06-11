@@ -27,6 +27,10 @@ import {
   parseStoredProductionQualityReport,
   summarizeG2Aggregate,
 } from "$lib/server/connect/ingest-quality-gates-data";
+import {
+  createSchemaMigrationGate,
+  type SchemaGateSql,
+} from "$lib/server/schema-migration-gate";
 
 // ---------------------------------------------------------------------------
 // Stage 1.7 — Runtime DDL gate
@@ -51,52 +55,36 @@ function runtimeDdlEnabled(): boolean {
  * The highest migration filename that must be present in schema_migrations for
  * the current codebase to work correctly.  Update this constant whenever a new
  * migration adds tables/columns that neon.ts functions depend on at runtime.
- *
- * The assertion fires once per process boot when runtimeDdlEnabled() is false.
  */
-const REQUIRED_MIGRATION = "059_schema_migrations_tracking.sql";
-
-let schemaBootAsserted: Promise<void> | null = null;
+const REQUIRED_MIGRATION = "062_connect_claim_versions_asof_lookup.sql";
 
 /**
- * Assert that the production schema is up to date with REQUIRED_MIGRATION.
- * Runs at most once per process; throws loudly if the high-water mark is behind
- * so that the health-check fails and the deploy does not go live with a stale DB.
+ * Drift gate used by the ensure* functions when runtime DDL is disabled
+ * (production). The ensure* call sites use the FAIL-OPEN mode
+ * (`warnIfBehind()`): a missing/behind schema_migrations bookkeeping row must
+ * never take down session/read paths — that regression presented to signed-in
+ * users as "you are not logged in" (loads caught the throw and rendered the
+ * signed-out state). Genuine schema drift still fails loudly: at deploy time
+ * via the CI migration job, and at runtime via the structured
+ * `schema_migration_gate` error this gate logs on every throttled re-check.
  */
-async function assertSchemaUpToDate(): Promise<void> {
-  if (schemaBootAsserted) return schemaBootAsserted;
-  schemaBootAsserted = (async () => {
-    const sql = getSql();
-    let rows: { filename: string }[];
-    try {
-      rows = (await sql`
-        SELECT filename FROM schema_migrations
-        ORDER BY filename DESC
-        LIMIT 1
-      `) as { filename: string }[];
-    } catch {
-      throw new Error(
-        `[deploy-time-migrations] schema_migrations table does not exist. ` +
-          `Run the migration runner (pnpm --filter dashboard run migrate) before starting production. ` +
-          `Required: ${REQUIRED_MIGRATION}`,
-      );
-    }
-    const hwm = rows[0]?.filename ?? "";
-    if (hwm < REQUIRED_MIGRATION) {
-      throw new Error(
-        `[deploy-time-migrations] Schema is behind. ` +
-          `High-water mark: "${hwm || "(none)"}". ` +
-          `Required: "${REQUIRED_MIGRATION}". ` +
-          `Run: pnpm --filter dashboard run migrate`,
-      );
-    }
-  })();
-  return schemaBootAsserted;
+const schemaMigrationGate = createSchemaMigrationGate({
+  requiredMigration: REQUIRED_MIGRATION,
+  getSql: () => getSql() as unknown as SchemaGateSql,
+});
+
+/**
+ * Strict variant — throws naming the missing migration. For boot/health checks
+ * and jobs where serving against a stale schema is unsafe. Not used on
+ * request/session paths (see schemaMigrationGate doc above).
+ */
+export async function assertSchemaUpToDate(): Promise<void> {
+  return schemaMigrationGate.assert();
 }
 
 /** Reset the cached boot assertion (test helper only). */
 export function _resetSchemaBootAssertForTesting(): void {
-  schemaBootAsserted = null;
+  schemaMigrationGate.reset();
 }
 
 // ---------------------------------------------------------------------------
@@ -1549,7 +1537,8 @@ async function ensureCatalogProviderIdColumn(): Promise<void> {
   if (ensuredCatalogProviderIdColumn) return ensuredCatalogProviderIdColumn;
   ensuredCatalogProviderIdColumn = (async () => {
     if (!runtimeDdlEnabled()) {
-      await assertSchemaUpToDate();
+      // Fail-open on read/session paths: log drift loudly, never throw here.
+      await schemaMigrationGate.warnIfBehind();
       return;
     }
     const sql = getSql();
@@ -1803,7 +1792,8 @@ async function ensureProjectModelBindingsSchema(): Promise<void> {
   if (ensuredProjectModelBindingsSchema) return ensuredProjectModelBindingsSchema;
   ensuredProjectModelBindingsSchema = (async () => {
     if (!runtimeDdlEnabled()) {
-      await assertSchemaUpToDate();
+      // Fail-open on read/session paths: log drift loudly, never throw here.
+      await schemaMigrationGate.warnIfBehind();
       return;
     }
     const sql = getSql();
@@ -2170,7 +2160,8 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
   if (ensuredIngestionRoutingSchema) return ensuredIngestionRoutingSchema;
   ensuredIngestionRoutingSchema = (async () => {
     if (!runtimeDdlEnabled()) {
-      await assertSchemaUpToDate();
+      // Fail-open on read/session paths: log drift loudly, never throw here.
+      await schemaMigrationGate.warnIfBehind();
       return;
     }
     const sql = getSql();
