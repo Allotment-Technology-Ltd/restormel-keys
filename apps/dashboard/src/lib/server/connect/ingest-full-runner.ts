@@ -291,12 +291,32 @@ export async function runFullExtraction(args: {
   const reingest = { unchangedSources: 0, carriedClaims: 0, changedClaims: 0, removedClaims: 0 };
 
   if (writer.provider === "surreal") {
-    // Surreal BYO version-chain placement is the verified-memory ADR's open question 1
-    // (awaiting sign-off) — re-ingests degrade to a full ingest there, never silently.
-    await reporter?.log(
-      "INGEST",
-      "Incremental re-ingest is not yet available for Surreal BYO stores — every source runs a full ingest.",
-    );
+    // Stage 3.2b: explicit operator log when the version-table opt-in is OFF.
+    // When ON, probeVersionTable eagerly runs DDL; a permission failure degrades to OFF
+    // with an operator-visible warning — never blocks the run, never silent.
+    if (!writer.allowSurrealVersionTable) {
+      await reporter?.log(
+        "INGEST",
+        "Incremental re-ingest is not enabled for this Surreal BYO store — every source runs a full ingest. " +
+          'To enable, turn on "Allow Restormel to manage claim versions in this database" in the graph store settings.',
+      );
+    } else if (writer.probeVersionTable) {
+      const tableReady = await writer.probeVersionTable();
+      if (!tableReady) {
+        await reporter?.log(
+          "INGEST",
+          'WARN: "Allow Restormel to manage claim versions in this database" is ON, but ' +
+            'the "restormel_claim_versions" table could not be created (permissions) — ' +
+            "degrading to full ingest for this run. Check that the Surreal user has DEFINE TABLE permissions, " +
+            'or turn off the setting to suppress this warning.',
+        );
+      } else {
+        await reporter?.log(
+          "INGEST",
+          "Incremental re-ingest enabled — restormel_claim_versions table ready in this Surreal DB.",
+        );
+      }
+    }
   }
 
   /** Durable checkpoint: every per-source LLM stage for sources[0..idx] is done. */
