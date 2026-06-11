@@ -1,7 +1,7 @@
 {
   "name": "@restormel/graphrag-core",
   "version": "0.1.0",
-  "description": "Knowledge Retrieve pipeline — graph-aware RAG with injected GraphStore and embedding ports (no Surreal driver in package).",
+  "description": "Knowledge Retrieve pipeline \u2014 graph-aware RAG with injected GraphStore and embedding ports (no Surreal driver in package).",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -11,7 +11,11 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "CHANGELOG.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -31,6 +35,7 @@
     "@restormel/graph-core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^20.17.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
   },
