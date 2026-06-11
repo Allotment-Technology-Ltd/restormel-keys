@@ -522,6 +522,12 @@
             </li>
           {/if}
         </ol>
+        <!-- W3.4 cross-link: run console → workspace trust scorecard -->
+        <p class="run-cross-links">
+          <a class="run-cross-link" href={CONNECT_BASE}>View workspace trust scorecard →</a>
+          <span class="run-cross-sep" aria-hidden="true">·</span>
+          <a class="run-cross-link" href={CONNECT_BASE + "/ingest"}>All ingest runs →</a>
+        </p>
       </div>
     {/if}
 
@@ -1046,6 +1052,32 @@
   .run-next-text {
     flex: 1;
     min-width: 12rem;
+  }
+
+  /* W3.4 cross-links */
+  .run-cross-links {
+    margin-top: var(--space-4);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+  }
+
+  .run-cross-link {
+    color: var(--rm-muted);
+    text-decoration: underline;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .run-cross-link:hover {
+    color: var(--brut-ink);
+  }
+
+  .run-cross-sep {
+    color: var(--rm-muted);
+    user-select: none;
   }
 
   .run-collapsible summary {

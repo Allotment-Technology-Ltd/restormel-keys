@@ -30,6 +30,15 @@
     isRouteBuilderPath,
     parseReturnTo,
   } from "$lib/connect/pipeline-config";
+  import CommandPalette from "$lib/components/CommandPalette.svelte";
+
+  let palette: CommandPalette | undefined;
+  let paletteOpen = false;
+
+  function openPalette() {
+    paletteOpen = true;
+    palette?.openPalette();
+  }
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
@@ -298,6 +307,19 @@
           <a href={SUITE_MAP_LINK.href} class="topbar-help-link">{SUITE_MAP_LINK.label}</a>
         </nav>
         {#if user}
+          <button
+            type="button"
+            class="topbar-palette-btn"
+            aria-label="Open command palette (⌘K)"
+            title="Search and navigate (⌘K / Ctrl+K)"
+            on:click={openPalette}
+          >
+            <span class="topbar-palette-icon" aria-hidden="true">⌕</span>
+            <span class="topbar-palette-label">Search</span>
+            <kbd class="topbar-palette-kbd" aria-hidden="true">⌘K</kbd>
+          </button>
+        {/if}
+        {#if user}
           <div class="topbar-account">
             <UserMenu {user} align="right" />
           </div>
@@ -379,6 +401,7 @@
   {#if user}
     <FeedbackWidget />
   {/if}
+  <CommandPalette bind:this={palette} bind:open={paletteOpen} />
 {/if}
 
 <style>
@@ -560,6 +583,48 @@
   .topbar-help-sep {
     color: var(--rm-muted);
     user-select: none;
+  }
+  .topbar-palette-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    color: var(--rm-muted);
+    border-radius: 0;
+    padding: var(--space-1) var(--space-3);
+    min-height: 36px;
+    cursor: pointer;
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .topbar-palette-btn:hover {
+    background: var(--brut-neon);
+    color: var(--brut-ink);
+    border-color: var(--brut-ink);
+  }
+  .topbar-palette-btn:focus-visible {
+    outline: 2px solid var(--brut-ink);
+    outline-offset: 2px;
+  }
+  .topbar-palette-icon {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+  .topbar-palette-label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .topbar-palette-kbd {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--rm-muted);
+    border: 1px solid currentColor;
+    padding: 0.05rem 0.25rem;
+    border-radius: 0;
+    opacity: 0.7;
   }
   .topbar-account {
     display: flex;
