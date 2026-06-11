@@ -1,4 +1,10 @@
-import type { AAIFRequest, AAIFResponse } from "./types.js";
+import type {
+  AAIFRequest,
+  AAIFResponse,
+  AAIFVerifiedClaimEnvelope,
+  AAIFVerifiedContextInput,
+  AAIFVerifiedContextOutput,
+} from "./types.js";
 import {
   INTEGRATION_STACK_SCHEMA_VERSION,
   INTEGRATION_STACK_TEMPLATES,
@@ -7,6 +13,118 @@ import {
 
 const VALID_TASKS = new Set(["chat", "completion", "embedding"]);
 const VALID_LATENCIES = new Set(["low", "balanced", "high"]);
+
+// ---------------------------------------------------------------------------
+// Verified-context validation helpers
+// ---------------------------------------------------------------------------
+
+const VALID_CLAIM_STATES = new Set([
+  "supported",
+  "inferred",
+  "unverified",
+  "contradicted",
+  "excluded",
+]);
+
+const VALID_EVIDENCE_MATCHES = new Set(["exact", "normalized", "fuzzy"]);
+
+function isValidVerifiedClaimEnvelope(value: unknown): value is AAIFVerifiedClaimEnvelope {
+  if (typeof value !== "object" || value === null) return false;
+  const env = value as Record<string, unknown>;
+
+  // claim
+  if (typeof env.claim !== "object" || env.claim === null) return false;
+  const claim = env.claim as Record<string, unknown>;
+  if (typeof claim.id !== "string" || typeof claim.text !== "string") return false;
+
+  // state
+  if (typeof env.state !== "string" || !VALID_CLAIM_STATES.has(env.state)) return false;
+
+  // evidence — must be an array (may be empty)
+  if (!Array.isArray(env.evidence)) return false;
+  for (const span of env.evidence) {
+    if (typeof span !== "object" || span === null) return false;
+    const s = span as Record<string, unknown>;
+    if (typeof s.quote !== "string") return false;
+    if (!Array.isArray(s.offsets) || s.offsets.length !== 2) return false;
+    if (typeof s.offsets[0] !== "number" || typeof s.offsets[1] !== "number") return false;
+    if (s.source_ref !== null && typeof s.source_ref !== "string") return false;
+    if (s.source_hash !== null && typeof s.source_hash !== "string") return false;
+    if (s.match !== undefined && s.match !== null && !VALID_EVIDENCE_MATCHES.has(s.match as string)) return false;
+  }
+
+  // judge (optional)
+  if (env.judge !== undefined) {
+    if (typeof env.judge !== "object" || env.judge === null) return false;
+    const j = env.judge as Record<string, unknown>;
+    if (j.model !== null && typeof j.model !== "string") return false;
+    if (typeof j.prompt_version !== "number") return false;
+    if (j.confidence !== null && typeof j.confidence !== "number") return false;
+    if (typeof j.at !== "string") return false;
+  }
+
+  // citation
+  if (env.citation !== null && typeof env.citation !== "string") return false;
+
+  // trace_ref
+  if (env.trace_ref !== null && typeof env.trace_ref !== "string") return false;
+
+  // trust_score (optional)
+  if (env.trust_score !== undefined && env.trust_score !== null && typeof env.trust_score !== "number") return false;
+
+  return true;
+}
+
+function isValidVerifiedContextInput(value: unknown): value is AAIFVerifiedContextInput {
+  if (typeof value !== "object" || value === null) return false;
+  const ctx = value as Record<string, unknown>;
+  if (!Array.isArray(ctx.claims)) return false;
+  if (!ctx.claims.every(isValidVerifiedClaimEnvelope)) return false;
+  if (ctx.retrieval_trace_ref !== undefined && ctx.retrieval_trace_ref !== null) {
+    if (typeof ctx.retrieval_trace_ref !== "string") return false;
+  }
+  return true;
+}
+
+function isValidVerifiedContextOutput(value: unknown): value is AAIFVerifiedContextOutput {
+  if (typeof value !== "object" || value === null) return false;
+  const ctx = value as Record<string, unknown>;
+  if (!Array.isArray(ctx.claims)) return false;
+  if (!ctx.claims.every(isValidVerifiedClaimEnvelope)) return false;
+  if (ctx.summary !== undefined) {
+    if (typeof ctx.summary !== "object" || ctx.summary === null) return false;
+    for (const [k, v] of Object.entries(ctx.summary as Record<string, unknown>)) {
+      if (!VALID_CLAIM_STATES.has(k)) return false;
+      if (typeof v !== "number") return false;
+    }
+  }
+  if (ctx.retrieval_trace_ref !== undefined && ctx.retrieval_trace_ref !== null) {
+    if (typeof ctx.retrieval_trace_ref !== "string") return false;
+  }
+  return true;
+}
+
+/**
+ * Type guard for a single AAIFVerifiedClaimEnvelope.
+ * Use when consuming individual claim envelopes from Connect v1 or the MCP tool.
+ */
+export function isAAIFVerifiedClaimEnvelope(value: unknown): value is AAIFVerifiedClaimEnvelope {
+  return isValidVerifiedClaimEnvelope(value);
+}
+
+/**
+ * Type guard for AAIFVerifiedContextInput (on AAIFRequest).
+ */
+export function isAAIFVerifiedContextInput(value: unknown): value is AAIFVerifiedContextInput {
+  return isValidVerifiedContextInput(value);
+}
+
+/**
+ * Type guard for AAIFVerifiedContextOutput (on AAIFResponse).
+ */
+export function isAAIFVerifiedContextOutput(value: unknown): value is AAIFVerifiedContextOutput {
+  return isValidVerifiedContextOutput(value);
+}
 
 const TEMPLATE_IDS = new Set<string>(INTEGRATION_STACK_TEMPLATES.map((t) => t.id));
 const MAX_STACK_COMPONENTS = 32;
@@ -80,6 +198,7 @@ export function isAAIFRequest(value: unknown): value is AAIFRequest {
     if (typeof obj.routingPlan !== "object" || obj.routingPlan === null) return false;
   }
   if (obj.integrationStack !== undefined && !isValidIntegrationStack(obj.integrationStack)) return false;
+  if (obj.verifiedContext !== undefined && !isValidVerifiedContextInput(obj.verifiedContext)) return false;
   return true;
 }
 
@@ -97,5 +216,6 @@ export function isAAIFResponse(value: unknown): value is AAIFResponse {
   if (typeof obj.routing !== "object" || obj.routing === null) return false;
   const r = obj.routing as Record<string, unknown>;
   if (typeof r.reason !== "string") return false;
+  if (obj.verifiedContext !== undefined && !isValidVerifiedContextOutput(obj.verifiedContext)) return false;
   return true;
 }
