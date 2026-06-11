@@ -144,4 +144,7 @@ export {
   type WorkspaceWebhookRecord,
   getWorkspaceBillingState,
   type WorkspaceBillingState,
+  listTestingVerdicts,
+  insertTestingVerdict,
+  type TestingVerdictRow,
 } from "$lib/server/neon";

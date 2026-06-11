@@ -9150,3 +9150,94 @@ export async function revokeManagementKey(params: {
   }
   return revoked;
 }
+
+// ── W3.8: testing_run_verdicts (Testing hub timeline) ────────────────────────
+
+let testingVerdictsSchemaEnsured = false;
+
+/** CREATE TABLE IF NOT EXISTS for testing run verdicts (W3.8). */
+async function ensureTestingVerdictsSchema(): Promise<void> {
+  if (testingVerdictsSchemaEnsured) return;
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS testing_run_verdicts (
+      id              BIGSERIAL   PRIMARY KEY,
+      workspace_id    TEXT        NOT NULL,
+      evaluated_at    TIMESTAMPTZ NOT NULL,
+      pass            BOOLEAN     NOT NULL,
+      verdict_schema  TEXT        NOT NULL,
+      verdict         JSONB       NOT NULL,
+      recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_testing_run_verdicts_workspace ON testing_run_verdicts (workspace_id, evaluated_at DESC)`;
+  testingVerdictsSchemaEnsured = true;
+}
+
+export type TestingVerdictRow = {
+  id: string;
+  workspaceId: string;
+  evaluatedAt: string;
+  pass: boolean;
+  verdictSchema: string;
+  verdict: unknown;
+  recordedAt: string;
+};
+
+/** W3.8: persist one testing run verdict. */
+export async function insertTestingVerdict(params: {
+  workspaceId: string;
+  evaluatedAt: string;
+  pass: boolean;
+  verdictSchema: string;
+  verdict: unknown;
+}): Promise<{ id: string; recordedAt: string }> {
+  await ensureTestingVerdictsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO testing_run_verdicts
+      (workspace_id, evaluated_at, pass, verdict_schema, verdict)
+    VALUES
+      (${params.workspaceId}, ${params.evaluatedAt}, ${params.pass},
+       ${params.verdictSchema}, ${JSON.stringify(params.verdict)})
+    RETURNING id, recorded_at
+  `;
+  const row = rows[0] as { id: string | number; recorded_at: Date | string };
+  const recordedAt = row.recorded_at instanceof Date ? row.recorded_at.toISOString() : String(row.recorded_at);
+  return { id: String(row.id), recordedAt };
+}
+
+/** W3.8: list testing run verdicts for a workspace, newest first. */
+export async function listTestingVerdicts(params: {
+  workspaceId: string;
+  limit?: number;
+  beforeId?: string | null;
+}): Promise<TestingVerdictRow[]> {
+  await ensureTestingVerdictsSchema();
+  const sql = getSql();
+  const limit = Math.min(params.limit ?? 50, 200);
+  const rows = params.beforeId
+    ? await sql`
+        SELECT id, workspace_id, evaluated_at, pass, verdict_schema, verdict, recorded_at
+        FROM testing_run_verdicts
+        WHERE workspace_id = ${params.workspaceId} AND id < ${params.beforeId}
+        ORDER BY evaluated_at DESC, id DESC
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT id, workspace_id, evaluated_at, pass, verdict_schema, verdict, recorded_at
+        FROM testing_run_verdicts
+        WHERE workspace_id = ${params.workspaceId}
+        ORDER BY evaluated_at DESC, id DESC
+        LIMIT ${limit}
+      `;
+  return (rows as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    workspaceId: String(r.workspace_id),
+    evaluatedAt: r.evaluated_at instanceof Date ? r.evaluated_at.toISOString() : String(r.evaluated_at),
+    pass: Boolean(r.pass),
+    verdictSchema: String(r.verdict_schema),
+    verdict: r.verdict,
+    recordedAt: r.recorded_at instanceof Date ? r.recorded_at.toISOString() : String(r.recorded_at),
+  }));
+}
