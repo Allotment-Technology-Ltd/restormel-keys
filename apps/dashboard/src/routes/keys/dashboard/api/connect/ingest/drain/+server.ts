@@ -46,3 +46,5 @@ const handler: RequestHandler = async ({ request, url }) => {
 
 export const GET = handler;
 export const POST = handler;
+
+// Deploy marker: graphrag-core node-types fix (PR #237) present in this build.
