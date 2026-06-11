@@ -61,6 +61,12 @@ export async function executeConnectRetrieve(args: {
   const seed = request.seed_claim_id?.trim();
   const maxDepth = request.depth ? DEPTH_TO_MAX_DEPTH[request.depth] : undefined;
 
+  // Stage 3.3: temporal validity passes straight through to the orchestrator op.
+  const temporalFields = {
+    ...(request.as_of ? { as_of: request.as_of } : {}),
+    ...(request.include_superseded ? { include_superseded: true } : {}),
+  };
+
   // Map ConnectRetrieveRequest → ConnectGraphOpRequest (seed present ⇒ expand, else retrieve).
   const graphRequest: ConnectGraphOpRequest = seed
     ? {
@@ -70,6 +76,7 @@ export async function executeConnectRetrieve(args: {
         seed_node_ids: [seed],
         ...(maxDepth ? { depth: maxDepth } : {}),
         ...(request.require_verified ? { verification_policy: { include: ["supported"] } } : {}),
+        ...temporalFields,
       }
     : {
         workspace_id: auth.workspaceId,
@@ -80,6 +87,7 @@ export async function executeConnectRetrieve(args: {
         ...(maxDepth ? { max_depth: maxDepth } : {}),
         ...(request.domain_hint ? { domain: request.domain_hint } : {}),
         ...(request.require_verified ? { verification_policy: { include: ["supported"] } } : {}),
+        ...temporalFields,
       };
 
   const outcome = await executeConnectGraphOp({ auth, request: graphRequest, requestId });
@@ -88,7 +96,13 @@ export async function executeConnectRetrieve(args: {
   const body = outcome.body;
   const subgraph = body.subgraph;
   const claimsCount = subgraph?.claims.length ?? 0;
-  const degraded = body.metadata.retrieval_degraded === true || claimsCount === 0;
+  // Stage 3.3: an as_of projection that excluded every claim is a legitimate empty
+  // temporal answer ("nothing was valid at that instant"), not a degraded retrieval.
+  const temporal = body.metadata.temporal;
+  const temporallyEmptied =
+    temporal?.applied === true && claimsCount === 0 && (temporal.excluded_claims ?? 0) > 0;
+  const degraded =
+    body.metadata.retrieval_degraded === true || (claimsCount === 0 && !temporallyEmptied);
 
   let degradedCode: NonNullable<ConnectRetrieveResponse["metadata"]["retrieval_degraded_code"]> | undefined;
   let degradedReason: string | undefined;
@@ -120,6 +134,8 @@ export async function executeConnectRetrieve(args: {
       ...(body.metadata.verification_summary
         ? { verification_summary: body.metadata.verification_summary }
         : {}),
+      // Stage 3.3: temporal-filtering report (as_of/audit), incl. explicit degrades.
+      ...(temporal ? { temporal } : {}),
       retrieval_degraded: degraded,
       retrieval_degraded_reason: degradedReason,
       retrieval_degraded_code: degradedCode,

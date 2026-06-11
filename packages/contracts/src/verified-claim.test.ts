@@ -6,6 +6,7 @@ import {
   VerifiedClaimJudgeSchema,
   VerifiedClaimStateSchema,
   VerifiedClaimSummarySchema,
+  VerifiedClaimVersionSchema,
 } from "./verified-claim.js";
 import { ConnectRetrieveResponseSchema, ConnectGraphOpResponseSchema } from "./connect.js";
 
@@ -120,6 +121,50 @@ describe("VerifiedClaimJudgeSchema", () => {
     expect(() =>
       VerifiedClaimJudgeSchema.parse({ model: "m", prompt_version: 1, confidence: 1.5, at: "2026-06-10T12:00:00Z" }),
     ).toThrow();
+  });
+});
+
+describe("VerifiedClaimVersionSchema (Stage 3.3 temporal validity)", () => {
+  it("accepts a current version (open validity window)", () => {
+    expect(() =>
+      VerifiedClaimVersionSchema.parse({
+        valid_from: "2026-06-01T00:00:00.000Z",
+        valid_to: null,
+        superseded_by: null,
+        version_no: 1,
+      }),
+    ).not.toThrow();
+  });
+
+  it("accepts a superseded version (closed window + forward link)", () => {
+    expect(() =>
+      VerifiedClaimVersionSchema.parse({
+        valid_from: "2026-06-01T00:00:00.000Z",
+        valid_to: "2026-06-10T00:00:00.000Z",
+        superseded_by: "12345",
+        version_no: 1,
+      }),
+    ).not.toThrow();
+  });
+
+  it("requires valid_from; valid_to/superseded_by/version_no are optional (additive)", () => {
+    expect(() => VerifiedClaimVersionSchema.parse({ valid_from: "2026-06-01T00:00:00Z" })).not.toThrow();
+    expect(() => VerifiedClaimVersionSchema.parse({})).toThrow();
+  });
+
+  it("the envelope carries the version block additively (pre-3.3 envelopes still valid)", () => {
+    expect(() => VerifiedClaimEnvelopeSchema.parse(fullEnvelope)).not.toThrow();
+    expect(() =>
+      VerifiedClaimEnvelopeSchema.parse({
+        ...fullEnvelope,
+        version: {
+          valid_from: "2026-06-01T00:00:00.000Z",
+          valid_to: "2026-06-10T00:00:00.000Z",
+          superseded_by: "12345",
+          version_no: 2,
+        },
+      }),
+    ).not.toThrow();
   });
 });
 

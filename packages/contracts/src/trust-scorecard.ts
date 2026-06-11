@@ -74,6 +74,21 @@ export const TrustScorecardCoverageSchema = z.object({
 });
 export type TrustScorecardCoverage = z.infer<typeof TrustScorecardCoverageSchema>;
 
+/**
+ * Temporal-validity coverage (Stage 3.3): how much of the graph carries claim-version
+ * data (valid_from/valid_to windows — verified-memory ADR §2), i.e. how much of it can
+ * answer as-of queries. `versioned` is null when the store could not answer (unknown is
+ * reported as unknown, never as zero — same rule as TrustScorecardCoverageSchema).
+ */
+export const TrustScorecardTemporalSchema = z.object({
+  /** Units whose current claim version carries a validity window; null = store couldn't answer. */
+  versioned: z.number().int().nonnegative().nullable(),
+  units: z.number().int().nonnegative(),
+  /** % of units with temporal coverage (integer 0–100); null when versioned is unknown. */
+  pct: z.number().min(0).max(100).nullable()
+});
+export type TrustScorecardTemporal = z.infer<typeof TrustScorecardTemporalSchema>;
+
 export const ConnectTrustScorecardSchema = z.object({
   schema_version: z.literal(CONNECT_TRUST_SCORECARD_SCHEMA_VERSION),
   /** When this scorecard was computed (ISO 8601). */
@@ -103,6 +118,12 @@ export const ConnectTrustScorecardSchema = z.object({
   /** Per-EBV-state unit counts (supported|inferred|unverified|contradicted|excluded). */
   verification_states: VerifiedClaimSummarySchema,
   coverage: TrustScorecardCoverageSchema,
+  /**
+   * Temporal-validity coverage (Stage 3.3, additive): % of the graph with claim-version
+   * rows — the share of the graph that can answer as-of retrieval. Optional so payloads
+   * produced before Stage 3.3 still validate (schema_version unchanged).
+   */
+  temporal: TrustScorecardTemporalSchema.optional(),
   /**
    * When the graph was last verified: the latest EBV entailment judgment timestamp,
    * falling back to the latest completed run's quality assessment. Null when neither

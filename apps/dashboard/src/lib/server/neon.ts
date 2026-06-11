@@ -7098,6 +7098,8 @@ async function ensureConnectClaimVersionsSchema(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_unit ON connect_claim_versions (workspace_id, unit_id) WHERE valid_to IS NULL`;
   await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_state ON connect_claim_versions (workspace_id, verification_state) WHERE valid_to IS NULL`;
   await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_claim_key ON connect_claim_versions (workspace_id, claim_key) WHERE claim_key IS NOT NULL`;
+  // Stage 3.3 (migrations/062): as-of chain lookups also read CLOSED versions by unit id.
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_unit_all ON connect_claim_versions (workspace_id, unit_id)`;
   claimVersionsSchemaEnsured = true;
 }
 
@@ -7264,6 +7266,98 @@ export async function supersedeConnectClaimVersionsPostgres(params: {
     RETURNING ccv.id
   `;
   return updated.length;
+}
+
+export type ConnectClaimVersionChainRow = {
+  versionId: string;
+  unitId: string;
+  claimKey: string | null;
+  versionNo: number;
+  text: string;
+  verificationState: string | null;
+  validFrom: string;
+  validTo: string | null;
+  supersededBy: string | null;
+  judgedBy: string | null;
+  judgedAt: string | null;
+};
+
+function coerceIso(value: string | Date | null | undefined): string | null {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value) return new Date(value).toISOString();
+  return null;
+}
+
+/**
+ * Stage 3.3 (as-of retrieval): every version row in the identity chains touching the
+ * given unit ids — the row(s) for each unit itself plus, via claim_key, the rows of all
+ * other versions of the same claims (prior/successor units). One round-trip; rows come
+ * back in id order so chains are chronologically ordered.
+ */
+export async function listConnectClaimVersionChainsForUnitsPostgres(params: {
+  workspaceId: string;
+  unitIds: string[];
+}): Promise<ConnectClaimVersionChainRow[]> {
+  if (params.unitIds.length === 0) return [];
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    WITH target_chains AS (
+      SELECT DISTINCT claim_key FROM connect_claim_versions
+      WHERE workspace_id = ${params.workspaceId}
+        AND unit_id = ANY(${params.unitIds}::text[])
+        AND claim_key IS NOT NULL
+    )
+    SELECT id, unit_id, claim_key, version_no, text, verification_state,
+           valid_from, valid_to, superseded_by, judged_by, judged_at
+    FROM connect_claim_versions
+    WHERE workspace_id = ${params.workspaceId}
+      AND (
+        unit_id = ANY(${params.unitIds}::text[])
+        OR claim_key IN (SELECT claim_key FROM target_chains)
+      )
+    ORDER BY id
+  `;
+  return (rows as {
+    id: number | string;
+    unit_id: string;
+    claim_key: string | null;
+    version_no: number;
+    text: string;
+    verification_state: string | null;
+    valid_from: string | Date;
+    valid_to: string | Date | null;
+    superseded_by: number | string | null;
+    judged_by: string | null;
+    judged_at: string | Date | null;
+  }[]).map((r) => ({
+    versionId: String(r.id),
+    unitId: r.unit_id,
+    claimKey: r.claim_key ?? null,
+    versionNo: Number(r.version_no ?? 1),
+    text: r.text,
+    verificationState: r.verification_state ?? null,
+    validFrom: coerceIso(r.valid_from) ?? new Date(0).toISOString(),
+    validTo: coerceIso(r.valid_to),
+    supersededBy: r.superseded_by == null ? null : String(r.superseded_by),
+    judgedBy: r.judged_by ?? null,
+    judgedAt: coerceIso(r.judged_at),
+  }));
+}
+
+/**
+ * Stage 3.3 (scorecard temporal coverage): how many distinct units carry a CURRENT
+ * claim-version row (valid_to IS NULL) — the share of the graph that can answer as-of
+ * retrieval. The caller divides by total units.
+ */
+export async function countConnectVersionedUnitsPostgres(workspaceId: string): Promise<number> {
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT count(DISTINCT unit_id)::int AS c FROM connect_claim_versions
+    WHERE workspace_id = ${workspaceId} AND valid_to IS NULL
+  `;
+  return Number((rows[0] as { c?: number } | undefined)?.c ?? 0);
 }
 
 let claimJudgmentsSchemaEnsured = false;
