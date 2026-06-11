@@ -2374,6 +2374,16 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS graph_target_id TEXT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS current_action TEXT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS progress JSONB`;
+    // Stage 1.6 durable runs — worker lease + heartbeat (mirror of migration 061).
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS worker_id TEXT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS lease_expires_at BIGINT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS worker_heartbeat_at BIGINT`;
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS reclaim_count INTEGER NOT NULL DEFAULT 0`;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_jobs_running_lease
+      ON knowledge_ingest_jobs (lease_expires_at)
+      WHERE status = 'running'
+    `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_ingest_job_logs (
         id BIGSERIAL PRIMARY KEY,
@@ -5407,6 +5417,19 @@ export type GraphRepairJobProgress = {
   last_activity_at: string;
 };
 
+/**
+ * Stage 1.6 durable runs — completed-stage checkpoint persisted by the full runner
+ * after every source so a run reclaimed after a stall can resume without re-spending
+ * LLM calls on work that already completed. Stage names/ordering come from
+ * `INGEST_PIPELINE_STAGES_ORDER` (`@restormel/connect-core` resume-stage helpers).
+ */
+export type ConnectIngestJobResumeCheckpoint = {
+  /** Sources whose per-source pipeline (extract → … → remediate) fully completed. */
+  sources_done: number;
+  /** Last fully completed pipeline stage (resume-stage.ts vocabulary). */
+  last_stage_completed: string | null;
+};
+
 export type ConnectIngestJobProgress = {
   percent: number;
   processed: number;
@@ -5414,6 +5437,7 @@ export type ConnectIngestJobProgress = {
   execution_mode?: "stub" | "full";
   quality_report?: ConnectIngestJobQualityReport;
   graph_repair?: GraphRepairJobProgress;
+  resume?: ConnectIngestJobResumeCheckpoint;
 };
 
 export type ConnectIngestJobRecord = {
@@ -5434,6 +5458,14 @@ export type ConnectIngestJobRecord = {
   error: string | null;
   createdAt: number;
   updatedAt: number;
+  /** Stage 1.6 durable runs — fencing token set at claim time (optional: legacy rows). */
+  workerId?: string | null;
+  /** Unix ms lease expiry; a 'running' job past this is reclaimable. */
+  leaseExpiresAt?: number | null;
+  /** Unix ms of the last worker-loop heartbeat. */
+  workerHeartbeatAt?: number | null;
+  /** How many times the job was reclaimed after a stall. */
+  reclaimCount?: number;
 };
 
 function msToIso(ms: number): string {
@@ -5614,6 +5646,22 @@ function parseGraphRepairJobProgress(raw: unknown): GraphRepairJobProgress | und
   };
 }
 
+function parseConnectIngestJobResumeCheckpoint(
+  raw: unknown,
+): ConnectIngestJobResumeCheckpoint | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const rec = raw as Record<string, unknown>;
+  const sourcesDone = Number(rec.sources_done);
+  if (!Number.isFinite(sourcesDone) || sourcesDone < 0) return undefined;
+  return {
+    sources_done: Math.max(0, Math.round(sourcesDone)),
+    last_stage_completed:
+      typeof rec.last_stage_completed === "string" && rec.last_stage_completed.trim()
+        ? rec.last_stage_completed.trim()
+        : null,
+  };
+}
+
 function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const rec = raw as Record<string, unknown>;
@@ -5625,6 +5673,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
   }
   const quality_report = parseConnectIngestJobQualityReport(rec.quality_report);
   const graph_repair = parseGraphRepairJobProgress(rec.graph_repair);
+  const resume = parseConnectIngestJobResumeCheckpoint(rec.resume);
   return {
     percent: Math.min(100, Math.max(0, Math.round(percent))),
     processed: Math.max(0, Math.round(processed)),
@@ -5634,6 +5683,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
       : {}),
     ...(quality_report ? { quality_report } : {}),
     ...(graph_repair ? { graph_repair } : {}),
+    ...(resume ? { resume } : {}),
   };
 }
 
@@ -5707,6 +5757,10 @@ function mapConnectIngestJobRow(row: Record<string, unknown>): ConnectIngestJobR
     error: row.error != null ? String(row.error) : null,
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at),
+    workerId: row.worker_id != null ? String(row.worker_id) : null,
+    leaseExpiresAt: row.lease_expires_at != null ? Number(row.lease_expires_at) : null,
+    workerHeartbeatAt: row.worker_heartbeat_at != null ? Number(row.worker_heartbeat_at) : null,
+    reclaimCount: row.reclaim_count != null ? Number(row.reclaim_count) : 0,
   };
 }
 
@@ -5921,10 +5975,23 @@ export async function getConnectIngestJobForWorkspace(params: {
   return mapConnectIngestJobRow(rows[0] as Record<string, unknown>);
 }
 
-export async function claimNextPendingConnectIngestJob(): Promise<ConnectIngestJobRecord | null> {
+/** Default worker lease: a 'running' job with no heartbeat for this long is reclaimable. */
+export const CONNECT_INGEST_DEFAULT_LEASE_MS = 5 * 60_000;
+
+/** Error prefix marking jobs that were reclaimed after a stalled worker (lease expiry). */
+export const CONNECT_INGEST_WORKER_LOST_ERROR = "worker_lost";
+
+export async function claimNextPendingConnectIngestJob(params?: {
+  /** Fencing token recorded on the claimed row; worker-side updates are guarded by it. */
+  workerId?: string;
+  /** Lease duration in ms (default 5 min); extended by the worker-loop heartbeat. */
+  leaseMs?: number;
+}): Promise<ConnectIngestJobRecord | null> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const now = Date.now();
+  const leaseMs = Math.max(10_000, params?.leaseMs ?? CONNECT_INGEST_DEFAULT_LEASE_MS);
+  const workerId = params?.workerId ?? null;
   const rows = await sql`
     WITH c AS (
       SELECT id
@@ -5935,10 +6002,120 @@ export async function claimNextPendingConnectIngestJob(): Promise<ConnectIngestJ
       FOR UPDATE SKIP LOCKED
     )
     UPDATE knowledge_ingest_jobs j
-    SET status = 'running', updated_at = ${now}
+    SET
+      status = 'running',
+      worker_id = ${workerId},
+      lease_expires_at = ${now + leaseMs},
+      worker_heartbeat_at = ${now},
+      updated_at = ${now}
     FROM c
     WHERE j.id = c.id
     RETURNING j.*
+  `;
+  if (rows.length === 0) return null;
+  return mapConnectIngestJobRow(rows[0] as Record<string, unknown>);
+}
+
+/**
+ * Worker-loop heartbeat: extend the claimed job's lease. Guarded by status AND the
+ * worker fencing token so a zombie worker (suspended instance resumed after the job
+ * was reclaimed and re-claimed elsewhere) cannot keep a lease it no longer owns.
+ * Returns false when the job is no longer this worker's running job.
+ */
+export async function heartbeatConnectIngestJobLease(params: {
+  id: string;
+  workerId: string;
+  leaseMs?: number;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const leaseMs = Math.max(10_000, params.leaseMs ?? CONNECT_INGEST_DEFAULT_LEASE_MS);
+  const rows = await sql`
+    UPDATE knowledge_ingest_jobs
+    SET
+      worker_heartbeat_at = ${now},
+      lease_expires_at = ${now + leaseMs},
+      updated_at = ${now}
+    WHERE id = ${params.id}
+      AND status = 'running'
+      AND worker_id = ${params.workerId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Reclaim stale 'running' jobs whose worker lease expired (instance recycled,
+ * process crash). Single atomic UPDATE … RETURNING: two concurrent reclaimers can
+ * never both win the same row — the second re-evaluates the WHERE after the first
+ * commits and sees status != 'running'.
+ *
+ * Marks the job 'failed' with a `worker_lost` error so the freeze becomes a
+ * visible, restartable failure (NEVER silently re-runs side effects). Jobs claimed
+ * before the lease columns existed (lease_expires_at IS NULL) fall back to
+ * updated_at staleness — the reporter persists progress continuously, so a live
+ * legacy worker keeps updated_at fresh.
+ */
+export async function reclaimStaleRunningConnectIngestJobs(params?: {
+  /** Stale window for legacy rows without a lease (default = the default lease). */
+  staleMs?: number;
+  now?: number;
+}): Promise<ConnectIngestJobRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = params?.now ?? Date.now();
+  const staleMs = Math.max(10_000, params?.staleMs ?? CONNECT_INGEST_DEFAULT_LEASE_MS);
+  const error = `${CONNECT_INGEST_WORKER_LOST_ERROR}: reclaimed after stall — no worker heartbeat before lease expiry`;
+  const rows = await sql`
+    UPDATE knowledge_ingest_jobs
+    SET
+      status = 'failed',
+      error = ${error},
+      current_action = 'Reclaimed after stall',
+      worker_id = NULL,
+      lease_expires_at = NULL,
+      reclaim_count = reclaim_count + 1,
+      updated_at = ${now}
+    WHERE status = 'running'
+      AND (
+        (lease_expires_at IS NOT NULL AND lease_expires_at < ${now})
+        OR (lease_expires_at IS NULL AND updated_at < ${now - staleMs})
+      )
+    RETURNING *
+  `;
+  return rows.map((row) => mapConnectIngestJobRow(row as Record<string, unknown>));
+}
+
+/**
+ * Re-queue a job that failed with `worker_lost` (reclaimed after a stall) IN PLACE,
+ * preserving its stages + progress.resume checkpoint so the worker resumes from the
+ * last completed stage instead of re-spending LLM calls. Atomic guard: only a
+ * reclaimed failure can be re-queued, and only once (a raced second restart sees
+ * status = 'pending' and matches nothing).
+ */
+export async function requeueReclaimedConnectIngestJob(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<ConnectIngestJobRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const rows = await sql`
+    UPDATE knowledge_ingest_jobs
+    SET
+      status = 'pending',
+      error = NULL,
+      current_action = 'Re-queued after stall — waiting for worker',
+      worker_id = NULL,
+      lease_expires_at = NULL,
+      worker_heartbeat_at = NULL,
+      updated_at = ${now}
+    WHERE id = ${params.id}
+      AND workspace_id = ${params.workspaceId}
+      AND status = 'failed'
+      AND error LIKE ${CONNECT_INGEST_WORKER_LOST_ERROR + "%"}
+    RETURNING *
   `;
   if (rows.length === 0) return null;
   return mapConnectIngestJobRow(rows[0] as Record<string, unknown>);
@@ -5954,10 +6131,18 @@ export async function updateConnectIngestJobById(params: {
   progress?: ConnectIngestJobProgress | null;
   stages?: unknown;
   error?: string | null;
+  /**
+   * Stage 1.6 worker fencing: when set, the update only applies while the row still
+   * belongs to this worker. Combined with the always-on non-terminal guard this
+   * stops a zombie worker (resumed after its job was reclaimed) from resurrecting a
+   * 'failed'/'cancelled' job or scribbling over a re-claimed one.
+   */
+  workerId?: string | null;
 }): Promise<void> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const now = Date.now();
+  const workerId = params.workerId ?? null;
   const stagesJson =
     params.stages !== undefined ? JSON.stringify(params.stages) : null;
   const progressJson =
@@ -5982,6 +6167,8 @@ export async function updateConnectIngestJobById(params: {
           error = ${params.error ?? null},
           updated_at = ${now}
         WHERE id = ${params.id}
+          AND status IN ('pending', 'running')
+          AND (${workerId}::text IS NULL OR worker_id = ${workerId})
       `;
     } else if (patchStage) {
       await sql`
@@ -5994,6 +6181,8 @@ export async function updateConnectIngestJobById(params: {
           error = ${params.error ?? null},
           updated_at = ${now}
         WHERE id = ${params.id}
+          AND status IN ('pending', 'running')
+          AND (${workerId}::text IS NULL OR worker_id = ${workerId})
       `;
     } else if (patchAction) {
       await sql`
@@ -6006,6 +6195,8 @@ export async function updateConnectIngestJobById(params: {
           error = ${params.error ?? null},
           updated_at = ${now}
         WHERE id = ${params.id}
+          AND status IN ('pending', 'running')
+          AND (${workerId}::text IS NULL OR worker_id = ${workerId})
       `;
     } else {
       await sql`
@@ -6017,6 +6208,8 @@ export async function updateConnectIngestJobById(params: {
           error = ${params.error ?? null},
           updated_at = ${now}
         WHERE id = ${params.id}
+          AND status IN ('pending', 'running')
+          AND (${workerId}::text IS NULL OR worker_id = ${workerId})
       `;
     }
     return;
@@ -6033,6 +6226,8 @@ export async function updateConnectIngestJobById(params: {
         error = ${params.error ?? null},
         updated_at = ${now}
       WHERE id = ${params.id}
+        AND status IN ('pending', 'running')
+        AND (${workerId}::text IS NULL OR worker_id = ${workerId})
     `;
     return;
   }
@@ -6046,6 +6241,8 @@ export async function updateConnectIngestJobById(params: {
         error = ${params.error ?? null},
         updated_at = ${now}
       WHERE id = ${params.id}
+        AND status IN ('pending', 'running')
+        AND (${workerId}::text IS NULL OR worker_id = ${workerId})
     `;
     return;
   }
@@ -6059,6 +6256,8 @@ export async function updateConnectIngestJobById(params: {
         error = ${params.error ?? null},
         updated_at = ${now}
       WHERE id = ${params.id}
+        AND status IN ('pending', 'running')
+        AND (${workerId}::text IS NULL OR worker_id = ${workerId})
     `;
     return;
   }
@@ -6071,6 +6270,8 @@ export async function updateConnectIngestJobById(params: {
       error = ${params.error ?? null},
       updated_at = ${now}
     WHERE id = ${params.id}
+      AND status IN ('pending', 'running')
+      AND (${workerId}::text IS NULL OR worker_id = ${workerId})
   `;
 }
 

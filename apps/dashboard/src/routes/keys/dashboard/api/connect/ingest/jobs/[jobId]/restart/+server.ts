@@ -9,6 +9,8 @@ import {
   insertConnectIngestJob,
   connectIngestJobRecordToApi,
   appendConnectIngestJobLog,
+  requeueReclaimedConnectIngestJob,
+  CONNECT_INGEST_WORKER_LOST_ERROR,
 } from "$lib/server/connect-ingest-jobs";
 import { formatBracketLogLine } from "$lib/connect/bracket-log-timeline";
 import { scheduleConnectIngestWorkerDrain } from "$lib/server/connect-ingest-worker";
@@ -60,6 +62,53 @@ export const POST: RequestHandler = async ({ locals, params }) => {
     return json(
       { error: "no_sources", message: "This run has no sources to replay." },
       { status: 400 },
+    );
+  }
+
+  // Stage 1.6: a run reclaimed after a stall (`worker_lost`) is re-queued IN PLACE,
+  // preserving its stages + progress.resume checkpoint, so the worker resumes from
+  // the last completed stage instead of re-spending finished LLM stages.
+  if (
+    existing.status === "failed" &&
+    existing.error?.startsWith(CONNECT_INGEST_WORKER_LOST_ERROR)
+  ) {
+    const requeued = await requeueReclaimedConnectIngestJob({
+      id: existing.id,
+      workspaceId: ctx.workspaceId,
+    });
+    // Lost the requeue race (double-click / concurrent restart): the job is already
+    // queued or running again — return it idempotently.
+    const job =
+      requeued ??
+      (await getConnectIngestJobForWorkspace({
+        jobId: existing.id,
+        workspaceId: ctx.workspaceId,
+      }));
+    if (!job || (job.status !== "pending" && job.status !== "running")) {
+      return json(
+        { error: "not_restartable", message: "This run can no longer be re-queued." },
+        { status: 409 },
+      );
+    }
+    if (requeued) {
+      const done = requeued.progress?.resume?.sources_done ?? 0;
+      await appendConnectIngestJobLog({
+        jobId: existing.id,
+        line: formatBracketLogLine(
+          "INGEST",
+          done > 0
+            ? `Re-queued after stall — resuming from checkpoint (${done} source(s) already complete)`
+            : "Re-queued after stall — waiting for worker",
+        ),
+      });
+    }
+    scheduleConnectIngestWorkerDrain();
+    return json(
+      {
+        restarted_from: existing.id,
+        job: connectIngestJobRecordToApi(job, { includeSources: true }),
+      },
+      { status: 201 },
     );
   }
 

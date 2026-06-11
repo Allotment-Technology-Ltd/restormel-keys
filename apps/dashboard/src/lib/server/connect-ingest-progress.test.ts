@@ -120,3 +120,53 @@ describe("ConnectIngestProgressReporter graph_repair", () => {
     expect(gr?.sources_remediation_failed).toBe(1);
   });
 });
+
+describe("ConnectIngestProgressReporter resume checkpoint (Stage 1.6)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("persists setResumeCheckpoint and keeps it across later persists", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.setResumeCheckpoint({ sources_done: 1, last_stage_completed: "remediating" });
+
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    let lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.progress?.resume).toEqual({
+      sources_done: 1,
+      last_stage_completed: "remediating",
+    });
+
+    // Any later persist (heartbeat, stage tick, even fail) must not drop it —
+    // a reclaimed run's restart depends on the checkpoint surviving.
+    await reporter.heartbeat();
+    lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.progress?.resume?.sources_done).toBe(1);
+
+    await reporter.fail(null, "boom");
+    lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.status).toBe("failed");
+    expect(lastCall?.progress?.resume?.sources_done).toBe(1);
+  });
+
+  it("seeds the checkpoint from a re-queued job's prior progress", async () => {
+    const job = {
+      ...mockJob(),
+      progress: {
+        percent: 30,
+        processed: 2,
+        total: 7,
+        resume: { sources_done: 2, last_stage_completed: "remediating" },
+      },
+    };
+    const reporter = new ConnectIngestProgressReporter(job);
+    expect(reporter.getResumeCheckpoint()).toEqual({
+      sources_done: 2,
+      last_stage_completed: "remediating",
+    });
+    await reporter.beginRun("Worker resumed run");
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.progress?.resume?.sources_done).toBe(2);
+  });
+});

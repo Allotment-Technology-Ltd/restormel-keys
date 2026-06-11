@@ -6,12 +6,18 @@ import {
   resolveQualityPreset,
   type ConnectIngestStageProgress,
 } from "@restormel/connect-core";
+import { randomUUID } from "node:crypto";
 import {
   claimNextPendingConnectIngestJob,
+  heartbeatConnectIngestJobLease,
+  reclaimStaleRunningConnectIngestJobs,
   updateConnectIngestJobById,
   getConnectIngestJobForWorkspace,
+  appendConnectIngestJobLog,
+  CONNECT_INGEST_DEFAULT_LEASE_MS,
   type ConnectIngestJobRecord,
 } from "$lib/server/connect-ingest-jobs";
+import { formatBracketLogLine } from "$lib/connect/bracket-log-timeline";
 import { toPublicConnectIngestQualityReport } from "$lib/server/neon";
 import { dispatchConnectIngestWebhooks } from "$lib/server/connect-v1/connect-webhook-delivery";
 import {
@@ -202,7 +208,12 @@ export async function processConnectIngestJobRecord(
 
     validateConnectIngestSources(job.sources);
     const stages = parseStages(job.stages);
-    await reporter.beginRun("Worker claimed run");
+    const resumedSources = job.progress?.resume?.sources_done ?? 0;
+    await reporter.beginRun(
+      resumedSources > 0
+        ? `Worker resumed run from checkpoint — ${resumedSources} source(s) already complete`
+        : "Worker claimed run",
+    );
 
     const mode = await resolveConnectIngestWorkerMode(job);
     if (mode === "stub") {
@@ -282,12 +293,16 @@ export async function processConnectIngestJobRecord(
           embed,
           reporter,
         });
-        // Stage 3.2: a re-ingest where every source was unchanged (hash match) is a
-        // legitimate near-no-op — zero new units is success there, not a failed run.
+        // Zero new units is a legitimate near-no-op in two cases that compose
+        // (Stage 3.2 × Stage 1.6): a re-ingest where sources were unchanged (hash
+        // match), and a resumed run that skipped checkpointed sources. Either way
+        // — including a resumed all-unchanged re-ingest — the run is a success;
+        // only fail a production run that produced nothing from scratch.
         if (
           quality.preset === "production" &&
           stats.units === 0 &&
-          stats.reingest.unchangedSources === 0
+          stats.reingest.unchangedSources === 0 &&
+          stats.resumedSourcesSkipped === 0
         ) {
           await reporter.fail(null, "production_run_zero_units");
           return;
@@ -414,14 +429,108 @@ async function maybeDispatchConnectIngestWebhooks(job: ConnectIngestJobRecord): 
   });
 }
 
+/**
+ * Stage 1.6 durable runs — worker identity + lease/heartbeat cadence.
+ * The lease must comfortably exceed the heartbeat interval so one missed beat
+ * (slow event loop, transient Neon error) never triggers a reclaim.
+ */
+const CONNECT_INGEST_WORKER_ID = `ingest-${process.pid}-${randomUUID().slice(0, 8)}`;
+
+export function connectIngestLeaseMs(): number {
+  const raw = Number(process.env.CONNECT_INGEST_LEASE_MS);
+  if (!Number.isFinite(raw) || raw < 30_000) return CONNECT_INGEST_DEFAULT_LEASE_MS;
+  return Math.min(raw, 60 * 60_000);
+}
+
+export function connectIngestWorkerHeartbeatMs(): number {
+  const raw = Number(process.env.CONNECT_INGEST_WORKER_HEARTBEAT_MS);
+  const fallback = Math.max(5_000, Math.floor(connectIngestLeaseMs() / 5));
+  if (!Number.isFinite(raw) || raw < 1_000) return Math.min(fallback, 60_000);
+  return raw;
+}
+
+/**
+ * Worker-loop heartbeat (independent of the progress reporter — a stage stuck in
+ * an awaited upstream call still beats). Extends the job's lease until stopped.
+ * Returns a stop function; ALWAYS call it in `finally`.
+ */
+export function startConnectIngestWorkerHeartbeat(
+  job: Pick<ConnectIngestJobRecord, "id" | "workerId">,
+  opts?: { intervalMs?: number; leaseMs?: number },
+): () => void {
+  const workerId = job.workerId ?? CONNECT_INGEST_WORKER_ID;
+  const intervalMs = opts?.intervalMs ?? connectIngestWorkerHeartbeatMs();
+  const leaseMs = opts?.leaseMs ?? connectIngestLeaseMs();
+  const id = setInterval(() => {
+    void heartbeatConnectIngestJobLease({ id: job.id, workerId, leaseMs }).then(
+      (alive) => {
+        if (!alive) {
+          console.warn(
+            `[connect-ingest-worker] heartbeat lost job ${job.id} (cancelled or reclaimed) — lease no longer ours`,
+          );
+        }
+      },
+      (err) => {
+        console.error("[connect-ingest-worker] heartbeat failed:", err);
+      },
+    );
+  }, intervalMs);
+  // Never keep a process alive just to heartbeat (dev / scripts).
+  if (typeof id === "object" && id !== null && "unref" in id) id.unref();
+  return () => clearInterval(id);
+}
+
+/**
+ * Reclaim stale 'running' jobs whose worker lease expired (recycled instance,
+ * crash). Each reclaimed job becomes a visible, restartable failure: status
+ * 'failed' + `worker_lost` error (atomic UPDATE … RETURNING in neon.ts) plus an
+ * operator-facing run-console event — never a silent re-run. Restarting resumes
+ * from the job's persisted completed-stage checkpoint.
+ */
+export async function reclaimStaleConnectIngestRuns(): Promise<number> {
+  const reclaimed = await reclaimStaleRunningConnectIngestJobs({
+    staleMs: connectIngestLeaseMs(),
+  });
+  for (const job of reclaimed) {
+    await appendConnectIngestJobLog({
+      jobId: job.id,
+      line: formatBracketLogLine(
+        "FATAL",
+        "Run reclaimed after stall — the worker stopped heartbeating (instance recycled or crashed). " +
+          "Restart the run to resume from the last completed checkpoint.",
+      ),
+    }).catch(() => {});
+    // Reclaim is a terminal failure — notify registered ingest webhooks.
+    await maybeDispatchConnectIngestWebhooks(job).catch((e) => {
+      console.error("[connect-webhook] reclaim dispatch hook failed", e);
+    });
+  }
+  return reclaimed.length;
+}
+
 export async function runConnectIngestWorkerOnce(): Promise<boolean> {
-  const job = await claimNextPendingConnectIngestJob();
+  const job = await claimNextPendingConnectIngestJob({
+    workerId: CONNECT_INGEST_WORKER_ID,
+    leaseMs: connectIngestLeaseMs(),
+  });
   if (!job) return false;
-  await processConnectIngestJobRecord(job);
+  // Heartbeat is owned by the worker loop (not the progress reporter) so the lease
+  // stays alive even while a stage is stuck awaiting a slow upstream call.
+  const stopHeartbeat = startConnectIngestWorkerHeartbeat(job);
+  try {
+    await processConnectIngestJobRecord(job);
+  } finally {
+    stopHeartbeat();
+  }
   return true;
 }
 
 export async function runConnectIngestWorkerLoop(maxJobs: number): Promise<number> {
+  // Honor lease expiry before claiming: surface any stalled run as a restartable
+  // failure first so the queue never wedges behind a phantom 'running' job.
+  await reclaimStaleConnectIngestRuns().catch((err) => {
+    console.error("[connect-ingest-worker] reclaim failed:", err);
+  });
   let n = 0;
   for (let i = 0; i < maxJobs; i++) {
     const did = await runConnectIngestWorkerOnce();
@@ -429,6 +538,30 @@ export async function runConnectIngestWorkerLoop(maxJobs: number): Promise<numbe
     n++;
   }
   return n;
+}
+
+/**
+ * Cron-drain entrypoint (Stage 1.6): processes the queue OUTSIDE the user request
+ * path. Called by the Vercel cron route (`/keys/dashboard/api/connect/ingest/drain`,
+ * route-level maxDuration) and designed so a long-lived worker process (Coolify,
+ * Stage 2 of the infra migration) can call the same function on an interval and
+ * replace the cron entirely.
+ */
+export async function drainConnectIngestQueue(opts?: {
+  maxJobs?: number;
+}): Promise<{ reclaimed: number; processed: number }> {
+  const maxJobs = Math.min(Math.max(1, Math.round(opts?.maxJobs ?? 3)), 10);
+  const reclaimed = await reclaimStaleConnectIngestRuns().catch((err) => {
+    console.error("[connect-ingest-worker] reclaim failed:", err);
+    return 0;
+  });
+  let processed = 0;
+  for (let i = 0; i < maxJobs; i++) {
+    const did = await runConnectIngestWorkerOnce();
+    if (!did) break;
+    processed++;
+  }
+  return { reclaimed, processed };
 }
 
 /**

@@ -17,6 +17,7 @@ import {
   appendConnectIngestJobLog,
   updateConnectIngestJobById,
   type ConnectIngestJobRecord,
+  type ConnectIngestJobResumeCheckpoint,
 } from "$lib/server/connect-ingest-jobs";
 
 export type GraphRepairProgress = {
@@ -50,6 +51,8 @@ export type ConnectIngestProgressSnapshot = {
   total: number;
   execution_mode?: "stub" | "full";
   graph_repair?: GraphRepairProgress;
+  /** Stage 1.6 durable runs — completed-stage checkpoint (survives every persist). */
+  resume?: ConnectIngestJobResumeCheckpoint;
 };
 
 const STAGE_TAGS: Record<ConnectIngestStage, string> = {
@@ -148,9 +151,26 @@ export class ConnectIngestProgressReporter {
   private currentAction = "";
   private currentStage: ConnectIngestStage | null = null;
   private graphRepair: GraphRepairProgress | null = null;
+  private resumeCheckpoint: ConnectIngestJobResumeCheckpoint | null;
 
   constructor(private job: ConnectIngestJobRecord) {
     this.stages = parseStages(job.stages);
+    // Preserve a prior attempt's checkpoint across every persist — a reclaimed run's
+    // restart relies on it to skip already-completed (and already-paid-for) stages.
+    this.resumeCheckpoint = job.progress?.resume ?? null;
+  }
+
+  /**
+   * Persist the durable resume checkpoint (Stage 1.6). Written by the full runner
+   * after each completed source / pipeline tail so a reclaimed run resumes here.
+   */
+  async setResumeCheckpoint(checkpoint: ConnectIngestJobResumeCheckpoint): Promise<void> {
+    this.resumeCheckpoint = checkpoint;
+    await this.persist("running");
+  }
+
+  getResumeCheckpoint(): ConnectIngestJobResumeCheckpoint | null {
+    return this.resumeCheckpoint;
   }
 
   /** Initialize graph re-validation / auto-remediation unit progress overlay. */
@@ -267,6 +287,7 @@ export class ConnectIngestProgressReporter {
       percent: percentFromStageIndex(stageIdx, CONNECT_INGEST_PIPELINE_STAGES.length, intra),
       processed: completedStages,
       total: CONNECT_INGEST_PIPELINE_STAGES.length,
+      ...(this.resumeCheckpoint ? { resume: this.resumeCheckpoint } : {}),
     };
   }
 
@@ -292,6 +313,9 @@ export class ConnectIngestProgressReporter {
       stages: this.stages,
       progress: this.snapshot(),
       ...(patch?.error !== undefined ? { error: patch.error } : {}),
+      // Worker fencing: a zombie reporter (instance resumed after its job was
+      // reclaimed) must not resurrect or scribble over the job row.
+      workerId: this.job.workerId ?? null,
     });
   }
 
@@ -484,6 +508,7 @@ export class ConnectIngestProgressReporter {
       currentStage: null,
       currentAction: summary,
       stages: this.stages,
+      workerId: this.job.workerId ?? null,
       progress: doneRepair
         ? {
             percent: 100,

@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd .. && pnpm install",
   "buildCommand": "pnpm run build",
-  "ignoreCommand": "bash ../../scripts/vercel-ignore-dashboard.sh"
+  "ignoreCommand": "bash ../../scripts/vercel-ignore-dashboard.sh",
+  "crons": [
+    {
+      "path": "/keys/dashboard/api/connect/ingest/drain",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }
