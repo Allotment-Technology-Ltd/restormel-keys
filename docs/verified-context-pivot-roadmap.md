@@ -66,11 +66,11 @@ skeptical user can click through to the quoted span in the source and check it t
 | 14a | ✅ 1.5 Ingest runtime reliability + dashboard performance — freeze causes fixed, P1 follow-ups documented (PR #220) | P1 | — |
 | 15 | ✅ 2.4 Regression history dashboard (PR #217) | P2 | 2.3 |
 | 15a | **1.6 Durable run execution** (HIGH PRIORITY — from the [Stage 1.5 review](reviews/connect-runtime-reliability-perf.md)) ← **NEXT** | P1 | 1.5 |
-| 15b | **1.7 Deploy-time migrations** (HIGH PRIORITY — review F5) | P1 | 1.5 |
-| 15c | **1.8 Stats caching + single resolution** (HIGH PRIORITY — review F6/F7) | P1 | 1.5 |
+| 15b | ✅ 1.7 Deploy-time migrations — runtime DDL off in prod (PR #224) | P1 | 1.5 |
+| 15c | ✅ 1.8 Stats caching + single resolution — 1 stats call/hub request (PR #223) | P1 | 1.5 |
 | 15d | 1.9 Writer batching phase 2 (review F4 residue) | P1 | 1.5, 3.2 |
 | 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
-| 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
+| 17 | ✅ 3.2 Incremental re-ingest (PR #225; Surreal BYO degrades to full ingest pending 3.2b) | P3 | 3.1 |
 | 17a | 3.2b BYO Surreal incremental re-ingest — **user-controlled opt-in version table** (ADR open question 1 decided 2026-06-10) | P3 | 3.2 |
 | 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
 | 19 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
