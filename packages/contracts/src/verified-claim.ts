@@ -68,6 +68,34 @@ export const VerifiedClaimEvidenceSchema = z.object({
 export type VerifiedClaimEvidence = z.infer<typeof VerifiedClaimEvidenceSchema>;
 
 /**
+ * Temporal validity of the claim VERSION being served (Stage 3.3, verified-memory ADR §2
+ * — docs/decisions/verified-memory-incremental-ingest.md). Each claim version carries a
+ * validity window: `valid_from` when the version was created, `valid_to` when it was
+ * superseded or its source version was replaced/removed (null = current), and
+ * `superseded_by` linking forward to the successor version. Superseded versions keep
+ * their recorded verification history (audit) — they just stop being current.
+ *
+ * Additive (versioning conventions): absent when the graph store carries no version
+ * data for the claim (e.g. BYO Surreal stores before Stage 3.2b opt-in, or legacy
+ * pre-versioning units) — absence means "temporal validity unknown", never "current".
+ */
+export const VerifiedClaimVersionSchema = z.object({
+  /** ISO 8601 instant this claim version became valid (created/ingested). */
+  valid_from: z.string(),
+  /** ISO 8601 instant the version stopped being current; null/absent = still current. */
+  valid_to: z.string().nullable().optional(),
+  /**
+   * Opaque identifier of the SUCCESSOR claim version when this version was superseded
+   * by a newer one (store-specific version id). Null/absent when current, or when the
+   * claim was removed from its source without a successor.
+   */
+  superseded_by: z.string().nullable().optional(),
+  /** Version number within the claim's identity chain (1 = first extraction). */
+  version_no: z.number().int().positive().optional()
+});
+export type VerifiedClaimVersion = z.infer<typeof VerifiedClaimVersionSchema>;
+
+/**
  * Attribution of the most recent span-scoped entailment verdict (EBV Layer 2). Every
  * verdict is recorded append-only with model id, prompt version, and timestamp, so it is
  * attributable and re-runnable; this surfaces the latest one.
@@ -103,6 +131,11 @@ export const VerifiedClaimEnvelopeSchema = z.object({
   evidence: z.array(VerifiedClaimEvidenceSchema),
   /** Latest entailment judgment, when the claim has been judged (EBV Layer 2). */
   judge: VerifiedClaimJudgeSchema.optional(),
+  /**
+   * Temporal validity window of the served claim version (Stage 3.3). Absent when the
+   * store carries no version data for this claim — unknown, never assumed current.
+   */
+  version: VerifiedClaimVersionSchema.optional(),
   /** Human-readable source citation (the cited source's title). */
   citation: z.string().nullable(),
   /**

@@ -40,6 +40,62 @@ describe('@restormel/contracts/connect', () => {
     expect(parsed.depth).toBe('standard');
   });
 
+  it('parses as_of + include_superseded on the retrieve request (Stage 3.3, additive)', () => {
+    const parsed = ConnectRetrieveRequestSchema.parse({
+      workspace_id: workspaceId,
+      query: 'What is public reason?',
+      as_of: '2026-06-01T12:00:00.000Z',
+      include_superseded: true
+    });
+    expect(parsed.as_of).toBe('2026-06-01T12:00:00.000Z');
+    expect(parsed.include_superseded).toBe(true);
+    // Honest input validation: as_of must be a real ISO 8601 instant.
+    expect(() =>
+      ConnectRetrieveRequestSchema.parse({
+        workspace_id: workspaceId,
+        query: 'q',
+        as_of: 'yesterday'
+      })
+    ).toThrow();
+  });
+
+  it('parses temporal metadata on the retrieve response, including the explicit degrade', () => {
+    const base = {
+      contract_version: CONNECT_API_CONTRACT_VERSION,
+      request_id: 'req-1',
+      context_block: '',
+      metadata: {
+        claims_retrieved: 1,
+        arguments_retrieved: 0,
+        temporal: {
+          as_of: '2026-06-01T12:00:00.000Z',
+          applied: true,
+          include_superseded: false,
+          excluded_claims: 1,
+          substituted_claims: 1,
+          superseded_claims_returned: 0,
+          unversioned_claims: 2
+        }
+      }
+    };
+    expect(() => ConnectRetrieveResponseSchema.parse(base)).not.toThrow();
+    expect(() =>
+      ConnectRetrieveResponseSchema.parse({
+        ...base,
+        metadata: {
+          claims_retrieved: 1,
+          arguments_retrieved: 0,
+          temporal: {
+            as_of: '2026-06-01T12:00:00.000Z',
+            applied: false,
+            include_superseded: false,
+            degraded_reason: 'surreal_version_chains_unavailable'
+          }
+        }
+      })
+    ).not.toThrow();
+  });
+
   it('parses Connect retrieve response with context_pack and graph', () => {
     const parsed = ConnectRetrieveResponseSchema.parse({
       contract_version: CONNECT_API_CONTRACT_VERSION,

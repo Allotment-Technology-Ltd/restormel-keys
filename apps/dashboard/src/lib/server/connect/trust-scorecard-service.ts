@@ -41,6 +41,7 @@ import {
 } from "$lib/server/connect/graph-explorer-service";
 import { REMOVED_VALIDATION_STATUS } from "$lib/server/connect/graph-writer";
 import {
+  countConnectVersionedUnitsPostgres,
   getConnectClaimVersionBreakdownPostgres,
   getConnectGraphCoverageCountsPostgres,
   listConnectIngestJobsForWorkspace,
@@ -57,6 +58,12 @@ export type TrustScorecardEbvInputs = {
   validatorGaps: number | null;
   remediationDrops: number | null;
   lastJudgedAt: string | null;
+  /**
+   * Stage 3.3 temporal coverage: units carrying claim-version validity data (current
+   * version rows on the Postgres spine; a `valid_from` field on Surreal units). Null
+   * when the store could not answer — unknown stays unknown, never zero.
+   */
+  versionedUnits: number | null;
 };
 
 /**
@@ -106,6 +113,16 @@ export function composeTrustScorecard(args: {
   const unbound = Math.max(0, units - bound - no_evidence);
   const bound_pct = units > 0 ? Math.round((bound / units) * 100) : 0;
 
+  // Stage 3.3: % of the graph with temporal validity data (can answer as-of queries).
+  // Clamped like the evidence counts; null propagates (unknown is never reported as 0%).
+  const versioned =
+    ebv.versionedUnits === null ? null : Math.min(Math.max(0, ebv.versionedUnits), units);
+  const temporal = {
+    versioned,
+    units,
+    pct: versioned === null ? null : units > 0 ? Math.round((versioned / units) * 100) : 0,
+  };
+
   return {
     schema_version: CONNECT_TRUST_SCORECARD_SCHEMA_VERSION,
     generated_at: (args.now ?? new Date()).toISOString(),
@@ -124,6 +141,7 @@ export function composeTrustScorecard(args: {
     },
     evidence: { bound, unbound, no_evidence, bound_pct },
     verification_states,
+    temporal,
     coverage: {
       validator_gaps: ebv.validatorGaps,
       remediation_drops: ebv.remediationDrops,
@@ -161,34 +179,51 @@ async function surrealGroupCounts(
 
 async function loadSurrealEbvInputs(ctx: SurrealGraphReadContext): Promise<TrustScorecardEbvInputs> {
   const notNullNote = "validation_note != NONE";
-  const [verificationStates, evidenceStatuses, validatorGaps, remediationDrops, lastJudgedAt] =
-    await Promise.all([
-      surrealGroupCounts(ctx, "verification_state"),
-      surrealGroupCounts(ctx, "evidence_status"),
-      surrealCountWhere(
-        ctx.store,
-        ctx.unitTable,
-        `${notNullNote} AND string::startsWith(validation_note, 'coverage_gap')`,
-      ),
-      surrealCountWhere(
-        ctx.store,
-        ctx.unitTable,
-        `validation_status = '${REMOVED_VALIDATION_STATUS}' AND ${notNullNote} AND string::startsWith(validation_note, 'Remediation (')`,
-      ),
-      ctx.store
-        .query<{ judged_at?: unknown }[]>(
-          `SELECT judged_at FROM connect_claim_judgment ORDER BY judged_at DESC LIMIT 1;`,
-        )
-        .then((rows) => coerceTimestamp(rows?.[0]?.judged_at))
-        .catch(() => null),
-    ]);
-  return { verificationStates, evidenceStatuses, validatorGaps, remediationDrops, lastJudgedAt };
+  const [
+    verificationStates,
+    evidenceStatuses,
+    validatorGaps,
+    remediationDrops,
+    lastJudgedAt,
+    versionedUnits,
+  ] = await Promise.all([
+    surrealGroupCounts(ctx, "verification_state"),
+    surrealGroupCounts(ctx, "evidence_status"),
+    surrealCountWhere(
+      ctx.store,
+      ctx.unitTable,
+      `${notNullNote} AND string::startsWith(validation_note, 'coverage_gap')`,
+    ),
+    surrealCountWhere(
+      ctx.store,
+      ctx.unitTable,
+      `validation_status = '${REMOVED_VALIDATION_STATUS}' AND ${notNullNote} AND string::startsWith(validation_note, 'Remediation (')`,
+    ),
+    ctx.store
+      .query<{ judged_at?: unknown }[]>(
+        `SELECT judged_at FROM connect_claim_judgment ORDER BY judged_at DESC LIMIT 1;`,
+      )
+      .then((rows) => coerceTimestamp(rows?.[0]?.judged_at))
+      .catch(() => null),
+    // Stage 3.3 temporal coverage on BYO Surreal = units stamped with valid_from (the
+    // writers' opportunistic temporal field; version CHAINS arrive with Stage 3.2b).
+    surrealCountWhere(ctx.store, ctx.unitTable, "valid_from != NONE"),
+  ]);
+  return {
+    verificationStates,
+    evidenceStatuses,
+    validatorGaps,
+    remediationDrops,
+    lastJudgedAt,
+    versionedUnits,
+  };
 }
 
 async function loadPostgresEbvInputs(workspaceId: string): Promise<TrustScorecardEbvInputs> {
-  const [breakdown, coverage] = await Promise.all([
+  const [breakdown, coverage, versionedUnits] = await Promise.all([
     getConnectClaimVersionBreakdownPostgres(workspaceId).catch(() => null),
     getConnectGraphCoverageCountsPostgres(workspaceId).catch(() => null),
+    countConnectVersionedUnitsPostgres(workspaceId).catch(() => null),
   ]);
   return {
     verificationStates: breakdown?.verificationStates ?? {},
@@ -196,6 +231,7 @@ async function loadPostgresEbvInputs(workspaceId: string): Promise<TrustScorecar
     validatorGaps: coverage ? coverage.validatorGaps : null,
     remediationDrops: coverage ? coverage.remediationDrops : null,
     lastJudgedAt: breakdown?.lastJudgedAt ?? null,
+    versionedUnits,
   };
 }
 

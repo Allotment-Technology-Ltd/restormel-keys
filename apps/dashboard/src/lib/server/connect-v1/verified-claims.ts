@@ -23,6 +23,7 @@ import type {
   VerifiedClaimEvidence,
   VerifiedClaimState,
   VerifiedClaimSummary,
+  VerifiedClaimVersion,
 } from "@restormel/contracts";
 import { formatSurrealRecordId } from "$lib/server/connect/graph-writer";
 
@@ -42,6 +43,14 @@ export type ClaimEvidenceRow = {
   evidence_status?: string | null;
   evidence_source_hash?: string | null;
   source_ref?: unknown;
+  /**
+   * Stage 3.3 temporal fields, read opportunistically from BYO unit records. Surreal
+   * writers stamp `valid_from` at write time; `valid_to`/`superseded_by` only exist
+   * once Stage 3.2b version chains land in the user's store (absent until then).
+   */
+  valid_from?: unknown;
+  valid_to?: unknown;
+  superseded_by?: unknown;
 };
 
 /** One append-only entailment judgment row (EBV Layer 2 audit history). */
@@ -98,6 +107,30 @@ export function bindingFromEvidenceRow(row: ClaimEvidenceRow | undefined): Evide
   return { status: "unbound", reason: "quote_not_found" };
 }
 
+/** Coerce a Surreal datetime value (ISO string or Date) to ISO, else null. */
+function isoOrNull(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value) return value;
+  return null;
+}
+
+/**
+ * Stage 3.3: envelope version block from unit-record temporal fields (Surreal BYO read
+ * path). Absent `valid_from` ⇒ no block — temporal validity unknown is reported as
+ * absent, never defaulted to "current".
+ */
+export function versionFromUnitRow(
+  row: ClaimEvidenceRow | undefined,
+): VerifiedClaimVersion | undefined {
+  const valid_from = isoOrNull(row?.valid_from);
+  if (!valid_from) return undefined;
+  return {
+    valid_from,
+    valid_to: isoOrNull(row?.valid_to),
+    superseded_by: recordIdString(row?.superseded_by),
+  };
+}
+
 /**
  * Envelope state for a claim. EBV states written by the pipeline pass through verbatim;
  * legacy / pre-EBV vocabularies (e.g. `validated` / `flagged` on imported graphs) are
@@ -139,7 +172,8 @@ export async function fetchVerifiedClaimEnrichment(args: {
   try {
     const rows = await args.store.query<ClaimEvidenceRow[]>(
       `SELECT id, evidence_quote, evidence_start, evidence_end, evidence_match,
-        evidence_status, evidence_source_hash, source AS source_ref
+        evidence_status, evidence_source_hash, source AS source_ref,
+        valid_from, valid_to, superseded_by
         FROM ${args.unitTable} WHERE id INSIDE $ids`,
       { ids: args.claimIds },
     );
@@ -177,6 +211,12 @@ export function composeVerifiedClaims(args: {
   judgments: Map<string, ClaimJudgmentRow>;
   vocabulary: Pick<VerificationConfig, "supportedStates" | "flaggedStates">;
   traceId?: string;
+  /**
+   * Stage 3.3: per-claim validity windows from the Postgres spine's version chains.
+   * Takes precedence over unit-record temporal fields; either way the block is only
+   * emitted when version data actually exists (absence = unknown, never "current").
+   */
+  versions?: Map<string, VerifiedClaimVersion>;
 }): { envelopes: VerifiedClaimEnvelope[]; summary: VerifiedClaimSummary } {
   const traceRef = args.traceId ? `/connect/v1/traces/${args.traceId}` : null;
   const summary: VerifiedClaimSummary = {};
@@ -220,11 +260,14 @@ export function composeVerifiedClaims(args: {
           }
         : undefined;
 
+    const version = args.versions?.get(claim.id) ?? versionFromUnitRow(row);
+
     return {
       claim: { id: claim.id, text: claim.text },
       state,
       evidence,
       ...(judge ? { judge } : {}),
+      ...(version ? { version } : {}),
       citation: claim.source_title || null,
       trace_ref: traceRef,
       trust_score: typeof claim.trust_score === "number" ? claim.trust_score : null,
@@ -240,6 +283,8 @@ export async function buildVerifiedClaims(args: {
   vocabulary: Pick<VerificationConfig, "supportedStates" | "flaggedStates">;
   claims: VerifiedClaimSourceClaim[];
   traceId?: string;
+  /** Stage 3.3: spine-resolved validity windows per claim id (see composeVerifiedClaims). */
+  versions?: Map<string, VerifiedClaimVersion>;
 }): Promise<{ envelopes: VerifiedClaimEnvelope[]; summary: VerifiedClaimSummary }> {
   const { evidence, judgments } = await fetchVerifiedClaimEnrichment({
     store: args.store,
@@ -252,5 +297,6 @@ export async function buildVerifiedClaims(args: {
     judgments,
     vocabulary: args.vocabulary,
     traceId: args.traceId,
+    versions: args.versions,
   });
 }

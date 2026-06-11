@@ -13,6 +13,7 @@ import {
   composeVerifiedClaims,
   fetchVerifiedClaimEnrichment,
   toEnvelopeState,
+  versionFromUnitRow,
   type ClaimEvidenceRow,
   type ClaimJudgmentRow,
 } from "./verified-claims";
@@ -192,6 +193,71 @@ describe("composeVerifiedClaims", () => {
       prompt_version: 1,
       confidence: 1,
       at: "2026-06-10T12:00:00Z",
+    });
+  });
+
+  it("attaches the version block from spine-resolved validity windows (Stage 3.3)", () => {
+    const { envelopes } = composeVerifiedClaims({
+      claims: [claim("claim:a", "supported"), claim("claim:b", "supported")],
+      evidence: new Map([["claim:a", boundRow]]),
+      judgments: new Map(),
+      vocabulary,
+      versions: new Map([
+        [
+          "claim:a",
+          {
+            valid_from: "2026-06-01T00:00:00.000Z",
+            valid_to: "2026-06-10T00:00:00.000Z",
+            superseded_by: "42",
+            version_no: 1,
+          },
+        ],
+      ]),
+    });
+    expect(() => VerifiedClaimEnvelopeSchema.parse(envelopes[0])).not.toThrow();
+    expect(envelopes[0].version).toEqual({
+      valid_from: "2026-06-01T00:00:00.000Z",
+      valid_to: "2026-06-10T00:00:00.000Z",
+      superseded_by: "42",
+      version_no: 1,
+    });
+    // No version data → no block. Unknown validity is absent, never presumed current.
+    expect(envelopes[1].version).toBeUndefined();
+  });
+
+  it("falls back to unit-record temporal fields (Surreal BYO read path)", () => {
+    const { envelopes } = composeVerifiedClaims({
+      claims: [claim("claim:a", "supported")],
+      evidence: new Map([["claim:a", { ...boundRow, valid_from: "2026-06-01T00:00:00.000Z" }]]),
+      judgments: new Map(),
+      vocabulary,
+    });
+    expect(envelopes[0].version).toEqual({
+      valid_from: "2026-06-01T00:00:00.000Z",
+      valid_to: null,
+      superseded_by: null,
+    });
+  });
+});
+
+describe("versionFromUnitRow", () => {
+  it("requires valid_from — no fabricated windows for stores without temporal fields", () => {
+    expect(versionFromUnitRow(undefined)).toBeUndefined();
+    expect(versionFromUnitRow(boundRow)).toBeUndefined();
+  });
+
+  it("coerces Date values and carries valid_to/superseded_by when present", () => {
+    expect(
+      versionFromUnitRow({
+        ...boundRow,
+        valid_from: new Date("2026-06-01T00:00:00.000Z"),
+        valid_to: "2026-06-10T00:00:00.000Z",
+        superseded_by: "restormel_claim_versions:v2",
+      }),
+    ).toEqual({
+      valid_from: "2026-06-01T00:00:00.000Z",
+      valid_to: "2026-06-10T00:00:00.000Z",
+      superseded_by: "restormel_claim_versions:v2",
     });
   });
 });

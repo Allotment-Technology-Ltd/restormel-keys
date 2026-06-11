@@ -76,7 +76,20 @@ export const ConnectRetrieveRequestSchema = ConnectWorkspaceContextSchema.extend
   max_claims: z.number().int().positive().max(500).optional(),
   require_verified: z.boolean().optional(),
   /** When set, traversal seeds from this claim id (`get_context_for` / explorer copy). */
-  seed_claim_id: z.string().min(1).optional()
+  seed_claim_id: z.string().min(1).optional(),
+  /**
+   * As-of retrieval (Stage 3.3): return only claim versions valid at this ISO 8601
+   * instant (`valid_from ≤ as_of < valid_to`). Claims whose chain holds an older
+   * version valid at the instant are served AS that version. Stores without claim
+   * version chains (BYO Surreal before Stage 3.2b) degrade explicitly — see
+   * `metadata.temporal.degraded_reason` — never silently pretend.
+   */
+  as_of: z.string().datetime({ offset: true }).optional(),
+  /**
+   * Audit view (Stage 3.3): also return superseded claim versions with their recorded
+   * states and validity windows, instead of current-only. Explicit opt-in.
+   */
+  include_superseded: z.boolean().optional()
 });
 
 export type ConnectRetrieveRequest = z.infer<typeof ConnectRetrieveRequestSchema>;
@@ -136,6 +149,47 @@ export const ConnectContextPackSchema = z.object({
 
 export type ConnectContextPack = z.infer<typeof ConnectContextPackSchema>;
 
+/**
+ * Temporal-filtering report (Stage 3.3) — present on responses whenever the request set
+ * `as_of` and/or `include_superseded`. Degradation is always explicit: a store that
+ * cannot answer temporally says so via `applied: false` + `degraded_reason`; it never
+ * silently serves current data as if it were as-of data.
+ */
+export const ConnectTemporalMetadataSchema = z.object({
+  /** The instant applied (echo of the request), or null when only auditing supersession. */
+  as_of: z.string().nullable(),
+  /** True only when version chains were consulted and the projection actually ran. */
+  applied: z.boolean(),
+  include_superseded: z.boolean(),
+  /**
+   * Why temporal filtering could not run (set iff `applied` is false):
+   * - surreal_version_chains_unavailable — BYO Surreal stores carry no claim-version
+   *   chains until the Stage 3.2b user opt-in; as_of cannot be honoured there yet.
+   * - graph_target_not_configured — no graph store, so no version data to consult.
+   * - version_lookup_failed — the version store errored; honest unknown.
+   */
+  degraded_reason: z
+    .enum([
+      'surreal_version_chains_unavailable',
+      'graph_target_not_configured',
+      'version_lookup_failed'
+    ])
+    .optional(),
+  /** Claims dropped because no version in their chain was valid at `as_of`. */
+  excluded_claims: z.number().int().nonnegative().optional(),
+  /** Claims served as the (older) chain version that was valid at `as_of`. */
+  substituted_claims: z.number().int().nonnegative().optional(),
+  /** Superseded versions returned by the audit flag (include_superseded). */
+  superseded_claims_returned: z.number().int().nonnegative().optional(),
+  /**
+   * Claims with no version rows (pre-versioning/legacy units). They are KEPT in the
+   * response and counted here — temporal validity unknown is flagged, never filtered
+   * silently and never presumed valid.
+   */
+  unversioned_claims: z.number().int().nonnegative().optional()
+});
+export type ConnectTemporalMetadata = z.infer<typeof ConnectTemporalMetadataSchema>;
+
 export const ConnectRetrieveResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
@@ -156,6 +210,8 @@ export const ConnectRetrieveResponseSchema = z.object({
     arguments_retrieved: z.number().int().nonnegative(),
     /** Per-state counts over `verified_claims` (quick non-supported gate). */
     verification_summary: VerifiedClaimSummarySchema.optional(),
+    /** Temporal-filtering report; present when the request asked for as-of/audit data. */
+    temporal: ConnectTemporalMetadataSchema.optional(),
     retrieval_degraded: z.boolean().optional(),
     retrieval_degraded_reason: z.string().optional(),
     retrieval_degraded_code: z
@@ -226,7 +282,15 @@ export const ConnectGraphOpRequestSchema = ConnectWorkspaceContextSchema.extend(
   max_hops: z.number().int().positive().max(8).optional(),
   /** shared */
   max_tokens: z.number().int().positive().max(100_000).optional(),
-  verification_policy: ConnectGraphVerificationPolicySchema.optional()
+  verification_policy: ConnectGraphVerificationPolicySchema.optional(),
+  /**
+   * As-of retrieval (Stage 3.3): subgraph ops return only claim versions valid at this
+   * ISO 8601 instant. Stores without version chains degrade explicitly via
+   * `metadata.temporal.degraded_reason`. Ignored by find_paths (no claim payload).
+   */
+  as_of: z.string().datetime({ offset: true }).optional(),
+  /** Audit view (Stage 3.3): also return superseded versions with states + windows. */
+  include_superseded: z.boolean().optional()
 });
 export type ConnectGraphOpRequest = z.infer<typeof ConnectGraphOpRequestSchema>;
 
@@ -303,7 +367,9 @@ export const ConnectGraphOpResponseSchema = z.object({
     retrieval_degraded: z.boolean().optional(),
     retrieval_degraded_reason: z.string().optional(),
     /** Per-state counts over `verified_claims` (quick non-supported gate). */
-    verification_summary: VerifiedClaimSummarySchema.optional()
+    verification_summary: VerifiedClaimSummarySchema.optional(),
+    /** Temporal-filtering report; present when the request asked for as-of/audit data. */
+    temporal: ConnectTemporalMetadataSchema.optional()
   })
 });
 export type ConnectGraphOpResponse = z.infer<typeof ConnectGraphOpResponseSchema>;

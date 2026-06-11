@@ -40,6 +40,29 @@ describe("ConnectTrustScorecardSchema", () => {
     expect(() => ConnectTrustScorecardSchema.parse(fullScorecard)).not.toThrow();
   });
 
+  it("accepts the temporal-coverage block additively, incl. the null-unknown shape (Stage 3.3)", () => {
+    // Pre-3.3 payloads (no temporal block) remain valid — tested by the base fixture.
+    expect(() =>
+      ConnectTrustScorecardSchema.parse({
+        ...fullScorecard,
+        temporal: { versioned: 180, units: 240, pct: 75 },
+      }),
+    ).not.toThrow();
+    // Unknown is null, never zero.
+    expect(() =>
+      ConnectTrustScorecardSchema.parse({
+        ...fullScorecard,
+        temporal: { versioned: null, units: 240, pct: null },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      ConnectTrustScorecardSchema.parse({
+        ...fullScorecard,
+        temporal: { versioned: 180, units: 240, pct: 175 },
+      }),
+    ).toThrow();
+  });
+
   it("accepts the honest-unknowns shape: null coverage counts and null last_verified_at", () => {
     expect(() =>
       ConnectTrustScorecardSchema.parse({

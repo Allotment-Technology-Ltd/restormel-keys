@@ -619,11 +619,19 @@ class SurrealGraphWriter implements GraphWriter {
           `DEFINE FIELD IF NOT EXISTS evidence_match ON TABLE ${unitTable} TYPE option<string>; ` +
           `DEFINE FIELD IF NOT EXISTS evidence_status ON TABLE ${unitTable} TYPE option<string>; ` +
           `DEFINE FIELD IF NOT EXISTS evidence_source_hash ON TABLE ${unitTable} TYPE option<string>; ` +
-          `DEFINE FIELD IF NOT EXISTS claim_key ON TABLE ${unitTable} TYPE option<string>;`,
+          `DEFINE FIELD IF NOT EXISTS claim_key ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS valid_from ON TABLE ${unitTable} TYPE option<string>;`,
       )
       .catch(() => {
         // Older SurrealDB without IF NOT EXISTS, or SCHEMALESS — writes work regardless.
       });
+
+    // Stage 3.3 (ADR §2/§4): each evidence write opens this unit version's validity
+    // window. valid_to / superseded_by / the version CHAIN stay absent on Surreal BYO
+    // until the Stage 3.2b user opt-in (re-ingest degrades to full ingest there, so
+    // nothing ever closes a window) — as-of retrieval degrades explicitly for these
+    // stores via response metadata, never silently.
+    const validFrom = new Date().toISOString();
 
     // Batched multi-statement script: one UPDATE per unit in a single HTTP /sql round-trip,
     // each statement RETURNing the record's evidence_status so we can verify per-record that
@@ -639,6 +647,9 @@ class SurrealGraphWriter implements GraphWriter {
         evidence_status: b.binding.status,
         evidence_source_hash: args.sourceHash,
         claim_key: b.claimKey ?? null,
+        // Stage 3.3 temporal validity — opportunistic (SCHEMAFULL tables without the
+        // field drop it; the envelope then simply omits the version block).
+        valid_from: validFrom,
       };
       return `UPDATE ${surrealRecordRef(b.unitId)} MERGE ${JSON.stringify(payload)} RETURN AFTER;`;
     });
