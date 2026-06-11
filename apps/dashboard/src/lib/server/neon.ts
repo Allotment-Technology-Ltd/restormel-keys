@@ -6818,39 +6818,70 @@ export async function storeExtractedGraphPostgres(params: {
   const now = Date.now();
   const idByLocal = new Map<string, string>();
   const insertedUnits: { id: string; text: string; type: string | null }[] = [];
-  for (const u of params.units) {
-    if (!u.text?.trim()) continue;
-    const dbId = crypto.randomUUID();
-    idByLocal.set(u.localId, dbId);
-    const payload =
-      u.sourceChunkIndex != null ? JSON.stringify({ source_chunk_index: u.sourceChunkIndex }) : null;
+
+  // Pre-assign UUIDs so the caller's insertion-order mapping is deterministic and the
+  // batch INSERT can be a single round-trip.  Empty-text units are filtered out first
+  // so the positional ordinality in the unnest lines up with the caller's non-empty
+  // input order (GraphWriter.writeUnitsAndRelations maps by index).
+  const validUnits = params.units.filter((u) => u.text?.trim());
+  if (validUnits.length > 0) {
+    const ids = validUnits.map(() => crypto.randomUUID());
+    const texts = validUnits.map((u) => u.text);
+    const unitTypes = validUnits.map((u) => u.unitType ?? null);
+    const domains = validUnits.map((u) => u.domain ?? null);
+    const payloads = validUnits.map((u) =>
+      u.sourceChunkIndex != null ? JSON.stringify({ source_chunk_index: u.sourceChunkIndex }) : null,
+    );
+    const chunkIndexes = validUnits.map((u) => u.sourceChunkIndex ?? null);
+
+    // Order-preserving batch INSERT — unnest WITH ORDINALITY guarantees rows land in
+    // the same order as the input arrays, so the RETURNING clause returns ids in that
+    // order.  PostgresGraphWriter.writeUnitsAndRelations maps insertedUnits[i] ↔
+    // args.units[i] by index, so this invariant is the contract that test pins.
     await sql`
       INSERT INTO knowledge_graph_units (
         id, workspace_id, domain_pack_id, source_id, unit_type, domain, text, embedding, payload, source_chunk_index, created_at
-      ) VALUES (
-        ${dbId}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${sourceId},
-        ${u.unitType ?? null}, ${u.domain ?? null}, ${u.text}, NULL, ${payload}::jsonb,
-        ${u.sourceChunkIndex ?? null}, ${now}
       )
+      SELECT u.id, ${params.workspaceId}, ${params.domainPackId ?? null}, ${sourceId},
+             u.unit_type, u.domain, u.text, NULL, u.payload::jsonb, u.source_chunk_index, ${now}
+      FROM unnest(
+        ${ids}::text[], ${texts}::text[], ${unitTypes}::text[], ${domains}::text[],
+        ${payloads}::text[], ${chunkIndexes}::int[]
+      ) WITH ORDINALITY AS u(id, text, unit_type, domain, payload, source_chunk_index, ord)
+      ORDER BY u.ord
     `;
-    insertedUnits.push({ id: dbId, text: u.text, type: u.unitType ?? null });
+
+    // Pre-assigned ids means we don't need RETURNING — ids are already known in order.
+    for (let i = 0; i < validUnits.length; i++) {
+      const u = validUnits[i]!;
+      const dbId = ids[i]!;
+      idByLocal.set(u.localId, dbId);
+      insertedUnits.push({ id: dbId, text: u.text, type: u.unitType ?? null });
+    }
   }
-  let relationCount = 0;
-  for (const r of params.relations) {
+
+  // Relations: collect only resolvable pairs, then batch INSERT in one round-trip.
+  const relRows = params.relations.flatMap((r) => {
     const from = idByLocal.get(r.fromLocalId);
     const to = idByLocal.get(r.toLocalId);
-    if (!from || !to) continue;
+    return from && to ? [{ from, to, relationType: r.relationType }] : [];
+  });
+  if (relRows.length > 0) {
+    const relIds = relRows.map(() => crypto.randomUUID());
+    const fromIds = relRows.map((r) => r.from);
+    const toIds = relRows.map((r) => r.to);
+    const relTypes = relRows.map((r) => r.relationType);
     await sql`
       INSERT INTO knowledge_graph_relations (
         id, workspace_id, domain_pack_id, from_unit_id, to_unit_id, relation_type, payload, created_at
-      ) VALUES (
-        ${crypto.randomUUID()}, ${params.workspaceId}, ${params.domainPackId ?? null},
-        ${from}, ${to}, ${r.relationType}, NULL, ${now}
       )
+      SELECT u.id, ${params.workspaceId}, ${params.domainPackId ?? null}, u.from_id, u.to_id, u.rel_type, NULL, ${now}
+      FROM unnest(${relIds}::text[], ${fromIds}::text[], ${toIds}::text[], ${relTypes}::text[])
+           AS u(id, from_id, to_id, rel_type)
     `;
-    relationCount += 1;
   }
-  return { units: insertedUnits, relations: relationCount };
+
+  return { units: insertedUnits, relations: relRows.length };
 }
 
 /** Aggregate graph stats for the workspace (journey payoff + monitoring). */
