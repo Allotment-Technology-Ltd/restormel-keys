@@ -21,6 +21,13 @@ export type GraphTarget = {
   secret_set: boolean;
   status: string;
   last_error?: string;
+  /** Stage 3.2b: per-graph bundle settings (includes allow_claim_versions_table). */
+  bundle?: {
+    default_domain_pack_id?: string;
+    ingest_document_ids?: string[];
+    default_stop_after_stage?: string;
+    allow_claim_versions_table?: boolean;
+  };
 } | null;
 
 export type DomainPack = {

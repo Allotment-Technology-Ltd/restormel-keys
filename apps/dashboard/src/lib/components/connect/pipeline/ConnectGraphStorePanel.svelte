@@ -31,6 +31,8 @@
   let database = "";
   let username = "";
   let secret = "";
+  /** Stage 3.2b: user opt-in to let Restormel manage restormel_claim_versions. Default OFF. */
+  let allowClaimVersionsTable = false;
   let savingTarget = false;
   let targetMsg: string | null = null;
   let targetErr = false;
@@ -266,6 +268,7 @@
       namespace = t.connection.namespace ?? "";
       database = t.connection.database ?? "";
       username = t.connection.username ?? "";
+      allowClaimVersionsTable = t.bundle?.allow_claim_versions_table ?? false;
     }
   }
 
@@ -318,6 +321,7 @@
           database: database.trim(),
           ...(username.trim() ? { username: username.trim() } : {}),
           ...(secret.trim() ? { secret: secret.trim() } : {}),
+          allow_claim_versions_table: allowClaimVersionsTable,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -642,6 +646,52 @@
           Surreal Cloud CLI tokens: leave <strong>Username</strong> empty and paste the token here.
           Namespace or database <code>DEFINE USER</code> accounts: enter username and password — Connect signs in via Surreal’s HTTP API before testing or ingesting.
         </p>
+
+        <div class="version-table-opt-in" role="group" aria-labelledby="vt-heading">
+          <div class="version-table-opt-in-header">
+            <strong id="vt-heading">Incremental re-ingest (claim versions)</strong>
+            <label class="toggle-label" for="allow-claim-versions">
+              <input
+                id="allow-claim-versions"
+                type="checkbox"
+                bind:checked={allowClaimVersionsTable}
+                class="toggle-input"
+              />
+              <span class="toggle-track" aria-hidden="true"></span>
+              <span class="sr-only">{allowClaimVersionsTable ? "On" : "Off"}</span>
+            </label>
+          </div>
+          <p class="field-hint">
+            <strong>Allow Restormel to manage claim versions in this database.</strong>
+            {#if allowClaimVersionsTable}
+              <span class="vt-on-badge">ON</span>
+            {/if}
+          </p>
+          <p class="field-hint">
+            When ON, Restormel creates one table — <code>restormel_claim_versions</code> — in this
+            Surreal database. The table is <strong>additive-only</strong>: Restormel writes to it but
+            never alters or drops your existing tables. Re-ingesting a changed source will update only
+            that source’s claims instead of re-running the full graph.
+          </p>
+          {#if allowClaimVersionsTable}
+            <p class="field-hint vt-revoke">
+              To revoke: turn this off and save. Future runs will not write to
+              <code>restormel_claim_versions</code>. You can drop the table from your Surreal database
+              at any time with <code>REMOVE TABLE restormel_claim_versions;</code>
+            </p>
+          {:else}
+            <p class="field-hint">
+              <strong>Off (default):</strong> every re-ingest runs as a full ingest; no Restormel-owned
+              tables are created in your database.
+            </p>
+          {/if}
+          <p class="field-hint vt-permissions">
+            The Surreal user above must have <code>DEFINE TABLE</code> permissions for this to work.
+            If it cannot create the table, the run degrades to full ingest with an operator warning —
+            it never blocks the run or silently pretends versions exist.
+          </p>
+        </div>
+
         {#if targetMsg}<p class:err={targetErr} class:notice={!targetErr} role={targetErr ? "alert" : "status"}>{targetMsg}</p>{/if}
         {#if testMsg}
           <p class:err={testError} class:notice={!testError} role={testError ? "alert" : "status"}>{testMsg}</p>
@@ -810,5 +860,89 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     opacity: 0.8;
+  }
+
+  /* Stage 3.2b — version-table opt-in block */
+  .version-table-opt-in {
+    border: 2px solid var(--rm-border, #111);
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    background: var(--rm-surface, #fff);
+  }
+  .version-table-opt-in-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 0.4rem;
+  }
+  .toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-track {
+    display: inline-block;
+    width: 2.4rem;
+    height: 1.2rem;
+    border: 2px solid var(--rm-border, #111);
+    background: var(--rm-surface, #fff);
+    position: relative;
+    transition: background 100ms;
+    flex-shrink: 0;
+  }
+  .toggle-input:checked + .toggle-track {
+    background: var(--rm-accent, #111);
+  }
+  .toggle-track::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--rm-border, #111);
+    transition: transform 100ms;
+  }
+  .toggle-input:checked + .toggle-track::after {
+    transform: translateX(1.2rem);
+    background: var(--rm-on-accent, #fff);
+  }
+  .vt-on-badge {
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--rm-accent, #111);
+    color: var(--rm-on-accent, #fff);
+    padding: 0.1em 0.4em;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+  }
+  .vt-revoke {
+    border-left: 3px solid var(--rm-accent, #111);
+    padding-left: 0.5rem;
+  }
+  .vt-permissions {
+    color: var(--rm-muted, #555);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
 </style>

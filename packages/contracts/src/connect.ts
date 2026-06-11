@@ -1322,7 +1322,22 @@ export const ConnectGraphBundleSchema = z.object({
   /** Source documents selected for this graph's next ingest run (null/absent = all parsed). */
   ingest_document_ids: z.array(z.string()).optional(),
   /** Pipeline stage to stop after for this graph's runs. */
-  default_stop_after_stage: ConnectIngestStageSchema.optional()
+  default_stop_after_stage: ConnectIngestStageSchema.optional(),
+  /**
+   * Stage 3.2b: whether Restormel may create a `restormel_claim_versions` table in
+   * this BYO Surreal database to enable incremental re-ingest with version chains.
+   *
+   * OFF (default): re-ingests degrade to full ingest with an explicit operator log;
+   * no Restormel-owned tables are created in the user's database.
+   *
+   * ON: Restormel creates `restormel_claim_versions` (additive-only, clearly named)
+   * and carries/changed/removed semantics match the Postgres spine path. If table
+   * creation fails (permissions), the run degrades to the OFF path with an
+   * operator-visible warning — never blocks, never silently pretends versions exist.
+   *
+   * Only meaningful for Surreal BYO stores; ignored for Postgres spine targets.
+   */
+  allow_claim_versions_table: z.boolean().default(false)
 });
 
 export type ConnectGraphBundle = z.infer<typeof ConnectGraphBundleSchema>;
@@ -1342,7 +1357,7 @@ export const ConnectGraphTargetSchema = z.object({
   /** True when an encrypted secret (password/token) is stored. */
   secret_set: z.boolean(),
   /** Per-graph settings that travel with this graph when it is activated. */
-  bundle: ConnectGraphBundleSchema.default({}),
+  bundle: ConnectGraphBundleSchema.default({ allow_claim_versions_table: false }),
   status: ConnectGraphTargetStatusSchema,
   last_tested_at: z.string().datetime().optional(),
   last_error: z.string().optional(),
@@ -1367,7 +1382,9 @@ export const ConnectGraphTargetUpsertSchema = z.object({
   /** Password/token; encrypted at rest. Omit to keep the existing secret. */
   secret: z.string().min(1).max(2000).optional(),
   /** Domain pack to bundle with this graph. */
-  default_domain_pack_id: z.string().uuid().optional()
+  default_domain_pack_id: z.string().uuid().optional(),
+  /** Stage 3.2b: allow Restormel to manage restormel_claim_versions in this Surreal DB. */
+  allow_claim_versions_table: z.boolean().optional()
 });
 
 export type ConnectGraphTargetUpsert = z.infer<typeof ConnectGraphTargetUpsertSchema>;

@@ -36,6 +36,7 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
   const settings = row.settings;
   const ids = settings.ingest_document_ids;
   const stage = settings.default_stop_after_stage;
+  const allowVersionTable = settings.allow_claim_versions_table;
   return {
     ...(row.defaultDomainPackId ? { default_domain_pack_id: row.defaultDomainPackId } : {}),
     ...(Array.isArray(ids)
@@ -44,6 +45,8 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
     ...(typeof stage === "string" && stage
       ? { default_stop_after_stage: stage as ConnectGraphTarget["bundle"]["default_stop_after_stage"] }
       : {}),
+    // Stage 3.2b: default false when absent (opt-in, never assumed).
+    allow_claim_versions_table: allowVersionTable === true,
   };
 }
 
@@ -215,6 +218,21 @@ async function persistGraphTarget(
   }
 
   const label = input.label?.trim() || `${input.namespace}/${input.database}`;
+
+  // Stage 3.2b: persist the version-table opt-in in the settings JSONB so it travels
+  // with the graph and survives reconnections. We must merge with the existing settings
+  // rather than replace them, so other settings keys (ingest_document_ids etc.) are preserved.
+  const existingSettings: Record<string, unknown> = opts.id
+    ? ((await getConnectGraphTargetById({ id: opts.id, workspaceId }))?.settings ?? {})
+    : {};
+  const newSettings: Record<string, unknown> = {
+    ...existingSettings,
+    // Only write when the caller sent the field (undefined = keep existing value).
+    ...(input.allow_claim_versions_table !== undefined
+      ? { allow_claim_versions_table: input.allow_claim_versions_table }
+      : {}),
+  };
+
   const row = await upsertConnectGraphTarget({
     id: opts.id,
     workspaceId,
@@ -225,6 +243,7 @@ async function persistGraphTarget(
     database: input.database,
     username: input.username ?? null,
     defaultDomainPackId: input.default_domain_pack_id ?? undefined,
+    settings: newSettings,
     secret: secret.payload,
   });
 

@@ -61,6 +61,13 @@ export type ClaimVersionBinding = {
 
 export interface GraphWriter {
   readonly provider: "postgres" | "surreal";
+  /**
+   * Stage 3.2b: true when this is a Surreal BYO writer with the user's opt-in to
+   * manage `restormel_claim_versions` in their database. False for all Postgres writers
+   * and Surreal writers where the setting is OFF. Used by the runner to decide whether
+   * to log the degradation message.
+   */
+  readonly allowSurrealVersionTable?: boolean;
   writeSource(s: {
     title: string;
     url: string | null;
@@ -142,6 +149,13 @@ export interface GraphWriter {
   deleteUnit(unitId: string): Promise<void>;
   /** Soft-exclude: mark removed (hidden from retrieval/queue) but keep the record. Reversible. */
   excludeUnit(unitId: string, note: string): Promise<void>;
+  /**
+   * Stage 3.2b: eagerly trigger DDL for `restormel_claim_versions` and return whether
+   * the table is available this run. Present only on Surreal writers with the opt-in ON;
+   * absent (undefined) on Postgres writers and Surreal writers with the setting OFF.
+   * Returns false if DDL fails (permissions) — never blocks the run.
+   */
+  probeVersionTable?(): Promise<boolean>;
 }
 
 /** Sentinel validation_status for soft-excluded ideas — kept in the store, out of active use. */
@@ -366,19 +380,95 @@ export function surrealRecordRef(id: string): string {
   return id;
 }
 
+/**
+ * The Restormel-owned table created in the user's BYO Surreal DB when they opt in to
+ * incremental re-ingest (Stage 3.2b). Additive-only; clearly namespaced so it never
+ * collides with user-defined tables. The user can revoke by toggling the setting OFF
+ * (future runs degrade to full ingest) and dropping the table themselves if desired.
+ */
+const SURREAL_VERSION_TABLE = "restormel_claim_versions" as const;
+
 class SurrealGraphWriter implements GraphWriter {
   readonly provider = "surreal" as const;
   private readonly schema: ConnectDomainPack["graph_schema"];
+  /**
+   * Stage 3.2b: whether this run may use `restormel_claim_versions`.
+   * Lazily resolved: null = not yet checked, true/false = result after first DDL attempt.
+   * If table creation fails (permissions), flips to false and emits an operator warning.
+   */
+  private versionTableAllowed: boolean | null;
+  private versionTableWarningEmitted = false;
+  /** Exposed so the runner can decide whether to log the degradation message. */
+  readonly allowSurrealVersionTable: boolean;
   constructor(
     private readonly store: GraphStore,
     pack: ConnectDomainPack,
+    opts?: { allowVersionTable?: boolean },
   ) {
     this.schema = pack.graph_schema;
+    const optIn = opts?.allowVersionTable === true;
+    this.allowSurrealVersionTable = optIn;
+    this.versionTableAllowed = optIn ? null : false;
+    // null = allowed but not yet verified; false = OFF (either by setting or after permission failure).
   }
 
   private async createReturningId(table: string, content: Record<string, unknown>): Promise<string | null> {
     const res = await this.store.query<unknown>(`CREATE ${table} CONTENT ${JSON.stringify(content)} RETURN id;`);
     return extractCreatedRecordId(res);
+  }
+
+  /** Stage 3.2b: public entry-point for the runner's preamble probe (GraphWriter interface). */
+  probeVersionTable = async (): Promise<boolean> => {
+    return this.ensureVersionTable();
+  };
+
+  /**
+   * Stage 3.2b: ensure `restormel_claim_versions` exists and is accessible.
+   * Returns true when the table is ready; false (with a warning log) when we lack
+   * permissions, so callers can degrade to the OFF path — never blocks the run.
+   */
+  private async ensureVersionTable(): Promise<boolean> {
+    if (this.versionTableAllowed === false) return false;
+    if (this.versionTableAllowed === true) return true;
+    // First call (null): attempt DDL.
+    try {
+      await this.store.query(
+        `DEFINE TABLE IF NOT EXISTS ${SURREAL_VERSION_TABLE} SCHEMALESS PERMISSIONS FULL;` +
+          `DEFINE FIELD IF NOT EXISTS workspace_id ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS source_key ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS unit_id ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS claim_key ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS version_no ON TABLE ${SURREAL_VERSION_TABLE} TYPE int;` +
+          `DEFINE FIELD IF NOT EXISTS text ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS evidence_quote ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS evidence_status ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS source_hash ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS verification_state ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS judged_by ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS judged_at ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS valid_from ON TABLE ${SURREAL_VERSION_TABLE} TYPE string;` +
+          `DEFINE FIELD IF NOT EXISTS valid_to ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE FIELD IF NOT EXISTS superseded_by ON TABLE ${SURREAL_VERSION_TABLE} TYPE option<string>;` +
+          `DEFINE INDEX IF NOT EXISTS idx_${SURREAL_VERSION_TABLE}_source_key ON TABLE ${SURREAL_VERSION_TABLE} COLUMNS workspace_id, source_key;` +
+          `DEFINE INDEX IF NOT EXISTS idx_${SURREAL_VERSION_TABLE}_unit ON TABLE ${SURREAL_VERSION_TABLE} COLUMNS workspace_id, unit_id;`,
+      );
+      this.versionTableAllowed = true;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!this.versionTableWarningEmitted) {
+        this.versionTableWarningEmitted = true;
+        console.warn(
+          `[connect-graph-writer] Could not create "${SURREAL_VERSION_TABLE}" in Surreal DB ` +
+            `(permission error or older SurrealDB — degrading to full ingest for this run). ` +
+            `To resolve: ensure the Surreal user has DEFINE TABLE permissions, or turn off ` +
+            `"Allow Restormel to manage claim versions in this database" in the store settings. ` +
+            `Error: ${msg.slice(0, 200)}`,
+        );
+      }
+      this.versionTableAllowed = false;
+      return false;
+    }
   }
 
   async writeSource(s: {
@@ -412,14 +502,32 @@ class SurrealGraphWriter implements GraphWriter {
   }
 
   /**
-   * Stage 3.2 — NOT YET on Surreal BYO stores: the ADR places version chains in a
-   * Restormel-created `restormel_claim_versions` table in the user's database, but that
-   * placement is the ADR's open question 1 (split-brain risk) and is awaiting explicit
-   * sign-off. Until then a Surreal re-ingest degrades to today's full ingest; the runner
-   * logs the degrade per source — never silent.
+   * Stage 3.2b: returns the latest registered source version (sourceId + contentHash)
+   * for incremental re-ingest when the user has opted in AND the version table exists.
+   * Returns null when OFF (degrade to full ingest) — never silent.
    */
-  async findSourceVersion(): Promise<{ sourceId: string; contentHash: string | null } | null> {
-    return null;
+  async findSourceVersion(
+    sourceKey: string,
+  ): Promise<{ sourceId: string; contentHash: string | null } | null> {
+    const ok = await this.ensureVersionTable();
+    if (!ok) return null;
+    // Look up the most recent source row by source_key on the pack's source table,
+    // where content_hash was written on the previous ingest.
+    const table = ident(this.schema.source_table, "source");
+    try {
+      const rows = await this.store.query<Array<Record<string, unknown>>>(
+        `SELECT id, content_hash FROM ${table} WHERE source_key = ${JSON.stringify(sourceKey)} ` +
+          `ORDER BY last_seen_at DESC, ingested_at DESC LIMIT 1;`,
+      );
+      const row = Array.isArray(rows) ? rows[0] : undefined;
+      if (!row) return null;
+      const sourceId = formatSurrealRecordId(row.id) ?? extractCreatedRecordId(row);
+      if (!sourceId) return null;
+      const contentHash = typeof row.content_hash === "string" ? row.content_hash : null;
+      return { sourceId, contentHash };
+    } catch {
+      return null;
+    }
   }
 
   async touchSourceSeen(sourceId: string) {
@@ -430,13 +538,62 @@ class SurrealGraphWriter implements GraphWriter {
       .catch(() => {});
   }
 
-  async listCurrentClaimVersions(): Promise<PriorClaimVersion[]> {
-    return [];
+  /**
+   * Stage 3.2b: returns current (valid_to IS NULL) claim versions for this source key
+   * from `restormel_claim_versions` when the user has opted in.
+   */
+  async listCurrentClaimVersions(sourceKey: string): Promise<PriorClaimVersion[]> {
+    const ok = await this.ensureVersionTable();
+    if (!ok) return [];
+    try {
+      const rows = await this.store.query<Array<Record<string, unknown>>>(
+        `SELECT * FROM ${SURREAL_VERSION_TABLE} WHERE source_key = ${JSON.stringify(sourceKey)} ` +
+          `AND valid_to IS NULL;`,
+      );
+      if (!Array.isArray(rows)) return [];
+      return rows.map((r) => ({
+        versionId: formatSurrealRecordId(r.id) ?? String(r.id),
+        claimKey: typeof r.claim_key === "string" ? r.claim_key : null,
+        versionNo: typeof r.version_no === "number" ? r.version_no : 1,
+        unitId: String(r.unit_id),
+        text: String(r.text),
+        verificationState: typeof r.verification_state === "string" ? r.verification_state : "unverified",
+        judgedBy: typeof r.judged_by === "string" ? r.judged_by : null,
+        judgedAt: typeof r.judged_at === "string" ? r.judged_at : null,
+        validationStatus: typeof r.validation_status === "string" ? r.validation_status : null,
+        validationNote: typeof r.validation_note === "string" ? r.validation_note : null,
+      }));
+    } catch {
+      return [];
+    }
   }
 
-  async supersedeClaimVersions(rows: { versionId: string; supersededBy: string | null }[]) {
-    // Unreachable while findSourceVersion returns null; defensively report as missed.
-    return { persisted: 0, missed: rows.length };
+  /**
+   * Stage 3.2b: close validity windows on prior version rows in restormel_claim_versions.
+   * Reversible — sets valid_to and optionally superseded_by; never deletes.
+   */
+  async supersedeClaimVersions(
+    rows: { versionId: string; supersededBy: string | null }[],
+  ): Promise<{ persisted: number; missed: number }> {
+    if (rows.length === 0) return { persisted: 0, missed: 0 };
+    const ok = await this.ensureVersionTable();
+    if (!ok) return { persisted: 0, missed: rows.length };
+    const now = new Date().toISOString();
+    let persisted = 0;
+    let missed = 0;
+    for (const r of rows) {
+      try {
+        const merge: Record<string, unknown> = { valid_to: now };
+        if (r.supersededBy !== null) merge.superseded_by = r.supersededBy;
+        await this.store.query(
+          `UPDATE ${surrealRecordRef(r.versionId)} MERGE ${JSON.stringify(merge)};`,
+        );
+        persisted += 1;
+      } catch {
+        missed += 1;
+      }
+    }
+    return { persisted, missed };
   }
 
   async writeUnitsAndRelations(args: {
@@ -605,7 +762,6 @@ class SurrealGraphWriter implements GraphWriter {
   }
 
   async setEvidence(args: { sourceHash: string; bindings: ClaimVersionBinding[] }) {
-    // Version-row ids are not tracked on Surreal yet (see findSourceVersion note).
     const versionIdByUnitId = new Map<string, string>();
     if (args.bindings.length === 0) return { persisted: 0, missed: 0, versionIdByUnitId };
     const unitTable = ident(this.schema.unit_table, "unit");
@@ -632,6 +788,10 @@ class SurrealGraphWriter implements GraphWriter {
     // nothing ever closes a window) — as-of retrieval degrades explicitly for these
     // stores via response metadata, never silently.
     const validFrom = new Date().toISOString();
+
+    // Stage 3.2b: check opt-in once before writing; version rows are written in a second
+    // pass below, AFTER the batched unit writes complete (non-blocking).
+    const useVersionTable = await this.ensureVersionTable();
 
     // Batched multi-statement script: one UPDATE per unit in a single HTTP /sql round-trip,
     // each statement RETURNing the record's evidence_status so we can verify per-record that
@@ -683,6 +843,43 @@ class SurrealGraphWriter implements GraphWriter {
       missed = args.bindings.length;
       const msg = err instanceof Error ? err.message : String(err);
       if (!firstMiss) firstMiss = { unitId: args.bindings[0]!.unitId, got: `error: ${msg}` };
+    }
+
+    // Stage 3.2b: second pass — write version rows if opted in.
+    // This runs AFTER the batched unit writes; failures are non-fatal and never block.
+    if (useVersionTable) {
+      for (const b of args.bindings) {
+        const bound = b.binding.status === "bound" ? b.binding.span : null;
+        const versionPayload: Record<string, unknown> = {
+          unit_id: b.unitId,
+          claim_key: b.claimKey ?? null,
+          version_no: b.versionNo ?? 1,
+          text: b.text,
+          evidence_quote: bound?.quote ?? null,
+          evidence_status: b.binding.status,
+          source_hash: args.sourceHash,
+          // Carry-forward: copied verification state for unchanged claims — no re-judging.
+          verification_state: b.carried?.verificationState ?? "unverified",
+          judged_by: b.carried?.judgedBy ?? null,
+          judged_at: b.carried?.judgedAt ?? null,
+          valid_from: validFrom,
+          valid_to: null,
+          superseded_by: null,
+        };
+        try {
+          const vRes = await this.store.query<unknown>(
+            `CREATE ${SURREAL_VERSION_TABLE} CONTENT ${JSON.stringify(versionPayload)} RETURN id;`,
+          );
+          const vId = extractCreatedRecordId(vRes);
+          if (vId) versionIdByUnitId.set(b.unitId, vId);
+        } catch (err) {
+          // Version-row failure is non-fatal; the unit row was already written.
+          console.warn(
+            `[connect-graph-writer] Could not write version row for unit ${b.unitId} ` +
+              `into "${SURREAL_VERSION_TABLE}": ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
     }
     if (missed > 0) {
       console.warn(
@@ -852,7 +1049,10 @@ export async function buildGraphWriter(
   if (target.provider === "surreal") {
     const store = await buildWorkspaceGraphStore(job.workspaceId);
     if (!store) return null;
-    return new SurrealGraphWriter(store, pack);
+    // Stage 3.2b: pass the user's opt-in setting to the writer so it can enable/disable
+    // the restormel_claim_versions table and incremental re-ingest.
+    const allowVersionTable = (target.settings?.allow_claim_versions_table) === true;
+    return new SurrealGraphWriter(store, pack, { allowVersionTable });
   }
   return null;
 }
