@@ -4,7 +4,17 @@
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { CONNECT_HUB_HREF, TESTING_HUB_HREF } from "$lib/nav-config";
 
-export type HubTab = { href: string; label: string; exact: boolean };
+export type HubTab = {
+  href: string;
+  label: string;
+  exact: boolean;
+  /**
+   * Optional badge count. When provided and > 0 the tab strip renders a
+   * numeric badge and an extended aria-label ("Graph — 12 claims need review").
+   * Hidden at zero to keep the UI clean.
+   */
+  badge?: number;
+};
 
 /** Canonical Connect MCP / agent wiring screen (hub tab). */
 export const CONNECT_MCP_HREF = CONNECT_HUB_HREF + "/mcp";

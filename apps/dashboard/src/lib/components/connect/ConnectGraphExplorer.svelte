@@ -42,6 +42,12 @@
     type GraphReviewCoaching,
   } from "$lib/connect/graph-review-coaching";
   import { sortGraphUnitsForReview } from "$lib/connect/graph-unit-sort";
+  import {
+    parseExplorerUrlState,
+    buildExplorerUrl,
+  } from "$lib/connect/explorer-url-state";
+  import { connectReviewCount } from "$lib/stores/connect-review-count";
+  import { replaceState } from "$app/navigation";
   import { onMount } from "svelte";
 
   type Member = { text: string; role: string | null; validationStatus: string | null };
@@ -167,9 +173,27 @@
     toUnitId: string | null;
   };
 
-  let queueScope: QueueScope = "review";
+  // ── URL-state initialisation (W2.1) ────────────────────────────────────────
+  // Parse synchronously so the correct queue state renders on first paint —
+  // same pattern as the existing workspaceMode initialisation.
+  const _initialUrlState = (() => {
+    try {
+      return parseExplorerUrlState(get(page).url.searchParams);
+    } catch {
+      return parseExplorerUrlState(new URLSearchParams());
+    }
+  })();
+
+  let queueScope: QueueScope = _initialUrlState.queueScope;
   /** Optional verdict narrow — applies on top of Quarantine or All ideas. */
-  let verdictFilter: VerdictFilter | null = null;
+  let verdictFilter: VerdictFilter | null = _initialUrlState.verdictFilter;
+  /**
+   * True when the page was reached via a quality CTA with ?filter=review.
+   * Drives the dismissible context line (C-P2-1).
+   */
+  let ctaContextDismissed = false;
+  const _ctaArrival = _initialUrlState.queueScope === "review" && !_initialUrlState.verdictFilter;
+  let showCtaContext = _ctaArrival && get(page).url.searchParams.has("filter");
   let extraUnits: Unit[] = [];
   let loadingMoreUnits = false;
   let loadMoreError: string | null = null;
@@ -196,7 +220,8 @@
     unsupported_untriaged: 0,
   });
   let statsDelta: StatsDelta = emptyStatsDelta();
-  let selectedId: string | null = null;
+  /** Selected unit id — initialised from ?unit= URL param (W2.1). */
+  let selectedId: string | null = _initialUrlState.selectedUnitId;
   let reviewNote = "";
   let actionError: string | null = null;
   let exitingUnitId: string | null = null;
@@ -698,6 +723,29 @@
         },
       }
     : null;
+  // ── Review-count store (W2.1) — keep badge in hub tab up-to-date ──────────
+  $: {
+    const count = stats?.validation?.awaiting_triage ?? null;
+    connectReviewCount.set(count);
+  }
+
+  // ── URL write-back (W2.1) — shareable + back/forward safe ─────────────────
+  // Runs whenever queue state changes; writes via replaceState so no new history
+  // entry is created. Only runs client-side (typeof window check guards SSR).
+  $: if (typeof window !== "undefined") {
+    try {
+      const newUrl = buildExplorerUrl(get(page).url, {
+        queueScope,
+        verdictFilter,
+        verificationStateFilter: null,
+        selectedUnitId: selectedId,
+      });
+      replaceState(newUrl, {});
+    } catch {
+      // Navigation not available (SSR or test environment) — ignore.
+    }
+  }
+
   $: unitsPagination = graph.unitsPagination ?? null;
   $: hasMoreUnits =
     unitsPagination?.hasMore ??
@@ -2101,6 +2149,22 @@
               idea{needsReviewCount === 1 ? "" : "s"} awaiting your review
             </p>
           {/if}
+          {#if showCtaContext && !ctaContextDismissed && needsReviewCount > 0}
+            <div class="cta-context-line" role="status">
+              <span>
+                Showing <strong>{needsReviewCount.toLocaleString()}</strong>
+                flagged {needsReviewCount === 1 ? "idea" : "ideas"} from your trust scorecard
+              </span>
+              <button
+                type="button"
+                class="cta-context-dismiss brut-focus"
+                aria-label="Dismiss scorecard context message"
+                on:click={() => { ctaContextDismissed = true; }}
+              >
+                ✕
+              </button>
+            </div>
+          {/if}
           {#if stats && stats.units > 0}
             <p class="units-load-meta" role="status" aria-busy={initialUnitsLoading}>
               {initialUnitsLoading ? "Loading first page of ideas…" : unitsLoadedLabel}
@@ -3244,6 +3308,35 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
+  }
+
+  /* C-P2-1: dismissible context line shown on CTA arrival with ?filter=review */
+  .cta-context-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    justify-content: space-between;
+    margin: var(--space-3) 0 0;
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    background: var(--color-yellow);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+  }
+
+  .cta-context-dismiss {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+    padding: 0 var(--space-1);
+    line-height: 1;
+  }
+
+  .cta-context-dismiss:hover {
+    color: var(--color-ink);
   }
 
   .graph-workspace {

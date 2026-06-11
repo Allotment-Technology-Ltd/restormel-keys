@@ -1,7 +1,9 @@
 <script lang="ts">
   /** Shared tab strip for multi-step dashboard hubs (Knowledge, Testing, …). */
+  import type { HubTab } from "$lib/dashboard-hub-nav";
+
   export let ariaLabel: string;
-  export let tabs: { href: string; label: string; exact: boolean }[];
+  export let tabs: HubTab[];
   /** Hide hub tabs during focused flows (e.g. pipeline setup wizard). */
   export let hideTabs = false;
   /** Tap-prefetch Connect hub tabs on intentional navigation (avoids hover fan-out on heavy routes). */
@@ -27,8 +29,14 @@
       class:hub-tab-active={isActive(tab.href, tab.exact)}
       aria-current={isActive(tab.href, tab.exact) ? "page" : undefined}
       data-sveltekit-preload-data={prefetchTabs ? "tap" : undefined}
+      aria-label={tab.badge && tab.badge > 0
+        ? `${tab.label} — ${tab.badge} ${tab.badge === 1 ? "claim needs" : "claims need"} review`
+        : undefined}
     >
       {tab.label}
+      {#if tab.badge && tab.badge > 0}
+        <span class="hub-tab-badge" aria-hidden="true">{tab.badge}</span>
+      {/if}
     </a>
   {/each}
 </nav>
@@ -72,5 +80,28 @@
     color: var(--color-ink);
     background: var(--color-yellow);
     border-bottom-color: var(--color-ink);
+  }
+
+  .hub-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--space-2);
+    min-width: 1.25em;
+    height: 1.25em;
+    padding: 0 0.3em;
+    border-radius: 999px;
+    background: var(--color-ink);
+    color: var(--color-bg);
+    font-size: 0.7em;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    vertical-align: middle;
+  }
+
+  .hub-tab-active .hub-tab-badge {
+    background: var(--color-ink);
+    color: var(--color-yellow);
   }
 </style>

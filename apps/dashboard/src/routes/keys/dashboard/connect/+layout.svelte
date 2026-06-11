@@ -2,7 +2,9 @@
   import ProductHubLayout from "$lib/components/dashboard/ProductHubLayout.svelte";
   import ConnectNavProgress from "$lib/components/connect/ConnectNavProgress.svelte";
   import { CONNECT_HUB_TABS } from "$lib/dashboard-hub-nav";
+  import type { HubTab } from "$lib/dashboard-hub-nav";
   import { navigating, page } from "$app/stores";
+  import { connectReviewCount } from "$lib/stores/connect-review-count";
 
   $: hideTabs = $page.url.pathname.includes("/connect/pipeline");
 
@@ -22,13 +24,21 @@
   $: isConnectNav = Boolean(navTo && navTo.includes("/connect"));
   $: skeletonVariant = connectSkeletonVariant(navTo);
   $: progressLabel = `Loading ${skeletonVariant === "default" ? "Connect" : skeletonVariant} screen`;
+
+  /** Tabs with the live review-count badge stitched into the Graph entry. */
+  $: badgedTabs = CONNECT_HUB_TABS.map((tab): HubTab => {
+    if (tab.href.endsWith("/graph") && $connectReviewCount && $connectReviewCount > 0) {
+      return { ...tab, badge: $connectReviewCount };
+    }
+    return tab;
+  });
 </script>
 
 <ConnectNavProgress active={isConnectNav} label={progressLabel} />
 
 <ProductHubLayout
   ariaLabel="Restormel Connect sections"
-  tabs={CONNECT_HUB_TABS}
+  tabs={badgedTabs}
   {hideTabs}
   prefetchTabs
   ariaBusy={isConnectNav}
