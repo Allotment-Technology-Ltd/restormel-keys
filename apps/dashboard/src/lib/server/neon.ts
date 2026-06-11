@@ -5699,6 +5699,12 @@ export function connectIngestJobRecordToApi(
   graph_target_id?: string;
   quality_report?: ReturnType<typeof toPublicConnectIngestQualityReport>;
   error?: string;
+  /** Unix ms of the last worker heartbeat — present when Stage 1.6 durable-runs columns exist. */
+  worker_heartbeat_at?: number | null;
+  /** Unix ms at which the lease expires — present when Stage 1.6 durable-runs columns exist. */
+  lease_expires_at?: number | null;
+  /** How many times the job was reclaimed after a stall. */
+  reclaim_count?: number;
 } {
   const qualityReport = toPublicConnectIngestQualityReport(row.progress?.quality_report, {
     stages: row.stages,
@@ -5726,6 +5732,11 @@ export function connectIngestJobRecordToApi(
     ...(row.graphTargetId ? { graph_target_id: row.graphTargetId } : {}),
     ...(qualityReport ? { quality_report: qualityReport } : {}),
     ...(row.error ? { error: row.error } : {}),
+    // Stage 1.6 durable-run signals — included unconditionally so the console can
+    // surface stall / reclaim state without a separate API call.
+    worker_heartbeat_at: row.workerHeartbeatAt ?? null,
+    lease_expires_at: row.leaseExpiresAt ?? null,
+    reclaim_count: row.reclaimCount ?? 0,
   };
 }
 
