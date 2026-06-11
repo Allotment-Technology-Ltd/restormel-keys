@@ -15,13 +15,16 @@ import {
 } from "@restormel/contracts/connect";
 import {
   RetrievalOrchestrator,
+  buildContextBlock,
   type GraphRagDeps,
   type GraphStore,
   type OrchestratorResult,
   type OrchestratorTrace,
+  type RetrievalResult,
   type RetrievedClaim,
   type VerificationPolicy,
 } from "@restormel/graphrag-core";
+import type { VerifiedClaimVersion } from "@restormel/contracts";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { buildGraphRagEmbedder } from "$lib/server/connect/stage-route-generate";
@@ -31,6 +34,7 @@ import type { ConnectV1AuthScope } from "./auth.js";
 import { resolveWorkspaceRetrievalConfig } from "./workspace-retrieval-config.js";
 import { buildProvenanceTrace } from "./provenance-trace-builder.js";
 import { buildVerifiedClaims, type VerifiedClaimSourceClaim } from "./verified-claims.js";
+import { applyTemporalValidity, parseTemporalRequest } from "./temporal-validity.js";
 
 const emptyGraphStore: GraphStore = {
   async query<T>(_sql: string, _vars?: Record<string, unknown>): Promise<T> {
@@ -200,6 +204,7 @@ export async function executeConnectGraphOp(args: {
     body: ConnectGraphOpResponse,
     claims: VerifiedClaimSourceClaim[],
     traceId?: string,
+    versions?: Map<string, VerifiedClaimVersion>,
   ): Promise<void> => {
     if (claims.length === 0) return;
     try {
@@ -209,12 +214,54 @@ export async function executeConnectGraphOp(args: {
         vocabulary: config.verification,
         claims,
         traceId,
+        versions,
       });
       body.verified_claims = envelopes;
       body.metadata.verification_summary = summary;
     } catch {
       // Envelope enrichment is additive — retrieval still answers without it.
     }
+  };
+
+  /**
+   * Stage 3.3 — temporal validity. When the request carries as_of / include_superseded,
+   * project the retrieved subgraph onto the requested instant via the claim-version
+   * chains (Postgres spine). Stores without chains (BYO Surreal pre-3.2b) degrade
+   * explicitly via metadata.temporal — never silently pretend (see temporal-validity.ts).
+   * When the claim set changes, the context block is rebuilt so dropped/superseded
+   * content cannot leak into the prompt text.
+   */
+  const temporalRequest = parseTemporalRequest(request);
+  const projectTemporal = async (
+    result: OrchestratorResult,
+  ): Promise<{
+    result: OrchestratorResult;
+    versions?: Map<string, VerifiedClaimVersion>;
+    metadata?: ConnectGraphOpResponse["metadata"]["temporal"];
+  }> => {
+    if (!temporalRequest) return { result };
+    const outcome = await applyTemporalValidity({
+      workspaceId: args.auth.workspaceId,
+      provider: targetRow?.provider ?? null,
+      subgraph: result.subgraph,
+      request: temporalRequest,
+    });
+    const next: OrchestratorResult = outcome.changed
+      ? {
+          ...result,
+          subgraph: outcome.subgraph,
+          context_block: buildContextBlock(
+            {
+              claims: outcome.subgraph.claims,
+              relations: outcome.subgraph.relations,
+              arguments: outcome.subgraph.arguments,
+              seed_claim_ids: outcome.subgraph.seed_claim_ids,
+            } as RetrievalResult,
+            config,
+          ),
+        }
+      : { ...result, subgraph: outcome.subgraph };
+    return { result: next, versions: outcome.versionsByClaimId, metadata: outcome.metadata };
   };
 
   const persistTrace = async (
@@ -250,7 +297,7 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "query is required for retrieve_context" } };
       }
       const startedAt = Date.now();
-      const result = await orchestrator.retrieveContext({
+      const retrieved = await orchestrator.retrieveContext({
         query: request.query,
         topK: request.top_k,
         maxDepth: request.max_depth,
@@ -258,9 +305,11 @@ export async function executeConnectGraphOp(args: {
         domain: request.domain,
         verificationPolicy,
       });
+      const { result, versions, metadata: temporal } = await projectTemporal(retrieved);
       const traceId = await persistTrace(request.query, result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
-      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      if (temporal) body.metadata.temporal = temporal;
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId, versions);
       return { ok: true, body };
     }
 
@@ -269,16 +318,18 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "seed_node_ids is required for expand_context" } };
       }
       const startedAt = Date.now();
-      const result = await orchestrator.expandContext({
+      const expanded = await orchestrator.expandContext({
         seedNodeIds: request.seed_node_ids,
         depth: request.depth ?? request.max_depth,
         edgeTypeFiltering: request.edge_types,
         verificationPolicy,
         maxTokens: request.max_tokens,
       });
+      const { result, versions, metadata: temporal } = await projectTemporal(expanded);
       const traceId = await persistTrace(request.query ?? "", result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
-      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      if (temporal) body.metadata.temporal = temporal;
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId, versions);
       return { ok: true, body };
     }
 
@@ -287,16 +338,18 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "topic is required for find_relevant_subgraph" } };
       }
       const startedAt = Date.now();
-      const result = await orchestrator.findRelevantSubgraph({
+      const found = await orchestrator.findRelevantSubgraph({
         topic: request.topic,
         reasoningMode: request.reasoning_mode,
         maxNodes: request.max_nodes,
         verificationPolicy,
         maxTokens: request.max_tokens,
       });
+      const { result, versions, metadata: temporal } = await projectTemporal(found);
       const traceId = await persistTrace(request.topic, result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
-      await attachVerifiedClaims(body, result.subgraph.claims, traceId);
+      if (temporal) body.metadata.temporal = temporal;
+      await attachVerifiedClaims(body, result.subgraph.claims, traceId, versions);
       return { ok: true, body };
     }
 
@@ -345,6 +398,15 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "summarise_subgraph requires query, topic, or seed_node_ids" } };
       }
 
+      // Stage 3.3: project BEFORE summarising so claims invalid at as_of cannot leak
+      // into the condensed context.
+      const {
+        result: projectedRetrieved,
+        versions,
+        metadata: temporal,
+      } = await projectTemporal(retrieved);
+      retrieved = projectedRetrieved;
+
       const summary = await orchestrator.summariseSubgraph({
         subgraph: retrieved.subgraph,
         maxTokens,
@@ -386,9 +448,10 @@ export async function executeConnectGraphOp(args: {
         metadata: {
           retrieval_degraded: retrieved.trace.degraded,
           retrieval_degraded_reason: retrieved.trace.degraded_reason,
+          ...(temporal ? { temporal } : {}),
         },
       };
-      await attachVerifiedClaims(body, summary.nodes, traceId);
+      await attachVerifiedClaims(body, summary.nodes, traceId, versions);
       return { ok: true, body };
     }
 

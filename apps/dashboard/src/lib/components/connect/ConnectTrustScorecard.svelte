@@ -106,6 +106,19 @@
             <span class="metric-label">Validated supported</span>
             <span class="metric-detail">{card.g2.weak.toLocaleString()} weak · {card.g2.unsupported.toLocaleString()} unsupported</span>
           </li>
+          {#if card.temporal}
+            <li>
+              <span class="metric-value">{card.temporal.pct == null ? "—" : `${card.temporal.pct}%`}</span>
+              <span class="metric-label">Temporal coverage</span>
+              <span class="metric-detail">
+                {#if card.temporal.versioned == null}
+                  Store could not answer — version data unknown
+                {:else}
+                  {card.temporal.versioned.toLocaleString()} of {card.temporal.units.toLocaleString()} ideas carry validity windows (as-of ready)
+                {/if}
+              </span>
+            </li>
+          {/if}
           <li>
             <span class="metric-value">
               {card.coverage.validator_gaps == null && card.coverage.remediation_drops == null

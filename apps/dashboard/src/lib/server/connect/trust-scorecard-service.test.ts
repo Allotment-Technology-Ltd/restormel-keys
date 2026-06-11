@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ConnectTrustScorecardSchema } from "@restormel/contracts";
 
 vi.mock("$lib/server/neon", () => ({
+  countConnectVersionedUnitsPostgres: vi.fn(),
   getConnectClaimVersionBreakdownPostgres: vi.fn(),
   getConnectGraphCoverageCountsPostgres: vi.fn(),
   listConnectIngestJobsForWorkspace: vi.fn(),
@@ -43,6 +44,7 @@ const EBV = {
   validatorGaps: 3,
   remediationDrops: 4,
   lastJudgedAt: "2026-06-09T18:30:00.000Z",
+  versionedUnits: 150,
 };
 
 describe("composeTrustScorecard", () => {
@@ -74,6 +76,8 @@ describe("composeTrustScorecard", () => {
       unverified: 24,
     });
     expect(card.coverage).toEqual({ validator_gaps: 3, remediation_drops: 4 });
+    // Temporal coverage (Stage 3.3): 150/200 units carry validity windows.
+    expect(card.temporal).toEqual({ versioned: 150, units: 200, pct: 75 });
     // Judgment timestamp wins over the run assessment fallback.
     expect(card.last_verified_at).toBe("2026-06-09T18:30:00.000Z");
     // Factor breakdown covers the full kg-audit formula.
@@ -138,10 +142,12 @@ describe("composeTrustScorecard", () => {
     const card = composeTrustScorecard({
       store: "surreal",
       stats: STATS,
-      ebv: { ...EBV, validatorGaps: null, remediationDrops: null },
+      ebv: { ...EBV, validatorGaps: null, remediationDrops: null, versionedUnits: null },
       lastAssessedAt: null,
     });
     expect(card.coverage).toEqual({ validator_gaps: null, remediation_drops: null });
+    // Temporal coverage unknown is null, never 0% (Stage 3.3).
+    expect(card.temporal).toEqual({ versioned: null, units: 200, pct: null });
   });
 
   it("falls back to the latest run assessment when no judgment timestamp exists", async () => {
@@ -202,7 +208,8 @@ describe("loadConnectTrustScorecard", () => {
     });
     vi.mocked(explorer.surrealCountWhere)
       .mockResolvedValueOnce(3) // coverage_gap notes
-      .mockResolvedValueOnce(4); // remediation drops
+      .mockResolvedValueOnce(4) // remediation drops
+      .mockResolvedValueOnce(120); // units stamped with valid_from (Stage 3.3)
     vi.mocked(neon.listConnectIngestJobsForWorkspace).mockResolvedValue([]);
 
     const card = await loadConnectTrustScorecard("ws-1");
@@ -211,7 +218,11 @@ describe("loadConnectTrustScorecard", () => {
     expect(card!.verification_states).toEqual({ supported: 150, inferred: 30, unverified: 20 });
     expect(card!.evidence.bound).toBe(140);
     expect(card!.coverage).toEqual({ validator_gaps: 3, remediation_drops: 4 });
+    expect(card!.temporal).toEqual({ versioned: 120, units: 200, pct: 60 });
     expect(card!.last_verified_at).toBe("2026-06-09T18:30:00.000Z");
+    // Temporal coverage on Surreal counts the writers' opportunistic valid_from stamps.
+    const temporalWhere = vi.mocked(explorer.surrealCountWhere).mock.calls[2]![2];
+    expect(temporalWhere).toContain("valid_from != NONE");
     // The drop count targets remediation soft-excludes, not just any removed unit.
     const dropWhere = vi.mocked(explorer.surrealCountWhere).mock.calls[1]![2];
     expect(dropWhere).toContain("validation_status = 'removed'");
@@ -236,6 +247,7 @@ describe("loadConnectTrustScorecard", () => {
       validatorGaps: 1,
       remediationDrops: 0,
     });
+    vi.mocked(neon.countConnectVersionedUnitsPostgres).mockResolvedValue(160);
     vi.mocked(neon.listConnectIngestJobsForWorkspace).mockResolvedValue([
       {
         id: "job-2",
@@ -256,6 +268,8 @@ describe("loadConnectTrustScorecard", () => {
     expect(card!.store).toBe("postgres");
     expect(card!.verification_states).toEqual({ supported: 100, unverified: 100 });
     expect(card!.coverage).toEqual({ validator_gaps: 1, remediation_drops: 0 });
+    // Temporal coverage from connect_claim_versions current rows: 160/200 = 80%.
+    expect(card!.temporal).toEqual({ versioned: 160, units: 200, pct: 80 });
     // last_verified_at falls back to the latest COMPLETED job carrying a quality report.
     expect(card!.last_verified_at).toBe("2026-06-08T10:00:00.000Z");
   });
@@ -269,12 +283,14 @@ describe("loadConnectTrustScorecard", () => {
     vi.mocked(explorer.resolveSurrealGraphReadContext).mockResolvedValue(null);
     vi.mocked(neon.getConnectClaimVersionBreakdownPostgres).mockRejectedValue(new Error("down"));
     vi.mocked(neon.getConnectGraphCoverageCountsPostgres).mockRejectedValue(new Error("down"));
+    vi.mocked(neon.countConnectVersionedUnitsPostgres).mockRejectedValue(new Error("down"));
     vi.mocked(neon.listConnectIngestJobsForWorkspace).mockRejectedValue(new Error("down"));
 
     const card = await loadConnectTrustScorecard("ws-1");
     expect(card).not.toBeNull();
     expect(card!.verification_states).toEqual({ unverified: 200 });
     expect(card!.coverage).toEqual({ validator_gaps: null, remediation_drops: null });
+    expect(card!.temporal).toEqual({ versioned: null, units: 200, pct: null });
     expect(card!.last_verified_at).toBeNull();
   });
 
