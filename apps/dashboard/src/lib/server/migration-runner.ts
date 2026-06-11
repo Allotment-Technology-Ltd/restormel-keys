@@ -53,6 +53,85 @@ export function sortMigrationFiles(files: string[]): string[] {
   });
 }
 
+/**
+ * Split a migration file into individual statements. The Neon HTTP driver rejects
+ * multi-command prepared statements ("cannot insert multiple commands into a prepared
+ * statement"), so each statement must be sent separately (still within one transaction).
+ * Aware of: line comments (--), block comments, single-quoted strings, and
+ * dollar-quoted blocks ($tag$ ... $tag$ — used by DO blocks/functions, e.g. migration 050).
+ */
+export function splitSqlStatements(content: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let i = 0;
+  const n = content.length;
+  while (i < n) {
+    const ch = content[i];
+    const next = content[i + 1];
+    // Line comment
+    if (ch === "-" && next === "-") {
+      const nl = content.indexOf("\n", i);
+      const end = nl === -1 ? n : nl + 1;
+      current += content.slice(i, end);
+      i = end;
+      continue;
+    }
+    // Block comment
+    if (ch === "/" && next === "*") {
+      const close = content.indexOf("*/", i + 2);
+      const end = close === -1 ? n : close + 2;
+      current += content.slice(i, end);
+      i = end;
+      continue;
+    }
+    // Single-quoted string ('' escapes)
+    if (ch === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (content[j] === "'" && content[j + 1] === "'") j += 2;
+        else if (content[j] === "'") { j += 1; break; }
+        else j += 1;
+      }
+      current += content.slice(i, j);
+      i = j;
+      continue;
+    }
+    // Dollar-quoted block ($tag$ ... $tag$)
+    if (ch === "$") {
+      const m = content.slice(i).match(/^\$[A-Za-z_]*\$/);
+      if (m) {
+        const tag = m[0];
+        const close = content.indexOf(tag, i + tag.length);
+        const end = close === -1 ? n : close + tag.length;
+        current += content.slice(i, end);
+        i = end;
+        continue;
+      }
+    }
+    if (ch === ";") {
+      statements.push(current);
+      current = "";
+      i += 1;
+      continue;
+    }
+    current += ch;
+    i += 1;
+  }
+  statements.push(current);
+  // Drop statements that are empty or comments-only.
+  return statements
+    .map((s) => s.trim())
+    .filter((s) => {
+      const noLineComments = s
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("--"))
+        .join("\n")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .trim();
+      return noLineComments.length > 0;
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
@@ -101,12 +180,13 @@ export async function runMigrations(
     log(`  --> applying ${filename}`);
 
     // Execute the migration and record it atomically in a single transaction.
-    // sql.transaction() sends all queries over one HTTP request; each query is
-    // passed as a prepared statement, so we use txn.query(raw, []) for the
-    // migration content (raw SQL) and a parameterised query for the insert.
+    // sql.transaction() sends all queries over one HTTP request, each as its own
+    // prepared statement — Neon rejects multi-command prepared statements, so the
+    // file is split into individual statements first (comment/dollar-quote aware).
+    const statements = splitSqlStatements(content);
     try {
       await sql.transaction((txn) => [
-        txn.query(content, []),
+        ...statements.map((stmt) => txn.query(stmt, [])),
         txn.query(
           "INSERT INTO schema_migrations (filename, applied_at) VALUES ($1, NOW()) ON CONFLICT (filename) DO NOTHING",
           [filename],
