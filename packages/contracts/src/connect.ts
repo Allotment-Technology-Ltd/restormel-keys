@@ -232,6 +232,116 @@ export const ConnectRetrieveResponseSchema = z.object({
 
 export type ConnectRetrieveResponse = z.infer<typeof ConnectRetrieveResponseSchema>;
 
+// ─── Memory (Stage 3.4 — agent observation write path) ─────────────────────
+
+/**
+ * Max observations per POST /connect/v1/memory request. Tuned to ONE span-scoped
+ * entailment judge batch (ENTAILMENT_BATCH_SIZE = 10 in @restormel/connect-core) so a
+ * memory write is always a small, bounded validation pass — never a bulk-ingest channel.
+ */
+export const CONNECT_MEMORY_MAX_OBSERVATIONS = 10;
+
+/**
+ * What "evidence" means for an agent observation (EBV rules apply unchanged):
+ * the agent quotes the exact text it saw (`quote`), optionally with the surrounding
+ * passage (`context`) and a reference to where it saw it (`source_ref`). The quote is
+ * bound deterministically (EBV Layer 1) against the submitted evidence corpus — which
+ * is stored verbatim as the observation source version, so the span stays re-checkable —
+ * and the entailment judge (Layer 2) then decides whether the quote entails the
+ * observation. The evidence is AGENT-ATTESTED: provenance records that it arrived via
+ * the memory write path, not a Restormel-crawled source. An observation with no
+ * evidence at all can never be "supported" — at best inferred/unverified per EBV.
+ */
+export const ConnectMemoryEvidenceSchema = z.object({
+  /** Exact quote supporting the observation (verbatim — it is bound, not paraphrased). */
+  quote: z.string().min(1).max(2000),
+  /** Where the agent saw it (URL, document title, tool name…). Audit metadata only. */
+  source_ref: z.string().min(1).max(500).optional(),
+  /** Surrounding passage the quote appears in; stored as the bindable source text. */
+  context: z.string().min(1).max(8000).optional()
+});
+
+export type ConnectMemoryEvidence = z.infer<typeof ConnectMemoryEvidenceSchema>;
+
+export const ConnectMemoryObservationSchema = z.object({
+  /** The claim the agent wants to remember. */
+  text: z.string().min(1).max(2000),
+  evidence: ConnectMemoryEvidenceSchema.optional()
+});
+
+export type ConnectMemoryObservation = z.infer<typeof ConnectMemoryObservationSchema>;
+
+export const ConnectMemoryWriteRequestSchema = ConnectWorkspaceContextSchema.extend({
+  contract_version: ConnectApiContractVersionSchema.optional(),
+  observations: z
+    .array(ConnectMemoryObservationSchema)
+    .min(1)
+    .max(CONNECT_MEMORY_MAX_OBSERVATIONS)
+});
+
+export type ConnectMemoryWriteRequest = z.infer<typeof ConnectMemoryWriteRequestSchema>;
+
+/** EBV verification states an observation can land in (see verified-claim.ts). */
+export const ConnectMemoryVerificationStateSchema = z.enum([
+  'supported',
+  'inferred',
+  'unverified',
+  'contradicted',
+  'excluded'
+]);
+
+/**
+ * accepted — persisted and reaches verified retrieval (supported; inferred is labeled).
+ * review   — persisted as unverified; held for the review queue, never strict retrieval.
+ * rejected — soft-excluded by remediation (no basis in the submitted evidence).
+ */
+export const ConnectMemoryOutcomeSchema = z.enum(['accepted', 'review', 'rejected']);
+
+export const ConnectMemoryObservationResultSchema = z.object({
+  /** Position of the observation in the request array. */
+  index: z.number().int().nonnegative(),
+  /** Stored unit record id (claims are persisted whatever the verdict — soft-excluded when rejected). */
+  unit_id: z.string(),
+  /** Deterministic claim identity (Stage 3.2 machinery). */
+  claim_key: z.string().nullable(),
+  /** Final stored text (remediation may have repaired it to match the evidence). */
+  text: z.string(),
+  verification_state: ConnectMemoryVerificationStateSchema,
+  evidence_binding: z.enum(['bound', 'unbound', 'no_evidence']),
+  outcome: ConnectMemoryOutcomeSchema,
+  /** True when remediation repaired the text and the repair re-passed the judge gate. */
+  repaired: z.boolean(),
+  /** Transparent machine+human readable reasons (binding/entailment/remediation notes). */
+  reasons: z.array(z.string())
+});
+
+export type ConnectMemoryObservationResult = z.infer<typeof ConnectMemoryObservationResultSchema>;
+
+export const ConnectMemoryWriteResponseSchema = z.object({
+  contract_version: ConnectApiContractVersionSchema,
+  request_id: z.string().min(1),
+  /** Source record registering this submission (kind "agent_observation"). */
+  source_id: z.string(),
+  provenance: z.object({
+    kind: z.literal('agent_observation'),
+    /** Submitting key id (audit identity — never the raw key). */
+    key_id: z.string().nullable(),
+    auth_type: z.string()
+  }),
+  results: z.array(ConnectMemoryObservationResultSchema),
+  summary: z.object({
+    supported: z.number().int().nonnegative(),
+    inferred: z.number().int().nonnegative(),
+    unverified: z.number().int().nonnegative(),
+    excluded: z.number().int().nonnegative(),
+    /** Units embedded for vector retrieval (may lag `results` if embedding degraded). */
+    embedded: z.number().int().nonnegative()
+  }),
+  warnings: z.array(z.string()).optional()
+});
+
+export type ConnectMemoryWriteResponse = z.infer<typeof ConnectMemoryWriteResponseSchema>;
+
 // ─── Graph orchestrator (higher-order retrieval — RetrievalOrchestrator) ────
 
 export const ConnectGraphVerificationCategorySchema = z.enum(['supported', 'weak', 'unsupported']);

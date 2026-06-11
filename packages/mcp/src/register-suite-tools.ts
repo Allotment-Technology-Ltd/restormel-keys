@@ -21,6 +21,7 @@ import {
 import { registerConnectAgentTools } from "./connect-agent-tools.js";
 import { registerConnectKnowledgeTools } from "./connect-knowledge-tools.js";
 import { registerConnectVerifiedRetrieval } from "./connect-verified-retrieval.js";
+import { registerConnectMemoryWrite } from "./connect-memory-write.js";
 import { ROUTING_CAPABILITIES } from "./routing-capabilities.js";
 import {
   getEnabledSuiteToolNames,
@@ -360,6 +361,7 @@ export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolMo
   registerConnectAgentTools(server, reg);
   registerConnectKnowledgeTools(server, reg);
   registerConnectVerifiedRetrieval(server, reg);
+  registerConnectMemoryWrite(server, reg);
 
   reg(
     "connect.ingest.start",
