@@ -5,7 +5,7 @@ import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.user || event.locals.user.authType !== "session") {
-    return { agentSetup: Promise.resolve(null) };
+    return { signedIn: false, agentSetup: Promise.resolve(null) };
   }
   const agentSetup = (async () => {
     const endMcp = perfSpan("connect/mcp", "loadConnectAgentSetup");
@@ -22,5 +22,5 @@ export const load: PageServerLoad = async (event) => {
       return null;
     }
   })();
-  return { agentSetup };
+  return { signedIn: true, agentSetup };
 };

@@ -145,7 +145,9 @@
 </header>
 
 {#if data.projectsError}
-  <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
+  <p class="error-msg" role="alert">
+    Could not load your projects. Reload the page to try again, or contact support if the problem continues.
+  </p>
 {/if}
 
 <section class="overview-primary panel" aria-labelledby="overview-primary-h">

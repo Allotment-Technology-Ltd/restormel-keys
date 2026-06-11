@@ -1,9 +1,22 @@
 <script lang="ts">
+  import { invalidateAll } from "$app/navigation";
   import ConnectAgentSetup from "$lib/components/connect/ConnectAgentSetup.svelte";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import type { ConnectAgentSetupData } from "$lib/connect/agent-setup-types";
 
-  export let data: { agentSetup: Promise<ConnectAgentSetupData | null> };
+  export let data: { signedIn: boolean; agentSetup: Promise<ConnectAgentSetupData | null> };
+
+  let retrying = false;
+  async function retry() {
+    retrying = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retrying = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -11,22 +24,36 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-{#await data.agentSetup}
-  <ConnectPageSkeleton variant="mcp" />
-{:then agentSetup}
-  {#if !agentSetup}
-    <p class="notice" role="status">Sign in to configure MCP agent access.</p>
-  {:else}
-    <ConnectAgentSetup setup={agentSetup} />
-  {/if}
-{:catch}
-  <p class="notice" role="alert">Could not load agent setup. Refresh to try again.</p>
-{/await}
-
-<style>
-  .notice {
-    padding: var(--space-4);
-    border: var(--border);
-    color: var(--rm-muted);
-  }
-</style>
+{#if !data.signedIn}
+  <SignInNotice message="Sign in to configure MCP agent access." />
+{:else}
+  {#await data.agentSetup}
+    <ConnectPageSkeleton variant="mcp" />
+  {:then agentSetup}
+    {#if !agentSetup}
+      <BrutalErrorBanner
+        title="Agent setup unavailable"
+        message="Could not load the MCP agent setup. Your configuration is unaffected — this is a load failure."
+      >
+        {#snippet actions()}
+          <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+            {retrying ? "Retrying…" : "Try again"}
+          </button>
+        {/snippet}
+      </BrutalErrorBanner>
+    {:else}
+      <ConnectAgentSetup setup={agentSetup} />
+    {/if}
+  {:catch}
+    <BrutalErrorBanner
+      title="Agent setup unavailable"
+      message="Could not load the MCP agent setup. Your configuration is unaffected — this is a load failure."
+    >
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+          {retrying ? "Retrying…" : "Try again"}
+        </button>
+      {/snippet}
+    </BrutalErrorBanner>
+  {/await}
+{/if}

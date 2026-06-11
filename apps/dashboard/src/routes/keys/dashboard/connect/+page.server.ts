@@ -5,10 +5,24 @@ import {
   loadConnectTrustScorecardPanel,
   loadConnectQualityHistoryPanel,
 } from "$lib/server/connect/connect-hub-load";
+import { isCredentialEncryptionConfigured } from "$lib/server/credential-crypto";
+
+/**
+ * True when this instance is running in a non-production (self-host / dev) context.
+ * The RESTORMEL_CREDENTIALS_ENCRYPTION_KEY banner must only appear here — cloud users
+ * have no access to .env.local and seeing the message is confusing and alarming (A-P1-3).
+ */
+function isSelfHostOrDev(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.VERCEL_ENV !== "production"
+  );
+}
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.user || event.locals.user.authType !== "session") {
     return {
+      signedIn: false,
       hub: Promise.resolve(null),
       graphPulse: Promise.resolve(null),
       scorecard: Promise.resolve(null),
@@ -26,7 +40,13 @@ export const load: PageServerLoad = async (event) => {
     event.locals.connectStatsRequestMemo = new Map();
   }
 
+  // Expose the encryption-key warning only to self-host / dev users.  Cloud users never
+  // set RESTORMEL_CREDENTIALS_ENCRYPTION_KEY in .env.local — showing it to them is noise.
+  const encryptionWarning = isSelfHostOrDev() && !isCredentialEncryptionConfigured();
+
   return {
+    signedIn: true,
+    encryptionWarning,
     // Fast path — renders the shell + ledger immediately from cached stats.
     hub: loadConnectHubPage(event),
     // Streamed — authoritative graph counts fill the pulse band when ready.
