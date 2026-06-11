@@ -44,11 +44,15 @@ describe("EBV Postgres persistence is batched (one round-trip per call)", () => 
       evidenceStatus: "bound" as const,
       sourceHash: "hash",
     }));
-    const n = await insertConnectClaimVersionsPostgres({ workspaceId: "ws", rows });
-    expect(n).toBe(3);
+    // Stage 3.2: returns the inserted (unitId, versionId) pairs from RETURNING —
+    // the stub driver returns no rows, so the mapping is empty; the round-trip
+    // shape is what this test pins.
+    const inserted = await insertConnectClaimVersionsPostgres({ workspaceId: "ws", rows });
+    expect(inserted).toEqual([]);
     const inserts = callsMatching("INSERT INTO connect_claim_versions");
     expect(inserts).toHaveLength(1);
     expect(inserts[0]!.text).toContain("unnest(");
+    expect(inserts[0]!.text).toContain("RETURNING id, unit_id");
     expect(inserts[0]!.params).toContainEqual(["u1", "u2", "u3"]);
   });
 
@@ -68,6 +72,25 @@ describe("EBV Postgres persistence is batched (one round-trip per call)", () => 
     expect(updates[0]!.text).toContain("valid_to IS NULL");
     expect(updates[0]!.params).toContainEqual(["u1", "u2"]);
     expect(updates[0]!.params).toContainEqual(["m#pv1", null]);
+  });
+
+  it("supersedeConnectClaimVersionsPostgres issues a single multi-row UPDATE (Stage 3.2)", async () => {
+    const { supersedeConnectClaimVersionsPostgres } = await import("$lib/server/neon");
+    await supersedeConnectClaimVersionsPostgres({
+      workspaceId: "ws",
+      rows: [
+        { versionId: "10", supersededBy: "20" },
+        { versionId: "11", supersededBy: null },
+      ],
+    });
+    const updates = captured.filter(
+      (c) => c.text.includes("UPDATE connect_claim_versions") && c.text.includes("superseded_by"),
+    );
+    expect(updates).toHaveLength(1);
+    expect(updates[0]!.text).toContain("unnest(");
+    expect(updates[0]!.text).toContain("valid_to IS NULL");
+    expect(updates[0]!.params).toContainEqual(["10", "11"]);
+    expect(updates[0]!.params).toContainEqual(["20", null]);
   });
 
   it("insertConnectClaimJudgmentsPostgres issues a single multi-row INSERT", async () => {
@@ -132,7 +155,12 @@ describe("EBV Postgres persistence is batched (one round-trip per call)", () => 
   it("no-ops without a round-trip on empty input", async () => {
     const neon = await import("$lib/server/neon");
     captured.length = 0;
-    expect(await neon.insertConnectClaimVersionsPostgres({ workspaceId: "ws", rows: [] })).toBe(0);
+    expect(await neon.insertConnectClaimVersionsPostgres({ workspaceId: "ws", rows: [] })).toEqual(
+      [],
+    );
+    expect(
+      await neon.supersedeConnectClaimVersionsPostgres({ workspaceId: "ws", rows: [] }),
+    ).toBe(0);
     expect(
       await neon.updateConnectClaimVersionStatesPostgres({ workspaceId: "ws", states: [] }),
     ).toBe(0);

@@ -87,6 +87,16 @@ function normalizeWithMap(text: string): { norm: string; map: number[] } {
   return { norm: out.join(""), map };
 }
 
+/**
+ * The binder's normalization as a plain string (whitespace runs collapsed, unicode
+ * quotes/dashes folded, lowercased). Claim identity (Stage 3.2) hashes THIS form so the
+ * same evidence quote keeps the same claim_key across re-extractions with minor
+ * whitespace/quote drift — exactly the folding used for normalized span matching.
+ */
+export function normalizeForMatch(text: string): string {
+  return normalizeWithMap(text).norm;
+}
+
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()

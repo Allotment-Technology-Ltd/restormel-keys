@@ -2611,7 +2611,7 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_status TEXT`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS validation_note TEXT`;
     await sql`ALTER TABLE knowledge_graph_units ADD COLUMN IF NOT EXISTS source_chunk_index INTEGER`;
-    // Hot-path indexes (dev mirror of migrations/057): per-workspace validation
+    // Hot-path indexes (dev mirror of migrations/058): per-workspace validation
     // aggregates/scans (stats, triage, re-validation scope) and source-grouped reads.
     await sql`
       CREATE INDEX IF NOT EXISTS idx_knowledge_graph_units_workspace_validation
@@ -2620,6 +2620,16 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_knowledge_graph_units_source
       ON knowledge_graph_units (source_id)
+    `;
+    // Stage 3.2 incremental re-ingest (migrations/059): stable source identity + content
+    // version hash so unchanged documents are skipped and changed ones diff their claims.
+    await sql`ALTER TABLE knowledge_graph_sources ADD COLUMN IF NOT EXISTS source_key TEXT`;
+    await sql`ALTER TABLE knowledge_graph_sources ADD COLUMN IF NOT EXISTS content_hash TEXT`;
+    await sql`ALTER TABLE knowledge_graph_sources ADD COLUMN IF NOT EXISTS last_seen_at BIGINT`;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_graph_sources_source_key
+      ON knowledge_graph_sources (workspace_id, source_key, created_at DESC)
+      WHERE source_key IS NOT NULL
     `;
     await sql`
       CREATE TABLE IF NOT EXISTS knowledge_review_signals (
@@ -6723,6 +6733,10 @@ export async function insertConnectGraphSourcePostgres(params: {
   url?: string | null;
   textPreview?: string | null;
   sourceKind?: string | null;
+  /** Stage 3.2: stable cross-run identity of the document (deriveClaimSourceKey). */
+  sourceKey?: string | null;
+  /** Stage 3.2: content hash of the source version this row registered. */
+  contentHash?: string | null;
 }): Promise<string> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
@@ -6730,14 +6744,49 @@ export async function insertConnectGraphSourcePostgres(params: {
   const id = crypto.randomUUID();
   await sql`
     INSERT INTO knowledge_graph_sources (
-      id, workspace_id, domain_pack_id, job_id, title, url, text_preview, source_kind, payload, created_at
+      id, workspace_id, domain_pack_id, job_id, title, url, text_preview, source_kind,
+      source_key, content_hash, last_seen_at, payload, created_at
     ) VALUES (
       ${id}, ${params.workspaceId}, ${params.domainPackId ?? null}, ${params.jobId ?? null},
       ${params.title ?? null}, ${params.url ?? null}, ${params.textPreview ?? null}, ${params.sourceKind ?? null},
+      ${params.sourceKey ?? null}, ${params.contentHash ?? null}, ${now},
       NULL, ${now}
     )
   `;
   return id;
+}
+
+/**
+ * Stage 3.2: latest registered version of a source by its stable source key.
+ * Drives the unchanged-document skip (hash match) and the changed-document claim diff.
+ */
+export async function findLatestConnectGraphSourceByKeyPostgres(params: {
+  workspaceId: string;
+  sourceKey: string;
+}): Promise<{ id: string; contentHash: string | null } | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, content_hash FROM knowledge_graph_sources
+    WHERE workspace_id = ${params.workspaceId} AND source_key = ${params.sourceKey}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  const row = rows[0] as { id: string; content_hash: string | null } | undefined;
+  return row ? { id: row.id, contentHash: row.content_hash ?? null } : null;
+}
+
+/** Stage 3.2: the ONLY write an unchanged-source re-ingest performs (ADR §3 step 1). */
+export async function touchConnectGraphSourceSeenPostgres(params: {
+  workspaceId: string;
+  id: string;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  await sql`
+    UPDATE knowledge_graph_sources SET last_seen_at = ${Date.now()}
+    WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+  `;
 }
 
 /**
@@ -7017,6 +7066,7 @@ async function ensureConnectClaimVersionsSchema(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_unit ON connect_claim_versions (workspace_id, unit_id) WHERE valid_to IS NULL`;
   await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_state ON connect_claim_versions (workspace_id, verification_state) WHERE valid_to IS NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_connect_claim_versions_claim_key ON connect_claim_versions (workspace_id, claim_key) WHERE claim_key IS NOT NULL`;
   claimVersionsSchemaEnsured = true;
 }
 
@@ -7029,21 +7079,36 @@ export type ConnectClaimVersionInsert = {
   evidenceMatch: string | null;
   evidenceStatus: "bound" | "unbound" | "no_evidence";
   sourceHash: string | null;
+  /** Stage 3.2: deterministic claim identity (computeClaimKey). Null only for legacy paths. */
+  claimKey?: string | null;
+  /** Stage 3.2: 1 for new claims; prior version + 1 for carried/changed claims. */
+  versionNo?: number;
+  /**
+   * Stage 3.2 carry-forward: an unchanged claim's verification state is copied onto its
+   * new version — no re-judging (the chain records who judged it and when, unchanged).
+   */
+  verificationState?: string | null;
+  judgedBy?: string | null;
+  judgedAt?: string | null;
 };
 
 /**
- * EBV Layer 1: insert version-1 claim rows with their evidence bindings (post-extraction).
- * Single multi-row statement via unnest — the Neon HTTP driver pays one network
- * round-trip per query, so the previous per-row loop cost N round-trips per chunk.
+ * EBV Layer 1 + Stage 3.2: insert claim-version rows with their evidence bindings and
+ * claim identity/version metadata. Single multi-row statement via unnest — the Neon HTTP
+ * driver pays one network round-trip per query, so a per-row loop would cost N round-trips
+ * per chunk. Returns the inserted row ids per unit so re-ingest can chain superseded_by
+ * forward.
  */
 export async function insertConnectClaimVersionsPostgres(params: {
   workspaceId: string;
   rows: ConnectClaimVersionInsert[];
-}): Promise<number> {
-  if (params.rows.length === 0) return 0;
+}): Promise<{ unitId: string; versionId: string }[]> {
+  if (params.rows.length === 0) return [];
   await ensureConnectClaimVersionsSchema();
   const sql = getSql();
   const unitIds = params.rows.map((r) => r.unitId);
+  const claimKeys = params.rows.map((r) => r.claimKey ?? null);
+  const versionNos = params.rows.map((r) => r.versionNo ?? 1);
   const texts = params.rows.map((r) => r.text);
   const quotes = params.rows.map((r) => r.evidenceQuote);
   const starts = params.rows.map((r) => r.spanStart);
@@ -7051,17 +7116,123 @@ export async function insertConnectClaimVersionsPostgres(params: {
   const matches = params.rows.map((r) => r.evidenceMatch);
   const statuses = params.rows.map((r) => r.evidenceStatus);
   const hashes = params.rows.map((r) => r.sourceHash);
-  await sql`
+  // Stage 3.2 carry-forward: copied verification state for unchanged claims.
+  const states = params.rows.map((r) => r.verificationState ?? "unverified");
+  const judgedBys = params.rows.map((r) => r.judgedBy ?? null);
+  const judgedAts = params.rows.map((r) => r.judgedAt ?? null);
+  const rows = await sql`
     INSERT INTO connect_claim_versions
-      (workspace_id, unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
-    SELECT ${params.workspaceId}, u.unit_id, u.text, u.evidence_quote, u.span_start, u.span_end,
-           u.evidence_match, u.evidence_status, u.source_hash
+      (workspace_id, unit_id, claim_key, version_no, text, evidence_quote, span_start, span_end,
+       evidence_match, evidence_status, source_hash, verification_state, judged_by, judged_at)
+    SELECT ${params.workspaceId}, u.unit_id, u.claim_key, u.version_no, u.text, u.evidence_quote,
+           u.span_start, u.span_end, u.evidence_match, u.evidence_status, u.source_hash,
+           u.verification_state, u.judged_by, u.judged_at
     FROM unnest(
-      ${unitIds}::text[], ${texts}::text[], ${quotes}::text[], ${starts}::int[], ${ends}::int[],
-      ${matches}::text[], ${statuses}::text[], ${hashes}::text[]
-    ) AS u(unit_id, text, evidence_quote, span_start, span_end, evidence_match, evidence_status, source_hash)
+      ${unitIds}::text[], ${claimKeys}::text[], ${versionNos}::int[], ${texts}::text[],
+      ${quotes}::text[], ${starts}::int[], ${ends}::int[], ${matches}::text[],
+      ${statuses}::text[], ${hashes}::text[], ${states}::text[], ${judgedBys}::text[],
+      ${judgedAts}::timestamptz[]
+    ) AS u(unit_id, claim_key, version_no, text, evidence_quote, span_start, span_end,
+           evidence_match, evidence_status, source_hash, verification_state, judged_by, judged_at)
+    RETURNING id, unit_id
   `;
-  return params.rows.length;
+  return (rows as { id: number | string; unit_id: string }[]).map((r) => ({
+    unitId: r.unit_id,
+    versionId: String(r.id),
+  }));
+}
+
+export type ConnectCurrentClaimVersionRow = {
+  versionId: string;
+  claimKey: string | null;
+  versionNo: number;
+  unitId: string;
+  text: string;
+  verificationState: string | null;
+  judgedBy: string | null;
+  judgedAt: string | null;
+  validationStatus: string | null;
+  validationNote: string | null;
+};
+
+/**
+ * Stage 3.2: current (valid_to IS NULL) claim versions attached to ANY prior source row
+ * with this stable source key, joined with the unit's validation verdict — the prior side
+ * of the re-ingest diff. Keyed by source_key (not one source row id) so claims from an
+ * older generation can never be silently kept when an intermediate run registered a row
+ * without processing the document.
+ */
+export async function listCurrentConnectClaimVersionsForSourceKeyPostgres(params: {
+  workspaceId: string;
+  sourceKey: string;
+}): Promise<ConnectCurrentClaimVersionRow[]> {
+  await ensureIngestionRoutingSchema();
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT ccv.id, ccv.claim_key, ccv.version_no, ccv.unit_id, ccv.text,
+           ccv.verification_state, ccv.judged_by, ccv.judged_at,
+           u.validation_status, u.validation_note
+    FROM connect_claim_versions ccv
+    JOIN knowledge_graph_units u
+      ON u.id = ccv.unit_id AND u.workspace_id = ccv.workspace_id
+    WHERE ccv.workspace_id = ${params.workspaceId}
+      AND u.source_id IN (
+        SELECT s.id FROM knowledge_graph_sources s
+        WHERE s.workspace_id = ${params.workspaceId} AND s.source_key = ${params.sourceKey}
+      )
+      AND ccv.valid_to IS NULL
+    ORDER BY ccv.id
+  `;
+  return (rows as {
+    id: number | string;
+    claim_key: string | null;
+    version_no: number;
+    unit_id: string;
+    text: string;
+    verification_state: string | null;
+    judged_by: string | null;
+    judged_at: string | Date | null;
+    validation_status: string | null;
+    validation_note: string | null;
+  }[]).map((r) => ({
+    versionId: String(r.id),
+    claimKey: r.claim_key ?? null,
+    versionNo: Number(r.version_no ?? 1),
+    unitId: r.unit_id,
+    text: r.text,
+    verificationState: r.verification_state ?? null,
+    judgedBy: r.judged_by ?? null,
+    judgedAt:
+      r.judged_at instanceof Date ? r.judged_at.toISOString() : r.judged_at ? String(r.judged_at) : null,
+    validationStatus: r.validation_status ?? null,
+    validationNote: r.validation_note ?? null,
+  }));
+}
+
+/**
+ * Stage 3.2: close validity windows (ADR §2/§3). Sets valid_to = NOW() and links
+ * superseded_by forward when a successor version exists (null for removed claims).
+ * Additive and reversible — version rows are NEVER deleted.
+ */
+export async function supersedeConnectClaimVersionsPostgres(params: {
+  workspaceId: string;
+  rows: { versionId: string; supersededBy: string | null }[];
+}): Promise<number> {
+  if (params.rows.length === 0) return 0;
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  // Batched via unnest (one round-trip), same style as the inserts above.
+  const ids = params.rows.map((r) => r.versionId);
+  const successors = params.rows.map((r) => r.supersededBy);
+  const updated = await sql`
+    UPDATE connect_claim_versions ccv
+    SET valid_to = NOW(), superseded_by = u.superseded_by
+    FROM unnest(${ids}::bigint[], ${successors}::bigint[]) AS u(id, superseded_by)
+    WHERE ccv.workspace_id = ${params.workspaceId} AND ccv.id = u.id AND ccv.valid_to IS NULL
+    RETURNING ccv.id
+  `;
+  return updated.length;
 }
 
 let claimJudgmentsSchemaEnsured = false;

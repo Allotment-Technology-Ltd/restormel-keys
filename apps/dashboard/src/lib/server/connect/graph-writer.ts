@@ -10,17 +10,25 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { ConnectGraphTargetRecord } from "$lib/server/neon";
 import {
   deleteUnitPostgres,
+  findLatestConnectGraphSourceByKeyPostgres,
   insertConnectClaimJudgmentsPostgres,
   insertConnectClaimVersionsPostgres,
   insertConnectGraphSourcePostgres,
+  listCurrentConnectClaimVersionsForSourceKeyPostgres,
   storeExtractedGraphPostgres,
   storeGroupsPostgres,
+  supersedeConnectClaimVersionsPostgres,
+  touchConnectGraphSourceSeenPostgres,
   updateConnectClaimVersionStatesPostgres,
   updateUnitEmbeddingsPostgres,
   updateUnitTextPostgres,
   updateUnitValidationPostgres,
 } from "$lib/server/neon";
-import type { EvidenceBinding, ClaimVerificationState } from "@restormel/connect-core";
+import type {
+  EvidenceBinding,
+  ClaimVerificationState,
+  PriorClaimVersion,
+} from "@restormel/connect-core";
 import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 
@@ -31,9 +39,61 @@ export interface StoredUnit {
   type: string | null;
 }
 
+/**
+ * One claim-version evidence row (EBV Layer 1), optionally annotated with Stage 3.2
+ * identity + carry-forward metadata when the source is a re-ingest.
+ */
+export type ClaimVersionBinding = {
+  unitId: string;
+  text: string;
+  binding: EvidenceBinding;
+  /** Deterministic claim identity (Stage 3.2). Written on every ingest so re-ingests can match. */
+  claimKey?: string | null;
+  /** 1 for new claims; prior version + 1 when this version supersedes one. */
+  versionNo?: number;
+  /** Carry-forward: copied verification state for an unchanged claim — no re-judging. */
+  carried?: {
+    verificationState: string;
+    judgedBy: string | null;
+    judgedAt: string | null;
+  } | null;
+};
+
 export interface GraphWriter {
   readonly provider: "postgres" | "surreal";
-  writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }): Promise<string>;
+  writeSource(s: {
+    title: string;
+    url: string | null;
+    textPreview: string | null;
+    sourceKind: string;
+    /** Stage 3.2: stable cross-run identity of the document (deriveClaimSourceKey). */
+    sourceKey?: string | null;
+    /** Stage 3.2: content hash of the source version being registered. */
+    contentHash?: string | null;
+  }): Promise<string>;
+  /**
+   * Stage 3.2: latest registered version of a source by stable source key, or null when
+   * unknown — or when the store does not support incremental re-ingest yet (Surreal BYO:
+   * the runner logs the degrade and runs a full ingest; never silent).
+   */
+  findSourceVersion(
+    sourceKey: string,
+  ): Promise<{ sourceId: string; contentHash: string | null } | null>;
+  /** Stage 3.2: the only write an unchanged-source skip performs (last_seen_at touch). */
+  touchSourceSeen(sourceId: string): Promise<void>;
+  /**
+   * Stage 3.2: current (valid_to IS NULL) claim versions across ALL prior source rows
+   * with this stable source key — so claims from an older generation are always part of
+   * the re-ingest diff, never silently kept.
+   */
+  listCurrentClaimVersions(sourceKey: string): Promise<PriorClaimVersion[]>;
+  /**
+   * Stage 3.2: close validity windows; superseded_by links forward when a successor
+   * exists (null for removed claims). Reversible — never deletes version rows.
+   */
+  supersedeClaimVersions(
+    rows: { versionId: string; supersededBy: string | null }[],
+  ): Promise<{ persisted: number; missed: number }>;
   writeUnitsAndRelations(args: {
     sourceId: string;
     units: {
@@ -50,13 +110,15 @@ export interface GraphWriter {
   setValidation(results: { unitId: string; status: string; note: string | null }[]): Promise<number>;
   /**
    * EBV Layer 1: persist per-unit evidence bindings (quote + offsets + source-version
-   * hash + match kind). Returns persisted/missed so callers surface capability gaps
-   * (e.g. SCHEMAFULL Surreal tables rejecting the fields) instead of failing silently.
+   * hash + match kind), plus Stage 3.2 claim identity/version metadata when supplied.
+   * Returns persisted/missed so callers surface capability gaps (e.g. SCHEMAFULL Surreal
+   * tables rejecting the fields) instead of failing silently, and the new version row
+   * ids per unit (when the store tracks them) so supersession can chain forward.
    */
   setEvidence(args: {
     sourceHash: string;
-    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
-  }): Promise<{ persisted: number; missed: number }>;
+    bindings: ClaimVersionBinding[];
+  }): Promise<{ persisted: number; missed: number; versionIdByUnitId: Map<string, string> }>;
   /** EBV: persist per-unit verification state (supported|inferred|unverified|…). */
   setVerificationStates(
     states: { unitId: string; state: ClaimVerificationState; judgedBy?: string | null }[],
@@ -95,7 +157,14 @@ class PostgresGraphWriter implements GraphWriter {
     private readonly jobId: string,
   ) {}
 
-  writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }) {
+  writeSource(s: {
+    title: string;
+    url: string | null;
+    textPreview: string | null;
+    sourceKind: string;
+    sourceKey?: string | null;
+    contentHash?: string | null;
+  }) {
     return insertConnectGraphSourcePostgres({
       workspaceId: this.workspaceId,
       domainPackId: this.domainPackId,
@@ -104,7 +173,35 @@ class PostgresGraphWriter implements GraphWriter {
       url: s.url,
       textPreview: s.textPreview,
       sourceKind: s.sourceKind,
+      sourceKey: s.sourceKey ?? null,
+      contentHash: s.contentHash ?? null,
     });
+  }
+
+  findSourceVersion(sourceKey: string) {
+    return findLatestConnectGraphSourceByKeyPostgres({
+      workspaceId: this.workspaceId,
+      sourceKey,
+    }).then((row) => (row ? { sourceId: row.id, contentHash: row.contentHash } : null));
+  }
+
+  touchSourceSeen(sourceId: string) {
+    return touchConnectGraphSourceSeenPostgres({ workspaceId: this.workspaceId, id: sourceId });
+  }
+
+  listCurrentClaimVersions(sourceKey: string): Promise<PriorClaimVersion[]> {
+    return listCurrentConnectClaimVersionsForSourceKeyPostgres({
+      workspaceId: this.workspaceId,
+      sourceKey,
+    });
+  }
+
+  async supersedeClaimVersions(rows: { versionId: string; supersededBy: string | null }[]) {
+    const persisted = await supersedeConnectClaimVersionsPostgres({
+      workspaceId: this.workspaceId,
+      rows,
+    });
+    return { persisted, missed: rows.length - persisted };
   }
 
   async writeUnitsAndRelations(args: {
@@ -149,11 +246,8 @@ class PostgresGraphWriter implements GraphWriter {
     return updateUnitValidationPostgres({ workspaceId: this.workspaceId, results });
   }
 
-  async setEvidence(args: {
-    sourceHash: string;
-    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
-  }) {
-    const persisted = await insertConnectClaimVersionsPostgres({
+  async setEvidence(args: { sourceHash: string; bindings: ClaimVersionBinding[] }) {
+    const inserted = await insertConnectClaimVersionsPostgres({
       workspaceId: this.workspaceId,
       rows: args.bindings.map((b) => ({
         unitId: b.unitId,
@@ -164,9 +258,20 @@ class PostgresGraphWriter implements GraphWriter {
         evidenceMatch: b.binding.status === "bound" ? b.binding.span.match : null,
         evidenceStatus: b.binding.status,
         sourceHash: args.sourceHash,
+        claimKey: b.claimKey ?? null,
+        versionNo: b.versionNo ?? 1,
+        // Carry-forward (Stage 3.2): copied verification state, no re-judging.
+        verificationState: b.carried?.verificationState ?? null,
+        judgedBy: b.carried?.judgedBy ?? null,
+        judgedAt: b.carried?.judgedAt ?? null,
       })),
     });
-    return { persisted, missed: args.bindings.length - persisted };
+    const versionIdByUnitId = new Map(inserted.map((r) => [r.unitId, r.versionId]));
+    return {
+      persisted: inserted.length,
+      missed: args.bindings.length - inserted.length,
+      versionIdByUnitId,
+    };
   }
 
   async setVerificationStates(
@@ -276,7 +381,14 @@ class SurrealGraphWriter implements GraphWriter {
     return extractCreatedRecordId(res);
   }
 
-  async writeSource(s: { title: string; url: string | null; textPreview: string | null; sourceKind: string }) {
+  async writeSource(s: {
+    title: string;
+    url: string | null;
+    textPreview: string | null;
+    sourceKind: string;
+    sourceKey?: string | null;
+    contentHash?: string | null;
+  }) {
     const table = ident(this.schema.source_table, "source");
     const id = await this.createReturningId(table, {
       title: s.title,
@@ -284,6 +396,11 @@ class SurrealGraphWriter implements GraphWriter {
       text_preview: s.textPreview,
       source_kind: s.sourceKind,
       ingested_at: new Date().toISOString(),
+      // Stage 3.2 identity fields — written opportunistically (SCHEMAFULL tables drop
+      // them) so the data is in place when Surreal incremental re-ingest lands.
+      ...(s.sourceKey ? { source_key: s.sourceKey } : {}),
+      ...(s.contentHash ? { content_hash: s.contentHash } : {}),
+      ...(s.contentHash ? { last_seen_at: new Date().toISOString() } : {}),
     });
     if (!id) {
       throw new Error(
@@ -292,6 +409,34 @@ class SurrealGraphWriter implements GraphWriter {
       );
     }
     return id;
+  }
+
+  /**
+   * Stage 3.2 — NOT YET on Surreal BYO stores: the ADR places version chains in a
+   * Restormel-created `restormel_claim_versions` table in the user's database, but that
+   * placement is the ADR's open question 1 (split-brain risk) and is awaiting explicit
+   * sign-off. Until then a Surreal re-ingest degrades to today's full ingest; the runner
+   * logs the degrade per source — never silent.
+   */
+  async findSourceVersion(): Promise<{ sourceId: string; contentHash: string | null } | null> {
+    return null;
+  }
+
+  async touchSourceSeen(sourceId: string) {
+    await this.store
+      .query(
+        `UPDATE ${surrealRecordRef(sourceId)} MERGE { last_seen_at: ${JSON.stringify(new Date().toISOString())} };`,
+      )
+      .catch(() => {});
+  }
+
+  async listCurrentClaimVersions(): Promise<PriorClaimVersion[]> {
+    return [];
+  }
+
+  async supersedeClaimVersions(rows: { versionId: string; supersededBy: string | null }[]) {
+    // Unreachable while findSourceVersion returns null; defensively report as missed.
+    return { persisted: 0, missed: rows.length };
   }
 
   async writeUnitsAndRelations(args: {
@@ -436,11 +581,10 @@ class SurrealGraphWriter implements GraphWriter {
     return persisted;
   }
 
-  async setEvidence(args: {
-    sourceHash: string;
-    bindings: { unitId: string; text: string; binding: EvidenceBinding }[];
-  }) {
-    if (args.bindings.length === 0) return { persisted: 0, missed: 0 };
+  async setEvidence(args: { sourceHash: string; bindings: ClaimVersionBinding[] }) {
+    // Version-row ids are not tracked on Surreal yet (see findSourceVersion note).
+    const versionIdByUnitId = new Map<string, string>();
+    if (args.bindings.length === 0) return { persisted: 0, missed: 0, versionIdByUnitId };
     const unitTable = ident(this.schema.unit_table, "unit");
     // Same SCHEMAFULL guard as setValidation: ensure the fields exist, then verify each
     // write actually landed — degraded persistence must be visible, never silent.
@@ -451,7 +595,8 @@ class SurrealGraphWriter implements GraphWriter {
           `DEFINE FIELD IF NOT EXISTS evidence_end ON TABLE ${unitTable} TYPE option<number>; ` +
           `DEFINE FIELD IF NOT EXISTS evidence_match ON TABLE ${unitTable} TYPE option<string>; ` +
           `DEFINE FIELD IF NOT EXISTS evidence_status ON TABLE ${unitTable} TYPE option<string>; ` +
-          `DEFINE FIELD IF NOT EXISTS evidence_source_hash ON TABLE ${unitTable} TYPE option<string>;`,
+          `DEFINE FIELD IF NOT EXISTS evidence_source_hash ON TABLE ${unitTable} TYPE option<string>; ` +
+          `DEFINE FIELD IF NOT EXISTS claim_key ON TABLE ${unitTable} TYPE option<string>;`,
       )
       .catch(() => {
         // Older SurrealDB without IF NOT EXISTS, or SCHEMALESS — writes work regardless.
@@ -468,6 +613,8 @@ class SurrealGraphWriter implements GraphWriter {
         evidence_match: bound?.match ?? null,
         evidence_status: b.binding.status,
         evidence_source_hash: args.sourceHash,
+        // Stage 3.2 identity — written opportunistically for forward-compat.
+        claim_key: b.claimKey ?? null,
       };
       try {
         const res = await this.store.query<Array<Record<string, unknown>>>(
@@ -492,7 +639,7 @@ class SurrealGraphWriter implements GraphWriter {
           `SCHEMAFULL tables need the evidence_* fields defined; see the EBV docs.`,
       );
     }
-    return { persisted, missed };
+    return { persisted, missed, versionIdByUnitId };
   }
 
   async setVerificationStates(

@@ -15,7 +15,16 @@ import {
   type UnitValidationStatus,
 } from "@restormel/connect-core";
 
-export type EvidenceRow = { unitId: string; text: string; binding: EvidenceBinding };
+export type EvidenceRow = {
+  unitId: string;
+  text: string;
+  binding: EvidenceBinding;
+  /**
+   * The extractor's evidence quote as returned (bound or not) — Stage 3.2 claim identity
+   * hashes this, so identity survives a quote that failed to bind.
+   */
+  quote: string | null;
+};
 
 export type EvidenceRowsResult = {
   rows: EvidenceRow[];
@@ -39,13 +48,14 @@ export function buildEvidenceRows(args: {
   const bindingByUnitId = new Map<string, EvidenceBinding>();
   const counts = { bound: 0, unbound: 0, no_evidence: 0 };
   for (const su of args.storedUnits) {
+    const quote = evidenceByLocal.get(su.localId) ?? "";
     const binding = bindEvidenceSpan({
-      quote: evidenceByLocal.get(su.localId) ?? "",
+      quote,
       sourceText: args.sourceText,
       sourceHash: args.sourceHash,
     });
     counts[binding.status] += 1;
-    rows.push({ unitId: su.id, text: su.text, binding });
+    rows.push({ unitId: su.id, text: su.text, binding, quote: quote.trim() || null });
     bindingByUnitId.set(su.id, binding);
   }
   return { rows, bindingByUnitId, counts };

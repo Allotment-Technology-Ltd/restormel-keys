@@ -21,12 +21,14 @@ import {
   readEntailmentKForPreset,
   readMaxChunksForPreset,
   effectiveStopAfterStage,
+  planIncrementalReingest,
   ENTAILMENT_BATCH_SIZE,
   type EntailmentInput,
   type EvidenceBinding,
   type ExtractionGenerate,
   type EmbeddingPort,
   type GraphIngestContext,
+  type ReingestPlan,
   type UnitEntailment,
   type ValidationInput,
 } from "@restormel/connect-core";
@@ -36,6 +38,14 @@ import {
   buildVerificationStateRows,
   type EvidenceRow,
 } from "$lib/server/connect/evidence-persist";
+import {
+  buildCarriedValidationRows,
+  buildClaimVersionBindings,
+  buildSupersededUnitExclusions,
+  buildSupersessionRows,
+  computeNextClaims,
+  sourceKeyForIngestSource,
+} from "$lib/server/connect/incremental-reingest";
 import {
   buildValidationBatchInputs,
   validateUnitsBatchDetailed,
@@ -54,7 +64,11 @@ import {
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
-import { buildGraphWriter, type GraphWriter } from "$lib/server/connect/graph-writer";
+import {
+  buildGraphWriter,
+  REMOVED_VALIDATION_STATUS,
+  type GraphWriter,
+} from "$lib/server/connect/graph-writer";
 import { runGraphRemediationPass } from "$lib/server/connect/graph-remediation-pass";
 import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flags";
 import type { ConnectIngestProgressReporter } from "$lib/server/connect-ingest-progress";
@@ -192,6 +206,13 @@ export async function runFullExtraction(args: {
   dropped: number;
   /** Store-neutral verdict tally (pre-remediation) for the run quality report. */
   validation: { ok: number; weak: number; unsupported: number };
+  /** Stage 3.2 incremental re-ingest tallies (all zero on first-time ingests). */
+  reingest: {
+    unchangedSources: number;
+    carriedClaims: number;
+    changedClaims: number;
+    removedClaims: number;
+  };
 }> {
   const { job, writer, reporter } = args;
   const pack = await resolveDomainPack(job);
@@ -230,9 +251,40 @@ export async function runFullExtraction(args: {
   const validationBreakdown = { ok: 0, weak: 0, unsupported: 0 };
   // Final unit text for embedding (mutated by remediation), keyed by id.
   const embedText = new Map<string, string>();
+  // Stage 3.2 incremental re-ingest tallies (verified-memory ADR §3).
+  const reingest = { unchangedSources: 0, carriedClaims: 0, changedClaims: 0, removedClaims: 0 };
+
+  if (writer.provider === "surreal") {
+    // Surreal BYO version-chain placement is the verified-memory ADR's open question 1
+    // (awaiting sign-off) — re-ingests degrade to a full ingest there, never silently.
+    await reporter?.log(
+      "INGEST",
+      "Incremental re-ingest is not yet available for Surreal BYO stores — every source runs a full ingest.",
+    );
+  }
 
   for (const src of sources) {
     const title = src.title ?? src.url ?? "untitled";
+    // Stage 3.2: stable source identity + content hash decide first-time ingest vs
+    // unchanged re-ingest (skip entirely) vs changed re-ingest (diff this source only).
+    const probeHash = src.text?.trim() ? await contentHash(src.text) : null;
+    // Anonymous pasted text has no stable identity — key it by content so an unchanged
+    // re-paste still skips, while a different paste is simply a new source (it can
+    // never supersede an unrelated paste's claims).
+    const sourceKey =
+      sourceKeyForIngestSource(src) ?? (probeHash ? `content:${probeHash}` : null);
+    const prior = probeHash && sourceKey ? await writer.findSourceVersion(sourceKey) : null;
+    if (prior?.contentHash && prior.contentHash === probeHash) {
+      // ADR §3 step 1: hash unchanged ⇒ skip the document entirely — zero model calls,
+      // zero writes beyond the last_seen_at touch.
+      await writer.touchSourceSeen(prior.sourceId);
+      await reporter?.log("INGEST", `Source unchanged (content hash match) — skipped: ${title}`);
+      reingest.unchangedSources += 1;
+      continue;
+    }
+    // Record content_hash only when this run will actually process the document —
+    // a budget-exhausted registration must not let a later run skip it as "unchanged".
+    const willProcess = Boolean(src.text?.trim()) && chunkBudget > 0;
     await reporter?.setAction(`Registering source — ${title}`);
     const sourceId = requireGraphUnitSourceId(
       await writer.writeSource({
@@ -240,14 +292,22 @@ export async function runFullExtraction(args: {
         url: src.url ?? null,
         textPreview: sourceTextPreview(src),
         sourceKind: src.url ? "url" : "text",
+        sourceKey,
+        contentHash: willProcess ? probeHash : null,
       }),
     );
-    await reporter?.log("INGEST", `Source registered — ${title}`);
+    await reporter?.log(
+      "INGEST",
+      prior ? `Source changed — re-ingesting: ${title}` : `Source registered — ${title}`,
+    );
 
     if (!src.text?.trim() || chunkBudget <= 0) continue;
 
     // EBV Layer 1: pin this source version once; all evidence spans bind against it.
-    const sourceHash = await contentHash(src.text);
+    // (probeHash — and therefore sourceKey via the content fallback — is non-null here:
+    // src.text passed the guard above.)
+    const sourceHash = probeHash as string;
+    const claimSourceKey = sourceKey as string;
     const evidenceRows: EvidenceRow[] = [];
     const bindingByUnitId = new Map<string, EvidenceBinding>();
     const evidenceCounts = { bound: 0, unbound: 0, no_evidence: 0 };
@@ -350,16 +410,88 @@ export async function runFullExtraction(args: {
     await reporter?.beginStage("relating", "Relations persisted with extraction", 1);
     await reporter?.completeStage("relating", "Relation pass complete");
 
-    if (sourceUnits.length === 0) continue;
+    // Stage 3.2: deterministic claim identity → carried/changed/added/removed diff
+    // against ALL current claims under this stable source key (verified-memory ADR §3
+    // step 2) — keyed by source_key so older generations can never be silently kept.
+    const priorClaims = prior ? await writer.listCurrentClaimVersions(claimSourceKey) : [];
+    const nextClaims = await computeNextClaims({ sourceKey: claimSourceKey, rows: evidenceRows });
+    const plan: ReingestPlan = planIncrementalReingest({ prior: priorClaims, next: nextClaims });
+    const carriedUnitIds = new Set(plan.carried.map((c) => c.next.unitId));
+    if (priorClaims.length > 0) {
+      reingest.carriedClaims += plan.carried.length;
+      reingest.changedClaims += plan.changed.length;
+      reingest.removedClaims += plan.removed.length;
+      await reporter?.log(
+        "INGEST",
+        `Re-ingest diff — ${plan.carried.length} carried, ${plan.changed.length} changed, ` +
+          `${plan.added.length} new, ${plan.removed.length} removed (${title})`,
+      );
+    }
+
+    /**
+     * Close the replaced/removed prior versions' validity windows (chained forward to
+     * their successor version when one exists) and soft-exclude the prior unit records.
+     * Reversible and provenance-chained — never orphaned, never silently kept.
+     */
+    const applySupersessions = async (versionIdByUnitId: Map<string, string>) => {
+      const rows = buildSupersessionRows({ plan, versionIdByUnitId });
+      if (rows.length === 0) return;
+      const sup = await writer.supersedeClaimVersions(rows);
+      // Soft-exclude the prior unit records in ONE batched write (same remediation
+      // soft-exclude semantics as excludeUnit: hidden from retrieval, reversible).
+      await writer.setValidation(
+        buildSupersededUnitExclusions(plan).map((ex) => ({
+          unitId: ex.unitId,
+          status: REMOVED_VALIDATION_STATUS,
+          note: ex.note,
+        })),
+      );
+      await reporter?.log(
+        "INGEST",
+        `Supersession chain — ${sup.persisted} prior claim version(s) closed` +
+          (sup.missed > 0 ? `, ${sup.missed} not persisted (store schema)` : ""),
+      );
+    };
+
+    if (sourceUnits.length === 0) {
+      // A changed document that now yields no claims still supersedes its prior ones.
+      await applySupersessions(new Map());
+      continue;
+    }
 
     if (evidenceRows.length > 0) {
-      const ev = await writer.setEvidence({ sourceHash, bindings: evidenceRows });
+      const ev = await writer.setEvidence({
+        sourceHash,
+        bindings: buildClaimVersionBindings({ rows: evidenceRows, next: nextClaims, plan }),
+      });
       await reporter?.log(
         "EXTRACT",
         `Evidence: ${evidenceCounts.bound}/${evidenceRows.length} bound` +
           (evidenceCounts.unbound ? `, ${evidenceCounts.unbound} unbound` : "") +
           (evidenceCounts.no_evidence ? `, ${evidenceCounts.no_evidence} without a quote` : "") +
           (ev.missed > 0 ? ` — ${ev.missed} write(s) not persisted (store schema; see EBV docs)` : ""),
+      );
+      await applySupersessions(ev.versionIdByUnitId);
+    } else {
+      await applySupersessions(new Map());
+    }
+
+    // Carry-forward (no model calls): unchanged claims keep their verification state,
+    // judge attribution and original judged_at — copied onto their new version rows at
+    // insert (setEvidence). Only the unit-level validation verdict still needs writing.
+    if (plan.carried.length > 0) {
+      const carriedValidations = buildCarriedValidationRows(plan);
+      if (carriedValidations.length > 0) {
+        totalValidated += await writer.setValidation(carriedValidations);
+        for (const v of carriedValidations) {
+          if (v.status === "ok") validationBreakdown.ok += 1;
+          else if (v.status === "weak") validationBreakdown.weak += 1;
+          else if (v.status === "unsupported") validationBreakdown.unsupported += 1;
+        }
+      }
+      await reporter?.log(
+        "VALIDATE",
+        `${plan.carried.length} unchanged claim(s) carried forward — verification state kept, no re-judging`,
       );
     }
     const cappedForGrouping = sourceUnits.slice(0, GROUPING_UNIT_CAP);
@@ -391,7 +523,10 @@ export async function runFullExtraction(args: {
     }
 
     if (shouldRunStage("validating", stop)) {
-      const unitInputs = sourceUnits.map((u) => ({ ref: u.id, text: u.text }));
+      // Stage 3.2: carried claims were settled above — judge only changed/new units,
+      // so re-validation cost is O(changed claims), never O(graph).
+      const unitsToJudge = sourceUnits.filter((u) => !carriedUnitIds.has(u.id));
+      const unitInputs = unitsToJudge.map((u) => ({ ref: u.id, text: u.text }));
       // Pace the stage by unit count and tick per batch so percent/ETA actually
       // move and the activity log streams — the old single-call stage looked frozen
       // for minutes while hundreds of units were checked.
@@ -471,7 +606,8 @@ export async function runFullExtraction(args: {
         } else {
           // EBV Layer 2 (Stage 1.0d): per claim, judge ONLY "does its bound span entail
           // it" — no source prefix. Unbound claims abstain locally (review) at no cost.
-          const inputs: EntailmentInput[] = sourceUnits.map((u) => {
+          // Stage 3.2: carried claims are excluded — their verdicts were copied above.
+          const inputs: EntailmentInput[] = unitsToJudge.map((u) => {
             const b = bindingByUnitId.get(u.id);
             return {
               ref: u.id,
@@ -641,6 +777,7 @@ export async function runFullExtraction(args: {
     repaired: totalRepaired,
     dropped: totalDropped,
     validation: { ...validationBreakdown },
+    reingest: { ...reingest },
   };
 }
 

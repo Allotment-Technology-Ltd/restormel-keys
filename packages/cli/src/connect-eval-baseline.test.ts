@@ -199,6 +199,33 @@ describe("computeEvalDiff — new unsupported claim (headline feature)", () => {
     expect(diff.new_unsupported_claims).toEqual([]);
     expect(diff.regression).toBe(false);
   });
+
+  it("attributes changes to the re-ingested source (Stage 3.2): carried claims from other sources never flag", () => {
+    // Source A's unsupported claim was at baseline; an incremental re-ingest of source B
+    // (only) introduces one new unsupported claim. Carried claims keep their text +
+    // source_ref identity across a re-ingest, so ONLY source B's claim is flagged —
+    // and the regression line attributes it to B.
+    const carriedFromA: ConnectEvalClaimRef = {
+      text: "Pleasure is the only intrinsic good.",
+      source_ref: "https://example.com/source-a",
+    };
+    const newFromReingestedB: ConnectEvalClaimRef = {
+      text: "Sidgwick proved utilitarianism self-evident.",
+      source_ref: "https://example.com/source-b",
+    };
+    const baseline = buildBaseline(verdict({ unsupported_claims: [carriedFromA] }), SAVED_AT);
+    const current = verdict({
+      unsupported: 2,
+      unsupported_claims: [carriedFromA, newFromReingestedB],
+    });
+    const diff = computeEvalDiff({ baseline, current, comparedAt: COMPARED_AT });
+    expect(diff.new_unsupported_claims).toEqual([newFromReingestedB]);
+    expect(diff.regressions).toContain(
+      'new unsupported claim: "Sidgwick proved utilitarianism self-evident." ' +
+        "(source: https://example.com/source-b)",
+    );
+    expect(diff.regressions.some((r) => r.includes("source-a"))).toBe(false);
+  });
 });
 
 describe("computeEvalDiff — fingerprint change (new corpus, not a regression)", () => {
