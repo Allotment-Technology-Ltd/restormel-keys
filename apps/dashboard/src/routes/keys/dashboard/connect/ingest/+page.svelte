@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { isJobStuck } from "$lib/connect/ingest-runs-safety";
@@ -25,6 +27,7 @@
 
   let loading = true;
   let error: string | null = null;
+  let signedOut = false;
   let jobs: Job[] = [];
   let statusFilter = "all";
   let bulkCleaning = false;
@@ -38,22 +41,23 @@
   async function load() {
     loading = true;
     error = null;
+    signedOut = false;
     bulkCleanResult = null;
     try {
       const res = await fetch(API);
       if (res.status === 401) {
-        error = "Sign in to view ingest jobs.";
+        signedOut = true;
         jobs = [];
         return;
       }
       if (!res.ok) {
-        error = `Could not load jobs (HTTP ${res.status}).`;
+        error = `Could not load ingest runs (HTTP ${res.status}).`;
         return;
       }
       const data = await res.json();
       jobs = Array.isArray(data.jobs) ? data.jobs : [];
     } catch {
-      error = "Network error while loading jobs.";
+      error = "Network error while loading ingest runs.";
     } finally {
       loading = false;
     }
@@ -232,8 +236,14 @@
 
   {#if loading}
     <BrutalLoadingState message="Loading ingest runs — fetching your workspace jobs" rows={5} />
+  {:else if signedOut}
+    <SignInNotice message="Sign in to view ingest runs." />
   {:else if error}
-    <p class="err" role="alert">{error}</p>
+    <BrutalErrorBanner title="Could not load runs" message={error}>
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" on:click={load}>Try again</button>
+      {/snippet}
+    </BrutalErrorBanner>
   {:else if filtered.length === 0}
     <div class="empty">
       <span class="empty-icon" aria-hidden="true">□</span>

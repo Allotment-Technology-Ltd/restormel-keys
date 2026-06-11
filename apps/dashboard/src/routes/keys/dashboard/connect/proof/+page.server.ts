@@ -20,18 +20,33 @@ type ProofData = {
   connectBase: string;
 };
 
-const EMPTY: ProofData = {
+type ProofDataWithState = ProofData & { signedIn: boolean; loadError: boolean };
+
+const SIGNED_OUT: ProofDataWithState = {
   workspaceId: null,
   graphNodeCount: 0,
   hasGraph: false,
   routes: [],
   suggestCacheKey: "",
   connectBase: DASHBOARD_BASE + "/connect",
+  signedIn: false,
+  loadError: false,
 };
 
-export const load: PageServerLoad = async (event): Promise<ProofData> => {
+const LOAD_ERROR: ProofDataWithState = {
+  workspaceId: null,
+  graphNodeCount: 0,
+  hasGraph: false,
+  routes: [],
+  suggestCacheKey: "",
+  connectBase: DASHBOARD_BASE + "/connect",
+  signedIn: true,
+  loadError: true,
+};
+
+export const load: PageServerLoad = async (event): Promise<ProofDataWithState> => {
   if (!event.locals.user || event.locals.user.authType !== "session") {
-    return EMPTY;
+    return SIGNED_OUT;
   }
 
   try {
@@ -59,9 +74,11 @@ export const load: PageServerLoad = async (event): Promise<ProofData> => {
       // Counts shift when a new run completes — used as the suggestion cache key.
       suggestCacheKey: `${wsId}:${graphNodeCount}:${relations}`,
       connectBase: DASHBOARD_BASE + "/connect",
+      signedIn: true,
+      loadError: false,
     };
   } catch {
-    return EMPTY;
+    return LOAD_ERROR;
   }
 };
 

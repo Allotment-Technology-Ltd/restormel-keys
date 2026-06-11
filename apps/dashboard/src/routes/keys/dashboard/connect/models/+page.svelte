@@ -4,6 +4,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { page } from "$app/stores";
   import ConnectBuilderReturnBar from "$lib/components/connect/ConnectBuilderReturnBar.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import { parseReturnTo, withReturnTo } from "$lib/connect/pipeline-config";
   import { matchActiveToRecommended, type ActiveModelMatch } from "$lib/connect/stage-active-model";
 
@@ -48,7 +49,7 @@
     apiBase: string;
   };
 
-  export let data: { models: Models | null };
+  export let data: { signedIn: boolean; models: Models | null };
 
   $: returnContext = parseReturnTo($page.url.searchParams);
   $: builderReturnContext = returnContext;
@@ -272,8 +273,11 @@
     <a href="/keys/docs/guides/connect-first-graph-onboarding">First graph setup guide</a>
   </div>
 
-  {#if !data.models}
-    <p class="muted" role="status">Sign in to configure models.</p>
+  {#if !data.signedIn}
+    <SignInNotice message="Sign in to configure models." />
+  {:else if !data.models}
+    <!-- models null despite being signed in = backend load failure (workspace or db issue) -->
+    <p class="muted" role="alert">Could not load models configuration. Reload to try again.</p>
   {:else}
     <section class="card" aria-labelledby="keys-heading">
       <h2 id="keys-heading" class="h2">Provider keys</h2>

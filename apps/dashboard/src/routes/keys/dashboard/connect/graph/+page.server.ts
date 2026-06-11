@@ -5,7 +5,7 @@ import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
 
 export const load: PageServerLoad = async (event) => {
   if (!event.locals.user || event.locals.user.authType !== "session") {
-    return { graph: Promise.resolve(null) };
+    return { signedIn: false, graph: Promise.resolve(null) };
   }
 
   const workspace = await getConnectWorkspaceCached(event.locals.user.uid);
@@ -25,5 +25,5 @@ export const load: PageServerLoad = async (event) => {
     }
   })();
 
-  return { graph };
+  return { signedIn: true, graph };
 };

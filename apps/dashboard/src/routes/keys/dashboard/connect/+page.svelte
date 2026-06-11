@@ -1,10 +1,13 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
+  import { invalidateAll } from "$app/navigation";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectSetupLedger from "$lib/components/connect/ConnectSetupLedger.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import ConnectQualityHistory from "$lib/components/connect/ConnectQualityHistory.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
   import type { ConnectHubPayload, ConnectGraphPulse } from "$lib/server/connect/connect-hub-load";
   import type {
@@ -15,6 +18,8 @@
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   export let data: {
+    signedIn: boolean;
+    encryptionWarning: boolean;
     hub: Promise<ConnectHubPayload | null>;
     graphPulse: Promise<ConnectGraphPulse | null>;
     scorecard: Promise<ConnectTrustScorecardData | null>;
@@ -22,6 +27,16 @@
   };
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
+
+  let retryingHub = false;
+  async function retryHub() {
+    retryingHub = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retryingHub = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -39,90 +54,115 @@
 
   <ConnectGraphSwitcher />
 
-{#await data.hub}
-  <ConnectPageSkeleton variant="hub" />
-{:then hub}
-  {#if !hub?.journey}
-    <p class="notice" role="status">Sign in to set up Restormel Connect.</p>
-  {:else}
-    {@const journey = hub.journey}
-    {@const nextStep = journey.steps.find((s) => s.id === journey.nextStepId) ?? null}
-    {@const requiredSteps = journey.steps.filter((s) => !s.optional)}
-    {@const requiredDone = requiredSteps.filter((s) => s.status === "done").length}
-    {@const requiredTotal = requiredSteps.length}
-    {@const activeRun = Boolean(
-      journey.latestJob && isActiveIngestJobStatus(journey.latestJob.status),
-    )}
-    {@const runStep = journey.steps.find((s) => s.id === "run")}
-
-    {#if runStep?.status !== "done"}
-      <ul class="hub-outcomes" aria-label="What you get when setup is complete">
-        <li>
-          <strong>A queryable graph</strong>
-          <span>Ideas, relationships, groups, and embeddings — not just chunked PDFs.</span>
-        </li>
-        <li>
-          <strong>Production APIs</strong>
-          <span>Retrieve depth-controlled context; verify claims before answers reach users.</span>
-        </li>
-        <li>
-          <strong>Agent hooks</strong>
-          <span>MCP tools and REST endpoints agents can call without a bespoke RAG build-out.</span>
-        </li>
-      </ul>
-    {/if}
-
-    {#if hub.phase === "initial"}
-      <p class="notice setup-hint" role="status">
-        First-time setup — use the control panel below. Need a Surreal Cloud walkthrough?
-        <a href="/keys/docs/guides/connect-first-graph-onboarding">Open the first-graph guide</a>.
-      </p>
-    {/if}
-
-    {#if !journey.flags.encryptionReady}
-      <p class="warn-banner" role="status">
-        Note: <code>RESTORMEL_CREDENTIALS_ENCRYPTION_KEY</code> is missing or invalid in
-        <code>apps/dashboard/.env.local</code>, so saving provider keys or Surreal graph store credentials is
-        disabled until you set a valid 32-byte base64 key and restart the dev server.
-        {#if neonGraphStoreOn}
-          The one-click Neon store still works.
-        {/if}
-      </p>
-    {/if}
-
-    {#if hub.setupHealth}
-      <ConnectSetupLedger
-        setupHealth={hub.setupHealth}
-        phase={hub.phase}
-        journeySteps={journey.steps}
-        {nextStep}
-        nextStepId={journey.nextStepId}
-        operationalActions={hub.operationalActions}
-        {requiredDone}
-        {requiredTotal}
-        stats={journey.stats}
-        pulse={data.graphPulse}
-        latestJob={journey.latestJob}
-        {activeRun}
-        graphHref="{CONNECT_BASE}/graph"
-      />
-    {/if}
-
-    <ConnectTrustScorecard scorecard={data.scorecard} />
-
-    <ConnectQualityHistory history={data.qualityHistory} />
-
-    <p class="hub-links-row">
-      <a href="/keys/docs/guides/connect-first-graph-onboarding">First graph guide</a>
-      <span class="sep">·</span>
-      <a href="/connect/docs">Connect docs</a>
-      <span class="sep">·</span>
-      <a href="/docs/operator-model">Suite map</a>
+{#if !data.signedIn}
+  <SignInNotice message="Sign in to set up Restormel Connect." />
+{:else}
+  {#if data.encryptionWarning}
+    <p class="warn-banner" role="alert">
+      <strong>Dev setup needed:</strong> <code>RESTORMEL_CREDENTIALS_ENCRYPTION_KEY</code> is missing or invalid in
+      <code>apps/dashboard/.env.local</code> — saving provider keys or Surreal graph store credentials is
+      disabled until you set a valid 32-byte base64 key and restart the dev server.
+      {#if neonGraphStoreOn}
+        The one-click Neon store still works.
+      {/if}
     </p>
   {/if}
-{:catch}
-  <p class="notice" role="alert">Could not load Connect home. Refresh to try again.</p>
-{/await}
+
+  {#await data.hub}
+    <ConnectPageSkeleton variant="hub" />
+  {:then hub}
+    {#if !hub?.journey}
+      <!-- Backend returned null despite being signed in (schema-gate, store error, etc.) -->
+      <BrutalErrorBanner
+        title="Connect home unavailable"
+        message="Could not load your Connect workspace. Your data is unaffected — this is a load failure."
+      >
+        {#snippet actions()}
+          <button type="button" class="btn btn-primary btn-sm" disabled={retryingHub} on:click={retryHub}>
+            {retryingHub ? "Retrying…" : "Try again"}
+          </button>
+          <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/pipeline?step=store"}>Check pipeline setup</a>
+        {/snippet}
+      </BrutalErrorBanner>
+    {:else}
+      {@const journey = hub.journey}
+      {@const nextStep = journey.steps.find((s) => s.id === journey.nextStepId) ?? null}
+      {@const requiredSteps = journey.steps.filter((s) => !s.optional)}
+      {@const requiredDone = requiredSteps.filter((s) => s.status === "done").length}
+      {@const requiredTotal = requiredSteps.length}
+      {@const activeRun = Boolean(
+        journey.latestJob && isActiveIngestJobStatus(journey.latestJob.status),
+      )}
+      {@const runStep = journey.steps.find((s) => s.id === "run")}
+
+      {#if runStep?.status !== "done"}
+        <ul class="hub-outcomes" aria-label="What you get when setup is complete">
+          <li>
+            <strong>A queryable graph</strong>
+            <span>Ideas, relationships, groups, and embeddings — not just chunked PDFs.</span>
+          </li>
+          <li>
+            <strong>Production APIs</strong>
+            <span>Retrieve depth-controlled context; verify claims before answers reach users.</span>
+          </li>
+          <li>
+            <strong>Agent hooks</strong>
+            <span>MCP tools and REST endpoints agents can call without a bespoke RAG build-out.</span>
+          </li>
+        </ul>
+      {/if}
+
+      {#if hub.phase === "initial"}
+        <p class="notice setup-hint" role="status">
+          First-time setup — use the control panel below. Need a Surreal Cloud walkthrough?
+          <a href="/keys/docs/guides/connect-first-graph-onboarding">Open the first-graph guide</a>.
+        </p>
+      {/if}
+
+      {#if hub.setupHealth}
+        <ConnectSetupLedger
+          setupHealth={hub.setupHealth}
+          phase={hub.phase}
+          journeySteps={journey.steps}
+          {nextStep}
+          nextStepId={journey.nextStepId}
+          operationalActions={hub.operationalActions}
+          {requiredDone}
+          {requiredTotal}
+          stats={journey.stats}
+          pulse={data.graphPulse}
+          latestJob={journey.latestJob}
+          {activeRun}
+          graphHref="{CONNECT_BASE}/graph"
+        />
+      {/if}
+
+      <ConnectTrustScorecard scorecard={data.scorecard} />
+
+      <ConnectQualityHistory history={data.qualityHistory} />
+
+      <p class="hub-links-row">
+        <a href="/keys/docs/guides/connect-first-graph-onboarding">First graph guide</a>
+        <span class="sep">·</span>
+        <a href="/connect/docs">Connect docs</a>
+        <span class="sep">·</span>
+        <a href="/docs/operator-model">Suite map</a>
+      </p>
+    {/if}
+  {:catch}
+    <BrutalErrorBanner
+      title="Connect home unavailable"
+      message="Could not load your Connect workspace. Your data is unaffected — this is a load failure."
+    >
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" disabled={retryingHub} on:click={retryHub}>
+          {retryingHub ? "Retrying…" : "Try again"}
+        </button>
+        <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/pipeline?step=store"}>Check pipeline setup</a>
+      {/snippet}
+    </BrutalErrorBanner>
+  {/await}
+{/if}
 </section>
 
 <style>

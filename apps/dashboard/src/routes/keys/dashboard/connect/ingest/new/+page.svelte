@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import ConnectSourceDocumentPreCheck from "$lib/components/connect/ConnectSourceDocumentPreCheck.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   const API_BASE = DASHBOARD_BASE + "/api/connect";
@@ -59,6 +60,7 @@
   let submitting = false;
   let error: string | null = null;
   let loadError: string | null = null;
+  let signedOut = false;
 
   // Dry-run preview
   type Warning = { code: string; severity: string; message: string };
@@ -75,6 +77,7 @@
   async function loadConfig() {
     loading = true;
     loadError = null;
+    signedOut = false;
     try {
       const [packsRes, profilesRes, targetRes] = await Promise.all([
         fetch(API_BASE + "/domain-packs"),
@@ -82,7 +85,7 @@
         fetch(API_BASE + "/pipeline/graph-target"),
       ]);
       if (packsRes.status === 401) {
-        loadError = "Sign in to create ingest jobs.";
+        signedOut = true;
         return;
       }
       if (packsRes.ok) {
@@ -282,6 +285,8 @@
 
   {#if loading}
     <p class="muted" role="status">Loading configuration…</p>
+  {:else if signedOut}
+    <SignInNotice message="Sign in to create ingest runs." />
   {:else if loadError}
     <p class="err" role="alert">{loadError}</p>
   {:else}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ConnectGraphLibrary from "$lib/components/connect/ConnectGraphLibrary.svelte";
+  import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
 
   export let data: {
@@ -19,7 +20,7 @@
   <h1 id="library-heading">Switch between your graphs</h1>
 
   {#if !data.signedIn}
-    <p class="notice" role="status">Sign in to manage your Graph Library.</p>
+    <SignInNotice message="Sign in to manage your Graph Library." />
   {:else}
     <ConnectGraphLibrary initialGraphs={data.graphs} packs={data.packs} />
   {/if}
@@ -51,12 +52,5 @@
     line-height: var(--text-display-line-height);
     margin: 0 0 var(--space-2);
     color: var(--color-ink);
-  }
-  .notice {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-surface-raised);
-    color: var(--rm-muted);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--rm-radius);
   }
 </style>
