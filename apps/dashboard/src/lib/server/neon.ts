@@ -9393,4 +9393,160 @@ export async function listTestingVerdicts(params: {
     verdict: r.verdict,
     recordedAt: r.recorded_at instanceof Date ? r.recorded_at.toISOString() : String(r.recorded_at),
   }));
+
+// ---------------------------------------------------------------------------
+// W2.4 — Memory-writes inbox (Stage 3.4 agent_observation provenance)
+// ---------------------------------------------------------------------------
+
+export type AgentObservationRow = {
+  unitId: string;
+  text: string;
+  /** Submitting key identity from the source title (e.g. "key rk_…prefix"). */
+  submittingKeyIdentity: string | null;
+  /** ISO timestamp of the submission (source created_at). */
+  submittedAt: string;
+  /** EBV verification state from the latest claim version (or 'unverified' when absent). */
+  verificationState: string;
+  /** Outcome bucket derived from verificationState. */
+  outcome: "accepted" | "review" | "rejected";
+  /** Rejection / review reasons joined from the claim version evidence_status + stored notes. */
+  reasons: string[];
+  /** Validation note from the unit row (remediation notes, abstention notes). */
+  validationNote: string | null;
+};
+
+/**
+ * List agent-observation units for the memory inbox (W2.4).
+ * Joins units with their source (source_kind = 'agent_observation') and the latest
+ * claim-version row to surface verification state + outcome.
+ *
+ * Newest-first, capped at `limit` (default 50, max 200).
+ */
+export async function listAgentMemoryObservationsPostgres(params: {
+  workspaceId: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AgentObservationRow[]> {
+  await ensureIngestionRoutingSchema();
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+  const lim = Math.min(Math.max(params.limit ?? 50, 1), 200);
+  const off = Math.max(params.offset ?? 0, 0);
+
+  const rows = (await sql`
+    SELECT
+      u.id AS unit_id,
+      u.text AS text,
+      u.validation_note AS validation_note,
+      s.title AS source_title,
+      s.created_at AS submitted_at,
+      -- Latest claim-version row for this unit (valid_to IS NULL preferred, else most recent).
+      cv.verification_state AS cv_verification_state,
+      cv.evidence_status AS cv_evidence_status,
+      cv.judged_by AS cv_judged_by
+    FROM knowledge_graph_units u
+    JOIN knowledge_graph_sources s
+      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+    LEFT JOIN LATERAL (
+      SELECT verification_state, evidence_status, judged_by
+      FROM connect_claim_versions
+      WHERE workspace_id = u.workspace_id AND unit_id = u.id
+      ORDER BY CASE WHEN valid_to IS NULL THEN 0 ELSE 1 END, id DESC
+      LIMIT 1
+    ) cv ON true
+    WHERE u.workspace_id = ${params.workspaceId}
+      AND u.unit_type = 'agent_observation'
+      AND s.source_kind = 'agent_observation'
+    ORDER BY s.created_at DESC, u.created_at DESC
+    LIMIT ${lim} OFFSET ${off}
+  `) as {
+    unit_id: string;
+    text: string;
+    validation_note: string | null;
+    source_title: string | null;
+    submitted_at: string | number | Date;
+    cv_verification_state: string | null;
+    cv_evidence_status: string | null;
+    cv_judged_by: string | null;
+  }[];
+
+  return rows.map((r) => {
+    const state = r.cv_verification_state ?? "unverified";
+    const outcome: AgentObservationRow["outcome"] =
+      state === "supported" || state === "inferred"
+        ? "accepted"
+        : state === "excluded"
+          ? "rejected"
+          : "review";
+
+    const reasons: string[] = [];
+    if (r.cv_evidence_status && r.cv_evidence_status !== "bound") {
+      reasons.push(r.cv_evidence_status);
+    }
+    if (r.cv_judged_by) {
+      reasons.push(`judged_by:${r.cv_judged_by}`);
+    }
+    if (r.validation_note && outcome === "rejected") {
+      reasons.push(r.validation_note);
+    }
+
+    // Extract key identity from source title (format: "Agent observations — <date> (<submitter>)")
+    let submittingKeyIdentity: string | null = null;
+    if (r.source_title) {
+      const m = r.source_title.match(/\(([^)]+)\)\s*$/);
+      if (m) submittingKeyIdentity = m[1] ?? null;
+    }
+
+    const submittedAt =
+      r.submitted_at instanceof Date
+        ? r.submitted_at.toISOString()
+        : typeof r.submitted_at === "number"
+          ? new Date(r.submitted_at).toISOString()
+          : String(r.submitted_at);
+
+    return {
+      unitId: r.unit_id,
+      text: r.text,
+      submittingKeyIdentity,
+      submittedAt,
+      verificationState: state,
+      outcome,
+      reasons,
+      validationNote: r.validation_note ?? null,
+    };
+  });
+}
+
+/**
+ * Soft-revoke an agent observation: sets validation_status = 'excluded' and
+ * updates the latest claim-version row to verification_state = 'excluded'.
+ * Reversible — the unit row persists; it drops out of verified retrieval.
+ */
+export async function revokeAgentObservationPostgres(params: {
+  workspaceId: string;
+  unitId: string;
+}): Promise<{ ok: boolean }> {
+  await ensureIngestionRoutingSchema();
+  await ensureConnectClaimVersionsSchema();
+  const sql = getSql();
+
+  // Mark the unit excluded in the validation column.
+  await sql`
+    UPDATE knowledge_graph_units
+    SET validation_status = 'excluded', validation_note = 'Revoked via memory inbox'
+    WHERE id = ${params.unitId} AND workspace_id = ${params.workspaceId}
+      AND unit_type = 'agent_observation'
+  `;
+
+  // Reflect on the claim-version row so as-of retrieval respects it.
+  await sql`
+    UPDATE connect_claim_versions
+    SET verification_state = 'excluded'
+    WHERE workspace_id = ${params.workspaceId} AND unit_id = ${params.unitId}
+      AND valid_to IS NULL
+  `.catch(() => {
+    // claim_versions may not exist for pre-EBV observations — ok.
+  });
+
+  return { ok: true };
 }

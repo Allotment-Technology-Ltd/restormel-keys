@@ -1,85 +1,44 @@
+<!--
+  W2.4: MCP catalog now generated from @restormel/mcp CATALOG_ENTRIES (FUNC P2-7 fix).
+  connect.memory.write is always included; the catalog can never go stale.
+-->
 <script lang="ts">
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import type { CatalogEntry } from "./+page.server";
 
-  type SuiteRow = { pillar: string; name: string; desc: string };
-  const suiteTools: SuiteRow[] = [
-    {
-      pillar: "Docs",
-      name: "docs.canonical_resolve",
-      desc: "Map a canonical topic id to repo path and public URL (offline).",
-    },
-    {
-      pillar: "Testing",
-      name: "testing.config_validate",
-      desc: "Validate restormel-testing YAML/JSON config offline (size-capped).",
-    },
-    {
-      pillar: "Observability",
-      name: "observability.trace_summarize",
-      desc: "Normalize RunTrace JSON and return counts + short summary.",
-    },
-    {
-      pillar: "Graph",
-      name: "graph.fixture_validate",
-      desc: "Structural GraphData check (nodes/edges/ghost arrays).",
-    },
-    {
-      pillar: "State",
-      name: "state.memory_preview",
-      desc: "Project StateEvent stream to working memory; text lengths only.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.search",
-      desc: "BYO Surreal graph — semantic search with structured context_pack (hosted retrieve).",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.get_context_for",
-      desc: "Topic + optional seed_claim_id traversal on your graph store.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.retrieve",
-      desc: "Deprecated alias for connect.search.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.graph.retrieve_context",
-      desc: "Graph orchestrator: vector + graph retrieval, token-budgeted. Supported-only by default.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.graph.expand_context",
-      desc: "Expand from explicit seed node ids (optional edge-type filter).",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.graph.find_relevant_subgraph",
-      desc: "Topic subgraph with semantic / causal / temporal reasoning modes.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.graph.find_paths",
-      desc: "Ranked reasoning paths between two graph nodes.",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.graph.summarise_subgraph",
-      desc: "Condense a subgraph under a max_tokens budget (seeds preserved).",
-    },
-    {
-      pillar: "Connect",
-      name: "connect.verify",
-      desc: "Claim verification via hosted REST (BYOK LLM routes).",
-    },
-  ];
+  export let data: { catalogEntries: CatalogEntry[] };
+
+  // Split into suite tools (connect.* + horizon) and control-plane tools.
+  const suiteToolNames = new Set([
+    "connect.verify",
+    "connect.search",
+    "connect.get_context_for",
+    "connect.retrieve",
+    "connect.retrieve_verified",
+    "connect.memory.write",
+    "connect.graph.retrieve_context",
+    "connect.graph.expand_context",
+    "connect.graph.find_relevant_subgraph",
+    "connect.graph.find_paths",
+    "connect.graph.summarise_subgraph",
+    "connect.ingest.start",
+    "connect.ingest.status",
+    "docs.canonical_resolve",
+    "routing.capabilities",
+    "testing.config_validate",
+    "observability.trace_summarize",
+    "graph.fixture_validate",
+    "state.memory_preview",
+  ]);
+
+  $: suiteTools = data.catalogEntries.filter((e) => suiteToolNames.has(e.name));
+  $: controlPlaneTools = data.catalogEntries.filter((e) => !suiteToolNames.has(e.name));
 
   let suiteFilter = "";
   $: suiteFiltered = suiteTools.filter(
     (t) =>
       !suiteFilter.trim() ||
-      `${t.pillar} ${t.name} ${t.desc}`.toLowerCase().includes(suiteFilter.trim().toLowerCase()),
+      `${t.pillar} ${t.name} ${t.description}`.toLowerCase().includes(suiteFilter.trim().toLowerCase()),
   );
 </script>
 
@@ -127,6 +86,14 @@
         <a href="/keys/docs/guides/environment-vocabulary" class="btn-link">environment vocabulary</a>.</span
       >
     </li>
+    <li>
+      <span class="tool-desc"
+        ><strong>Connect agent memory</strong> — <code class="tool-name">RESTORMEL_CONNECT_API_BASE</code> =
+        <code class="tool-name">https://restormel.dev</code> + <code class="tool-name">RESTORMEL_GATEWAY_KEY</code> (<code>rk_…</code>) for
+        <code class="tool-name">connect.memory.write</code> and other Connect tools. See
+        <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>.</span
+      >
+    </li>
   </ul>
 </section>
 
@@ -167,6 +134,8 @@
     (<code class="tool-name">connect.search</code>,
     <code class="tool-name">connect.get_context_for</code>) — requires BYO Surreal; see
     <a href="/keys/dashboard/connect" class="btn-link">Connect hub</a>
+    · Memory writes:
+    <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>
   </p>
   <label class="suite-search-label" for="suite-tool-filter">Filter suite tools</label>
   <input
@@ -182,7 +151,7 @@
       <li class="suite-row" data-suite-tool={t.name}>
         <span class="tool-pillar">{t.pillar}</span>
         <code class="tool-name">{t.name}</code>
-        <span class="tool-desc">{t.desc}</span>
+        <span class="tool-desc">{t.description}</span>
       </li>
     {/each}
   </ul>
@@ -194,7 +163,7 @@
 <section class="section" aria-labelledby="usecase-heading">
   <h2 id="usecase-heading" class="section-title">Core use-cases</h2>
   <p class="page-desc">
-    Use MCP when your agent workflow needs tool-based access to Restormel’s routing, pricing, and policy checks
+    Use MCP when your agent workflow needs tool-based access to Restormel's routing, pricing, and policy checks
     from inside an IDE or automation runner.
   </p>
   <ul class="tool-list">
@@ -210,88 +179,22 @@
       <strong>Validate + entitlements</strong>
       <span class="tool-desc"> — aligns with `restormel validate` and plan policy checks.</span>
     </li>
+    <li>
+      <strong>Agent memory write</strong>
+      <span class="tool-desc"> — <code class="tool-name">connect.memory.write</code> submits agent observations through the EBV quality gate; view results in the <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>.</span>
+    </li>
   </ul>
 </section>
 
 <section class="section" aria-labelledby="tools-heading">
   <h2 id="tools-heading" class="section-title">Available tools</h2>
   <ul class="tool-list">
-    <li>
-      <code class="tool-name">models.list</code>
-      <span class="tool-desc">List available models across configured providers</span>
-    </li>
-    <li>
-      <code class="tool-name">providers.validate</code>
-      <span class="tool-desc">Validate provider configuration and access</span>
-    </li>
-    <li>
-      <code class="tool-name">cost.estimate</code>
-      <span class="tool-desc">Estimate cost for a model and token volume</span>
-    </li>
-    <li>
-      <code class="tool-name">routing.explain</code>
-      <span class="tool-desc">Explain routing decisions for a given request</span>
-    </li>
-    <li>
-      <code class="tool-name">routing.export | routing.import | routing.explain_chain</code>
-      <span class="tool-desc">Route graph bundle (GET/POST import); read-only route + steps + policy-scope summary for agents (GET explain-chain)</span>
-    </li>
-    <li>
-      <code class="tool-name">entitlements.check</code>
-      <span class="tool-desc">Check plan entitlements and feature access</span>
-    </li>
-    <li>
-      <code class="tool-name">integration.generate</code>
-      <span class="tool-desc">Generate integration configuration</span>
-    </li>
-    <li>
-      <code class="tool-name">integration.bootstrap_nextjs</code>
-      <span class="tool-desc">Next.js server resolver + admin KeyManager contract</span>
-    </li>
-    <li>
-      <code class="tool-name">projects.list</code>
-      <span class="tool-desc">List projects for the control-plane token (pick <code>projectId</code>)</span>
-    </li>
-    <li>
-      <code class="tool-name">project_models.list</code>
-      <span class="tool-desc">List model bindings for a project (read-only)</span>
-    </li>
-    <li>
-      <code class="tool-name">testing.journey</code>
-      <span class="tool-desc">Structured onboarding map: dashboard URLs, docs, suggested MCP tools</span>
-    </li>
-    <li>
-      <code class="tool-name">testing.ci_env_template</code>
-      <span class="tool-desc">Canonical <code>RESTORMEL_*</code> snippet for Testing CLI/CI (placeholders only)</span>
-    </li>
-    <li>
-      <code class="tool-name">testing.resolve_probe</code>
-      <span class="tool-desc">Single POST to <code>/v1/testing/resolve-model</code>; HTTP status only</span>
-    </li>
-    <li>
-      <code class="tool-name">testing.hub_snapshot</code>
-      <span class="tool-desc">Project + environment IDs + masked Gateway keys + suggested <code>RESTORMEL_*</code> snippet</span>
-    </li>
-    <li>
-      <code class="tool-name">project.environments.list</code>
-      <span class="tool-desc">Environment UUIDs for <code>RESTORMEL_ENVIRONMENT_ID</code> in CI</span>
-    </li>
-    <li>
-      <code class="tool-name">project.gateway_keys.list | .create | .delete</code>
-      <span class="tool-desc">Manage <code>rk_…</code> keys via control plane (<strong>.create</strong> returns raw key once — treat as secret)</span>
-    </li>
-    <li>
-      <code class="tool-name">routes.* / policies.* / fallback_chain.set</code>
-      <span class="tool-desc">Control-plane CRUD (server token + control-plane base URL)</span>
-    </li>
-    <li>
-      <code class="tool-name">byok.* / policy.simulate / catalog.* / readiness.check</code>
-      <span class="tool-desc">Contracts, simulation, catalog checks, CI readiness</span>
-    </li>
-    <li>
-      <code class="tool-name">docs.search</code>
-      <span class="tool-desc">Search Restormel documentation</span>
-    </li>
+    {#each controlPlaneTools as t (t.name)}
+      <li>
+        <code class="tool-name">{t.name}</code>
+        <span class="tool-desc">{t.description}</span>
+      </li>
+    {/each}
   </ul>
 </section>
 
