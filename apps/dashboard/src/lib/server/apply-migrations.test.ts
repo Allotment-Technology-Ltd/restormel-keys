@@ -285,7 +285,7 @@ describe("runMigrations", () => {
 // ---------------------------------------------------------------------------
 // splitSqlStatements (Neon HTTP driver rejects multi-command prepared statements)
 // ---------------------------------------------------------------------------
-import { splitSqlStatements } from "./migration-runner.ts";
+import { splitSqlStatements } from "./migration-runner";
 import { readdirSync as _readdirSync, readFileSync as _readFileSync } from "node:fs";
 import { join as _join } from "node:path";
 
