@@ -18,6 +18,7 @@
   import { parseReturnTo } from "$lib/connect/pipeline-config";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
+  import VersionsPanel from "$lib/components/dashboard/VersionsPanel.svelte";
 
   $: returnContext = parseReturnTo($page.url.searchParams);
   $: guardrailsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).guardrails;
@@ -192,8 +193,8 @@
   let addStepAnchorId: string | null = null;
   let addStepDialogEl: HTMLDialogElement | undefined;
 
-  /** IA: flow canvas vs route + guard rails setup vs secondary (logs). */
-  let workspaceTab: "flow" | "setup" | "more" = "flow";
+  /** IA: flow canvas vs route + guard rails setup vs versions vs secondary (logs). */
+  let workspaceTab: "flow" | "setup" | "versions" | "more" = "flow";
   /** Map draft lives in `RouteFlowCanvas`; when the Flow tab unmounts, clear stale parent flag so leave guards and clicks stay sane. */
   $: {
     if (workspaceTab !== "flow") {
@@ -1617,8 +1618,13 @@
 
   {#if data.route.version != null && data.route.publishedVersion != null && data.route.version !== data.route.publishedVersion}
     <div class="publish-draft-banner" role="status">
-      <strong>Draft route:</strong> working version {data.route.version} differs from published version {data.route.publishedVersion}.
-      Publish from version history when this route should receive discovery traffic.
+      <span><strong>Draft route:</strong> working version {data.route.version} differs from published version {data.route.publishedVersion}.
+      Publish to send this route live.</span>
+      <button
+        type="button"
+        class="btn btn-primary publish-draft-banner-btn"
+        onclick={() => (workspaceTab = "versions")}
+      >Publish draft</button>
     </div>
   {/if}
 
@@ -1670,6 +1676,18 @@
           {#if effectiveRoutePolicyBindings.length > 0}
             <span class="route-tab-badge">{effectiveRoutePolicyBindings.length}</span>
           {/if}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="route-tab"
+          class:route-tab-active={workspaceTab === "versions"}
+          aria-selected={workspaceTab === "versions"}
+          id="route-tab-versions"
+          aria-controls="route-panel-versions"
+          onclick={() => (workspaceTab = "versions")}
+        >
+          Versions
         </button>
         <button
           type="button"
@@ -2337,6 +2355,20 @@
         </p>
       </section>
     </div>
+  {:else if workspaceTab === "versions"}
+    <div id="route-panel-versions" role="tabpanel" aria-labelledby="route-tab-versions" tabindex="0" class="route-tab-panel">
+      {#if data.project && data.route}
+        <VersionsPanel
+          historyUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/history`}
+          publishUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/publish`}
+          rollbackUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/rollback`}
+          currentVersion={data.route.version}
+          publishedVersion={data.route.publishedVersion}
+          entityNoun="route"
+          onMutated={refreshRouteDetail}
+        />
+      {/if}
+    </div>
   {:else}
     <div id="route-panel-more" role="tabpanel" aria-labelledby="route-tab-more" tabindex="0" class="route-tab-panel">
       <section class="section">
@@ -2977,6 +3009,10 @@
     margin: 0 0 var(--space-2);
   }
   .publish-draft-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
     margin: 0 0 var(--space-3);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
@@ -2984,6 +3020,11 @@
     background: color-mix(in oklab, var(--coral-alert) 8%, var(--rm-surface));
     font-size: var(--text-sm);
     color: var(--rm-text);
+  }
+  .publish-draft-banner-btn {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-3);
   }
   .section {
     margin-bottom: var(--space-6);
