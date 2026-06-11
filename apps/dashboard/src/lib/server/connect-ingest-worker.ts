@@ -293,10 +293,11 @@ export async function processConnectIngestJobRecord(
           embed,
           reporter,
         });
-        // Stage 3.2: a re-ingest where every source was unchanged (hash match) is a
-        // legitimate near-no-op; likewise (Stage 1.6) a resumed run that skipped
-        // checkpointed sources — only fail a production run that produced nothing
-        // from scratch.
+        // Zero new units is a legitimate near-no-op in two cases that compose
+        // (Stage 3.2 × Stage 1.6): a re-ingest where sources were unchanged (hash
+        // match), and a resumed run that skipped checkpointed sources. Either way
+        // — including a resumed all-unchanged re-ingest — the run is a success;
+        // only fail a production run that produced nothing from scratch.
         if (
           quality.preset === "production" &&
           stats.units === 0 &&

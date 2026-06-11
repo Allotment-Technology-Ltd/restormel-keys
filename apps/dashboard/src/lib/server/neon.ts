@@ -2374,7 +2374,7 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS graph_target_id TEXT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS current_action TEXT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS progress JSONB`;
-    // Stage 1.6 durable runs — worker lease + heartbeat (mirror of migration 059).
+    // Stage 1.6 durable runs — worker lease + heartbeat (mirror of migration 061).
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS worker_id TEXT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS lease_expires_at BIGINT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS worker_heartbeat_at BIGINT`;

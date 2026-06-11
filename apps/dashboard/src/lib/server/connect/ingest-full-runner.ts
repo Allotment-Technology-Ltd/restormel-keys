@@ -311,6 +311,23 @@ export async function runFullExtraction(args: {
   for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
     const src = sources[sourceIndex]!;
     const title = src.title ?? src.url ?? "untitled";
+    // ── Precedence: resume checkpoint (1.6) before re-ingest planner (3.2) ──────
+    // 1. The resume-checkpoint skip runs FIRST. A checkpoint for sources[0..idx] is
+    //    only ever written AFTER each source's full per-source treatment finished —
+    //    including its Stage 3.2 planner decision (hash-skip, or claim diff +
+    //    supersession + carry-forward), which always precedes markSourceCheckpoint.
+    //    Skipping a checkpointed source is therefore a pure no-op: it can never
+    //    bypass an unapplied planner decision, never double-supersedes prior claim
+    //    versions, and never re-judges carried claims (no writer calls at all, so
+    //    no LLM re-spend either).
+    // 2. The Stage 3.2 hash-skip check runs SECOND, for every NON-checkpointed
+    //    source — the cheapest remaining check and idempotent (one read plus a
+    //    last_seen_at touch), so a resumed source the planner says is unchanged
+    //    remains a near-no-op.
+    // Both paths count the source as done for progress: the checkpoint is
+    // positional (sources_done covers sources[0..n-1]), so EVERY skip path below
+    // must advance it via markSourceCheckpoint — otherwise a later stall would
+    // resume mis-aligned and re-spend or mis-skip sources.
     if (sourceIndex < resumeSourcesDone) {
       await reporter?.log(
         "INGEST",
@@ -329,10 +346,11 @@ export async function runFullExtraction(args: {
     const prior = probeHash && sourceKey ? await writer.findSourceVersion(sourceKey) : null;
     if (prior?.contentHash && prior.contentHash === probeHash) {
       // ADR §3 step 1: hash unchanged ⇒ skip the document entirely — zero model calls,
-      // zero writes beyond the last_seen_at touch.
+      // zero writes beyond the last_seen_at touch (and the resume checkpoint below).
       await writer.touchSourceSeen(prior.sourceId);
       await reporter?.log("INGEST", `Source unchanged (content hash match) — skipped: ${title}`);
       reingest.unchangedSources += 1;
+      await markSourceCheckpoint(sourceIndex);
       continue;
     }
     // Record content_hash only when this run will actually process the document —
@@ -510,7 +528,8 @@ export async function runFullExtraction(args: {
     };
 
     if (sourceUnits.length === 0) {
-      // A changed document that now yields no claims still supersedes its prior ones.
+      // A changed document that now yields no claims still supersedes its prior ones —
+      // applied BEFORE the checkpoint so a checkpointed source is always fully settled.
       await applySupersessions(new Map());
       await markSourceCheckpoint(sourceIndex);
       continue;
