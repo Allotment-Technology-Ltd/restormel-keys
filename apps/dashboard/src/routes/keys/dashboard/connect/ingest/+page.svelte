@@ -4,6 +4,7 @@
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+  import { isJobStuck } from "$lib/connect/ingest-runs-safety";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
@@ -16,6 +17,10 @@
     created_at: string;
     updated_at: string;
     current_stage?: string;
+    /** Stage 1.6 durable-run fields */
+    worker_heartbeat_at?: number | null;
+    lease_expires_at?: number | null;
+    reclaim_count?: number;
   };
 
   let loading = true;
@@ -28,7 +33,7 @@
   let deletingIds = new Set<string>();
 
   $: filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
-  $: stuckCount = jobs.filter((j) => j.status === "running" || j.status === "pending" || j.status === "failed" || j.status === "cancelled").length;
+  $: stuckCount = jobs.filter(isJobStuck).length;
 
   async function load() {
     loading = true;
@@ -87,6 +92,14 @@
   }
 
   async function deleteJob(jobId: string) {
+    const job = jobs.find((j) => j.id === jobId);
+    const label = job?.label ?? "this run";
+    if (
+      !confirm(
+        `Delete "${label}"?\n\nThe run history and any quality reports for it will be permanently removed. This cannot be undone.`,
+      )
+    )
+      return;
     deletingIds = new Set([...deletingIds, jobId]);
     try {
       const res = await fetch(`${API}/${jobId}`, { method: "DELETE" });
@@ -122,6 +135,27 @@
 
   async function bulkClean() {
     if (bulkCleaning) return;
+    // Build a readable summary of what will be affected so users know the blast radius.
+    const runningCount = jobs.filter(
+      (j) => isJobStuck(j) && (j.status === "running" || j.status === "pending"),
+    ).length;
+    const terminalCount = jobs.filter(
+      (j) => j.status === "failed" || j.status === "cancelled",
+    ).length;
+    const parts: string[] = [];
+    if (runningCount > 0)
+      parts.push(`cancel ${runningCount} stalled run${runningCount === 1 ? "" : "s"}`);
+    if (terminalCount > 0)
+      parts.push(
+        `delete ${terminalCount} finished run${terminalCount === 1 ? "" : "s"} (failed/cancelled)`,
+      );
+    const summary = parts.length > 0 ? parts.join(" and ") : `clean up ${stuckCount} run${stuckCount === 1 ? "" : "s"}`;
+    if (
+      !confirm(
+        `Clean up stuck and failed runs?\n\nThis will ${summary}. Run history and quality reports for deleted runs are permanently removed.\n\nThis cannot be undone.`,
+      )
+    )
+      return;
     bulkCleaning = true;
     bulkCleanError = null;
     bulkCleanResult = null;
@@ -179,9 +213,9 @@
         class="btn btn-danger"
         on:click={bulkClean}
         disabled={bulkCleaning}
-        title="Cancel all running/pending jobs and delete all failed, cancelled, and stuck runs"
+        title="Cancel stalled runs (lease expired or heartbeat stale) and delete failed/cancelled runs. Healthy running runs are not affected."
       >
-        {bulkCleaning ? "Cleaning…" : `Clear stuck & failed (${stuckCount})`}
+        {bulkCleaning ? "Cleaning…" : `Clean up old runs (${stuckCount})`}
       </button>
     {/if}
   </div>

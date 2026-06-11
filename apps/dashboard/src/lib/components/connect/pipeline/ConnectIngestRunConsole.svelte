@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { goto, invalidate } from "$app/navigation";
   import { CONNECT_INGEST_PIPELINE_STAGES } from "@restormel/connect-core/ingest/job-record";
   import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
@@ -67,6 +67,10 @@
     error?: string;
     created_at?: string;
     updated_at?: string;
+    /** Stage 1.6 durable-run signals. */
+    worker_heartbeat_at?: number | null;
+    lease_expires_at?: number | null;
+    reclaim_count?: number;
   };
 
   export let jobId: string;
@@ -92,6 +96,8 @@
   let cancelling = false;
   let restarting = false;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
+  let nowMs = Date.now();
   let logEl: HTMLDivElement | undefined;
   /** User-controlled collapse — never one-way `open={expr}` or polling resets the panel. */
   let logOpen = true;
@@ -110,11 +116,6 @@
   $: isStubPreview =
     job?.progress?.execution_mode === "stub" ||
     logLines.some((line) => line.includes("Preview mode — no records written"));
-
-  $: canRestart =
-    job?.status === "failed" ||
-    job?.status === "cancelled" ||
-    (job?.status === "completed" && (isStubPreview || job?.progress?.execution_mode === "full"));
 
   $: runAgainLabel =
     job?.status === "completed" && job?.progress?.execution_mode === "full" && !isStubPreview
@@ -142,6 +143,71 @@
     isCompleted && job?.created_at && job?.updated_at
       ? formatRunDuration(new Date(job.updated_at).getTime() - new Date(job.created_at).getTime())
       : "";
+
+  // ── Stall / reclaim visibility (Stage 1.6 durable-runs) ──────────────────
+  /** Threshold after which a running job with no new heartbeat is considered stalled. */
+  const STALL_NOTICE_MS = 90_000; // 90 s — matches graph-repair panel convention
+  const WORKER_LOST_PREFIX = "worker_lost";
+
+  function relativeTime(iso: string | undefined | null, referenceMs = nowMs): string {
+    if (!iso) return "—";
+    const ms = referenceMs - new Date(iso).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return "just now";
+    if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
+    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
+    return `${Math.round(ms / 3_600_000)}h ago`;
+  }
+
+  function msRelativeTime(epochMs: number | null | undefined, referenceMs = nowMs): string {
+    if (epochMs == null) return "—";
+    const ms = referenceMs - epochMs;
+    if (!Number.isFinite(ms) || ms < 0) return "just now";
+    if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
+    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
+    return `${Math.round(ms / 3_600_000)}h ago`;
+  }
+
+  /**
+   * True when the job is running but the worker heartbeat has gone stale.
+   * Only fires for in-progress jobs; never for healthy healthy runs.
+   */
+  $: isStalled =
+    isInProgress &&
+    job != null &&
+    (() => {
+      const hb = job!.worker_heartbeat_at;
+      const lease = job!.lease_expires_at;
+      if (hb == null && lease == null) return false; // legacy row — can't tell
+      if (lease != null && lease < nowMs) return true; // lease expired
+      if (hb != null && nowMs - hb > STALL_NOTICE_MS) return true; // heartbeat stale
+      return false;
+    })();
+
+  /** True when the most-recent run was reclaimed (worker_lost) and later re-queued. */
+  $: isReclaimedRun =
+    job?.status === "running" || job?.status === "pending"
+      ? (job?.reclaim_count ?? 0) > 0
+      : false;
+
+  /** True for a job that failed with a worker_lost error. */
+  $: isWorkerLost =
+    job?.status === "failed" && (job?.error?.startsWith(WORKER_LOST_PREFIX) ?? false);
+
+  /**
+   * A worker_lost failure is a recoverable reclaim — offer Restart prominently
+   * alongside normal failed-run handling.
+   */
+  $: canRestart =
+    isWorkerLost ||
+    job?.status === "failed" ||
+    job?.status === "cancelled" ||
+    (job?.status === "completed" && (isStubPreview || job?.progress?.execution_mode === "full"));
+
+  onMount(() => {
+    clockTimer = setInterval(() => {
+      nowMs = Date.now();
+    }, 1000);
+  });
 
   async function cancelJob() {
     if (!job || !canCancel) return;
@@ -276,6 +342,7 @@
 
   onDestroy(() => {
     if (pollTimer) clearTimeout(pollTimer);
+    if (clockTimer) clearInterval(clockTimer);
   });
 </script>
 
@@ -289,18 +356,40 @@
       <div>
         <h1 id="run-console-heading" class="run-title">{job.label ?? "Ingest run"}</h1>
         <p class="run-meta">
-          <span class="run-status-badge" class:run-status-badge-active={isInProgress} class:run-status-badge-done={isCompleted}>
-            {#if isInProgress}
+          <span class="run-status-badge" class:run-status-badge-active={isInProgress} class:run-status-badge-done={isCompleted} class:run-status-badge-stalled={isStalled}>
+            {#if isInProgress && !isStalled}
               <span class="run-status-pulse" aria-hidden="true"></span>
             {/if}
-            {ingestStatusLabel(job.status)}
+            {#if isStalled}
+              <span class="run-status-stall-icon" aria-hidden="true">⚠</span>
+            {/if}
+            {ingestStatusLabel(job.status)}{#if isStalled} — Stalled{/if}
           </span>
           <code class="run-id">{job.id}</code>
+          {#if (job.reclaim_count ?? 0) > 0}
+            <span class="run-reclaim-badge">reclaimed ×{job.reclaim_count}</span>
+          {/if}
         </p>
         {#if runDurationLabel}
           <p class="run-duration">{runDurationLabel}</p>
         {/if}
       </div>
+      {#if canRestart}
+        <div class="run-actions">
+          <button
+            type="button"
+            class="btn btn-primary run-restart-btn"
+            on:click={restartJob}
+            disabled={restarting}
+          >
+            {restarting ? "Restarting…" : runAgainLabel}
+          </button>
+          <a
+            class="btn btn-outline run-view-runs-btn"
+            href={CONNECT_BASE + "/ingest"}
+          >View all runs</a>
+        </div>
+      {/if}
     </header>
 
     {#if isEmbedBackfill && !isCompleted}
@@ -437,7 +526,37 @@
     {/if}
 
     {#if job.error}
-      <p class="run-error" role="alert">{job.error}</p>
+      <div class="run-error-banner" role="alert">
+        <p class="run-error-banner-title">
+          {#if isWorkerLost}
+            <strong>Worker lost — run stalled</strong>
+          {:else}
+            <strong>Run failed</strong>
+          {/if}
+        </p>
+        <p class="run-error-banner-body">
+          {#if isWorkerLost}
+            The worker stopped responding before the lease expired and the run was reclaimed
+            automatically. Nothing in your graph store was corrupted — the run can be restarted
+            from the last checkpoint.
+          {:else}
+            {job.error}
+          {/if}
+        </p>
+        {#if canRestart}
+          <div class="run-error-banner-actions">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              on:click={restartJob}
+              disabled={restarting}
+            >
+              {restarting ? "Restarting…" : isWorkerLost ? "Restart from checkpoint" : runAgainLabel}
+            </button>
+            <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/ingest"}>View all runs</a>
+          </div>
+        {/if}
+      </div>
     {/if}
 
     <div class="run-grid" class:run-grid-active={isInProgress}>
@@ -453,7 +572,7 @@
           <div class="progress-panel">
             <div class="progress-readout" aria-live="polite">
               <span class="progress-pct">{percent}<span class="progress-pct-suffix">%</span></span>
-              <span class="progress-eta">{isInProgress ? "Running" : "Run progress"}</span>
+              <span class="progress-eta">{isInProgress ? (isStalled ? "Stalled" : "Running") : "Run progress"}</span>
             </div>
             <div
               class="progress-track"
@@ -478,6 +597,26 @@
                   {stagesComplete} of {stagesTotal} stages complete
                 {/if}
               </p>
+            {/if}
+            {#if job.worker_heartbeat_at != null && isInProgress}
+              <p class="progress-heartbeat run-muted">
+                Last worker signal {msRelativeTime(job.worker_heartbeat_at)}
+              </p>
+            {:else if isInProgress && job.updated_at}
+              <p class="progress-heartbeat run-muted">
+                Last activity {relativeTime(job.updated_at)}
+              </p>
+            {/if}
+            {#if isStalled}
+              <div class="progress-stall-notice" role="status">
+                No worker heartbeat detected. Stalled runs are reclaimed automatically and resume
+                from the last checkpoint — nothing is lost.
+              </div>
+            {/if}
+            {#if isReclaimedRun && !isStalled}
+              <div class="progress-reclaim-notice" role="status">
+                Resumed from checkpoint after a stall (reclaimed ×{job.reclaim_count}).
+              </div>
             {/if}
           </div>
         {/if}
@@ -606,6 +745,74 @@
   }
 
   .run-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    padding-top: var(--space-1);
+  }
+
+  .run-restart-btn {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+  }
+
+  .run-view-runs-btn {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+  }
+
+  .run-status-badge-stalled {
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 20%, var(--brut-white));
+    border-color: var(--brut-amber, #e6a700);
+    color: var(--rm-text);
+  }
+
+  .run-status-stall-icon {
+    font-size: 0.85em;
+  }
+
+  .run-reclaim-badge {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0 var(--space-2);
+    border: var(--border-thin, 1px solid) var(--brut-amber, #e6a700);
+    color: var(--rm-text);
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 12%, var(--brut-white));
+  }
+
+  .run-error-banner {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: var(--brut-border-width) solid var(--brut-coral);
+    background: color-mix(in oklab, var(--brut-coral) 14%, var(--brut-white));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .run-error-banner-title {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--rm-text);
+  }
+
+  .run-error-banner-body {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+    line-height: 1.5;
+  }
+
+  .run-error-banner-actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
@@ -1049,6 +1256,32 @@
   .progress-detail {
     font-family: var(--rm-font-mono);
     font-size: var(--text-xs);
+  }
+
+  .progress-heartbeat {
+    font-family: var(--rm-font-mono);
+    font-size: var(--text-xs);
+    margin: 0;
+  }
+
+  .progress-stall-notice {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 14%, var(--brut-white));
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+    line-height: 1.45;
+  }
+
+  .progress-reclaim-notice {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-sage, var(--rm-sage));
+    background: color-mix(in oklab, var(--rm-sage) 12%, var(--brut-white));
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+    line-height: 1.45;
   }
 
   .pipeline-lede {
