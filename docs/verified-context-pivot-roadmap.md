@@ -65,7 +65,7 @@ skeptical user can click through to the quoted span in the source and check it t
 | 14 | ✅ 1.4 Spine observability hardening — H1/H3 closed (PR #208) | P1 | — |
 | 14a | ✅ 1.5 Ingest runtime reliability + dashboard performance — freeze causes fixed, P1 follow-ups documented (PR #220) | P1 | — |
 | 15 | ✅ 2.4 Regression history dashboard (PR #217) | P2 | 2.3 |
-| 15a | **1.6 Durable run execution** (HIGH PRIORITY — from the [Stage 1.5 review](reviews/connect-runtime-reliability-perf.md)) ← **NEXT** | P1 | 1.5 |
+| 15a | ✅ 1.6 Durable run execution — lease/heartbeat/reclaim + checkpointed resume (PR #229) | P1 | 1.5 |
 | 15b | ✅ 1.7 Deploy-time migrations — runtime DDL off in prod (PR #224) | P1 | 1.5 |
 | 15c | ✅ 1.8 Stats caching + single resolution — 1 stats call/hub request (PR #223) | P1 | 1.5 |
 | 15d | ✅ 1.9 Writer batching phase 2 — one round-trip per Surreal batch (PR #233) | P1 | 1.5, 3.2 |
@@ -73,7 +73,7 @@ skeptical user can click through to the quoted span in the source and check it t
 | 17 | ✅ 3.2 Incremental re-ingest (PR #225; Surreal BYO degrades to full ingest pending 3.2b) | P3 | 3.1 |
 | 17a | 3.2b BYO Surreal incremental re-ingest — **user-controlled opt-in version table** (ADR open question 1 decided 2026-06-10) | P3 | 3.2 |
 | 18 | ✅ 4.2 MCP quickstart + catalog listings prepared in-repo (PR #232; external submissions await product owner) | P4 | 4.1, 1.0b |
-| 19 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
+| 19 | ✅ 3.3 Temporal validity + as-of retrieval (PR #236) | P3 | 3.2 |
 | 20 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
 | 21 | ✅ 4.3 AAIF verification envelope (PR #231) | P4 | 4.1 |
 
