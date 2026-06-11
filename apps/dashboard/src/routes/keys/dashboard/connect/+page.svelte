@@ -45,7 +45,7 @@
 </svelte:head>
 
 <section class="hub" aria-labelledby="connect-hub-heading">
-  <p class="hub-eyebrow">Connect · Your workspace home</p>
+  <p class="hub-eyebrow">Connect · Knowledge graph workspace</p>
   <h1 id="connect-hub-heading">Build the brain your agents will query</h1>
   <p class="hub-lead">
     Everything in Restormel flows through Connect: add documents, configure Keys-backed AI routes, run ingest,
