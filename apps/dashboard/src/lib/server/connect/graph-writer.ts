@@ -454,41 +454,64 @@ class SurrealGraphWriter implements GraphWriter {
     const unitTable = ident(this.schema.unit_table, "unit");
     const stored: StoredUnit[] = [];
     const idByLocal = new Map<string, string>();
-    for (const u of args.units) {
-      if (!u.text.trim()) continue;
-      const id = await this.createReturningId(unitTable, {
-        text: u.text,
-        unit_type: u.unitType,
-        domain: u.domain,
-        source: sourceId,
-        ...(u.sourceChunkIndex != null ? { source_chunk_index: u.sourceChunkIndex } : {}),
+
+    // Batched multi-statement script: one CREATE per unit in a single HTTP /sql round-trip,
+    // each statement RETURNing id.  Positional matching of results to input units preserves
+    // the caller's local-id → stored-id mapping without per-unit await chains.
+    const validUnits = args.units.filter((u) => u.text.trim());
+    if (validUnits.length > 0) {
+      const statements = validUnits.map((u) => {
+        const content: Record<string, unknown> = {
+          text: u.text,
+          unit_type: u.unitType,
+          domain: u.domain,
+          source: sourceId,
+          ...(u.sourceChunkIndex != null ? { source_chunk_index: u.sourceChunkIndex } : {}),
+        };
+        return `CREATE ${unitTable} CONTENT ${JSON.stringify(content)} RETURN id;`;
       });
-      if (!id) continue;
-      idByLocal.set(u.localId, id);
-      stored.push({ id, localId: u.localId, text: u.text, type: u.unitType });
+      try {
+        const scriptResult = await this.store.query<unknown>(statements.join("\n"));
+        // Surreal returns one result entry per statement; each entry is an array of created records.
+        const perStatement: unknown[] = Array.isArray(scriptResult) ? (scriptResult as unknown[]) : [];
+        for (let i = 0; i < validUnits.length; i++) {
+          const u = validUnits[i]!;
+          const id = extractCreatedRecordId(perStatement[i]);
+          if (!id) continue;
+          idByLocal.set(u.localId, id);
+          stored.push({ id, localId: u.localId, text: u.text, type: u.unitType });
+        }
+      } catch (err) {
+        console.warn(
+          `[connect-graph-writer] unit batch CREATE failed — ${err instanceof Error ? err.message : err}`,
+        );
+      }
     }
-    let relations = 0;
-    let relationFailures = 0;
-    for (const r of args.relations) {
+
+    // Relations: collect resolvable pairs, then batch RELATE statements in one round-trip.
+    const relPairs = args.relations.flatMap((r) => {
       const from = idByLocal.get(r.fromLocalId);
       const to = idByLocal.get(r.toLocalId);
-      if (!from || !to) {
-        relationFailures += 1;
-        continue;
-      }
-      const edge = ident(r.relationType, "relates_to");
+      return from && to ? [{ from, to, edge: ident(r.relationType, "relates_to") }] : [];
+    });
+    const relationFailures = args.relations.length - relPairs.length;
+    let relations = 0;
+    if (relPairs.length > 0) {
+      const relStatements = relPairs.map(
+        (p) => `RELATE ${surrealRecordRef(p.from)}->${p.edge}->${surrealRecordRef(p.to)};`,
+      );
       try {
-        await this.store.query(
-          `RELATE ${surrealRecordRef(from)}->${edge}->${surrealRecordRef(to)};`,
+        await this.store.query(relStatements.join("\n"));
+        relations = relPairs.length;
+      } catch (err) {
+        console.warn(
+          `[connect-graph-writer] relation batch RELATE failed — ${err instanceof Error ? err.message : err}`,
         );
-        relations += 1;
-      } catch {
-        relationFailures += 1;
       }
     }
     if (relationFailures > 0) {
       console.warn(
-        `[connect-graph-writer] ${relationFailures} relation(s) failed to persist (${relations} ok)`,
+        `[connect-graph-writer] ${relationFailures} relation(s) could not be resolved (unknown local ids)`,
       );
     }
     return { units: stored, relations };
@@ -601,10 +624,12 @@ class SurrealGraphWriter implements GraphWriter {
       .catch(() => {
         // Older SurrealDB without IF NOT EXISTS, or SCHEMALESS — writes work regardless.
       });
-    let persisted = 0;
-    let missed = 0;
-    let firstMiss: { unitId: string; got: unknown } | null = null;
-    for (const b of args.bindings) {
+
+    // Batched multi-statement script: one UPDATE per unit in a single HTTP /sql round-trip,
+    // each statement RETURNing the record's evidence_status so we can verify per-record that
+    // the write landed.  Degraded-persistence is still visible — the SCHEMAFULL warning with
+    // sample unitId/read-back stays intact; we just parse the N results from one round-trip.
+    const statements = args.bindings.map((b) => {
       const bound = b.binding.status === "bound" ? b.binding.span : null;
       const payload = {
         evidence_quote: bound?.quote ?? null,
@@ -613,24 +638,40 @@ class SurrealGraphWriter implements GraphWriter {
         evidence_match: bound?.match ?? null,
         evidence_status: b.binding.status,
         evidence_source_hash: args.sourceHash,
-        // Stage 3.2 identity — written opportunistically for forward-compat.
         claim_key: b.claimKey ?? null,
       };
-      try {
-        const res = await this.store.query<Array<Record<string, unknown>>>(
-          `UPDATE ${surrealRecordRef(b.unitId)} MERGE ${JSON.stringify(payload)} RETURN AFTER;`,
-        );
-        const rec = Array.isArray(res) ? res[0] : undefined;
+      return `UPDATE ${surrealRecordRef(b.unitId)} MERGE ${JSON.stringify(payload)} RETURN AFTER;`;
+    });
+    let persisted = 0;
+    let missed = 0;
+    let firstMiss: { unitId: string; got: unknown } | null = null;
+    try {
+      // A Surreal HTTP /sql endpoint executes a multi-statement script as one request and
+      // returns one result entry per statement.  We flatten the nested array that the
+      // GraphStore HTTP client produces and match results positionally to bindings.
+      const scriptResult = await this.store.query<unknown>(statements.join("\n"));
+      // Surreal returns [[row, …], [row, …], …] — one inner array per statement.
+      const perStatement: Array<Array<Record<string, unknown>>> = Array.isArray(scriptResult)
+        ? (scriptResult as unknown[]).map((r) =>
+            Array.isArray(r) ? (r as Array<Record<string, unknown>>) : [r as Record<string, unknown>],
+          )
+        : [];
+      for (let i = 0; i < args.bindings.length; i++) {
+        const b = args.bindings[i]!;
+        const stmtRows = perStatement[i] ?? [];
+        const rec = stmtRows[0];
         if (rec && rec.evidence_status === b.binding.status) {
           persisted += 1;
         } else {
           missed += 1;
           if (!firstMiss) firstMiss = { unitId: b.unitId, got: rec?.evidence_status ?? null };
         }
-      } catch (err) {
-        missed += 1;
-        if (!firstMiss) firstMiss = { unitId: b.unitId, got: `error: ${err instanceof Error ? err.message : err}` };
       }
+    } catch (err) {
+      // Whole script failed — count all as missed, preserve fail-safe warning below.
+      missed = args.bindings.length;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!firstMiss) firstMiss = { unitId: args.bindings[0]!.unitId, got: `error: ${msg}` };
     }
     if (missed > 0) {
       console.warn(
@@ -652,25 +693,38 @@ class SurrealGraphWriter implements GraphWriter {
         `DEFINE FIELD IF NOT EXISTS verification_state ON TABLE ${unitTable} TYPE option<string>;`,
       )
       .catch(() => {});
+
+    // Batched multi-statement script: one UPDATE per unit in a single HTTP /sql round-trip,
+    // each statement RETURNing the record's verification_state for per-record read-back check.
+    const statements = states.map(
+      (s) =>
+        `UPDATE ${surrealRecordRef(s.unitId)} MERGE { verification_state: ${JSON.stringify(s.state)} } RETURN AFTER;`,
+    );
     let persisted = 0;
     let missed = 0;
     let firstMiss: { unitId: string; got: unknown } | null = null;
-    for (const s of states) {
-      try {
-        const res = await this.store.query<Array<Record<string, unknown>>>(
-          `UPDATE ${surrealRecordRef(s.unitId)} MERGE { verification_state: ${JSON.stringify(s.state)} } RETURN AFTER;`,
-        );
-        const rec = Array.isArray(res) ? res[0] : undefined;
+    try {
+      const scriptResult = await this.store.query<unknown>(statements.join("\n"));
+      const perStatement: Array<Array<Record<string, unknown>>> = Array.isArray(scriptResult)
+        ? (scriptResult as unknown[]).map((r) =>
+            Array.isArray(r) ? (r as Array<Record<string, unknown>>) : [r as Record<string, unknown>],
+          )
+        : [];
+      for (let i = 0; i < states.length; i++) {
+        const s = states[i]!;
+        const stmtRows = perStatement[i] ?? [];
+        const rec = stmtRows[0];
         if (rec && rec.verification_state === s.state) {
           persisted += 1;
         } else {
           missed += 1;
           if (!firstMiss) firstMiss = { unitId: s.unitId, got: rec?.verification_state ?? null };
         }
-      } catch (err) {
-        missed += 1;
-        if (!firstMiss) firstMiss = { unitId: s.unitId, got: `error: ${err instanceof Error ? err.message : err}` };
       }
+    } catch (err) {
+      missed = states.length;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!firstMiss) firstMiss = { unitId: states[0]!.unitId, got: `error: ${msg}` };
     }
     if (missed > 0) {
       console.warn(
@@ -695,10 +749,9 @@ class SurrealGraphWriter implements GraphWriter {
     if (rows.length === 0) return { persisted: 0, missed: 0 };
     // Append-only audit table alongside the pack's unit table. CREATE (never UPDATE)
     // so re-judging retains every prior verdict.
-    let persisted = 0;
-    let missed = 0;
-    let firstErr: string | null = null;
-    for (const r of rows) {
+    // Batched multi-statement script: one CREATE per judgment in a single HTTP /sql round-trip,
+    // each statement RETURNing the record's verdict for per-record read-back verification.
+    const statements = rows.map((r) => {
       const payload = {
         unit: r.unitId,
         verdict: r.verdict,
@@ -708,17 +761,28 @@ class SurrealGraphWriter implements GraphWriter {
         prompt_version: r.promptVersion,
         judged_at: r.judgedAt,
       };
-      try {
-        const res = await this.store.query<Array<Record<string, unknown>>>(
-          `CREATE connect_claim_judgment CONTENT ${JSON.stringify(payload)} RETURN AFTER;`,
-        );
-        const rec = Array.isArray(res) ? res[0] : undefined;
+      return `CREATE connect_claim_judgment CONTENT ${JSON.stringify(payload)} RETURN AFTER;`;
+    });
+    let persisted = 0;
+    let missed = 0;
+    let firstErr: string | null = null;
+    try {
+      const scriptResult = await this.store.query<unknown>(statements.join("\n"));
+      const perStatement: Array<Array<Record<string, unknown>>> = Array.isArray(scriptResult)
+        ? (scriptResult as unknown[]).map((r) =>
+            Array.isArray(r) ? (r as Array<Record<string, unknown>>) : [r as Record<string, unknown>],
+          )
+        : [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i]!;
+        const stmtRows = perStatement[i] ?? [];
+        const rec = stmtRows[0];
         if (rec && rec.verdict === r.verdict) persisted += 1;
         else missed += 1;
-      } catch (err) {
-        missed += 1;
-        if (!firstErr) firstErr = err instanceof Error ? err.message : String(err);
       }
+    } catch (err) {
+      missed = rows.length;
+      firstErr = err instanceof Error ? err.message : String(err);
     }
     if (missed > 0) {
       console.warn(
@@ -751,6 +815,18 @@ class SurrealGraphWriter implements GraphWriter {
       `UPDATE ${surrealRecordRef(unitId)} MERGE { validation_status: ${JSON.stringify(REMOVED_VALIDATION_STATUS)}, validation_note: ${JSON.stringify(note)} };`,
     );
   }
+}
+
+/**
+ * Test-only factory — exposes a SurrealGraphWriter backed by a custom GraphStore for unit
+ * tests that need to assert batching and round-trip count without a real SurrealDB instance.
+ * Named with a `test` prefix so tree-shaking / linting can flag production callers.
+ */
+export function makeSurrealGraphWriterForTest(
+  store: GraphStore,
+  pack: ConnectDomainPack,
+): GraphWriter {
+  return new SurrealGraphWriter(store, pack);
 }
 
 /** Build a writer for the workspace's configured target. Returns null if Surreal is unreachable. */
