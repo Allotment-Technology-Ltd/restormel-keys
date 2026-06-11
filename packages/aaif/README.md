@@ -74,6 +74,56 @@ If you don’t provide token hints, the runtime defaults to `1M` input and `1M` 
 - Do not log or expose raw API keys in AAIF runtime code or errors.
 - The runtime helpers do not call upstream providers directly. Instead, they only resolve routing and estimate cost; the host controls actual upstream execution.
 
+## Verified-context envelope (Stage 4.3)
+
+Non-MCP agent frameworks (LangChain, LlamaIndex, custom orchestrators) can carry the full
+verified-claim envelope in AAIF request/response payloads without the MCP server.
+
+**Two optional fields — one on each side of the envelope:**
+
+- **`AAIFRequest.verifiedContext`** (`AAIFVerifiedContextInput`) — the Connect-sourced,
+  EBV-verified claim envelopes the host is feeding as grounded context *to* the model.
+- **`AAIFResponse.verifiedContext`** (`AAIFVerifiedContextOutput`) — the same envelopes
+  echoed back with a per-state count summary, so a downstream consumer can inspect
+  verification metadata without a separate Connect API roundtrip.
+
+```ts
+import {
+  buildVerifiedContextInput,
+  buildVerifiedContextOutput,
+  allClaimsSupported,
+  getSupportedClaims,
+  isAAIFVerifiedClaimEnvelope,
+} from "@restormel/aaif";
+import type { AAIFVerifiedClaimEnvelope } from "@restormel/aaif";
+
+// 1. Fetch verified claims from Connect v1 and validate them
+const rawClaims = await connectClient.retrieve(query);
+const claims: AAIFVerifiedClaimEnvelope[] = rawClaims.filter(isAAIFVerifiedClaimEnvelope);
+
+// 2. Thread into the request
+const request: AAIFRequest = {
+  input: buildPromptWithClaims(claims),
+  verifiedContext: buildVerifiedContextInput(claims, traceRef),
+};
+
+// 3. Execute and attach context to response
+const response = await executeAAIFRequest(request, keys, { generate: myLlm });
+response.verifiedContext = buildVerifiedContextOutput(claims, traceRef);
+
+// 4. Consume verification metadata
+const supported = getSupportedClaims(response);
+console.log(response.verifiedContext?.summary); // e.g. { supported: 3, inferred: 1 }
+```
+
+Types are plain TypeScript — **no Zod runtime dependency**. For Zod-validated parsing use
+`VerifiedClaimEnvelopeSchema` from `@restormel/contracts`.
+
+Full integration guide: [docs/guides/aaif-verified-context.md](../../docs/guides/aaif-verified-context.md).
+
+**Semver:** additive optional fields on `AAIFRequest` / `AAIFResponse` are **patch bumps**
+(0.0.18 → 0.0.19 for this addition).
+
 ## Parity with MCP (Horizon Phase 1)
 
 **AAIF** today is the structured **HTTP-shaped** contract for **Keys routing + cost** inside app hosts (`executeAAIFRequest` + `@restormel/keys`).

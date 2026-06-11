@@ -15,6 +15,14 @@ export type {
   AAIFIntegrationStack,
   AAIFIntegrationStackComponent,
   AAIFIntegrationStackSchemaVersion,
+  // Stage 4.3 — verified-context envelope
+  AAIFVerifiedClaimState,
+  AAIFEvidenceMatch,
+  AAIFVerifiedClaimEvidence,
+  AAIFVerifiedClaimJudge,
+  AAIFVerifiedClaimEnvelope,
+  AAIFVerifiedContextInput,
+  AAIFVerifiedContextOutput,
 } from "./types.js";
 
 export {
@@ -42,7 +50,26 @@ export {
   type SuiteToolModuleFlags,
 } from "./suite-tool-names.js";
 
-export { isAAIFRequest, isAAIFResponse } from "./validate.js";
+export {
+  isAAIFRequest,
+  isAAIFResponse,
+  isAAIFVerifiedClaimEnvelope,
+  isAAIFVerifiedContextInput,
+  isAAIFVerifiedContextOutput,
+} from "./validate.js";
 
 export type { ExecuteAAIFOptions } from "./runtime.js";
 export { executeAAIFRequest } from "./runtime.js";
+
+// Stage 4.3 — verified-context runtime helpers
+export {
+  summariseVerifiedClaims,
+  filterClaimsByState,
+  allClaimsSupported,
+  hasContradictedClaims,
+  buildVerifiedContextInput,
+  buildVerifiedContextOutput,
+  getRequestVerifiedContext,
+  getResponseVerifiedContext,
+  getSupportedClaims,
+} from "./verified-context.js";

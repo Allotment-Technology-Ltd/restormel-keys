@@ -120,10 +120,150 @@ export type AAIFRequest = {
    * Use for logs, MCP agents, and analytics — not for Keys resolve behaviour.
    */
   integrationStack?: AAIFIntegrationStack;
+  /**
+   * Optional verified-context block: the Connect-sourced, EBV-verified claim envelopes
+   * the host is feeding as grounded context to the model. Use this so routing/audit logs
+   * and response consumers can see which verified claims shaped the model's context.
+   *
+   * Sourced from Connect v1 `POST /connect/v1/retrieve` or the MCP
+   * `connect.retrieve_verified` tool. (Additive optional field — patch bump.)
+   */
+  verifiedContext?: AAIFVerifiedContextInput;
 };
 
 export type AAIFRouting = {
   reason: string;
+};
+
+// ---------------------------------------------------------------------------
+// Verified-context envelope (Stage 4.3 of the verified-context roadmap)
+//
+// These types mirror the canonical shapes from @restormel/contracts
+// (VerifiedClaimEnvelope, VerifiedClaimEvidence, VerifiedClaimJudge) but are
+// re-declared here as plain TypeScript so @restormel/aaif keeps ZERO runtime
+// dependencies on Zod / @restormel/contracts. Consumers that need Zod schema
+// validation should import from @restormel/contracts directly.
+//
+// Placement per docs/decisions/aaif-envelope-placement.md (Stage 4.3 update):
+//   - AAIFRequest.verifiedContext  — verified claim envelopes the HOST is
+//     providing as grounded context TO the model (sourced from Connect v1
+//     retrieve, then threaded through the AAIF request).
+//   - AAIFResponse.verifiedContext — the same envelopes echoed back on the
+//     response, so a non-MCP consumer (LangChain, LlamaIndex, etc.) can read
+//     verification metadata from the response without a separate roundtrip to
+//     the Connect API.
+// ---------------------------------------------------------------------------
+
+/** EBV verification state — mirrors VerifiedClaimState in @restormel/contracts. */
+export type AAIFVerifiedClaimState =
+  | "supported"
+  | "inferred"
+  | "unverified"
+  | "contradicted"
+  | "excluded";
+
+/** Evidence span match precision — mirrors VerifiedClaimEvidence.match in @restormel/contracts. */
+export type AAIFEvidenceMatch = "exact" | "normalized" | "fuzzy";
+
+/**
+ * One bound evidence span — mirrors VerifiedClaimEvidence in @restormel/contracts.
+ * Deterministically re-checkable without a model (EBV Layer 1).
+ */
+export type AAIFVerifiedClaimEvidence = {
+  /** Verbatim quote as bound at extraction time. */
+  quote: string;
+  /** [start, end) character offsets into the original source version text. */
+  offsets: [number, number];
+  /** Graph record reference of the cited source (e.g. `source:abc123`). Null when unavailable. */
+  source_ref: string | null;
+  /** SHA-256 (hex) of the source version the span was bound against. Null when unavailable. */
+  source_hash: string | null;
+  /** How strictly the quote matched: exact, normalized (whitespace/unicode folding), or fuzzy. */
+  match?: AAIFEvidenceMatch | null;
+};
+
+/**
+ * Attribution of the most recent span-scoped entailment verdict (EBV Layer 2).
+ * Mirrors VerifiedClaimJudge in @restormel/contracts.
+ */
+export type AAIFVerifiedClaimJudge = {
+  /** Judge model identifier when known (route-resolved); null otherwise. */
+  model: string | null;
+  /** Entailment prompt version the verdict was produced under. */
+  prompt_version: number;
+  /** Judge-reported confidence 0–1; null when the judge omitted it. */
+  confidence: number | null;
+  /** ISO 8601 timestamp the claim was judged. */
+  at: string;
+};
+
+/**
+ * One verified-claim envelope — mirrors VerifiedClaimEnvelope in @restormel/contracts.
+ *
+ * Carried on AAIFRequest.verifiedContext (context the host is feeding to the
+ * model) and echoed on AAIFResponse.verifiedContext (so a LangChain / LlamaIndex
+ * integration can inspect verification metadata from the response).
+ */
+export type AAIFVerifiedClaimEnvelope = {
+  /** The claim as served: graph record id and text. */
+  claim: { id: string; text: string };
+  /** EBV verification state. Only `supported` claims carry a fully verified chain. */
+  state: AAIFVerifiedClaimState;
+  /**
+   * Bound evidence spans (0–n). Empty when no evidence could be bound (the claim is then at
+   * best `inferred`, never `supported`) or when the graph store omits the EBV fields.
+   */
+  evidence: AAIFVerifiedClaimEvidence[];
+  /** Latest entailment judgment, when the claim has been judged (EBV Layer 2). */
+  judge?: AAIFVerifiedClaimJudge;
+  /** Human-readable source citation (the cited source's title). Null when unavailable. */
+  citation: string | null;
+  /**
+   * Provenance trace link for the query that returned this claim. Fetch the full audit
+   * document at `/connect/v1/traces/{trace_id}`. Null when trace persistence was unavailable.
+   */
+  trace_ref: string | null;
+  /** Graph trust score 0–100 for this claim, when the graph supplies one. */
+  trust_score?: number | null;
+};
+
+/**
+ * Verified-context block carried on AAIFRequest: the host-supplied verified claim
+ * envelopes that should be threaded into the model's context window. Sourced from
+ * Connect v1 `retrieve` or the MCP `connect.retrieve_verified` tool.
+ */
+export type AAIFVerifiedContextInput = {
+  /**
+   * The verified claim envelopes to include as grounded context. The host is responsible
+   * for serialising these into the model prompt; AAIF carries them for routing/auditing.
+   */
+  claims: AAIFVerifiedClaimEnvelope[];
+  /**
+   * Optional trace reference for the Connect retrieval query that produced these claims,
+   * for end-to-end audit linkage.
+   */
+  retrieval_trace_ref?: string | null;
+};
+
+/**
+ * Verified-context block carried on AAIFResponse: the verified claim envelopes that were
+ * included in the context window when generating this response. Non-MCP consumers
+ * (LangChain, LlamaIndex, etc.) read this to inspect verification metadata without a
+ * separate Connect API roundtrip.
+ */
+export type AAIFVerifiedContextOutput = {
+  /** The verified claim envelopes that grounded this response. */
+  claims: AAIFVerifiedClaimEnvelope[];
+  /**
+   * Per-state counts (keys: AAIFVerifiedClaimState values) for a quick gate check:
+   * "were any non-supported claims included in context?".
+   */
+  summary?: Partial<Record<AAIFVerifiedClaimState, number>>;
+  /**
+   * Optional trace reference for the Connect retrieval query that produced these claims,
+   * preserved from the request for audit linkage.
+   */
+  retrieval_trace_ref?: string | null;
 };
 
 export type AAIFResponse = {
@@ -137,4 +277,14 @@ export type AAIFResponse = {
   model: string;
   cost: number;
   routing: AAIFRouting;
+  /**
+   * Verified-context envelopes that were included in the model's context window for this
+   * response. Populated by the host (via executeAAIFRequest options or post-processing) so
+   * non-MCP consumers (LangChain / LlamaIndex / etc.) can inspect verification metadata
+   * without a separate Connect API roundtrip.
+   *
+   * Only present when the host passed verified claims via the request or options.
+   * (Additive optional field — patch bump per AAIF semver discipline.)
+   */
+  verifiedContext?: AAIFVerifiedContextOutput;
 };
