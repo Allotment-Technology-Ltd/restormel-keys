@@ -41,6 +41,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     items: [
       { href: "/keys/docs/guides/integration-catalog", label: "Integration catalog" },
       { href: "/keys/docs/guides/verified-context", label: "Verified context" },
+      { href: "/keys/docs/guides/mcp-verified-context", label: "MCP verified-context quickstart" },
       { href: "/keys/docs/guides/context-regression-ci", label: "Context-regression CI" },
       { href: "/keys/docs/guides/connect-first-graph-onboarding", label: "Connect first graph" },
       { href: "/keys/docs/guides/keys-testing-onboarding", label: "Keys + Testing" },
