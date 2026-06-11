@@ -281,3 +281,46 @@ describe("runMigrations", () => {
     expect(transactionCalls[0].filename).toBe("001_initial.sql");
   });
 });
+
+// ---------------------------------------------------------------------------
+// splitSqlStatements (Neon HTTP driver rejects multi-command prepared statements)
+// ---------------------------------------------------------------------------
+import { splitSqlStatements } from "./migration-runner.ts";
+import { readdirSync as _readdirSync, readFileSync as _readFileSync } from "node:fs";
+import { join as _join } from "node:path";
+
+describe("splitSqlStatements", () => {
+  it("splits plain DDL on semicolons and drops comment-only fragments", () => {
+    const out = splitSqlStatements(
+      `-- header comment\nCREATE TABLE a (id INT);\n\nCREATE INDEX i ON a (id);\n-- trailing comment\n`,
+    );
+    expect(out).toHaveLength(2);
+    expect(out[0]).toContain("CREATE TABLE a");
+    expect(out[1]).toContain("CREATE INDEX i");
+  });
+
+  it("does not split inside single-quoted strings or dollar-quoted blocks", () => {
+    const out = splitSqlStatements(
+      `INSERT INTO t (v) VALUES ('a;b');\nDO $$ BEGIN PERFORM 1; PERFORM 2; END $$;\nSELECT 1;`,
+    );
+    expect(out).toHaveLength(3);
+    expect(out[0]).toContain("'a;b'");
+    expect(out[1]).toContain("PERFORM 2");
+  });
+
+  it("handles escaped quotes ('') inside strings", () => {
+    const out = splitSqlStatements(`INSERT INTO t (v) VALUES ('it''s; fine');SELECT 2;`);
+    expect(out).toHaveLength(2);
+  });
+
+  it("every real migration file splits into non-empty statements (regression: prod apply)", () => {
+    const dir = _join(__dirname, "..", "..", "..", "migrations");
+    const files = _readdirSync(dir).filter((f) => f.endsWith(".sql"));
+    expect(files.length).toBeGreaterThan(50);
+    for (const f of files) {
+      const stmts = splitSqlStatements(_readFileSync(_join(dir, f), "utf-8"));
+      expect(stmts.length, `${f} should yield statements`).toBeGreaterThan(0);
+      for (const s of stmts) expect(s.trim().length, `${f} empty statement`).toBeGreaterThan(0);
+    }
+  });
+});
