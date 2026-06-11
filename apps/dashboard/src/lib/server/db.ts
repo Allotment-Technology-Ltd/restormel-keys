@@ -142,4 +142,6 @@ export {
   createWorkspaceWebhook,
   deleteWorkspaceWebhook,
   type WorkspaceWebhookRecord,
+  getWorkspaceBillingState,
+  type WorkspaceBillingState,
 } from "$lib/server/neon";
