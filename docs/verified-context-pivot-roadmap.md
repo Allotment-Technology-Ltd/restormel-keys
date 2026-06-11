@@ -71,6 +71,7 @@ skeptical user can click through to the quoted span in the source and check it t
 | 15d | 1.9 Writer batching phase 2 (review F4 residue) | P1 | 1.5, 3.2 |
 | 16 | ✅ 3.1 Verified-memory design ADR (PR #195) | P3 | 1.0c |
 | 17 | 3.2 Incremental re-ingest | P3 | 3.1 |
+| 17a | 3.2b BYO Surreal incremental re-ingest — **user-controlled opt-in version table** (ADR open question 1 decided 2026-06-10) | P3 | 3.2 |
 | 18 | 4.2 MCP quickstart + catalog distribution | P4 | 4.1, 1.0b |
 | 19 | 3.3 Temporal validity + as-of retrieval | P3 | 3.2 |
 | 20 | 3.4 Agent memory write API | P3 | 3.3, 4.1 |
@@ -772,6 +773,33 @@ Use effort: xhigh.
 ```
 
 ---
+
+### Stage 3.2b — BYO Surreal incremental re-ingest (user-controlled opt-in)
+
+```
+ROLE
+Senior engineer implementing the decided ADR open question 1
+(docs/decisions/verified-memory-incremental-ingest.md): the USER decides whether
+Restormel may create a version table in their BYO Surreal database.
+
+TARGET
+A workspace/store-level setting (default OFF) "Allow Restormel to manage claim versions
+in this database". OFF: current Stage 3.2 behavior (Surreal re-ingest degrades to full
+ingest with the explicit operator log). ON: Surreal re-ingest gains the full incremental
+contract — restormel_claim_versions table created in the user's DB (additive-only,
+clearly named), carried/changed/removed semantics matching the Postgres spine path.
+
+ACCEPTANCE
+- Setting persisted with the store connection config; surfaced in the setup wizard's
+  store step with an honest explanation (what the table stores, additive-only, how to
+  revoke); wizard gating intact; ux-contracts state model respected.
+- OFF path unchanged and tested (degradation log still explicit, never silent).
+- ON path: version chains in the user's Surreal DB; unchanged-source near-no-op holds;
+  supersession reversible; unit-id shapes untouched (cohort invariant).
+- Table creation failure (permissions) degrades to the OFF path with an operator-visible
+  warning — never blocks the run, never silently pretends versions exist.
+- Dashboard check/tests + connect-core tests green.
+```
 
 ## Pivot 4 — MCP-native distribution
 
