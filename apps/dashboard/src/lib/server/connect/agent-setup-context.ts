@@ -3,33 +3,32 @@ import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { computeConnectModelsReady, getConnectStageRouting } from "$lib/server/connect/stage-routing";
 import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { listApiKeys, listProjects, listProviderIntegrations } from "$lib/server/db";
+import { listApiKeysByWorkspace, listProjects, listProviderIntegrations } from "$lib/server/db";
 import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 
 type GraphTargetUi = Awaited<ReturnType<typeof getGraphTargetForUi>>;
 
-async function loadGatewayKeysForUser(userId: string): Promise<{
+/**
+ * W3.7/K1: Load gateway keys for agent setup using a single workspace-scoped query.
+ * Before: called listApiKeys per project in a loop (N+1 — K-P2-3).
+ * After: listApiKeysByWorkspace — one JOIN, no loop.
+ * Also: exposes server-persisted label for display in ConnectAgentSetup.
+ */
+async function loadGatewayKeysForUser(userId: string, workspaceId: string): Promise<{
   projects: ConnectAgentSetupData["projects"];
   gatewayKeys: ConnectAgentSetupData["gatewayKeys"];
 }> {
-  const projects = await listProjects(userId);
-  const keysByProject = await Promise.all(
-    projects.map(async (project) => ({
-      project,
-      keys: await listApiKeys(project.id, userId),
-    })),
-  );
-  const gatewayKeys: ConnectAgentSetupData["gatewayKeys"] = [];
-  for (const { project, keys } of keysByProject) {
-    for (const key of keys) {
-      gatewayKeys.push({
-        id: key.id,
-        keyPrefix: key.keyPrefix,
-        projectId: project.id,
-        projectName: project.name,
-      });
-    }
-  }
+  const [projects, keyRows] = await Promise.all([
+    listProjects(userId),
+    listApiKeysByWorkspace(workspaceId),
+  ]);
+  const gatewayKeys: ConnectAgentSetupData["gatewayKeys"] = keyRows.map((key) => ({
+    id: key.id,
+    keyPrefix: key.keyPrefix,
+    projectId: key.projectId,
+    projectName: key.projectName,
+    label: key.label ?? null,
+  }));
   return { projects, gatewayKeys };
 }
 
@@ -57,7 +56,7 @@ export async function loadConnectAgentSetupForAgentsStep(params: {
       ? Promise.resolve({ length: preloaded.integrationsCount })
       : listProviderIntegrations(workspaceId).catch(() => []),
     getConnectStageRouting(workspaceId),
-    loadGatewayKeysForUser(userId),
+    loadGatewayKeysForUser(userId, workspaceId),
   ]);
 
   const hasGraph = Boolean(stats && stats.units > 0);
