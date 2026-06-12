@@ -329,6 +329,56 @@ Connect traffic (BP-12) — the `/logs` row renders the source tag; the full fil
 | **Logs — source tag** (`/keys/dashboard/logs`) | existing logs load | n/a — a Connect resolve always writes a row | existing logs error banner + "Try again" | each request-log row renders its **source tag** (`connect ingest` badge for `source=connect_ingest`); gateway/legacy rows show no tag (null source). Full source filter UX is W3.3 |
 <!-- K5-BLOCK-END -->
 
+### §3 panel states — Team-shared key metadata + audit log depth (Stage W3.7 + K1)
+
+**Gateway keys — `/access`**
+
+Server-persisted labels (migration `066_api_keys_label_metadata.sql`) replace the localStorage-only
+illusion. `label` is `NULL` for pre-W3.7 keys — display "Unlabelled" (italic, `key-label-absent`
+class) rather than hiding the field. `createdAt` and `lastUsedAt` are shown as relative times in mono
+(`var(--rm-font-mono)`) labelled columns ("CREATED" / "LAST USED"). `lastUsedAt = null` → "never"
+(honest; the column exists and is `NULL` — not misleading).
+
+| State | Contract |
+|-------|---------|
+| **Loading** | SvelteKit server load — no client skeleton needed; flash is acceptable |
+| **Error** | `role="alert"` error paragraph with the full error path above the key list |
+| **Empty (no keys)** | `EmptyState` component — title + description + Create form |
+| **Populated** | Key list with `keyPrefix`, label (or "Unlabelled"), project, `created`, `last used`, Rename + Copy + Revoke actions |
+| **Inline rename** | Form replaces the label cell; Save (PATCH) + Cancel; `renameError` shown inline; focus moves to rename input on open |
+| **localStorage migration offer** | Banner (role="status") shown when `rk_key_labels` has un-migrated entries; "Save N labels to workspace" batch-PATCH; "Dismiss" hides without migrating; **never auto-writes** |
+| **Post-create key box** | `role="status" aria-live="polite"` — copy-once raw key display; "This is the only time the full key will be shown." |
+
+**Security invariants (W3.7/K1 — key-management is auth-adjacent):**
+- Label field has `maxlength="120"` and server-side trim + cap.
+- POST and PATCH reject labels containing `/rk_[A-Za-z0-9_-]{8,}/` anywhere in the string (key material in label = 400; unanchored — also catches "prod key rk_..." patterns).
+- `last_used_at` is written by `verifyGatewayKey` — the column records the timestamp of the last
+  authenticated request, not the timestamp of any label operation. No key material passes through
+  label update paths at any point.
+- Labels are excluded from console logs at the server layer (no `console.log(label)` calls).
+
+**Audit log — `/prove/audit`**
+
+Filters replace the fixed-50-row truncated list. Keyset pagination with a hard cap of 200 rows/page.
+
+| Panel | Loading | Empty (no events) | Empty (filtered, no match) | Error | Populated |
+|-------|---------|-------------------|---------------------------|-------|-----------|
+| **Filter bar** | Renders immediately (no async) | — | — | — | 5 controls: action (`event_type`), actor type, actor ID, from (datetime-local), to (datetime-local); Apply + Clear when filters are active |
+| **Audit list** | SvelteKit server load | `EmptyState` "No audit events yet" + link to Gateway keys | `EmptyState` "No events match these filters" + **Clear filters** CTA | `BrutalErrorBanner`-pattern (`role="alert"`) + **Try again** (re-navigates to the page) | One row per event: relative time, summary, actor (type chip + id code), object link (X4) |
+| **Object link (X4)** | — | — | — | — | `gateway_key` → `/access`; `project` → `/projects/{id}`; `policy` → `/policies/{id}`; `provider_integration` → `/integrations/{id}`; `workspace` → `/home`; `route` → `null` (route audit rows lack projectId in this schema — link absent, not dead) |
+| **Pagination** | — | — | — | — | "Older →" button (sets `?before=<cursor>` cursor param); "End of results" note when `hasMore === false` |
+
+**Filter → URL params mapping (W3.7):** all filter state lives in URL search params so filtered views
+are shareable. `actor=<uid>`, `actorType=user|gateway_key|management_key|system`,
+`eventType=<event_type>`, `since=<epoch_ms>`, `until=<epoch_ms>`, `before=<epoch_ms>` (cursor).
+Clearing filters navigates to the bare pathname.
+
+**Actor identity (W3.7, K-P1-1 evidence chain):** each audit row shows both the actor type (small
+mono chip) and the actor_id (truncated `<code>` element). For `user` type this is the user uid; for
+key types this is the key id — both are opaque but meaningful for cross-referencing. The tooltip
+shows the full actor_id. This is the maximum fidelity the `audit_events` schema carries without a
+user-email join (future W-stage may add that join).
+
 ### §3 panel states — Versioned-config intelligence: diff / export / recommend (Stage W3.5)
 
 Builds on W1.5's Versions tab (route builder `/projects/{id}/routes/{routeId}` → Versions; policy
