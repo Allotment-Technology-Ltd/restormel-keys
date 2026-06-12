@@ -2423,6 +2423,8 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS lease_expires_at BIGINT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS worker_heartbeat_at BIGINT`;
     await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS reclaim_count INTEGER NOT NULL DEFAULT 0`;
+    // Stage K3: launch preflight recorded on the run (migration 064).
+    await sql`ALTER TABLE knowledge_ingest_jobs ADD COLUMN IF NOT EXISTS preflight JSONB`;
     await sql`
       CREATE INDEX IF NOT EXISTS idx_knowledge_ingest_jobs_running_lease
       ON knowledge_ingest_jobs (lease_expires_at)
@@ -5510,6 +5512,8 @@ export type ConnectIngestJobRecord = {
   workerHeartbeatAt?: number | null;
   /** How many times the job was reclaimed after a stall. */
   reclaimCount?: number;
+  /** Stage K3: launch preflight result recorded at submit time (ConnectRunPreflightResult shape). */
+  preflight?: unknown;
 };
 
 function msToIso(ms: number): string {
@@ -5758,6 +5762,8 @@ export function connectIngestJobRecordToApi(
   lease_expires_at?: number | null;
   /** How many times the job was reclaimed after a stall. */
   reclaim_count?: number;
+  /** Stage K3: launch preflight recorded at submit time, when present. */
+  preflight?: unknown;
 } {
   const qualityReport = toPublicConnectIngestQualityReport(row.progress?.quality_report, {
     stages: row.stages,
@@ -5790,6 +5796,7 @@ export function connectIngestJobRecordToApi(
     worker_heartbeat_at: row.workerHeartbeatAt ?? null,
     lease_expires_at: row.leaseExpiresAt ?? null,
     reclaim_count: row.reclaimCount ?? 0,
+    ...(row.preflight != null ? { preflight: row.preflight } : {}),
   };
 }
 
@@ -5816,6 +5823,7 @@ function mapConnectIngestJobRow(row: Record<string, unknown>): ConnectIngestJobR
     leaseExpiresAt: row.lease_expires_at != null ? Number(row.lease_expires_at) : null,
     workerHeartbeatAt: row.worker_heartbeat_at != null ? Number(row.worker_heartbeat_at) : null,
     reclaimCount: row.reclaim_count != null ? Number(row.reclaim_count) : 0,
+    preflight: row.preflight ?? null,
   };
 }
 
@@ -5830,16 +5838,19 @@ export async function insertConnectIngestJob(params: {
   pipelineProfileId?: string | null;
   domainPackId?: string | null;
   graphTargetId?: string | null;
+  /** Stage K3: launch preflight result recorded on the run (jsonb). */
+  preflight?: unknown;
 }): Promise<void> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
   const now = Date.now();
   const stagesJson = JSON.stringify(params.stages ?? []);
   const sourcesJson = JSON.stringify(params.sources ?? []);
+  const preflightJson = params.preflight != null ? JSON.stringify(params.preflight) : null;
   await sql`
     INSERT INTO knowledge_ingest_jobs (
       id, workspace_id, project_id, status, label, current_stage, stages, sources,
-      stop_after_stage, pipeline_profile_id, domain_pack_id, graph_target_id, error, created_at, updated_at
+      stop_after_stage, pipeline_profile_id, domain_pack_id, graph_target_id, preflight, error, created_at, updated_at
     )
     VALUES (
       ${params.id},
@@ -5854,6 +5865,7 @@ export async function insertConnectIngestJob(params: {
       ${params.pipelineProfileId ?? null},
       ${params.domainPackId ?? null},
       ${params.graphTargetId ?? null},
+      ${preflightJson}::jsonb,
       NULL,
       ${now},
       ${now}

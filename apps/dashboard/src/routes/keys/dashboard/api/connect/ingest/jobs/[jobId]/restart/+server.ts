@@ -18,6 +18,7 @@ import {
   isKnowledgeSessionFailure,
   resolveKnowledgeSessionContext,
 } from "$lib/server/connect/session-context";
+import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
 import type { RequestHandler } from "./$types";
 
 const RESTARTABLE = new Set(["failed", "cancelled"]);
@@ -62,6 +63,27 @@ export const POST: RequestHandler = async ({ locals, params }) => {
     return json(
       { error: "no_sources", message: "This run has no sources to replay." },
       { status: 400 },
+    );
+  }
+
+  // K3 (K-P0-2, run-failure path): re-check the binding/credential preflight before
+  // replaying the run — a job that failed on a missing binding or dead key would
+  // otherwise fail again identically. 422 carries the preflight so the console can
+  // render per-provider repair links. Compute failures never block the restart.
+  const preflight = await computeConnectRunPreflight({
+    workspaceId: ctx.workspaceId,
+    userId: ctx.userId,
+    projectId: existing.projectId,
+  }).catch(() => null);
+  if (preflight?.status === "blocked") {
+    return json(
+      {
+        error: "preflight_blocked",
+        message:
+          "Restart preflight failed: a stage-route provider has no executable credential on the routing project. Fix the provider connection or binding, then restart.",
+        preflight,
+      },
+      { status: 422 },
     );
   }
 
@@ -140,6 +162,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
     pipelineProfileId: existing.pipelineProfileId,
     domainPackId: existing.domainPackId,
     graphTargetId: existing.graphTargetId,
+    preflight,
   });
 
   await appendConnectIngestJobLog({

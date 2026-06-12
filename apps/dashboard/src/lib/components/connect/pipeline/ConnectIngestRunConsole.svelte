@@ -15,6 +15,12 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+  import {
+    failingPreflightRows,
+    mapConnectRunFailure,
+    preflightIssueCopy,
+    type ConnectRunPreflightResult,
+  } from "$lib/connect/run-preflight";
 
   type GraphRepairProgress = {
     job_kind: "graph_revalidate";
@@ -95,6 +101,8 @@
   let actionMsg: string | null = null;
   let cancelling = false;
   let restarting = false;
+  /** K3: failing preflight returned by a blocked restart (422 preflight_blocked). */
+  let restartPreflight: ConnectRunPreflightResult | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let clockTimer: ReturnType<typeof setInterval> | null = null;
   let nowMs = Date.now();
@@ -195,6 +203,9 @@
   /** True for a job that failed with a worker_lost error. */
   $: isWorkerLost =
     job?.status === "failed" && (job?.error?.startsWith(WORKER_LOST_PREFIX) ?? false);
+  // K3 (K-P2-1): known worker failure codes render as plain-language copy + fix link.
+  $: failureHelp = isWorkerLost ? null : mapConnectRunFailure(job?.error, DASHBOARD_BASE);
+  $: restartBlockedRows = failingPreflightRows(restartPreflight);
 
   /**
    * A worker_lost failure is a recoverable reclaim — offer Restart prominently
@@ -257,9 +268,14 @@
       const res = await fetch(`${jobsApiBase}/restart`, { method: "POST" });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // K3: blocked restarts carry the preflight — render per-provider repair links.
+        if (res.status === 422 && d.error === "preflight_blocked" && d.preflight) {
+          restartPreflight = d.preflight as ConnectRunPreflightResult;
+        }
         actionMsg = d.message ?? `Could not restart (HTTP ${res.status}).`;
         return;
       }
+      restartPreflight = null;
       const newId = d.job?.id;
       if (!newId) {
         actionMsg = "Restart succeeded but no new run id was returned.";
@@ -570,15 +586,37 @@
             The worker stopped responding before the lease expired and the run was reclaimed
             automatically. Nothing in your graph store was corrupted — the run can be restarted
             from the last checkpoint.
+          {:else if failureHelp}
+            <strong>{failureHelp.title}.</strong>
+            {failureHelp.body}
           {:else}
             {job.error}
           {/if}
         </p>
+        {#if failureHelp}
+          <details class="run-error-raw">
+            <summary>Raw error (for support)</summary>
+            <code>{job.error}</code>
+          </details>
+        {/if}
+        {#if restartBlockedRows.length > 0}
+          <ul class="run-error-preflight-list">
+            {#each restartBlockedRows as row (row.provider)}
+              <li>
+                {preflightIssueCopy(row)}
+                <a class="run-error-fix-link" href={row.fixHref}>{row.fixLabel} →</a>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         {#if canRestart}
           <div class="run-error-banner-actions">
+            {#if failureHelp}
+              <a class="btn btn-primary btn-sm" href={failureHelp.fixHref}>{failureHelp.fixLabel} →</a>
+            {/if}
             <button
               type="button"
-              class="btn btn-primary btn-sm"
+              class="btn {failureHelp ? 'btn-outline' : 'btn-primary'} btn-sm"
               on:click={restartJob}
               disabled={restarting}
             >
@@ -848,6 +886,37 @@
     flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
+  }
+
+  /* K3 (K-P2-1): human failure copy keeps the raw code reachable for support. */
+  .run-error-raw {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+
+  .run-error-raw summary {
+    cursor: pointer;
+  }
+
+  .run-error-raw code {
+    display: block;
+    margin-top: var(--space-1);
+    word-break: break-word;
+  }
+
+  .run-error-preflight-list {
+    margin: 0;
+    padding-left: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .run-error-fix-link {
+    font-weight: 600;
+    margin-left: var(--space-1);
   }
 
   .run-notice {

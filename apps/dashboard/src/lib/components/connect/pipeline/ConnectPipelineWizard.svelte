@@ -11,6 +11,7 @@
   } from "$lib/connect/pipeline-config";
   import PipelineWizardStepper from "$lib/components/connect/pipeline/PipelineWizardStepper.svelte";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
+  import type { ConnectRunPreflightResult } from "$lib/connect/run-preflight";
 
   const storePanelImport = () => import("$lib/components/connect/pipeline/ConnectGraphStorePanel.svelte");
   const domainPanelImport = () => import("$lib/components/connect/pipeline/ConnectDomainPacksPanel.svelte");
@@ -32,6 +33,7 @@
     wizard: PipelineWizardProgress | null;
     runDefaults: PipelineRunDefaults | null;
     previousScorecard?: ConnectTrustScorecard | null;
+    runPreflight?: ConnectRunPreflightResult | null;
     modelsReady?: boolean;
     phase?: "initial" | "operational";
     workspaceId?: string;
@@ -265,6 +267,7 @@
           {progress}
           {modelsReady}
           previousScorecard={data.previousScorecard ?? null}
+          preflight={data.runPreflight ?? null}
           onBack={() => goToStep("sources")}
         />
       {:catch}
@@ -291,7 +294,7 @@
             type="button"
             class="btn btn-primary btn-lg"
             disabled={!runCanStart || runSubmitting}
-            title={!runCanStart ? "Select documents, a domain pack, and configure routes to start" : undefined}
+            title={!runCanStart ? "Select documents, a domain pack, configure routes, and clear the provider preflight to start" : undefined}
             on:click={() => launchStep?.submitRun()}
           >
             {runSubmitting ? "Starting…" : "START RUN →"}

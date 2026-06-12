@@ -21,6 +21,7 @@ import {
   resolveKnowledgeSessionContext,
 } from "$lib/server/connect/session-context";
 import { expandDocumentsToSources } from "$lib/server/connect/source-documents";
+import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -78,6 +79,29 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     );
   }
 
+  // K3 (K-P0-2): the same binding/credential lookup the worker performs mid-run,
+  // enforced at submit time. Adds a gate — never bypasses existing validation above.
+  // `legacy_env` runs execute on the environment key, so only `blocked` rejects here
+  // (the UI gate already required the explicit legacy override before submitting).
+  // Compute failures never brick launches: the run proceeds and fails loudly mid-run
+  // exactly as before K3 if something is genuinely broken.
+  const preflight = await computeConnectRunPreflight({
+    workspaceId: ctx.workspaceId,
+    userId: ctx.userId,
+    projectId,
+  }).catch(() => null);
+  if (preflight?.status === "blocked") {
+    return json(
+      {
+        error: "preflight_blocked",
+        message:
+          "Run preflight failed: a stage-route provider has no executable credential on the routing project. Fix the provider connection or binding, then start again.",
+        preflight,
+      },
+      { status: 422 },
+    );
+  }
+
   const jobId = randomUUID();
   const job = buildInitialConnectIngestJob({
     id: jobId,
@@ -97,7 +121,20 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     pipelineProfileId: parsed.data.pipeline_profile_id ?? null,
     domainPackId: parsed.data.domain_pack_id ?? null,
     graphTargetId: parsed.data.graph_target_id ?? null,
+    preflight,
   });
+
+  if (preflight) {
+    await appendConnectIngestJobLog({
+      jobId,
+      line: formatBracketLogLine(
+        "INGEST",
+        preflight.status === "pass"
+          ? `Preflight passed — ${preflight.providers.length} provider${preflight.providers.length === 1 ? "" : "s"} executable on the routing project`
+          : "Preflight: no stage routes — running on the legacy environment key",
+      ),
+    });
+  }
 
   await appendConnectIngestJobLog({
     jobId,
