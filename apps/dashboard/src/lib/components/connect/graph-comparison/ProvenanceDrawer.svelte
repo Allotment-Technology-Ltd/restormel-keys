@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ProvenanceClaim, RetrievalTrace } from "$lib/connect/graph-comparison-types";
-  import { PROVE_LINK_CLASS, proveDossierHref } from "$lib/prove-it";
+  import { proveDossierHref } from "$lib/prove-it";
+  import ProveLink from "$lib/components/connect/ProveLink.svelte";
 
   export let claims: ProvenanceClaim[] = [];
   export let trace: RetrievalTrace;
@@ -42,13 +43,15 @@
           {#each claims as claim (claim.id)}
             <li class="claim" class:weak={claim.verification === "weak"}>
               <p class="claim-text">
-                <a
-                  class="claim-link {PROVE_LINK_CLASS} brut-focus"
+                <!-- W4.3: the shared ProveLink renders the prove-it affordance (dotted
+                     underline + ↗) so the gesture is one component, not a hand-rolled <a>. -->
+                <ProveLink
                   href={dossierHref(claim)}
-                  title="Open this claim's evidence dossier in the graph explorer"
+                  class="claim-link brut-focus"
+                  label="Open this claim's evidence dossier in the graph explorer"
                 >
-                  {truncate(claim.text)}<span class="prove-it-arrow" aria-hidden="true">↗</span>
-                </a>
+                  {truncate(claim.text)}
+                </ProveLink>
               </p>
               <div class="claim-meta">
                 <span class="claim-source">{claim.sourceTitle}</span>

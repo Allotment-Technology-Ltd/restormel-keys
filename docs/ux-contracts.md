@@ -530,17 +530,31 @@ canonical section hrefs from `nav-config.ts`:
 | `/home` trust cap | "N need review" | `/claims?filter=review` |
 | `/home` inbox | "Claims to review" count | `/claims?filter=review` |
 | `/home` inbox | "Latest regression" | producing run `/runs/<id>` (degrade: `/claims?filter=review`) |
-| Scorecard (Home + Prove) | Evidence-bound % | `/claims?filter=unbound` |
-| Scorecard | Embedding coverage % | `/claims?filter=missing_embed` |
-| Scorecard | Validated-supported ratio | `/claims?filter=review` |
-| Scorecard | Per-state chips (supported…excluded) | `/claims?filter=<state>` |
-| Scorecard | "What lowered this score" factor rows | `/claims?filter=<factor's slice>` |
+| Scorecard (Home) | Evidence-bound % | **link-less** (store-level aggregate — coverage-facet follow-up) |
+| Scorecard (Home) | Embedding coverage % | **link-less** (store-level aggregate — coverage-facet follow-up) |
+| Scorecard (Home) | Validated-supported ratio | `/claims?filter=review` |
+| Scorecard (Home) | Per-state chips (supported…excluded) | `/claims?filter=<state>` |
+| Scorecard (Home) | "What lowered this score" factor rows | `/claims?filter=<factor's slice>` (store-level factors render link-less) |
 | Graph answer (Prove › Proof) | MCP answer verified-claim envelope (each injected claim) | `/claims?unit=<id>` (Evidence Dossier) |
 
-Surfaces with no per-idea filter (store-level / graph-level factors: vector index, relation health)
-correctly render **no** prove-it link rather than a dead one. The launch-forecast "92% supported"
-surface named in the frozen pre-Wave-R review does not exist in the current IA; its rule
-(percentage → producing verdict) is captured by `proveRunVerdictHref` for when such a surface lands.
+The scorecard (`ConnectTrustScorecard.svelte`) renders **only on Home** (the factor rails under the
+trust cap); Prove › Proof renders the `ProvenanceDrawer`, whose injected-claim rows carry the gesture.
+
+Surfaces with no honest per-idea filter render **no** prove-it link rather than a dead one. Two kinds:
+(1) store-/graph-level factors (vector index, relation health) — never had a per-idea slice; (2) the
+**Evidence-bound** and **Embedding-coverage** coverage tiles — store-level aggregates whose per-idea
+slice does not yet exist (the explorer's unit rows carry no per-unit binding/embedding field, and
+"unbound" conflates pre-EBV / bound-failed / tracked-unbound populations the W2.2 facet machinery
+refuses to bucket). These previously pointed at `?filter=unbound` / `?filter=missing_embed`, which
+`parseExplorerUrlState` silently drops to the default review queue — dead tokens. They now render
+link-less (the `vector_index` precedent). **Coverage-facet follow-up:** add per-unit binding +
+embedding fields to the units API, an explorer facet, and a server breakdown so these become real
+`?filter=` slices. The `prove-it.test.ts` round-trip guard (every `ProveFilter` must survive
+`parseExplorerUrlState`) is the permanent regression pin against re-introducing a dead token.
+
+The launch-forecast "92% supported" surface named in the frozen pre-Wave-R review does not exist in
+the current IA; its rule (percentage → producing verdict) is captured by `proveRunVerdictHref` for
+when such a surface lands.
 
 **Public share view — DEFERRED behind the D7 STOP gate.** The public, unauthenticated scorecard share
 URL (`/prove/share`) requires the D7 security decision. The redesign records D7's *direction* (a scoped,

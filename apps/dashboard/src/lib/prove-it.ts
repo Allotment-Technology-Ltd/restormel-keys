@@ -30,8 +30,21 @@ export const PROVE_LINK_CLASS = "prove-it";
 
 /**
  * The W2.1 explorer filter the scorecard / verification surfaces deep-link into.
- * Mirrors the params `ConnectGraphExplorer` parses (verification states + the
- * coverage pseudo-filters). Kept as a union so callers can't invent a dead param.
+ * Mirrors the params `ConnectGraphExplorer` actually parses
+ * (`parseExplorerUrlState`): the queue scope plus the W2.2 verification states.
+ * Kept as a union so callers can't invent a dead param — every member here MUST
+ * survive `parseExplorerUrlState` (the round-trip guard in `prove-it.test.ts`).
+ *
+ * NOT included: per-idea evidence-coverage slices. The Evidence-bound and
+ * Embedding-coverage scorecard tiles are STORE-LEVEL aggregates — the explorer's
+ * unit rows carry no per-unit embedding field, and "unbound" conflates three
+ * honestly-distinct populations (pre-EBV / bound-failed / tracked-unbound) the
+ * W2.2 facet machinery deliberately refuses to bucket. Rather than ship dead
+ * `?filter=unbound` / `?filter=missing_embed` tokens that `parseExplorerUrlState`
+ * silently drops to the default queue, those tiles render LINK-LESS (the
+ * `vector_index` precedent — honest absence). A real coverage facet (per-unit
+ * binding + embedding fields on the units API + an explorer facet + a server
+ * breakdown) is the follow-up: see docs/ux-contracts.md §3 coverage-facet TODO.
  */
 export type ProveFilter =
   | "review"
@@ -39,9 +52,7 @@ export type ProveFilter =
   | "inferred"
   | "unverified"
   | "contradicted"
-  | "excluded"
-  | "unbound"
-  | "missing_embed";
+  | "excluded";
 
 /**
  * Build a deep link into the Claims explorer filtered to one verification slice.

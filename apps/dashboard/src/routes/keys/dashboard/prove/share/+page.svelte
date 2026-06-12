@@ -25,13 +25,16 @@
     <div class="gate-col gate-col--ready" aria-label="Ready now">
       <p class="gate-title gate-title--ready">Ready now — proof inside the dashboard</p>
       <p class="gate-body">
+        <!-- These are plain navigation links, NOT prove-it gestures: the prove-it
+             affordance is reserved for a trust NUMBER opening its receipt, so applying
+             it to ordinary section links would dilute the grammar (W4.3 review minor). -->
         The "Prove it" gesture is live everywhere a trust number appears. Any score factor, verification
         count, regression, or injected claim is a dotted link to its evidence — the trust score on
-        <a href="/keys/dashboard/home" class="prove-it">Home <span class="prove-it-arrow" aria-hidden="true">↗</span></a>
+        <a href="/keys/dashboard/home" class="nav-link">Home</a>
         decomposes into receipts, and every claim in a graph answer opens its
-        <a href="/keys/dashboard/claims" class="prove-it">Evidence Dossier <span class="prove-it-arrow" aria-hidden="true">↗</span></a>.
+        <a href="/keys/dashboard/claims" class="nav-link">Evidence Dossier</a>.
         For an external auditor today, export a signed trace from the
-        <a href="/keys/dashboard/prove/traces" class="prove-it">Traces tab <span class="prove-it-arrow" aria-hidden="true">↗</span></a>.
+        <a href="/keys/dashboard/prove/traces" class="nav-link">Traces tab</a>.
       </p>
     </div>
 
@@ -103,5 +106,13 @@
   }
   .gate-body:last-child {
     margin-bottom: 0;
+  }
+  /* Plain nav links (solid underline) — deliberately NOT the dotted prove-it
+     affordance, which is reserved for trust numbers opening their receipts. */
+  .nav-link {
+    color: var(--color-ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 </style>

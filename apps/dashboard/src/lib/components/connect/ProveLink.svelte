@@ -16,7 +16,12 @@
 
   /** Destination — build with a `prove-it.ts` helper so it lands on real evidence. */
   export let href: string;
-  /** Accessible label; defaults to the visible text + "— open the evidence". */
+  /**
+   * Accessible label. When null, NO `aria-label` is emitted and assistive tech
+   * announces the link's slotted text (the ↗ glyph is `aria-hidden`). Pass an
+   * explicit label at call sites whose slotted text alone is ambiguous (e.g. a
+   * bare number or a one-word "Show"), describing the evidence the link opens.
+   */
   export let label: string | null = null;
   /** Render the ↗ glyph (default true). Off for inline runs of text where the glyph crowds. */
   export let arrow = true;
