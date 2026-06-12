@@ -154,6 +154,7 @@ async function callResolvedChat(args: {
     }
 
     const upstreamModel = await resolveVendorOpenAiChatModelId(providerType, modelId);
+    const callStartedMs = Date.now();
     const chat = await postOpenAiCompatibleChat({
       baseUrl,
       apiKey: keyOutcome.apiKey,
@@ -166,8 +167,31 @@ async function callResolvedChat(args: {
       jsonMode: args.jsonMode,
     });
 
-    if (chat.ok) return chat.value.content;
+    if (chat.ok) {
+      // K5: capture which route/step/provider/model actually served this stage,
+      // and tag the resolve into request logs (source=connect_ingest). Capture
+      // must never break a run, hence the defensive try.
+      recordStageAttribution(args.ctx, args.stage, resolved, providerType, modelId, attemptNumber);
+      writeResolveAttempt(args.ctx, args.stage, {
+        status: "resolved",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType,
+        modelId,
+        latencyMs: Date.now() - callStartedMs,
+        attemptNumber,
+      });
+      return chat.value.content;
+    }
 
+    writeResolveAttempt(args.ctx, args.stage, {
+      status: "failed",
+      routeId: resolved.route?.id ?? routeIdOverride ?? null,
+      provider: providerType,
+      modelId,
+      latencyMs: Date.now() - callStartedMs,
+      errorCode: "upstream_error",
+      attemptNumber,
+    });
     lastErr = new Error(chat.value.message);
     attemptNumber++;
     previousFailure = {
@@ -177,6 +201,61 @@ async function callResolvedChat(args: {
   }
 
   throw lastErr instanceof Error ? lastErr : new Error("All route attempts failed");
+}
+
+/**
+ * K5 capture helpers — fire-and-forget. Run attribution and request-log tagging
+ * must never throw into the pipeline (a logging failure can't fail a stage).
+ */
+function recordStageAttribution(
+  ctx: ConnectRouteExecutionContext,
+  stage: ConnectModelStage,
+  resolved: {
+    route?: { id: string; name: string } | null;
+    projectId?: string | null;
+    selectedStepId?: string | null;
+    selectedOrderIndex?: number | null;
+  },
+  provider: string,
+  modelId: string,
+  attemptNumber: number,
+): void {
+  if (!ctx.onStageServed) return;
+  try {
+    ctx.onStageServed(stage, {
+      routeId: resolved.route?.id ?? null,
+      routeName: resolved.route?.name ?? null,
+      projectId: resolved.projectId ?? ctx.projectId,
+      stepId: resolved.selectedStepId ?? null,
+      stepOrderIndex: resolved.selectedOrderIndex ?? null,
+      provider,
+      modelId,
+      attemptNumber,
+    });
+  } catch {
+    /* attribution capture is best-effort */
+  }
+}
+
+function writeResolveAttempt(
+  ctx: ConnectRouteExecutionContext,
+  stage: ConnectModelStage,
+  rec: {
+    status: "resolved" | "failed";
+    routeId?: string | null;
+    provider?: string | null;
+    modelId?: string | null;
+    latencyMs: number;
+    errorCode?: string | null;
+    attemptNumber: number;
+  },
+): void {
+  if (!ctx.onResolveAttempt) return;
+  try {
+    ctx.onResolveAttempt(stage, rec);
+  } catch {
+    /* request-log tagging is best-effort */
+  }
 }
 
 /** JSON chat completion via resolved ingestion route (Graph Designer, previews). */
@@ -269,10 +348,31 @@ async function embedViaRoute(
       continue;
     }
 
+    const embedStartedMs = Date.now();
     try {
       const upstreamModel = await resolveVendorOpenAiChatModelId(pt, modelId);
-      return await knowledgeEmbedWithKey(texts, upstreamModel, keyOutcome.apiKey, pt);
+      const vectors = await knowledgeEmbedWithKey(texts, upstreamModel, keyOutcome.apiKey, pt);
+      // K5: capture the embedding stage's served route/step/provider/model + tag the log.
+      recordStageAttribution(ctx, "embedding", resolved, pt, modelId, attemptNumber);
+      writeResolveAttempt(ctx, "embedding", {
+        status: "resolved",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: pt,
+        modelId,
+        latencyMs: Date.now() - embedStartedMs,
+        attemptNumber,
+      });
+      return vectors;
     } catch (e) {
+      writeResolveAttempt(ctx, "embedding", {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: pt,
+        modelId,
+        latencyMs: Date.now() - embedStartedMs,
+        errorCode: "upstream_error",
+        attemptNumber,
+      });
       lastErr = e;
       attemptNumber++;
       previousFailure = {

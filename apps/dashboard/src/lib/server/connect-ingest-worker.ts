@@ -41,8 +41,15 @@ import {
   buildKnowledgeStageGenerates,
   isConnectIngestLlmReady,
 } from "$lib/server/connect/stage-route-generate";
-import { resolveKnowledgeRouteExecutionContextForWorker } from "$lib/server/connect/stage-routing";
-import { getConnectGraphTargetForWorkspace, getConnectDomainPackById } from "$lib/server/neon";
+import {
+  resolveKnowledgeRouteExecutionContextForWorker,
+  type ConnectRouteExecutionContext,
+} from "$lib/server/connect/stage-routing";
+import {
+  StageAttributionCollector,
+  deriveValidationFamilyAttribution,
+} from "$lib/server/connect/stage-attribution";
+import { getConnectGraphTargetForWorkspace, getConnectDomainPackById, insertRequestLog } from "$lib/server/neon";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import { invalidateConnectGraphStatsCache } from "$lib/server/neon";
 import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
@@ -232,10 +239,46 @@ export async function processConnectIngestJobRecord(
     try {
       const target = await getConnectGraphTargetForWorkspace(job.workspaceId);
       if (!target) throw new IngestConfigError("graph_target_not_configured");
-      const routeCtx = await resolveKnowledgeRouteExecutionContextForWorker({
+      const baseRouteCtx = await resolveKnowledgeRouteExecutionContextForWorker({
         workspaceId: job.workspaceId,
         projectId: job.projectId,
       });
+      // K5: capture which route/step/provider/model serves each stage AT RUN TIME.
+      // The collector accumulates last-successful-attempt attribution; hooks below
+      // drain it into the reporter (persisted into job progress) and tag each resolve
+      // into request logs (source=connect_ingest) so Logs/Usage see Connect traffic.
+      // Capture is best-effort — hooks never throw into the pipeline.
+      const attribution = new StageAttributionCollector();
+      const routeCtx: ConnectRouteExecutionContext | null = baseRouteCtx
+        ? {
+            ...baseRouteCtx,
+            onStageServed: (stage, snap) => {
+              // Record in-memory always; only persist to job progress when the served
+              // route/provider/model/attempts actually changed — extraction re-resolves
+              // per chunk, so an unconditional persist would be one DB write per chunk.
+              const { entry, changed } = attribution.record(stage, snap);
+              if (changed) {
+                void reporter.recordStageAttribution(stage, entry).catch(() => {});
+              }
+            },
+            onResolveAttempt: (stage, rec) => {
+              void insertRequestLog({
+                workspaceId: baseRouteCtx.workspaceId,
+                projectId: baseRouteCtx.projectId,
+                environmentId: baseRouteCtx.environmentId,
+                providerType: rec.provider ?? "unknown",
+                requestStatus: rec.status, // "resolved" | "failed"
+                latencyMs: rec.latencyMs,
+                routeId: rec.routeId ?? null,
+                finalModelId: rec.modelId ?? null,
+                errorCode: rec.errorCode ?? null,
+                fallbackCount: rec.attemptNumber > 0 ? rec.attemptNumber : null,
+                // source tag drives the /logs "connect_ingest" badge + W3.3 filter.
+                metadata: { source: "connect_ingest", stage, ingest_job_id: job.id },
+              }).catch(() => {});
+            },
+          }
+        : null;
       const packRow = job.domainPackId
         ? await getConnectDomainPackById({ id: job.domainPackId, workspaceId: job.workspaceId })
         : null;
@@ -339,6 +382,12 @@ export async function processConnectIngestJobRecord(
           validation,
           graphStats: effectiveGraphStats,
           packReadinessWarnings: packApi ? assessPackReadiness(packApi) : [],
+          // K4/K-P1-7: validating-family disclosure now sourced from K5's captured
+          // attribution (the providers that ACTUALLY served extraction vs validation
+          // this run) — undefined for legacy/route-less runs → graceful absent-state.
+          ...(deriveValidationFamilyAttribution(attribution.snapshot())
+            ? { attribution: deriveValidationFamilyAttribution(attribution.snapshot()) }
+            : {}),
         });
         await captureServerPostHogEvent(
           workspacePostHogDistinctId(job.workspaceId),
@@ -367,6 +416,9 @@ export async function processConnectIngestJobRecord(
             `Quality report — ${qualityReport.ok_pct}% ok, trust score ${qualityReport.kg_audit.trust_score}`,
           );
         }
+        // K5: flush the collector's full snapshot so the completed row carries every
+        // captured stage even if a per-stage persist was still in flight.
+        reporter.setAttribution(attribution.snapshot());
         await reporter.complete(
           `Run complete — ${stats.units} units, ${stats.relations} relations, ${stats.embedded} embedded`,
           "full",

@@ -19,6 +19,12 @@ import {
   type ConnectIngestJobRecord,
   type ConnectIngestJobResumeCheckpoint,
 } from "$lib/server/connect-ingest-jobs";
+import {
+  mergeStageAttribution,
+  type ConnectModelStage,
+  type ConnectRunAttribution,
+  type ConnectStageAttribution,
+} from "$lib/server/connect/stage-attribution";
 
 export type GraphRepairProgress = {
   job_kind: "graph_revalidate";
@@ -53,6 +59,8 @@ export type ConnectIngestProgressSnapshot = {
   graph_repair?: GraphRepairProgress;
   /** Stage 1.6 durable runs — completed-stage checkpoint (survives every persist). */
   resume?: ConnectIngestJobResumeCheckpoint;
+  /** K5 run attribution — which route/step/provider/model served each stage. */
+  attribution?: ConnectRunAttribution;
 };
 
 const STAGE_TAGS: Record<ConnectIngestStage, string> = {
@@ -152,12 +160,47 @@ export class ConnectIngestProgressReporter {
   private currentStage: ConnectIngestStage | null = null;
   private graphRepair: GraphRepairProgress | null = null;
   private resumeCheckpoint: ConnectIngestJobResumeCheckpoint | null;
+  /** K5 run attribution accumulated across stages (restart-safe — see constructor). */
+  private attribution: ConnectRunAttribution | null;
 
   constructor(private job: ConnectIngestJobRecord) {
     this.stages = parseStages(job.stages);
     // Preserve a prior attempt's checkpoint across every persist — a reclaimed run's
     // restart relies on it to skip already-completed (and already-paid-for) stages.
     this.resumeCheckpoint = job.progress?.resume ?? null;
+    // K5: carry forward attribution captured before a stall so a reclaimed run that
+    // skips checkpointed stages keeps their "Served by" entries (append, not clobber).
+    this.attribution =
+      (job.progress as { attribution?: ConnectRunAttribution } | null)?.attribution ?? null;
+  }
+
+  /**
+   * K5: record which route/step/provider/model served a stage (last successful
+   * attempt + attempt count). Merges into the prior map (bounded to the five known
+   * stages) and persists so the run console can render the "Served by" block live.
+   */
+  async recordStageAttribution(
+    stage: ConnectModelStage,
+    entry: ConnectStageAttribution,
+  ): Promise<void> {
+    this.attribution = mergeStageAttribution(this.attribution, stage, entry);
+    await this.persist("running");
+  }
+
+  /**
+   * K5: replace the in-memory attribution map (used to flush the collector's full
+   * snapshot before complete(), so the completed row is deterministic even when the
+   * per-stage recordStageAttribution persists were fired-and-forgotten). Does not
+   * persist on its own — complete()/the next persist picks it up.
+   */
+  setAttribution(attribution: ConnectRunAttribution | null): void {
+    if (attribution && Object.keys(attribution).length > 0) {
+      this.attribution = attribution;
+    }
+  }
+
+  getAttribution(): ConnectRunAttribution | null {
+    return this.attribution;
   }
 
   /**
@@ -288,6 +331,7 @@ export class ConnectIngestProgressReporter {
       processed: completedStages,
       total: CONNECT_INGEST_PIPELINE_STAGES.length,
       ...(this.resumeCheckpoint ? { resume: this.resumeCheckpoint } : {}),
+      ...(this.attribution ? { attribution: this.attribution } : {}),
     };
   }
 
@@ -523,6 +567,10 @@ export class ConnectIngestProgressReporter {
             processed: CONNECT_INGEST_PIPELINE_STAGES.length,
             total: CONNECT_INGEST_PIPELINE_STAGES.length,
             execution_mode: executionMode,
+            // K5: persist final attribution on the completed row so the console
+            // renders "Served by" after the run ends (extraProgress wins if it
+            // explicitly carries its own attribution).
+            ...(this.attribution ? { attribution: this.attribution } : {}),
             ...(extraProgress ?? {}),
           },
     });

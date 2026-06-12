@@ -21,6 +21,8 @@
       fallbackCount: number | null;
       errorCode: string | null;
       createdAt: number;
+      /** K5: traffic source tag (e.g. "connect_ingest"); null for gateway/legacy rows. */
+      source: string | null;
     }[];
     filter: { projectId: string | null; routeId: string | null; status: string | null } | null;
     controls: {
@@ -56,6 +58,12 @@
     if (status === "policy_blocked") return "status-policy";
     if (status === "no_route") return "status-no-route";
     return "status-other";
+  }
+
+  /** K5: human label for a request's traffic source tag (full filter UX is W3.3). */
+  function sourceLabel(source: string | null): string | null {
+    if (source === "connect_ingest") return "connect ingest";
+    return source;
   }
 
   function applyFilters() {
@@ -192,6 +200,11 @@
           {/if}
           {#if log.routeId}
             <span class="log-link">route: {log.routeId.slice(0, 8)}…</span>
+          {/if}
+          {#if sourceLabel(log.source)}
+            <span class="log-source" class:log-source-connect={log.source === "connect_ingest"}
+              >{sourceLabel(log.source)}</span
+            >
           {/if}
         </button>
         {#if log.requestStatus === "no_route"}
@@ -398,6 +411,20 @@
   .log-link {
     color: var(--rm-sage);
     font-size: var(--text-xs);
+  }
+  /* K5: traffic-source tag badge (e.g. connect ingest). */
+  .log-source {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--rm-muted);
+    border: 1px solid var(--rm-border, currentColor);
+    padding: 0 var(--space-1, 0.25rem);
+  }
+  .log-source-connect {
+    color: var(--rm-text);
+    border-color: var(--rm-text, currentColor);
   }
   .log-fix-link {
     color: #c08a1c;

@@ -170,3 +170,77 @@ describe("ConnectIngestProgressReporter resume checkpoint (Stage 1.6)", () => {
     expect(lastCall?.progress?.resume?.sources_done).toBe(2);
   });
 });
+
+describe("ConnectIngestProgressReporter run attribution (Stage K5)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const entry = (over: Record<string, unknown> = {}) => ({
+    routeId: "route-1",
+    routeName: "Ingestion route",
+    projectId: "proj-1",
+    stepId: "step-1",
+    stepOrderIndex: 0,
+    provider: "openai",
+    modelId: "gpt-4o",
+    attempts: 1,
+    recordedAt: "2026-06-12T10:00:00.000Z",
+    ...over,
+  });
+
+  it("persists per-stage attribution and merges later stages (append, not clobber)", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.recordStageAttribution("extraction", entry({ provider: "openai", modelId: "gpt-4o" }));
+    await reporter.recordStageAttribution(
+      "validation",
+      entry({ provider: "anthropic", modelId: "claude", attempts: 3 }),
+    );
+
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.progress?.attribution?.extraction?.provider).toBe("openai");
+    expect(lastCall?.progress?.attribution?.validation?.provider).toBe("anthropic");
+    // 2-attempt fallback was captured as attempts=3.
+    expect(lastCall?.progress?.attribution?.validation?.attempts).toBe(3);
+  });
+
+  it("carries forward a reclaimed run's prior attribution (restart-safe)", async () => {
+    const job = {
+      ...mockJob(),
+      progress: {
+        percent: 30,
+        processed: 2,
+        total: 7,
+        attribution: { extraction: entry({ provider: "openai", modelId: "gpt-4o" }) },
+      },
+    };
+    const reporter = new ConnectIngestProgressReporter(job);
+    // A later stage runs on the resumed worker; the prior extraction entry must survive.
+    await reporter.recordStageAttribution("embedding", entry({ provider: "voyage", modelId: "voyage-3" }));
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.progress?.attribution?.extraction?.provider).toBe("openai");
+    expect(lastCall?.progress?.attribution?.embedding?.provider).toBe("voyage");
+  });
+
+  it("complete() persists the flushed attribution snapshot on the final row", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    reporter.setAttribution({
+      extraction: entry({ provider: "openai", modelId: "gpt-4o" }),
+      validation: entry({ provider: "anthropic", modelId: "claude" }),
+    });
+    await reporter.complete("Run complete", "full", { quality_report: { ok_pct: 100 } });
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    expect(lastCall?.status).toBe("completed");
+    expect(
+      (lastCall?.progress as { attribution?: { extraction?: { provider?: string } } } | undefined)
+        ?.attribution?.extraction?.provider,
+    ).toBe("openai");
+    // extraProgress (quality_report) still lands alongside attribution.
+    expect((lastCall?.progress as { quality_report?: { ok_pct?: number } } | undefined)?.quality_report?.ok_pct).toBe(
+      100,
+    );
+  });
+});
