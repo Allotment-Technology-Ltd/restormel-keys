@@ -63,3 +63,29 @@ export function requireSessionUser(locals: App.Locals): SessionUser {
   }
   return u;
 }
+
+/**
+ * W4.6a SECURITY — fail-CLOSED service-admin gate for the ADMIN page-load tree.
+ *
+ * The `/keys/admin` layout already redirects/503s before child loads run, but the admin
+ * child pages serialize sensitive data (user emails, founders requests, operator emails).
+ * Defense-in-depth: each admin child load calls this so NO future layout change can fail
+ * them open. Mirrors the admin API endpoints' operator gate (`sessionUser` + `isServiceAdmin`)
+ * but throws so SvelteKit never serializes page data for an unverified request:
+ *   - degraded auth (cookie-bearing request, verification couldn't complete) → 503,
+ *     NEVER a fall-through to rendering — matches the layout's fail-closed posture.
+ *   - signed-out or non-admin session → 403.
+ */
+export function requireServiceAdminSession(locals: App.Locals): SessionUser {
+  const u = sessionUser(locals);
+  if (!u) {
+    if (locals.authDegraded) {
+      throw error(503, "Couldn't verify your session right now. Please try again in a moment.");
+    }
+    throw error(403, "Service admin access required");
+  }
+  if (!u.isServiceAdmin) {
+    throw error(403, "Service admin access required");
+  }
+  return u;
+}

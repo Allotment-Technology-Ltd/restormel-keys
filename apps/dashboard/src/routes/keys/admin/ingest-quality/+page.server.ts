@@ -6,10 +6,14 @@ import {
   INGEST_QUALITY_POSTHOG_DASHBOARD_URL,
   resolveIngestQualityPostHogEmbedUrl,
 } from "$lib/server/posthog-dashboard-embed";
+import { requireServiceAdminSession } from "$lib/server/session-user";
 
 const DEFAULT_DAYS = 7;
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+  // W4.6a SECURITY: defense-in-depth — never serialize operator ingest-quality data under
+  // degraded/forged auth even if the layout gate were ever changed.
+  requireServiceAdminSession(locals);
   try {
     const [rows, runs, g2, posthogEmbedUrl] = await Promise.all([
       listReviewSignalsForEval({ days: DEFAULT_DAYS }),

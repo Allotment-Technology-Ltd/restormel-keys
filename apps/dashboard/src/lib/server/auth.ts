@@ -213,6 +213,10 @@ async function fetchSessionFromNeon(
   // Other non-ok (e.g. 4xx other than 429): the cookie did not resolve to a session.
   // This is a genuine signed-out state — not degraded.
   if (!res.ok) {
+    // M1 SECURITY: a definitive "not a session" resolution must EVICT any prior
+    // last-known-good entry, otherwise a 5xx/throw within the 60s resilience window would
+    // resurrect a revoked session via the stale fallback. Fail-closed on revocation.
+    sessionCache.delete(cacheKey);
     return { data: null, error: null, setCookies, degraded: false };
   }
 
@@ -224,7 +228,15 @@ async function fetchSessionFromNeon(
     setCookies,
     degraded: false,
   };
-  writeSessionCache(cacheKey, result);
+  if (user) {
+    writeSessionCache(cacheKey, result);
+  } else {
+    // M1 SECURITY: Neon 200 `{user:null}` is a definitive sign-out (e.g. session revoked).
+    // Evict the last-known-good so a subsequent 5xx/throw cannot resurrect it within the
+    // resilience window. writeSessionCache already no-ops on a null user, but the prior
+    // good entry would otherwise survive — delete it explicitly.
+    sessionCache.delete(cacheKey);
+  }
   return result;
 }
 
@@ -238,6 +250,22 @@ async function fetchSessionFromNeon(
 export function cookieHeaderMayCarrySession(cookie: string): boolean {
   if (!cookie) return false;
   return /(?:^|;\s*)(?:__Secure-|rksecure-)[^=;]*=/.test(cookie);
+}
+
+/**
+ * M2 SECURITY — purge the server-side session cache entry for a request's cookie key.
+ *
+ * Call on sign-out. Without this, a captured cookie replayed at the SAME warm server
+ * instance is honored via the last-known-good fallback for up to STALE_SESSION_ON_FAILURE_MS
+ * after sign-out (Neon would 4xx the revoked cookie, but a 5xx/throw in that window would
+ * resurrect the cached signed-in session). Purging the entry closes that replay window.
+ * Mirrors `getSession`'s key derivation (decoded cookie header + host).
+ */
+export function purgeSessionCacheForRequest(request: Request, host = ""): void {
+  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
+  if (!cookie) return;
+  sessionCache.delete(sessionCacheKey(host, cookie));
+  sessionInFlight.delete(sessionCacheKey(host, cookie));
 }
 
 export async function getSession(

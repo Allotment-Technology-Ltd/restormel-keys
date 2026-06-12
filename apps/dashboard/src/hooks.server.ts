@@ -125,7 +125,14 @@ export const handle: Handle = async ({ event, resolve }) => {
           if (msg) console.error("[auth] Bearer verify:", msg.slice(0, 100));
         }
       }
-      if (!event.locals.user) event.locals.user = undefined;
+      if (!event.locals.user) {
+        event.locals.user = undefined;
+      } else {
+        // L3 SECURITY/CORRECTNESS: a valid Bearer key fully authenticated this request, so
+        // the (cookie-based) session-verify being degraded is moot — clear the flag so a
+        // bearer-authenticated request never carries a stale auth-degraded signal.
+        event.locals.authDegraded = false;
+      }
     }
   } catch (e) {
     event.locals.user = undefined;

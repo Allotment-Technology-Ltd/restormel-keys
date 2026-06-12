@@ -119,4 +119,141 @@ describe("getSession fail-closed verification (W4.6a)", () => {
     expect(result.data).toBeNull();
     expect(result.degraded).toBe(false);
   });
+
+  // M1 SECURITY: revoked-session resurrection. A definitive non-user resolution (Neon 200
+  // `{user:null}` or a 4xx) must EVICT the prior last-known-good entry, so a 5xx/throw
+  // within the 60s resilience window cannot resurrect the revoked session via the stale
+  // fallback. Without the eviction, the revoked cookie would keep being honored.
+  it("does NOT resurrect a session after revocation (200 user:null) then a 5xx within the window", async () => {
+    const fetchMock = vi.fn();
+    // 1) good session — populates last-known-good
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ user: { id: "u-revoke", email: "a@b.c" } }),
+    });
+    // 2) revocation: Neon 200 with user:null
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ user: null }),
+    });
+    // 3) infra blip: 5xx — must NOT fall back to the (revoked) cached session
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      headers: new Headers(),
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getSession } = await import("./auth");
+
+    const first = await getSession(reqWithSession(), HOST);
+    expect(first.data?.user?.id).toBe("u-revoke");
+
+    // Advance past the 20s happy-path cache so each subsequent call actually hits the network.
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 25_000);
+    const revoked = await getSession(reqWithSession(), HOST);
+    expect(revoked.data).toBeNull(); // signed out by revocation
+    expect(revoked.degraded).toBe(false);
+
+    vi.setSystemTime(Date.now() + 5_000); // still well within the 60s resilience window
+    const afterBlip = await getSession(reqWithSession(), HOST);
+    vi.useRealTimers();
+
+    // The 5xx must NOT resurrect the revoked session: no user, just degraded.
+    expect(afterBlip.data).toBeNull();
+    expect(afterBlip.degraded).toBe(true);
+  });
+
+  it("does NOT resurrect a session after a 4xx (definitive signed-out) then a 5xx within the window", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ user: { id: "u-4xx", email: "a@b.c" } }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      headers: new Headers(),
+      json: async () => ({}),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getSession } = await import("./auth");
+    const first = await getSession(reqWithSession(), HOST);
+    expect(first.data?.user?.id).toBe("u-4xx");
+
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 25_000);
+    const signedOut = await getSession(reqWithSession(), HOST);
+    expect(signedOut.data).toBeNull();
+    expect(signedOut.degraded).toBe(false);
+
+    vi.setSystemTime(Date.now() + 5_000);
+    const afterBlip = await getSession(reqWithSession(), HOST);
+    vi.useRealTimers();
+
+    expect(afterBlip.data).toBeNull();
+    expect(afterBlip.degraded).toBe(true);
+  });
+});
+
+// M2 SECURITY: sign-out must purge the server-side session cache for the cookie key, so a
+// captured cookie replayed at the same warm instance is not honored via last-known-good in
+// the resilience window after sign-out.
+describe("purgeSessionCacheForRequest (W4.6a M2)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("evicts the cached session so a later 5xx replay is degraded, not last-known-good", async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ user: { id: "u-logout", email: "a@b.c" } }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      headers: new Headers(),
+      json: async () => ({}),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getSession, purgeSessionCacheForRequest } = await import("./auth");
+
+    // Warm the last-known-good cache.
+    const first = await getSession(reqWithSession(), HOST);
+    expect(first.data?.user?.id).toBe("u-logout");
+
+    // Sign-out purges the cache entry for this cookie key.
+    purgeSessionCacheForRequest(reqWithSession(), HOST);
+
+    // A replay of the same cookie that now hits a 5xx must NOT resurrect the session.
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 25_000);
+    const replay = await getSession(reqWithSession(), HOST);
+    vi.useRealTimers();
+
+    expect(replay.data).toBeNull();
+    expect(replay.degraded).toBe(true);
+  });
 });
