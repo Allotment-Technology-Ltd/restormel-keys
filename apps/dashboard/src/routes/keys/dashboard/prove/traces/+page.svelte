@@ -6,8 +6,20 @@
    * Renders an honest absent-state per rubric R5-S2 until the endpoint ships.
    * No trace-detail visualisation (out of scope, not a placeholder gap).
    */
+  import { invalidateAll } from "$app/navigation";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import type { TraceRow, TracesPageData } from "./+page.server";
+
+  let retrying = false;
+  async function retry() {
+    retrying = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retrying = false;
+    }
+  }
 
   export let data: TracesPageData;
 
@@ -42,9 +54,16 @@
 {#if !data.signedIn}
   <SignInNotice message="Sign in to view ingest traces." />
 {:else if data.endpointStatus === "error"}
-  <p class="status-msg status-msg--error" role="alert">
-    Could not load traces. This is a load failure — your data is unaffected. Reload to try again.
-  </p>
+  <BrutalErrorBanner
+    title="Traces unavailable"
+    message="Could not load traces. This is a load failure — your data is unaffected."
+  >
+    {#snippet actions()}
+      <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+        {retrying ? "Retrying…" : "Try again"}
+      </button>
+    {/snippet}
+  </BrutalErrorBanner>
 {:else if data.endpointStatus === "absent" || data.traces.length === 0}
   <div class="absent-state" role="status">
     <p class="absent-title">Trace list not yet available</p>
@@ -142,15 +161,6 @@
   }
   .btn-link:hover {
     text-decoration: underline;
-  }
-  .status-msg {
-    font-size: var(--text-sm);
-    padding: var(--space-3);
-    border: var(--border);
-  }
-  .status-msg--error {
-    color: var(--coral-alert);
-    border-color: var(--coral-alert);
   }
   .traces-table {
     width: 100%;

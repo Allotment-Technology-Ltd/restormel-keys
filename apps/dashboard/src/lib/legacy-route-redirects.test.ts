@@ -121,3 +121,32 @@ describe("R2 redirect routes serve 308 (permanent)", () => {
     expect(r.location).toBe(`${B}/home`);
   });
 });
+
+describe("B1 regression — Proof tab proveBase must resolve to live +server.ts routes", () => {
+  /**
+   * Pins the proveBase value exported by prove/proof/+page.server.ts to
+   * DASHBOARD_BASE + "/prove" so that GraphComparisonPanel and comparison-stream.ts
+   * hit the real +server.ts endpoints at /prove/api/{stream,delta,suggest}.
+   *
+   * A future base move that accidentally restores "/prove/proof" would make the
+   * panel's API calls 404 (no +server.ts lives under /prove/proof/api/).
+   */
+  it("proveBase resolves to /keys/dashboard/prove (not /prove/proof)", async () => {
+    const { load } = await import("../routes/keys/dashboard/prove/proof/+page.server.js");
+    // Trigger the signed-out fast-path (no DB needed) — SIGNED_OUT constant carries proveBase.
+    const data = await (load as (e: never) => unknown)({
+      locals: {},
+      parent: async () => ({}),
+      url: new URL("https://keys.test/keys/dashboard/prove/proof"),
+      params: {},
+    } as never);
+    const { proveBase } = data as { proveBase: string };
+    // Must point at /prove, NOT /prove/proof — the api/ +server.ts files live at /prove/api/*.
+    expect(proveBase).toBe(`${B}/prove`);
+    expect(proveBase).not.toContain("/prove/proof");
+    // The three endpoints the panel uses must be reachable under proveBase.
+    for (const endpoint of ["stream", "delta", "suggest"]) {
+      expect(`${proveBase}/api/${endpoint}`).toBe(`${B}/prove/api/${endpoint}`);
+    }
+  });
+});

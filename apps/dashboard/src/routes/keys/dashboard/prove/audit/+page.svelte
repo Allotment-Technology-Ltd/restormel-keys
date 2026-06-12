@@ -32,6 +32,7 @@
 <p class="page-desc">
   Key and configuration changes in your workspace — who created or revoked Gateway keys, project updates, and other
   control-plane events. This log is an evidentiary record: it shows what changed, when, and by whom.
+  Showing the latest 50 events.
 </p>
 
 {#if data.error}

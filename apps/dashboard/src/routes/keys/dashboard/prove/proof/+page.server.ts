@@ -33,7 +33,7 @@ const SIGNED_OUT: ProofDataWithState = {
   hasGraph: false,
   routes: [],
   suggestCacheKey: "",
-  proveBase: DASHBOARD_BASE + "/prove/proof",
+  proveBase: DASHBOARD_BASE + "/prove",
   signedIn: false,
   loadError: false,
 };
@@ -44,7 +44,7 @@ const LOAD_ERROR: ProofDataWithState = {
   hasGraph: false,
   routes: [],
   suggestCacheKey: "",
-  proveBase: DASHBOARD_BASE + "/prove/proof",
+  proveBase: DASHBOARD_BASE + "/prove",
   signedIn: true,
   loadError: true,
 };
@@ -77,7 +77,7 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
       hasGraph,
       routes,
       suggestCacheKey: `${wsId}:${graphNodeCount}:${relations}`,
-      proveBase: DASHBOARD_BASE + "/prove/proof",
+      proveBase: DASHBOARD_BASE + "/prove",
       signedIn: true,
       loadError: false,
     };
