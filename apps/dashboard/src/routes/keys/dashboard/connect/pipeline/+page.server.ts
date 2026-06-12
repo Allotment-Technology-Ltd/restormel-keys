@@ -25,6 +25,7 @@ import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { listConnectPipelineProfilesForWorkspace } from "$lib/server/neon";
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
 import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
+import { ensureWorkspaceInfrastructureRouting } from "$lib/server/connect/workspace-infrastructure";
 import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
 import { perfSpan } from "$lib/debug/server-perf";
@@ -120,6 +121,24 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     const endPipeline = perfSpan("connect/pipeline", "load");
     const workspace = await requireConnectWorkspace(locals, parent);
     depends(`app:connect-pipeline:${workspace.id}`);
+
+    // R7 (D4): first flow entry auto-provisions the Connect-owned "Workspace
+    // infrastructure" project as the routing default when no routing config exists
+    // yet (mirroring testing-bootstrap; idempotent — a one-query no-op once any
+    // routing config is set, so existing custom setups are untouched). Best-effort:
+    // provisioning failure never blocks flow entry; the store/models/preflight
+    // gates below still apply.
+    await ensureWorkspaceInfrastructureRouting({
+      workspaceId: workspace.id,
+      userId: locals.user.uid,
+      actorType: locals.user.authType,
+    }).catch((e) => {
+      console.warn(
+        "[connect] workspace-infrastructure provisioning skipped:",
+        e instanceof Error ? e.message.slice(0, 160) : String(e),
+      );
+      return null;
+    });
 
     if (!requestedStep) {
       const [target, documents, integrations] = await Promise.all([

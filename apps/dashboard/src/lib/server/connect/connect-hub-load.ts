@@ -29,6 +29,10 @@ import { listProviderIntegrations } from "$lib/server/db";
 import { listConnectEvalVerdicts } from "$lib/server/neon";
 import { perfSpan } from "$lib/debug/server-perf";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import {
+  getRoutingProjectLedgerRow,
+  type RoutingProjectLedgerRow,
+} from "$lib/server/connect/workspace-infrastructure";
 
 export type ConnectHubPayload = {
   phase: "initial" | "operational";
@@ -58,6 +62,12 @@ export type ConnectHubPayload = {
   };
   agentReady: boolean;
   surrealStoreReady: boolean;
+  /**
+   * R7 (D4): the named routing project + change affordance ("Routing project:
+   * Workspace infrastructure — change") for the readiness ledger / Home masthead
+   * (R3) to render. Null when the row could not be computed — never blocks the hub.
+   */
+  routingProject: RoutingProjectLedgerRow | null;
 };
 
 export async function loadConnectHubPage(
@@ -77,7 +87,7 @@ export async function loadConnectHubPage(
     const userId = event.locals.user.uid;
 
     const endParallel = perfSpan("connect/hub", "parallelQueries");
-    const [target, packs, documents, connections, jobs, integrations, statsResult, starterDocs] =
+    const [target, packs, documents, connections, jobs, integrations, statsResult, starterDocs, routingProject] =
       await Promise.all([
         getGraphTargetForUi(wsId),
         listDomainPacksForUi(wsId),
@@ -88,6 +98,10 @@ export async function loadConnectHubPage(
         // Cached stats or a fast unit count — full aggregates stream via graphPulse.
         peekConnectGraphStatsForView(wsId).catch(() => null),
         listStarterCorpusDocuments(wsId),
+        // R7 ledger row: "Routing project: <name> — change". Best-effort.
+        getRoutingProjectLedgerRow({ workspaceId: wsId, userId, dashboardBase: DASHBOARD_BASE }).catch(
+          () => null,
+        ),
       ]);
     endParallel();
     const stats = statsResult?.stats ?? null;
@@ -189,6 +203,7 @@ export async function loadConnectHubPage(
       },
       agentReady,
       surrealStoreReady,
+      routingProject,
     };
     endHub();
     return payload;
