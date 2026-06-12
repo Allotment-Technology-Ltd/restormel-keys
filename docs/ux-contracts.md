@@ -269,6 +269,21 @@ The Evidence Dossier (W2.2) is the eventual DossierRail consumer for Claims; R6 
 Runs quick-peek as its one live consumer, and the three bespoke drawers (explorer detail panel, logs
 drawer, proof provenance drawer) migrate onto the rail under W4.4.
 
+### §3 panel states — Request tester (`/sandbox`, Stage W3.2)
+
+The workspace mode adds three panels: picker, prompt, and result. The route builder More tab mounts `RouteResolutionPreview` as a fourth panel.
+
+| Panel | Loading | Empty / idle | Error | Populated |
+|-------|---------|--------------|-------|-----------|
+| **Project/route picker** (`/sandbox` Workspace tab) | `BrutalLoadingState` "Loading projects…" (rows=2) | No projects → `EmptyState` with "Create a project" link; 401 → `BrutalErrorBanner` with "Sign in" action | `BrutalErrorBanner` with "Try again" (re-fires `loadWsProjects`) | Project `<select>` + Route `<select>`, route name shown; unpublished routes carry `(unpublished)` suffix + warning banner with Publish link |
+| **Prompt + action row** (Workspace tab, after route selected) | n/a — rendered only after picker completes | Prompt field empty → "Send real request" button disabled; "Explain" enabled | n/a | Prompt box + two actions: "Explain (dry-run)" (keyless, no cost); "Send real request" (costs tokens) behind an explicit confirm dialog (`role="alertdialog"`) |
+| **Result / receipt** (Workspace tab) | `BrutalLoadingState` "Running…" (rows=3) | Idle — "Run Explain or Send real request above to see a receipt." | `BrutalErrorBanner` with "Try again" (resets state to idle) | Structured receipt: route matched + decision badge (WOULD RUN / BLOCKED BY POLICY / NO STEP EXECUTABLE) + provider chain table (per-step outcome badge + est. cost) + step-chain `<details>` + actions (Reset, View logs ↗, Open builder ↗) |
+| **RouteResolutionPreview** (route builder More tab, `RouteResolutionPreview.svelte`) | `BrutalLoadingState` "Resolving…" (rows=3) | Idle — "Run resolution preview" primary button | `BrutalErrorBanner` with "Try again" | Same receipt structure as workspace result; footer links to `/logs?route={routeId}` |
+
+**Live-key boundary (W3.2):** `simulate` and `explain-chain` are config-only (no provider calls) and run keyless. `runtime/invoke` spends the user's stored provider credentials — it MUST show a confirm dialog ("SEND REAL REQUEST?") describing blast radius (tokens consumed, appears in Logs) before the request is sent. Tests stub the invoke endpoint; live sends are performed by the key-holder post-merge.
+
+**Fix-forward links (W3.2, rubric X4):** Every route name in the result receipt links to the builder (`/projects/{id}/routes/{routeId}`); every "View logs" link carries `?route={routeId}` so the log table is pre-filtered to this route's requests.
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:
@@ -363,6 +378,19 @@ When adding or changing copy or nav, check this document and [documentation-stra
 - **Roadmap amended** (in `docs/dashboard-world-class-roadmap.md`): re-scope notes for K4
   (one mount: Home masthead), W3.6 (chip mounts: Home + Runs), W4.6 (mobile folds into R6),
   W2.3 (mount: Home masthead) — each with a changelog block citing this redesign doc.
+
+### In-dashboard request tester — June 2026 (Stage W3.2)
+
+- **§3 states added for the Request tester (`/sandbox` workspace mode + `RouteResolutionPreview`).**
+  Four panels: project/route picker, prompt + action row, result/receipt, and the route builder
+  More tab preview. Each has loading / empty / error / populated states per the §3 contract.
+
+- **Live-key boundary registered.** `simulate` and `explain-chain` are config-only (no provider
+  calls); `runtime/invoke` requires explicit confirm dialog before sending. Tests use stubs;
+  live sends are key-holder demos post-merge.
+
+- **Fix-forward link contract.** Every route name in the receipt links to its builder; every
+  "View logs" link carries `?route={routeId}` for pre-filtered log views (rubric X4).
 
 ---
 
