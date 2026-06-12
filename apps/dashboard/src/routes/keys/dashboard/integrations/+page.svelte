@@ -419,10 +419,12 @@
               <span class={`int-status status-${integrationTone(int.status)}`}>
                 {int.status}
                 {#if int.verificationStatus}
-                  · {int.verificationStatus}
+                  · {int.verificationStatus === "reference_only" ? "reference only" : int.verificationStatus}
                 {/if}
                 {#if int.credentialMasked}
                   · {int.credentialMasked}
+                {:else if int.referenceOnly}
+                  · reference only — not verifiable
                 {:else if int.hasCredential}
                   · credential set
                 {:else}

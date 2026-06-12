@@ -15,6 +15,8 @@
   let verifying = false;
   let verifyError = "";
   let verifyOkMsg = "";
+  /** Indeterminate probe outcomes (network blip, rate limit): not an error, not a success. */
+  let verifyWarnMsg = "";
   let addBindingProjectId = data.projects[0]?.id ?? "";
   let addingBinding = false;
   let addBindingError = "";
@@ -47,20 +49,46 @@
     return "muted";
   }
 
+  function verificationTone(status: string): "success" | "warning" | "error" | "muted" {
+    if (status === "verified") return "success";
+    if (status === "failed") return "error";
+    if (status === "pending") return "warning";
+    return "muted";
+  }
+
+  function verificationLabel(status: string): string {
+    if (status === "reference_only") return "reference only";
+    return status;
+  }
+
   async function verify() {
     if (!data.integration) return;
     verifying = true;
     verifyError = "";
     verifyOkMsg = "";
+    verifyWarnMsg = "";
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/integrations/${data.integration.id}/verify`, {
         method: "POST",
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        const detail = (body as { data?: { verificationDetail?: string } }).data?.verificationDetail;
-        verifyOkMsg = detail ?? "Verification updated.";
+        const payload = (body as { data?: { verificationDetail?: string; resultKind?: string } }).data;
+        const detail = payload?.verificationDetail ?? "Verification updated.";
+        const kind = payload?.resultKind ?? "";
+        if (kind === "valid") {
+          verifyOkMsg = detail;
+        } else if (kind === "invalid_credentials" || kind === "no_credential") {
+          verifyError = detail;
+        } else {
+          // network_error / credential_unavailable / reference_only / unsupported_provider:
+          // indeterminate or informational — never styled as "your key is bad".
+          verifyWarnMsg = detail;
+        }
         await invalidateAll();
+      } else if (res.status === 429) {
+        verifyWarnMsg =
+          (body as { message?: string }).message ?? "Verification was run too recently. Try again shortly.";
       } else {
         verifyError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
       }
@@ -175,9 +203,11 @@
     <p class="section-desc">
       Status: <strong class={`status-${integrationTone(data.integration.status)}`}>{data.integration.status}</strong>
       {#if data.integration.verificationStatus}
-        · Verification: <span class={`status-${integrationTone(data.integration.verificationStatus)}`}>{data.integration.verificationStatus}</span>
+        · Verification: <span class={`status-${verificationTone(data.integration.verificationStatus)}`}>{verificationLabel(data.integration.verificationStatus)}</span>
       {/if}
-      {#if data.integration.credentialMasked}
+      {#if data.integration.referenceOnly}
+        · <span class="reference-badge">reference only — cannot be verified or executed by Restormel</span>
+      {:else if data.integration.credentialMasked}
         · {data.integration.credentialMasked}
       {:else if data.integration.hasCredential}
         · Credential reference or hosted key is set
@@ -191,11 +221,17 @@
         {verifying ? "Verifying…" : "Verify now"}
       </button>
     </p>
+    {#if !verifying && !verifyError && !verifyOkMsg && !verifyWarnMsg && data.integration.lastVerificationDetail}
+      <p class="muted verify-ok">{data.integration.lastVerificationDetail}</p>
+    {/if}
     {#if verifyError}
       <p class="error-msg" role="alert">{verifyError}</p>
     {/if}
+    {#if verifyWarnMsg}
+      <p class="warn-msg" role="status">{verifyWarnMsg}</p>
+    {/if}
     {#if verifyOkMsg}
-      <p class="muted verify-ok" role="status">{verifyOkMsg}</p>
+      <p class="ok-msg verify-ok" role="status">{verifyOkMsg}</p>
     {/if}
   </section>
 
@@ -403,6 +439,21 @@
     color: var(--rm-sage);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-2);
+  }
+  .warn-msg {
+    color: var(--rm-muted);
+    font-size: var(--text-sm);
+    margin: var(--space-2) 0 0;
+  }
+  .reference-badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    border: 1px solid var(--rm-border);
+    border-radius: var(--rm-radius);
+    padding: 0 var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
   .add-binding-form {
     display: flex;
