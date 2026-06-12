@@ -307,6 +307,28 @@ same store** rather than opening a second workspace stream (one SSE invocation p
 | **Run console — live tail** (`/runs/[id]`) | existing "Loading run console…" (`role="status"`) | n/a (a run always has a row) | existing "Could not load run status" banner + restart actions; **plus** an amber **"Live updates degraded to polling"** mono note (`role="status"`, in-progress runs only) when SSE drops to the 2.5s fallback — the run is explicitly stated to be unaffected | status badge, progress %, stage timeline, heartbeat age, and the activity-log tail all update from SSE `delta` frames (`aria-live="polite"` log region preserved); the W1.4 stall/reclaim narration rides the same frames |
 <!-- W3.1-BLOCK-END -->
 
+<!-- K5-BLOCK-START: run attribution (which route/model served this run). Other batch
+     agents edit this file — keep K5 edits inside this fenced block to ease rebase. -->
+### §3 panel states — Run attribution: "Served by" (Stage K5)
+
+K5 closes K-P1-4: a Connect run can now answer *which route/step/provider/model served each
+stage*. The resolve/attribution data is **captured at run time** (not reconstructed after the
+fact) inside `stage-route-generate.ts`'s `callResolvedChat`/`embedViaRoute` — the resolved
+`{routeId, routeName, projectId, stepId, stepOrderIndex, provider, modelId, attempts}` is recorded
+the moment a stage call SUCCEEDS — and persisted into `knowledge_ingest_jobs.progress.attribution`
+JSONB (the cheapest persistence slot; no migration). The run console renders a per-stage **"Served
+by `<model>` · `<provider>` · route `<name>` (step N) · K attempts"** mono line, the route name
+linking to the builder (X4: route → builder). Validation additionally asserts same/different family
+vs extraction, feeding K4's cross-model disclosure. Ingest resolves also write a `request_logs` row
+tagged **`source=connect_ingest`** (in the existing `metadata` JSONB) so Logs/Usage finally see
+Connect traffic (BP-12) — the `/logs` row renders the source tag; the full filter UX stays in W3.3.
+
+| Surface / element | Loading | Empty / absent | Error / degraded | Populated |
+|-------------------|---------|----------------|------------------|-----------|
+| **Run console — "Served by"** (`/runs/[id]`) | rides the existing run-console load (`role="status"`); attribution rows appear as each stage is captured live | run predates attribution capture (legacy/route-less) → honest absent-state: "Route/model attribution was not recorded for this run — it predates attribution capture" (NO fabricated rows) | n/a — display-only, read-only (adds no fetch; the W3.1 console error/degraded states are unchanged); the mobile read-only contract's 2-mutation-fetch count for this console is preserved | per-served-stage mono row: **`<model>` · `<provider>` · route `<name>` (step N) · K attempts**, route name → builder (`/projects/{id}/routes/{routeId}?flow=visual`); validation row adds "· cross-model ✓" or "· same family as extraction"; an "Attribution recorded from `<date>`" honesty line |
+| **Logs — source tag** (`/keys/dashboard/logs`) | existing logs load | n/a — a Connect resolve always writes a row | existing logs error banner + "Try again" | each request-log row renders its **source tag** (`connect ingest` badge for `source=connect_ingest`); gateway/legacy rows show no tag (null source). Full source filter UX is W3.3 |
+<!-- K5-BLOCK-END -->
+
 ### §3 panel states — Versioned-config intelligence: diff / export / recommend (Stage W3.5)
 
 Builds on W1.5's Versions tab (route builder `/projects/{id}/routes/{routeId}` → Versions; policy

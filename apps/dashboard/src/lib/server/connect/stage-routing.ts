@@ -17,12 +17,47 @@ import { isRoutePublished } from "$lib/server/route-resolver";
 export { CONNECT_MODEL_STAGES, CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE };
 export type { ConnectModelStage, ConnectStageRouting };
 
+/**
+ * K5 run attribution hooks (optional). When present, the stage-route executor
+ * reports which route/step/provider/model served each stage (`onStageServed`) and
+ * writes a request-log row per resolve attempt (`onResolveAttempt`). Both are
+ * fire-and-forget from the executor's perspective — capture must never break a run.
+ * Defined as a structural shape (not imported) to avoid a server-module import cycle
+ * (stage-attribution → contracts only).
+ */
+export type ConnectStageServedSnapshot = {
+  routeId?: string | null;
+  routeName?: string | null;
+  projectId?: string | null;
+  stepId?: string | null;
+  stepOrderIndex?: number | null;
+  provider?: string | null;
+  modelId?: string | null;
+  attemptNumber?: number | null;
+};
+
+export type ConnectResolveAttemptRecord = {
+  /** "resolved" when the upstream call succeeded; "failed" when the attempt errored. */
+  status: "resolved" | "failed";
+  routeId?: string | null;
+  provider?: string | null;
+  modelId?: string | null;
+  latencyMs: number;
+  errorCode?: string | null;
+  /** 0-based attempt index in the resolve loop (>0 means a fallback step). */
+  attemptNumber: number;
+};
+
 export type ConnectRouteExecutionContext = {
   workspaceId: string;
   userId: string;
   projectId: string;
   environmentId: string;
   routing: ConnectStageRouting;
+  /** K5: report a stage's last successful resolve for run-attribution capture. */
+  onStageServed?: (stage: ConnectModelStage, snap: ConnectStageServedSnapshot) => void;
+  /** K5: write a request-log row (source=connect_ingest) per resolve attempt. */
+  onResolveAttempt?: (stage: ConnectModelStage, rec: ConnectResolveAttemptRecord) => void;
 };
 
 export type StageRouteUiRow = {

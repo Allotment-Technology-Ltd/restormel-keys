@@ -3,6 +3,11 @@
   import { goto, invalidate } from "$app/navigation";
   import { CONNECT_INGEST_PIPELINE_STAGES } from "@restormel/connect-core/ingest/job-record";
   import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/worker-stub";
+  import type { ConnectModelStage } from "@restormel/contracts/connect";
+  import {
+    attributionRecordedFrom,
+    buildAttributionRows,
+  } from "$lib/connect/run-attribution-display";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import ConnectIngestPipelineTimeline from "$lib/components/connect/pipeline/ConnectIngestPipelineTimeline.svelte";
   import ConnectGraphRepairProgress from "$lib/components/connect/pipeline/ConnectGraphRepairProgress.svelte";
@@ -46,12 +51,28 @@
     last_activity_at: string;
   };
 
+  /** K5 run attribution — which route/step/provider/model served each stage. */
+  type StageAttribution = {
+    routeId: string | null;
+    routeName: string | null;
+    projectId: string | null;
+    stepId: string | null;
+    stepOrderIndex: number | null;
+    provider: string | null;
+    modelId: string | null;
+    attempts: number;
+    recordedAt: string;
+  };
+  type RunAttribution = Partial<Record<ConnectModelStage, StageAttribution>>;
+
   type JobProgress = {
     percent: number;
     processed: number;
     total: number;
     execution_mode?: "stub" | "full";
     graph_repair?: GraphRepairProgress;
+    /** K5: per-stage served-by attribution (absent for runs that predate capture). */
+    attribution?: RunAttribution;
     quality_report?: {
       preset?: string;
       ok_pct?: number;
@@ -161,6 +182,21 @@
   $: showGraphRepairPanel = Boolean(graphRepair && isGraphRepairTask);
   $: trustScore = job?.progress?.quality_report?.kg_audit?.trust_score;
   $: okPct = job?.progress?.quality_report?.ok_pct;
+
+  // ── K5 run attribution: which route/model served each stage ────────────────
+  // Display-only (read-only): no fetch added → the mobile-readonly contract's
+  // 2-mutation-fetch invariant for this console is unchanged. Row-building lives in
+  // $lib/connect/run-attribution-display so the with/without-attribution + legacy
+  // cases are unit-testable.
+  $: attribution = job?.progress?.attribution ?? null;
+  $: attributionRows = buildAttributionRows(attribution, DASHBOARD_BASE);
+  $: attributionRecordedFromDate = attributionRecordedFrom(attribution);
+  $: attributionRecordedFromLabel = attributionRecordedFromDate
+    ? attributionRecordedFromDate.toLocaleString()
+    : null;
+  /** True once the run is settled and we still have no attribution → honest absent-state. */
+  $: showAttributionAbsent =
+    isCompleted && attributionRows.length === 0 && job?.progress?.execution_mode === "full";
   $: trustDesc = trustScoreDescriptor(trustScore);
   $: unitsDesc = unitsSupportedDescriptor(okPct);
   $: runDurationLabel =
@@ -861,6 +897,61 @@
       {/if}
     </div>
 
+    <!-- K5: run attribution — which route/model served each stage. Read-only;
+         route name links to the builder (X4 grammar: route → builder). -->
+    {#if attributionRows.length > 0}
+      <section class="run-attribution" aria-labelledby="run-attribution-heading">
+        <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
+        <ul class="run-attribution-list">
+          {#each attributionRows as row (row.stage)}
+            <li class="run-attribution-row">
+              <span class="run-attribution-stage">{row.label}</span>
+              <span class="run-attribution-line">
+                <strong>{row.modelId}</strong>
+                <span class="run-attribution-sep" aria-hidden="true">·</span>
+                {row.provider}
+                {#if row.routeName}
+                  <span class="run-attribution-sep" aria-hidden="true">·</span>
+                  {#if row.builderHref}
+                    <a class="run-attribution-route" href={row.builderHref}
+                      >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if} →</a
+                    >
+                  {:else}
+                    <span class="run-attribution-route-plain"
+                      >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if}</span
+                    >
+                  {/if}
+                {/if}
+                <span class="run-attribution-sep" aria-hidden="true">·</span>
+                {row.attempts}
+                {row.attempts === 1 ? "attempt" : "attempts"}
+                {#if row.crossFamilyVsExtraction === true}
+                  <span class="run-attribution-cross run-attribution-cross--ok"
+                    >· cross-model ✓</span
+                  >
+                {:else if row.crossFamilyVsExtraction === false}
+                  <span class="run-attribution-cross run-attribution-cross--same"
+                    >· same family as extraction</span
+                  >
+                {/if}
+              </span>
+            </li>
+          {/each}
+        </ul>
+        {#if attributionRecordedFromLabel}
+          <p class="run-attribution-note">Attribution recorded from {attributionRecordedFromLabel}.</p>
+        {/if}
+      </section>
+    {:else if showAttributionAbsent}
+      <section class="run-attribution" aria-labelledby="run-attribution-heading">
+        <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
+        <p class="run-attribution-note run-attribution-note--absent" role="status">
+          Route/model attribution was not recorded for this run — it predates attribution
+          capture. New runs record which route and model served each stage.
+        </p>
+      </section>
+    {/if}
+
     {#if !startingRun}
       {#if isInProgress}
         <section class="run-log-panel" aria-labelledby="run-log-heading">
@@ -1218,6 +1309,105 @@
 
   .run-family-disclosure--absent {
     color: var(--rm-dim, var(--rm-muted));
+  }
+
+  /* K5: per-stage "Served by" attribution block. Brutal: hard border, flat fill,
+     mono evidence lines, route name as the only link (route → builder). */
+  .run-attribution {
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .run-attribution-heading {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+  }
+
+  .run-attribution-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .run-attribution-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, max-content) 1fr;
+    gap: var(--space-2) var(--space-3);
+    align-items: baseline;
+    min-height: 28px;
+    padding: var(--space-1) 0;
+    border-top: var(--brut-border-micro) solid color-mix(in oklab, var(--brut-ink) 14%, transparent);
+  }
+
+  .run-attribution-row:first-child {
+    border-top: none;
+  }
+
+  .run-attribution-stage {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-faint);
+  }
+
+  .run-attribution-line {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--rm-text);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .run-attribution-sep {
+    color: var(--rm-muted);
+    user-select: none;
+  }
+
+  .run-attribution-route {
+    color: var(--rm-sage);
+    text-decoration: underline;
+  }
+
+  .run-attribution-route:hover {
+    color: var(--brut-ink);
+  }
+
+  .run-attribution-route-plain {
+    color: var(--rm-muted);
+  }
+
+  .run-attribution-cross--ok {
+    color: var(--rm-sage);
+    font-weight: 700;
+  }
+
+  .run-attribution-cross--same {
+    color: var(--rm-muted);
+  }
+
+  .run-attribution-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+  }
+
+  .run-attribution-note--absent {
+    color: var(--rm-dim, var(--rm-muted));
+    line-height: 1.45;
   }
 
   .quality-metric {

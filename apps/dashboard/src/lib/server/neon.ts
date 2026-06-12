@@ -31,6 +31,14 @@ import {
   createSchemaMigrationGate,
   type SchemaGateSql,
 } from "$lib/server/schema-migration-gate";
+import {
+  parseConnectRunAttribution,
+  type ConnectRunAttribution,
+} from "$lib/server/connect/stage-attribution";
+import {
+  requestLogMetadataWithSource,
+  requestLogSourceFromMetadata,
+} from "$lib/server/request-log-source";
 
 // ---------------------------------------------------------------------------
 // Stage 1.7 — Runtime DDL gate
@@ -4437,6 +4445,8 @@ export type RequestLogParams = {
   cachedTokens?: number | null;
   estimatedCost?: number | null;
   metadata?: Record<string, unknown> | null;
+  /** K5: traffic-source tag (e.g. "connect_ingest"); folded into metadata.source. */
+  source?: string | null;
 };
 
 export type RequestLogRecord = {
@@ -4458,6 +4468,8 @@ export type RequestLogRecord = {
   fallbackCount: number | null;
   errorCode: string | null;
   createdAt: number;
+  /** K5: traffic source tag from metadata.source (e.g. "connect_ingest"); null for legacy/gateway rows. */
+  source: string | null;
 };
 
 /** Insert a request log row. Used after route resolution and/or proxy. */
@@ -4465,6 +4477,9 @@ export async function insertRequestLog(params: RequestLogParams): Promise<void> 
   const sql = getSql();
   const id = crypto.randomUUID();
   const createdAt = Date.now();
+  // K5: fold an explicit source tag into metadata.source so the column stays a single
+  // JSONB blob (no migration) while /logs + W3.3 can filter Connect ingest traffic.
+  const metadata = requestLogMetadataWithSource(params.metadata, params.source);
   await sql`
     INSERT INTO request_logs (
       id, workspace_id, project_id, environment_id, route_id, gateway_key_id,
@@ -4480,7 +4495,7 @@ export async function insertRequestLog(params: RequestLogParams): Promise<void> 
       ${params.ttftMs ?? null}, ${params.inputTokens ?? null}, ${params.outputTokens ?? null},
       ${params.cachedTokens ?? null}, ${params.estimatedCost ?? null},
       ${params.fallbackCount ?? null}, ${params.errorCode ?? null}, ${createdAt},
-      ${params.metadata ? JSON.stringify(params.metadata) : null}
+      ${metadata ? JSON.stringify(metadata) : null}
     )
   `;
 }
@@ -4507,7 +4522,8 @@ export async function listRequestLogs(
            final_model_id AS "finalModelId", request_status AS "requestStatus", latency_ms AS "latencyMs",
            ttft_ms AS "ttftMs", input_tokens AS "inputTokens", output_tokens AS "outputTokens",
            cached_tokens AS "cachedTokens", estimated_cost AS "estimatedCost",
-           fallback_count AS "fallbackCount", error_code AS "errorCode", created_at AS "createdAt"
+           fallback_count AS "fallbackCount", error_code AS "errorCode", created_at AS "createdAt",
+           metadata AS "metadata"
     FROM request_logs
     WHERE workspace_id = ${workspaceId}
       ${since != null ? sql`AND created_at >= ${since}` : sql``}
@@ -4536,6 +4552,9 @@ export async function listRequestLogs(
     fallbackCount: r.fallbackCount != null ? Number(r.fallbackCount) : null,
     errorCode: r.errorCode ?? null,
     createdAt: Number(r.createdAt),
+    // K5: expose the traffic-source tag (metadata.source) so /logs can badge
+    // connect_ingest rows. The neon driver returns JSONB as a parsed object.
+    source: requestLogSourceFromMetadata(r.metadata),
   })) as RequestLogRecord[];
 }
 
@@ -5535,6 +5554,8 @@ export type ConnectIngestJobProgress = {
   quality_report?: ConnectIngestJobQualityReport;
   graph_repair?: GraphRepairJobProgress;
   resume?: ConnectIngestJobResumeCheckpoint;
+  /** K5 run attribution — per-stage {routeId, routeName, provider, modelId, attempts}. */
+  attribution?: ConnectRunAttribution;
 };
 
 export type ConnectIngestJobRecord = {
@@ -5773,6 +5794,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
   const quality_report = parseConnectIngestJobQualityReport(rec.quality_report);
   const graph_repair = parseGraphRepairJobProgress(rec.graph_repair);
   const resume = parseConnectIngestJobResumeCheckpoint(rec.resume);
+  const attribution = parseConnectRunAttribution(rec.attribution);
   return {
     percent: Math.min(100, Math.max(0, Math.round(percent))),
     processed: Math.max(0, Math.round(processed)),
@@ -5783,6 +5805,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
     ...(quality_report ? { quality_report } : {}),
     ...(graph_repair ? { graph_repair } : {}),
     ...(resume ? { resume } : {}),
+    ...(attribution ? { attribution } : {}),
   };
 }
 
