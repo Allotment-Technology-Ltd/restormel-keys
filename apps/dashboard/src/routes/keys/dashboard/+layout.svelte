@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../../../app.css";
-  import { page } from "$app/stores";
+  import { page, navigating } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     NAV_GROUPS,
@@ -156,6 +156,50 @@
     return MONITOR_COMING_SOON_ITEMS.find((e) => e.id === item)?.label ?? item;
   }
 
+  // ── Navigation pending state (UX fix: navigating store) ──────────────────
+  // While SvelteKit is resolving a server-load navigation, $navigating is truthy
+  // and .to?.url.pathname names the destination. We derive:
+  //   pendingHref  — the work-nav href that matches the destination (same
+  //                  isWorkNavActive logic as the active highlight), or null.
+  //   pendingLabel — human-readable destination name for aria-labels / sr text.
+  //
+  // The sidebar item whose href === pendingHref renders the .nav-link-pending
+  // modifier (pulsing left-edge bar) while the current item keeps its active
+  // state. A top-of-main progress bar renders while any navigation is in flight.
+  $: pendingHref = (() => {
+    const dest = $navigating?.to?.url.pathname;
+    if (!dest) return null;
+    // Check primary work nav items first.
+    for (const item of workNavForUi) {
+      if (isWorkNavActive(dest, item.href)) return item.href;
+    }
+    // Check testing nav.
+    if (testingNavForUi && isWorkNavActive(dest, testingNavForUi.href)) return testingNavForUi.href;
+    // Check collapsible group items (exact prefix).
+    for (const group of navGroupsForLayout) {
+      for (const item of group.items) {
+        if (dest === item.href || dest.startsWith(item.href + "/")) return item.href;
+      }
+    }
+    return null;
+  })();
+
+  $: pendingLabel = (() => {
+    const dest = $navigating?.to?.url.pathname;
+    if (!dest) return null;
+    // Match work nav items.
+    for (const item of workNavForUi) {
+      if (isWorkNavActive(dest, item.href)) return item.label;
+    }
+    if (testingNavForUi && isWorkNavActive(dest, testingNavForUi.href)) return testingNavForUi.label;
+    for (const group of navGroupsForLayout) {
+      for (const item of group.items) {
+        if (dest === item.href || dest.startsWith(item.href + "/")) return item.label;
+      }
+    }
+    return "page";
+  })();
+
   function isActivePath(href: string): boolean {
     return currentPath === href || currentPath.startsWith(href + "/");
   }
@@ -231,10 +275,12 @@
                 item.href === CLAIMS_HREF && $connectReviewCount && $connectReviewCount > 0
                   ? $connectReviewCount
                   : null}
+              {@const isPending = pendingHref === item.href && !isWorkNavActive(currentPath, item.href)}
               <a
                 href={item.href}
                 class="nav-link nav-link-work"
                 class:nav-link-active={isWorkNavActive(currentPath, item.href)}
+                class:nav-link-pending={isPending}
                 aria-current={isWorkNavActive(currentPath, item.href) ? "page" : undefined}
                 aria-label={claimsBadge
                   ? `${item.label} — ${claimsBadge} ${claimsBadge === 1 ? "claim needs" : "claims need"} review`
@@ -270,10 +316,12 @@
                   <MonitorComingSoonNav />
                 {:else}
                   {#each group.items as item}
+                    {@const isGroupItemPending = pendingHref === item.href && !isActivePath(item.href)}
                     <a
                       href={item.href}
                       class="nav-link"
                       class:nav-link-active={isActivePath(item.href)}
+                      class:nav-link-pending={isGroupItemPending}
                       aria-current={isActivePath(item.href) ? "page" : undefined}
                     >
                       {item.label}
@@ -291,6 +339,7 @@
               href={testingNavForUi.href}
               class="nav-link nav-link-work"
               class:nav-link-active={isWorkNavActive(currentPath, testingNavForUi.href)}
+              class:nav-link-pending={pendingHref === testingNavForUi.href && !isWorkNavActive(currentPath, testingNavForUi.href)}
               aria-current={isWorkNavActive(currentPath, testingNavForUi.href) ? "page" : undefined}
             >
               {testingNavForUi.label}
@@ -321,6 +370,22 @@
       </div>
     </aside>
     <div class="main-wrap">
+      <!-- Nav pending progress bar (UX fix: navigating store).
+           Role=progressbar + aria-label naming the destination gives SR users
+           the same "loading Sources…" signal the visual bar gives sighted users.
+           aria-valuenow is omitted (indeterminate — SvelteKit gives no real %).
+           The bar itself is purely visual; the role="status" region below the
+           main tag carries the same message as a visually-hidden live region
+           so it is announced without stealing focus. -->
+      {#if $navigating}
+        <div
+          class="nav-progress-bar"
+          role="progressbar"
+          aria-label="Loading {pendingLabel ?? 'page'}…"
+          aria-valuemin={0}
+          aria-valuemax={100}
+        ></div>
+      {/if}
       <header class="topbar">
         <div class="topbar-left">
           {#if collapsed}
@@ -378,7 +443,14 @@
           </div>
         {/if}
       </header>
-      <main class="main" data-sveltekit-preload-data="tap">
+      <main class="main" data-sveltekit-preload-data="tap" aria-busy={$navigating ? "true" : undefined}>
+        <!-- Visually-hidden live region: announces the pending destination to screen
+             readers without stealing focus. Complements aria-busy on the main region. -->
+        {#if $navigating}
+          <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            Loading {pendingLabel ?? 'page'}…
+          </div>
+        {/if}
         {#if authDegraded && !isAuthRoute}
           <div class="auth-degraded-shell">
             <AuthDegradedNotice />
@@ -590,11 +662,85 @@
     background: var(--color-yellow);
     font-weight: 900;
   }
+  /* ── nav-link-pending: destination item while a server-load navigation is in
+     flight. Hard-edged left bar (3px, ink) inside the yellow field — neo-brutalist
+     idiom: mechanical, no soft glow, no rounded corners.
+     The pulsing opacity is suppressed under prefers-reduced-motion. */
+  .nav-link-pending {
+    color: var(--color-ink);
+    background: color-mix(in srgb, var(--color-yellow) 55%, transparent);
+    font-weight: 900;
+    position: relative;
+  }
+  .nav-link-pending::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--brut-ink);
+    animation: nav-pending-pulse 0.8s steps(2) infinite;
+  }
+  @keyframes nav-pending-pulse {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.25; }
+    100% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link-pending::before {
+      animation: none;
+      opacity: 1;
+    }
+  }
   .main-wrap {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
+    position: relative;
+  }
+  /* ── Nav progress bar: appears at the top of the content column while SvelteKit
+     is resolving a server-load navigation. Brutalist: 3px, ink-on-yellow, hard
+     edges, no radius. Grows from 0 → ~70% immediately, then holds until the
+     navigation completes (done by CSS animation — no JS %). The bar is purely
+     cosmetic; the role=progressbar attribute + aria-label carry the semantic signal.
+     The fill animation is suppressed under prefers-reduced-motion (bar stays solid). */
+  .nav-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--brut-ink);
+    z-index: 10;
+    transform-origin: left center;
+    animation: nav-progress-fill 4s ease-out forwards;
+  }
+  @keyframes nav-progress-fill {
+    0%   { transform: scaleX(0.0); }
+    20%  { transform: scaleX(0.35); }
+    60%  { transform: scaleX(0.65); }
+    100% { transform: scaleX(0.72); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-progress-bar {
+      animation: none;
+      transform: scaleX(1);
+    }
+  }
+  /* Screen-reader only — visually hidden but accessible to assistive technology.
+     Standard .sr-only pattern; used for the live-region navigation announcement. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .topbar {
     min-height: 3rem;
