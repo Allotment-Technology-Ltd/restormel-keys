@@ -28,6 +28,7 @@ export const CONNECT_HUB_TABS: HubTab[] = [
   { href: CONNECT_HUB_HREF + "/graph", label: "Graph", exact: false },
   { href: CONNECT_HUB_HREF + "/proof", label: "Proof", exact: false },
   { href: CONNECT_MCP_HREF, label: "Agents", exact: true },
+  { href: CONNECT_HUB_HREF + "/memory", label: "Memory", exact: false },
 ];
 
 export const TESTING_HUB_TABS: HubTab[] = [

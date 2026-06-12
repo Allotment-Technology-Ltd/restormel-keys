@@ -15,6 +15,7 @@
     if (pathname.includes("/connect/models")) return "models";
     if (pathname.includes("/connect/pipeline")) return "pipeline";
     if (pathname.includes("/connect/mcp")) return "mcp";
+    if (pathname.includes("/connect/memory")) return "memory";
     if (pathname.includes("/connect/ingest")) return "ingest";
     if (pathname.includes("/connect/proof")) return "proof";
     return "default";

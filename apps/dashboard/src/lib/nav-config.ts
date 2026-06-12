@@ -186,6 +186,7 @@ export function topbarTitle(pathname: string): string {
     if (pathname.startsWith(DASHBOARD_BASE + "/connect/pipeline")) return "Connect · Pipeline";
     if (pathname.startsWith(DASHBOARD_BASE + "/connect/graph")) return "Connect · Graph";
     if (pathname.startsWith(DASHBOARD_BASE + "/connect/mcp")) return "Connect · MCP";
+    if (pathname.startsWith(DASHBOARD_BASE + "/connect/memory")) return "Connect · Memory";
     if (pathname.startsWith(DASHBOARD_BASE + "/connect/models")) return "Connect · Models";
     return "Connect";
   }

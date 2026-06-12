@@ -1,5 +1,8 @@
 export type { McpToolSchema } from "./tools.js";
 
+/** Generated tool catalog — single source of truth for the dev-tools/mcp dashboard page. */
+export { CATALOG_ENTRIES, REGISTERED_TOOL_NAMES, type CatalogEntry } from "./catalog-export.js";
+
 export type { RestormelSuiteToolName, SuiteToolModuleFlags } from "./suite-tool-names.js";
 export { RESTORMEL_SUITE_TOOL_NAMES, getEnabledSuiteToolNames } from "./suite-tool-names.js";
 export { CANONICAL_DOC_TOPICS } from "./canonical-docs.js";
