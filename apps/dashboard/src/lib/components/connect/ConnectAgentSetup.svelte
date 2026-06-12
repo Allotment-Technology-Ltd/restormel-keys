@@ -295,7 +295,7 @@
       {/if}
       {#if !setup.hasGraph}
         · <a href={pipelineWizardHref("launch")}>run ingest</a>
-        · <a href={CLAIMS_HREF}>open graph explorer</a>
+        · <a href={CLAIMS_HREF}>open Claims</a>
       {/if}
     </p>
   {:else if setup.workspaceStoreReady && setup.modelsReady && setup.hasGraph}

@@ -94,9 +94,10 @@
       {:then { default: ConnectGraphExplorer }}
         <ConnectGraphExplorer {graph} />
       {:catch}
+        <!-- D2 (UXC §2 [R1] Claims): the section is "Claims", never "Graph explorer". -->
         <BrutalErrorBanner
-          title="Graph explorer unavailable"
-          message="Could not load the graph explorer. Your data is unaffected — this is a load failure."
+          title="Claims unavailable"
+          message="Could not load Claims. Your data is unaffected — this is a load failure."
         >
           {#snippet actions()}
             <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>

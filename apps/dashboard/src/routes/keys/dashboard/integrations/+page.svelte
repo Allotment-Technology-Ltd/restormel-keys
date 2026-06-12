@@ -173,7 +173,9 @@
   }
 </script>
 
-<h1 class="page-title">Connect a Provider</h1>
+<!-- F-P1-3 (UXC §2 Connections): the section heading is "Connections" — the nav
+     label, not the "Connect a Provider" verb phrase (that register belongs on a CTA). -->
+<h1 class="page-title">Connections</h1>
 <p class="page-desc">
   Connect your provider so Restormel Testing and routing can resolve models. Use <strong>Hosted API key</strong> for a key encrypted at rest (recommended for judge flows), or <strong>Credential reference</strong> for a non-secret vault label only — not both required.
 </p>

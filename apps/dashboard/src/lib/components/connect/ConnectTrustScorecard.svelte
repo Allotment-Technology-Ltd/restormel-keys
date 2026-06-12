@@ -529,6 +529,10 @@
     text-decoration: underline;
     text-underline-offset: 2px;
     white-space: nowrap;
+    /* W4.5 a11y: ≥44px target (X10) — a standalone deduction-drill affordance. */
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
   .scorecard-footnote {
     margin: 0;

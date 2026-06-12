@@ -109,7 +109,7 @@
 <p class="page-desc">Create and manage projects. Each project has its own Gateway keys.</p>
 
 {#if data.projectsError}
-  <p class="error-msg" role="alert">{data.projectsError}. Check Vercel logs for database errors.</p>
+  <p class="error-msg" role="alert">{data.projectsError}. <a href="/keys/dashboard/projects" data-sveltekit-reload>Try again</a>, or contact support if it keeps happening.</p>
 {/if}
 {#if createError}
   <p class="error-msg" role="alert">{createError}</p>

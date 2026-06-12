@@ -10,7 +10,9 @@
   export let children: Snippet;
 </script>
 
-<div class="empty-state">
+<!-- role="status" so assistive tech announces the empty state when it appears
+     (W4.4-Info / W4.5 a11y sweep — ux-contracts §3 empty-state contract). -->
+<div class="empty-state" role="status">
   <h2 class="empty-state-title">{title}</h2>
   <p class="empty-state-desc">{description}</p>
   <div class="empty-state-action">

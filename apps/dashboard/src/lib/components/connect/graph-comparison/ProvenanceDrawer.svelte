@@ -134,6 +134,11 @@
     padding: var(--space-2) var(--space-3);
     background: var(--color-bg);
     border-left: 3px solid var(--color-yellow);
+    /* W4.5 a11y (#294): the claim row (which carries the inline prove-it claim
+       link to the dossier) is a ≥44px target. The link text itself is an
+       in-sentence link — exempt from 2.5.8 — but the row it sits in is sized so
+       the dossier deep-link is comfortably tappable. */
+    min-height: 44px;
   }
   .claim.weak {
     border-left: 3px dashed var(--color-ink);

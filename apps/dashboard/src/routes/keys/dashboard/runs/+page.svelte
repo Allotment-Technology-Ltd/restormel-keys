@@ -269,11 +269,11 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<section aria-labelledby="ingest-jobs-heading">
+<section aria-labelledby="ingest-runs-heading">
   <div class="head">
     <div>
-      <h1 id="ingest-jobs-heading" class="h1">Ingest jobs</h1>
-      <p class="lede">Durable, workspace-scoped ingestion jobs. Each job turns sources into your knowledge graph.</p>
+      <h1 id="ingest-runs-heading" class="h1">Ingest runs</h1>
+      <p class="lede">Durable, workspace-scoped ingest runs. Each run turns sources into your knowledge graph.</p>
     </div>
     <a class="btn btn-primary" href={NEW_RUN_HREF}>New run</a>
   </div>
@@ -378,7 +378,7 @@
               class="btn btn-danger btn-sm"
               disabled={deletingIds.has(job.id)}
               on:click|stopPropagation={() => deleteJob(job.id)}
-              aria-label="Delete this job"
+              aria-label="Delete this run"
             >
               {deletingIds.has(job.id) ? "…" : "Delete"}
             </button>

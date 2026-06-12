@@ -299,4 +299,11 @@
       opacity: 1;
     }
   }
+
+  /* W4.5 a11y (X9): the drawer entrance animation is suppressed under reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .feedback-drawer {
+      animation: none;
+    }
+  }
 </style>

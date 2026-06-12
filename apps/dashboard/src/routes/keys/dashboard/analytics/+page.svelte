@@ -118,10 +118,11 @@
 </script>
 
 <svelte:head>
-  <title>Analytics – Restormel</title>
+  <title>Usage – Restormel</title>
 </svelte:head>
 
-<h1 class="page-title">Usage & Analytics</h1>
+<!-- F-P1-3 (UXC §2 Usage): the H1 must match the nav label "Usage", not "Usage & Analytics". -->
+<h1 class="page-title">Usage</h1>
 <p class="page-desc">
   Request counts, latency, error rate, and usage by provider, model, and route. Data from request logs ({periodLabel()}).
 </p>

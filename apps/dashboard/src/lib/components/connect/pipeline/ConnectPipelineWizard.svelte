@@ -363,15 +363,23 @@
     <div class="wizard-footer-right">
       {#if step === "launch"}
         {#if runDefaults}
+          <!-- F-P2-1: a disabled CTA's reason is announced via aria-describedby (a
+               title attribute alone is not reliably read on a disabled control). -->
           <button
             type="button"
             class="btn btn-primary btn-lg"
             disabled={!runCanStart || runSubmitting}
             title={!runCanStart ? "Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start" : undefined}
+            aria-describedby={!runCanStart ? "start-run-hint" : undefined}
             on:click={() => launchStep?.submitRun()}
           >
             {runSubmitting ? "Starting…" : "START RUN →"}
           </button>
+          {#if !runCanStart}
+            <span id="start-run-hint" class="sr-only">
+              Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start.
+            </span>
+          {/if}
         {/if}
       {:else if step === "store"}
         <a
@@ -400,9 +408,13 @@
           on:click={goNext}
           disabled={!canContinueDomain}
           title={!canContinueDomain ? "Select or generate a domain pack to continue" : undefined}
+          aria-describedby={!canContinueDomain ? "domain-continue-hint" : undefined}
         >
           Domain selected → Continue
         </button>
+        {#if !canContinueDomain}
+          <span id="domain-continue-hint" class="sr-only">Select or generate a domain pack to continue.</span>
+        {/if}
       {:else if step === "sources"}
         {#if !current.required}
           <button type="button" class="btn btn-outline btn-sm" on:click={goNext}>Skip for now</button>
@@ -413,9 +425,13 @@
           on:click={goNext}
           disabled={!canContinueSources}
           title={!canContinueSources ? "Select at least one document to continue" : undefined}
+          aria-describedby={!canContinueSources ? "sources-continue-hint" : undefined}
         >
           Sources ready → Continue ({progress.selectedDocumentCount} document{progress.selectedDocumentCount === 1 ? "" : "s"})
         </button>
+        {#if !canContinueSources}
+          <span id="sources-continue-hint" class="sr-only">Select at least one document to continue.</span>
+        {/if}
       {/if}
     </div>
   </footer>

@@ -82,7 +82,9 @@
     background: var(--brut-white);
     color: var(--brut-ink);
     padding: var(--space-1) var(--space-3);
-    min-height: 36px;
+    /* W4.5 a11y: ≥44px touch target (X10, #285) — was 36px. inline-flex already
+       centres the content, so this only grows the tappable box. */
+    min-height: 44px;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     font-weight: 800;
