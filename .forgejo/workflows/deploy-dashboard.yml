@@ -59,7 +59,9 @@ env:
 jobs:
   build-and-push:
     name: Build image and push to registry
-    runs-on: docker
+    # ubuntu-latest label -> catthehacker/ubuntu:act-22.04: ships docker CLI + git.
+    # The runner config automounts the host docker socket into job containers.
+    runs-on: ubuntu-latest
     # Skip on the GitHub mirror: FORGEJO_TOKEN is only set on Forgejo runners.
     # (GitHub equivalent is GITHUB_TOKEN which is always set — distinguish via registry.)
     outputs:
@@ -125,31 +127,43 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     steps:
-      - name: Trigger Coolify staging webhook
+      - name: Trigger Coolify staging deploys (serial)
         shell: bash
         env:
-          COOLIFY_STAGING_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_STAGING_DEPLOY_WEBHOOK }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DASHBOARD_UUID: cpygbz8w77lxkx8bundvxb9d
+          WORKER_UUID: xzrg5m4tw1zk8zwlafgnepmk
         run: |
-          if [[ -z "${COOLIFY_STAGING_DEPLOY_WEBHOOK:-}" ]]; then
-            echo "COOLIFY_STAGING_DEPLOY_WEBHOOK not set — skipping deploy trigger."
-            echo "Set the org secret to enable automatic Coolify staging deploys."
+          set -euo pipefail
+          if [[ -z "${COOLIFY_TOKEN:-}" ]]; then
+            echo "COOLIFY_TOKEN not set — skipping deploy trigger."
             exit 0
           fi
-          # Coolify deploy webhook: POST to the webhook URL triggers a redeployment
-          # pulling the latest image tag. The webhook URL includes an embedded token.
-          # See: https://coolify.io/docs/api/webhooks
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST "${COOLIFY_STAGING_DEPLOY_WEBHOOK}" \
-            -H "Content-Type: application/json" \
-            -d "{\"image_tag\": \"${IMAGE_TAG}\"}" \
-            --max-time 30)
-          echo "Coolify staging webhook responded: HTTP ${HTTP_STATUS}"
-          if [[ "${HTTP_STATUS}" -lt 200 || "${HTTP_STATUS}" -ge 300 ]]; then
-            echo "Webhook call failed (HTTP ${HTTP_STATUS})."
-            exit 1
-          fi
-          echo "Staging deploy triggered for image tag: ${IMAGE_TAG}"
+          # Coolify API on the host bridge address; webhook-with-embedded-token 401s,
+          # header auth is the supported path. Deploys run SERIALLY — two parallel
+          # workspace builds OOM the 8GB box (no swap).
+          API="http://10.0.1.1:8000/api/v1"
+          auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}")
+          deploy_and_wait() {
+            local app_uuid="$1" name="$2"
+            local resp dep status
+            resp=$(curl -sf "${auth[@]}" "${API}/deploy?uuid=${app_uuid}&force=true")
+            dep=$(echo "${resp}" | sed -n 's/.*"deployment_uuid":"\([a-z0-9]*\)".*/\1/p')
+            echo "${name}: deployment ${dep} queued"
+            for i in $(seq 1 90); do
+              sleep 20
+              status=$(curl -sf "${auth[@]}" "${API}/deployments/${dep}" | sed -n 's/.*"status":"\([a-z_]*\)".*/\1/p' | head -1)
+              echo "${name} [${i}] status=${status}"
+              case "${status}" in
+                finished) return 0 ;;
+                failed|cancelled*) echo "${name} deploy FAILED"; return 1 ;;
+              esac
+            done
+            echo "${name} deploy timed out"; return 1
+          }
+          deploy_and_wait "${DASHBOARD_UUID}" "dashboard"
+          deploy_and_wait "${WORKER_UUID}" "worker"
+          echo "Staging deploys complete for image tag: ${IMAGE_TAG:-n/a}"
 
   deploy-prod:
     name: Trigger Coolify production deploy
@@ -161,25 +175,37 @@ jobs:
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dashboard-v')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     steps:
-      - name: Trigger Coolify production webhook
+      - name: Trigger Coolify production deploys (serial)
         shell: bash
         env:
-          COOLIFY_PROD_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_PROD_DEPLOY_WEBHOOK }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DASHBOARD_UUID: mxq1lnsehg7sdfzn0a8tnkxo
+          WORKER_UUID: ppvmqm1hbnu09kjgttdl5og4
         run: |
-          if [[ -z "${COOLIFY_PROD_DEPLOY_WEBHOOK:-}" ]]; then
-            echo "COOLIFY_PROD_DEPLOY_WEBHOOK not set — skipping prod deploy trigger."
-            echo "Set the org secret to enable automatic Coolify prod deploys."
+          set -euo pipefail
+          if [[ -z "${COOLIFY_TOKEN:-}" ]]; then
+            echo "COOLIFY_TOKEN not set — skipping prod deploy trigger."
             exit 0
           fi
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST "${COOLIFY_PROD_DEPLOY_WEBHOOK}" \
-            -H "Content-Type: application/json" \
-            -d "{\"image_tag\": \"${IMAGE_TAG}\"}" \
-            --max-time 30)
-          echo "Coolify prod webhook responded: HTTP ${HTTP_STATUS}"
-          if [[ "${HTTP_STATUS}" -lt 200 || "${HTTP_STATUS}" -ge 300 ]]; then
-            echo "Webhook call failed (HTTP ${HTTP_STATUS})."
-            exit 1
-          fi
-          echo "Production deploy triggered for image tag: ${IMAGE_TAG}"
+          API="http://10.0.1.1:8000/api/v1"
+          auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}")
+          deploy_and_wait() {
+            local app_uuid="$1" name="$2"
+            local resp dep status
+            resp=$(curl -sf "${auth[@]}" "${API}/deploy?uuid=${app_uuid}&force=true")
+            dep=$(echo "${resp}" | sed -n 's/.*"deployment_uuid":"\([a-z0-9]*\)".*/\1/p')
+            echo "${name}: deployment ${dep} queued"
+            for i in $(seq 1 90); do
+              sleep 20
+              status=$(curl -sf "${auth[@]}" "${API}/deployments/${dep}" | sed -n 's/.*"status":"\([a-z_]*\)".*/\1/p' | head -1)
+              echo "${name} [${i}] status=${status}"
+              case "${status}" in
+                finished) return 0 ;;
+                failed|cancelled*) echo "${name} deploy FAILED"; return 1 ;;
+              esac
+            done
+            echo "${name} deploy timed out"; return 1
+          }
+          deploy_and_wait "${DASHBOARD_UUID}" "dashboard"
+          deploy_and_wait "${WORKER_UUID}" "worker"
+          echo "Production deploys complete for image tag: ${IMAGE_TAG:-n/a}"
