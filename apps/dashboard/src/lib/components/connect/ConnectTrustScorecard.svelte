@@ -11,6 +11,9 @@
   export let scorecard: Promise<ConnectTrustScorecard | null>;
 
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
+  const GRAPH_BASE = CONNECT_BASE + "/graph";
+  const PIPELINE_STORE_HREF = CONNECT_BASE + "/pipeline?step=store";
+  const REVALIDATE_HREF = GRAPH_BASE + "?workspace=tools&focus=validate";
 
   let retrying = false;
   async function retry() {
@@ -30,6 +33,26 @@
     excluded: "Excluded",
   };
   const STATE_ORDER = ["supported", "inferred", "unverified", "contradicted", "excluded"] as const;
+
+  /**
+   * W2.3: each factor maps to a graph-explorer filter so "−6.2 pts" rows are receipts
+   * that link to the ideas that caused the deduction. W2.1 defined the ?filter= contract;
+   * W2.2 adds evidence-state filters once it merges (coordinate values here).
+   */
+  const FACTOR_FILTER: Record<string, string | null> = {
+    embedding_coverage: "missing_embed",
+    verification_coverage: "unverified",
+    orphan_rate: "review",
+    issue_penalty: "review",
+    vector_index: null,    // store-level — no per-idea filter
+    relation_health: null, // graph-level — no per-idea filter
+  };
+
+  function factorHref(factorId: string): string | null {
+    const filter = FACTOR_FILTER[factorId];
+    if (!filter) return null;
+    return `${GRAPH_BASE}?filter=${filter}`;
+  }
 
   function detractors(card: ConnectTrustScorecard) {
     return card.score_factors
@@ -66,6 +89,7 @@
     {:else}
       {@const lowered = detractors(card)}
       {@const g2Pass = card.g2.ok_pct >= card.targets.ok_pct_min && card.g2.unsupported_pct <= card.targets.unsupported_pct_max}
+      {@const neverVerified = !card.last_verified_at}
       <BrutalCard fill="white">
         <div class="score-head">
           <div class="score-readout" role="group" aria-label="Trust score">
@@ -85,26 +109,39 @@
             </div>
             <div class="score-meta-row">
               <dt>Last verified</dt>
-              <dd>{card.last_verified_at ? fmtDate(card.last_verified_at) : "Never — run validation"}</dd>
+              <dd>
+                {#if neverVerified}
+                  <!-- D-P1-2: "Never" is no longer a dead-end; link to the revalidate tool -->
+                  <a href={REVALIDATE_HREF} class="action-link">Never — run validation →</a>
+                {:else}
+                  {fmtDate(card.last_verified_at!)}
+                {/if}
+              </dd>
             </div>
           </dl>
         </div>
 
         <ul class="metric-grid" aria-label="Scorecard metrics">
           <li>
-            <span class="metric-value">{card.evidence.bound_pct}%</span>
-            <span class="metric-label">Evidence-bound</span>
-            <span class="metric-detail">{card.evidence.bound.toLocaleString()} of {card.units.toLocaleString()} ideas carry a re-checkable source span</span>
+            <a class="metric-link" href="{GRAPH_BASE}?filter=unbound" aria-label="Evidence-bound: {card.evidence.bound_pct}% — see unbound ideas">
+              <span class="metric-value">{card.evidence.bound_pct}%</span>
+              <span class="metric-label">Evidence-bound</span>
+              <span class="metric-detail">{card.evidence.bound.toLocaleString()} of {card.units.toLocaleString()} ideas carry a re-checkable source span</span>
+            </a>
           </li>
           <li>
-            <span class="metric-value">{card.embedding.pct}%</span>
-            <span class="metric-label">Embedding coverage</span>
-            <span class="metric-detail">{card.embedding.embedded.toLocaleString()} of {card.units.toLocaleString()} ideas embedded</span>
+            <a class="metric-link" href="{GRAPH_BASE}?filter=missing_embed" aria-label="Embedding coverage: {card.embedding.pct}% — see un-embedded ideas">
+              <span class="metric-value">{card.embedding.pct}%</span>
+              <span class="metric-label">Embedding coverage</span>
+              <span class="metric-detail">{card.embedding.embedded.toLocaleString()} of {card.units.toLocaleString()} ideas embedded</span>
+            </a>
           </li>
           <li>
-            <span class="metric-value">{card.g2.ok}/{card.g2.ok + card.g2.weak + card.g2.unsupported}</span>
-            <span class="metric-label">Validated supported</span>
-            <span class="metric-detail">{card.g2.weak.toLocaleString()} weak · {card.g2.unsupported.toLocaleString()} unsupported</span>
+            <a class="metric-link" href="{GRAPH_BASE}?filter=review" aria-label="Validated supported: {card.g2.ok} — triage flagged ideas">
+              <span class="metric-value">{card.g2.ok}/{card.g2.ok + card.g2.weak + card.g2.unsupported}</span>
+              <span class="metric-label">Validated supported</span>
+              <span class="metric-detail">{card.g2.weak.toLocaleString()} weak · {card.g2.unsupported.toLocaleString()} unsupported</span>
+            </a>
           </li>
           {#if card.temporal}
             <li>
@@ -120,38 +157,47 @@
             </li>
           {/if}
           <li>
-            <span class="metric-value">
-              {card.coverage.validator_gaps == null && card.coverage.remediation_drops == null
-                ? "—"
-                : (card.coverage.validator_gaps ?? 0) + (card.coverage.remediation_drops ?? 0)}
-            </span>
-            <span class="metric-label">Coverage gaps</span>
-            <span class="metric-detail">
-              {#if card.coverage.validator_gaps == null && card.coverage.remediation_drops == null}
-                Store could not answer — re-test the graph store connection
-              {:else}
-                {card.coverage.validator_gaps ?? "?"} validator omissions · {card.coverage.remediation_drops ?? "?"} remediation drops
-              {/if}
-            </span>
+            <!-- D-P1-2: coverage-gap rows now link to the pipeline store step -->
+            {#if card.coverage.validator_gaps != null || card.coverage.remediation_drops != null}
+              <a class="metric-link" href={PIPELINE_STORE_HREF} aria-label="Coverage gaps — check graph store">
+                <span class="metric-value">
+                  {(card.coverage.validator_gaps ?? 0) + (card.coverage.remediation_drops ?? 0)}
+                </span>
+                <span class="metric-label">Coverage gaps</span>
+                <span class="metric-detail">
+                  {card.coverage.validator_gaps ?? "?"} validator omissions · {card.coverage.remediation_drops ?? "?"} remediation drops
+                </span>
+              </a>
+            {:else}
+              <span class="metric-value">—</span>
+              <span class="metric-label">Coverage gaps</span>
+              <span class="metric-detail">
+                <!-- D-P1-2: dead-end resolved — link to the store config page -->
+                Store could not answer — <a href={PIPELINE_STORE_HREF}>check graph store connection</a>
+              </span>
+            {/if}
           </li>
         </ul>
 
         <p class="states-label">Verification states</p>
         <ul class="state-chips" aria-label="Per-state idea counts">
           {#each STATE_ORDER as state (state)}
-            <li class="state-chip state-{state}" class:state-zero={!(card.verification_states[state] ?? 0)}>
+            {@const count = card.verification_states[state] ?? 0}
+            <li class="state-chip state-{state}" class:state-zero={!count}>
               <a
                 class="state-chip-link"
-                href="{CONNECT_BASE}/graph?filter={state}"
-                title="Open the {STATE_LABELS[state].toLowerCase()} claims in the graph explorer's Evidence facet"
+                href="{GRAPH_BASE}?filter={state}"
+                aria-label="{count.toLocaleString()} {STATE_LABELS[state].toLowerCase()} ideas — view in explorer"
+                tabindex={count === 0 ? -1 : undefined}
               >
-                <span class="state-count">{(card.verification_states[state] ?? 0).toLocaleString()}</span>
+                <span class="state-count">{count.toLocaleString()}</span>
                 {STATE_LABELS[state]}
               </a>
             </li>
           {/each}
         </ul>
 
+        <!-- W2.3: factor rails — each deduction row is a receipt that links to the ideas causing it -->
         <details class="lowered" open={lowered.length > 0}>
           <summary class="lowered-summary">What lowered this score</summary>
           {#if lowered.length === 0}
@@ -159,16 +205,17 @@
           {:else}
             <ul class="lowered-list">
               {#each lowered as factor (factor.id)}
+                {@const href = factorHref(factor.id)}
                 <li>
-                  <span class="lowered-points">−{fmtPoints(factor.lost)} pts</span>
+                  <span class="lowered-points" aria-label="minus {fmtPoints(factor.lost)} points">−{fmtPoints(factor.lost)} pts</span>
                   <span class="lowered-factor">{factor.label}</span>
                   <span class="lowered-attained">{fmtPoints(factor.points)} of {factor.max_points}</span>
+                  {#if href}
+                    <a class="lowered-drill" href={href} aria-label="Show ideas that caused this deduction">Show →</a>
+                  {/if}
                 </li>
               {/each}
             </ul>
-            <p class="lowered-action">
-              <a href="{CONNECT_BASE}/graph?filter=review">Triage flagged ideas →</a>
-            </p>
           {/if}
         </details>
 
@@ -179,16 +226,18 @@
       </BrutalCard>
     {/if}
   {:catch}
+    <!-- D-P2-2: recovery actions inside BrutalErrorBanner's actions snippet -->
     <BrutalErrorBanner
       title="Scorecard unavailable"
       message="Could not read the graph store to compute the trust scorecard. Your graph is unaffected — this is a read failure."
-    />
-    <div class="scorecard-error-actions">
-      <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
-        {retrying ? "Retrying…" : "Try again"}
-      </button>
-      <a class="btn btn-outline btn-sm" href="{CONNECT_BASE}/pipeline?step=store">Check graph store</a>
-    </div>
+    >
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+          {retrying ? "Retrying…" : "Try again"}
+        </button>
+        <a class="btn btn-outline btn-sm" href="{CONNECT_BASE}/pipeline?step=store">Check graph store</a>
+      {/snippet}
+    </BrutalErrorBanner>
   {/await}
 </section>
 
@@ -253,6 +302,12 @@
     margin: 0;
     font-size: var(--text-sm);
   }
+  .action-link {
+    color: var(--color-ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
   .bar-tag {
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
@@ -261,11 +316,14 @@
     padding: 0 var(--space-1);
     margin-right: var(--space-2);
   }
+  /* W2.3: defined state tokens — no --color-*-tint fallbacks */
   .bar-pass {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
+    color: var(--state-ok-fg);
   }
   .bar-fail {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
   }
   .metric-grid {
     list-style: none;
@@ -277,11 +335,27 @@
   }
   .metric-grid li {
     border: var(--border);
-    padding: var(--space-2) var(--space-3);
+    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
     background: var(--color-surface);
+  }
+  /* W2.3: metric cells are links so every number is a receipt that leads somewhere */
+  .metric-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.1s ease;
+  }
+  .metric-link:hover {
+    background: color-mix(in oklab, var(--color-yellow) 12%, var(--color-surface));
+  }
+  .metric-grid li > :not(.metric-link) {
+    padding: var(--space-2) var(--space-3);
   }
   .metric-value {
     font-family: var(--font-display);
@@ -318,20 +392,40 @@
     border: var(--border);
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
-    padding: 2px var(--space-2);
+    padding: 0;
     background: var(--color-surface);
   }
+  /* W2.3: defined state tokens — no --color-*-tint hex fallbacks (D-P1-4) */
   .state-chip.state-supported {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
+    color: var(--state-ok-fg);
+    border-color: var(--state-ok-fg);
   }
   .state-chip.state-contradicted {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
+    border-color: var(--state-fail-fg);
   }
   .state-chip.state-unverified {
-    background: var(--color-yellow-tint, #fff8e1);
+    background: var(--state-warn-bg);
+    color: var(--state-warn-fg);
+    border-color: var(--state-warn-fg);
   }
   .state-chip.state-zero {
-    opacity: 0.55;
+    opacity: 0.45;
+  }
+  /* Chip is a link to the filtered explorer */
+  .state-chip-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    text-decoration: none;
+    color: inherit;
+  }
+  .state-chip-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .state-chip-link {
     color: inherit;
@@ -342,7 +436,6 @@
   }
   .state-count {
     font-weight: 700;
-    margin-right: var(--space-1);
   }
   .lowered {
     border: var(--border);
@@ -383,6 +476,8 @@
     font-family: var(--font-mono);
     font-weight: 700;
     min-width: 4.5rem;
+    /* D-P2-1: color is not the only indicator — weight + minus glyph also signal severity */
+    color: var(--state-fail-fg);
   }
   .lowered-factor {
     flex: 1;
@@ -392,18 +487,20 @@
     font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
   }
-  .lowered-action {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
+  /* W2.3: per-factor "Show →" deep-link — the receipt for each deduction */
+  .lowered-drill {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
   }
   .scorecard-footnote {
     margin: 0;
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
     line-height: 1.5;
-  }
-  .scorecard-error-actions {
-    display: flex;
-    gap: var(--space-2);
   }
 </style>

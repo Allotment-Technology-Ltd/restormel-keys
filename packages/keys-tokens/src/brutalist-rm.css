@@ -147,5 +147,17 @@
   --focus-ring-offset: 0;
   --focus-ring: 0 0 0 2px var(--color-yellow);
 
+  /* ── State tokens (W2.3) ──
+     Defined values — never ride hex fallbacks.
+     bg: background fill for badges / chips / left-border highlights.
+     fg: foreground text / border drawn ON the bg (WCAG AA on each bg).
+     Use these instead of --color-*-tint (which is undefined in this theme). */
+  --state-ok-bg: #d8f3e3;
+  --state-ok-fg: #166534;
+  --state-warn-bg: #fef3c7;
+  --state-warn-fg: #92400e;
+  --state-fail-bg: #fee2e2;
+  --state-fail-fg: #991b1b;
+
   color-scheme: light;
 }

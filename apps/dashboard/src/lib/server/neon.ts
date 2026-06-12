@@ -7930,6 +7930,8 @@ export type ConnectEvalVerdictRow = {
   verdict: unknown;
   diff: unknown | null;
   recordedAt: string;
+  /** W3.4 handoff: ingest job id that produced this verdict (null for CLI / CI-action rows). */
+  sourceRunId: string | null;
 };
 
 /** Stage 2.4: persist one eval verdict to the workspace quality-history timeline. */
@@ -7941,15 +7943,18 @@ export async function insertConnectEvalVerdict(params: {
   verdictSchema: string;
   verdict: unknown;
   diff: unknown | null;
+  /** W3.4 handoff: ingest job id when the verdict was produced by an ingest run. */
+  sourceRunId?: string | null;
 }): Promise<{ id: string; recordedAt: string }> {
   await ensureConnectEvalVerdictsSchema();
   const sql = getSql();
   const rows = await sql`
     INSERT INTO connect_eval_verdicts
-      (workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff)
+      (workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, source_run_id)
     VALUES
       (${params.workspaceId}, ${params.source}, ${params.evaluatedAt}, ${params.pass},
-       ${params.verdictSchema}, ${JSON.stringify(params.verdict)}, ${params.diff ? JSON.stringify(params.diff) : null})
+       ${params.verdictSchema}, ${JSON.stringify(params.verdict)}, ${params.diff ? JSON.stringify(params.diff) : null},
+       ${params.sourceRunId ?? null})
     RETURNING id, recorded_at
   `;
   const row = rows[0] as { id: string | number; recorded_at: Date | string };
@@ -7969,14 +7974,14 @@ export async function listConnectEvalVerdicts(params: {
   const limit = Math.min(params.limit ?? 50, 200);
   const rows = params.beforeId
     ? await sql`
-        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at
+        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at, source_run_id
         FROM connect_eval_verdicts
         WHERE workspace_id = ${params.workspaceId} AND id < ${params.beforeId}
         ORDER BY evaluated_at DESC, id DESC
         LIMIT ${limit}
       `
     : await sql`
-        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at
+        SELECT id, workspace_id, source, evaluated_at, pass, verdict_schema, verdict, diff, recorded_at, source_run_id
         FROM connect_eval_verdicts
         WHERE workspace_id = ${params.workspaceId}
         ORDER BY evaluated_at DESC, id DESC
@@ -7992,6 +7997,7 @@ export async function listConnectEvalVerdicts(params: {
     verdict: r.verdict,
     diff: r.diff ?? null,
     recordedAt: r.recorded_at instanceof Date ? r.recorded_at.toISOString() : String(r.recorded_at),
+    sourceRunId: typeof r.source_run_id === 'string' && r.source_run_id ? r.source_run_id : null,
   }));
 }
 

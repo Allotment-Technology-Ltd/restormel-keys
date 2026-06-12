@@ -204,15 +204,29 @@ export async function loadConnectHubPage(
 export type ConnectGraphPulse = {
   stats: ConnectGraphStatsView | null;
   graphHealth: ReturnType<typeof graphStatsToHealthSummary> | null;
+  /**
+   * W2.3: trust score from the scorecard service (single source of truth).
+   * The pulse band QUOTES this value instead of recomputing from graphHealth.
+   * Null when the scorecard could not be loaded (no graph yet, or store error).
+   */
+  scorecardTrustScore: number | null;
+  /**
+   * W2.3: the formula footnote from the scorecard, for the "powered by" tooltip.
+   * Null when scorecardTrustScore is null.
+   */
+  trustFormula: string | null;
 };
 
 /**
- * Authoritative graph stats for the pulse band — recomputes the full aggregates
- * (relations, groups, embedded, validation) when the cache is cold/stale. Streamed
- * separately from the hub shell, which shows the fast unit-count skeleton meanwhile.
+ * Authoritative graph stats + scorecard trust score for the pulse band.
+ * Recomputes the full aggregates (relations, groups, embedded, validation)
+ * when the cache is cold/stale. Streamed separately from the hub shell.
  *
  * Per-request deduplication (F6): reads the shared stats memo from event.locals so
  * this call and the concurrent scorecard load share one resolution promise.
+ *
+ * W2.3: the scorecard service is the single source of trust score truth — the
+ * pulse band quotes the scorecard value, never recomputes it independently.
  */
 export async function loadConnectGraphPulse(
   event: Pick<ServerLoadEvent, "locals" | "parent">,
@@ -226,9 +240,18 @@ export async function loadConnectGraphPulse(
       event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
     );
     const requestMemo = event.locals.connectStatsRequestMemo as ConnectStatsRequestMemo | undefined;
-    const stats = await resolveConnectGraphStats(workspace.id, { requestMemo }).catch(() => null);
+    // Both stats and scorecard share the requestMemo — one store scan.
+    const [stats, scorecard] = await Promise.all([
+      resolveConnectGraphStats(workspace.id, { requestMemo }).catch(() => null),
+      loadConnectTrustScorecard(workspace.id, { requestMemo }).catch(() => null),
+    ]);
     const graphHealth = stats ? graphStatsToHealthSummary(stats) : null;
-    return { stats, graphHealth };
+    return {
+      stats,
+      graphHealth,
+      scorecardTrustScore: scorecard?.trust_score ?? null,
+      trustFormula: scorecard?.trust_formula ?? null,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[connect-hub] loadConnectGraphPulse failed:", msg.slice(0, 300));
@@ -283,5 +306,7 @@ export async function loadConnectQualityHistoryPanel(
     source: row.source as ConnectEvalVerdictEntry["source"],
     verdict: row.verdict as ConnectEvalVerdictEntry["verdict"],
     diff: (row.diff as ConnectEvalVerdictEntry["diff"]) ?? null,
+    // W3.4 handoff: cross-link quality-history rows back to their producing run console.
+    source_run_id: row.sourceRunId ?? null,
   }));
 }
