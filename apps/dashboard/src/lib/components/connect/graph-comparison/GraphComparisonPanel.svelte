@@ -7,6 +7,7 @@
     SuggestedQuestion,
   } from "$lib/connect/graph-comparison-types";
   import { streamComparison } from "$lib/connect/comparison-stream";
+  import { INGEST_FLOW_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
   import ComparisonQuestion from "./ComparisonQuestion.svelte";
   import ResponsePanel from "./ResponsePanel.svelte";
   import QualityDeltaPanel from "./QualityDelta.svelte";
@@ -16,7 +17,7 @@
   export let hasGraph = false;
   export let routes: ChatRouteOption[] = [];
   export let suggestCacheKey = "";
-  export let connectBase = "/keys/dashboard/connect";
+  export let proveBase = "/keys/dashboard/prove";
 
   type PanelMode = "raw" | "graph";
   type PanelState = {
@@ -86,7 +87,7 @@
 
     try {
       const { retrieval, traceExportUrl } = await streamComparison({
-        connectBase,
+        proveBase,
         mode,
         question: lastQuestion,
         routeId: selectedRouteId || undefined,
@@ -113,7 +114,7 @@
     if (panelRaw.status !== "complete" || panelGraph.status !== "complete") return;
     deltaLoading = true;
     try {
-      const res = await fetch(`${connectBase}/proof/api/delta`, {
+      const res = await fetch(`${proveBase}/api/delta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -162,7 +163,7 @@
     suggestionsLoading = true;
     suggestionsFailed = false;
     try {
-      const res = await fetch(`${connectBase}/proof/api/suggest`, {
+      const res = await fetch(`${proveBase}/api/suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cacheKey: suggestCacheKey }),
@@ -210,7 +211,7 @@
       <p class="empty-body">
         Run your first ingest to build your knowledge graph, then come back here to see what it knows.
       </p>
-      <a class="empty-cta brut-pressable brut-focus" href={`${connectBase}/pipeline`}>
+      <a class="empty-cta brut-pressable brut-focus" href={INGEST_FLOW_HREF}>
         START YOUR FIRST RUN →
       </a>
     </div>
@@ -218,7 +219,7 @@
     <div class="notice">
       <p>
         Configure a model route in
-        <a href={`${connectBase}/models`}>Ingest routes</a>
+        <a href={INGEST_ROUTES_HREF}>Ingest routes</a>
         before testing your graph.
       </p>
     </div>

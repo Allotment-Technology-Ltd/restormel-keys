@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { CONNECT_HUB_HREF } from "$lib/nav-config";
+  import { HOME_HREF } from "$lib/nav-config";
 
   $: path = $page.url.pathname;
 
@@ -60,7 +60,7 @@
         Ingest quality
       </a>
     </nav>
-    <a class="admin-back" href={CONNECT_HUB_HREF}>← Connect hub</a>
+    <a class="admin-back" href={HOME_HREF}>← Dashboard</a>
   </aside>
   <div class="admin-main">
     <slot />

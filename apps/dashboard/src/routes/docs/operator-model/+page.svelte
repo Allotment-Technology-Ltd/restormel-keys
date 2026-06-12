@@ -31,8 +31,8 @@
         <tr><td>CI / goals</td><td><a href="/keys/dashboard/testing">Testing hub</a></td></tr>
       {/if}
       {#if flags.connect}
-        <tr><td>Corpus / graph store</td><td><a href="/keys/dashboard/connect/pipeline">Knowledge pipeline</a></td></tr>
-        <tr><td>Ingest runs</td><td><a href="/keys/dashboard/connect/ingest">Knowledge ingest</a></td></tr>
+        <tr><td>Corpus / graph store</td><td><a href="/keys/dashboard/sources/ingest">Ingest flow</a></td></tr>
+        <tr><td>Ingest runs</td><td><a href="/keys/dashboard/runs">Runs</a></td></tr>
       {/if}
       {#if flags.graph !== "disabled"}
         <tr>

@@ -1,79 +1,126 @@
 /**
- * Nav config: scope-first workspace IA and topbar title.
+ * Nav config: north-star IA (redesign §2.2) and topbar titles.
  */
 import { describe, it, expect } from "vitest";
 import {
   NAV_GROUPS,
   WORK_NAV_ITEMS,
-  WORKSPACE_HOME_HREF,
-  CONNECT_HUB_HREF,
+  TESTING_NAV_ITEM,
+  HOME_HREF,
+  SOURCES_HREF,
+  RUNS_HREF,
+  CLAIMS_HREF,
+  CLAIMS_MEMORY_HREF,
+  PROVE_HREF,
+  AGENTS_HREF,
   TESTING_HUB_HREF,
+  INGEST_ROUTES_HREF,
+  WORKSPACE_HOME_HREF,
   topbarTitle,
   defaultNavGroupsOpen,
   hydrateNavGroupsOpen,
-  isConnectHubRoot,
   isWorkNavActive,
   navGroupContainsPath,
+  filterWorkNavForModuleFlags,
+  filterTestingNavForModuleFlags,
   filterNavGroupsForModuleFlags,
 } from "./nav-config";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
-describe("sidebar nav", () => {
-  it("orders work nav as overview then product hubs", () => {
-    expect(WORK_NAV_ITEMS.map((i) => i.label)).toEqual(["Overview", "Connect", "Testing"]);
+describe("sidebar nav (§2.2)", () => {
+  it("orders the six work sections as the product loop", () => {
+    expect(WORK_NAV_ITEMS.map((i) => i.label)).toEqual([
+      "Home",
+      "Sources",
+      "Runs",
+      "Claims",
+      "Prove",
+      "Agents",
+    ]);
+    expect(WORK_NAV_ITEMS.map((i) => i.href)).toEqual([
+      HOME_HREF,
+      SOURCES_HREF,
+      RUNS_HREF,
+      CLAIMS_HREF,
+      PROVE_HREF,
+      AGENTS_HREF,
+    ]);
   });
 
-  it("does not duplicate Connect sub-routes in sidebar groups", () => {
-    expect(NAV_GROUPS.map((g) => g.id)).toEqual(["keys", "observe", "tools"]);
-    const connectHrefs = NAV_GROUPS.flatMap((g) =>
-      g.items.filter((i) => i.href.includes("/connect")).map((i) => i.href)
-    );
-    expect(connectHrefs).toEqual([]);
+  it("login landing (workspace home) is /home", () => {
+    expect(WORKSPACE_HOME_HREF).toBe(DASHBOARD_BASE + "/home");
   });
 
-  it("uses operator-model group labels", () => {
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(["Configure", "Monitor", "More"]);
+  it("has exactly two collapsed groups: Foundation and Observe", () => {
+    expect(NAV_GROUPS.map((g) => g.id)).toEqual(["foundation", "observe"]);
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual(["Foundation", "Observe"]);
   });
 
-  it("contains expected grouped labels without duplicate work items", () => {
-    const labels = NAV_GROUPS.flatMap((group) => group.items.map((item) => item.label));
-    expect(labels).toContain("Connections");
-    expect(labels).toContain("Routes");
-    expect(labels).toContain("Guard rails");
-    expect(labels).toContain("Model catalog");
-    expect(labels).toContain("Usage");
-    expect(labels).toContain("Logs");
-    expect(labels).toContain("Health");
-    expect(labels).toContain("Gateway keys");
-    expect(labels).toContain("Try a request");
-    expect(labels).not.toContain("CI snippets");
-    expect(labels).toContain("CLI & agents");
-    expect(labels).not.toContain("Testing");
-    expect(labels).not.toContain("Overview");
-    expect(labels).toContain("Graph");
+  it("Foundation matches §2.2 exactly (incl. Projects and Request tester)", () => {
+    const foundation = NAV_GROUPS.find((g) => g.id === "foundation")!;
+    expect(foundation.items.map((i) => [i.label, i.href])).toEqual([
+      ["Connections", DASHBOARD_BASE + "/integrations"],
+      ["Gateway keys", DASHBOARD_BASE + "/access"],
+      ["Routes", DASHBOARD_BASE + "/routes"],
+      ["Guard rails", DASHBOARD_BASE + "/policies"],
+      ["Projects", DASHBOARD_BASE + "/projects"],
+      ["Model catalog", DASHBOARD_BASE + "/models"],
+      ["Request tester", DASHBOARD_BASE + "/sandbox"],
+    ]);
   });
 
-  it("collapses secondary groups by default", () => {
-    expect(defaultNavGroupsOpen().keys).toBe(false);
+  it("Observe matches §2.2 exactly", () => {
+    const observe = NAV_GROUPS.find((g) => g.id === "observe")!;
+    expect(observe.items.map((i) => [i.label, i.href])).toEqual([
+      ["Logs", DASHBOARD_BASE + "/logs"],
+      ["Usage", DASHBOARD_BASE + "/analytics"],
+      ["Health", DASHBOARD_BASE + "/healthcheck"],
+    ]);
+  });
+
+  it("does not link any dissolved /connect URL anywhere", () => {
+    const allHrefs = [
+      ...WORK_NAV_ITEMS.map((i) => i.href),
+      TESTING_NAV_ITEM.href,
+      ...NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)),
+    ];
+    expect(allHrefs.filter((h) => h.includes("/connect"))).toEqual([]);
+    // Graph-module stub is out of nav (D8); dev-tools merges into Agents in R5.
+    expect(allHrefs.filter((h) => h.endsWith("/graph") || h.includes("/dev-tools"))).toEqual([]);
+  });
+
+  it("Testing lives below the groups, not in the work zone", () => {
+    expect(TESTING_NAV_ITEM).toEqual({ href: TESTING_HUB_HREF, label: "Testing" });
+    expect(WORK_NAV_ITEMS.map((i) => i.label)).not.toContain("Testing");
+  });
+
+  it("collapses both groups by default", () => {
+    expect(defaultNavGroupsOpen().foundation).toBe(false);
     expect(defaultNavGroupsOpen().observe).toBe(false);
-    expect(defaultNavGroupsOpen().tools).toBe(false);
   });
 
-  it("migrates legacy localStorage group keys", () => {
-    const open = hydrateNavGroupsOpen({ build: true, quality: true, embed: true, connect: true, suite: true });
-    expect(open.keys).toBe(true);
-    expect(open.tools).toBe(true);
+  it("migrates legacy localStorage group keys (keys→foundation, monitor→observe)", () => {
+    expect(hydrateNavGroupsOpen({ keys: true }).foundation).toBe(true);
+    expect(hydrateNavGroupsOpen({ build: true }).foundation).toBe(true);
+    expect(hydrateNavGroupsOpen({ connect: true }).foundation).toBe(true);
+    expect(hydrateNavGroupsOpen({ monitor: true }).observe).toBe(true);
+    expect(hydrateNavGroupsOpen({ keys: false, monitor: false })).toEqual({
+      foundation: false,
+      observe: false,
+    });
+    // New keys win over legacy ones.
+    expect(hydrateNavGroupsOpen({ foundation: false, keys: true }).foundation).toBe(false);
+    expect(hydrateNavGroupsOpen(null)).toEqual(defaultNavGroupsOpen());
   });
 
-  it("detects Connect hub root only on exact path", () => {
-    expect(isConnectHubRoot(CONNECT_HUB_HREF)).toBe(true);
-    expect(isConnectHubRoot(CONNECT_HUB_HREF + "/pipeline")).toBe(false);
-  });
-
-  it("highlights Connect on all connect sub-routes", () => {
-    expect(isWorkNavActive(CONNECT_HUB_HREF + "/pipeline", CONNECT_HUB_HREF)).toBe(true);
-    expect(isWorkNavActive(DASHBOARD_BASE + "/routes", CONNECT_HUB_HREF)).toBe(false);
+  it("highlights sections on their sub-routes", () => {
+    expect(isWorkNavActive(RUNS_HREF + "/job-1", RUNS_HREF)).toBe(true);
+    expect(isWorkNavActive(CLAIMS_MEMORY_HREF, CLAIMS_HREF)).toBe(true);
+    expect(isWorkNavActive(SOURCES_HREF + "/ingest", SOURCES_HREF)).toBe(true);
+    expect(isWorkNavActive(DASHBOARD_BASE + "/routes", RUNS_HREF)).toBe(false);
+    expect(isWorkNavActive(HOME_HREF, HOME_HREF)).toBe(true);
+    expect(isWorkNavActive(CLAIMS_HREF, HOME_HREF)).toBe(false);
   });
 
   it("highlights Testing hub on CI snippets path", () => {
@@ -81,40 +128,61 @@ describe("sidebar nav", () => {
     expect(isWorkNavActive(DASHBOARD_BASE + "/copy-for-ci", TESTING_HUB_HREF)).toBe(true);
   });
 
-  it("highlights Overview only on activity path", () => {
-    expect(isWorkNavActive(WORKSPACE_HOME_HREF, WORKSPACE_HOME_HREF)).toBe(true);
-    expect(isWorkNavActive(CONNECT_HUB_HREF, WORKSPACE_HOME_HREF)).toBe(false);
+  it("detects active path inside the Foundation group", () => {
+    const foundation = NAV_GROUPS.find((g) => g.id === "foundation")!;
+    expect(navGroupContainsPath(foundation, DASHBOARD_BASE + "/routes")).toBe(true);
+    expect(navGroupContainsPath(foundation, INGEST_ROUTES_HREF)).toBe(true);
+    expect(navGroupContainsPath(foundation, CLAIMS_HREF)).toBe(false);
   });
 
-  it("detects active path inside configure group", () => {
-    const keys = NAV_GROUPS.find((g) => g.id === "keys")!;
-    expect(navGroupContainsPath(keys, DASHBOARD_BASE + "/routes")).toBe(true);
-    expect(navGroupContainsPath(keys, CONNECT_HUB_HREF)).toBe(false);
+  it("gates the five Connect sections on the connect flag; Home always shows", () => {
+    const withConnect = filterWorkNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, connect: true });
+    expect(withConnect.map((i) => i.label)).toEqual(["Home", "Sources", "Runs", "Claims", "Prove", "Agents"]);
+    const withoutConnect = filterWorkNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, connect: false });
+    expect(withoutConnect.map((i) => i.label)).toEqual(["Home"]);
   });
 
-  it("keeps Monitor group with comingSoon when monitor flag off", () => {
+  it("gates Testing nav on the testing flag", () => {
+    expect(filterTestingNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, testing: true })).toEqual(TESTING_NAV_ITEM);
+    expect(filterTestingNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, testing: false })).toBeNull();
+  });
+
+  it("keeps Observe group with comingSoon when monitor flag off", () => {
     const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, monitor: false });
     const observe = filtered.find((g) => g.id === "observe");
     expect(observe?.comingSoon).toBe(true);
     expect(observe?.items).toEqual([]);
-    expect(observe?.label).toBe("Monitor");
   });
 
-  it("shows Monitor links when monitor flag on", () => {
+  it("shows Observe links when monitor flag on", () => {
     const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, monitor: true });
     const observe = filtered.find((g) => g.id === "observe");
     expect(observe?.comingSoon).toBeUndefined();
-    expect(observe?.items.map((i) => i.label)).toEqual(["Usage", "Logs", "Health"]);
+    expect(observe?.items.map((i) => i.label)).toEqual(["Logs", "Usage", "Health"]);
+  });
+
+  it("hides Guard rails when guardrails flag off", () => {
+    const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, guardrails: false });
+    const foundation = filtered.find((g) => g.id === "foundation");
+    expect(foundation?.items.map((i) => i.label)).not.toContain("Guard rails");
   });
 });
 
 describe("topbarTitle", () => {
-  it("returns Overview for workspace home", () => {
-    expect(topbarTitle(WORKSPACE_HOME_HREF)).toBe("Overview");
+  it("titles the six work sections", () => {
+    expect(topbarTitle(HOME_HREF)).toBe("Home");
+    expect(topbarTitle(SOURCES_HREF)).toBe("Sources");
+    expect(topbarTitle(RUNS_HREF)).toBe("Runs");
+    expect(topbarTitle(CLAIMS_HREF)).toBe("Claims");
+    expect(topbarTitle(PROVE_HREF)).toBe("Prove");
+    expect(topbarTitle(AGENTS_HREF)).toBe("Agents");
   });
 
-  it("returns Connect for hub root path", () => {
-    expect(topbarTitle(CONNECT_HUB_HREF)).toBe("Connect");
+  it("titles section detail pages", () => {
+    expect(topbarTitle(RUNS_HREF + "/job-42")).toBe("Run");
+    expect(topbarTitle(CLAIMS_MEMORY_HREF)).toBe("Memory inbox");
+    expect(topbarTitle(SOURCES_HREF + "/ingest")).toBe("Ingest");
+    expect(topbarTitle(INGEST_ROUTES_HREF)).toBe("Ingest routes");
   });
 
   it("returns Projects for /projects", () => {
@@ -127,6 +195,10 @@ describe("topbarTitle", () => {
 
   it("returns Project for project detail path", () => {
     expect(topbarTitle(DASHBOARD_BASE + "/projects/abc-123")).toBe("Project");
+  });
+
+  it("returns Request tester for /sandbox (relabelled per §2.3)", () => {
+    expect(topbarTitle(DASHBOARD_BASE + "/sandbox")).toBe("Request tester");
   });
 
   it("returns empty string for unknown path", () => {

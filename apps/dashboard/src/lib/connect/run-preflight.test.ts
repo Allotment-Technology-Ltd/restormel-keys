@@ -118,13 +118,13 @@ describe("mapConnectRunFailure (K-P2-1)", () => {
       "Provider anthropic is not OpenAI-compatible for Knowledge ingestion yet",
       BASE,
     );
-    expect(chat?.fixHref).toBe(`${BASE}/connect/models`);
+    expect(chat?.fixHref).toBe(`${BASE}/routes/ingestion`);
 
     const embed = mapConnectRunFailure(
       "Embedding via anthropic is not supported in Connect ingest yet — use openai, voyage, together, or vercel",
       BASE,
     );
-    expect(embed?.fixHref).toBe(`${BASE}/connect/models`);
+    expect(embed?.fixHref).toBe(`${BASE}/routes/ingestion`);
     expect(embed?.title).toMatch(/embedding/i);
   });
 

@@ -76,6 +76,8 @@ declare global {
       suiteModulesForUi?: import("$lib/suite/suite-modules").SuiteModule[];
       /** Filtered primary work nav (Keys dashboard). */
       workNavForUi?: import("$lib/nav-config").NavItem[];
+      /** Testing hub nav entry (below the collapsed groups), null when module off. */
+      testingNavForUi?: import("$lib/nav-config").NavItem | null;
       /** Graph marketing preview banner when graph module is preview-only. */
       graphModulePreview?: boolean;
     }

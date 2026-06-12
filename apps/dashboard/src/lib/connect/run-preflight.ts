@@ -117,7 +117,7 @@ export function mapConnectRunFailure(
 ): ConnectRunFailureHelp | null {
   if (!error) return null;
   const connectionsHref = `${base}/integrations`;
-  const modelsHref = `${base}/connect/models`;
+  const modelsHref = `${base}/routes/ingestion`;
 
   const credCode = /provider credentials missing \((no_provider_binding|integration_not_found|credential_unavailable)\)/i.exec(error)?.[1];
   if (credCode === "no_provider_binding") {

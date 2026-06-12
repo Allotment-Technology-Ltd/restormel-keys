@@ -141,7 +141,7 @@ describe("search result shape", () => {
 
   it("graph_unit url encodes the unit id", () => {
     const unitId = "unit:abc/def?special=true";
-    const url = `/keys/dashboard/connect/graph?unit=${encodeURIComponent(unitId)}`;
+    const url = `/keys/dashboard/claims?unit=${encodeURIComponent(unitId)}`;
     expect(url).not.toContain("?unit=unit:abc/def");
     expect(url).toContain(encodeURIComponent(unitId));
   });

@@ -29,7 +29,17 @@ export function moduleDisabledRedirectPath(pathname: string, flags: ModuleFlags)
   if (pathname.startsWith("/keys/dashboard/copy-for-ci")) {
     if (!flags.testing) return "/keys/dashboard?module-disabled=testing";
   }
-  if (pathname.startsWith("/keys/dashboard/connect")) {
+  // R2: the Connect hub dissolved into top-level work sections (redesign §2.2);
+  // legacy /keys/dashboard/connect/* still 308s through these prefixes.
+  const connectDashboardPrefixes = [
+    "/keys/dashboard/connect",
+    "/keys/dashboard/sources",
+    "/keys/dashboard/runs",
+    "/keys/dashboard/claims",
+    "/keys/dashboard/prove",
+    "/keys/dashboard/agents",
+  ];
+  if (connectDashboardPrefixes.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     if (!flags.connect) return "/keys/dashboard?module-disabled=connect";
   }
   if (pathname.startsWith("/connect/v1/")) {

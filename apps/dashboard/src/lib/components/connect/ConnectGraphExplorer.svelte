@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { HOME_HREF, RUNS_HREF } from "$lib/nav-config";
   import { page } from "$app/stores";
   import { get } from "svelte/store";
   import {
@@ -176,7 +177,6 @@
   let revalidateOptions = revalidate;
   let revalidateOptionsLoading = false;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   /** Paginate triage list when filtered ideas exceed this count. */
   const QUEUE_PAGE_SIZE = 40;
@@ -1812,7 +1812,7 @@
         return;
       }
       catalogLinkStepComplete = true;
-      await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=link-sources`);
+      await goto(`${RUNS_HREF}/${jobId}?from=graph&task=link-sources`);
     } catch {
       linkSourcesError = "Network error while starting source linking.";
     } finally {
@@ -2060,7 +2060,7 @@
         return;
       }
       readinessEmbedStepComplete = true;
-      await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=embed-backfill`);
+      await goto(`${RUNS_HREF}/${jobId}?from=graph&task=embed-backfill`);
     } catch {
       embedError = "Network error while starting embed backfill.";
     } finally {
@@ -2111,7 +2111,7 @@
         batchValidateError = "Validation started but no job id was returned.";
         return;
       }
-      await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=revalidate`);
+      await goto(`${RUNS_HREF}/${jobId}?from=graph&task=revalidate`);
     } catch {
       batchValidateError = "Network error while starting validation.";
     } finally {
@@ -2157,7 +2157,7 @@
         revalidateError = "Auto-remediation started but no job id was returned.";
         return;
       }
-      await goto(`${CONNECT_BASE}/ingest/${jobId}?from=graph&task=auto-remediate`);
+      await goto(`${RUNS_HREF}/${jobId}?from=graph&task=auto-remediate`);
     } catch {
       revalidateError = "Network error while starting auto-remediation.";
     } finally {
@@ -2204,7 +2204,7 @@
         {:else}
           <BrutalButton variant="blue" href={pipelineWizardHref("launch")}>Start a run</BrutalButton>
         {/if}
-        <BrutalButton variant="canvas" href={CONNECT_BASE}>Connect home</BrutalButton>
+        <BrutalButton variant="canvas" href={HOME_HREF}>Home</BrutalButton>
       </div>
     </BrutalCard>
   {:else}

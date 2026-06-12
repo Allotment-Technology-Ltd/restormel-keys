@@ -4,6 +4,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     NAV_GROUPS,
+    CLAIMS_HREF,
     isWorkNavActive,
     navGroupContainsPath,
     topbarTitle,
@@ -13,6 +14,7 @@
     type NavItem,
     type NavGroup,
   } from "$lib/nav-config";
+  import { connectReviewCount } from "$lib/stores/connect-review-count";
   import { contextualHelpForPath, SUITE_MAP_LINK } from "$lib/dashboard-contextual-help";
   import { onMount } from "svelte";
   import { developerPortalUrl } from "$lib/developer-portal-url";
@@ -48,6 +50,7 @@
   $: contextualHelp = contextualHelpForPath(currentPath);
   $: projectContextsSource = $page.data.projectContexts ?? [];
   $: workNavForUi = ($page.data.workNavForUi ?? []) as NavItem[];
+  $: testingNavForUi = ($page.data.testingNavForUi ?? null) as NavItem | null;
   $: moduleFlags = $page.data.moduleFlags ?? null;
   $: navGroupsForLayout = ($page.data.navGroupsForUi ?? NAV_GROUPS) as NavGroup[];
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
@@ -204,13 +207,23 @@
           <p class="nav-section-label" id="nav-work-label">Work</p>
           <div class="nav-section-links" role="group" aria-labelledby="nav-work-label">
             {#each workNavForUi as item}
+              {@const claimsBadge =
+                item.href === CLAIMS_HREF && $connectReviewCount && $connectReviewCount > 0
+                  ? $connectReviewCount
+                  : null}
               <a
                 href={item.href}
                 class="nav-link nav-link-work"
                 class:nav-link-active={isWorkNavActive(currentPath, item.href)}
                 aria-current={isWorkNavActive(currentPath, item.href) ? "page" : undefined}
+                aria-label={claimsBadge
+                  ? `${item.label} — ${claimsBadge} ${claimsBadge === 1 ? "claim needs" : "claims need"} review`
+                  : undefined}
               >
                 {item.label}
+                {#if claimsBadge}
+                  <span class="nav-badge" aria-hidden="true">{claimsBadge}</span>
+                {/if}
               </a>
             {/each}
           </div>
@@ -251,6 +264,19 @@
             {/if}
           </section>
         {/each}
+
+        {#if testingNavForUi}
+          <div class="nav-section nav-section-testing">
+            <a
+              href={testingNavForUi.href}
+              class="nav-link nav-link-work"
+              class:nav-link-active={isWorkNavActive(currentPath, testingNavForUi.href)}
+              aria-current={isWorkNavActive(currentPath, testingNavForUi.href) ? "page" : undefined}
+            >
+              {testingNavForUi.label}
+            </a>
+          </div>
+        {/if}
       </nav>
       {#if user}
         <div class="feedback-nav-wrap">
@@ -343,9 +369,9 @@
               </p>
               <ol class="welcome-checklist" aria-label="Get started">
                 <li><strong>Sign in</strong> with GitHub.</li>
-                <li><strong>Overview</strong> shows workspace health, setup progress, and your next step.</li>
-                <li><strong>Connect</strong> is where you ingest documents, build a graph, and serve agent context.</li>
-                <li><strong>Configure</strong> in the sidebar wires Connections, routes, and guard rails for every stage.</li>
+                <li><strong>Home</strong> shows workspace health, setup progress, and your next step.</li>
+                <li><strong>Sources → Runs → Claims</strong> is where you ingest documents, build a graph, and review claims; <strong>Prove</strong> and <strong>Agents</strong> serve it to outsiders and agents.</li>
+                <li><strong>Foundation</strong> in the sidebar wires Connections, routes, and guard rails for every stage.</li>
                 <li><strong>Testing &amp; Graph</strong> open when you need CI assurance or embedded graph UIs.</li>
                 <li><strong>Docs</strong> — <a href="/docs/how-it-fits-together">how the suite fits together</a> when you want the map.</li>
               </ol>
@@ -503,6 +529,30 @@
     color: var(--brut-ink);
     background: var(--brut-neon);
     text-decoration: none;
+  }
+  .nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--space-2);
+    min-width: 1.25em;
+    height: 1.25em;
+    padding: 0 0.3em;
+    border-radius: 999px;
+    background: var(--brut-ink);
+    color: var(--brut-white);
+    font-size: 0.7em;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .nav-link-active .nav-badge {
+    background: var(--color-ink);
+    color: var(--color-yellow);
+  }
+  .nav-section-testing {
+    margin-top: var(--space-2);
+    border-bottom: 0;
+    padding-bottom: 0;
   }
   .nav-link-active {
     color: var(--color-ink);

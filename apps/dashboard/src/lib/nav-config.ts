@@ -1,11 +1,12 @@
 /**
- * Dashboard nav — scope-first IA aligned with SUITE-OPERATOR-MODEL.
+ * Dashboard nav — north-star IA (docs/design/keys-northstar-redesign-2026-06.md §2.2).
  *
- * Sidebar order: workspace context → primary work hubs → configure/monitor/more groups.
- * Multi-step flows use in-hub tabs (dashboard-hub-nav), not duplicate sidebar links.
+ * One product, one home: six top-level work sections (the product loop read
+ * top-to-bottom), two collapsed groups (Foundation, Observe), then Testing.
+ * The Connect hub is dissolved — there is no hub tab strip; sections are
+ * intents, not modules.
  */
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { moduleById } from "$lib/suite/suite-modules";
 
 import type { ModuleFlags } from "$lib/module-flags-types";
 
@@ -14,7 +15,7 @@ export type NavItem = {
   label: string;
 };
 
-export type NavGroupId = "keys" | "observe" | "tools";
+export type NavGroupId = "foundation" | "observe";
 
 export type NavGroup = {
   id: NavGroupId;
@@ -22,84 +23,77 @@ export type NavGroup = {
   items: NavItem[];
   /** When false, group starts collapsed (persisted in localStorage). */
   defaultOpen?: boolean;
-  /** Show coming-soon placeholder instead of nav links (Monitor when flag off). */
+  /** Show coming-soon placeholder instead of nav links (Observe when monitor flag off). */
   comingSoon?: boolean;
 };
 
-export const WORKSPACE_HOME_HREF = DASHBOARD_BASE + "/activity";
-export const CONNECT_HUB_HREF = DASHBOARD_BASE + "/connect";
+// ── Canonical section URLs (redesign §2.2) ─────────────────────────────────
+export const HOME_HREF = DASHBOARD_BASE + "/home";
+export const SOURCES_HREF = DASHBOARD_BASE + "/sources";
+/** The ingest guided flow (the relocated setup wizard — a flow, not a place; not in nav). */
+export const INGEST_FLOW_HREF = SOURCES_HREF + "/ingest";
+export const RUNS_HREF = DASHBOARD_BASE + "/runs";
+export const CLAIMS_HREF = DASHBOARD_BASE + "/claims";
+export const CLAIMS_MEMORY_HREF = CLAIMS_HREF + "/memory";
+export const PROVE_HREF = DASHBOARD_BASE + "/prove";
+export const AGENTS_HREF = DASHBOARD_BASE + "/agents";
 export const TESTING_HUB_HREF = DASHBOARD_BASE + "/testing";
+/** The per-stage ingest-routes view, rehomed under Routes (§2.3 `/connect/models` → MOVE). */
+export const INGEST_ROUTES_HREF = DASHBOARD_BASE + "/routes/ingestion";
 
-/** Primary work destinations — always visible below project context. */
+/** Workspace home (login landing). Alias kept for marketing/dashboard entry helpers. */
+export const WORKSPACE_HOME_HREF = HOME_HREF;
+
+/** Primary work destinations — the golden path, top of the sidebar. */
 export const WORK_NAV_ITEMS: NavItem[] = [
-  { href: WORKSPACE_HOME_HREF, label: "Overview" },
-  { href: CONNECT_HUB_HREF, label: "Connect" },
-  { href: TESTING_HUB_HREF, label: "Testing" },
+  { href: HOME_HREF, label: "Home" },
+  { href: SOURCES_HREF, label: "Sources" },
+  { href: RUNS_HREF, label: "Runs" },
+  { href: CLAIMS_HREF, label: "Claims" },
+  { href: PROVE_HREF, label: "Prove" },
+  { href: AGENTS_HREF, label: "Agents" },
 ];
 
-/** @deprecated Use WORK_NAV_ITEMS */
-export const HUB_ROOT_ITEMS: NavItem[] = WORK_NAV_ITEMS.filter((i) => i.href !== WORKSPACE_HOME_HREF);
-
-/** @deprecated Use WORKSPACE_HOME_HREF or WORK_NAV_ITEMS */
-export const OVERVIEW_ITEM: NavItem = WORK_NAV_ITEMS.find((i) => i.href === CONNECT_HUB_HREF) ?? WORK_NAV_ITEMS[1];
-
-const graphMod = moduleById("graph");
+/** Testing keeps its own hub below the collapsed groups (§2.2). */
+export const TESTING_NAV_ITEM: NavItem = { href: TESTING_HUB_HREF, label: "Testing" };
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    id: "keys",
-    label: "Configure",
+    id: "foundation",
+    label: "Foundation",
     defaultOpen: false,
     items: [
       { href: DASHBOARD_BASE + "/integrations", label: "Connections" },
       { href: DASHBOARD_BASE + "/access", label: "Gateway keys" },
       { href: DASHBOARD_BASE + "/routes", label: "Routes" },
       { href: DASHBOARD_BASE + "/policies", label: "Guard rails" },
+      { href: DASHBOARD_BASE + "/projects", label: "Projects" },
       { href: DASHBOARD_BASE + "/models", label: "Model catalog" },
+      { href: DASHBOARD_BASE + "/sandbox", label: "Request tester" },
     ],
   },
   {
     id: "observe",
-    label: "Monitor",
+    label: "Observe",
     defaultOpen: false,
     items: [
-      { href: DASHBOARD_BASE + "/analytics", label: "Usage" },
       { href: DASHBOARD_BASE + "/logs", label: "Logs" },
+      { href: DASHBOARD_BASE + "/analytics", label: "Usage" },
       { href: DASHBOARD_BASE + "/healthcheck", label: "Health" },
-    ],
-  },
-  {
-    id: "tools",
-    label: "More",
-    defaultOpen: false,
-    items: [
-      { href: DASHBOARD_BASE + "/sandbox", label: "Try a request" },
-      { href: DASHBOARD_BASE + "/dev-tools", label: "CLI & agents" },
-      { href: DASHBOARD_BASE + "/graph", label: graphMod.product.replace("Restormel ", "") },
     ],
   },
 ];
 
-/** True when pathname is the Connect hub home (not a sub-route). Used for hub tab "Home". */
-export function isConnectHubRoot(pathname: string): boolean {
-  return pathname === CONNECT_HUB_HREF;
-}
-
-/** Sidebar active state for primary work nav items. */
+/** Sidebar active state for primary work nav items (section prefixes). */
 export function isWorkNavActive(pathname: string, href: string): boolean {
-  if (href === WORKSPACE_HOME_HREF) return pathname === WORKSPACE_HOME_HREF;
-  if (href === CONNECT_HUB_HREF) {
-    return pathname === CONNECT_HUB_HREF || pathname.startsWith(CONNECT_HUB_HREF + "/");
-  }
   if (href === TESTING_HUB_HREF) {
-    return pathname === TESTING_HUB_HREF || pathname === DASHBOARD_BASE + "/copy-for-ci";
+    return (
+      pathname === TESTING_HUB_HREF ||
+      pathname.startsWith(TESTING_HUB_HREF + "/") ||
+      pathname === DASHBOARD_BASE + "/copy-for-ci"
+    );
   }
-  return pathname === href;
-}
-
-/** @deprecated Use isWorkNavActive */
-export function isHubRootActive(pathname: string, href: string): boolean {
-  return isWorkNavActive(pathname, href);
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
 /** Whether a collapsible group contains the current path. */
@@ -116,29 +110,39 @@ export function defaultNavGroupsOpen(): Record<NavGroupId, boolean> {
   ) as Record<NavGroupId, boolean>;
 }
 
-/** Merge persisted localStorage with new group ids (legacy keys from older IA). */
+/**
+ * Merge persisted localStorage with new group ids.
+ * Legacy keys from older IAs migrate forward:
+ *  - "keys" (Configure, pre-R2) and its ancestors "ready"/"build"/"connect" → foundation
+ *  - "observe"/"monitor" → observe
+ * ("tools"/"embed"/"suite"/"quality" had no successor group — they are ignored.)
+ */
 export function hydrateNavGroupsOpen(stored: Record<string, unknown> | null): Record<NavGroupId, boolean> {
   const defaults = defaultNavGroupsOpen();
   if (!stored) return defaults;
   const bool = (key: string, fallback: boolean) =>
     typeof stored[key] === "boolean" ? (stored[key] as boolean) : fallback;
 
-  const legacySuiteOpen =
-    stored.quality === true || stored.connect === true || stored.embed === true || stored.suite === true;
-  const legacyKeysOpen = stored.ready === true || stored.build === true || stored.connect === true;
+  const legacyFoundationOpen =
+    stored.keys === true || stored.ready === true || stored.build === true || stored.connect === true;
 
   return {
-    keys: bool("keys", legacyKeysOpen ? true : defaults.keys),
+    foundation: bool("foundation", legacyFoundationOpen ? true : defaults.foundation),
     observe: bool("observe", bool("monitor", defaults.observe)),
-    tools: bool("tools", bool("embed", legacySuiteOpen ? true : defaults.tools)),
   };
 }
 
 const PATH_TO_TITLE: Record<string, string> = {
-  [WORKSPACE_HOME_HREF]: "Overview",
-  [CONNECT_HUB_HREF]: "Connect",
+  [HOME_HREF]: "Home",
+  [SOURCES_HREF]: "Sources",
+  [INGEST_FLOW_HREF]: "Ingest",
+  [RUNS_HREF]: "Runs",
+  [CLAIMS_HREF]: "Claims",
+  [CLAIMS_MEMORY_HREF]: "Memory inbox",
+  [PROVE_HREF]: "Prove",
+  [AGENTS_HREF]: "Agents",
   [TESTING_HUB_HREF]: "Testing",
-  [DASHBOARD_BASE + "/"]: "Overview",
+  [DASHBOARD_BASE + "/"]: "Home",
   [DASHBOARD_BASE + "/projects"]: "Projects",
   [DASHBOARD_BASE + "/copy-for-ci"]: "CI snippets",
   [DASHBOARD_BASE + "/access"]: "Gateway keys",
@@ -149,16 +153,24 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/models"]: "Model catalog",
   [DASHBOARD_BASE + "/healthcheck"]: "Health",
   [DASHBOARD_BASE + "/routes"]: "Routes",
+  [INGEST_ROUTES_HREF]: "Ingest routes",
   [DASHBOARD_BASE + "/policies"]: "Guard rails",
   [DASHBOARD_BASE + "/analytics"]: "Usage",
   [DASHBOARD_BASE + "/logs"]: "Logs",
-  [DASHBOARD_BASE + "/sandbox"]: "Try a request",
+  [DASHBOARD_BASE + "/sandbox"]: "Request tester",
   [DASHBOARD_BASE + "/settings"]: "Profile",
 };
 
 /** Title for topbar from pathname (exact match or segment). */
 export function topbarTitle(pathname: string): string {
   if (PATH_TO_TITLE[pathname]) return PATH_TO_TITLE[pathname];
+  if (pathname.startsWith(RUNS_HREF + "/")) {
+    return "Run";
+  }
+  if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname.includes("/routes")) {
+    if (pathname.endsWith("/routes")) return "Routes";
+    return "Route";
+  }
   if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname !== DASHBOARD_BASE + "/projects") {
     return "Project";
   }
@@ -171,38 +183,31 @@ export function topbarTitle(pathname: string): string {
   if (pathname.startsWith(DASHBOARD_BASE + "/models/") && pathname !== DASHBOARD_BASE + "/models") {
     return "Model";
   }
-  if (pathname.startsWith(DASHBOARD_BASE + "/projects/") && pathname.includes("/routes")) {
-    if (pathname.endsWith("/routes")) return "Routes";
-    return "Route";
-  }
   if (pathname.startsWith(DASHBOARD_BASE + "/policies/") && pathname !== DASHBOARD_BASE + "/policies") {
     return "Guard rail";
   }
   if (pathname.startsWith(DASHBOARD_BASE + "/cli/")) {
     return "Connect CLI";
   }
-  if (pathname.startsWith(DASHBOARD_BASE + "/connect/")) {
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/ingest")) return "Connect · Runs";
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/pipeline")) return "Connect · Pipeline";
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/graph")) return "Connect · Graph";
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/mcp")) return "Connect · MCP";
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/memory")) return "Connect · Memory";
-    if (pathname.startsWith(DASHBOARD_BASE + "/connect/models")) return "Connect · Models";
-    return "Connect";
-  }
   return "";
 }
 
-/** Filter primary work nav by suite module flags. */
+/** Filter primary work nav by suite module flags (the six work sections are Connect). */
 export function filterWorkNavForModuleFlags(flags: ModuleFlags): NavItem[] {
+  // Home always shows. The five Connect work sections require the connect module.
+  const connectSections = new Set([SOURCES_HREF, RUNS_HREF, CLAIMS_HREF, PROVE_HREF, AGENTS_HREF]);
   return WORK_NAV_ITEMS.filter((item) => {
-    if (item.href === CONNECT_HUB_HREF) return flags.connect;
-    if (item.href === TESTING_HUB_HREF) return flags.testing;
+    if (connectSections.has(item.href)) return flags.connect;
     return true;
   });
 }
 
-/** Hide graph dev-tools link and guard-rails when modules off; Monitor shows coming soon when off. */
+/** Testing hub nav entry, gated by the testing module flag. */
+export function filterTestingNavForModuleFlags(flags: ModuleFlags): NavItem | null {
+  return flags.testing ? TESTING_NAV_ITEM : null;
+}
+
+/** Hide guard-rails when module off; Observe shows coming soon when monitor off. */
 export function filterNavGroupsForModuleFlags(groups: NavGroup[], flags: ModuleFlags): NavGroup[] {
   return groups
     .map((g) => {
@@ -213,7 +218,6 @@ export function filterNavGroupsForModuleFlags(groups: NavGroup[], flags: ModuleF
         ...g,
         items: g.items.filter((item) => {
           if (item.href === DASHBOARD_BASE + "/policies") return flags.guardrails;
-          if (item.href === DASHBOARD_BASE + "/graph") return flags.graph !== "disabled";
           return true;
         }),
       };

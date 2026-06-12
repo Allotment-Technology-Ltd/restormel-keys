@@ -10,8 +10,8 @@
     loadError: string | null;
   };
 
-  const CONNECT_INGEST_BASE = `${DASHBOARD_BASE}/connect/ingest`;
-  const GRAPH_EXPLORER_HREF = `${DASHBOARD_BASE}/connect/graph`;
+  const CONNECT_INGEST_BASE = `${DASHBOARD_BASE}/runs`;
+  const GRAPH_EXPLORER_HREF = `${DASHBOARD_BASE}/claims`;
   const ENGINEERING_DOC_HREF =
     "https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/CONNECT-INGEST-QUALITY-BAR.md";
 

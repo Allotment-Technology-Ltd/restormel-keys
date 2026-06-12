@@ -15,40 +15,40 @@
 
   <div class="callout callout-tip">
     <strong>Goal:</strong> Build your first knowledge graph in Restormel Connect using Surreal Cloud, two model capabilities (chat + embedding), the starter philosophy corpus, and Graph Designer — then run ingest and browse the result at
-    <code class="inline-code">/keys/dashboard/connect/graph</code>.
+    <code class="inline-code">/keys/dashboard/claims</code>.
   </div>
 
   <p>
     Start from the expandable guide on
-    <a href="/keys/dashboard/connect">Connect home</a> or follow the phases below.
+    <a href="/keys/dashboard/home">the dashboard Home</a> or follow the phases below.
   </p>
 
   <h2>Phases</h2>
   <ol class="doc-ol">
     <li>
       <strong>Surreal Cloud</strong> — create an instance, paste your connection string on
-      <a href="/keys/dashboard/connect/pipeline?step=store">Pipeline → Graph store</a>.
+      <a href="/keys/dashboard/sources/ingest?step=store">Ingest flow → Graph store</a>.
     </li>
     <li>
       <strong>AI keys & routes</strong> — add Connections, then publish chat and embedding ingestion routes on
-      <a href="/keys/dashboard/connect/models">Models & keys</a>.
+      <a href="/keys/dashboard/routes/ingestion">Ingest routes</a>.
     </li>
     <li>
       <strong>Starter corpus</strong> — load three demo documents on
-      <a href="/keys/dashboard/connect/pipeline?step=sources">Pipeline → Sources</a>.
+      <a href="/keys/dashboard/sources/ingest?step=sources">Ingest flow → Sources</a>.
     </li>
     <li>
       <strong>Describe schema</strong> — use Graph Designer on
-      <a href="/keys/dashboard/connect/pipeline?step=domain">Pipeline → Domain</a> with the suggested first-graph intent.
+      <a href="/keys/dashboard/sources/ingest?step=domain">Ingest flow → Domain</a> with the suggested first-graph intent.
     </li>
     <li>
       <strong>First ingest</strong> — start a run on
-      <a href="/keys/dashboard/connect/pipeline?step=launch">Pipeline → Review &amp; launch</a> (requires
+      <a href="/keys/dashboard/sources/ingest?step=launch">Ingest flow → Review &amp; launch</a> (requires
       <code class="inline-code">CONNECT_INGEST_WORKER_MODE=full</code> on the worker).
     </li>
     <li>
       <strong>Explore</strong> — browse
-      <a href="/keys/dashboard/connect/graph">your knowledge graph</a>.
+      <a href="/keys/dashboard/claims">your knowledge graph</a>.
     </li>
   </ol>
 

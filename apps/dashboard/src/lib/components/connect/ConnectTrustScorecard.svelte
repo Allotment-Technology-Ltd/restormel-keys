@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
+  import { CLAIMS_HREF, INGEST_FLOW_HREF } from "$lib/nav-config";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
@@ -10,9 +10,8 @@
   /** Streamed scorecard for the workspace's active graph (null = no graph to score yet). */
   export let scorecard: Promise<ConnectTrustScorecard | null>;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
-  const GRAPH_BASE = CONNECT_BASE + "/graph";
-  const PIPELINE_STORE_HREF = CONNECT_BASE + "/pipeline?step=store";
+  const GRAPH_BASE = CLAIMS_HREF;
+  const PIPELINE_STORE_HREF = INGEST_FLOW_HREF + "?step=store";
   const REVALIDATE_HREF = GRAPH_BASE + "?workspace=tools&focus=validate";
 
   let retrying = false;
@@ -84,7 +83,7 @@
         title="No graph to score yet"
         description="The scorecard appears after your first ingest run writes ideas to the graph store. Run the pipeline to build a graph, then come back here for the trust score, G2 quality bar, and evidence-bound coverage."
       >
-        <a class="btn btn-primary btn-sm" href="{CONNECT_BASE}/pipeline">Open the pipeline</a>
+        <a class="btn btn-primary btn-sm" href={INGEST_FLOW_HREF}>Open the pipeline</a>
       </EmptyState>
     {:else}
       {@const lowered = detractors(card)}
@@ -235,7 +234,7 @@
         <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
           {retrying ? "Retrying…" : "Try again"}
         </button>
-        <a class="btn btn-outline btn-sm" href="{CONNECT_BASE}/pipeline?step=store">Check graph store</a>
+        <a class="btn btn-outline btn-sm" href={PIPELINE_STORE_HREF}>Check graph store</a>
       {/snippet}
     </BrutalErrorBanner>
   {/await}

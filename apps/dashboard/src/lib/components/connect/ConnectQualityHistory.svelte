@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
+  import { INGEST_FLOW_HREF, RUNS_HREF } from "$lib/nav-config";
   import type { ConnectEvalVerdictEntry } from "@restormel/contracts";
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
@@ -17,7 +17,6 @@
   export let history: Promise<ConnectEvalVerdictEntry[]>;
 
   const DOCS_CI_GUIDE = "/keys/docs/guides/context-regression-ci";
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   let retrying = false;
   async function retry() {
@@ -74,7 +73,7 @@
    */
   function sourceRunHref(entry: ConnectEvalVerdictEntry): string | null {
     if (entry.source === "ingest_run" && entry.source_run_id) {
-      return `${CONNECT_BASE}/ingest/${entry.source_run_id}?from=quality-history`;
+      return `${RUNS_HREF}/${entry.source_run_id}?from=quality-history`;
     }
     return null;
   }
@@ -111,7 +110,7 @@
         description="Run the CI gate to start building your quality timeline. Each CLI or CI run that POSTs a verdict here becomes a data point — G2 bar, trust score, and regression events — so you can track quality over time."
       >
         <a class="btn btn-primary btn-sm" href={DOCS_CI_GUIDE}>Wire the CI gate</a>
-        <a class="btn btn-outline btn-sm" href="{CONNECT_BASE}/pipeline">Open pipeline</a>
+        <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open pipeline</a>
       </EmptyState>
     {:else}
       <BrutalCard fill="white">

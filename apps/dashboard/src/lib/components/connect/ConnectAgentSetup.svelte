@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { CLAIMS_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { buildConnectMcpSnippet } from "$lib/connect/connect-mcp-snippet";
@@ -15,7 +16,6 @@
 
   export let setup: ConnectAgentSetupData;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   const GATEWAY_PLACEHOLDER = "<your-rk-gateway-key>";
 
   let creating = false;
@@ -285,11 +285,11 @@
         <a href={pipelineWizardHref("store")}>connect a graph store</a>
       {/if}
       {#if !setup.modelsReady}
-        · <a href={CONNECT_BASE + "/models"}>publish chat + embedding ingestion routes</a>
+        · <a href={INGEST_ROUTES_HREF}>publish chat + embedding ingestion routes</a>
       {/if}
       {#if !setup.hasGraph}
         · <a href={pipelineWizardHref("launch")}>run ingest</a>
-        · <a href={CONNECT_BASE + "/graph"}>open graph explorer</a>
+        · <a href={CLAIMS_HREF}>open graph explorer</a>
       {/if}
     </p>
   {:else if setup.workspaceStoreReady && setup.modelsReady && setup.hasGraph}

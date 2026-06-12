@@ -10,7 +10,7 @@ import type {
 } from "./graph-comparison-types";
 
 export type StreamComparisonArgs = {
-  connectBase: string;
+  proveBase: string;
   mode: ComparisonPanelMode;
   question: string;
   routeId?: string;
@@ -27,7 +27,7 @@ export class ComparisonStreamError extends Error {}
 export async function streamComparison(
   args: StreamComparisonArgs,
 ): Promise<{ text: string; retrieval?: RetrievalSummary; traceExportUrl?: string }> {
-  const res = await fetch(`${args.connectBase}/proof/api/stream`, {
+  const res = await fetch(`${args.proveBase}/api/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

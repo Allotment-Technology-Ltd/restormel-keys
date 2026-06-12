@@ -177,7 +177,7 @@
           <button type="button" class="btn btn-secondary" onclick={copyEnvSnippet}>
             {copiedEnv ? "Copied" : "Copy .env snippet"}
           </button>
-          <a class="btn btn-primary" href={DASHBOARD_BASE + "/connect/mcp"}>Use in MCP setup</a>
+          <a class="btn btn-primary" href={DASHBOARD_BASE + "/agents"}>Use in MCP setup</a>
         </div>
       </div>
     {/if}

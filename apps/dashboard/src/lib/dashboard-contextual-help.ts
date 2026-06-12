@@ -7,8 +7,10 @@ export type ContextualHelpLink = { label: string; href: string };
 
 const BASE = DASHBOARD_BASE.replace(/\/$/, "");
 
+const CONNECT_SECTION_PREFIXES = ["/home", "/sources", "/runs", "/claims", "/prove", "/agents"];
+
 export function contextualHelpForPath(pathname: string): ContextualHelpLink {
-  if (pathname.startsWith(BASE + "/connect")) {
+  if (CONNECT_SECTION_PREFIXES.some((p) => pathname === BASE + p || pathname.startsWith(BASE + p + "/"))) {
     return { label: "First graph guide", href: "/keys/docs/guides/connect-first-graph-onboarding" };
   }
   if (pathname.startsWith(BASE + "/testing") || pathname.startsWith(BASE + "/copy-for-ci")) {

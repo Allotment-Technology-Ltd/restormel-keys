@@ -13,7 +13,7 @@
     unitsSupportedDescriptor,
   } from "$lib/connect/ingest-quality-display";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
+  import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import {
     failingPreflightRows,
@@ -90,13 +90,12 @@
   export let fromPipeline = false;
   /** Set when opened from graph tools (refreshes graph data when the run completes). */
   export let fromGraph = false;
-  /** Set when opened from the Connect hub — back link returns to /connect. */
+  /** Set when opened from Home (`?from=hub`, pre-R2 name) — back link returns to /home. */
   export let fromHub = false;
   /** Distinguishes graph repair jobs started from the explorer Tools panel. */
   export let graphTask: "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill" | null =
     null;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   let job: Job | null = null;
   let logLines: string[] = [];
@@ -294,7 +293,7 @@
           : fromHub
             ? "?from=hub"
             : "";
-      await goto(`${CONNECT_BASE}/ingest/${newId}${suffix}`);
+      await goto(`${RUNS_HREF}/${newId}${suffix}`);
     } catch {
       actionMsg = "Network error while restarting.";
     } finally {
@@ -378,7 +377,7 @@
         await invalidate(`app:connect-graph:${graphWorkspaceId}`);
         await invalidate(`app:connect-hub:${graphWorkspaceId}`);
       }
-      await goto(`${CONNECT_BASE}/graph`);
+      await goto(CLAIMS_HREF);
     } finally {
       refreshingGraph = false;
     }
@@ -433,7 +432,7 @@
           </button>
           <a
             class="btn btn-outline run-view-runs-btn"
-            href={CONNECT_BASE + "/ingest"}
+            href={RUNS_HREF}
           >View all runs</a>
         </div>
       {/if}
@@ -478,22 +477,22 @@
         {#if graphTask === "auto-remediate"}
           Auto-remediation finished — repaired ideas were re-validated and re-embedded when routes allowed.
           Items still in quarantine need human review.
-          <a href={CONNECT_BASE + "/graph?filter=review"}>Return to quarantine queue</a>
+          <a href={CLAIMS_HREF + "?filter=review"}>Return to quarantine queue</a>
           (this page already reloaded graph data). Check the log for repaired, dropped, and skipped counts.
         {:else if graphTask === "embed-backfill"}
           Embed backfill finished — missing ideas were vectorized when the embedding route succeeded.
-          <a href={CONNECT_BASE + "/graph?workspace=tools&focus=embed"}>Return to graph review</a>
+          <a href={CLAIMS_HREF + "?workspace=tools&focus=embed"}>Return to graph review</a>
           to confirm the embedded count (this page already reloaded graph data). Check the log for batch errors.
         {:else if graphTask === "revalidate" || fromGraph}
           Validation statuses were written to your graph store when source text was available.
-          <a href={CONNECT_BASE + "/graph"}>Return to graph review</a>
+          <a href={CLAIMS_HREF}>Return to graph review</a>
           to refresh the Supported / Unchecked counts (this page already reloaded graph data).
           If counts are unchanged, open the log below for “Skipped … no source text” lines.
         {:else}
           Your graph store should now have new units and relationships.
-          <a href={CONNECT_BASE + "/graph"}>Open the graph explorer</a>
+          <a href={CLAIMS_HREF}>Open the graph explorer</a>
           to review them, then
-          <a href={CONNECT_MCP_HREF}>connect your agent via MCP</a>.
+          <a href={AGENTS_HREF}>connect your agent via MCP</a>.
           Use <strong>Next run setup</strong> to change documents or domain pack before another ingest.
         {/if}
       </div>
@@ -554,28 +553,28 @@
             <li class="run-next-item run-next-item-primary">
               <span class="run-next-num">1</span>
               <span class="run-next-text">Review weak units in the graph explorer</span>
-              <a class="btn btn-primary btn-sm" href={CONNECT_BASE + "/graph?filter=review"}>Open quarantine queue →</a>
+              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?filter=review"}>Open quarantine queue →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">2</span>
               <span class="run-next-text">Explore what was captured</span>
-              <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/graph"}>View graph →</a>
+              <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">3</span>
               <span class="run-next-text">Connect an agent to start querying</span>
-              <a class="btn btn-outline btn-sm" href={CONNECT_MCP_HREF}>Set up agent →</a>
+              <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
             </li>
           {:else}
             <li class="run-next-item run-next-item-primary">
               <span class="run-next-num">1</span>
               <span class="run-next-text">Explore what was captured</span>
-              <a class="btn btn-primary btn-sm" href={CONNECT_BASE + "/graph"}>View graph →</a>
+              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF}>View graph →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">2</span>
               <span class="run-next-text">Connect an agent to start querying</span>
-              <a class="btn btn-outline btn-sm" href={CONNECT_MCP_HREF}>Set up agent →</a>
+              <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">3</span>
@@ -586,9 +585,9 @@
         </ol>
         <!-- W3.4 cross-link: run console → workspace trust scorecard -->
         <p class="run-cross-links">
-          <a class="run-cross-link" href={CONNECT_BASE}>View workspace trust scorecard →</a>
+          <a class="run-cross-link" href={HOME_HREF + "#trust-ledger"}>View workspace trust scorecard →</a>
           <span class="run-cross-sep" aria-hidden="true">·</span>
-          <a class="run-cross-link" href={CONNECT_BASE + "/ingest"}>All ingest runs →</a>
+          <a class="run-cross-link" href={RUNS_HREF}>All ingest runs →</a>
         </p>
       </div>
     {/if}
@@ -634,8 +633,9 @@
           <div class="run-error-banner-actions">
             {#if failureHelp}
               <a class="btn btn-primary btn-sm" href={failureHelp.fixHref}>{failureHelp.fixLabel} →</a>
-              <!-- K4: failure codes map back to the standing readiness ledger (§3) -->
-              <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "#readiness"}>Check readiness</a>
+              <!-- K4: failure codes map back to the standing readiness ledger (§3),
+                   relocated onto /home with the dissolved Connect hub (R2). -->
+              <a class="btn btn-outline btn-sm" href={HOME_HREF + "#readiness"}>Check readiness</a>
             {/if}
             <button
               type="button"
@@ -645,7 +645,7 @@
             >
               {restarting ? "Restarting…" : isWorkerLost ? "Restart from checkpoint" : runAgainLabel}
             </button>
-            <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "/ingest"}>View all runs</a>
+            <a class="btn btn-outline btn-sm" href={RUNS_HREF}>View all runs</a>
           </div>
         {/if}
       </div>

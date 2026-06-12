@@ -1,14 +1,13 @@
+import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { getProject } from "$lib/server/db";
+import { resolveLegacyDashboardRedirect } from "$lib/legacy-route-redirects";
+import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
-export const load: PageServerLoad = async ({ params, locals }) => {
-  if (!locals.user) return { project: null, error: null };
-  try {
-    const project = await getProject(params.id, locals.user.uid);
-    return { project, error: null };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("[usage] getProject failed:", msg.slice(0, 120));
-    return { project: null, error: "Unable to load project" };
-  }
+/** KILL with redirect (D8 / redesign §2.3): the stub linked to Analytics anyway. */
+export const load: PageServerLoad = ({ url, params }) => {
+  throw redirect(
+    308,
+    resolveLegacyDashboardRedirect(url.pathname, url.search) ??
+      `${DASHBOARD_BASE}/analytics?project=${encodeURIComponent(params.id)}`,
+  );
 };

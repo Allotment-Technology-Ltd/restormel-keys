@@ -27,7 +27,7 @@
       <p><a href="/graph/docs/integration/sveltekit">SvelteKit integration</a> (canonical embed path).</p>
     {:else if mod.id === "connect"}
       <p>
-        <a href="/keys/dashboard/connect">Connect hub</a> — connect sources, configure pipeline, run ingest.
+        <a href="/keys/dashboard/home">Dashboard home</a> — connect sources, configure ingest, run it from Sources.
       </p>
     {/if}
   {/each}

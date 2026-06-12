@@ -259,7 +259,7 @@
   <ul>
     <li><a href="/keys/docs/api-reference">API reference</a> — the OpenAPI spec covering retrieve, graph, traces, and verification-rules endpoints</li>
     <li><a href="/keys/docs/guides/connect-first-graph-onboarding">Connect first graph onboarding</a> — build the graph these guarantees apply to</li>
-    <li><a href="/keys/dashboard/connect">Connect hub</a> — pipeline, graph store, and quality reports for your workspace</li>
+    <li><a href="/keys/dashboard/home">Dashboard home</a> — ingest setup, graph store, and quality reports for your workspace</li>
   </ul>
 
   <p>

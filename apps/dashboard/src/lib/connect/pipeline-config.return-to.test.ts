@@ -49,13 +49,13 @@ describe("parseReturnTo", () => {
 
 describe("withReturnTo", () => {
   it("appends ingest-routes param", () => {
-    expect(withReturnTo("/keys/dashboard/connect/models", { kind: "ingest-routes" })).toBe(
-      "/keys/dashboard/connect/models?returnTo=ingest-routes",
+    expect(withReturnTo("/keys/dashboard/routes/ingestion", { kind: "ingest-routes" })).toBe(
+      "/keys/dashboard/routes/ingestion?returnTo=ingest-routes",
     );
   });
 
   it("appends pipeline-setup and step", () => {
-    const href = withReturnTo("/keys/dashboard/connect/models", {
+    const href = withReturnTo("/keys/dashboard/routes/ingestion", {
       kind: "pipeline-setup",
       step: "domain",
     });
@@ -64,7 +64,7 @@ describe("withReturnTo", () => {
   });
 
   it("strips legacy wizard_step when setting returnTo", () => {
-    const href = withReturnTo("/keys/dashboard/connect/models?wizard_step=sources", {
+    const href = withReturnTo("/keys/dashboard/routes/ingestion?wizard_step=sources", {
       kind: "pipeline-setup",
       step: "domain",
     });
@@ -124,6 +124,6 @@ describe("isRouteBuilderPath", () => {
 
   it("rejects list and other paths", () => {
     expect(isRouteBuilderPath("/keys/dashboard/projects/abc/routes")).toBe(false);
-    expect(isRouteBuilderPath("/keys/dashboard/connect/models")).toBe(false);
+    expect(isRouteBuilderPath("/keys/dashboard/routes/ingestion")).toBe(false);
   });
 });

@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { SOURCES_HREF } from "$lib/nav-config";
   import { invalidateAll } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
 
   const API = DASHBOARD_BASE + "/api/connect/graph-library";
-  const LIBRARY_HREF = DASHBOARD_BASE + "/connect/library";
+  const LIBRARY_HREF = SOURCES_HREF;
 
   let graphs: ConnectGraphTarget[] = [];
   let loaded = false;

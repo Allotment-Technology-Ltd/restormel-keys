@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto, invalidate } from "$app/navigation";
+  import { HOME_HREF } from "$lib/nav-config";
   import { page } from "$app/stores";
   import { tick } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
@@ -42,7 +43,6 @@
 
   export let data: WizardData;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   $: step = data.step;
   $: journeyPhase = data.phase ?? "initial";
@@ -164,7 +164,7 @@
     />
     <div class="wizard-fallback-actions">
       <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Try again</button>
-      <a class="btn btn-outline btn-sm" href={CONNECT_BASE}>Connect home</a>
+      <a class="btn btn-outline btn-sm" href={HOME_HREF}>Home</a>
     </div>
   {:else}
     <p class="notice" role="status">Sign in to set up your pipeline.</p>
@@ -196,7 +196,7 @@
   />
 
   <nav class="wizard-crumb" aria-label="Breadcrumb">
-    <a href={CONNECT_BASE}>Connect home</a>
+    <a href={HOME_HREF}>Home</a>
     <span aria-hidden="true">›</span>
     <span aria-current="page">Setup · {current.label}</span>
   </nav>
@@ -282,7 +282,7 @@
   <footer class="wizard-footer">
     <div class="wizard-footer-left">
       {#if isFirst}
-        <a class="btn btn-outline btn-sm" href={CONNECT_BASE}>Back</a>
+        <a class="btn btn-outline btn-sm" href={HOME_HREF}>Back</a>
       {:else}
         <button type="button" class="btn btn-outline btn-sm" on:click={goBack}>Back</button>
       {/if}
