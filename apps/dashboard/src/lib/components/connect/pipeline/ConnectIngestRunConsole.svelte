@@ -14,14 +14,17 @@
   import {
     formatRunDuration,
     ingestStatusLabel,
-    trustScoreDescriptor,
-    unitsSupportedDescriptor,
   } from "$lib/connect/ingest-quality-display";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
   import type { LiveRunStreamEvent } from "$lib/connect/live-run-events";
+  import {
+    buildHeartbeatStrip,
+    buildStageOdometers,
+    buildCompletionLedger,
+  } from "$lib/connect/machine-room-display";
   import {
     failingPreflightRows,
     mapConnectRunFailure,
@@ -134,6 +137,11 @@
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let clockTimer: ReturnType<typeof setInterval> | null = null;
   let nowMs = Date.now();
+  // W4.1 Machine Room: monotonic count of applied live frames (snapshot/delta) +
+  // fallback fetches. The heartbeat strip walks one filled cell per frame so the
+  // tick-line visibly "breathes" with each worker signal. Pure UI state — it rides
+  // the EXISTING SSE frames, adds no fetch (the 2-mutation-fetch invariant stands).
+  let frameTick = 0;
   // W3.1 live transport. SSE is the primary channel; the 2.5s jittered poll below
   // is the documented F8 fallback, engaged only when SSE is judged unhealthy.
   let liveClient: LiveRunEventClient | null = null;
@@ -197,8 +205,6 @@
   /** True once the run is settled and we still have no attribution → honest absent-state. */
   $: showAttributionAbsent =
     isCompleted && attributionRows.length === 0 && job?.progress?.execution_mode === "full";
-  $: trustDesc = trustScoreDescriptor(trustScore);
-  $: unitsDesc = unitsSupportedDescriptor(okPct);
   $: runDurationLabel =
     isCompleted && job?.created_at && job?.updated_at
       ? formatRunDuration(new Date(job.updated_at).getTime() - new Date(job.created_at).getTime())
@@ -248,6 +254,50 @@
     job?.status === "running" || job?.status === "pending"
       ? (job?.reclaim_count ?? 0) > 0
       : false;
+
+  /**
+   * W4.1 §3.2: when stalled, surface the lease countdown in plain words. Derived
+   * from the W1.4 `lease_expires_at` already on the row (no new data). Null when no
+   * lease is known (legacy rows) so the stamp falls back to generic stall copy.
+   */
+  $: leaseCountdownLabel = (() => {
+    const lease = job?.lease_expires_at;
+    if (lease == null || !Number.isFinite(lease)) return null;
+    const remainMs = lease - nowMs;
+    if (remainMs > 0) {
+      const sec = Math.max(1, Math.round(remainMs / 1000));
+      return sec < 60
+        ? `Lease expires in ${sec}s.`
+        : `Lease expires in ${Math.round(sec / 60)}m.`;
+    }
+    return "Lease has expired — reclaim is in progress.";
+  })();
+
+  // ── W4.1 Machine Room derivations (all from EXISTING SSE/loaded state) ─────
+  // Heartbeat strip — the `▮▮▮▮▯` tick-line + "LAST WORKER SIGNAL Xs AGO" above the
+  // CRT log. `frameTick` (bumped per applied live frame) walks the filled cell so it
+  // breathes with each worker signal; the static signal-age label is the
+  // reduced-motion fallback (always informs even with animation off).
+  $: heartbeat = buildHeartbeatStrip({
+    workerHeartbeatAt: job?.worker_heartbeat_at,
+    updatedAtIso: job?.updated_at,
+    nowMs,
+    tick: frameTick,
+    stalled: isStalled,
+  });
+  // Per-stage odometers — extracted / validated / … counting up live from the real
+  // streamed `progress.processed` per stage. Shown while in progress; honest 0 when a
+  // stage has no metrics yet, never a guessed number.
+  $: stageOdometers = isInProgress ? buildStageOdometers(job?.stages, job?.current_stage) : [];
+  // Single completion ledger (B-P1-1) — QUOTES the same quality-report numbers the
+  // scorecard surfaced (W2.3 single-source rule); this only formats the verdict cap.
+  $: completionLedger = isCompleted
+    ? buildCompletionLedger({
+        trustScore: trustScore ?? null,
+        okPct: okPct ?? null,
+        totalUnits: job?.progress?.processed ?? null,
+      })
+    : null;
 
   /** True for a job that failed with a worker_lost error. */
   $: isWorkerLost =
@@ -363,6 +413,7 @@
       }
       const d = await res.json();
       job = d.job ?? null;
+      if (incremental) frameTick += 1; // W4.1: fallback poll also advances the strip.
       if (typeof d.workspace_id === "string") {
         graphWorkspaceId = d.workspace_id;
       }
@@ -414,7 +465,10 @@
   function onLiveEvent(event: LiveRunStreamEvent) {
     if (event.type === "snapshot") {
       const match = event.jobs.find((j) => j.id === jobId);
-      if (match) job = { ...(job ?? {}), ...match } as Job;
+      if (match) {
+        job = { ...(job ?? {}), ...match } as Job;
+        frameTick += 1; // W4.1: advance the heartbeat strip on each applied frame.
+      }
       // Catch-up tail carried on focused (re)connect snapshots — append the gap
       // and ADVANCE `since` so the next reconnect / fallback resumes here without
       // loss or duplication (MAJOR-1/2). Workspace snapshots omit these fields.
@@ -429,6 +483,7 @@
     }
     if (event.type === "delta" && event.job.id === jobId) {
       job = { ...(job ?? {}), ...event.job } as Job;
+      frameTick += 1; // W4.1: advance the heartbeat strip on each applied frame.
       if (event.logLines) appendLogLines(event.logLines);
       if (typeof event.logLineTotal === "number") logLineTotal = event.logLineTotal;
       // Advance the log cursor from the delta so engageFallback()/reconnect picks
@@ -497,6 +552,7 @@
     since = 0;
     logLines = [];
     logOpen = true;
+    frameTick = 0;
     liveDegraded = false;
     stopLive();
     if (pollTimer) {
@@ -654,47 +710,50 @@
       </div>
     {/if}
 
-    {#if job.progress?.quality_report && isCompleted}
-      <div class="run-quality-scorecard" role="region" aria-label="Run quality report">
+    <!-- W4.1 B-P1-1: ONE completion ledger replaces the old stacked
+         success-banner + scorecard + "What to do next" blocks. Verdict cap (trust
+         numeral + supported %) above a single next-actions body. The numbers QUOTE
+         the run's quality report (W2.3 single-source rule), labelled "this run's
+         audit". The duplicate blocks are deleted, not hidden. -->
+    {#if job.progress?.quality_report && isCompleted && completionLedger}
+      <section class="completion-ledger" aria-labelledby="completion-ledger-heading">
         {#if job.progress.quality_report.stub_warning}
           <p class="run-warn" role="status">{job.progress.quality_report.stub_warning}</p>
         {/if}
-        <div class="quality-metrics">
-          <article class="quality-metric quality-metric--{trustDesc.tint}">
-            <span class="quality-metric-label">Trust score</span>
-            <span class="quality-metric-value">{trustScore ?? "—"}</span>
-            <span class="quality-metric-desc">{trustDesc.label}</span>
-          </article>
-          <article class="quality-metric quality-metric--{unitsDesc.tint}">
-            <span class="quality-metric-label">Units supported</span>
-            <span class="quality-metric-value">{okPct ?? 0}%</span>
-            <span class="quality-metric-desc">After remediation</span>
-          </article>
-          <article class="quality-metric">
-            <span class="quality-metric-label">Total units</span>
-            <span class="quality-metric-value">{job.progress.processed ?? "—"}</span>
-            <span class="quality-metric-desc">{unitsDesc.label}</span>
-          </article>
+        <!-- Verdict cap -->
+        <div class="ledger-cap ledger-cap--{completionLedger.trustTint}">
+          <p class="ledger-cap-kicker">This run's audit</p>
+          <h2 id="completion-ledger-heading" class="ledger-cap-verdict">
+            <span class="ledger-cap-numeral">{completionLedger.trustScore}</span>
+            <span class="ledger-cap-word">{completionLedger.verdict}</span>
+          </h2>
+          <p class="ledger-cap-stats">
+            <span class="ledger-cap-stat ledger-cap-stat--{completionLedger.supportedTint}">
+              {completionLedger.supportedPct}% supported
+            </span>
+            <span class="ledger-cap-sep" aria-hidden="true">·</span>
+            <span class="ledger-cap-stat">{completionLedger.totalUnits} units captured</span>
+          </p>
+          <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
+          {#if job.progress.quality_report.validation_family?.validation_provider}
+            {@const vf = job.progress.quality_report.validation_family}
+            <p class="run-family-disclosure" role="status">
+              Validated by <strong>{vf.validation_provider}</strong>{#if vf.extraction_provider}
+                — {vf.cross_family ? "different family than" : "same family as"} extraction
+                ({vf.extraction_provider}){/if}{#if vf.cross_family === true}
+                · cross-model validation ✓{:else if vf.cross_family === false}
+                · add a second provider family for cross-model validation{/if}
+            </p>
+          {:else}
+            <p class="run-family-disclosure run-family-disclosure--absent">
+              Validating model family: not recorded for this run.
+            </p>
+          {/if}
         </div>
-        <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
-        {#if job.progress.quality_report.validation_family?.validation_provider}
-          {@const vf = job.progress.quality_report.validation_family}
-          <p class="run-family-disclosure" role="status">
-            Validated by <strong>{vf.validation_provider}</strong>{#if vf.extraction_provider}
-              — {vf.cross_family ? "different family than" : "same family as"} extraction
-              ({vf.extraction_provider}){/if}{#if vf.cross_family === true}
-              · cross-model validation ✓{:else if vf.cross_family === false}
-              · add a second provider family for cross-model validation{/if}
-          </p>
-        {:else}
-          <p class="run-family-disclosure run-family-disclosure--absent">
-            Validating model family: not recorded for this run.
-          </p>
-        {/if}
-      </div>
 
-      <div class="run-next-actions" role="region" aria-labelledby="next-actions-heading">
-        <h2 id="next-actions-heading" class="run-next-actions-title">What to do next</h2>
+        <!-- Single next-actions body -->
+        <div class="ledger-body">
+        <h3 class="run-next-actions-title">What to do next</h3>
         <ol class="run-next-list">
           {#if (trustScore ?? 0) < 80}
             <li class="run-next-item run-next-item-primary">
@@ -730,13 +789,15 @@
             </li>
           {/if}
         </ol>
-        <!-- W3.4 cross-link: run console → workspace trust scorecard -->
+        <!-- W3.4 cross-link: run console → workspace trust scorecard. Every trust
+             number on the cap is its own receipt — the standing scorecard. -->
         <p class="run-cross-links">
           <a class="run-cross-link" href={HOME_HREF + "#trust-ledger"}>View workspace trust scorecard →</a>
           <span class="run-cross-sep" aria-hidden="true">·</span>
           <a class="run-cross-link" href={RUNS_HREF}>All ingest runs →</a>
         </p>
-      </div>
+        </div>
+      </section>
     {/if}
 
     {#if job.error}
@@ -847,15 +908,27 @@
               </p>
             {/if}
             {#if isStalled}
+              <!-- W4.1 §3.2: STALLED as a designed amber moment — the stamp prints
+                   the durable-runs contract in plain words (true to Stage 1.6). -->
               <div class="progress-stall-notice" role="status">
-                No worker heartbeat detected. Stalled runs are reclaimed automatically and resume
-                from the last checkpoint — nothing is lost.
+                <span class="progress-stall-stamp">⚠ STALLED</span>
+                <p class="progress-stall-body">
+                  {#if leaseCountdownLabel}
+                    {leaseCountdownLabel} A stalled run is reclaimed and resumes from the last
+                    checkpoint — nothing is lost.
+                  {:else}
+                    No worker heartbeat detected. A stalled run is reclaimed automatically and
+                    resumes from the last checkpoint — nothing is lost.
+                  {/if}
+                </p>
               </div>
             {/if}
             {#if isReclaimedRun && !isStalled}
-              <div class="progress-reclaim-notice" role="status">
-                Resumed from checkpoint after a stall (reclaimed ×{job.reclaim_count}).
-              </div>
+              <!-- W4.1 §3.2: RECLAIMED as a green ledger line. -->
+              <p class="progress-reclaim-ledger" role="status">
+                <span class="reclaim-tag">RECLAIMED</span>
+                · resumed from checkpoint{#if (job.reclaim_count ?? 0) > 0} after a stall (×{job.reclaim_count}){/if}
+              </p>
             {/if}
           </div>
         {/if}
@@ -949,6 +1022,47 @@
           Route/model attribution was not recorded for this run — it predates attribution
           capture. New runs record which route and model served each stage.
         </p>
+      </section>
+    {/if}
+
+    {#if !startingRun && isInProgress && !showGraphRepairPanel}
+      <!-- W4.1 Machine Room: heartbeat strip + per-stage odometers ride the live
+           SSE frames (no new fetch). Both have static reduced-motion fallbacks. -->
+      <section
+        class="machine-room"
+        class:machine-room--stalled={isStalled}
+        aria-label="Live run instrumentation"
+      >
+        <div class="heartbeat-strip" class:heartbeat-strip--stalled={heartbeat.stalled}>
+          <span class="heartbeat-bar" aria-hidden="true">{heartbeat.bar}</span>
+          <span class="heartbeat-label">
+            {#if heartbeat.stalled}
+              <span class="heartbeat-stalled-stamp">STALLED</span>
+            {:else}
+              Last worker signal {heartbeat.signalAgeLabel}
+            {/if}
+          </span>
+        </div>
+
+        {#if stageOdometers.length > 0}
+          <ol class="odometers" aria-label="Per-stage progress">
+            {#each stageOdometers as od (od.stage)}
+              <li
+                class="odometer"
+                class:odometer--running={od.running}
+                class:odometer--done={od.status === "completed"}
+              >
+                <span class="odometer-label">{od.label}</span>
+                <span class="odometer-count">
+                  <span class="odometer-value">{od.count.toLocaleString()}</span>
+                  {#if od.total}
+                    <span class="odometer-total">/ {od.total.toLocaleString()}</span>
+                  {/if}
+                </span>
+              </li>
+            {/each}
+          </ol>
+        {/if}
       </section>
     {/if}
 
@@ -1292,10 +1406,133 @@
     background: var(--color-ink) !important;
   }
 
-  .quality-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  /* ── W4.1 Machine Room: heartbeat strip + per-stage odometers ───────────── */
+  .machine-room {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    background: #0a1f0a;
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 12%, transparent);
+  }
+
+  .machine-room--stalled {
+    border-color: var(--brut-amber, #e6a700);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--brut-amber, #e6a700) 30%, transparent);
+  }
+
+  .heartbeat-strip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--rm-font-mono);
+  }
+
+  .heartbeat-bar {
+    font-family: var(--rm-font-mono);
+    font-size: var(--text-mono-md);
+    letter-spacing: 0.25em;
+    color: #7dff7d;
+    /* The bar text itself changes per frame; this soft fade smooths the step. */
+    transition: opacity 200ms ease;
+  }
+
+  .heartbeat-strip--stalled .heartbeat-bar {
+    color: var(--brut-amber, #e6a700);
+  }
+
+  .heartbeat-label {
+    font-family: var(--rm-font-mono);
+    font-size: var(--text-mono-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: color-mix(in oklab, #7dff7d 80%, var(--brut-white));
+  }
+
+  .heartbeat-stalled-stamp {
+    color: var(--brut-amber, #e6a700);
+    font-weight: 700;
+    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    padding: 0 var(--space-2);
+    animation: machine-blink 1s steps(2, end) infinite;
+  }
+
+  @keyframes machine-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  .odometers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    gap: var(--space-2);
+  }
+
+  .odometer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: var(--space-2);
+    border: var(--brut-border-micro) solid color-mix(in oklab, #7dff7d 35%, transparent);
+    background: color-mix(in oklab, #7dff7d 5%, transparent);
+  }
+
+  .odometer--running {
+    border-color: #7dff7d;
+    box-shadow: 0 0 0 1px #7dff7d;
+    animation: machine-pulse 1.4s ease-in-out infinite;
+  }
+
+  .odometer--done {
+    opacity: 0.7;
+  }
+
+  @keyframes machine-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 1px #7dff7d;
+    }
+    50% {
+      box-shadow: 0 0 0 2px color-mix(in oklab, #7dff7d 60%, transparent);
+    }
+  }
+
+  .odometer-label {
+    font-family: var(--rm-font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: color-mix(in oklab, #7dff7d 75%, var(--brut-white));
+  }
+
+  .odometer-count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+  }
+
+  .odometer-value {
+    font-family: var(--rm-font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    color: #7dff7d;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .odometer-total {
+    font-family: var(--rm-font-mono);
+    font-size: var(--text-mono-sm);
+    color: color-mix(in oklab, #7dff7d 60%, var(--brut-white));
+    font-variant-numeric: tabular-nums;
   }
 
   /* K4/K-P1-7: validating-family disclosure line */
@@ -1410,53 +1647,97 @@
     line-height: 1.45;
   }
 
-  .quality-metric {
+  /* ── W4.1 B-P1-1: one completion ledger (verdict cap + single next body) ── */
+  .completion-ledger {
     border: var(--border);
     background: var(--color-surface);
     box-shadow: var(--shadow-md);
-    padding: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
   }
 
-  .quality-metric-label {
+  .ledger-cap {
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    border-bottom: var(--brut-border-width) solid var(--brut-ink);
+    background: var(--brut-neon);
+  }
+
+  .ledger-cap--red {
+    background: color-mix(in oklab, var(--brut-coral) 45%, var(--brut-white));
+  }
+
+  .ledger-cap--yellow {
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 40%, var(--brut-white));
+  }
+
+  .ledger-cap--green {
+    background: var(--brut-neon);
+  }
+
+  .ledger-cap--muted {
+    background: color-mix(in oklab, var(--brut-ink) 8%, var(--brut-white));
+  }
+
+  .ledger-cap-kicker {
+    margin: 0 0 var(--space-1);
     font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    color: var(--color-ink-faint);
+    font-size: var(--text-xs);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.12em;
+    color: var(--rm-text);
   }
 
-  .quality-metric-value {
+  .ledger-cap-verdict {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .ledger-cap-numeral {
     font-family: var(--font-display);
-    font-size: var(--text-display-metric-sm);
+    font-size: var(--text-display-metric);
     font-weight: 900;
     line-height: var(--text-display-line-height);
     letter-spacing: var(--text-display-tracking);
+    color: var(--rm-text);
   }
 
-  .quality-metric-desc {
-    font-size: var(--text-xs);
-    color: var(--rm-muted);
+  .ledger-cap-word {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--rm-text);
   }
 
-  .quality-metric--red .quality-metric-desc {
-    color: var(--coral-alert);
+  .ledger-cap-stats {
+    margin: var(--space-2) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--rm-text);
   }
 
-  .quality-metric--yellow .quality-metric-desc {
-    color: var(--color-ink);
+  .ledger-cap-stat {
+    font-weight: 700;
   }
 
-  .quality-metric--green .quality-metric-desc {
-    color: var(--rm-sage);
+  .ledger-cap-stat--red {
+    color: var(--coral-alert, var(--brut-coral));
   }
 
-  .run-next-actions {
-    border: var(--border);
-    background: var(--color-surface);
-    box-shadow: var(--shadow-sm);
+  .ledger-cap-sep {
+    user-select: none;
+    opacity: 0.6;
+  }
+
+  .ledger-body {
     padding: var(--space-4);
   }
 
@@ -1738,24 +2019,55 @@
     margin: 0;
   }
 
+  /* W4.1 §3.2: STALLED as a designed amber stamp + plain-words contract body. */
   .progress-stall-notice {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    border: var(--brut-border-width) solid var(--brut-amber, #e6a700);
     background: color-mix(in oklab, var(--brut-amber, #e6a700) 14%, var(--brut-white));
-    font-size: var(--text-sm);
     color: var(--rm-text);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .progress-stall-stamp {
+    align-self: flex-start;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--rm-text);
+    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 30%, var(--brut-white));
+    padding: 0 var(--space-2);
+    transform: rotate(-1.5deg);
+  }
+
+  .progress-stall-body {
+    margin: 0;
+    font-size: var(--text-sm);
     line-height: 1.45;
   }
 
-  .progress-reclaim-notice {
+  /* W4.1 §3.2: RECLAIMED as a green mono ledger line. */
+  .progress-reclaim-ledger {
     margin: 0;
     padding: var(--space-2) var(--space-3);
     border: var(--brut-border-micro) solid var(--brut-sage, var(--rm-sage));
     background: color-mix(in oklab, var(--rm-sage) 12%, var(--brut-white));
-    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
     color: var(--rm-text);
     line-height: 1.45;
+  }
+
+  .reclaim-tag {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--rm-sage);
   }
 
   .pipeline-lede {
@@ -1785,5 +2097,22 @@
     color: inherit;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  /* X9: reduced-motion kill-switch. The Machine Room is animation-heavy by design;
+     with motion off, every moving part holds still while the STATIC instrumentation
+     still informs — the heartbeat tick-line + "last signal Xs ago" text, the live
+     odometer numbers, the STALLED stamp, the verdict cap. Covers the pre-existing
+     status pulse + starting text too. */
+  @media (prefers-reduced-motion: reduce) {
+    .run-status-pulse,
+    .run-starting,
+    .heartbeat-stalled-stamp,
+    .odometer--running {
+      animation: none !important;
+    }
+    .heartbeat-bar {
+      transition: none !important;
+    }
   }
 </style>

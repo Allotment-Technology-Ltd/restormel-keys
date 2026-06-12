@@ -360,6 +360,27 @@ recorded", and the resolve HTTP endpoint's existing failure rows (`+server.ts`) 
 | **Request receipt** (drawer, `role="dialog"`, Escape closes) | n/a (opens from a loaded row) | n/a | n/a — receipt reads the already-loaded row | five sections: 1 Request (when/source/model), 2 Route matched (→ builder), 3 Policy outcomes (violations or honest absent), 4 Step attempts & timing (attempts incl. fallbacks, latency/TTFT or "not recorded"), 5 Response **or** "What went wrong" (failure explanation + error code); deep-linkable `#log-<id>` + Copy link + a coverage note |
 <!-- W3.3-BLOCK-END -->
 
+<!-- W4.1-BLOCK-START: the Machine Room (run console as product demo). Other batch
+     agents edit this file — keep W4.1 edits inside this fenced block to ease rebase. -->
+### §3 panel states — The Machine Room: run console as product demo (Stage W4.1)
+
+W4.1 elevates the `/runs/[id]` console into the product's showcase (UX review §3.2; resolves B-P1-1,
+B-P2-1). It is a VISUAL/experiential upgrade built ON the existing W3.1 SSE frames + the loaded run
+payload — **no new fetch or poll**: the console's mobile-readonly **2-mutation-fetch invariant
+stands** (only the W1.4 cancel + restart POSTs). The data projection lives in
+`$lib/connect/machine-room-display.ts` (pure, unit-tested); the component bumps a `frameTick` per
+applied live frame (snapshot/delta + fallback poll) to animate the heartbeat. Every animation has a
+`prefers-reduced-motion: reduce` guard (X9) and a static text fallback that still informs.
+
+| Surface / element | Loading | Empty / absent | Error / degraded | Populated (live) |
+|-------------------|---------|----------------|------------------|------------------|
+| **Run console — heartbeat strip** (`/runs/[id]`, in-progress only) | rides the existing run-console load; appears once the first frame lands | n/a (an in-progress run always has a heartbeat or `updated_at`) | n/a — display-only, no fetch; under reduced motion the tick-line holds still and the static "Last worker signal Xs ago" text carries the signal | a mono `▮▮▮▮▯` tick-line advancing one filled cell per applied SSE frame above the CRT log, with "Last worker signal Xs ago" (from `worker_heartbeat_at`, the W1.4 signal). On stall the strip turns amber and stamps **STALLED** |
+| **Run console — per-stage odometers** (`/runs/[id]`, in-progress only) | as above | a stage with no progress metrics yet shows **0** (honest absence, never a guessed number); skipped stages are omitted | n/a — display-only | per-stage live counts (`Extract 412 · Validate 367 · …`) counting up from each stage's real `progress.processed` in the streamed `job.stages[]`; the running stage pulses (static border under reduced motion); `N / M` only when a real total > 1 exists |
+| **Run console — STALLED / RECLAIMED moments** (`/runs/[id]`) | n/a | n/a | the W1.4 narration, upgraded in place: **STALLED** amber stamp printing the durable-runs contract in plain words ("Lease expires in 40s. A stalled run is reclaimed and resumes from the last checkpoint — nothing is lost.", from `lease_expires_at`); failure keeps its error stamp + failed-stage + one primary **Restart from checkpoint** button (unchanged from W1.4/K3) | on resume a green mono **RECLAIMED · resumed from checkpoint** ledger line (from `reclaim_count`); copy stays true to `ingest-full-runner.ts` Stage 1.6 semantics |
+| **Run console — completion ledger** (`/runs/[id]`, completed) | rides the run-console load | numbers not reported → the verdict cap reads **"—" / "Recorded"** (no fabricated score); supported reads `0%` only when genuinely 0 | n/a — display-only | **ONE** ledger replaces the old stacked success-banner + scorecard + "what to do next" blocks (deleted, not hidden): a neon verdict cap (trust numeral + verdict word + `N% supported · M units captured`, labelled **"This run's audit"**) above a single next-actions body. The trust/supported numbers QUOTE the run's `quality_report` (W2.3 single-source rule); the K4/K5 validating-family disclosure rides the cap; cross-links to the standing scorecard (`/home#trust-ledger`) and all runs are preserved |
+| **Pipeline launch — estimate label** (B-P2-1) | n/a | n/a | n/a | the launch estimate is labelled a **"floor estimate"** (or derived from recent run durations) so it is never read as a ceiling — `ConnectPipelineReviewLaunch.svelte` |
+<!-- W4.1-BLOCK-END -->
+
 ### §3 panel states — Team-shared key metadata + audit log depth (Stage W3.7 + K1)
 
 **Gateway keys — `/access`**

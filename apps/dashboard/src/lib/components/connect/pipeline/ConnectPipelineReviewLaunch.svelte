@@ -467,7 +467,9 @@
 
       <aside class="run-estimate" aria-label="Run estimates">
         <div class="run-estimate-row">
-          <span class="run-estimate-label">Estimated run time</span>
+          <!-- B-P2-1: label this a floor estimate — batched retries push the real
+               time up, so it is a minimum, never a ceiling (see estimatedCalls comment). -->
+          <span class="run-estimate-label">Run time (floor estimate)</span>
           <span class="run-estimate-value">{estimatedTime} ({totalChunks} chunk{totalChunks === 1 ? "" : "s"})</span>
         </div>
         <div class="run-estimate-row">
