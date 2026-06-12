@@ -97,19 +97,23 @@ export type BuilderReturnContext =
   | { kind: "graph-embed-backfill" }
   | { kind: "pipeline-setup"; step: PipelineWizardStepId };
 
+/**
+ * R4 — the guided flow's *visible* steps, in golden-path order (§1.1):
+ * provider key (only when missing — K2 verify inline) → sources + pack →
+ * domain (optional) → review + launch (K3 preflight). The store step is
+ * DEMOTED out of this strip to an automated-with-override aside (workspace
+ * Neon default auto-provisions on flow entry; "Configure store" stays reachable
+ * via the launch panel, never blocking the default path — W3.6 placement). It
+ * remains a *valid* step id (see `ALL_PIPELINE_WIZARD_STEP_IDS`) so the
+ * `/sources/ingest/store` redirect stub, `pipelineWizardHref("store")`, and the
+ * `?step=store` redirect carry keep working.
+ */
 export const PIPELINE_WIZARD_STEPS = [
   {
-    id: "store",
-    label: "Graph store",
-    title: "Choose where your graph lives",
-    lead: "Agents need a durable home for ideas and relationships. Use your workspace database in one click, or connect SurrealDB you manage — ingest runs write to one of these today. Neo4j and Weaviate settings can be saved ahead of adapter support.",
-    required: true,
-  },
-  {
-    id: "domain",
-    label: "Domain",
-    title: "Define how documents become a graph",
-    lead: "Use a built-in pack, import an existing SurrealDB schema, design with AI, or create a custom pack. Each pack can target different Surreal tables for ingest.",
+    id: "provider",
+    label: "Provider key",
+    title: "Add a provider key",
+    lead: "Connect one AI provider — verified live on save. Ingest needs at least one chat and one embedding route to extract, group, validate, and embed your documents.",
     required: false,
   },
   {
@@ -117,6 +121,13 @@ export const PIPELINE_WIZARD_STEPS = [
     label: "Sources",
     title: "Connect where documents live",
     lead: "Import from any mix of URLs, uploads, connectors, or crawls. Check the documents to include in your next run — you can change the selection between runs.",
+    required: false,
+  },
+  {
+    id: "domain",
+    label: "Domain",
+    title: "Define how documents become a graph",
+    lead: "Use a built-in pack, import an existing SurrealDB schema, design with AI, or create a custom pack. Each pack can target different Surreal tables for ingest.",
     required: false,
   },
   {
@@ -128,14 +139,40 @@ export const PIPELINE_WIZARD_STEPS = [
   },
 ] as const;
 
+/**
+ * The demoted store step — a valid step id but never shown in the stepper strip.
+ * Reachable via "Configure store" on the launch panel and the redirect stubs.
+ */
+export const DEMOTED_PIPELINE_WIZARD_STEP = {
+  id: "store",
+  label: "Graph store",
+  title: "Choose where your graph lives",
+  // R4-S2(c): this lead must be true with the `connectNeonGraphStore` flag OFF
+  // (MVP default), where the store is BYO and nothing is auto-provisioned. The
+  // "provisioned automatically" claim is added by the wizard ONLY when the flag is
+  // ON (see `storeLead` in ConnectPipelineWizard). Keep this copy flag-neutral.
+  lead: "Agents need a durable home for ideas and relationships. Connect the workspace Neon database or a SurrealDB you manage, and opt into the claim-versions table if you need point-in-time history.",
+  required: false,
+} as const;
+
 /** Legacy wizard step ids — redirect to `launch`. */
 export const LEGACY_PIPELINE_WIZARD_STEP_IDS = ["ready", "run"] as const;
 
-export type PipelineWizardStepId = (typeof PIPELINE_WIZARD_STEPS)[number]["id"];
+/** Every valid step id (visible flow steps + the demoted store step). */
+export const ALL_PIPELINE_WIZARD_STEP_IDS = [
+  ...PIPELINE_WIZARD_STEPS.map((s) => s.id),
+  DEMOTED_PIPELINE_WIZARD_STEP.id,
+] as const;
+
+export type PipelineWizardStepId =
+  | (typeof PIPELINE_WIZARD_STEPS)[number]["id"]
+  | (typeof DEMOTED_PIPELINE_WIZARD_STEP)["id"];
 
 export type PipelineWizardProgress = {
   hasGraphStore: boolean;
   graphStoreLabel: string | null;
+  /** R4: at least one provider integration exists (gates whether the provider step shows). */
+  hasProviderKey: boolean;
   hasCustomPack: boolean;
   packTitle: string | null;
   selectedDomainPackId: string | null;
@@ -176,7 +213,7 @@ export function isLegacyPipelineWizardStep(
 }
 
 export function isPipelineWizardStep(value: string | null): value is PipelineWizardStepId {
-  return PIPELINE_WIZARD_STEPS.some((s) => s.id === value);
+  return ALL_PIPELINE_WIZARD_STEP_IDS.some((id) => id === value);
 }
 
 export function pipelineWizardHref(step: PipelineWizardStepId, extraParams?: Record<string, string>): string {
@@ -188,7 +225,29 @@ export function parseWizardStepParam(value: string | null): PipelineWizardStepId
   return isPipelineWizardStep(value) ? value : null;
 }
 
+/**
+ * R4-U1: the wizard's forward traversal (what "Continue" does). Positional over the
+ * visible strip, EXCEPT `domain` is auto-skipped when a pack is already satisfied
+ * (`selectedDomainPackId || hasCustomPack`) — so a provisioned workspace entering at
+ * `sources` reaches `launch` in one Continue (sources+pack → launch = 2 panels), not
+ * two. `domain` stays reachable via the stepper and the launch panel's "Edit →".
+ * Returns null when `fromStep` is the last step or not a visible step.
+ */
+export function nextPipelineWizardStep(
+  fromStep: PipelineWizardStepId,
+  packSatisfied: boolean,
+): PipelineWizardStepId | null {
+  const fromIdx = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === fromStep);
+  if (fromIdx < 0 || fromIdx >= PIPELINE_WIZARD_STEPS.length - 1) return null;
+  let nextIdx = fromIdx + 1;
+  if (PIPELINE_WIZARD_STEPS[nextIdx]?.id === "domain" && packSatisfied) {
+    nextIdx += 1;
+  }
+  return PIPELINE_WIZARD_STEPS[nextIdx]?.id ?? null;
+}
+
 export function pipelineWizardStepLabel(step: PipelineWizardStepId): string {
+  if (step === DEMOTED_PIPELINE_WIZARD_STEP.id) return DEMOTED_PIPELINE_WIZARD_STEP.label;
   return PIPELINE_WIZARD_STEPS.find((s) => s.id === step)?.label ?? step;
 }
 

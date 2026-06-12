@@ -22,6 +22,8 @@ import {
 } from "$lib/server/connect/session-context";
 import { expandDocumentsToSources } from "$lib/server/connect/source-documents";
 import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
+import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
+import { INGEST_FLOW_HREF } from "$lib/nav-config";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -76,6 +78,26 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json(
       { error: "no_sources", message: "No usable sources or parsed documents were provided." },
       { status: 400 },
+    );
+  }
+
+  // R4-S2: a full-mode run with no graph target dies mid-flight with
+  // IngestConfigError("graph_target_not_configured") (see connect-ingest-worker).
+  // Fail fast at submit so a doomed run is never created — same lookup the worker
+  // performs. The launch panel's canStart gate already blocks this in the happy
+  // path; this guard catches races (a store removed since page load) and any
+  // direct BFF caller. Best-effort: a lookup failure does not block the run (the
+  // worker re-checks and fails loudly if a store is genuinely absent).
+  const graphTarget = await getConnectGraphTargetForWorkspace(ctx.workspaceId).catch(() => undefined);
+  if (graphTarget === null) {
+    return json(
+      {
+        error: "graph_target_not_configured",
+        message:
+          "No graph store is configured for this workspace. Connect a graph store before starting a run — the ingest would otherwise fail mid-flight.",
+        fixHref: `${INGEST_FLOW_HREF}?step=store`,
+      },
+      { status: 422 },
     );
   }
 

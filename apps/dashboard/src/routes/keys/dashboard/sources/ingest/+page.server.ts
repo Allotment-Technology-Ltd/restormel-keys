@@ -13,7 +13,9 @@ import { listProviderIntegrations } from "$lib/server/db";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
-import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
+import { getGraphTargetForUi, connectDashboardNeonTarget } from "$lib/server/connect/graph-target-service";
+import { isModuleEnabled } from "$lib/server/module-flags";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import {
   listDomainPacksForUi,
   resolvePipelineDomainPack,
@@ -31,6 +33,32 @@ import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { AGENTS_HREF } from "$lib/nav-config";
 import { perfSpan } from "$lib/debug/server-perf";
 import type { PageServerLoad } from "./$types";
+
+/**
+ * R4-U2: surface the real K2 verify probe receipt for the provider step. The
+ * authenticated probe stores its outcome at `metadata.verification.detail` (e.g.
+ * "Authenticated with openai (HTTP 200).") with `checkedAt`. We pick the most
+ * recently verified integration and pass its real receipt to the provider panel —
+ * never a fabricated "verified" claim. Null when no verified integration exists.
+ */
+function resolveProviderVerifyReceipt(
+  integrations: Awaited<ReturnType<typeof listProviderIntegrations>>,
+): { providerType: string; detail: string | null; checkedAt: number | null } | null {
+  const verified = integrations
+    .filter((i) => i.verificationStatus === "verified")
+    .sort((a, b) => (b.lastVerifiedAt ?? 0) - (a.lastVerifiedAt ?? 0));
+  const top = verified[0];
+  if (!top) return null;
+  const verification = (top.metadata?.verification ?? null) as
+    | { detail?: unknown; checkedAt?: unknown }
+    | null;
+  const detail = typeof verification?.detail === "string" ? verification.detail : null;
+  const checkedAt =
+    typeof verification?.checkedAt === "number"
+      ? verification.checkedAt
+      : (top.lastVerifiedAt ?? null);
+  return { providerType: top.providerType, detail, checkedAt };
+}
 
 function graphStoreLabel(target: Awaited<ReturnType<typeof getGraphTargetForUi>>): string | null {
   if (!target) return null;
@@ -110,7 +138,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
   }
 
   if (!locals.user || locals.user.authType !== "session") {
-    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
+    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "provider";
     return { step, wizard: null, runDefaults: null, modelsReady: false, phase: "initial" as const };
   }
 
@@ -141,6 +169,25 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       return null;
     });
 
+    // R4 (§1.1): the store step is demoted to automated-with-override. When the
+    // host-managed Neon graph store is enabled, provision the workspace Neon
+    // default best-effort on flow entry (idempotent — reuses any existing
+    // dashboard-Neon graph), so the `!target && step !== "store"` gate below no
+    // longer forces the store step onto the default path. Best-effort: a failure
+    // never blocks flow entry, and BYO store + claim-versions stay reachable via
+    // "Configure store" on the launch panel (W3.6 placement). When the module is
+    // disabled (MVP default), this is a no-op and the BYO store override applies.
+    const moduleFlags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
+    if (isModuleEnabled(moduleFlags, "connectNeonGraphStore")) {
+      await connectDashboardNeonTarget(workspace.id).catch((e) => {
+        console.warn(
+          "[connect] workspace Neon graph-store auto-provision skipped:",
+          e instanceof Error ? e.message.slice(0, 160) : String(e),
+        );
+        return null;
+      });
+    }
+
     if (!requestedStep) {
       const [target, documents, integrations] = await Promise.all([
         getGraphTargetForUi(workspace.id),
@@ -164,11 +211,12 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
         phase,
         hasGraphStore: Boolean(target),
         parsedDocumentCount,
+        hasProviderKey: integrations.length > 0,
       });
       throw redirect(302, pipelineWizardHref(defaultStep));
     }
 
-    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
+    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "provider";
 
     const [target, packs, connections, documents, profiles, selectedDomainPackId, ingestDocumentSelection, integrations, stats] =
       await Promise.all([
@@ -204,6 +252,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     const wizard = {
       hasGraphStore: Boolean(target),
       graphStoreLabel: graphStoreLabel(target),
+      hasProviderKey: integrations.length > 0,
       hasCustomPack: Boolean(customPack),
       packTitle: activePack?.title ?? packs[0]?.title ?? null,
       selectedDomainPackId: activePack?.id ?? null,
@@ -215,9 +264,11 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       modelsReady: modelsStatus.modelsReady,
     };
 
-    if (!target && step !== "store") {
-      throw redirect(302, pipelineWizardHref("store"));
-    }
+    // R4 (§1.1): the store step is demoted — a missing graph store no longer
+    // forces the store step onto the default path (the workspace Neon default is
+    // auto-provisioned on entry when enabled; BYO store stays reachable via
+    // "Configure store"). The launch gate + jobs BFF enforce a graph target
+    // server-side, so the run can never start without a store regardless.
 
     const domainPackOverride = url.searchParams.get("domain_pack_id");
 
@@ -265,12 +316,13 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       workspaceId: workspace.id,
       domainPacks: packs,
       selectedDomainPackId: activePack?.id ?? null,
+      providerVerify: resolveProviderVerifyReceipt(integrations),
     };
     endPipeline();
     return payload;
   } catch (e) {
     if (e && typeof e === "object" && "status" in e && "location" in e) throw e;
-    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "store";
+    const step = isPipelineWizardStep(requestedStep) ? requestedStep : "provider";
     // Signed-in load failure — distinct from the signed-out shape above so the UI
     // can show an error with a retry instead of a misleading sign-in prompt.
     return {

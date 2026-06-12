@@ -57,10 +57,13 @@
   $: preflightWarning = livePreflight ? livePreflight.status !== "pass" : false;
 
   $: selectedPack = runDefaults.packs.find((p) => p.id === selectedPackId);
+  // R4-S2: a run with no graph store dies mid-flight with graph_target_not_configured.
+  // Gate START RUN on a connected store (the jobs BFF re-enforces server-side).
   // K3 ADDS the provider preflight to the existing gate — never bypasses it.
   $: canStart =
     runDefaults.documents.length > 0 &&
     Boolean(selectedPackId) &&
+    progress.hasGraphStore &&
     modelsReady &&
     preflightAllowsLaunch(livePreflight, legacyOverride) &&
     !submitting;
@@ -155,7 +158,9 @@
       error =
         preflightFailing.length > 0
           ? "Fix the provider credential issues above before starting."
-          : "Select documents, a domain pack, and configure routes before starting.";
+          : !progress.hasGraphStore
+            ? "Configure a graph store before starting — the run needs a durable home for the graph."
+            : "Select documents, a domain pack, and configure routes before starting.";
       return;
     }
     error = null;
@@ -226,13 +231,32 @@
     <h3 id="launch-heading" class="visually-hidden">Review and launch</h3>
 
     <ul class="preflight-checklist">
-      <li class="preflight-row">
-        <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+      <li class="preflight-row" class:preflight-row-warn={!progress.hasGraphStore}>
+        <span
+          class="preflight-bullet"
+          class:preflight-bullet-ok={progress.hasGraphStore}
+          class:preflight-bullet-warn={!progress.hasGraphStore}
+          aria-hidden="true"
+        >{progress.hasGraphStore ? "■" : "□"}</span>
         <div class="preflight-main">
           <span class="preflight-label">Graph store</span>
-          <span class="preflight-value">{progress.graphStoreLabel ?? "Connected"}</span>
+          <span class="preflight-value">
+            {#if progress.hasGraphStore}
+              <strong>{progress.graphStoreLabel ?? "Connected"}</strong>
+            {:else}
+              <strong>Not configured</strong>
+            {/if}
+          </span>
+          {#if !progress.hasGraphStore}
+            <p class="preflight-warn-note">
+              No graph store is connected — your ingest run needs a durable home for the graph or it
+              will fail mid-flight. Configure one to start.
+            </p>
+          {/if}
         </div>
-        <a class="preflight-edit" href={pipelineWizardHref("store")}>Edit →</a>
+        <a class="preflight-edit" href={pipelineWizardHref("store")}>
+          {progress.hasGraphStore ? "Edit →" : "Configure store →"}
+        </a>
       </li>
       <li class="preflight-row">
         <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>

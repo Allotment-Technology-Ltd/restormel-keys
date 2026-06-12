@@ -3,6 +3,12 @@ import {
   CONNECT_GRAPH_BASE,
   CONNECT_MODELS_BASE,
   CONNECT_PIPELINE_BASE,
+  PIPELINE_WIZARD_STEPS,
+  ALL_PIPELINE_WIZARD_STEP_IDS,
+  isPipelineWizardStep,
+  nextPipelineWizardStep,
+  pipelineWizardStepLabel,
+  type PipelineWizardStepId,
   parseReturnTo,
   returnContextBackLabel,
   returnContextFromLabel,
@@ -10,6 +16,73 @@ import {
   withReturnTo,
   isRouteBuilderPath,
 } from "./pipeline-config";
+
+describe("R4 guided-flow step order (§1.1)", () => {
+  it("orders the visible flow provider → sources → domain → launch", () => {
+    expect(PIPELINE_WIZARD_STEPS.map((s) => s.id)).toEqual([
+      "provider",
+      "sources",
+      "domain",
+      "launch",
+    ]);
+  });
+
+  // Walk the actual "Continue" traversal (nextPipelineWizardStep — the same fn the
+  // wizard footer calls) from a provisioned entry step, counting panels reached.
+  function traverse(entry: PipelineWizardStepId, packSatisfied: boolean): PipelineWizardStepId[] {
+    const visited: PipelineWizardStepId[] = [entry];
+    let current: PipelineWizardStepId = entry;
+    // Bounded by step count — never loops.
+    for (let i = 0; i < PIPELINE_WIZARD_STEPS.length; i++) {
+      const next = nextPipelineWizardStep(current, packSatisfied);
+      if (!next) break;
+      visited.push(next);
+      current = next;
+    }
+    return visited;
+  }
+
+  // Ship gate (R4-U1): the provisioned golden path reaches launch in two panels.
+  // A provisioned workspace enters at `sources` with a pack already satisfied;
+  // simulating the real Continue traversal must skip the demoted/optional `domain`
+  // panel and land on `launch` — sources + pack → preflight = 2 panels.
+  it("provisioned golden path is two panels (real goNext traversal skips domain)", () => {
+    const panels = traverse("sources", /* packSatisfied */ true);
+    expect(panels).toEqual(["sources", "launch"]);
+    expect(panels).toHaveLength(2);
+    expect(panels).not.toContain("domain");
+  });
+
+  // Conversely, with NO pack satisfied, Continue from `sources` must route THROUGH
+  // `domain` so the operator chooses a pack — three panels (the non-provisioned path).
+  it("non-provisioned path routes through domain (sources → domain → launch)", () => {
+    const panels = traverse("sources", /* packSatisfied */ false);
+    expect(panels).toEqual(["sources", "domain", "launch"]);
+  });
+
+  // `domain` stays reachable as a real step regardless of provisioning — Continue
+  // from it lands on launch, and it advances even when a pack is satisfied.
+  it("keeps domain reachable: Continue from domain always lands on launch", () => {
+    expect(nextPipelineWizardStep("domain", true)).toBe("launch");
+    expect(nextPipelineWizardStep("domain", false)).toBe("launch");
+    expect(nextPipelineWizardStep("launch", true)).toBeNull();
+  });
+
+  it("demotes the store step off the visible strip but keeps it a valid id", () => {
+    expect(PIPELINE_WIZARD_STEPS.map((s) => s.id)).not.toContain("store");
+    expect(isPipelineWizardStep("store")).toBe(true);
+    expect(ALL_PIPELINE_WIZARD_STEP_IDS).toContain("store");
+    expect(pipelineWizardStepLabel("store")).toBe("Graph store");
+  });
+
+  it("keeps provider and every legacy step id valid (redirect stubs + hrefs)", () => {
+    for (const id of ["provider", "sources", "domain", "launch", "store"]) {
+      expect(isPipelineWizardStep(id)).toBe(true);
+    }
+    expect(isPipelineWizardStep("nope")).toBe(false);
+    expect(pipelineWizardStepLabel("provider")).toBe("Provider key");
+  });
+});
 
 describe("parseReturnTo", () => {
   it("parses ingest-routes", () => {

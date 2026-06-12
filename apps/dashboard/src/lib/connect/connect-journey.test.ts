@@ -42,6 +42,45 @@ describe("resolveDefaultPipelineStep", () => {
       resolveDefaultPipelineStep({ phase: "initial", hasGraphStore: true, parsedDocumentCount: 0 }),
     ).toBe("sources");
   });
+
+  // R4 (§1.1): the store step is demoted — it is never a default destination.
+  it("never defaults to the demoted store step", () => {
+    expect(
+      resolveDefaultPipelineStep({ phase: "initial", hasGraphStore: false, parsedDocumentCount: 0 }),
+    ).not.toBe("store");
+  });
+
+  // R4: a cold workspace (no provider key) sees the provider step first.
+  it("routes a cold workspace to the provider step", () => {
+    expect(
+      resolveDefaultPipelineStep({
+        phase: "initial",
+        hasGraphStore: true,
+        parsedDocumentCount: 0,
+        hasProviderKey: false,
+      }),
+    ).toBe("provider");
+  });
+
+  // R4 ship gate: a provisioned workspace (provider key + store) reaches launch
+  // in two panels — it default-enters at sources, then launch. The golden path
+  // visits no more than the §1.1 decision count (sources + pack → preflight).
+  it("provisioned golden path reaches launch in two panels (sources → launch)", () => {
+    const cold = resolveDefaultPipelineStep({
+      phase: "initial",
+      hasGraphStore: true,
+      parsedDocumentCount: 0,
+      hasProviderKey: true,
+    });
+    expect(cold).toBe("sources");
+    const afterDocs = resolveDefaultPipelineStep({
+      phase: "initial",
+      hasGraphStore: true,
+      parsedDocumentCount: 3,
+      hasProviderKey: true,
+    });
+    expect(afterDocs).toBe("launch");
+  });
 });
 
 describe("buildConnectSetupSteps", () => {
