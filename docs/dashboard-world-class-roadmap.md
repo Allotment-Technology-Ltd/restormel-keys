@@ -526,12 +526,18 @@ Use effort: high.
 
 ## Wave 2 — Make the engine visible
 
-### Stage W2.2 — The Evidence Dossier (claim-level "why is this trusted")
+### Stage W2.2 — The Evidence Dossier (claim-level "why is this trusted") — ✅ merged (#263)
 
 *Resolves FUNC P1-1(a,b) + §4 gap 1; UX D-P0-1, IA-4, signature 3.1. Files:
 `apps/dashboard/src/routes/keys/dashboard/api/connect/graph/units/+server.ts`,
 `ConnectGraphExplorer.svelte` (detail panel + queue facet),
 `src/lib/components/connect/graph-comparison/ProvenanceDrawer.svelte` (links).*
+
+> **Shipped (post-Wave-R note, 2026-06-12):** merged before Wave R; the explorer now mounts at
+> `/claims` (R5), so ProvenanceDrawer claims deep-link to `/claims?unit=<id>` (via `CLAIMS_HREF`),
+> not the old `/connect/graph?unit=`. The units API endpoint did not move
+> (`api/connect/graph/units/+server.ts`). The original prompt text below is preserved as the build
+> record; read `/connect/graph` references in it as `/claims`.
 
 ```
 ROLE
@@ -621,6 +627,16 @@ Use effort: xhigh.
 > The no-second-formula test survives unchanged. Coverage-gap rows that linked to
 > `pipeline?step=store` will be updated in R4 to link to `/sources/ingest?step=store`.
 
+> **Shipped (post-Wave-R re-baseline, 2026-06-12):** ✅ merged (#270), then carried onto R3. The
+> single-source trust ledger is live as the `/home` masthead (`ConnectTrustScorecard.svelte`
+> capped in `routes/keys/dashboard/home/+page.svelte`). Two citations above drifted with Wave R:
+> `graph-health-summary.ts` moved from `lib/server/connect/` to **`lib/connect/graph-health-summary.ts`**
+> (now a pure client-importable module), and the `connect/+page.svelte` mount is gone — the ledger
+> lives at `/home` and the quality-history headline is assembled in
+> `lib/server/connect/connect-hub-load.ts` (there is no standalone `ConnectQualityHistory.svelte`
+> anymore). Coverage-gap fix links now target `/sources/ingest?step=store`. The keys-tokens state
+> work shipped as spec'd.
+
 ```
 ROLE
 Senior engineer fixing the most ironic finding in either review: the product whose pitch
@@ -681,11 +697,17 @@ screenshots.
 Use effort: xhigh.
 ```
 
-### Stage W2.4 — Memory-writes inbox + generated MCP catalog
+### Stage W2.4 — Memory-writes inbox + generated MCP catalog — ✅ merged (#258)
 
 *Resolves FUNC §3 (memory row), §4 gap 9a, P2-7. Files: new
 `connect/memory` route + components; `dev-tools/mcp/+page.svelte`;
 `packages/mcp` (catalog export only).*
+
+> **Shipped (post-Wave-R note, 2026-06-12):** merged before Wave R. The two route citations above
+> were relocated by Wave R: the memory inbox is now at **`/claims/memory`** (R2/R5;
+> `routes/keys/dashboard/claims/memory/+page.svelte`, inbox rows link to `/claims?unit=<id>`), and
+> the generated MCP catalog now lives at **`/agents/catalogs`** (R5) — the old `/dev-tools/mcp`
+> 308-redirects there. The `packages/mcp` catalog-export work is unchanged.
 
 ```
 ROLE
@@ -743,6 +765,14 @@ Use effort: high.
 *Resolves FUNC §3 (as-of row), §4 gap 9b. Files: `ConnectGraphExplorer.svelte` (toolbar +
 query path), `api/connect/graph/units/+server.ts` (as_of passthrough). Depends on W2.2.*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; files are still accurate —
+> the explorer component (`lib/components/connect/ConnectGraphExplorer.svelte`) and the units API
+> (`api/connect/graph/units/+server.ts`) did NOT move with Wave R. Only the page **route** changed:
+> the explorer now mounts at **`/claims`** (was `/connect/graph`). Read "the graph explorer" /
+> "explorer toolbar" below as `/claims`, and the `?as_of=` URL param lives on `/claims` (shareable
+> historical views resolve there; old `/connect/graph?as_of=` 308-redirects with the query
+> preserved). W2.2 (the dependency) is merged (#263).
+
 ```
 ROLE
 Senior engineer surfacing pivot Stage 3.3: temporal validity and as-of retrieval shipped
@@ -785,9 +815,16 @@ PR: recording of toggling as-of and a superseded claim's dossier.
 Use effort: high.
 ```
 
-### Stage W2.6 — Overview becomes the verified-context home
+### Stage W2.6 — Overview becomes the verified-context home — ✅ merged (#257)
 
 *Resolves UX IA-3; FUNC P2-1. Files: `activity/+page.svelte`, `activity/+page.server.ts`.*
+
+> **Shipped + superseded by R3 (post-Wave-R note, 2026-06-12):** merged before Wave R as the down
+> payment on One Home (the trust strip + parallelised load on the old `/activity` Overview). R3
+> (#277) then completed the merge: `/activity` and `/connect` both MERGE-INTO **`/home`**, so
+> `activity/+page.svelte` is gone and `activity/+page.server.ts` is now a 308 redirect to `/home`.
+> The verified-context masthead and its single-source trust strip live at
+> `routes/keys/dashboard/home/+page.svelte` (R3). No further W2.6 work outstanding.
 
 ```
 ROLE
@@ -845,6 +882,23 @@ new `api/connect/ingest/events` SSE endpoint, `ConnectIngestRunConsole.svelte` (
 swap), `connect/ingest/+page.svelte` (live + pagination),
 `api/connect/ingest/jobs/+server.ts` (cursor passthrough).*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; refresh citations:
+> - The runs **list** moved from `connect/ingest/+page.svelte` to **`routes/keys/dashboard/runs/+page.svelte`**
+>   (R2), and the run **console** mounts at **`/runs/[id]/+page.svelte`** (the `ConnectIngestRunConsole.svelte`
+>   component path is unchanged). The "live + pagination" target is `runs/+page.svelte` now.
+> - The SSE endpoint and `api/connect/ingest/jobs/+server.ts` did NOT move (the `/api/connect/*`
+>   tree is intact). The new `api/connect/ingest/events` SSE endpoint is still to be built.
+> - **SSE precedent moved:** the proof-chat stream is now at **`routes/keys/dashboard/prove/api/stream/+server.ts`**
+>   (was `connect/proof/api/stream`).
+> - **Poll diet already partly landed:** the console poll is now **2.5s jittered** (not 1.5s) with
+>   conditional COUNT — see `ConnectIngestRunConsole.svelte` (`pollMs = active ? 2500 : 4000`). Read
+>   the "polls every 1.5s" framing below as the historical pre-fix baseline; W3.1's remaining job is
+>   the SSE channel + cursor pagination, with the existing jittered poll as the documented fallback.
+> - **Chip-transport consumer now exists:** `stores/live-run-poll.ts` (R6) is the **designated SSE
+>   swap point** — it ships a 30s ambient poll of `/api/connect/ingest/jobs` behind the topbar
+>   `LiveRunChip` with the exact store contract W3.1's SSE must preserve. W3.1 replaces its fetch
+>   loop with the event subscription (the module's header documents this).
+
 ```
 ROLE
 Senior engineer replacing polling-or-stale with one live channel. Today the run console
@@ -897,6 +951,12 @@ Use effort: xhigh — transport correctness + graceful degradation are the whole
 *Resolves FUNC P1-3, P1-2 (simulate/explain-chain), §4 gap 3 — "the single biggest
 activation lever". Files: `sandbox/+page.svelte` (workspace mode), route builder Flow/More
 tab (mount `src/lib/components/dashboard/RouteResolutionPreview.svelte`).*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; **citations verified intact.**
+> Wave R reshaped the Connect-hub surfaces only — it did NOT touch `/sandbox`, the route builder
+> (`projects/[id]/routes/[routeId]/+page.svelte`), `RouteResolutionPreview.svelte` (still
+> un-mounted at `lib/components/dashboard/`), the `runtime/invoke` endpoint, or `/logs`. The
+> "deep-link the resulting request-log row" target is still `/logs`. No geography change needed.
 
 ```
 ROLE
@@ -952,6 +1012,12 @@ Use effort: xhigh.
 *Resolves FUNC P1-6, §4 gap 6. Files: `logs/+page.svelte`, `logs/+page.server.ts`,
 logs API params.*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; `/logs` was NOT moved by
+> Wave R (D6 kept Logs and Usage separate, not folded into a section) — file citations intact. The
+> "log row → route builder" deep-link still targets `projects/[id]/routes/[routeId]`. The live-tail
+> dependency on W3.1's SSE is unchanged; until W3.1 ships, the modest poll fallback rides the same
+> 2.5s-jittered diet now standard in the run console.
+
 ```
 ROLE
 Senior engineer turning the request log into the debugging surface an LLM-gateway
@@ -990,10 +1056,17 @@ PR: screenshots of named filters, tail, export.
 Use effort: xhigh.
 ```
 
-### Stage W3.4 — Command palette + global search + systematic cross-links
+### Stage W3.4 — Command palette + global search + systematic cross-links — ✅ merged (#256)
 
 *Resolves FUNC P1-7, §4 gap 4. Files: new `/api/search` endpoint, new palette component
 in `+layout.svelte`, cross-link touches on entity pages.*
+
+> **Shipped (post-Wave-R note, 2026-06-12):** merged before Wave R. The `/api/search` endpoint is
+> live (`routes/keys/dashboard/api/search/`) and the topbar palette button is in `+layout.svelte`.
+> Navigation commands and result URLs were carried onto the new IA by R2 (they resolve through
+> `nav-config.ts`'s HOME/SOURCES/RUNS/CLAIMS/PROVE/AGENTS hrefs); any palette destinations that
+> still point at `/connect/*` are covered by the 308 redirect table but should be re-pointed
+> opportunistically.
 
 ```
 ROLE
@@ -1041,6 +1114,12 @@ Use effort: xhigh.
 
 *Resolves FUNC P0-1 (diff residue), P1-2 (rest), §4 gap 2. Files: route builder Versions
 tab (from W1.5), `policies/[id]/+page.svelte`, step-add dialog.*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; **citations verified intact.**
+> The route builder (`projects/[id]/routes/[routeId]`) and `policies/[id]/+page.svelte` were NOT
+> moved by Wave R — `/projects`, `/policies`, and `/routes` (Rules + Ingestion tabs) stayed
+> top-level. No geography change needed. Note `/routes/ingestion` (R5, ex-`/connect/models`) is a
+> sibling surface, not this stage's target.
 
 ```
 ROLE
@@ -1100,6 +1179,20 @@ wizard launch step preselection. **Coordinate with issue #234.***
 >   `/connect/pipeline?step=launch` to `/sources/ingest?step=launch` (R4's step mapping).
 > The BYO opt-in placement and a11y work (E-P1-1/E-P1-2/E-P2-1) are unaffected by geography.
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** R2/R3/R4 are all merged, so the
+> "**after R2**" branch above is the live reality — build directly against it. Concretely:
+> - Changed-source chip mounts in **`routes/keys/dashboard/home/+page.svelte`** (a W3.6 mount-point
+>   comment already marks the RUNS RAIL cell) and **`routes/keys/dashboard/runs/+page.svelte`**
+>   (runs list header). The old hub run-chip is gone.
+> - Launch CTA target is **`/sources/ingest?step=launch`** (`INGEST_FLOW_HREF` in `nav-config.ts`;
+>   `pipelineWizardHref('launch')` in `lib/connect/pipeline-config.ts`).
+> - The BYO opt-in lives on the **store step**: `ConnectGraphStorePanel.svelte` (path unchanged,
+>   `lib/components/connect/pipeline/`) is now rendered by `ConnectPipelineWizard.svelte` inside the
+>   `/sources/ingest` flow (R4 demoted the store to an aside; the store step route is
+>   `/sources/ingest/store`).
+> - **issue #234 still open** — the guard in this stage is unchanged (do not launder a stalled
+>   'unchanged' state).
+
 ```
 ROLE
 Senior engineer making pivot Stages 3.2/3.2b visible to the operator who needs them
@@ -1155,6 +1248,15 @@ Use effort: high.
 *Resolves FUNC P1-5, P2-5, §4 gap 8. Files: `access/+page.svelte`, key API + migration
 (label column), `access/audit/+page.server.ts` + page.*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; one citation moved. The
+> **audit log relocated** `/access/audit` → **`/prove/audit`** (R5, D5 — audit is a proof
+> artefact); the audit-depth work (time-range + actor/action filters, cursor pagination) now
+> targets **`routes/keys/dashboard/prove/audit/+page.server.ts` + `+page.svelte`** (still a fixed
+> 50-row `listAuditEvents` load — the gap is real). `/access/audit` is a 308 redirect. The
+> **key-management half** (`access/+page.svelte`, server-persisted labels + migration) was NOT
+> moved — `/access` stayed top-level. K1 (gateway-key metadata contract) still folds into this
+> stage; K1 is Staged (un-shipped).
+
 ```
 ROLE
 Senior engineer fixing a credentials surface whose labels are a client-side illusion:
@@ -1193,10 +1295,14 @@ Security pass (restormel-high-risk-security) — key-management surface touched.
 Use effort: high.
 ```
 
-### Stage W3.8 — Testing hub: real runs, real verdicts
+### Stage W3.8 — Testing hub: real runs, real verdicts — ✅ merged (#255)
 
 *Resolves FUNC P1-8. Files: `testing/+page.svelte` (+ server load), verdict-ingest
 endpoint following the eval-verdicts pattern.*
+
+> **Shipped (post-Wave-R note, 2026-06-12):** merged before Wave R. `/testing` was NOT moved by
+> Wave R (it stayed a top-level hub, separate from the Connect sections — `TESTING_HUB_HREF` in
+> `nav-config.ts`), so the citations remain accurate.
 
 ```
 ROLE
@@ -1246,6 +1352,13 @@ Use effort: high.
 *Resolves UX signature 3.2, B-P1-1, B-P2-1. Files: `ConnectIngestRunConsole.svelte`,
 `ConnectPipelineReviewLaunch.svelte` (estimate label). Depends on W1.4 + W3.1.*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; both component files are
+> unchanged paths (`lib/components/connect/pipeline/`). The run console now **mounts at
+> `/runs/[id]`** (`routes/keys/dashboard/runs/[id]/+page.svelte`) — that is the "most-watched ten
+> minutes" surface this stage polishes. The completion-ledger trust numbers QUOTE the same
+> scorecard service now surfaced on the `/home` masthead (W2.3 merged). SSE source (W3.1) is still
+> un-shipped — see W3.1's note; until then the live odometers ride the 2.5s-jittered poll.
+
 ```
 ROLE
 Senior product engineer turning the 10-minute first-run wait into the product demo
@@ -1291,6 +1404,12 @@ Use effort: xhigh.
 
 *Resolves UX signature 3.4; FUNC §4 gap 1 (actions at speed). Files:
 `ConnectGraphExplorer.svelte` queue/detail (on top of W2.2). Depends on W2.2 + W2.3.*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; `ConnectGraphExplorer.svelte`
+> path is unchanged but it now **mounts at `/claims`** (`routes/keys/dashboard/claims/+page.svelte`,
+> R5) — that is where the keyboard-first triage desk lands. Dependencies W2.2 (#263) and W2.3
+> (#270) are both merged; the dossier + accept-guard + single-source scorecard the desk builds on
+> all exist. The session trust-delta quotes the scorecard service now mounted on `/home`.
 
 ```
 ROLE
@@ -1338,6 +1457,15 @@ Use effort: xhigh.
 *Resolves UX signature 3.5; FUNC §3 (scorecard share row). Files: cross-cutting link
 audit + one shared affordance class; optional public scorecard share view (gated).
 Depends on W2.1 + W2.2 + W2.3.*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** un-shipped; refresh the named wirings to
+> the new IA. Trust assertions now live on **`/home`** (the masthead scorecard, W2.3 merged) and
+> the claim receipts on **`/claims`** (the explorer/dossier, W2.2 merged). Proof-drawer claims
+> deep-link to **`/claims?unit=<id>`** (already shipped via `CLAIMS_HREF` in `ProvenanceDrawer.svelte`).
+> The **public scorecard share view** now has a home: **`/prove/share`** (R5 created the tab as a
+> "public scorecard placeholder, gated on W4.3's STOP decision" — see `dashboard-hub-nav.ts`
+> `PROVE_HUB_TABS`); this stage's STOP-gated share view fills it. W2.1's filter-param deep links
+> resolve on `/claims`.
 
 ```
 ROLE
@@ -1388,6 +1516,20 @@ Use effort: high.
 *Resolves UX F-P1-1, F-P1-2 (N8). Files: ~10 route pages' local `.page-title` blocks,
 Connect components/routes (66 `1px solid` borders), shared `BrutalPageHeader`.*
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** this sweep is **deliberately sequenced
+> AFTER Wave R** (Operating notes / redesign §4.1) precisely because the Connect routes moved —
+> sweeping pre-move geography would waste the pass. The FIRST block below quotes the **frozen UX
+> review** (file:line evidence against pre-Wave-R geography) — do NOT chase those exact paths.
+> Instead, run the mechanical pass over the **current section pages**: `/home`, `/sources`,
+> `/sources/ingest/*`, `/runs`, `/runs/[id]`, `/claims`, `/claims/memory`, `/prove/*`, `/agents/*`,
+> `/routes/ingestion`, plus the still-top-level `/access`, `/logs`, `/policies`, `/projects`,
+> `/analytics`, `/integrations`, `/testing`. The old `connect/+page.svelte` / `library/+page.svelte`
+> heroes are gone (those URLs 308-redirect); the components they used (`ConnectGraphExplorer`,
+> `ConnectTrustScorecard`, etc.) kept their `lib/components/connect/` paths and are now rendered by
+> the new pages. The `BrutalPageHeader` adoption, 2px-border floor, and tint-token cleanup rules
+> are unchanged — apply them to the new surfaces. Re-grep `1px solid` and the tint tokens against
+> the current tree (the counts in the review are pre-Wave-R).
+
 ```
 ROLE
 Engineer executing the mechanical design-system pass the UX review specified. This stage
@@ -1429,6 +1571,16 @@ Use effort: high — mechanical but wide; discipline over creativity.
 
 *Resolves UX F-P1-3 (app side), F-P2-1, wizard carry-overs; D-P2-1 if outstanding. Files:
 cross-cutting; graded against the W1.1 registry.*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** runs **AFTER Wave R** (same reason as
+> W4.4). Grade copy against the **R1 ux-contracts v2** registry (`docs/ux-contracts.md` §1/§2/§A,
+> PR #273) — it already names the new sections (HOME/SOURCES/RUNS/CLAIMS/PROVE/AGENTS) and resolved
+> the models/keys naming drift (the page is now `/routes/ingestion`, tab "Ingestion"). The
+> F-P1-3 drift items in the FIRST block quote pre-Wave-R surfaces; the `integrations/+page.svelte`
+> ("Connect a Provider"/"Connections") and `analytics/+page.svelte` ("Usage") pages are still
+> top-level and unchanged, but verify each H1/`<title>` against the new `PATH_TO_TITLE` in
+> `nav-config.ts` before editing. Component citations (`ConnectPipelineWizard.svelte`,
+> `ConnectSetupLedger.svelte`, `ConnectIngestRunConsole.svelte`) kept their paths.
 
 ```
 ROLE
@@ -1485,6 +1637,15 @@ Use effort: medium.
 >   separately. If W4.6 fires before R6, implement the error boundary + auth half only; leave the
 >   mobile gate for R6.
 
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** **Half B shipped via R6 (#280).** The
+> mobile read-only tier is live: `isMobileAllowedPath` (`lib/dashboard-mobile-tier.ts`) opens
+> `/home`, `/runs/[id]`, and `/claims`, and `+layout.svelte` applies `.shell-mobile-readonly`. R6
+> follow-up **#281** is in flight to make `/claims` genuinely read-only on that tier (the last
+> mile of F-P2-2). **Half A is still un-shipped** and remains W4.6's scope: dashboard-scoped
+> `+error.svelte` boundaries and the one-unauthenticated-behavior redirect matrix (P2-9, P2-11,
+> P2-12). One copy fix: the error-boundary "Back to Overview" link should say **"Back to Home"**
+> and target `/home` (R3 retired Overview) — `HOME_HREF` in `nav-config.ts`.
+
 ```
 ROLE
 Senior engineer hardening the shell around everything the programme built.
@@ -1523,6 +1684,21 @@ Use effort: high.
 ### Stage W4.7 — Hygiene: orphans, prototype route, analytics mock, fresh-clone DX
 
 *Resolves FUNC P2-3, P2-4, P2-6, P2-8, P2-10, P1-2 (orphaned components); UX IA-7.*
+
+> **Re-scope note (post-Wave-R re-baseline, 2026-06-12):** Wave R already cleared several items —
+> re-scope the residual:
+> - **`/connect/ingest/new` (P2-3, IA-7): DONE.** R2/D8 deleted the 631-line standalone job form;
+>   the URL 308-redirects to `/sources/ingest?step=launch` (legacy map). No action left.
+> - **`/prototype/brutalist-dashboard` (P2-8): GONE** — no `prototype` route exists in the current
+>   tree. Verify nothing re-introduced it; otherwise close this item.
+> - **Orphaned components (P1-2 tail):** re-scoped — `QuickActions.svelte` is now **mounted** (route
+>   builder `projects/[id]/routes/[routeId]/+page.svelte`), so it is no longer orphaned. Still
+>   orphaned and needing a mount-or-delete decision: **`FirstRunOnboarding.svelte`** and
+>   **`SetupChecklist.svelte`** (both in `lib/components/dashboard/`).
+> - **Analytics mock (P2-6):** `/analytics` unchanged path — target intact.
+> - **Connection detail (P2-4):** `/integrations/[id]` unchanged path — target intact (also K6's
+>   rotation surface).
+> - **Fresh-clone DX (P2-10):** unaffected by Wave R.
 
 ```
 ROLE
@@ -1574,12 +1750,49 @@ R1 (this re-baseline) is the only docs stage. R2–R7 are code stages; R2 is the
 pre-move geography wastes the pass — the decision from §4.1 of the redesign doc). W4.6's mobile
 half folds into R6.
 
+**Wave R status — all merged ✅ (2026-06-12).** R1–R7 shipped; the new IA geography is live and
+is the baseline this roadmap now cites. The Connect hub is dissolved: every `/connect/*` URL
+308-redirects via `apps/dashboard/src/lib/legacy-route-redirects.ts` (table source of truth) and
+the catch-all at `connect/[...legacy]/+page.server.ts`; in-app links point at the new top-level
+sections.
+
+| Stage | Title | PR | Outcome (where it landed) |
+|---|---|---|---|
+| R1 | IA decision record + ux-contracts re-baseline v2 | #273 | `docs/design/keys-northstar-redesign-2026-06.md` (D1–D10) + `ux-contracts.md` v2 |
+| R2 | Route migration, redirects, nav skeleton | #276 | New top-level routes + `legacy-route-redirects.ts` (308s) + `nav-config.ts` HOME/SOURCES/RUNS/CLAIMS/PROVE/AGENTS |
+| R3 | One Home (merged `/home`) | #277 | `/home` masthead: capped `ConnectTrustScorecard` + `home/TrustSparkline.svelte`, `ConnectVerifiedReadiness` (K4 ledger), INBOX, RUNS RAIL, AGENT TRAFFIC; `/activity` + `/connect` MERGE-INTO `/home` |
+| R4 | Sources section + wizard-as-flow | #279 | `/sources` (Packs) + `/sources/ingest` flow (provider→sources→domain→launch; store demoted to aside); `pipeline-config.ts` step model |
+| R5 | Agents + Prove assembly, Foundation rehoming | #278 | `/agents/{wiring,catalogs}`, `/prove/{proof,traces,audit,share}`, `/routes/ingestion`; `/connect/mcp`→Agents, `/dev-tools/*`→Catalogs, `/connect/proof/*`→Prove, `/access/audit`→`/prove/audit`, `/connect/models`→`/routes/ingestion` |
+| R6 | Shell v2: live-run chip, dossier rail, mobile tier | #280 | `LiveRunChip` in `+layout.svelte` (30s poll via `stores/live-run-poll.ts` — the W3.1 SSE swap point), `DossierRail` + `RunQuickPeek` (first consumer on `/runs`), mobile read-only tier (`dashboard-mobile-tier.ts`, `.shell-mobile-readonly`) |
+| R7 | Workspace infrastructure project (D4) | #274 | Auto-provisioned Workspace infrastructure routing project |
+
+**R6 follow-up in flight:** PR #281 (`fix(dashboard): R6 follow-up — make /claims genuinely
+read-only on the mobile tier`) tightens mobile read-only completeness — OPEN at re-baseline time.
+
 > **Roadmap changelog (R1, 2026-06-12):**
 > - Re-scope notes added to W2.3, W3.6, W4.6 per redesign §4.1 (above in their stage sections).
 > - Wave K section added below (K stages were in the KEYS review; now in the living roadmap).
 > - Wave R sequencing table rows added above.
 > - `ux-contracts.md` §1 + §2 + §A updated (see R1 changelog entry there).
 > - Source: `docs/design/keys-northstar-redesign-2026-06.md`
+
+> **Roadmap changelog (post-Wave-R re-baseline, 2026-06-12):**
+> - **Trigger:** Wave R (R1–R7) complete and merged (#273 #276 #277 #279 #278 #280 #274); the
+>   re-baseline cadence in Operating notes requires refreshing drifted citations after a batch.
+> - **Refreshed:** every un-shipped stage prompt's route/file/component citations to the new IA
+>   geography — un-shipped W2.5, W3.1, W3.2, W3.3, W3.5, W3.6, W3.7, W4.1–W4.7, and the Wave K
+>   table/K-stage notes. Routes moved (`/connect/*` → top-level sections); **components and
+>   `/api/connect/*` endpoints did NOT move** — `ConnectIngestRunConsole.svelte`,
+>   `ConnectGraphExplorer.svelte`, `ConnectTrustScorecard.svelte`, `ProvenanceDrawer.svelte`,
+>   `api/connect/graph/units/+server.ts`, `api/connect/ingest/jobs/+server.ts` keep their paths,
+>   so component-level citations stayed valid and were left intact.
+> - **Marked merged:** W2.2 (#263), W2.3 (#270), W2.4 (#258), W2.6 (#257), W3.4 (#256),
+>   W3.8 (#255), K2 (#261), K3 (#272), K4 (#275); W3.4's cross-link wiring and W2.3's
+>   single-source rule now exist in code; W3.1's chip-transport consumer exists in
+>   `stores/live-run-poll.ts` (the designated SSE swap point).
+> - **Re-scope notes added** under stages whose mount target moved with Wave R (see each stage).
+> - **Review docs stay frozen as evidence** — only this living roadmap was edited.
+> - Source: this PR.
 
 ---
 
@@ -1594,9 +1807,9 @@ Stage prompts are in the review doc. Dependency order: **K2 → K3 → K4 → K5
 | Stage | Title | Resolves | Depends on | Status |
 |---|---|---|---|---|
 | K1 | Gateway-key metadata contract | K-P1-1 (labels + last_used); N+1 fix | — (folds into W3.7) | Staged |
-| K2 | Real provider verification + capability honesty | K-P0-1, K-P1-3 | — | In flight |
-| K3 | Connect run preflight: bindings, fix-forward errors | K-P0-2, K-P2-1 | K2 (soft) | In flight |
-| K4 | "Ready to verify": Connect readiness hub | K-P1-5/6/7, §3 coherence thesis | K3, W1.5 merged | Staged |
+| K2 | Real provider verification + capability honesty | K-P0-1, K-P1-3 | — | ✅ merged (#261) |
+| K3 | Connect run preflight: bindings, fix-forward errors | K-P0-2, K-P2-1 | K2 (soft) | ✅ merged (#272) |
+| K4 | "Ready to verify": Connect readiness hub | K-P1-5/6/7, §3 coherence thesis | K3, W1.5 merged | ✅ merged (#275) — now `/home` masthead, see re-scope note |
 | K5 | Run attribution: which route served this run | K-P1-4, BP-11/12 | — | Staged |
 | K6 | Rotation: credentials and gateway keys | K-P1-2, FUNC P2-4 | K1, K2 | Staged |
 
@@ -1608,7 +1821,16 @@ Stage prompts are in the review doc. Dependency order: **K2 → K3 → K4 → K5
 > K4 **survives, elevated.** The readiness ledger becomes the **Home masthead's left panel**
 > (`/home` §3.3 wireframe, "READY TO VERIFY" quadrant) instead of "a panel on the Connect hub".
 > The three original mounts from the review (hub panel, project-page card, Overview checklist chip)
-> are superseded by **one mount: Home masthead**. Concretely:
+> are superseded by **one mount: Home masthead**.
+>
+> **Shipped state (post-Wave-R re-baseline, 2026-06-12):** K4 merged (#275) and rebased onto R3.
+> The ledger is live as the masthead left quadrant — `ConnectVerifiedReadiness.svelte` mounted in
+> `routes/keys/dashboard/home/+page.svelte` (READY TO VERIFY cell), fed by
+> `lib/server/connect/verified-readiness.ts` (rows `{id, status, evidence, fixHref}`). The
+> project-page card and Overview checklist chip were correctly **not** built. The `?step=store`
+> fix link now targets `/sources/ingest?step=store` (R4's flow geography).
+>
+> Original conditional guidance (now resolved by R3+R4 landing; retained for the audit trail):
 > - The server module (rows `{id, status, evidence, fixHref}`) is unchanged — build it as spec'd.
 > - If K4 fires **before** R3: mount on the current `/connect` hub as a ledger panel (the interim
 >   mount); R3 relocates to `/home` without rebuilding the component.
@@ -1645,6 +1867,11 @@ Stage prompts are in the review doc. Dependency order: **K2 → K3 → K4 → K5
   sharing the interactive instance) is mitigated by durable runs (pivot 1.6) and the
   cron-drain design; the full worker split is an infra-stage decision outside this
   roadmap — flag it when the Coolify Stage 2 work begins.
+  *(Post-Wave-R note, 2026-06-12: the F8 poll diet has already partly landed — the run
+  console now polls at 2.5s jittered with conditional COUNT (`ConnectIngestRunConsole.svelte`),
+  and the R6 live-run chip uses a 30s ambient poll (`stores/live-run-poll.ts`, the SSE swap
+  point). W3.1's remaining work is the SSE channel + keyset pagination; the SSE precedent now
+  lives at `prove/api/stream/+server.ts`.)*
 - **Open production items (owner-held, not agent stages):**
   - **CI secrets for the weekly efficacy run** — `connect-efficacy-weekly.yml` needs the
     cross-model provider keys provisioned as CI secrets; until then claims-ledger row 6's
