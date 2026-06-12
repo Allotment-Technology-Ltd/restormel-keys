@@ -100,11 +100,11 @@ vi.mock("$lib/server/connect/workspace-cache", () => ({
   getConnectWorkspaceCached: vi.fn(async () => ({ id: "ws-111", name: "Test workspace" })),
 }));
 
-type LoadResult = { inbox: Promise<import("../../../routes/keys/dashboard/connect/memory/+page.server.js").MemoryInboxData | null> };
+type LoadResult = { inbox: Promise<import("../../../routes/keys/dashboard/claims/memory/+page.server.js").MemoryInboxData | null> };
 
 describe("connect/memory +page.server load", async () => {
   const { load } = await import(
-    "../../../routes/keys/dashboard/connect/memory/+page.server.js"
+    "../../../routes/keys/dashboard/claims/memory/+page.server.js"
   );
 
   it("returns inbox: null for unauthenticated request", async () => {

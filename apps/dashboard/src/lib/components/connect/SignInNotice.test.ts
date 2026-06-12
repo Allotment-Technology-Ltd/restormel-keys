@@ -18,28 +18,28 @@ function buildLoginHref(pathname: string, search: string): string {
 
 describe("SignInNotice — return-to URL", () => {
   it("encodes pathname with no search params", () => {
-    const href = buildLoginHref("/keys/dashboard/connect", "");
-    expect(href).toBe(DASHBOARD_BASE + "/login?return_to=%2Fkeys%2Fdashboard%2Fconnect");
+    const href = buildLoginHref("/keys/dashboard/home", "");
+    expect(href).toBe(DASHBOARD_BASE + "/login?return_to=%2Fkeys%2Fdashboard%2Fhome");
   });
 
   it("encodes pathname and search string", () => {
-    const href = buildLoginHref("/keys/dashboard/connect/graph", "?filter=review");
+    const href = buildLoginHref("/keys/dashboard/claims", "?filter=review");
     expect(href).toContain("return_to=");
     // Decoded return_to should reconstruct the original destination
     const url = new URL(href, "https://restormel.dev");
     const returnTo = url.searchParams.get("return_to");
-    expect(returnTo).toBe("/keys/dashboard/connect/graph?filter=review");
+    expect(returnTo).toBe("/keys/dashboard/claims?filter=review");
   });
 
   it("preserves multiple query params", () => {
-    const href = buildLoginHref("/keys/dashboard/connect/graph", "?filter=review&unit=abc123");
+    const href = buildLoginHref("/keys/dashboard/claims", "?filter=review&unit=abc123");
     const url = new URL(href, "https://restormel.dev");
     const returnTo = url.searchParams.get("return_to");
-    expect(returnTo).toBe("/keys/dashboard/connect/graph?filter=review&unit=abc123");
+    expect(returnTo).toBe("/keys/dashboard/claims?filter=review&unit=abc123");
   });
 
   it("always points to the /login path under DASHBOARD_BASE", () => {
-    const href = buildLoginHref("/keys/dashboard/connect/proof", "");
+    const href = buildLoginHref("/keys/dashboard/prove", "");
     expect(href.startsWith(DASHBOARD_BASE + "/login")).toBe(true);
   });
 });

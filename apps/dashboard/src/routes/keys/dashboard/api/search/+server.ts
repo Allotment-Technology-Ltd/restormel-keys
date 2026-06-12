@@ -167,7 +167,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         id: run.id,
         title: run.label ?? `Run ${run.id.slice(0, 8)}`,
         subtitle: run.status ?? null,
-        url: `${DASHBOARD_BASE}/connect/ingest/${run.id}`,
+        url: `${DASHBOARD_BASE}/runs/${run.id}`,
       });
     }
   } catch (e) {
@@ -194,7 +194,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         id: row.id,
         title: truncated,
         subtitle: row.validationStatus ?? null,
-        url: `${DASHBOARD_BASE}/connect/graph?unit=${encodeURIComponent(row.id)}`,
+        url: `${DASHBOARD_BASE}/claims?unit=${encodeURIComponent(row.id)}`,
       });
     }
   } catch (e) {

@@ -91,7 +91,7 @@
         ><strong>Connect agent memory</strong> — <code class="tool-name">RESTORMEL_CONNECT_API_BASE</code> =
         <code class="tool-name">https://restormel.dev</code> + <code class="tool-name">RESTORMEL_GATEWAY_KEY</code> (<code>rk_…</code>) for
         <code class="tool-name">connect.memory.write</code> and other Connect tools. See
-        <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>.</span
+        <a href="/keys/dashboard/claims/memory" class="btn-link">Memory inbox</a>.</span
       >
     </li>
   </ul>
@@ -133,9 +133,9 @@
     <code class="tool-name">POST …/keys/dashboard/api/connect/invoke</code>
     (<code class="tool-name">connect.search</code>,
     <code class="tool-name">connect.get_context_for</code>) — requires BYO Surreal; see
-    <a href="/keys/dashboard/connect" class="btn-link">Connect hub</a>
+    <a href="/keys/dashboard/home" class="btn-link">Home</a>
     · Memory writes:
-    <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>
+    <a href="/keys/dashboard/claims/memory" class="btn-link">Memory inbox</a>
   </p>
   <label class="suite-search-label" for="suite-tool-filter">Filter suite tools</label>
   <input
@@ -181,7 +181,7 @@
     </li>
     <li>
       <strong>Agent memory write</strong>
-      <span class="tool-desc"> — <code class="tool-name">connect.memory.write</code> submits agent observations through the EBV quality gate; view results in the <a href="/keys/dashboard/connect/memory" class="btn-link">Memory inbox</a>.</span>
+      <span class="tool-desc"> — <code class="tool-name">connect.memory.write</code> submits agent observations through the EBV quality gate; view results in the <a href="/keys/dashboard/claims/memory" class="btn-link">Memory inbox</a>.</span>
     </li>
   </ul>
 </section>

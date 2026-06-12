@@ -5,11 +5,11 @@ import { buildPostAuthLocation } from "./auth-return-cookie";
 describe("buildPostAuthLocation", () => {
   it("uses safe redirect and appends template query", () => {
     const loc = buildPostAuthLocation("https://restormel.dev", {
-      redirect: "/keys/dashboard/connect/pipeline?step=domain",
+      redirect: "/keys/dashboard/sources/ingest?step=domain",
       template: "engineering-knowledge",
     }, "/keys/dashboard/");
     expect(loc).toBe(
-      "/keys/dashboard/connect/pipeline?step=domain&template=engineering-knowledge",
+      "/keys/dashboard/sources/ingest?step=domain&template=engineering-knowledge",
     );
   });
 

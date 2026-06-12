@@ -130,17 +130,17 @@
   }
 
   function checklistForMode(mode: UserMode | null, choice: UserStackChoice | null): ChecklistItem[] {
-    const connectHome = { label: "Start in Restormel Connect", href: "/keys/dashboard/connect" };
+    const connectHome = { label: "Start in Restormel Connect", href: "/keys/dashboard/home" };
     const connectStore = {
       label: "Connect Surreal graph store",
-      href: "/keys/dashboard/connect/pipeline?step=store",
+      href: "/keys/dashboard/sources/ingest?step=store",
     };
     if (mode === "existing_stack") {
       return [
         connectHome,
         connectStore,
         { label: `Connect your ${stackLabel(choice)} integration`, href: "/keys/dashboard/integrations" },
-        { label: "Configure ingest routes in Connect", href: "/keys/dashboard/connect/models" },
+        { label: "Configure ingest routes", href: "/keys/dashboard/routes/ingestion" },
       ];
     }
     if (mode === "byok_saas") {
@@ -148,7 +148,7 @@
         connectHome,
         connectStore,
         { label: "Connect a provider", href: "/keys/dashboard/integrations" },
-        { label: "Load starter corpus in Connect", href: "/keys/dashboard/connect/pipeline?step=sources" },
+        { label: "Load starter corpus in Sources", href: "/keys/dashboard/sources/ingest?step=sources" },
       ];
     }
     if (mode === "cli_agent") {
@@ -161,7 +161,7 @@
     if (mode === "ops") {
       return [
         connectHome,
-        { label: "View ingest runs", href: "/keys/dashboard/connect/ingest" },
+        { label: "View ingest runs", href: "/keys/dashboard/runs" },
         { label: "Check healthcheck", href: "/keys/dashboard/healthcheck" },
       ];
     }
@@ -169,7 +169,7 @@
       connectHome,
       connectStore,
       { label: "Connect a provider", href: "/keys/dashboard/integrations" },
-      { label: "Configure chat and embedding routes", href: "/keys/dashboard/connect/models" },
+      { label: "Configure chat and embedding routes", href: "/keys/dashboard/routes/ingestion" },
     ];
   }
 
@@ -185,7 +185,7 @@
 
   async function startHere() {
     markCompleteAndHide();
-    await goto(checklist[0]?.href ?? "/keys/dashboard/connect");
+    await goto(checklist[0]?.href ?? "/keys/dashboard/home");
   }
 </script>
 

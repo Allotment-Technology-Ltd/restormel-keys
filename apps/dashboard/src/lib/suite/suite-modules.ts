@@ -75,9 +75,9 @@ export const SUITE_MODULES: SuiteModule[] = [
       "The control plane for verified context — provenance-traced, quality-gated knowledge your agents can be held accountable to. Every claim carries bound evidence, a cross-model validation record, and an exportable audit trace.",
     proofLabel: "Verified context",
     href: "/connect",
-    runHref: DASHBOARD_BASE + "/connect",
+    runHref: DASHBOARD_BASE + "/home",
     embedHref: "/connect/docs",
-    dashboardLabel: "Open Connect hub",
+    dashboardLabel: "Open dashboard",
     navLabel: "Connect",
   },
 ];

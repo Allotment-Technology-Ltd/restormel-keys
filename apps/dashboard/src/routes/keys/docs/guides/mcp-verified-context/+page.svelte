@@ -101,7 +101,7 @@ Paste into mcpServers (merge with any existing servers):
       <tr>
         <td><code class="inline-code">&lt;your-workspace-id&gt;</code></td>
         <td>
-          <a href="https://restormel.dev/keys/dashboard/connect">Connect hub</a> → workspace settings →
+          <a href="https://restormel.dev/keys/dashboard/home">dashboard Home</a> → workspace settings →
           copy the UUID. The tool uses this to scope every query to your graph.
         </td>
       </tr>
@@ -314,7 +314,7 @@ RESTORMEL_GATEWAY_KEY=rk_live_… \
       <tr>
         <td><code class="inline-code">RST_CONNECT_WORKSPACE</code> error</td>
         <td><code class="inline-code">RESTORMEL_WORKSPACE_ID</code> missing or empty</td>
-        <td>Fill in the workspace UUID from the <a href="https://restormel.dev/keys/dashboard/connect">Connect hub</a></td>
+        <td>Fill in the workspace UUID from the <a href="https://restormel.dev/keys/dashboard/home">dashboard Home</a></td>
       </tr>
       <tr>
         <td>Tool returns <code class="inline-code">claims: []</code></td>
@@ -353,7 +353,7 @@ RESTORMEL_GATEWAY_KEY=rk_live_… \
       endpoints the tool proxies
     </li>
     <li>
-      <a href="https://restormel.dev/keys/dashboard/connect">Connect hub</a> — pipeline, graph store,
+      <a href="https://restormel.dev/keys/dashboard/home">Dashboard home</a> — ingest setup, graph store,
       and quality reports for your workspace
     </li>
   </ul>

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { pipelineWizardHref, withReturnTo } from "$lib/connect/pipeline-config";
+  import { CLAIMS_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
   import {
     FIRST_GRAPH_ONBOARDING_DOC_HREF,
     type FirstGraphGuideState,
@@ -8,7 +8,6 @@
 
   export let guide: FirstGraphGuideState;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   const GUIDE_DOC = FIRST_GRAPH_ONBOARDING_DOC_HREF;
 
   let expanded = false;
@@ -59,7 +58,7 @@
           { label: "Voyage (embeddings)", href: "https://www.voyageai.com/" },
           { label: "Vercel AI Gateway", href: "https://vercel.com/docs/ai-gateway" },
         ],
-        dashboardHref: withReturnTo(`${CONNECT_BASE}/models`, { kind: "pipeline-setup", step: "sources" }),
+        dashboardHref: withReturnTo(INGEST_ROUTES_HREF, { kind: "pipeline-setup", step: "sources" }),
         dashboardLabel: "Open Models & keys",
         body:
           "Add at least two model capabilities: one chat model for extraction, grouping, validation, and remediation, and one embedding model. " +
@@ -111,7 +110,7 @@
         done: g.hasGraph,
         doneLabel: "Graph has extracted ideas",
         before: [],
-        dashboardHref: `${CONNECT_BASE}/graph`,
+        dashboardHref: CLAIMS_HREF,
         dashboardLabel: "Browse knowledge graph",
         body: "Review extracted ideas, connections, groups, and validation results. Watch live ingest progress from the Runs tab if your job is still running.",
       },

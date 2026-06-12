@@ -67,39 +67,41 @@ export type NavCommand = {
 
 /** All navigation commands registered in the palette.
  *  Cross-link entries are prefixed with "Go to" to distinguish from entity search.
+ *  R2: section names and URLs follow the north-star IA (redesign §2.2).
  */
 export const NAV_COMMANDS: NavCommand[] = [
-  // Work destinations
-  { id: "nav:overview", label: "Overview", section: "Navigate", url: DASHBOARD_BASE + "/activity" },
-  { id: "nav:connect", label: "Connect", section: "Navigate", url: DASHBOARD_BASE + "/connect" },
-  { id: "nav:connect-runs", label: "Connect · Runs", section: "Navigate", url: DASHBOARD_BASE + "/connect/ingest" },
-  { id: "nav:connect-graph", label: "Connect · Graph", section: "Navigate", url: DASHBOARD_BASE + "/connect/graph" },
-  { id: "nav:connect-proof", label: "Connect · Proof", section: "Navigate", url: DASHBOARD_BASE + "/connect/proof" },
-  { id: "nav:connect-agents", label: "Connect · MCP agents", section: "Navigate", url: DASHBOARD_BASE + "/connect/mcp" },
-  { id: "nav:connect-ingest-routes", label: "Connect · Ingest routes", section: "Navigate", url: DASHBOARD_BASE + "/connect/models" },
-  { id: "nav:connect-library", label: "Connect · Readiness library", section: "Navigate", url: DASHBOARD_BASE + "/connect/library" },
-  { id: "nav:connect-pipeline", label: "Connect · Setup wizard", section: "Navigate", url: DASHBOARD_BASE + "/connect/pipeline" },
+  // Work sections (the product loop)
+  { id: "nav:home", label: "Home", section: "Navigate", url: DASHBOARD_BASE + "/home" },
+  { id: "nav:sources", label: "Sources", section: "Navigate", url: DASHBOARD_BASE + "/sources" },
+  { id: "nav:runs", label: "Runs", section: "Navigate", url: DASHBOARD_BASE + "/runs" },
+  { id: "nav:claims", label: "Claims", section: "Navigate", url: DASHBOARD_BASE + "/claims" },
+  { id: "nav:claims-memory", label: "Claims · Memory inbox", section: "Navigate", url: DASHBOARD_BASE + "/claims/memory" },
+  { id: "nav:prove", label: "Prove", section: "Navigate", url: DASHBOARD_BASE + "/prove" },
+  { id: "nav:agents", label: "Agents", section: "Navigate", url: DASHBOARD_BASE + "/agents" },
   { id: "nav:testing", label: "Testing", section: "Navigate", url: DASHBOARD_BASE + "/testing" },
-  // Configure group
+  // Foundation group
   { id: "nav:connections", label: "Connections", section: "Navigate", url: DASHBOARD_BASE + "/integrations" },
   { id: "nav:gateway-keys", label: "Gateway keys", section: "Navigate", url: DASHBOARD_BASE + "/access" },
   { id: "nav:routes", label: "Routes", section: "Navigate", url: DASHBOARD_BASE + "/routes" },
+  { id: "nav:ingest-routes", label: "Routes · Ingest routes", section: "Navigate", url: DASHBOARD_BASE + "/routes/ingestion" },
   { id: "nav:guard-rails", label: "Guard rails", section: "Navigate", url: DASHBOARD_BASE + "/policies" },
+  { id: "nav:projects", label: "Projects", section: "Navigate", url: DASHBOARD_BASE + "/projects" },
   { id: "nav:model-catalog", label: "Model catalog", section: "Navigate", url: DASHBOARD_BASE + "/models" },
-  // Monitor group
-  { id: "nav:usage", label: "Usage", section: "Navigate", url: DASHBOARD_BASE + "/analytics" },
+  { id: "nav:sandbox", label: "Request tester", section: "Navigate", url: DASHBOARD_BASE + "/sandbox" },
+  // Observe group
   { id: "nav:logs", label: "Logs", section: "Navigate", url: DASHBOARD_BASE + "/logs" },
+  { id: "nav:usage", label: "Usage", section: "Navigate", url: DASHBOARD_BASE + "/analytics" },
   { id: "nav:health", label: "Health", section: "Navigate", url: DASHBOARD_BASE + "/healthcheck" },
-  // More group
-  { id: "nav:sandbox", label: "Try a request", section: "Navigate", url: DASHBOARD_BASE + "/sandbox" },
+  // Out-of-nav (merges into Agents in R5)
   { id: "nav:dev-tools", label: "CLI & agents", section: "Navigate", url: DASHBOARD_BASE + "/dev-tools" },
   // Quick actions
-  { id: "action:new-ingest-run", label: "New ingest run", section: "Actions", url: DASHBOARD_BASE + "/connect/ingest/new" },
+  { id: "action:new-ingest-run", label: "New ingest run", section: "Actions", url: DASHBOARD_BASE + "/sources/ingest?step=launch" },
   { id: "action:new-project", label: "New project", section: "Actions", url: DASHBOARD_BASE + "/projects?create=1" },
-  { id: "action:review-claims", label: "Review flagged claims", section: "Actions", url: DASHBOARD_BASE + "/connect/graph?filter=review" },
-  // Cross-links: run → graph (W3.4 scope — scorecard → producing run handled in W2.3 coordination)
-  { id: "cross:connect-graph-review", label: "Graph · Claims needing review", section: "Actions", url: DASHBOARD_BASE + "/connect/graph?filter=review" },
-  { id: "cross:connect-runs-latest", label: "Runs · Latest ingest run", section: "Actions", url: DASHBOARD_BASE + "/connect/ingest" },
+  { id: "action:review-claims", label: "Review flagged claims", section: "Actions", url: DASHBOARD_BASE + "/claims?filter=review" },
+  { id: "action:start-ingest-flow", label: "Start ingest (guided flow)", section: "Actions", url: DASHBOARD_BASE + "/sources/ingest" },
+  // Cross-links: run → claims (W3.4 scope — scorecard → producing run handled in W2.3 coordination)
+  { id: "cross:claims-review", label: "Claims · Needing review", section: "Actions", url: DASHBOARD_BASE + "/claims?filter=review" },
+  { id: "cross:runs-latest", label: "Runs · Latest ingest run", section: "Actions", url: DASHBOARD_BASE + "/runs" },
   // Account
   { id: "nav:settings", label: "Profile & settings", section: "Account", url: DASHBOARD_BASE + "/settings" },
   { id: "nav:billing", label: "Subscription", section: "Account", url: DASHBOARD_BASE + "/billing" },
@@ -154,7 +156,7 @@ export function groupSearchResults(items: SearchResultItem[]): SearchResultGroup
     gateway_key: { label: "Gateway keys", order: 3 },
     model: { label: "Models", order: 4 },
     ingest_run: { label: "Ingest runs", order: 5 },
-    graph_unit: { label: "Graph units", order: 6 },
+    graph_unit: { label: "Claims", order: 6 },
   };
   const map = new Map<SearchResultKind, SearchResultItem[]>();
   for (const item of items) {

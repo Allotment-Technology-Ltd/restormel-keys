@@ -71,7 +71,7 @@ export const graphPillarLinks: SiteNavLink[] = [
 export const connectPillarLinks: SiteNavLink[] = [
   { href: "/connect", label: "Overview" },
   { href: "/connect/docs", label: "Documentation" },
-  { href: DASHBOARD_BASE + "/connect", label: "Connect hub" },
+  { href: DASHBOARD_BASE + "/home", label: "Dashboard" },
 ];
 
 /** Developers bucket — API portal URL filled in by consumer (Zuplo). */

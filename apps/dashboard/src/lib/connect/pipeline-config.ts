@@ -1,7 +1,9 @@
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
+import { CLAIMS_HREF, INGEST_FLOW_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
 
 export const CONNECT_PIPELINE_API = DASHBOARD_BASE + "/api/connect";
-export const CONNECT_PIPELINE_BASE = DASHBOARD_BASE + "/connect/pipeline";
+/** The ingest guided flow (the relocated setup wizard — R2: `/connect/pipeline` → `/sources/ingest`). */
+export const CONNECT_PIPELINE_BASE = INGEST_FLOW_HREF;
 
 export const PIPELINE_STAGES = [
   "extracting",
@@ -76,8 +78,10 @@ export type SourceDocument = {
   created_at: string;
 };
 
-export const CONNECT_MODELS_BASE = DASHBOARD_BASE + "/connect/models";
-export const CONNECT_GRAPH_BASE = DASHBOARD_BASE + "/connect/graph";
+/** Ingest-routes view (R2: `/connect/models` → `/routes/ingestion`). */
+export const CONNECT_MODELS_BASE = INGEST_ROUTES_HREF;
+/** Claims explorer (R2: `/connect/graph` → `/claims`). */
+export const CONNECT_GRAPH_BASE = CLAIMS_HREF;
 
 /** Query param: where to return after a side task (models, integrations, route builder). */
 export const RETURN_TO_QUERY = "returnTo";

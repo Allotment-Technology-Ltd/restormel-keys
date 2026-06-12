@@ -169,14 +169,24 @@ describe("NAV_COMMANDS registry", () => {
     }
   });
 
-  it("contains key navigation destinations from ux-contracts §1", () => {
+  it("contains key navigation destinations from the target IA (§2.2)", () => {
     const ids = new Set(NAV_COMMANDS.map((c) => c.id));
-    expect(ids.has("nav:overview")).toBe(true);
-    expect(ids.has("nav:connect")).toBe(true);
-    expect(ids.has("nav:connect-graph")).toBe(true);
+    expect(ids.has("nav:home")).toBe(true);
+    expect(ids.has("nav:sources")).toBe(true);
+    expect(ids.has("nav:runs")).toBe(true);
+    expect(ids.has("nav:claims")).toBe(true);
+    expect(ids.has("nav:prove")).toBe(true);
+    expect(ids.has("nav:agents")).toBe(true);
+    expect(ids.has("nav:projects")).toBe(true);
     expect(ids.has("nav:routes")).toBe(true);
     expect(ids.has("nav:logs")).toBe(true);
     expect(ids.has("nav:settings")).toBe(true);
+  });
+
+  it("registers no dissolved /connect URLs (R2)", () => {
+    for (const cmd of NAV_COMMANDS) {
+      expect(cmd.url.includes("/connect"), `${cmd.id} still points at /connect`).toBe(false);
+    }
   });
 
   it("contains the quick-action for 'Review flagged claims'", () => {

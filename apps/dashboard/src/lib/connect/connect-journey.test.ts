@@ -70,7 +70,7 @@ describe("buildConnectSetupSteps", () => {
     const steps = buildConnectSetupSteps({ ...base, target: { provider: "postgres", status: "ok" } });
     const run = steps.find((s) => s.id === "run");
     expect(run?.cta).toBe("Finish setup");
-    expect(run?.href).toContain("/models");
+    expect(run?.href).toContain("/routes/ingestion");
   });
 });
 

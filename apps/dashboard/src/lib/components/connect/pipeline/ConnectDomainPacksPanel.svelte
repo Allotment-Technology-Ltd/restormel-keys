@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { INGEST_ROUTES_HREF } from "$lib/nav-config";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     CONNECT_PIPELINE_API,
@@ -21,7 +22,6 @@
   export let wizardStep: PipelineWizardStepId | null = null;
   export let modelsReady = true;
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   const dispatch = createEventDispatcher<{ updated: void; stepState: { canContinue: boolean } }>();
   const API_BASE = CONNECT_PIPELINE_API;
@@ -683,7 +683,7 @@
     {#if embedded && wizardStep && !modelsReady}
       <div class="domain-routes-warning" role="status">
         Routes not configured — Graph Designer needs at least one chat route to generate a domain.
-        <a href={withReturnTo(CONNECT_BASE + "/models", { kind: "pipeline-setup", step: wizardStep })}>Configure Models &amp; keys →</a>
+        <a href={withReturnTo(INGEST_ROUTES_HREF, { kind: "pipeline-setup", step: wizardStep })}>Configure Models &amp; keys →</a>
       </div>
     {/if}
 

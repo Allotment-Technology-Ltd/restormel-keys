@@ -208,7 +208,7 @@ describe("buildExplorerSearchParams", () => {
 
 describe("buildExplorerUrl", () => {
   it("merges explorer state without clobbering other params", () => {
-    const base = new URL("https://example.com/connect/graph?workspace=tools&focus=embed");
+    const base = new URL("https://example.com/claims?workspace=tools&focus=embed");
     const url = buildExplorerUrl(base, {
       queueScope: "all",
       verdictFilter: null,
@@ -222,7 +222,7 @@ describe("buildExplorerUrl", () => {
   });
 
   it("removes filter+unit when state is default", () => {
-    const base = new URL("https://example.com/connect/graph?filter=review&unit=abc");
+    const base = new URL("https://example.com/claims?filter=review&unit=abc");
     const url = buildExplorerUrl(base, {
       queueScope: "review",
       verdictFilter: null,
@@ -234,14 +234,14 @@ describe("buildExplorerUrl", () => {
   });
 
   it("returns path-only url (no host)", () => {
-    const base = new URL("https://example.com/connect/graph");
+    const base = new URL("https://example.com/claims");
     const url = buildExplorerUrl(base, {
       queueScope: "review",
       verdictFilter: null,
       verificationStateFilter: null,
       selectedUnitId: null,
     });
-    expect(url).toBe("/connect/graph");
+    expect(url).toBe("/claims");
   });
 });
 

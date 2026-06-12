@@ -2,11 +2,9 @@
  * Connect hub journey — single source of truth for initial vs operational mode,
  * setup step order, and primary next actions.
  */
-import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
+import { AGENTS_HREF, CLAIMS_HREF, RUNS_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
 import { pipelineWizardHref, withReturnTo, type PipelineWizardStepId } from "$lib/connect/pipeline-config";
 
-const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
 /** Ingest job is actively executing (not the suite-wide Monitor nav section). */
 export function isActiveIngestJobStatus(status: string): boolean {
@@ -130,7 +128,7 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
     : nextRequired === "graph_store"
       ? pipelineWizardHref("store")
       : nextRequired === "ai_keys"
-        ? withReturnTo(`${CONNECT_BASE}/models`, { kind: "pipeline-setup", step: "sources" })
+        ? withReturnTo(INGEST_ROUTES_HREF, { kind: "pipeline-setup", step: "sources" })
         : nextRequired === "sources"
           ? pipelineWizardHref("sources")
           : pipelineWizardHref("launch");
@@ -159,7 +157,7 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
         "Publish at least one chat route and one embedding route so ingest can extract, group, validate, and embed your documents.",
       status: modelsReady ? "done" : "todo",
       detail: aiKeysDetail,
-      href: withReturnTo(`${CONNECT_BASE}/models`, { kind: "pipeline-setup", step: "sources" }),
+      href: withReturnTo(INGEST_ROUTES_HREF, { kind: "pipeline-setup", step: "sources" }),
       cta: modelsReady ? "Ingest routes" : "Add keys & routes",
     },
     {
@@ -210,10 +208,10 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
             : "No active run",
       href:
         latestJob && isActiveIngestJobStatus(latestJob.status)
-          ? `${CONNECT_BASE}/ingest/${latestJob.id}?from=pipeline`
+          ? `${RUNS_HREF}/${latestJob.id}?from=pipeline`
           : latestJob
-            ? `${CONNECT_BASE}/ingest/${latestJob.id}?from=pipeline`
-            : `${CONNECT_BASE}/ingest`,
+            ? `${RUNS_HREF}/${latestJob.id}?from=pipeline`
+            : RUNS_HREF,
       cta:
         latestJob && isActiveIngestJobStatus(latestJob.status)
           ? "Watch live progress"
@@ -235,7 +233,7 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
           ? "Wire MCP tools on the Agents tab"
           : "REST retrieve available — see Agents tab"
         : "Run ingest and open the graph explorer first",
-      href: CONNECT_MCP_HREF,
+      href: AGENTS_HREF,
       cta: hasGraph ? "Set up agents" : "Open agent setup",
       optional: true,
     },
@@ -282,7 +280,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "view_graph",
       title: "Explore knowledge graph",
       description: "Review extracted ideas, relationships, groups, and validation status.",
-      href: `${CONNECT_BASE}/graph`,
+      href: CLAIMS_HREF,
       cta: "View graph",
     });
   }
@@ -292,7 +290,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "latest_run",
       title: input.latestJob.label ? `Active run: ${input.latestJob.label}` : "Active ingest run",
       description: `Status: ${input.latestJob.status}. Watch stage-by-stage progress in the run console.`,
-      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}?from=hub`,
+      href: `${RUNS_HREF}/${input.latestJob.id}?from=hub`,
       cta: "Watch live progress",
     });
   } else if (input.latestJob) {
@@ -300,7 +298,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "latest_run",
       title: input.latestJob.label ? `Latest run: ${input.latestJob.label}` : "Latest ingest run",
       description: `Status: ${input.latestJob.status}. Open the run console for logs and results.`,
-      href: `${CONNECT_BASE}/ingest/${input.latestJob.id}?from=hub`,
+      href: `${RUNS_HREF}/${input.latestJob.id}?from=hub`,
       cta: "Open run",
     });
   } else {
@@ -308,7 +306,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "latest_run",
       title: "Ingest runs",
       description: "Browse past runs and open the run console for any job.",
-      href: `${CONNECT_BASE}/ingest`,
+      href: RUNS_HREF,
       cta: "View runs",
     });
   }
@@ -319,7 +317,7 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
     description: input.surrealStoreReady
       ? "Copy MCP snippets for connect.search against your graph."
       : "Gateway key and REST retrieve for agents using your workspace graph.",
-    href: CONNECT_MCP_HREF,
+    href: AGENTS_HREF,
     cta: input.surrealStoreReady ? "MCP setup" : "Agent setup",
   });
 

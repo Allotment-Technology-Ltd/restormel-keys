@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { INGEST_ROUTES_HREF, RUNS_HREF } from "$lib/nav-config";
   import { goto } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
@@ -36,7 +37,6 @@
   export let preflight: ConnectRunPreflightResult | null = null;
 
   const dispatch = createEventDispatcher<{ started: void }>();
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
   const API_BASE = CONNECT_PIPELINE_API;
 
   let label = "";
@@ -192,7 +192,7 @@
         return;
       }
       dispatch("started");
-      await goto(`${CONNECT_BASE}/ingest/${id}?from=pipeline`);
+      await goto(`${RUNS_HREF}/${id}?from=pipeline`);
     } catch {
       error = "Network error while starting the run.";
     } finally {
@@ -285,7 +285,7 @@
             <p class="preflight-warn-note">Publish chat and embedding routes before starting.</p>
           {/if}
         </div>
-        <a class="preflight-edit" href={withReturnTo(CONNECT_BASE + "/models", { kind: "pipeline-setup", step: "launch" })}>Edit →</a>
+        <a class="preflight-edit" href={withReturnTo(INGEST_ROUTES_HREF, { kind: "pipeline-setup", step: "launch" })}>Edit →</a>
       </li>
       {#if livePreflight}
         <li class="preflight-row" class:preflight-row-warn={preflightWarning}>

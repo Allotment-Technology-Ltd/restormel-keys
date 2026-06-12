@@ -1,7 +1,13 @@
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { NAV_GROUPS, filterNavGroupsForModuleFlags, filterWorkNavForModuleFlags } from "$lib/nav-config";
+import {
+  NAV_GROUPS,
+  filterNavGroupsForModuleFlags,
+  filterWorkNavForModuleFlags,
+  filterTestingNavForModuleFlags,
+  HOME_HREF,
+} from "$lib/nav-config";
 import {
   dashboardUiSectionLabel,
   filterNavGroupsForDashboardUi,
@@ -32,6 +38,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   let navGroupsForUi = filterNavGroupsForModuleFlags(NAV_GROUPS, moduleFlags);
   navGroupsForUi = filterNavGroupsForDashboardUi(navGroupsForUi, dashboardUiHiddenSet);
   const workNavForUi = filterWorkNavForModuleFlags(moduleFlags);
+  const testingNavForUi = filterTestingNavForModuleFlags(moduleFlags);
 
   // Fix malformed redirect from Neon Auth: params appended as path (e.g. /keys/dashboard/state=...&error=...)
   const pathname = url.pathname;
@@ -75,7 +82,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     const monitorItem =
       !moduleFlags.monitor ? dashboardSectionToMonitorInterest(gatedSection) : null;
     if (monitorItem) {
-      const target = new URL(`${baseNorm}/activity`, url.origin);
+      const target = new URL(HOME_HREF, url.origin);
       target.searchParams.set("monitor-interest", monitorItem);
       throw redirect(302, target.toString());
     }
@@ -97,8 +104,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     environments: { id: string; name: string; type: string }[];
   };
 
-  const isConnectRoute =
-    pathAfterBase === "/connect" || pathAfterBase.startsWith("/connect/");
+  // The six work sections stream project nav data (was: the Connect hub).
+  const workSectionPrefixes = ["/home", "/sources", "/runs", "/claims", "/prove", "/agents"];
+  const isConnectRoute = workSectionPrefixes.some(
+    (prefix) => pathAfterBase === prefix || pathAfterBase.startsWith(prefix + "/"),
+  );
 
   let projectContexts: ProjectContextRow[] | Promise<ProjectContextRow[]> = [];
 
@@ -151,6 +161,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     dashboardUiHidden,
     navGroupsForUi,
     workNavForUi,
+    testingNavForUi,
     moduleFlags,
     dashboardUiHiddenBanner,
     monitorInterestFromRedirect,

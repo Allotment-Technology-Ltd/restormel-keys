@@ -13,10 +13,15 @@
 
   type Hint = { text: string; cta: string; href: string };
 
-  import { CONNECT_HUB_HREF, WORKSPACE_HOME_HREF } from "$lib/nav-config";
+  import { INGEST_FLOW_HREF, WORKSPACE_HOME_HREF } from "$lib/nav-config";
 
-  function isConnectHubPath(path: string): boolean {
-    return path === CONNECT_HUB_HREF || path.startsWith(CONNECT_HUB_HREF + "/");
+  /** The six work sections narrate their own journey — no banner hints there. */
+  const WORK_SECTION_PREFIXES = ["/home", "/sources", "/runs", "/claims", "/prove", "/agents"];
+
+  function isWorkSectionPath(path: string): boolean {
+    return WORK_SECTION_PREFIXES.some(
+      (prefix) => path === base + prefix || path.startsWith(base + prefix + "/"),
+    );
   }
 
   function computeHint(
@@ -25,16 +30,9 @@
     flags: ModuleFlags,
   ): Hint | null {
     if (!sig) return null;
-    if (isConnectHubPath(path)) return null;
+    if (isWorkSectionPath(path)) return null;
     if (path.startsWith(base + "/login") || path.startsWith(base + "/logout")) return null;
 
-    if (path === WORKSPACE_HOME_HREF || path === `${base}/`) {
-      return {
-        text: "Confirm your project context above, then open Connect to configure ingest and graph storage.",
-        cta: "Open Connect",
-        href: `${base}/connect`,
-      };
-    }
     if (path.startsWith(base + "/testing")) {
       if (!flags.testing) return null;
       if (sig.gatewayKeyCount === 0) {
@@ -60,9 +58,9 @@
     if (path.startsWith(base + "/integrations")) {
       if (sig.integrationCount === 0) {
         return {
-          text: "Connections power Connect ingest stages — add one to unlock the pipeline.",
-          cta: "Open Connect",
-          href: `${base}/connect`,
+          text: "Connections power Connect ingest stages — add one to unlock the ingest flow.",
+          cta: "Set up ingest",
+          href: INGEST_FLOW_HREF,
         };
       }
       return {
@@ -134,13 +132,6 @@
         href: `${base}/routes`,
       };
     }
-    if (path.startsWith(base + "/connect")) {
-      return {
-        text: "Follow the Connect hub steps — pipeline profile before your first ingest run.",
-        cta: "Operator model",
-        href: "/docs/operator-model",
-      };
-    }
     if (path.startsWith(base + "/graph")) {
       return {
         text: "Graph is embed-first: use the SvelteKit integrator guide when wiring the canvas in your app.",
@@ -151,14 +142,14 @@
     if (path.startsWith(base + "/healthcheck")) {
       if (flags.testing) {
         return {
-          text: "New to the dashboard? Use Overview for two setup tracks (Keys routing + Testing in CI).",
-          cta: "Overview",
+          text: "New to the dashboard? Use Home for two setup tracks (Keys routing + Testing in CI).",
+          cta: "Home",
           href: WORKSPACE_HOME_HREF,
         };
       }
       return {
-        text: "New to the dashboard? Finish the setup checklist on Overview.",
-        cta: "Overview",
+        text: "New to the dashboard? Finish the setup checklist on Home.",
+        cta: "Home",
         href: WORKSPACE_HOME_HREF,
       };
     }
@@ -206,14 +197,6 @@
         text: "Provider custody lives under Connections; automation uses Gateway keys, not raw provider secrets.",
         cta: "Connections",
         href: `${base}/integrations`,
-      };
-    }
-    if (path.startsWith(base + "/lifecycle")) {
-      if (!flags.testing) return null;
-      return {
-        text: "Overview lists two tracks: live traffic (routes) vs Restormel Testing in CI (resolve + doctor).",
-        cta: "Overview",
-        href: WORKSPACE_HOME_HREF,
       };
     }
     if (path.startsWith(base + "/copy-for-ci") || path.startsWith(base + "/copy-for-cli")) {

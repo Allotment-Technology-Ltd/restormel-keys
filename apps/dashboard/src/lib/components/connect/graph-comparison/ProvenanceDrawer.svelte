@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ProvenanceClaim, RetrievalTrace } from "$lib/connect/graph-comparison-types";
+  import { CLAIMS_HREF } from "$lib/nav-config";
 
   export let claims: ProvenanceClaim[] = [];
   export let trace: RetrievalTrace;
@@ -14,7 +14,7 @@
 
   /** Deep link into the Evidence Dossier (W2.2 URL contract: ?unit=<id>). */
   function dossierHref(claim: ProvenanceClaim): string {
-    return `${DASHBOARD_BASE}/connect/graph?unit=${encodeURIComponent(claim.id)}`;
+    return `${CLAIMS_HREF}?unit=${encodeURIComponent(claim.id)}`;
   }
 </script>
 

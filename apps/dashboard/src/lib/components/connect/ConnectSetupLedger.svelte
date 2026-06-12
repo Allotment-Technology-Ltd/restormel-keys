@@ -1,5 +1,6 @@
 <script lang="ts">
   import BrutalBadge from "$lib/components/brutalist/BrutalBadge.svelte";
+  import { INGEST_ROUTES_HREF, RUNS_HREF } from "$lib/nav-config";
   import BrutalButton from "$lib/components/brutalist/BrutalButton.svelte";
   import {
     resolveConnectHubPrimaryAction,
@@ -13,7 +14,6 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ConnectGraphPulse, ConnectHubPayload } from "$lib/server/connect/connect-hub-load";
 
-  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   type SetupStep = ConnectHubPayload["journey"]["steps"][number];
   type GraphStats = NonNullable<ConnectHubPayload["journey"]["stats"]>;
@@ -70,7 +70,7 @@
       key: "routesReady",
       label: "Ingest routes",
       short: "Routes",
-      href: `${CONNECT_BASE}/models`,
+      href: INGEST_ROUTES_HREF,
     },
     { key: "documentsReady", label: "Documents", short: "Docs", href: pipelineWizardHref("sources") },
     {
@@ -131,7 +131,7 @@
   });
   $: allJourneyComplete = journeyTotal > 0 && journeyDone === journeyTotal;
   $: pct = requiredTotal > 0 ? Math.round((requiredDone / requiredTotal) * 100) : 0;
-  $: latestRunHref = latestJob ? `${CONNECT_BASE}/ingest/${latestJob.id}?from=hub` : null;
+  $: latestRunHref = latestJob ? `${RUNS_HREF}/${latestJob.id}?from=hub` : null;
   $: hasAuditIssues = Boolean(graphHealth && graphHealth.total_issues > 0);
   // W2.3: ONE trust number — quote the scorecard service's value (single source of truth).
   // The scorecard service computes the same kg-audit formula; by quoting its result, the
