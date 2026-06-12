@@ -7,6 +7,7 @@ import {
   supportChatToTextStreamResponse,
   supportModelFromEnv,
 } from "@restormel/support";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
@@ -18,7 +19,8 @@ const limiter = createSupportRateLimiter({
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,7 +28,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: "Unavailable" }, { status: 503 });
   }
 
-  if (!limiter.tryConsume(locals.user.uid)) {
+  if (!limiter.tryConsume(user.uid)) {
     return json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
   }
 

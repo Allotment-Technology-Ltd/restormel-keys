@@ -13,6 +13,7 @@ import {
   listConnectStageRouteRows,
 } from "$lib/server/connect/stage-routing";
 import type { ChatRouteOption } from "$lib/connect/graph-comparison-types";
+import { sessionUser } from "$lib/server/session-user";
 
 const CHAT_STAGES = new Set(["extraction", "grouping", "validation", "remediation"]);
 
@@ -50,14 +51,15 @@ const LOAD_ERROR: ProofDataWithState = {
 };
 
 export const load: PageServerLoad = async (event): Promise<ProofDataWithState> => {
-  if (!event.locals.user || event.locals.user.authType !== "session") {
+  const user = sessionUser(event.locals);
+  if (!user) {
     return SIGNED_OUT;
   }
 
   try {
     const workspace = await requireConnectWorkspace(event.locals, event.parent);
     const wsId = workspace.id;
-    const userId = event.locals.user.uid;
+    const userId = user.uid;
     event.depends(`app:connect-proof:${wsId}`);
 
     const [target, stats] = await Promise.all([

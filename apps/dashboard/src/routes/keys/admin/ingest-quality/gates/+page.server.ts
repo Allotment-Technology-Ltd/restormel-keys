@@ -2,10 +2,14 @@ import type { PageServerLoad } from "./$types";
 import { INGEST_QUALITY_POSTHOG_DASHBOARD_URL } from "$lib/server/posthog-dashboard-embed";
 import { computeGateStatuses } from "$lib/server/connect/ingest-quality-gates-data";
 import { listProductionG2SampleJobs } from "$lib/server/neon";
+import { requireServiceAdminSession } from "$lib/server/session-user";
 
 const G2_SAMPLE_LIMIT = 10;
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+  // W4.6a SECURITY: defense-in-depth — never serialize production G2 sample jobs under
+  // degraded/forged auth even if the layout gate were ever changed.
+  requireServiceAdminSession(locals);
   try {
     const g2Sample = await listProductionG2SampleJobs({ limit: G2_SAMPLE_LIMIT });
     return {

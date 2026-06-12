@@ -3,14 +3,15 @@ import type { RequestHandler } from "./$types";
 import { checkIngestQualityG2Gate } from "$lib/server/connect/ingest-quality-apply";
 import { summarizeReviewSignals } from "$lib/server/connect/ingest-quality-thresholds";
 import { listIngestQualityRuns, listReviewSignalsForEval } from "$lib/server/neon";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
 const DEFAULT_DAYS = 7;
 
 export const GET: RequestHandler = async ({ locals, url }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
 

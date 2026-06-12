@@ -98,6 +98,8 @@ Do **not** point `pnpm dev` at the **production** Neon branch if you will create
 
 Restart the dev server after changing env.
 
+**`localhost` vs `127.0.0.1` (signed-in on some pages, not others):** These are **different cookie origins**, so a Neon Auth session cookie set on `http://localhost:5173` is **not** sent to `http://127.0.0.1:5173` (and vice versa). Visiting both during one session makes the dashboard look half-signed-in — the shell may say signed-in while a page that re-checks says signed-out. **Pick one host and stay on it** (prefer `http://localhost:5173/keys/dashboard`). In dev the server logs a one-time `[auth][dev]` warning when a `127.0.0.1` request arrives with no auth cookie. (This is a dev-only cookie-jar split, not the same defect as the fail-closed verification work in W4.6a.)
+
 **GitHub OAuth — “redirect_uri is not associated with this application”:** Each Neon branch has its **own** Neon Auth hostname. The GitHub OAuth App (the one whose **Client ID** you pasted into Neon Console → Auth → GitHub) only accepts **registered** callback URLs. When you switch branches (for example from `production` to a dev branch), add that branch’s callback in GitHub → **Settings** → **Developer settings** → **OAuth Apps** → your app → **Authorization callback URL** (GitHub allows **multiple** URLs).
 
 Use exactly (append to your branch’s Auth base URL, no extra slash):

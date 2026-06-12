@@ -21,6 +21,7 @@ import { buildProvenanceTraceFromRetrieval } from "$lib/server/connect-v1/proven
 import { insertProvenanceTrace } from "$lib/server/connect-traces";
 import { getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
 import type { ComparisonStreamEvent } from "$lib/connect/graph-comparison-types";
+import { sessionUser } from "$lib/server/session-user";
 
 const RAW_SYSTEM = "Answer the following question directly and accurately.";
 const GRAPH_SYSTEM =
@@ -34,7 +35,8 @@ type StreamBody = {
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -58,7 +60,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return new Response("Workspace not found", { status: 404 });
   }
 
-  const userId = locals.user.uid;
+  const userId = user.uid;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({

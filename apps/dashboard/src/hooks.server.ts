@@ -6,9 +6,10 @@
 import { randomUUID } from "node:crypto";
 import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { json, redirect } from "@sveltejs/kit";
+import { dev } from "$app/environment";
 import { agentLogServer } from "$lib/debug/agent-log.server";
 import { perfSpan } from "$lib/debug/server-perf";
-import { getSession } from "$lib/server/auth";
+import { cookieHeaderMayCarrySession, getSession } from "$lib/server/auth";
 import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
 import { resolveSessionAuthContext } from "$lib/server/session-auth-cache";
@@ -19,6 +20,26 @@ import {
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { resolveModuleFlags } from "$lib/server/module-flags";
 import { moduleDisabledRedirectPath } from "$lib/server/module-gates";
+
+/** Dev-only once-per-process guard for the 127.0.0.1 cookie-split warning. */
+let warned127CookieSplit = false;
+
+/**
+ * W4.6a dev aid: if the request is on `127.0.0.1` but carries no auth cookie, the
+ * developer likely signed in on `localhost` (a different cookie origin). Point them at
+ * the canonical host so the dashboard doesn't read as half-signed-in. No-op once warned.
+ */
+function warnOn127CookieSplit(host: string, cookieHeader: string): void {
+  if (warned127CookieSplit) return;
+  if (!host.startsWith("127.0.0.1")) return;
+  if (cookieHeaderMayCarrySession(cookieHeader)) return;
+  warned127CookieSplit = true;
+  console.warn(
+    `[auth][dev] Request on ${host} has no auth cookie. localhost and 127.0.0.1 are ` +
+      `separate cookie origins — if you signed in on http://localhost:5173 you'll appear ` +
+      `signed-out on 127.0.0.1 (and vice versa). Use ONE host (prefer http://localhost:5173/keys/dashboard).`,
+  );
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
   const legacyPath = event.url.pathname;
@@ -45,9 +66,14 @@ export const handle: Handle = async ({ event, resolve }) => {
   let authSessionCookies: string[] = [];
   try {
     const endSession = perfSpan("hooks", "getSession");
-    const { data: session, setCookies } = await getSession(event.request, event.url.host);
+    const { data: session, setCookies, degraded } = await getSession(event.request, event.url.host);
     endSession();
     authSessionCookies = setCookies;
+    // W4.6a: verification could not complete for a request that carried a session cookie
+    // (Neon Auth 5xx / 429-with-no-cache / network throw). Do NOT treat as signed-out —
+    // surface an auth-degraded flag so protected pages render an honest retry state
+    // instead of the signed-out CTA, and so neighbouring requests don't flip to signed-out.
+    event.locals.authDegraded = degraded === true && !session?.user;
     if (session?.user) {
       const email = session.user.email ?? null;
       // Memoized per (uid,email,role): admin/founders status (30s TTL) + once-per-process
@@ -99,16 +125,34 @@ export const handle: Handle = async ({ event, resolve }) => {
           if (msg) console.error("[auth] Bearer verify:", msg.slice(0, 100));
         }
       }
-      if (!event.locals.user) event.locals.user = undefined;
+      if (!event.locals.user) {
+        event.locals.user = undefined;
+      } else {
+        // L3 SECURITY/CORRECTNESS: a valid Bearer key fully authenticated this request, so
+        // the (cookie-based) session-verify being degraded is moot — clear the flag so a
+        // bearer-authenticated request never carries a stale auth-degraded signal.
+        event.locals.authDegraded = false;
+      }
     }
   } catch (e) {
     event.locals.user = undefined;
+    // W4.6a: if the request carried a session cookie, an unexpected throw in the auth
+    // pipeline (resolveSessionAuthContext / bearer verify) is a verification FAILURE, not
+    // a signed-out signal — flag it as degraded so protected pages don't silently demote.
+    const cookieHeader = event.request.headers.get("cookie") ?? "";
+    event.locals.authDegraded = cookieHeaderMayCarrySession(cookieHeader);
     const msg = e instanceof Error ? e.message : "";
     if (msg && !msg.includes("not configured")) console.error("[auth] getSession:", msg.slice(0, 100));
   }
 
   const pathname = event.url.pathname;
   const user = event.locals.user;
+
+  // W4.6a (dev only): `localhost:5173` and `127.0.0.1:5173` are different cookie origins.
+  // Signing in on one host and then visiting the other shows you signed-OUT there, which
+  // reads as a "signed-in on some parts, not others" bug but is just a cookie-jar split.
+  // Warn once so the developer reaches for the canonical host.
+  if (dev) warnOn127CookieSplit(event.url.host, event.request.headers.get("cookie") ?? "");
 
   const distinctId = user?.uid ?? event.cookies.get("ph_distinct_id") ?? "restormel-anonymous";
   try {

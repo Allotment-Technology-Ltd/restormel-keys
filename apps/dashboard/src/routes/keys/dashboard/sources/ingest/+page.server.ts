@@ -33,6 +33,7 @@ import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { AGENTS_HREF } from "$lib/nav-config";
 import { perfSpan } from "$lib/debug/server-perf";
 import type { PageServerLoad } from "./$types";
+import { sessionUser } from "$lib/server/session-user";
 
 /**
  * R4-U2: surface the real K2 verify probe receipt for the provider step. The
@@ -137,7 +138,8 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     throw redirect(302, `${CONNECT_PIPELINE_BASE}?${params.toString()}`);
   }
 
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     const step = isPipelineWizardStep(requestedStep) ? requestedStep : "provider";
     return { step, wizard: null, runDefaults: null, modelsReady: false, phase: "initial" as const };
   }
@@ -159,8 +161,8 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     // gates below still apply.
     await ensureWorkspaceInfrastructureRouting({
       workspaceId: workspace.id,
-      userId: locals.user.uid,
-      actorType: locals.user.authType,
+      userId: user.uid,
+      actorType: user.authType,
     }).catch((e) => {
       console.warn(
         "[connect] workspace-infrastructure provisioning skipped:",
@@ -197,7 +199,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;
       const modelsStatus = await computeConnectModelsReady({
         workspaceId: workspace.id,
-        userId: locals.user.uid,
+        userId: user.uid,
         integrationsCount: integrations.length,
         llmReady: isLlmConfigured(),
         dashboardBase: DASHBOARD_BASE,
@@ -234,7 +236,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     const parsedDocumentCount = documents.filter((d) => d.status === "parsed").length;
     const modelsStatus = await computeConnectModelsReady({
       workspaceId: workspace.id,
-      userId: locals.user.uid,
+      userId: user.uid,
       integrationsCount: integrations.length,
       llmReady: isLlmConfigured(),
       dashboardBase: DASHBOARD_BASE,
@@ -301,7 +303,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       step === "launch"
         ? await computeConnectRunPreflight({
             workspaceId: workspace.id,
-            userId: locals.user.uid,
+            userId: user.uid,
           }).catch(() => null)
         : null;
 

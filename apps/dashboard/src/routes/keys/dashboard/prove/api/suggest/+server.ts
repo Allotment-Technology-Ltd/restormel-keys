@@ -7,9 +7,11 @@ import type { RequestHandler } from "./$types";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 import { resolveByokChatContext } from "$lib/server/graph-comparison/byok-chat";
 import { suggestQuestions } from "$lib/server/graph-comparison/suggestQuestions";
+import { sessionUser } from "$lib/server/session-user";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -28,7 +30,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  const userId = locals.user.uid;
+  const userId = user.uid;
   try {
     const ctx = await resolveByokChatContext({ workspaceId: workspace.id, userId });
     const questions = await suggestQuestions({

@@ -6,8 +6,12 @@ import {
   listServiceAdminEmails,
 } from "$lib/server/service-admin-emails";
 import type { ServiceAdminEmailRow } from "$lib/server/service-admin-emails";
+import { requireServiceAdminSession } from "$lib/server/session-user";
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+  // W4.6a SECURITY: defense-in-depth — never reach listUsersForServiceOwnerAdmin (user
+  // emails) under degraded/forged auth even if the layout gate were ever changed.
+  requireServiceAdminSession(locals);
   try {
     const adminUsers = await listUsersForServiceOwnerAdmin();
     const operatorEmailsReady = await isServiceAdminEmailsTableReady();

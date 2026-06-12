@@ -6,13 +6,15 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { listAgentMemoryObservationsPostgres } from "$lib/server/neon";
 import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export const GET: RequestHandler = async ({ locals, url }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "unauthorized", message: "Sign in required." }, { status: 401 });
   }
 
-  const workspace = await getConnectWorkspaceCached(locals.user.uid);
+  const workspace = await getConnectWorkspaceCached(user.uid);
   const limitParam = url.searchParams.get("limit");
   const offsetParam = url.searchParams.get("offset");
   const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 200) : 50;

@@ -1,14 +1,15 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { runIngestQualityEvaluation } from "$lib/server/connect/ingest-quality-thresholds";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
 type PostBody = { days?: number };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
 

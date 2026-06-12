@@ -4,6 +4,7 @@ import { listGraphTargetsForUi } from "$lib/server/connect/graph-target-service"
 import { listDomainPacksForUi, getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import { isSignedInSession } from "$lib/server/session-user";
 
 export type SourcesDocumentRow = {
   id: string;
@@ -15,7 +16,7 @@ export type SourcesDocumentRow = {
 };
 
 export const load: PageServerLoad = async (event) => {
-  if (!event.locals.user || event.locals.user.authType !== "session") {
+  if (!isSignedInSession(event.locals)) {
     return {
       graphs: [],
       packs: [],

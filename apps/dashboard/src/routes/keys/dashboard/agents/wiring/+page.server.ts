@@ -6,9 +6,11 @@ import { perfSpan } from "$lib/debug/server-perf";
 import type { PageServerLoad } from "./$types";
 import { loadConnectAgentSetupForAgentsStep } from "$lib/server/connect/agent-setup-context";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export const load: PageServerLoad = async (event) => {
-  if (!event.locals.user || event.locals.user.authType !== "session") {
+  const user = sessionUser(event.locals);
+  if (!user) {
     return { signedIn: false, agentSetup: Promise.resolve(null) };
   }
   const agentSetup = (async () => {
@@ -17,7 +19,7 @@ export const load: PageServerLoad = async (event) => {
       const workspace = await requireConnectWorkspace(event.locals, event.parent);
       const setup = await loadConnectAgentSetupForAgentsStep({
         workspaceId: workspace.id,
-        userId: event.locals.user!.uid,
+        userId: user.uid,
       });
       endMcp();
       return setup;

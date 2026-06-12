@@ -5,6 +5,7 @@
 import type { PageServerLoad } from "./$types";
 import { listAgentMemoryObservationsPostgres, type AgentObservationRow } from "$lib/server/neon";
 import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export type MemoryInboxData = {
   observations: AgentObservationRow[];
@@ -12,7 +13,8 @@ export type MemoryInboxData = {
 };
 
 export const load: PageServerLoad = async (event) => {
-  if (!event.locals.user || event.locals.user.authType !== "session") {
+  const user = sessionUser(event.locals);
+  if (!user) {
     return {
       inbox: Promise.resolve<MemoryInboxData | null>(null),
     };
@@ -20,7 +22,7 @@ export const load: PageServerLoad = async (event) => {
 
   const inbox: Promise<MemoryInboxData | null> = (async () => {
     try {
-      const workspace = await getConnectWorkspaceCached(event.locals.user!.uid);
+      const workspace = await getConnectWorkspaceCached(user.uid);
       const observations = await listAgentMemoryObservationsPostgres({
         workspaceId: workspace.id,
         limit: 50,

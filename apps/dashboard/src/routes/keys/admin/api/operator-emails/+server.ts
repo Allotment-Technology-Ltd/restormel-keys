@@ -6,12 +6,13 @@ import {
   removeServiceAdminEmail,
 } from "$lib/server/service-admin-emails";
 import { invalidateSessionAuthCache } from "$lib/server/session-auth-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
   const emails = await listServiceAdminEmails();
@@ -21,8 +22,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 type PostBody = { email?: string; note?: string };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -57,8 +58,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 type DeleteBody = { email?: string };
 
 export const DELETE: RequestHandler = async ({ locals, request }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
 

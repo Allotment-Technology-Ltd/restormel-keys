@@ -36,6 +36,7 @@
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import LiveRunChip from "$lib/components/dashboard/LiveRunChip.svelte";
   import { isMobileAllowedPath } from "$lib/dashboard-mobile-tier";
+  import AuthDegradedNotice from "$lib/components/connect/AuthDegradedNotice.svelte";
 
   let palette: CommandPalette | undefined;
   let paletteOpen = false;
@@ -47,6 +48,9 @@
 
   $: user = $page.data.user;
   $: authError = $page.data.authError ?? null;
+  // W4.6a: verification couldn't complete for a cookie-bearing request. Render an
+  // honest degraded/retry state, NEVER the signed-out welcome CTA.
+  $: authDegraded = Boolean($page.data.authDegraded) && !user;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
   // R6 mobile read-only tier: the gate opens for /home, /runs/[id], /claims.
@@ -375,7 +379,11 @@
         {/if}
       </header>
       <main class="main" data-sveltekit-preload-data="tap">
-        {#if !user && !isAuthRoute}
+        {#if authDegraded && !isAuthRoute}
+          <div class="auth-degraded-shell">
+            <AuthDegradedNotice />
+          </div>
+        {:else if !user && !isAuthRoute}
           {#if authError === "session-verifier-not-found"}
             <div class="auth-error" role="alert">
               <p>Sign-in link expired or already used.</p>
@@ -800,6 +808,10 @@
   }
   .welcome {
     max-width: var(--rm-container-narrow);
+  }
+  .auth-degraded-shell {
+    max-width: var(--rm-container-narrow);
+    margin: var(--space-6) 0;
   }
   .welcome-title {
     font-family: var(--brut-font);
