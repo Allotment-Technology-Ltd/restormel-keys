@@ -4,6 +4,7 @@ import {
   buildExplorerSearchParams,
   buildExplorerUrl,
   isVerificationStateFilter,
+  normalizeAsOf,
 } from "./explorer-url-state";
 
 // ---------------------------------------------------------------------------
@@ -296,5 +297,124 @@ describe("isVerificationStateFilter", () => {
     for (const v of ["review", "all", "ok", "weak", "unsupported", "unknown", ""]) {
       expect(isVerificationStateFilter(v)).toBe(false);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W2.5 — as-of time travel: parse / build / compose / strip
+// ---------------------------------------------------------------------------
+
+describe("normalizeAsOf (W2.5)", () => {
+  it("canonicalises a valid datetime-local value to ISO", () => {
+    expect(normalizeAsOf("2026-05-03T14:02")).toBe(new Date("2026-05-03T14:02").toISOString());
+  });
+  it("passes a full ISO instant through unchanged (canonical)", () => {
+    expect(normalizeAsOf("2026-05-03T14:02:00.000Z")).toBe("2026-05-03T14:02:00.000Z");
+  });
+  it("returns null for empty / whitespace / garbage", () => {
+    expect(normalizeAsOf("")).toBeNull();
+    expect(normalizeAsOf("   ")).toBeNull();
+    expect(normalizeAsOf("not-a-date")).toBeNull();
+    expect(normalizeAsOf(null)).toBeNull();
+    expect(normalizeAsOf(undefined)).toBeNull();
+  });
+});
+
+describe("parseExplorerUrlState — as_of / audit (W2.5)", () => {
+  it("defaults to live (asOf=null, includeSuperseded=false)", () => {
+    const s = parseExplorerUrlState(params({}));
+    expect(s.asOf).toBeNull();
+    expect(s.includeSuperseded).toBe(false);
+  });
+
+  it("?as_of=<iso> parses to a canonical ISO instant", () => {
+    const s = parseExplorerUrlState(params({ as_of: "2026-05-03T14:02:00.000Z" }));
+    expect(s.asOf).toBe("2026-05-03T14:02:00.000Z");
+  });
+
+  it("an unparseable ?as_of is dropped to live (mangled share link degrades safely)", () => {
+    const s = parseExplorerUrlState(params({ as_of: "garbage" }));
+    expect(s.asOf).toBeNull();
+  });
+
+  it("?audit=1 sets includeSuperseded", () => {
+    expect(parseExplorerUrlState(params({ audit: "1" })).includeSuperseded).toBe(true);
+    expect(parseExplorerUrlState(params({ audit: "0" })).includeSuperseded).toBe(false);
+    expect(parseExplorerUrlState(params({ audit: "true" })).includeSuperseded).toBe(false);
+  });
+
+  it("composes with ?filter and ?unit", () => {
+    const s = parseExplorerUrlState(
+      params({ filter: "unsupported", unit: "abc", as_of: "2026-05-03T00:00:00.000Z", audit: "1" }),
+    );
+    expect(s.verdictFilter).toBe("unsupported");
+    expect(s.selectedUnitId).toBe("abc");
+    expect(s.asOf).toBe("2026-05-03T00:00:00.000Z");
+    expect(s.includeSuperseded).toBe(true);
+  });
+});
+
+describe("buildExplorerSearchParams — as_of / audit (W2.5)", () => {
+  const base = {
+    queueScope: "review" as const,
+    verdictFilter: null,
+    verificationStateFilter: null,
+    selectedUnitId: null,
+  };
+
+  it("omits as_of/audit at their defaults (clean URL)", () => {
+    const p = buildExplorerSearchParams({ ...base, asOf: null, includeSuperseded: false });
+    expect(p.has("as_of")).toBe(false);
+    expect(p.has("audit")).toBe(false);
+  });
+
+  it("writes as_of when set", () => {
+    const p = buildExplorerSearchParams({
+      ...base,
+      asOf: "2026-05-03T14:02:00.000Z",
+      includeSuperseded: false,
+    });
+    expect(p.get("as_of")).toBe("2026-05-03T14:02:00.000Z");
+  });
+
+  it("writes audit=1 when includeSuperseded", () => {
+    const p = buildExplorerSearchParams({ ...base, asOf: null, includeSuperseded: true });
+    expect(p.get("audit")).toBe("1");
+  });
+});
+
+describe("buildExplorerUrl — as_of composes with existing params (W2.5)", () => {
+  it("merges as_of without clobbering filter/unit/workspace/focus", () => {
+    const url = new URL("https://example.com/claims?workspace=tools&focus=embed&filter=unsupported&unit=u1");
+    const out = buildExplorerUrl(url, {
+      queueScope: "all",
+      verdictFilter: "unsupported",
+      verificationStateFilter: null,
+      selectedUnitId: "u1",
+      asOf: "2026-05-03T14:02:00.000Z",
+      includeSuperseded: true,
+    });
+    expect(out).toContain("workspace=tools");
+    expect(out).toContain("focus=embed");
+    expect(out).toContain("filter=unsupported");
+    expect(out).toContain("unit=u1");
+    expect(out).toContain("as_of=");
+    expect(out).toContain("audit=1");
+  });
+
+  it("strips as_of/audit when returning to now (default state)", () => {
+    const url = new URL("https://example.com/claims?as_of=2026-05-03T14:02:00.000Z&audit=1&workspace=w");
+    const out = buildExplorerUrl(url, {
+      queueScope: "review",
+      verdictFilter: null,
+      verificationStateFilter: null,
+      selectedUnitId: null,
+      asOf: null,
+      includeSuperseded: false,
+    });
+    expect(out).not.toContain("as_of");
+    expect(out).not.toContain("audit");
+    // ...but preserves unrelated params.
+    expect(out).toContain("workspace=w");
   });
 });
