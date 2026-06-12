@@ -1,22 +1,13 @@
+/**
+ * R5: /access/audit → /prove/audit (D5 approved: audit log is a proof artefact).
+ * This 308 permanent redirect keeps deep links from /access working.
+ * The audit content now lives in Prove / Audit tab.
+ */
+import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
-import { getOrCreateDefaultWorkspace, listAuditEvents } from "$lib/server/db";
+import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
-export const load: PageServerLoad = async ({ locals }) => {
-  if (!locals.user || locals.user.authType === "gateway_key") {
-    return { events: [], error: null as string | null };
-  }
-  try {
-    let workspaceId: string;
-    if (locals.user.authType === "management_key" && locals.user.workspaceId) {
-      workspaceId = locals.user.workspaceId;
-    } else {
-      const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
-      workspaceId = workspace.id;
-    }
-    const events = await listAuditEvents(workspaceId, { limit: 50 });
-    return { events, error: null };
-  } catch (e) {
-    console.error("[access/audit] load failed:", e);
-    return { events: [], error: "Unable to load audit log" };
-  }
+export const load: PageServerLoad = ({ url }) => {
+  const search = url.search && url.search !== "?" ? url.search : "";
+  throw redirect(308, DASHBOARD_BASE + "/prove/audit" + search);
 };

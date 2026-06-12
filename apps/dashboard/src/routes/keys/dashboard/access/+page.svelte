@@ -153,7 +153,7 @@
 {:else}
   <section class="section" aria-labelledby="gateway-keys-heading">
     <h2 id="gateway-keys-heading" class="section-title">Your Gateway keys</h2>
-    <a href={DASHBOARD_BASE + "/access/audit"} class="audit-link">View key history →</a>
+    <a href={DASHBOARD_BASE + "/prove/audit"} class="audit-link">View key history →</a>
     <p class="key-callout">
       A Gateway key authenticates your app to Restormel. It is not a provider credential.
       To connect OpenAI, Anthropic, Mistral, Together, Voyage, or other providers, go to
