@@ -179,9 +179,11 @@
     if (status === "failed") return "▲";
     return "□";
   }
+  /** Last-run outcome word (ledger-row standard). "completed" not "verified" —
+   *  a completed run is not verified without an eval verdict (honesty minor). */
   function runWord(status: string): string {
     if (isActiveIngestJobStatus(status)) return "running";
-    if (status === "completed") return "verified";
+    if (status === "completed") return "completed";
     if (status === "failed") return "failed";
     return status;
   }
@@ -241,7 +243,8 @@
           </div>
           <div class="cap-spark">
             {#await data.qualityHistory then history}
-              <TrustSparkline {history} />
+              <!-- X4 / NS §2.4: runsHref links the trend to its verdict-history receipt -->
+            <TrustSparkline {history} runsHref={RUNS_HREF} />
             {/await}
           </div>
           <div class="cap-meta">
@@ -411,14 +414,15 @@
           </ul>
         </section>
 
-        <!-- AGENT TRAFFIC — verified answers served in 24h → /logs?source=agent. -->
+        <!-- AGENT TRAFFIC — gateway requests in 24h → /logs?source=agent. -->
         <section class="masthead-cell agent-traffic" aria-labelledby="agent-h">
           <h2 id="agent-h" class="cell-h">Agent traffic</h2>
           <ul class="ledger" aria-label="Agent traffic">
             <li class="ledger-row">
               <span class="ledger-glyph" aria-hidden="true">{(data.livePulse?.requestCount24h ?? 0) > 0 ? "■" : "□"}</span>
               <div class="ledger-main">
-                <span class="ledger-label">Answers served · 24h</span>
+                <!-- Honest label: count is all gateway requests, not verified answers -->
+                <span class="ledger-label">Gateway requests · 24h</span>
                 <span class="ledger-evidence">
                   {#if data.livePulse?.analyticsUnavailable}
                     analytics unavailable — count not measured

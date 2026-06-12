@@ -15,12 +15,17 @@
    * Accessibility (R3-A2): the SVG is `role="img"` with an `aria-label` text
    * alternative naming the trend; the same summary is also rendered as visible
    * mono text so the trend is never colour-or-shape-only.
+   *
+   * X4 / NS §2.4: the caption links to `runsHref` (the run/verdict history) so the
+   * trend status is never an orphan — it always points at the series that produced it.
    */
 
   /** Newest-first verdict entries (server order: evaluated_at DESC). */
   export let history: ConnectEvalVerdictEntry[] = [];
   /** How many most-recent verdicts to plot. */
   export let limit = 20;
+  /** Href for the verdict/run history receipt. X4: caption must link here. */
+  export let runsHref: string = "";
 
   // Oldest→newest, most-recent `limit` entries, keeping only scored verdicts.
   $: scores = history
@@ -85,9 +90,16 @@
         stroke-linecap="round"
       />
     </svg>
-    <span class="sparkline-caption" aria-hidden="true">
-      {scores.length} verdicts · {delta != null && delta > 0 ? "+" : ""}{delta} pts
-    </span>
+    <!-- X4 / NS §2.4: caption links to the verdict history that produced this trend -->
+    {#if runsHref}
+      <a class="sparkline-caption sparkline-caption--link brut-focus" href={runsHref} aria-label="View verdict history: {scores.length} verdicts, {delta != null && delta > 0 ? '+' : ''}{delta} pts trend">
+        {scores.length} verdicts · {delta != null && delta > 0 ? "+" : ""}{delta} pts →
+      </a>
+    {:else}
+      <span class="sparkline-caption" aria-hidden="true">
+        {scores.length} verdicts · {delta != null && delta > 0 ? "+" : ""}{delta} pts
+      </span>
+    {/if}
   {/if}
 </div>
 
@@ -114,6 +126,10 @@
     letter-spacing: 0.04em;
     color: var(--color-ink);
     white-space: nowrap;
+  }
+  .sparkline-caption--link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   .sparkline-absent {
     font-family: var(--font-mono);
