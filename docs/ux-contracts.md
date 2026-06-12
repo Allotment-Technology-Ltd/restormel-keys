@@ -307,6 +307,78 @@ same store** rather than opening a second workspace stream (one SSE invocation p
 | **Run console — live tail** (`/runs/[id]`) | existing "Loading run console…" (`role="status"`) | n/a (a run always has a row) | existing "Could not load run status" banner + restart actions; **plus** an amber **"Live updates degraded to polling"** mono note (`role="status"`, in-progress runs only) when SSE drops to the 2.5s fallback — the run is explicitly stated to be unaffected | status badge, progress %, stage timeline, heartbeat age, and the activity-log tail all update from SSE `delta` frames (`aria-live="polite"` log region preserved); the W1.4 stall/reclaim narration rides the same frames |
 <!-- W3.1-BLOCK-END -->
 
+<!-- K5-BLOCK-START: run attribution (which route/model served this run). Other batch
+     agents edit this file — keep K5 edits inside this fenced block to ease rebase. -->
+### §3 panel states — Run attribution: "Served by" (Stage K5)
+
+K5 closes K-P1-4: a Connect run can now answer *which route/step/provider/model served each
+stage*. The resolve/attribution data is **captured at run time** (not reconstructed after the
+fact) inside `stage-route-generate.ts`'s `callResolvedChat`/`embedViaRoute` — the resolved
+`{routeId, routeName, projectId, stepId, stepOrderIndex, provider, modelId, attempts}` is recorded
+the moment a stage call SUCCEEDS — and persisted into `knowledge_ingest_jobs.progress.attribution`
+JSONB (the cheapest persistence slot; no migration). The run console renders a per-stage **"Served
+by `<model>` · `<provider>` · route `<name>` (step N) · K attempts"** mono line, the route name
+linking to the builder (X4: route → builder). Validation additionally asserts same/different family
+vs extraction, feeding K4's cross-model disclosure. Ingest resolves also write a `request_logs` row
+tagged **`source=connect_ingest`** (in the existing `metadata` JSONB) so Logs/Usage finally see
+Connect traffic (BP-12) — the `/logs` row renders the source tag; the full filter UX stays in W3.3.
+
+| Surface / element | Loading | Empty / absent | Error / degraded | Populated |
+|-------------------|---------|----------------|------------------|-----------|
+| **Run console — "Served by"** (`/runs/[id]`) | rides the existing run-console load (`role="status"`); attribution rows appear as each stage is captured live | run predates attribution capture (legacy/route-less) → honest absent-state: "Route/model attribution was not recorded for this run — it predates attribution capture" (NO fabricated rows) | n/a — display-only, read-only (adds no fetch; the W3.1 console error/degraded states are unchanged); the mobile read-only contract's 2-mutation-fetch count for this console is preserved | per-served-stage mono row: **`<model>` · `<provider>` · route `<name>` (step N) · K attempts**, route name → builder (`/projects/{id}/routes/{routeId}?flow=visual`); validation row adds "· cross-model ✓" or "· same family as extraction"; an "Attribution recorded from `<date>`" honesty line |
+| **Logs — source tag** (`/keys/dashboard/logs`) | existing logs load | n/a — a Connect resolve always writes a row | existing logs error banner + "Try again" | each request-log row renders its **source tag** (`connect ingest` badge for `source=connect_ingest`); gateway/legacy rows show no tag (null source). Full source filter UX is W3.3 |
+<!-- K5-BLOCK-END -->
+
+### §3 panel states — Team-shared key metadata + audit log depth (Stage W3.7 + K1)
+
+**Gateway keys — `/access`**
+
+Server-persisted labels (migration `066_api_keys_label_metadata.sql`) replace the localStorage-only
+illusion. `label` is `NULL` for pre-W3.7 keys — display "Unlabelled" (italic, `key-label-absent`
+class) rather than hiding the field. `createdAt` and `lastUsedAt` are shown as relative times in mono
+(`var(--rm-font-mono)`) labelled columns ("CREATED" / "LAST USED"). `lastUsedAt = null` → "never"
+(honest; the column exists and is `NULL` — not misleading).
+
+| State | Contract |
+|-------|---------|
+| **Loading** | SvelteKit server load — no client skeleton needed; flash is acceptable |
+| **Error** | `role="alert"` error paragraph with the full error path above the key list |
+| **Empty (no keys)** | `EmptyState` component — title + description + Create form |
+| **Populated** | Key list with `keyPrefix`, label (or "Unlabelled"), project, `created`, `last used`, Rename + Copy + Revoke actions |
+| **Inline rename** | Form replaces the label cell; Save (PATCH) + Cancel; `renameError` shown inline; focus moves to rename input on open |
+| **localStorage migration offer** | Banner (role="status") shown when `rk_key_labels` has un-migrated entries; "Save N labels to workspace" batch-PATCH; "Dismiss" hides without migrating; **never auto-writes** |
+| **Post-create key box** | `role="status" aria-live="polite"` — copy-once raw key display; "This is the only time the full key will be shown." |
+
+**Security invariants (W3.7/K1 — key-management is auth-adjacent):**
+- Label field has `maxlength="120"` and server-side trim + cap.
+- POST and PATCH reject labels containing `/rk_[A-Za-z0-9_-]{8,}/` anywhere in the string (key material in label = 400; unanchored — also catches "prod key rk_..." patterns).
+- `last_used_at` is written by `verifyGatewayKey` — the column records the timestamp of the last
+  authenticated request, not the timestamp of any label operation. No key material passes through
+  label update paths at any point.
+- Labels are excluded from console logs at the server layer (no `console.log(label)` calls).
+
+**Audit log — `/prove/audit`**
+
+Filters replace the fixed-50-row truncated list. Keyset pagination with a hard cap of 200 rows/page.
+
+| Panel | Loading | Empty (no events) | Empty (filtered, no match) | Error | Populated |
+|-------|---------|-------------------|---------------------------|-------|-----------|
+| **Filter bar** | Renders immediately (no async) | — | — | — | 5 controls: action (`event_type`), actor type, actor ID, from (datetime-local), to (datetime-local); Apply + Clear when filters are active |
+| **Audit list** | SvelteKit server load | `EmptyState` "No audit events yet" + link to Gateway keys | `EmptyState` "No events match these filters" + **Clear filters** CTA | `BrutalErrorBanner`-pattern (`role="alert"`) + **Try again** (re-navigates to the page) | One row per event: relative time, summary, actor (type chip + id code), object link (X4) |
+| **Object link (X4)** | — | — | — | — | `gateway_key` → `/access`; `project` → `/projects/{id}`; `policy` → `/policies/{id}`; `provider_integration` → `/integrations/{id}`; `workspace` → `/home`; `route` → `null` (route audit rows lack projectId in this schema — link absent, not dead) |
+| **Pagination** | — | — | — | — | "Older →" button (sets `?before=<cursor>` cursor param); "End of results" note when `hasMore === false` |
+
+**Filter → URL params mapping (W3.7):** all filter state lives in URL search params so filtered views
+are shareable. `actor=<uid>`, `actorType=user|gateway_key|management_key|system`,
+`eventType=<event_type>`, `since=<epoch_ms>`, `until=<epoch_ms>`, `before=<epoch_ms>` (cursor).
+Clearing filters navigates to the bare pathname.
+
+**Actor identity (W3.7, K-P1-1 evidence chain):** each audit row shows both the actor type (small
+mono chip) and the actor_id (truncated `<code>` element). For `user` type this is the user uid; for
+key types this is the key id — both are opaque but meaningful for cross-referencing. The tooltip
+shows the full actor_id. This is the maximum fidelity the `audit_events` schema carries without a
+user-email join (future W-stage may add that join).
+
 ### §3 panel states — Versioned-config intelligence: diff / export / recommend (Stage W3.5)
 
 Builds on W1.5's Versions tab (route builder `/projects/{id}/routes/{routeId}` → Versions; policy
@@ -385,7 +457,7 @@ zero fetches of its own. All keymap / tally / guard / undo decisions live in the
 
 | Element | Loading | Empty / absent | Error / degraded | Active / populated |
 |---------|---------|----------------|------------------|--------------------|
-| **Desk entry** (`.desk-enter`, triage panel head) | n/a | No claims awaiting review → button not shown (nothing to triage) | Read-only view → button replaced by an honest note ("Stamping desk unavailable here — editing past state is not possible / read-only on small screens") | "Open stamping desk" button when `reviewEnabled` and ≥1 claim awaits review and not read-only |
+| **Desk entry** (`.desk-enter`, triage panel head) | n/a | No claims awaiting review → button not shown (nothing to triage) | As-of view → button replaced by an honest note ("Stamping desk unavailable here — editing past state is not possible"); mobile read-only tier → button hidden by the layout's `.shell-mobile-readonly` rule and the click handler refuses at call time | "Open stamping desk" button when `reviewEnabled` and ≥1 claim awaits review and not read-only |
 | **Desk overlay** (`.stamping-desk`, `aria-label`) | (inherits the queue's load state) | Queue cleared mid-session → "The review queue is clear … press Esc" | (verdict-save failures surface in the explorer's existing `.workspace-alerts` banner — single error path) | Claim card (focusable, receives focus on advance), AI verdict, evidence link, note field, stamp bar, undo row, session tally rail, shortcut legend |
 | **Stamp bar** (`.desk-stamps`, `role="group"`) | n/a | n/a | **Supported (S) guarded off** for an unbound / pre-binding / no-evidence claim — disabled stamp + verbatim `canAcceptAsSupported` reason (`.desk-stamp-guard`), never a silent no-op (claims-ledger row 2) | S=Supported · W=Weak · X=Rejected, each ≥44px, the AI-suggested verdict emphasised; a 100ms mechanical press on stamp (`.desk-stamp-flash`, `prefers-reduced-motion`-guarded) |
 | **Session tally rail** (`.desk-tally`, `role="status"`) | n/a | "REVIEWED 0 · SUPPORTED 0 · WEAK 0 · REJECTED 0" | n/a | Live ledger line "REVIEWED N · SUPPORTED N · WEAK N · REJECTED N"; resets per visit (lives in desk state); an honest note that the **trust score** recomputes on the Home scorecard — the desk does not fork or fabricate a per-session score delta |
@@ -394,14 +466,32 @@ zero fetches of its own. All keymap / tally / guard / undo decisions live in the
 evidence, **N** focuses the note field, **Z** undoes, **?** toggles the legend, **Esc** exits. The desk's
 `<svelte:window>` listener owns the keyboard while open — the explorer's own `handleReviewKeydown`
 early-returns on `deskActive` so a/w/u/n/p never double-fire underneath. No shortcut fires from an
-input/textarea/select/contenteditable (Esc excepted, so you can bail the note field); focus moves to
-the claim card on advance; stamp/undo/guard results announce on an `aria-live="polite"` region.
+input/textarea/select/contenteditable; **Esc is two-step**: inside the note field it only blurs the
+field (focus returns to the claim card), a second Esc — now outside the field — exits the desk.
+**Modifier chords never fire**: the keymap early-returns on Cmd/Ctrl/Alt, so Cmd/Ctrl+S stays the
+browser's Save, never a stamp. Focus moves to the claim card on advance; stamp/undo/guard results
+announce on an `aria-live="polite"` region.
 
-**Read-only invariant.** Both read-only tiers gate the desk: the **mobile read-only tier**
-(`[data-mobile-readonly]`) and the **as-of history view** (`asOfActive`). `deskReadonly =
-asOfActive || isMobileReadonlyActive()` hides the entry button (honest copy why) and, as belt-and-braces,
-the keymap drops every mutating command and the stamp/note/undo UI is not rendered. This reuses the
-same guards W2.5 and R6 already enforce — it does not fork them.
+**Read-only invariant.** Both read-only tiers gate the desk, by different mechanisms because they
+become true at different times. The **as-of history view** (`asOfActive`) is reactive client state, so
+`deskReadonly = asOfActive` reactively replaces the entry button with an honest note and puts the desk
+in read-only mode (keymap drops every mutating command; stamp/note/undo UI not rendered). The **mobile
+read-only tier** (`[data-mobile-readonly]`) is set by the layout's `onMount` matchMedia probe — *after*
+the explorer's first reactive pass — so it is enforced at **call time**: every mutation entry
+(`enterDesk`, `deskStamp`, `deskUndo`) re-checks `deskMutationBlocked()` (= `asOfActive ||
+isMobileReadonlyActive()`, a live DOM query) at the moment of the click/keypress and refuses, and the
+layout's `.shell-mobile-readonly` rule hides `.desk-enter` / `.desk-mount` as belt-and-braces. This
+reuses the same guards W2.5 and R6 already enforce — it does not fork them. Pinned by
+`dashboard-mobile-readonly-claims.test.ts` (selector inventory + call-time-guard contract).
+
+**Truthful dispatch (tally/announce/undo).** `performReview` reports `dispatched | swallowed |
+disabled`; the desk counts the tally, announces success and arms undo **only on a confirmed
+server-bound dispatch**. An input landing inside the 250ms post-stamp guard window is `swallowed`:
+the desk holds with honest feedback ("Hold on — saving the previous stamp") instead of counting a
+stamp the server never saw — so S→Z inside the window never announces "Undone", and rapid S→J→S never
+counts a dropped stamp. If the server later rejects a stamp, an `onResolved(false)` continuation rolls
+the tally back, clears the just-armed undo record and announces the rollback; failed stamps hold with
+retry, they do not advance.
 
 **Undo semantics (honest).** The validation endpoint accepts only `{ ok | weak | unsupported }` — there
 is no server "un-stamp". Undo is therefore a **single-level re-stamp to the previous verdict** via the
@@ -409,6 +499,36 @@ same mutation. When the previous status was *unchecked* (the common first-review
 verdict to restore, so undo is honestly **disabled with a reason** rather than pretending to clear the
 verdict. The session tally decrements on undo so the rail never lies about how many claims this session
 currently holds.
+
+### §3 shell-element states — Navigation pending state (nav-pending-fix)
+
+Addresses user report: clicking sidebar items (esp. Sources) showed nothing for a while — old
+screen + old nav highlight stayed until the server load resolved. Root cause: the dashboard layout
+made zero use of SvelteKit's `navigating` store. Fix adds instant feedback via the store.
+
+| Element | While navigating (server-load in flight) | Navigation complete |
+|---------|------------------------------------------|---------------------|
+| **Destination nav item** (sidebar) | `.nav-link-pending` modifier: dimmed-yellow fill (`55%` opacity) + hard 3 px left-edge ink bar pulsing at `steps(2)` interval. Appears on the work-nav item, group items, and Testing item whose href matches the destination (via `isWorkNavActive` / prefix match — same derivation as the active highlight). The **current** item keeps its `.nav-link-active` state unchanged. | Pending modifier removed; destination item gains `.nav-link-active`. |
+| **Top-of-content progress bar** (`.nav-progress-bar`, `role="progressbar"`) | 3 px, ink-on-white, hard edges, no radius. Appears at the top of the content column (absolutely positioned in `.main-wrap`). CSS animation fills to ≈72 % during the load duration; bar disappears instantly when `$navigating` clears. `aria-label` names the destination: `"Loading Sources…"`. | Removed from DOM. |
+| **`aria-busy` on `<main>`** | `aria-busy="true"` while `$navigating` is truthy. | Attribute removed. |
+| **Visually-hidden live region** (`role="status"`, `aria-live="polite"`) | `"Loading {label}…"` text inside a `.sr-only` element, announces the pending destination to screen readers without stealing focus. Complements `aria-busy`. | Removed from DOM. |
+
+**A11y invariants:**
+- The `.nav-link-pending` pulsing animation is suppressed under `prefers-reduced-motion`
+  (static bar stays visible — no animation, no flicker).
+- The progress bar fill animation is also suppressed under `prefers-reduced-motion`
+  (bar fills to full width immediately and stays static until navigation completes).
+- `aria-busy="true"` on the main content region communicates the pending state to AT
+  without redirecting focus.
+- The visually-hidden `role="status"` live region is announced by screen readers as
+  `"Loading Sources…"` (or the matched nav item label, or `"Loading page…"` as a fallback
+  when no nav item matches the destination path).
+
+**Derivation contract (`pendingHref`):** `$navigating.to?.url.pathname` is matched against
+`workNavForUi`, `testingNavForUi`, and `navGroupsForLayout` items using the same
+`isWorkNavActive` (prefix + exact) logic as the active highlight. The first match wins.
+`pendingLabel` is the matched item's `label` field. Tested by
+`nav-config.test.ts` (pending derivation suite).
 
 ### §3 auth states — fail-closed verification (Stage W4.6a)
 

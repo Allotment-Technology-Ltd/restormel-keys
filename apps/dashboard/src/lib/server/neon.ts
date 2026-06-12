@@ -31,6 +31,14 @@ import {
   createSchemaMigrationGate,
   type SchemaGateSql,
 } from "$lib/server/schema-migration-gate";
+import {
+  parseConnectRunAttribution,
+  type ConnectRunAttribution,
+} from "$lib/server/connect/stage-attribution";
+import {
+  requestLogMetadataWithSource,
+  requestLogSourceFromMetadata,
+} from "$lib/server/request-log-source";
 
 // ---------------------------------------------------------------------------
 // Stage 1.7 — Runtime DDL gate
@@ -120,12 +128,18 @@ export type Environment = {
   createdAt: number;
 };
 
-/** Gateway key record (Restormel auth). Stored as prefix + hash; table name api_keys for compatibility. */
+/** Gateway key record (Restormel auth). Stored as prefix + hash; table name api_keys for compatibility.
+ * W3.7/K1: label, createdAt, lastUsedAt are now surfaced (migration 066_api_keys_label_metadata.sql).
+ * Source: neon.ts — the canonical record shape from which UI types are derived. */
 export type ApiKeyRecord = {
   id: string;
   keyPrefix: string;
-  keyHash: string;
+  // keyHash is intentionally EXCLUDED from this type — it must never be sent to the client.
   createdAt: number;
+  /** Server-persisted label (nullable — honest absent state for pre-W3.7 keys). */
+  label: string | null;
+  /** Last time this key authenticated a request (already written on every use at neon.ts:877). */
+  lastUsedAt: number | null;
 };
 
 export function getSql() {
@@ -907,23 +921,60 @@ export async function verifyManagementKey(rawKey: string): Promise<ManagementKey
   return { keyId: r.id, workspaceId: r.workspaceId };
 }
 
-/** List Gateway keys for project (prefix only) */
+/** List Gateway keys for project. Returns label + createdAt + lastUsedAt (W3.7/K1 — migration 066). */
 export async function listApiKeys(projectId: string, userId: string): Promise<ApiKeyRecord[]> {
   const project = await getProject(projectId, userId);
   if (!project) return [];
   const sql = getSql();
   const rows = await sql`
-    SELECT id, key_prefix AS "keyPrefix", key_hash AS "keyHash", created_at AS "createdAt"
+    SELECT id, key_prefix AS "keyPrefix", created_at AS "createdAt",
+           label, last_used_at AS "lastUsedAt"
     FROM api_keys
     WHERE project_id = ${projectId}
     ORDER BY created_at DESC
   `;
+  // SECURITY: key_hash is intentionally not selected — it must never reach the client.
   return rows.map((r) => ({
     id: r.id,
     keyPrefix: r.keyPrefix,
-    keyHash: r.keyHash,
     createdAt: Number(r.createdAt),
+    label: typeof r.label === "string" ? r.label : null,
+    lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
   })) as ApiKeyRecord[];
+}
+
+/**
+ * List all Gateway keys for a workspace in a single query — fixes the N+1 in the Access page
+ * load (access/+page.server.ts used to call listApiKeys per project in a loop).
+ * W3.7/K1 fix for K-P2-3 (keys-core-journey-review §§2, K-P2-3).
+ * Returns ApiKeyRecord extended with projectId + projectName for the list view.
+ */
+export type ApiKeyWithProject = ApiKeyRecord & {
+  projectId: string;
+  projectName: string;
+};
+
+export async function listApiKeysByWorkspace(workspaceId: string): Promise<ApiKeyWithProject[]> {
+  const sql = getSql();
+  // SECURITY: key_hash is intentionally excluded — it must never be sent to the client.
+  const rows = await sql`
+    SELECT k.id, k.key_prefix AS "keyPrefix",
+           k.created_at AS "createdAt", k.label, k.last_used_at AS "lastUsedAt",
+           k.project_id AS "projectId", p.name AS "projectName"
+    FROM api_keys k
+    INNER JOIN projects p ON p.id = k.project_id
+    WHERE p.workspace_id = ${workspaceId}
+    ORDER BY k.created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    keyPrefix: r.keyPrefix,
+    createdAt: Number(r.createdAt),
+    label: typeof r.label === "string" ? r.label : null,
+    lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
+    projectId: r.projectId,
+    projectName: r.projectName,
+  })) as ApiKeyWithProject[];
 }
 
 /** Return total Gateway keys in a workspace (fast path for dashboard summaries). */
@@ -940,11 +991,15 @@ export async function countApiKeysByWorkspace(workspaceId: string): Promise<numb
 }
 
 /**
- * Create Gateway key. Returns { rawKey, keyPrefix, keyId } once; caller must show rawKey to user. Store only prefix + hash in api_keys.
+ * Create Gateway key. Returns { rawKey, keyPrefix, keyId } once; caller must show rawKey to user.
+ * Store only prefix + hash in api_keys. W3.7/K1: accepts optional label (length-capped, trimmed).
+ * SECURITY: label must not contain key material — the API layer validates this; the data layer
+ * trims and caps to 120 chars as defence-in-depth. Never log rawKey.
  */
 export async function createApiKey(
   projectId: string,
-  userId: string
+  userId: string,
+  options?: { label?: string }
 ): Promise<{ rawKey: string; keyPrefix: string; keyId: string } | null> {
   const project = await getProject(projectId, userId);
   if (!project) return null;
@@ -953,10 +1008,12 @@ export async function createApiKey(
   const keyPrefix = rawKey.slice(0, 12) + "…";
   const id = crypto.randomUUID();
   const createdAt = Date.now();
+  // Trim and cap label; null if empty/absent.
+  const label = options?.label ? options.label.trim().slice(0, 120) || null : null;
   const sql = getSql();
   await sql`
-    INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at)
-    VALUES (${id}, ${projectId}, ${keyPrefix}, ${keyHash}, ${createdAt})
+    INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at, label)
+    VALUES (${id}, ${projectId}, ${keyPrefix}, ${keyHash}, ${createdAt}, ${label})
   `;
   if (project.workspaceId) {
     try {
@@ -1006,6 +1063,55 @@ export async function deleteApiKey(projectId: string, keyId: string, userId: str
   return deleted;
 }
 
+/**
+ * Update the label of a Gateway key.
+ * W3.7/K1: PATCH equivalent for renaming a key in place.
+ * SECURITY: label must not contain key material; trimmed + capped to 120 chars.
+ * Returns true if the row was found and updated; false if the key doesn't belong to the project.
+ * Emits a `gateway_key_renamed` audit event (old→new label) on success.
+ */
+export async function updateApiKeyLabel(
+  projectId: string,
+  keyId: string,
+  userId: string,
+  label: string | null
+): Promise<boolean> {
+  const project = await getProject(projectId, userId);
+  if (!project) return false;
+  const trimmedLabel = label ? label.trim().slice(0, 120) || null : null;
+  const sql = getSql();
+  // Fetch old label before the update so we can include it in the audit summary.
+  const beforeRows = await sql`
+    SELECT label, key_prefix AS "keyPrefix" FROM api_keys
+    WHERE id = ${keyId} AND project_id = ${projectId}
+  `;
+  const oldLabel = (beforeRows?.[0] as { label?: string | null } | undefined)?.label ?? null;
+  const keyPrefix = (beforeRows?.[0] as { keyPrefix?: string } | undefined)?.keyPrefix ?? keyId.slice(0, 8);
+  const rows = await sql`
+    UPDATE api_keys SET label = ${trimmedLabel}
+    WHERE id = ${keyId} AND project_id = ${projectId}
+    RETURNING id
+  `;
+  const updated = Array.isArray(rows) && rows.length > 0;
+  if (updated && project.workspaceId) {
+    try {
+      await insertAuditEvent({
+        workspaceId: project.workspaceId,
+        actorId: userId,
+        actorType: "user",
+        eventType: "gateway_key_renamed",
+        targetType: "gateway_key",
+        targetId: keyId,
+        summary: `Gateway key renamed: "${oldLabel ?? "(unlabelled)"}" → "${trimmedLabel ?? "(unlabelled)"}" (${keyPrefix})`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after rename:", msg.slice(0, 80));
+    }
+  }
+  return updated;
+}
+
 // ---------------------------------------------------------------------------
 // Audit events (control-plane; used by key create/revoke)
 // ---------------------------------------------------------------------------
@@ -1041,32 +1147,51 @@ export async function insertAuditEvent(params: {
   `;
 }
 
-/** List recent audit events for a workspace (caller must have access). */
+/**
+ * List audit events for a workspace with optional filters.
+ * W3.7 audit depth: supports actor, actorType, eventType, date range, and cursor
+ * pagination via `before` (created_at of the last item in the previous page).
+ * Defaults: limit 50, newest-first, no filters.
+ *
+ * actor: matches actor_id exactly (the actorId is a user uid or key id).
+ * actorType: e.g. "user" | "gateway_key" | "management_key".
+ * eventType: exact match on event_type column (e.g. "gateway_key_created").
+ * since / until: epoch ms boundaries (inclusive).
+ * before: cursor for keyset pagination — return rows with created_at < before.
+ *
+ * Pattern: conditional sql fragments in the template literal — matches the pattern at
+ * neon.ts:4608-4611 (request logs) and neon.ts:4702-4707 (usage aggregates).
+ */
 export async function listAuditEvents(
   workspaceId: string,
-  options: { limit?: number; since?: number } = {}
+  options: {
+    limit?: number;
+    since?: number;
+    until?: number;
+    actor?: string;
+    actorType?: string;
+    eventType?: string;
+    before?: number;
+  } = {}
 ): Promise<AuditEventRecord[]> {
-  const { limit = 50, since } = options;
+  const { limit = 50, since, until, actor, actorType, eventType, before } = options;
+  const cap = Math.min(limit, 200); // hard cap — never return more than 200 rows
   const sql = getSql();
-  const rows = since
-    ? await sql`
-        SELECT id, workspace_id AS "workspaceId", actor_id AS "actorId", actor_type AS "actorType",
-               event_type AS "eventType", target_type AS "targetType", target_id AS "targetId",
-               summary, created_at AS "createdAt"
-        FROM audit_events
-        WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-        ORDER BY created_at DESC
-        LIMIT ${limit}
-      `
-    : await sql`
-        SELECT id, workspace_id AS "workspaceId", actor_id AS "actorId", actor_type AS "actorType",
-               event_type AS "eventType", target_type AS "targetType", target_id AS "targetId",
-               summary, created_at AS "createdAt"
-        FROM audit_events
-        WHERE workspace_id = ${workspaceId}
-        ORDER BY created_at DESC
-        LIMIT ${limit}
-      `;
+  const rows = await sql`
+    SELECT id, workspace_id AS "workspaceId", actor_id AS "actorId", actor_type AS "actorType",
+           event_type AS "eventType", target_type AS "targetType", target_id AS "targetId",
+           summary, created_at AS "createdAt"
+    FROM audit_events
+    WHERE workspace_id = ${workspaceId}
+      ${since != null ? sql`AND created_at >= ${since}` : sql``}
+      ${until != null ? sql`AND created_at <= ${until}` : sql``}
+      ${before != null ? sql`AND created_at < ${before}` : sql``}
+      ${actor ? sql`AND actor_id = ${actor}` : sql``}
+      ${actorType ? sql`AND actor_type = ${actorType}` : sql``}
+      ${eventType ? sql`AND event_type = ${eventType}` : sql``}
+    ORDER BY created_at DESC
+    LIMIT ${cap}
+  `;
   return rows.map((r) => ({
     id: r.id,
     workspaceId: r.workspaceId,
@@ -4437,6 +4562,8 @@ export type RequestLogParams = {
   cachedTokens?: number | null;
   estimatedCost?: number | null;
   metadata?: Record<string, unknown> | null;
+  /** K5: traffic-source tag (e.g. "connect_ingest"); folded into metadata.source. */
+  source?: string | null;
 };
 
 export type RequestLogRecord = {
@@ -4458,6 +4585,8 @@ export type RequestLogRecord = {
   fallbackCount: number | null;
   errorCode: string | null;
   createdAt: number;
+  /** K5: traffic source tag from metadata.source (e.g. "connect_ingest"); null for legacy/gateway rows. */
+  source: string | null;
 };
 
 /** Insert a request log row. Used after route resolution and/or proxy. */
@@ -4465,6 +4594,9 @@ export async function insertRequestLog(params: RequestLogParams): Promise<void> 
   const sql = getSql();
   const id = crypto.randomUUID();
   const createdAt = Date.now();
+  // K5: fold an explicit source tag into metadata.source so the column stays a single
+  // JSONB blob (no migration) while /logs + W3.3 can filter Connect ingest traffic.
+  const metadata = requestLogMetadataWithSource(params.metadata, params.source);
   await sql`
     INSERT INTO request_logs (
       id, workspace_id, project_id, environment_id, route_id, gateway_key_id,
@@ -4480,7 +4612,7 @@ export async function insertRequestLog(params: RequestLogParams): Promise<void> 
       ${params.ttftMs ?? null}, ${params.inputTokens ?? null}, ${params.outputTokens ?? null},
       ${params.cachedTokens ?? null}, ${params.estimatedCost ?? null},
       ${params.fallbackCount ?? null}, ${params.errorCode ?? null}, ${createdAt},
-      ${params.metadata ? JSON.stringify(params.metadata) : null}
+      ${metadata ? JSON.stringify(metadata) : null}
     )
   `;
 }
@@ -4507,7 +4639,8 @@ export async function listRequestLogs(
            final_model_id AS "finalModelId", request_status AS "requestStatus", latency_ms AS "latencyMs",
            ttft_ms AS "ttftMs", input_tokens AS "inputTokens", output_tokens AS "outputTokens",
            cached_tokens AS "cachedTokens", estimated_cost AS "estimatedCost",
-           fallback_count AS "fallbackCount", error_code AS "errorCode", created_at AS "createdAt"
+           fallback_count AS "fallbackCount", error_code AS "errorCode", created_at AS "createdAt",
+           metadata AS "metadata"
     FROM request_logs
     WHERE workspace_id = ${workspaceId}
       ${since != null ? sql`AND created_at >= ${since}` : sql``}
@@ -4536,6 +4669,9 @@ export async function listRequestLogs(
     fallbackCount: r.fallbackCount != null ? Number(r.fallbackCount) : null,
     errorCode: r.errorCode ?? null,
     createdAt: Number(r.createdAt),
+    // K5: expose the traffic-source tag (metadata.source) so /logs can badge
+    // connect_ingest rows. The neon driver returns JSONB as a parsed object.
+    source: requestLogSourceFromMetadata(r.metadata),
   })) as RequestLogRecord[];
 }
 
@@ -5535,6 +5671,8 @@ export type ConnectIngestJobProgress = {
   quality_report?: ConnectIngestJobQualityReport;
   graph_repair?: GraphRepairJobProgress;
   resume?: ConnectIngestJobResumeCheckpoint;
+  /** K5 run attribution — per-stage {routeId, routeName, provider, modelId, attempts}. */
+  attribution?: ConnectRunAttribution;
 };
 
 export type ConnectIngestJobRecord = {
@@ -5773,6 +5911,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
   const quality_report = parseConnectIngestJobQualityReport(rec.quality_report);
   const graph_repair = parseGraphRepairJobProgress(rec.graph_repair);
   const resume = parseConnectIngestJobResumeCheckpoint(rec.resume);
+  const attribution = parseConnectRunAttribution(rec.attribution);
   return {
     percent: Math.min(100, Math.max(0, Math.round(percent))),
     processed: Math.max(0, Math.round(processed)),
@@ -5783,6 +5922,7 @@ function parseConnectIngestJobProgress(raw: unknown): ConnectIngestJobProgress |
     ...(quality_report ? { quality_report } : {}),
     ...(graph_repair ? { graph_repair } : {}),
     ...(resume ? { resume } : {}),
+    ...(attribution ? { attribution } : {}),
   };
 }
 

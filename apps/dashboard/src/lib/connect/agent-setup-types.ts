@@ -3,6 +3,8 @@ export type ConnectAgentGatewayKey = {
   keyPrefix: string;
   projectId: string;
   projectName: string;
+  /** Server-persisted label (W3.7/K1 — nullable for pre-migration keys). */
+  label?: string | null;
 };
 
 export type ConnectAgentSetupData = {

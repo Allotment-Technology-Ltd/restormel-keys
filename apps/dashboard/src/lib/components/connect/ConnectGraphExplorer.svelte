@@ -2078,9 +2078,13 @@
 
     const dispatch = performReview(unit, toStatus, (ok) => {
       if (ok) return;
-      // The re-stamp didn't persist — restore the tally + undo affordance.
+      // The re-stamp didn't persist — restore the tally + undo affordance. Guard
+      // against clobbering a NEWER undo record: if another stamp landed while this
+      // undo's PATCH was in flight, its record wins (mirrors deskStamp's rollback).
       deskTally = tallyStamp(deskTally, undoneStatus);
-      deskLastStamp = last;
+      if (deskLastStamp == null) {
+        deskLastStamp = last;
+      }
       deskComponent?.announce("Undo didn't save — restored the stamp. Try again.");
     });
 

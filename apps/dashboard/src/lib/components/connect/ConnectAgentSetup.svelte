@@ -26,21 +26,27 @@
   let newKeyProjectId: string | null = null;
   let copiedSnippet = false;
   let copiedKey = false;
-  let keyLabels: Record<string, string> = {};
   let showCreateForm = false;
   let localKeys: ConnectAgentGatewayKey[] = [];
 
-  function loadKeyLabels() {
+  /**
+   * W3.7/K1: server label wins; localStorage is legacy fallback for pre-migration keys only.
+   * The Access page offers a one-time migration to move localStorage labels to the server.
+   * This component reads localStorage for display ONLY (never writes labels here).
+   */
+  let legacyLocalLabels: Record<string, string> = {};
+  function loadLegacyLabels() {
     if (typeof localStorage === "undefined") return;
     try {
-      keyLabels = JSON.parse(localStorage.getItem("rk_key_labels") ?? "{}") as Record<string, string>;
+      legacyLocalLabels = JSON.parse(localStorage.getItem("rk_key_labels") ?? "{}") as Record<string, string>;
     } catch {
-      keyLabels = {};
+      legacyLocalLabels = {};
     }
   }
 
   function keyLabel(key: ConnectAgentGatewayKey): string {
-    return keyLabels[key.keyPrefix] ?? key.projectName;
+    // Server label first; legacy localStorage fallback for pre-W3.7 keys; projectName as last resort.
+    return key.label ?? legacyLocalLabels[key.keyPrefix] ?? key.projectName;
   }
 
   $: allGatewayKeys = [...setup.gatewayKeys, ...localKeys];
@@ -68,7 +74,7 @@
   });
 
   onMount(() => {
-    loadKeyLabels();
+    loadLegacyLabels();
     const pending = consumePendingGatewayKeySession();
     if (pending) {
       newKeyRaw = pending.rawKey;
@@ -97,7 +103,10 @@
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${createProjectId}/keys`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        // W3.7/K1: send label in body (was: no body — K-P1-1). Server persists it.
+        body: JSON.stringify({ label: createLabel.trim() || undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data?.rawKey) {
@@ -107,6 +116,7 @@
         const keyPrefix = typeof body.data.keyPrefix === "string" ? body.data.keyPrefix : "";
         const project = setup.projects.find((p) => p.id === createProjectId);
         if (keyId) {
+          const trimmedLabel = createLabel.trim() || null;
           localKeys = [
             ...localKeys.filter((k) => k.id !== keyId),
             {
@@ -114,6 +124,7 @@
               keyPrefix,
               projectId: createProjectId,
               projectName: project?.name ?? "Project",
+              label: trimmedLabel,
             },
           ];
           savePendingGatewayKeySession({
@@ -124,12 +135,7 @@
             savedAt: Date.now(),
           });
         }
-        if (createLabel.trim() && keyPrefix) {
-          keyLabels[keyPrefix] = createLabel.trim();
-          if (typeof localStorage !== "undefined") {
-            localStorage.setItem("rk_key_labels", JSON.stringify(keyLabels));
-          }
-        }
+        // W3.7/K1: no longer writing to localStorage — label is server-persisted.
         createLabel = "";
         showCreateForm = false;
       } else {

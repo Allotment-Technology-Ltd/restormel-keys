@@ -119,6 +119,9 @@ describe("W4.2 Stamping Desk — explorer integration contract", () => {
     expect(undoneIdx).toBeGreaterThan(holdIdx);
     // Swallowed undo holds with honest copy rather than lying.
     expect(deskUndoBody).toContain("Hold on — saving the previous stamp");
+    // The failure-restore must not clobber a NEWER undo record armed while the
+    // undo PATCH was in flight (mirrors deskStamp's rollback guard).
+    expect(deskUndoBody).toMatch(/if \(deskLastStamp == null\) \{\s*deskLastStamp = last;/);
   });
 
   it("MAJOR-3 — the desk keymap early-returns on Cmd/Ctrl/Alt chords (no stamp + no Save hijack)", () => {
