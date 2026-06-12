@@ -15,5 +15,8 @@ docs
 !docs/design-tokens.css
 prompts
 scripts
+!scripts/copy-openapi.mjs
+!scripts/post-build.mjs
+!scripts/vercel-copy-build-output.mjs
 *.log
 .DS_Store
