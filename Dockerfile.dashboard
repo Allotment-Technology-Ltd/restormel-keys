@@ -8,7 +8,8 @@
 # Healthcheck: GET /keys/v1/catalog — the catalog contract endpoint (§4.6 of migration plan).
 #
 # NOTE: This image is for the dashboard container only. The ingest-worker container
-# uses the same image with a different start command — see deploy/docker-compose.coolify.yml.
+# builds from Dockerfile.worker (Coolify ignores custom start commands for
+# dockerfile build packs, and the daemon needs node as PID 1 for SIGTERM).
 
 # --- Build stage ---
 FROM node:22-alpine AS build
