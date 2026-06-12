@@ -261,28 +261,30 @@ describe("mapSimulateToExplainResult", () => {
     expect(result.perStepEstimates[0]).toMatchObject({ stepId: "s1", wouldRun: true });
   });
 
-  it("sets wouldRun false when simulate says not running", () => {
-    const notRunning = {
-      data: {
-        contract_version: "2026-04-16",
-        selectedStepId: null,
-        providerType: null,
-        modelId: null,
-        explanation: "blocked",
-        wouldRun: false,
-        violations: [{ policyId: "p1", policyName: "X", type: "t", message: "blocked" }],
-        routingAttempts: [],
-        stepDiagnostics: [],
-        perStepEstimates: [],
-      },
+  it("maps top-level violations from 403 policy_blocked response", () => {
+    // Real shape emitted by simulate/+server.ts lines 234-241 — NO data envelope.
+    const blocked403 = {
+      error: "policy_blocked",
+      message: "All route steps were blocked by policy",
+      violations: [
+        { policyId: "pol-1", policyName: "Cost Cap", type: "cost", message: "exceeds daily cap" },
+      ],
     };
     const result = mapSimulateToExplainResult({
       routeId: "r1", environmentId: "env1",
-      raw: notRunning as Record<string, unknown>,
+      raw: blocked403 as Record<string, unknown>,
       explainChain: null,
     });
-    expect(result.wouldRun).toBe(false);
+    // Must have violations so receipt renders "BLOCKED BY POLICY", not "NO STEP EXECUTABLE".
     expect(result.policyViolations).toHaveLength(1);
+    expect(result.policyViolations[0]).toMatchObject({
+      policyId: "pol-1",
+      policyName: "Cost Cap",
+      type: "cost",
+      message: "exceeds daily cap",
+    });
+    // The 403 body carries no selectedStepId / wouldRun fields — mapper must not explode.
+    expect(result.wouldRun).toBe(false);
     expect(result.selectedStepId).toBeNull();
   });
 
@@ -446,16 +448,19 @@ describe("formatCostUsd", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// Invoke confirm guard (state machine contract)
+// Invoke confirm guard (state machine contract — pure logic, no component mount)
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * The confirm dialog (role="alertdialog") must appear before any provider fetch.
- * Component-level rendering is covered in RouteResolutionPreview.test.ts.
- * This test verifies the state-machine contract: requestRealSend must NOT advance
- * testerState to "running" — only confirmRealSend does, and only after the dialog.
+ * NOTE: These tests verify the *state-machine contract* using locally-defined stand-ins.
+ * They do NOT mount the component or assert that the alertdialog renders in the DOM.
+ * Component-level coverage (alertdialog appears before fetch, role="alertdialog" present)
+ * lives in RouteResolutionPreview.test.ts — see that file for the Svelte harness pattern.
+ *
+ * Contract: requestRealSend must NOT advance testerState to "running". Only
+ * confirmRealSend (called after the dialog) may do so.
  */
-describe("invoke confirm guard — state machine contract", () => {
+describe("invoke confirm guard — state machine contract (pure, no component mount)", () => {
   it("requestRealSend keeps state idle; confirmRealSend advances to running", () => {
     let invokeConfirmPending = false;
     let testerState: TesterState = TESTER_IDLE;
@@ -480,21 +485,23 @@ describe("invoke confirm guard — state machine contract", () => {
     expect(testerState.phase).toBe("running"); // only running AFTER confirm
   });
 
-  it("confirm dialog must appear before fetch — dropping it fails this test", () => {
-    let dialogShown = false;
+  it("guard function throws if confirm skipped (state-machine stand-in, not a DOM test)", () => {
+    // Stand-in functions mirror the component's requestRealSend / confirmRealSend logic.
+    // Actual DOM-level guard (alertdialog role) is covered in RouteResolutionPreview.test.ts.
+    let guardPassed = false;
     let fetchCalled = false;
 
-    function requestRealSendWithGuard() { dialogShown = true; }
-    function confirmRealSendWithGuard() {
-      if (!dialogShown) throw new Error("fetch called without confirm dialog");
+    function requestRealSendStandin() { guardPassed = true; }
+    function confirmRealSendStandin() {
+      if (!guardPassed) throw new Error("fetch called without passing confirm guard");
       fetchCalled = true;
     }
 
-    requestRealSendWithGuard();
-    expect(dialogShown).toBe(true);
+    requestRealSendStandin();
+    expect(guardPassed).toBe(true);
     expect(fetchCalled).toBe(false); // fetch must NOT have been called yet
 
-    confirmRealSendWithGuard();
+    confirmRealSendStandin();
     expect(fetchCalled).toBe(true);
   });
 });

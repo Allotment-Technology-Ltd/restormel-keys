@@ -290,14 +290,20 @@ export function mapSimulateToExplainResult(args: {
       }))
     : [];
 
-  const policyViolations = Array.isArray(d.violations)
-    ? (d.violations as Array<Record<string, string>>).map((v) => ({
-        policyId: String(v.policyId ?? ""),
-        policyName: String(v.policyName ?? ""),
-        type: String(v.type ?? ""),
-        message: String(v.message ?? ""),
-      }))
-    : [];
+  // For 403 policy_blocked responses the server returns violations at the TOP level
+  // (no `data` envelope): { error, message, violations }. Fall back to raw.violations
+  // so the receipt renders "BLOCKED BY POLICY" rather than "NO STEP EXECUTABLE".
+  const violationsSource = Array.isArray(d.violations)
+    ? (d.violations as Array<Record<string, string>>)
+    : Array.isArray((raw as Record<string, unknown>).violations)
+      ? ((raw as Record<string, unknown>).violations as Array<Record<string, string>>)
+      : [];
+  const policyViolations = violationsSource.map((v) => ({
+    policyId: String(v.policyId ?? ""),
+    policyName: String(v.policyName ?? ""),
+    type: String(v.type ?? ""),
+    message: String(v.message ?? ""),
+  }));
 
   const perStepEstimates = Array.isArray(d.perStepEstimates)
     ? (d.perStepEstimates as Array<Record<string, unknown>>).map((e) => ({
