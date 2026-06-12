@@ -18,6 +18,7 @@
   import { parseReturnTo } from "$lib/connect/pipeline-config";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
+  import { parseRecommendations, type RouteRecommendation } from "$lib/route-version-diff";
   import VersionsPanel from "$lib/components/dashboard/VersionsPanel.svelte";
   import RouteResolutionPreview from "$lib/components/dashboard/RouteResolutionPreview.svelte";
 
@@ -134,6 +135,12 @@
   let stepModelId = "";
   let stepFallbackOn = "error";
   let stepTimeoutMs = "12000";
+
+  // W3.5: recommendations in the step-add dialog (from the existing recommend endpoint).
+  let recommendLoading = false;
+  let recommendError = "";
+  let recommendations: RouteRecommendation[] = [];
+  let recommendLoaded = false;
   let editingStepId: string | null = null;
   let editingProviderPreference = "openai";
   let editingModelId = "";
@@ -1084,6 +1091,43 @@
   function openAddStepDialog(anchorId: string | null) {
     addStepAnchorId = anchorId;
     addStepDialogEl?.showModal();
+    void loadRecommendations();
+  }
+
+  /**
+   * W3.5: fetch recommendations from the existing recommend endpoint. These are
+   * surfaced as guidance only — never auto-applied. The endpoint owns the
+   * recommendation model; we only quote it (no second recommendation logic).
+   */
+  async function loadRecommendations() {
+    if (!data.project || !data.route) return;
+    recommendLoading = true;
+    recommendError = "";
+    try {
+      const res = await fetch(
+        `${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/recommend`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        data?: { recommendations?: RouteRecommendation[] };
+        error?: string;
+      };
+      if (!res.ok) {
+        recommendError =
+          (body as { detail?: string; error?: string }).detail ??
+          body.error ??
+          `Could not load recommendations (${res.status})`;
+        recommendations = [];
+        return;
+      }
+      recommendations = parseRecommendations(body);
+      recommendLoaded = true;
+    } catch (e) {
+      recommendError = e instanceof Error ? e.message : "Could not load recommendations";
+      recommendations = [];
+    } finally {
+      recommendLoading = false;
+    }
   }
 
   function closeAddStepDialog() {
@@ -1497,6 +1541,27 @@
 
   function goToRouteSetupTab() {
     workspaceTab = "setup";
+  }
+
+  /**
+   * W3.5: deep-link a diff row's `fieldPath` to the field it changed (rubric X4).
+   * `route.*` → Setup tab (route metadata); `step.<orderIndex>[.field]` → Flow
+   * tab with the step selected in the inspector.
+   */
+  function openDiffField(fieldPath: string) {
+    if (fieldPath.startsWith("route")) {
+      workspaceTab = "setup";
+      return;
+    }
+    const stepMatch = /^step\.(\d+)/.exec(fieldPath);
+    if (stepMatch) {
+      const orderIndex = Number(stepMatch[1]);
+      workspaceTab = "flow";
+      const target = data.steps.find((s) => s.orderIndex === orderIndex);
+      if (target) {
+        void tick().then(() => selectStepFromCanvas(target));
+      }
+    }
   }
 
   function toggleStepEnabled(stepId: string, enabled: boolean) {
@@ -2208,6 +2273,33 @@
               <p class="add-step-dialog-lede">Appends at the end of the chain.</p>
             {/if}
           </div>
+
+          {#if recommendLoading}
+            <p class="add-step-recommend-loading muted" role="status">Loading recommendations…</p>
+          {:else if recommendError}
+            <div class="add-step-recommend-error" role="alert">
+              <p>Could not load recommendations: {recommendError}</p>
+              <button type="button" class="btn btn-secondary" onclick={() => void loadRecommendations()}>Try again</button>
+            </div>
+          {:else if recommendations.length > 0}
+            <section class="add-step-recommend" aria-label="Route recommendations">
+              <h4 class="add-step-recommend-title">Recommendations</h4>
+              <p class="add-step-recommend-lede muted">
+                Guidance from the route analyzer. Review and apply them yourself — nothing here changes the route automatically.
+              </p>
+              <ul class="add-step-recommend-list">
+                {#each recommendations as rec (rec.id)}
+                  <li class="add-step-recommend-item add-step-recommend-item--{rec.priority}">
+                    <span class="add-step-recommend-priority" aria-label="Priority {rec.priority}">{rec.priority}</span>
+                    <span class="add-step-recommend-action">{rec.action}</span>
+                  </li>
+                {/each}
+              </ul>
+            </section>
+          {:else if recommendLoaded}
+            <p class="add-step-recommend-clean muted" role="status">No recommendations — this route looks healthy.</p>
+          {/if}
+
           <div class="add-step-dialog-fields">
             <div class="add-step-dialog-grid">
               <div class="add-step-dialog-field">
@@ -2372,9 +2464,13 @@
           historyUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/history`}
           publishUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/publish`}
           rollbackUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/rollback`}
+          exportUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/export`}
+          exportName={data.route.name ?? "route"}
           currentVersion={data.route.version}
           publishedVersion={data.route.publishedVersion}
           entityNoun="route"
+          diffMode="client"
+          onOpenDiffField={openDiffField}
           onMutated={refreshRouteDetail}
         />
       {/if}
@@ -2954,6 +3050,77 @@
     line-height: 1.45;
     color: color-mix(in oklab, var(--rm-text) 55%, var(--rm-muted));
   }
+  .add-step-recommend,
+  .add-step-recommend-error {
+    margin: var(--space-3) var(--space-4) 0;
+    padding: var(--space-3);
+    border: var(--brut-border-width, 2px) solid var(--brut-ink);
+    background: var(--brut-canvas, var(--rm-surface-raised));
+  }
+  .add-step-recommend-error {
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
+  }
+  .add-step-recommend-loading,
+  .add-step-recommend-clean {
+    margin: var(--space-3) var(--space-4) 0;
+    font-size: var(--text-sm);
+  }
+  .add-step-recommend-title {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm, var(--text-xs));
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+    color: var(--rm-text);
+  }
+  .add-step-recommend-lede {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
+    line-height: 1.45;
+  }
+  .add-step-recommend-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .add-step-recommend-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .add-step-recommend-priority {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px var(--space-2);
+    border: var(--brut-border-width, 2px) solid var(--brut-ink);
+  }
+  .add-step-recommend-item--high .add-step-recommend-priority {
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
+  }
+  .add-step-recommend-item--medium .add-step-recommend-priority {
+    background: var(--state-warn-bg);
+    color: var(--state-warn-fg);
+  }
+  .add-step-recommend-item--low .add-step-recommend-priority {
+    background: var(--brut-canvas-deep, var(--rm-surface-raised));
+    color: var(--rm-text);
+  }
+  .add-step-recommend-action {
+    flex: 1 1 auto;
+    color: var(--rm-text);
+  }
+
   .add-step-dialog-fields {
     flex: 1 1 auto;
     min-height: 0;
