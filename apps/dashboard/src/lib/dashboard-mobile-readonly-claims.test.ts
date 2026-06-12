@@ -3,13 +3,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * Contract test for the R6 mobile read-only tier (fix-forward, 2nd iteration).
+ * Contract test for the R6 mobile read-only tier (fix-forward, 3rd iteration).
  *
  * The three mobile-allowed surfaces are read-only:
- *   /claims     → ConnectGraphExplorer (mounts ConnectGraphReadinessWizard +
- *                 ConnectReadinessLibrary)
- *   /home       → ConnectGraphSwitcher (active-graph activate)
- *   /runs/[id]  → ConnectIngestRunConsole (restart / cancel)
+ *   /claims          → ConnectGraphExplorer (mounts ConnectGraphReadinessWizard +
+ *                      ConnectReadinessLibrary)
+ *   /claims/memory   → memory inbox (revoke observation, POST /revoke)
+ *   /home            → ConnectGraphSwitcher (active-graph activate)
+ *   /runs/[id]       → ConnectIngestRunConsole (restart / cancel)
  *
  * Those components expose affordances that POST/PATCH/DELETE to the pipeline.
  * The ux-contracts §3 R6 row claims these surfaces render read-only with the
@@ -36,6 +37,7 @@ const wizardSrc = read("./components/connect/ConnectGraphReadinessWizard.svelte"
 const librarySrc = read("./components/connect/ConnectReadinessLibrary.svelte");
 const runConsoleSrc = read("./components/connect/pipeline/ConnectIngestRunConsole.svelte");
 const graphSwitcherSrc = read("./components/connect/ConnectGraphSwitcher.svelte");
+const memoryPageSrc = read("../routes/keys/dashboard/claims/memory/+page.svelte");
 
 /**
  * Every mutation action-region audited across the read-only surfaces, with the
@@ -55,6 +57,9 @@ const MUTATION_REGIONS: { selector: string; src: string; note: string }[] = [
   { selector: "run-cancel-wrap", src: runConsoleSrc, note: "cancel running job (POST /cancel)" },
   { selector: "run-error-banner-actions", src: runConsoleSrc, note: "failed-run banner restart (POST /restart)" },
   { selector: "switcher-control", src: graphSwitcherSrc, note: "active-graph select on:change (POST /activate)" },
+  // /claims/memory — iteration 3: revoke (POST /revoke) is live on a mobile-allowed sub-route.
+  { selector: "item-actions", src: memoryPageSrc, note: "memory page per-observation Revoke button (POST /revoke)" },
+  { selector: "memory-revoke-error", src: memoryPageSrc, note: "memory page revoke-error banner + Try again (re-fires POST /revoke)" },
 ];
 
 /** Isolate the `.shell-mobile-readonly … display: none` block from the layout. */
@@ -110,6 +115,20 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
     expect(runConsoleSrc).toMatch(/jobsApiBase\}\/restart`/);
   });
 
+  it("MAJOR 3 — /claims/memory revoke and revoke-error retry are covered", () => {
+    // .item-actions holds the Revoke button (POST /revoke).
+    expect(hideBlock).toContain(":global(.item-actions)");
+    expect(memoryPageSrc).toMatch(/class="item-actions"/);
+    // .memory-revoke-error wraps the per-observation error banner whose "Try again"
+    // re-fires revokeObservation (POST /revoke). The outer page-load error banner's
+    // "Try again" calls invalidateAll (a read) and is intentionally NOT hidden.
+    expect(hideBlock).toContain(":global(.memory-revoke-error)");
+    expect(memoryPageSrc).toMatch(/class="memory-revoke-error"/);
+    // Confirm revokeObservation actually POSTs so the selector is load-bearing.
+    expect(memoryPageSrc).toMatch(/method:\s*["']POST["']/);
+    expect(memoryPageSrc).toMatch(/\/revoke/);
+  });
+
   it("the /home active-graph switcher (POST /activate) is covered", () => {
     expect(hideBlock).toContain(":global(.switcher-control)");
     expect(graphSwitcherSrc).toMatch(/class="switcher-control"/);
@@ -163,6 +182,8 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
       ],
       runConsole: ["restart", "cancel"],
       switcher: ["activate"],
+      // /claims/memory: 1 mutation endpoint, hidden via .item-actions + .memory-revoke-error.
+      memory: ["revoke"],
     };
 
     // Sanity: each named mutation endpoint actually appears in its component, so
@@ -176,6 +197,9 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
     for (const ep of expectedMutationEndpoints.switcher) {
       expect(graphSwitcherSrc, `switcher should reference mutation endpoint "${ep}"`).toContain(ep);
     }
+    for (const ep of expectedMutationEndpoints.memory) {
+      expect(memoryPageSrc, `memory page should reference mutation endpoint "${ep}"`).toContain(ep);
+    }
 
     // Count the raw mutation fetches per component. If a new POST/PATCH/PUT/DELETE
     // appears, these counts change and this test fails — forcing the author to
@@ -185,6 +209,8 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
       explorer: (explorerSrc.match(mutationRe) ?? []).length,
       runConsole: (runConsoleSrc.match(mutationRe) ?? []).length,
       switcher: (graphSwitcherSrc.match(mutationRe) ?? []).length,
+      // memory page: 1 mutation fetch (POST /revoke), hidden via .item-actions + .memory-revoke-error.
+      memory: (memoryPageSrc.match(mutationRe) ?? []).length,
     };
     // explorer: 16 fetches — 14 mutations + 2 read-only exceptions (preview, coaching).
     expect(
@@ -195,5 +221,6 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
     ).toBe(16);
     expect(counts.runConsole, "ConnectIngestRunConsole mutation-fetch count changed").toBe(2);
     expect(counts.switcher, "ConnectGraphSwitcher mutation-fetch count changed").toBe(1);
+    expect(counts.memory, "claims/memory page mutation-fetch count changed").toBe(1);
   });
 });

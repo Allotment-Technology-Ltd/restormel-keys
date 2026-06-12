@@ -890,6 +890,12 @@
        .run-error-banner-actions — failed-run banner restart (restartJob, POST /restart)
        .switcher-control        — /home active-graph select on:change (POST /<id>/activate)
 
+     Also covered (/claims/memory revoke — iteration 3):
+       .item-actions            — memory page per-observation Revoke button (POST /revoke)
+       .memory-revoke-error     — memory page per-observation revoke-error banner + "Try again"
+                                  (re-fires POST /revoke; the outer page-load error banner's
+                                  "Try again" calls invalidateAll and is intentionally NOT hidden)
+
      The verdict keyboard shortcuts (a/w/u) bypass CSS hiding, so they are guarded
      separately in ConnectGraphExplorer's handleReviewKeydown, which early-returns
      when a [data-mobile-readonly="true"] shell is present in the DOM. */
@@ -906,7 +912,9 @@
   .shell-mobile-readonly :global(.wizard-actions),
   .shell-mobile-readonly :global(.lib-new),
   .shell-mobile-readonly :global(.lib-run-archive),
-  .shell-mobile-readonly :global(.switcher-control) {
+  .shell-mobile-readonly :global(.switcher-control),
+  .shell-mobile-readonly :global(.item-actions),
+  .shell-mobile-readonly :global(.memory-revoke-error) {
     display: none !important;
   }
   .shell-mobile-readonly :global(a),

@@ -192,20 +192,22 @@
                 {/if}
 
                 {#if revokeError[obs.unitId]}
-                  <BrutalErrorBanner
-                    title="Revoke failed"
-                    message={revokeError[obs.unitId]}
-                  >
-                    {#snippet actions()}
-                      <button
-                        class="btn btn-sm"
-                        onclick={() => revokeObservation(obs.unitId)}
-                        disabled={revokeState[obs.unitId] === "pending"}
-                      >
-                        Try again
-                      </button>
-                    {/snippet}
-                  </BrutalErrorBanner>
+                  <div class="memory-revoke-error">
+                    <BrutalErrorBanner
+                      title="Revoke failed"
+                      message={revokeError[obs.unitId]}
+                    >
+                      {#snippet actions()}
+                        <button
+                          class="btn btn-sm"
+                          onclick={() => revokeObservation(obs.unitId)}
+                          disabled={revokeState[obs.unitId] === "pending"}
+                        >
+                          Try again
+                        </button>
+                      {/snippet}
+                    </BrutalErrorBanner>
+                  </div>
                 {/if}
 
                 <div class="item-actions">
