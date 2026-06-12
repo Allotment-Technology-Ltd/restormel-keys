@@ -65,9 +65,10 @@ ENV PORT=8080 \
 EXPOSE 8080
 
 # Healthcheck: /keys/v1/catalog doubles as the container liveness probe and
+# MUST target 127.0.0.1 — busybox wget resolves localhost to ::1 but node binds IPv4,
 # is the contract endpoint consumed by allotmentology.tech (§4.6, §4.3).
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost:${PORT}/keys/v1/catalog || exit 1
+    CMD wget -qO- http://127.0.0.1:${PORT}/keys/v1/catalog || exit 1
 
 # adapter-node entry point (workspace root layout — see serve-stage COPY note).
 # The worker app overrides this with its daemon start command in Coolify.
