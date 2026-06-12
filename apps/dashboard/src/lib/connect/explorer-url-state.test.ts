@@ -61,12 +61,12 @@ describe("parseExplorerUrlState", () => {
     expect(state.verdictFilter).toBe("unknown");
   });
 
-  it("?filter=unverified → verificationStateFilter=unverified (reserved, W2.2)", () => {
+  it("?filter=unverified → verificationStateFilter=unverified, scope widens to all (W2.2)", () => {
     const state = parseExplorerUrlState(params({ filter: "unverified" }));
     expect(state.verificationStateFilter).toBe("unverified");
     expect(state.verdictFilter).toBeNull();
-    // Scope is unchanged (stays review).
-    expect(state.queueScope).toBe("review");
+    // Verification states span the whole graph — scope widens to "all".
+    expect(state.queueScope).toBe("all");
   });
 
   it("?filter=contradicted → verificationStateFilter=contradicted", () => {
@@ -82,6 +82,15 @@ describe("parseExplorerUrlState", () => {
   it("?filter=supported → verificationStateFilter=supported", () => {
     const state = parseExplorerUrlState(params({ filter: "supported" }));
     expect(state.verificationStateFilter).toBe("supported");
+  });
+
+  it("?filter=inferred / ?filter=excluded → facet states added in W2.2", () => {
+    expect(parseExplorerUrlState(params({ filter: "inferred" })).verificationStateFilter).toBe(
+      "inferred",
+    );
+    expect(parseExplorerUrlState(params({ filter: "excluded" })).verificationStateFilter).toBe(
+      "excluded",
+    );
   });
 
   it("unknown filter value is silently ignored", () => {
@@ -271,7 +280,14 @@ describe("round-trip: parse → build", () => {
 
 describe("isVerificationStateFilter", () => {
   it("returns true for all EBV verification-state values", () => {
-    for (const v of ["unverified", "contradicted", "abstained", "supported"]) {
+    for (const v of [
+      "unverified",
+      "contradicted",
+      "abstained",
+      "supported",
+      "inferred",
+      "excluded",
+    ]) {
       expect(isVerificationStateFilter(v)).toBe(true);
     }
   });

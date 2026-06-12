@@ -12,6 +12,7 @@ import {
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { formatSurrealRecordId, surrealRecordRef } from "$lib/server/connect/graph-writer";
 import {
+  getConnectClaimVersionBreakdownPostgres,
   getConnectDomainPackById,
   getConnectGraphExplorer,
   getConnectGraphStats,
@@ -21,6 +22,15 @@ import {
   listConnectIngestJobsForWorkspace,
   setConnectGraphStatsCache,
 } from "$lib/server/neon";
+import {
+  VERIFICATION_STATES,
+  type UnitEvidenceSummary,
+  type VerificationState,
+} from "$lib/connect/evidence-dossier";
+import {
+  composeEvidenceSummaryFromSurrealRow,
+  loadConnectUnitEvidenceSummaries,
+} from "$lib/server/connect/evidence-dossier-service";
 import {
   HUMAN_REVIEW_NOTE_PREFIX,
   isAwaitingHumanTriage,
@@ -83,7 +93,16 @@ export type ConnectGraphUnitView = {
   sourceKind: string | null;
   /** Linked thinker/entity when the domain pack resolves authors on sources. */
   author: string | null;
+  /**
+   * EBV summary (W2.2 Evidence Dossier) — verification state, bound span, latest
+   * judgment. null = the claim predates evidence binding (additive field; older
+   * consumers ignore it).
+   */
+  evidence?: UnitEvidenceSummary | null;
 };
+
+/** Per-state counts of CURRENT claim versions for the explorer's Evidence facet. */
+export type ConnectEvidenceStateCounts = Record<VerificationState, number>;
 
 function parseFetchedSource(source: unknown): {
   id: string | null;
@@ -235,6 +254,11 @@ export type ConnectGraphView = {
   };
   /** Pipeline catalog import status (durable across browser sessions). */
   sourceCatalogStatus?: ConnectGraphSourceCatalogStatusView;
+  /**
+   * Evidence facet counts (W2.2): current claim versions per verification state.
+   * null = the store could not answer (never fabricated as zeros).
+   */
+  evidenceStates?: ConnectEvidenceStateCounts | null;
 };
 
 export type LoadConnectGraphViewOpts = {
@@ -535,6 +559,8 @@ async function mapSurrealRawRows(
           typeof u.validation_status === "string" ? u.validation_status : null,
         ),
         validationNote,
+        // EBV summary from the unit record's evidence_* fields (W2.2); null = pre-EBV.
+        evidence: composeEvidenceSummaryFromSurrealRow(u),
         sourceTitle:
           (typeof u.source_title === "string" && u.source_title.trim()
             ? u.source_title.trim()
@@ -618,6 +644,54 @@ async function surrealValidationCounts(
     if (unitFallback > 0) out.unvalidated = unitFallback;
   }
   return out;
+}
+
+function emptyEvidenceStateCounts(): ConnectEvidenceStateCounts {
+  return { supported: 0, inferred: 0, unverified: 0, contradicted: 0, excluded: 0 };
+}
+
+/**
+ * Evidence facet counts (W2.2) from a BYO Surreal unit table: one GROUP BY over
+ * `verification_state`. Returns null when the store cannot answer — the facet
+ * then shows "store could not answer" rather than fabricated zeros.
+ */
+export async function surrealEvidenceStateCounts(
+  store: GraphStore,
+  unitTable: string,
+): Promise<ConnectEvidenceStateCounts | null> {
+  try {
+    const rows = await store.query<{ verification_state?: string | null; count?: number }[]>(
+      `SELECT verification_state, count() AS count FROM ${unitTable} GROUP BY verification_state;`,
+    );
+    const out = emptyEvidenceStateCounts();
+    for (const row of rows ?? []) {
+      const s = typeof row.verification_state === "string" ? row.verification_state : null;
+      if (s && (VERIFICATION_STATES as readonly string[]).includes(s)) {
+        out[s as VerificationState] += Number(row.count ?? 0);
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** Evidence facet counts from the Postgres spine (current claim versions). */
+async function postgresEvidenceStateCounts(
+  workspaceId: string,
+): Promise<ConnectEvidenceStateCounts | null> {
+  try {
+    const breakdown = await getConnectClaimVersionBreakdownPostgres(workspaceId);
+    const out = emptyEvidenceStateCounts();
+    for (const [state, count] of Object.entries(breakdown.verificationStates)) {
+      if ((VERIFICATION_STATES as readonly string[]).includes(state)) {
+        out[state as VerificationState] += Number(count);
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -1275,15 +1349,18 @@ export async function loadConnectGraphView(
     // The validation breakdown changes on every validate run; recompute it live and
     // overlay so the page never serves a stale cached 0/0/0 (structural counts —
     // relations/groups/embedded — stay cached). Cheap aggregate, best-effort.
+    // The Evidence facet counts (W2.2) ride the same store session — one extra GROUP BY.
+    let evidenceStates: ConnectEvidenceStateCounts | null = null;
     if (stats && pack) {
       const vStore = graphStore ?? (await buildWorkspaceGraphStore(workspaceId).catch(() => null));
       if (vStore) {
-        const freshValidation = await refreshSurrealValidationBreakdown(
-          vStore,
-          tableIdent(pack.graph_schema.unit_table, "unit"),
-          stats.units,
-        );
+        const unitTable = tableIdent(pack.graph_schema.unit_table, "unit");
+        const [freshValidation, evidenceCounts] = await Promise.all([
+          refreshSurrealValidationBreakdown(vStore, unitTable, stats.units),
+          surrealEvidenceStateCounts(vStore, unitTable),
+        ]);
         if (freshValidation) stats = { ...stats, validation: freshValidation };
+        evidenceStates = evidenceCounts;
       }
     }
 
@@ -1298,6 +1375,7 @@ export async function loadConnectGraphView(
         storeLabel,
         reviewEnabled: true,
         sourceCatalogStatus,
+        evidenceStates,
         ...(targetStatus ? { targetStatus } : {}),
         ...(statsPartial ? { statsPartial: true } : {}),
       };
@@ -1310,6 +1388,7 @@ export async function loadConnectGraphView(
         domainPackTitle: pack.title,
         reviewEnabled: true,
         sourceCatalogStatus,
+        evidenceStates,
         ...(targetStatus ? { targetStatus } : {}),
         ...(statsPartial ? { statsPartial: true } : {}),
         stats,
@@ -1328,6 +1407,7 @@ export async function loadConnectGraphView(
       storeLabel,
       reviewEnabled: true,
       sourceCatalogStatus,
+      evidenceStates,
       ...(targetStatus ? { targetStatus } : {}),
       ...(statsPartial ? { statsPartial: true } : {}),
       stats: stats ?? null,
@@ -1337,20 +1417,24 @@ export async function loadConnectGraphView(
   }
 
   if (target?.provider === "postgres" && target.useDashboardDatabase) {
-    const [stats, explorer] = await Promise.all([
+    const [stats, explorer, evidenceStates] = await Promise.all([
       getConnectGraphStats(workspaceId).catch(() => null),
       getConnectGraphExplorer(workspaceId, { unitLimit, unitOffset }).catch(() => ({
         groups: [],
         units: [],
       })),
+      postgresEvidenceStateCounts(workspaceId),
     ]);
-    const sorted = sortGraphUnitsForReview(explorer.units);
+    const sorted = sortGraphUnitsForReview(
+      await enrichPostgresUnitsWithEvidence(workspaceId, explorer.units),
+    );
     return {
       store: "postgres",
       storeLabel: "Postgres graph spine",
       reviewEnabled: true,
       sourceCatalogStatus,
       stats,
+      evidenceStates,
       groups: explorer.groups,
       units: sorted,
       unitsPagination: paginationMeta({
@@ -1363,21 +1447,25 @@ export async function loadConnectGraphView(
   }
 
   // Legacy / no target: still surface Postgres spine rows if present.
-  const [stats, explorer] = await Promise.all([
+  const [stats, explorer, evidenceStates] = await Promise.all([
     getConnectGraphStats(workspaceId).catch(() => null),
     getConnectGraphExplorer(workspaceId, { unitLimit, unitOffset }).catch(() => ({
       groups: [],
       units: [],
     })),
+    postgresEvidenceStateCounts(workspaceId),
   ]);
   const hasSpine = Boolean(stats && stats.units > 0);
-  const sorted = sortGraphUnitsForReview(explorer.units);
+  const sorted = sortGraphUnitsForReview(
+    await enrichPostgresUnitsWithEvidence(workspaceId, explorer.units),
+  );
   return {
     store: hasSpine ? "postgres" : "none",
     storeLabel: hasSpine ? "Postgres graph spine" : "No graph store connected",
     reviewEnabled: hasSpine,
     sourceCatalogStatus,
     stats,
+    evidenceStates,
     groups: explorer.groups,
     units: sorted,
     unitsPagination: paginationMeta({
@@ -1387,6 +1475,19 @@ export async function loadConnectGraphView(
       total: stats?.units ?? null,
     }),
   };
+}
+
+/** Attach EBV summaries (W2.2) to a page of Postgres-spine unit views (one round-trip). */
+async function enrichPostgresUnitsWithEvidence(
+  workspaceId: string,
+  units: ConnectGraphUnitView[],
+): Promise<ConnectGraphUnitView[]> {
+  if (units.length === 0) return units;
+  const summaries = await loadConnectUnitEvidenceSummaries({
+    workspaceId,
+    unitIds: units.map((u) => u.id),
+  });
+  return units.map((u) => ({ ...u, evidence: summaries.get(u.id) ?? null }));
 }
 
 /** Progressive unit fetch for graph explorer (client load-more). */
@@ -1448,7 +1549,9 @@ export async function loadConnectGraphUnitsPage(
 
   const stats = await getConnectGraphStats(workspaceId).catch(() => null);
   const explorer = await getConnectGraphExplorer(workspaceId, { unitLimit: limit, unitOffset: offset });
-  const sorted = sortGraphUnitsForReview(explorer.units);
+  const sorted = sortGraphUnitsForReview(
+    await enrichPostgresUnitsWithEvidence(workspaceId, explorer.units),
+  );
   const total = stats?.units ?? null;
   return {
     units: sorted,

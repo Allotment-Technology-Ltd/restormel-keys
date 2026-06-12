@@ -46,6 +46,21 @@
     parseExplorerUrlState,
     buildExplorerUrl,
   } from "$lib/connect/explorer-url-state";
+  import {
+    canAcceptAsSupported,
+    facetForUrlFilter,
+    predatesEvidenceBinding,
+    recheckResultCopy,
+    unitMatchesEvidenceFacet,
+    urlFilterForFacet,
+    VERIFICATION_STATES,
+    VERIFICATION_STATE_VISUAL,
+    verificationStampVisual,
+    type ConnectEvidenceDossier,
+    type RecheckOutcome,
+    type UnitEvidenceSummary,
+    type VerificationState,
+  } from "$lib/connect/evidence-dossier";
   import { connectReviewCount } from "$lib/stores/connect-review-count";
   import { replaceState } from "$app/navigation";
   import { onMount } from "svelte";
@@ -63,6 +78,8 @@
     sourceUrl: string | null;
     sourceKind: string | null;
     author: string | null;
+    /** EBV summary (W2.2 Evidence Dossier); null/absent = predates evidence binding. */
+    evidence?: UnitEvidenceSummary | null;
   };
   type Stats = {
     units: number;
@@ -102,6 +119,8 @@
       pipelineCatalogCount: number;
       sourcesInPipeline: boolean;
     };
+    /** Evidence facet counts (W2.2); null = the store could not answer. */
+    evidenceStates?: Record<VerificationState, number> | null;
   };
 
   export let graph: Graph;
@@ -188,6 +207,13 @@
   /** Optional verdict narrow — applies on top of Quarantine or All ideas. */
   let verdictFilter: VerdictFilter | null = _initialUrlState.verdictFilter;
   /**
+   * Evidence facet (W2.2): narrow the queue to one EBV verification state.
+   * Inbound `?filter=` values map through facetForUrlFilter (abstained → unverified).
+   */
+  let verificationStateFilter: VerificationState | null = _initialUrlState.verificationStateFilter
+    ? facetForUrlFilter(_initialUrlState.verificationStateFilter)
+    : null;
+  /**
    * True when the page was reached via a quality CTA with ?filter=review.
    * Drives the dismissible context line (C-P2-1).
    */
@@ -197,8 +223,8 @@
   let extraUnits: Unit[] = [];
   let loadingMoreUnits = false;
   let loadMoreError: string | null = null;
-  /** Client-side verdict overrides until the next server graph reload. */
-  let unitOverrides: Record<string, Pick<Unit, "validationStatus" | "validationNote">> = {};
+  /** Client-side verdict/evidence overrides until the next server graph reload. */
+  let unitOverrides: Record<string, Partial<Unit>> = {};
   /** Ideas removed this session (hidden immediately; persisted in background). */
   let removedIds: Record<string, true> = {};
   type StatsDelta = {
@@ -225,6 +251,19 @@
   let reviewNote = "";
   let actionError: string | null = null;
   let exitingUnitId: string | null = null;
+  // ── Evidence Dossier state (W2.2) ───────────────────────────────────────
+  /** Per-unit dossier cache (excerpt, custody, versions) — refetched on demand. */
+  let dossierCache: Record<string, ConnectEvidenceDossier> = {};
+  let dossierLoading = false;
+  let dossierError: string | null = null;
+  let dossierUnitId: string | null = null;
+  let recheckBusy = false;
+  /** Latest deterministic re-check result per unit (session-local, honest). */
+  let recheckOutcomes: Record<string, RecheckOutcome> = {};
+  let evidenceActionBusy = false;
+  let evidenceActionError: string | null = null;
+  /** Optimistic facet-count shifts until the next server reload. */
+  let evidenceDelta: Partial<Record<VerificationState, number>> = {};
   let flashingReviewAction: ReviewVerdictAction | null = null;
   let revalidateRouteId = "";
   let remediationRouteId = "";
@@ -737,7 +776,9 @@
       const newUrl = buildExplorerUrl(get(page).url, {
         queueScope,
         verdictFilter,
-        verificationStateFilter: null,
+        verificationStateFilter: verificationStateFilter
+          ? urlFilterForFacet(verificationStateFilter)
+          : null,
         selectedUnitId: selectedId,
       });
       replaceState(newUrl, {});
@@ -953,6 +994,8 @@
     if (verdictNarrowDisabled("ok", next) && verdictFilter === "ok") {
       verdictFilter = null;
     }
+    // Evidence facets live on the whole graph — quarantine clears them.
+    if (next === "review") verificationStateFilter = null;
     selectedId = null;
     queuePage = 0;
   }
@@ -960,6 +1003,7 @@
   function toggleVerdictFilter(verdict: VerdictFilter) {
     if (verdictNarrowDisabled(verdict, queueScope)) return;
     verdictFilter = verdictFilter === verdict ? null : verdict;
+    verificationStateFilter = null;
     selectedId = null;
     queuePage = 0;
   }
@@ -970,6 +1014,20 @@
       queueScope = "all";
     }
     verdictFilter = verdict;
+    verificationStateFilter = null;
+    selectedId = null;
+    queuePage = 0;
+  }
+
+  /** Evidence facet (W2.2): one state at a time; the URL carries one `filter` slot. */
+  function toggleEvidenceFacet(state: VerificationState) {
+    if (verificationStateFilter === state) {
+      verificationStateFilter = null;
+    } else {
+      verificationStateFilter = state;
+      queueScope = "all";
+      verdictFilter = null;
+    }
     selectedId = null;
     queuePage = 0;
   }
@@ -1071,9 +1129,34 @@
       ? unitsForQueue
       : unitsForQueue.filter((u) => isAwaitingHumanTriage(u.validationStatus, u.validationNote));
 
-  $: filteredUnits = verdictFilter
+  $: verdictScopedUnits = verdictFilter
     ? scopedUnits.filter((u) => normalizeValidationStatus(u.validationStatus) === verdictFilter)
     : scopedUnits;
+
+  // Evidence facet narrow (W2.2): exact verification-state match; pre-EBV units
+  // (no claim-version row) match no facet — never silently bucketed.
+  $: filteredUnits = verificationStateFilter
+    ? verdictScopedUnits.filter((u) =>
+        unitMatchesEvidenceFacet(u.evidence?.verificationState ?? null, verificationStateFilter!),
+      )
+    : verdictScopedUnits;
+
+  // Facet chip counts: server breakdown plus optimistic action shifts.
+  $: evidenceStateCounts = graph.evidenceStates
+    ? VERIFICATION_STATES.reduce(
+        (acc, s) => {
+          acc[s] = Math.max(0, (graph.evidenceStates?.[s] ?? 0) + (evidenceDelta[s] ?? 0));
+          return acc;
+        },
+        {} as Record<VerificationState, number>,
+      )
+    : null;
+  $: evidenceTrackedTotal = evidenceStateCounts
+    ? VERIFICATION_STATES.reduce((sum, s) => sum + evidenceStateCounts[s], 0)
+    : 0;
+  /** Ideas with no EBV row at all — surfaced honestly, never bucketed into a state. */
+  $: preEvidenceCount =
+    evidenceStateCounts && stats ? Math.max(0, stats.units - evidenceTrackedTotal) : 0;
 
   $: filteredGroups = graph.groups.filter((g) => {
     const q = groupSearch.trim().toLowerCase();
@@ -1159,6 +1242,218 @@
     reviewCoachingLoading = false;
     reviewCoachingError = null;
     reviewCoachingUnitId = selectedUnit?.id ?? null;
+  }
+
+  // ── Evidence Dossier loading (W2.2) ─────────────────────────────────────
+  // Fetch the dossier (excerpt + custody + versions) when a claim with EBV data
+  // is selected; pre-EBV claims render the honest static block without a fetch.
+  $: if (selectedUnit?.id !== dossierUnitId) {
+    dossierUnitId = selectedUnit?.id ?? null;
+    dossierError = null;
+    evidenceActionError = null;
+    if (selectedUnit && !predatesEvidenceBinding(selectedUnit.evidence ?? null)) {
+      if (!dossierCache[selectedUnit.id]) void loadDossier(selectedUnit);
+    }
+  }
+
+  $: selectedDossier = selectedUnit ? (dossierCache[selectedUnit.id] ?? null) : null;
+  $: selectedRecheck = selectedUnit ? (recheckOutcomes[selectedUnit.id] ?? null) : null;
+  $: selectedStampVisual = verificationStampVisual(
+    selectedUnit?.evidence?.verificationState ?? null,
+  );
+  $: selectedAcceptGuard = canAcceptAsSupported(selectedUnit?.evidence ?? null);
+
+  async function loadDossier(unit: Unit, force = false) {
+    if (dossierLoading) return;
+    if (!force && dossierCache[unit.id]) return;
+    dossierLoading = true;
+    dossierError = null;
+    const requestedId = unit.id;
+    try {
+      const params = new URLSearchParams();
+      if (graph.domainPackId) params.set("domain_pack_id", graph.domainPackId);
+      const qs = params.toString();
+      const res = await fetch(
+        `${CONNECT_PIPELINE_API}/graph/units/${encodeURIComponent(unit.id)}/evidence${qs ? `?${qs}` : ""}`,
+        { credentials: "include" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.dossier) {
+        if (dossierUnitId === requestedId) {
+          dossierError =
+            typeof body.message === "string"
+              ? body.message
+              : `Could not load the evidence dossier (HTTP ${res.status}).`;
+        }
+        return;
+      }
+      dossierCache = { ...dossierCache, [requestedId]: body.dossier as ConnectEvidenceDossier };
+    } catch {
+      if (dossierUnitId === requestedId) {
+        dossierError = "Network error while loading the evidence dossier.";
+      }
+    } finally {
+      dossierLoading = false;
+    }
+  }
+
+  /** Deterministic Layer-1 re-check (no model keys) — honest pass/fail inline. */
+  async function runEvidenceRecheck(unit: Unit) {
+    if (recheckBusy) return;
+    recheckBusy = true;
+    evidenceActionError = null;
+    try {
+      const res = await fetch(
+        `${CONNECT_PIPELINE_API}/graph/units/${encodeURIComponent(unit.id)}/evidence`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "recheck", domain_pack_id: graph.domainPackId ?? null }),
+        },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.outcome) {
+        evidenceActionError =
+          typeof body.message === "string"
+            ? body.message
+            : `Re-check failed to run (HTTP ${res.status}).`;
+        return;
+      }
+      recheckOutcomes = { ...recheckOutcomes, [unit.id]: body.outcome as RecheckOutcome };
+    } catch {
+      evidenceActionError = "Network error while running the re-check.";
+    } finally {
+      recheckBusy = false;
+    }
+  }
+
+  function shiftEvidenceDelta(
+    from: VerificationState | null,
+    to: VerificationState,
+  ): Partial<Record<VerificationState, number>> {
+    const next = { ...evidenceDelta };
+    if (from) next[from] = (next[from] ?? 0) - 1;
+    next[to] = (next[to] ?? 0) + 1;
+    return next;
+  }
+
+  /** Accept → supported. Server re-checks the row-2 guard; UI never offers it unbound. */
+  async function performEvidenceAccept(unit: Unit) {
+    if (evidenceActionBusy || !unit.evidence) return;
+    const guard = canAcceptAsSupported(unit.evidence);
+    if (!guard.ok) {
+      evidenceActionError = guard.reason;
+      return;
+    }
+    evidenceActionBusy = true;
+    evidenceActionError = null;
+    const prevState = unit.evidence.verificationState;
+    const snapshot = { unitOverrides, evidenceDelta: { ...evidenceDelta } };
+    unitOverrides = {
+      ...unitOverrides,
+      [unit.id]: {
+        ...unitOverrides[unit.id],
+        evidence: { ...unit.evidence, verificationState: "supported" },
+      },
+    };
+    evidenceDelta = shiftEvidenceDelta(prevState, "supported");
+    try {
+      const res = await fetch(
+        `${CONNECT_PIPELINE_API}/graph/units/${encodeURIComponent(unit.id)}/evidence`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "accept", domain_pack_id: graph.domainPackId ?? null }),
+        },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        unitOverrides = snapshot.unitOverrides;
+        evidenceDelta = snapshot.evidenceDelta;
+        evidenceActionError =
+          typeof body.message === "string" ? body.message : `Accept failed (HTTP ${res.status}).`;
+      }
+    } catch {
+      unitOverrides = snapshot.unitOverrides;
+      evidenceDelta = snapshot.evidenceDelta;
+      evidenceActionError = "Network error while accepting this claim.";
+    } finally {
+      evidenceActionBusy = false;
+    }
+  }
+
+  /** Reversible soft-exclude (never hard-delete) — confirmed, optimistic, rollback. */
+  async function performEvidenceExclude(unit: Unit) {
+    if (evidenceActionBusy || !unit.evidence) return;
+    const preview = unit.text.length > 120 ? `${unit.text.slice(0, 120)}…` : unit.text;
+    if (
+      !confirm(
+        `Exclude this claim from retrieval?\n\n"${preview}"\n\nIt stays on the record (soft-exclude, reversible by re-validation) but agents will no longer retrieve it.`,
+      )
+    ) {
+      return;
+    }
+    evidenceActionBusy = true;
+    evidenceActionError = null;
+    const prevState = unit.evidence.verificationState;
+    const snapshot = { unitOverrides, evidenceDelta: { ...evidenceDelta } };
+    unitOverrides = {
+      ...unitOverrides,
+      [unit.id]: {
+        ...unitOverrides[unit.id],
+        evidence: { ...unit.evidence, verificationState: "excluded" },
+        validationStatus: "removed",
+      },
+    };
+    evidenceDelta = shiftEvidenceDelta(prevState, "excluded");
+    try {
+      const res = await fetch(
+        `${CONNECT_PIPELINE_API}/graph/units/${encodeURIComponent(unit.id)}/evidence`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "exclude",
+            note: reviewNote.trim() || null,
+            domain_pack_id: graph.domainPackId ?? null,
+          }),
+        },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        unitOverrides = snapshot.unitOverrides;
+        evidenceDelta = snapshot.evidenceDelta;
+        evidenceActionError =
+          typeof body.message === "string" ? body.message : `Exclude failed (HTTP ${res.status}).`;
+      }
+    } catch {
+      unitOverrides = snapshot.unitOverrides;
+      evidenceDelta = snapshot.evidenceDelta;
+      evidenceActionError = "Network error while excluding this claim.";
+    } finally {
+      evidenceActionBusy = false;
+    }
+  }
+
+  function fmtDossierDate(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? null
+      : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  /** The "validated" date for the stamp ring: judge date, else state date, else bound date. */
+  function stampRingDate(summary: UnitEvidenceSummary | null | undefined): string | null {
+    if (!summary) return null;
+    return (
+      fmtDossierDate(summary.judge?.judgedAt) ??
+      fmtDossierDate(summary.judgedAt) ??
+      fmtDossierDate(summary.boundAt)
+    );
   }
 
   async function loadReviewCoaching(unit: Unit, force = false) {
@@ -2268,6 +2563,51 @@
           </div>
         </div>
 
+        <div class="evidence-facet-bar" role="group" aria-label="Evidence: narrow by verification state">
+          <span class="evidence-facet-label">Evidence</span>
+          {#each VERIFICATION_STATES as state (state)}
+            {@const visual = VERIFICATION_STATE_VISUAL[state]}
+            <button
+              type="button"
+              class="evidence-chip {visual.chipClass}"
+              class:evidence-chip-active={verificationStateFilter === state}
+              aria-pressed={verificationStateFilter === state}
+              title={visual.meaning}
+              on:click={() => toggleEvidenceFacet(state)}
+            >
+              <span class="evidence-chip-label">{visual.label}</span>
+              {#if evidenceStateCounts}
+                <span class="evidence-chip-count">{evidenceStateCounts[state].toLocaleString()}</span>
+              {/if}
+            </button>
+          {/each}
+          {#if !evidenceStateCounts}
+            <span class="evidence-facet-note brut-muted">counts unavailable — filtering loaded ideas only</span>
+          {:else if preEvidenceCount > 0}
+            <span class="evidence-facet-note brut-muted">
+              {preEvidenceCount.toLocaleString()} predate evidence binding — re-ingest to bind
+            </span>
+          {/if}
+        </div>
+
+        {#if verificationStateFilter}
+          {@const activeFacet = VERIFICATION_STATE_VISUAL[verificationStateFilter]}
+          <p class="queue-filter-status" role="status">
+            Narrowing <strong>All ideas</strong> to
+            <strong>{activeFacet.label}</strong> claims only.
+            <button
+              type="button"
+              class="glossary-jump brut-focus"
+              on:click={() => {
+                verificationStateFilter = null;
+                queuePage = 0;
+              }}
+            >
+              Show all in this list
+            </button>
+          </p>
+        {/if}
+
         {#if verdictFilter}
           {@const activeVerdict = GRAPH_REVIEW_VERDICT_VISUAL[verdictFilter]}
           <p class="queue-filter-status" role="status">
@@ -2337,6 +2677,23 @@
                 Your graph has {needsReviewCount.toLocaleString()} flagged idea{needsReviewCount === 1 ? "" : "s"}, but
                 none appear in the {units.length.toLocaleString()} ideas loaded here. Refresh the page; if this persists,
                 check Surreal connectivity in Pipeline → Graph store.
+              {:else if verificationStateFilter}
+                {@const emptyFacet = VERIFICATION_STATE_VISUAL[verificationStateFilter]}
+                No <strong>{emptyFacet.label.toLowerCase()}</strong> claims among the loaded ideas.
+                {#if evidenceStateCounts && evidenceStateCounts[verificationStateFilter] > 0}
+                  Your graph has {evidenceStateCounts[verificationStateFilter].toLocaleString()} —
+                  load more ideas below to bring them in.
+                {/if}
+                <button
+                  type="button"
+                  class="glossary-jump brut-focus"
+                  on:click={() => {
+                    verificationStateFilter = null;
+                    queuePage = 0;
+                  }}
+                >
+                  Clear evidence filter
+                </button>
               {:else if verdictFilter}
                 {@const emptyVerdict = GRAPH_REVIEW_VERDICT_VISUAL[verdictFilter]}
                 No <strong>{emptyVerdict.label.toLowerCase()}</strong> ideas in
@@ -2426,6 +2783,256 @@
               <BrutalBadge variant={badgeVariant(selectedUnit.validationStatus)} label={statusLabel(selectedUnit.validationStatus)} />
             </div>
             <p class="detail-text">{selectedUnit.text}</p>
+
+            <section class="dossier" aria-label="Evidence dossier">
+              <div class="dossier-stamp-row">
+                <div
+                  class="dossier-stamp {selectedStampVisual.stampClass}"
+                  role="img"
+                  aria-label="Verification state: {selectedStampVisual.label}. {selectedStampVisual.meaning}"
+                  title={selectedStampVisual.meaning}
+                >
+                  <span class="dossier-stamp-text">{selectedStampVisual.stamp}</span>
+                  {#if stampRingDate(selectedUnit.evidence)}
+                    <span class="dossier-stamp-date">{stampRingDate(selectedUnit.evidence)}</span>
+                  {/if}
+                </div>
+              </div>
+
+              {#if predatesEvidenceBinding(selectedUnit.evidence ?? null)}
+                <p class="dossier-empty" role="note">
+                  This claim predates evidence binding — re-ingest its source to bind a
+                  verbatim span. Without a bound span it can never be marked supported.
+                </p>
+              {:else if dossierLoading && !selectedDossier}
+                <p class="dossier-loading" role="status">Loading evidence…</p>
+              {:else if dossierError}
+                <p class="dossier-error" role="alert">{dossierError}</p>
+                <button
+                  type="button"
+                  class="glossary-jump brut-focus"
+                  on:click={() => selectedUnit && loadDossier(selectedUnit, true)}
+                >
+                  Try again
+                </button>
+              {:else if selectedDossier}
+                {@const dossier = selectedDossier}
+                {@const evidence = selectedUnit.evidence ?? dossier.summary}
+
+                {#if evidence?.evidence}
+                  <figure class="evidence-card">
+                    <figcaption class="evidence-card-cap">
+                      <span class="evidence-card-source">{dossier.source.title ?? "Source"}</span>
+                      {#if dossier.source.url}
+                        <a
+                          class="evidence-card-open brut-focus"
+                          href={dossier.source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          open source ↗
+                        </a>
+                      {/if}
+                    </figcaption>
+                    {#if dossier.excerpt && dossier.excerpt.located !== "none"}
+                      <blockquote class="evidence-card-body">
+                        {#if dossier.excerpt.before}<span class="evidence-ctx">…{dossier.excerpt.before}</span>{/if}<mark
+                          class="evidence-mark">{dossier.excerpt.quote}</mark>{#if dossier.excerpt.after}<span class="evidence-ctx">{dossier.excerpt.after}…</span>{/if}
+                      </blockquote>
+                      {#if dossier.excerpt.located === "search"}
+                        <p class="evidence-note" role="note">
+                          Located by verbatim search — the recorded offsets no longer hold. Run
+                          “Re-check now” for the deterministic verdict.
+                        </p>
+                      {/if}
+                    {:else}
+                      <blockquote class="evidence-card-body">
+                        <mark class="evidence-mark">{evidence.evidence.quote}</mark>
+                      </blockquote>
+                      <p class="evidence-note" role="note">
+                        {#if dossier.excerpt && dossier.excerpt.located === "none" && dossier.excerpt.reason === "quote_not_in_current_text"}
+                          The bound quote no longer appears in the current source text — run
+                          “Re-check now” for the deterministic verdict.
+                        {:else}
+                          Full source text could not be resolved — the quote is shown verbatim
+                          without surrounding context. Import the source text in Pipeline → Sources.
+                        {/if}
+                      </p>
+                    {/if}
+                    {#if evidence.evidence.match !== "exact"}
+                      <p class="evidence-note" role="note">
+                        {evidence.evidence.match} match — anything looser than exact is labeled,
+                        never hidden.
+                      </p>
+                    {/if}
+                    {#if dossier.sourceTextQuality === "preview"}
+                      <p class="evidence-note" role="note">
+                        Context built from a stored preview, not the full document.
+                      </p>
+                    {/if}
+                  </figure>
+                {:else}
+                  <p class="dossier-empty" role="note">
+                    No evidence span could be bound — this claim can never be marked supported.
+                  </p>
+                {/if}
+
+                <div class="custody" role="group" aria-label="Chain of custody">
+                  <span
+                    class="custody-hop"
+                    title={`${dossier.source.title ?? "Untitled source"}${dossier.source.kind ? ` · ${dossier.source.kind}` : ""}${evidence?.evidence?.sourceHash ? ` · hash ${evidence.evidence.sourceHash.slice(0, 12)}…` : ""}`}
+                  >SOURCE</span>
+                  <span class="custody-arrow" aria-hidden="true">→</span>
+                  <span
+                    class="custody-hop"
+                    title={evidence?.evidence
+                      ? `chars ${evidence.evidence.start}–${evidence.evidence.end} · ${evidence.evidence.match} match`
+                      : evidence?.evidenceStatus === "no_evidence"
+                        ? "extractor returned no quote"
+                        : "quote did not bind to the cited source"}
+                  >SPAN</span>
+                  <span class="custody-arrow" aria-hidden="true">→</span>
+                  <span
+                    class="custody-hop"
+                    title={evidence?.versions
+                      ? `version ${evidence.versions.currentVersionNo ?? 1} of ${evidence.versions.count}`
+                      : "version chain unavailable for this store"}
+                  >CLAIM</span>
+                  <span class="custody-arrow" aria-hidden="true">→</span>
+                  <span
+                    class="custody-hop"
+                    title={evidence?.judge?.model
+                      ? `${evidence.judge.model} · prompt v${evidence.judge.promptVersion ?? "?"} · ${evidence.judge.verdict ?? "?"}${evidence.judge.confidence != null ? ` · confidence ${evidence.judge.confidence}` : ""}`
+                      : evidence?.judgedBy
+                        ? `rule: ${evidence.judgedBy}`
+                        : "not yet judged"}
+                  >JUDGE{evidence?.judge?.model ? ` (${evidence.judge.model})` : ""}</span>
+                  <span class="custody-arrow" aria-hidden="true">→</span>
+                  <span
+                    class="custody-hop"
+                    title={`${evidence?.verificationState ?? "unverified"}${evidence?.judgedAt ? ` · ${fmtDossierDate(evidence.judgedAt)}` : ""}`}
+                  >STATE</span>
+                </div>
+
+                <div class="dossier-recheck">
+                  <button
+                    type="button"
+                    class="brutal-btn brut-pressable brut-focus dossier-recheck-btn"
+                    disabled={recheckBusy || !evidence?.evidence}
+                    title={evidence?.evidence
+                      ? "Re-verify the span deterministically: source hash + offsets + quote. No model keys needed."
+                      : "No bound span to re-check."}
+                    on:click={() => selectedUnit && runEvidenceRecheck(selectedUnit)}
+                  >
+                    {recheckBusy ? "Re-checking…" : "Re-check now"}
+                  </button>
+                  <span class="dossier-recheck-hint brut-muted">
+                    Deterministic Layer-1 check — no model calls.
+                  </span>
+                </div>
+                {#if selectedRecheck}
+                  {@const recheckCopy = recheckResultCopy(selectedRecheck)}
+                  <div
+                    class="recheck-result"
+                    class:recheck-pass={selectedRecheck.ok}
+                    class:recheck-fail={!selectedRecheck.ok}
+                    role="status"
+                  >
+                    <p class="recheck-headline">{recheckCopy.headline}</p>
+                    <p class="recheck-detail">{recheckCopy.detail}</p>
+                  </div>
+                {/if}
+
+                {#if dossier.versions && dossier.versions.length > 0}
+                  <details class="dossier-versions">
+                    <summary class="dossier-versions-summary brut-focus">
+                      Claim versions ({dossier.versions.length})
+                    </summary>
+                    <ul class="version-list">
+                      {#each dossier.versions as v, i (`${v.versionNo}-${v.validFrom ?? i}`)}
+                        <li class="version-row" class:version-current={v.current}>
+                          <span class="version-no">v{v.versionNo}</span>
+                          <span class="version-state">{v.verificationState ?? "unverified"}</span>
+                          {#if v.superseded}
+                            <span class="version-meta">
+                              superseded{fmtDossierDate(v.validTo) ? ` ${fmtDossierDate(v.validTo)}` : ""} — text changed in source
+                            </span>
+                          {:else}
+                            <span class="version-meta">
+                              current{fmtDossierDate(v.validFrom) ? ` · valid from ${fmtDossierDate(v.validFrom)}` : ""}
+                            </span>
+                          {/if}
+                        </li>
+                      {/each}
+                    </ul>
+                  </details>
+                {/if}
+
+                {#if dossier.judgments.length > 0}
+                  <details class="dossier-versions">
+                    <summary class="dossier-versions-summary brut-focus">
+                      Judgment history ({dossier.judgments.length}) — append-only
+                    </summary>
+                    <ul class="version-list">
+                      {#each dossier.judgments as j, i (`${j.judgedAt ?? i}-${i}`)}
+                        <li class="version-row">
+                          <span class="version-state">{j.verdict}</span>
+                          <span class="version-meta">
+                            {j.judgeModel ?? "unknown judge"}{j.promptVersion != null ? ` · prompt v${j.promptVersion}` : ""}{j.confidence != null ? ` · confidence ${j.confidence}` : ""}{fmtDossierDate(j.judgedAt) ? ` · ${fmtDossierDate(j.judgedAt)}` : ""}
+                          </span>
+                        </li>
+                      {/each}
+                    </ul>
+                  </details>
+                {/if}
+
+                {#if reviewEnabled}
+                  <div class="dossier-actions" role="group" aria-label="Evidence actions">
+                    <button
+                      type="button"
+                      class="brutal-btn brut-pressable brut-focus dossier-accept-btn"
+                      disabled={evidenceActionBusy ||
+                        !selectedAcceptGuard.ok ||
+                        selectedUnit.evidence?.verificationState === "supported"}
+                      title={selectedUnit.evidence?.verificationState === "supported"
+                        ? "Already supported."
+                        : selectedAcceptGuard.ok
+                          ? "Mark this claim supported — allowed because its span is Layer-1 bound."
+                          : selectedAcceptGuard.ok === false
+                            ? selectedAcceptGuard.reason
+                            : undefined}
+                      on:click={() => selectedUnit && performEvidenceAccept(selectedUnit)}
+                    >
+                      Accept · supported
+                    </button>
+                    <button
+                      type="button"
+                      class="brutal-btn brut-pressable brut-focus dossier-exclude-btn"
+                      disabled={evidenceActionBusy ||
+                        selectedUnit.evidence?.verificationState === "excluded"}
+                      title={selectedUnit.evidence?.verificationState === "excluded"
+                        ? "Already excluded."
+                        : "Soft-exclude from retrieval — reversible, never deleted."}
+                      on:click={() => selectedUnit && performEvidenceExclude(selectedUnit)}
+                    >
+                      Exclude from retrieval
+                    </button>
+                  </div>
+                  {#if !selectedAcceptGuard.ok && selectedUnit.evidence?.verificationState !== "supported"}
+                    <p class="dossier-guard-note brut-muted" role="note">
+                      {selectedAcceptGuard.ok === false ? selectedAcceptGuard.reason : ""}
+                    </p>
+                  {/if}
+                  {#if evidenceActionError}
+                    <p class="dossier-action-error" role="alert">{evidenceActionError}</p>
+                  {/if}
+                  <p class="dossier-rejudge-note brut-muted" role="note">
+                    Re-judging (Layer 2) re-runs the model judge over this span — use
+                    Tools → Re-validate. Model calls may cost.
+                  </p>
+                {/if}
+              {/if}
+            </section>
 
             {#if hasProvenance(selectedUnit)}
               <dl class="provenance-block brut-fill-canvas">
@@ -4966,5 +5573,319 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* ── Evidence facet (W2.2) ─────────────────────────────────────────────── */
+  .evidence-facet-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0 0;
+  }
+  .evidence-facet-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--color-ink-muted);
+  }
+  .evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border: var(--border-thin);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .evidence-chip-count {
+    font-weight: 700;
+  }
+  .evidence-chip--supported {
+    border-left: 4px solid var(--color-yellow);
+  }
+  .evidence-chip--inferred {
+    border-left: 4px solid var(--color-ink-muted);
+  }
+  .evidence-chip--unverified {
+    border-left: 4px dashed var(--color-ink);
+  }
+  .evidence-chip--contradicted {
+    border-left: 4px solid var(--brut-coral);
+  }
+  .evidence-chip--excluded {
+    border-left: 4px dotted var(--color-ink-faint);
+    color: var(--color-ink-muted);
+  }
+  .evidence-chip-active {
+    background: var(--color-ink);
+    color: var(--color-bg);
+  }
+  .evidence-facet-note {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+  }
+
+  /* ── Evidence Dossier panel (W2.2) ─────────────────────────────────────── */
+  .dossier {
+    margin: var(--space-3) 0 0;
+    padding-top: var(--space-3);
+    border-top: 2px dashed var(--color-ink);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .dossier-stamp-row {
+    display: flex;
+  }
+  .dossier-stamp {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-1) var(--space-3);
+    border: 2px solid var(--color-ink);
+    transform: rotate(-1.5deg);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: var(--text-mono-tracking);
+    background: var(--color-surface);
+  }
+  .dossier-stamp-text {
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+  }
+  .dossier-stamp-date {
+    font-size: var(--text-mono-sm);
+    border-top: 1px solid currentColor;
+    padding-top: 2px;
+  }
+  .dossier-stamp--supported {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+  }
+  .dossier-stamp--contradicted {
+    border-color: var(--brut-coral);
+    color: var(--brut-coral);
+    background: var(--color-surface);
+  }
+  .dossier-stamp--inferred {
+    background: var(--color-surface);
+  }
+  .dossier-stamp--unverified {
+    border-style: dashed;
+  }
+  .dossier-stamp--excluded {
+    color: var(--color-ink-faint);
+    border-color: var(--color-ink-faint);
+  }
+  .dossier-stamp--pre-ebv {
+    border-style: dotted;
+    color: var(--color-ink-muted);
+  }
+  .dossier-empty,
+  .dossier-loading,
+  .dossier-error,
+  .dossier-guard-note,
+  .dossier-rejudge-note {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--color-ink-muted);
+  }
+  .dossier-error,
+  .dossier-action-error {
+    color: var(--brut-coral);
+  }
+  .dossier-action-error {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+  }
+
+  .evidence-card {
+    margin: 0;
+    border: 2px solid var(--color-ink);
+    box-shadow: var(--shadow-sm);
+    background: var(--color-bg);
+  }
+  .evidence-card-cap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-ink);
+    color: var(--color-bg);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+  }
+  .evidence-card-source {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .evidence-card-open {
+    color: var(--color-yellow);
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .evidence-card-open:hover {
+    text-decoration: underline;
+  }
+  .evidence-card-body {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    line-height: 1.5;
+  }
+  .evidence-ctx {
+    color: var(--color-ink-faint);
+  }
+  .evidence-mark {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    padding: 0 2px;
+  }
+  .evidence-note {
+    margin: 0;
+    padding: 0 var(--space-3) var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--color-ink-muted);
+  }
+
+  .custody {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+  }
+  .custody-hop {
+    border-bottom: 1px dotted var(--color-ink);
+    cursor: help;
+  }
+  .custody-arrow {
+    color: var(--color-ink-faint);
+  }
+
+  .dossier-recheck {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .dossier-recheck-hint {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+  }
+  .recheck-result {
+    border: var(--border-thin);
+    padding: var(--space-2);
+    background: var(--color-surface);
+  }
+  .recheck-result.recheck-pass {
+    border-left: 4px solid var(--color-yellow);
+  }
+  .recheck-result.recheck-fail {
+    border-left: 4px solid var(--brut-coral);
+  }
+  .recheck-headline {
+    margin: 0 0 2px;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+  }
+  .recheck-fail .recheck-headline {
+    color: var(--brut-coral);
+  }
+  .recheck-detail {
+    margin: 0;
+    font-size: var(--text-body-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .dossier-versions {
+    border: var(--border-thin);
+    background: var(--color-surface);
+  }
+  .dossier-versions-summary {
+    padding: var(--space-1) var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .version-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 var(--space-2) var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .version-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+  }
+  .version-row.version-current .version-no {
+    background: var(--color-yellow);
+  }
+  .version-no {
+    font-weight: 700;
+    padding: 0 4px;
+    border: 1px solid var(--color-ink);
+  }
+  .version-state {
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .version-meta {
+    color: var(--color-ink-muted);
+  }
+
+  .dossier-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .dossier-accept-btn {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+  }
+  .dossier-exclude-btn {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+  .dossier-accept-btn:disabled,
+  .dossier-exclude-btn:disabled,
+  .dossier-recheck-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>

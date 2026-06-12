@@ -140,8 +140,14 @@
         <ul class="state-chips" aria-label="Per-state idea counts">
           {#each STATE_ORDER as state (state)}
             <li class="state-chip state-{state}" class:state-zero={!(card.verification_states[state] ?? 0)}>
-              <span class="state-count">{(card.verification_states[state] ?? 0).toLocaleString()}</span>
-              {STATE_LABELS[state]}
+              <a
+                class="state-chip-link"
+                href="{CONNECT_BASE}/graph?filter={state}"
+                title="Open the {STATE_LABELS[state].toLowerCase()} claims in the graph explorer's Evidence facet"
+              >
+                <span class="state-count">{(card.verification_states[state] ?? 0).toLocaleString()}</span>
+                {STATE_LABELS[state]}
+              </a>
             </li>
           {/each}
         </ul>
@@ -326,6 +332,13 @@
   }
   .state-chip.state-zero {
     opacity: 0.55;
+  }
+  .state-chip-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .state-chip-link:hover {
+    text-decoration: underline;
   }
   .state-count {
     font-weight: 700;

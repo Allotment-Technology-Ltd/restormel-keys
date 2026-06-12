@@ -44,8 +44,24 @@ export async function resolveConnectSourceText(args: {
   textPreview: string | null;
   surrealFullText?: string | null;
 }): Promise<{ text: string; quality: ConnectSourceTextQuality }> {
+  const raw = await resolveConnectSourceTextRaw(args);
+  return { text: raw.text.trim(), quality: raw.quality };
+}
+
+/**
+ * Untrimmed variant for the EBV Layer-1 re-check (W2.2): evidence spans were bound
+ * (offsets + content hash) against the RAW ingested text, so re-verification must see
+ * the same bytes — trimming would shift offsets and break the hash deterministically.
+ */
+export async function resolveConnectSourceTextRaw(args: {
+  workspaceId: string;
+  title: string | null;
+  url: string | null;
+  textPreview: string | null;
+  surrealFullText?: string | null;
+}): Promise<{ text: string; quality: ConnectSourceTextQuality }> {
   if (args.surrealFullText?.trim()) {
-    return { text: args.surrealFullText.trim(), quality: "full" };
+    return { text: args.surrealFullText, quality: "full" };
   }
 
   const jobs = await listConnectIngestJobsForWorkspace({ workspaceId: args.workspaceId, limit: 30 });
@@ -55,7 +71,7 @@ export async function resolveConnectSourceText(args: {
       const urlMatch =
         args.url && src.url && src.url.trim().toLowerCase() === args.url.trim().toLowerCase();
       if ((titleMatch || urlMatch) && src.text?.trim()) {
-        return { text: src.text.trim(), quality: "full" };
+        return { text: src.text, quality: "full" };
       }
     }
   }
@@ -66,10 +82,10 @@ export async function resolveConnectSourceText(args: {
     name: args.title,
     url: args.url,
   });
-  if (docText?.trim()) return { text: docText.trim(), quality: "full" };
+  if (docText?.trim()) return { text: docText, quality: "full" };
 
   if (args.textPreview?.trim()) {
-    return { text: args.textPreview.trim(), quality: "preview" };
+    return { text: args.textPreview, quality: "preview" };
   }
 
   return { text: "", quality: "missing" };

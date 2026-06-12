@@ -131,6 +131,8 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 | **Ingest run**       | One execution of the Connect pipeline over selected documents. **Not "job" or "import" in UI copy.** Every surface that says "job", "ingest job", "knowledge ingest job", or "import" must be updated to "Ingest run" / "ingest run" (capitalised as sentence case; plural "Ingest runs"). | W1.3, W4.5 |
 | **Trust scorecard**  | The hub-Home component showing the factor-breakdown trust score. Not "trust score panel" or "quality scorecard". One trust number (the scorecard service formula); all other surfaces that show a trust figure must quote this component, not compute their own. | W2.3 |
 | **Quality history**  | The verdict timeline on the hub Home tab. Not "eval verdict history" (that is jargon); `aria-label` must use "Quality history". | W2.3, W4.5 |
+| **Evidence dossier** | The graph-explorer claim detail panel (W2.2): verdict stamp, evidence excerpt with the bound span highlighted, chain of custody, "Re-check now", claim-versions ledger. Not "evidence panel" or "claim inspector". Verification-state copy must match the EBV states (supported / inferred / unverified / contradicted / excluded) and may only assert what claims-ledger rows 2, 9, 10 prove. | W2.2 |
+| **Evidence facet**   | The explorer queue filter over EBV verification states (`?filter=supported` etc. — the W2.1 URL contract values). A claim with no EBV row reads "predates evidence binding", never silently bucketed into a state. | W2.2 |
 | **Readiness library**| Domain pack browser at `/connect/library`. Not "library" alone when the context is ambiguous. | — |
 | Sign in        | Auth CTA (not "Login", "Log in"). | — |
 | Cloud API      | The HTTP API exposed via Zuplo gateway. | — |
@@ -217,3 +219,11 @@ When adding or changing copy or nav, check this document and [documentation-stra
 - **§4 section pattern:** `BrutalPageHeader` named as the canonical primitive for dashboard page headers (aligning with the review's finding that it is used in only one place currently; W4.4/W4.5 sweeps will enforce it).
 
 **What this document intentionally does NOT fix:** The nav gaps (no account menu, orphaned `/billing` and `/settings`, no sign-out) are *code* gaps. This contract records the TARGET state and names the stages that implement each piece. Code gaps are tracked in the roadmap, not here.
+
+### Evidence Dossier — June 2026 (Stage W2.2)
+
+- **§2 registry: "Evidence dossier" and "Evidence facet" added.** The graph explorer's
+  claim detail panel and verification-state queue filter get canonical names. Dossier
+  copy is bound to claims-ledger rows 2 ("supported requires a bound span"), 9
+  ("re-check fails closed") and 10 ("uncertainty goes to review"); a claim with no
+  EBV row must read "predates evidence binding", never be bucketed into a state.
