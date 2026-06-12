@@ -207,7 +207,7 @@
     width: 100%;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -228,7 +228,7 @@
     margin: 0;
   }
   .route-row {
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .route-link {
     display: block;

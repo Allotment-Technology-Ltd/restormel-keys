@@ -200,7 +200,7 @@
   .cov-toggle {
     margin-top: var(--space-2);
     background: transparent;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-text);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
@@ -245,7 +245,7 @@
     gap: var(--space-2);
     font-size: var(--text-xs);
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .cov-cell--gap {
     border-color: var(--state-warn-fg, var(--rm-border));

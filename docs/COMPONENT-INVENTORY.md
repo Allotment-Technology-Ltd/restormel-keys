@@ -773,8 +773,14 @@ It owns the modal chrome and the keyboard contract; consumers supply only conten
 #### Consumers
 
 - **First live consumer (R6):** Runs-list quick-peek (`RunQuickPeek.svelte`).
-- **Migrating onto the rail under W4.4:** explorer detail panel (hosts the W2.2 Evidence Dossier),
-  logs drawer, proof provenance drawer. R6 ships the component + one consumer only.
+- **Logs request-receipt drawer (W4.4):** migrated — `/logs`
+  (`routes/keys/dashboard/logs/+page.svelte`) mounts the receipt as a `DossierRail` body + footer
+  ("Copy link").
+- **Deferred / N-A (W4.4):** the explorer detail panel stays a side-by-side `<aside>` (its adjacency
+  to the queue is the W4.2 Stamping Desk keyboard loop, and its mutation classes are pinned by the
+  mobile-readonly contract test) — filed as a follow-up. The proof provenance "drawer"
+  (`ProvenanceDrawer.svelte`) is an inline accordion, not a modal side-panel, so it is not a rail
+  candidate.
 
 #### Anatomy
 

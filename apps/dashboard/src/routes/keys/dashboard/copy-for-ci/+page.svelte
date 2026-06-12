@@ -71,7 +71,7 @@
   }
   .project-list li {
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .project-link {
     font-size: var(--text-base);

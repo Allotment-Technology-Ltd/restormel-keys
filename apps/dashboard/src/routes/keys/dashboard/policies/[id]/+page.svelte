@@ -446,7 +446,7 @@
   .input {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -473,7 +473,7 @@
   }
   .binding-row {
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
   }
   .muted {
@@ -518,7 +518,7 @@
   }
   .violations-list li {
     padding: var(--space-1) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .subsection-title {
     font-size: var(--text-sm);
@@ -554,6 +554,6 @@
     margin-left: auto;
     background: transparent;
     color: var(--coral-alert);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
 </style>

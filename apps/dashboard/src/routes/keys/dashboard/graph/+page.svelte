@@ -50,7 +50,7 @@
     font-size: 0.9375rem;
     padding: 0.75rem 1rem;
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
   }

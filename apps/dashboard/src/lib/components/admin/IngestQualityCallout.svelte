@@ -34,17 +34,17 @@
     font-size: var(--text-sm);
   }
   .iq-callout-error {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
   }
   .iq-callout-warn {
-    background: var(--color-yellow-tint, #fff8e1);
+    background: var(--state-warn-bg);
   }
   .iq-callout-info {
     background: var(--color-surface);
     color: var(--color-ink);
   }
   .iq-callout-success {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
   }
   .iq-callout-title {
     margin: 0 0 var(--space-2);

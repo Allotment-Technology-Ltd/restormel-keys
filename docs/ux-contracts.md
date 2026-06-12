@@ -267,8 +267,24 @@ the chip poll adds no stats/scorecard fetches (poll diet, PR #259).
 | **Mobile read-only tier** (layout gate) | n/a | n/a | Off-tier path on a phone → the honest gate ("This screen needs a bigger window") naming the two readable destinations (Home, Claims) and the individual run (as plain text — `/runs` the list is itself gated, so it is **not** a link), no disabled-and-teasing actions | `/home`, `/runs/[id]`, `/claims` (and its sub-routes including `/claims/memory`) open read-only on a phone: sidebar hidden, full-bleed, ≥44px touch targets, mutating actions hidden. The shell carries `data-mobile-readonly="true"` and its `.shell-mobile-readonly` rule hides every audited mutation region across all four surfaces. **`/claims` explorer + readiness wizard + library:** `.review-actions`, `.dossier-actions`, `.dossier-recheck`, `.remove-section`, `.cohort-complete-actions`, `.revalidate-actions`, `.wizard-actions`, `.lib-new` (library "New run" create), `.lib-run-archive` (library archive). **`/claims/memory` memory inbox:** `.item-actions` (per-observation Revoke button, `POST /revoke`), `.memory-revoke-error` (per-observation revoke-error banner + "Try again" which re-fires `POST /revoke`; the outer page-load error banner's "Try again" calls `invalidateAll` and is intentionally NOT hidden). **`/runs/[id]` ingest console:** `.run-actions` (header restart), `.run-cancel-wrap` (cancel), `.run-error-banner-actions` (failed-run banner restart). **`/home`:** `.switcher-control` (active-graph `POST /activate`). Plus the generic `[data-mobile-hide]` opt-out. **Keyboard:** the verdict shortcuts (`a`/`w`/`u` → `performReview`, a PATCH) bypass CSS hiding, so `ConnectGraphExplorer.handleReviewKeydown` early-returns when a `[data-mobile-readonly="true"]` shell is in the DOM; the read-only navigation keys (`n`/`p`/arrows) stay live. Read-only viewing (pan/zoom/select/inspect, glossary, provenance, recheck *results*, dossier history, guidance/coaching, the library run-select scope switch) stays live. Guarded by `dashboard-mobile-readonly-claims.test.ts`: each selector ⇄ each selector still exists as a real action region, the keyboard guard is asserted, and a per-component mutation-fetch inventory trips when a new `POST/PATCH/PUT/DELETE` region appears un-audited (memory page pinned at 1 mutation fetch). |
 
 The Evidence Dossier (W2.2) is the eventual DossierRail consumer for Claims; R6 ships the rail + the
-Runs quick-peek as its one live consumer, and the three bespoke drawers (explorer detail panel, logs
-drawer, proof provenance drawer) migrate onto the rail under W4.4.
+Runs quick-peek as its one live consumer. The three bespoke drawers were slated to migrate onto the
+rail under W4.4. **Outcome (W4.4):**
+- **Logs request-receipt drawer — migrated.** The `/logs` `.detail-panel` now rides `DossierRail`
+  (the rail owns Escape / backdrop / focus-trap / focus-return; the page supplies only the receipt
+  content + a footer "Copy link"). This is a read-only surface, so no mobile-readonly mutation
+  inventory is affected.
+- **Proof provenance drawer — N/A (not a drawer).** `ProvenanceDrawer.svelte` is an *inline
+  expand/collapse accordion* under the MCP answer envelope (a `<details>`-style disclosure that
+  flows in place, not a modal side-panel). Moving it to a modal rail would be a usability regression
+  (it belongs in the answer's flow, beside the claim it explains). Left as-is by design.
+- **Explorer detail panel — deferred (filed).** The explorer's `<aside class="detail-panel">` is not
+  a modal drawer but a side-by-side aside whose adjacency to the queue *is* the W4.2 Stamping Desk
+  keyboard-triage loop; it also hosts the W2.2 Evidence Dossier, as-of historical state, and the
+  accept-guard, and its mutation-region classes (`.review-actions`, `.dossier-actions`,
+  `.dossier-recheck`, …) are pinned by the mobile-readonly contract test. Converting it to a modal
+  rail would change the interaction model and churn the contract selector inventory — too risky for
+  this mechanical sweep. Filed as a follow-up; the prompt's own escape hatch permits deferring the
+  explorer panel when "the full explorer-panel migration proves too risky in one pass."
 
 ### §3 panel states — Request tester (`/sandbox`, Stage W3.2)
 
@@ -357,8 +373,14 @@ recorded", and the resolve HTTP endpoint's existing failure rows (`+server.ts`) 
 |-------------------|---------|-------|-------|-----------|
 | **Logs filter bar** (`/keys/dashboard/logs`) | n/a (server-rendered with the page load) | filter dropdowns show only ids present in the window, resolved to names; "Any project/route/status/source" defaults | the page-level error banner covers a failed load | named project/route selects, status, **source** (Agent / Connect ingest / Dashboard), **time** (15m/1h/24h/7d), free-text search, limit (50/100/200); Apply + Clear; CSV/JSON export of the current capped set |
 | **Logs list** (`/keys/dashboard/logs`) | n/a | filtered → "No requests match these filters … widen the time range or clear filters" (recovery action); unfiltered → "No request logs in this time window" + Analytics/Routes links — the two empties are distinguished | `BrutalErrorBanner`-style `role="alert"` line + "Try again" | newest-first rows; failure rows get a coral left-rail, `no_route` keeps the amber "Fix?" wizard panel; a derived source badge per row; honest "N of M in window" count |
-| **Request receipt** (drawer, `role="dialog"`, Escape closes) | n/a (opens from a loaded row) | n/a | n/a — receipt reads the already-loaded row | five sections: 1 Request (when/source/model), 2 Route matched (→ builder), 3 Policy outcomes (violations or honest absent), 4 Step attempts & timing (attempts incl. fallbacks, latency/TTFT or "not recorded"), 5 Response **or** "What went wrong" (failure explanation + error code); deep-linkable `#log-<id>` + Copy link + a coverage note |
+| **Request receipt** (`DossierRail`, `role="dialog"`, Escape closes — W4.4) | n/a (opens from a loaded row) | n/a | n/a — receipt reads the already-loaded row | five sections: 1 Request (when/source/model), 2 Route matched (→ builder), 3 Policy outcomes (violations or honest absent), 4 Step attempts & timing (attempts incl. fallbacks, latency/TTFT or "not recorded"), 5 Response **or** "What went wrong" (failure explanation + error code); deep-linkable `#log-<id>` + Copy link (footer) + a coverage note |
 <!-- W3.3-BLOCK-END -->
+
+<!-- W4.4 note: the request-receipt drawer migrated from its bespoke `.detail-panel`
+     onto the shared `DossierRail` (the rail owns Escape / backdrop / focus-trap /
+     focus-return). The `/logs` page also adopted `BrutalPageHeader`, `EmptyState`,
+     and `BrutalErrorBanner`, and its borders moved to the 2px micro-floor
+     (`--border-thin`). No copy or behaviour changed. -->
 
 <!-- W4.1-BLOCK-START: the Machine Room (run console as product demo). Other batch
      agents edit this file — keep W4.1 edits inside this fenced block to ease rebase. -->

@@ -402,14 +402,14 @@
   .admin-error {
     padding: var(--space-3);
     border: var(--border);
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
     color: var(--color-ink);
     margin-bottom: var(--space-4);
   }
   .admin-success {
     padding: var(--space-3);
     border: var(--border);
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
     margin-bottom: var(--space-4);
   }
   .admin-table {

@@ -657,7 +657,7 @@
   .versions-header {
     margin-bottom: var(--space-6);
     padding-bottom: var(--space-5);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
 
   .versions-title {
@@ -755,7 +755,7 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
 
   .version-row--published {
@@ -841,7 +841,7 @@
   }
   .btn-secondary {
     background: transparent;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-text);
   }
 </style>

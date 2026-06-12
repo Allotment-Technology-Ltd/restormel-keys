@@ -150,7 +150,7 @@
 <style>
   .setup-checklist,
   .setup-complete-banner {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     border-radius: var(--rm-radius);
     padding: var(--space-4);
@@ -217,7 +217,7 @@
     color: var(--rm-text);
   }
   .setup-complete-banner button {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: transparent;
     color: var(--rm-muted);
     border-radius: var(--rm-radius);

@@ -254,7 +254,7 @@
     font-size: var(--text-xs);
     color: var(--rm-muted);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: color-mix(in oklab, var(--rm-sage) 5%, var(--rm-surface));
   }
   .stack-steps li {
@@ -276,7 +276,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: 0.65rem;
     font-weight: 700;
     background: var(--rm-surface-raised);
@@ -302,7 +302,7 @@
     text-align: left;
     padding: var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-text);
     cursor: pointer;
@@ -324,7 +324,7 @@
     width: 2rem;
     height: 2rem;
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     font-size: 0.85rem;
     line-height: 1;
@@ -373,7 +373,7 @@
     gap: var(--space-3);
     padding: var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
   }
   .checklist-card-icon {
@@ -417,7 +417,7 @@
     margin: 0 0 var(--space-3);
     padding: var(--space-3);
     border-radius: var(--radius-md);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
     color: var(--rm-text);
     font-size: var(--text-xs);

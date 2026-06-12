@@ -410,7 +410,7 @@
   .route-gr-apply-fieldset {
     margin: 0;
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: color-mix(in oklab, var(--rm-surface-raised) 88%, var(--rm-bg));
   }
@@ -461,7 +461,7 @@
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
     color: var(--rm-text);
   }

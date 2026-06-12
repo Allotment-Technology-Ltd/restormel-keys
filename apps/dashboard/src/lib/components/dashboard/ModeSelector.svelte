@@ -68,7 +68,7 @@
     display: grid;
     gap: var(--space-1);
     text-align: left;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     color: var(--rm-text);

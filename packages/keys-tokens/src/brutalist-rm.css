@@ -159,5 +159,20 @@
   --state-fail-bg: #fee2e2;
   --state-fail-fg: #991b1b;
 
+  /* ── Amber accent (W4.4) ──
+     ONE defined amber for brutal stall / warning / insight surfaces.
+     Previously every consumer rode a raw-hex fallback on an UNDEFINED token
+     (`var(--brut-amber, #e6a700)`), and a few used divergent literals
+     (#f1c40f gold, #e8a317). Defining it here makes the fallbacks dead and
+     unifies the value. Filed in PR #285 / #296. */
+  --brut-amber: #e6a700;
+
+  /* ── CRT terminal palette (W4.4) ──
+     Defined tokens for the run-console log "CRT" terminal surface, replacing
+     the raw #0a1f0a / #7dff7d literals scattered across the console + the
+     product-demo stylesheet. Filed in PR #285 / #296. */
+  --brut-crt-bg: #0a1f0a;
+  --brut-crt-fg: #7dff7d;
+
   color-scheme: light;
 }

@@ -194,7 +194,7 @@
   .usage-section {
     margin-bottom: var(--space-8);
     padding-bottom: var(--space-6);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .usage-section-title {
     font-size: var(--text-lg);
@@ -215,7 +215,7 @@
   }
   .chart-card {
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-4);
     min-width: 0;
@@ -290,7 +290,7 @@
     font-weight: 600;
     padding: 0.2rem 0.5rem;
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .health-ok {
     color: var(--rm-sage);

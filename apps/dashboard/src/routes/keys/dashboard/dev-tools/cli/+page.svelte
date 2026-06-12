@@ -72,7 +72,7 @@
   }
   .code-block {
     background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-3) var(--space-4);
     font-family: "JetBrains Mono", monospace;
@@ -86,7 +86,7 @@
     background: var(--rm-surface);
     padding: 0.1rem 0.3rem;
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .help-text {
     font-size: var(--text-sm);

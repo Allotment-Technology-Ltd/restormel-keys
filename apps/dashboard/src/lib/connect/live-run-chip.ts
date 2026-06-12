@@ -11,6 +11,8 @@
  * drive active / stalled / zero states off a mocked status stream without timers.
  */
 
+import { STALL_NOTICE_MS } from "$lib/connect/run-stall";
+
 /** Minimal shape the chip needs from a `/api/connect/ingest/jobs` row. */
 export type LiveRunChipJob = {
   id: string;
@@ -26,10 +28,12 @@ export type LiveRunChipJob = {
 };
 
 /**
- * Heartbeat-stall threshold for the chip. Matches the run console's
- * `STALL_NOTICE_MS` (90s) so the chrome and the console agree on "stalled".
+ * Heartbeat-stall threshold for the chip. Re-exports the shared
+ * `STALL_NOTICE_MS` (90s) so the chrome and the run console agree on "stalled"
+ * from ONE definition (`$lib/connect/run-stall`). Kept as a named alias for the
+ * chip's existing consumers/tests.
  */
-export const CHIP_STALL_NOTICE_MS = 90_000;
+export const CHIP_STALL_NOTICE_MS = STALL_NOTICE_MS;
 
 export type LiveRunChipState = {
   /** The run the chip points at, or null when there is no active run. */

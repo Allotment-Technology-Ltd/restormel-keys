@@ -311,7 +311,7 @@
     background: var(--rm-surface);
     padding: 0.15rem 0.4rem;
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-text);
     white-space: nowrap;
     flex-shrink: 0;
@@ -339,7 +339,7 @@
     max-width: 24rem;
     font-size: var(--text-sm);
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-text);
     margin-bottom: var(--space-4);
@@ -365,7 +365,7 @@
   }
   .code-block {
     background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     padding: var(--space-3) var(--space-4);
     font-family: "JetBrains Mono", monospace;
     font-size: var(--text-xs);

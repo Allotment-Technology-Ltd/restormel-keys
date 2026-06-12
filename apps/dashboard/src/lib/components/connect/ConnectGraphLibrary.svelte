@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
+  import EmptyState from "$lib/components/EmptyState.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
 
   /** Saved graphs (one active) and the workspace's domain packs, for the bundle picker. */
   export let initialGraphs: ConnectGraphTarget[] = [];
@@ -12,6 +14,10 @@
   let graphs: ConnectGraphTarget[] = initialGraphs;
   let busyId: string | null = null;
   let banner: { kind: "ok" | "err"; text: string } | null = null;
+  // True when the most recent load (refresh) FAILED — so an error never masquerades
+  // as the "No graphs saved yet" empty state (filed #289: error-as-empty).
+  let loadFailed = false;
+  let refreshing = false;
 
   // Add / edit form state
   let formOpen = false;
@@ -40,10 +46,21 @@
   }
 
   async function refresh() {
-    const res = await fetch(API);
-    if (res.ok) {
-      const d = await res.json();
-      graphs = d.graphs ?? [];
+    refreshing = true;
+    try {
+      const res = await fetch(API);
+      if (res.ok) {
+        const d = await res.json();
+        graphs = d.graphs ?? [];
+        loadFailed = false;
+      } else {
+        // Load failed — surface it as an error with retry, NOT as "no graphs".
+        loadFailed = true;
+      }
+    } catch {
+      loadFailed = true;
+    } finally {
+      refreshing = false;
     }
   }
 
@@ -202,10 +219,26 @@
     <p class="banner" class:banner-err={banner.kind === "err"} role="status">{banner.text}</p>
   {/if}
 
-  {#if graphs.length === 0 && !formOpen}
-    <p class="empty" role="status">
-      No graphs saved yet. Add your first SurrealDB graph store to get started.
-    </p>
+  {#if graphs.length === 0 && loadFailed}
+    <!-- Error-as-empty fix (#289): a failed load shows an error + retry, never
+         the "No graphs saved yet" empty state. -->
+    <BrutalErrorBanner
+      title="Couldn’t load your graphs"
+      message="Something went wrong loading your saved graph stores. Your graphs are safe — this is a display error."
+    >
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" on:click={refresh} disabled={refreshing}>
+          {refreshing ? "Retrying…" : "Try again"}
+        </button>
+      {/snippet}
+    </BrutalErrorBanner>
+  {:else if graphs.length === 0 && !formOpen}
+    <EmptyState
+      title="No graphs saved yet"
+      description="Save every graph store you work with. Add your first SurrealDB graph store to get started."
+    >
+      <button type="button" class="btn btn-primary" on:click={openAdd}>+ Add graph</button>
+    </EmptyState>
   {/if}
 
   <ul class="graph-grid">
@@ -324,7 +357,7 @@
     margin: var(--space-2) 0 0;
   }
   .banner {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     color: var(--rm-text);
     padding: var(--space-2) var(--space-3);
@@ -333,12 +366,6 @@
   .banner-err {
     color: var(--rm-danger, #b00);
     border-color: color-mix(in oklab, var(--rm-danger, #b00) 40%, var(--rm-border));
-  }
-  .empty {
-    color: var(--rm-muted);
-    border: 1px dashed var(--rm-border);
-    border-radius: var(--rm-radius);
-    padding: var(--space-4);
   }
   .graph-grid {
     list-style: none;
@@ -353,7 +380,7 @@
     }
   }
   .graph-card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-3) var(--space-4);
@@ -380,7 +407,7 @@
     font-size: var(--text-xs);
     text-transform: uppercase;
     padding: 0 var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
   }
   .badge-active {

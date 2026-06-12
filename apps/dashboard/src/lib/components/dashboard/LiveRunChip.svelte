@@ -102,11 +102,11 @@
     outline-offset: 2px;
   }
   .live-run-chip-stalled {
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 16%, var(--brut-white));
-    border-color: var(--brut-amber, #e6a700);
+    background: color-mix(in oklab, var(--brut-amber) 16%, var(--brut-white));
+    border-color: var(--brut-amber);
   }
   .live-run-chip-stalled:hover {
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 28%, var(--brut-white));
+    background: color-mix(in oklab, var(--brut-amber) 28%, var(--brut-white));
   }
   .live-run-dot {
     width: 0.55rem;
@@ -117,7 +117,7 @@
     animation: live-run-pulse 1.4s ease-in-out infinite;
   }
   .live-run-chip-stalled .live-run-dot {
-    background: var(--brut-amber, #e6a700);
+    background: var(--brut-amber);
     /* Stall is steady, not pulsing — amber + "STALLED" carry the meaning. */
     animation: none;
   }

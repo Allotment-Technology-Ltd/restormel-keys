@@ -276,7 +276,7 @@
   .precheck-panel {
     margin-top: var(--space-4);
     padding: var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background: var(--rm-surface);
   }
@@ -324,7 +324,7 @@
   .input {
     min-height: 44px;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-sm);
     font-size: var(--text-sm);
     font-family: inherit;

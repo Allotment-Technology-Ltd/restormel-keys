@@ -325,7 +325,7 @@
   .admin-error {
     padding: var(--space-3);
     border: var(--border);
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
     margin-bottom: var(--space-4);
   }
   .iq-gates-prose {
@@ -418,10 +418,10 @@
     display: inline-block;
   }
   .iq-gate-badge-pass {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
   }
   .iq-gate-badge-fail {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
   }
   .iq-gate-badge-await,
   .iq-gate-badge-manual {

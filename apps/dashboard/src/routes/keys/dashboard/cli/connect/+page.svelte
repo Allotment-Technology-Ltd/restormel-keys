@@ -125,7 +125,7 @@
   .input {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
     color: var(--rm-text);
     font-size: var(--text-sm);

@@ -179,7 +179,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: color-mix(in oklab, var(--rm-surface-raised) 60%, transparent);
     color: var(--rm-text);
     border-radius: var(--rm-radius);
@@ -228,7 +228,7 @@
     right: var(--space-3);
     max-height: 18rem;
     overflow: auto;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     border-radius: var(--rm-radius);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
@@ -311,7 +311,7 @@
     font-weight: 600;
     color: var(--rm-sage);
     text-align: center;
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .switcher-manage:hover {
     text-decoration: underline;

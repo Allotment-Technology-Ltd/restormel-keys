@@ -116,7 +116,7 @@
     color: var(--coral-alert);
   }
   .connect-pipeline .notice {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
     padding: var(--space-2) var(--space-3);
@@ -128,7 +128,7 @@
     align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
     padding: var(--space-2) var(--space-3);
@@ -138,7 +138,7 @@
   }
   .connect-pipeline .advanced {
     margin-top: var(--space-3);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
     padding-top: var(--space-3);
   }
   .connect-pipeline .oneclick {
@@ -147,7 +147,7 @@
     justify-content: space-between;
     gap: var(--space-4);
     flex-wrap: wrap;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3) var(--space-4);
@@ -171,13 +171,13 @@
   .connect-pipeline .or-sep::after {
     content: "";
     flex: 1;
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .connect-pipeline .or-sep span {
     padding: 0 var(--space-3);
   }
   .connect-pipeline .badge {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-2);
     font-family: var(--font-mono);
@@ -201,7 +201,7 @@
     justify-content: space-between;
     gap: var(--space-2);
     flex-wrap: wrap;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-2) var(--space-3);
   }
@@ -286,7 +286,7 @@
     margin-bottom: var(--space-3);
   }
   .connect-pipeline .browse {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3);
@@ -310,7 +310,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-1) var(--space-2);
   }
@@ -327,7 +327,7 @@
     white-space: nowrap;
   }
   .connect-pipeline .doc-inventory {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3);
@@ -375,7 +375,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: var(--space-2);
     align-items: center;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-2);
     background: var(--rm-surface);
@@ -415,7 +415,7 @@
     background: color-mix(in oklab, var(--rm-sage) 8%, var(--rm-surface));
   }
   .connect-pipeline .surreal-schema {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3);
@@ -448,7 +448,7 @@
     margin-top: var(--space-3);
   }
   .connect-pipeline .designer {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-4);
@@ -478,7 +478,7 @@
     line-height: 1.7;
   }
   .connect-pipeline .disclosure {
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
     padding-top: var(--space-3);
   }
   .connect-pipeline .disclosure summary {
@@ -508,7 +508,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  border: 1px solid var(--rm-border);
+  border: var(--border-thin);
   border-radius: var(--rm-radius);
   background: var(--rm-surface);
   padding: var(--space-3) var(--space-4);
@@ -542,7 +542,7 @@
   gap: var(--space-3);
 }
 .connect-pipeline .wizard-panel.card {
-  border: 1px solid var(--rm-border);
+  border: var(--border-thin);
   border-radius: var(--rm-radius);
   background: var(--rm-surface);
   padding: var(--space-4);
@@ -686,7 +686,7 @@
 .connect-pipeline .wizard-provision-receipt {
   margin: var(--space-2) 0 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--rm-border);
+  border: var(--border-thin);
   background: var(--color-surface);
   color: var(--rm-text);
   font-size: var(--text-sm);
@@ -701,7 +701,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
-  border-top: 1px solid var(--rm-border);
+  border-top: var(--border-thin);
   padding-top: var(--space-4);
 }
 .connect-pipeline .wizard-footer-left,
@@ -727,7 +727,7 @@
   flex-shrink: 0;
 }
 .connect-pipeline .wizard-ready {
-  border: 1px solid var(--rm-border);
+  border: var(--border-thin);
   border-radius: var(--rm-radius);
   background: var(--rm-surface);
   padding: var(--space-4);
@@ -746,7 +746,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--rm-border);
+  border-bottom: var(--border-thin);
   padding-bottom: var(--space-2);
 }
 .connect-pipeline .wizard-summary-label {

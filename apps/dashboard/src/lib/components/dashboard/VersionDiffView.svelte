@@ -350,7 +350,7 @@
     flex-wrap: wrap;
     gap: var(--space-2);
     padding: var(--space-1) 0;
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
 
   .diff-field-label {

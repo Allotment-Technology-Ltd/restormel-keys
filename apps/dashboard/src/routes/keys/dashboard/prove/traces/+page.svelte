@@ -150,7 +150,7 @@
     font-size: var(--text-mono-sm);
     background: var(--rm-surface);
     padding: 0.1rem 0.35rem;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-text);
   }
   .btn-link {
@@ -179,7 +179,7 @@
   }
   .traces-table td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     color: var(--rm-muted);
     vertical-align: middle;
   }

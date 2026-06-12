@@ -2578,7 +2578,7 @@
   .route-setup-save-row--footer {
     margin-top: var(--space-4);
     padding-top: var(--space-4);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .route-setup-unsaved {
     font-size: var(--text-sm);
@@ -2587,7 +2587,7 @@
   .route-setup-route-section {
     margin-bottom: var(--space-6);
     padding-bottom: var(--space-5);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .inspector-hint-link {
     display: inline;
@@ -2643,7 +2643,7 @@
     flex-wrap: wrap;
     gap: var(--space-1);
     padding: var(--space-1) 0 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     margin-top: var(--space-2);
   }
   .route-tab {
@@ -2695,7 +2695,7 @@
     margin: 0 0 var(--space-4);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     line-height: 1.45;
   }
@@ -2754,7 +2754,7 @@
     overflow-x: auto;
     overflow-y: visible;
     overscroll-behavior-x: contain;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background-color: color-mix(in oklab, var(--rm-surface) 92%, var(--rm-bg));
     background-image:
@@ -2767,14 +2767,14 @@
   .route-inspector-guard-shell {
     padding: 0 0 var(--space-4);
     margin-bottom: var(--space-4);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .route-inspector-panel {
     flex: 0 0 min(26rem, 40%);
     max-width: min(28rem, 100%);
     min-width: min(20rem, 100%);
     padding: 0;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background: var(--rm-surface-raised);
     color: var(--rm-text);
@@ -2799,7 +2799,7 @@
     justify-content: flex-start;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     flex-shrink: 0;
     background: var(--rm-surface-raised);
   }
@@ -2954,7 +2954,7 @@
     max-width: 100%;
     box-sizing: border-box;
     margin-top: 0;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-3);
     background: color-mix(in oklab, var(--rm-border) 6%, transparent);
@@ -3008,7 +3008,7 @@
   .inspector-switch-guard {
     margin: 0;
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     background: color-mix(in oklab, var(--amber-insight) 10%, var(--rm-surface-raised));
   }
   .inspector-switch-guard-msg {
@@ -3032,7 +3032,7 @@
     margin: 0 0 var(--space-3);
   }
   .add-step-dialog {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     padding: 0;
     max-width: min(100vw - 1.5rem, 34rem);
@@ -3056,7 +3056,7 @@
   .add-step-dialog-header {
     flex-shrink: 0;
     padding: var(--space-4) var(--space-4) var(--space-2);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .add-step-dialog-title {
     margin: 0 0 var(--space-1);
@@ -3184,7 +3184,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
     background: var(--rm-surface-raised);
     margin-top: auto;
   }
@@ -3280,7 +3280,7 @@
     width: 100%;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -3298,7 +3298,7 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger {
     background: transparent;
@@ -3357,7 +3357,7 @@
     gap: var(--space-3);
     margin-top: var(--space-5);
     padding-top: var(--space-4);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
     align-items: stretch;
   }
   .inspector-section-apply {
@@ -3429,7 +3429,7 @@
     padding: 0.1em 0.35em;
     border-radius: 4px;
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .muted {
     font-size: var(--text-sm);

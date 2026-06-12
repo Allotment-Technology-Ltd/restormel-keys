@@ -3,6 +3,7 @@
   import { navigating } from "$app/stores";
   import { page } from "$app/stores";
   import UsageChartsSection from "$lib/components/dashboard/UsageChartsSection.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   type Aggregate = {
@@ -167,12 +168,13 @@
     />
   {/if}
   {#if data.aggregates.length === 0 && data.recentLogs.length === 0}
-    <div class="empty-state" role="status">
-      <p class="empty-title">No requests yet</p>
-      <p class="empty-desc">Usage data will appear here once traffic flows through resolved routes.</p>
+    <EmptyState
+      title="No requests yet"
+      description="Usage data will appear here once traffic flows through resolved routes."
+    >
       <a href={DASHBOARD_BASE + "/routes"} class="btn btn-primary">Routes</a>
-      <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Logs & Traces</a>
-    </div>
+      <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Logs &amp; Traces</a>
+    </EmptyState>
   {:else}
   <section class="section overview" aria-labelledby="overview-heading">
     <h2 id="overview-heading" class="section-title">Overview</h2>
@@ -309,7 +311,7 @@
   .notice {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left-width: 4px;
     border-left-color: var(--rm-sage);
     border-radius: var(--radius-md);
@@ -322,21 +324,6 @@
   .error-msg {
     color: var(--coral-alert);
     font-size: var(--text-sm);
-  }
-  .empty-state {
-    background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    padding: var(--space-6);
-  }
-  .empty-title {
-    font-weight: 600;
-    margin: 0 0 var(--space-2);
-  }
-  .empty-desc {
-    color: var(--rm-muted);
-    font-size: var(--text-sm);
-    margin: 0 0 var(--space-4);
   }
   .btn {
     padding: var(--space-2) var(--space-4);
@@ -352,7 +339,7 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .section {
     margin-bottom: var(--space-6);
@@ -376,7 +363,7 @@
   }
   .metric {
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-3);
   }
@@ -401,7 +388,7 @@
   }
   .mix-card {
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-3);
   }
@@ -485,7 +472,7 @@
     gap: var(--space-3);
     align-items: center;
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
   }
   .log-time {

@@ -97,7 +97,7 @@
   }
   .code-block {
     background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-3) var(--space-4);
     font-family: "JetBrains Mono", monospace;

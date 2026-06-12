@@ -374,7 +374,7 @@
     margin-bottom: var(--space-6);
   }
   .coverage {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3) var(--space-4);
@@ -411,7 +411,7 @@
     width: 100%;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -434,7 +434,7 @@
     color: var(--rm-text);
   }
   .template-card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
@@ -478,7 +478,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .policy-link {
     flex: 1;
@@ -496,7 +496,7 @@
     font-size: var(--text-xs);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--coral-alert);
     cursor: pointer;
@@ -536,7 +536,7 @@
   .type-badge {
     font-size: var(--text-xs);
     border-radius: 999px;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     padding: 0.15rem 0.5rem;
     line-height: 1.2;
   }
@@ -561,7 +561,7 @@
   }
   .bind-step {
     margin-top: var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3);
@@ -593,7 +593,7 @@
     gap: var(--space-2);
   }
   .btn-ghost {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: transparent;
     color: var(--rm-muted);
   }

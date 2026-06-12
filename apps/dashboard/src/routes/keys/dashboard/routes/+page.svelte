@@ -374,7 +374,7 @@
     display: flex;
     align-items: stretch;
     gap: 0;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
   }
@@ -395,7 +395,7 @@
     font-size: var(--text-xs);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--coral-alert);
     cursor: pointer;
@@ -425,7 +425,7 @@
   .badge {
     font-size: var(--text-xs);
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: 999px;
     padding: 0.1rem 0.45rem;
     background: var(--rm-surface);
@@ -448,7 +448,7 @@
     font-size: var(--text-xs);
   }
   .btn {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-sm);
