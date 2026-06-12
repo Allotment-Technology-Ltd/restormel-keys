@@ -3,10 +3,11 @@
   "installCommand": "cd .. && pnpm install",
   "buildCommand": "pnpm run build",
   "ignoreCommand": "bash ../../scripts/vercel-ignore-dashboard.sh",
+  "_comment_crons": "Vercel Hobby allows crons at most once/day, so the */5 drain made every PRODUCTION deploy fail (previews ignore crons). Daily here is an interim reclaim safety net only — the real periodic drain moves to the Coolify worker daemon (docs/infra/coolify-migration-plan-2026-06.md). Remove this block entirely at Vercel decommission. The post-POST inline waitUntil drain still runs every ingest; this cron only catches stalled/reclaimable jobs.",
   "crons": [
     {
       "path": "/keys/dashboard/api/connect/ingest/drain",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
