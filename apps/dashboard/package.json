@@ -21,7 +21,8 @@
     "sync:aizolo-seed": "node scripts/sync-aizolo-catalog-seed.mjs",
     "migrate": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/apply-migrations.mts",
     "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/hosted-runtime-worker.ts",
-    "connect-ingest-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker.ts"
+    "connect-ingest-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker.ts",
+    "connect-ingest-worker:daemon": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker-daemon.ts"
   },
   "devDependencies": {
     "@testing-library/svelte": "^5.0.0",
