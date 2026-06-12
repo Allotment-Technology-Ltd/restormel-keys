@@ -20,6 +20,9 @@ jobs:
     runs-on: docker
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
       - uses: ./.forgejo/actions/pnpm-workspace-install
       - name: Build platform packages
         run: pnpm run build:platform-packages
@@ -35,6 +38,9 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
       - uses: ./.forgejo/actions/pnpm-workspace-install
       - name: Apply dashboard migrations (Forgejo DB)
         env:

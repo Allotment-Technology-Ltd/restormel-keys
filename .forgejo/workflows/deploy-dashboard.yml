@@ -67,6 +67,9 @@ jobs:
     steps:
       - name: Checkout
         uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
 
       - name: Derive image tags
         id: meta

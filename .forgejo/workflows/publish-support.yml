@@ -19,6 +19,9 @@ jobs:
     runs-on: docker
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
 
       - name: PNPM install
         uses: ./.forgejo/actions/pnpm-workspace-install

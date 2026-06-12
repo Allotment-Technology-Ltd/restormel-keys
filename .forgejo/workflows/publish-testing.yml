@@ -35,6 +35,9 @@ jobs:
       TESTING_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
 
       - name: Validate testing-github-action action.yml (YAML)
         run: bash scripts/validate-testing-github-action-yml.sh
