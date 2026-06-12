@@ -6,7 +6,12 @@ const config = {
   compilerOptions: { runes: false },
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter(),
+    // Pin functions to London: Neon Postgres + Neon Auth live in aws-eu-west-2 and the
+    // user base is UK/EU. Without this Vercel defaults to iad1 (US East) and every DB
+    // round-trip crosses the Atlantic (~80ms each; measured `x-vercel-id: lhr1::iad1`).
+    // Hobby supports one custom function region; route-level `config` exports (e.g. the
+    // ingest drain's maxDuration) inherit it because they don't set `regions` themselves.
+    adapter: adapter({ regions: ["lhr1"] }),
     paths: {
       base: "", // Served at /keys/dashboard on restormel.dev (no path prefix in app)
       relative: false,

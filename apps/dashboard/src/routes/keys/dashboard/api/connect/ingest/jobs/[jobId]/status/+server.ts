@@ -15,26 +15,31 @@ import {
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
-  const ctx = await resolveKnowledgeSessionContext(locals);
+  // Hot poll path (run console hits this every ~2.5s while a run is active):
+  // skip the unused projects list and run the three independent queries
+  // concurrently — previously 5 sequential Neon round-trips per poll (F8).
+  const ctx = await resolveKnowledgeSessionContext(locals, { includeProjects: false });
   if (isKnowledgeSessionFailure(ctx)) {
     return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
   }
 
-  const row = await getConnectIngestJobForWorkspace({
-    jobId: params.jobId,
-    workspaceId: ctx.workspaceId,
-  });
+  const sinceRaw = url.searchParams.get("since");
+  const since = sinceRaw != null ? Math.max(0, Number.parseInt(sinceRaw, 10) || 0) : 0;
+  const [row, logRows, logLineTotal] = await Promise.all([
+    getConnectIngestJobForWorkspace({
+      jobId: params.jobId,
+      workspaceId: ctx.workspaceId,
+    }),
+    listConnectIngestJobLogsSince({
+      jobId: params.jobId,
+      sinceId: since > 0 ? since : undefined,
+    }),
+    countConnectIngestJobLogs(params.jobId),
+  ]);
   if (!row) {
     return json({ error: "not_found", message: "Ingest job not found." }, { status: 404 });
   }
 
-  const sinceRaw = url.searchParams.get("since");
-  const since = sinceRaw != null ? Math.max(0, Number.parseInt(sinceRaw, 10) || 0) : 0;
-  const logRows = await listConnectIngestJobLogsSince({
-    jobId: params.jobId,
-    sinceId: since > 0 ? since : undefined,
-  });
-  const logLineTotal = await countConnectIngestJobLogs(params.jobId);
   const lastId = logRows.length > 0 ? logRows[logRows.length - 1]!.id : since;
 
   return json({
