@@ -633,8 +633,9 @@
           <div class="run-error-banner-actions">
             {#if failureHelp}
               <a class="btn btn-primary btn-sm" href={failureHelp.fixHref}>{failureHelp.fixLabel} →</a>
-              <!-- K4: failure codes map back to the standing readiness ledger (§3) -->
-              <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "#readiness"}>Check readiness</a>
+              <!-- K4: failure codes map back to the standing readiness ledger (§3),
+                   relocated onto /home with the dissolved Connect hub (R2). -->
+              <a class="btn btn-outline btn-sm" href={HOME_HREF + "#readiness"}>Check readiness</a>
             {/if}
             <button
               type="button"

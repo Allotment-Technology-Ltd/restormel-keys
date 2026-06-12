@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
-  import { INGEST_ROUTES_HREF, RUNS_HREF } from "$lib/nav-config";
+  import { HOME_HREF, INGEST_ROUTES_HREF, RUNS_HREF } from "$lib/nav-config";
   import { goto } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
@@ -336,8 +336,9 @@
                 <button type="button" class="btn btn-outline btn-sm" on:click={refreshPreflight}>
                   Re-check
                 </button>
-                <!-- K4: the launch gate consumes the same rows as the hub readiness ledger -->
-                <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "#readiness"}>
+                <!-- K4: the launch gate consumes the same rows as the readiness ledger,
+                     relocated onto /home with the dissolved Connect hub (R2). -->
+                <a class="btn btn-outline btn-sm" href={HOME_HREF + "#readiness"}>
                   Open readiness ledger
                 </a>
               </div>

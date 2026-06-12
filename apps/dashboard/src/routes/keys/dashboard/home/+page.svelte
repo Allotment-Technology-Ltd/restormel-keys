@@ -3,6 +3,7 @@
   import LivePulse from "$lib/components/dashboard/LivePulse.svelte";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectSetupLedger from "$lib/components/connect/ConnectSetupLedger.svelte";
+  import ConnectVerifiedReadiness from "$lib/components/connect/ConnectVerifiedReadiness.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import ConnectQualityHistory from "$lib/components/connect/ConnectQualityHistory.svelte";
@@ -327,12 +328,13 @@
 <section class="overview-journey panel" aria-labelledby="connect-journey-h">
   <div class="overview-section-head">
     <h2 id="connect-journey-h" class="overview-section-title">Verified context journey</h2>
-    <!-- K4: summary chip QUOTES the shared readiness ledger — links to the hub panel -->
+    <!-- K4: summary chip QUOTES the shared readiness ledger — links to the relocated
+         ledger panel below (R2 moved it from the dissolved Connect hub onto /home). -->
     {#await data.connectReadiness then connectReadiness}
       {#if connectReadiness}
         <a
           class="connect-readiness-chip connect-readiness-chip--{connectReadiness.status}"
-          href={CONNECT_BASE + "#readiness"}
+          href="#readiness"
           aria-label="{readinessChipLabel(connectReadiness)} — open the Connect readiness ledger"
         >
           {readinessChipLabel(connectReadiness)} →
@@ -461,6 +463,10 @@
             graphHref={CLAIMS_HREF}
           />
         {/if}
+
+        <!-- K4: "Ready to verify" — the standing readiness ledger (§3 coherence thesis),
+             relocated here with the dissolved hub home (R2); R3 mounts it properly. -->
+        <ConnectVerifiedReadiness readiness={hub.readiness} />
 
         <ConnectTrustScorecard scorecard={data.scorecard} />
 

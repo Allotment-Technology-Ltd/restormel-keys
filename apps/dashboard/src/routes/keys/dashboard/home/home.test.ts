@@ -23,6 +23,17 @@ vi.mock("$lib/server/db", () => ({
   listPolicyBindingsForWorkspace: vi.fn().mockResolvedValue([]),
 }));
 
+// R2: the relocated hub-home panel loads are mocked at their boundary — this
+// test only covers the Overview half of /home. Post-K4/R7 the real module
+// pulls in workspace-infrastructure → apply-recommended-routes and the full
+// readiness chain, none of which is under test here.
+vi.mock("$lib/server/connect/connect-hub-load", () => ({
+  loadConnectHubPage: vi.fn().mockResolvedValue(null),
+  loadConnectGraphPulse: vi.fn().mockResolvedValue(null),
+  loadConnectTrustScorecardPanel: vi.fn().mockResolvedValue(null),
+  loadConnectQualityHistoryPanel: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("$lib/server/entitlements", () => ({
   getWorkspaceEntitlements: vi.fn().mockResolvedValue(null),
 }));
