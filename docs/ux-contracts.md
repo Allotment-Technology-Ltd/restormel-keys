@@ -14,6 +14,12 @@ All user-facing surfaces must align with these contracts so the product feels co
 
 ## 1. Navigation model
 
+> **R1 NOTE — TARGET IA vs SHIPPED STATE.** This section records both what is shipped today (W1.x
+> baseline, "Shipped" column) and the approved target IA from the north-star redesign
+> (`docs/design/keys-northstar-redesign-2026-06.md`, all ten product decisions D1–D10 approved
+> 2026-06-12). Columns marked **R2 / R3 / …** are the Wave R stage that implements each piece.
+> R2 owns all route moves and redirects; a parallel R2 agent must not modify this file.
+
 ### Route taxonomy and canonical URLs
 
 | Label / concept   | URL                     | Use everywhere |
@@ -31,49 +37,71 @@ Site, docs, and dashboard are one app at restormel.dev (dashboard at `/keys/dash
 
 - **Marketing (site):** Nav links → Keys, Docs, Pricing, GitHub, Dashboard. Footer → same + Dashboard.
 - **Docs (in-app):** Sidebar → Overview, Framework compatibility, Cloud API; Product → Dashboard, Sign in.
-- **Dashboard:** The authenticated shell has three layers of navigation.
+- **Dashboard:** The authenticated shell. The target IA has two zones (Work + Foundation/Observe) and no hub tab strip.
 
-  **Sidebar — primary work destinations (always visible):**
+#### Sidebar — Work zone (six sections)
 
-  | Label      | URL                        | Notes |
-  |------------|----------------------------|-------|
-  | Overview   | `/keys/dashboard/activity` | Workspace home; login lands here. |
-  | Connect    | `/keys/dashboard/connect`  | Verified-context hub root; active for all `/connect/**`. |
-  | Testing    | `/keys/dashboard/testing`  | Auto-provisioned testing project hub. |
+Six sections read top-to-bottom as the product loop. **Shipped** = state after W1.x + W2.1; **Target** = the approved north-star IA (D1 approved); implementation stage listed.
 
-  **Sidebar — collapsible groups:**
+| Label       | Target URL    | Shipped URL / state                   | Status → Stage |
+|-------------|---------------|---------------------------------------|----------------|
+| **Home**    | `/home`       | `/activity` (Overview) + `/connect` (two separate homes) | Target: R3 — merges both |
+| **Sources** | `/sources`    | No top-level equivalent; content at `/connect/library` + `/connect/pipeline` | R4 |
+| **Runs**    | `/runs`       | `/connect/ingest`                     | R2 (move) |
+| **Claims**  | `/claims`     | `/connect/graph` — *"Claims", not "Graph": D2 approved; see §2 registry* | R2 (move + rename) |
+| **Prove**   | `/prove`      | `/connect/proof` + `/access/audit` (split) | R5 (assemble) |
+| **Agents**  | `/agents`     | `/connect/mcp` + `/dev-tools/**` (split) | R5 (assemble) |
+| **Testing** | `/testing`    | `/testing` — **unchanged (W3.8 landed)** | Shipped — KEEP |
 
-  | Group     | Items (label → URL)                                                                               |
-  |-----------|---------------------------------------------------------------------------------------------------|
-  | Configure | Connections → `/integrations`; Gateway keys → `/access`; Routes → `/routes`; Guard rails → `/policies`; Model catalog → `/models` |
-  | Monitor   | Usage → `/analytics`; Logs → `/logs`; Health → `/healthcheck`. Shows "coming soon" placeholder when the monitor flag is off. |
-  | More      | Try a request → `/sandbox`; CLI & agents → `/dev-tools`; Graph → `/graph` (hidden when graph module disabled). |
+Sidebar badge/pulse affordances (target):
+- Claims: review-count badge (was: Graph tab badge, W2.1 — relocates in R2).
+- Runs: live pulse dot when any run is active.
+- Live-run chip in topbar: `● INGEST 62% · 2:41` when active; links to `/runs/[id]`; stall turns amber. Implemented in R6.
 
-  **Topbar:** Product logo left; page title centre; help links right; **account menu** (avatar) far right — *required; see CTA grammar below. Implemented by stage W1.2.*
+#### Sidebar — Foundation group (collapsed by default)
 
-  **Connect hub tabs** (visible when on any `/connect/**` route):
+Contains the Keys infrastructure surfaces. Always reachable; never the story. Each surface is reached day-to-day via readiness-ledger fix links and exits via the returnTo bar.
 
-  | Tab label      | URL                           | Notes |
-  |----------------|-------------------------------|-------|
-  | Home           | `/connect`                    | exact-match active; ledger + trust scorecard + quality history. |
-  | Library        | `/connect/library`            | Readiness library (domain pack browser). |
-  | Ingest routes  | `/connect/models`             | Ingest routes and provider keys. **Canonical tab label.** See §2 registry note on this surface. |
-  | Setup          | `/connect/pipeline`           | 4-step onboarding wizard. |
-  | Runs           | `/connect/ingest`             | Ingest runs list → individual run console. |
-  | Graph          | `/connect/graph`              | Graph explorer: triage queue, tools, schema mapping. |
-  | Proof          | `/connect/proof`              | Graph-vs-baseline comparison + provenance drawer. |
-  | Agents         | `/connect/mcp`                | MCP / agent wiring (exact-match active). |
+| Label            | Target URL      | Shipped URL / state                          | Status → Stage |
+|------------------|-----------------|----------------------------------------------|----------------|
+| Connections      | `/integrations` | `/integrations` (Configure group)            | Shipped — label unchanged |
+| Gateway keys     | `/access`       | `/access` (Configure group)                  | Shipped — group renamed in R2 |
+| Routes           | `/routes`       | `/routes` (Configure group) — gains Ingestion view from `/connect/models` | R5 (view added) |
+| Guard rails      | `/policies`     | `/policies` (Configure group)                | Shipped — group renamed in R2 |
+| Projects         | `/projects`     | `/projects` — no nav entry today (orphan)    | R2 (gains nav entry) |
+| Model catalog    | `/models`       | `/models` (Configure group)                  | Shipped — group renamed in R2 |
+| Request tester   | `/sandbox`      | `/sandbox` (More group; label "Try a request") | R2 (label change + group move) |
 
-  **New surfaces (June 2026):** Trust scorecard and quality history live on the Connect hub Home tab. Readiness library is accessible via the Library tab. These are first-class surfaces, not experimental — they constitute the product's verification spine.
+#### Sidebar — Observe group (collapsed by default)
 
-- **Admin shell** (`/keys/admin`): Separate authenticated shell for founders and operators.
-  Entry point: topbar link from the Connect hub (shown only to admin-flagged accounts).
-  Contains: Founders Circle, User management, Package registry, Quality gates, Ingest quality.
-  The admin shell links back to the dashboard via "← Connect hub".
+| Label   | Target URL    | Shipped URL / state        | Status → Stage |
+|---------|---------------|----------------------------|----------------|
+| Logs    | `/logs`       | `/logs` (Monitor group)    | Shipped — group renamed in R2 |
+| Usage   | `/analytics`  | `/analytics` (Monitor group) | Shipped — group renamed in R2 |
+| Health  | `/healthcheck`| `/healthcheck` (Monitor group) | Shipped — group renamed in R2 |
+
+#### Connect hub tabs — DEPRECATED in target IA (D1 approved)
+
+The Connect hub tab strip dissolves in R2. These tabs are documented here as the shipped state only; do not add new Connect hub tabs. Each tab's content survives at its new canonical location.
+
+| Shipped tab label | Shipped URL         | Target location | Stage |
+|-------------------|---------------------|-----------------|-------|
+| Home              | `/connect`          | Merges into `/home` | R3 |
+| Library           | `/connect/library`  | `/sources` (Packs view) | R4 |
+| Ingest routes     | `/connect/models`   | `/routes` (Ingestion view) | R5 |
+| Setup             | `/connect/pipeline` | `/sources/ingest` (guided flow) | R4 |
+| Runs              | `/connect/ingest`   | `/runs` | R2 |
+| Graph             | `/connect/graph`    | `/claims` | R2 |
+| Proof             | `/connect/proof`    | `/prove` (Proof tab) | R5 |
+| Agents            | `/connect/mcp`      | `/agents` (Wiring tab) | R5 |
+
+**Admin shell** (`/keys/admin`): Unchanged. Separate authenticated shell for founders and operators. Entry: account menu (W1.2, shipped). Contains: Founders Circle, User management, Package registry, Quality gates, Ingest quality. Links back via "← Dashboard".
 
 ### Topbar titles
 
-Topbar titles are set by `nav-config.ts` `PATH_TO_TITLE` and `topbarTitle()`. Canonical titles:
+Topbar titles are set by `nav-config.ts` `PATH_TO_TITLE` and `topbarTitle()`.
+
+**Shipped titles** (W1.x baseline, to remain until R2 renames them):
 
 | Route prefix / path                  | Topbar title          |
 |--------------------------------------|-----------------------|
@@ -92,10 +120,37 @@ Topbar titles are set by `nav-config.ts` `PATH_TO_TITLE` and `topbarTitle()`. Ca
 | `/settings`                          | Profile               |
 | `/billing`                           | Subscription          |
 
-> **IA-8 resolution (W1.2):** `/billing` must have a `PATH_TO_TITLE` entry ("Subscription"). Until
-> W1.2 merges the topbar is blank on the billing page — this is a known gap tracked in that stage.
-> The topbar title for `/connect/models` is "Connect · Ingest routes" (matching the hub tab label
-> and this registry). "Connect · Models" is **deprecated** — do not use in new copy.
+**Target titles** (R2 implements; R3/R5 add the new sections):
+
+| Route prefix / path                  | Target topbar title   | Stage |
+|--------------------------------------|-----------------------|-------|
+| `/home`                              | Home                  | R3 |
+| `/sources`                           | Sources               | R4 |
+| `/sources/ingest/**`                 | Sources · Ingest      | R4 |
+| `/runs`                              | Runs                  | R2 |
+| `/runs/[id]`                         | Runs · Console        | R2 |
+| `/claims`                            | Claims                | R2 |
+| `/claims/memory`                     | Claims · Memory       | R2 |
+| `/prove`                             | Prove                 | R5 |
+| `/agents`                            | Agents                | R5 |
+| `/integrations`                      | Connections           | Shipped |
+| `/access`                            | Gateway keys          | Shipped |
+| `/routes`                            | Routes                | Shipped |
+| `/policies`                          | Guard rails           | R2 (label) |
+| `/projects`                          | Projects              | R2 |
+| `/models`                            | Model catalog         | Shipped |
+| `/sandbox`                           | Request tester        | R2 (label) |
+| `/analytics`                         | Usage                 | Shipped |
+| `/logs`                              | Logs                  | Shipped |
+| `/healthcheck`                       | Health                | R2 (label) |
+| `/settings`                          | Profile               | Shipped |
+| `/billing`                           | Subscription          | Shipped |
+
+> **IA-8 resolution (W1.2):** `/billing` has a `PATH_TO_TITLE` entry ("Subscription"). The topbar
+> title for the former `/connect/models` was "Connect · Ingest routes" (canonical); with R2 that
+> content moves to `/routes` (Ingestion view) and the title becomes "Routes". "Connect · Models"
+> is **deprecated** — do not use in any copy. "Connect · Graph" is **deprecated** — target title
+> is "Claims" (D2 approved; see §2 registry).
 
 Shared nav schema: site nav, docs sidebar, and dashboard sidebar use the same canonical URLs above. See [documentation-strategy.md](documentation-strategy.md) and [design-system-index.md](design-system-index.md).
 
@@ -110,30 +165,42 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 > [`verified-context-claims-ledger.md`](verified-context-claims-ledger.md). Stage W4.5 will
 > enforce this mechanically; build the habit now.
 
+> **R1 NOTE — new nouns (approved 2026-06-12):** The rows marked **[R1]** were added or updated by
+> Stage R1 following the north-star redesign decisions D1–D10. For decision D2 specifically: the
+> explorer section is **"Claims"** (not "Graph"). See the D2 entry below.
+
 | Term           | Use for | Enforced by |
 |----------------|---------|-------------|
-| **Gateway Key**      | The credential your app, CLI, or SDK uses to authenticate to Restormel (Cloud API). Created in the dashboard (Access); format `rk_...`. Not the same as a provider credential. | — |
+| **Gateway Key**      | The credential your app, CLI, or SDK uses to authenticate to Restormel (Cloud API). Created in the dashboard (Gateway keys); format `rk_...`. Not the same as a provider credential. | — |
 | **Provider credential** | Your OpenAI, Anthropic, Google, or other provider API key. Under **Connections**, stored **encrypted at rest** (hosted key) or as a **non-secret vault reference**; list/API responses are **masked** only. Optional; you can use Gateway Key only or both. | — |
 | **Workspace**        | Top-level account boundary; one default workspace per user, created when you sign in. | — |
 | **Project**          | Container for Gateway keys, routes, and usage. One per app or product. | — |
 | **Environment**      | Dev, staging, prod (or similar) within a project. | — |
 | **Provider integration** | A connected provider (OpenAI, Anthropic, etc.) with hosted encrypted key and/or credential reference; managed under **Connections**. Not "Connect a Provider" (that is a verb phrase for a CTA, not a noun for the surface). H1 on `/integrations` detail pages should name the provider, not the category. | W4.5 |
-| **Connections**      | The nav label and section heading for `/keys/dashboard/integrations`. Not "Integrations" in UI nav. | W4.5 |
+| **Connections**      | The nav label and section heading for `/keys/dashboard/integrations` (Foundation group). Not "Integrations" in UI nav. | W4.5 |
 | **Restormel Testing** (dashboard) | Hub at `/keys/dashboard/testing` for the auto-provisioned Testing **project**, environment IDs, and env snippets (with Gateway keys for CLI/CI). | — |
 | **Route**            | Per-project/environment: which model(s), fallbacks, and billing mode. | — |
 | **Model catalog**    | The suite-wide catalog of canonical models and provider variants at `/keys/dashboard/models`. Not "Models" alone when disambiguating from the Connect surface. | W4.5 |
-| **Ingest routes**    | The Connect hub tab at `/connect/models` listing ingest routes and provider keys. **Canonical label: "Ingest routes".** Not "Models & keys" (registry is hereby updated — this was the prior registry term and is now retired; the tab label is ground truth). Not "Models" alone in Connect context. | W1.3, W4.5 |
+| **Ingest routes**    | The view within Foundation › Routes (`/routes`, Ingestion view) listing ingest routes and provider keys. **Canonical label: "Ingest routes".** Not "Models & keys" (retired). Not "Models" alone in Connect context. In the shipped state this was the Connect hub tab at `/connect/models`; that URL moves in R2. | W1.3, W4.5 |
 | **Usage**            | The nav label and page heading for `/analytics`. Not "Usage & Analytics" — the H1 must match the nav label. | W4.5 |
 | **Logs & Traces**    | Request-level logs from the gateway. "Logs" is acceptable in nav for brevity; "Logs & Traces" for full headings and docs. | — |
 | **Dashboard**        | The app at restormel.dev/keys/dashboard (not "admin" or "portal"). | — |
 | **Graph store**      | Where a Connect knowledge graph persists: the workspace Neon database or a connected SurrealDB (Neo4j/Weaviate configs are saved ahead of adapter support). Not "graph database connection" or "target" in UI copy. | — |
 | **Domain pack**      | The ontology + prompts + tables that govern how documents become a graph. Not "schema pack" or "ontology pack". | — |
 | **Ingest run**       | One execution of the Connect pipeline over selected documents. **Not "job" or "import" in UI copy.** Every surface that says "job", "ingest job", "knowledge ingest job", or "import" must be updated to "Ingest run" / "ingest run" (capitalised as sentence case; plural "Ingest runs"). | W1.3, W4.5 |
-| **Trust scorecard**  | The hub-Home component showing the factor-breakdown trust score. Not "trust score panel" or "quality scorecard". One trust number (the scorecard service formula); all other surfaces that show a trust figure must quote this component, not compute their own. | W2.3 |
-| **Quality history**  | The verdict timeline on the hub Home tab. Not "eval verdict history" (that is jargon); `aria-label` must use "Quality history". | W2.3, W4.5 |
-| **Evidence dossier** | The graph-explorer claim detail panel (W2.2): verdict stamp, evidence excerpt with the bound span highlighted, chain of custody, "Re-check now", claim-versions ledger. Not "evidence panel" or "claim inspector". Verification-state copy must match the EBV states (supported / inferred / unverified / contradicted / excluded) and may only assert what claims-ledger rows 2, 9, 10 prove. | W2.2 |
-| **Evidence facet**   | The explorer queue filter over EBV verification states (`?filter=supported` etc. — the W2.1 URL contract values). A claim with no EBV row reads "predates evidence binding", never silently bucketed into a state. | W2.2 |
-| **Readiness library**| Domain pack browser at `/connect/library`. Not "library" alone when the context is ambiguous. | — |
+| **Trust scorecard**  | The component showing the factor-breakdown trust score. Not "trust score panel" or "quality scorecard". One trust number (the scorecard service formula); all other surfaces that show a trust figure must quote this component, not compute their own. Mounted on the Home masthead in the target IA (W2.3 + R3). | W2.3 |
+| **Quality history**  | The verdict timeline. Not "eval verdict history" (that is jargon); `aria-label` must use "Quality history". | W2.3, W4.5 |
+| **Evidence dossier** | The Claims section claim detail panel (W2.2): verdict stamp, evidence excerpt with the bound span highlighted, chain of custody, "Re-check now", claim-versions ledger. Not "evidence panel" or "claim inspector". Verification-state copy must match the EBV states (supported / inferred / unverified / contradicted / excluded) and may only assert what claims-ledger rows 2, 9, 10 prove. | W2.2 |
+| **Evidence facet**   | The Claims queue filter over EBV verification states (`?filter=supported` etc. — the W2.1 URL contract values, which survive the `/connect/graph` → `/claims` redirect). A claim with no EBV row reads "predates evidence binding", never silently bucketed into a state. | W2.2 |
+| **[R1] Home**        | The merged workspace landing page at `/home`. Replaces both `/activity` (Overview) and `/connect` (Connect hub home). Not "Overview", not "Connect home". The product loop starts here. Implemented by R3. | R1 |
+| **[R1] Sources**     | The section at `/sources` for documents, domain packs, and changed-source state. Not "Library" (that was the pack browser tab label; "Packs" is the sub-view name). The primary CTA "Ingest" launches the guided flow. Implemented by R4. | R1 |
+| **[R1] Runs**        | The section at `/runs` for the ingest runs list and individual run console. Replaces "Connect · Runs" (the shipped hub tab label for `/connect/ingest`). Not "Ingest" as a section label (that is the CTA verb). | R1 |
+| **[R1] Claims**      | The section at `/claims` for the explorer: review desk, evidence dossiers, memory inbox, as-of. **Decision D2 (approved 2026-06-12): "Claims", not "Graph".** Three reasons: (a) `/keys/dashboard/graph` is taken by the Restormel Graph module stub — real URL collision; (b) the operator's unit of work is a claim; (c) the entire verification vocabulary already uses "claims". Non-use synonyms: do NOT use "Graph", "Knowledge graph explorer", or "Graph explorer" as a section label in nav, copy, or docs — "Claims" is the canonical term. The underlying storage is still a graph; "graph store" (for the database noun) remains correct. | R1 |
+| **[R1] Prove**       | The section at `/prove` for: the graph-vs-baseline proof surface (Proof tab), trace browser (Traces tab), audit log (Audit tab — moved from `/access/audit`, D5 approved), and the public scorecard Share tab (D7 approved). Not "Proof" as a section label (that is one tab within Prove). Claim: an audit log is a proof artefact, not a key-management appendix. | R1 |
+| **[R1] Agents**      | The section at `/agents` for MCP/agent wiring, agent gateway keys, and CLI/MCP/AAIF catalogs. Merges `/connect/mcp` + `/dev-tools/**`. Not "CLI & agents" (shipped More-group label; retired in R2). | R1 |
+| **[R1] Foundation**  | The collapsed sidebar group containing: Connections, Gateway keys, Routes, Guard rails, Projects, Model catalog, Request tester. Not "Configure" (shipped group label; retired in R2). The Keys surfaces kneel to the work sections — reachable via nav or ledger fix links, never the primary story. | R1 |
+| **[R1] Request tester** | The surface at `/sandbox`. Not "Try a request" (shipped More-group label; retired in R2). Workspace mode (W3.2) builds here; Agents links to it. | R1 |
+| **Readiness library**| Domain pack browser — shipped as `/connect/library`; moves to `/sources` (Packs view) in R4. Not "library" alone when the context is ambiguous. | — |
 | Sign in        | Auth CTA (not "Login", "Log in"). | — |
 | Cloud API      | The HTTP API exposed via Zuplo gateway. | — |
 | Zuplo gateway  | The gateway that fronts the Cloud API; consumer keys `zpka_...`, backend key is a Gateway Key `rk_...`. | — |
@@ -227,3 +294,102 @@ When adding or changing copy or nav, check this document and [documentation-stra
   copy is bound to claims-ledger rows 2 ("supported requires a bound span"), 9
   ("re-check fails closed") and 10 ("uncertainty goes to review"); a claim with no
   EBV row must read "predates evidence binding", never be bucketed into a state.
+
+### IA decision record + re-baseline v2 — June 2026 (Stage R1)
+
+**Source:** [`docs/design/keys-northstar-redesign-2026-06.md`](design/keys-northstar-redesign-2026-06.md) — all ten product decisions D1–D10 approved 2026-06-12. This re-baseline records those decisions as contracts and provides the redirect map R2 implements.
+
+**Summary of changes:**
+
+- **§1 navigation model rewritten to the TARGET IA (D1 approved: dissolve the Connect hub).**
+  The section now carries a "shipped vs target (R2/R3/…)" status column per surface.
+  The six target work sections (Home, Sources, Runs, Claims, Prove, Agents), two collapsed groups
+  (Foundation, Observe), and Testing are documented alongside their shipped equivalents and the
+  Wave R stage that delivers each. The Connect hub tab strip is marked DEPRECATED in target IA —
+  do not add new Connect hub tabs.
+
+- **§1 topbar title table split into "shipped" and "target" tables.** Target titles added for
+  every new section and relocated surface. "Connect · Graph" deprecated — target is "Claims"
+  (D2 approved). "Connect · Models" remains deprecated (carried from W1.1).
+
+- **§2 registry: eight new canonical nouns added (all [R1] tagged):** Home, Sources, Runs,
+  Claims, Prove, Agents, Foundation, Request tester. Each entry records non-use synonyms
+  explicitly — for example: "Claims" is the canonical term; do NOT use "Graph", "Knowledge graph
+  explorer", or "Graph explorer" as a section label.
+
+- **§2 registry: Decision D2 recorded.** The explorer section is **"Claims"** (`/claims`), not
+  "Graph". Three-reason justification: URL collision with the Restormel Graph module stub;
+  "claim" is the operator's unit of work; the entire verification vocabulary already uses
+  "claims". Registry entry for Claims includes the full non-use list.
+
+- **Redirect-map appendix added (§A).** Every route in disposition §2.3 of the redesign doc is
+  listed with disposition, old URL, target URL, query-param preservation notes, and the
+  implementing stage. This is the contract R2 implements.
+
+- **Roadmap amended** (in `docs/dashboard-world-class-roadmap.md`): re-scope notes for K4
+  (one mount: Home masthead), W3.6 (chip mounts: Home + Runs), W4.6 (mobile folds into R6),
+  W2.3 (mount: Home masthead) — each with a changelog block citing this redesign doc.
+
+---
+
+## A. Redirect map — R2 implementation contract
+
+> **This appendix is the contract R2 implements.** Every row must be covered by a redirect
+> in R2 (308 permanent). Query-param preservation is an explicit acceptance criterion for R2;
+> rows marked "params preserved" must carry those params through the redirect. Do not modify
+> this appendix except via a follow-on R-stage changelog entry.
+>
+> Legend: **KEEP** (survives in place) · **MOVE** (same page, new URL, permanent redirect) ·
+> **MERGE-INTO** (content absorbed, route 308s) · **REDESIGN** (page rebuilt, URL changes) ·
+> **KILL** (deleted; redirect only where there are known external links).
+
+| Old route | Disposition | Target route | Query params preserved | Notes | Stage |
+|-----------|-------------|--------------|------------------------|-------|-------|
+| `/keys/dashboard` (→ `/activity`) | REDESIGN | `/home` | — | Login now lands on `/home` (R3); until R3, keeps landing on `/activity` | R3 |
+| `/activity` | MERGE-INTO | `/home` | — | W2.6 (in flight) is the down payment; R3 completes the merge and fires the 308 | R3 |
+| `/connect` (hub home) | MERGE-INTO | `/home` | — | Fires the 308 only when R3 merges | R3 |
+| `/connect/library` | MERGE-INTO | `/sources` (Packs view) | — | A pack is chosen per ingest; belongs with Sources | R4 |
+| `/connect/models` | MOVE | `/routes` (Ingestion view) | — | Day-to-day reach via ledger fix links; "Ingest routes" label survives as the view name inside Routes | R5 |
+| `/connect/pipeline` | REDESIGN | `/sources/ingest` (guided flow) | `?step` | Wizard reborn as a guided flow; `?step` preserved by redirect mapping to new panel ids | R4 |
+| `/connect/pipeline?step=*` | REDESIGN | `/sources/ingest?step=*` | `?step` | Each wizard step id maps to a flow panel id (R4 defines the mapping) | R4 |
+| `/connect/ingest` | MOVE | `/runs` | — | Runs list; page intact post-W1.3 | R2 |
+| `/connect/ingest/[jobId]` | MOVE | `/runs/[id]` | — | Run console; intact post-W1.4; W3.1/W4.1 land here | R2 |
+| `/connect/ingest/new` | KILL | — | — | Zero inbound links; duplicates the flow. Decision D8 approved. | R2 |
+| `/connect/graph` | MOVE | `/claims` | `?filter`, `?unit`, `?workspace`, `?focus` | W2.1 URL contract: `?filter` and `?unit` survive the redirect (explicit R2 acceptance criterion — redirect unit test required). Explorer intact. | R2 |
+| `/connect/proof` | MOVE | `/prove` (Proof tab) | — | Joined by traces + audit + share in R5 | R5 |
+| `/connect/mcp` | MOVE | `/agents` (Wiring tab) | — | Agent setup intact incl. key handoff | R5 |
+| `/connect/memory` *(W2.4 in flight)* | MOVE | `/claims/memory` | — | Memory inbox lands per its spec, then relocates here (nav entry only — it is a component) | R2 |
+| `/testing` | KEEP | `/testing` | — | W3.8 landed here — unchanged | Shipped |
+| `/integrations` | KEEP | Foundation › Connections | — | K2/K6 land here unchanged | Shipped |
+| `/integrations/[id]` | KEEP | Foundation › Connections | — | K2/K6 land here unchanged | Shipped |
+| `/access` | KEEP | Foundation › Gateway keys | — | K1 lands here; deep link from Prove to audit preserved | Shipped |
+| `/access/audit` | MOVE | `/prove` (Audit tab) | — | Audit log is a proof artefact (journey C). Deep link kept from `/access`. D5 approved. | R5 |
+| `/routes` | KEEP | Foundation › Routes | — | Gains Ingestion view from `/connect/models` in R5 | R5 (view) |
+| `/projects` | KEEP | Foundation › Projects | — | Projects finally gets a nav entry (R2) | R2 (nav) |
+| `/projects/[id]` | KEEP | Foundation › Projects | — | — | Shipped |
+| `/projects/[id]/routes` | KEEP | Foundation › Projects | — | W1.5 shipped; W3.5 lands here | Shipped |
+| `/projects/[id]/routes/[routeId]` | KEEP | Foundation › Projects | — | Route builder unchanged | Shipped |
+| `/projects/[id]/usage` | KILL | `/analytics?project=` | `?project` | Stub that links to Analytics anyway. D8 approved. | R2 |
+| `/policies` | KEEP | Foundation › Guard rails | — | — | Shipped |
+| `/policies/[id]` | KEEP | Foundation › Guard rails | — | — | Shipped |
+| `/models` | KEEP | Foundation › Model catalog | — | — | Shipped |
+| `/models/[id]` | KEEP | Foundation › Model catalog | — | — | Shipped |
+| `/lifecycle` | KILL | — | — | Honest stub, unlinked; restore when product exists. D8 approved. | R2 |
+| `/analytics` | KEEP | Observe › Usage | — | Mock-fallback fix stays in W4.7 | Shipped |
+| `/logs` | KEEP | Observe › Logs | — | W3.3 + K5 source tag land here | Shipped |
+| `/healthcheck` | KEEP | Observe › Health | — | — | Shipped |
+| `/sandbox` | MOVE (label only) | Foundation › Request tester | — | URL stays `/sandbox`; label changes to "Request tester" in R2; W3.2 builds workspace mode | R2 (label) |
+| `/dev-tools` | MERGE-INTO | `/agents` (Catalogs tab) | — | CLI & agents was always consumption-wiring; W2.4's MCP catalog mounts here | R5 |
+| `/dev-tools/aaif` | MERGE-INTO | `/agents` (Catalogs tab) | — | See above | R5 |
+| `/dev-tools/cli` | MERGE-INTO | `/agents` (Catalogs tab) | — | See above | R5 |
+| `/dev-tools/mcp` | MERGE-INTO | `/agents` (Catalogs tab) | — | See above | R5 |
+| `/copy-for-ci` | KEEP | Testing hub tab | — | — | Shipped |
+| `/copy-for-cli` | KEEP | redirect (already is) | — | — | Shipped |
+| `/cli/connect` | KEEP | out-of-nav functional page | — | Device-code approval | Shipped |
+| `/graph` (Restormel Graph stub) | KILL (from nav) | route may remain as placeholder | — | Leaves the sidebar until Phase 6 ships; frees the "graph" mental slot for Claims. D8 approved. | R2 (nav only) |
+| `/settings` | KEEP | account menu | — | — | Shipped |
+| `/billing` | KEEP | account menu | — | W1.6 shipped | Shipped |
+| `/login`, `/logout` | KEEP | — | — | — | Shipped |
+| `/admin`, `/admin/users`, `/admin/package-registry` (legacy 301s) | KILL | — | — | The 301 targets are stable; one release of grace then delete. D8 approved. | R2 |
+| `/keys/admin/*` (5 consoles) | KEEP | separate admin shell | — | Unchanged | Shipped |
+| `/prototype/brutalist-dashboard` | KILL | — | — | Confirms W4.7. D8 approved. | R2 |
