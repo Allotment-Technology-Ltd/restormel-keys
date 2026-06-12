@@ -882,17 +882,31 @@
        .cohort-complete-actions — Start next run (createReadinessRun)
        .revalidate-actions      — Auto-remediate (startAutoRemediation)
        .wizard-actions          — scan / saveMapping / syncPack / import /
-                                  linkSources / embed / validate (readiness wizard) */
+                                  linkSources / embed / validate (readiness wizard)
+
+     Also covered (added in the fix-forward audit):
+       .lib-new                 — readiness library "New run" create (createReadinessRun, POST)
+       .lib-run-archive         — readiness library archive (archiveReadinessRun, PATCH)
+       .run-error-banner-actions — failed-run banner restart (restartJob, POST /restart)
+       .switcher-control        — /home active-graph select on:change (POST /<id>/activate)
+
+     The verdict keyboard shortcuts (a/w/u) bypass CSS hiding, so they are guarded
+     separately in ConnectGraphExplorer's handleReviewKeydown, which early-returns
+     when a [data-mobile-readonly="true"] shell is present in the DOM. */
   .shell-mobile-readonly :global([data-mobile-hide]),
   .shell-mobile-readonly :global(.run-actions),
   .shell-mobile-readonly :global(.run-cancel-wrap),
+  .shell-mobile-readonly :global(.run-error-banner-actions),
   .shell-mobile-readonly :global(.review-actions),
   .shell-mobile-readonly :global(.dossier-actions),
   .shell-mobile-readonly :global(.dossier-recheck),
   .shell-mobile-readonly :global(.remove-section),
   .shell-mobile-readonly :global(.cohort-complete-actions),
   .shell-mobile-readonly :global(.revalidate-actions),
-  .shell-mobile-readonly :global(.wizard-actions) {
+  .shell-mobile-readonly :global(.wizard-actions),
+  .shell-mobile-readonly :global(.lib-new),
+  .shell-mobile-readonly :global(.lib-run-archive),
+  .shell-mobile-readonly :global(.switcher-control) {
     display: none !important;
   }
   .shell-mobile-readonly :global(a),

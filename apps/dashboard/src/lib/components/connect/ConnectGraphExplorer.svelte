@@ -1578,21 +1578,39 @@
     return target.isContentEditable;
   }
 
+  /**
+   * R6 mobile read-only tier: the dashboard layout renders the shell with
+   * `data-mobile-readonly="true"` on a phone-sized read-only surface and hides
+   * the mutation chrome with CSS. CSS can't stop the verdict keyboard shortcuts
+   * (a/w/u → performReview, a PATCH), so we guard them here: if a read-only shell
+   * is in the DOM, the mutating shortcuts early-return. Read-only navigation keys
+   * (n/p/arrows) are unaffected — they're handled below this guard.
+   */
+  function isMobileReadonlyActive(): boolean {
+    if (typeof document === "undefined") return false;
+    return document.querySelector('[data-mobile-readonly="true"]') !== null;
+  }
+
   function handleReviewKeydown(event: KeyboardEvent) {
     if (!reviewEnabled || !selectedUnit || isReviewShortcutTarget(event.target)) return;
 
+    const mobileReadonly = isMobileReadonlyActive();
+
     const key = event.key;
     if (key === "a" || key === "A") {
+      if (mobileReadonly) return;
       event.preventDefault();
       void performReview(selectedUnit, "ok");
       return;
     }
     if (key === "w" || key === "W") {
+      if (mobileReadonly) return;
       event.preventDefault();
       void performReview(selectedUnit, "weak");
       return;
     }
     if (key === "u" || key === "U") {
+      if (mobileReadonly) return;
       event.preventDefault();
       void performReview(selectedUnit, "unsupported");
       return;
