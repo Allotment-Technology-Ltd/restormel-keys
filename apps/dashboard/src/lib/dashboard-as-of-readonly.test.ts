@@ -89,3 +89,90 @@ describe("W2.5 as-of read-only contract", () => {
     expect(explorerSrc).toMatch(/History not available for this graph/);
   });
 });
+
+/**
+ * W2.5 B1/M1 honesty contract — counts, verdicts and provenance are NOT projected onto
+ * the as-of instant. Under an APPLIED historical view they are absent-stated, the banner
+ * scopes its promise to claim text + which version was live, the "loaded" label does not
+ * mix projected/current bases, and substituted prior versions are flagged not-historical.
+ */
+describe("W2.5 as-of historical-honesty contract (B1/M1)", () => {
+  it("derives asOfProjected = active AND the data layer actually applied the projection", () => {
+    expect(explorerSrc).toMatch(
+      /\$:\s*asOfProjected\s*=\s*asOfActive\s*&&\s*asOfStatus\?\.applied\s*===\s*true/,
+    );
+  });
+
+  it("absent-states the bento + validation breakdown under an applied historical view (B1)", () => {
+    // The bento/validation card is wrapped in an `{#if asOfProjected}` branch that shows
+    // an honest absent-state instead of current numbers, and only renders the bento grid
+    // in the `{:else}`.
+    expect(explorerSrc).toMatch(/\{#if asOfProjected\}/);
+    expect(explorerSrc).toMatch(/Counts at this instant aren't available/);
+    // The bento grid (current numbers) is no longer rendered unconditionally.
+    const bentoIdx = explorerSrc.indexOf("<BrutalBentoGrid");
+    const guardIdx = explorerSrc.lastIndexOf("{#if asOfProjected}", bentoIdx);
+    expect(guardIdx, "the bento grid must sit inside an asOfProjected else-branch").toBeGreaterThan(-1);
+  });
+
+  it("suppresses the evidence facet chip counts (current-only) under an applied historical view (B1)", () => {
+    expect(explorerSrc).toMatch(/\{#if evidenceStateCounts && !asOfProjected\}/);
+    expect(explorerSrc).toMatch(/counts at this instant aren't available/);
+  });
+
+  it("does not mix projected loaded-count over the CURRENT total in the loaded label (B1)", () => {
+    // Under asOfProjected the label drops the "of <current total>" and reports only the
+    // loaded projection count.
+    expect(explorerSrc).toMatch(/unitsLoadedLabel\s*=\s*asOfProjected/);
+    expect(explorerSrc).toMatch(/in this projection \(loaded\)/);
+  });
+
+  it("the active (non-degraded) banner promise is scoped to claim text + version, NOT counts/verification states", () => {
+    // The old over-promise ("Counts, claim text and verification states reflect that instant")
+    // must be gone.
+    expect(explorerSrc).not.toMatch(/Counts, claim text and verification states reflect that instant/);
+    // The new copy promises claim text + which version was live, and says counts/verdicts
+    // are NOT historical.
+    expect(explorerSrc).toMatch(/claim text that was live at that instant/);
+    expect(explorerSrc).toMatch(/are\s*<strong>not<\/strong>\s*reconstructed for the past/);
+  });
+
+  it("substituted prior-version rows are labelled 'verdict not historical' rather than showing a verdict (M1)", () => {
+    expect(explorerSrc).toMatch(/unit\.asOfHistorical/);
+    expect(explorerSrc).toMatch(/verdict not historical/);
+    expect(explorerSrc).toMatch(/selectedUnit\.asOfHistorical/);
+  });
+});
+
+/**
+ * W2.5 minor 1 — pagination basis. The server pages CURRENT rows by offset; the client
+ * must offset by that raw-row basis (not the projected `units.length`) and defer the
+ * has-more decision to the server, so "Load more" terminates honestly under as-of.
+ */
+describe("W2.5 as-of pagination basis (minor 1)", () => {
+  it("load-more offsets by the raw current-row basis, not the projected units.length", () => {
+    // The next offset is the tracked raw-row offset (fallback to SSR page extent) — the
+    // old `fetchUnitsPage(units.length, …)` must be gone.
+    expect(explorerSrc).not.toMatch(/fetchUnitsPage\(units\.length,/);
+    expect(explorerSrc).toMatch(/const nextOffset\s*=\s*\n?\s*rawRowsFetched\s*\?\?/);
+  });
+
+  it("hasMoreUnits prefers the server's has_more and never trusts projected length under as-of", () => {
+    expect(explorerSrc).toMatch(/serverHasMore\s*\?\?/);
+    // Under an applied historical view the current-only estimate is NOT used (would never
+    // terminate); the code defers to the server (false fallback).
+    expect(explorerSrc).toMatch(/asOfProjected \? false : stats != null && units\.length < stats\.units/);
+  });
+});
+
+/**
+ * W2.5 minor 4 — fetch-failure honesty. A thrown as-of fetch must drop the confident
+ * banner to a degraded state, not leave "Viewing graph as of …" over an errored list.
+ */
+describe("W2.5 as-of fetch-failure honesty (minor 4)", () => {
+  it("sets a degraded asOfStatus when the as-of fetch throws", () => {
+    expect(explorerSrc).toMatch(/reason:\s*"as_of_fetch_failed"/);
+    // The degraded banner has explicit copy for the errored list.
+    expect(explorerSrc).toMatch(/could not be loaded — the list/);
+  });
+});

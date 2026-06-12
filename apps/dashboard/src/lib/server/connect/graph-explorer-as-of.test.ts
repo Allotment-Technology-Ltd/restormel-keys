@@ -139,6 +139,85 @@ describe("projectUnitsAsOf — supersession boundary", () => {
 });
 
 // ---------------------------------------------------------------------------
+// M1 — substituted/superseded rows must NOT inherit today's triage fields.
+// A May version row carries text + verification state only; reviews write no
+// version rows, so validationStatus/note/source/author are NOT reconstructible
+// at the instant and must be neutralized + flagged (never shown as historical).
+// ---------------------------------------------------------------------------
+
+describe("projectUnitsAsOf — substituted-row triage neutralization (M1)", () => {
+  const T = "2026-05-01T00:00:00.000Z";
+  // CURRENT unit u2 carries JUNE triage fields (today's verdict, note, source, author).
+  const currentUnit = unit("u2", "v2 text", {
+    validationStatus: "ok",
+    validationNote: "reviewed in June",
+    sourceTitle: "June source",
+    sourceUrl: "https://example.com/june",
+    sourceKind: "doc",
+    author: "June Author",
+    unitType: "claim",
+    domain: "philosophy",
+  });
+  const rows = [
+    row({ unitId: "u1", versionNo: 1, text: "v1 text", validFrom: "2026-01-01T00:00:00.000Z", validTo: T, supersededBy: "u2", verificationState: "inferred" }),
+    row({ unitId: "u2", versionNo: 2, text: "v2 text", validFrom: T, validTo: null }),
+  ];
+
+  it("a substituted prior version drops today's verdict/note/source/author and flags asOfHistorical", () => {
+    const res = projectUnitsAsOf({
+      units: [currentUnit],
+      rows,
+      asOf: new Date("2026-04-30T23:59:59.000Z"),
+      includeSuperseded: false,
+    });
+    expect(res.substituted).toBe(1);
+    const [served] = res.units;
+    expect(served.id).toBe("u1"); // prior unit id (cohort invariant)
+    expect(served.text).toBe("v1 text");
+    // Today's triage/provenance fields are NEUTRALIZED — never inherited from June.
+    expect(served.validationStatus).toBeNull();
+    expect(served.validationNote).toBeNull();
+    expect(served.sourceTitle).toBeNull();
+    expect(served.sourceUrl).toBeNull();
+    expect(served.sourceKind).toBeNull();
+    expect(served.author).toBeNull();
+    // The row is flagged so the UI labels its verdict as not-historical.
+    expect(served.asOfHistorical).toBe(true);
+    // Non-triage descriptive fields the version row doesn't reshape are preserved.
+    expect(served.unitType).toBe("claim");
+    expect(served.domain).toBe("philosophy");
+    // The version row's recorded verification state IS surfaced (it was recorded at t).
+    expect(served.evidence?.verificationState).toBe("inferred");
+  });
+
+  it("a KEPT (current-version) row at t is NOT flagged and keeps its current fields", () => {
+    const res = projectUnitsAsOf({
+      units: [currentUnit],
+      rows,
+      asOf: new Date(T), // exactly at T → current version u2 is live
+      includeSuperseded: false,
+    });
+    expect(res.substituted).toBe(0);
+    const [served] = res.units;
+    expect(served.id).toBe("u2");
+    expect(served.asOfHistorical).toBeFalsy();
+    expect(served.validationStatus).toBe("ok");
+  });
+
+  it("audit-appended superseded rows are also neutralized + flagged", () => {
+    const res = projectUnitsAsOf({ units: [currentUnit], rows, asOf: null, includeSuperseded: true });
+    const appended = res.units.find((u) => u.id === "u1")!;
+    expect(appended.asOfHistorical).toBe(true);
+    expect(appended.validationStatus).toBeNull();
+    expect(appended.author).toBeNull();
+    // The kept current row is untouched.
+    const current = res.units.find((u) => u.id === "u2")!;
+    expect(current.asOfHistorical).toBeFalsy();
+    expect(current.validationStatus).toBe("ok");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // applyExplorerAsOf — provider-driven honesty
 // ---------------------------------------------------------------------------
 

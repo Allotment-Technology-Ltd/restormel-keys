@@ -104,6 +104,15 @@ export type ConnectGraphUnitView = {
    * consumers ignore it).
    */
   evidence?: UnitEvidenceSummary | null;
+  /**
+   * W2.5 — set only when this row is a SUBSTITUTED/superseded prior version served under
+   * an as-of/audit projection. Such rows carry the version's recorded text + verification
+   * state, but their triage/provenance fields are NOT reconstructible at the instant
+   * (reviews write no version rows) and are neutralized to null. The UI uses this flag to
+   * label the row's verdict as "current verdict — not historical" rather than implying the
+   * shown (neutral) verdict was the verdict at that time. Additive: older consumers ignore.
+   */
+  asOfHistorical?: boolean;
 };
 
 /** Per-state counts of CURRENT claim versions for the explorer's Evidence facet. */

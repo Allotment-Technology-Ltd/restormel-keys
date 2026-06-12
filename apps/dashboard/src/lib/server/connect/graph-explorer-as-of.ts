@@ -108,6 +108,22 @@ function unitFromVersionRow(
     ...template,
     id: row.unitId,
     text: row.text,
+    // Mark this as a prior version served historically: the UI labels its (neutralized)
+    // verdict/provenance as "current verdict — not historical" rather than as verdict-at-t.
+    asOfHistorical: true,
+    // The TODAY-ONLY triage/provenance fields are reconstructible from NO version row —
+    // operator reviews write `connect_claim_versions` no rows, and the source binding on
+    // the CURRENT unit describes today's claim, not this older version. Carrying the
+    // template's June `validationStatus`/`validationNote`/source/author onto a May row
+    // would be silent promotion of current triage as historical (the same instinct the
+    // module already applies to `evidence`). Neutralize them; the UI labels the verdict
+    // as "current verdict — not historical" rather than fabricating a verdict-at-t.
+    validationStatus: null,
+    validationNote: null,
+    sourceTitle: null,
+    sourceUrl: null,
+    sourceKind: null,
+    author: null,
     // The version row carries the EBV verification state + judge attribution recorded at
     // that time. The CURRENT-version evidence binding/dossier does NOT describe this older
     // version, so the span/judge/versions are left null (claiming them for a prior version

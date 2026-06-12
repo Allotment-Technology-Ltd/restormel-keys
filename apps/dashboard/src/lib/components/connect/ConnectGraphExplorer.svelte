@@ -82,6 +82,12 @@
     author: string | null;
     /** EBV summary (W2.2 Evidence Dossier); null/absent = predates evidence binding. */
     evidence?: UnitEvidenceSummary | null;
+    /**
+     * W2.5 — true when this row is a substituted/superseded PRIOR version served under an
+     * as-of/audit projection. Its triage/provenance fields are neutralized server-side
+     * (not reconstructible at the instant); the UI labels the verdict as not-historical.
+     */
+    asOfHistorical?: boolean;
   };
   type Stats = {
     units: number;
@@ -224,6 +230,16 @@
   let extraUnits: Unit[] = [];
   let loadingMoreUnits = false;
   let loadMoreError: string | null = null;
+  /**
+   * W2.5 pagination basis (minor 1): the server pages CURRENT rows by `offset`, but in
+   * as-of mode the projected list length differs from the current-row count (born-after-t
+   * rows are excluded, substituted rows replace 1:1, audit rows append). Paging by the
+   * projected `units.length` would skip/repeat rows and never let `hasMore` go false. We
+   * track the raw count of CURRENT rows fetched here (the honest next offset) and the
+   * latest server `has_more` so "Load more" terminates. null until a client fetch resolves.
+   */
+  let rawRowsFetched: number | null = null;
+  let serverHasMore: boolean | null = null;
   /** Client-side verdict/evidence overrides until the next server graph reload. */
   let unitOverrides: Record<string, Partial<Unit>> = {};
   /** Ideas removed this session (hidden immediately; persisted in background). */
@@ -283,6 +299,15 @@
   $: asOfActive = asOf != null || includeSuperseded;
   /** True when an as-of was requested but the data layer could not answer it. */
   $: asOfDegraded = asOfStatus?.requested === true && asOfStatus?.applied === false;
+  /**
+   * True only when a historical projection is ACTIVE and the data layer genuinely applied
+   * it (not degraded). This gates the absent-state for current-only numbers: the bento,
+   * validation breakdown and evidence facet counts are SSR-current `graph.stats` and are
+   * NOT projected to the instant, so under an applied historical view they must be hidden
+   * rather than shown beneath the "as of …" banner as if they were historical (B1). When
+   * degraded, the current view is shown honestly as current, so the numbers stay visible.
+   */
+  $: asOfProjected = asOfActive && asOfStatus?.applied === true;
   let reviewNote = "";
   let actionError: string | null = null;
   let exitingUnitId: string | null = null;
@@ -826,10 +851,19 @@
 
   $: unitsPagination = graph.unitsPagination ?? null;
   $: hasMoreUnits =
+    // Prefer the server's honest `has_more` from the last CLIENT fetch (current-row based,
+    // valid under as-of too). Fall back to SSR pagination, then to a current-only estimate
+    // — but NEVER use the projected `units.length` against the current total under an applied
+    // historical view (it would never terminate); there, defer entirely to the server.
+    serverHasMore ??
     unitsPagination?.hasMore ??
-    (stats != null && units.length < stats.units);
-  $: unitsLoadedLabel =
-    stats && stats.units > 0
+    (asOfProjected ? false : stats != null && units.length < stats.units);
+  $: unitsLoadedLabel = asOfProjected
+    ? // Under an applied historical view the total (`stats.units`) is the CURRENT count,
+      // not the projected total — mixing projected X over current Y would be dishonest, and
+      // no projected total exists (the projection is per-page). Show only the loaded count.
+      `${units.length.toLocaleString()} claim${units.length === 1 ? "" : "s"} in this projection (loaded)`
+    : stats && stats.units > 0
       ? `${units.length.toLocaleString()} of ${stats.units.toLocaleString()} ideas loaded`
       : `${units.length.toLocaleString()} ideas loaded`;
 
@@ -843,6 +877,8 @@
     removedIds = {};
     statsDelta = emptyStatsDelta();
     initialUnitsLoaded = graph.units.length > 0;
+    rawRowsFetched = null;
+    serverHasMore = null;
   }
 
   let initialUnitsLoading = false;
@@ -873,6 +909,13 @@
     if (data.as_of_status && typeof data.as_of_status === "object") {
       asOfStatus = data.as_of_status as AsOfStatusView;
     }
+    // Track pagination on the CURRENT-row basis the server pages by (minor 1). The next
+    // honest offset is `offset + limit` (the server pages `limit` current rows per page),
+    // NOT the projected `units.length`. `has_more` is the server's current-row decision.
+    const usedOffset = Number.isFinite(data.offset) ? Number(data.offset) : offset;
+    const usedLimit = Number.isFinite(data.limit) ? Number(data.limit) : limit;
+    serverHasMore = typeof data.has_more === "boolean" ? data.has_more : null;
+    rawRowsFetched = serverHasMore ? usedOffset + usedLimit : null;
     return Array.isArray(data.units) ? (data.units as Unit[]) : [];
   }
 
@@ -892,6 +935,16 @@
     } catch (err) {
       loadMoreError =
         err instanceof Error ? err.message : "Network error while loading the historical view.";
+      // Minor 4 — don't leave a confident "Viewing graph as of …" banner over an errored
+      // list. Mark the as-of request degraded so the banner drops to its honest "history
+      // could not be read" state instead of asserting the projection succeeded.
+      asOfStatus = {
+        requested: true,
+        applied: false,
+        asOf,
+        includeSuperseded,
+        reason: "as_of_fetch_failed",
+      };
     } finally {
       initialUnitsLoading = false;
     }
@@ -937,7 +990,7 @@
 
   /** Human-readable label for the active instant (banner copy). */
   function fmtAsOfLabel(iso: string | null): string {
-    if (!iso) return "an unspecified instant";
+    if (!iso) return "the selected time";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleString(undefined, {
@@ -993,7 +1046,13 @@
     loadingMoreUnits = true;
     loadMoreError = null;
     try {
-      const incoming = await fetchUnitsPage(units.length, unitsPagination?.limit ?? 150);
+      // Offset on the CURRENT-row basis the server pages by (minor 1) — NOT the projected
+      // `units.length`, which under as-of diverges (excluded/substituted/audit rows) and
+      // would skip or repeat rows. `rawRowsFetched` tracks the next current-row offset from
+      // the last client fetch; before any client fetch, fall back to the SSR page extent.
+      const nextOffset =
+        rawRowsFetched ?? (unitsPagination?.offset ?? 0) + graph.units.length;
+      const incoming = await fetchUnitsPage(nextOffset, unitsPagination?.limit ?? 150);
       const seen = new Set(units.map((u) => u.id));
       extraUnits = [...extraUnits, ...incoming.filter((u) => !seen.has(u.id))];
     } catch (err) {
@@ -2394,6 +2453,10 @@
               Postgres graph spine; BYO Surreal stores need the version-chain opt-in.
             {:else if asOfStatus?.reason === "graph_target_not_configured"}
               No graph store is connected, so there is no history to travel through.
+            {:else if asOfStatus?.reason === "as_of_fetch_failed"}
+              The historical view at {fmtAsOfLabel(asOf)} could not be loaded — the list
+              below may be incomplete or stale. This is not confirmed historical data.
+              {#if loadMoreError}<span class="brut-muted"> ({loadMoreError})</span>{/if}
             {:else}
               The version history could not be read just now, so the state at
               {fmtAsOfLabel(asOf)} cannot be shown. The current view is unchanged.
@@ -2416,11 +2479,14 @@
           </strong>
           <p class="as-of-banner-text">
             {#if asOf}
-              Counts, claim text and verification states reflect that instant. Editing
-              past state is not possible — review and dossier actions are disabled here.
+              Each idea below shows the <strong>claim text that was live at that instant</strong>
+              and which version was current. Review verdicts, source provenance and the graph
+              counts above are <strong>not</strong> reconstructed for the past — they are hidden
+              here rather than shown as if historical. Editing past state is not possible —
+              review and dossier actions are disabled.
             {:else}
               Every version of each claim chain is shown, including superseded ones.
-              This is a read-only audit view.
+              This is a read-only audit view; counts and verdicts are not historical.
             {/if}
             {#if asOfStatus?.applied && (asOfStatus.substituted || asOfStatus.excluded || asOfStatus.unversioned)}
               <span class="as-of-banner-stats brut-muted">
@@ -2481,6 +2547,35 @@
       </div>
     </BrutalCard>
   {:else}
+    {#if asOfProjected}
+      <!--
+        B1: the bento + validation breakdown render SSR-CURRENT graph.stats, which are NOT
+        projected onto the as-of instant. Showing them beneath the "as of …" banner would
+        assert current counts as historical. Under an applied historical view we absent them
+        and surface only what we can honestly derive from the projected list itself.
+      -->
+      <BrutalCard fill="canvas" title="Counts at this instant aren't available">
+        <p class="brut-muted">
+          Idea, connection, group, embedding and validation counts describe the graph
+          <strong>now</strong>, not {fmtAsOfLabel(asOf)}. They are hidden here rather than
+          shown as if historical. What you can rely on below is the claim text and version
+          that were live at the instant.
+        </p>
+        <p class="as-of-projection-summary brut-muted">
+          <strong>{units.length.toLocaleString()}</strong>
+          claim{units.length === 1 ? "" : "s"} in this projection (loaded)
+          {#if asOfStatus?.applied && asOfStatus.excluded}
+            · {asOfStatus.excluded.toLocaleString()} did not exist yet
+          {/if}
+          {#if asOfStatus?.applied && asOfStatus.substituted}
+            · {asOfStatus.substituted.toLocaleString()} shown at an older version
+          {/if}
+          {#if asOfStatus?.applied && asOfStatus.unversioned}
+            · {asOfStatus.unversioned.toLocaleString()} unknown history (kept)
+          {/if}
+        </p>
+      </BrutalCard>
+    {:else}
     <BrutalBentoGrid columns={4}>
       <BrutalBentoCell fill="white" label="Ideas">
         <p class="bento-stat">{stats.units.toLocaleString()}</p>
@@ -2623,6 +2718,7 @@
         {/if}
       </BrutalBentoCell>
     </BrutalBentoGrid>
+    {/if}
 
     <div class="graph-workspace" aria-label="Knowledge graph workspace">
       <figure class="graph-flow-map" aria-labelledby="graph-flow-caption">
@@ -2849,12 +2945,14 @@
               on:click={() => toggleEvidenceFacet(state)}
             >
               <span class="evidence-chip-label">{visual.label}</span>
-              {#if evidenceStateCounts}
+              {#if evidenceStateCounts && !asOfProjected}
                 <span class="evidence-chip-count">{evidenceStateCounts[state].toLocaleString()}</span>
               {/if}
             </button>
           {/each}
-          {#if !evidenceStateCounts}
+          {#if asOfProjected}
+            <span class="evidence-facet-note brut-muted">counts at this instant aren't available — filtering the loaded projection only</span>
+          {:else if !evidenceStateCounts}
             <span class="evidence-facet-note brut-muted">counts unavailable — filtering loaded ideas only</span>
           {:else if preEvidenceCount > 0}
             <span class="evidence-facet-note brut-muted">
@@ -2946,14 +3044,14 @@
                 Loading ideas from your graph store…
               {:else if unitsLoadError}
                 Fix the error above, then refresh. Stats may still reflect your full graph even when the review list cannot load.
-              {:else if queueScope === "review" && !verdictFilter && needsReviewCount > 0 && units.length < (stats?.units ?? 0)}
+              {:else if !asOfProjected && queueScope === "review" && !verdictFilter && needsReviewCount > 0 && units.length < (stats?.units ?? 0)}
                 Your graph has {needsReviewCount.toLocaleString()} flagged idea{needsReviewCount === 1 ? "" : "s"}, but
                 none appear in the {units.length.toLocaleString()} ideas loaded here. Refresh the page; if this persists,
                 check Surreal connectivity in Pipeline → Graph store.
               {:else if verificationStateFilter}
                 {@const emptyFacet = VERIFICATION_STATE_VISUAL[verificationStateFilter]}
                 No <strong>{emptyFacet.label.toLowerCase()}</strong> claims among the loaded ideas.
-                {#if evidenceStateCounts && evidenceStateCounts[verificationStateFilter] > 0}
+                {#if evidenceStateCounts && !asOfProjected && evidenceStateCounts[verificationStateFilter] > 0}
                   Your graph has {evidenceStateCounts[verificationStateFilter].toLocaleString()} —
                   load more ideas below to bring them in.
                 {/if}
@@ -3003,7 +3101,13 @@
                 >
                   <span class="unit-row-inner">
                     <span class="unit-row-top">
-                      <span class="unit-status-badge">{statusLabel(unit.validationStatus)}</span>
+                      {#if unit.asOfHistorical}
+                        <span class="unit-status-badge unit-status-badge--historical" title="This is a prior version of the claim. Its review verdict and source at that instant are not recorded, so no historical verdict is shown.">
+                          Prior version · verdict not historical
+                        </span>
+                      {:else}
+                        <span class="unit-status-badge">{statusLabel(unit.validationStatus)}</span>
+                      {/if}
                       {#if unit.unitType}<span class="unit-meta">{unit.unitType}</span>{/if}
                       {#if unit.domain}<span class="unit-meta unit-domain">{unit.domain}</span>{/if}
                     </span>
@@ -3053,8 +3157,18 @@
           <BrutalCard fill="white" title="Selected idea">
             <h2 id="detail-heading" class="visually-hidden">Selected idea detail</h2>
             <div class="detail-badges">
-              <BrutalBadge variant={badgeVariant(selectedUnit.validationStatus)} label={statusLabel(selectedUnit.validationStatus)} />
+              {#if selectedUnit.asOfHistorical}
+                <BrutalBadge variant="canvas" label="Prior version · verdict not historical" />
+              {:else}
+                <BrutalBadge variant={badgeVariant(selectedUnit.validationStatus)} label={statusLabel(selectedUnit.validationStatus)} />
+              {/if}
             </div>
+            {#if selectedUnit.asOfHistorical}
+              <p class="detail-historical-note brut-muted">
+                This is the claim text recorded at the selected instant. Its review verdict
+                and source provenance at that time are not stored, so they are not shown here.
+              </p>
+            {/if}
             <p class="detail-text">{selectedUnit.text}</p>
 
             <section class="dossier" aria-label="Evidence dossier">
@@ -5485,6 +5599,14 @@
     color: var(--color-ink);
   }
 
+  /* W2.5 — prior-version row badge: a neutral, non-verdict label (verdict not historical). */
+  .unit-status-badge--historical {
+    border-style: dashed;
+    color: var(--color-ink-muted, var(--color-ink));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
   .unit-row-inner {
     position: relative;
     display: block;
@@ -5629,6 +5751,21 @@
 
   .detail-badges {
     margin-bottom: var(--space-2);
+  }
+
+  /* W2.5 — note on a historical (prior-version) selected idea. */
+  .detail-historical-note {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  /* W2.5 — honest projection summary shown in place of the (current-only) bento under as-of. */
+  .as-of-projection-summary {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
   }
 
   .ai-note {
