@@ -60,6 +60,28 @@ describe("parseLiveRunData", () => {
     expect(parseLiveRunData(JSON.stringify(delta))).toEqual(delta);
   });
 
+  it("carries the log `since` cursor on delta and snapshot (catch-up resume)", () => {
+    const delta: LiveRunStreamEvent = {
+      type: "delta",
+      cursor: 11,
+      job: { id: "r", status: "running", created_at: "2026-06-12T10:00:00.000Z" },
+      logLines: ["[INGEST] line 5"],
+      logLineTotal: 5,
+      since: 5,
+    };
+    expect(parseLiveRunData(JSON.stringify(delta))).toEqual(delta);
+
+    const snap: LiveRunStreamEvent = {
+      type: "snapshot",
+      cursor: 1,
+      jobs: [{ id: "r", status: "running", created_at: "2026-06-12T10:00:00.000Z" }],
+      logLines: ["[INGEST] line 3", "[INGEST] line 4"],
+      logLineTotal: 4,
+      since: 4,
+    };
+    expect(parseLiveRunData(JSON.stringify(snap))).toEqual(snap);
+  });
+
   it("parses heartbeat", () => {
     const hb: LiveRunStreamEvent = { type: "heartbeat", nowMs: 1_000, cursor: 3 };
     expect(parseLiveRunData(JSON.stringify(hb))).toEqual(hb);

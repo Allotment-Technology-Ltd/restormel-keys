@@ -9,6 +9,7 @@ import {
   LIVE_RUN_EVENT_NAME,
   RECONNECT_FAILURE_LIMIT,
   RECONNECT_MAX_MS,
+  reconnectDelayMs,
   type LiveRunStreamEvent,
 } from "./live-run-events";
 
@@ -146,5 +147,56 @@ describe("LiveRunEventClient", () => {
     client.stop();
     vi.advanceTimersByTime(RECONNECT_MAX_MS * 5);
     expect(FakeEventSource.instances.length).toBe(1); // no new connection after stop
+  });
+
+  it("rebuilds the URL from urlProvider on every (re)connect (cursor resume)", () => {
+    // MAJOR-1: the console advances its `since`; each reconnect must carry it.
+    let since = 0;
+    const { client } = makeClient({
+      url: undefined,
+      urlProvider: () => `/events?since=${since}`,
+    });
+    client.start();
+    expect(FakeEventSource.instances[0]!.url).toBe("/events?since=0");
+    // A healthy frame advances the consumer's cursor, then the budget close fires.
+    FakeEventSource.instances[0]!.emit(snap(1));
+    since = 42; // console advanced `since` from the frame
+    FakeEventSource.instances[0]!.fail();
+    vi.advanceTimersByTime(RECONNECT_MAX_MS + 50);
+    expect(FakeEventSource.instances.length).toBe(2);
+    // The reconnect carries the CURRENT cursor, not the frozen mount-time value.
+    expect(FakeEventSource.instances[1]!.url).toBe("/events?since=42");
+    client.stop();
+  });
+
+  it("reaps a silent (half-open) socket via the staleness watchdog and reconnects", () => {
+    // M-7: a socket that opens but then goes silent must not keep claiming "live".
+    const { client, onLive } = makeClient({ staleAfterMs: 5_000 });
+    client.start();
+    const first = FakeEventSource.instances[0]!;
+    first.emit(snap(1)); // healthy → onLive fired, watchdog armed
+    expect(onLive).toHaveBeenCalledTimes(1);
+    // No further frames for > staleAfterMs → watchdog treats it as a disconnect
+    // and the FIRST socket is closed (reaped) rather than left claiming "live".
+    vi.advanceTimersByTime(5_000 + 50);
+    expect(first.closed).toBe(true);
+    // It was healthy (got a frame), so it reconnects without penalty.
+    vi.advanceTimersByTime(reconnectDelayMs(1) + 50);
+    expect(FakeEventSource.instances.length).toBeGreaterThanOrEqual(2);
+    client.stop();
+  });
+
+  it("a steadily-beating socket is never reaped by the watchdog", () => {
+    const { client, onFallback } = makeClient({ staleAfterMs: 5_000 });
+    client.start();
+    const es = FakeEventSource.instances[0]!;
+    // Heartbeat well within the window keeps the watchdog from firing.
+    for (let i = 0; i < 4; i += 1) {
+      es.emit({ type: "heartbeat", nowMs: 1_000 * i, cursor: i });
+      vi.advanceTimersByTime(4_000);
+    }
+    expect(FakeEventSource.instances.length).toBe(1); // still the same socket
+    expect(onFallback).not.toHaveBeenCalled();
+    client.stop();
   });
 });

@@ -11,11 +11,10 @@
   import { isJobStuck } from "$lib/connect/ingest-runs-safety";
   import DossierRail from "$lib/components/dashboard/DossierRail.svelte";
   import RunQuickPeek from "$lib/components/dashboard/RunQuickPeek.svelte";
-  import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
-  import type { LiveRunEventJob, LiveRunStreamEvent } from "$lib/connect/live-run-events";
+  import { liveRunJobs, startLiveRunPoll } from "$lib/stores/live-run-poll";
+  import type { LiveRunChipJob } from "$lib/connect/live-run-chip";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
-  const EVENTS_API = DASHBOARD_BASE + "/api/connect/ingest/events";
   const NEW_RUN_HREF = pipelineWizardHref("launch");
   const PAGE_SIZE = 20;
 
@@ -56,18 +55,20 @@
   let totalCount = 0;
   let loadingMore = false;
 
-  // W3.1 live status — one SSE channel patches active runs in place; on repeated
-  // SSE failure the page shows a degraded note and relies on manual Refresh
-  // (no new polling interval — X8 poll diet).
-  let liveClient: LiveRunEventClient | null = null;
-  let liveDegraded = false;
+  // W3.1 live status — MAJOR-5: consume the SAME workspace stream the topbar chip
+  // already holds (`liveRunJobs` / `startLiveRunPoll`) instead of opening a second
+  // identical SSE channel per viewer. One workspace stream per viewer, shared with
+  // the chip; the store transparently handles the SSE→30s-poll fallback, so the
+  // list never needs its own degraded note (the chip is the canonical indicator).
+  let stopLive: (() => void) | null = null;
+  let unsubscribeLive: (() => void) | null = null;
 
   $: filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
   $: stuckCount = jobs.filter(isJobStuck).length;
   $: hasMore = nextCursor != null;
 
-  /** Patch one run from a live event into the list (in place; never reorders). */
-  function patchLiveJob(incoming: LiveRunEventJob) {
+  /** Patch one run from the shared live store into the list (in place; never reorders). */
+  function patchLiveJob(incoming: LiveRunChipJob) {
     const idx = jobs.findIndex((j) => j.id === incoming.id);
     if (idx === -1) return; // not on the loaded page(s) — Refresh surfaces brand-new runs
     const next = jobs.slice();
@@ -75,23 +76,13 @@
     jobs = next;
   }
 
-  function onLiveEvent(event: LiveRunStreamEvent) {
-    if (event.type === "snapshot") {
-      for (const j of event.jobs) patchLiveJob(j);
-    } else if (event.type === "delta") {
-      patchLiveJob(event.job);
-    }
-  }
-
   function startLive() {
-    if (!browser || liveClient) return;
-    liveClient = new LiveRunEventClient({
-      url: EVENTS_API,
-      onEvent: onLiveEvent,
-      onFallback: () => (liveDegraded = true),
-      onLive: () => (liveDegraded = false),
+    if (!browser || stopLive) return;
+    stopLive = startLiveRunPoll();
+    // Patch loaded rows whenever the shared workspace stream pushes new state.
+    unsubscribeLive = liveRunJobs.subscribe((live) => {
+      if (live) for (const j of live) patchLiveJob(j);
     });
-    liveClient.start();
   }
 
   async function load() {
@@ -148,8 +139,10 @@
 
   onMount(load);
   onDestroy(() => {
-    liveClient?.stop();
-    liveClient = null;
+    unsubscribeLive?.();
+    unsubscribeLive = null;
+    stopLive?.();
+    stopLive = null;
   });
 
   function statusClass(status: string): string {
@@ -310,13 +303,6 @@
       </button>
     {/if}
   </div>
-
-  {#if liveDegraded}
-    <p class="live-degraded" role="status">
-      Live updates degraded to manual refresh — the live channel could not stay connected. Use
-      <strong>Refresh</strong> to pull the latest run state.
-    </p>
-  {/if}
 
   {#if bulkCleanResult}
     <p class="clean-result" role="status">
@@ -484,15 +470,6 @@
     background: var(--rm-surface);
     font-size: var(--text-sm);
     color: var(--rm-muted);
-  }
-  .live-degraded {
-    margin: 0 0 var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--gold-accent, #f1c40f);
-    background: color-mix(in oklab, var(--gold-accent, #f1c40f) 12%, var(--rm-surface));
-    font-size: var(--text-sm);
-    color: var(--rm-text);
-    font-family: var(--font-mono, monospace);
   }
   .page-footer {
     display: flex;

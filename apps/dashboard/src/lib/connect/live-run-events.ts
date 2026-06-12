@@ -3,17 +3,27 @@
  *
  * ONE channel for workspace ingest-run state. The server endpoint
  * (`/api/connect/ingest/events`) streams `snapshot` + `delta` + `heartbeat`
- * frames; the client (`LiveRunEventClient`) reconnects with `Last-Event-ID`
- * and falls back to the existing F8-diet poll after repeated failures.
+ * frames; the client (`LiveRunEventClient`) reconnects by rebuilding its request
+ * URL from the consumer's CURRENT cursor and falls back to the existing F8-diet
+ * poll after repeated failures.
  *
  * Why short-lived streams + reconnect, not one long socket: the Vercel deploy
  * target is serverless (adapter-vercel, Hobby — single custom region, sub-daily
  * crons rejected → 60s function-duration ceiling). A 10-minute run cannot ride a
  * single function invocation. The endpoint therefore self-closes under the cap
- * and emits a `Last-Event-ID` cursor so the client resumes seamlessly; on the
- * Coolify target (adapter-node, in flight) the same endpoint holds the whole run
- * with no reconnect churn. One transport, two platforms — see the endpoint's
- * STREAM_BUDGET_MS note and the PR's STOP-gate rationale.
+ * and the client reconnects.
+ *
+ * Resume mechanism (no `Last-Event-ID`): the client builds its URL from a
+ * PROVIDER re-evaluated on every connect, so the run console passes its current
+ * log `since` cursor on each (re)connect. The server seeds its log cursor from
+ * that `?since=` and the FIRST frame after connect is a focused `snapshot` that
+ * carries the catch-up `logLines` plus a `since` (the new log cursor). The
+ * console advances its `since` from every frame, so a reconnect or hidden-tab
+ * gap drops no log lines — the next snapshot replays everything since the cursor
+ * the client last acknowledged. On the Coolify target (adapter-node, in flight)
+ * the same endpoint holds the whole run with no reconnect churn. One transport,
+ * two platforms — see the endpoint's STREAM_BUDGET_MS note and the PR's STOP-gate
+ * rationale.
  *
  * This module is framing/parse-only and dependency-free so it unit-tests without
  * timers, network, or a DOM.
@@ -34,7 +44,21 @@ export type LiveRunEventJob = LiveRunChipJob & {
 export type LiveRunSnapshotEvent = {
   type: "snapshot";
   jobs: LiveRunEventJob[];
-  /** Monotonic stream cursor (also the SSE `id:` line for Last-Event-ID resume). */
+  /**
+   * Focused (run-console) snapshots carry the catch-up log tail: every line with
+   * id greater than the `?since=` the client connected with. Absent on workspace
+   * snapshots (the chip / runs list don't stream logs).
+   */
+  logLines?: string[];
+  /** Total log-line count for the focused run (honest "N lines" without re-counting). */
+  logLineTotal?: number;
+  /**
+   * New log cursor (the id of the last line in `logLines`, or the cursor the
+   * client connected with when there was nothing new). The console advances its
+   * `since` from this so the NEXT reconnect resumes exactly here — no gap.
+   */
+  since?: number;
+  /** Monotonic stream sequence (the SSE `id:` line; informational, not used for resume). */
   cursor: number;
 };
 
@@ -46,6 +70,12 @@ export type LiveRunDeltaEvent = {
   logLines?: string[];
   /** Total log-line count for the affected run (honest "N lines" without re-counting). */
   logLineTotal?: number;
+  /**
+   * New log cursor (id of the last line in `logLines`). The console advances its
+   * `since` from this so a fallback fetch / reconnect resumes here without
+   * re-appending lines SSE already delivered.
+   */
+  since?: number;
   cursor: number;
 };
 
@@ -94,7 +124,12 @@ export const RECONNECT_MAX_MS = 8_000;
 /** Consecutive failed (re)connections before the client declares SSE unhealthy. */
 export const RECONNECT_FAILURE_LIMIT = 3;
 
-/** Encode one SSE frame (id + event + data) for the named run event. */
+/**
+ * Encode one SSE frame (id + event + data) for the named run event. The `id:`
+ * line is the monotonic stream sequence — informational / debuggable. Resume does
+ * NOT rely on it (the client doesn't read `Last-Event-ID`): the per-connect URL
+ * carries the consumer's current log cursor and the first frame replays the gap.
+ */
 export function encodeLiveRunFrame(event: LiveRunStreamEvent): string {
   return `id: ${event.cursor}\nevent: ${LIVE_RUN_EVENT_NAME}\ndata: ${JSON.stringify(event)}\n\n`;
 }
@@ -119,7 +154,14 @@ export function parseLiveRunData(payload: string): LiveRunStreamEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
   if (obj.type === "snapshot" && Array.isArray(obj.jobs) && typeof obj.cursor === "number") {
-    return { type: "snapshot", jobs: obj.jobs as LiveRunEventJob[], cursor: obj.cursor };
+    return {
+      type: "snapshot",
+      jobs: obj.jobs as LiveRunEventJob[],
+      ...(Array.isArray(obj.logLines) ? { logLines: obj.logLines as string[] } : {}),
+      ...(typeof obj.logLineTotal === "number" ? { logLineTotal: obj.logLineTotal } : {}),
+      ...(typeof obj.since === "number" ? { since: obj.since } : {}),
+      cursor: obj.cursor,
+    };
   }
   if (obj.type === "delta" && obj.job && typeof obj.cursor === "number") {
     return {
@@ -127,6 +169,7 @@ export function parseLiveRunData(payload: string): LiveRunStreamEvent | null {
       job: obj.job as LiveRunEventJob,
       ...(Array.isArray(obj.logLines) ? { logLines: obj.logLines as string[] } : {}),
       ...(typeof obj.logLineTotal === "number" ? { logLineTotal: obj.logLineTotal } : {}),
+      ...(typeof obj.since === "number" ? { since: obj.since } : {}),
       cursor: obj.cursor,
     };
   }

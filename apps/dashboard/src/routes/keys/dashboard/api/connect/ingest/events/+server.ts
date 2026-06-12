@@ -12,11 +12,16 @@
  *  - `heartbeat` — keep-alive + live clock; bare SSE comments also pad idle gaps
  *
  * Lifetime: the stream self-closes at STREAM_BUDGET_MS (50s) — under the Vercel
- * Hobby 60s function ceiling — and the client reconnects with `Last-Event-ID`.
- * On adapter-node (Coolify) the same loop simply re-establishes every 50s with no
- * user-visible churn. The server tick is bounded by the budget, so this adds no
- * unbounded background polling (X8 poll-diet: the existing 30s/2.5s polls become
- * the documented fallback, not a second live path).
+ * Hobby 60s function ceiling — and the client reconnects. Resume carries no
+ * `Last-Event-ID`: the client rebuilds its URL per connect with the console's
+ * CURRENT log `since`, the server seeds `logSince` from that `?since=`, and the
+ * FIRST focused frame is a `snapshot` carrying every log line after that cursor
+ * (plus the new `since`). So a 50s reconnect or a hidden-tab gap loses no log
+ * lines — the snapshot replays the gap from the cursor the client last advanced
+ * to. On adapter-node (Coolify) the same loop simply re-establishes every 50s
+ * with no user-visible churn. The server tick is bounded by the budget, so this
+ * adds no unbounded background polling (X8 poll-diet: the existing 30s/2.5s polls
+ * become the documented fallback, not a second live path).
  */
 import {
   connectIngestJobRecordToApi,
@@ -79,8 +84,10 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
 
   // Optional single-run focus (the run console) — streams that run's log tail too.
   const focusJobId = url.searchParams.get("job");
-  // Resume the log cursor from Last-Event-ID is not log-specific (the cursor is a
-  // stream sequence, not a log id), so the console passes its log `since` explicitly.
+  // The console passes its CURRENT log cursor on every (re)connect via `?since=`
+  // (the client rebuilds the URL per connect). We seed the server cursor from it
+  // and the first snapshot replays everything after it — that is the resume
+  // mechanism (no Last-Event-ID; the stream `id:` is a sequence, not a log id).
   const sinceParam = url.searchParams.get("since");
   let logSince = sinceParam != null ? Math.max(0, Number.parseInt(sinceParam, 10) || 0) : 0;
 
@@ -182,17 +189,31 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
         const fp = jobFingerprint(apiJob);
         const changed = initial || lastFingerprints.get(apiJob.id) !== fp;
         const newLogs = logRows.length > 0;
-        if (changed || newLogs) {
-          if (newLogs) logSince = logRows[logRows.length - 1]!.id;
+        // The initial frame is ALWAYS sent so the console resumes its tail on
+        // every reconnect: it carries the catch-up `logLines` (everything after
+        // the `?since=` the client connected with) and the advanced `since`, even
+        // when the run's fingerprint hasn't changed. Deltas are sent only on
+        // actual change or new logs (cheap steady state).
+        if (newLogs) logSince = logRows[logRows.length - 1]!.id;
+        if (initial || changed || newLogs) {
           lastFingerprints.set(apiJob.id, fp);
           cursor += 1;
           if (initial) {
-            send({ type: "snapshot", jobs: [apiJob], cursor });
+            send({
+              type: "snapshot",
+              jobs: [apiJob],
+              ...(newLogs ? { logLines: logRows.map((r) => r.line) } : {}),
+              logLineTotal: logTotal,
+              since: logSince,
+              cursor,
+            });
           } else {
             send({
               type: "delta",
               job: apiJob,
-              ...(newLogs ? { logLines: logRows.map((r) => r.line), logLineTotal: logTotal } : {}),
+              ...(newLogs
+                ? { logLines: logRows.map((r) => r.line), logLineTotal: logTotal, since: logSince }
+                : {}),
               cursor,
             });
           }

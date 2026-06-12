@@ -379,6 +379,15 @@
     if (event.type === "snapshot") {
       const match = event.jobs.find((j) => j.id === jobId);
       if (match) job = { ...(job ?? {}), ...match } as Job;
+      // Catch-up tail carried on focused (re)connect snapshots — append the gap
+      // and ADVANCE `since` so the next reconnect / fallback resumes here without
+      // loss or duplication (MAJOR-1/2). Workspace snapshots omit these fields.
+      if (event.logLines) appendLogLines(event.logLines);
+      if (typeof event.logLineTotal === "number") logLineTotal = event.logLineTotal;
+      if (typeof event.since === "number") since = event.since;
+      // A completion can arrive via the reconnect snapshot (tab hidden during the
+      // run, returned after it finished) — invalidate graph/hub here too (MAJOR-3).
+      maybeInvalidateGraphOnComplete();
       loading = false;
       return;
     }
@@ -386,6 +395,9 @@
       job = { ...(job ?? {}), ...event.job } as Job;
       if (event.logLines) appendLogLines(event.logLines);
       if (typeof event.logLineTotal === "number") logLineTotal = event.logLineTotal;
+      // Advance the log cursor from the delta so engageFallback()/reconnect picks
+      // up exactly where SSE left off — never re-appending delivered lines (MAJOR-2).
+      if (typeof event.since === "number") since = event.since;
       maybeInvalidateGraphOnComplete();
       loading = false;
     }
@@ -395,7 +407,11 @@
   function startLive() {
     if (typeof window === "undefined" || liveClient) return;
     liveClient = new LiveRunEventClient({
-      url: `${EVENTS_API}?job=${encodeURIComponent(jobId)}&since=${since}`,
+      // URL PROVIDER — rebuilt per (re)connect so the CURRENT log `since` is sent
+      // each time. This is the resume mechanism: the first snapshot after connect
+      // replays everything after `since`, so a 50s reconnect or hidden-tab gap
+      // drops no log lines (MAJOR-1).
+      urlProvider: () => `${EVENTS_API}?job=${encodeURIComponent(jobId)}&since=${since}`,
       onEvent: onLiveEvent,
       onFallback: engageFallback,
       onLive: () => {
@@ -434,7 +450,14 @@
     }
   }
 
-  $: if (jobId) {
+  // Re-initialise ONLY when the run id actually changes. The block reads
+  // `pollTimer`/`since`/etc., so without this guard any reassignment of those
+  // reactive vars elsewhere (e.g. engageFallback advancing the cursor / scheduling
+  // a poll) would re-fire it — resetting `since` to 0 and re-fetching from the
+  // start, which is exactly the log-loss + duplication MAJOR-1/2 guard against.
+  let loadedJobId: string | null = null;
+  $: if (jobId && jobId !== loadedJobId) {
+    loadedJobId = jobId;
     since = 0;
     logLines = [];
     logOpen = true;
