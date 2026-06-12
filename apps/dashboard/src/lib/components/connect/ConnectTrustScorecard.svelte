@@ -1,6 +1,8 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
   import { CLAIMS_HREF, INGEST_FLOW_HREF } from "$lib/nav-config";
+  import { PROVE_LINK_CLASS, proveClaimsFilterHref } from "$lib/prove-it";
+  import type { ProveFilter } from "$lib/prove-it";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
@@ -46,8 +48,15 @@
    * that link to the ideas that caused the deduction. W2.1 defined the ?filter= contract;
    * W2.2 adds evidence-state filters once it merges (coordinate values here).
    */
-  const FACTOR_FILTER: Record<string, string | null> = {
-    embedding_coverage: "missing_embed",
+  // W4.3: each factor maps to a W2.1 explorer filter (a ProveFilter union member)
+  // so prove-it.ts builds the destination — one URL contract, no dead params.
+  // null = store-/graph-level factor with no honest per-idea slice → renders
+  // link-less (the vector_index precedent). embedding_coverage is store-level:
+  // the explorer's unit rows carry no per-unit embedding field, so a
+  // `?filter=missing_embed` link would be a dead param parseExplorerUrlState
+  // drops to the default queue. The real per-idea coverage facet is the follow-up.
+  const FACTOR_FILTER: Record<string, ProveFilter | null> = {
+    embedding_coverage: null, // store-level aggregate — no per-idea filter (coverage-facet follow-up)
     verification_coverage: "unverified",
     orphan_rate: "review",
     issue_penalty: "review",
@@ -58,7 +67,7 @@
   function factorHref(factorId: string): string | null {
     const filter = FACTOR_FILTER[factorId];
     if (!filter) return null;
-    return `${GRAPH_BASE}?filter=${filter}`;
+    return proveClaimsFilterHref(filter);
   }
 
   function detractors(card: ConnectTrustScorecard) {
@@ -133,22 +142,22 @@
         </div>
 
         <ul class="metric-grid" aria-label="Scorecard metrics">
+          <!-- W4.3: store-level coverage aggregates — no honest per-idea filter exists yet
+               (unit rows carry no per-unit binding/embedding field). Rendered link-less
+               like vector_index rather than landing a dead `?filter=` on the default
+               queue; the per-idea coverage facet is the follow-up. -->
           <li>
-            <a class="metric-link" href="{GRAPH_BASE}?filter=unbound" aria-label="Evidence-bound: {card.evidence.bound_pct}% — see unbound ideas">
-              <span class="metric-value">{card.evidence.bound_pct}%</span>
-              <span class="metric-label">Evidence-bound</span>
-              <span class="metric-detail">{card.evidence.bound.toLocaleString()} of {card.units.toLocaleString()} ideas carry a re-checkable source span</span>
-            </a>
+            <span class="metric-value">{card.evidence.bound_pct}%</span>
+            <span class="metric-label">Evidence-bound</span>
+            <span class="metric-detail">{card.evidence.bound.toLocaleString()} of {card.units.toLocaleString()} ideas carry a re-checkable source span</span>
           </li>
           <li>
-            <a class="metric-link" href="{GRAPH_BASE}?filter=missing_embed" aria-label="Embedding coverage: {card.embedding.pct}% — see un-embedded ideas">
-              <span class="metric-value">{card.embedding.pct}%</span>
-              <span class="metric-label">Embedding coverage</span>
-              <span class="metric-detail">{card.embedding.embedded.toLocaleString()} of {card.units.toLocaleString()} ideas embedded</span>
-            </a>
+            <span class="metric-value">{card.embedding.pct}%</span>
+            <span class="metric-label">Embedding coverage</span>
+            <span class="metric-detail">{card.embedding.embedded.toLocaleString()} of {card.units.toLocaleString()} ideas embedded</span>
           </li>
           <li>
-            <a class="metric-link" href="{GRAPH_BASE}?filter=review" aria-label="Validated supported: {card.g2.ok} — triage flagged ideas">
+            <a class="metric-link {PROVE_LINK_CLASS} {PROVE_LINK_CLASS}--block" href={proveClaimsFilterHref("review")} aria-label="Validated supported: {card.g2.ok} — triage flagged ideas">
               <span class="metric-value">{card.g2.ok}/{card.g2.ok + card.g2.weak + card.g2.unsupported}</span>
               <span class="metric-label">Validated supported</span>
               <span class="metric-detail">{card.g2.weak.toLocaleString()} weak · {card.g2.unsupported.toLocaleString()} unsupported</span>
@@ -196,8 +205,8 @@
             {@const count = card.verification_states[state] ?? 0}
             <li class="state-chip state-{state}" class:state-zero={!count}>
               <a
-                class="state-chip-link"
-                href="{GRAPH_BASE}?filter={state}"
+                class="state-chip-link {PROVE_LINK_CLASS} {PROVE_LINK_CLASS}--block"
+                href={proveClaimsFilterHref(state)}
                 aria-label="{count.toLocaleString()} {STATE_LABELS[state].toLowerCase()} ideas — view in explorer"
                 tabindex={count === 0 ? -1 : undefined}
               >
@@ -222,7 +231,7 @@
                   <span class="lowered-factor">{factor.label}</span>
                   <span class="lowered-attained">{fmtPoints(factor.points)} of {factor.max_points}</span>
                   {#if href}
-                    <a class="lowered-drill" href={href} aria-label="Show ideas that caused this deduction">Show →</a>
+                    <a class="lowered-drill {PROVE_LINK_CLASS}" href={href} aria-label="Show ideas that caused this deduction">Show <span class="prove-it-arrow" aria-hidden="true">↗</span></a>
                   {/if}
                 </li>
               {/each}

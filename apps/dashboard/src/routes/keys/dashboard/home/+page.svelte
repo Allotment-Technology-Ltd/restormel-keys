@@ -28,11 +28,15 @@
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
   import { invalidateAll } from "$app/navigation";
   import {
-    CLAIMS_HREF,
     CLAIMS_MEMORY_HREF,
     INGEST_FLOW_HREF,
     RUNS_HREF,
   } from "$lib/nav-config";
+  import {
+    PROVE_LINK_CLASS,
+    proveClaimsFilterHref,
+    proveRunVerdictHref,
+  } from "$lib/prove-it";
   import type { ConnectHubPayload, ConnectGraphPulse } from "$lib/server/connect/connect-hub-load";
   import type {
     ConnectTrustScorecard as ConnectTrustScorecardData,
@@ -165,11 +169,11 @@
     return history.find((e) => Boolean(e.diff?.regression)) ?? null;
   }
 
+  // W4.3: the regression → producing-verdict prove-it destination (degrades to the
+  // review queue when the verdict carries no run identity — built in prove-it.ts).
   function regressionRunHref(entry: ConnectEvalVerdictEntry): string {
-    if (entry.source === "ingest_run" && entry.source_run_id) {
-      return `${RUNS_HREF}/${entry.source_run_id}?from=home-inbox`;
-    }
-    return CLAIMS_HREF + "?filter=review";
+    const runId = entry.source === "ingest_run" ? entry.source_run_id : null;
+    return proveRunVerdictHref(runId, { from: "home-inbox" });
   }
 
   /** Last-run outcome glyph + word (ledger-row standard — never colour-only). */
@@ -254,8 +258,8 @@
             </span>
           </div>
           {#if needsReview > 0}
-            <a class="cap-review brut-focus" href={CLAIMS_HREF + "?filter=review"}>
-              {needsReview} need review →
+            <a class="cap-review {PROVE_LINK_CLASS} brut-focus" href={proveClaimsFilterHref("review")}>
+              {needsReview} need review <span class="prove-it-arrow" aria-hidden="true">↗</span>
             </a>
           {/if}
         </div>
@@ -337,7 +341,7 @@
                   </span>
                 </div>
                 {#if review > 0}
-                  <a class="ledger-fix brut-focus" href={CLAIMS_HREF + "?filter=review"}>review →</a>
+                  <a class="ledger-fix {PROVE_LINK_CLASS} brut-focus" href={proveClaimsFilterHref("review")}>review <span class="prove-it-arrow" aria-hidden="true">↗</span></a>
                 {:else}
                   <span class="ledger-word">clear</span>
                 {/if}
@@ -360,7 +364,7 @@
                     </span>
                   </div>
                   {#if reg}
-                    <a class="ledger-fix brut-focus" href={regressionRunHref(reg)}>diff →</a>
+                    <a class="ledger-fix {PROVE_LINK_CLASS} brut-focus" href={regressionRunHref(reg)}>diff <span class="prove-it-arrow" aria-hidden="true">↗</span></a>
                   {:else}
                     <span class="ledger-word">clear</span>
                   {/if}

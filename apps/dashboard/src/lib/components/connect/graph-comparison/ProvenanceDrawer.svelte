@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ProvenanceClaim, RetrievalTrace } from "$lib/connect/graph-comparison-types";
-  import { CLAIMS_HREF } from "$lib/nav-config";
+  import { proveDossierHref } from "$lib/prove-it";
+  import ProveLink from "$lib/components/connect/ProveLink.svelte";
 
   export let claims: ProvenanceClaim[] = [];
   export let trace: RetrievalTrace;
@@ -12,9 +13,13 @@
     return t.length <= max ? t : `${t.slice(0, max).trimEnd()}…`;
   }
 
-  /** Deep link into the Evidence Dossier (W2.2 URL contract: ?unit=<id>). */
+  /**
+   * W4.3: the prove-it gesture on the MCP answer's verified-claim envelope.
+   * Each injected claim links to its Evidence Dossier (W2.2 URL contract:
+   * `?unit=<id>`), built through prove-it.ts so the destination is always real.
+   */
   function dossierHref(claim: ProvenanceClaim): string {
-    return `${CLAIMS_HREF}?unit=${encodeURIComponent(claim.id)}`;
+    return proveDossierHref(claim.id);
   }
 </script>
 
@@ -38,13 +43,15 @@
           {#each claims as claim (claim.id)}
             <li class="claim" class:weak={claim.verification === "weak"}>
               <p class="claim-text">
-                <a
-                  class="claim-link brut-focus"
+                <!-- W4.3: the shared ProveLink renders the prove-it affordance (dotted
+                     underline + ↗) so the gesture is one component, not a hand-rolled <a>. -->
+                <ProveLink
                   href={dossierHref(claim)}
-                  title="Open this claim's evidence dossier in the graph explorer"
+                  class="claim-link"
+                  label="Open this claim's evidence dossier in the graph explorer"
                 >
                   {truncate(claim.text)}
-                </a>
+                </ProveLink>
               </p>
               <div class="claim-meta">
                 <span class="claim-source">{claim.sourceTitle}</span>
@@ -140,14 +147,8 @@
     color: var(--color-ink);
   }
 
-  .claim-link {
-    color: inherit;
-    text-decoration: none;
-    border-bottom: 1px dotted var(--color-ink);
-  }
-  .claim-link:hover {
-    background: var(--color-yellow);
-  }
+  /* The dotted-underline + ↗ + yellow hover now come from the global `.prove-it`
+     rule (W4.3); nothing claim-local to add. */
 
   .claim-meta {
     display: flex;
