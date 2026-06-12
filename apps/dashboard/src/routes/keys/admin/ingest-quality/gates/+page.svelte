@@ -118,7 +118,7 @@
       written.
     </li>
     <li>
-      <strong>Review in Graph Explorer</strong> — operator overrides become review signals (G5
+      <strong>Review in Claims</strong> — operator overrides become review signals (G5
       latency tracked in PostHog).
     </li>
     <li>
@@ -267,7 +267,7 @@
       <a href={CONNECT_INGEST_BASE}>Connect ingest runs</a> — start or inspect production jobs.
     </li>
     <li>
-      <a href={GRAPH_EXPLORER_HREF}>Graph Explorer</a> — triage units and review signals (G5).
+      <a href={GRAPH_EXPLORER_HREF}>Claims</a> — triage units and review signals (G5).
     </li>
     <li>
       <a href={data.posthogDashboardUrl} target="_blank" rel="noopener noreferrer"

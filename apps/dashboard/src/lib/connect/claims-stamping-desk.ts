@@ -294,7 +294,7 @@ export function describeUndo(last: DeskStampRecord | null): UndoState {
  * endpoint. Per the stage prompt ("if per-session delta needs a cheap recompute
  * endpoint, STOP and propose it") we DEFER the numeric trust delta rather than
  * fork or fabricate the formula. The session rail shows the truthful tally
- * (reviewed / supported / weak / rejected) and an honest note that the trust
+ * (reviewed / supported / weak / unsupported) and an honest note that the trust
  * figure recomputes on the Home scorecard, which is the single source.
  */
 export const SESSION_TRUST_DELTA_DEFERRED =

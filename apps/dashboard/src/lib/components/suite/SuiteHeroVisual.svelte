@@ -27,7 +27,7 @@
       ]
     : [
         { title: "Swap models without redeploying", body: "Fallback chains and policies live in one workspace — not in app code." },
-        { title: "Agents grounded in verified context", body: "Pipeline from sources to graph explorer, then connect.search via MCP." },
+        { title: "Agents grounded in verified context", body: "Pipeline from sources to Claims, then connect.search via MCP." },
         { title: "BYOK end to end", body: "Provider keys and graph data stay in infrastructure you control." },
       ];
 </script>

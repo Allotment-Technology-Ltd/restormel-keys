@@ -48,7 +48,7 @@
                 <ProveLink
                   href={dossierHref(claim)}
                   class="claim-link"
-                  label="Open this claim's evidence dossier in the graph explorer"
+                  label="Open this claim's evidence dossier in Claims"
                 >
                   {truncate(claim.text)}
                 </ProveLink>

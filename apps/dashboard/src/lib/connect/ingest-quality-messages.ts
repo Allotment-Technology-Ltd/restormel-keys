@@ -71,7 +71,7 @@ export function describeG2Gate(g2: G2GateView): IngestQualityCallout | null {
     details,
     nextSteps: [
       `Open the G2 production sample on ${ADMIN_BASE}/ingest-quality/gates#g2-sample — inspect per-job ok% and drill into failing runs.`,
-      "Triage recent units in Graph Explorer — review signals and overrides feed the Evaluate step above.",
+      "Triage recent units in Claims — review signals and overrides feed the Evaluate step above.",
       "Re-run production ingests after fixes; when Summary shows G2 Pass, Apply unlocks for evaluations with fired thresholds.",
     ],
   };
@@ -83,11 +83,11 @@ export function describeNoReviewSignals(windowDays: number): IngestQualityCallou
     title: "No review signals in this window",
     summary: `No operator triage events were recorded in the last ${windowDays} days.`,
     details: [
-      "Review signals are written when an operator agrees, overrides, or removes a unit in Graph Explorer.",
+      "Review signals are written when an operator agrees, overrides, or removes a unit in Claims.",
       "Workspaces can opt out of telemetry — opted-out reviews will not appear here or in PostHog.",
     ],
     nextSteps: [
-      "Have operators triage ingested units in Graph Explorer so override patterns can be measured.",
+      "Have operators triage ingested units in Claims so override patterns can be measured.",
       "Use Evaluate thresholds once signals exist, or widen the window (days) above.",
     ],
   };

@@ -86,7 +86,7 @@
   </thead>
   <tbody>
     <tr><td><code>connect.search</code></td><td>Semantic search → claims, relations, pass-specific context packs</td></tr>
-    <tr><td><code>connect.get_context_for</code></td><td>Topic + optional seed claim id from the graph explorer</td></tr>
+    <tr><td><code>connect.get_context_for</code></td><td>Topic + optional seed claim id from Claims</td></tr>
     <tr><td><code>connect.graph.retrieve_context</code></td><td>Primary retrieval: vector + graph traversal, token-budgeted subgraph + trace</td></tr>
     <tr><td><code>connect.graph.expand_context</code></td><td>Graph expansion from explicit seed node ids (optional edge-type filter)</td></tr>
     <tr><td><code>connect.graph.find_relevant_subgraph</code></td><td>Topic subgraph with semantic / causal / temporal reasoning modes</td></tr>

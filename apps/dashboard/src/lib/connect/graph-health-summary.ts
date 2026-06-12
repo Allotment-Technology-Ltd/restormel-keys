@@ -48,9 +48,9 @@ function buildIssueDisplays(
         title: "Low support rate",
         detail:
           quarantine > 0
-            ? `Only ${ok_pct}% of validated ideas are fully supported (${OK_RATE_TARGET_PCT}%+ target). ${validation.unsupported.toLocaleString()} unsupported and ${validation.weak.toLocaleString()} weak ideas may need triage in the graph explorer.`
+            ? `Only ${ok_pct}% of validated ideas are fully supported (${OK_RATE_TARGET_PCT}%+ target). ${validation.unsupported.toLocaleString()} unsupported and ${validation.weak.toLocaleString()} weak ideas may need triage in Claims.`
             : `Only ${ok_pct}% of validated ideas are fully supported (${OK_RATE_TARGET_PCT}%+ target). Consider re-validation or domain pack tuning.`,
-        actionLabel: quarantine > 0 ? "Open quarantine queue" : "Review graph",
+        actionLabel: quarantine > 0 ? "Open quarantine queue" : "Review in Claims",
         actionHref: `${CONNECT_BASE}/graph?filter=review`,
       };
     }

@@ -204,7 +204,7 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
       id: "monitor",
       title: "Track ingest run",
       description:
-        "While a run is in progress, watch each stage complete. After ingest, review validation in the graph explorer.",
+        "While a run is in progress, watch each stage complete. After ingest, review validation in Claims.",
       status: latestJob && isActiveIngestJobStatus(latestJob.status) ? "done" : latestJob ? "done" : "todo",
       detail:
         latestJob && isActiveIngestJobStatus(latestJob.status)
@@ -238,7 +238,7 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
         ? surrealStoreReady
           ? "Wire MCP tools on the Agents tab"
           : "REST retrieve available — see Agents tab"
-        : "Run ingest and open the graph explorer first",
+        : "Run ingest and open Claims first",
       href: AGENTS_HREF,
       cta: hasGraph ? "Set up agents" : "Open agent setup",
       optional: true,

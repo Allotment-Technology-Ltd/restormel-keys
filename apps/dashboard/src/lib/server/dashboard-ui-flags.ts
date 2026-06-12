@@ -59,7 +59,7 @@ const SECTION_LABELS: Record<DashboardUiSection, string> = {
   routes: "Routes",
   models: "Model Catalog",
   providers: "Connections",
-  analytics: "Usage & Analytics",
+  analytics: "Usage",
   logs: "Logs",
   healthcheck: "System Health",
   sandbox: "Test & Preview",

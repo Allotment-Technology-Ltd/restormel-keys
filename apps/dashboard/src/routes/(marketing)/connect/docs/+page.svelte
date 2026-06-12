@@ -94,7 +94,7 @@
   </p>
   <ul>
     <li><code>connect.search</code> — semantic search → structured claims, relations, and pass-specific <code>context_pack</code></li>
-    <li><code>connect.get_context_for</code> — topic + optional <code>seed_claim_id</code> from the graph explorer</li>
+    <li><code>connect.get_context_for</code> — topic + optional <code>seed_claim_id</code> from Claims</li>
     <li><code>connect.retrieve</code> — deprecated alias of <code>connect.search</code></li>
     <li><code>connect.verify</code>, <code>connect.ingest.*</code> — verify and ingest job helpers</li>
   </ul>
