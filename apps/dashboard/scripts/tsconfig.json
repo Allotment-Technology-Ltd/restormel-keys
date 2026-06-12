@@ -6,6 +6,14 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["../src/lib"],
+      "$lib/*": ["../src/lib/*"],
+      "$env/dynamic/private": ["./shims/env-dynamic-private.ts"],
+      "$env/dynamic/public": ["./shims/env-dynamic-public.ts"],
+      "$app/environment": ["./shims/app-environment.ts"]
+    }
   }
 }

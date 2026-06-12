@@ -1,0 +1,39 @@
+# Restormel Keys — Connect ingest worker daemon (Coolify migration Stage 2.2, the F9 fix).
+#
+# Companion to Dockerfile.dashboard: a second Coolify application on the same box
+# that owns ALL ingest queue draining, so LLM orchestration never executes on the
+# interactive dashboard's event loop. Pair it with CONNECT_INGEST_INLINE_DRAIN=0
+# on the DASHBOARD container (this worker needs no such flag — it always drains).
+#
+# Build from repo root:  docker build -f Dockerfile.worker -t restormel-ingest-worker .
+# Run:                   docker run --env-file <env> restormel-ingest-worker
+#
+# No HTTP listener — healthcheck is process liveness (restart policy: always).
+# Plus the optional CRON_SECRET-protected drain-route curl as a dead-worker
+# backstop (migration plan §4.3); lease claiming makes overlapping drainers safe.
+#
+# Required env: DATABASE_URL (+ the Connect/ingest vars listed in
+# docs/infra/coolify-migration-plan-2026-06.md §4.4 — same env as the dashboard).
+# Tuning: CONNECT_INGEST_WORKER_INTERVAL_MS (default 30000, ±10% jitter),
+#         KNOWLEDGE_INGEST_WORKER_MAX_JOBS (jobs per sweep, default 10).
+
+FROM node:22-alpine
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+WORKDIR /app
+COPY . .
+# Dev deps stay: the daemon runs from TypeScript source via tsx (workspace dev dep).
+RUN pnpm install --frozen-lockfile
+# Build the @restormel/* workspace dists the dashboard server code imports.
+RUN pnpm --filter dashboard run precheck
+
+ENV NODE_ENV=production
+# tsx resolves path aliases ($lib, $env shims) from this tsconfig.
+ENV TSX_TSCONFIG_PATH=/app/apps/dashboard/scripts/tsconfig.json
+RUN addgroup -S restormel && adduser -S restormel -G restormel && chown restormel:restormel /app
+USER restormel
+
+# node runs as PID 1 so docker stop's SIGTERM reaches the daemon directly —
+# verified: a pnpm wrapper does NOT forward SIGTERM, which would break graceful
+# shutdown (finish in-flight claim, stop heartbeating, exit 0).
+CMD ["node", "--import", "tsx", "apps/dashboard/scripts/connect-ingest-worker-daemon.ts"]

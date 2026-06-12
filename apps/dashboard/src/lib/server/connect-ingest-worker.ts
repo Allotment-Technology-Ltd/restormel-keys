@@ -587,8 +587,28 @@ export function vercelWaitUntil(promise: Promise<unknown>): boolean {
   return false;
 }
 
-/** Best-effort drain after job POST (dev / single-process hosting). */
+/**
+ * Inline post-POST drain gate (Coolify migration Stage 2.2).
+ *
+ * Default ON — dev, Vercel prod and previews keep today's behavior (the request
+ * that queued a job also kicks a best-effort drain). On Coolify the dashboard
+ * container sets `CONNECT_INGEST_INLINE_DRAIN=0` so the dedicated worker daemon
+ * owns ALL draining and ingest never executes on the interactive event loop
+ * (the F9 fix). Lease-based claiming already makes overlapping drainers safe,
+ * but gating avoids pointless double execution on a single box.
+ */
+export function connectIngestInlineDrainEnabled(): boolean {
+  const raw = process.env.CONNECT_INGEST_INLINE_DRAIN?.trim().toLowerCase();
+  if (raw === undefined || raw === "") return true;
+  return !["0", "false", "off", "no"].includes(raw);
+}
+
+/**
+ * Best-effort drain after job POST (dev / single-process hosting).
+ * No-op when `CONNECT_INGEST_INLINE_DRAIN=0` — the worker daemon drains instead.
+ */
 export function scheduleConnectIngestWorkerDrain(maxDrain = 4): void {
+  if (!connectIngestInlineDrainEnabled()) return;
   queueMicrotask(() => {
     const drain = runConnectIngestWorkerLoop(maxDrain).catch((err) => {
       console.error("[connect-ingest-worker] drain failed:", err);

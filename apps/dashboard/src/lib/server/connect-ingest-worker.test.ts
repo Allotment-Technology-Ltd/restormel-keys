@@ -160,6 +160,113 @@ describe("durable runs (Stage 1.6) — lease, heartbeat, reclaim", () => {
   });
 });
 
+describe("inline drain gate (Coolify Stage 2.2 — CONNECT_INGEST_INLINE_DRAIN)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.CONNECT_INGEST_WORKER_MODE = "stub";
+    process.env.CONNECT_INGEST_STUB_PAUSE_MS = "0";
+    delete process.env.CONNECT_INGEST_INLINE_DRAIN;
+  });
+
+  afterEach(() => {
+    delete process.env.CONNECT_INGEST_INLINE_DRAIN;
+  });
+
+  it("defaults ON (unset/empty/1) and parses common off-spellings", async () => {
+    const { connectIngestInlineDrainEnabled } = await import(
+      "$lib/server/connect-ingest-worker"
+    );
+    expect(connectIngestInlineDrainEnabled()).toBe(true);
+    process.env.CONNECT_INGEST_INLINE_DRAIN = "";
+    expect(connectIngestInlineDrainEnabled()).toBe(true);
+    process.env.CONNECT_INGEST_INLINE_DRAIN = "1";
+    expect(connectIngestInlineDrainEnabled()).toBe(true);
+    for (const off of ["0", "false", "off", "no", " FALSE "]) {
+      process.env.CONNECT_INGEST_INLINE_DRAIN = off;
+      expect(connectIngestInlineDrainEnabled()).toBe(false);
+    }
+  });
+
+  it("schedules the post-POST drain by default (current Vercel behavior)", async () => {
+    const { claimNextPendingConnectIngestJob, reclaimStaleRunningConnectIngestJobs } =
+      await import("$lib/server/connect-ingest-jobs");
+    vi.mocked(claimNextPendingConnectIngestJob).mockResolvedValue(null);
+    const { scheduleConnectIngestWorkerDrain } = await import(
+      "$lib/server/connect-ingest-worker"
+    );
+    scheduleConnectIngestWorkerDrain();
+    await vi.waitFor(() => {
+      expect(reclaimStaleRunningConnectIngestJobs).toHaveBeenCalled();
+      expect(claimNextPendingConnectIngestJob).toHaveBeenCalled();
+    });
+  });
+
+  it("no-ops cleanly when gated off — the worker daemon owns all draining", async () => {
+    process.env.CONNECT_INGEST_INLINE_DRAIN = "0";
+    const { claimNextPendingConnectIngestJob, reclaimStaleRunningConnectIngestJobs } =
+      await import("$lib/server/connect-ingest-jobs");
+    vi.mocked(claimNextPendingConnectIngestJob).mockResolvedValue(null);
+    const { scheduleConnectIngestWorkerDrain } = await import(
+      "$lib/server/connect-ingest-worker"
+    );
+    expect(() => scheduleConnectIngestWorkerDrain()).not.toThrow();
+    // Flush microtasks + a macrotask: nothing may touch the queue.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(reclaimStaleRunningConnectIngestJobs).not.toHaveBeenCalled();
+    expect(claimNextPendingConnectIngestJob).not.toHaveBeenCalled();
+  });
+});
+
+describe("dual-run safety — concurrent drainers never double-process (lease claim)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.CONNECT_INGEST_WORKER_MODE = "stub";
+    process.env.CONNECT_INGEST_STUB_PAUSE_MS = "0";
+  });
+
+  it("two simultaneous drains (worker daemon + Vercel cron / inline) process one job once", async () => {
+    const { claimNextPendingConnectIngestJob, updateConnectIngestJobById } = await import(
+      "$lib/server/connect-ingest-jobs"
+    );
+    // Atomic-claim semantics: the DB hands the pending row to exactly one
+    // claimer (UPDATE … RETURNING); everyone else sees an empty queue.
+    const queue = [
+      {
+        id: "job-dual",
+        workspaceId: "ws-1",
+        projectId: null,
+        status: "pending" as const,
+        label: null,
+        currentStage: null,
+        currentAction: null,
+        progress: null,
+        stages: [{ stage: "extracting", status: "pending" }],
+        sources: [{ text: "Sample corpus." }],
+        stopAfterStage: null,
+        pipelineProfileId: null,
+        domainPackId: null,
+        graphTargetId: null,
+        error: null,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ];
+    vi.mocked(claimNextPendingConnectIngestJob).mockImplementation(
+      async () => queue.shift() ?? null,
+    );
+    const { drainConnectIngestQueue } = await import("$lib/server/connect-ingest-worker");
+    const [a, b] = await Promise.all([
+      drainConnectIngestQueue({ maxJobs: 5 }),
+      drainConnectIngestQueue({ maxJobs: 5 }),
+    ]);
+    expect(a.processed + b.processed).toBe(1);
+    const completions = vi
+      .mocked(updateConnectIngestJobById)
+      .mock.calls.filter(([args]) => args?.status === "completed");
+    expect(completions).toHaveLength(1);
+  });
+});
+
 describe("vercelWaitUntil", () => {
   const CTX_SYMBOL = Symbol.for("@vercel/request-context");
 
