@@ -110,6 +110,13 @@ Two deliberate deviations from a literal reading of the reviews, with justificat
 | W4.5 | Copy + a11y sweep | UX F-P1-3 (app side), F-P2-1, B carry-overs | W1.1, all UI stages | B5 (alone) |
 | W4.6 | Shell hardening: error boundaries, auth consistency, mobile read-only | FUNC P2-9, P2-11, P2-12; UX F-P2-2 | — | B4 |
 | W4.7 | Hygiene: orphans, prototype route, analytics mock, fresh-clone DX | FUNC P2-3, P2-4, P2-6, P2-8, P2-10; UX IA-7 | — | B4 |
+| **R1** | **IA decision record + ux-contracts re-baseline v2** | D1–D10 approved; redirect map; registry nouns | §6 sign-off (done) | R-doc |
+| R2 | Route migration, redirects, nav skeleton | D1, D3, D8 (kills); new URLs live | R1 | R-nav |
+| R3 | One Home (merged `/home`) | D1, §3.3 wireframe; W2.6 down payment | R2; W2.6 merged | R-page |
+| R4 | Sources section + wizard-as-flow | D1, §3 flow-not-place principle | R2 | R-page |
+| R5 | Agents + Prove assembly, Foundation rehoming | D5 (audit→Prove); D6 (separate Logs/Usage) | R2 | R-page |
+| R6 | Shell v2: live-run chip, dossier rail, mobile tier | D10 (mobile); absorbs W4.6 mobile half | R2 | R-shell |
+| R7 | Workspace infrastructure project (decision-gated: D4) | D4 approved; K3 required | K3 merged | R-infra |
 
 Calibration: each stage is sized like the pivot roadmap's stages — one agent run producing
 one reviewable PR. The two biggest (W2.2, W3.1) carry explicit scope fences to stay that size.
@@ -606,6 +613,14 @@ Use effort: xhigh.
 `src/lib/server/connect/graph-health-summary.ts`, `connect/+page.svelte`,
 `packages/keys-tokens` (state tokens).*
 
+> **Re-scope note (R1, 2026-06-12 — see `docs/design/keys-northstar-redesign-2026-06.md` §4.1):**
+> W2.3 **survives, re-targeted.** The One Trust Ledger component mounts as the **Home masthead**
+> (`/home` §3.3 wireframe), not as a Connect hub panel. Build the component-first (the single-source
+> rule and token work are identical), then let R3 mount it. If W2.3 fires before R3 it may mount on
+> the current `/connect` hub temporarily; R3 then moves the mount without rebuilding the component.
+> The no-second-formula test survives unchanged. Coverage-gap rows that linked to
+> `pipeline?step=store` will be updated in R4 to link to `/sources/ingest?step=store`.
+
 ```
 ROLE
 Senior engineer fixing the most ironic finding in either review: the product whose pitch
@@ -1074,6 +1089,17 @@ Use effort: xhigh.
 `ConnectGraphStorePanel.svelte`, hub run-chip / `connect/ingest/+page.svelte` header,
 wizard launch step preselection. **Coordinate with issue #234.***
 
+> **Re-scope note (R1, 2026-06-12 — see `docs/design/keys-northstar-redesign-2026-06.md` §4.1):**
+> W3.6 **survives; chip mount updated.** The changed-source chip mounts on **Home + Runs** (not
+> on the Connect hub run-chip + runs header, which dissolve in R2/R3). Concretely:
+> - If W3.6 fires **before** R2/R3: mount the chip on the existing hub run-chip AND the
+>   `/connect/ingest` header as originally scoped; R3 relocates the chip to `/home` and R2
+>   relocates it to `/runs` without rebuilding the component.
+> - If W3.6 fires **after** R2: mount directly on `/home` (Home masthead runs rail) and
+>   `/runs` (runs list header). The `?step` redirect for the launch CTA updates from
+>   `/connect/pipeline?step=launch` to `/sources/ingest?step=launch` (R4's step mapping).
+> The BYO opt-in placement and a11y work (E-P1-1/E-P1-2/E-P2-1) are unaffected by geography.
+
 ```
 ROLE
 Senior engineer making pivot Stages 3.2/3.2b visible to the operator who needs them
@@ -1446,6 +1472,19 @@ Use effort: medium.
 *Resolves FUNC P2-9, P2-11, P2-12; UX F-P2-2. Files: new `+error.svelte` boundaries,
 `+layout.server.ts:60-71`, `+layout.svelte:158-173`.*
 
+> **Re-scope note (R1, 2026-06-12 — see `docs/design/keys-northstar-redesign-2026-06.md` §4.1):**
+> W4.6 **split.** The stage is now two halves:
+> - **Half A (fire any time, unaffected by Wave R):** Error boundaries (`+error.svelte`) and auth
+>   redirect consistency (P2-9, P2-11, P2-12). These are IA-agnostic and remain in W4.6.
+>   "Back to Overview" in the error boundary copy should use "Back to Home" once R3 lands
+>   (update in R3 or W4.6 — first one in wins).
+> - **Half B (mobile read-only tier): folds into R6.** The mobile read-only tier is a shell-level
+>   concern best shipped with the rest of the R6 shell upgrade (live-run chip + dossier rail).
+>   R6 will open `/home`, `/runs/[id]`, and `/claims` read-only (D10 approved: Home, run console,
+>   Claims read-only). W4.6's mobile half (UX F-P2-2) is absorbed by R6 and need not fire
+>   separately. If W4.6 fires before R6, implement the error boundary + auth half only; leave the
+>   mobile gate for R6.
+
 ```
 ROLE
 Senior engineer hardening the shell around everything the programme built.
@@ -1518,6 +1557,67 @@ pnpm --filter dashboard check && pnpm --filter dashboard exec vitest run src/lib
 Use effort: high (breadth, not depth). STOP gates: the ingest/new decision and anything
 touching credential storage.
 ```
+
+---
+
+## Wave R — North-star IA redesign
+
+*Source: [`docs/design/keys-northstar-redesign-2026-06.md`](design/keys-northstar-redesign-2026-06.md) §5.
+All ten product decisions D1–D10 approved 2026-06-12. Full stage prompts in the design doc.
+This section records re-scope notes and living programme state.*
+
+**Sequencing:** R1 → R2 → {R3, R4, R5} → R6; R7 is decision-gated (D4) and independent.
+R1 (this re-baseline) is the only docs stage. R2–R7 are code stages; R2 is the highest-breadth
+(route map change), R3–R5 rebuild pages, R6 upgrades the shell.
+
+**W/K re-sequencing:** W4.4/W4.5 sweeps fire AFTER Wave R (they sweep every file; sweeping
+pre-move geography wastes the pass — the decision from §4.1 of the redesign doc). W4.6's mobile
+half folds into R6.
+
+> **Roadmap changelog (R1, 2026-06-12):**
+> - Re-scope notes added to W2.3, W3.6, W4.6 per redesign §4.1 (above in their stage sections).
+> - Wave K section added below (K stages were in the KEYS review; now in the living roadmap).
+> - Wave R sequencing table rows added above.
+> - `ux-contracts.md` §1 + §2 + §A updated (see R1 changelog entry there).
+> - Source: `docs/design/keys-northstar-redesign-2026-06.md`
+
+---
+
+## Wave K — Keys⇄Connect seam
+
+*Source: [`docs/reviews/keys-core-journey-review-2026-06.md`](reviews/keys-core-journey-review-2026-06.md) §4.
+Full stage prompts live in that review doc (frozen evidence); this section is the living
+programme entry with re-scope notes applied by R1.*
+
+Stage prompts are in the review doc. Dependency order: **K2 → K3 → K4 → K5 → K6**; K1 amends W3.7. K2/K3 may fire in the same batch (disjoint files); K4 needs K3; K5 is independent of K4; K6 needs K1 + K2.
+
+| Stage | Title | Resolves | Depends on | Status |
+|---|---|---|---|---|
+| K1 | Gateway-key metadata contract | K-P1-1 (labels + last_used); N+1 fix | — (folds into W3.7) | Staged |
+| K2 | Real provider verification + capability honesty | K-P0-1, K-P1-3 | — | In flight |
+| K3 | Connect run preflight: bindings, fix-forward errors | K-P0-2, K-P2-1 | K2 (soft) | In flight |
+| K4 | "Ready to verify": Connect readiness hub | K-P1-5/6/7, §3 coherence thesis | K3, W1.5 merged | Staged |
+| K5 | Run attribution: which route served this run | K-P1-4, BP-11/12 | — | Staged |
+| K6 | Rotation: credentials and gateway keys | K-P1-2, FUNC P2-4 | K1, K2 | Staged |
+
+### Stage K4 — "Ready to verify": the Connect readiness hub
+
+*See `docs/reviews/keys-core-journey-review-2026-06.md` §4 for the full stage prompt.*
+
+> **Re-scope note (R1, 2026-06-12 — see `docs/design/keys-northstar-redesign-2026-06.md` §4.1):**
+> K4 **survives, elevated.** The readiness ledger becomes the **Home masthead's left panel**
+> (`/home` §3.3 wireframe, "READY TO VERIFY" quadrant) instead of "a panel on the Connect hub".
+> The three original mounts from the review (hub panel, project-page card, Overview checklist chip)
+> are superseded by **one mount: Home masthead**. Concretely:
+> - The server module (rows `{id, status, evidence, fixHref}`) is unchanged — build it as spec'd.
+> - If K4 fires **before** R3: mount on the current `/connect` hub as a ledger panel (the interim
+>   mount); R3 relocates to `/home` without rebuilding the component.
+> - If K4 fires **after** R3: mount directly on `/home` (the masthead left quadrant).
+> - The project-page card mount and the Overview checklist chip mount in the original spec are
+>   superseded — do not build them; they were always workarounds for the two-homes problem that R3
+>   resolves with one Home. The single mount at Home is cleaner and cheaper.
+> - The `?step=store` fix link updates to `/sources/ingest?step=store` once R4 lands; use the
+>   current `/connect/pipeline?step=store` path until R4 merges (the redirect handles it).
 
 ---
 
