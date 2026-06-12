@@ -75,8 +75,35 @@ describe("dispatchDeskKey — shortcut suppression in text entry (X10)", () => {
     }
   });
 
-  it("Escape still bails out of the note field (the one universal key)", () => {
-    expect(dispatchDeskKey("Escape", typing)).toEqual({ kind: "exit" });
+  it("two-step Escape — Escape in the note field BLURS the field, it does not exit the desk", () => {
+    // Pressing Escape while typing must leave the field only (focus back to the
+    // claim card), not tear down the whole desk and lose the operator's place.
+    expect(dispatchDeskKey("Escape", typing)).toEqual({ kind: "blur" });
+    expect(dispatchDeskKey("Esc", typing)).toEqual({ kind: "blur" });
+  });
+});
+
+describe("dispatchDeskKey — two-step escape (outside vs inside the note field)", () => {
+  it("Escape OUTSIDE a text field exits the desk", () => {
+    const outside = { fromTextEntry: false, readonly: false };
+    expect(dispatchDeskKey("Escape", outside)).toEqual({ kind: "exit" });
+    expect(dispatchDeskKey("Esc", outside)).toEqual({ kind: "exit" });
+  });
+
+  it("Escape INSIDE a text field blurs (step 1); a second Escape — now outside — exits (step 2)", () => {
+    expect(dispatchDeskKey("Escape", { fromTextEntry: true, readonly: false })).toEqual({
+      kind: "blur",
+    });
+    // After blur, focus is no longer in the field, so the next Escape exits.
+    expect(dispatchDeskKey("Escape", { fromTextEntry: false, readonly: false })).toEqual({
+      kind: "exit",
+    });
+  });
+
+  it("blur is honoured even read-only (it is a focus move, not a mutation)", () => {
+    expect(dispatchDeskKey("Escape", { fromTextEntry: true, readonly: true })).toEqual({
+      kind: "blur",
+    });
   });
 });
 

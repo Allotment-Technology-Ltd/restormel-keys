@@ -97,6 +97,11 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
+    // Modifier guard: never intercept Cmd/Ctrl/Alt chords. Without this, Cmd/Ctrl+S
+    // would stamp "Supported" AND swallow the browser's Save (preventDefault), and
+    // Ctrl+A would stamp instead of select-all. Let the browser own modified keys.
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
     const command = dispatchDeskKey(event.key, {
       fromTextEntry: eventFromTextEntry(event.target),
       readonly,
@@ -143,6 +148,14 @@
       case "legend":
         event.preventDefault();
         legendOpen = !legendOpen;
+        break;
+      case "blur":
+        // Two-step escape: first Escape leaves the note field (focus back to the
+        // claim card) WITHOUT exiting the desk. A second Escape (now outside the
+        // field) exits via the "exit" branch.
+        event.preventDefault();
+        noteEl?.blur();
+        void focusClaim();
         break;
       case "exit":
         event.preventDefault();

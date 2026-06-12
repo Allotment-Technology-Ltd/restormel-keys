@@ -39,7 +39,8 @@ export type DeskCommand =
   | { kind: "note" } //      n — focus the note field (does NOT advance)
   | { kind: "undo" } //      z — re-stamp the last claim to its prior verdict
   | { kind: "legend" } //    ? — toggle the shortcut legend overlay
-  | { kind: "exit" }; //     Escape — leave the desk, back to the explorer
+  | { kind: "blur" } //      Escape while in the note field — leave the field only
+  | { kind: "exit" }; //     Escape (outside the note) — leave the desk entirely
 
 /** Context the dispatcher needs to decide whether a key does anything. */
 export type DeskKeyContext = {
@@ -57,17 +58,27 @@ export type DeskKeyContext = {
  * Map a raw keydown to a desk command, or null for "not a desk key / suppressed".
  *
  * Suppression rules (rubric X10, ACCEPTANCE: "shortcuts never hijack typing"):
- *   - When the event came from a text-entry target, ONLY Escape is honoured
- *     (so you can still bail out of the note field); every letter key types.
+ *   - When the event came from a text-entry target, ONLY Escape is honoured —
+ *     and it is a TWO-STEP escape: the first Escape blurs the note field
+ *     (`{kind:"blur"}`), it does NOT tear down the whole desk. Every letter key
+ *     types. Once focus has left the field, a subsequent Escape exits.
  *   - When read-only, mutating commands (stamp / note / undo) are dropped;
  *     read-only navigation, legend and exit remain.
  */
 export function dispatchDeskKey(key: string, ctx: DeskKeyContext): DeskCommand | null {
-  // Escape always exits, even from the note field — it is the one universal key.
-  if (key === "Escape" || key === "Esc") return { kind: "exit" };
+  const isEscape = key === "Escape" || key === "Esc";
 
-  // Inside a text field, no other shortcut fires — the operator is typing.
-  if (ctx.fromTextEntry) return null;
+  // Two-step escape: while typing in the note field, Escape only leaves the
+  // field — it must not also exit the desk (that loses the operator's place and
+  // surprises anyone who pressed Escape just to stop editing).
+  if (ctx.fromTextEntry) {
+    if (isEscape) return { kind: "blur" };
+    // Inside a text field, no other shortcut fires — the operator is typing.
+    return null;
+  }
+
+  // Outside the note field, Escape leaves the desk entirely.
+  if (isEscape) return { kind: "exit" };
 
   switch (key) {
     // J/K are canonical (and arrows mirror them). `n`/`p` are intentionally NOT

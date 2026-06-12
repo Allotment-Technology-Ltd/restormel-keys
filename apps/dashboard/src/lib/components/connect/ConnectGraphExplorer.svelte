@@ -1919,21 +1919,67 @@
     statsDelta = snapshot.statsDelta;
   }
 
-  function performReview(unit: Unit, status: ReviewVerdictAction) {
-    if (!reviewEnabled || exitingUnitId) return;
+  /**
+   * Result of attempting a verdict. The desk needs the truth, not a silent
+   * early-return: `dispatched` means the stamp is now server-bound (it WILL
+   * PATCH once the 250ms advance animation completes); `swallowed` means a
+   * previous stamp is still in flight (the 250ms `exitingUnitId` guard window)
+   * and this input was refused — the caller must hold, not advance/tally;
+   * `disabled` means review is off entirely.
+   */
+  type ReviewDispatch = "dispatched" | "swallowed" | "disabled";
+
+  /**
+   * @param onResolved Optional continuation fired AFTER the server responds with
+   *   `ok` (true = persisted, false = rejected/network-failed and the optimistic
+   *   apply was reverted). The desk uses this to roll back its tally/undo state
+   *   when a stamp does not actually save — so the rail never counts a phantom.
+   */
+  function performReview(
+    unit: Unit,
+    status: ReviewVerdictAction,
+    onResolved?: (ok: boolean) => void,
+  ): ReviewDispatch {
+    if (!reviewEnabled) return "disabled";
+    if (exitingUnitId) return "swallowed";
     const nextId = nextQueueUnitId(unit.id);
     flashReviewButton(status);
     exitingUnitId = unit.id;
     window.setTimeout(() => {
-      submitReview(unit, status);
+      submitReview(unit, status, onResolved);
       exitingUnitId = null;
       if (nextId) selectedId = nextId;
     }, 250);
+    return "dispatched";
   }
 
   // ── Stamping Desk (W4.2) wiring — reuses performReview/selectUnit, no new fetch ─
-  /** True when the desk must be read-only (mobile read-only tier OR as-of history). */
-  $: deskReadonly = asOfActive || isMobileReadonlyActive();
+  /**
+   * True when the desk must be read-only. This drives the desk's `readonly` prop
+   * and the visible chrome (the entry-button copy, the in-desk read-only note).
+   *
+   * SECURITY (MAJOR-1): the mobile read-only tier is checked at CALL time, NOT
+   * here. The layout sets `data-mobile-readonly="true"` in its `onMount` (after a
+   * matchMedia probe), which lands AFTER this component first evaluates its
+   * reactive statements — so a reactive flag that read `isMobileReadonlyActive()`
+   * once would compute `false` on a phone and never recompute (its only tracked
+   * dep would be `asOfActive`). The button still mutated. So:
+   *   - this reactive value tracks only `asOfActive` (which IS reactive + correct);
+   *   - the mobile tier hides the entry button + desk via CSS (`.shell-mobile-readonly`);
+   *   - and EVERY mutation entry point (`enterDesk`, `deskStamp`, `deskUndo`) and
+   *     the desk-open keydown re-check `deskMutationBlocked()` at call time, which
+   *     queries the live DOM flag and refuses honestly.
+   */
+  $: deskReadonly = asOfActive;
+  /**
+   * Call-time read-only guard for any desk MUTATION. Evaluated at the moment of
+   * the click/keypress so the mobile read-only flag — set by the layout after
+   * mount — is always observed (see the MAJOR-1 note above). Mirrors the pattern
+   * `handleReviewKeydown` already uses for the a/w/u shortcuts.
+   */
+  function deskMutationBlocked(): boolean {
+    return asOfActive || isMobileReadonlyActive();
+  }
   /** Position (1-based) + total of the selected claim in the live filtered queue. */
   $: deskPosition = selectedQueueIndex >= 0 ? selectedQueueIndex + 1 : 0;
   /** Claims still awaiting a verdict in the loaded queue (drives "N remaining"). */
@@ -1942,7 +1988,10 @@
   ).length;
 
   function enterDesk() {
-    if (!reviewEnabled || deskReadonly) return;
+    // Call-time guard (MAJOR-1): re-check the mobile read-only tier on click, not
+    // just the reactive as-of flag — the entry button can exist in the DOM on a
+    // phone before the layout's mount-time flag hides it, so refuse honestly here.
+    if (!reviewEnabled || deskMutationBlocked()) return;
     // Reset the per-visit tally and undo history, then open. If nothing is
     // selected, land on the first claim so the keyboard loop has a target.
     deskTally = emptyDeskTally();
@@ -1956,40 +2005,98 @@
     deskActive = false;
   }
 
-  /** Stamp the current claim from the desk — records prior verdict for undo. */
+  /**
+   * Stamp the current claim from the desk — records prior verdict for undo.
+   *
+   * MAJOR-2 (truthful tally): we tally / announce-success / record-undo-state
+   * ONLY when `performReview` confirms a server-bound dispatch. If a previous
+   * stamp is still inside the 250ms guard window the call is `swallowed` — we
+   * hold and tell the operator, rather than counting a stamp the server will
+   * never see and then advancing. If the server later rejects the stamp, the
+   * `onResolved(false)` continuation rolls the tally + undo state back.
+   */
   function deskStamp(status: ReviewVerdictAction) {
-    if (!selectedUnit || deskReadonly) return;
+    // MAJOR-1: re-check the mobile read-only tier at call time.
+    if (!selectedUnit || deskMutationBlocked()) return;
     const unit = selectedUnit;
-    const fromStatus = normalizeValidationStatus(unit.validationStatus);
-    deskLastStamp = {
-      unitId: unit.id,
-      toStatus: status,
-      fromStatus:
-        fromStatus === "ok" || fromStatus === "weak" || fromStatus === "unsupported"
-          ? fromStatus
-          : null,
-    };
+    const priorStatus = normalizeValidationStatus(unit.validationStatus);
+    const fromStatus =
+      priorStatus === "ok" || priorStatus === "weak" || priorStatus === "unsupported"
+        ? priorStatus
+        : null;
+
+    const dispatch = performReview(unit, status, (ok) => {
+      if (ok) return;
+      // Server rejected (or network failed) — `submitReview` already reverted the
+      // optimistic graph state; undo our optimistic tally + undo record so the
+      // rail and the Z affordance match the server. Guard against clobbering a
+      // newer stamp that may have landed in the meantime.
+      deskTally = tallyUndo(deskTally, status);
+      if (deskLastStamp && deskLastStamp.unitId === unit.id && deskLastStamp.toStatus === status) {
+        deskLastStamp = null;
+      }
+      deskComponent?.announce("That stamp didn't save — it's been rolled back. Try again.");
+    });
+
+    if (dispatch !== "dispatched") {
+      deskComponent?.announce(
+        dispatch === "swallowed"
+          ? "Hold on — saving the previous stamp. Try that again in a moment."
+          : "Stamping is unavailable right now.",
+      );
+      void deskComponent?.focusClaim();
+      return;
+    }
+
+    // Confirmed server-bound: NOW it is honest to count it and arm undo.
+    deskLastStamp = { unitId: unit.id, toStatus: status, fromStatus };
     deskTally = tallyStamp(deskTally, status);
-    // Announce BEFORE performReview advances (deskRemaining still counts this one).
     deskComponent?.announce(announceStamp(status, Math.max(0, deskRemaining - 1)));
-    performReview(unit, status);
     void deskComponent?.focusClaim();
   }
 
-  /** Re-stamp the last claim to its prior verdict (honest undo — no server unstamp). */
+  /**
+   * Re-stamp the last claim to its prior verdict (honest undo — no server unstamp).
+   *
+   * MAJOR-2: only flip the tally / clear the undo record once the re-stamp is a
+   * confirmed dispatch. An S→Z inside the 250ms window is `swallowed`: we keep the
+   * undo affordance armed and tell the operator to wait, instead of announcing
+   * "Undone" while the server still holds the original verdict.
+   */
   function deskUndo(toStatus: ReviewVerdictAction) {
     const last = deskLastStamp;
-    if (!last || deskReadonly) return;
+    // MAJOR-1: re-check the mobile read-only tier at call time.
+    if (!last || deskMutationBlocked()) return;
     const unit = units.find((u) => u.id === last.unitId);
-    deskTally = tallyUndo(deskTally, last.toStatus);
-    deskLastStamp = null;
-    if (unit) {
-      selectUnit(unit);
-      deskComponent?.announce(`Undone. Restored to ${toStatus}.`);
-      performReview(unit, toStatus);
-    } else {
+    if (!unit) {
       deskComponent?.announce("Could not restore — the claim left the loaded queue.");
+      void deskComponent?.focusClaim();
+      return;
     }
+    selectUnit(unit);
+    const undoneStatus = last.toStatus;
+
+    const dispatch = performReview(unit, toStatus, (ok) => {
+      if (ok) return;
+      // The re-stamp didn't persist — restore the tally + undo affordance.
+      deskTally = tallyStamp(deskTally, undoneStatus);
+      deskLastStamp = last;
+      deskComponent?.announce("Undo didn't save — restored the stamp. Try again.");
+    });
+
+    if (dispatch !== "dispatched") {
+      deskComponent?.announce(
+        dispatch === "swallowed"
+          ? "Hold on — saving the previous stamp. Try undo again in a moment."
+          : "Undo is unavailable right now.",
+      );
+      void deskComponent?.focusClaim();
+      return;
+    }
+
+    deskTally = tallyUndo(deskTally, undoneStatus);
+    deskLastStamp = null;
+    deskComponent?.announce(`Undone. Restored to ${toStatus}.`);
     void deskComponent?.focusClaim();
   }
 
@@ -2024,8 +2131,15 @@
     }
   }
 
-  function submitReview(unit: Unit, status: "ok" | "weak" | "unsupported") {
-    if (!reviewEnabled) return;
+  function submitReview(
+    unit: Unit,
+    status: "ok" | "weak" | "unsupported",
+    onResolved?: (ok: boolean) => void,
+  ) {
+    if (!reviewEnabled) {
+      onResolved?.(false);
+      return;
+    }
     actionError = null;
     const note = reviewNote.trim() || null;
     const snapshot = {
@@ -2052,11 +2166,15 @@
         if (!res.ok) {
           revertReviewOptimistic(unit, snapshot);
           actionError = body.message ?? `Review failed (HTTP ${res.status}).`;
+          onResolved?.(false);
+          return;
         }
+        onResolved?.(true);
       })
       .catch(() => {
         revertReviewOptimistic(unit, snapshot);
         actionError = "Network error while saving your review.";
+        onResolved?.(false);
       });
   }
 
