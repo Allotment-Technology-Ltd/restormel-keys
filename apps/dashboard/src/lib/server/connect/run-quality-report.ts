@@ -2,6 +2,36 @@
  * Post-ingest quality report — surfaces validation breakdown and kg-audit summary.
  */
 import { buildAuditSummary, type KgAuditIssueDraft, type KgAuditMetrics } from "@restormel/connect-core";
+import { normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
+
+/**
+ * K4 / K-P1-7: which provider family validated this run, disclosed on the report
+ * when stage attribution exists (K5 persists it; null is the graceful absent-state
+ * for runs that predate attribution).
+ */
+export type RunValidationFamilyDisclosure = {
+  validation_provider: string;
+  extraction_provider: string | null;
+  /** True when validation used a different canonical family than extraction; null when unknowable. */
+  cross_family: boolean | null;
+};
+
+export function buildValidationFamilyDisclosure(attribution: {
+  validationProvider?: string | null;
+  extractionProvider?: string | null;
+}): RunValidationFamilyDisclosure | null {
+  const validation = attribution.validationProvider?.trim();
+  if (!validation) return null;
+  const extraction = attribution.extractionProvider?.trim() || null;
+  const validationFamily = normalizeProviderToCanonicalApi(validation);
+  const extractionFamily = extraction ? normalizeProviderToCanonicalApi(extraction) : null;
+  return {
+    validation_provider: validation,
+    extraction_provider: extraction,
+    cross_family:
+      validationFamily && extractionFamily ? validationFamily !== extractionFamily : null,
+  };
+}
 
 export type RunQualityReport = {
   preset: "production" | "starter";
@@ -23,6 +53,8 @@ export type RunQualityReport = {
     total_issues: number;
     formula: string;
   } | null;
+  /** K4: validating-family disclosure; null until run attribution exists (K5). */
+  validation_family: RunValidationFamilyDisclosure | null;
   next_actions: string[];
 };
 
@@ -36,6 +68,8 @@ export function buildRunQualityReport(args: {
   graphStats?: { units: number; embedded: number; validation: RunQualityReport["validation"] };
   extractionWarningCount?: number;
   packReadinessWarnings?: string[];
+  /** K5 stage attribution when persisted; absent for legacy runs (graceful null). */
+  attribution?: { validationProvider?: string | null; extractionProvider?: string | null };
 }): RunQualityReport {
   const v = args.validation;
   const denom = v.ok + v.weak + v.unsupported;
@@ -107,6 +141,7 @@ export function buildRunQualityReport(args: {
     ok_pct,
     stub_warning,
     kg_audit,
+    validation_family: args.attribution ? buildValidationFamilyDisclosure(args.attribution) : null,
     next_actions,
   };
 }

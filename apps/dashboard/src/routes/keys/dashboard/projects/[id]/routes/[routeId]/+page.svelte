@@ -194,7 +194,16 @@
   let addStepDialogEl: HTMLDialogElement | undefined;
 
   /** IA: flow canvas vs route + guard rails setup vs versions vs secondary (logs). */
-  let workspaceTab: "flow" | "setup" | "versions" | "more" = "flow";
+  type WorkspaceTab = "flow" | "setup" | "versions" | "more";
+  /**
+   * K4 (W1.5 follow-up, closes K-P0-3): ?tab=versions deep-links land on the
+   * Versions tab so "Draft — publish to use" rows have a working publish path.
+   */
+  function initialWorkspaceTab(): WorkspaceTab {
+    const tab = $page.url.searchParams.get("tab");
+    return tab === "versions" || tab === "setup" || tab === "more" ? tab : "flow";
+  }
+  let workspaceTab: WorkspaceTab = initialWorkspaceTab();
   /** Map draft lives in `RouteFlowCanvas`; when the Flow tab unmounts, clear stale parent flag so leave guards and clicks stay sane. */
   $: {
     if (workspaceTab !== "flow") {

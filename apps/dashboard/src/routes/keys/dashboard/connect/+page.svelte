@@ -6,6 +6,7 @@
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import ConnectQualityHistory from "$lib/components/connect/ConnectQualityHistory.svelte";
+  import ConnectVerifiedReadiness from "$lib/components/connect/ConnectVerifiedReadiness.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
@@ -136,6 +137,9 @@
           graphHref="{CONNECT_BASE}/graph"
         />
       {/if}
+
+      <!-- K4: "Ready to verify" — the standing readiness ledger (§3 coherence thesis) -->
+      <ConnectVerifiedReadiness readiness={hub.readiness} />
 
       <ConnectTrustScorecard scorecard={data.scorecard} />
 
