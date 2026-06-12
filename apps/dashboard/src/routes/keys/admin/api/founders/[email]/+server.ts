@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { setFoundersAccessStatus, type FoundersAccessStatus } from "$lib/server/founders-access";
+import { invalidateSessionAuthCache } from "$lib/server/session-auth-cache";
 
 export const config = { runtime: "nodejs22.x" as const };
 
@@ -41,6 +42,10 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
       { status: result.code === "not_found" ? 404 : 500 }
     );
   }
+
+  // Status changed by email (uid unknown here): drop all memoized hook auth statuses
+  // so the grant/revoke applies on the affected user's next request, as before.
+  invalidateSessionAuthCache();
 
   return json({ ok: true });
 };

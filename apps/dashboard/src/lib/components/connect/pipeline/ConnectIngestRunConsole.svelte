@@ -111,7 +111,10 @@
   $: active = job?.status === "pending" || job?.status === "running";
   $: isGraphRepairTask = graphTask === "auto-remediate" || graphTask === "revalidate";
   $: isEmbedBackfill = graphTask === "embed-backfill";
-  $: pollMs = active ? 1500 : 4000;
+  // F8: each poll is a full server round-trip (hooks + 3 queries). 2.5s with jitter
+  // keeps the console live while roughly halving steady-state poll load vs 1.5s;
+  // polling pauses entirely while the tab is hidden (see handleVisibilityChange).
+  $: pollMs = active ? 2500 : 4000;
   $: canCancel = job?.status === "pending" || job?.status === "running";
   $: isStubPreview =
     job?.progress?.execution_mode === "stub" ||
@@ -203,10 +206,25 @@
     job?.status === "cancelled" ||
     (job?.status === "completed" && (isStubPreview || job?.progress?.execution_mode === "full"));
 
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      // Stop polling while the tab is hidden — background tabs were a steady
+      // 0.7 req/s/viewer multiplier on the shared function + Neon compute.
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    } else if (job && (job.status === "pending" || job.status === "running")) {
+      // Catch up immediately on return; loadLive reschedules the loop.
+      void loadLive(true);
+    }
+  }
+
   onMount(() => {
     clockTimer = setInterval(() => {
       nowMs = Date.now();
     }, 1000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
   });
 
   async function cancelJob() {
@@ -314,8 +332,12 @@
 
   function schedulePoll() {
     if (pollTimer) clearTimeout(pollTimer);
+    // Hidden tab: skip scheduling — handleVisibilityChange resumes on return.
+    if (typeof document !== "undefined" && document.hidden) return;
     if (job && (job.status === "pending" || job.status === "running")) {
-      pollTimer = setTimeout(() => loadLive(true), pollMs);
+      // ±20% jitter de-synchronizes multiple consoles/tabs polling in lockstep.
+      const delay = Math.round(pollMs * (0.8 + Math.random() * 0.4));
+      pollTimer = setTimeout(() => loadLive(true), delay);
     }
   }
 
@@ -343,6 +365,9 @@
   onDestroy(() => {
     if (pollTimer) clearTimeout(pollTimer);
     if (clockTimer) clearInterval(clockTimer);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }
   });
 </script>
 

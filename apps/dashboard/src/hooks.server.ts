@@ -9,11 +9,9 @@ import { json, redirect } from "@sveltejs/kit";
 import { agentLogServer } from "$lib/debug/agent-log.server";
 import { perfSpan } from "$lib/debug/server-perf";
 import { getSession } from "$lib/server/auth";
-import { upsertUser } from "$lib/server/db";
 import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
-import { resolveServiceAdminStatus, syncServiceOwnerBootstrap } from "$lib/server/service-admin";
-import { isFoundersCircleApproved, syncFoundersAccessForServiceOwner } from "$lib/server/founders-access";
+import { resolveSessionAuthContext } from "$lib/server/session-auth-cache";
 import {
   isFoundersGateExemptPath,
   requiresFoundersCircleAccess,
@@ -52,29 +50,25 @@ export const handle: Handle = async ({ event, resolve }) => {
     authSessionCookies = setCookies;
     if (session?.user) {
       const email = session.user.email ?? null;
-      const isServiceAdmin = await resolveServiceAdminStatus(
-        session.user.id,
-        session.user.role ?? null,
-        email
-      );
-      const foundersStatus = await isFoundersCircleApproved(email);
+      // Memoized per (uid,email,role): admin/founders status (30s TTL) + once-per-process
+      // bootstrap syncs. Previously up to 4 sequential Neon round-trips on EVERY request.
+      const endAuthCtx = perfSpan("hooks", "resolveSessionAuthContext");
+      const authCtx = await resolveSessionAuthContext({
+        uid: session.user.id,
+        email,
+        role: session.user.role ?? null,
+      });
+      endAuthCtx();
       event.locals.user = {
         uid: session.user.id,
         email,
         name: session.user.name ?? null,
         authType: "session",
-        isServiceAdmin,
+        isServiceAdmin: authCtx.isServiceAdmin,
         // null = lookup failed — do not treat as "not approved" (avoids spurious /founders/pending).
-        foundersCircleApproved: isServiceAdmin || foundersStatus !== false,
+        foundersCircleApproved:
+          authCtx.isServiceAdmin || authCtx.foundersCircleApproved !== false,
       };
-      try {
-        await syncServiceOwnerBootstrap(session.user.id, email);
-        await syncFoundersAccessForServiceOwner(email);
-        await upsertUser(session.user.id, email);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
-        if (msg) console.error("[db] upsertUser:", msg.slice(0, 100));
-      }
     } else {
       const bearer = getBearerToken(event.request);
       if (bearer) {

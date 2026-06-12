@@ -5,6 +5,7 @@ import {
   listServiceAdminEmails,
   removeServiceAdminEmail,
 } from "$lib/server/service-admin-emails";
+import { invalidateSessionAuthCache } from "$lib/server/session-auth-cache";
 
 export const config = { runtime: "nodejs22.x" as const };
 
@@ -47,6 +48,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ error: "save_failed", message: result.message }, { status: 400 });
   }
 
+  // Grant is by email (uid unknown): drop memoized hook auth statuses so it applies immediately.
+  invalidateSessionAuthCache();
+
   return json({ ok: true }, { status: 201 });
 };
 
@@ -74,6 +78,9 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
   if (!result.ok) {
     return json({ error: "delete_failed", message: result.message }, { status: 400 });
   }
+
+  // Revoke is by email (uid unknown): drop memoized hook auth statuses so it applies immediately.
+  invalidateSessionAuthCache();
 
   return json({ ok: true });
 };

@@ -184,6 +184,18 @@ async function fetchSessionFromNeon(
   return result;
 }
 
+/**
+ * Neon Auth (Better Auth) session cookies are always `__Secure-*` in production
+ * (`rksecure-*` is our localhost alias, decoded back before this check). A request
+ * without one cannot resolve to a session, so we can skip the get-session round-trip —
+ * anonymous marketing/docs/bot traffic otherwise pays a full Neon Auth HTTP call per
+ * request (the session cache only stores hits, so misses were never cached).
+ */
+export function cookieHeaderMayCarrySession(cookie: string): boolean {
+  if (!cookie) return false;
+  return /(?:^|;\s*)(?:__Secure-|rksecure-)[^=;]*=/.test(cookie);
+}
+
 export async function getSession(
   request: Request,
   host = ""
@@ -194,6 +206,9 @@ export async function getSession(
   }
   try {
     const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
+    if (!cookieHeaderMayCarrySession(cookie)) {
+      return { data: null, error: null, setCookies: [] };
+    }
     const cacheKey = sessionCacheKey(host, cookie);
 
     const cacheTtlMs = SESSION_CACHE_MS;
