@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
+  import { browser } from "$app/environment";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
@@ -10,9 +11,12 @@
   import { isJobStuck } from "$lib/connect/ingest-runs-safety";
   import DossierRail from "$lib/components/dashboard/DossierRail.svelte";
   import RunQuickPeek from "$lib/components/dashboard/RunQuickPeek.svelte";
+  import { liveRunJobs, startLiveRunPoll } from "$lib/stores/live-run-poll";
+  import type { LiveRunChipJob } from "$lib/connect/live-run-chip";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
   const NEW_RUN_HREF = pipelineWizardHref("launch");
+  const PAGE_SIZE = 20;
 
   type Job = {
     id: string;
@@ -46,16 +50,49 @@
   let bulkCleanResult: { cancelled: number; deleted: number } | null = null;
   let deletingIds = new Set<string>();
 
+  // W3.1 pagination — honest cursor + total ("showing N of M").
+  let nextCursor: string | null = null;
+  let totalCount = 0;
+  let loadingMore = false;
+
+  // W3.1 live status — MAJOR-5: consume the SAME workspace stream the topbar chip
+  // already holds (`liveRunJobs` / `startLiveRunPoll`) instead of opening a second
+  // identical SSE channel per viewer. One workspace stream per viewer, shared with
+  // the chip; the store transparently handles the SSE→30s-poll fallback, so the
+  // list never needs its own degraded note (the chip is the canonical indicator).
+  let stopLive: (() => void) | null = null;
+  let unsubscribeLive: (() => void) | null = null;
+
   $: filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
   $: stuckCount = jobs.filter(isJobStuck).length;
+  $: hasMore = nextCursor != null;
+
+  /** Patch one run from the shared live store into the list (in place; never reorders). */
+  function patchLiveJob(incoming: LiveRunChipJob) {
+    const idx = jobs.findIndex((j) => j.id === incoming.id);
+    if (idx === -1) return; // not on the loaded page(s) — Refresh surfaces brand-new runs
+    const next = jobs.slice();
+    next[idx] = { ...next[idx], ...incoming } as Job;
+    jobs = next;
+  }
+
+  function startLive() {
+    if (!browser || stopLive) return;
+    stopLive = startLiveRunPoll();
+    // Patch loaded rows whenever the shared workspace stream pushes new state.
+    unsubscribeLive = liveRunJobs.subscribe((live) => {
+      if (live) for (const j of live) patchLiveJob(j);
+    });
+  }
 
   async function load() {
     loading = true;
     error = null;
     signedOut = false;
     bulkCleanResult = null;
+    nextCursor = null;
     try {
-      const res = await fetch(API);
+      const res = await fetch(`${API}?limit=${PAGE_SIZE}`);
       if (res.status === 401) {
         signedOut = true;
         jobs = [];
@@ -67,6 +104,9 @@
       }
       const data = await res.json();
       jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      nextCursor = typeof data.next_cursor === "string" ? data.next_cursor : null;
+      totalCount = typeof data.total_count === "number" ? data.total_count : jobs.length;
+      startLive();
     } catch {
       error = "Network error while loading ingest runs.";
     } finally {
@@ -74,7 +114,36 @@
     }
   }
 
+  async function loadMore() {
+    if (loadingMore || !nextCursor) return;
+    loadingMore = true;
+    try {
+      const res = await fetch(`${API}?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(nextCursor)}`);
+      if (!res.ok) {
+        error = `Could not load more runs (HTTP ${res.status}).`;
+        return;
+      }
+      const data = await res.json();
+      const more: Job[] = Array.isArray(data.jobs) ? data.jobs : [];
+      // De-dupe by id in case a run churned between pages (keyset is stable, but be safe).
+      const seen = new Set(jobs.map((j) => j.id));
+      jobs = [...jobs, ...more.filter((j) => !seen.has(j.id))];
+      nextCursor = typeof data.next_cursor === "string" ? data.next_cursor : null;
+      if (typeof data.total_count === "number") totalCount = data.total_count;
+    } catch {
+      error = "Network error while loading more runs.";
+    } finally {
+      loadingMore = false;
+    }
+  }
+
   onMount(load);
+  onDestroy(() => {
+    unsubscribeLive?.();
+    unsubscribeLive = null;
+    stopLive?.();
+    stopLive = null;
+  });
 
   function statusClass(status: string): string {
     if (status === "completed") return "status-success";
@@ -317,6 +386,21 @@
         </li>
       {/each}
     </ul>
+
+    <div class="page-footer">
+      <p class="showing" role="status" aria-live="polite">
+        {#if statusFilter === "all"}
+          Showing {jobs.length} of {totalCount} run{totalCount === 1 ? "" : "s"}
+        {:else}
+          Showing {filtered.length} {statusFilter} of {jobs.length} loaded ({totalCount} total)
+        {/if}
+      </p>
+      {#if hasMore}
+        <button type="button" class="btn btn-secondary" on:click={loadMore} disabled={loadingMore}>
+          {loadingMore ? "Loading…" : "Load more"}
+        </button>
+      {/if}
+    </div>
   {/if}
 </section>
 
@@ -385,6 +469,20 @@
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .showing {
+    margin: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
     color: var(--rm-muted);
   }
   .muted {

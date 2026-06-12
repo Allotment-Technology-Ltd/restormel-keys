@@ -284,6 +284,28 @@ The workspace mode adds three panels: picker, prompt, and result. The route buil
 
 **Fix-forward links (W3.2, rubric X4):** Every route name in the result receipt links to the builder (`/projects/{id}/routes/{routeId}`); every "View logs" link carries `?route={routeId}` so the log table is pre-filtered to this route's requests.
 
+<!-- W3.1-BLOCK-START: live updates (SSE/fallback) + runs pagination. Other batch
+     agents edit this file — keep edits inside this fenced block to ease rebase. -->
+### §3 live-transport states — Live updates (Stage W3.1)
+
+W3.1 replaces per-surface status polling with ONE SSE channel (`/api/connect/ingest/events`,
+session-scoped). Because the Vercel target is serverless (60s function ceiling on Hobby), the
+stream self-closes under the cap and the client reconnects by **rebuilding its request URL from the
+consumer's current cursor** (no `Last-Event-ID`): the run console sends its live log `since` on every
+reconnect and the first frame after connect is a `snapshot` carrying the catch-up log tail since that
+cursor, so a 50s reconnect or hidden-tab gap drops no log lines. After repeated connect failures it
+**falls back to the pre-existing F8-diet poll** (the run console's 2.5s jittered poll; the chip's 30s
+poll) — one transport, the poll is the documented degraded path, never a second live path. The chip's
+store contract (`liveRunJobs` / `startLiveRunPoll`) is unchanged, and the runs list **consumes that
+same store** rather than opening a second workspace stream (one SSE invocation per viewer, not two).
+
+| Surface / element | Loading | Empty | Error / degraded | Populated (live) |
+|-------------------|---------|-------|------------------|------------------|
+| **Runs list — live status** (`/keys/dashboard/runs`) | `BrutalLoadingState` (existing) on first load | existing "No runs yet" empty + "Open setup wizard" CTA | shares the topbar chip's workspace stream — SSE→30s-poll fallback is handled transparently inside the shared store, so the list shows no separate degraded note (the chip is the canonical live/degraded indicator); the existing load-error banner + "Try again" is unchanged | active-run rows patch in place from the shared `liveRunJobs` store (status badge + stage + percent update live; row order is stable, never reshuffled) |
+| **Runs list — pagination** (`/keys/dashboard/runs`) | `loadMore` shows "Loading…" on the button | n/a (footer hidden until a page loads) | load-more failure reuses the page error banner + "Try again" | honest **"Showing N of M runs"** footer (real `total_count`, not a guess) + **"Load more"** keyset cursor button, hidden when `next_cursor` is null; status-filtered view states "Showing N {status} of M loaded (T total)" so the count is never misread as a server total |
+| **Run console — live tail** (`/runs/[id]`) | existing "Loading run console…" (`role="status"`) | n/a (a run always has a row) | existing "Could not load run status" banner + restart actions; **plus** an amber **"Live updates degraded to polling"** mono note (`role="status"`, in-progress runs only) when SSE drops to the 2.5s fallback — the run is explicitly stated to be unaffected | status badge, progress %, stage timeline, heartbeat age, and the activity-log tail all update from SSE `delta` frames (`aria-live="polite"` log region preserved); the W1.4 stall/reclaim narration rides the same frames |
+<!-- W3.1-BLOCK-END -->
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:

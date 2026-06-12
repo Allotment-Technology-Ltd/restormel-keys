@@ -1,44 +1,72 @@
 /**
- * Live-run poll (Stage R6) — ONE workspace-scoped query every 30s.
+ * Live-run feed for the topbar chip (Stage R6 → W3.1 SSE swap point).
  *
- * Feeds the topbar live-run chip. W3.1 (SSE) is NOT merged, so the chip falls
- * back to a light poll within PR #259's poll diet: a single GET of
- * `/api/connect/ingest/jobs` (already workspace-scoped by session auth — no
- * UUIDs, no params), no duplicated stats/scorecard fetches.
+ * Exposes the SAME contract it always has — `liveRunJobs` (a readable store of
+ * the workspace's ingest jobs, `null` until first data) and `startLiveRunPoll()`
+ * (idempotent, reference-counted, returns a stop fn). The chip and any other
+ * consumer are untouched by the W3.1 transport change.
  *
- * Discipline that keeps it cheap:
- *  - 30s cadence (vs the run console's 2.5s) — coarse on purpose; the chip is
- *    ambient awareness, not the console.
- *  - Polling pauses entirely while the tab is hidden (the same lever the run
- *    console uses to avoid a background-tab compute multiplier).
- *  - Reference-counted start/stop so mounting the chip in the layout starts at
- *    most one interval regardless of re-renders.
+ * W3.1 replaced the bare 30s fetch loop with the live SSE channel
+ * (`/api/connect/ingest/events`) via `LiveRunEventClient`:
+ *  - snapshots replace the whole job set; deltas patch a single run in place;
+ *  - the client self-heals across the serverless stream-budget reconnects and,
+ *    after repeated connect failures, calls back so we engage the original 30s
+ *    poll as the documented fallback (no second live path — X8 poll diet);
+ *  - polling/streaming both pause while the tab is hidden (the client binds its
+ *    own visibility handler; the fallback poll keeps the R6 hidden-tab skip).
  *
- * When W3.1's SSE lands, this module is the single swap point: replace the
- * fetch loop with the event subscription and keep the same store contract.
+ * The fallback poll IS the pre-W3.1 R6 behaviour, kept verbatim as the safety net.
  */
 import { writable, type Readable } from "svelte/store";
 import { browser } from "$app/environment";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import type { LiveRunChipJob } from "$lib/connect/live-run-chip";
+import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
+import type { LiveRunEventJob, LiveRunStreamEvent } from "$lib/connect/live-run-events";
 
 const JOBS_API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
+const EVENTS_API = DASHBOARD_BASE + "/api/connect/ingest/events";
 const POLL_MS = 30_000;
 
 const store = writable<LiveRunChipJob[] | null>(null);
 
-let timer: ReturnType<typeof setTimeout> | null = null;
 let consumers = 0;
+let client: LiveRunEventClient | null = null;
+
+// Fallback-poll state (engaged only if SSE is judged unhealthy).
+let fallbackActive = false;
+let timer: ReturnType<typeof setTimeout> | null = null;
 let inFlight = false;
 let visibilityBound = false;
 
+/** Patch one run into the current store value (delta), or append if new. */
+function applyDelta(job: LiveRunEventJob): void {
+  store.update((current) => {
+    const list = current ?? [];
+    const idx = list.findIndex((j) => j.id === job.id);
+    if (idx === -1) return [job, ...list];
+    const next = list.slice();
+    next[idx] = { ...next[idx], ...job };
+    return next;
+  });
+}
+
+function onEvent(event: LiveRunStreamEvent): void {
+  if (event.type === "snapshot") {
+    store.set(event.jobs);
+  } else if (event.type === "delta") {
+    applyDelta(event.job);
+  }
+  // heartbeat: no store change (the chip recomputes elapsed from its own clock).
+}
+
+// ── Fallback poll (verbatim R6 behaviour) ────────────────────────────────────
 async function pollOnce(): Promise<void> {
   if (inFlight) return;
   inFlight = true;
   try {
     const res = await fetch(JOBS_API, { headers: { accept: "application/json" } });
     if (!res.ok) {
-      // 401 (signed out) / 5xx: surface "no active run" rather than a stuck chip.
       store.set(res.status === 401 ? [] : null);
       return;
     }
@@ -53,51 +81,66 @@ async function pollOnce(): Promise<void> {
 
 function schedule(): void {
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => {
-    void tick();
-  }, POLL_MS);
+  timer = setTimeout(() => void tick(), POLL_MS);
 }
 
 async function tick(): Promise<void> {
   if (typeof document !== "undefined" && document.hidden) {
-    // Skip the round-trip while hidden; reschedule so we resume on the next tick
-    // (visibilitychange also catches us up immediately on return).
     schedule();
     return;
   }
   await pollOnce();
-  if (consumers > 0) schedule();
+  if (consumers > 0 && fallbackActive) schedule();
 }
 
-function onVisibilityChange(): void {
+function onFallbackVisibility(): void {
   if (typeof document === "undefined") return;
-  if (!document.hidden && consumers > 0) {
-    void tick();
+  if (!document.hidden && consumers > 0 && fallbackActive) void tick();
+}
+
+function startFallbackPoll(): void {
+  if (fallbackActive) return;
+  fallbackActive = true;
+  if (typeof document !== "undefined" && !visibilityBound) {
+    document.addEventListener("visibilitychange", onFallbackVisibility);
+    visibilityBound = true;
+  }
+  void tick();
+}
+
+function stopFallbackPoll(): void {
+  fallbackActive = false;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  if (visibilityBound && typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onFallbackVisibility);
+    visibilityBound = false;
   }
 }
 
-/** Start the poll (idempotent / reference-counted). Returns a stop function. */
+/** Start the live feed (idempotent / reference-counted). Returns a stop function. */
 export function startLiveRunPoll(): () => void {
   if (!browser) return () => {};
   consumers += 1;
   if (consumers === 1) {
-    if (!visibilityBound) {
-      document.addEventListener("visibilitychange", onVisibilityChange);
-      visibilityBound = true;
-    }
-    void tick(); // immediate first read so the chip appears without a 30s wait
+    client = new LiveRunEventClient({
+      url: EVENTS_API,
+      onEvent,
+      onFallback: startFallbackPoll,
+      onLive: stopFallbackPoll,
+    });
+    client.start();
   }
   return () => {
     consumers = Math.max(0, consumers - 1);
     if (consumers === 0) {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
+      if (client) {
+        client.stop();
+        client = null;
       }
-      if (visibilityBound) {
-        document.removeEventListener("visibilitychange", onVisibilityChange);
-        visibilityBound = false;
-      }
+      stopFallbackPoll();
       store.set(null);
     }
   };
