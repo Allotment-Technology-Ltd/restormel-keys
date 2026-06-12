@@ -351,7 +351,7 @@ class) rather than hiding the field. `createdAt` and `lastUsedAt` are shown as r
 
 **Security invariants (W3.7/K1 — key-management is auth-adjacent):**
 - Label field has `maxlength="120"` and server-side trim + cap.
-- POST and PATCH reject labels matching `/^rk_[A-Za-z0-9_-]{8,}/` (key material in label = 400).
+- POST and PATCH reject labels containing `/rk_[A-Za-z0-9_-]{8,}/` anywhere in the string (key material in label = 400; unanchored — also catches "prod key rk_..." patterns).
 - `last_used_at` is written by `verifyGatewayKey` — the column records the timestamp of the last
   authenticated request, not the timestamp of any label operation. No key material passes through
   label update paths at any point.
@@ -366,7 +366,7 @@ Filters replace the fixed-50-row truncated list. Keyset pagination with a hard c
 | **Filter bar** | Renders immediately (no async) | — | — | — | 5 controls: action (`event_type`), actor type, actor ID, from (datetime-local), to (datetime-local); Apply + Clear when filters are active |
 | **Audit list** | SvelteKit server load | `EmptyState` "No audit events yet" + link to Gateway keys | `EmptyState` "No events match these filters" + **Clear filters** CTA | `BrutalErrorBanner`-pattern (`role="alert"`) + **Try again** (re-navigates to the page) | One row per event: relative time, summary, actor (type chip + id code), object link (X4) |
 | **Object link (X4)** | — | — | — | — | `gateway_key` → `/access`; `project` → `/projects/{id}`; `policy` → `/policies/{id}`; `provider_integration` → `/integrations/{id}`; `workspace` → `/home`; `route` → `null` (route audit rows lack projectId in this schema — link absent, not dead) |
-| **Pagination** | — | — | — | — | "Load more" button (sets `?before=<cursor>` cursor param); "End of results" note when `hasMore === false` |
+| **Pagination** | — | — | — | — | "Older →" button (sets `?before=<cursor>` cursor param); "End of results" note when `hasMore === false` |
 
 **Filter → URL params mapping (W3.7):** all filter state lives in URL search params so filtered views
 are shareable. `actor=<uid>`, `actorType=user|gateway_key|management_key|system`,

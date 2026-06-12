@@ -11,6 +11,7 @@
  * API layer, and that last_used_at is never exposed in any label-related path.
  */
 import { describe, expect, it } from "vitest";
+import { labelContainsKeyMaterial } from "./key-label-validation";
 
 // -----------------------------------------------------------------------
 // 1. ApiKeyRecord + ApiKeyWithProject shape (from neon.ts, W3.7 additions)
@@ -105,66 +106,38 @@ describe("ApiKeyWithProject — N+1 fix structural contract", () => {
 });
 
 // -----------------------------------------------------------------------
-// 2. Label validation logic (mirrors the API endpoint validation)
+// 2. Label validation logic (uses the real validator from key-label-validation.ts)
 // -----------------------------------------------------------------------
 
-/** Mirrors the server-side validation at api/projects/[id]/keys/+server.ts. */
-function validateLabel(raw: string | null | undefined): { ok: true; label: string | null } | { ok: false; error: string } {
-  if (raw == null) return { ok: true, label: null };
-  const trimmed = raw.trim().slice(0, 120);
-  if (!trimmed) return { ok: true, label: null };
-  // SECURITY: reject labels that look like gateway keys (rk_...) or other credential shapes.
-  if (/^rk_[A-Za-z0-9_-]{8,}/.test(trimmed)) {
-    return { ok: false, error: "Label must not contain key material" };
-  }
-  return { ok: true, label: trimmed };
-}
-
-describe("label validation — SECURITY: key material must not appear in labels", () => {
-  it("accepts a plain human-readable label", () => {
-    const result = validateLabel("Production API");
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.label).toBe("Production API");
+describe("labelContainsKeyMaterial — SECURITY: key material must not appear in labels", () => {
+  it("detects a bare gateway key (rk_ at start)", () => {
+    expect(labelContainsKeyMaterial("rk_abcdefghijklmnopqrstuvwx")).toBe(true);
   });
 
-  it("trims leading/trailing whitespace", () => {
-    const result = validateLabel("  My label  ");
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.label).toBe("My label");
+  it("detects key material embedded mid-string (unanchored — bypassed the old ^ regex)", () => {
+    // This is the exact bypass the security review identified.
+    expect(labelContainsKeyMaterial("prod key rk_ABCDEFGHIJ")).toBe(true);
   });
 
-  it("caps at 120 characters", () => {
-    const long = "A".repeat(200);
-    const result = validateLabel(long);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.label?.length).toBe(120);
+  it("detects rk_ followed by exactly 8+ chars", () => {
+    expect(labelContainsKeyMaterial("rk_12345678")).toBe(true);
+    expect(labelContainsKeyMaterial("rk_ABCDEFGH")).toBe(true);
   });
 
-  it("returns null for empty string after trim", () => {
-    const result = validateLabel("   ");
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.label).toBeNull();
+  it("allows a plain human-readable label", () => {
+    expect(labelContainsKeyMaterial("Production API")).toBe(false);
   });
 
-  it("returns null for null/undefined", () => {
-    expect(validateLabel(null)).toEqual({ ok: true, label: null });
-    expect(validateLabel(undefined)).toEqual({ ok: true, label: null });
+  it("allows a label containing 'rk' without the underscore", () => {
+    expect(labelContainsKeyMaterial("My rk2 test key")).toBe(false);
   });
 
-  it("SECURITY: rejects a label that is a gateway key (rk_ prefix)", () => {
-    const result = validateLabel("rk_abcdefghijklmnopqrstuvwx");
-    expect(result.ok).toBe(false);
+  it("allows rk_ prefix with fewer than 8 chars (too short to be key material)", () => {
+    expect(labelContainsKeyMaterial("rk_ABCDEFG")).toBe(false);
   });
 
-  it("SECURITY: rejects labels starting with rk_ followed by 8+ chars", () => {
-    expect(validateLabel("rk_12345678")).toEqual({ ok: false, error: "Label must not contain key material" });
-    expect(validateLabel("rk_ABCDEFGH")).toEqual({ ok: false, error: "Label must not contain key material" });
-  });
-
-  it("allows labels that contain 'rk' without the prefix pattern", () => {
-    // "rk" as part of a human word is fine; "rk_" with short suffix is fine.
-    const result = validateLabel("My rk2 test key");
-    expect(result.ok).toBe(true);
+  it("allows an empty string", () => {
+    expect(labelContainsKeyMaterial("")).toBe(false);
   });
 
   it("last_used_at is NOT part of any label operation", () => {

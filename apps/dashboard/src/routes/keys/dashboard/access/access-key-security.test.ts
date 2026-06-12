@@ -3,13 +3,14 @@
  *
  * Tests:
  *  1. Access-page load returns key objects with NO `keyHash` property (BLOCKER fix).
- *  2. labelContainsKeyMaterial validator — the exported function is tested here alongside
- *     the access-page invariant; the function lives in the keys API server.
+ *  2. labelContainsKeyMaterial validator — imported from $lib/server/key-label-validation
+ *     and tested here alongside the access-page invariant.
  *     - Catches keys at the start of a label (old anchored ^ regex was bypassable).
  *     - Catches keys embedded in a longer string ("prod key rk_<material>").
  *     - Allows normal labels through.
  */
 import { describe, expect, it, vi } from "vitest";
+import { labelContainsKeyMaterial } from "$lib/server/key-label-validation";
 
 // ── Module-level mocks ────────────────────────────────────────────────
 
@@ -76,19 +77,6 @@ describe("access-page load — key objects have no keyHash (BLOCKER: sec-review 
 });
 
 // ── 2. labelContainsKeyMaterial validator ────────────────────────────────────
-
-/**
- * The validator is exported from the keys API +server.ts. We re-implement it here
- * as a local pure function for this test suite — this keeps the test file isolated
- * from the SvelteKit request handler scaffolding, which requires more setup to import.
- * The exported function in +server.ts is tested end-to-end via the PATCH/POST tests
- * in keys-api-label-validator.test.ts (co-located with the server).
- *
- * The regex being tested: /rk_[A-Za-z0-9_-]{8,}/ — unanchored, matches anywhere in string.
- */
-function labelContainsKeyMaterial(label: string): boolean {
-  return /rk_[A-Za-z0-9_-]{8,}/.test(label);
-}
 
 describe("labelContainsKeyMaterial — rk_ guard (MEDIUM fix: unanchored match)", () => {
   it("blocks a bare gateway key (rk_ at start)", () => {

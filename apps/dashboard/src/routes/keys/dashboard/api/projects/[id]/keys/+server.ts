@@ -4,15 +4,7 @@ import { listApiKeys, createApiKey, deleteApiKey, updateApiKeyLabel } from "$lib
 import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 import { dashboardProjectScopeForApi } from "$lib/server/dashboard-project-api-scope";
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
-
-/**
- * Validates that a label string does not contain key material (rk_ prefix anywhere in the string).
- * The regex is unanchored so it matches "prod key rk_<fullkey>" as well as bare rk_ strings.
- * Exported so POST, PATCH, and tests all use the same validator (no inline copies).
- */
-export function labelContainsKeyMaterial(label: string): boolean {
-  return /rk_[A-Za-z0-9_-]{8,}/.test(label);
-}
+import { labelContainsKeyMaterial } from "$lib/server/key-label-validation";
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
