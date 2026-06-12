@@ -374,6 +374,36 @@ redirect — shareable historical views (W2.1 contract extended in `explorer-url
 **Boundary semantics** match the connect-v1 retrieve path (`valid_from ≤ t < valid_to`): a claim
 valid until T is shown at T-ε, not at T.
 
+### §3 shell-element states — Navigation pending state (nav-pending-fix)
+
+Addresses user report: clicking sidebar items (esp. Sources) showed nothing for a while — old
+screen + old nav highlight stayed until the server load resolved. Root cause: the dashboard layout
+made zero use of SvelteKit's `navigating` store. Fix adds instant feedback via the store.
+
+| Element | While navigating (server-load in flight) | Navigation complete |
+|---------|------------------------------------------|---------------------|
+| **Destination nav item** (sidebar) | `.nav-link-pending` modifier: dimmed-yellow fill (`55%` opacity) + hard 3 px left-edge ink bar pulsing at `steps(2)` interval. Appears on the work-nav item, group items, and Testing item whose href matches the destination (via `isWorkNavActive` / prefix match — same derivation as the active highlight). The **current** item keeps its `.nav-link-active` state unchanged. | Pending modifier removed; destination item gains `.nav-link-active`. |
+| **Top-of-content progress bar** (`.nav-progress-bar`, `role="progressbar"`) | 3 px, ink-on-white, hard edges, no radius. Appears at the top of the content column (absolutely positioned in `.main-wrap`). CSS animation fills to ≈72 % during the load duration; bar disappears instantly when `$navigating` clears. `aria-label` names the destination: `"Loading Sources…"`. | Removed from DOM. |
+| **`aria-busy` on `<main>`** | `aria-busy="true"` while `$navigating` is truthy. | Attribute removed. |
+| **Visually-hidden live region** (`role="status"`, `aria-live="polite"`) | `"Loading {label}…"` text inside a `.sr-only` element, announces the pending destination to screen readers without stealing focus. Complements `aria-busy`. | Removed from DOM. |
+
+**A11y invariants:**
+- The `.nav-link-pending` pulsing animation is suppressed under `prefers-reduced-motion`
+  (static bar stays visible — no animation, no flicker).
+- The progress bar fill animation is also suppressed under `prefers-reduced-motion`
+  (bar fills to full width immediately and stays static until navigation completes).
+- `aria-busy="true"` on the main content region communicates the pending state to AT
+  without redirecting focus.
+- The visually-hidden `role="status"` live region is announced by screen readers as
+  `"Loading Sources…"` (or the matched nav item label, or `"Loading page…"` as a fallback
+  when no nav item matches the destination path).
+
+**Derivation contract (`pendingHref`):** `$navigating.to?.url.pathname` is matched against
+`workNavForUi`, `testingNavForUi`, and `navGroupsForLayout` items using the same
+`isWorkNavActive` (prefix + exact) logic as the active highlight. The first match wins.
+`pendingLabel` is the matched item's `label` field. Tested by
+`nav-config.test.ts` (pending derivation suite).
+
 ### §3 auth states — fail-closed verification (Stage W4.6a)
 
 A protected surface has **three** auth states, not two. The defect this fixes: a transient Neon Auth

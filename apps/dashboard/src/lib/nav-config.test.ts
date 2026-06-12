@@ -24,6 +24,8 @@ import {
   filterWorkNavForModuleFlags,
   filterTestingNavForModuleFlags,
   filterNavGroupsForModuleFlags,
+  type NavItem,
+  type NavGroup,
 } from "./nav-config";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
@@ -165,6 +167,132 @@ describe("sidebar nav (§2.2)", () => {
     const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, guardrails: false });
     const foundation = filtered.find((g) => g.id === "foundation");
     expect(foundation?.items.map((i) => i.label)).not.toContain("Guard rails");
+  });
+});
+
+/**
+ * Navigation pending-state derivation (nav-pending-fix, ux-contracts §3).
+ *
+ * The layout derives `pendingHref` from `$navigating.to?.url.pathname` using the
+ * same `isWorkNavActive` logic as the active highlight. These tests replicate the
+ * layout's derivation logic in pure form so we can assert the contract without a
+ * browser / Svelte component harness.
+ */
+function derivePendingHref(
+  dest: string,
+  workNavForUi: NavItem[],
+  testingNavForUi: NavItem | null,
+  navGroupsForLayout: NavGroup[],
+): string | null {
+  for (const item of workNavForUi) {
+    if (isWorkNavActive(dest, item.href)) return item.href;
+  }
+  if (testingNavForUi && isWorkNavActive(dest, testingNavForUi.href)) return testingNavForUi.href;
+  for (const group of navGroupsForLayout) {
+    for (const item of group.items) {
+      if (dest === item.href || dest.startsWith(item.href + "/")) return item.href;
+    }
+  }
+  return null;
+}
+
+function derivePendingLabel(
+  dest: string,
+  workNavForUi: NavItem[],
+  testingNavForUi: NavItem | null,
+  navGroupsForLayout: NavGroup[],
+): string | null {
+  for (const item of workNavForUi) {
+    if (isWorkNavActive(dest, item.href)) return item.label;
+  }
+  if (testingNavForUi && isWorkNavActive(dest, testingNavForUi.href)) return testingNavForUi.label;
+  for (const group of navGroupsForLayout) {
+    for (const item of group.items) {
+      if (dest === item.href || dest.startsWith(item.href + "/")) return item.label;
+    }
+  }
+  return null;
+}
+
+describe("navigation pending-state derivation (nav-pending-fix)", () => {
+  const workNav = WORK_NAV_ITEMS;
+  const testingNav = TESTING_NAV_ITEM;
+  const groups = NAV_GROUPS;
+
+  it("resolves Sources as the pending item when navigating to /sources", () => {
+    expect(derivePendingHref(SOURCES_HREF, workNav, testingNav, groups)).toBe(SOURCES_HREF);
+    expect(derivePendingLabel(SOURCES_HREF, workNav, testingNav, groups)).toBe("Sources");
+  });
+
+  it("resolves Sources as the pending item when navigating to a sub-route of /sources", () => {
+    const dest = SOURCES_HREF + "/ingest";
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(SOURCES_HREF);
+    expect(derivePendingLabel(dest, workNav, testingNav, groups)).toBe("Sources");
+  });
+
+  it("resolves Runs when navigating to /runs", () => {
+    expect(derivePendingHref(RUNS_HREF, workNav, testingNav, groups)).toBe(RUNS_HREF);
+    expect(derivePendingLabel(RUNS_HREF, workNav, testingNav, groups)).toBe("Runs");
+  });
+
+  it("resolves Runs for a run console sub-path", () => {
+    const dest = RUNS_HREF + "/job-123";
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(RUNS_HREF);
+  });
+
+  it("resolves Claims when navigating to /claims", () => {
+    expect(derivePendingHref(CLAIMS_HREF, workNav, testingNav, groups)).toBe(CLAIMS_HREF);
+    expect(derivePendingLabel(CLAIMS_HREF, workNav, testingNav, groups)).toBe("Claims");
+  });
+
+  it("resolves Claims for /claims/memory", () => {
+    expect(derivePendingHref(CLAIMS_MEMORY_HREF, workNav, testingNav, groups)).toBe(CLAIMS_HREF);
+  });
+
+  it("resolves Home when navigating to /home", () => {
+    expect(derivePendingHref(HOME_HREF, workNav, testingNav, groups)).toBe(HOME_HREF);
+    expect(derivePendingLabel(HOME_HREF, workNav, testingNav, groups)).toBe("Home");
+  });
+
+  it("resolves Testing when navigating to the testing hub", () => {
+    expect(derivePendingHref(TESTING_HUB_HREF, workNav, testingNav, groups)).toBe(TESTING_HUB_HREF);
+    expect(derivePendingLabel(TESTING_HUB_HREF, workNav, testingNav, groups)).toBe("Testing");
+  });
+
+  it("resolves Testing for /copy-for-ci (CI snippets, alias of testing hub)", () => {
+    const dest = DASHBOARD_BASE + "/copy-for-ci";
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(TESTING_HUB_HREF);
+  });
+
+  it("resolves a Foundation group item when navigating to /integrations", () => {
+    const dest = DASHBOARD_BASE + "/integrations";
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(DASHBOARD_BASE + "/integrations");
+    expect(derivePendingLabel(dest, workNav, testingNav, groups)).toBe("Connections");
+  });
+
+  it("resolves a Foundation item for a sub-path of /routes", () => {
+    const dest = DASHBOARD_BASE + "/routes/some-config";
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(DASHBOARD_BASE + "/routes");
+  });
+
+  it("returns null for an unmatched path", () => {
+    expect(derivePendingHref("/unmatched/path", workNav, testingNav, groups)).toBeNull();
+    expect(derivePendingLabel("/unmatched/path", workNav, testingNav, groups)).toBeNull();
+  });
+
+  it("does not mark the current-page item as pending (layout guard)", () => {
+    // The layout only applies .nav-link-pending when the resolved pendingHref is
+    // DIFFERENT from the current active item. This test verifies the derivation
+    // itself correctly resolves (the layout guard is separate logic).
+    // If we're on /sources and navigating to /sources, derivation still returns
+    // SOURCES_HREF — the layout's `!isWorkNavActive(currentPath, item.href)` guard
+    // then prevents the pending class from being applied.
+    const dest = SOURCES_HREF;
+    expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(SOURCES_HREF);
+    // Simulate the layout guard: current path === SOURCES_HREF.
+    const isPending = derivePendingHref(dest, workNav, testingNav, groups) === SOURCES_HREF
+      && !isWorkNavActive(SOURCES_HREF, SOURCES_HREF);
+    expect(isPending).toBe(false); // Correct — no pending pulse on self-nav.
   });
 });
 

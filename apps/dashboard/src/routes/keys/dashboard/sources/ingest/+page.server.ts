@@ -159,7 +159,11 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     // routing config is set, so existing custom setups are untouched). Best-effort:
     // provisioning failure never blocks flow entry; the store/models/preflight
     // gates below still apply.
-    await ensureWorkspaceInfrastructureRouting({
+    //
+    // STREAMING AUDIT: fire-and-forget — do NOT await. The result is discarded;
+    // awaiting added unnecessary serial latency on every flow entry even when the
+    // provisioning was a no-op. The .catch() in the void expression handles errors.
+    void ensureWorkspaceInfrastructureRouting({
       workspaceId: workspace.id,
       userId: user.uid,
       actorType: user.authType,
@@ -168,7 +172,6 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
         "[connect] workspace-infrastructure provisioning skipped:",
         e instanceof Error ? e.message.slice(0, 160) : String(e),
       );
-      return null;
     });
 
     // R4 (§1.1): the store step is demoted to automated-with-override. When the
@@ -179,14 +182,15 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
     // never blocks flow entry, and BYO store + claim-versions stay reachable via
     // "Configure store" on the launch panel (W3.6 placement). When the module is
     // disabled (MVP default), this is a no-op and the BYO store override applies.
+    //
+    // STREAMING AUDIT: fire-and-forget — do NOT await. Same reasoning as above.
     const moduleFlags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
     if (isModuleEnabled(moduleFlags, "connectNeonGraphStore")) {
-      await connectDashboardNeonTarget(workspace.id).catch((e) => {
+      void connectDashboardNeonTarget(workspace.id).catch((e) => {
         console.warn(
           "[connect] workspace Neon graph-store auto-provision skipped:",
           e instanceof Error ? e.message.slice(0, 160) : String(e),
         );
-        return null;
       });
     }
 
