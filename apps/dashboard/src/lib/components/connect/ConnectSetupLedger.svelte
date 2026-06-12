@@ -265,7 +265,9 @@
                 <span class="validation-pill validation-pill-bad">{effectiveStats.validation.unsupported} bad</span>
               {/if}
               {#if effectiveStats.validation.unvalidated > 0}
-                <span class="validation-pill validation-pill-ok">{effectiveStats.validation.unvalidated} ?</span>
+                <!-- F-P2-1: the unvalidated state is UNKNOWN, not success — neutral
+                     styling, not the -ok pill it borrowed before (W4.5 a11y sweep). -->
+                <span class="validation-pill validation-pill-unknown">{effectiveStats.validation.unvalidated} ?</span>
               {/if}
             </div>
           {/if}
@@ -289,10 +291,11 @@
                   {issue.actionLabel} →
                 </BrutalButton>
               {/each}
-              <BrutalButton variant="outline" href={graphHref}>Open graph</BrutalButton>
+              <!-- D2 (UXC §2 [R1] Claims): the explorer section is "Claims", not "graph". -->
+              <BrutalButton variant="outline" href={graphHref}>Open Claims</BrutalButton>
             {:else}
               <BrutalButton variant="blue" href={graphHref}>
-                {ledgerShowsGraphCta ? "Review graph" : "Open graph"}
+                {ledgerShowsGraphCta ? "Review claims" : "Open Claims"}
               </BrutalButton>
             {/if}
           </div>
@@ -771,6 +774,15 @@
     border: var(--border);
     background: var(--color-ink);
     color: var(--color-yellow);
+  }
+
+  /* F-P2-1: unvalidated = unknown, not success. Dashed muted border + muted text
+     reads as "not yet known" rather than borrowing the -ok (success) treatment. */
+  .validation-pill-unknown {
+    border: var(--border-thin);
+    border-style: dashed;
+    background: transparent;
+    color: var(--color-ink-muted);
   }
 
   .run-chip {

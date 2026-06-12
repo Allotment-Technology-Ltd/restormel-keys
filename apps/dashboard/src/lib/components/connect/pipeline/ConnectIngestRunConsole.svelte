@@ -807,7 +807,7 @@
           {#if (trustScore ?? 0) < 80}
             <li class="run-next-item run-next-item-primary">
               <span class="run-next-num">1</span>
-              <span class="run-next-text">Review weak units in the graph explorer</span>
+              <span class="run-next-text">Review weak units in Claims</span>
               <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?filter=review"}>Open quarantine queue →</a>
             </li>
             <li class="run-next-item">

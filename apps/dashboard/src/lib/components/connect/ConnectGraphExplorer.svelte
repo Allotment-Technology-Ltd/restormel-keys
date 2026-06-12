@@ -6460,6 +6460,10 @@
     color: var(--color-yellow);
     white-space: nowrap;
     text-decoration: none;
+    /* W4.5 a11y: ≥44px target (X10, #291) — the "open source ↗" evidence link. */
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
   .evidence-card-open:hover {
     text-decoration: underline;

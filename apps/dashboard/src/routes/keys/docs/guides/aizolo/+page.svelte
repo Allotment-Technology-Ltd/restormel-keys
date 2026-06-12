@@ -44,7 +44,7 @@
   <h2>2. Connect AiZolo in the Restormel dashboard</h2>
   <ol>
     <li>
-      Go to <strong>Connect a Provider</strong> and choose <strong>AiZolo</strong>, or set provider type to
+      Go to <strong>Connections</strong> and choose <strong>AiZolo</strong>, or set provider type to
       <code class="inline-code">aizolo</code> under <strong>Other</strong>.
     </li>
     <li>

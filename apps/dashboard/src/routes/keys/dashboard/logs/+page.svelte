@@ -201,7 +201,7 @@
   description="Request logs captured by Restormel (Dashboard API resolve path + Connect ingest resolves). Each row expands to its full receipt; failures are tagged with what went wrong."
 />
 <p class="page-desc">
-  For summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; Analytics</a>.
+  For summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Usage</a>.
 </p>
 {#if showGatewayBanner}
   <div class="notice notice-info" role="status">

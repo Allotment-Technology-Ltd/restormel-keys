@@ -549,7 +549,7 @@
           workspace.
         </p>
         <p class="wizard-note brut-muted">
-          Re-open individual tools from the graph explorer if you add sources, ideas, or change your
+          Re-open individual tools from Claims if you add sources, ideas, or change your
           domain pack mapping.
         </p>
       {:else if currentStep === "catalog"}

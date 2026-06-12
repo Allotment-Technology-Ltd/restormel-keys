@@ -3,7 +3,7 @@
 </script>
 
 <div class="graph-page-skeleton" aria-busy="true">
-  <BrutalLoadingState message="Loading graph explorer — fetching ideas from your store" rows={6} />
+  <BrutalLoadingState message="Loading Claims — fetching ideas from your store" rows={6} />
   <div class="graph-page-skeleton-panels" aria-hidden="true">
     <div class="sk-panel sk-panel-wide"></div>
     <div class="sk-panel sk-panel-narrow"></div>

@@ -40,7 +40,7 @@ describe("dispatchDeskKey — navigation", () => {
 describe("dispatchDeskKey — stamps", () => {
   const live = { fromTextEntry: false, readonly: false };
 
-  it("S → ok (Supported), X → unsupported (Rejected), W → weak", () => {
+  it("S → ok (Supported), X → unsupported (Unsupported), W → weak", () => {
     expect(dispatchDeskKey("s", live)).toEqual({ kind: "stamp", status: "ok" });
     expect(dispatchDeskKey("S", live)).toEqual({ kind: "stamp", status: "ok" });
     expect(dispatchDeskKey("x", live)).toEqual({ kind: "stamp", status: "unsupported" });
@@ -129,7 +129,7 @@ describe("dispatchDeskKey — read-only modes (mobile read-only + as-of)", () =>
 
 describe("session tally", () => {
   it("starts empty", () => {
-    expect(emptyDeskTally()).toEqual({ reviewed: 0, supported: 0, weak: 0, rejected: 0 });
+    expect(emptyDeskTally()).toEqual({ reviewed: 0, supported: 0, weak: 0, unsupported: 0 });
   });
 
   it("counts stamps into the right bucket and bumps reviewed", () => {
@@ -138,26 +138,26 @@ describe("session tally", () => {
     t = tallyStamp(t, "ok");
     t = tallyStamp(t, "unsupported");
     t = tallyStamp(t, "weak");
-    expect(t).toEqual({ reviewed: 4, supported: 2, weak: 1, rejected: 1 });
+    expect(t).toEqual({ reviewed: 4, supported: 2, weak: 1, unsupported: 1 });
   });
 
   it("undo decrements reviewed and the prior bucket, clamped at zero", () => {
     let t = tallyStamp(emptyDeskTally(), "ok");
     t = tallyUndo(t, "ok");
-    expect(t).toEqual({ reviewed: 0, supported: 0, weak: 0, rejected: 0 });
+    expect(t).toEqual({ reviewed: 0, supported: 0, weak: 0, unsupported: 0 });
     // Over-undo never goes negative.
     t = tallyUndo(t, "ok");
-    expect(t).toEqual({ reviewed: 0, supported: 0, weak: 0, rejected: 0 });
+    expect(t).toEqual({ reviewed: 0, supported: 0, weak: 0, unsupported: 0 });
   });
 
   it("formats the ledger line in mono-uppercase factual form", () => {
-    const t = { reviewed: 14, supported: 11, weak: 0, rejected: 3 };
-    expect(formatTallyLine(t)).toBe("REVIEWED 14 · SUPPORTED 11 · WEAK 0 · REJECTED 3");
+    const t = { reviewed: 14, supported: 11, weak: 0, unsupported: 3 };
+    expect(formatTallyLine(t)).toBe("REVIEWED 14 · SUPPORTED 11 · WEAK 0 · UNSUPPORTED 3");
   });
 
   it("announces a stamp result with the remaining count", () => {
     expect(announceStamp("ok", 11)).toBe("Supported. 11 remaining.");
-    expect(announceStamp("unsupported", 1)).toBe("Rejected. 1 remaining.");
+    expect(announceStamp("unsupported", 1)).toBe("Unsupported. 1 remaining.");
     expect(announceStamp("weak", 0)).toBe("Marked weak. Queue clear.");
   });
 });
@@ -208,7 +208,7 @@ describe("deskStampOptions — accept-guard surfaced, never a silent no-op", () 
     expect(supported.reason).toContain("predates evidence binding");
   });
 
-  it("always allows Weak and Rejected — flagging down never needs a bound span", () => {
+  it("always allows Weak and Unsupported — flagging down never needs a bound span", () => {
     for (const ev of [boundEvidence, unboundEvidence, noEvidence, null]) {
       const opts = deskStampOptions(ev);
       expect(opts.find((o) => o.status === "weak")!.enabled).toBe(true);
@@ -221,7 +221,7 @@ describe("deskStampOptions — accept-guard surfaced, never a silent no-op", () 
     expect(opts.map((o) => `${o.key}:${o.label}`)).toEqual([
       "S:Supported",
       "W:Weak",
-      "X:Rejected",
+      "X:Unsupported",
     ]);
   });
 });

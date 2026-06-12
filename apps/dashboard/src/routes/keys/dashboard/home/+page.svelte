@@ -565,6 +565,10 @@
     border: var(--border-thin);
     padding: 2px var(--space-2);
     white-space: nowrap;
+    /* W4.5 a11y: ≥44px target (X10) — inline-flex centres the label in the box. */
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 
   /* ── Masthead grid — two columns, two rows (NS §3.3) ───────────────────── */

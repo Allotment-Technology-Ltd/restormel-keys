@@ -434,7 +434,7 @@
   </section>
 
   <p class="project-quick-links">
-    <a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; analytics</a>
+    <a href={DASHBOARD_BASE + "/analytics"}>Usage</a>
     ·
     <a href={DASHBOARD_BASE + "/projects/" + data.project.id + "/usage"}>Project usage</a>
   </p>

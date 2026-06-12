@@ -132,16 +132,16 @@ export type DeskTally = {
   reviewed: number;
   supported: number; // status === "ok"
   weak: number;
-  rejected: number; // status === "unsupported"
+  unsupported: number; // status === "unsupported"
 };
 
 export function emptyDeskTally(): DeskTally {
-  return { reviewed: 0, supported: 0, weak: 0, rejected: 0 };
+  return { reviewed: 0, supported: 0, weak: 0, unsupported: 0 };
 }
 
 function bucket(status: KnownValidationStatus): keyof Omit<DeskTally, "reviewed"> {
   if (status === "ok") return "supported";
-  if (status === "unsupported") return "rejected";
+  if (status === "unsupported") return "unsupported";
   return "weak";
 }
 
@@ -170,21 +170,23 @@ export function tallyUndo(tally: DeskTally, undoneStatus: KnownValidationStatus)
 
 /**
  * The ledger line shown in the session rail, e.g.
- * "REVIEWED 14 · SUPPORTED 11 · WEAK 0 · REJECTED 3". Mono uppercase, factual.
+ * "REVIEWED 14 · SUPPORTED 11 · WEAK 0 · UNSUPPORTED 3". Mono uppercase, factual.
+ * "Unsupported" is the canonical operator-verdict label (UXC §2 — aligned with
+ * the explorer's GRAPH_REVIEW_VERDICT_VISUAL legend; W4.5 duality resolution).
  */
 export function formatTallyLine(tally: DeskTally): string {
   return (
     `REVIEWED ${tally.reviewed}` +
     ` · SUPPORTED ${tally.supported}` +
     ` · WEAK ${tally.weak}` +
-    ` · REJECTED ${tally.rejected}`
+    ` · UNSUPPORTED ${tally.unsupported}`
   );
 }
 
 /** A spoken announcement after a stamp, e.g. "Supported. 11 remaining." */
 export function announceStamp(status: KnownValidationStatus, remaining: number): string {
   const verb =
-    status === "ok" ? "Supported" : status === "unsupported" ? "Rejected" : "Marked weak";
+    status === "ok" ? "Supported" : status === "unsupported" ? "Unsupported" : "Marked weak";
   const tail =
     remaining <= 0
       ? "Queue clear."
@@ -209,8 +211,9 @@ export type DeskStampOption = {
  * The desk's three stamps with the accept-guard applied. Only the Supported (S)
  * stamp can be guarded off: an unbound / pre-binding / no-evidence claim can
  * never be marked supported (canAcceptAsSupported), so S is disabled with the
- * guard's verbatim reason. Weak and Rejected are always available — flagging a
- * claim down never needs a bound span.
+ * guard's verbatim reason. Weak and Unsupported are always available — flagging a
+ * claim down never needs a bound span. ("Unsupported" is the canonical
+ * operator-verdict label — UXC §2; the X key is unchanged.)
  */
 export function deskStampOptions(
   evidence: Pick<UnitEvidenceSummary, "verificationState" | "evidenceStatus"> | null | undefined,
@@ -225,7 +228,7 @@ export function deskStampOptions(
       reason: guard.ok ? null : guard.reason,
     },
     { status: "weak", key: "W", label: "Weak", enabled: true, reason: null },
-    { status: "unsupported", key: "X", label: "Rejected", enabled: true, reason: null },
+    { status: "unsupported", key: "X", label: "Unsupported", enabled: true, reason: null },
   ];
 }
 
@@ -291,7 +294,7 @@ export function describeUndo(last: DeskStampRecord | null): UndoState {
  * endpoint. Per the stage prompt ("if per-session delta needs a cheap recompute
  * endpoint, STOP and propose it") we DEFER the numeric trust delta rather than
  * fork or fabricate the formula. The session rail shows the truthful tally
- * (reviewed / supported / weak / rejected) and an honest note that the trust
+ * (reviewed / supported / weak / unsupported) and an honest note that the trust
  * figure recomputes on the Home scorecard, which is the single source.
  */
 export const SESSION_TRUST_DELTA_DEFERRED =

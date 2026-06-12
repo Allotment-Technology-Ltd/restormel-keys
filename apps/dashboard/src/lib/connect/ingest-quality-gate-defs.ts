@@ -34,7 +34,7 @@ export const INGEST_QUALITY_GATES: IngestQualityGateDef[] = [
     body:
       "After validate and remediate stages on production-preset ingests, each job stores a quality_report on its progress record. Faithfulness is the share of graph units marked ok versus weak or unsupported. We average ok% and unsupported% across the latest completed production jobs in the sample table below. This aggregate must pass before Apply calibration unlocks on the ingest-quality loop — prompt bumps are unsafe while live extraction is systematically weak.",
     whenBlocked:
-      "Open failing runs in the sample table and inspect unit validation in the ingest console. Triage overrides in Graph Explorer, fix sources or pack config, then re-run production ingests until the aggregate clears.",
+      "Open failing runs in the sample table and inspect unit validation in the ingest console. Triage overrides in Claims, fix sources or pack config, then re-run production ingests until the aggregate clears.",
   },
   {
     id: "g3",
@@ -43,7 +43,7 @@ export const INGEST_QUALITY_GATES: IngestQualityGateDef[] = [
     body:
       `High unit ok% can still hide corpus problems: missing embeddings, orphan claims, a down vector index, or severe audit issues. After store, buildRunQualityReport attaches kg_audit.trust_score — ${TRUST_SCORE_FORMULA}. The Trust column in the production sample shows per-job scores when a graph stats snapshot exists; we average those for live status here.`,
     whenBlocked:
-      "Use Graph Explorer to find orphans, missing embeddings, or relation imbalance on failing jobs. Re-ingest or revalidate affected sources before claiming corpus readiness.",
+      "Use Claims to find orphans, missing embeddings, or relation imbalance on failing jobs. Re-ingest or revalidate affected sources before claiming corpus readiness.",
   },
   {
     id: "g4",
@@ -61,7 +61,7 @@ export const INGEST_QUALITY_GATES: IngestQualityGateDef[] = [
     body:
       "Automated ingest is only useful if operators close the loop quickly. PostHog records connect_ingest_completed and connect_review_completed with time_since_ingest_complete_ms. The Connect Ingest Quality dashboard tracks median triage latency. Review signals from human corrections feed threshold evaluation on the ingest-quality page.",
     whenBlocked:
-      "If triage latency spikes, check Graph Explorer queue depth, notification paths, and whether production runs are completing with actionable validation summaries.",
+      "If triage latency spikes, check Claims queue depth, notification paths, and whether production runs are completing with actionable validation summaries.",
   },
   {
     id: "g6",

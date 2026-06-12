@@ -443,14 +443,17 @@
           </div>
         {/if}
       </header>
+      <!-- Visually-hidden live region: announces the pending destination to screen
+           readers without stealing focus. Sits OUTSIDE <main aria-busy> (#289): a
+           live region nested inside an aria-busy="true" subtree can have its updates
+           suppressed/deferred by assistive tech, so the "Loading…" announcement must
+           live above the busy region to be reliably spoken. Complements aria-busy. -->
+      {#if $navigating}
+        <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          Loading {pendingLabel ?? 'page'}…
+        </div>
+      {/if}
       <main class="main" data-sveltekit-preload-data="tap" aria-busy={$navigating ? "true" : undefined}>
-        <!-- Visually-hidden live region: announces the pending destination to screen
-             readers without stealing focus. Complements aria-busy on the main region. -->
-        {#if $navigating}
-          <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-            Loading {pendingLabel ?? 'page'}…
-          </div>
-        {/if}
         {#if authDegraded && !isAuthRoute}
           <div class="auth-degraded-shell">
             <AuthDegradedNotice />

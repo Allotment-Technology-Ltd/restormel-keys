@@ -191,7 +191,7 @@
     </section>
   {:else if stepId === "validate"}
     <header class="wizard-header">
-      <p class="wizard-kicker">Graph explorer</p>
+      <p class="wizard-kicker">Claims</p>
       <h2 class="wizard-title">Explore and verify the graph</h2>
       <p class="wizard-lead">
         Review supported ideas, flagged claims, and provenance. When you are satisfied, open the MCP tab to wire agents.
@@ -227,7 +227,7 @@
         {/each}
       </ul>
       <div class="actions">
-        <span class="btn btn-primary demo-static-btn">Open graph explorer</span>
+        <span class="btn btn-primary demo-static-btn">Open Claims</span>
         <span class="demo-next-hint" aria-hidden="true">Next → MCP tab</span>
       </div>
     </BrutalCard>

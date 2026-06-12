@@ -166,12 +166,13 @@
                       {obs.submittingKeyIdentity}
                     </span>
                   {/if}
+                  <!-- D2 (UXC §2 [R1] Claims): "Claims", never "graph"/"graph explorer". -->
                   <a
                     href="/keys/dashboard/claims?unit={encodeURIComponent(obs.unitId)}"
                     class="btn-link meta-link"
-                    aria-label="View claim {obs.unitId.slice(0, 8)} in graph explorer"
+                    aria-label="View claim {obs.unitId.slice(0, 8)} in Claims"
                   >
-                    View in graph →
+                    View in Claims →
                   </a>
                 </div>
 

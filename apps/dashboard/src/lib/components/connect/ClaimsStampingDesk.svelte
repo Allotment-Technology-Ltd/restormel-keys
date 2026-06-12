@@ -215,7 +215,7 @@
         <div class="desk-legend-row"><dt><kbd>J</kbd>/<kbd>K</kbd></dt><dd>Next / previous claim</dd></div>
         <div class="desk-legend-row"><dt><kbd>S</kbd></dt><dd>Stamp supported</dd></div>
         <div class="desk-legend-row"><dt><kbd>W</kbd></dt><dd>Mark weak</dd></div>
-        <div class="desk-legend-row"><dt><kbd>X</kbd></dt><dd>Mark rejected</dd></div>
+        <div class="desk-legend-row"><dt><kbd>X</kbd></dt><dd>Mark unsupported</dd></div>
         <div class="desk-legend-row"><dt><kbd>E</kbd></dt><dd>Open evidence</dd></div>
         <div class="desk-legend-row"><dt><kbd>N</kbd></dt><dd>Write a note</dd></div>
         <div class="desk-legend-row"><dt><kbd>Z</kbd></dt><dd>Undo last stamp</dd></div>
