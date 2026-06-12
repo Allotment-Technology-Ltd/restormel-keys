@@ -20,7 +20,10 @@ import {
   upsertConnectStageRoutingConfig,
 } from "$lib/server/neon";
 import { listProviderIntegrations } from "$lib/server/db";
-import { normalizeProviderForStorage } from "$lib/server/canonical-provider";
+import {
+  normalizeProviderForStorage,
+  normalizeProviderToCanonicalApi,
+} from "$lib/server/canonical-provider";
 import { validateRouteStepsForPublish } from "$lib/server/route-publish-validation";
 import {
   buildCrossModelProductionChain,
@@ -29,6 +32,7 @@ import {
 } from "$lib/server/connect/model-guidance";
 import { ensureModelCatalogSynced } from "$lib/server/connect/model-catalog-sync";
 import { getConnectStageRouting } from "$lib/server/connect/stage-routing";
+import { ensureProviderBindingsForProviders } from "$lib/server/connect/ensure-provider-bindings";
 import { getWorkspaceEmbeddingLock } from "$lib/server/connect/embedding-contract";
 import { resolveUpstreamValidationContext } from "$lib/server/connect/resolve-stage-route-models";
 import {
@@ -53,6 +57,12 @@ export type AppliedStageRoute = {
   provider: string;
   published: boolean;
   created: boolean;
+  /**
+   * K3 (K-P0-2): a provider_bindings row for this stage's provider exists on the
+   * project after apply — `bindingCreated` is true when apply had to create it.
+   */
+  bindingEnsured: boolean;
+  bindingCreated: boolean;
 };
 
 export type ApplyRecommendedRoutesResult = {
@@ -252,7 +262,32 @@ export async function applyRecommendedIngestionRoutes(args: {
       provider: rec.provider,
       published,
       created: ensured.created,
+      bindingEnsured: false,
+      bindingCreated: false,
     });
+  }
+
+  // K3 (K-P0-2): the routes above resolve providers at run time via provider_bindings
+  // on the project — ensure those bindings exist for every provider we just wired
+  // (idempotent, mirroring testing-bootstrap's auto-bind).
+  if (applied.length > 0) {
+    const ensuredBindings = await ensureProviderBindingsForProviders({
+      workspaceId: args.workspaceId,
+      projectId: args.projectId,
+      environmentId: args.environmentId,
+      providers: applied.map((a) => a.provider),
+      actorId: args.userId,
+      actorType: args.actorType ?? "session",
+    }).catch(() => []);
+    const byProvider = new Map(ensuredBindings.map((b) => [b.provider, b]));
+    for (const row of applied) {
+      const canonical = normalizeProviderToCanonicalApi(row.provider) ?? row.provider;
+      const match = byProvider.get(canonical) ?? byProvider.get(row.provider);
+      if (match) {
+        row.bindingEnsured = true;
+        row.bindingCreated = match.created;
+      }
+    }
   }
 
   const existing = routing ?? {

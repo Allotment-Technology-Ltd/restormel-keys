@@ -24,6 +24,7 @@ import { listConnections } from "$lib/server/connect/connections-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { listConnectPipelineProfilesForWorkspace } from "$lib/server/neon";
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
+import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
 import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { CONNECT_MCP_HREF } from "$lib/dashboard-hub-nav";
 import { perfSpan } from "$lib/debug/server-perf";
@@ -221,11 +222,24 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
         ? await loadConnectTrustScorecard(workspace.id, { statsMode: "peek" }).catch(() => null)
         : null;
 
+    // K3 launch gate: per-provider binding/credential preflight (the lookup the worker
+    // performs mid-run). Null on compute failure — the panel treats null as "could not
+    // check" and the jobs BFF re-enforces server-side, so a load hiccup never bricks
+    // the gate (and never bypasses modelsReady or any existing gating).
+    const runPreflight =
+      step === "launch"
+        ? await computeConnectRunPreflight({
+            workspaceId: workspace.id,
+            userId: locals.user.uid,
+          }).catch(() => null)
+        : null;
+
     const payload = {
       step,
       wizard,
       runDefaults,
       previousScorecard,
+      runPreflight,
       modelsReady: modelsStatus.modelsReady,
       phase,
       workspaceId: workspace.id,

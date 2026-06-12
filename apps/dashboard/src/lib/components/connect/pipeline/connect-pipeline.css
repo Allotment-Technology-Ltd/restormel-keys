@@ -1117,6 +1117,35 @@
   flex-shrink: 0;
   align-self: center;
 }
+/* K3 provider-credential preflight repair rows (launch gate) */
+.connect-pipeline .preflight-repair-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.connect-pipeline .preflight-repair-item {
+  border: 1px solid var(--color-ink);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-canvas);
+}
+.connect-pipeline .preflight-repair-item .preflight-warn-note {
+  margin-top: 0;
+}
+.connect-pipeline .preflight-repair-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.connect-pipeline .preflight-override {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
 .connect-pipeline .run-forecast-title {
   margin: 0 0 var(--space-2);
   font-family: var(--font-mono);

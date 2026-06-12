@@ -11,6 +11,13 @@
     type PipelineWizardProgress,
   } from "$lib/connect/pipeline-config";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
+  import {
+    failingPreflightRows,
+    preflightAllowsLaunch,
+    preflightIssueCopy,
+    type ConnectRunPreflightProviderRow,
+    type ConnectRunPreflightResult,
+  } from "$lib/connect/run-preflight";
 
   export let runDefaults: PipelineRunDefaults;
   export let progress: PipelineWizardProgress;
@@ -21,6 +28,12 @@
   export let canStart = false;
   /** Previous run's trust scorecard (Stage 1.2) — shown in "What to expect" when a graph exists. */
   export let previousScorecard: ConnectTrustScorecard | null = null;
+  /**
+   * K3 launch gate (K-P0-2): per-provider binding/credential preflight computed
+   * server-side. Null means "could not check" — the gate stays open (the jobs BFF
+   * re-enforces) so a compute hiccup never bricks launches.
+   */
+  export let preflight: ConnectRunPreflightResult | null = null;
 
   const dispatch = createEventDispatcher<{ started: void }>();
   const CONNECT_BASE = DASHBOARD_BASE + "/connect";
@@ -32,8 +45,25 @@
   let selectedPackId =
     runDefaults.selectedDomainPackId ?? runDefaults.domainPackId ?? runDefaults.packs[0]?.id ?? "";
 
+  // Bind/recheck actions replace the server-loaded preflight with a fresh one.
+  let refreshedPreflight: ConnectRunPreflightResult | null = null;
+  /** Explicit operator opt-in for legacy environment-key runs (no stage routes). */
+  let legacyOverride = false;
+  let bindBusyProvider: string | null = null;
+  let preflightMsg: string | null = null;
+
+  $: livePreflight = refreshedPreflight ?? preflight;
+  $: preflightFailing = failingPreflightRows(livePreflight);
+  $: preflightWarning = livePreflight ? livePreflight.status !== "pass" : false;
+
   $: selectedPack = runDefaults.packs.find((p) => p.id === selectedPackId);
-  $: canStart = runDefaults.documents.length > 0 && Boolean(selectedPackId) && modelsReady && !submitting;
+  // K3 ADDS the provider preflight to the existing gate — never bypasses it.
+  $: canStart =
+    runDefaults.documents.length > 0 &&
+    Boolean(selectedPackId) &&
+    modelsReady &&
+    preflightAllowsLaunch(livePreflight, legacyOverride) &&
+    !submitting;
   $: docWarning =
     progress.parsedDocumentCount > 0 &&
     progress.selectedDocumentCount < progress.parsedDocumentCount;
@@ -63,6 +93,50 @@
     await persistPackSelection(selectedPackId);
   }
 
+  /** Re-pull the preflight from the project readiness endpoint (its first UI consumer). */
+  async function refreshPreflight() {
+    const projectId = livePreflight?.projectId;
+    if (!projectId) return;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/projects/${projectId}/readiness`);
+      if (!res.ok) return;
+      const d = await res.json().catch(() => null);
+      if (d?.data?.connect_run_preflight) {
+        refreshedPreflight = d.data.connect_run_preflight as ConnectRunPreflightResult;
+      }
+    } catch {
+      // keep the last known preflight — re-check stays available
+    }
+  }
+
+  /** One-click repair: bind the unambiguous workspace integration to the routing project. */
+  async function bindNow(row: ConnectRunPreflightProviderRow) {
+    const projectId = livePreflight?.projectId;
+    if (!row.bind || !projectId || bindBusyProvider) return;
+    bindBusyProvider = row.provider;
+    preflightMsg = null;
+    try {
+      const res = await fetch(`${DASHBOARD_BASE}/api/integrations/${row.bind.integrationId}/bindings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          ...(livePreflight?.environmentId ? { environmentId: livePreflight.environmentId } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        preflightMsg = d.error ?? `Could not bind ${row.provider} (HTTP ${res.status}).`;
+        return;
+      }
+      await refreshPreflight();
+    } catch {
+      preflightMsg = "Network error while binding the provider.";
+    } finally {
+      bindBusyProvider = null;
+    }
+  }
+
   function defaultLabel(): string {
     const date = new Date().toLocaleDateString(undefined, {
       month: "short",
@@ -78,7 +152,10 @@
 
   async function startRun() {
     if (!canStart) {
-      error = "Select documents, a domain pack, and configure routes before starting.";
+      error =
+        preflightFailing.length > 0
+          ? "Fix the provider credential issues above before starting."
+          : "Select documents, a domain pack, and configure routes before starting.";
       return;
     }
     error = null;
@@ -100,6 +177,12 @@
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // Server-side preflight re-check (race: a binding/key changed since page load).
+        if (res.status === 422 && d.error === "preflight_blocked" && d.preflight) {
+          refreshedPreflight = d.preflight as ConnectRunPreflightResult;
+          error = d.message ?? "Run preflight failed — fix the provider issues above and start again.";
+          return;
+        }
         error = d.message ?? `Could not start run (HTTP ${res.status}).`;
         return;
       }
@@ -204,6 +287,76 @@
         </div>
         <a class="preflight-edit" href={withReturnTo(CONNECT_BASE + "/models", { kind: "pipeline-setup", step: "launch" })}>Edit →</a>
       </li>
+      {#if livePreflight}
+        <li class="preflight-row" class:preflight-row-warn={preflightWarning}>
+          <span
+            class="preflight-bullet"
+            class:preflight-bullet-ok={!preflightWarning}
+            class:preflight-bullet-warn={preflightWarning}
+            aria-hidden="true"
+          >{preflightWarning ? "□" : "■"}</span>
+          <div class="preflight-main">
+            <span class="preflight-label">Provider credentials</span>
+            <span class="preflight-value">
+              {#if livePreflight.status === "pass"}
+                <strong>
+                  {livePreflight.providers.length} provider{livePreflight.providers.length === 1 ? "" : "s"} executable on the routing project
+                </strong>
+              {:else if livePreflight.status === "legacy_env"}
+                <strong>Legacy environment key</strong>
+              {:else}
+                <strong>Needs attention</strong>
+              {/if}
+            </span>
+
+            {#if preflightFailing.length > 0}
+              <ul class="preflight-repair-list">
+                {#each preflightFailing as row (row.provider)}
+                  <li class="preflight-repair-item">
+                    <p class="preflight-warn-note">{preflightIssueCopy(row)}</p>
+                    <div class="preflight-repair-actions">
+                      {#if row.bind && livePreflight.projectId}
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm"
+                          disabled={bindBusyProvider !== null}
+                          on:click={() => bindNow(row)}
+                        >
+                          {bindBusyProvider === row.provider
+                            ? "Binding…"
+                            : `Bind ${row.bind.label} to project`}
+                        </button>
+                      {/if}
+                      <a class="btn btn-outline btn-sm" href={row.fixHref}>{row.fixLabel} →</a>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+              <div class="preflight-repair-actions">
+                <button type="button" class="btn btn-outline btn-sm" on:click={refreshPreflight}>
+                  Re-check
+                </button>
+              </div>
+            {/if}
+
+            {#if livePreflight.status === "legacy_env"}
+              <p class="preflight-warn-note">
+                No published stage routes — this run would execute on the server's legacy
+                environment key instead of your project's provider connections.
+              </p>
+              <label class="preflight-override">
+                <input type="checkbox" bind:checked={legacyOverride} />
+                <span>Run on the legacy environment key anyway</span>
+              </label>
+            {/if}
+
+            {#if preflightMsg}
+              <p class="preflight-warn-note" role="alert">{preflightMsg}</p>
+            {/if}
+          </div>
+          <a class="preflight-edit" href={DASHBOARD_BASE + "/integrations"}>Edit →</a>
+        </li>
+      {/if}
     </ul>
 
     <form class="form wizard-run-form" on:submit|preventDefault={startRun}>

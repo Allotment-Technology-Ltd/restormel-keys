@@ -9,6 +9,8 @@ import {
   listRoutes,
   listRouteSteps,
 } from "$lib/server/db";
+import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
+import { preflightIssueCopy } from "$lib/connect/run-preflight";
 
 type Severity = "low" | "medium" | "high";
 
@@ -38,10 +40,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
     if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
     if (!scope) return json({ error: "Not found" }, { status: 404 });
 
-    const [bindings, routes, policies] = await Promise.all([
+    const [bindings, routes, policies, connectRunPreflight] = await Promise.all([
       listProviderBindingsByProject(scope.projectId),
       listRoutes(scope.projectId, scope.userId),
       listPolicies(scope.workspaceId),
+      // K3: per-provider Connect run preflight (binding × decryptable credential ×
+      // K2 verification) against this project. Best-effort — readiness must keep
+      // working for workspaces without Connect stage routing.
+      scope.workspaceId
+        ? computeConnectRunPreflight({
+            workspaceId: scope.workspaceId,
+            userId: scope.userId,
+            projectId: scope.projectId,
+          }).catch(() => null)
+        : Promise.resolve(null),
     ]);
     const stepsPerRoute = await Promise.all(routes.map((r) => listRouteSteps(r.id, scope.projectId, scope.userId)));
     const issues: Array<{ severity: Severity; code: string; message: string; resource: string }> = [];
@@ -113,6 +125,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       });
     }
 
+    // Fold blocked Connect preflight rows into the issue list so existing readiness
+    // consumers see them without parsing the preflight payload.
+    if (connectRunPreflight?.status === "blocked") {
+      for (const row of connectRunPreflight.providers) {
+        if (!row.issue) continue;
+        issues.push({
+          severity: "high",
+          code: `connect_run_${row.issue}`,
+          message: preflightIssueCopy(row),
+          resource: "provider_bindings",
+        });
+        recommendations.push({
+          priority: "high",
+          action: `${row.fixLabel} (${row.fixHref}) for ${row.provider}.`,
+          reason: "Connect ingest runs resolve providers through project bindings with executable credentials.",
+        });
+      }
+      if (connectRunPreflight.providers.length === 0) {
+        issues.push({
+          severity: "high",
+          code: "connect_run_no_stage_routes",
+          message: "No published Connect stage routes and no legacy environment key — ingest runs cannot execute.",
+          resource: "routes",
+        });
+      }
+    }
+
     const status = issues.some((i) => i.severity === "high")
       ? "fail"
       : issues.some((i) => i.severity === "medium")
@@ -130,6 +169,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         },
         issues,
         recommendations,
+        // K3: full per-provider launch preflight (null when it could not be computed).
+        connect_run_preflight: connectRunPreflight,
       },
     });
   } catch (e) {
