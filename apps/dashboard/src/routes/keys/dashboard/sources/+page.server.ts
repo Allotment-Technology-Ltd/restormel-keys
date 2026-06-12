@@ -22,6 +22,7 @@ export const load: PageServerLoad = async (event) => {
       documents: [] as SourcesDocumentRow[],
       selectedPackId: null as string | null,
       signedIn: false,
+      loadFailed: false,
     };
   }
   try {
@@ -50,14 +51,19 @@ export const load: PageServerLoad = async (event) => {
       })),
       selectedPackId,
       signedIn: true,
+      loadFailed: false,
     };
   } catch {
+    // R4-S3/X7: a DB failure here must NOT masquerade as "No documents yet". Flag
+    // the failure so the page renders an error banner + retry, distinguishing a
+    // genuine empty workspace from a load error.
     return {
       graphs: [],
       packs: [],
       documents: [] as SourcesDocumentRow[],
       selectedPackId: null as string | null,
       signedIn: true,
+      loadFailed: true,
     };
   }
 };

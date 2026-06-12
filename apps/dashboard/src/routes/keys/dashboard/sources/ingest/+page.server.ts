@@ -34,6 +34,32 @@ import { AGENTS_HREF } from "$lib/nav-config";
 import { perfSpan } from "$lib/debug/server-perf";
 import type { PageServerLoad } from "./$types";
 
+/**
+ * R4-U2: surface the real K2 verify probe receipt for the provider step. The
+ * authenticated probe stores its outcome at `metadata.verification.detail` (e.g.
+ * "Authenticated with openai (HTTP 200).") with `checkedAt`. We pick the most
+ * recently verified integration and pass its real receipt to the provider panel —
+ * never a fabricated "verified" claim. Null when no verified integration exists.
+ */
+function resolveProviderVerifyReceipt(
+  integrations: Awaited<ReturnType<typeof listProviderIntegrations>>,
+): { providerType: string; detail: string | null; checkedAt: number | null } | null {
+  const verified = integrations
+    .filter((i) => i.verificationStatus === "verified")
+    .sort((a, b) => (b.lastVerifiedAt ?? 0) - (a.lastVerifiedAt ?? 0));
+  const top = verified[0];
+  if (!top) return null;
+  const verification = (top.metadata?.verification ?? null) as
+    | { detail?: unknown; checkedAt?: unknown }
+    | null;
+  const detail = typeof verification?.detail === "string" ? verification.detail : null;
+  const checkedAt =
+    typeof verification?.checkedAt === "number"
+      ? verification.checkedAt
+      : (top.lastVerifiedAt ?? null);
+  return { providerType: top.providerType, detail, checkedAt };
+}
+
 function graphStoreLabel(target: Awaited<ReturnType<typeof getGraphTargetForUi>>): string | null {
   if (!target) return null;
   if (target.provider === "postgres" && target.use_dashboard_database) return "Workspace Neon database";
@@ -290,6 +316,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       workspaceId: workspace.id,
       domainPacks: packs,
       selectedDomainPackId: activePack?.id ?? null,
+      providerVerify: resolveProviderVerifyReceipt(integrations),
     };
     endPipeline();
     return payload;

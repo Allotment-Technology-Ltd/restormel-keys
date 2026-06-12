@@ -7,6 +7,7 @@
   import {
     PIPELINE_WIZARD_STEPS,
     DEMOTED_PIPELINE_WIZARD_STEP,
+    nextPipelineWizardStep,
     pipelineWizardHref,
     type PipelineRunDefaults,
     type PipelineWizardProgress,
@@ -31,6 +32,7 @@
 
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   type WizardData = {
     step: PipelineWizardStepId;
@@ -42,6 +44,11 @@
     phase?: "initial" | "operational";
     workspaceId?: string;
     loadFailed?: boolean;
+    providerVerify?: {
+      providerType: string;
+      detail: string | null;
+      checkedAt: number | null;
+    } | null;
   };
 
   export let data: WizardData;
@@ -54,6 +61,18 @@
   // R4: the store step is demoted off the stepper strip — it's an aside reached
   // via "Configure store" or a `?step=store` deep link, not a numbered flow step.
   $: isStoreAside = step === "store";
+  // R4-S2(c): the auto-provision promise only holds when host-managed Neon is ON.
+  $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
+  // Flag-gated store lead: append the "provisioned automatically" claim ONLY when
+  // the module is ON. With it OFF (MVP default) the base BYO-honest lead stands.
+  $: storeLead = neonGraphStoreOn
+    ? `${DEMOTED_PIPELINE_WIZARD_STEP.lead} Your workspace Neon database is provisioned automatically on flow entry — connect a store you manage here to override it.`
+    : DEMOTED_PIPELINE_WIZARD_STEP.lead;
+  // Provisioning receipt: when auto-provision is ON and a target now exists, the
+  // workspace store was provisioned for them — say so honestly (no fabricated
+  // receipt when the flag is OFF or no store exists).
+  $: showProvisionReceipt =
+    isStoreAside && neonGraphStoreOn && Boolean(progress?.hasGraphStore);
   $: stepIndex = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === step);
   $: current =
     isStoreAside
@@ -96,9 +115,18 @@
     );
   }
 
+  // R4-U1: a provisioned workspace enters at `sources` with a pack already
+  // satisfied. Strict positional advance would land Continue on `domain`, making
+  // the golden path 3 panels (sources → domain → launch). `nextPipelineWizardStep`
+  // skips `domain` when a pack is satisfied so the provisioned path is
+  // sources+pack → launch = 2 panels. `domain` stays reachable via the stepper
+  // and the launch panel's "Edit →" affordance.
+  $: packSatisfied = Boolean(progress?.selectedDomainPackId || progress?.hasCustomPack);
+
   function goNext() {
-    if (stepIndex >= PIPELINE_WIZARD_STEPS.length - 1) return;
-    goToStep(PIPELINE_WIZARD_STEPS[stepIndex + 1].id);
+    const next = nextPipelineWizardStep(step, packSatisfied);
+    if (!next) return;
+    goToStep(next);
   }
 
   function goBack() {
@@ -233,7 +261,13 @@
     {/if}
     <h2 class="wizard-title">{current.title}</h2>
     {#if journeyPhase === "initial" || isStoreAside}
-      <p class="wizard-lead">{current.lead}</p>
+      <p class="wizard-lead">{isStoreAside ? storeLead : current.lead}</p>
+    {/if}
+    {#if showProvisionReceipt}
+      <p class="wizard-provision-receipt" role="status">
+        ✓ Provisioned automatically — <strong>{progress?.graphStoreLabel ?? "Workspace Neon database"}</strong>
+        is your graph store. Connect a store you manage below to override it.
+      </p>
     {/if}
   </header>
 
@@ -244,6 +278,7 @@
       {:then { default: ConnectProviderKeyPanel }}
         <ConnectProviderKeyPanel
           hasProviderKey={Boolean(progress?.hasProviderKey)}
+          verifyReceipt={data.providerVerify ?? null}
           {modelsReady}
         />
       {:catch}
@@ -332,7 +367,7 @@
             type="button"
             class="btn btn-primary btn-lg"
             disabled={!runCanStart || runSubmitting}
-            title={!runCanStart ? "Select documents, a domain pack, configure routes, and clear the provider preflight to start" : undefined}
+            title={!runCanStart ? "Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start" : undefined}
             on:click={() => launchStep?.submitRun()}
           >
             {runSubmitting ? "Starting…" : "START RUN →"}

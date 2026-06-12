@@ -147,7 +147,11 @@ export const DEMOTED_PIPELINE_WIZARD_STEP = {
   id: "store",
   label: "Graph store",
   title: "Choose where your graph lives",
-  lead: "Agents need a durable home for ideas and relationships. Your workspace database is provisioned automatically — connect SurrealDB you manage here if you'd rather bring your own store, or opt into the claim-versions table.",
+  // R4-S2(c): this lead must be true with the `connectNeonGraphStore` flag OFF
+  // (MVP default), where the store is BYO and nothing is auto-provisioned. The
+  // "provisioned automatically" claim is added by the wizard ONLY when the flag is
+  // ON (see `storeLead` in ConnectPipelineWizard). Keep this copy flag-neutral.
+  lead: "Agents need a durable home for ideas and relationships. Connect the workspace Neon database or a SurrealDB you manage, and opt into the claim-versions table if you need point-in-time history.",
   required: false,
 } as const;
 
@@ -219,6 +223,27 @@ export function pipelineWizardHref(step: PipelineWizardStepId, extraParams?: Rec
 
 export function parseWizardStepParam(value: string | null): PipelineWizardStepId | null {
   return isPipelineWizardStep(value) ? value : null;
+}
+
+/**
+ * R4-U1: the wizard's forward traversal (what "Continue" does). Positional over the
+ * visible strip, EXCEPT `domain` is auto-skipped when a pack is already satisfied
+ * (`selectedDomainPackId || hasCustomPack`) — so a provisioned workspace entering at
+ * `sources` reaches `launch` in one Continue (sources+pack → launch = 2 panels), not
+ * two. `domain` stays reachable via the stepper and the launch panel's "Edit →".
+ * Returns null when `fromStep` is the last step or not a visible step.
+ */
+export function nextPipelineWizardStep(
+  fromStep: PipelineWizardStepId,
+  packSatisfied: boolean,
+): PipelineWizardStepId | null {
+  const fromIdx = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === fromStep);
+  if (fromIdx < 0 || fromIdx >= PIPELINE_WIZARD_STEPS.length - 1) return null;
+  let nextIdx = fromIdx + 1;
+  if (PIPELINE_WIZARD_STEPS[nextIdx]?.id === "domain" && packSatisfied) {
+    nextIdx += 1;
+  }
+  return PIPELINE_WIZARD_STEPS[nextIdx]?.id ?? null;
 }
 
 export function pipelineWizardStepLabel(step: PipelineWizardStepId): string {

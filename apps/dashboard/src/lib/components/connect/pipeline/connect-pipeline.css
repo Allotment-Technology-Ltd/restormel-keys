@@ -683,6 +683,15 @@
   font-size: var(--text-sm);
   line-height: 1.55;
 }
+.connect-pipeline .wizard-provision-receipt {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rm-border);
+  background: var(--color-surface);
+  color: var(--rm-text);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
 .connect-pipeline .wizard-body {
   margin-bottom: var(--space-4);
 }

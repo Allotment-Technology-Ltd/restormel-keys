@@ -2,6 +2,8 @@
   import ConnectGraphLibrary from "$lib/components/connect/ConnectGraphLibrary.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import { invalidateAll } from "$app/navigation";
   import { INGEST_FLOW_HREF } from "$lib/nav-config";
   import { formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
@@ -13,6 +15,7 @@
     documents: SourcesDocumentRow[];
     selectedPackId: string | null;
     signedIn: boolean;
+    loadFailed?: boolean;
   };
 
   $: parsedCount = data.documents.filter((d) => d.status === "parsed").length;
@@ -59,7 +62,21 @@
         <h2 id="docs-heading" class="section-title">Documents</h2>
         <a class="section-link" href={`${INGEST_FLOW_HREF}?step=sources`}>Manage sources →</a>
       </div>
-      {#if data.documents.length === 0}
+      {#if data.loadFailed}
+        <!-- R4-S3/X7: a load failure is distinct from a genuinely empty workspace —
+             show an error + retry, never a misleading "No documents yet". -->
+        <BrutalErrorBanner
+          title="Couldn't load your documents"
+          message="We couldn't reach your sources just now. Your documents are unchanged — try again."
+        >
+          {#snippet actions()}
+            <button type="button" class="btn btn-primary btn-sm" on:click={() => invalidateAll()}>
+              Try again
+            </button>
+            <a class="btn btn-outline btn-sm" href={`${INGEST_FLOW_HREF}?step=sources`}>Manage sources →</a>
+          {/snippet}
+        </BrutalErrorBanner>
+      {:else if data.documents.length === 0}
         <div class="empty-state">
           <p class="empty-title">No documents yet</p>
           <p class="empty-sub">

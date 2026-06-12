@@ -14,11 +14,39 @@
   export let hasProviderKey = false;
   /** Chat + embedding routes are publishable (a verified key alone isn't enough to run). */
   export let modelsReady = false;
+  /**
+   * R4-U2: the real K2 verify probe receipt for the most recently verified provider
+   * (detail e.g. "Authenticated with openai (HTTP 200)."). Null when no verified
+   * integration exists — we then fall back to the plain "connected" confirmation
+   * rather than fabricating a receipt.
+   */
+  export let verifyReceipt: {
+    providerType: string;
+    detail: string | null;
+    checkedAt: number | null;
+  } | null = null;
 
   const INTEGRATIONS_HREF = withReturnTo(DASHBOARD_BASE + "/integrations", {
     kind: "pipeline-setup",
     step: "provider",
   });
+
+  function formatCheckedAt(ts: number | null): string | null {
+    if (!ts) return null;
+    try {
+      return new Date(ts).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  $: receiptDetail = verifyReceipt?.detail ?? null;
+  $: receiptWhen = formatCheckedAt(verifyReceipt?.checkedAt ?? null);
 </script>
 
 <div class="provider-panel">
@@ -27,6 +55,11 @@
       <span class="provider-glyph" aria-hidden="true">✓</span>
       <div class="provider-verified-body">
         <p class="provider-verified-title">Provider key connected — verified.</p>
+        {#if receiptDetail}
+          <p class="provider-verified-receipt" role="status">
+            {receiptDetail}{#if receiptWhen} · checked {receiptWhen}{/if}
+          </p>
+        {/if}
         <p class="provider-verified-sub">
           {#if modelsReady}
             Chat and embedding routes are ready. Continue to choose your sources.
@@ -44,8 +77,8 @@
     <div class="provider-empty">
       <p class="provider-empty-title">No provider key yet</p>
       <p class="provider-empty-sub">
-        Add one AI provider key — it's verified live against the provider the moment you save (a
-        real authentication probe, not a placebo). You'll land back here when it's connected.
+        Add one AI provider key — it's verified live against the provider the moment you save, with a
+        real authenticated probe. You'll land back here when it's connected.
       </p>
       <div class="provider-actions">
         <a class="btn btn-primary" href={INTEGRATIONS_HREF}>Add a provider key →</a>
@@ -96,6 +129,12 @@
   .provider-verified-sub {
     margin: 0;
     color: var(--color-ink-muted);
+  }
+  .provider-verified-receipt {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink);
   }
   .provider-actions {
     display: flex;
