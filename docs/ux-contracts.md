@@ -306,6 +306,46 @@ same store** rather than opening a second workspace stream (one SSE invocation p
 | **Run console — live tail** (`/runs/[id]`) | existing "Loading run console…" (`role="status"`) | n/a (a run always has a row) | existing "Could not load run status" banner + restart actions; **plus** an amber **"Live updates degraded to polling"** mono note (`role="status"`, in-progress runs only) when SSE drops to the 2.5s fallback — the run is explicitly stated to be unaffected | status badge, progress %, stage timeline, heartbeat age, and the activity-log tail all update from SSE `delta` frames (`aria-live="polite"` log region preserved); the W1.4 stall/reclaim narration rides the same frames |
 <!-- W3.1-BLOCK-END -->
 
+### §3 panel states — Versioned-config intelligence: diff / export / recommend (Stage W3.5)
+
+Builds on W1.5's Versions tab (route builder `/projects/{id}/routes/{routeId}` → Versions; policy
+`/policies/{id}` → Versions). W3.5 adds a Compare (diff) panel, an Export affordance, and
+recommendations in the route step-add dialog. **Truthfulness invariant:** diffs are computed over the
+version *snapshots* the `/history` endpoint stores verbatim (routes: client-side over
+`routeSnapshot`+`stepsSnapshot`; policies: the existing server `/diff` endpoint) — never a recomputed
+approximation.
+
+| Panel | Loading | Empty | Error | Populated |
+|-------|---------|-------|-------|-----------|
+| **Compare (diff)** (`VersionDiffView`, inside `VersionsPanel`) | `BrutalLoadingState` "Computing diff…" (rows=3) | Identical versions → "No changes between the selected versions" + pick-another hint; < 2 published versions → "Compare needs at least two published versions… Publish again" | `BrutalErrorBanner` "Could not compute the diff" + **Try again** (re-fires the diff) | Field-level added/removed/changed rows (square `+`/`−`/`~` glyph + status word, mono evidence column) with a raw-JSON toggle; each changed row + field links into the builder via `onOpenDiffField` (route metadata → Setup tab; `step.<orderIndex>` → Flow tab with the step selected) |
+| **Export** (route bundle, inside `VersionsPanel`) | "Exporting…" on the action button | n/a — a route always exports | `BrutalErrorBanner` "Export failed" + **Dismiss** (clipboard fallback note when copy fails) | "Export bundle" downloads `<name>.route-bundle.json` (canonical route-graph bundle, schema 1.0.0, no secrets); "Copy as JSON" copies the same; success status "copied to clipboard". Policies have no export endpoint → the affordance is absent (not a dead button) |
+| **Recommendations** (route step-add dialog) | "Loading recommendations…" status | "No recommendations — this route looks healthy." | inline `role="alert"` + **Try again** (re-fires the recommend POST) | Recommendations from the existing `routes/{routeId}/recommend` endpoint, quoted verbatim and ordered by priority (high→low). Guidance only — copy states "nothing here changes the route automatically" (`safeAutoApply: false`); never auto-applied |
+| **Route coverage** (`RouteCoverageIndicator`, routes list `/projects/{id}/routes`) | `BrutalLoadingState` "Checking route coverage…" (rows=1) | `routeCount === 0` → "No routes yet — coverage appears once this project has at least one route." | `BrutalErrorBanner` "Could not load route coverage" + **Retry** (re-fires the GET) | Headline quotes the endpoint verbatim: "N of M routes have no enabled step" (warn) or "All M routes have at least one enabled step" (ok), linking to the routes it summarizes (X4). A toggle reveals the per-environment workload×stage matrix (`coveredCells/totalCells (coveragePct%)`, gap cells flagged). Reads the existing `api/projects/{id}/route-coverage` endpoint; no recompute |
+
+**Diff/export source-of-truth (W3.5):** the route diff and export both read the same stored
+snapshots/bundle the server already produces; there is no second recommendation model and no
+recomputed diff.
+
+**Publish-confirm blast radius (W3.5, M2):** the publish confirm describes the blast radius of
+*this* publish, not the previous published change. **Routes:** the builder passes the pending draft
+(`{ routeSnapshot: data.route, stepsSnapshot: data.steps }`, the same shape `insertRouteVersionEvent`
+stores) as `draftSnapshot`; `VersionsPanel` diffs it against the *latest published* snapshot with the
+same `buildRouteDiff` and shows "Publishing changes: 1 step changed, … (vs live version N)" — or an
+honest "No changes vs live version N — this re-publishes the same configuration", or "This is the
+first published version — there is no live version to compare against" when there is no prior
+snapshot. A reorder-only draft (orderIndex/entryStepId) is therefore a real change here, never
+"No changes" (M1). **Policies (asymmetry):** the policy page has no client-side draft model
+(`draftSnapshot` is omitted, `diffMode="server"`), so the publish confirm shows no diff context
+line — no snapshot is available on the client to diff against. A route-step-edges-versioning
+follow-up (W1.5 server scope) would let the route confirm reflect edge moves too.
+
+**Fix-forward links (W3.5, rubric X4) — routes only:** in the route builder every changed diff field
+exposes an "open in builder" affordance landing on the exact field — route metadata → Setup tab;
+`step.<orderIndex>` → Flow tab with the step selected, resolved by the snapshot's stable step id (not
+the path's orderIndex, which can drift if the draft was reordered since — m4). The policy mount does
+not wire `onOpenDiffField`: a policy diff anchors at `policy`/`policy.<field>` and the policy page has
+no per-field builder target to land on, so the affordance is absent there (not a dead link).
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:

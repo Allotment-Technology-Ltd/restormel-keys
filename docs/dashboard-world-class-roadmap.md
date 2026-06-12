@@ -1121,6 +1121,17 @@ tab (from W1.5), `policies/[id]/+page.svelte`, step-add dialog.*
 > top-level. No geography change needed. Note `/routes/ingestion` (R5, ex-`/connect/models`) is a
 > sibling surface, not this stage's target.
 
+> **Review-fix note (PR #286, 2026-06-12):** review Majors resolved. **M1** — the structural diff
+> now includes step `orderIndex` ("Position") and route `entryStepId` ("Entry step"), so a pure
+> fallback-chain reorder is a real diff, not "No changes". **M2** — the publish confirm now shows
+> *this* publish's blast radius: the route builder passes the pending draft to `VersionsPanel`, which
+> diffs it against the latest published snapshot (draft-vs-live). The policy page lacks a client draft
+> model, so it keeps the explicitly-labelled most-recent-published-change summary (asymmetry noted in
+> ux-contracts §3). **M3** — the `route-coverage` endpoint is now consumed by `RouteCoverageIndicator`
+> on the routes list (`/projects/{id}/routes`): a small honest indicator (zero-enabled-step routes +
+> per-environment workload×stage matrix) with loading/empty/error states, linking to the routes it
+> summarizes. The `route_step_edges` are still un-versioned (W1.5 server scope) — a filed follow-up.
+
 ```
 ROLE
 Senior engineer finishing the Stripe-grade config story W1.5 unblocked: versions can now

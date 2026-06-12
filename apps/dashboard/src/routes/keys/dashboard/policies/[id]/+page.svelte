@@ -298,6 +298,8 @@
       historyUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/history`}
       publishUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/publish`}
       rollbackUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/rollback`}
+      diffMode="server"
+      diffUrl={`${DASHBOARD_BASE}/api/policies/${data.policy.id}/diff`}
       entityNoun="policy"
       onMutated={invalidateAll}
     />
