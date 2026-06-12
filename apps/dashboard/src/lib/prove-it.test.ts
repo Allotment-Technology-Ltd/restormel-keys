@@ -27,18 +27,22 @@ import { CLAIMS_HREF, RUNS_HREF } from "./nav-config";
 import { parseExplorerUrlState } from "./connect/explorer-url-state";
 
 /**
- * Every `ProveFilter` value the union admits. Listed explicitly (not derived) so a
- * NEW member added to the union without a matching explorer token trips the
- * round-trip guard below at compile *and* run time — the permanent dead-token guard.
+ * Every `ProveFilter` value the union admits. Shaped as a
+ * `satisfies Record<ProveFilter, true>` so the list is compile-time exhaustive
+ * in BOTH directions: adding a member to the union without listing it here is a
+ * type error (missing key), and listing a token the union dropped is too (excess
+ * key). The round-trip guard below then proves each one survives the explorer
+ * parse at run time — the permanent dead-token guard.
  */
-const ALL_PROVE_FILTERS: readonly ProveFilter[] = [
-  "review",
-  "supported",
-  "inferred",
-  "unverified",
-  "contradicted",
-  "excluded",
-];
+const PROVE_FILTER_PRESENCE = {
+  review: true,
+  supported: true,
+  inferred: true,
+  unverified: true,
+  contradicted: true,
+  excluded: true,
+} satisfies Record<ProveFilter, true>;
+const ALL_PROVE_FILTERS = Object.keys(PROVE_FILTER_PRESENCE) as readonly ProveFilter[];
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -125,9 +129,12 @@ describe("prove-it round-trip — every ProveFilter survives parseExplorerUrlSta
 // ---------------------------------------------------------------------------
 const PROVE_IT_SURFACES: { file: string; minApplications: number; note: string }[] = [
   {
+    // 1 metric tile (validated-supported; the two coverage tiles are honest
+    // link-less store-level aggregates) + the state-chip link + the per-factor
+    // "Show ↗" drill — each interpolates PROVE_LINK_CLASS at least once.
     file: "components/connect/ConnectTrustScorecard.svelte",
-    minApplications: 5, // 3 metric tiles + state chips + factor drill
-    note: "scorecard factor rails, metric cells, state chips, per-factor 'Show ↗'",
+    minApplications: 5,
+    note: "scorecard factor rails, validated-supported cell, state chips, per-factor 'Show ↗'",
   },
   {
     file: "components/connect/graph-comparison/ProvenanceDrawer.svelte",

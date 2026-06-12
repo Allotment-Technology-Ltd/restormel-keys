@@ -47,7 +47,7 @@
                      underline + ↗) so the gesture is one component, not a hand-rolled <a>. -->
                 <ProveLink
                   href={dossierHref(claim)}
-                  class="claim-link brut-focus"
+                  class="claim-link"
                   label="Open this claim's evidence dossier in the graph explorer"
                 >
                   {truncate(claim.text)}
