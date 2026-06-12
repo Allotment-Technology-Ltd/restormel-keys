@@ -205,6 +205,7 @@ describe("handleListEvalVerdicts", () => {
         verdict: minimalVerdict,
         diff: null,
         recordedAt: "2026-06-10T12:00:01.000Z",
+        sourceRunId: null,
       },
     ]);
     const { handleListEvalVerdicts } = await import("./eval-history-handler.js");
@@ -237,6 +238,7 @@ describe("handleListEvalVerdicts", () => {
       verdict: minimalVerdict,
       diff: null,
       recordedAt: `2026-06-${String(10 - Math.floor(i / 10)).padStart(2, "0")}T12:00:01.000Z`,
+      sourceRunId: null,
     }));
     vi.mocked(listConnectEvalVerdicts).mockResolvedValue(rows);
     const { handleListEvalVerdicts } = await import("./eval-history-handler.js");

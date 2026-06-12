@@ -67,9 +67,39 @@
   function isNewCorpus(entry: ConnectEvalVerdictEntry): boolean {
     return Boolean(entry.diff?.fingerprint_changed);
   }
+
+  /**
+   * W3.4 handoff: for ingest_run verdicts that carry source_run_id, return the
+   * run-console URL so the history row links to the producing run.
+   */
+  function sourceRunHref(entry: ConnectEvalVerdictEntry): string | null {
+    if (entry.source === "ingest_run" && entry.source_run_id) {
+      return `${CONNECT_BASE}/ingest/${entry.source_run_id}?from=quality-history`;
+    }
+    return null;
+  }
+
+  /**
+   * W2.3 / D-P2-1: glyph signals result state so colour is not the only indicator.
+   *   ■ = pass (solid square — affirmative)
+   *   ▲ = regression (triangle — caution)
+   *   □ = fail (open square — incomplete/lacking)
+   */
+  function verdictGlyph(entry: ConnectEvalVerdictEntry): string {
+    if (hasRegression(entry)) return "▲";
+    if (entry.verdict.pass) return "■";
+    return "□";
+  }
+
+  function verdictLabel(entry: ConnectEvalVerdictEntry): string {
+    if (hasRegression(entry)) return "REGRESSION";
+    if (entry.verdict.pass) return "PASS";
+    return "FAIL";
+  }
 </script>
 
 <section class="quality-history" aria-labelledby="quality-history-heading">
+  <!-- D-P1-3: heading drops the jargon; screen reader gets "Quality history" not "Eval verdict history" -->
   <h2 id="quality-history-heading" class="history-heading">Quality history</h2>
 
   {#await history}
@@ -85,10 +115,13 @@
       </EmptyState>
     {:else}
       <BrutalCard fill="white">
-        <ul class="history-list" role="list" aria-label="Eval verdict history">
+        <ul class="history-list" role="list" aria-label="Quality history">
           {#each entries as entry (entry.id)}
             {@const regression = regressionSummary(entry)}
             {@const newCorpus = isNewCorpus(entry)}
+            {@const runHref = sourceRunHref(entry)}
+            {@const glyph = verdictGlyph(entry)}
+            {@const label = verdictLabel(entry)}
             <li
               class="history-entry"
               class:entry-pass={entry.verdict.pass && !hasRegression(entry)}
@@ -97,11 +130,23 @@
               class:entry-new-corpus={newCorpus}
             >
               <div class="entry-head">
-                <span class="entry-verdict-tag" class:tag-pass={entry.verdict.pass && !hasRegression(entry)} class:tag-fail={!entry.verdict.pass} class:tag-regression={hasRegression(entry)}>
-                  {entry.verdict.pass && !hasRegression(entry) ? "PASS" : hasRegression(entry) ? "REGRESSION" : "FAIL"}
+                <!-- D-P2-1: glyph + text so result is not colour-only -->
+                <span
+                  class="entry-verdict-tag"
+                  class:tag-pass={entry.verdict.pass && !hasRegression(entry)}
+                  class:tag-fail={!entry.verdict.pass}
+                  class:tag-regression={hasRegression(entry)}
+                  aria-label="{label}"
+                >
+                  <span class="verdict-glyph" aria-hidden="true">{glyph}</span>
+                  {label}
                 </span>
                 <span class="entry-source">{SOURCE_LABELS[entry.source] ?? entry.source}</span>
                 <time class="entry-time" datetime={entry.verdict.evaluated_at}>{fmtDate(entry.verdict.evaluated_at)}</time>
+                <!-- W3.4: cross-link to producing run console for ingest_run entries -->
+                {#if runHref}
+                  <a class="entry-run-link" href={runHref} aria-label="Open the ingest run that produced this verdict">Run →</a>
+                {/if}
               </div>
 
               <div class="entry-metrics">
@@ -115,7 +160,10 @@
               </div>
 
               {#if regression}
-                <p class="entry-regression-note" role="alert">{regression}</p>
+                <p class="entry-regression-note" role="alert">
+                  <!-- D-P2-1: glyph + text, not colour alone -->
+                  <span aria-hidden="true">▲</span> {regression}
+                </p>
               {/if}
 
               {#if newCorpus}
@@ -140,15 +188,17 @@
       </BrutalCard>
     {/if}
   {:catch}
+    <!-- D-P2-2: recovery actions inside BrutalErrorBanner's actions snippet -->
     <BrutalErrorBanner
       title="Quality history unavailable"
       message="Could not read the eval verdict history. Your graph is unaffected — this is a read failure."
-    />
-    <div class="history-error-actions">
-      <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
-        {retrying ? "Retrying…" : "Try again"}
-      </button>
-    </div>
+    >
+      {#snippet actions()}
+        <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+          {retrying ? "Retrying…" : "Try again"}
+        </button>
+      {/snippet}
+    </BrutalErrorBanner>
   {/await}
 </section>
 
@@ -181,17 +231,18 @@
     background: var(--color-surface);
   }
 
+  /* W2.3: defined state tokens — no --color-*-tint hex fallbacks (D-P1-4) */
   .entry-pass {
-    border-left: 4px solid var(--color-green-tint, #4caf50);
+    border-left: 4px solid var(--state-ok-fg);
   }
 
   .entry-fail {
-    border-left: 4px solid var(--color-red-tint, #e53935);
+    border-left: 4px solid var(--state-fail-fg);
   }
 
   .entry-regression {
-    border-left: 4px solid var(--color-yellow-tint, #f9a825);
-    background: color-mix(in oklab, var(--color-yellow-tint, #fff8e1) 15%, var(--color-surface));
+    border-left: 4px solid var(--state-warn-fg);
+    background: color-mix(in oklab, var(--state-warn-bg) 20%, var(--color-surface));
   }
 
   .entry-new-corpus {
@@ -213,18 +264,33 @@
     border: var(--border);
     padding: 0 var(--space-1);
     text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
   }
 
+  /* W2.3: defined state tokens for verdict tags (D-P1-4) */
   .tag-pass {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
+    color: var(--state-ok-fg);
+    border-color: var(--state-ok-fg);
   }
 
   .tag-fail {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
+    border-color: var(--state-fail-fg);
   }
 
   .tag-regression {
-    background: var(--color-yellow-tint, #fff8e1);
+    background: var(--state-warn-bg);
+    color: var(--state-warn-fg);
+    border-color: var(--state-warn-fg);
+  }
+
+  .verdict-glyph {
+    font-size: 0.7em;
+    line-height: 1;
   }
 
   .entry-source {
@@ -239,6 +305,17 @@
     font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
     margin-left: auto;
+  }
+
+  /* W3.4: run cross-link */
+  .entry-run-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
   }
 
   .entry-metrics {
@@ -262,7 +339,11 @@
     margin: var(--space-1) 0 0;
     font-size: var(--text-xs);
     font-weight: 600;
-    color: var(--color-red-tint, #c62828);
+    /* W2.3: defined state token — no --color-red-tint hex fallback (D-P1-4) */
+    color: var(--state-fail-fg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
   }
 
   .entry-corpus-note {
@@ -284,10 +365,5 @@
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
     margin: 0;
-  }
-
-  .history-error-actions {
-    display: flex;
-    gap: var(--space-2);
   }
 </style>

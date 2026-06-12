@@ -45,3 +45,19 @@ export const RK_SEMANTIC_KEYS = [
 
 export type RmSemanticKey = (typeof RM_SEMANTIC_KEYS)[number];
 export type RkSemanticKey = (typeof RK_SEMANTIC_KEYS)[number];
+
+/**
+ * State token keys (W2.3) — defined in brutalist-rm.css.
+ * Use these instead of --color-*-tint (which are undefined in the brutalist theme
+ * and silently ride hex fallbacks, causing invisible-text bugs on light backgrounds).
+ */
+export const STATE_TOKEN_KEYS = [
+  "--state-ok-bg",
+  "--state-ok-fg",
+  "--state-warn-bg",
+  "--state-warn-fg",
+  "--state-fail-bg",
+  "--state-fail-fg",
+] as const;
+
+export type StateTokenKey = (typeof STATE_TOKEN_KEYS)[number];

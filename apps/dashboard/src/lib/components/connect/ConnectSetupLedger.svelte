@@ -133,7 +133,12 @@
   $: pct = requiredTotal > 0 ? Math.round((requiredDone / requiredTotal) * 100) : 0;
   $: latestRunHref = latestJob ? `${CONNECT_BASE}/ingest/${latestJob.id}?from=hub` : null;
   $: hasAuditIssues = Boolean(graphHealth && graphHealth.total_issues > 0);
-  $: trustLabel = graphHealth ? trustScoreDescriptor(graphHealth.trust_score).label : "";
+  // W2.3: ONE trust number — quote the scorecard service's value (single source of truth).
+  // The scorecard service computes the same kg-audit formula; by quoting its result, the
+  // pulse band and the scorecard panel always show the same number.
+  $: displayTrustScore = freshPulse?.scorecardTrustScore ?? graphHealth?.trust_score ?? null;
+  $: displayTrustFormula = freshPulse?.trustFormula ?? graphHealth?.formula ?? null;
+  $: trustLabel = displayTrustScore != null ? trustScoreDescriptor(displayTrustScore).label : "";
 </script>
 
 <section class="setup-ledger" aria-label="Connect control panel">
@@ -184,22 +189,22 @@
       <h3 id="pulse-heading" class="ledger-section-title">Graph pulse</h3>
       <div class="pulse-grid">
         <article class="pulse-trust" class:pulse-trust-empty={!graphHealth}>
-          {#if graphHealth}
+          {#if graphHealth && displayTrustScore != null}
             {#if hasAuditIssues}
               <p class="pulse-issues-lead" aria-label="{graphHealth.total_issues} graph audit issues">
                 {graphHealth.total_issues} audit issue{graphHealth.total_issues === 1 ? "" : "s"}
               </p>
               <p class="pulse-issues-kicker">Corpus checks — not individual ideas</p>
-              <p class="pulse-trust-score" aria-label="Graph trust score {graphHealth.trust_score}, {trustLabel}">
-                <span class="pulse-trust-score-num">{graphHealth.trust_score}</span>
+              <p class="pulse-trust-score" aria-label="Graph trust score {displayTrustScore}, {trustLabel}">
+                <span class="pulse-trust-score-num">{displayTrustScore}</span>
                 <span class="pulse-trust-score-label">Trust</span>
               </p>
             {:else}
               <p class="pulse-trust-kicker">Trust score</p>
-              <p class="pulse-trust-score" aria-label="Graph trust score {graphHealth.trust_score}">
-                <span class="pulse-trust-score-num">{graphHealth.trust_score}</span>
+              <p class="pulse-trust-score" aria-label="Graph trust score {displayTrustScore}">
+                <span class="pulse-trust-score-num">{displayTrustScore}</span>
               </p>
-              <p class="pulse-trust-descriptor">{trustScoreDescriptor(graphHealth.trust_score).full}</p>
+              <p class="pulse-trust-descriptor">{trustScoreDescriptor(displayTrustScore).full}</p>
               <p class="pulse-trust-meta">
                 <strong>{graphHealth.ok_pct}%</strong> supported
               </p>
@@ -207,6 +212,17 @@
                 <p class="pulse-updated">Last updated {formatRelativeTime(latestJob.updatedAt)}</p>
               {/if}
             {/if}
+            {#if displayTrustFormula}
+              <p class="pulse-trust-formula" title={displayTrustFormula}>{displayTrustFormula}</p>
+            {/if}
+          {:else if graphHealth}
+            <p class="pulse-trust-kicker">Trust score</p>
+            <p class="pulse-trust-score" aria-label="Graph trust score loading">
+              <span class="pulse-trust-score-num">…</span>
+            </p>
+            <p class="pulse-trust-meta">
+              <strong>{graphHealth.ok_pct}%</strong> supported
+            </p>
           {:else}
             <p class="pulse-trust-kicker">Trust</p>
             <p class="pulse-empty">Run ingest first</p>
@@ -1050,6 +1066,19 @@
     font-size: var(--text-mono-sm);
     font-weight: 600;
     color: var(--pulse-trust-muted);
+  }
+
+  /* W2.3: formula footnote — single-source attribution so users know WHICH formula. */
+  .pulse-trust-formula {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--pulse-trust-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    cursor: default;
   }
 
   .rail-seg-link {

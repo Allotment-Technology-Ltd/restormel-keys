@@ -183,7 +183,13 @@ export const ConnectEvalVerdictEntrySchema = z.object({
    * The Stage 2.2 regression diff, when the producing run compared against a baseline.
    * Null for absolute-bar runs (no --baseline flag).
    */
-  diff: ConnectEvalDiffSchema.nullable().optional()
+  diff: ConnectEvalDiffSchema.nullable().optional(),
+  /**
+   * W3.4 handoff: ingest job id when the verdict was produced by an ingest run.
+   * Null for CLI and CI-action verdicts. Used by the quality-history panel to
+   * cross-link to the producing run console.
+   */
+  source_run_id: z.string().nullable().optional()
 });
 export type ConnectEvalVerdictEntry = z.infer<typeof ConnectEvalVerdictEntrySchema>;
 
