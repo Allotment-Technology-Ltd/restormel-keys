@@ -334,11 +334,18 @@
     }
   }
 
-  /** The latest published version's stored snapshot event (the live version), if any. */
-  $: latestPublishedEvent =
-    diffMode === "client" && availableVersions.length >= 1
-      ? eventForVersion(availableVersions[0])
-      : undefined;
+  /**
+   * The live version's stored snapshot event. Resolved by the `publishedVersion`
+   * prop when the parent knows the true live version (e.g. after a rollback the
+   * live may be lower-numbered than the highest entry in history). Falls back to
+   * the highest version number in history when the prop is absent.
+   */
+  $: latestPublishedEvent = (() => {
+    if (diffMode !== "client" || availableVersions.length < 1) return undefined;
+    const liveVersion =
+      publishedVersion != null ? publishedVersion : availableVersions[0];
+    return eventForVersion(liveVersion);
+  })();
 
   /**
    * M2 — blast radius of THIS publish: the pending draft diffed against the
@@ -363,29 +370,10 @@
   $: pendingPublishSummary = pendingPublishDiff ? summarizeDiff(pendingPublishDiff) : "";
 
   /**
-   * Summary of the most-recent *published* change (the diff of the two most
-   * recent published snapshots). Used only as the policy fallback, where there
-   * is no client-side draft model to diff. Explicitly labelled in the confirm.
-   */
-  $: latestChangeSummary = (() => {
-    if (diffMode !== "client" || availableVersions.length < 2) return "";
-    const toV = availableVersions[0];
-    const fromV = availableVersions[1];
-    const toEvent = eventForVersion(toV);
-    const fromEvent = eventForVersion(fromV);
-    if (!toEvent || !fromEvent) return "";
-    const model = buildRouteDiff(
-      { ...fromEvent, version: fromV },
-      { ...toEvent, version: toV }
-    );
-    return summarizeDiff(model);
-  })();
-
-  /**
-   * The context line appended to the publish confirm. Prefers the pending
-   * blast radius (draft vs live) when the caller gave us a draft; otherwise
-   * falls back to the labelled most-recent-published-change summary; otherwise
-   * an honest "no prior published version" note for a never-published entity.
+   * The context line appended to the publish confirm. Describes the blast
+   * radius of THIS publish when the caller supplied a draft (routes). For
+   * policies (diffMode="server", no draftSnapshot) no context line is shown —
+   * there is no client-side draft model to diff against.
    */
   $: publishConfirmContext = (() => {
     if (draftSnapshot && diffMode === "client") {
@@ -396,9 +384,6 @@
         return `\n\nNo changes vs live version ${latestPublishedEvent.version} — this re-publishes the same configuration.`;
       }
       return `\n\nPublishing changes: ${pendingPublishSummary} (vs live version ${latestPublishedEvent.version})`;
-    }
-    if (latestChangeSummary) {
-      return `\n\nMost recent published change: ${latestChangeSummary}`;
     }
     return "";
   })();

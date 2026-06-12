@@ -334,10 +334,10 @@ same `buildRouteDiff` and shows "Publishing changes: 1 step changed, … (vs liv
 honest "No changes vs live version N — this re-publishes the same configuration", or "This is the
 first published version — there is no live version to compare against" when there is no prior
 snapshot. A reorder-only draft (orderIndex/entryStepId) is therefore a real change here, never
-"No changes" (M1). **Policies (asymmetry):** the policy page has no client-side draft model, so it
-omits `draftSnapshot` and the confirm falls back to the *most-recent published change*, explicitly
-labelled "Most recent published change: …". A route-step-edges-versioning follow-up (W1.5 server
-scope) would let the route confirm reflect edge moves too.
+"No changes" (M1). **Policies (asymmetry):** the policy page has no client-side draft model
+(`draftSnapshot` is omitted, `diffMode="server"`), so the publish confirm shows no diff context
+line — no snapshot is available on the client to diff against. A route-step-edges-versioning
+follow-up (W1.5 server scope) would let the route confirm reflect edge moves too.
 
 **Fix-forward links (W3.5, rubric X4) — routes only:** in the route builder every changed diff field
 exposes an "open in builder" affordance landing on the exact field — route metadata → Setup tab;
