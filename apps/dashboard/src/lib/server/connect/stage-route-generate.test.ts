@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   mergeRouteResolveFailure,
+  resolveAttemptFailureCode,
   routeRetryDeadlineExceeded,
   routeRetryDeadlineMs,
 } from "./stage-route-generate";
@@ -31,6 +32,29 @@ describe("mergeRouteResolveFailure", () => {
       message: "No further steps to try after previous failure context",
     });
     expect(err.message).toBe("No further steps to try after previous failure context");
+  });
+});
+
+describe("resolveAttemptFailureCode (W3.3 failure coverage)", () => {
+  it("uses the resolver's own code for a total resolve failure, defaulting to no_route", () => {
+    expect(resolveAttemptFailureCode("route_resolve_failed", { resolverCode: "no_key_available" })).toBe(
+      "no_key_available",
+    );
+    expect(resolveAttemptFailureCode("route_resolve_failed", { resolverCode: "no_route" })).toBe("no_route");
+    expect(resolveAttemptFailureCode("route_resolve_failed", {})).toBe("no_route");
+    expect(resolveAttemptFailureCode("route_resolve_failed", { resolverCode: "  " })).toBe("no_route");
+  });
+
+  it("tags missing-credential failures with the underlying credential code", () => {
+    expect(resolveAttemptFailureCode("credentials_missing", { credentialCode: "credential_unavailable" })).toBe(
+      "credentials_missing:credential_unavailable",
+    );
+    expect(resolveAttemptFailureCode("credentials_missing", {})).toBe("credentials_missing");
+  });
+
+  it("passes through the provider-unsupported and resolve-incomplete sites verbatim", () => {
+    expect(resolveAttemptFailureCode("provider_unsupported")).toBe("provider_unsupported");
+    expect(resolveAttemptFailureCode("resolve_incomplete")).toBe("resolve_incomplete");
   });
 });
 

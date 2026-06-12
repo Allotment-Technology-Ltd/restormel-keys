@@ -329,6 +329,37 @@ Connect traffic (BP-12) — the `/logs` row renders the source tag; the full fil
 | **Logs — source tag** (`/keys/dashboard/logs`) | existing logs load | n/a — a Connect resolve always writes a row | existing logs error banner + "Try again" | each request-log row renders its **source tag** (`connect ingest` badge for `source=connect_ingest`); gateway/legacy rows show no tag (null source). Full source filter UX is W3.3 |
 <!-- K5-BLOCK-END -->
 
+<!-- W3.3-BLOCK-START: logs as a debugging product (filters, receipt, failure coverage). -->
+### §3 panel states — Logs as a debugging product (Stage W3.3)
+
+W3.3 turns `/logs` from a UUID-prefix list into a debugging surface. The filter set is
+**status · route · source · time** (free-text search + project + limit additionally); routes and
+projects resolve to NAMES server-side (the `routes/+page.server.ts` precedent), each row expands to a
+five-part **receipt** (request → route matched → policy outcomes → step attempts → response/error),
+and rows are **deep-linkable** (`#log-<id>` opens the receipt; "Copy link" yields a shareable URL).
+The filter→query mapping, time presets, source taxonomy, and receipt builder live in
+`$lib/logs-filters.ts` (pure, unit-tested under `vitest run src/lib`); the page holds no non-handler
+exports. `status`/`source`/free-text are matched in `$lib` after the SQL time/route window (stated in
+the PR — no DB full-text index added); `source` buckets are `connect_ingest` (stored tag) / `agent`
+(derived from `gatewayKeyId`) / `dashboard` — so the Home `?source=agent` link and the route-builder
+`?routeId=` link land pre-filtered.
+
+**Failure coverage (PR #292 follow-up #2):** Connect-ingest resolve attempts that failed BEFORE the
+upstream call — a total `no_route` resolve, a provider/model-less step, an unsupported provider, and
+(most importantly) **missing/undecryptable provider credentials** — previously wrote NO request-log
+row, so the most common ingest failures were invisible. W3.3 adds the missing `failed` log writes at
+those sites in `stage-route-generate.ts` (`callResolvedChat` + `embedViaRoute`), tagged with a stable
+`errorCode` (`no_route` / `resolve_incomplete` / `provider_unsupported` / `credentials_missing:<code>`).
+No fabricated rows: where a field was not captured at the failure site, the receipt prints "not
+recorded", and the resolve HTTP endpoint's existing failure rows (`+server.ts`) are unchanged.
+
+| Surface / element | Loading | Empty | Error | Populated |
+|-------------------|---------|-------|-------|-----------|
+| **Logs filter bar** (`/keys/dashboard/logs`) | n/a (server-rendered with the page load) | filter dropdowns show only ids present in the window, resolved to names; "Any project/route/status/source" defaults | the page-level error banner covers a failed load | named project/route selects, status, **source** (Agent / Connect ingest / Dashboard), **time** (15m/1h/24h/7d), free-text search, limit (50/100/200); Apply + Clear; CSV/JSON export of the current capped set |
+| **Logs list** (`/keys/dashboard/logs`) | n/a | filtered → "No requests match these filters … widen the time range or clear filters" (recovery action); unfiltered → "No request logs in this time window" + Analytics/Routes links — the two empties are distinguished | `BrutalErrorBanner`-style `role="alert"` line + "Try again" | newest-first rows; failure rows get a coral left-rail, `no_route` keeps the amber "Fix?" wizard panel; a derived source badge per row; honest "N of M in window" count |
+| **Request receipt** (drawer, `role="dialog"`, Escape closes) | n/a (opens from a loaded row) | n/a | n/a — receipt reads the already-loaded row | five sections: 1 Request (when/source/model), 2 Route matched (→ builder), 3 Policy outcomes (violations or honest absent), 4 Step attempts & timing (attempts incl. fallbacks, latency/TTFT or "not recorded"), 5 Response **or** "What went wrong" (failure explanation + error code); deep-linkable `#log-<id>` + Copy link + a coverage note |
+<!-- W3.3-BLOCK-END -->
+
 ### §3 panel states — Team-shared key metadata + audit log depth (Stage W3.7 + K1)
 
 **Gateway keys — `/access`**
