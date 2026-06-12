@@ -15,6 +15,8 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+  import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
+  import type { LiveRunStreamEvent } from "$lib/connect/live-run-events";
   import {
     failingPreflightRows,
     mapConnectRunFailure,
@@ -111,6 +113,10 @@
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let clockTimer: ReturnType<typeof setInterval> | null = null;
   let nowMs = Date.now();
+  // W3.1 live transport. SSE is the primary channel; the 2.5s jittered poll below
+  // is the documented F8 fallback, engaged only when SSE is judged unhealthy.
+  let liveClient: LiveRunEventClient | null = null;
+  let liveDegraded = false;
   let logEl: HTMLDivElement | undefined;
   /** User-controlled collapse — never one-way `open={expr}` or polling resets the panel. */
   let logOpen = true;
@@ -119,6 +125,8 @@
   let refreshingGraph = false;
 
   $: jobsApiBase = statusApiBase.replace(/\/status$/, "");
+  // The workspace SSE channel, focused on this run (streams its log tail too).
+  const EVENTS_API = DASHBOARD_BASE + "/api/connect/ingest/events";
 
   $: percent = job?.progress?.percent ?? 0;
   $: active = job?.status === "pending" || job?.status === "running";
@@ -226,12 +234,13 @@
     if (document.hidden) {
       // Stop polling while the tab is hidden — background tabs were a steady
       // 0.7 req/s/viewer multiplier on the shared function + Neon compute.
+      // (The live SSE client binds its own visibility pause.)
       if (pollTimer) {
         clearTimeout(pollTimer);
         pollTimer = null;
       }
-    } else if (job && (job.status === "pending" || job.status === "running")) {
-      // Catch up immediately on return; loadLive reschedules the loop.
+    } else if (liveDegraded && job && (job.status === "pending" || job.status === "running")) {
+      // Fallback-poll path only: catch up immediately on return; loadLive reschedules.
       void loadLive(true);
     }
   }
@@ -321,29 +330,12 @@
       if (typeof d.workspace_id === "string") {
         graphWorkspaceId = d.workspace_id;
       }
-      if (
-        fromGraph &&
-        !graphDataInvalidated &&
-        job?.status === "completed" &&
-        job?.progress?.execution_mode === "full"
-      ) {
-        graphDataInvalidated = true;
-        const wsId = graphWorkspaceId;
-        if (wsId) {
-          void invalidate(`app:connect-graph:${wsId}`);
-          void invalidate(`app:connect-hub:${wsId}`);
-        }
-      }
-      if (Array.isArray(d.log_lines) && d.log_lines.length > 0) {
-        logLines = [...logLines, ...d.log_lines];
-        if (logLines.length > 600) logLines = logLines.slice(-600);
-      }
+      maybeInvalidateGraphOnComplete();
+      appendLogLines(Array.isArray(d.log_lines) ? d.log_lines : []);
       if (typeof d.log_line_total === "number") logLineTotal = d.log_line_total;
       if (typeof d.since === "number") since = d.since;
-      schedulePoll();
-      queueMicrotask(() => {
-        if (logEl) logEl.scrollTop = logEl.scrollHeight;
-      });
+      // Only the fallback path keeps polling; under live SSE we don't reschedule.
+      if (liveDegraded) schedulePoll();
     } catch {
       error = "Network error while loading run status.";
     } finally {
@@ -351,7 +343,87 @@
     }
   }
 
+  /**
+   * When a graph-tool run completes, refresh the graph/hub caches once. Shared by
+   * the initial/fallback fetch and the live SSE path so the behaviour survives the
+   * transport swap (a fromGraph run that completes over SSE still invalidates).
+   */
+  function maybeInvalidateGraphOnComplete() {
+    if (
+      fromGraph &&
+      !graphDataInvalidated &&
+      job?.status === "completed" &&
+      job?.progress?.execution_mode === "full"
+    ) {
+      graphDataInvalidated = true;
+      const wsId = graphWorkspaceId;
+      if (wsId) {
+        void invalidate(`app:connect-graph:${wsId}`);
+        void invalidate(`app:connect-hub:${wsId}`);
+      }
+    }
+  }
+
+  /** Append new log lines (capped) and keep the screen scrolled to the tail. */
+  function appendLogLines(lines: string[]) {
+    if (lines.length === 0) return;
+    logLines = [...logLines, ...lines];
+    if (logLines.length > 600) logLines = logLines.slice(-600);
+    queueMicrotask(() => {
+      if (logEl) logEl.scrollTop = logEl.scrollHeight;
+    });
+  }
+
+  /** Apply one live SSE frame to the console state. */
+  function onLiveEvent(event: LiveRunStreamEvent) {
+    if (event.type === "snapshot") {
+      const match = event.jobs.find((j) => j.id === jobId);
+      if (match) job = { ...(job ?? {}), ...match } as Job;
+      loading = false;
+      return;
+    }
+    if (event.type === "delta" && event.job.id === jobId) {
+      job = { ...(job ?? {}), ...event.job } as Job;
+      if (event.logLines) appendLogLines(event.logLines);
+      if (typeof event.logLineTotal === "number") logLineTotal = event.logLineTotal;
+      maybeInvalidateGraphOnComplete();
+      loading = false;
+    }
+    // heartbeat: the clock timer already advances nowMs; nothing to apply.
+  }
+
+  function startLive() {
+    if (typeof window === "undefined" || liveClient) return;
+    liveClient = new LiveRunEventClient({
+      url: `${EVENTS_API}?job=${encodeURIComponent(jobId)}&since=${since}`,
+      onEvent: onLiveEvent,
+      onFallback: engageFallback,
+      onLive: () => {
+        liveDegraded = false;
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+      },
+    });
+    liveClient.start();
+  }
+
+  function stopLive() {
+    liveClient?.stop();
+    liveClient = null;
+  }
+
+  /** SSE judged unhealthy → fall back to the F8-diet poll with a visible note. */
+  function engageFallback() {
+    liveDegraded = true;
+    schedulePoll();
+    // Pull once immediately so the fallback isn't a poll-interval behind.
+    void loadLive(true);
+  }
+
   function schedulePoll() {
+    if (!liveDegraded) return; // live SSE owns updates; never double-poll
     if (pollTimer) clearTimeout(pollTimer);
     // Hidden tab: skip scheduling — handleVisibilityChange resumes on return.
     if (typeof document !== "undefined" && document.hidden) return;
@@ -366,7 +438,16 @@
     since = 0;
     logLines = [];
     logOpen = true;
-    void loadLive(false);
+    liveDegraded = false;
+    stopLive();
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+    void loadLive(false).then(() => {
+      // After the initial snapshot is on screen, open the live channel.
+      startLive();
+    });
   }
 
   async function refreshGraphReview() {
@@ -384,6 +465,7 @@
   }
 
   onDestroy(() => {
+    stopLive();
     if (pollTimer) clearTimeout(pollTimer);
     if (clockTimer) clearInterval(clockTimer);
     if (typeof document !== "undefined") {
@@ -449,6 +531,12 @@
 
     {#if startingRun}
       <p class="run-starting" role="status">{isEmbedBackfill ? "Starting re-embed…" : "Starting your run…"}</p>
+    {/if}
+
+    {#if liveDegraded && isInProgress}
+      <p class="run-live-degraded" role="status">
+        Live updates degraded to polling — refreshing every ~2.5s instead. The run is unaffected.
+      </p>
     {/if}
 
     {#if actionMsg}
@@ -949,6 +1037,17 @@
     background: var(--brut-white);
     color: var(--rm-muted);
     font-size: var(--text-sm);
+  }
+
+  /* W3.1: SSE → poll degraded note (transport honesty, not an error). */
+  .run-live-degraded {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    background: color-mix(in oklab, var(--brut-amber, #e6a700) 12%, var(--brut-white));
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--rm-text);
   }
 
   .run-warn {

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
+  import { browser } from "$app/environment";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
@@ -10,9 +11,13 @@
   import { isJobStuck } from "$lib/connect/ingest-runs-safety";
   import DossierRail from "$lib/components/dashboard/DossierRail.svelte";
   import RunQuickPeek from "$lib/components/dashboard/RunQuickPeek.svelte";
+  import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
+  import type { LiveRunEventJob, LiveRunStreamEvent } from "$lib/connect/live-run-events";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
+  const EVENTS_API = DASHBOARD_BASE + "/api/connect/ingest/events";
   const NEW_RUN_HREF = pipelineWizardHref("launch");
+  const PAGE_SIZE = 20;
 
   type Job = {
     id: string;
@@ -46,16 +51,57 @@
   let bulkCleanResult: { cancelled: number; deleted: number } | null = null;
   let deletingIds = new Set<string>();
 
+  // W3.1 pagination — honest cursor + total ("showing N of M").
+  let nextCursor: string | null = null;
+  let totalCount = 0;
+  let loadingMore = false;
+
+  // W3.1 live status — one SSE channel patches active runs in place; on repeated
+  // SSE failure the page shows a degraded note and relies on manual Refresh
+  // (no new polling interval — X8 poll diet).
+  let liveClient: LiveRunEventClient | null = null;
+  let liveDegraded = false;
+
   $: filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
   $: stuckCount = jobs.filter(isJobStuck).length;
+  $: hasMore = nextCursor != null;
+
+  /** Patch one run from a live event into the list (in place; never reorders). */
+  function patchLiveJob(incoming: LiveRunEventJob) {
+    const idx = jobs.findIndex((j) => j.id === incoming.id);
+    if (idx === -1) return; // not on the loaded page(s) — Refresh surfaces brand-new runs
+    const next = jobs.slice();
+    next[idx] = { ...next[idx], ...incoming } as Job;
+    jobs = next;
+  }
+
+  function onLiveEvent(event: LiveRunStreamEvent) {
+    if (event.type === "snapshot") {
+      for (const j of event.jobs) patchLiveJob(j);
+    } else if (event.type === "delta") {
+      patchLiveJob(event.job);
+    }
+  }
+
+  function startLive() {
+    if (!browser || liveClient) return;
+    liveClient = new LiveRunEventClient({
+      url: EVENTS_API,
+      onEvent: onLiveEvent,
+      onFallback: () => (liveDegraded = true),
+      onLive: () => (liveDegraded = false),
+    });
+    liveClient.start();
+  }
 
   async function load() {
     loading = true;
     error = null;
     signedOut = false;
     bulkCleanResult = null;
+    nextCursor = null;
     try {
-      const res = await fetch(API);
+      const res = await fetch(`${API}?limit=${PAGE_SIZE}`);
       if (res.status === 401) {
         signedOut = true;
         jobs = [];
@@ -67,6 +113,9 @@
       }
       const data = await res.json();
       jobs = Array.isArray(data.jobs) ? data.jobs : [];
+      nextCursor = typeof data.next_cursor === "string" ? data.next_cursor : null;
+      totalCount = typeof data.total_count === "number" ? data.total_count : jobs.length;
+      startLive();
     } catch {
       error = "Network error while loading ingest runs.";
     } finally {
@@ -74,7 +123,34 @@
     }
   }
 
+  async function loadMore() {
+    if (loadingMore || !nextCursor) return;
+    loadingMore = true;
+    try {
+      const res = await fetch(`${API}?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(nextCursor)}`);
+      if (!res.ok) {
+        error = `Could not load more runs (HTTP ${res.status}).`;
+        return;
+      }
+      const data = await res.json();
+      const more: Job[] = Array.isArray(data.jobs) ? data.jobs : [];
+      // De-dupe by id in case a run churned between pages (keyset is stable, but be safe).
+      const seen = new Set(jobs.map((j) => j.id));
+      jobs = [...jobs, ...more.filter((j) => !seen.has(j.id))];
+      nextCursor = typeof data.next_cursor === "string" ? data.next_cursor : null;
+      if (typeof data.total_count === "number") totalCount = data.total_count;
+    } catch {
+      error = "Network error while loading more runs.";
+    } finally {
+      loadingMore = false;
+    }
+  }
+
   onMount(load);
+  onDestroy(() => {
+    liveClient?.stop();
+    liveClient = null;
+  });
 
   function statusClass(status: string): string {
     if (status === "completed") return "status-success";
@@ -235,6 +311,13 @@
     {/if}
   </div>
 
+  {#if liveDegraded}
+    <p class="live-degraded" role="status">
+      Live updates degraded to manual refresh — the live channel could not stay connected. Use
+      <strong>Refresh</strong> to pull the latest run state.
+    </p>
+  {/if}
+
   {#if bulkCleanResult}
     <p class="clean-result" role="status">
       Cleaned up — {bulkCleanResult.deleted} job{bulkCleanResult.deleted === 1 ? "" : "s"} deleted
@@ -317,6 +400,21 @@
         </li>
       {/each}
     </ul>
+
+    <div class="page-footer">
+      <p class="showing" role="status" aria-live="polite">
+        {#if statusFilter === "all"}
+          Showing {jobs.length} of {totalCount} run{totalCount === 1 ? "" : "s"}
+        {:else}
+          Showing {filtered.length} {statusFilter} of {jobs.length} loaded ({totalCount} total)
+        {/if}
+      </p>
+      {#if hasMore}
+        <button type="button" class="btn btn-secondary" on:click={loadMore} disabled={loadingMore}>
+          {loadingMore ? "Loading…" : "Load more"}
+        </button>
+      {/if}
+    </div>
   {/if}
 </section>
 
@@ -385,6 +483,29 @@
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .live-degraded {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--gold-accent, #f1c40f);
+    background: color-mix(in oklab, var(--gold-accent, #f1c40f) 12%, var(--rm-surface));
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+    font-family: var(--font-mono, monospace);
+  }
+  .page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .showing {
+    margin: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
     color: var(--rm-muted);
   }
   .muted {

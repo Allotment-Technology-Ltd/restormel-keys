@@ -10,6 +10,7 @@ import {
   insertConnectIngestJob,
   connectIngestJobRecordToApi,
   listConnectIngestJobsForWorkspace,
+  countConnectIngestJobsForWorkspace,
   getConnectIngestJobForWorkspace,
   appendConnectIngestJobLog,
   bulkCleanupIngestJobsForWorkspace,
@@ -24,15 +25,37 @@ import { expandDocumentsToSources } from "$lib/server/connect/source-documents";
 import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { INGEST_FLOW_HREF } from "$lib/nav-config";
+import { pageWithCursor } from "$lib/connect/ingest-runs-pagination";
 import type { RequestHandler } from "./$types";
 
-export const GET: RequestHandler = async ({ locals }) => {
-  const ctx = await resolveKnowledgeSessionContext(locals);
+export const GET: RequestHandler = async ({ locals, url }) => {
+  const ctx = await resolveKnowledgeSessionContext(locals, { includeProjects: false });
   if (isKnowledgeSessionFailure(ctx)) {
     return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
   }
-  const rows = await listConnectIngestJobsForWorkspace({ workspaceId: ctx.workspaceId });
-  return json({ jobs: rows.map((row) => connectIngestJobRecordToApi(row)) });
+
+  // W3.1: cursor pagination + honest total. The data layer's keyset cursor
+  // (neon.ts) was already there — the BFF just passes it through now (P1-4).
+  // No params → default first page, identical to the pre-W3.1 shape plus the
+  // two new fields (additive; the chip/poll fallback ignore them).
+  const limitRaw = url.searchParams.get("limit");
+  const limit = limitRaw != null ? Math.min(Math.max(Number.parseInt(limitRaw, 10) || 20, 1), 100) : 20;
+  const cursor = url.searchParams.get("cursor") ?? undefined;
+
+  const [rows, totalCount] = await Promise.all([
+    listConnectIngestJobsForWorkspace({ workspaceId: ctx.workspaceId, limit, cursor }),
+    countConnectIngestJobsForWorkspace({ workspaceId: ctx.workspaceId }),
+  ]);
+
+  // listConnectIngestJobsForWorkspace fetches limit+1 so the helper can detect the
+  // next page and mint the keyset cursor (same contract as the /connect/v1 handler).
+  const { page, nextCursor } = pageWithCursor(rows, limit);
+
+  return json({
+    jobs: page.map((row) => connectIngestJobRecordToApi(row)),
+    next_cursor: nextCursor,
+    total_count: totalCount,
+  });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
