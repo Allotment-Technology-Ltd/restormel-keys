@@ -47,8 +47,9 @@ Everything else is existing or free-tier.
 | **Restormel** | ingest-worker | 1 | F9 fix — dedicated process; `deploy/docker-compose.coolify.yml`. |
 | **Sophia** | app (SvelteKit adapter-node) | 1 | Stoa SSE dialogue + Learn + Paddle. See `sophia-coolify-migration-plan.md`. |
 | **Sophia** | ingest poller/worker | 1 | Replaces today's GCP/Railway `ingestion-job-poller`. |
-| **allotmentology** | portal/docs | 1 | Consumes `/keys/v1/catalog`. *Footprint assumption — confirm (§5).* |
-| **plotbudget** | app | 1 | Consumes Keys/Testing via MCP. *Footprint assumption — confirm (§5).* |
+| **plotbudget-v2** | web (TWA/SPA) | 1 | Turborepo/pnpm. DB = **Supabase** (external Postgres); PostHog/Sentry/Sanity all external; no workers. |
+| **plotbudget-v2** | marketing (Vite) | 1 | Static build — near-zero RAM if served as static via Traefik. |
+| **allotmentology** | web | 1 | `restormel-starter` template (TS/pnpm). Consumes `/keys/v1/catalog`. The `browser-extension` is a build artifact, **not** a hosted container. |
 
 ---
 
@@ -64,8 +65,9 @@ Everything else is existing or free-tier.
 | Restormel ingest worker | ~0.3 GB idle | ~2.0 GB (parsing multi-MB LLM responses) |
 | Sophia web | ~1.0 GB | ~1.2 GB (concurrent SSE) |
 | Sophia ingest/poller | ~0.3 GB idle | ~2.0 GB |
-| allotmentology | ~0.4 GB | ~0.6 GB |
-| plotbudget | ~0.5 GB | ~1.0 GB |
+| plotbudget web (Supabase-backed SPA) | ~0.4 GB | ~0.7 GB |
+| plotbudget marketing (Vite static) | ~0.1 GB | ~0.2 GB |
+| allotmentology web | ~0.4 GB | ~0.6 GB |
 | **Total** | **~6–7 GB** | **~9 GB (one ingest peak) … ~13 GB (build + both ingest peaks)** |
 
 **Verdict:** 16 GB is adequate with ~3 GB of headroom in the realistic case. The only way to
@@ -96,19 +98,28 @@ would *not* survive that combination, which is why CAX31 (16 GB) is the floor, n
 
 ---
 
-## 5. Assumptions to confirm
+## 5. Confirmed footprints (the two lighter products)
 
-The two lighter products are sized from suite docs, not a repo inspection (their repos aren't
-in this workspace). Confirm before order:
+Confirmed from the repos (`plotbudget-v2`, `allotmentology.tech`) — both are the *easiest*
+migrations of the four, and neither couples to the box for data:
 
-- **allotmentology** — assumed a lightweight SvelteKit/static portal+docs consuming
-  `/keys/v1/catalog`, **no self-hosted database**. If it runs its own background jobs or DB,
-  add ~0.5–1 GB.
-- **plotbudget** — assumed a single web app consuming Keys/Testing via MCP, with its **own
-  managed DB (Neon)**. If it self-hosts Postgres or runs heavy jobs, it becomes the first
-  candidate to peel onto a second box.
+- **plotbudget-v2** — Turborepo/pnpm; two web surfaces (`web` TWA/SPA + `marketing` Vite
+  static). **Database is Supabase** (managed Postgres, external) — *no Neon dependency, no
+  local DB.* PostHog, Sentry, and Sanity are all external/managed. No background workers.
+  Currently on Vercel → this is a Vercel→Coolify static/Node container move, nothing more.
+- **allotmentology.tech** — `restormel-starter` template (TS/pnpm), a `web` app that consumes
+  `/keys/v1/catalog`. The `browser-extension` is a built/published artifact (CI), **not** a
+  running service. No self-hosted DB observed. Also a straightforward Vercel→Coolify move.
 
-If either is heavier than "a web app + external DB," jump straight to the §6 Step-1 split.
+**Net effect on the box:** both run as light web containers on external data — together
+~1 GB steady. The only correction vs the original estimate is plotbudget being **two**
+containers (web + marketing), and the marketing app being static enough to serve at near-zero
+RAM. The 16 GB CAX31 is, if anything, *more* comfortable than §3's worst case implies, because
+neither of these two adds a worker or a local database.
+
+> **Still worth a glance before order:** confirm allotmentology's `web` framework (template
+> default is SvelteKit/adapter-node — fits the pattern) and whether plotbudget relies on any
+> Supabase **Edge Functions** (those stay on Supabase; they are not hosted on this box).
 
 ---
 
