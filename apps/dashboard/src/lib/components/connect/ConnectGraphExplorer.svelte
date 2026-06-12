@@ -66,6 +66,15 @@
   import { connectReviewCount } from "$lib/stores/connect-review-count";
   import { replaceState } from "$app/navigation";
   import { onMount } from "svelte";
+  import ClaimsStampingDesk from "$lib/components/connect/ClaimsStampingDesk.svelte";
+  import {
+    emptyDeskTally,
+    tallyStamp,
+    tallyUndo,
+    announceStamp,
+    type DeskTally,
+    type DeskStampRecord,
+  } from "$lib/connect/claims-stamping-desk";
 
   type Member = { text: string; role: string | null; validationStatus: string | null };
   type Group = { id: string; name: string; summary: string | null; members: Member[] };
@@ -325,6 +334,15 @@
   /** Optimistic facet-count shifts until the next server reload. */
   let evidenceDelta: Partial<Record<VerificationState, number>> = {};
   let flashingReviewAction: ReviewVerdictAction | null = null;
+  // ── Stamping Desk (W4.2) — keyboard-first triage focus mode ──────────────
+  /** True while the desk overlay owns the keyboard (the explorer's own keydown defers). */
+  let deskActive = false;
+  /** Per-visit session tally — reset when the desk is entered. */
+  let deskTally: DeskTally = emptyDeskTally();
+  /** Last landed stamp this session (for honest single-level undo). */
+  let deskLastStamp: DeskStampRecord | null = null;
+  /** Handle to the desk component so the explorer can drive focus + announce. */
+  let deskComponent: ClaimsStampingDesk | null = null;
   let revalidateRouteId = "";
   let remediationRouteId = "";
   // Remediation run controls (mode "remediate").
@@ -1787,6 +1805,10 @@
   }
 
   function handleReviewKeydown(event: KeyboardEvent) {
+    // W4.2 — while the Stamping Desk overlay is open it owns the keyboard
+    // (its own window listener handles j/k/s/x/w/e/n/z/?/Esc). Defer entirely
+    // so the explorer's a/w/u/n/p bindings never double-fire underneath it.
+    if (deskActive) return;
     if (!reviewEnabled || !selectedUnit || isReviewShortcutTarget(event.target)) return;
 
     const mobileReadonly = isMobileReadonlyActive();
@@ -1907,6 +1929,99 @@
       exitingUnitId = null;
       if (nextId) selectedId = nextId;
     }, 250);
+  }
+
+  // ── Stamping Desk (W4.2) wiring — reuses performReview/selectUnit, no new fetch ─
+  /** True when the desk must be read-only (mobile read-only tier OR as-of history). */
+  $: deskReadonly = asOfActive || isMobileReadonlyActive();
+  /** Position (1-based) + total of the selected claim in the live filtered queue. */
+  $: deskPosition = selectedQueueIndex >= 0 ? selectedQueueIndex + 1 : 0;
+  /** Claims still awaiting a verdict in the loaded queue (drives "N remaining"). */
+  $: deskRemaining = filteredUnits.filter((u) =>
+    isAwaitingHumanTriage(u.validationStatus, u.validationNote),
+  ).length;
+
+  function enterDesk() {
+    if (!reviewEnabled || deskReadonly) return;
+    // Reset the per-visit tally and undo history, then open. If nothing is
+    // selected, land on the first claim so the keyboard loop has a target.
+    deskTally = emptyDeskTally();
+    deskLastStamp = null;
+    if (!selectedUnit && filteredUnits[0]) selectUnit(filteredUnits[0]);
+    deskActive = true;
+    void deskComponent?.focusClaim();
+  }
+
+  function exitDesk() {
+    deskActive = false;
+  }
+
+  /** Stamp the current claim from the desk — records prior verdict for undo. */
+  function deskStamp(status: ReviewVerdictAction) {
+    if (!selectedUnit || deskReadonly) return;
+    const unit = selectedUnit;
+    const fromStatus = normalizeValidationStatus(unit.validationStatus);
+    deskLastStamp = {
+      unitId: unit.id,
+      toStatus: status,
+      fromStatus:
+        fromStatus === "ok" || fromStatus === "weak" || fromStatus === "unsupported"
+          ? fromStatus
+          : null,
+    };
+    deskTally = tallyStamp(deskTally, status);
+    // Announce BEFORE performReview advances (deskRemaining still counts this one).
+    deskComponent?.announce(announceStamp(status, Math.max(0, deskRemaining - 1)));
+    performReview(unit, status);
+    void deskComponent?.focusClaim();
+  }
+
+  /** Re-stamp the last claim to its prior verdict (honest undo — no server unstamp). */
+  function deskUndo(toStatus: ReviewVerdictAction) {
+    const last = deskLastStamp;
+    if (!last || deskReadonly) return;
+    const unit = units.find((u) => u.id === last.unitId);
+    deskTally = tallyUndo(deskTally, last.toStatus);
+    deskLastStamp = null;
+    if (unit) {
+      selectUnit(unit);
+      deskComponent?.announce(`Undone. Restored to ${toStatus}.`);
+      performReview(unit, toStatus);
+    } else {
+      deskComponent?.announce("Could not restore — the claim left the loaded queue.");
+    }
+    void deskComponent?.focusClaim();
+  }
+
+  function deskAdvance() {
+    if (!selectedUnit) return;
+    const nextId = nextQueueUnitId(selectedUnit.id);
+    const next = nextId ? units.find((u) => u.id === nextId) : null;
+    if (next) selectUnit(next);
+    void deskComponent?.focusClaim();
+  }
+
+  function deskRetreat() {
+    if (!selectedUnit) return;
+    const prevId = previousQueueUnitId(selectedUnit.id);
+    const prev = prevId ? units.find((u) => u.id === prevId) : null;
+    if (prev) selectUnit(prev);
+    void deskComponent?.focusClaim();
+  }
+
+  /**
+   * E — reveal the evidence dossier. The dossier auto-loads on selection (the
+   * reactive above), so this only needs to ensure it is fetched and bring the
+   * panel into view below the desk overlay.
+   */
+  function deskOpenEvidence() {
+    if (!selectedUnit) return;
+    if (!predatesEvidenceBinding(selectedUnit.evidence ?? null) && !dossierCache[selectedUnit.id]) {
+      void loadDossier(selectedUnit);
+    }
+    if (typeof document !== "undefined") {
+      document.querySelector(".detail-panel .dossier")?.scrollIntoView({ block: "nearest" });
+    }
   }
 
   function submitReview(unit: Unit, status: "ok" | "weak" | "unsupported") {
@@ -2796,6 +2911,30 @@
     {/if}
 
     {#if workspaceMode === "triage"}
+    {#if deskActive}
+      <div class="desk-mount">
+        <ClaimsStampingDesk
+          bind:this={deskComponent}
+          claim={selectedUnit
+            ? { id: selectedUnit.id, text: selectedUnit.text, evidence: selectedUnit.evidence ?? null }
+            : null}
+          guidance={reviewGuidance}
+          position={deskPosition}
+          total={filteredUnits.length}
+          tally={deskTally}
+          lastStamp={deskLastStamp}
+          readonly={deskReadonly}
+          readonlyReason={asOfActive ? "Editing past state is not possible." : "This view is read-only on small screens."}
+          bind:note={reviewNote}
+          onStamp={deskStamp}
+          onAdvance={deskAdvance}
+          onRetreat={deskRetreat}
+          onUndo={deskUndo}
+          onExit={exitDesk}
+          onOpenEvidence={deskOpenEvidence}
+        />
+      </div>
+    {/if}
     <div class="graph-layout" role="tabpanel" aria-labelledby="workspace-tab-triage">
       <section class="review-panel" aria-labelledby="review-queue-heading">
         <div class="panel-head">
@@ -2812,6 +2951,27 @@
               <strong>{needsReviewCount.toLocaleString()}</strong>
               idea{needsReviewCount === 1 ? "" : "s"} awaiting your review
             </p>
+          {/if}
+          {#if reviewEnabled && needsReviewCount > 0}
+            <div class="desk-enter-row">
+              {#if deskReadonly}
+                <p class="desk-enter-disabled brut-muted" role="note">
+                  Stamping desk unavailable here —
+                  {asOfActive
+                    ? "editing past state is not possible."
+                    : "this view is read-only on small screens."}
+                </p>
+              {:else}
+                <button
+                  type="button"
+                  class="brutal-btn brut-pressable brut-focus desk-enter"
+                  on:click={enterDesk}
+                >
+                  Open stamping desk
+                  <span class="desk-enter-hint" aria-hidden="true">keyboard triage</span>
+                </button>
+              {/if}
+            </div>
           {/if}
           {#if showCtaContext && !ctaContextDismissed && needsReviewCount > 0}
             <div class="cta-context-line" role="status">
@@ -4302,6 +4462,35 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
+  }
+
+  /* W4.2 — Stamping Desk entry + mount. */
+  .desk-enter-row {
+    margin: var(--space-2) 0 0;
+  }
+
+  .desk-enter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+  }
+
+  .desk-enter-hint {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-faint);
+  }
+
+  .desk-enter-disabled {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .desk-mount {
+    margin-bottom: var(--space-4);
   }
 
   /* C-P2-1: dismissible context line shown on CTA arrival with ?filter=review */

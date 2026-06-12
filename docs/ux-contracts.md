@@ -374,6 +374,42 @@ redirect — shareable historical views (W2.1 contract extended in `explorer-url
 **Boundary semantics** match the connect-v1 retrieve path (`valid_from ≤ t < valid_to`): a claim
 valid until T is shown at T-ε, not at T.
 
+### §3 panel states — The Stamping Desk (`/claims`, Stage W4.2)
+
+The Claims explorer gains a **keyboard-first triage desk** (`ClaimsStampingDesk.svelte`, mounted
+from the explorer's triage panel behind an "Open stamping desk" button). The desk is a focus mode
+over the *existing* review machinery: every verdict reuses `performReview` → PATCH
+`/graph/units/{id}/validation`, so the explorer **mutation-fetch pin stays at 16** — the desk issues
+zero fetches of its own. All keymap / tally / guard / undo decisions live in the pure module
+`claims-stamping-desk.ts` (unit-tested; the desk component is the DOM shell).
+
+| Element | Loading | Empty / absent | Error / degraded | Active / populated |
+|---------|---------|----------------|------------------|--------------------|
+| **Desk entry** (`.desk-enter`, triage panel head) | n/a | No claims awaiting review → button not shown (nothing to triage) | Read-only view → button replaced by an honest note ("Stamping desk unavailable here — editing past state is not possible / read-only on small screens") | "Open stamping desk" button when `reviewEnabled` and ≥1 claim awaits review and not read-only |
+| **Desk overlay** (`.stamping-desk`, `aria-label`) | (inherits the queue's load state) | Queue cleared mid-session → "The review queue is clear … press Esc" | (verdict-save failures surface in the explorer's existing `.workspace-alerts` banner — single error path) | Claim card (focusable, receives focus on advance), AI verdict, evidence link, note field, stamp bar, undo row, session tally rail, shortcut legend |
+| **Stamp bar** (`.desk-stamps`, `role="group"`) | n/a | n/a | **Supported (S) guarded off** for an unbound / pre-binding / no-evidence claim — disabled stamp + verbatim `canAcceptAsSupported` reason (`.desk-stamp-guard`), never a silent no-op (claims-ledger row 2) | S=Supported · W=Weak · X=Rejected, each ≥44px, the AI-suggested verdict emphasised; a 100ms mechanical press on stamp (`.desk-stamp-flash`, `prefers-reduced-motion`-guarded) |
+| **Session tally rail** (`.desk-tally`, `role="status"`) | n/a | "REVIEWED 0 · SUPPORTED 0 · WEAK 0 · REJECTED 0" | n/a | Live ledger line "REVIEWED N · SUPPORTED N · WEAK N · REJECTED N"; resets per visit (lives in desk state); an honest note that the **trust score** recomputes on the Home scorecard — the desk does not fork or fabricate a per-session score delta |
+
+**Keyboard contract (X10).** Shortcuts: **J/K** (+ arrows) move the queue, **S/W/X** stamp, **E** opens
+evidence, **N** focuses the note field, **Z** undoes, **?** toggles the legend, **Esc** exits. The desk's
+`<svelte:window>` listener owns the keyboard while open — the explorer's own `handleReviewKeydown`
+early-returns on `deskActive` so a/w/u/n/p never double-fire underneath. No shortcut fires from an
+input/textarea/select/contenteditable (Esc excepted, so you can bail the note field); focus moves to
+the claim card on advance; stamp/undo/guard results announce on an `aria-live="polite"` region.
+
+**Read-only invariant.** Both read-only tiers gate the desk: the **mobile read-only tier**
+(`[data-mobile-readonly]`) and the **as-of history view** (`asOfActive`). `deskReadonly =
+asOfActive || isMobileReadonlyActive()` hides the entry button (honest copy why) and, as belt-and-braces,
+the keymap drops every mutating command and the stamp/note/undo UI is not rendered. This reuses the
+same guards W2.5 and R6 already enforce — it does not fork them.
+
+**Undo semantics (honest).** The validation endpoint accepts only `{ ok | weak | unsupported }` — there
+is no server "un-stamp". Undo is therefore a **single-level re-stamp to the previous verdict** via the
+same mutation. When the previous status was *unchecked* (the common first-review case) there is no prior
+verdict to restore, so undo is honestly **disabled with a reason** rather than pretending to clear the
+verdict. The session tally decrements on undo so the rail never lies about how many claims this session
+currently holds.
+
 ### §3 auth states — fail-closed verification (Stage W4.6a)
 
 A protected surface has **three** auth states, not two. The defect this fixes: a transient Neon Auth
