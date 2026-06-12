@@ -56,7 +56,7 @@ const ROUTE_CLASSIFICATION: Record<string, { kind: string; via: string }> = {
   "/logout": { kind: "auth", via: "account menu" },
   "/cli/connect": { kind: "out-of-nav functional", via: "CLI device-code approval flow (§2.3 KEEP out-of-nav)" },
   "/copy-for-ci": { kind: "page-link", via: "Testing hub tab (TESTING_HUB_TABS)" },
-  "/access/audit": { kind: "page-link", via: "access/+page.svelte 'View key history →' (moves to Prove in R5)" },
+  "/access/audit": { kind: "redirect", via: "+page.server.ts → 308 /prove/audit (R5 D5; deep link kept from /access)" },
   "/sources/ingest": { kind: "page-link", via: "Home journey CTAs + palette action:start-ingest-flow (flows are not places — §2.1)" },
   "/claims/memory": { kind: "page-link", via: "palette nav:claims-memory + dev-tools/mcp memory-inbox links (R3 inbox strip mounts it on Home)" },
   "/routes/ingestion": { kind: "page-link", via: "ledger fix links (run-preflight/journey fixHrefs) + palette nav:ingest-routes" },
@@ -68,10 +68,18 @@ const ROUTE_CLASSIFICATION: Record<string, { kind: string; via: string }> = {
   "/projects/[id]/routes": { kind: "page-link", via: "project detail (projects/[id]/+page.svelte)" },
   "/projects/[id]/routes/[routeId]": { kind: "page-link", via: "project routes list + ledger fix links (route builder)" },
   "/graph": { kind: "placeholder", via: "D8: out of nav; route remains as Graph-module placeholder until Phase 6" },
-  "/dev-tools": { kind: "page-link", via: "palette nav:dev-tools (merges into Agents in R5)" },
-  "/dev-tools/cli": { kind: "page-link", via: "dev-tools/+page.svelte tabs" },
-  "/dev-tools/mcp": { kind: "page-link", via: "dev-tools/+page.svelte tabs" },
-  "/dev-tools/aaif": { kind: "page-link", via: "dev-tools/+page.svelte tabs" },
+  "/dev-tools": { kind: "redirect", via: "+page.server.ts → 308 /agents/catalogs (R5 MERGE-INTO)" },
+  "/dev-tools/cli": { kind: "redirect", via: "+page.server.ts → 308 /agents/catalogs (R5 MERGE-INTO)" },
+  "/dev-tools/mcp": { kind: "redirect", via: "+page.server.ts → 308 /agents/catalogs (R5 MERGE-INTO)" },
+  "/dev-tools/aaif": { kind: "redirect", via: "+page.server.ts → 308 /agents/catalogs (R5 MERGE-INTO)" },
+  // R5: Agents hub tabs — reachable from /agents (nav item) via AGENTS_HUB_TABS
+  "/agents/wiring": { kind: "page-link", via: "AGENTS_HUB_TABS[0] — /agents nav item hub strip (R5)" },
+  "/agents/catalogs": { kind: "page-link", via: "AGENTS_HUB_TABS[1] — /agents nav item hub strip (R5)" },
+  // R5: Prove hub tabs — reachable from /prove (nav item) via PROVE_HUB_TABS
+  "/prove/proof": { kind: "page-link", via: "PROVE_HUB_TABS[0] — /prove nav item hub strip (R5)" },
+  "/prove/traces": { kind: "page-link", via: "PROVE_HUB_TABS[1] — /prove nav item hub strip (R5)" },
+  "/prove/audit": { kind: "page-link", via: "PROVE_HUB_TABS[2] — /prove nav item hub strip + /access deep-link (R5 D5)" },
+  "/prove/share": { kind: "page-link", via: "PROVE_HUB_TABS[3] — /prove nav item hub strip; gated on W4.3 STOP (R5)" },
 };
 
 describe("R2 orphan crawl (route manifest)", () => {
