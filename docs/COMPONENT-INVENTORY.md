@@ -744,6 +744,78 @@ Max height: 400px
 
 ---
 
+### Dossier Rail 🟢
+
+**Purpose:** The one shared right-rail drawer for the operator desk (Stage R6, §3.2). Neo-brutalist:
+hard `--brut-border-width` border, offset `--brut-shadow`, full-height, 420px (full-width under 520px).
+It owns the modal chrome and the keyboard contract; consumers supply only content via snippets.
+
+**Component:** `$lib/components/dashboard/DossierRail.svelte`
+
+#### API
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `open` | `boolean` (bindable) | `false` | Visibility. Setting `false` closes and restores focus to the opener. |
+| `title` | `string` | — (required) | Heading text; wired to `aria-labelledby`. |
+| `labelId` | `string` | auto unique | Id for the heading / `aria-labelledby`. |
+| `onClose` | `() => void` | `undefined` | Fired on Escape / backdrop / close button. |
+| `body` | `Snippet` | — (required) | Drawer content. |
+| `footer` | `Snippet` | `undefined` | Optional pinned actions row. |
+
+#### Keyboard & a11y contract
+
+- `role="dialog"`, `aria-modal="true"`, `aria-labelledby` → the title.
+- **Escape** closes. **Tab/Shift+Tab** are focus-trapped within the rail.
+- On open, focus moves to the close button; on close, focus **returns to the opener**.
+- Backdrop click closes; backdrop is presentational (not in the tab order).
+
+#### Consumers
+
+- **First live consumer (R6):** Runs-list quick-peek (`RunQuickPeek.svelte`).
+- **Migrating onto the rail under W4.4:** explorer detail panel (hosts the W2.2 Evidence Dossier),
+  logs drawer, proof provenance drawer. R6 ships the component + one consumer only.
+
+#### Anatomy
+
+```
+                              ┌───────────────────────┐
+                              │ TITLE              [×] │ ← head (border-bottom)
+                              ├───────────────────────┤
+                              │ body snippet           │
+                              │ (scrolls)              │
+                              ├───────────────────────┤
+                              │ footer snippet (opt.)  │ ← border-top
+                              └───────────────────────┘
+                              fixed right, 420px, full-height
+```
+
+---
+
+### Live-Run Chip 🟢
+
+**Purpose:** Topbar chip that tethers the operator to an active ingest run from any page (Stage R6,
+§3.2): `● INGEST 62% · 2:41`, pulsing (static under `prefers-reduced-motion`), **amber on stall**
+(the W1.4 staleness model promoted to the chrome), linking to `/runs/[id]`. Absent when no run is
+active, so it never renders an empty shell or blocks topbar a11y.
+
+**Component:** `$lib/components/dashboard/LiveRunChip.svelte`
+
+#### API
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `jobs` | `LiveRunChipJob[] \| null` | `undefined` | When provided (controlled mode, e.g. tests), the chip derives from these jobs and does **not** start the poll. When omitted, it subscribes to the shared 30s workspace poll. |
+
+#### Transport
+
+Fed by `startLiveRunPoll()` (`$lib/stores/live-run-poll`): **ONE** workspace-scoped query of
+`/api/connect/ingest/jobs` every 30s, paused while the tab is hidden — within PR #259's poll diet,
+no duplicated stats/scorecard fetches. W3.1's SSE (not yet merged) is the single future swap point.
+State derivation is the pure `deriveLiveRunChip` in `$lib/connect/live-run-chip`.
+
+---
+
 ### Empty State 🟢
 
 **Purpose:** Guidance when no content exists
@@ -1352,6 +1424,7 @@ Before marking a component as production-ready:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-03-13 | Initial component inventory |
+| 1.1.0 | 2026-06-12 | Stage R6 — added Dossier Rail (shared right-rail drawer) and Live-Run Chip (topbar) |
 
 ---
 

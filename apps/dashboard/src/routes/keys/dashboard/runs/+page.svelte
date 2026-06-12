@@ -8,6 +8,8 @@
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { RUNS_HREF } from "$lib/nav-config";
   import { isJobStuck } from "$lib/connect/ingest-runs-safety";
+  import DossierRail from "$lib/components/dashboard/DossierRail.svelte";
+  import RunQuickPeek from "$lib/components/dashboard/RunQuickPeek.svelte";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
   const NEW_RUN_HREF = pipelineWizardHref("launch");
@@ -19,11 +21,20 @@
     created_at: string;
     updated_at: string;
     current_stage?: string;
+    progress?: { percent?: number } | null;
     /** Stage 1.6 durable-run fields */
     worker_heartbeat_at?: number | null;
     lease_expires_at?: number | null;
     reclaim_count?: number;
   };
+
+  // DossierRail quick-peek (R6): the rail's first live consumer.
+  let peekJob: Job | null = null;
+  let peekOpen = false;
+  function openPeek(job: Job) {
+    peekJob = job;
+    peekOpen = true;
+  }
 
   let loading = true;
   let error: string | null = null;
@@ -267,6 +278,14 @@
           </a>
           <code class="job-id">{job.id.slice(0, 8)}</code>
           <div class="job-actions">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              on:click|stopPropagation={() => openPeek(job)}
+              aria-label="Quick-peek this run"
+            >
+              Peek
+            </button>
             {#if canCancel(job.status)}
               <button
                 type="button"
@@ -300,6 +319,14 @@
     </ul>
   {/if}
 </section>
+
+<DossierRail bind:open={peekOpen} title="Run quick-peek">
+  {#snippet body()}
+    {#if peekJob}
+      <RunQuickPeek job={peekJob} />
+    {/if}
+  {/snippet}
+</DossierRail>
 
 <style>
   .head {
