@@ -1,0 +1,188 @@
+# Coolify application config — DRAFT (infra Stage 2.1).
+#
+# PURPOSE: This file documents the two-service setup (dashboard + ingest-worker) in
+# a docker-compose format that the owner applies in the Coolify UI.
+# It is NOT directly used by `docker compose up` in production — Coolify manages
+# container lifecycle, env injection, Traefik routing, and restart policies via its
+# own UI/API. Apply the values here into Coolify's application config panels.
+#
+# BOTH services use the same image (one image, two containers — §1 of migration plan).
+# The ingest-worker script (connect-ingest-worker-daemon.ts) is owned by the
+# concurrent worker agent and will land in apps/dashboard/scripts/ — reference only.
+#
+# ENV VARS: names only — paste values from `vercel env pull` (or the Vercel UI).
+# Never commit secret values. Coolify stores env per-application; restrict access
+# to the Coolify dashboard (it is already firewalled to SSH-tunnel only).
+#
+# PERIODIC / SCHEDULED TASK (dead-worker backstop):
+#   Coolify supports "Scheduled Tasks" (cron) — add a task to the dashboard container
+#   that curls the drain endpoint every 15 minutes as a belt-and-braces fallback if
+#   the worker process stalls. Lease-based claiming makes concurrent drainers safe.
+#   curl -s -X GET "https://restormel.dev/keys/dashboard/api/connect/ingest/drain" \
+#        -H "Authorization: Bearer ${CRON_SECRET}"
+
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # dashboard — SvelteKit adapter-node, serves marketing + docs + API + dashboard
+  # ---------------------------------------------------------------------------
+  dashboard:
+    image: git.allotmentology.tech/allotment-technology-ltd/restormel-keys/dashboard:latest
+    # Coolify maps this to a Traefik route; do not expose 8080 directly on the host.
+    expose:
+      - "8080"
+    restart: always
+    environment:
+      # ---- Core ----
+      NODE_ENV: production
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      ORIGIN: "https://restormel.dev"            # set staging.restormel.dev for staging
+      BODY_SIZE_LIMIT: "10485760"                # 10 MB — ingest POSTs carry source payloads
+      DEPLOY_TARGET: "node"
+      DATABASE_URL: "${DATABASE_URL}"
+      NEON_AUTH_BASE_URL: "${NEON_AUTH_BASE_URL}"
+      RESTORMEL_CREDENTIALS_ENCRYPTION_KEY: "${RESTORMEL_CREDENTIALS_ENCRYPTION_KEY}"
+      CRON_SECRET: "${CRON_SECRET}"              # generate a fresh secret — do NOT reuse Vercel's
+
+      # ---- F9 fix: disable inline post-POST drain (worker owns execution) ----
+      CONNECT_INGEST_INLINE_DRAIN: "0"
+
+      # ---- Billing (Paddle) ----
+      PADDLE_API_KEY: "${PADDLE_API_KEY}"
+      PADDLE_SECRET: "${PADDLE_SECRET}"
+      PADDLE_WEBHOOK_SECRET: "${PADDLE_WEBHOOK_SECRET}"
+      PADDLE_ENVIRONMENT: "${PADDLE_ENVIRONMENT}"
+      PADDLE_ALLOW_UNSIGNED_WEBHOOKS: "${PADDLE_ALLOW_UNSIGNED_WEBHOOKS}"
+
+      # ---- Auth/OAuth ----
+      GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
+      GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+      MS_OAUTH_CLIENT_ID: "${MS_OAUTH_CLIENT_ID}"
+      MS_OAUTH_CLIENT_SECRET: "${MS_OAUTH_CLIENT_SECRET}"
+      RESTORMEL_OIDC_CLIENT_ID: "${RESTORMEL_OIDC_CLIENT_ID}"
+
+      # ---- Access control ----
+      RESTORMEL_SERVICE_OWNER_EMAILS: "${RESTORMEL_SERVICE_OWNER_EMAILS}"
+      RESTORMEL_SERVICE_ADMIN_USER_IDS: "${RESTORMEL_SERVICE_ADMIN_USER_IDS}"
+
+      # ---- Product flags ----
+      RESTORMEL_MODULE_FLAGS: "${RESTORMEL_MODULE_FLAGS}"
+      RESTORMEL_PRO_FEATURES: "${RESTORMEL_PRO_FEATURES}"
+      RESTORMEL_PRO_DEV_DEFAULT: "${RESTORMEL_PRO_DEV_DEFAULT}"
+      RESTORMEL_SUPPORT_ENABLED: "${RESTORMEL_SUPPORT_ENABLED}"
+      RESTORMEL_SUPPORT_MODEL: "${RESTORMEL_SUPPORT_MODEL}"
+      RESTORMEL_ROLLOUT_PERCENT: "${RESTORMEL_ROLLOUT_PERCENT}"
+      RESTORMEL_DASHBOARD_UI_HIDDEN: "${RESTORMEL_DASHBOARD_UI_HIDDEN}"
+      USE_RESTORMEL_KEYS: "${USE_RESTORMEL_KEYS}"
+      DEFAULT_AI_PROVIDER: "${DEFAULT_AI_PROVIDER}"
+
+      # ---- Connect/ingest (dashboard-side — worker has its own set below) ----
+      KNOWLEDGE_INGEST_MAX_CHUNKS: "${KNOWLEDGE_INGEST_MAX_CHUNKS}"
+      CONNECT_INGEST_LEASE_MS: "${CONNECT_INGEST_LEASE_MS}"
+      CONNECT_MEMORY_RATE_LIMIT: "${CONNECT_MEMORY_RATE_LIMIT}"
+      CONNECT_MEMORY_RATE_WINDOW_MS: "${CONNECT_MEMORY_RATE_WINDOW_MS}"
+      CONNECT_LLM_TIMEOUT_MS: "${CONNECT_LLM_TIMEOUT_MS}"
+      CONNECT_EMBED_TIMEOUT_MS: "${CONNECT_EMBED_TIMEOUT_MS}"
+      CONNECT_ROUTE_RETRY_DEADLINE_MS: "${CONNECT_ROUTE_RETRY_DEADLINE_MS}"
+      RESTORMEL_CONNECT_EMBED_MODEL: "${RESTORMEL_CONNECT_EMBED_MODEL}"
+      RESTORMEL_CONNECT_DESIGNER_MODEL: "${RESTORMEL_CONNECT_DESIGNER_MODEL}"
+      RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT: "${RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT}"
+      RESTORMEL_SURREAL_HTTP_TIMEOUT_MS: "${RESTORMEL_SURREAL_HTTP_TIMEOUT_MS}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      UNSTRUCTURED_API_KEY: "${UNSTRUCTURED_API_KEY}"
+
+      # ---- Self-consumption (dogfood) ----
+      RESTORMEL_GATEWAY_KEY: "${RESTORMEL_GATEWAY_KEY}"
+      RESTORMEL_PROJECT_ID: "${RESTORMEL_PROJECT_ID}"
+      RESTORMEL_ENVIRONMENT_ID: "${RESTORMEL_ENVIRONMENT_ID}"
+      RESTORMEL_WORKSPACE_ID: "${RESTORMEL_WORKSPACE_ID}"
+      RESTORMEL_BASE_URL: "${RESTORMEL_BASE_URL}"
+      RESTORMEL_KEYS_BASE: "${RESTORMEL_KEYS_BASE}"
+
+      # ---- Telemetry/feedback ----
+      POSTHOG_API_KEY: "${POSTHOG_API_KEY}"
+      POSTHOG_HOST: "${POSTHOG_HOST}"
+      PUBLIC_POSTHOG_KEY: "${PUBLIC_POSTHOG_KEY}"
+      PUBLIC_POSTHOG_HOST: "${PUBLIC_POSTHOG_HOST}"
+      FEEDBACK_GITHUB_TOKEN: "${FEEDBACK_GITHUB_TOKEN}"
+      FEEDBACK_GITHUB_REPO: "${FEEDBACK_GITHUB_REPO}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      RESTORMEL_NPM_INSIGHTS_PACKAGE: "${RESTORMEL_NPM_INSIGHTS_PACKAGE}"
+      RESTORMEL_NPM_INSIGHTS_GITHUB_REPO: "${RESTORMEL_NPM_INSIGHTS_GITHUB_REPO}"
+      RESTORMEL_GRAPH_STATS_CACHE_TTL_MS: "${RESTORMEL_GRAPH_STATS_CACHE_TTL_MS}"
+      RESTORMEL_DASHBOARD_VERSION: "${RESTORMEL_DASHBOARD_VERSION}"
+      RESTORMEL_DOCS_AGENT_PROMPTS: "${RESTORMEL_DOCS_AGENT_PROMPTS}"
+
+    # Coolify memory limit recommendation: 1.5 GB for the dashboard container.
+    # Set in Coolify UI → Application → Advanced → Memory limit = 1536m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/keys/v1/catalog"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    labels:
+      # Traefik routing managed by Coolify — host rule injected by Coolify.
+      # restormel.dev for prod; staging.restormel.dev for staging.
+      - "coolify.managed=true"
+
+  # ---------------------------------------------------------------------------
+  # ingest-worker — same image, different command; dedicated process for Connect
+  # ingest queue drain (fixes F9: no more event-loop sharing with dashboard).
+  # The daemon entry script is being added in Stage 2.2 (worker agent).
+  # ---------------------------------------------------------------------------
+  ingest-worker:
+    image: git.allotmentology.tech/allotment-technology-ltd/restormel-keys/dashboard:latest
+    # No port — this is a worker-only container; not reachable via Traefik.
+    restart: always
+    # Daemon entry point (Stage 2.2 — connect-ingest-worker-daemon.ts):
+    # loops drainConnectIngestQueue() on an interval with jitter + SIGTERM handling.
+    command: >
+      node --import tsx
+      apps/dashboard/scripts/connect-ingest-worker-daemon.ts
+    environment:
+      # ---- Core ----
+      NODE_ENV: production
+      DATABASE_URL: "${DATABASE_URL}"
+      RESTORMEL_CREDENTIALS_ENCRYPTION_KEY: "${RESTORMEL_CREDENTIALS_ENCRYPTION_KEY}"
+
+      # ---- Worker-specific ----
+      CONNECT_INGEST_WORKER_MODE: "${CONNECT_INGEST_WORKER_MODE}"
+      CONNECT_INGEST_WORKER_INTERVAL_MS: "${CONNECT_INGEST_WORKER_INTERVAL_MS}"
+      KNOWLEDGE_INGEST_WORKER_MAX_JOBS: "${KNOWLEDGE_INGEST_WORKER_MAX_JOBS}"
+      CONNECT_INGEST_WORKER_HEARTBEAT_MS: "${CONNECT_INGEST_WORKER_HEARTBEAT_MS}"
+      CONNECT_INGEST_STUB_PAUSE_MS: "${CONNECT_INGEST_STUB_PAUSE_MS}"
+      KNOWLEDGE_INGEST_MAX_CHUNKS: "${KNOWLEDGE_INGEST_MAX_CHUNKS}"
+      CONNECT_INGEST_LEASE_MS: "${CONNECT_INGEST_LEASE_MS}"
+      CONNECT_LLM_TIMEOUT_MS: "${CONNECT_LLM_TIMEOUT_MS}"
+      CONNECT_EMBED_TIMEOUT_MS: "${CONNECT_EMBED_TIMEOUT_MS}"
+      RESTORMEL_CONNECT_EMBED_MODEL: "${RESTORMEL_CONNECT_EMBED_MODEL}"
+      RESTORMEL_CONNECT_DESIGNER_MODEL: "${RESTORMEL_CONNECT_DESIGNER_MODEL}"
+      RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT: "${RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT}"
+      RESTORMEL_SURREAL_HTTP_TIMEOUT_MS: "${RESTORMEL_SURREAL_HTTP_TIMEOUT_MS}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      UNSTRUCTURED_API_KEY: "${UNSTRUCTURED_API_KEY}"
+
+      # ---- Telemetry (optional but useful for worker span attribution) ----
+      POSTHOG_API_KEY: "${POSTHOG_API_KEY}"
+      POSTHOG_HOST: "${POSTHOG_HOST}"
+      RESTORMEL_DASHBOARD_VERSION: "${RESTORMEL_DASHBOARD_VERSION}"
+
+    # Coolify memory limit recommendation: 2 GB for the worker (peaks while parsing
+    # multi-MB LLM responses). Set in Coolify UI → Application → Advanced → Memory limit = 2048m
+    healthcheck:
+      # Worker liveness: process must be running (no HTTP port — check the process).
+      # Coolify will restart the container if it exits; this healthcheck confirms it
+      # is actively alive between restarts.
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "coolify.managed=true"
