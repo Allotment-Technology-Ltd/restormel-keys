@@ -174,6 +174,15 @@
     return "Ready";
   }
 
+  /**
+   * K4 (W1.5 follow-up, closes K-P0-3): draft rows deep-link to the builder's
+   * Versions tab so "Draft — publish to use" is an action, not a dead end.
+   */
+  function publishVersionsHref(row: StageRow): string | null {
+    if (!row.visualHref || !row.route || row.route.isPublished) return null;
+    return builderHref(row.visualHref.replace("?flow=visual", "?tab=versions"));
+  }
+
   function isRouteReady(row: StageRow): boolean {
     return routeStatusLabel(row) === "Ready";
   }
@@ -457,12 +466,23 @@
                 {/if}
 
                 <div class="stage-footer">
-                  <span class="badge {row.route?.isPublished && row.route?.enabled ? 'status-success' : 'status-muted'}">
-                    {routeStatusLabel(row)}
-                    {#if row.route}
-                      — {row.route.name}
-                    {/if}
-                  </span>
+                  {#if publishVersionsHref(row)}
+                    <!-- K-P0-3: the draft status itself links to the builder Versions tab -->
+                    <a class="badge status-muted stage-draft-link" href={publishVersionsHref(row)}>
+                      {routeStatusLabel(row)}
+                      {#if row.route}
+                        — {row.route.name}
+                      {/if}
+                      <span aria-hidden="true">→</span>
+                    </a>
+                  {:else}
+                    <span class="badge {row.route?.isPublished && row.route?.enabled ? 'status-success' : 'status-muted'}">
+                      {routeStatusLabel(row)}
+                      {#if row.route}
+                        — {row.route.name}
+                      {/if}
+                    </span>
+                  {/if}
                 </div>
               </div>
               <div class="stage-actions">
@@ -693,6 +713,16 @@
   }
   .stage-footer {
     margin-top: var(--space-1);
+  }
+  /* K-P0-3: draft badge is a working publish link, not inert text */
+  .stage-draft-link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .stage-draft-link:hover,
+  .stage-draft-link:focus-visible {
+    color: var(--rm-text, inherit);
   }
   .routes-head {
     display: flex;

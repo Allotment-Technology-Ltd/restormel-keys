@@ -62,6 +62,12 @@ vi.mock("$lib/server/connect/stage-routing", () => ({
   computeConnectModelsReady: vi.fn(),
 }));
 
+// K4: the readiness compute is mocked so the hub-load tests stay focused; its
+// own matrix lives in verified-readiness.test.ts.
+vi.mock("$lib/server/connect/verified-readiness", () => ({
+  computeConnectVerifiedReadiness: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("$lib/server/connect/starter-corpus", () => ({
   listStarterCorpusDocuments: vi.fn(),
 }));

@@ -59,6 +59,12 @@
       unsupported_pct?: number;
       stub_warning?: string | null;
       kg_audit?: { trust_score?: number; total_issues?: number } | null;
+      /** K4/K-P1-7: validating-family disclosure; absent until K5 persists attribution. */
+      validation_family?: {
+        validation_provider?: string;
+        extraction_provider?: string | null;
+        cross_family?: boolean | null;
+      } | null;
       next_actions?: string[];
     };
   };
@@ -524,6 +530,21 @@
             <span class="quality-metric-desc">{unitsDesc.label}</span>
           </article>
         </div>
+        <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
+        {#if job.progress.quality_report.validation_family?.validation_provider}
+          {@const vf = job.progress.quality_report.validation_family}
+          <p class="run-family-disclosure" role="status">
+            Validated by <strong>{vf.validation_provider}</strong>{#if vf.extraction_provider}
+              — {vf.cross_family ? "different family than" : "same family as"} extraction
+              ({vf.extraction_provider}){/if}{#if vf.cross_family === true}
+              · cross-model validation ✓{:else if vf.cross_family === false}
+              · add a second provider family for cross-model validation{/if}
+          </p>
+        {:else}
+          <p class="run-family-disclosure run-family-disclosure--absent">
+            Validating model family: not recorded for this run.
+          </p>
+        {/if}
       </div>
 
       <div class="run-next-actions" role="region" aria-labelledby="next-actions-heading">
@@ -613,6 +634,8 @@
           <div class="run-error-banner-actions">
             {#if failureHelp}
               <a class="btn btn-primary btn-sm" href={failureHelp.fixHref}>{failureHelp.fixLabel} →</a>
+              <!-- K4: failure codes map back to the standing readiness ledger (§3) -->
+              <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "#readiness"}>Check readiness</a>
             {/if}
             <button
               type="button"
@@ -1060,6 +1083,19 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     gap: var(--space-3);
+  }
+
+  /* K4/K-P1-7: validating-family disclosure line */
+  .run-family-disclosure {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--rm-muted);
+    line-height: 1.45;
+  }
+
+  .run-family-disclosure--absent {
+    color: var(--rm-dim, var(--rm-muted));
   }
 
   .quality-metric {

@@ -336,6 +336,10 @@
                 <button type="button" class="btn btn-outline btn-sm" on:click={refreshPreflight}>
                   Re-check
                 </button>
+                <!-- K4: the launch gate consumes the same rows as the hub readiness ledger -->
+                <a class="btn btn-outline btn-sm" href={CONNECT_BASE + "#readiness"}>
+                  Open readiness ledger
+                </a>
               </div>
             {/if}
 

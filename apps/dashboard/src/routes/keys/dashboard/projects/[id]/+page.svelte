@@ -8,6 +8,7 @@
     restormelEvaluatePolicyUrl,
   } from "$lib/env-snippet";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import ProjectReadinessCard from "$lib/components/dashboard/ProjectReadinessCard.svelte";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -166,6 +167,9 @@
   {#if actionError}
     <p class="error" role="alert">{actionError}</p>
   {/if}
+
+  <!-- K4 / K-P1-5: first standing UI consumer of api/projects/[id]/readiness -->
+  <ProjectReadinessCard projectId={data.project.id} />
 
   <section class="section">
     <h2 class="section-title">Project settings</h2>

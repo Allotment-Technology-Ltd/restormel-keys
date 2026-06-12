@@ -39,6 +39,19 @@ vi.mock("$lib/server/neon", () => ({
   listConnectIngestJobsForWorkspace: vi.fn().mockResolvedValue([]),
 }));
 
+// K4: the Overview only QUOTES the readiness summary — the compute is mocked here;
+// its matrix lives in $lib/server/connect/verified-readiness.test.ts.
+vi.mock("$lib/server/connect/verified-readiness", () => ({
+  computeConnectVerifiedReadiness: vi.fn().mockResolvedValue({
+    rows: [],
+    ready: 4,
+    total: 6,
+    status: "warn",
+    checkedAt: new Date().toISOString(),
+    models: { modelsReady: false, hasChatRoute: false, hasEmbeddingRoute: false },
+  }),
+}));
+
 // ── Type for casting the load return through the SvelteKit void union ─
 type LoadResult = {
   workspaceId: string | null;

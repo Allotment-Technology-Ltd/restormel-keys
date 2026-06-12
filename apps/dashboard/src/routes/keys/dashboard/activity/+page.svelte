@@ -8,7 +8,8 @@
   import { SUITE_MODULES, type SuiteModule } from "$lib/suite/suite-modules";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { integrationStackTemplatesForFlags } from "$lib/integration-catalog-for-flags";
-  import type { ConnectCompletionSignals } from "./+page.server";
+  import type { ConnectCompletionSignals, ConnectReadinessSummary } from "./+page.server";
+  import { readinessChipLabel } from "$lib/connect/verified-readiness";
 
   export let data: {
     workspaceId: string | null;
@@ -67,6 +68,7 @@
       hasAnyRoutePolicyBinding: boolean;
     };
     connectCompletion: ConnectCompletionSignals;
+    connectReadiness: Promise<ConnectReadinessSummary | null>;
     trustStrip: Promise<{
       trust_score: number;
       g2: { ok_pct: number };
@@ -288,7 +290,21 @@
 
 <!-- ── Verified context journey ──────────────────────────────────────────── -->
 <section class="overview-journey panel" aria-labelledby="connect-journey-h">
-  <h2 id="connect-journey-h" class="overview-section-title">Verified context journey</h2>
+  <div class="overview-section-head">
+    <h2 id="connect-journey-h" class="overview-section-title">Verified context journey</h2>
+    <!-- K4: summary chip QUOTES the shared readiness ledger — links to the hub panel -->
+    {#await data.connectReadiness then connectReadiness}
+      {#if connectReadiness}
+        <a
+          class="connect-readiness-chip connect-readiness-chip--{connectReadiness.status}"
+          href={CONNECT_BASE + "#readiness"}
+          aria-label="{readinessChipLabel(connectReadiness)} — open the Connect readiness ledger"
+        >
+          {readinessChipLabel(connectReadiness)} →
+        </a>
+      {/if}
+    {/await}
+  </div>
   <p class="overview-section-desc">
     Connect a graph store, ingest your documents, review claims with the AI, then wire
     an agent. Each step is independently verifiable.
@@ -778,6 +794,46 @@
   /* ── Verified context journey section ───────────────────────────────── */
   .overview-journey {
     margin-bottom: var(--space-5);
+  }
+  .overview-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+  }
+  /* K4: Connect readiness summary chip — quotes the hub ledger, links to it */
+  .connect-readiness-chip {
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid var(--rm-border);
+    padding: 2px var(--space-2);
+    text-decoration: none;
+    color: var(--brut-ink, var(--rm-text));
+    white-space: nowrap;
+  }
+  .connect-readiness-chip:hover,
+  .connect-readiness-chip:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .connect-readiness-chip--ok {
+    background: var(--state-ok-bg);
+    color: var(--state-ok-fg);
+    border-color: var(--state-ok-fg);
+  }
+  .connect-readiness-chip--warn {
+    background: var(--state-warn-bg);
+    color: var(--state-warn-fg);
+    border-color: var(--state-warn-fg);
+  }
+  .connect-readiness-chip--fail {
+    background: var(--state-fail-bg);
+    color: var(--state-fail-fg);
+    border-color: var(--state-fail-fg);
   }
   .connect-list {
     list-style: none;

@@ -30,6 +30,8 @@ import {
 } from "$lib/server/db";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
+import { computeConnectVerifiedReadiness } from "$lib/server/connect/verified-readiness";
+import type { ConnectReadinessStatus } from "$lib/connect/verified-readiness";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
 
@@ -44,6 +46,13 @@ function monthStartMs(now: number): number {
  * The four Connect-journey milestones shown in the Overview checklist.
  * Derived from data already fetched — no extra queries (Stage 1.8 invariant).
  */
+/** K4: the Overview's Connect chip quotes the shared readiness ledger summary. */
+export type ConnectReadinessSummary = {
+  ready: number;
+  total: number;
+  status: ConnectReadinessStatus;
+};
+
 export type ConnectCompletionSignals = {
   /** A graph store has been connected (Neon or SurrealDB). */
   storeConnected: boolean;
@@ -78,6 +87,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       } as ConnectCompletionSignals,
       // Streamed — null until resolved; page renders without it.
       trustStrip: Promise.resolve(null) as Promise<import("@restormel/contracts").ConnectTrustScorecard | null>,
+      connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
     };
   }
 
@@ -256,6 +266,19 @@ export const load: PageServerLoad = async ({ locals }) => {
       statsMode: "peek",
     }).catch(() => null);
 
+    // K4: Connect readiness summary chip — streamed; the Overview QUOTES the
+    // shared readiness ledger (review §3), it never recomputes its own model.
+    const connectReadinessPromise = computeConnectVerifiedReadiness({
+      workspaceId: wsId,
+      userId: locals.user.uid,
+      prefetched: {
+        integrations,
+        graphStoreReady: Boolean(target && target.status === "ok"),
+      },
+    })
+      .then((r) => ({ ready: r.ready, total: r.total, status: r.status }))
+      .catch(() => null);
+
     const livePulse = await livePulsePromise.catch((err) => {
       console.error("[overview] livePulse failed:", String(err).slice(0, 120));
       return null;
@@ -313,6 +336,8 @@ export const load: PageServerLoad = async ({ locals }) => {
       connectCompletion,
       // Streamed — the trust strip renders once this resolves; page shell does not wait.
       trustStrip: trustStripPromise,
+      // Streamed — K4 readiness summary chip for the Verified context journey section.
+      connectReadiness: connectReadinessPromise,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
@@ -337,6 +362,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         agentReady: false,
       } as ConnectCompletionSignals,
       trustStrip: Promise.resolve(null),
+      connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
     };
   }
 };

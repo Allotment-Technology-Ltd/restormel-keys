@@ -21,6 +21,8 @@ import { listConnections } from "$lib/server/connect/connections-service";
 import { isLlmConfigured } from "$lib/server/connect/llm-generate";
 import { isCredentialEncryptionConfigured } from "$lib/server/credential-crypto";
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
+import { computeConnectVerifiedReadiness } from "$lib/server/connect/verified-readiness";
+import { readinessStepDetail, type ConnectVerifiedReadiness } from "$lib/connect/verified-readiness";
 import { listStarterCorpusDocuments } from "$lib/server/connect/starter-corpus";
 import { graphStatsToHealthSummary } from "$lib/server/connect/kg-audit-summary";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
@@ -68,6 +70,11 @@ export type ConnectHubPayload = {
    * (R3) to render. Null when the row could not be computed — never blocks the hub.
    */
   routingProject: RoutingProjectLedgerRow | null;
+  /**
+   * K4: the "Ready to verify" readiness ledger (§3 coherence thesis). Null when
+   * the compute failed — the panel renders its error state with recovery actions.
+   */
+  readiness: ConnectVerifiedReadiness | null;
 };
 
 export async function loadConnectHubPage(
@@ -107,16 +114,37 @@ export async function loadConnectHubPage(
     const stats = statsResult?.stats ?? null;
 
     const llmReady = isLlmConfigured();
-    const modelsStatus = await computeConnectModelsReady({
-      workspaceId: wsId,
-      userId,
-      integrationsCount: integrations.length,
-      llmReady,
-      dashboardBase: DASHBOARD_BASE,
-    });
     const encryptionReady = isCredentialEncryptionConfigured();
     const customPack = packs.find((p) => !p.is_builtin) ?? null;
     const parsedDocs = documents.filter((d) => d.status === "parsed");
+
+    // K4: ONE readiness model — the ledger panel, the ai_keys step detail, and
+    // modelsReady all come from the same compute (review §3, no second model).
+    const readiness = await computeConnectVerifiedReadiness({
+      workspaceId: wsId,
+      userId,
+      dashboardBase: DASHBOARD_BASE,
+      prefetched: {
+        integrations,
+        graphStoreReady: Boolean(target && target.status === "ok"),
+        parsedDocumentCount: parsedDocs.length,
+        encryptionReady,
+        llmReady,
+      },
+    }).catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[connect-hub] computeConnectVerifiedReadiness failed:", msg.slice(0, 300));
+      return null;
+    });
+    const modelsStatus =
+      readiness?.models ??
+      (await computeConnectModelsReady({
+        workspaceId: wsId,
+        userId,
+        integrationsCount: integrations.length,
+        llmReady,
+        dashboardBase: DASHBOARD_BASE,
+      }));
     const starterCorpusLoaded = starterDocs.filter((d) => d.status === "parsed").length >= 3;
     const surrealStoreReady = Boolean(target?.provider === "surreal" && target.status === "ok");
     const neonStoreReady = Boolean(target?.provider === "postgres" && target.status === "ok");
@@ -132,17 +160,21 @@ export async function loadConnectHubPage(
         }
       : null;
 
-    const aiKeysDetail = modelsStatus.modelsReady
-      ? "Chat and embedding routes configured"
-      : !modelsStatus.hasChatRoute && !modelsStatus.hasEmbeddingRoute
-        ? integrations.length > 0
-          ? `${integrations.length} connection(s) — add chat and embedding ingestion routes`
-          : llmReady
-            ? "Hosted model available — add Connections and publish ingestion routes"
-            : "Add provider keys, then publish chat and embedding routes"
-        : !modelsStatus.hasChatRoute
-          ? "Embedding route ready — add a published chat route (extraction stage)"
-          : "Chat route ready — add a published embedding route";
+    // K4: the ai_keys step quotes the readiness ledger's summary — same model,
+    // legacy copy only as a fallback when the readiness compute failed.
+    const aiKeysDetail =
+      readinessStepDetail(readiness) ??
+      (modelsStatus.modelsReady
+        ? "Chat and embedding routes configured"
+        : !modelsStatus.hasChatRoute && !modelsStatus.hasEmbeddingRoute
+          ? integrations.length > 0
+            ? `${integrations.length} connection(s) — add chat and embedding ingestion routes`
+            : llmReady
+              ? "Hosted model available — add Connections and publish ingestion routes"
+              : "Add provider keys, then publish chat and embedding routes"
+          : !modelsStatus.hasChatRoute
+            ? "Embedding route ready — add a published chat route (extraction stage)"
+            : "Chat route ready — add a published embedding route");
 
     const phase = resolveConnectJourneyPhase({
       hasGraphStore: Boolean(target),
@@ -204,6 +236,7 @@ export async function loadConnectHubPage(
       agentReady,
       surrealStoreReady,
       routingProject,
+      readiness,
     };
     endHub();
     return payload;
