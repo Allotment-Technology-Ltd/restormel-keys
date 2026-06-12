@@ -23,7 +23,7 @@ Use this to orient any session or model picking this up.
       (`git.allotmentology.tech`), act_runner — all live and green
 - [x] **Stage 1: Git + CI on Forgejo** — `Allotment-Technology-Ltd/restormel-keys` mirrored;
       `.forgejo/workflows/` live; tag-triggered publishers ported; CI green on docker runner
-- [ ] **Stage 2.0: Provision prod box** — Hetzner #2 CX33 (restormel-prod) not yet ordered
+- [x] **Stage 2.0: Provision prod box** — **N/A: reusing the shared box `77.42.125.150`** (decision D1, 2026-06-12). It is already provisioned, hardened, and running Coolify/Forgejo (Stage 0/1). No new server. Phase A's A1–A3 are SKIPPED.
 - [ ] **Stage 2.1: Adapter + Dockerfile** — `svelte.config.js` still on adapter-vercel; Dockerfile still on node:20; `VERCEL_ENV` call sites not yet audited
 - [ ] **Stage 2.2: Worker daemon + inline-drain gate** — daemon script not yet written; `CONNECT_INGEST_INLINE_DRAIN` gate not yet implemented
 - [ ] **Stage 2.3: Staging deploy** — not yet done; `staging.restormel.dev` DNS not yet created
@@ -32,8 +32,8 @@ Use this to orient any session or model picking this up.
 - [ ] **Stage 2.6: Post-cutover hardening** — deferred
 
 ### Decisions outstanding (from migration plan §10)
-- [ ] **D1** Dedicated CX33 prod box (recommended) vs reuse shared box — **decide before Phase A**
-- [ ] **D2** Hetzner region: fsn1 (Falkenstein) or nbg1 (Nuremberg) — **decide before Phase A**
+- [x] **D1** ~~Dedicated CX33 vs reuse shared box~~ — **DECIDED 2026-06-12: REUSE the shared box `77.42.125.150`.** Prototyping, low usage; revisit if contention appears. Wherever this runbook says `<prod-box-ip>`, use `77.42.125.150`.
+- [x] **D2** ~~Hetzner region~~ — **N/A** (no new server; shared box already placed).
 - [ ] **D5** Calendar date for T0 (the prod DNS flip) — after ≥1 week staging bake
 
 ### Cron drain status
@@ -44,20 +44,30 @@ Use this to orient any session or model picking this up.
 
 ---
 
-## Phase A — Provision the prod box
+## Phase A — Get the box ready for the app
 
-**Goal:** a healthy Hetzner server registered in Coolify as a remote server, staging DNS live.  
-**Prerequisite decisions:** D1 (dedicated vs shared box) and D2 (region) must be resolved first.
-
-> **Recommendation from the migration plan:** use a **dedicated CX33** (4 vCPU / 8GB / 80GB,
-> ~£7.30/mo at current Hetzner UK pricing). This keeps CI builds and Forgejo/Coolify restarts
-> on the shared box entirely out of the product's blast radius. Reusing the shared box is £0
-> incremental but couples both services to the same failure domain.
+> ### ✅ DECISION D1: reusing the shared box `77.42.125.150` (2026-06-12)
+> The box already exists, is hardened, and runs Coolify + Forgejo (Stage 0/1). So for your
+> path, **Phase A is just two steps: A4 (staging DNS) and A5 (pull the Vercel env)** — then
+> straight to Phase B. **Skip A1, A2, A3** (order server / harden host / register remote
+> server) — that work is already done. They are kept below, struck through, only in case you
+> later split out a dedicated box. Throughout the runbook, `<prod-box-ip>` = `77.42.125.150`.
 >
-> **Region:** use **fsn1 (Falkenstein)** or **nbg1 (Nuremberg)** — same region as the existing
-> shared box, which means snapshots and private networking patterns reuse without change. The
-> ~10–17ms Neon RTT increase vs Vercel lhr1 is measured and budgeted (plan §3); it is
-> trivially smaller than the 2.08s cold start being eliminated.
+> One note for A3: because Coolify *runs on* this same box, the dashboard deploys to Coolify's
+> **own/localhost server** — there is no separate remote server to register. In Phase B, when
+> Coolify asks which server to deploy to, choose the existing local server.
+
+**Goal (shared-box path):** `staging.restormel.dev` resolves to `77.42.125.150`, and the
+production env is exported ready to paste into Coolify.
+
+---
+
+### ~~A1 [OWNER] — Order the Hetzner server~~ — SKIP (reusing shared box)
+### ~~A2 [OWNER] — Host hardening~~ — SKIP (shared box already hardened)
+### ~~A3 [OWNER] — Register the prod box as a remote server in Coolify~~ — SKIP (deploy to Coolify's local server in Phase B)
+
+> The original A1–A3 instructions are retained below for the dedicated-box path only. **If you
+> are on the shared-box path (you are), jump to A4.**
 
 ---
 
