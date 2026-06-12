@@ -82,13 +82,17 @@ export function surrealExplorerUnitsQuery(
   // NONE/unchecked under DESC, so the first page surfaces freshly-validated ideas
   // instead of burying them in raw store order. Also makes START paging stable.
   const order = " ORDER BY validation_status DESC";
+  // EBV fields (W2.2 Evidence Dossier) — selecting absent fields is harmless in
+  // Surreal (NONE), so pre-EBV BYO graphs keep working and read as "unbound".
+  const ebvFields =
+    "verification_state, evidence_status, evidence_quote, evidence_start, evidence_end, evidence_match, evidence_source_hash, valid_from";
   if (variant === "star") {
     return `SELECT * FROM ${unitTable}${order} LIMIT ${limit} START ${start};`;
   }
   if (variant === "enriched") {
-    return `SELECT id, text, validation_status, validation_note, source.title AS source_title, source.url AS source_url, source FROM ${unitTable}${order} FETCH source LIMIT ${limit} START ${start};`;
+    return `SELECT id, text, validation_status, validation_note, ${ebvFields}, source.title AS source_title, source.url AS source_url, source FROM ${unitTable}${order} FETCH source LIMIT ${limit} START ${start};`;
   }
-  return `SELECT id, text, validation_status, source FROM ${unitTable}${order} LIMIT ${limit} START ${start};`;
+  return `SELECT id, text, validation_status, ${ebvFields}, source FROM ${unitTable}${order} LIMIT ${limit} START ${start};`;
 }
 
 export function surrealRevalidateUnitsQuery(

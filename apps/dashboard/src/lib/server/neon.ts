@@ -7751,6 +7751,123 @@ export async function getConnectClaimVersionBreakdownPostgres(workspaceId: strin
   };
 }
 
+export type ConnectClaimEvidenceRow = {
+  unitId: string;
+  claimKey: string | null;
+  versionNo: number;
+  evidenceQuote: string | null;
+  spanStart: number | null;
+  spanEnd: number | null;
+  evidenceMatch: string | null;
+  evidenceStatus: string;
+  sourceHash: string | null;
+  verificationState: string | null;
+  judgedBy: string | null;
+  judgedAt: string | null;
+  /** When the current version row was written (the span's bound-at date). */
+  boundAt: string | null;
+  versionCount: number;
+  judgeVerdict: string | null;
+  judgeConfidence: number | null;
+  judgeModel: string | null;
+  judgePromptVersion: number | null;
+  judgeJudgedAt: string | null;
+};
+
+/**
+ * Evidence Dossier (W2.2): per-unit EBV summary for the units API — the CURRENT
+ * claim version (evidence span + verification state), the LATEST Layer-2 judgment,
+ * and the version-chain length, for a page of unit ids in ONE round-trip.
+ */
+export async function listConnectClaimEvidenceForUnitsPostgres(params: {
+  workspaceId: string;
+  unitIds: string[];
+}): Promise<ConnectClaimEvidenceRow[]> {
+  if (params.unitIds.length === 0) return [];
+  await ensureConnectClaimVersionsSchema();
+  await ensureConnectClaimJudgmentsSchema();
+  const sql = getSql();
+  const rows = await sql`
+    WITH current AS (
+      SELECT DISTINCT ON (unit_id)
+        unit_id, claim_key, version_no, evidence_quote, span_start, span_end,
+        evidence_match, evidence_status, source_hash, verification_state,
+        judged_by, judged_at, created_at
+      FROM connect_claim_versions
+      WHERE workspace_id = ${params.workspaceId}
+        AND unit_id = ANY(${params.unitIds}::text[])
+        AND valid_to IS NULL
+      ORDER BY unit_id, id DESC
+    ),
+    version_counts AS (
+      SELECT unit_id, count(*)::int AS version_count
+      FROM connect_claim_versions
+      WHERE workspace_id = ${params.workspaceId}
+        AND unit_id = ANY(${params.unitIds}::text[])
+      GROUP BY unit_id
+    ),
+    latest_judgment AS (
+      SELECT DISTINCT ON (unit_id)
+        unit_id, verdict, confidence, judge_model, prompt_version, judged_at
+      FROM connect_claim_judgments
+      WHERE workspace_id = ${params.workspaceId}
+        AND unit_id = ANY(${params.unitIds}::text[])
+      ORDER BY unit_id, judged_at DESC, id DESC
+    )
+    SELECT
+      c.unit_id, c.claim_key, c.version_no, c.evidence_quote, c.span_start, c.span_end,
+      c.evidence_match, c.evidence_status, c.source_hash, c.verification_state,
+      c.judged_by, c.judged_at, c.created_at,
+      vc.version_count,
+      j.verdict AS judge_verdict, j.confidence AS judge_confidence,
+      j.judge_model, j.prompt_version AS judge_prompt_version, j.judged_at AS judge_judged_at
+    FROM current c
+    LEFT JOIN version_counts vc USING (unit_id)
+    LEFT JOIN latest_judgment j USING (unit_id)
+  `;
+  return (rows as {
+    unit_id: string;
+    claim_key: string | null;
+    version_no: number;
+    evidence_quote: string | null;
+    span_start: number | null;
+    span_end: number | null;
+    evidence_match: string | null;
+    evidence_status: string;
+    source_hash: string | null;
+    verification_state: string | null;
+    judged_by: string | null;
+    judged_at: string | Date | null;
+    created_at: string | Date | null;
+    version_count: number | null;
+    judge_verdict: string | null;
+    judge_confidence: number | null;
+    judge_model: string | null;
+    judge_prompt_version: number | null;
+    judge_judged_at: string | Date | null;
+  }[]).map((r) => ({
+    unitId: r.unit_id,
+    claimKey: r.claim_key ?? null,
+    versionNo: Number(r.version_no ?? 1),
+    evidenceQuote: r.evidence_quote ?? null,
+    spanStart: r.span_start == null ? null : Number(r.span_start),
+    spanEnd: r.span_end == null ? null : Number(r.span_end),
+    evidenceMatch: r.evidence_match ?? null,
+    evidenceStatus: r.evidence_status,
+    sourceHash: r.source_hash ?? null,
+    verificationState: r.verification_state ?? null,
+    judgedBy: r.judged_by ?? null,
+    judgedAt: coerceIso(r.judged_at),
+    boundAt: coerceIso(r.created_at),
+    versionCount: Number(r.version_count ?? 1),
+    judgeVerdict: r.judge_verdict ?? null,
+    judgeConfidence: r.judge_confidence == null ? null : Number(r.judge_confidence),
+    judgeModel: r.judge_model ?? null,
+    judgePromptVersion: r.judge_prompt_version == null ? null : Number(r.judge_prompt_version),
+    judgeJudgedAt: coerceIso(r.judge_judged_at),
+  }));
+}
+
 /**
  * Coverage-gap counts for the trust scorecard (Postgres spine, PR #189 semantics):
  * units whose validation note records a validator/judge omission ("coverage_gap: …")

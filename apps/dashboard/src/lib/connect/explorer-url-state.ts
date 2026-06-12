@@ -8,7 +8,8 @@
  * | param    | values                                                       | notes                                                  |
  * |----------|--------------------------------------------------------------|--------------------------------------------------------|
  * | `filter` | `review` · `all` · `ok` · `weak` · `unsupported` · `unknown`| queue scope / verdict narrow                           |
- * |          | `unverified` · `contradicted` · `abstained` · `supported`   | EBV verification-state — **reserved, active in W2.2**  |
+ * |          | `unverified` · `contradicted` · `abstained` · `supported`   | EBV verification-state — reserved in W2.1, live in W2.2|
+ * |          | `inferred` · `excluded`                                      | EBV states added in W2.2 (every Evidence facet is shareable) |
  * | `unit`   | opaque claim id (string)                                     | select + scroll to a specific claim; opens detail panel|
  *
  * ### Back/forward safety
@@ -21,14 +22,19 @@ export type QueueScope = "review" | "all";
 export type VerdictFilter = "ok" | "weak" | "unsupported" | "unknown";
 
 /**
- * EBV verification-state filter values — reserved now (W2.1) so inbound links are
- * future-safe; the Evidence facet that *acts* on them is W2.2.
+ * EBV verification-state filter values — reserved in W2.1 so inbound links are
+ * future-safe; the Evidence facet that acts on them shipped in W2.2.
+ * `abstained` is an inbound alias: abstentions land in the `unverified` review state
+ * (claims ledger row 10), so the facet maps it there. `inferred` / `excluded` were
+ * added in W2.2 so every facet chip round-trips through the URL.
  */
 export type VerificationStateFilter =
   | "unverified"
   | "contradicted"
   | "abstained"
-  | "supported";
+  | "supported"
+  | "inferred"
+  | "excluded";
 
 /** Every value the `filter` param may carry. */
 export type ExplorerFilterParam = QueueScope | VerdictFilter | VerificationStateFilter;
@@ -45,6 +51,8 @@ const VERIFICATION_STATE_VALUES: ReadonlySet<string> = new Set<VerificationState
   "contradicted",
   "abstained",
   "supported",
+  "inferred",
+  "excluded",
 ]);
 
 function isQueueScope(v: string): v is QueueScope {
@@ -100,8 +108,10 @@ export function parseExplorerUrlState(params: URLSearchParams): ExplorerUrlState
       queueScope = filterRaw === "ok" ? "all" : "review";
       verdictFilter = filterRaw;
     } else if (isVerificationStateFilter(filterRaw)) {
-      // Reserved for W2.2 — capture for forward-compat; scope unchanged.
+      // Evidence facet (W2.2): verification states span the whole graph, not just
+      // the quarantine, so an inbound state link widens scope to "all".
       verificationStateFilter = filterRaw;
+      queueScope = "all";
     }
     // Unknown values are silently ignored (defaults apply).
   }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ProvenanceClaim, RetrievalTrace } from "$lib/connect/graph-comparison-types";
 
   export let claims: ProvenanceClaim[] = [];
@@ -9,6 +10,11 @@
   function truncate(text: string, max = 80): string {
     const t = text.trim();
     return t.length <= max ? t : `${t.slice(0, max).trimEnd()}…`;
+  }
+
+  /** Deep link into the Evidence Dossier (W2.2 URL contract: ?unit=<id>). */
+  function dossierHref(claim: ProvenanceClaim): string {
+    return `${DASHBOARD_BASE}/connect/graph?unit=${encodeURIComponent(claim.id)}`;
   }
 </script>
 
@@ -31,7 +37,15 @@
         <ul class="claim-list">
           {#each claims as claim (claim.id)}
             <li class="claim" class:weak={claim.verification === "weak"}>
-              <p class="claim-text">{truncate(claim.text)}</p>
+              <p class="claim-text">
+                <a
+                  class="claim-link brut-focus"
+                  href={dossierHref(claim)}
+                  title="Open this claim's evidence dossier in the graph explorer"
+                >
+                  {truncate(claim.text)}
+                </a>
+              </p>
               <div class="claim-meta">
                 <span class="claim-source">{claim.sourceTitle}</span>
                 <span class="claim-badge" class:weak={claim.verification === "weak"}>
@@ -124,6 +138,15 @@
     font-size: var(--text-body-sm);
     line-height: 1.4;
     color: var(--color-ink);
+  }
+
+  .claim-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--color-ink);
+  }
+  .claim-link:hover {
+    background: var(--color-yellow);
   }
 
   .claim-meta {
