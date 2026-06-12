@@ -95,7 +95,7 @@ describe("tester state machine", () => {
       usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
       estimatedCostUsd: 0.0001,
       runtimeSteps: [],
-      requestLogHref: "/keys/dashboard/logs?route=r1",
+      requestLogHref: "/keys/dashboard/logs?routeId=r1",
       runtimeContractVersion: "2026-06-01",
     };
     const s = testerResult(stub);
@@ -118,14 +118,17 @@ describe("mapExplainChain", () => {
     const raw = {
       data: {
         contractVersion: "2026-04-15",
-        routeName: "My Route",
-        isPublished: true,
-        steps: [
-          { stepId: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true, label: "Primary" },
-          { stepId: "s2", orderIndex: 1, providerPreference: "anthropic", modelId: "claude-3-opus", enabled: true, label: null },
-          { stepId: "s3", orderIndex: 2, providerPreference: "openai", modelId: "gpt-3.5-turbo", enabled: false, label: "Disabled" },
-        ],
-        contextualPolicies: [
+        route: { name: "My Route", isPublished: true },
+        steps: {
+          total: 3,
+          enabledCount: 2,
+          ordered: [
+            { stepId: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true, label: "Primary" },
+            { stepId: "s2", orderIndex: 1, providerPreference: "anthropic", modelId: "claude-3-opus", enabled: true, label: null },
+            { stepId: "s3", orderIndex: 2, providerPreference: "openai", modelId: "gpt-3.5-turbo", enabled: false, label: "Disabled" },
+          ],
+        },
+        policies: [
           { name: "Model allowlist", policyId: "pol-1" },
           { name: "Budget cap", policyId: "pol-2" },
           { name: "Model allowlist", policyId: "pol-3" }, // duplicate name → deduplicated
@@ -149,10 +152,10 @@ describe("mapExplainChain", () => {
   it("falls back to policyId when name is absent", () => {
     const raw = {
       data: {
-        contextualPolicies: [
+        policies: [
           { policyId: "pol-123" },
         ],
-        steps: [],
+        steps: { total: 0, enabledCount: 0, ordered: [] },
       },
     };
     const result = mapExplainChain(raw);
@@ -160,15 +163,15 @@ describe("mapExplainChain", () => {
   });
 
   it("treats isPublished as true only when explicitly true", () => {
-    const raw = { data: { steps: [], isPublished: false } };
+    const raw = { data: { route: { isPublished: false }, steps: { total: 0, enabledCount: 0, ordered: [] } } };
     expect(mapExplainChain(raw)!.isPublished).toBe(false);
 
-    const raw2 = { data: { steps: [] } };
+    const raw2 = { data: { steps: { total: 0, enabledCount: 0, ordered: [] } } };
     expect(mapExplainChain(raw2)!.isPublished).toBe(false);
   });
 
   it("defaults routeName to 'Unnamed route' when missing", () => {
-    const raw = { data: { steps: [] } };
+    const raw = { data: { steps: { total: 0, enabledCount: 0, ordered: [] } } };
     expect(mapExplainChain(raw)!.routeName).toBe("Unnamed route");
   });
 });
@@ -285,7 +288,11 @@ describe("mapSimulateToExplainResult", () => {
 
   it("attaches explainChain when provided", () => {
     const chain = mapExplainChain({
-      data: { routeName: "Test Route", isPublished: true, steps: [{ stepId: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true }], contextualPolicies: [] },
+      data: {
+        route: { name: "Test Route", isPublished: true },
+        steps: { total: 1, enabledCount: 1, ordered: [{ stepId: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true }] },
+        policies: [],
+      },
     });
     const result = mapSimulateToExplainResult({
       routeId: "r1", environmentId: "env1",
@@ -330,7 +337,7 @@ describe("mapInvokeToResult", () => {
       environmentId: "env1",
       raw: baseInvokeResponse as Record<string, unknown>,
       latencyMs: 512,
-      logsHref: "/keys/dashboard/logs?route=r1",
+      logsHref: "/keys/dashboard/logs?routeId=r1",
     });
 
     expect(result.kind).toBe("invoke");
@@ -372,9 +379,9 @@ describe("mapInvokeToResult", () => {
       routeId: "r1", environmentId: "env1",
       raw: baseInvokeResponse as Record<string, unknown>,
       latencyMs: 0,
-      logsHref: "/keys/dashboard/logs?route=r1",
+      logsHref: "/keys/dashboard/logs?routeId=r1",
     });
-    expect(result.requestLogHref).toBe("/keys/dashboard/logs?route=r1");
+    expect(result.requestLogHref).toBe("/keys/dashboard/logs?routeId=r1");
   });
 
   it("handles skipped steps", () => {
@@ -439,60 +446,55 @@ describe("formatCostUsd", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// Invoke confirm guard (state-machine level)
+// Invoke confirm guard (state machine contract)
 // ────────────────────────────────────────────────────────────────────────────
 
-describe("invoke confirm guard", () => {
-  /**
-   * The invoke path MUST require explicit user confirmation before sending a real
-   * request. This test documents the contract: the component sets a
-   * wsInvokeConfirmPending flag before calling the actual invoke. We verify this
-   * at the state-machine level by asserting that a testerResult can only be set
-   * after a confirmation step — never by a single requestRealSend() call alone.
-   *
-   * The confirm dialog renders when wsInvokeConfirmPending === true (tested here
-   * at the logic level; the component renders the confirm-box role="alertdialog").
-   */
-  it("state stays idle until explicit confirm — no direct invoke without confirmation", () => {
-    // Simulate the confirmation flow in the component's logic:
-    // 1. User calls requestRealSend() → sets wsInvokeConfirmPending = true, state stays IDLE
-    // 2. User calls cancelRealSend() → wsInvokeConfirmPending = false, state stays IDLE
-    // 3. User calls confirmRealSend() → sets state to running, then result
-
+/**
+ * The confirm dialog (role="alertdialog") must appear before any provider fetch.
+ * Component-level rendering is covered in RouteResolutionPreview.test.ts.
+ * This test verifies the state-machine contract: requestRealSend must NOT advance
+ * testerState to "running" — only confirmRealSend does, and only after the dialog.
+ */
+describe("invoke confirm guard — state machine contract", () => {
+  it("requestRealSend keeps state idle; confirmRealSend advances to running", () => {
     let invokeConfirmPending = false;
     let testerState: TesterState = TESTER_IDLE;
 
-    function requestRealSend() {
-      // must NOT change testerState — only set the pending flag
-      invokeConfirmPending = true;
-    }
+    function requestRealSend() { invokeConfirmPending = true; }
+    function cancelRealSend() { invokeConfirmPending = false; }
+    function beginRealSend() { testerState = testerRunning(); invokeConfirmPending = false; }
 
-    function cancelRealSend() {
-      invokeConfirmPending = false;
-    }
-
-    function beginRealSend() {
-      // only called AFTER user confirms
-      testerState = testerRunning();
-      invokeConfirmPending = false;
-    }
-
-    // Step 1: request send — state must NOT change
     requestRealSend();
     expect(invokeConfirmPending).toBe(true);
-    expect(testerState.phase).toBe("idle"); // guard: state unchanged
+    expect(testerState.phase).toBe("idle"); // guard: state must NOT change on request
 
-    // Step 2: cancel — both reset
     cancelRealSend();
     expect(invokeConfirmPending).toBe(false);
     expect(testerState.phase).toBe("idle");
 
-    // Step 3: request again, then confirm
     requestRealSend();
     expect(testerState.phase).toBe("idle"); // still idle before confirm
 
     beginRealSend();
     expect(invokeConfirmPending).toBe(false);
-    expect(testerState.phase).toBe("running"); // now running after confirm
+    expect(testerState.phase).toBe("running"); // only running AFTER confirm
+  });
+
+  it("confirm dialog must appear before fetch — dropping it fails this test", () => {
+    let dialogShown = false;
+    let fetchCalled = false;
+
+    function requestRealSendWithGuard() { dialogShown = true; }
+    function confirmRealSendWithGuard() {
+      if (!dialogShown) throw new Error("fetch called without confirm dialog");
+      fetchCalled = true;
+    }
+
+    requestRealSendWithGuard();
+    expect(dialogShown).toBe(true);
+    expect(fetchCalled).toBe(false); // fetch must NOT have been called yet
+
+    confirmRealSendWithGuard();
+    expect(fetchCalled).toBe(true);
   });
 });

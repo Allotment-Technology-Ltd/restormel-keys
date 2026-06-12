@@ -154,25 +154,58 @@ export type TesterResult = ExplainResult | InvokeResult;
 // Explain-chain response mapping
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Raw explain-chain response shape (from GET /explain-chain). */
+/**
+ * Raw explain-chain response shape from GET /explain-chain.
+ * Mirrors the return value of `buildRoutingExplainChainData` in
+ * src/lib/server/route-explain-chain.ts:
+ *   { contractVersion, projectId, routeId, environmentId,
+ *     route: { id, name, isPublished, … },
+ *     steps: { total, enabledCount, ordered: [ { stepId, orderIndex, … } ] },
+ *     policies: [ { policyId, name, … } ],
+ *     narrative }
+ */
 interface RawExplainChain {
   data?: {
     contractVersion?: string | null;
-    routeName?: string | null;
+    projectId?: string;
     routeId?: string;
-    isPublished?: boolean;
-    steps?: Array<{
-      stepId?: string;
-      orderIndex?: number;
-      providerPreference?: string | null;
-      modelId?: string | null;
+    environmentId?: string;
+    route?: {
+      id?: string;
+      name?: string | null;
+      isPublished?: boolean;
       enabled?: boolean;
-      label?: string | null;
-    }>;
-    contextualPolicies?: Array<{
-      name?: string;
+      status?: string;
+      workload?: string | null;
+      stage?: string | null;
+      routeMode?: string | null;
+      version?: number | null;
+      publishedVersion?: number | null;
+      defaultModelId?: string | null;
+      billingMode?: string | null;
+    };
+    steps?: {
+      total?: number;
+      enabledCount?: number;
+      ordered?: Array<{
+        stepId?: string;
+        orderIndex?: number;
+        providerPreference?: string | null;
+        modelId?: string | null;
+        enabled?: boolean;
+        label?: string | null;
+      }>;
+    };
+    policies?: Array<{
       policyId?: string;
+      name?: string | null;
+      scope?: string;
+      bindingId?: string;
+      type?: string;
+      status?: string;
+      ruleSummary?: string;
     }>;
+    narrative?: string[];
   };
 }
 
@@ -181,8 +214,11 @@ export function mapExplainChain(raw: RawExplainChain): ExplainChainSummary | nul
   const d = raw?.data;
   if (!d) return null;
 
-  const steps = Array.isArray(d.steps)
-    ? d.steps.map((s) => ({
+  const routeObj = d.route;
+  const stepsObj = d.steps;
+
+  const steps = Array.isArray(stepsObj?.ordered)
+    ? stepsObj.ordered.map((s) => ({
         stepId: typeof s.stepId === "string" ? s.stepId : "",
         orderIndex: typeof s.orderIndex === "number" ? s.orderIndex : 0,
         providerPreference: typeof s.providerPreference === "string" ? s.providerPreference : null,
@@ -192,19 +228,21 @@ export function mapExplainChain(raw: RawExplainChain): ExplainChainSummary | nul
       }))
     : [];
 
-  const enabledStepCount = steps.filter((s) => s.enabled).length;
+  // Use the authoritative enabledCount from the server; fall back to counting locally.
+  const enabledStepCount =
+    typeof stepsObj?.enabledCount === "number" ? stepsObj.enabledCount : steps.filter((s) => s.enabled).length;
 
   const policyNames: string[] = [];
-  if (Array.isArray(d.contextualPolicies)) {
-    for (const p of d.contextualPolicies) {
-      const name = typeof p.name === "string" ? p.name : typeof p.policyId === "string" ? p.policyId : null;
+  if (Array.isArray(d.policies)) {
+    for (const p of d.policies) {
+      const name = typeof p.name === "string" && p.name ? p.name : typeof p.policyId === "string" ? p.policyId : null;
       if (name && !policyNames.includes(name)) policyNames.push(name);
     }
   }
 
   return {
-    routeName: typeof d.routeName === "string" ? d.routeName : "Unnamed route",
-    isPublished: d.isPublished === true,
+    routeName: typeof routeObj?.name === "string" ? routeObj.name : "Unnamed route",
+    isPublished: routeObj?.isPublished === true,
     enabledStepCount,
     policyNames,
     steps,

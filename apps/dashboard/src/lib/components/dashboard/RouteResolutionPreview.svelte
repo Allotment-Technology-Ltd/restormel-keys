@@ -56,6 +56,17 @@
       ]);
 
       if (!simulateRes.ok) {
+        if (simulateRes.status === 403 && (simulateBody as { error?: string }).error === "policy_blocked") {
+          const explainChain = mapExplainChain(explainBody);
+          const result = mapSimulateToExplainResult({
+            routeId,
+            environmentId,
+            raw: simulateBody as Record<string, unknown>,
+            explainChain,
+          });
+          state = testerResult(result);
+          return;
+        }
         const msg =
           (simulateBody as { message?: string }).message ??
           (simulateBody as { error?: string }).error ??
@@ -124,7 +135,7 @@
           {/if}
           <a
             class="receipt-link"
-            href="{DASHBOARD_BASE}/projects/{r.routeId.startsWith('/') ? r.routeId : ''}"
+            href="{DASHBOARD_BASE}/projects/{projectId}/routes/{r.routeId}"
             aria-label="Open route builder"
           >↗ builder</a>
         </div>
@@ -250,7 +261,7 @@
       <!-- Footer actions -->
       <div class="receipt-actions">
         <button type="button" class="btn btn-secondary btn-sm" onclick={reset}>Reset</button>
-        <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/logs?route={routeId}" aria-label="View logs for this route">
+        <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/logs?routeId={routeId}" aria-label="View logs for this route">
           View logs ↗
         </a>
       </div>

@@ -2391,7 +2391,7 @@
       <section class="section">
         <h2 class="section-title">Logs</h2>
         <p class="section-desc">Request and trace logs for this route.</p>
-        <a href="{DASHBOARD_BASE}/logs?route={data.route?.id ?? ''}" class="btn btn-secondary">Open Logs & Traces</a>
+        <a href="{DASHBOARD_BASE}/logs?routeId={data.route?.id ?? ''}" class="btn btn-secondary">Open Logs & Traces</a>
       </section>
     </div>
   {/if}

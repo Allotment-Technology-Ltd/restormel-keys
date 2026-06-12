@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { activeProject, syncActiveProjectFromSession, type ActiveProjectSelection } from "$lib/stores/active-project";
@@ -10,6 +10,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import {
     TESTER_IDLE,
     testerRunning,
@@ -204,6 +205,42 @@
   /** Used to track if we need to show the invoke confirm dialog */
   let wsInvokeConfirmPending = false;
 
+  let confirmBoxEl: HTMLElement | null = null;
+  let promptTextareaEl: HTMLTextAreaElement | null = null;
+
+  function confirmBoxFocusables(): HTMLElement[] {
+    if (!confirmBoxEl) return [];
+    const all = confirmBoxEl.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    return [...all].filter((el) => !el.hasAttribute("disabled"));
+  }
+
+  function onConfirmBoxKeydown(event: KeyboardEvent): void {
+    if (!wsInvokeConfirmPending) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRealSend();
+      void tick().then(() => promptTextareaEl?.focus());
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const items = confirmBoxFocusables();
+    if (items.length === 0) { event.preventDefault(); confirmBoxEl?.focus(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey && active === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+  }
+
+  $: if (wsInvokeConfirmPending) {
+    void tick().then(() => {
+      const items = confirmBoxFocusables();
+      if (items.length > 0) items[0].focus();
+    });
+  }
+
   async function loadWsProjects() {
     wsProjectsLoading = true;
     wsProjectsError = "";
@@ -277,6 +314,17 @@
         simulateRes.json().catch(() => ({})),
       ]);
       if (!simulateRes.ok) {
+        if (simulateRes.status === 403 && (simulateBody as { error?: string }).error === "policy_blocked") {
+          const explainChain = mapExplainChain(explainBody);
+          const result = mapSimulateToExplainResult({
+            routeId: wsSelectedRouteId,
+            environmentId: wsSelectedRoute.environmentId,
+            raw: simulateBody as Record<string, unknown>,
+            explainChain,
+          });
+          wsTesterState = testerResult(result);
+          return;
+        }
         const msg = (simulateBody as { message?: string }).message ?? (simulateBody as { error?: string }).error ?? `Simulate failed (${simulateRes.status})`;
         wsTesterState = testerError(msg);
         return;
@@ -324,7 +372,7 @@
       const body = await res.json().catch(() => ({}));
       const latencyMs = Date.now() - start;
       if (!res.ok) {
-        const msg = (body as { message?: string }).message ?? (body as { error?: string }).error ?? `Request failed (${res.status})`;
+        const msg = (body as { detail?: string }).detail ?? (body as { message?: string }).message ?? (body as { error?: string }).error ?? `Request failed (${res.status})`;
         wsTesterState = testerError(msg);
         return;
       }
@@ -333,7 +381,7 @@
         environmentId: wsSelectedRoute.environmentId,
         raw: body as Record<string, unknown>,
         latencyMs,
-        logsHref: `${DASHBOARD_BASE}/logs?route=${wsSelectedRouteId}`,
+        logsHref: `${DASHBOARD_BASE}/logs?routeId=${wsSelectedRouteId}`,
       });
       wsTesterState = testerResult(result);
     } catch (e) {
@@ -381,13 +429,17 @@
     activeTab = tabParam === "validate" ? "validate" : tabParam === "preview" ? "preview" : "workspace";
     reactRuntimeAvailable = false;
     webComponentsAvailable = false;
+    document.addEventListener("keydown", onConfirmBoxKeydown);
     if (activeTab === "workspace") await loadWsProjects();
     else if (activeTab === "preview" && activeSelection?.projectId) await loadPreviewData();
   });
 
   $: if (activeSelection?.projectId && activeTab === "preview") { loadPreviewData(); }
 
-  onDestroy(() => { unsubscribeActiveProject(); });
+  onDestroy(() => {
+    document.removeEventListener("keydown", onConfirmBoxKeydown);
+    unsubscribeActiveProject();
+  });
 </script>
 
 <main class="sandbox" aria-labelledby="sandbox-heading">
@@ -460,10 +512,11 @@
             {/snippet}
           </BrutalErrorBanner>
         {:else if wsProjects.length === 0}
-          <div class="empty-state" role="status">
-            <p class="empty-msg">No projects yet.</p>
-            <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/projects">Create a project</a>
-          </div>
+          <EmptyState title="No projects yet" description="Create a project to start testing your routes against real config.">
+            {#snippet children()}
+              <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/projects">Create a project</a>
+            {/snippet}
+          </EmptyState>
         {:else}
           <div class="picker-row">
             <div class="field">
@@ -522,6 +575,7 @@
             <textarea
               id="ws-prompt"
               class="prompt-textarea"
+              bind:this={promptTextareaEl}
               bind:value={wsPrompt}
               placeholder="Enter a prompt to send…"
               rows={4}
@@ -530,7 +584,7 @@
           </div>
 
           {#if wsInvokeConfirmPending}
-            <div class="confirm-box" role="alertdialog" aria-labelledby="confirm-title" aria-modal="true">
+            <div class="confirm-box" role="alertdialog" aria-labelledby="confirm-title" aria-modal="true" bind:this={confirmBoxEl}>
               <p id="confirm-title" class="confirm-title">SEND REAL REQUEST?</p>
               <p class="confirm-body">
                 This calls your provider using stored credentials for route
@@ -705,7 +759,7 @@
               <!-- Footer -->
               <div class="receipt-actions">
                 <button type="button" class="btn btn-secondary btn-sm" onclick={wsReset}>Reset</button>
-                <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/logs?route={r.routeId}">View logs ↗</a>
+                <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/logs?routeId={r.routeId}">View logs ↗</a>
                 <a class="btn btn-secondary btn-sm" href="{DASHBOARD_BASE}/projects/{wsSelectedProjectId}/routes/{r.routeId}">Open builder ↗</a>
               </div>
             </div>
@@ -1334,9 +1388,6 @@
   /* Receipt actions */
   .receipt-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; border-top: 1px solid var(--rm-border, #e5e5e5); padding-top: var(--space-3); }
 
-  /* Empty state */
-  .empty-state { padding: var(--space-4); border: 1px solid var(--rm-border, #e5e5e5); }
-  .empty-msg { font-size: var(--text-sm); color: var(--rm-muted); margin: 0 0 var(--space-2); }
 
   /* Buttons */
   .btn {
