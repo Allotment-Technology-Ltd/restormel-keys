@@ -25,10 +25,12 @@
   export let onRetry: (() => void) | undefined = undefined;
   /**
    * Optional deep-link callback. Receives the changed field's `fieldPath`
-   * (e.g. `step.1.modelId`, `route.name`, `policy.ruleDefinition`). When
-   * provided, each changed field renders an "Open in builder →" link.
+   * (e.g. `step.1.modelId`, `route.name`, `policy.ruleDefinition`) and, for
+   * step rows, the snapshot step's stable `stepId` so the resolver can target
+   * the step by id rather than the (drift-prone) orderIndex baked into the path.
+   * When provided, each changed field renders an "Open in builder →" link.
    */
-  export let onOpenField: ((fieldPath: string) => void) | undefined = undefined;
+  export let onOpenField: ((fieldPath: string, stepId?: string) => void) | undefined = undefined;
   /** Raw snapshots for the raw-JSON fallback view; optional. */
   export let rawFrom: unknown = undefined;
   export let rawTo: unknown = undefined;
@@ -111,7 +113,7 @@
                 <button
                   type="button"
                   class="diff-open-link brut-focus"
-                  onclick={() => onOpenField?.(row.anchorPath)}
+                  onclick={() => onOpenField?.(row.anchorPath, row.stepId)}
                 >
                   Open in builder →
                 </button>
@@ -133,7 +135,7 @@
                         type="button"
                         class="diff-field-link brut-focus"
                         aria-label="Open {change.label} in the builder"
-                        onclick={() => onOpenField?.(change.fieldPath)}
+                        onclick={() => onOpenField?.(change.fieldPath, row.stepId)}
                       >
                         ↗
                       </button>

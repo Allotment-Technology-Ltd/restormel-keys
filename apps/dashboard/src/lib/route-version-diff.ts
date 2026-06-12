@@ -42,6 +42,12 @@ export type DiffRow = {
    * `policy`. Empty string means "no deep link" (e.g. a removed step).
    */
   anchorPath: string;
+  /**
+   * Stable id of the snapshot step this row refers to (step rows only). The
+   * deep-link resolver prefers this over the `orderIndex` baked into anchorPath,
+   * so it stays correct even if the live draft has since been reordered (m4).
+   */
+  stepId?: string;
   /** Field-level changes (empty for pure added/removed rows that carry a summary instead). */
   changes: FieldChange[];
 };
@@ -70,6 +76,26 @@ export function displayValue(v: unknown): string | null {
   }
 }
 
+/**
+ * Display a from→to value *pair*, disambiguating type when the two sides would
+ * otherwise render identically despite differing in type — e.g. the string
+ * `"1"` vs the number `1` both coerce to `1`, which would read as `1 → 1` and
+ * hide a real (and execution-relevant) change. When the rendered strings collide
+ * but the underlying values are not equal, we quote the string side(s) so the
+ * operator sees `"1" → 1`. Returns the same `displayValue` output otherwise.
+ */
+function displayPair(from: unknown, to: unknown): { from: string | null; to: string | null } {
+  const fromStr = displayValue(from);
+  const toStr = displayValue(to);
+  // Only intervene when the plain renderings collide but the values genuinely differ.
+  if (fromStr !== null && fromStr === toStr && !eq(from, to)) {
+    const quote = (v: unknown, s: string | null): string | null =>
+      typeof v === "string" && s !== null ? `"${s}"` : s;
+    return { from: quote(from, fromStr), to: quote(to, toStr) };
+  }
+  return { from: fromStr, to: toStr };
+}
+
 function stableStringify(v: unknown): string {
   if (v === undefined) return "null";
   try {
@@ -87,6 +113,10 @@ function eq(a: unknown, b: unknown): boolean {
 
 /** Step fields shown in the diff, in display order, with operator labels. */
 const STEP_FIELDS: { key: string; label: string }[] = [
+  // Position is execution-semantic: the builder's moveStep() rewrites orderIndex
+  // (and resets the route's entryStepId). A pure reorder MUST surface as a change,
+  // otherwise an identical-step set in a different fallback order reads as "no changes".
+  { key: "orderIndex", label: "Position" },
   { key: "providerPreference", label: "Provider" },
   { key: "modelId", label: "Model" },
   { key: "fallbackOn", label: "Fallback when" },
@@ -111,6 +141,9 @@ const ROUTE_META_FIELDS: { key: string; label: string }[] = [
   { key: "billingMode", label: "Billing mode" },
   { key: "routeMode", label: "Route mode" },
   { key: "defaultModelId", label: "Default model" },
+  // The fallback chain's entry point: moveStep() resets it on reorder, so a
+  // changed entry step is an execution-semantic change, not metadata churn.
+  { key: "entryStepId", label: "Entry step" },
   { key: "workload", label: "Workload" },
   { key: "stage", label: "Stage" },
   { key: "enabled", label: "Enabled" },
@@ -164,12 +197,8 @@ export function buildRouteDiff(
   const metaChanges: FieldChange[] = [];
   for (const { key, label } of ROUTE_META_FIELDS) {
     if (!eq(fromRoute[key], toRoute[key])) {
-      metaChanges.push({
-        label,
-        fieldPath: `route.${key}`,
-        from: displayValue(fromRoute[key]),
-        to: displayValue(toRoute[key]),
-      });
+      const { from, to } = displayPair(fromRoute[key], toRoute[key]);
+      metaChanges.push({ label, fieldPath: `route.${key}`, from, to });
     }
   }
   if (metaChanges.length > 0) {
@@ -190,24 +219,21 @@ export function buildRouteDiff(
   for (const [key, toStep] of toByKey) {
     const order = Number(toStep.orderIndex ?? 0);
     const anchorPath = `step.${order}`;
+    const stepId = typeof toStep.id === "string" && toStep.id.trim() ? toStep.id.trim() : undefined;
     const fromStep = fromByKey.get(key);
     if (!fromStep) {
-      rows.push({ kind: "added", title: stepTitle(toStep), anchorPath, changes: [] });
+      rows.push({ kind: "added", title: stepTitle(toStep), anchorPath, stepId, changes: [] });
       continue;
     }
     const changes: FieldChange[] = [];
     for (const { key: fkey, label } of STEP_FIELDS) {
       if (!eq(fromStep[fkey], toStep[fkey])) {
-        changes.push({
-          label,
-          fieldPath: `${anchorPath}.${fkey}`,
-          from: displayValue(fromStep[fkey]),
-          to: displayValue(toStep[fkey]),
-        });
+        const { from, to } = displayPair(fromStep[fkey], toStep[fkey]);
+        changes.push({ label, fieldPath: `${anchorPath}.${fkey}`, from, to });
       }
     }
     if (changes.length > 0) {
-      rows.push({ kind: "changed", title: stepTitle(toStep), anchorPath, changes });
+      rows.push({ kind: "changed", title: stepTitle(toStep), anchorPath, stepId, changes });
     }
   }
 
@@ -257,12 +283,10 @@ export function buildPolicyDiff(
   const list = Array.isArray(changes) ? changes : [];
   const fieldChanges: FieldChange[] = list
     .filter((c) => c && typeof c.field === "string" && !POLICY_NOISE_FIELDS.has(c.field))
-    .map((c) => ({
-      label: POLICY_FIELD_LABELS[c.field] ?? c.field,
-      fieldPath: `policy.${c.field}`,
-      from: displayValue(c.from),
-      to: displayValue(c.to),
-    }));
+    .map((c) => {
+      const { from, to } = displayPair(c.from, c.to);
+      return { label: POLICY_FIELD_LABELS[c.field] ?? c.field, fieldPath: `policy.${c.field}`, from, to };
+    });
 
   const rows: DiffRow[] =
     fieldChanges.length > 0

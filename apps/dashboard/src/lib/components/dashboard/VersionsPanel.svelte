@@ -61,9 +61,24 @@
   export let exportName = "route";
   /**
    * Optional deep-link callback wiring a diff field back to the builder
-   * (rubric X4). Receives a `fieldPath` like `step.1.modelId`.
+   * (rubric X4). Receives a `fieldPath` like `step.1.modelId` and, for step
+   * rows, the snapshot step's stable `stepId` (preferred over the path's
+   * orderIndex, which can drift if the draft was reordered since — m4).
    */
-  export let onOpenDiffField: ((fieldPath: string) => void) | undefined = undefined;
+  export let onOpenDiffField: ((fieldPath: string, stepId?: string) => void) | undefined = undefined;
+
+  /**
+   * W3.5 (M2) — the *pending* draft, shaped like a stored snapshot so the
+   * publish confirm can show the blast radius of THIS publish (draft vs the
+   * latest published version) rather than the previous published change. Routes
+   * supply `{ routeSnapshot: data.route, stepsSnapshot: orderedSteps }`. Omit it
+   * (policies, which have no client-side draft model) and the confirm falls back
+   * to the most-recent published change, explicitly labelled as such.
+   */
+  export let draftSnapshot:
+    | { routeSnapshot?: unknown; stepsSnapshot?: unknown }
+    | null
+    | undefined = undefined;
 
   // --- state model ---
   type VersionEvent = {
@@ -146,12 +161,13 @@
   }
 
   async function publishDraft() {
-    // Embed the diff summary into the confirm so the operator sees what the last
-    // published change did before sending a new version live (truthful to the
-    // stored versions; the draft itself is not yet a snapshot).
-    const context = latestChangeSummary
-      ? `\n\nMost recent published change: ${latestChangeSummary}`
-      : "";
+    // Embed the blast radius of THIS publish into the confirm: when the caller
+    // supplied the pending draft (routes), diff it against the latest published
+    // snapshot so the operator sees exactly what is about to go live. Policies
+    // have no client-side draft model, so they fall back to the most-recent
+    // published change, explicitly labelled (the asymmetry is noted in
+    // docs/ux-contracts.md §3, W3.5).
+    const context = publishConfirmContext;
     if (
       !confirm(
         `Publish the current ${entityNoun} configuration? This makes it the live version and it begins receiving traffic immediately.${context}`
@@ -318,7 +334,39 @@
     }
   }
 
-  /** Summary of the most recent published change, for the publish confirm context line. */
+  /** The latest published version's stored snapshot event (the live version), if any. */
+  $: latestPublishedEvent =
+    diffMode === "client" && availableVersions.length >= 1
+      ? eventForVersion(availableVersions[0])
+      : undefined;
+
+  /**
+   * M2 — blast radius of THIS publish: the pending draft diffed against the
+   * latest published snapshot. Only available for routes (diffMode === "client")
+   * when the caller supplied `draftSnapshot`. Null when not computable.
+   */
+  $: pendingPublishDiff =
+    diffMode === "client" && draftSnapshot && latestPublishedEvent
+      ? buildRouteDiff(
+          {
+            routeSnapshot: latestPublishedEvent.routeSnapshot,
+            stepsSnapshot: latestPublishedEvent.stepsSnapshot,
+            version: latestPublishedEvent.version,
+          },
+          {
+            routeSnapshot: draftSnapshot.routeSnapshot,
+            stepsSnapshot: draftSnapshot.stepsSnapshot,
+            version: null,
+          }
+        )
+      : null;
+  $: pendingPublishSummary = pendingPublishDiff ? summarizeDiff(pendingPublishDiff) : "";
+
+  /**
+   * Summary of the most-recent *published* change (the diff of the two most
+   * recent published snapshots). Used only as the policy fallback, where there
+   * is no client-side draft model to diff. Explicitly labelled in the confirm.
+   */
   $: latestChangeSummary = (() => {
     if (diffMode !== "client" || availableVersions.length < 2) return "";
     const toV = availableVersions[0];
@@ -331,6 +379,28 @@
       { ...toEvent, version: toV }
     );
     return summarizeDiff(model);
+  })();
+
+  /**
+   * The context line appended to the publish confirm. Prefers the pending
+   * blast radius (draft vs live) when the caller gave us a draft; otherwise
+   * falls back to the labelled most-recent-published-change summary; otherwise
+   * an honest "no prior published version" note for a never-published entity.
+   */
+  $: publishConfirmContext = (() => {
+    if (draftSnapshot && diffMode === "client") {
+      if (!latestPublishedEvent) {
+        return `\n\nThis is the first published version — there is no live version to compare against.`;
+      }
+      if (pendingPublishDiff?.empty) {
+        return `\n\nNo changes vs live version ${latestPublishedEvent.version} — this re-publishes the same configuration.`;
+      }
+      return `\n\nPublishing changes: ${pendingPublishSummary} (vs live version ${latestPublishedEvent.version})`;
+    }
+    if (latestChangeSummary) {
+      return `\n\nMost recent published change: ${latestChangeSummary}`;
+    }
+    return "";
   })();
 
   // --- W3.5: export ---------------------------------------------------------

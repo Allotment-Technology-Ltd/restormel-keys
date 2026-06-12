@@ -2,6 +2,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { goto, invalidateAll } from "$app/navigation";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import RouteCoverageIndicator from "$lib/components/dashboard/RouteCoverageIndicator.svelte";
 
   export let data: {
     project: { id: string; name: string } | null;
@@ -127,6 +128,11 @@
 
   <section class="section" aria-labelledby="list-heading">
     <h2 id="list-heading" class="section-title">Routes ({data.routes.length})</h2>
+    <RouteCoverageIndicator
+      coverageUrl={`${DASHBOARD_BASE}/api/projects/${data.project.id}/route-coverage`}
+      routesHref="#list-heading"
+      environmentName={envName}
+    />
     {#if data.routes.length === 0}
       <EmptyState
         title="No routes yet"

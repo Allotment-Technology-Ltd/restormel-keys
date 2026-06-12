@@ -605,6 +605,20 @@
 
   $: orderedSteps = [...displaySteps].sort((a, b) => a.orderIndex - b.orderIndex);
 
+  /**
+   * W3.5 (M2) — the snapshot the publish endpoint will actually store: the
+   * server-persisted route + steps (NOT the local flow overlay, which publish
+   * does not see until "Apply to server"). VersionsPanel diffs this against the
+   * latest published snapshot so the publish confirm shows THIS publish's blast
+   * radius. Shape mirrors what `insertRouteVersionEvent` persists on publish.
+   */
+  $: publishDraftSnapshot = data.route
+    ? {
+        routeSnapshot: data.route as unknown,
+        stepsSnapshot: [...data.steps].sort((a, b) => a.orderIndex - b.orderIndex) as unknown,
+      }
+    : null;
+
   /** Sync next-step edges + entry to a linear chain (matches vertical route map default). */
   /** PATCH `orderIndex` 0..n-1 for each step id (used after insert-in-middle). */
   async function patchStepOrderIndices(orderedIds: string[]): Promise<boolean> {
@@ -1547,17 +1561,22 @@
    * W3.5: deep-link a diff row's `fieldPath` to the field it changed (rubric X4).
    * `route.*` → Setup tab (route metadata); `step.<orderIndex>[.field]` → Flow
    * tab with the step selected in the inspector.
+   *
+   * m4: resolve the step by its snapshot `stepId` first — the orderIndex in the
+   * fieldPath is the snapshot's position and can be stale if the live draft was
+   * reordered since the compared version. Fall back to orderIndex only when no
+   * id is available (id-less legacy snapshots).
    */
-  function openDiffField(fieldPath: string) {
+  function openDiffField(fieldPath: string, stepId?: string) {
     if (fieldPath.startsWith("route")) {
       workspaceTab = "setup";
       return;
     }
     const stepMatch = /^step\.(\d+)/.exec(fieldPath);
     if (stepMatch) {
-      const orderIndex = Number(stepMatch[1]);
       workspaceTab = "flow";
-      const target = data.steps.find((s) => s.orderIndex === orderIndex);
+      const byId = stepId ? data.steps.find((s) => s.id === stepId) : undefined;
+      const target = byId ?? data.steps.find((s) => s.orderIndex === Number(stepMatch[1]));
       if (target) {
         void tick().then(() => selectStepFromCanvas(target));
       }
@@ -2470,6 +2489,7 @@
           publishedVersion={data.route.publishedVersion}
           entityNoun="route"
           diffMode="client"
+          draftSnapshot={publishDraftSnapshot}
           onOpenDiffField={openDiffField}
           onMutated={refreshRouteDetail}
         />

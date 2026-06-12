@@ -27,6 +27,157 @@ describe("displayValue", () => {
   });
 });
 
+describe("buildRouteDiff — type-aware display pair (m1)", () => {
+  it('disambiguates "1" → 1 by quoting the string side so it does not read as 1 → 1', () => {
+    // timeoutMs stored as string "8000" in one snapshot, number 8000 in the other.
+    const from = routeVersion(1, baseRoute, [{ id: "s1", orderIndex: 0, timeoutMs: "8000" }]);
+    const to = routeVersion(2, baseRoute, [{ id: "s1", orderIndex: 0, timeoutMs: 8000 }]);
+    const model = buildRouteDiff(from, to);
+    expect(model.empty).toBe(false);
+    const change = model.rows[0].changes.find((c) => c.label === "Timeout (ms)");
+    expect(change).toBeDefined();
+    // The two sides must not render identically.
+    expect(change?.from).not.toBe(change?.to);
+    expect(change?.from).toBe('"8000"');
+    expect(change?.to).toBe("8000");
+  });
+
+  it("leaves genuinely-distinct renderings untouched", () => {
+    const from = routeVersion(1, baseRoute, [{ id: "s1", orderIndex: 0, modelId: "gpt-4o" }]);
+    const to = routeVersion(2, baseRoute, [{ id: "s1", orderIndex: 0, modelId: "gpt-4o-mini" }]);
+    const change = buildRouteDiff(from, to).rows[0].changes[0];
+    expect(change.from).toBe("gpt-4o");
+    expect(change.to).toBe("gpt-4o-mini");
+  });
+});
+
+describe("buildRouteDiff — pure step reorder (M1)", () => {
+  it("surfaces a reorder-only change (same steps, different order) as non-empty, naming the moved steps", () => {
+    // Two versions with the SAME two steps by id, but swapped order. moveStep()
+    // rewrites orderIndex and resets the route's entryStepId — both must show.
+    const stepA = { id: "sA", providerPreference: "openai", modelId: "gpt-4o" };
+    const stepB = { id: "sB", providerPreference: "anthropic", modelId: "claude-3" };
+    const from = routeVersion(
+      1,
+      { ...baseRoute, entryStepId: "sA" },
+      [
+        { ...stepA, orderIndex: 0 },
+        { ...stepB, orderIndex: 1 },
+      ]
+    );
+    const to = routeVersion(
+      2,
+      { ...baseRoute, entryStepId: "sB" },
+      [
+        { ...stepB, orderIndex: 0 },
+        { ...stepA, orderIndex: 1 },
+      ]
+    );
+    const model = buildRouteDiff(from, to);
+
+    // Truthfulness: a reorder is NOT "structurally identical".
+    expect(model.empty).toBe(false);
+
+    // Both moved steps surface as Position changes (named by their step title).
+    const stepRows = model.rows.filter((r) => r.anchorPath.startsWith("step."));
+    expect(stepRows.length).toBe(2);
+    for (const row of stepRows) {
+      expect(row.kind).toBe("changed");
+      expect(row.changes.some((c) => c.label === "Position")).toBe(true);
+    }
+    const movedTitles = stepRows.map((r) => r.title);
+    expect(movedTitles.some((t) => t.includes("anthropic/claude-3"))).toBe(true);
+    expect(movedTitles.some((t) => t.includes("openai/gpt-4o"))).toBe(true);
+
+    // The entry step change surfaces in route metadata.
+    const meta = model.rows.find((r) => r.anchorPath === "route");
+    expect(meta?.changes.find((c) => c.label === "Entry step")).toMatchObject({
+      from: "sA",
+      to: "sB",
+    });
+
+    // And the publish-confirm summary must NOT claim "No changes".
+    expect(summarizeDiff(model)).not.toContain("No changes");
+    expect(summarizeDiff(model)).toContain("step");
+  });
+
+  it("carries the snapshot stepId on changed/added step rows for drift-proof deep-linking (m4)", () => {
+    const from = routeVersion(1, baseRoute, [{ id: "s1", orderIndex: 0, modelId: "a" }]);
+    const to = routeVersion(2, baseRoute, [
+      { id: "s1", orderIndex: 0, modelId: "b" },
+      { id: "s2", orderIndex: 1, modelId: "new" },
+    ]);
+    const model = buildRouteDiff(from, to);
+    const changed = model.rows.find((r) => r.kind === "changed" && r.anchorPath.startsWith("step."));
+    const added = model.rows.find((r) => r.kind === "added");
+    expect(changed?.stepId).toBe("s1");
+    expect(added?.stepId).toBe("s2");
+  });
+});
+
+describe("buildRouteDiff — publish blast radius (M2: draft vs live)", () => {
+  // VersionsPanel computes the publish confirm by diffing the pending draft
+  // (shaped like a stored snapshot) against the latest published snapshot, then
+  // summarizing it. These assertions cover that exact computation.
+  const liveSnapshot = routeVersion(3, { ...baseRoute, name: "Live" }, [
+    { id: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true },
+  ]);
+
+  it("reports the changes the draft introduces over the live version", () => {
+    const draft = {
+      version: null,
+      routeSnapshot: { ...baseRoute, name: "Live" },
+      stepsSnapshot: [
+        { id: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o-mini", enabled: true },
+      ],
+    };
+    const model = buildRouteDiff(liveSnapshot, draft);
+    const summary = summarizeDiff(model);
+    // The confirm shows THIS publish's blast radius, not the previous change.
+    expect(model.empty).toBe(false);
+    expect(summary).toContain("1 step changed");
+    expect(model.rows[0].changes.find((c) => c.label === "Model")).toMatchObject({
+      from: "gpt-4o",
+      to: "gpt-4o-mini",
+    });
+  });
+
+  it("reports an honest empty blast radius when the draft equals the live version", () => {
+    const draft = {
+      version: null,
+      routeSnapshot: { ...baseRoute, name: "Live" },
+      stepsSnapshot: [
+        { id: "s1", orderIndex: 0, providerPreference: "openai", modelId: "gpt-4o", enabled: true },
+      ],
+    };
+    const model = buildRouteDiff(liveSnapshot, draft);
+    expect(model.empty).toBe(true);
+    expect(summarizeDiff(model)).toBe("No changes between the selected versions.");
+  });
+
+  it("a reorder-only draft confirms as a real change, not 'No changes' (M1 feeds M2)", () => {
+    const live = routeVersion(
+      2,
+      { ...baseRoute, entryStepId: "s1" },
+      [
+        { id: "s1", orderIndex: 0, modelId: "a" },
+        { id: "s2", orderIndex: 1, modelId: "b" },
+      ]
+    );
+    const draft = {
+      version: null,
+      routeSnapshot: { ...baseRoute, entryStepId: "s2" },
+      stepsSnapshot: [
+        { id: "s2", orderIndex: 0, modelId: "b" },
+        { id: "s1", orderIndex: 1, modelId: "a" },
+      ],
+    };
+    const model = buildRouteDiff(live, draft);
+    expect(model.empty).toBe(false);
+    expect(summarizeDiff(model)).not.toContain("No changes");
+  });
+});
+
 describe("buildRouteDiff — changed fields", () => {
   it("detects a changed step field with a deep-link fieldPath", () => {
     const from = routeVersion(1, baseRoute, [
