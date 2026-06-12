@@ -5,7 +5,6 @@
   import {
     NAV_GROUPS,
     CLAIMS_HREF,
-    RUNS_HREF,
     WORKSPACE_HOME_HREF,
     isWorkNavActive,
     navGroupContainsPath,
@@ -182,7 +181,7 @@
       <h1 id="mobile-gate-heading" class="mobile-gate-title">This screen needs a bigger window</h1>
       <p class="mobile-gate-desc">
         You can read your <a href={WORKSPACE_HOME_HREF}>Home</a>, an individual
-        <a href={RUNS_HREF}>run</a>, and your <a href={CLAIMS_HREF}>Claims</a> on a phone. Setup, routing,
+        run, and your <a href={CLAIMS_HREF}>Claims</a> on a phone. Setup, routing,
         and the consoles that change things need a desktop or tablet — they aren't usable at this width, so we
         don't pretend they are.
       </p>
@@ -867,10 +866,55 @@
      teasing. Pages can opt their own controls out with [data-mobile-hide]; we
      also hide the run console's known action regions (cancel / restart) so the
      console reads as a status view on a phone. The live-run chip and read links
-     stay. */
+     stay.
+
+     The /claims surface mounts ConnectGraphExplorer (+ ConnectGraphReadinessWizard),
+     whose mutation affordances POST/PATCH/DELETE to the Connect pipeline. We hide
+     every mutation *region* by a small set of stable container class selectors so
+     the contract is robust to internal explorer changes (the explorer logic is
+     untouched — we only suppress the action chrome). Read-only viewing
+     (pan/zoom/select/inspect, glossary, provenance, recheck results, guidance)
+     stays live. Covered explorer/wizard mutation regions:
+       .review-actions        — verdict approve/reject/supported (performReview)
+       .dossier-actions        — Accept · supported / Exclude (performEvidenceAccept/Exclude)
+       .dossier-recheck        — Re-check now (runEvidenceRecheck)
+       .remove-section         — Remove from graph (removeFromGraph, DELETE)
+       .cohort-complete-actions — Start next run (createReadinessRun)
+       .revalidate-actions      — Auto-remediate (startAutoRemediation)
+       .wizard-actions          — scan / saveMapping / syncPack / import /
+                                  linkSources / embed / validate (readiness wizard)
+
+     Also covered (added in the fix-forward audit):
+       .lib-new                 — readiness library "New run" create (createReadinessRun, POST)
+       .lib-run-archive         — readiness library archive (archiveReadinessRun, PATCH)
+       .run-error-banner-actions — failed-run banner restart (restartJob, POST /restart)
+       .switcher-control        — /home active-graph select on:change (POST /<id>/activate)
+
+     Also covered (/claims/memory revoke — iteration 3):
+       .item-actions            — memory page per-observation Revoke button (POST /revoke)
+       .memory-revoke-error     — memory page per-observation revoke-error banner + "Try again"
+                                  (re-fires POST /revoke; the outer page-load error banner's
+                                  "Try again" calls invalidateAll and is intentionally NOT hidden)
+
+     The verdict keyboard shortcuts (a/w/u) bypass CSS hiding, so they are guarded
+     separately in ConnectGraphExplorer's handleReviewKeydown, which early-returns
+     when a [data-mobile-readonly="true"] shell is present in the DOM. */
   .shell-mobile-readonly :global([data-mobile-hide]),
   .shell-mobile-readonly :global(.run-actions),
-  .shell-mobile-readonly :global(.run-cancel-wrap) {
+  .shell-mobile-readonly :global(.run-cancel-wrap),
+  .shell-mobile-readonly :global(.run-error-banner-actions),
+  .shell-mobile-readonly :global(.review-actions),
+  .shell-mobile-readonly :global(.dossier-actions),
+  .shell-mobile-readonly :global(.dossier-recheck),
+  .shell-mobile-readonly :global(.remove-section),
+  .shell-mobile-readonly :global(.cohort-complete-actions),
+  .shell-mobile-readonly :global(.revalidate-actions),
+  .shell-mobile-readonly :global(.wizard-actions),
+  .shell-mobile-readonly :global(.lib-new),
+  .shell-mobile-readonly :global(.lib-run-archive),
+  .shell-mobile-readonly :global(.switcher-control),
+  .shell-mobile-readonly :global(.item-actions),
+  .shell-mobile-readonly :global(.memory-revoke-error) {
     display: none !important;
   }
   .shell-mobile-readonly :global(a),
