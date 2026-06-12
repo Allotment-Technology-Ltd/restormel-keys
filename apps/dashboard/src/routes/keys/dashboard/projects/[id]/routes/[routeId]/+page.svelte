@@ -19,6 +19,7 @@
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { ROUTE_STEP_PROVIDER_OPTIONS } from "$lib/route-step-providers";
   import VersionsPanel from "$lib/components/dashboard/VersionsPanel.svelte";
+  import RouteResolutionPreview from "$lib/components/dashboard/RouteResolutionPreview.svelte";
 
   $: returnContext = parseReturnTo($page.url.searchParams);
   $: guardrailsEnabled = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).guardrails;
@@ -2380,10 +2381,17 @@
     </div>
   {:else}
     <div id="route-panel-more" role="tabpanel" aria-labelledby="route-tab-more" tabindex="0" class="route-tab-panel">
+      {#if data.project && data.route}
+        <RouteResolutionPreview
+          projectId={data.project.id}
+          routeId={data.route.id}
+          environmentId={data.route.environmentId}
+        />
+      {/if}
       <section class="section">
         <h2 class="section-title">Logs</h2>
         <p class="section-desc">Request and trace logs for this route.</p>
-        <a href={DASHBOARD_BASE + "/logs"} class="btn btn-secondary">Open Logs & Traces</a>
+        <a href="{DASHBOARD_BASE}/logs?route={data.route?.id ?? ''}" class="btn btn-secondary">Open Logs & Traces</a>
       </section>
     </div>
   {/if}
