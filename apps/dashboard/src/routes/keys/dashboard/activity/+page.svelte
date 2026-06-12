@@ -8,6 +8,7 @@
   import { SUITE_MODULES, type SuiteModule } from "$lib/suite/suite-modules";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { integrationStackTemplatesForFlags } from "$lib/integration-catalog-for-flags";
+  import type { ConnectCompletionSignals } from "./+page.server";
 
   export let data: {
     workspaceId: string | null;
@@ -65,7 +66,17 @@
       noRouteCount24h: number;
       hasAnyRoutePolicyBinding: boolean;
     };
+    connectCompletion: ConnectCompletionSignals;
+    trustStrip: Promise<{
+      trust_score: number;
+      g2: { ok_pct: number };
+      verification_states?: Record<string, number>;
+      units: number;
+      last_verified_at: string | null;
+    } | null>;
   };
+
+  const CONNECT_BASE = DASHBOARD_BASE + "/connect";
 
   const isFree = data.entitlements?.plan === "free";
 
@@ -78,6 +89,7 @@
     logsVisited = localStorage.getItem(LOGS_VISITED_KEY) === "true";
   });
 
+  // ── Routing (Keys) journey checklist ────────────────────────────────────
   $: setupSteps = [
     { id: "workspace", label: "Workspace is ready", done: Boolean(data.setup?.workspaceCreatedAt), href: null, cta: "" },
     { id: "projects", label: "Create your first project", done: (data.setup?.projectCount ?? 0) > 0, href: DASHBOARD_BASE + "/projects", cta: "Open Projects" },
@@ -88,13 +100,51 @@
     { id: "logs", label: "Review logs once", done: logsVisited, href: DASHBOARD_BASE + "/logs", cta: "Open Logs" },
   ];
   $: setupUiHidden = $page.data.dashboardUiHidden ?? [];
-  /** Steps whose target screen is not hidden by RESTORMEL_DASHBOARD_UI_HIDDEN */
   $: setupStepsForUi = setupSteps.filter((step) => !step.href || !isDashboardHrefUiHidden(step.href, setupUiHidden));
   $: setupDoneCount = setupStepsForUi.filter((step) => step.done).length;
   $: setupTotalCount = setupStepsForUi.length;
   $: nextStep = setupStepsForUi.find((step) => !step.done) ?? null;
   $: allSetupDone = setupTotalCount > 0 && setupDoneCount === setupTotalCount;
   $: suiteApps = ($page.data.suiteModulesForUi ?? SUITE_MODULES).filter((m: SuiteModule) => m.id !== "keys");
+
+  // ── Verified context (Connect) journey steps ─────────────────────────────
+  // Step completion is derived from connectCompletion signals — no extra queries.
+  $: connectSteps = [
+    {
+      id: "store",
+      label: "Connect a graph store",
+      done: data.connectCompletion.storeConnected,
+      href: CONNECT_BASE + "/pipeline?step=store",
+      cta: data.connectCompletion.storeConnected ? "Review store" : "Connect store",
+    },
+    {
+      id: "ingest",
+      label: "Run first ingest — turn docs into verified context",
+      done: data.connectCompletion.firstRunStarted,
+      href: data.connectCompletion.firstRunStarted
+        ? CONNECT_BASE + "/ingest"
+        : CONNECT_BASE + "/pipeline?step=launch",
+      cta: data.connectCompletion.firstRunStarted ? "View runs" : "Start ingest run",
+    },
+    {
+      id: "review",
+      label: "Review claims in the graph explorer",
+      done: data.connectCompletion.firstRunCompleted,
+      href: CONNECT_BASE + "/graph",
+      cta: "Open graph explorer",
+    },
+    {
+      id: "agent",
+      label: "Wire an agent to your verified context",
+      done: data.connectCompletion.agentReady,
+      href: CONNECT_BASE + "/mcp",
+      cta: "Agent setup",
+    },
+  ];
+  $: connectDoneCount = connectSteps.filter((s) => s.done).length;
+  $: connectTotalCount = connectSteps.length;
+  $: connectNextStep = connectSteps.find((s) => !s.done) ?? null;
+  $: allConnectDone = connectTotalCount > 0 && connectDoneCount === connectTotalCount;
 
   $: testingCiSteps = [
     {
@@ -128,6 +178,26 @@
   $: showStackExport = Boolean(data.workspaceId) && integrationStackTemplatesForFlags(moduleFlags).length > 0;
   $: showTestingCi = testingOn;
   $: showMoreSetup = showStackExport || showTestingCi;
+
+  /** Compact ISO date → "3 Jun 2026" — avoids importing a date library. */
+  function fmtDate(iso: string | null): string {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  /** Count unverified/review-state claims from scorecard.verification_states. */
+  function reviewCount(states: Record<string, number> | undefined): number {
+    if (!states) return 0;
+    return (states.unverified ?? 0) + (states.contradicted ?? 0);
+  }
 </script>
 
 <svelte:head>
@@ -138,8 +208,8 @@
   <div class="overview-header-text">
     <h1 class="page-title">Workspace overview</h1>
     <p class="page-desc overview-header-desc">
-      Live traffic, setup checklist, and suite shortcuts for the project you selected above. Open
-      <a href={DASHBOARD_BASE + "/connect"}>Connect</a> when you are ready to ingest and build your graph.
+      Verified context status, setup checklists, and live traffic for your workspace.
+      The <a href={CONNECT_BASE}>Connect hub</a> is your workspace for ingesting and reviewing graph data.
     </p>
   </div>
 </header>
@@ -150,8 +220,131 @@
   </p>
 {/if}
 
+<!-- ── Trust strip ─────────────────────────────────────────────────────── -->
+<!-- Quotes the scorecard service — never recomputes. Streams in after shell. -->
+<!-- Claims-ledger: row 2 (supported = verbatim quote), row 1 (validated against source). -->
+{#await data.trustStrip}
+  <div class="trust-strip trust-strip--loading" aria-label="Loading verified context status" aria-busy="true">
+    <span class="trust-strip-skel trust-strip-skel--wide"></span>
+    <span class="trust-strip-skel"></span>
+    <span class="trust-strip-skel"></span>
+  </div>
+{:then scorecard}
+  {#if scorecard}
+    {@const supported = scorecard.verification_states?.supported ?? 0}
+    {@const totalUnits = scorecard.units}
+    {@const supportedPct = totalUnits > 0 ? Math.round((supported / totalUnits) * 100) : 0}
+    {@const needsReview = reviewCount(scorecard.verification_states)}
+    <div class="trust-strip panel" aria-label="Verified context status">
+      <div class="trust-strip-inner">
+        <div class="trust-strip-score">
+          <span class="trust-score-num">{scorecard.trust_score}</span>
+          <span class="trust-score-label">Trust score</span>
+        </div>
+        <div class="trust-strip-divider" aria-hidden="true"></div>
+        <div class="trust-strip-stat">
+          <span class="trust-stat-num">{supportedPct}%</span>
+          <span class="trust-stat-label">Supported claims</span>
+        </div>
+        {#if needsReview > 0}
+          <div class="trust-strip-divider" aria-hidden="true"></div>
+          <div class="trust-strip-stat trust-strip-stat--review">
+            <span class="trust-stat-num trust-stat-num--review">{needsReview}</span>
+            <span class="trust-stat-label">Need review</span>
+          </div>
+        {/if}
+        {#if scorecard.last_verified_at}
+          <div class="trust-strip-divider trust-strip-divider--hide-sm" aria-hidden="true"></div>
+          <div class="trust-strip-stat trust-strip-stat--verified trust-strip-stat--hide-sm">
+            <span class="trust-stat-label">Last verified</span>
+            <span class="trust-stat-sub">{fmtDate(scorecard.last_verified_at)}</span>
+          </div>
+        {/if}
+      </div>
+      <div class="trust-strip-ctas">
+        <a class="trust-cta" href={CONNECT_BASE + "#trust-ledger"}>View trust ledger</a>
+        {#if needsReview > 0}
+          <a class="trust-cta trust-cta--review" href={CONNECT_BASE + "/graph?filter=review"}>
+            Review {needsReview} {needsReview === 1 ? "claim" : "claims"}
+          </a>
+        {/if}
+      </div>
+    </div>
+  {:else}
+    <!-- No graph yet — show an invitation into the Connect journey. -->
+    <div class="trust-strip trust-strip--empty panel" aria-label="No verified context yet">
+      <div class="trust-strip-inner">
+        <p class="trust-empty-msg">
+          No verified context yet.
+          <a href={CONNECT_BASE + "/pipeline?step=store"}>Start your first ingest run</a>
+          to build a graph your agents can trust.
+        </p>
+      </div>
+    </div>
+  {/if}
+{:catch}
+  <!-- Trust strip error — silent; the checklist below still works. -->
+{/await}
+
+<!-- ── Verified context journey ──────────────────────────────────────────── -->
+<section class="overview-journey panel" aria-labelledby="connect-journey-h">
+  <h2 id="connect-journey-h" class="overview-section-title">Verified context journey</h2>
+  <p class="overview-section-desc">
+    Connect a graph store, ingest your documents, review claims with the AI, then wire
+    an agent. Each step is independently verifiable.
+  </p>
+  {#if allConnectDone}
+    <div class="next-step-card next-step-card--done">
+      <p class="next-step-kicker">Complete</p>
+      <p class="next-step-title">Verified context is live</p>
+      <p class="next-step-desc">
+        Your graph is ingested, reviewed, and wired to an agent.
+        <a href={CONNECT_BASE + "/graph"}>Explore the graph</a>
+        or
+        <a href={CONNECT_BASE + "/ingest"}>start a new run</a>.
+      </p>
+    </div>
+  {:else if connectNextStep}
+    <div class="next-step-card">
+      <p class="next-step-kicker">Next — {connectDoneCount + 1} of {connectTotalCount}</p>
+      <p class="next-step-title">{connectNextStep.label}</p>
+      <a class="btn btn-primary" href={connectNextStep.href}>{connectNextStep.cta}</a>
+    </div>
+  {/if}
+  <div class="setup-progress-wrap">
+    <div class="setup-progress-label">{connectDoneCount} of {connectTotalCount} complete</div>
+    <div
+      class="setup-progress-track"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax={connectTotalCount}
+      aria-valuenow={connectDoneCount}
+      aria-label="Verified context journey progress"
+    >
+      <span class="setup-progress-fill" style={`width:${(connectDoneCount / connectTotalCount) * 100}%`}></span>
+    </div>
+  </div>
+  <ul class="setup-list connect-list">
+    {#each connectSteps as step}
+      <li class="connect-step">
+        <span class={step.done ? "step-done" : "step-open"} aria-hidden="true">
+          {step.done ? "✓" : "○"}
+        </span>
+        <span class="connect-step-label">{step.label}</span>
+        {#if !step.done && step.href}
+          <a class="connect-step-cta" href={step.href}>{step.cta}</a>
+        {/if}
+      </li>
+    {/each}
+  </ul>
+</section>
+
+<!-- ── Routing (Keys) journey ────────────────────────────────────────────── -->
 <section class="overview-primary panel" aria-labelledby="overview-primary-h">
-  <h2 id="overview-primary-h" class="overview-primary-heading">Setup</h2>
+  <h2 id="overview-primary-h" class="overview-section-title">Gateway routing setup</h2>
+  <p class="overview-section-desc">
+    Projects, connections, gateway keys, routes, and your first request.
+  </p>
   {#if allSetupDone}
     <div class="next-step-card">
       <p class="next-step-kicker">Setup complete</p>
@@ -182,6 +375,7 @@
       aria-valuemin="0"
       aria-valuemax={setupTotalCount}
       aria-valuenow={setupDoneCount}
+      aria-label="Gateway routing setup progress"
     >
       <span class="setup-progress-fill" style={`width:${(setupDoneCount / setupTotalCount) * 100}%`}></span>
     </div>
@@ -425,6 +619,206 @@
   .overview-header-desc {
     margin-top: var(--space-1);
   }
+  /* ── Trust strip ─────────────────────────────────────────────────────── */
+  .trust-strip {
+    margin-bottom: var(--space-5);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-4);
+  }
+  .trust-strip--loading {
+    min-height: 3.5rem;
+    background: var(--brut-white);
+    border: var(--brut-border-width) solid var(--brut-ink);
+    box-shadow: var(--brut-shadow);
+  }
+  .trust-strip--empty {
+    background: var(--brut-white);
+  }
+  .trust-strip-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+  }
+  .trust-strip-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 3.5rem;
+  }
+  .trust-score-num {
+    font-family: var(--brut-font);
+    font-size: var(--text-3xl);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--brut-ink);
+  }
+  .trust-score-label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--rm-muted);
+    margin-top: 2px;
+  }
+  .trust-strip-divider {
+    width: 1px;
+    height: 2.5rem;
+    background: var(--rm-border);
+    flex-shrink: 0;
+  }
+  .trust-strip-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .trust-stat-num {
+    font-family: var(--brut-font);
+    font-size: var(--text-xl);
+    font-weight: 900;
+    color: var(--brut-ink);
+    line-height: 1;
+  }
+  .trust-stat-num--review {
+    color: var(--coral-alert, #e05533);
+  }
+  .trust-stat-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--rm-muted);
+    margin-top: 2px;
+  }
+  .trust-stat-sub {
+    font-size: var(--text-xs);
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    color: var(--rm-muted);
+    margin-top: 2px;
+  }
+  @media (max-width: 640px) {
+    .trust-strip-divider--hide-sm,
+    .trust-strip-stat--hide-sm {
+      display: none;
+    }
+  }
+  .trust-strip-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .trust-cta {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--rm-border);
+    background: var(--brut-white);
+    color: var(--rm-sage);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--brut-ink);
+    transition: transform 0.06s ease, box-shadow 0.06s ease;
+  }
+  .trust-cta:hover {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+  .trust-cta--review {
+    background: color-mix(in srgb, var(--coral-alert, #e05533) 10%, var(--brut-white));
+    border-color: color-mix(in srgb, var(--coral-alert, #e05533) 45%, var(--rm-border));
+    color: var(--coral-alert, #e05533);
+  }
+  .trust-strip-skel {
+    display: block;
+    height: 1.25rem;
+    width: 5rem;
+    background: color-mix(in srgb, var(--rm-border) 60%, transparent);
+    animation: skel-pulse 1.4s ease-in-out infinite;
+    border-radius: 0;
+  }
+  .trust-strip-skel--wide {
+    width: 7rem;
+  }
+  @keyframes skel-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  .trust-empty-msg {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: 1.5;
+  }
+  .trust-empty-msg a {
+    color: var(--rm-sage);
+    font-weight: 500;
+  }
+  /* ── Shared section header ────────────────────────────────────────────── */
+  .overview-section-title {
+    margin: 0 0 var(--space-1);
+    font-family: var(--brut-font);
+    font-size: var(--text-base);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--brut-ink);
+  }
+  .overview-section-desc {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    line-height: 1.55;
+    max-width: 36rem;
+  }
+  /* ── Verified context journey section ───────────────────────────────── */
+  .overview-journey {
+    margin-bottom: var(--space-5);
+  }
+  .connect-list {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .connect-step {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--rm-border);
+    background: var(--rm-surface);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+  }
+  .connect-step-label {
+    min-width: 0;
+    line-height: 1.35;
+    color: var(--rm-text);
+  }
+  .connect-step-cta {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--rm-sage);
+    text-decoration: none;
+    white-space: nowrap;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid color-mix(in oklab, var(--rm-sage) 35%, var(--rm-border));
+    background: color-mix(in oklab, var(--rm-sage) 8%, var(--rm-surface));
+    border-radius: 0;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+  .connect-step-cta:hover {
+    background: color-mix(in oklab, var(--rm-sage) 14%, var(--rm-surface));
+    border-color: var(--rm-sage);
+  }
+  /* ── Routing setup section ───────────────────────────────────────────── */
   .overview-inline-code {
     font-family: var(--rm-font-mono, ui-monospace, monospace);
     font-size: 0.85em;
@@ -455,15 +849,7 @@
   }
   .overview-primary {
     max-width: min(40rem, 100%);
-    margin-bottom: var(--space-4);
-  }
-  .overview-primary-heading {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--rm-dim);
+    margin-bottom: var(--space-5);
   }
   .overview-more-setup {
     margin-bottom: var(--space-5);
@@ -532,10 +918,17 @@
       align-items: start;
     }
   }
-  .error-msg {
-    color: var(--coral-alert);
+  .error-banner {
+    border: var(--brut-border-width) solid var(--coral-alert, #e05533);
+    background: color-mix(in srgb, var(--coral-alert, #e05533) 8%, var(--brut-white));
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--brut-shadow);
+  }
+  .error-banner-msg {
+    margin: 0;
+    color: var(--coral-alert, #e05533);
     font-size: var(--text-sm);
-    margin: 0 0 var(--space-4);
   }
   .panel {
     border: var(--brut-border-width) solid var(--brut-ink);
@@ -552,9 +945,6 @@
     letter-spacing: 0.02em;
     color: var(--brut-ink);
   }
-  .panel h3.panel-title {
-    font-size: var(--text-base);
-  }
   .next-step-card {
     border: var(--brut-border-width) solid var(--brut-ink);
     border-radius: 0;
@@ -562,6 +952,9 @@
     background: var(--color-yellow);
     padding: var(--space-4);
     margin-bottom: var(--space-3);
+  }
+  .next-step-card--done {
+    background: color-mix(in srgb, var(--signal-teal, #00b4a6) 12%, var(--brut-white));
   }
   .next-step-kicker {
     margin: 0;
@@ -581,6 +974,10 @@
     margin: 0 0 var(--space-2);
     color: var(--rm-muted);
     font-size: var(--text-sm);
+  }
+  .next-step-desc a {
+    color: var(--rm-sage);
+    font-weight: 500;
   }
   .btn {
     display: inline-block;
@@ -613,32 +1010,6 @@
   .next-step-code {
     font-family: var(--rm-font-mono, ui-monospace, monospace);
     font-size: 0.85em;
-  }
-  .overview-shortcut-list {
-    list-style: none;
-    margin: 0 0 var(--space-3);
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-  .overview-shortcut-list a {
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--rm-sage);
-    text-decoration: none;
-  }
-  .overview-shortcut-list a:hover {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .overview-signals {
-    margin-bottom: var(--space-3);
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--rm-border);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
   .signal-compact {
     margin: 0;
@@ -740,60 +1111,6 @@
   .secondary-link a {
     color: var(--rm-muted);
   }
-  .overview-shortcuts-panel .projects {
-    margin-top: var(--space-3);
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--rm-border);
-  }
-  .projects-heading {
-    margin: 0 0 var(--space-2);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--rm-dim);
-  }
-  .projects ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-  }
-  .projects a {
-    color: var(--rm-sage);
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .projects a:hover {
-    text-decoration: underline;
-  }
-  .projects-single {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-  }
-  .projects-label {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--rm-dim);
-  }
-  .projects-single a {
-    color: var(--rm-sage);
-    font-weight: 500;
-    text-decoration: none;
-  }
-  .projects-single a:hover {
-    text-decoration: underline;
-  }
-  .projects-empty {
-    margin: var(--space-2) 0 0;
-  }
   .overview-shortcuts-panel,
   .overview-activity-panel {
     min-height: 0;
@@ -881,11 +1198,6 @@
     background: var(--rm-surface);
     color: var(--rm-muted);
   }
-  .testing-ci-picto {
-    font-size: 1.1rem;
-    line-height: 1;
-    opacity: 0.92;
-  }
   .testing-ci-status {
     display: inline-flex;
     align-items: center;
@@ -933,5 +1245,59 @@
     font-size: var(--text-xs);
     color: var(--rm-dim);
     line-height: 1.45;
+  }
+  .projects-heading {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
+  }
+  .projects ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+  }
+  .projects a {
+    color: var(--rm-sage);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .projects a:hover {
+    text-decoration: underline;
+  }
+  .projects-single {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+  }
+  .projects-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--rm-dim);
+  }
+  .projects-single a {
+    color: var(--rm-sage);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .projects-single a:hover {
+    text-decoration: underline;
+  }
+  .projects-empty {
+    margin: var(--space-2) 0 0;
+  }
+  .empty-msg {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
   }
 </style>
