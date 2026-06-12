@@ -2,6 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd .. && pnpm install",
   "buildCommand": "pnpm run build",
-  "ignoreCommand": "bash ../../scripts/vercel-ignore-dashboard.sh",
-  "_comment_crons": "NO Vercel crons. Hobby rejects this project's cron config at deploy-config time (production deploys errored with no build logs even at daily frequency), blocking all releases. Periodic drain is owned by the Coolify ingest-worker daemon (apps/dashboard/scripts/connect-ingest-worker-daemon.ts); the post-POST inline waitUntil drain still runs on every ingest, and durable-runs lease/heartbeat reclaim recovers stalled jobs on the next drain. Do not re-add a Vercel cron — it re-blocks production. See docs/infra/coolify-migration-plan-2026-06.md."
+  "ignoreCommand": "bash ../../scripts/vercel-ignore-dashboard.sh"
 }
