@@ -253,6 +253,22 @@ renders an explicit absent-state, never a fabricated `0`.
 `/activity` and `/connect` 308-redirect to `/home` (see §A); login lands on `/home`. The page adds
 no new stats query — every value is read from the streamed load (Pivot Stage 1.8).
 
+### §3 shell-element states — Shell v2 (Stage R6)
+
+The three shell upgrades from §3.2 (`docs/design/keys-northstar-redesign-2026-06.md`) define their
+states below. The live-run chip is fed by ONE workspace-scoped poll (30s) until W3.1's SSE lands;
+the chip poll adds no stats/scorecard fetches (poll diet, PR #259).
+
+| Element | Loading / idle | Empty / zero | Stalled / error | Active / populated |
+|---------|----------------|--------------|-----------------|--------------------|
+| **Live-run chip** (`LiveRunChip`, topbar, any page) | Before the first poll resolves the chip is simply absent (no skeleton in the topbar) | No active ingest run → chip is **not rendered** (never an empty shell, so topbar a11y is untouched) | Active run with a stale worker heartbeat or expired lease (the W1.4 model) → amber chip, label flips to `STALLED`, dot stops pulsing; `aria-label` says "stalled"; still links to `/runs/[id]` | `● INGEST 62% · 2:41` mono chip, pulsing dot (static under `prefers-reduced-motion`), informative `aria-label`, links to `/runs/[id]?from=chip` |
+| **DossierRail** (`DossierRail`, shared right rail) | Consumer renders its own loading/empty inside the rail body (reuse `BrutalLoadingState` / `EmptyState`) | Consumer renders `EmptyState` in the body; the rail chrome always renders the title + close | Consumer renders `BrutalErrorBanner` in the body | 420px hard-bordered drawer with offset shadow; `role="dialog"` + `aria-modal` + `aria-labelledby`; Escape closes, focus is trapped, focus returns to the opener; first consumer = the Runs-list quick-peek (`RunQuickPeek`) |
+| **Mobile read-only tier** (layout gate) | n/a | n/a | Off-tier path on a phone → the honest gate ("This screen needs a bigger window") naming the three readable surfaces, no disabled-and-teasing actions | `/home`, `/runs/[id]`, `/claims` open read-only on a phone: sidebar hidden, full-bleed, ≥44px touch targets, mutating actions hidden (`data-mobile-hide` / known console action regions) |
+
+The Evidence Dossier (W2.2) is the eventual DossierRail consumer for Claims; R6 ships the rail + the
+Runs quick-peek as its one live consumer, and the three bespoke drawers (explorer detail panel, logs
+drawer, proof provenance drawer) migrate onto the rail under W4.4.
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:

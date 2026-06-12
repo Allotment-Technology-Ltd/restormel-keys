@@ -5,6 +5,8 @@
   import {
     NAV_GROUPS,
     CLAIMS_HREF,
+    RUNS_HREF,
+    WORKSPACE_HOME_HREF,
     isWorkNavActive,
     navGroupContainsPath,
     topbarTitle,
@@ -33,6 +35,8 @@
     parseReturnTo,
   } from "$lib/connect/pipeline-config";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
+  import LiveRunChip from "$lib/components/dashboard/LiveRunChip.svelte";
+  import { isMobileAllowedPath } from "$lib/dashboard-mobile-tier";
 
   let palette: CommandPalette | undefined;
   let paletteOpen = false;
@@ -46,6 +50,10 @@
   $: authError = $page.data.authError ?? null;
   $: isAuthRoute = $page.url.pathname === DASHBOARD_BASE + "/login" || $page.url.pathname === DASHBOARD_BASE + "/logout";
   $: currentPath = $page.url.pathname;
+  // R6 mobile read-only tier: the gate opens for /home, /runs/[id], /claims.
+  // On the opened surfaces the shell renders read-only (actions hidden via the
+  // data-mobile-readonly flag below); everywhere else the phone gate stays up.
+  $: mobileAllowed = isMobileAllowedPath(currentPath);
   $: title = topbarTitle(currentPath);
   $: contextualHelp = contextualHelpForPath(currentPath);
   $: projectContextsSource = $page.data.projectContexts ?? [];
@@ -168,26 +176,35 @@
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-{#if isPhone}
+{#if isPhone && !mobileAllowed && !isAuthRoute}
   <div class="mobile-gate-wrap">
     <section class="mobile-gate" aria-labelledby="mobile-gate-heading">
-      <h1 id="mobile-gate-heading" class="mobile-gate-title">Dashboard is desktop-first</h1>
+      <h1 id="mobile-gate-heading" class="mobile-gate-title">This screen needs a bigger window</h1>
       <p class="mobile-gate-desc">
-        This dashboard is designed for larger screens. For the best setup experience, open it on a desktop or tablet.
+        You can read your <a href={WORKSPACE_HOME_HREF}>Home</a>, an individual
+        <a href={RUNS_HREF}>run</a>, and your <a href={CLAIMS_HREF}>Claims</a> on a phone. Setup, routing,
+        and the consoles that change things need a desktop or tablet — they aren't usable at this width, so we
+        don't pretend they are.
       </p>
       <p class="mobile-gate-links">
-        <a href="/keys/docs">Open docs</a>
+        <a href={WORKSPACE_HOME_HREF}>Open Home</a>
+        <span class="mobile-gate-sep">·</span>
+        <a href="/keys/docs">Docs</a>
         <span class="mobile-gate-sep">·</span>
         <a href={developerPortalUrl()} target="_blank" rel="noopener noreferrer">API portal</a>
-        <span class="mobile-gate-sep">·</span>
-        <a href="/founders">Early access</a>
       </p>
     </section>
   </div>
 {:else if isAuthRoute}
   <slot />
 {:else}
-  <div class="shell" class:shell-collapsed={collapsed} data-sveltekit-preload-data="tap">
+  <div
+    class="shell"
+    class:shell-collapsed={collapsed}
+    class:shell-mobile-readonly={isPhone && mobileAllowed}
+    data-mobile-readonly={isPhone && mobileAllowed ? "true" : undefined}
+    data-sveltekit-preload-data="tap"
+  >
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="tap">
         {#if !projectsNavHidden}
@@ -332,6 +349,13 @@
           <span class="topbar-help-sep" aria-hidden="true">·</span>
           <a href={SUITE_MAP_LINK.href} class="topbar-help-link">{SUITE_MAP_LINK.label}</a>
         </nav>
+        {#if user}
+          <!-- R6: live-run chip — appears on any page while an ingest run is active,
+               fed by ONE workspace-scoped 30s poll (W3.1 SSE absent). -->
+          <div class="topbar-live-run">
+            <LiveRunChip />
+          </div>
+        {/if}
         {#if user}
           <button
             type="button"
@@ -676,6 +700,11 @@
     border-radius: 0;
     opacity: 0.7;
   }
+  .topbar-live-run {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
   .topbar-account {
     display: flex;
     align-items: center;
@@ -812,6 +841,42 @@
     color: var(--rm-dim);
     margin: 0 var(--space-2);
   }
+  /* ── R6 mobile read-only tier ─────────────────────────────────────────────
+     On a phone, the opened surfaces (Home, run console, Claims) render the shell
+     without the sidebar, full-bleed, with comfortable padding and ≥44px touch
+     targets. Action chrome that mutates state is hidden — read-only, not teasing. */
+  .shell-mobile-readonly {
+    border: 0;
+    max-width: 100%;
+  }
+  .shell-mobile-readonly .sidebar {
+    display: none;
+  }
+  .shell-mobile-readonly .topbar {
+    padding: var(--space-2) var(--space-4);
+  }
+  .shell-mobile-readonly .topbar-help,
+  .shell-mobile-readonly .topbar-nav-toggle,
+  .shell-mobile-readonly .topbar-palette-btn {
+    display: none;
+  }
+  .shell-mobile-readonly .main {
+    padding: var(--space-4);
+  }
+  /* Hide mutating actions on the opened read-only surfaces — read-only, not
+     teasing. Pages can opt their own controls out with [data-mobile-hide]; we
+     also hide the run console's known action regions (cancel / restart) so the
+     console reads as a status view on a phone. The live-run chip and read links
+     stay. */
+  .shell-mobile-readonly :global([data-mobile-hide]),
+  .shell-mobile-readonly :global(.run-actions),
+  .shell-mobile-readonly :global(.run-cancel-wrap) {
+    display: none !important;
+  }
+  .shell-mobile-readonly :global(a),
+  .shell-mobile-readonly :global(button) {
+    min-height: 44px;
+  }
   .mobile-gate-wrap {
     max-width: var(--rm-container-narrow);
     margin: 0 auto;
@@ -836,6 +901,10 @@
     margin: 0 0 var(--space-4);
     font-size: var(--text-sm);
     color: var(--rm-muted);
+  }
+  .mobile-gate-desc a {
+    color: var(--rm-sage);
+    font-weight: 700;
   }
   .mobile-gate-links {
     margin: 0;
