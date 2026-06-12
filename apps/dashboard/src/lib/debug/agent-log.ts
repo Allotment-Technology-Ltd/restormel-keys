@@ -1,16 +1,16 @@
 import { reportClientDebug } from "$lib/debug/client-debug";
 
-const DEBUG_SESSION_ID = "3ca71a";
-
-/** Legacy Cursor debug ingest (best-effort). */
-const LEGACY_INGEST = "http://127.0.0.1:7415/ingest/4d73a77a-e2c7-48aa-ae41-73a13b42405f";
-
 /**
  * Client-safe debug log. Do not import node:fs here — shared by Svelte components.
  * Server hooks should use `agentLogServer` from `agent-log.server.ts`.
  *
  * Note: We use typeof window to check for browser environment instead of $app/environment
  * to avoid SSR issues where $app/environment might not be available.
+ *
+ * Buffers to sessionStorage (via reportClientDebug) for in-browser inspection. The legacy
+ * "Cursor debug ingest" — a hardcoded `fetch` to `http://127.0.0.1:7415/ingest/...` — was
+ * removed: it shipped in the client bundle and fired `ERR_CONNECTION_REFUSED` on every page
+ * for any browser without that local sink (i.e. all real users). No replacement needed.
  */
 export function agentLog(
   location: string,
@@ -20,19 +20,5 @@ export function agentLog(
   runId = "pre-fix"
 ): void {
   if (typeof window === "undefined") return;
-  const timestamp = Date.now();
   reportClientDebug(location, message, data, hypothesisId, runId);
-  fetch(LEGACY_INGEST, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": DEBUG_SESSION_ID },
-    body: JSON.stringify({
-      sessionId: DEBUG_SESSION_ID,
-      location,
-      message,
-      data,
-      hypothesisId,
-      runId,
-      timestamp,
-    }),
-  }).catch(() => {});
 }
