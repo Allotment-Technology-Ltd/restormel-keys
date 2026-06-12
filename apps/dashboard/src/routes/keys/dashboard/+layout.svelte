@@ -5,7 +5,6 @@
   import {
     NAV_GROUPS,
     CLAIMS_HREF,
-    RUNS_HREF,
     WORKSPACE_HOME_HREF,
     isWorkNavActive,
     navGroupContainsPath,
@@ -182,7 +181,7 @@
       <h1 id="mobile-gate-heading" class="mobile-gate-title">This screen needs a bigger window</h1>
       <p class="mobile-gate-desc">
         You can read your <a href={WORKSPACE_HOME_HREF}>Home</a>, an individual
-        <a href={RUNS_HREF}>run</a>, and your <a href={CLAIMS_HREF}>Claims</a> on a phone. Setup, routing,
+        run, and your <a href={CLAIMS_HREF}>Claims</a> on a phone. Setup, routing,
         and the consoles that change things need a desktop or tablet — they aren't usable at this width, so we
         don't pretend they are.
       </p>
@@ -867,10 +866,33 @@
      teasing. Pages can opt their own controls out with [data-mobile-hide]; we
      also hide the run console's known action regions (cancel / restart) so the
      console reads as a status view on a phone. The live-run chip and read links
-     stay. */
+     stay.
+
+     The /claims surface mounts ConnectGraphExplorer (+ ConnectGraphReadinessWizard),
+     whose mutation affordances POST/PATCH/DELETE to the Connect pipeline. We hide
+     every mutation *region* by a small set of stable container class selectors so
+     the contract is robust to internal explorer changes (the explorer logic is
+     untouched — we only suppress the action chrome). Read-only viewing
+     (pan/zoom/select/inspect, glossary, provenance, recheck results, guidance)
+     stays live. Covered explorer/wizard mutation regions:
+       .review-actions        — verdict approve/reject/supported (performReview)
+       .dossier-actions        — Accept · supported / Exclude (performEvidenceAccept/Exclude)
+       .dossier-recheck        — Re-check now (runEvidenceRecheck)
+       .remove-section         — Remove from graph (removeFromGraph, DELETE)
+       .cohort-complete-actions — Start next run (createReadinessRun)
+       .revalidate-actions      — Auto-remediate (startAutoRemediation)
+       .wizard-actions          — scan / saveMapping / syncPack / import /
+                                  linkSources / embed / validate (readiness wizard) */
   .shell-mobile-readonly :global([data-mobile-hide]),
   .shell-mobile-readonly :global(.run-actions),
-  .shell-mobile-readonly :global(.run-cancel-wrap) {
+  .shell-mobile-readonly :global(.run-cancel-wrap),
+  .shell-mobile-readonly :global(.review-actions),
+  .shell-mobile-readonly :global(.dossier-actions),
+  .shell-mobile-readonly :global(.dossier-recheck),
+  .shell-mobile-readonly :global(.remove-section),
+  .shell-mobile-readonly :global(.cohort-complete-actions),
+  .shell-mobile-readonly :global(.revalidate-actions),
+  .shell-mobile-readonly :global(.wizard-actions) {
     display: none !important;
   }
   .shell-mobile-readonly :global(a),
