@@ -500,6 +500,60 @@ verdict to restore, so undo is honestly **disabled with a reason** rather than p
 verdict. The session tally decrements on undo so the rail never lies about how many claims this session
 currently holds.
 
+### §3 panel states — "Prove it" as a global gesture (Stage W4.3)
+
+The brand habit (UX review §3.5 / north-star §2.4): **any number or badge that asserts trust is a
+link to its evidence.** W4.3 installs one shared, grep-able affordance and wires it across every
+audited trust assertion. The numbers themselves are unchanged — they still come from the scorecard /
+dossier services (no second formula); this stage only routes the *click* to the receipt behind them.
+
+**The shared affordance.** One class, one place: `PROVE_LINK_CLASS` (`"prove-it"`, exported from
+`src/lib/prove-it.ts`), styled globally in `src/lib/styles/brutalist-utilities.css` (`.prove-it`) as a
+dotted-underline + trailing `↗` mono treatment, deliberately distinct from solid nav links and from
+buttons. Rendered by `ProveLink.svelte` or applied directly to a raw `<a>`; the `.prove-it--block`
+modifier drops the inline underline for card/cell links (metric tiles, state chips) while keeping the
+grep-able class and the hover-receipt feel. A prove-it link is **always an `<a>` to evidence** — it
+mutates nothing, so it is safe on the mobile and as-of read-only tiers (no read-only-tier hiding needed).
+
+**Destinations (one URL contract, no dead ends — rubric X4).** All hrefs are built by `prove-it.ts`,
+which quotes the W2.1 explorer contract (`?filter=` / `?unit=`, optional `?as_of=` from W2.5) and the
+canonical section hrefs from `nav-config.ts`:
+- `proveClaimsFilterHref(filter, asOf?)` → `/claims?filter=<verification-slice>` (the explorer)
+- `proveDossierHref(unitId, asOf?)` → `/claims?unit=<id>` (the W2.2 Evidence Dossier)
+- `proveRunVerdictHref(runId, …)` → `/runs/<id>` when the verdict carries its source run; **honestly
+  degrades to `/claims?filter=review`** (the diffed claims) when the payload predates run identities.
+
+**Audit table — surface → assertion → destination.** Every trust number rendered today carries the gesture:
+
+| Surface | Trust assertion | Destination (prove-it) |
+|---|---|---|
+| `/home` trust cap | "N need review" | `/claims?filter=review` |
+| `/home` inbox | "Claims to review" count | `/claims?filter=review` |
+| `/home` inbox | "Latest regression" | producing run `/runs/<id>` (degrade: `/claims?filter=review`) |
+| Scorecard (Home + Prove) | Evidence-bound % | `/claims?filter=unbound` |
+| Scorecard | Embedding coverage % | `/claims?filter=missing_embed` |
+| Scorecard | Validated-supported ratio | `/claims?filter=review` |
+| Scorecard | Per-state chips (supported…excluded) | `/claims?filter=<state>` |
+| Scorecard | "What lowered this score" factor rows | `/claims?filter=<factor's slice>` |
+| Graph answer (Prove › Proof) | MCP answer verified-claim envelope (each injected claim) | `/claims?unit=<id>` (Evidence Dossier) |
+
+Surfaces with no per-idea filter (store-level / graph-level factors: vector index, relation health)
+correctly render **no** prove-it link rather than a dead one. The launch-forecast "92% supported"
+surface named in the frozen pre-Wave-R review does not exist in the current IA; its rule
+(percentage → producing verdict) is captured by `proveRunVerdictHref` for when such a surface lands.
+
+**Public share view — DEFERRED behind the D7 STOP gate.** The public, unauthenticated scorecard share
+URL (`/prove/share`) requires the D7 security decision. The redesign records D7's *direction* (a scoped,
+expiring signed-URL exposure) but states the security review is **mandatory before build**, and no
+signed unauthenticated-exposure design exists in the repo. W4.3 therefore ships the internal gesture in
+full and keeps `/prove/share` an honest placeholder whose copy now names what is ready (the in-app
+gesture) vs what awaits the decision — never a half-secured public surface.
+
+**Lint (best-effort heuristic, documented).** `src/lib/prove-it.test.ts` source-greps the audited
+surfaces (scorecard, provenance drawer, Home) and fails if any drops below its minimum count of
+`prove-it` applications, plus asserts the global `.prove-it` rule exists. It is a regression pin on the
+known trust-assertion surfaces, not a completeness proof across the whole tree.
+
 ### §3 shell-element states — Navigation pending state (nav-pending-fix)
 
 Addresses user report: clicking sidebar items (esp. Sources) showed nothing for a while — old
@@ -574,6 +628,15 @@ When adding or changing copy or nav, check this document and [documentation-stra
 ---
 
 ## Changelog
+
+### "Prove it" global gesture — June 2026 (Stage W4.3)
+
+Added the §3 block **"Prove it" as a global gesture**. One shared, grep-able affordance
+(`PROVE_LINK_CLASS` / `ProveLink.svelte`, global `.prove-it` rule) now links every audited trust
+assertion to its evidence via the `prove-it.ts` destination builders (W2.1/W2.2 deep links; degrade
+rule for regressions). The block carries the full surface → assertion → destination audit table.
+**STOP gate:** the public `/prove/share` view stays deferred behind the D7 security decision — the
+internal gesture shipped in full; the share placeholder copy now names ready-vs-deferred honestly.
 
 ### Re-baseline — June 2026 (Stage W1.1)
 

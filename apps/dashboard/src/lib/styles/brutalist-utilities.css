@@ -200,3 +200,41 @@
   border-top: var(--border);
   margin: var(--space-8) 0;
 }
+
+/**
+ * W4.3 — the global "Prove it" affordance.
+ *
+ * Any number or badge that asserts trust links to its evidence with THIS class
+ * (`PROVE_LINK_CLASS` in lib/prove-it.ts; rendered by ProveLink.svelte or applied
+ * to a raw <a>). The dotted underline + trailing ↗ glyph reads as "open the
+ * receipt" and is deliberately distinct from solid nav links and from buttons.
+ * Defined here (a globally-imported utilities sheet) so the affordance is one
+ * rule, identical on every surface.
+ */
+.prove-it {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+  /* nudge the dotted rule off the baseline so descenders clear it */
+  padding-bottom: 1px;
+  font-weight: 600;
+}
+.prove-it:hover,
+.prove-it:focus-visible {
+  background: var(--color-yellow);
+  border-bottom-style: solid;
+}
+/* The ↗ glyph (ProveLink renders it; raw <a> users may add ::after instead). */
+.prove-it .prove-it-arrow {
+  font-weight: 700;
+}
+/**
+ * Block modifier: a prove-it link wrapping a card/cell (metric tile, chip) keeps
+ * the grep-able class and the hover-receipt feel, but trades the inline dotted
+ * underline (which would draw under the whole block) for a left evidence-rail —
+ * the same "this is a receipt" cue at block scale.
+ */
+.prove-it--block {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
