@@ -17,6 +17,8 @@ type ProviderStatus = "ready" | "degraded" | "blocked";
 function healthFromVerification(verificationStatus: string | null | undefined): ProviderHealth {
   if (verificationStatus === "verified") return "ok";
   if (verificationStatus === "pending") return "warn";
+  // Reference-only connections cannot be verified or executed by Restormel (Stage K2).
+  if (verificationStatus === "reference_only") return "warn";
   return "fail";
 }
 
@@ -48,6 +50,7 @@ function reasonCodeFromProvider(args: {
   if (args.verificationStatus === "failed") return "verification_failed";
   if (args.verificationStatus === "pending") return "verification_pending";
   if (args.verificationStatus === "verified") return "verified";
+  if (args.verificationStatus === "reference_only") return "reference_only";
   return "verification_unknown";
 }
 
@@ -63,6 +66,8 @@ function reasonFromCode(code: string): string {
       return "Provider verification is pending.";
     case "verified":
       return "Provider is verified and available for project use.";
+    case "reference_only":
+      return "Reference-only connection — Restormel cannot verify or execute it. Add a hosted API key.";
     default:
       return "Provider state is unknown. Re-run verification to refresh status.";
   }

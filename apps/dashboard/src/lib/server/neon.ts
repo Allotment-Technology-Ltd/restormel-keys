@@ -1307,19 +1307,37 @@ export async function deleteProviderIntegration(
   return deleted;
 }
 
-/** Update verification state (hook for provider-specific verification). */
+/**
+ * Update verification state from a probe run. Persists status + last_verified_at and, when
+ * provided, a safe (already sanitized — never key material) result summary under
+ * metadata.verification so the UI and the readiness ledger can read the last outcome.
+ */
 export async function updateProviderVerification(
   id: string,
   workspaceId: string,
   status: string,
   actorId: string,
-  actorType: string
+  actorType: string,
+  verification?: { resultKind: string; detail: string }
 ): Promise<ProviderIntegrationRecord | null> {
   const now = Date.now();
+  let metadata: Record<string, unknown> | undefined;
+  if (verification) {
+    const existing = await getProviderIntegration(id, workspaceId);
+    if (!existing) return null;
+    metadata = {
+      ...(existing.metadata ?? {}),
+      verification: {
+        resultKind: verification.resultKind,
+        detail: verification.detail,
+        checkedAt: now,
+      },
+    };
+  }
   return updateProviderIntegration(
     id,
     workspaceId,
-    { verificationStatus: status, lastVerifiedAt: now },
+    { verificationStatus: status, lastVerifiedAt: now, ...(metadata ? { metadata } : {}) },
     { actorId, actorType }
   );
 }

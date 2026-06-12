@@ -16,9 +16,13 @@ export type IntegrationDetail = {
   status: string;
   verificationStatus: string | null;
   hasCredential: boolean;
+  /** Vault-reference connection: Restormel holds no key, so it cannot verify or execute it. */
+  referenceOnly: boolean;
   /** Masked label when an encrypted API key is stored; never raw secret. */
   credentialMasked: string | null;
   lastVerifiedAt: number | null;
+  /** Sanitized summary of the last persisted probe result (metadata.verification.detail). */
+  lastVerificationDetail: string | null;
   createdAt: number;
   /** Distinct model IDs seen in usage aggregates for this provider (workspace-scoped). */
   usageModelIds: string[];
@@ -66,8 +70,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       status: integration.status,
       verificationStatus: integration.verificationStatus ?? null,
       hasCredential: Boolean(integration.credentialRef || integration.hasEncryptedCredential),
+      referenceOnly: Boolean(integration.credentialRef && !integration.hasEncryptedCredential),
       credentialMasked: integration.credentialMasked ?? null,
       lastVerifiedAt: integration.lastVerifiedAt ?? null,
+      lastVerificationDetail: (() => {
+        const v = integration.metadata?.verification;
+        if (v && typeof v === "object" && typeof (v as { detail?: unknown }).detail === "string") {
+          return (v as { detail: string }).detail;
+        }
+        return null;
+      })(),
       createdAt: integration.createdAt,
       usageModelIds,
     };

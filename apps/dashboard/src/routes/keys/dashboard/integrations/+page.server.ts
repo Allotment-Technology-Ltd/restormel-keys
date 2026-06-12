@@ -11,6 +11,8 @@ export type IntegrationSummary = {
   status: string;
   verificationStatus: string | null;
   hasCredential: boolean;
+  /** Vault-reference connection: Restormel holds no key, so it cannot verify or execute it. */
+  referenceOnly: boolean;
   credentialMasked: string | null;
   createdAt: number;
   lastVerifiedAt: number | null;
@@ -31,6 +33,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       status: r.status,
       verificationStatus: r.verificationStatus ?? null,
       hasCredential: Boolean(r.credentialRef || r.hasEncryptedCredential),
+      referenceOnly: Boolean(r.credentialRef && !r.hasEncryptedCredential),
       credentialMasked: r.credentialMasked ?? null,
       createdAt: r.createdAt,
       lastVerifiedAt: r.lastVerifiedAt ?? null,
