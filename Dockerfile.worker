@@ -23,7 +23,9 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 COPY . .
 # Dev deps stay: the daemon runs from TypeScript source via tsx (workspace dev dep).
-RUN pnpm install --frozen-lockfile
+# --prod=false: Coolify injects NODE_ENV=production as a build ARG, which would
+# otherwise make pnpm skip devDependencies (tsx) — same fix as Dockerfile.dashboard.
+RUN pnpm install --frozen-lockfile --prod=false
 # Build the @restormel/* workspace dists the dashboard server code imports.
 RUN pnpm --filter dashboard run precheck
 
