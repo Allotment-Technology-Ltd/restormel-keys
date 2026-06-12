@@ -56,7 +56,7 @@ function runtimeDdlEnabled(): boolean {
  * the current codebase to work correctly.  Update this constant whenever a new
  * migration adds tables/columns that neon.ts functions depend on at runtime.
  */
-const REQUIRED_MIGRATION = "062_connect_claim_versions_asof_lookup.sql";
+const REQUIRED_MIGRATION = "065_projects_connect_infrastructure_flag.sql";
 
 /**
  * Drift gate used by the ensure* functions when runtime DDL is disabled
@@ -623,6 +623,57 @@ export async function ensureRestormelTestingProject(userId: string): Promise<Pro
   const out = await getProject(id, userId);
   if (!out) throw new Error("Restormel Testing project not found after create");
   return out;
+}
+
+/** Display name of the auto-provisioned Connect-owned routing project (Stage R7 / D4). */
+export const CONNECT_INFRASTRUCTURE_PROJECT_NAME = "Workspace infrastructure";
+
+/**
+ * Ensures the Connect-owned "Workspace infrastructure" routing project exists
+ * (dev/prod envs, flagged row — one per workspace convention, mirroring
+ * ensureRestormelTestingProject). Idempotent.
+ */
+export async function ensureConnectInfrastructureProject(userId: string): Promise<Project> {
+  const sql = getSql();
+  const workspace = await getOrCreateDefaultWorkspace(userId);
+  const existing = await sql`
+    SELECT id
+    FROM projects
+    WHERE workspace_id = ${workspace.id} AND COALESCE(is_connect_infrastructure, false) = true
+    LIMIT 1
+  `;
+  if (existing.length > 0) {
+    const p = await getProject((existing[0] as { id: string }).id, userId);
+    if (p) return p;
+  }
+  const id = crypto.randomUUID();
+  const createdAt = Date.now();
+  const envCreatedAt = Date.now();
+  await sql`
+    INSERT INTO projects (id, name, user_id, workspace_id, created_at, is_connect_infrastructure)
+    VALUES (${id}, ${CONNECT_INFRASTRUCTURE_PROJECT_NAME}, ${userId}, ${workspace.id}, ${createdAt}, true)
+  `;
+  await sql`
+    INSERT INTO environments (id, project_id, name, type, created_at)
+    VALUES
+      (${crypto.randomUUID()}, ${id}, 'Development', 'dev', ${envCreatedAt}),
+      (${crypto.randomUUID()}, ${id}, 'Production', 'prod', ${envCreatedAt})
+  `;
+  const out = await getProject(id, userId);
+  if (!out) throw new Error("Workspace infrastructure project not found after create");
+  return out;
+}
+
+/** Id of the workspace's Connect infrastructure project, when one has been provisioned. */
+export async function getConnectInfrastructureProjectId(workspaceId: string): Promise<string | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id
+    FROM projects
+    WHERE workspace_id = ${workspaceId} AND COALESCE(is_connect_infrastructure, false) = true
+    LIMIT 1
+  `;
+  return rows.length > 0 ? (rows[0] as { id: string }).id : null;
 }
 
 /** Get project; returns null if not found or not owner */

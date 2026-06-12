@@ -78,6 +78,13 @@ vi.mock("$lib/debug/server-perf", () => ({
   perfSpan: vi.fn(() => vi.fn()),
 }));
 
+// R7: the workspace-infrastructure module's default deps pull the real data layer
+// (via apply-recommended-routes) — mock it so this unit test stays hermetic.
+vi.mock("$lib/server/connect/workspace-infrastructure", () => ({
+  getRoutingProjectLedgerRow: vi.fn(async () => null),
+  ensureWorkspaceInfrastructureRouting: vi.fn(),
+}));
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const WS_ID = "ws-test-1";
