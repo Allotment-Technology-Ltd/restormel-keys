@@ -192,6 +192,7 @@ Use these terms consistently. Do not invent synonyms in UI or docs.
 | **Quality history**  | The verdict timeline. Not "eval verdict history" (that is jargon); `aria-label` must use "Quality history". | W2.3, W4.5 |
 | **Evidence dossier** | The Claims section claim detail panel (W2.2): verdict stamp, evidence excerpt with the bound span highlighted, chain of custody, "Re-check now", claim-versions ledger. Not "evidence panel" or "claim inspector". Verification-state copy must match the EBV states (supported / inferred / unverified / contradicted / excluded) and may only assert what claims-ledger rows 2, 9, 10 prove. | W2.2 |
 | **Evidence facet**   | The Claims queue filter over EBV verification states (`?filter=supported` etc. — the W2.1 URL contract values, which survive the `/connect/graph` → `/claims` redirect). A claim with no EBV row reads "predates evidence binding", never silently bucketed into a state. | W2.2 |
+| **As-of view**       | The Claims time-travel control + historical-view banner (W2.5): "View as of &lt;date&gt;". Verb is "View as of" / "Return to now"; not "time machine", "snapshot", or "rewind". A read-only view (mutations hidden, "editing past state is not possible"). When the store cannot reconstruct history the banner reads "History not available for this graph" — never the live view passed off as historical. `?as_of` / `?audit` URL params. | W2.5 |
 | **[R1] Home**        | The merged workspace landing page at `/home`. Replaces both `/activity` (Overview) and `/connect` (Connect hub home). Not "Overview", not "Connect home". The product loop starts here. Implemented by R3. | R1 |
 | **[R1] Sources**     | The section at `/sources` for documents, domain packs, and changed-source state. Not "Library" (that was the pack browser tab label; "Packs" is the sub-view name). The primary CTA "Ingest" launches the guided flow. Implemented by R4. | R1 |
 | **[R1] Runs**        | The section at `/runs` for the ingest runs list and individual run console. Replaces "Connect · Runs" (the shipped hub tab label for `/connect/ingest`). Not "Ingest" as a section label (that is the CTA verb). | R1 |
@@ -346,6 +347,33 @@ the path's orderIndex, which can drift if the draft was reordered since — m4).
 not wire `onOpenDiffField`: a policy diff anchors at `policy`/`policy.<field>` and the policy page has
 no per-field builder target to land on, so the affordance is absent there (not a dead link).
 
+### §3 panel states — As-of time travel (`/claims`, Stage W2.5)
+
+The Claims explorer gains a **"View as of &lt;date&gt;"** control. As-of is a **read** feature:
+viewing a past state issues zero mutation fetches (the explorer mutation-fetch pin stays at 16) and
+quotes the same units read path with an `as_of` parameter — never a second formula. Honesty is the
+whole point: a store that cannot reconstruct history says so, rather than dressing the live view up
+as historical data.
+
+| Element | Loading | Empty / absent | Error / degraded | Active / populated |
+|---------|---------|----------------|------------------|--------------------|
+| **As-of control** (`.as-of-control`, toolbar) | n/a (static) | No run anchors yet → only the date-time picker shows (no anchor row) | n/a | `datetime-local` picker + "View at this time" + run-timestamp anchors; while a historical view is active a "Return to now" button appears |
+| **Historical-view banner** (`.as-of-banner`, `role="status"`) | n/a | n/a | **History not available for this graph** (`role="status"`, coral): the data layer could not reconstruct the instant — copy names *why* (BYO Surreal stores carry no version chains until the Stage 3.2b opt-in; or no graph store; or a version-lookup failure) and the **current** view is shown unchanged, explicitly *not* historical. Recovery action: **Return to now**. | "Viewing graph as of &lt;instant&gt; — counts and states reflect that instant", a one-click **Return to now**, an **Include/Hide superseded versions** toggle, and an honest projection summary ("N shown at an older version · M did not exist yet · K have unknown history (kept, not filtered)") |
+
+**Read-only invariant (view only).** While `?as_of`/`?audit` is active the explorer is read-only on
+**desktop too** — a `.as-of-readonly` state class on the explorer root (not the mobile body
+attribute) hides the same mutation regions the mobile tier hides (`.review-actions`,
+`.dossier-actions`, `.dossier-recheck`, `.remove-section`, `.cohort-complete-actions`,
+`.revalidate-actions`, `.wizard-actions`, `.lib-new`, `.lib-run-archive`). The verdict keyboard
+shortcuts (which CSS cannot hide) early-return on `asOfActive` in `handleReviewKeydown`. Copy:
+*"Editing past state is not possible."* Guarded by `dashboard-as-of-readonly.test.ts`.
+
+**URL contract.** `?as_of=<iso>` (and `?audit=1` for superseded versions) compose with `?filter` /
+`?unit` and survive alongside `?workspace` / `?focus` and the `/connect/graph` → `/claims` 308
+redirect — shareable historical views (W2.1 contract extended in `explorer-url-state.ts`).
+**Boundary semantics** match the connect-v1 retrieve path (`valid_from ≤ t < valid_to`): a claim
+valid until T is shown at T-ε, not at T.
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:
@@ -453,6 +481,22 @@ When adding or changing copy or nav, check this document and [documentation-stra
 
 - **Fix-forward link contract.** Every route name in the receipt links to its builder; every
   "View logs" link carries `?route={routeId}` for pre-filtered log views (rubric X4).
+
+### As-of time travel — June 2026 (Stage W2.5)
+
+- **§2 registry: "As-of view" added.** The Claims time-travel control + historical-view banner
+  get a canonical name and verb ("View as of" / "Return to now"; not "time machine" / "snapshot").
+- **§3: a stage-labelled W2.5 panel-states block added** for the as-of control and the
+  historical-view banner (including the **degraded** "History not available for this graph" state),
+  plus the **read-only invariant** (a `.as-of-readonly` root state class hides mutation regions on
+  desktop too; the verdict keyboard shortcuts early-return on `asOfActive`) and the **URL contract**
+  (`?as_of` / `?audit` compose with `?filter` / `?unit` and survive the `/connect/graph` → `/claims`
+  redirect; boundary semantics `valid_from ≤ t < valid_to`).
+- **Honesty + no-second-formula:** as-of quotes the same units read path with an `as_of` parameter;
+  it is a read (zero mutation fetches — the explorer mutation pin stays at 16). Where the data layer
+  cannot reconstruct history (BYO Surreal stores without the Stage 3.2b version-chain opt-in; no
+  graph store; version-lookup failure) the view degrades explicitly and shows the current data
+  unchanged, never dressed up as historical.
 
 ---
 

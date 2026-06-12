@@ -46,6 +46,7 @@
   import {
     parseExplorerUrlState,
     buildExplorerUrl,
+    normalizeAsOf,
   } from "$lib/connect/explorer-url-state";
   import {
     canAcceptAsSupported,
@@ -81,6 +82,12 @@
     author: string | null;
     /** EBV summary (W2.2 Evidence Dossier); null/absent = predates evidence binding. */
     evidence?: UnitEvidenceSummary | null;
+    /**
+     * W2.5 — true when this row is a substituted/superseded PRIOR version served under an
+     * as-of/audit projection. Its triage/provenance fields are neutralized server-side
+     * (not reconstructible at the instant); the UI labels the verdict as not-historical.
+     */
+    asOfHistorical?: boolean;
   };
   type Stats = {
     units: number;
@@ -223,6 +230,16 @@
   let extraUnits: Unit[] = [];
   let loadingMoreUnits = false;
   let loadMoreError: string | null = null;
+  /**
+   * W2.5 pagination basis (minor 1): the server pages CURRENT rows by `offset`, but in
+   * as-of mode the projected list length differs from the current-row count (born-after-t
+   * rows are excluded, substituted rows replace 1:1, audit rows append). Paging by the
+   * projected `units.length` would skip/repeat rows and never let `hasMore` go false. We
+   * track the raw count of CURRENT rows fetched here (the honest next offset) and the
+   * latest server `has_more` so "Load more" terminates. null until a client fetch resolves.
+   */
+  let rawRowsFetched: number | null = null;
+  let serverHasMore: boolean | null = null;
   /** Client-side verdict/evidence overrides until the next server graph reload. */
   let unitOverrides: Record<string, Partial<Unit>> = {};
   /** Ideas removed this session (hidden immediately; persisted in background). */
@@ -248,6 +265,49 @@
   let statsDelta: StatsDelta = emptyStatsDelta();
   /** Selected unit id — initialised from ?unit= URL param (W2.1). */
   let selectedId: string | null = _initialUrlState.selectedUnitId;
+
+  // ── As-of time travel (W2.5) ────────────────────────────────────────────────
+  /**
+   * As-of instant (ISO) or null for live ("now"). Initialised from ?as_of= so a
+   * shared historical link opens in the past state. While set, the explorer is
+   * read-only: mutating affordances are hidden (a state class on the root, working
+   * on desktop too) and the verdict keyboard shortcuts early-return.
+   */
+  let asOf: string | null = _initialUrlState.asOf ?? null;
+  /** Include-superseded audit flag (?audit=1) — shows every version of each chain. */
+  let includeSuperseded: boolean = _initialUrlState.includeSuperseded ?? false;
+  /** Draft value bound to the date-time picker before the operator applies it. */
+  let asOfDraft = "";
+  /**
+   * Honest report from the units API: whether the requested as-of view was applied
+   * by the data layer, or degraded ("history not available for this graph"). null
+   * until the first as-of fetch resolves. Mirrors the server's AsOfStatus shape.
+   */
+  type AsOfStatusView = {
+    requested: boolean;
+    applied?: boolean;
+    asOf?: string | null;
+    includeSuperseded?: boolean;
+    reason?: string;
+    excluded?: number;
+    substituted?: number;
+    supersededReturned?: number;
+    unversioned?: number;
+  };
+  let asOfStatus: AsOfStatusView | null = null;
+  /** True whenever a historical view is active — drives read-only + the banner. */
+  $: asOfActive = asOf != null || includeSuperseded;
+  /** True when an as-of was requested but the data layer could not answer it. */
+  $: asOfDegraded = asOfStatus?.requested === true && asOfStatus?.applied === false;
+  /**
+   * True only when a historical projection is ACTIVE and the data layer genuinely applied
+   * it (not degraded). This gates the absent-state for current-only numbers: the bento,
+   * validation breakdown and evidence facet counts are SSR-current `graph.stats` and are
+   * NOT projected to the instant, so under an applied historical view they must be hidden
+   * rather than shown beneath the "as of …" banner as if they were historical (B1). When
+   * degraded, the current view is shown honestly as current, so the numbers stay visible.
+   */
+  $: asOfProjected = asOfActive && asOfStatus?.applied === true;
   let reviewNote = "";
   let actionError: string | null = null;
   let exitingUnitId: string | null = null;
@@ -780,6 +840,8 @@
           ? urlFilterForFacet(verificationStateFilter)
           : null,
         selectedUnitId: selectedId,
+        asOf,
+        includeSuperseded,
       });
       replaceState(newUrl, {});
     } catch {
@@ -789,10 +851,19 @@
 
   $: unitsPagination = graph.unitsPagination ?? null;
   $: hasMoreUnits =
+    // Prefer the server's honest `has_more` from the last CLIENT fetch (current-row based,
+    // valid under as-of too). Fall back to SSR pagination, then to a current-only estimate
+    // — but NEVER use the projected `units.length` against the current total under an applied
+    // historical view (it would never terminate); there, defer entirely to the server.
+    serverHasMore ??
     unitsPagination?.hasMore ??
-    (stats != null && units.length < stats.units);
-  $: unitsLoadedLabel =
-    stats && stats.units > 0
+    (asOfProjected ? false : stats != null && units.length < stats.units);
+  $: unitsLoadedLabel = asOfProjected
+    ? // Under an applied historical view the total (`stats.units`) is the CURRENT count,
+      // not the projected total — mixing projected X over current Y would be dishonest, and
+      // no projected total exists (the projection is per-page). Show only the loaded count.
+      `${units.length.toLocaleString()} claim${units.length === 1 ? "" : "s"} in this projection (loaded)`
+    : stats && stats.units > 0
       ? `${units.length.toLocaleString()} of ${stats.units.toLocaleString()} ideas loaded`
       : `${units.length.toLocaleString()} ideas loaded`;
 
@@ -806,6 +877,8 @@
     removedIds = {};
     statsDelta = emptyStatsDelta();
     initialUnitsLoaded = graph.units.length > 0;
+    rawRowsFetched = null;
+    serverHasMore = null;
   }
 
   let initialUnitsLoading = false;
@@ -818,6 +891,10 @@
       limit: String(limit),
     });
     if (graph.domainPackId) params.set("domain_pack_id", graph.domainPackId);
+    // W2.5 — pass the as-of instant / audit flag through to the read path. This is a
+    // GET (read) only; it adds ZERO mutation fetches (the mutation pin must not move).
+    if (asOf) params.set("as_of", asOf);
+    if (includeSuperseded) params.set("audit", "1");
     const res = await fetch(`${CONNECT_PIPELINE_API}/graph/units?${params.toString()}`, {
       credentials: "include",
     });
@@ -828,8 +905,120 @@
     if (data.units_load_error) {
       loadMoreError = data.units_load_error;
     }
+    // Capture the honest as-of report (applied vs degraded). Absent on plain reads.
+    if (data.as_of_status && typeof data.as_of_status === "object") {
+      asOfStatus = data.as_of_status as AsOfStatusView;
+    }
+    // Track pagination on the CURRENT-row basis the server pages by (minor 1). The next
+    // honest offset is `offset + limit` (the server pages `limit` current rows per page),
+    // NOT the projected `units.length`. `has_more` is the server's current-row decision.
+    const usedOffset = Number.isFinite(data.offset) ? Number(data.offset) : offset;
+    const usedLimit = Number.isFinite(data.limit) ? Number(data.limit) : limit;
+    serverHasMore = typeof data.has_more === "boolean" ? data.has_more : null;
+    rawRowsFetched = serverHasMore ? usedOffset + usedLimit : null;
     return Array.isArray(data.units) ? (data.units as Unit[]) : [];
   }
+
+  // ── As-of controls (W2.5) ───────────────────────────────────────────────────
+  /** Re-load the first page under the current as-of/audit setting (a read). */
+  async function reloadUnitsForAsOf() {
+    // Force a fresh initial load so the projected page replaces the live one.
+    initialUnitsLoaded = false;
+    initialUnitsAttempted = false;
+    extraUnits = [];
+    selectedId = null;
+    loadMoreError = null;
+    initialUnitsLoading = true;
+    try {
+      extraUnits = await fetchUnitsPage(0, unitsPagination?.limit ?? 150);
+      initialUnitsLoaded = true;
+    } catch (err) {
+      loadMoreError =
+        err instanceof Error ? err.message : "Network error while loading the historical view.";
+      // Minor 4 — don't leave a confident "Viewing graph as of …" banner over an errored
+      // list. Mark the as-of request degraded so the banner drops to its honest "history
+      // could not be read" state instead of asserting the projection succeeded.
+      asOfStatus = {
+        requested: true,
+        applied: false,
+        asOf,
+        includeSuperseded,
+        reason: "as_of_fetch_failed",
+      };
+    } finally {
+      initialUnitsLoading = false;
+    }
+  }
+
+  /** Apply the picker draft as the active as-of instant. */
+  function applyAsOfDraft() {
+    const next = normalizeAsOf(asOfDraft);
+    if (!next) return;
+    asOf = next;
+    void reloadUnitsForAsOf();
+  }
+
+  /** Jump to a preset anchor (a readiness-run timestamp or "now"). */
+  function applyAsOfAnchor(iso: string | null) {
+    asOf = iso ? normalizeAsOf(iso) : null;
+    asOfDraft = asOf ? toDatetimeLocal(asOf) : "";
+    void reloadUnitsForAsOf();
+  }
+
+  /** One-click return to the live ("now") view. */
+  function returnToNow() {
+    asOf = null;
+    includeSuperseded = false;
+    asOfDraft = "";
+    asOfStatus = null;
+    void reloadUnitsForAsOf();
+  }
+
+  /** Toggle the include-superseded audit flag and reload. */
+  function toggleIncludeSuperseded() {
+    includeSuperseded = !includeSuperseded;
+    void reloadUnitsForAsOf();
+  }
+
+  /** Format an ISO instant for a `datetime-local` input (local time, minute precision). */
+  function toDatetimeLocal(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** Human-readable label for the active instant (banner copy). */
+  function fmtAsOfLabel(iso: string | null): string {
+    if (!iso) return "the selected time";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  /**
+   * As-of anchors: readiness-run timestamps (newest first) the operator can jump to.
+   * `updatedAt` is epoch-ms; we view "as of" the moment each run last wrote, so a run's
+   * verdicts and the claim states it produced are reconstructible at that instant.
+   */
+  $: asOfAnchors = (readinessRuns ?? [])
+    .map((r): { id: string; iso: string | null; label: string } => ({
+      id: r.id,
+      iso: Number.isFinite(r.updatedAt) ? new Date(r.updatedAt).toISOString() : null,
+      label: r.label ?? "",
+    }))
+    .filter((a): a is { id: string; iso: string; label: string } => a.iso !== null)
+    .sort((a, b) => b.iso.localeCompare(a.iso))
+    .slice(0, 6);
+
+  /** Initialise the picker draft from the URL-provided as-of on mount. */
+  $: if (asOf && !asOfDraft) asOfDraft = toDatetimeLocal(asOf);
 
   async function loadInitialUnits() {
     if (initialUnitsLoading || initialUnitsLoaded || initialUnitsAttempted) return;
@@ -857,7 +1046,13 @@
     loadingMoreUnits = true;
     loadMoreError = null;
     try {
-      const incoming = await fetchUnitsPage(units.length, unitsPagination?.limit ?? 150);
+      // Offset on the CURRENT-row basis the server pages by (minor 1) — NOT the projected
+      // `units.length`, which under as-of diverges (excluded/substituted/audit rows) and
+      // would skip or repeat rows. `rawRowsFetched` tracks the next current-row offset from
+      // the last client fetch; before any client fetch, fall back to the SSR page extent.
+      const nextOffset =
+        rawRowsFetched ?? (unitsPagination?.offset ?? 0) + graph.units.length;
+      const incoming = await fetchUnitsPage(nextOffset, unitsPagination?.limit ?? 150);
       const seen = new Set(units.map((u) => u.id));
       extraUnits = [...extraUnits, ...incoming.filter((u) => !seen.has(u.id))];
     } catch (err) {
@@ -1599,18 +1794,21 @@
     const key = event.key;
     if (key === "a" || key === "A") {
       if (mobileReadonly) return;
+      if (asOfActive) return; // W2.5: editing past state is not possible.
       event.preventDefault();
       void performReview(selectedUnit, "ok");
       return;
     }
     if (key === "w" || key === "W") {
       if (mobileReadonly) return;
+      if (asOfActive) return; // W2.5: editing past state is not possible.
       event.preventDefault();
       void performReview(selectedUnit, "weak");
       return;
     }
     if (key === "u" || key === "U") {
       if (mobileReadonly) return;
+      if (asOfActive) return; // W2.5: editing past state is not possible.
       event.preventDefault();
       void performReview(selectedUnit, "unsupported");
       return;
@@ -2186,12 +2384,135 @@
 
 <svelte:window on:keydown={handleReviewKeydown} />
 
-<div class="connect-graph-explorer">
+<div class="connect-graph-explorer" class:as-of-readonly={asOfActive} data-as-of-readonly={asOfActive ? "true" : null}>
   <BrutalPageHeader
     kicker="Connect · Quality review"
     title="Knowledge graph"
     description="Inspect ideas extracted from your sources, confirm AI validation, and keep agent context trustworthy. {storeLabel}{graph.domainPackTitle ? ` · pack: ${graph.domainPackTitle}` : ''}."
   />
+
+  <!-- W2.5 — As-of time travel control. -->
+  <section class="as-of-control brut-fill-canvas" aria-label="View graph as of a past time">
+    <div class="as-of-row">
+      <span class="as-of-kicker">VIEW AS OF</span>
+      <label class="as-of-field">
+        <span class="visually-hidden">As-of date and time</span>
+        <input
+          type="datetime-local"
+          class="as-of-input brut-focus"
+          bind:value={asOfDraft}
+          aria-label="As-of date and time"
+        />
+      </label>
+      <button
+        type="button"
+        class="brutal-btn brut-pressable brut-focus as-of-apply"
+        disabled={!normalizeAsOf(asOfDraft) || initialUnitsLoading}
+        on:click={applyAsOfDraft}
+      >
+        View at this time
+      </button>
+      {#if asOfActive}
+        <button
+          type="button"
+          class="brutal-btn brut-pressable brut-focus as-of-now"
+          on:click={returnToNow}
+        >
+          Return to now
+        </button>
+      {/if}
+    </div>
+    {#if asOfAnchors.length > 0}
+      <div class="as-of-anchors" role="group" aria-label="Jump to a run timestamp">
+        <span class="as-of-anchors-label brut-muted">Run anchors:</span>
+        {#each asOfAnchors as anchor (anchor.id)}
+          <button
+            type="button"
+            class="as-of-anchor brut-focus"
+            class:as-of-anchor-active={asOf === anchor.iso}
+            on:click={() => applyAsOfAnchor(anchor.iso)}
+          >
+            {anchor.label || fmtAsOfLabel(anchor.iso)}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </section>
+
+  {#if asOfActive}
+    <!-- Persistent, dismissable historical-view banner (read-only state). -->
+    <aside class="as-of-banner" role="status" aria-live="polite">
+      {#if asOfDegraded}
+        <div class="as-of-banner-body as-of-banner-degraded">
+          <strong class="as-of-banner-title">⚠ History not available for this graph</strong>
+          <p class="as-of-banner-text">
+            {#if asOfStatus?.reason === "surreal_version_chains_unavailable"}
+              Your graph store does not keep version history yet, so the state at
+              {fmtAsOfLabel(asOf)} cannot be reconstructed. The current view is shown
+              unchanged — it is not historical data. Version history is recorded on the
+              Postgres graph spine; BYO Surreal stores need the version-chain opt-in.
+            {:else if asOfStatus?.reason === "graph_target_not_configured"}
+              No graph store is connected, so there is no history to travel through.
+            {:else if asOfStatus?.reason === "as_of_fetch_failed"}
+              The historical view at {fmtAsOfLabel(asOf)} could not be loaded — the list
+              below may be incomplete or stale. This is not confirmed historical data.
+              {#if loadMoreError}<span class="brut-muted"> ({loadMoreError})</span>{/if}
+            {:else}
+              The version history could not be read just now, so the state at
+              {fmtAsOfLabel(asOf)} cannot be shown. The current view is unchanged.
+            {/if}
+          </p>
+          <div class="as-of-banner-actions">
+            <button type="button" class="brutal-btn brut-pressable brut-focus" on:click={returnToNow}>
+              Return to now
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="as-of-banner-body">
+          <strong class="as-of-banner-title">
+            {#if asOf}
+              Viewing graph as of {fmtAsOfLabel(asOf)}
+            {:else}
+              Viewing full version history (audit)
+            {/if}
+          </strong>
+          <p class="as-of-banner-text">
+            {#if asOf}
+              Each idea below shows the <strong>claim text that was live at that instant</strong>
+              and which version was current. Review verdicts, source provenance and the graph
+              counts above are <strong>not</strong> reconstructed for the past — they are hidden
+              here rather than shown as if historical. Editing past state is not possible —
+              review and dossier actions are disabled.
+            {:else}
+              Every version of each claim chain is shown, including superseded ones.
+              This is a read-only audit view; counts and verdicts are not historical.
+            {/if}
+            {#if asOfStatus?.applied && (asOfStatus.substituted || asOfStatus.excluded || asOfStatus.unversioned)}
+              <span class="as-of-banner-stats brut-muted">
+                {#if asOfStatus.substituted}{asOfStatus.substituted} shown at an older version. {/if}
+                {#if asOfStatus.excluded}{asOfStatus.excluded} did not exist yet. {/if}
+                {#if asOfStatus.unversioned}{asOfStatus.unversioned} have unknown history (kept, not filtered).{/if}
+              </span>
+            {/if}
+          </p>
+          <div class="as-of-banner-actions">
+            <button
+              type="button"
+              class="as-of-audit-toggle brut-focus"
+              aria-pressed={includeSuperseded}
+              on:click={toggleIncludeSuperseded}
+            >
+              {includeSuperseded ? "Hide superseded versions" : "Include superseded versions"}
+            </button>
+            <button type="button" class="brutal-btn brut-pressable brut-focus" on:click={returnToNow}>
+              Return to now
+            </button>
+          </div>
+        </div>
+      {/if}
+    </aside>
+  {/if}
 
   {#if !stats && graph.store === "surreal" && !graph.targetStatus}
     <BrutalCard fill="canvas" title="Loading graph">
@@ -2226,6 +2547,35 @@
       </div>
     </BrutalCard>
   {:else}
+    {#if asOfProjected}
+      <!--
+        B1: the bento + validation breakdown render SSR-CURRENT graph.stats, which are NOT
+        projected onto the as-of instant. Showing them beneath the "as of …" banner would
+        assert current counts as historical. Under an applied historical view we absent them
+        and surface only what we can honestly derive from the projected list itself.
+      -->
+      <BrutalCard fill="canvas" title="Counts at this instant aren't available">
+        <p class="brut-muted">
+          Idea, connection, group, embedding and validation counts describe the graph
+          <strong>now</strong>, not {fmtAsOfLabel(asOf)}. They are hidden here rather than
+          shown as if historical. What you can rely on below is the claim text and version
+          that were live at the instant.
+        </p>
+        <p class="as-of-projection-summary brut-muted">
+          <strong>{units.length.toLocaleString()}</strong>
+          claim{units.length === 1 ? "" : "s"} in this projection (loaded)
+          {#if asOfStatus?.applied && asOfStatus.excluded}
+            · {asOfStatus.excluded.toLocaleString()} did not exist yet
+          {/if}
+          {#if asOfStatus?.applied && asOfStatus.substituted}
+            · {asOfStatus.substituted.toLocaleString()} shown at an older version
+          {/if}
+          {#if asOfStatus?.applied && asOfStatus.unversioned}
+            · {asOfStatus.unversioned.toLocaleString()} unknown history (kept)
+          {/if}
+        </p>
+      </BrutalCard>
+    {:else}
     <BrutalBentoGrid columns={4}>
       <BrutalBentoCell fill="white" label="Ideas">
         <p class="bento-stat">{stats.units.toLocaleString()}</p>
@@ -2368,6 +2718,7 @@
         {/if}
       </BrutalBentoCell>
     </BrutalBentoGrid>
+    {/if}
 
     <div class="graph-workspace" aria-label="Knowledge graph workspace">
       <figure class="graph-flow-map" aria-labelledby="graph-flow-caption">
@@ -2594,12 +2945,14 @@
               on:click={() => toggleEvidenceFacet(state)}
             >
               <span class="evidence-chip-label">{visual.label}</span>
-              {#if evidenceStateCounts}
+              {#if evidenceStateCounts && !asOfProjected}
                 <span class="evidence-chip-count">{evidenceStateCounts[state].toLocaleString()}</span>
               {/if}
             </button>
           {/each}
-          {#if !evidenceStateCounts}
+          {#if asOfProjected}
+            <span class="evidence-facet-note brut-muted">counts at this instant aren't available — filtering the loaded projection only</span>
+          {:else if !evidenceStateCounts}
             <span class="evidence-facet-note brut-muted">counts unavailable — filtering loaded ideas only</span>
           {:else if preEvidenceCount > 0}
             <span class="evidence-facet-note brut-muted">
@@ -2691,14 +3044,14 @@
                 Loading ideas from your graph store…
               {:else if unitsLoadError}
                 Fix the error above, then refresh. Stats may still reflect your full graph even when the review list cannot load.
-              {:else if queueScope === "review" && !verdictFilter && needsReviewCount > 0 && units.length < (stats?.units ?? 0)}
+              {:else if !asOfProjected && queueScope === "review" && !verdictFilter && needsReviewCount > 0 && units.length < (stats?.units ?? 0)}
                 Your graph has {needsReviewCount.toLocaleString()} flagged idea{needsReviewCount === 1 ? "" : "s"}, but
                 none appear in the {units.length.toLocaleString()} ideas loaded here. Refresh the page; if this persists,
                 check Surreal connectivity in Pipeline → Graph store.
               {:else if verificationStateFilter}
                 {@const emptyFacet = VERIFICATION_STATE_VISUAL[verificationStateFilter]}
                 No <strong>{emptyFacet.label.toLowerCase()}</strong> claims among the loaded ideas.
-                {#if evidenceStateCounts && evidenceStateCounts[verificationStateFilter] > 0}
+                {#if evidenceStateCounts && !asOfProjected && evidenceStateCounts[verificationStateFilter] > 0}
                   Your graph has {evidenceStateCounts[verificationStateFilter].toLocaleString()} —
                   load more ideas below to bring them in.
                 {/if}
@@ -2748,7 +3101,13 @@
                 >
                   <span class="unit-row-inner">
                     <span class="unit-row-top">
-                      <span class="unit-status-badge">{statusLabel(unit.validationStatus)}</span>
+                      {#if unit.asOfHistorical}
+                        <span class="unit-status-badge unit-status-badge--historical" title="This is a prior version of the claim. Its review verdict and source at that instant are not recorded, so no historical verdict is shown.">
+                          Prior version · verdict not historical
+                        </span>
+                      {:else}
+                        <span class="unit-status-badge">{statusLabel(unit.validationStatus)}</span>
+                      {/if}
                       {#if unit.unitType}<span class="unit-meta">{unit.unitType}</span>{/if}
                       {#if unit.domain}<span class="unit-meta unit-domain">{unit.domain}</span>{/if}
                     </span>
@@ -2798,8 +3157,18 @@
           <BrutalCard fill="white" title="Selected idea">
             <h2 id="detail-heading" class="visually-hidden">Selected idea detail</h2>
             <div class="detail-badges">
-              <BrutalBadge variant={badgeVariant(selectedUnit.validationStatus)} label={statusLabel(selectedUnit.validationStatus)} />
+              {#if selectedUnit.asOfHistorical}
+                <BrutalBadge variant="canvas" label="Prior version · verdict not historical" />
+              {:else}
+                <BrutalBadge variant={badgeVariant(selectedUnit.validationStatus)} label={statusLabel(selectedUnit.validationStatus)} />
+              {/if}
             </div>
+            {#if selectedUnit.asOfHistorical}
+              <p class="detail-historical-note brut-muted">
+                This is the claim text recorded at the selected instant. Its review verdict
+                and source provenance at that time are not stored, so they are not shown here.
+              </p>
+            {/if}
             <p class="detail-text">{selectedUnit.text}</p>
 
             <section class="dossier" aria-label="Evidence dossier">
@@ -5230,6 +5599,14 @@
     color: var(--color-ink);
   }
 
+  /* W2.5 — prior-version row badge: a neutral, non-verdict label (verdict not historical). */
+  .unit-status-badge--historical {
+    border-style: dashed;
+    color: var(--color-ink-muted, var(--color-ink));
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
   .unit-row-inner {
     position: relative;
     display: block;
@@ -5374,6 +5751,21 @@
 
   .detail-badges {
     margin-bottom: var(--space-2);
+  }
+
+  /* W2.5 — note on a historical (prior-version) selected idea. */
+  .detail-historical-note {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  /* W2.5 — honest projection summary shown in place of the (current-only) bento under as-of. */
+  .as-of-projection-summary {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
   }
 
   .ai-note {
@@ -5905,5 +6297,153 @@
   .dossier-recheck-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* ── As-of time travel (W2.5) ──────────────────────────────────────────── */
+  .as-of-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3);
+    border: var(--brut-border-width) solid var(--color-ink);
+    border-radius: 0;
+    box-shadow: var(--brut-shadow-sm);
+  }
+  .as-of-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .as-of-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+  }
+  .as-of-field {
+    display: inline-flex;
+  }
+  .as-of-input {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    padding: var(--space-1) var(--space-2);
+    border: var(--brut-border-width) solid var(--color-ink);
+    border-radius: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+  .as-of-anchors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .as-of-anchors-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+  }
+  .as-of-anchor {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    padding: var(--space-1) var(--space-2);
+    border: var(--brut-border-micro) solid var(--color-ink);
+    border-radius: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    cursor: pointer;
+    transition: var(--brut-transition);
+  }
+  .as-of-anchor:hover {
+    background: var(--color-ink);
+    color: var(--color-bg);
+  }
+  .as-of-anchor-active {
+    background: var(--color-ink);
+    color: var(--color-bg);
+  }
+
+  .as-of-banner {
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3);
+    border: var(--brut-border-width) solid var(--color-ink);
+    border-radius: 0;
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    box-shadow: var(--brut-shadow);
+  }
+  .as-of-banner-degraded {
+    background: var(--brut-coral);
+  }
+  .as-of-banner-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .as-of-banner-title {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+  }
+  .as-of-banner-text {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .as-of-banner-stats {
+    display: block;
+    margin-top: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+  }
+  .as-of-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .as-of-audit-toggle {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    padding: var(--space-1) var(--space-2);
+    border: var(--brut-border-width) solid var(--color-ink);
+    border-radius: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .as-of-audit-toggle[aria-pressed="true"] {
+    background: var(--color-ink);
+    color: var(--color-bg);
+  }
+
+  /*
+   * As-of is VIEW-ONLY. While a historical view is active, every mutating affordance
+   * on the explorer (and the readiness library / wizard child components mounted
+   * inside it) is hidden — on DESKTOP too, via a state class on the explorer root
+   * rather than the mobile body attribute. The verdict keyboard shortcuts (which CSS
+   * cannot hide) early-return on `asOfActive` in handleReviewKeydown.
+   */
+  .as-of-readonly .review-actions,
+  .as-of-readonly .dossier-actions,
+  .as-of-readonly .dossier-recheck,
+  .as-of-readonly .remove-section,
+  .as-of-readonly .cohort-complete-actions,
+  .as-of-readonly .revalidate-actions,
+  .as-of-readonly :global(.wizard-actions),
+  .as-of-readonly :global(.lib-new),
+  .as-of-readonly :global(.lib-run-archive) {
+    display: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .as-of-anchor {
+      transition: none;
+    }
   }
 </style>

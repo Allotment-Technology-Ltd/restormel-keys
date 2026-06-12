@@ -48,6 +48,11 @@ import {
   pickSurrealUnitText,
   SURREAL_GRAPH_UNIT_PAGE_SIZE,
 } from "$lib/server/connect/surreal-graph-units-load";
+import {
+  applyExplorerAsOf,
+  type AsOfRequest,
+  type AsOfStatus,
+} from "$lib/server/connect/graph-explorer-as-of";
 
 /** Initial SSR unit page size for graph explorer (more load via /api/connect/graph/units). */
 export const GRAPH_EXPLORER_PAGE_SIZE = 150;
@@ -99,6 +104,15 @@ export type ConnectGraphUnitView = {
    * consumers ignore it).
    */
   evidence?: UnitEvidenceSummary | null;
+  /**
+   * W2.5 — set only when this row is a SUBSTITUTED/superseded prior version served under
+   * an as-of/audit projection. Such rows carry the version's recorded text + verification
+   * state, but their triage/provenance fields are NOT reconstructible at the instant
+   * (reviews write no version rows) and are neutralized to null. The UI uses this flag to
+   * label the row's verdict as "current verdict — not historical" rather than implying the
+   * shown (neutral) verdict was the verdict at that time. Additive: older consumers ignore.
+   */
+  asOfHistorical?: boolean;
 };
 
 /** Per-state counts of CURRENT claim versions for the explorer's Evidence facet. */
@@ -1559,4 +1573,40 @@ export async function loadConnectGraphUnitsPage(
     total,
     domainPackId: null,
   };
+}
+
+/**
+ * W2.5 — units page projected onto an as-of instant (or full audit view), with an
+ * honest `as_of_status`. Loads the CURRENT page via `loadConnectGraphUnitsPage`, then
+ * applies the temporal projection per store capability (Postgres spine answers; BYO
+ * Surreal / no target degrade explicitly). A READ-only path: issues no mutations.
+ */
+export async function loadConnectGraphUnitsPageAsOf(
+  workspaceId: string,
+  opts: {
+    offset: number;
+    limit: number;
+    domainPackId?: string | null;
+    asOf: AsOfRequest | null;
+  },
+): Promise<LoadConnectGraphUnitsPageResult & { asOfStatus: AsOfStatus }> {
+  const page = await loadConnectGraphUnitsPage(workspaceId, {
+    offset: opts.offset,
+    limit: opts.limit,
+    domainPackId: opts.domainPackId,
+  });
+
+  if (!opts.asOf) {
+    return { ...page, asOfStatus: { requested: false } };
+  }
+
+  const target = await getConnectGraphTargetForWorkspace(workspaceId).catch(() => null);
+  const provider = target?.provider ?? null;
+  const projected = await applyExplorerAsOf({
+    workspaceId,
+    provider,
+    units: page.units,
+    request: opts.asOf,
+  });
+  return { ...page, units: projected.units, asOfStatus: projected.asOfStatus };
 }
