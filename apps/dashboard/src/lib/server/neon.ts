@@ -9393,6 +9393,7 @@ export async function listTestingVerdicts(params: {
     verdict: r.verdict,
     recordedAt: r.recorded_at instanceof Date ? r.recorded_at.toISOString() : String(r.recorded_at),
   }));
+}
 
 // ---------------------------------------------------------------------------
 // W2.4 — Memory-writes inbox (Stage 3.4 agent_observation provenance)
