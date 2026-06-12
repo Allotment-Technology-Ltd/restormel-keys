@@ -3,6 +3,10 @@ import {
   CONNECT_GRAPH_BASE,
   CONNECT_MODELS_BASE,
   CONNECT_PIPELINE_BASE,
+  PIPELINE_WIZARD_STEPS,
+  ALL_PIPELINE_WIZARD_STEP_IDS,
+  isPipelineWizardStep,
+  pipelineWizardStepLabel,
   parseReturnTo,
   returnContextBackLabel,
   returnContextFromLabel,
@@ -10,6 +14,46 @@ import {
   withReturnTo,
   isRouteBuilderPath,
 } from "./pipeline-config";
+
+describe("R4 guided-flow step order (§1.1)", () => {
+  it("orders the visible flow provider → sources → domain → launch", () => {
+    expect(PIPELINE_WIZARD_STEPS.map((s) => s.id)).toEqual([
+      "provider",
+      "sources",
+      "domain",
+      "launch",
+    ]);
+  });
+
+  // Ship gate: the provisioned golden path reaches launch in two panels
+  // (sources + pack → preflight). The store step is NOT one of those panels —
+  // it's demoted off the strip. Asserts the flow never exceeds the §1.1 decision
+  // count of two on the provisioned path.
+  it("provisioned golden path is two panels from sources to launch", () => {
+    const ids = PIPELINE_WIZARD_STEPS.map((s) => s.id);
+    const sourcesIdx = ids.indexOf("sources");
+    const launchIdx = ids.indexOf("launch");
+    const panelsTraversed = ids
+      .slice(sourcesIdx, launchIdx + 1)
+      .filter((id) => id !== "domain"); // domain is optional/skippable
+    expect(panelsTraversed).toEqual(["sources", "launch"]);
+  });
+
+  it("demotes the store step off the visible strip but keeps it a valid id", () => {
+    expect(PIPELINE_WIZARD_STEPS.map((s) => s.id)).not.toContain("store");
+    expect(isPipelineWizardStep("store")).toBe(true);
+    expect(ALL_PIPELINE_WIZARD_STEP_IDS).toContain("store");
+    expect(pipelineWizardStepLabel("store")).toBe("Graph store");
+  });
+
+  it("keeps provider and every legacy step id valid (redirect stubs + hrefs)", () => {
+    for (const id of ["provider", "sources", "domain", "launch", "store"]) {
+      expect(isPipelineWizardStep(id)).toBe(true);
+    }
+    expect(isPipelineWizardStep("nope")).toBe(false);
+    expect(pipelineWizardStepLabel("provider")).toBe("Provider key");
+  });
+});
 
 describe("parseReturnTo", () => {
   it("parses ingest-routes", () => {

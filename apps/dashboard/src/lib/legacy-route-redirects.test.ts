@@ -30,6 +30,10 @@ const REDIRECT_TABLE: [string, string, string][] = [
   // /connect/pipeline (+ step redirects) REDESIGN → /sources/ingest; ?step preserved
   [`${B}/connect/pipeline`, "", `${B}/sources/ingest`],
   [`${B}/connect/pipeline`, "?step=store", `${B}/sources/ingest?step=store`],
+  // R4 — the new provider step id carries through the ?step redirect like any other.
+  [`${B}/connect/pipeline`, "?step=provider", `${B}/sources/ingest?step=provider`],
+  [`${B}/connect/pipeline`, "?step=sources", `${B}/sources/ingest?step=sources`],
+  [`${B}/connect/pipeline`, "?step=domain", `${B}/sources/ingest?step=domain`],
   [`${B}/connect/pipeline`, "?step=launch&domain_pack_id=p1", `${B}/sources/ingest?step=launch&domain_pack_id=p1`],
   [`${B}/connect/pipeline/domain`, "", `${B}/sources/ingest/domain`],
   [`${B}/connect/pipeline/sources`, "", `${B}/sources/ingest/sources`],

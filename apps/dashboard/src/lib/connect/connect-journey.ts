@@ -75,8 +75,14 @@ export function resolveDefaultPipelineStep(params: {
   phase: ConnectJourneyPhase;
   hasGraphStore: boolean;
   parsedDocumentCount: number;
+  /** R4: provider integrations present. A cold workspace sees the provider key first. */
+  hasProviderKey?: boolean;
 }): PipelineWizardStepId {
-  if (!params.hasGraphStore) return "store";
+  // R4 (§1.1): the store step is demoted — the workspace Neon default is
+  // provisioned automatically on flow entry, so it never gates the default path.
+  // A cold workspace with no provider key sees the provider step first (K2 verify
+  // inline); a provisioned workspace reaches launch in two panels (sources → launch).
+  if (params.hasProviderKey === false) return "provider";
   if (params.phase === "operational") return "launch";
   if (params.parsedDocumentCount > 0) return "launch";
   return "sources";

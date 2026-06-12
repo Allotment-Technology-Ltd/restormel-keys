@@ -6,6 +6,8 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import {
     PIPELINE_WIZARD_STEPS,
+    DEMOTED_PIPELINE_WIZARD_STEP,
+    pipelineWizardHref,
     type PipelineRunDefaults,
     type PipelineWizardProgress,
     type PipelineWizardStepId,
@@ -15,6 +17,7 @@
   import type { ConnectRunPreflightResult } from "$lib/connect/run-preflight";
 
   const storePanelImport = () => import("$lib/components/connect/pipeline/ConnectGraphStorePanel.svelte");
+  const providerPanelImport = () => import("$lib/components/connect/pipeline/ConnectProviderKeyPanel.svelte");
   const domainPanelImport = () => import("$lib/components/connect/pipeline/ConnectDomainPacksPanel.svelte");
   const sourcesPanelImport = () => import("$lib/components/connect/pipeline/ConnectSourcesPanel.svelte");
   const launchStepImport = () =>
@@ -48,14 +51,21 @@
   $: journeyPhase = data.phase ?? "initial";
   $: progress = data.wizard;
   $: runDefaults = data.runDefaults;
+  // R4: the store step is demoted off the stepper strip — it's an aside reached
+  // via "Configure store" or a `?step=store` deep link, not a numbered flow step.
+  $: isStoreAside = step === "store";
   $: stepIndex = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === step);
-  $: current = PIPELINE_WIZARD_STEPS[stepIndex] ?? PIPELINE_WIZARD_STEPS[0];
-  $: isFirst = stepIndex <= 0;
+  $: current =
+    isStoreAside
+      ? DEMOTED_PIPELINE_WIZARD_STEP
+      : (PIPELINE_WIZARD_STEPS[stepIndex] ?? PIPELINE_WIZARD_STEPS[0]);
+  $: isFirst = !isStoreAside && stepIndex <= 0;
   $: showRepeatRunKicker = journeyPhase === "operational" && Boolean(progress?.hasGraph);
 
   // Real completion per step (not position): drives the stepper's ✓ marks so a
   // deep link to a later step can't show unconfigured steps as done.
   function stepDone(p: PipelineWizardProgress, id: PipelineWizardStepId): boolean {
+    if (id === "provider") return p.hasProviderKey;
     if (id === "store") return p.hasGraphStore;
     if (id === "domain") return p.hasCustomPack || Boolean(p.selectedDomainPackId);
     if (id === "sources") return p.selectedDocumentCount > 0;
@@ -65,8 +75,9 @@
   $: completedStepIds = progress
     ? PIPELINE_WIZARD_STEPS.filter((s) => stepDone(progress!, s.id)).map((s) => s.id)
     : [];
-  // The server redirects non-store steps until a graph store exists; mirror that here.
-  $: laterStepsReachable = Boolean(progress?.hasGraphStore);
+  // R4: the graph store is auto-provisioned (demoted off the strip), so the flow's
+  // steps are reachable from entry — the stepper no longer gates on a store.
+  $: laterStepsReachable = true;
 
   async function scrollToWizardBody() {
     await tick();
@@ -105,7 +116,6 @@
   }
 
   $: modelsReady = Boolean(data.modelsReady ?? progress?.modelsReady);
-  $: canContinueStore = Boolean(progress?.hasGraphStore);
   $: canContinueDomain = Boolean(progress?.selectedDomainPackId || progress?.hasCustomPack || domainCanContinue);
   $: canContinueSources = (progress?.selectedDocumentCount ?? 0) > 0;
 
@@ -183,40 +193,66 @@
     </div>
   {:else if pendingTemplateId && !progress?.hasGraphStore}
     <div class="notice template-banner" role="status">
-      Template <strong>{pendingTemplateTitle}</strong> selected — connect a graph store first; we'll pre-fill domain
-      config at step 2.
+      Template <strong>{pendingTemplateTitle}</strong> selected — we'll pre-fill your domain config when you reach the
+      Domain step.
     </div>
   {/if}
 
-  <PipelineWizardStepper
-    currentStep={step}
-    onNavigate={goToStep}
-    completedIds={completedStepIds}
-    navigable={laterStepsReachable}
-  />
+  {#if !isStoreAside}
+    <PipelineWizardStepper
+      currentStep={step}
+      onNavigate={goToStep}
+      completedIds={completedStepIds}
+      navigable={laterStepsReachable}
+    />
+  {/if}
 
   <nav class="wizard-crumb" aria-label="Breadcrumb">
     <a href={HOME_HREF}>Home</a>
     <span aria-hidden="true">›</span>
-    <span aria-current="page">Setup · {current.label}</span>
+    {#if isStoreAside}
+      <a href={pipelineWizardHref("launch")}>Setup</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Configure store</span>
+    {:else}
+      <span aria-current="page">Setup · {current.label}</span>
+    {/if}
   </nav>
 
   <header class="wizard-header">
-    <p class="wizard-kicker">
-      {#if showRepeatRunKicker}
-        Repeat run · step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
-      {:else}
-        Step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
-      {/if}
-    </p>
+    {#if isStoreAside}
+      <p class="wizard-kicker">Optional · graph store override</p>
+    {:else}
+      <p class="wizard-kicker">
+        {#if showRepeatRunKicker}
+          Repeat run · step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
+        {:else}
+          Step {stepIndex + 1} of {PIPELINE_WIZARD_STEPS.length}
+        {/if}
+      </p>
+    {/if}
     <h2 class="wizard-title">{current.title}</h2>
-    {#if journeyPhase === "initial"}
+    {#if journeyPhase === "initial" || isStoreAside}
       <p class="wizard-lead">{current.lead}</p>
     {/if}
   </header>
 
   <div class="wizard-body">
-    {#if step === "store"}
+    {#if step === "provider"}
+      {#await providerPanelImport()}
+        <BrutalLoadingState message="Loading provider step…" rows={2} />
+      {:then { default: ConnectProviderKeyPanel }}
+        <ConnectProviderKeyPanel
+          hasProviderKey={Boolean(progress?.hasProviderKey)}
+          {modelsReady}
+        />
+      {:catch}
+        <BrutalErrorBanner title="Provider step" message="Could not load this step." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
+      {/await}
+    {:else if step === "store"}
       {#await storePanelImport()}
         <BrutalLoadingState message="Loading graph store panel…" rows={3} />
       {:then { default: ConnectGraphStorePanel }}
@@ -281,7 +317,9 @@
 
   <footer class="wizard-footer">
     <div class="wizard-footer-left">
-      {#if isFirst}
+      {#if isStoreAside}
+        <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>← Back to setup</a>
+      {:else if isFirst}
         <a class="btn btn-outline btn-sm" href={HOME_HREF}>Back</a>
       {:else}
         <button type="button" class="btn btn-outline btn-sm" on:click={goBack}>Back</button>
@@ -301,14 +339,21 @@
           </button>
         {/if}
       {:else if step === "store"}
+        <a
+          class="btn btn-primary"
+          href={pipelineWizardHref("launch")}
+        >
+          Done → Back to setup
+        </a>
+      {:else if step === "provider"}
+        <button type="button" class="btn btn-outline btn-sm" on:click={goNext}>Skip for now</button>
         <button
           type="button"
           class="btn btn-primary"
           on:click={goNext}
-          disabled={!canContinueStore}
-          title={!canContinueStore ? "Connect your graph store to continue" : undefined}
+          title={!progress.hasProviderKey ? "Add a provider key, or skip and add it before launch" : undefined}
         >
-          Store confirmed → Continue
+          {progress.hasProviderKey ? "Key connected → Continue" : "Continue"}
         </button>
       {:else if step === "domain"}
         {#if !current.required}

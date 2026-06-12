@@ -14,8 +14,8 @@
       <a href={HOME_HREF}>← Home</a>
       <span class="pipeline-exit-note">Setup wizard — side tasks open in place with a return link.</span>
     </p>
-    <h1 id="pipeline-heading" class="h1">Set up your pipeline</h1>
-    <p class="lede">Graph store, domain, sources, and review &amp; launch — then use the Agents section to wire agents.</p>
+    <h1 id="pipeline-heading" class="h1">Ingest your sources</h1>
+    <p class="lede">Provider key, sources, domain, and review &amp; launch — your graph store is set up automatically. Wire agents from the Agents section afterwards.</p>
     <slot />
   </section>
 </div>
