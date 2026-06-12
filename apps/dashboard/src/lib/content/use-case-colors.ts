@@ -6,9 +6,9 @@ export const USE_CASE_COLOR_VARS: Record<
   { accent: string; accentMuted: string; iconBg: string }
 > = {
   amber: {
-    accent: "var(--brut-amber, #e8a317)",
-    accentMuted: "color-mix(in srgb, var(--brut-amber, #e8a317) 18%, transparent)",
-    iconBg: "color-mix(in srgb, var(--brut-amber, #e8a317) 22%, var(--brut-white))",
+    accent: "var(--brut-amber)",
+    accentMuted: "color-mix(in srgb, var(--brut-amber) 18%, transparent)",
+    iconBg: "color-mix(in srgb, var(--brut-amber) 22%, var(--brut-white))",
   },
   teal: {
     accent: "var(--brut-teal, #0d9488)",

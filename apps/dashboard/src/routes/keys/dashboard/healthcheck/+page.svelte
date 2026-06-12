@@ -187,7 +187,7 @@
     .grid { grid-template-columns: 1fr; }
   }
   .card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-4);
@@ -198,14 +198,14 @@
   .picker { display: flex; align-items: center; gap: var(--space-2); }
   .select {
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0.45rem 0.6rem;
     color: var(--rm-text);
   }
   .env-list { display: flex; flex-direction: column; gap: var(--space-3); }
   .env-row {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-3) var(--space-4);
@@ -222,7 +222,7 @@
   .error-msg { color: var(--coral-alert); }
 
   .pro-gate {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left: 4px solid var(--rm-primary);
     border-radius: var(--rm-radius);
     background: color-mix(in oklab, var(--rm-primary) 8%, var(--rm-surface));
@@ -231,7 +231,7 @@
   }
   .health-preview {
     opacity: 0.6;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     margin: 0 0 var(--space-3);
@@ -245,7 +245,7 @@
   .health-preview th,
   .health-preview td {
     padding: var(--space-2);
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     color: var(--rm-muted);
     text-align: left;
   }
@@ -258,7 +258,7 @@
   .pro-title { margin: 0 0 var(--space-2); font-weight: 700; color: var(--rm-text); }
   .pro-desc { margin: 0 0 var(--space-3); color: var(--rm-muted); }
   .pro-actions { display: flex; gap: var(--space-2); margin: 0; }
-  .btn { display: inline-block; padding: 0.5rem 0.9rem; border-radius: var(--rm-radius); border: 1px solid var(--rm-border); }
+  .btn { display: inline-block; padding: 0.5rem 0.9rem; border-radius: var(--rm-radius); border: var(--border-thin); }
   .btn-secondary { background: var(--rm-surface-raised); color: var(--rm-text); }
   .sr-only {
     position: absolute;

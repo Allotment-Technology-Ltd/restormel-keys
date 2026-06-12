@@ -80,7 +80,7 @@
 
 <style>
   .quick-actions {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     border-radius: var(--rm-radius);
     padding: var(--space-4);
@@ -97,7 +97,7 @@
     gap: var(--space-2);
   }
   .action-btn {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-text);
     border-radius: var(--rm-radius);

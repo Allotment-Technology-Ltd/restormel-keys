@@ -193,7 +193,7 @@
 
 <style>
   .first-graph-guide {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     margin-bottom: var(--space-5);
@@ -233,7 +233,7 @@
   }
   .guide-body {
     padding: var(--space-4) var(--space-4) var(--space-4);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .guide-lead {
     margin: var(--space-4) 0;
@@ -250,7 +250,7 @@
     gap: var(--space-1);
   }
   .guide-phase {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
   }
@@ -294,7 +294,7 @@
   }
   .guide-phase-panel {
     padding: 0 var(--space-4) var(--space-4);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .guide-phase-body {
     margin: var(--space-3) 0;
@@ -324,7 +324,7 @@
     color: var(--rm-dim);
   }
   .badge {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-2);
     font-family: var(--font-mono);

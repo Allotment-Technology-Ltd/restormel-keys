@@ -499,7 +499,7 @@
     gap: var(--space-2);
     align-items: baseline;
     padding: var(--space-1) 0;
-    border-bottom: 1px solid var(--rm-border, #ddd);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
   }
   .lowered-list li:last-child {

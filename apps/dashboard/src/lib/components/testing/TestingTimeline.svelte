@@ -224,11 +224,11 @@
   }
 
   .latest-pass {
-    background: var(--color-green-tint, #e8f5e9);
+    background: var(--state-ok-bg);
   }
 
   .latest-fail {
-    background: var(--color-red-tint, #fde8e8);
+    background: var(--state-fail-bg);
   }
 
   .latest-tag {
@@ -241,7 +241,7 @@
   }
 
   .tag-pass {
-    background: var(--color-green-tint, #c8e6c9);
+    background: var(--state-ok-bg);
     color: var(--color-ink);
   }
 
@@ -285,11 +285,11 @@
   }
 
   .entry-pass {
-    border-left: 4px solid var(--color-green-tint, #4caf50);
+    border-left: 4px solid var(--state-ok-fg);
   }
 
   .entry-fail {
-    border-left: 4px solid var(--color-red-tint, #e53935);
+    border-left: 4px solid var(--state-fail-fg);
   }
 
   .entry-head {
@@ -366,7 +366,7 @@
     font-size: var(--text-xs);
     font-weight: 600;
     cursor: pointer;
-    color: var(--color-red-tint, #c62828);
+    color: var(--state-fail-fg);
   }
 
   .entry-reasons ul {

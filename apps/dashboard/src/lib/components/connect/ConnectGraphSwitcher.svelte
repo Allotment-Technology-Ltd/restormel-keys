@@ -90,7 +90,7 @@
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-2) var(--space-3);
@@ -114,7 +114,7 @@
     flex: 1;
     min-width: 12rem;
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     color: var(--rm-text);

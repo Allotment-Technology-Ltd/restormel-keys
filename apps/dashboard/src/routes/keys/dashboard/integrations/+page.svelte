@@ -472,7 +472,7 @@
     margin-bottom: var(--space-3);
   }
   .wizard-row {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-3);
@@ -583,7 +583,7 @@
     width: 100%;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font-size: var(--text-sm);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -601,7 +601,7 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-primary:disabled {
     opacity: 0.7;
@@ -618,7 +618,7 @@
     margin: 0;
   }
   .integration-row {
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .integration-link {
     display: block;
@@ -666,7 +666,7 @@
     margin-bottom: var(--space-2);
   }
   .journey-card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background: var(--rm-surface-raised);
     padding: var(--space-4);

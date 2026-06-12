@@ -2,6 +2,10 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
+  import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
+  import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
+  import DossierRail from "$lib/components/dashboard/DossierRail.svelte";
   import {
     TIME_PRESETS,
     SOURCE_OPTIONS,
@@ -56,6 +60,9 @@
   let limitFilter = String(data.controls.limit ?? 100);
 
   let selectedLog: LogRow | null = null;
+  // The receipt drawer is the shared DossierRail (W4.4): a plain boolean drives
+  // its visibility; the rail owns Escape/backdrop/focus-trap. onClose clears the row.
+  let logDrawerOpen = false;
   let expandedFixLogId: string | null = null;
   const LOGS_VISITED_KEY = "restormel_logs_visited";
   const LOGS_BANNER_DISMISSED_KEY = "rk_logs_banner_dismissed";
@@ -69,7 +76,7 @@
     if (hash.startsWith("#log-")) {
       const id = hash.slice("#log-".length);
       const found = data.logs.find((l) => l.id === id);
-      if (found) selectedLog = found;
+      if (found) openLogDetail(found);
     }
   });
 
@@ -118,6 +125,7 @@
 
   function openLogDetail(log: LogRow) {
     selectedLog = log;
+    logDrawerOpen = true;
     // Make the open receipt deep-linkable without a navigation/reload.
     if (typeof history !== "undefined") {
       history.replaceState(history.state, "", `${DASHBOARD_BASE}/logs${window.location.search}#log-${log.id}`);
@@ -126,6 +134,7 @@
 
   function closeLogDetail() {
     selectedLog = null;
+    logDrawerOpen = false;
     if (typeof history !== "undefined") {
       history.replaceState(history.state, "", `${DASHBOARD_BASE}/logs${window.location.search}`);
     }
@@ -185,22 +194,14 @@
     const lines = data.logs.map((row) => EXPORT_FIELDS.map((f) => csvCell(row[f])).join(","));
     download("restormel-logs.csv", "text/csv", [header, ...lines].join("\n"));
   }
-
-  function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && selectedLog) {
-      e.preventDefault();
-      closeLogDetail();
-    }
-  }
 </script>
 
-<svelte:window on:keydown={onWindowKeydown} />
-
-<h1 class="page-title">Logs &amp; Traces</h1>
+<BrutalPageHeader
+  title="Logs & Traces"
+  description="Request logs captured by Restormel (Dashboard API resolve path + Connect ingest resolves). Each row expands to its full receipt; failures are tagged with what went wrong."
+/>
 <p class="page-desc">
-  Request logs captured by Restormel (Dashboard API resolve path + Connect ingest resolves). Each row
-  expands to its full receipt; failures are tagged with what went wrong. For summaries, see
-  <a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; Analytics</a>.
+  For summaries, see <a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; Analytics</a>.
 </p>
 {#if showGatewayBanner}
   <div class="notice notice-info" role="status">
@@ -298,18 +299,26 @@
 {/if}
 
 {#if data.error}
-  <p class="error-msg" role="alert">
-    {data.error} · <a href={DASHBOARD_BASE + "/logs"}>Try again</a>
-  </p>
+  <BrutalErrorBanner title="Logs unavailable" message={data.error}>
+    {#snippet actions()}
+      <a class="btn-apply" href={DASHBOARD_BASE + "/logs"}>Try again</a>
+    {/snippet}
+  </BrutalErrorBanner>
 {:else if data.logs.length === 0}
   {#if data.hasFilters}
-    <p class="empty-msg" role="status">
-      No requests match these filters in this time window. Widen the time range or
-      <a href={DASHBOARD_BASE + "/logs"}>clear filters</a> to see all traffic.
-    </p>
+    <EmptyState
+      title="No requests match these filters"
+      description="No requests match these filters in this time window. Widen the time range or clear the filters to see all traffic."
+    >
+      <a class="btn-apply" href={DASHBOARD_BASE + "/logs"}>Clear filters</a>
+    </EmptyState>
   {:else}
-    <p class="empty-msg" role="status">No request logs in this time window. Traffic through resolved routes (and Connect ingest resolves) will appear here.</p>
-    <p><a href={DASHBOARD_BASE + "/analytics"}>Usage &amp; Analytics</a> · <a href={DASHBOARD_BASE + "/routes"}>Routes</a></p>
+    <EmptyState
+      title="No request logs yet"
+      description="No request logs in this time window. Traffic through resolved routes (and Connect ingest resolves) will appear here."
+    >
+      <a class="btn-apply" href={DASHBOARD_BASE + "/routes"}>Open Routes</a>
+    </EmptyState>
   {/if}
 {:else}
   <div class="list-toolbar">
@@ -379,17 +388,12 @@
   </ul>
 {/if}
 
-{#if selectedLog}
-  <div class="detail-backdrop" role="presentation" onclick={closeLogDetail}></div>
-  <div class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="request-detail-title">
-    <header class="detail-header">
-      <h2 id="request-detail-title">Request receipt</h2>
-      <div class="detail-header-actions">
-        <button type="button" class="detail-copy" onclick={() => copyRowLink(selectedLog!)} aria-label="Copy deep link to this request">Copy link</button>
-        <button type="button" class="detail-close" onclick={closeLogDetail} aria-label="Close request receipt">×</button>
-      </div>
-    </header>
-    <div class="detail-body">
+<!-- Request receipt drawer — migrated onto the shared DossierRail (W4.4):
+     the rail owns the modal chrome, Escape-to-close, focus trap, and
+     focus-return-to-opener; this page only supplies the receipt content. -->
+<DossierRail bind:open={logDrawerOpen} title="Request receipt" onClose={closeLogDetail}>
+  {#snippet body()}
+    {#if selectedLog}
       <!-- 1. Request -->
       <section class="receipt-section">
         <h3 class="receipt-h">1 · Request</h3>
@@ -466,30 +470,29 @@
         Receipt fields are populated from the request-log row + its metadata. Fields marked “not recorded”
         were not captured at the failure site. <a href="/keys/docs/walkthrough/phase-2-resolve">How resolve logging works ↗</a>
       </p>
-    </div>
-  </div>
-{/if}
+    {/if}
+  {/snippet}
+  {#snippet footer()}
+    {#if selectedLog}
+      <button type="button" class="btn-export" onclick={() => copyRowLink(selectedLog!)} aria-label="Copy deep link to this request">Copy link</button>
+    {/if}
+  {/snippet}
+</DossierRail>
 
 <style>
-  .page-title {
-    font-family: var(--rm-font-display);
-    font-size: var(--text-2xl);
-    font-weight: 600;
-    color: var(--rm-text);
-    margin: 0 0 var(--space-2);
-  }
   .page-desc {
     color: var(--rm-muted);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
   }
+  .page-desc a { color: var(--rm-sage); }
   .notice {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left-width: 4px;
     border-left-color: var(--rm-muted);
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background: var(--rm-surface);
     font-size: var(--text-sm);
     color: var(--rm-muted);
@@ -505,24 +508,14 @@
     gap: var(--space-3);
   }
   .notice-dismiss {
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
+    border: var(--border-thin);
+    border-radius: 0;
     background: transparent;
     color: var(--rm-muted);
     line-height: 1;
     padding: 0.1rem 0.4rem;
   }
   .notice a { color: var(--rm-sage); font-weight: 500; }
-  .error-msg {
-    color: var(--coral-alert);
-    font-size: var(--text-sm);
-  }
-  .error-msg a { color: var(--rm-sage); }
-  .empty-msg {
-    color: var(--rm-muted);
-    font-size: var(--text-sm);
-  }
-  .empty-msg a { color: var(--rm-sage); }
   .muted-note {
     font-size: var(--text-xs);
     color: var(--rm-dim);
@@ -531,7 +524,7 @@
   .muted-note code {
     background: var(--rm-surface);
     padding: 1px 4px;
-    border-radius: 4px;
+    border-radius: 0;
   }
   .list-toolbar {
     display: flex;
@@ -547,11 +540,11 @@
   }
   .btn-export {
     font-size: var(--text-xs);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-text);
     padding: var(--space-1) var(--space-2);
-    border-radius: var(--rm-radius);
+    border-radius: 0;
     cursor: pointer;
   }
   .btn-export:hover { background: var(--rm-bg); }
@@ -566,7 +559,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
     scroll-margin-top: var(--space-6);
   }
@@ -615,7 +608,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border, currentColor);
+    border: var(--border-thin);
     padding: 0 var(--space-1, 0.25rem);
     margin-left: auto;
   }
@@ -624,7 +617,7 @@
     border-color: var(--rm-text, currentColor);
   }
   .log-fix-link {
-    color: var(--amber-insight);
+    color: var(--brut-amber);
     font-size: var(--text-xs);
     font-weight: 600;
     border: none;
@@ -632,8 +625,8 @@
     padding: 0;
   }
   .log-row-no-route {
-    border-left: 4px solid var(--amber-insight);
-    background: color-mix(in oklab, var(--amber-insight) 14%, transparent);
+    border-left: 4px solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 14%, transparent);
     padding-left: var(--space-2);
   }
   .log-row-failed {
@@ -655,8 +648,8 @@
   }
   .btn-fix-approve {
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
-    border: none;
+    border-radius: 0;
+    border: var(--border-thin);
     background: var(--color-yellow);
     color: var(--color-ink);
     font-size: var(--text-sm);
@@ -666,8 +659,8 @@
   .btn-fix-approve:hover { filter: brightness(1.05); }
   .btn-fix-reject {
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border-radius: 0;
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-text);
     font-size: var(--text-sm);
@@ -683,8 +676,8 @@
   .fix-panel-docs a { color: var(--rm-sage); }
   .no-route-fix-panel {
     width: 100%;
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
+    border: var(--border-thin);
+    border-radius: 0;
     background: var(--rm-surface);
     padding: var(--space-2);
     font-size: var(--text-sm);
@@ -707,7 +700,7 @@
     font-size: var(--text-xs);
     background: var(--rm-surface);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 0;
   }
   .filter-bar {
     display: flex;
@@ -726,8 +719,8 @@
   .filter-bar select,
   .filter-bar input {
     min-width: 9rem;
-    border: 1px solid var(--rm-border);
-    border-radius: var(--rm-radius);
+    border: var(--border-thin);
+    border-radius: 0;
     background: var(--rm-bg);
     color: var(--rm-text);
     padding: var(--space-2);
@@ -736,81 +729,25 @@
   .filter-search input { min-width: 12rem; }
   .btn-apply, .btn-clear {
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
+    border-radius: 0;
     font-size: var(--text-sm);
     text-decoration: none;
   }
   .btn-apply {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--color-yellow);
     color: var(--color-ink);
   }
   .btn-clear {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-muted);
   }
   .status-resolved { color: var(--signal-teal); font-weight: 600; }
-  .status-policy { color: var(--amber-insight); font-weight: 600; }
+  .status-policy { color: var(--brut-amber); font-weight: 600; }
   .status-no-route { color: var(--coral-alert); font-weight: 600; }
   .status-failed { color: var(--coral-alert); font-weight: 600; }
   .status-other { color: var(--rm-dim); font-weight: 600; }
-  .detail-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 40;
-  }
-  .detail-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: min(32rem, 100vw);
-    height: 100vh;
-    background: var(--rm-bg);
-    border-left: 1px solid var(--rm-border);
-    box-shadow: -8px 0 20px rgba(0, 0, 0, 0.2);
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-  }
-  .detail-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--rm-border);
-  }
-  .detail-header h2 {
-    margin: 0;
-    font-size: var(--text-base);
-    color: var(--rm-text);
-  }
-  .detail-header-actions { display: flex; align-items: center; gap: var(--space-2); }
-  .detail-copy {
-    border: 1px solid var(--rm-border);
-    background: var(--rm-surface);
-    color: var(--rm-text);
-    font-size: var(--text-xs);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--rm-radius);
-    cursor: pointer;
-  }
-  .detail-close {
-    border: none;
-    background: transparent;
-    color: var(--rm-muted);
-    font-size: 1.4rem;
-    cursor: pointer;
-    line-height: 1;
-  }
-  .detail-body {
-    padding: var(--space-4);
-    overflow: auto;
-    display: grid;
-    gap: var(--space-4);
-  }
-  .receipt-section { display: grid; gap: var(--space-1); }
+  .receipt-section { display: grid; gap: var(--space-1); margin: 0 0 var(--space-4); }
   .receipt-h {
     margin: 0 0 var(--space-1);
     font-size: var(--text-xs);
@@ -819,31 +756,32 @@
     color: var(--rm-muted);
     font-family: var(--rm-font-mono, ui-monospace, monospace);
   }
-  .detail-body p {
+  .receipt-section p {
     margin: 0;
     font-size: var(--text-sm);
     color: var(--rm-muted);
   }
-  .detail-body strong { color: var(--rm-text); }
-  .detail-body a { color: var(--rm-sage); }
-  .detail-body ul {
+  .receipt-section strong { color: var(--rm-text); }
+  .receipt-section a { color: var(--rm-sage); }
+  .receipt-section ul {
     margin: var(--space-1) 0 0;
     padding-left: 1.25rem;
     color: var(--rm-muted);
     font-size: var(--text-sm);
   }
-  .detail-body code {
+  .receipt-section code {
     font-size: var(--text-xs);
     background: var(--rm-surface);
     padding: 1px 5px;
-    border-radius: 4px;
+    border-radius: 0;
   }
   .failure-line { color: var(--coral-alert) !important; }
   .coverage-note {
     font-size: var(--text-xs);
     color: var(--rm-dim);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
     padding-top: var(--space-2);
+    margin: var(--space-2) 0 0;
   }
   .coverage-note a { color: var(--rm-sage); }
 </style>

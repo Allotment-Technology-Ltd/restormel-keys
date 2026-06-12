@@ -203,7 +203,7 @@
   }
   .input {
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     color: var(--rm-text);
@@ -230,7 +230,7 @@
   }
   .project-list li {
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .project-row {
     display: flex;
@@ -262,12 +262,12 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-tertiary {
     background: transparent;
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger {
     background: color-mix(in oklab, var(--coral-alert) 90%, black 10%);

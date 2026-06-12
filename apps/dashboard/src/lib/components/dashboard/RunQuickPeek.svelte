@@ -115,7 +115,7 @@
     font-size: 1rem;
   }
   .peek-state-stalled {
-    color: var(--brut-amber, #e6a700);
+    color: var(--brut-amber);
   }
   .peek-rows {
     margin: 0;
@@ -152,8 +152,8 @@
   .peek-note {
     margin: 0;
     padding: var(--space-3);
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 14%, var(--brut-white));
+    border: var(--brut-border-micro) solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 14%, var(--brut-white));
     font-size: var(--text-sm);
     color: var(--brut-ink);
   }

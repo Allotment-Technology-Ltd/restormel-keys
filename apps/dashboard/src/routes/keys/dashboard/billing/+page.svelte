@@ -171,7 +171,7 @@
     margin: 0 0 var(--space-4);
     padding: var(--space-3);
     border-radius: var(--rm-radius);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-muted);
     font-size: var(--text-sm);
@@ -192,7 +192,7 @@
     }
   }
   .card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-4);
@@ -238,7 +238,7 @@
     color: var(--rm-on-sage, #fff);
   }
   .btn-secondary {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     color: var(--rm-text);
     background: var(--rm-surface);
   }

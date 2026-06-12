@@ -210,7 +210,7 @@
   .lifecycle-preview {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .lifecycle-deprecated {
     background: var(--coral-alert);
@@ -227,7 +227,7 @@
   }
   .section-compact {
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
   }
@@ -250,7 +250,7 @@
   }
   .chip {
     display: inline-block;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: 999px;
     padding: 2px 8px;
     font-size: var(--text-xs);
@@ -296,7 +296,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
   }
   .variant-provider {

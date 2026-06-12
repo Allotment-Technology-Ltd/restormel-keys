@@ -292,7 +292,7 @@
     max-height: calc(100vh - 2rem);
     overflow: auto;
     background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-5);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.32);
@@ -337,7 +337,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     padding: var(--space-3);
@@ -381,7 +381,7 @@
   .testing-ci-hint {
     margin: var(--space-4) 0 0;
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
     font-size: var(--text-xs);
@@ -423,7 +423,7 @@
   .btn-secondary {
     background: transparent;
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
 
   .btn:disabled {

@@ -127,7 +127,7 @@
   .template-selector {
     margin-bottom: var(--space-5);
     padding: var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-2, var(--rm-surface));
   }
@@ -167,7 +167,7 @@
     padding: var(--space-2) var(--space-3);
     font-size: var(--text-xs);
     font-weight: 700;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: 999px;
     background: var(--rm-bg);
     color: var(--rm-text);

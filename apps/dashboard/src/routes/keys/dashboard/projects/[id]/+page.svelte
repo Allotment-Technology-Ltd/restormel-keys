@@ -501,7 +501,7 @@
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-3);
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .env-name {
     font-size: var(--text-sm);
@@ -530,11 +530,11 @@
     padding: 0.1em 0.3em;
     background: var(--rm-bg);
     border-radius: 4px;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .section-gateway {
     padding: var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background: var(--rm-surface);
   }
@@ -591,7 +591,7 @@
     max-width: 24rem;
     width: 100%;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -624,7 +624,7 @@
     width: 100%;
     max-width: 28rem;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-bg);
     color: var(--rm-text);
@@ -654,7 +654,7 @@
   .project-name-input {
     min-width: 14rem;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     color: var(--rm-text);
@@ -663,7 +663,7 @@
 
   .section-ci-secrets {
     background: color-mix(in oklab, var(--rm-surface-raised, var(--rm-surface)) 90%, black 10%);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     padding: var(--space-4);
   }
@@ -678,7 +678,7 @@
     align-items: flex-start;
     gap: var(--space-3);
     padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .ci-secret-row:last-child {
     border-bottom: none;
@@ -734,7 +734,7 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-secondary:hover {
     opacity: 0.9;

@@ -529,7 +529,7 @@
     max-width: 46rem;
   }
   .callout {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-3) var(--space-4);
     margin: 0 0 var(--space-4);
@@ -551,7 +551,7 @@
     margin: var(--space-3) 0 0;
   }
   .card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     background: var(--rm-surface);
     padding: var(--space-4);
@@ -577,7 +577,7 @@
     flex-wrap: wrap;
   }
   .badge {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-2);
     font-size: var(--text-xs);
@@ -781,7 +781,7 @@
     flex-wrap: wrap;
   }
   .notice {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface-raised);
     color: var(--rm-muted);
     padding: var(--space-2) var(--space-3);

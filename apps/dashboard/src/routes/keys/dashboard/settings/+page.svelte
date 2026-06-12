@@ -73,7 +73,7 @@
     margin: 0 0 var(--space-6);
     padding: var(--space-4);
     background: var(--rm-surface);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
   }
   .section-title {
@@ -132,7 +132,7 @@
   .btn-secondary {
     background: var(--rm-surface-raised);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-secondary:hover {
     border-color: var(--rm-sage);

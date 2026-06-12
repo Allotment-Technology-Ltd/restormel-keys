@@ -215,8 +215,8 @@
   .graph-repair-stale {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 14%, var(--brut-white));
+    border: var(--brut-border-micro) solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 14%, var(--brut-white));
     font-size: var(--text-sm);
     color: var(--rm-text);
     line-height: 1.45;

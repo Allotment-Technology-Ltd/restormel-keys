@@ -798,7 +798,7 @@
     width: 100%;
     max-width: min(100%, 56rem);
     margin: 0 auto;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-lg);
     background: color-mix(in oklab, var(--rm-surface) 96%, var(--rm-bg));
     box-shadow: 0 1px 2px color-mix(in oklab, var(--rm-text) 5%, transparent);
@@ -884,7 +884,7 @@
     width: var(--route-map-shell-w);
     max-width: var(--route-map-shell-w);
     flex: 0 0 var(--route-map-shell-w);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-lg);
     background: color-mix(in oklab, var(--rm-surface-raised) 35%, var(--rm-surface));
     box-shadow: 0 1px 2px color-mix(in oklab, var(--rm-text) 6%, transparent);
@@ -925,7 +925,7 @@
     min-width: 0;
     max-width: 100%;
     padding: var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-lg);
     background: color-mix(in oklab, var(--rm-surface-raised) 25%, var(--rm-surface));
     box-sizing: border-box;

@@ -513,7 +513,7 @@
     margin-top: calc(-1 * var(--space-2));
     padding: var(--space-3);
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     line-height: 1.5;
   }
@@ -527,7 +527,7 @@
     padding: 0.1em 0.35em;
     background: var(--rm-bg);
     border-radius: 4px;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .section {
     margin-bottom: var(--space-6);
@@ -557,7 +557,7 @@
   .key-callout {
     margin: 0 0 var(--space-3);
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left: 4px solid var(--rm-sage);
     border-radius: var(--rm-radius);
     background: var(--rm-surface-raised);
@@ -572,7 +572,7 @@
   .cli-hint {
     margin: 0 0 var(--space-3);
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
     color: var(--rm-muted);
@@ -591,7 +591,7 @@
     padding: var(--space-3) var(--space-4);
     margin: 0 0 var(--space-3);
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left: 4px solid var(--rm-accent, #f5c518);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
@@ -613,7 +613,7 @@
   }
   .new-key-box {
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: var(--space-4);
     margin-bottom: var(--space-3);
@@ -646,7 +646,7 @@
     padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
     color: var(--rm-text);
   }
@@ -671,12 +671,12 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger {
     background: transparent;
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger:hover:not(:disabled) {
     color: var(--coral-alert);
@@ -697,7 +697,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .key-meta {
     display: flex;
@@ -761,7 +761,7 @@
   }
   .rename-input {
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
     background: var(--rm-bg);
@@ -782,7 +782,7 @@
   }
   .btn-icon {
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     color: var(--rm-muted);
     line-height: 1;

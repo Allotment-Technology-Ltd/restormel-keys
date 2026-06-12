@@ -337,7 +337,7 @@
     font-size: var(--text-xs);
     color: var(--rm-muted);
     padding: 0.1rem 0.3rem;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
   }
 
@@ -423,7 +423,7 @@
     color: var(--rm-muted);
     background: var(--rm-surface);
     padding: 0.1rem 0.35rem;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: 0;
   }
 

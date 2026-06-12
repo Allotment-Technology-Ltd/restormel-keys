@@ -407,7 +407,7 @@
 
   .chain-table td {
     padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--rm-border, #e5e5e5);
+    border-bottom: var(--border-thin);
     vertical-align: middle;
   }
 
@@ -447,7 +447,7 @@
 
   /* Step list */
   .receipt-details {
-    border-top: 1px solid var(--rm-border, #e5e5e5);
+    border-top: var(--border-thin);
     padding-top: var(--space-3);
   }
 
@@ -474,7 +474,7 @@
     flex-wrap: wrap;
     gap: var(--space-2);
     padding: var(--space-1) 0;
-    border-bottom: 1px solid var(--rm-border, #e5e5e5);
+    border-bottom: var(--border-thin);
     font-size: var(--text-xs);
   }
 
@@ -492,7 +492,7 @@
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
-    border-top: 1px solid var(--rm-border, #e5e5e5);
+    border-top: var(--border-thin);
     padding-top: var(--space-3);
   }
 

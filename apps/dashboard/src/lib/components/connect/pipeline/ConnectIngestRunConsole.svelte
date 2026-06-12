@@ -18,6 +18,7 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+  import { STALL_NOTICE_MS } from "$lib/connect/run-stall";
   import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
   import type { LiveRunStreamEvent } from "$lib/connect/live-run-events";
   import {
@@ -252,27 +253,10 @@
       : "";
 
   // ── Stall / reclaim visibility (Stage 1.6 durable-runs) ──────────────────
-  /** Threshold after which a running job with no new heartbeat is considered stalled. */
-  const STALL_NOTICE_MS = 90_000; // 90 s — matches graph-repair panel convention
+  // Threshold after which a running job with no new heartbeat is considered stalled.
+  // Imported from `$lib/connect/run-stall` so the console and the topbar live-run
+  // chip share ONE 90s definition (matches the graph-repair panel convention).
   const WORKER_LOST_PREFIX = "worker_lost";
-
-  function relativeTime(iso: string | undefined | null, referenceMs = nowMs): string {
-    if (!iso) return "—";
-    const ms = referenceMs - new Date(iso).getTime();
-    if (!Number.isFinite(ms) || ms < 0) return "just now";
-    if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
-    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-    return `${Math.round(ms / 3_600_000)}h ago`;
-  }
-
-  function msRelativeTime(epochMs: number | null | undefined, referenceMs = nowMs): string {
-    if (epochMs == null) return "—";
-    const ms = referenceMs - epochMs;
-    if (!Number.isFinite(ms) || ms < 0) return "just now";
-    if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s ago`;
-    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-    return `${Math.round(ms / 3_600_000)}h ago`;
-  }
 
   /**
    * True when the job is running but the worker heartbeat has gone stale.
@@ -963,15 +947,11 @@
                 {/if}
               </p>
             {/if}
-            {#if job.worker_heartbeat_at != null && isInProgress}
-              <p class="progress-heartbeat run-muted">
-                Last worker signal {msRelativeTime(job.worker_heartbeat_at)}
-              </p>
-            {:else if isInProgress && job.updated_at}
-              <p class="progress-heartbeat run-muted">
-                Last activity {relativeTime(job.updated_at)}
-              </p>
-            {/if}
+            <!-- The live "Last worker signal Xs ago" readout lives once, in the
+                 Machine Room heartbeat strip below (W4.1) — it breathes with the
+                 SSE frames and carries the STALLED stamp. The static duplicate that
+                 used to sit here was removed in W4.4 (filed #296: duplicate
+                 "Last worker signal" readouts). -->
             {#if isStalled}
               <!-- W4.1 §3.2: STALLED as a designed amber moment — the stamp prints
                    the durable-runs contract in plain words (true to Stage 1.6). -->
@@ -989,10 +969,13 @@
               </div>
             {/if}
             {#if isReclaimedRun && !isStalled}
-              <!-- W4.1 §3.2: RECLAIMED as a green ledger line. -->
+              <!-- W4.1 §3.2: RECLAIMED as a green ledger line. `isReclaimedRun`
+                   already guarantees reclaim_count > 0, so the count renders
+                   unconditionally — the redundant inner guard was removed in W4.4
+                   (filed #296: redundant reclaim guard). -->
               <p class="progress-reclaim-ledger" role="status">
                 <span class="reclaim-tag">RECLAIMED</span>
-                · resumed from checkpoint{#if (job.reclaim_count ?? 0) > 0} after a stall (×{job.reclaim_count}){/if}
+                · resumed from checkpoint after a stall (×{job.reclaim_count})
               </p>
             {/if}
           </div>
@@ -1239,8 +1222,8 @@
   }
 
   .run-status-badge-stalled {
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 20%, var(--brut-white));
-    border-color: var(--brut-amber, #e6a700);
+    background: color-mix(in oklab, var(--brut-amber) 20%, var(--brut-white));
+    border-color: var(--brut-amber);
     color: var(--rm-text);
   }
 
@@ -1254,9 +1237,9 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     padding: 0 var(--space-2);
-    border: var(--border-thin, 1px solid) var(--brut-amber, #e6a700);
+    border: var(--border-thin, 1px solid) var(--brut-amber);
     color: var(--rm-text);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 12%, var(--brut-white));
+    background: color-mix(in oklab, var(--brut-amber) 12%, var(--brut-white));
   }
 
   .run-error-banner {
@@ -1336,8 +1319,8 @@
   .run-live-degraded {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 12%, var(--brut-white));
+    border: var(--brut-border-micro) solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 12%, var(--brut-white));
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     color: var(--rm-text);
@@ -1478,13 +1461,13 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border: var(--brut-border-width) solid var(--brut-ink);
-    background: #0a1f0a;
-    box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 12%, transparent);
+    background: var(--brut-crt-bg);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--brut-crt-fg) 12%, transparent);
   }
 
   .machine-room--stalled {
-    border-color: var(--brut-amber, #e6a700);
-    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--brut-amber, #e6a700) 30%, transparent);
+    border-color: var(--brut-amber);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--brut-amber) 30%, transparent);
   }
 
   .heartbeat-strip {
@@ -1498,13 +1481,13 @@
     font-family: var(--rm-font-mono);
     font-size: var(--text-mono-md);
     letter-spacing: 0.25em;
-    color: #7dff7d;
+    color: var(--brut-crt-fg);
     /* The bar text itself changes per frame; this soft fade smooths the step. */
     transition: opacity 200ms ease;
   }
 
   .heartbeat-strip--stalled .heartbeat-bar {
-    color: var(--brut-amber, #e6a700);
+    color: var(--brut-amber);
   }
 
   .heartbeat-label {
@@ -1512,13 +1495,13 @@
     font-size: var(--text-mono-sm);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: color-mix(in oklab, #7dff7d 80%, var(--brut-white));
+    color: color-mix(in oklab, var(--brut-crt-fg) 80%, var(--brut-white));
   }
 
   .heartbeat-stalled-stamp {
-    color: var(--brut-amber, #e6a700);
+    color: var(--brut-amber);
     font-weight: 700;
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
+    border: var(--brut-border-micro) solid var(--brut-amber);
     padding: 0 var(--space-2);
     animation: machine-blink 1s steps(2, end) infinite;
   }
@@ -1547,13 +1530,13 @@
     flex-direction: column;
     gap: 0.1rem;
     padding: var(--space-2);
-    border: var(--brut-border-micro) solid color-mix(in oklab, #7dff7d 35%, transparent);
-    background: color-mix(in oklab, #7dff7d 5%, transparent);
+    border: var(--brut-border-micro) solid color-mix(in oklab, var(--brut-crt-fg) 35%, transparent);
+    background: color-mix(in oklab, var(--brut-crt-fg) 5%, transparent);
   }
 
   .odometer--running {
-    border-color: #7dff7d;
-    box-shadow: 0 0 0 1px #7dff7d;
+    border-color: var(--brut-crt-fg);
+    box-shadow: 0 0 0 1px var(--brut-crt-fg);
     animation: machine-pulse 1.4s ease-in-out infinite;
   }
 
@@ -1564,10 +1547,10 @@
   @keyframes machine-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 1px #7dff7d;
+      box-shadow: 0 0 0 1px var(--brut-crt-fg);
     }
     50% {
-      box-shadow: 0 0 0 2px color-mix(in oklab, #7dff7d 60%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--brut-crt-fg) 60%, transparent);
     }
   }
 
@@ -1576,7 +1559,7 @@
     font-size: 0.625rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: color-mix(in oklab, #7dff7d 75%, var(--brut-white));
+    color: color-mix(in oklab, var(--brut-crt-fg) 75%, var(--brut-white));
   }
 
   .odometer-count {
@@ -1589,14 +1572,14 @@
     font-family: var(--rm-font-mono);
     font-size: var(--text-mono-lg);
     font-weight: 700;
-    color: #7dff7d;
+    color: var(--brut-crt-fg);
     font-variant-numeric: tabular-nums;
   }
 
   .odometer-total {
     font-family: var(--rm-font-mono);
     font-size: var(--text-mono-sm);
-    color: color-mix(in oklab, #7dff7d 60%, var(--brut-white));
+    color: color-mix(in oklab, var(--brut-crt-fg) 60%, var(--brut-white));
     font-variant-numeric: tabular-nums;
   }
 
@@ -1732,7 +1715,7 @@
   }
 
   .ledger-cap--yellow {
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 40%, var(--brut-white));
+    background: color-mix(in oklab, var(--brut-amber) 40%, var(--brut-white));
   }
 
   .ledger-cap--green {
@@ -2084,18 +2067,12 @@
     font-size: var(--text-xs);
   }
 
-  .progress-heartbeat {
-    font-family: var(--rm-font-mono);
-    font-size: var(--text-xs);
-    margin: 0;
-  }
-
   /* W4.1 §3.2: STALLED as a designed amber stamp + plain-words contract body. */
   .progress-stall-notice {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    border: var(--brut-border-width) solid var(--brut-amber, #e6a700);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 14%, var(--brut-white));
+    border: var(--brut-border-width) solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 14%, var(--brut-white));
     color: var(--rm-text);
     display: flex;
     flex-direction: column;
@@ -2110,8 +2087,8 @@
     text-transform: uppercase;
     letter-spacing: var(--text-mono-tracking);
     color: var(--rm-text);
-    border: var(--brut-border-micro) solid var(--brut-amber, #e6a700);
-    background: color-mix(in oklab, var(--brut-amber, #e6a700) 30%, var(--brut-white));
+    border: var(--brut-border-micro) solid var(--brut-amber);
+    background: color-mix(in oklab, var(--brut-amber) 30%, var(--brut-white));
     padding: 0 var(--space-2);
     transform: rotate(-1.5deg);
   }
@@ -2155,12 +2132,12 @@
     overflow: auto;
     padding: var(--space-2);
     border: var(--brut-border-width) solid var(--brut-ink);
-    background: #0a1f0a;
-    color: #7dff7d;
+    background: var(--brut-crt-bg);
+    color: var(--brut-crt-fg);
     font-family: var(--rm-font-mono);
     font-size: 0.6875rem;
     line-height: 1.35;
-    box-shadow: inset 0 0 0 2px color-mix(in oklab, #7dff7d 15%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--brut-crt-fg) 15%, transparent);
   }
   .log-screen-pre {
     margin: 0;

@@ -449,7 +449,7 @@
     display: inline-block;
     font-size: var(--text-xs);
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     padding: 0 var(--space-2);
     text-transform: uppercase;
@@ -466,7 +466,7 @@
     padding: var(--space-2) var(--space-4);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
     color: var(--rm-text);
   }
@@ -480,7 +480,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
   }
   .binding-project {
     font-size: var(--text-sm);
@@ -501,12 +501,12 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger {
     background: transparent;
     color: var(--rm-muted);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .btn-danger:hover:not(:disabled) {
     color: var(--coral-alert);
@@ -537,7 +537,7 @@
   }
 
   .import-card {
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--radius-md);
     background: var(--rm-surface);
     padding: var(--space-4);

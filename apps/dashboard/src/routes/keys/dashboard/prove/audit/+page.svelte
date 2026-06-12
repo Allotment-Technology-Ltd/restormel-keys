@@ -338,7 +338,7 @@
     padding: var(--space-3) var(--space-4);
     margin: 0 0 var(--space-4);
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
   }
   .filter-row {
@@ -366,7 +366,7 @@
   .filter-select,
   .filter-input {
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: var(--rm-radius);
     font-size: var(--text-sm);
     background: var(--rm-bg);
@@ -400,7 +400,7 @@
   .btn-secondary {
     background: var(--rm-surface);
     color: var(--rm-text);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   /* Error state */
   .error-banner {
@@ -409,7 +409,7 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     background: var(--rm-surface-raised);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-left: 4px solid var(--coral-alert);
     border-radius: var(--rm-radius);
     margin: 0 0 var(--space-4);
@@ -432,7 +432,7 @@
     gap: var(--space-3);
     align-items: baseline;
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--rm-border);
+    border-bottom: var(--border-thin);
     font-size: var(--text-sm);
   }
   .audit-time {
@@ -460,7 +460,7 @@
     font-family: var(--rm-font-mono, ui-monospace, monospace);
     background: var(--rm-surface-raised);
     padding: 0 var(--space-1);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     border-radius: 2px;
   }
   .audit-actor-id {

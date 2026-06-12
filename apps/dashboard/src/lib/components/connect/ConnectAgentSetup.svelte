@@ -376,7 +376,7 @@
   .gateway-panel {
     margin: var(--space-5) 0;
     padding: var(--space-4);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
   }
   .gateway-panel h3 {
@@ -402,7 +402,7 @@
   .mcp-status-callout {
     margin: var(--space-3) 0;
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-surface);
     font-size: var(--text-sm);
     line-height: 1.55;
@@ -417,7 +417,7 @@
   .create-section {
     margin-top: var(--space-4);
     padding-top: var(--space-3);
-    border-top: 1px solid var(--rm-border);
+    border-top: var(--border-thin);
   }
   .create-toggle {
     margin-bottom: var(--space-3);
@@ -431,7 +431,7 @@
   .select {
     width: 100%;
     padding: 0.5rem 0.65rem;
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     font: inherit;
     background: var(--rm-surface);
   }
@@ -474,7 +474,7 @@
     font-size: 0.85rem;
     padding: var(--space-2);
     background: var(--rm-bg);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .new-key-actions {
     margin-top: var(--space-2);
@@ -488,7 +488,7 @@
   .agent-ready {
     font-size: var(--text-sm);
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
   }
   .agent-ready {
     background: color-mix(in srgb, var(--rm-success, #0a0) 8%, transparent);
@@ -513,7 +513,7 @@
     overflow-x: auto;
     font-size: 0.8rem;
     padding: var(--space-3);
-    border: 1px solid var(--rm-border);
+    border: var(--border-thin);
     background: var(--rm-bg);
   }
   .snippet-warn,
