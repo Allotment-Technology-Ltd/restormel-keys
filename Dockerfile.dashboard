@@ -27,7 +27,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY . .
 
 # Install all workspace dependencies (frozen to match lockfile).
-RUN pnpm install --frozen-lockfile
+# --prod=false forces devDependencies even when the platform (e.g. Coolify)
+# injects NODE_ENV=production as a build ARG — the build needs @types/node etc.
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Build dashboard with adapter-node output.
 ENV DEPLOY_TARGET=node
