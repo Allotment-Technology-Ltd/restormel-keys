@@ -35,6 +35,13 @@ declare global {
         /** Only set when authType === "management_key": workspace-scoped access. */
         workspaceId?: string;
       };
+      /**
+       * W4.6a — true when a request carried a session cookie but Neon Auth verification
+       * could NOT complete (5xx / 429-with-no-cache / network throw / unexpected throw in
+       * the auth pipeline). Distinct from "genuinely signed out" (`!user && !authDegraded`).
+       * Loads/pages render an auth-degraded retry state for this, never the signed-out CTA.
+       */
+      authDegraded?: boolean;
       /** Suite module flags (PostHog + env override). */
       moduleFlags?: import("$lib/module-flags-types").ModuleFlags;
       /**
@@ -63,6 +70,12 @@ declare global {
     interface LayoutData {
       /** Session or key auth from root layout load (passed to SupportAssistant; avoid `$page` in that child). */
       user?: PageData["user"];
+      /**
+       * W4.6a — Neon Auth verification could not complete for a cookie-bearing request.
+       * The shell renders an auth-degraded banner (retry, not the signed-out CTA) so it
+       * does not contradict a page that is showing its own degraded/retry state.
+       */
+      authDegraded?: boolean;
       /** GitHub stars + summed npm downloads (30d); null when skipped, failed, or zero. Cached 1h server-side. */
       socialProof?: import("$lib/social-proof").SocialProofMetrics | null;
       dashboardUiHidden?: import("$lib/dashboard-ui-sections").DashboardUiSection[];

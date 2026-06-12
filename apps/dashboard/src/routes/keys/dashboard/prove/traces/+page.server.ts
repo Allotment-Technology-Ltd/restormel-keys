@@ -13,6 +13,7 @@
  */
 import type { PageServerLoad } from "./$types";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import { isSignedInSession } from "$lib/server/session-user";
 
 export type TraceRow = {
   id: string;
@@ -33,7 +34,7 @@ export type TracesPageData = {
 };
 
 export const load: PageServerLoad = async (event): Promise<TracesPageData> => {
-  if (!event.locals.user || event.locals.user.authType !== "session") {
+  if (!isSignedInSession(event.locals)) {
     return { signedIn: false, traces: [], endpointStatus: "absent", workspaceId: null };
   }
 

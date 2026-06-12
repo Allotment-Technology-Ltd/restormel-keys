@@ -115,14 +115,30 @@ export type GetSessionResult = {
   error: Error | null;
   /** Refreshed session cookies from Neon Auth — must be forwarded to the browser. */
   setCookies: string[];
+  /**
+   * W4.6a — verification could NOT be completed (Neon Auth 5xx, network throw, or a
+   * 429 with no last-known-good to fall back on) for a request that DID carry a
+   * session cookie. `data === null && degraded === true` means "we don't know if this
+   * user is signed in", which is NOT the same as "genuinely signed out"
+   * (`data === null && degraded === false`). Callers must render an auth-degraded /
+   * retry state for the former, never the signed-out CTA. A genuine signed-out request
+   * (Neon returns 200 `{user:null}`) is never degraded.
+   */
+  degraded: boolean;
 };
 
 /** Short TTL avoids hammering Neon Auth on every dashboard navigation (dev + prod). */
 export const SESSION_CACHE_MS = 20_000;
 /** @deprecated Use SESSION_CACHE_MS — kept for tests. */
 export const PROD_SESSION_CACHE_MS = SESSION_CACHE_MS;
-/** Re-use last good session when Neon returns 429 instead of treating the user as logged out. */
-const STALE_SESSION_ON_429_MS = 60_000;
+/**
+ * Re-use last good session when Neon verification cannot complete (429 / 5xx / network
+ * throw) instead of treating the user as logged out. Slightly longer than the happy-path
+ * cache: this is the resilience window during an auth-infra blip.
+ */
+const STALE_SESSION_ON_FAILURE_MS = 60_000;
+/** @deprecated Use STALE_SESSION_ON_FAILURE_MS — name kept for readers/tests. */
+const STALE_SESSION_ON_429_MS = STALE_SESSION_ON_FAILURE_MS;
 
 type SessionCacheEntry = { at: number; result: GetSessionResult };
 const sessionCache = new Map<string, SessionCacheEntry>();
@@ -144,6 +160,31 @@ function writeSessionCache(key: string, result: GetSessionResult): void {
   }
 }
 
+/**
+ * Last-known-good fallback for a verification that could not complete (429 / 5xx).
+ * Returns the cached signed-in session if one is still within the resilience window,
+ * otherwise a `degraded` miss — NEVER a clean signed-out (which would be a silent
+ * demotion). `void STALE_SESSION_ON_429_MS` keeps the back-compat alias referenced.
+ */
+function lastKnownGoodOrDegraded(
+  cacheKey: string,
+  setCookies: string[],
+  reason: string,
+): GetSessionResult {
+  void STALE_SESSION_ON_429_MS;
+  const stale = readSessionCache(cacheKey, STALE_SESSION_ON_FAILURE_MS);
+  if (stale?.data?.user) {
+    if (dev) {
+      console.warn(`[auth] Neon Auth ${reason}; using last-known-good session`);
+    }
+    return { ...stale, setCookies: stale.setCookies.length ? stale.setCookies : setCookies };
+  }
+  if (dev) {
+    console.warn(`[auth] Neon Auth ${reason}; no cached session — auth degraded, render retry state`);
+  }
+  return { data: null, error: null, setCookies, degraded: true };
+}
+
 async function fetchSessionFromNeon(
   url: string,
   cookie: string,
@@ -159,27 +200,30 @@ async function fetchSessionFromNeon(
     ? rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), host)
     : [];
 
+  // 429 (rate limit) and 5xx (Neon Auth infra blip) are verification FAILURES, not a
+  // signed-out signal. Fall back to last-known-good; otherwise report degraded so hooks
+  // renders an auth-error/retry surface instead of silently demoting to signed-out.
   if (res.status === 429) {
-    const stale = readSessionCache(cacheKey, STALE_SESSION_ON_429_MS);
-    if (stale?.data?.user) {
-      if (dev) {
-        console.warn("[auth] Neon Auth rate limited (429); using cached session");
-      }
-      return stale;
-    }
-    if (dev) {
-      console.warn("[auth] Neon Auth rate limited (429); no cached session — wait a few seconds and refresh");
-    }
-    return { data: null, error: null, setCookies };
+    return lastKnownGoodOrDegraded(cacheKey, setCookies, "rate limited (429)");
+  }
+  if (res.status >= 500) {
+    return lastKnownGoodOrDegraded(cacheKey, setCookies, `error (${res.status})`);
   }
 
+  // Other non-ok (e.g. 4xx other than 429): the cookie did not resolve to a session.
+  // This is a genuine signed-out state — not degraded.
   if (!res.ok) {
-    return { data: null, error: null, setCookies };
+    return { data: null, error: null, setCookies, degraded: false };
   }
 
   const data = (await res.json()) as { user?: SessionUser; session?: unknown } | null;
   const user = data?.user ?? null;
-  const result: GetSessionResult = { data: user ? { user } : null, error: null, setCookies };
+  const result: GetSessionResult = {
+    data: user ? { user } : null,
+    error: null,
+    setCookies,
+    degraded: false,
+  };
   writeSessionCache(cacheKey, result);
   return result;
 }
@@ -201,16 +245,17 @@ export async function getSession(
   host = ""
 ): Promise<GetSessionResult> {
   const url = getSessionUrl();
+  // Not configured: genuinely no session (not degraded — there is nothing to verify).
   if (!url) {
-    return { data: null, error: null, setCookies: [] };
+    return { data: null, error: null, setCookies: [], degraded: false };
   }
+  const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
+  // No session cookie at all: genuinely signed out — never degraded.
+  if (!cookieHeaderMayCarrySession(cookie)) {
+    return { data: null, error: null, setCookies: [], degraded: false };
+  }
+  const cacheKey = sessionCacheKey(host, cookie);
   try {
-    const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
-    if (!cookieHeaderMayCarrySession(cookie)) {
-      return { data: null, error: null, setCookies: [] };
-    }
-    const cacheKey = sessionCacheKey(host, cookie);
-
     const cacheTtlMs = SESSION_CACHE_MS;
     const fresh = readSessionCache(cacheKey, cacheTtlMs);
     if (fresh) return fresh;
@@ -224,7 +269,11 @@ export async function getSession(
     sessionInFlight.set(cacheKey, promise);
     return await promise;
   } catch (e) {
-    return { data: null, error: e instanceof Error ? e : new Error(String(e)), setCookies: [] };
+    // A network throw is a verification FAILURE, not a signed-out signal. Fall back to
+    // last-known-good if we have one; otherwise report degraded so the request renders an
+    // auth-error/retry state instead of silently demoting a signed-in user to signed-out.
+    const fallback = lastKnownGoodOrDegraded(cacheKey, [], "unreachable");
+    return { ...fallback, error: e instanceof Error ? e : new Error(String(e)) };
   }
 }
 

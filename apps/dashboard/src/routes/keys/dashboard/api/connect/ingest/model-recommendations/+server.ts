@@ -18,13 +18,15 @@ import {
   resolvePipelineDomainPack,
 } from "$lib/server/connect/domain-pack-service";
 import { listEnvironments, listProjectsByWorkspace } from "$lib/server/db";
+import { sessionUser } from "$lib/server/session-user";
 
 export const GET: RequestHandler = async ({ locals }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "unauthorized" }, { status: 401 });
   }
-  const workspace = await getOrCreateDefaultWorkspace(locals.user.uid);
-  const userId = locals.user.uid;
+  const workspace = await getOrCreateDefaultWorkspace(user.uid);
+  const userId = user.uid;
   const integrations = await listProviderIntegrations(workspace.id).catch(() => []);
   const providerTypes = new Set(integrations.map((i) => i.providerType).filter(Boolean));
 

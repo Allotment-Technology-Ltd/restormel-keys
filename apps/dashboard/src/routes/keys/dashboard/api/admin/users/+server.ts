@@ -2,12 +2,13 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { listUsersForServiceOwnerAdmin } from "$lib/server/admin-users";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
   try {

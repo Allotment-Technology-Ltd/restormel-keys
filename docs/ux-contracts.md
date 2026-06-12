@@ -374,6 +374,29 @@ redirect — shareable historical views (W2.1 contract extended in `explorer-url
 **Boundary semantics** match the connect-v1 retrieve path (`valid_from ≤ t < valid_to`): a claim
 valid until T is shown at T-ε, not at T.
 
+### §3 auth states — fail-closed verification (Stage W4.6a)
+
+A protected surface has **three** auth states, not two. The defect this fixes: a transient Neon Auth
+verification failure (5xx, rate-limit with no last-known-good, network throw) was silently demoting a
+signed-in user to **signed-out** on that one request — so the shell could say signed-in while a page
+said signed-out, and a refresh could bounce the user to login on an infra blip. The convention below
+is enforced by the single `sessionUser` / `requireSessionUser` / `isSignedInSession` helper
+(`$lib/server/session-user`) at every session-page surface.
+
+| State | When | Required behavior |
+|-------|------|--------------------|
+| **Signed in** | Verification resolved a session user | Render the surface normally. |
+| **Signed out** (genuine) | No session cookie, or Neon Auth returned 200 `{user:null}` / a 4xx | Render the signed-out CTA — `SignInNotice` (in-place) or redirect to `/keys/dashboard/login`. This is the ONLY state that shows "Sign in". |
+| **Auth degraded** (verification errored) | A cookie-bearing request where verification could **not** complete (Neon Auth 5xx, 429 with no last-known-good, network throw, or an unexpected throw in the auth pipeline) | Render an honest auth-degraded state (`AuthDegradedNotice`): copy says we couldn't confirm sign-in (likely a brief hiccup, **not** a sign-out) + a **Try again** that calls `invalidateAll()`. **Never** the signed-out CTA, and **never** a redirect to login. `getSession` first serves a short-TTL last-known-good session verification (keyed by the session cookie); only with no cached value does it report `degraded`. Carried on `locals.authDegraded` → `LayoutData.authDegraded`; the shell shows the same degraded banner so it cannot contradict the page. |
+
+**Shell/page agreement.** The shell renders `$page.data.user` from layout data, which persists across
+client navigations; pages re-check. The 4-minute client session refresh
+(`hooks.client.ts` → `/keys/dashboard/api/auth/session-cache`) now compares the polled `signedIn`
+boolean against the rendered state and calls `invalidateAll()` on a definite **change** (decision in
+`$lib/auth-change`, `shouldInvalidateOnSessionPoll`), so a mid-session expiry or a sign-in in another
+tab reconciles the shell and pages instead of leaving them disagreeing. A `degraded` poll is never
+treated as a change.
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:

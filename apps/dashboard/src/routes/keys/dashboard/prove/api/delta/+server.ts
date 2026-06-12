@@ -10,6 +10,7 @@ import {
   resolveByokChatTarget,
 } from "$lib/server/graph-comparison/byok-chat";
 import { analyseQualityDelta } from "$lib/server/graph-comparison/analyseQualityDelta";
+import { sessionUser } from "$lib/server/session-user";
 
 type DeltaBody = {
   question?: string;
@@ -20,7 +21,8 @@ type DeltaBody = {
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -43,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  const userId = locals.user.uid;
+  const userId = user.uid;
   try {
     const ctx = await resolveByokChatContext({ workspaceId: workspace.id, userId });
     if (!ctx) {

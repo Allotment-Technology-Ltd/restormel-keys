@@ -2,14 +2,15 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { setFoundersAccessStatus, type FoundersAccessStatus } from "$lib/server/founders-access";
 import { invalidateSessionAuthCache } from "$lib/server/session-auth-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export const config = { runtime: "nodejs22.x" as const };
 
 type Body = { status?: FoundersAccessStatus };
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
-  const u = locals.user;
-  if (!u || u.authType !== "session" || !u.isServiceAdmin) {
+  const u = sessionUser(locals);
+  if (!u || !u.isServiceAdmin) {
     return json({ error: "forbidden" }, { status: 403 });
   }
 

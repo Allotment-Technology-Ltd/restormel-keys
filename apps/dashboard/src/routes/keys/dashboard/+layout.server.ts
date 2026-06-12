@@ -72,7 +72,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     "/admin",
   ];
   const isProtected = protectedPaths.some((p) => pathAfterBase === p || pathAfterBase.startsWith(p + "/"));
-  if (!locals.user && isProtected) {
+  // W4.6a: do NOT bounce a cookie-bearing request to login when auth verification merely
+  // errored (`authDegraded`) — that would silently sign the user out on an infra blip.
+  // The shell + page render the auth-degraded retry state instead; only a genuinely
+  // signed-out request (no user, not degraded) is redirected to login.
+  if (!locals.user && !locals.authDegraded && isProtected) {
     throw redirect(302, `${url.origin}${baseNorm}/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
@@ -155,6 +159,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   return {
     user: locals.user,
     authError,
+    authDegraded: locals.authDegraded ?? false,
     projectContexts,
     workspaceId,
     journeySignals,

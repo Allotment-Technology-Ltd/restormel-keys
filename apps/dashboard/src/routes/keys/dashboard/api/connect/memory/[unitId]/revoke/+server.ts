@@ -7,9 +7,11 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { revokeAgentObservationPostgres, invalidateConnectGraphStatsCache } from "$lib/server/neon";
 import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
+import { sessionUser } from "$lib/server/session-user";
 
 export const POST: RequestHandler = async ({ locals, params }) => {
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return json({ error: "unauthorized", message: "Sign in required." }, { status: 401 });
   }
 
@@ -18,7 +20,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
     return json({ error: "invalid_request", message: "Unit id is required." }, { status: 400 });
   }
 
-  const workspace = await getConnectWorkspaceCached(locals.user.uid);
+  const workspace = await getConnectWorkspaceCached(user.uid);
 
   try {
     const result = await revokeAgentObservationPostgres({

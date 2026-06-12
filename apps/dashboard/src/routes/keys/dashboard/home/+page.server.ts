@@ -48,6 +48,7 @@ import { computeConnectVerifiedReadiness } from "$lib/server/connect/verified-re
 import type { ConnectReadinessStatus } from "$lib/connect/verified-readiness";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
+import { isSignedInSession } from "$lib/server/session-user";
 
 /**
  * True when this instance is running in a non-production (self-host / dev) context.
@@ -125,7 +126,7 @@ export const load: PageServerLoad = async (event) => {
   if (!event.locals.connectStatsRequestMemo) {
     event.locals.connectStatsRequestMemo = new Map();
   }
-  const signedInForHub = locals.user.authType === "session";
+  const signedInForHub = isSignedInSession(locals);
   const hubPanels = signedInForHub
     ? {
         hubSignedIn: true,

@@ -2,7 +2,11 @@ import { browser, dev } from "$app/environment";
 import type { HandleClientError } from "@sveltejs/kit";
 import posthog from "posthog-js";
 import { env } from "$env/dynamic/public";
+import { get } from "svelte/store";
+import { page } from "$app/stores";
+import { invalidateAll } from "$app/navigation";
 import { reportClientDebug, reportClientError, setupClientDebugCapture } from "$lib/debug/client-debug";
+import { shouldInvalidateOnSessionPoll, type SessionCacheSignal } from "$lib/auth-change";
 
 const DASHBOARD_PREFIX = "/keys/dashboard";
 const SESSION_REFRESH_MS = 4 * 60 * 1000;
@@ -18,20 +22,36 @@ async function clearStaleServiceWorkers(): Promise<void> {
   }
 }
 
-/** Keep Neon Auth session cookies fresh via the existing auth proxy. */
+/**
+ * Keep Neon Auth session cookies fresh via the existing auth proxy, AND keep the shell
+ * and page loads in agreement: when the refresh poll reports an auth-state CHANGE
+ * (signed-in→out or vice versa) vs. what the client currently has rendered, call
+ * `invalidateAll()` so the layout (shell) and every page re-run against the new truth.
+ * A `degraded` poll (verification couldn't complete) is never treated as a change.
+ */
 function setupAuthSessionRefresh(): void {
   if (typeof window === "undefined") return;
   if (!window.location.pathname.startsWith(DASHBOARD_PREFIX)) return;
 
-  const refresh = () => {
-    void fetch(`${DASHBOARD_PREFIX}/api/auth/session-cache`, {
-      credentials: "include",
-      cache: "no-store",
-    });
+  const refresh = async () => {
+    try {
+      const res = await fetch(`${DASHBOARD_PREFIX}/api/auth/session-cache`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const signal = (await res.json()) as SessionCacheSignal;
+      const currentlySignedIn = Boolean(get(page).data.user);
+      if (shouldInvalidateOnSessionPoll(currentlySignedIn, signal)) {
+        await invalidateAll();
+      }
+    } catch {
+      // Network hiccup on the refresh poll is non-fatal — try again next interval.
+    }
   };
 
-  refresh();
-  window.setInterval(refresh, SESSION_REFRESH_MS);
+  void refresh();
+  window.setInterval(() => void refresh(), SESSION_REFRESH_MS);
 }
 
 if (browser) {

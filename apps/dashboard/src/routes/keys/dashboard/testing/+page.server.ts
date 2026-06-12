@@ -7,6 +7,7 @@ import {
 import { listTestingVerdicts } from "$lib/server/neon";
 import type { TestingVerdictEntry } from "@restormel/contracts";
 import type { PageServerLoad } from "./$types";
+import { sessionUser } from "$lib/server/session-user";
 
 /**
  * W3.8: testing hub page server load.
@@ -17,7 +18,8 @@ import type { PageServerLoad } from "./$types";
  */
 export const load: PageServerLoad = async ({ locals, url }) => {
   const keysApiBaseUrl = url.origin;
-  if (!locals.user || locals.user.authType !== "session") {
+  const user = sessionUser(locals);
+  if (!user) {
     return {
       testingProject: null,
       environments: [],
@@ -36,11 +38,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   let loadError: string | undefined;
 
   try {
-    testingProject = await ensureRestormelTestingProject(locals.user.uid);
+    testingProject = await ensureRestormelTestingProject(user.uid);
     const [envs, keys, full] = await Promise.all([
-      listEnvironments(testingProject.id, locals.user.uid),
-      listApiKeys(testingProject.id, locals.user.uid),
-      getProject(testingProject.id, locals.user.uid),
+      listEnvironments(testingProject.id, user.uid),
+      listApiKeys(testingProject.id, user.uid),
+      getProject(testingProject.id, user.uid),
     ]);
     environments = envs;
     gatewayKeys = keys;
