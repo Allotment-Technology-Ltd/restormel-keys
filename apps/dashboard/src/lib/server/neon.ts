@@ -134,7 +134,7 @@ export type Environment = {
 export type ApiKeyRecord = {
   id: string;
   keyPrefix: string;
-  keyHash: string;
+  // keyHash is intentionally EXCLUDED from this type — it must never be sent to the client.
   createdAt: number;
   /** Server-persisted label (nullable — honest absent state for pre-W3.7 keys). */
   label: string | null;
@@ -927,16 +927,16 @@ export async function listApiKeys(projectId: string, userId: string): Promise<Ap
   if (!project) return [];
   const sql = getSql();
   const rows = await sql`
-    SELECT id, key_prefix AS "keyPrefix", key_hash AS "keyHash", created_at AS "createdAt",
+    SELECT id, key_prefix AS "keyPrefix", created_at AS "createdAt",
            label, last_used_at AS "lastUsedAt"
     FROM api_keys
     WHERE project_id = ${projectId}
     ORDER BY created_at DESC
   `;
+  // SECURITY: key_hash is intentionally not selected — it must never reach the client.
   return rows.map((r) => ({
     id: r.id,
     keyPrefix: r.keyPrefix,
-    keyHash: r.keyHash,
     createdAt: Number(r.createdAt),
     label: typeof r.label === "string" ? r.label : null,
     lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
@@ -956,8 +956,9 @@ export type ApiKeyWithProject = ApiKeyRecord & {
 
 export async function listApiKeysByWorkspace(workspaceId: string): Promise<ApiKeyWithProject[]> {
   const sql = getSql();
+  // SECURITY: key_hash is intentionally excluded — it must never be sent to the client.
   const rows = await sql`
-    SELECT k.id, k.key_prefix AS "keyPrefix", k.key_hash AS "keyHash",
+    SELECT k.id, k.key_prefix AS "keyPrefix",
            k.created_at AS "createdAt", k.label, k.last_used_at AS "lastUsedAt",
            k.project_id AS "projectId", p.name AS "projectName"
     FROM api_keys k
@@ -968,7 +969,6 @@ export async function listApiKeysByWorkspace(workspaceId: string): Promise<ApiKe
   return rows.map((r) => ({
     id: r.id,
     keyPrefix: r.keyPrefix,
-    keyHash: r.keyHash,
     createdAt: Number(r.createdAt),
     label: typeof r.label === "string" ? r.label : null,
     lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
@@ -1068,6 +1068,7 @@ export async function deleteApiKey(projectId: string, keyId: string, userId: str
  * W3.7/K1: PATCH equivalent for renaming a key in place.
  * SECURITY: label must not contain key material; trimmed + capped to 120 chars.
  * Returns true if the row was found and updated; false if the key doesn't belong to the project.
+ * Emits a `gateway_key_renamed` audit event (old→new label) on success.
  */
 export async function updateApiKeyLabel(
   projectId: string,
@@ -1079,12 +1080,36 @@ export async function updateApiKeyLabel(
   if (!project) return false;
   const trimmedLabel = label ? label.trim().slice(0, 120) || null : null;
   const sql = getSql();
+  // Fetch old label before the update so we can include it in the audit summary.
+  const beforeRows = await sql`
+    SELECT label, key_prefix AS "keyPrefix" FROM api_keys
+    WHERE id = ${keyId} AND project_id = ${projectId}
+  `;
+  const oldLabel = (beforeRows?.[0] as { label?: string | null } | undefined)?.label ?? null;
+  const keyPrefix = (beforeRows?.[0] as { keyPrefix?: string } | undefined)?.keyPrefix ?? keyId.slice(0, 8);
   const rows = await sql`
     UPDATE api_keys SET label = ${trimmedLabel}
     WHERE id = ${keyId} AND project_id = ${projectId}
     RETURNING id
   `;
-  return Array.isArray(rows) && rows.length > 0;
+  const updated = Array.isArray(rows) && rows.length > 0;
+  if (updated && project.workspaceId) {
+    try {
+      await insertAuditEvent({
+        workspaceId: project.workspaceId,
+        actorId: userId,
+        actorType: "user",
+        eventType: "gateway_key_renamed",
+        targetType: "gateway_key",
+        targetId: keyId,
+        summary: `Gateway key renamed: "${oldLabel ?? "(unlabelled)"}" → "${trimmedLabel ?? "(unlabelled)"}" (${keyPrefix})`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      console.error("[audit] insertAuditEvent after rename:", msg.slice(0, 80));
+    }
+  }
+  return updated;
 }
 
 // ---------------------------------------------------------------------------

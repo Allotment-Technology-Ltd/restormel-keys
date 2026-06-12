@@ -8,17 +8,14 @@
 --     SELECTed for the UI (neon.ts:864-869).
 --   - api_keys.created_at already exists and is dropped by the page load.
 --   - The existing api_keys.name column (004_control_plane_tables.sql) was added speculatively
---     but never wired to any UI — this migration wires it as the label column.
---     We do NOT add a second column; we use name as label (additive, nullable).
+--     but never wired to any UI. Rather than repurpose it (risk of naming confusion), this
+--     migration adds a new `label` column under the canonical name. api_keys.name is left
+--     in place (harmless, unused) and is not renamed or dropped here.
 --
 -- Additive changes only. No backfill needed (label defaults NULL → shown as "Unlabelled").
 --
 -- Rollback: ALTER TABLE api_keys DROP COLUMN IF EXISTS label;
 --           (api_keys.name stays — it was pre-existing and unused.)
---
--- NOTE: api_keys.name was added by 004 but never queried. We officially repurpose it
--- as the label by adding the label column under the canonical name "label" and leaving
--- the unused "name" column in place (harmless, no backfill needed).
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS label TEXT;
 
 -- Index to accelerate workspace-scoped key list (join api_keys → projects → workspace_id).

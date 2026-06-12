@@ -39,19 +39,22 @@
   let filterSince = data.filters.since ? new Date(data.filters.since).toISOString().slice(0, 16) : "";
   let filterUntil = data.filters.until ? new Date(data.filters.until).toISOString().slice(0, 16) : "";
 
+  // EVENT_TYPE_OPTIONS lists only event types that are actually inserted in this codebase.
+  // Verified by grepping for insertAuditEvent({...eventType: "..."}) across neon.ts + routes.
   const EVENT_TYPE_OPTIONS = [
     { value: "", label: "All actions" },
     { value: "gateway_key_created", label: "Key created" },
     { value: "gateway_key_revoked", label: "Key revoked" },
+    { value: "gateway_key_renamed", label: "Key renamed" },
+    { value: "management_key_created", label: "Management key created" },
+    { value: "management_key_revoked", label: "Management key revoked" },
+    { value: "policy_created", label: "Policy created" },
+    { value: "route_published", label: "Route published" },
     { value: "provider_integration_created", label: "Connection created" },
     { value: "provider_integration_updated", label: "Connection updated" },
     { value: "provider_integration_deleted", label: "Connection deleted" },
-    { value: "project_created", label: "Project created" },
-    { value: "project_deleted", label: "Project deleted" },
-    { value: "policy_created", label: "Policy created" },
-    { value: "policy_updated", label: "Policy updated" },
-    { value: "route_created", label: "Route created" },
-    { value: "route_updated", label: "Route updated" },
+    { value: "provider_binding_created", label: "Provider binding created" },
+    { value: "provider_binding_deleted", label: "Provider binding deleted" },
   ];
 
   const ACTOR_TYPE_OPTIONS = [
@@ -78,6 +81,7 @@
     if (filterSince) params.set("since", String(new Date(filterSince).getTime()));
     if (filterUntil) params.set("until", String(new Date(filterUntil).getTime()));
     const qs = params.toString();
+    // replaceState for filter changes (not new history entries — filters are not navigable "back" steps).
     goto(`${$page.url.pathname}${qs ? "?" + qs : ""}`, { replaceState: true });
   }
 
@@ -95,7 +99,8 @@
     const cursor = data.events[data.events.length - 1].createdAt;
     const params = new URLSearchParams($page.url.searchParams);
     params.set("before", String(cursor));
-    goto(`${$page.url.pathname}?${params.toString()}`, { replaceState: true });
+    // pushState (not replaceState) so Back returns to the previous page of results.
+    goto(`${$page.url.pathname}?${params.toString()}`, { replaceState: false });
   }
 
   function formatDate(ts: number) {
@@ -303,7 +308,7 @@
   {#if data.hasMore}
     <div class="load-more-row">
       <button type="button" class="btn btn-secondary" onclick={loadMore}>
-        Load more
+        Older →
       </button>
     </div>
   {:else}
