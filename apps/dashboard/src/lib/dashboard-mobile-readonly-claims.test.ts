@@ -60,6 +60,10 @@ const MUTATION_REGIONS: { selector: string; src: string; note: string }[] = [
   // /claims/memory — iteration 3: revoke (POST /revoke) is live on a mobile-allowed sub-route.
   { selector: "item-actions", src: memoryPageSrc, note: "memory page per-observation Revoke button (POST /revoke)" },
   { selector: "memory-revoke-error", src: memoryPageSrc, note: "memory page revoke-error banner + Try again (re-fires POST /revoke)" },
+  // W4.2 Stamping Desk (MAJOR-1): the entry button opens a keyboard overlay whose
+  // S/W/X stamps PATCH validation; the mounted desk hosts those stamp controls.
+  { selector: "desk-enter", src: explorerSrc, note: "stamping desk entry button (opens S/W/X triage → PATCH validation)" },
+  { selector: "desk-mount", src: explorerSrc, note: "mounted stamping desk overlay (S/W/X stamp controls)" },
 ];
 
 /** Isolate the `.shell-mobile-readonly … display: none` block from the layout. */
@@ -146,6 +150,22 @@ describe("R6 mobile read-only contract (claims / home / runs)", () => {
       guardCount,
       "expected the a/w/u verdict shortcuts to each early-return when mobileReadonly",
     ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("W4.2 desk — the mobile read-only tier is re-checked at CALL time, not just reactively (MAJOR-1)", () => {
+    // The reactive `deskReadonly` must NOT bake in isMobileReadonlyActive() — that
+    // flag is set by the layout's mount-time matchMedia probe, which lands after the
+    // explorer first evaluates its reactives, so a reactive read would compute false
+    // on a phone and never recompute (its only tracked dep is asOfActive).
+    expect(explorerSrc).toMatch(/\$:\s*deskReadonly\s*=\s*asOfActive\s*;/);
+    expect(explorerSrc).not.toMatch(/\$:\s*deskReadonly\s*=\s*asOfActive\s*\|\|\s*isMobileReadonlyActive/);
+    // A call-time guard queries the live DOM flag and is used by every mutation entry.
+    expect(explorerSrc).toMatch(
+      /function deskMutationBlocked\(\)[\s\S]*?return asOfActive \|\| isMobileReadonlyActive\(\);/,
+    );
+    expect(explorerSrc).toMatch(/function enterDesk[\s\S]*?if \(!reviewEnabled \|\| deskMutationBlocked\(\)\) return;/);
+    expect(explorerSrc).toMatch(/function deskStamp[\s\S]*?if \(!selectedUnit \|\| deskMutationBlocked\(\)\) return;/);
+    expect(explorerSrc).toMatch(/function deskUndo[\s\S]*?if \(!last \|\| deskMutationBlocked\(\)\) return;/);
   });
 
   it("read-only viewing chrome is NOT hidden", () => {

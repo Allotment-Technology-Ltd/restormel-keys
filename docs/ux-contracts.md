@@ -446,6 +446,60 @@ redirect — shareable historical views (W2.1 contract extended in `explorer-url
 **Boundary semantics** match the connect-v1 retrieve path (`valid_from ≤ t < valid_to`): a claim
 valid until T is shown at T-ε, not at T.
 
+### §3 panel states — The Stamping Desk (`/claims`, Stage W4.2)
+
+The Claims explorer gains a **keyboard-first triage desk** (`ClaimsStampingDesk.svelte`, mounted
+from the explorer's triage panel behind an "Open stamping desk" button). The desk is a focus mode
+over the *existing* review machinery: every verdict reuses `performReview` → PATCH
+`/graph/units/{id}/validation`, so the explorer **mutation-fetch pin stays at 16** — the desk issues
+zero fetches of its own. All keymap / tally / guard / undo decisions live in the pure module
+`claims-stamping-desk.ts` (unit-tested; the desk component is the DOM shell).
+
+| Element | Loading | Empty / absent | Error / degraded | Active / populated |
+|---------|---------|----------------|------------------|--------------------|
+| **Desk entry** (`.desk-enter`, triage panel head) | n/a | No claims awaiting review → button not shown (nothing to triage) | As-of view → button replaced by an honest note ("Stamping desk unavailable here — editing past state is not possible"); mobile read-only tier → button hidden by the layout's `.shell-mobile-readonly` rule and the click handler refuses at call time | "Open stamping desk" button when `reviewEnabled` and ≥1 claim awaits review and not read-only |
+| **Desk overlay** (`.stamping-desk`, `aria-label`) | (inherits the queue's load state) | Queue cleared mid-session → "The review queue is clear … press Esc" | (verdict-save failures surface in the explorer's existing `.workspace-alerts` banner — single error path) | Claim card (focusable, receives focus on advance), AI verdict, evidence link, note field, stamp bar, undo row, session tally rail, shortcut legend |
+| **Stamp bar** (`.desk-stamps`, `role="group"`) | n/a | n/a | **Supported (S) guarded off** for an unbound / pre-binding / no-evidence claim — disabled stamp + verbatim `canAcceptAsSupported` reason (`.desk-stamp-guard`), never a silent no-op (claims-ledger row 2) | S=Supported · W=Weak · X=Rejected, each ≥44px, the AI-suggested verdict emphasised; a 100ms mechanical press on stamp (`.desk-stamp-flash`, `prefers-reduced-motion`-guarded) |
+| **Session tally rail** (`.desk-tally`, `role="status"`) | n/a | "REVIEWED 0 · SUPPORTED 0 · WEAK 0 · REJECTED 0" | n/a | Live ledger line "REVIEWED N · SUPPORTED N · WEAK N · REJECTED N"; resets per visit (lives in desk state); an honest note that the **trust score** recomputes on the Home scorecard — the desk does not fork or fabricate a per-session score delta |
+
+**Keyboard contract (X10).** Shortcuts: **J/K** (+ arrows) move the queue, **S/W/X** stamp, **E** opens
+evidence, **N** focuses the note field, **Z** undoes, **?** toggles the legend, **Esc** exits. The desk's
+`<svelte:window>` listener owns the keyboard while open — the explorer's own `handleReviewKeydown`
+early-returns on `deskActive` so a/w/u/n/p never double-fire underneath. No shortcut fires from an
+input/textarea/select/contenteditable; **Esc is two-step**: inside the note field it only blurs the
+field (focus returns to the claim card), a second Esc — now outside the field — exits the desk.
+**Modifier chords never fire**: the keymap early-returns on Cmd/Ctrl/Alt, so Cmd/Ctrl+S stays the
+browser's Save, never a stamp. Focus moves to the claim card on advance; stamp/undo/guard results
+announce on an `aria-live="polite"` region.
+
+**Read-only invariant.** Both read-only tiers gate the desk, by different mechanisms because they
+become true at different times. The **as-of history view** (`asOfActive`) is reactive client state, so
+`deskReadonly = asOfActive` reactively replaces the entry button with an honest note and puts the desk
+in read-only mode (keymap drops every mutating command; stamp/note/undo UI not rendered). The **mobile
+read-only tier** (`[data-mobile-readonly]`) is set by the layout's `onMount` matchMedia probe — *after*
+the explorer's first reactive pass — so it is enforced at **call time**: every mutation entry
+(`enterDesk`, `deskStamp`, `deskUndo`) re-checks `deskMutationBlocked()` (= `asOfActive ||
+isMobileReadonlyActive()`, a live DOM query) at the moment of the click/keypress and refuses, and the
+layout's `.shell-mobile-readonly` rule hides `.desk-enter` / `.desk-mount` as belt-and-braces. This
+reuses the same guards W2.5 and R6 already enforce — it does not fork them. Pinned by
+`dashboard-mobile-readonly-claims.test.ts` (selector inventory + call-time-guard contract).
+
+**Truthful dispatch (tally/announce/undo).** `performReview` reports `dispatched | swallowed |
+disabled`; the desk counts the tally, announces success and arms undo **only on a confirmed
+server-bound dispatch**. An input landing inside the 250ms post-stamp guard window is `swallowed`:
+the desk holds with honest feedback ("Hold on — saving the previous stamp") instead of counting a
+stamp the server never saw — so S→Z inside the window never announces "Undone", and rapid S→J→S never
+counts a dropped stamp. If the server later rejects a stamp, an `onResolved(false)` continuation rolls
+the tally back, clears the just-armed undo record and announces the rollback; failed stamps hold with
+retry, they do not advance.
+
+**Undo semantics (honest).** The validation endpoint accepts only `{ ok | weak | unsupported }` — there
+is no server "un-stamp". Undo is therefore a **single-level re-stamp to the previous verdict** via the
+same mutation. When the previous status was *unchecked* (the common first-review case) there is no prior
+verdict to restore, so undo is honestly **disabled with a reason** rather than pretending to clear the
+verdict. The session tally decrements on undo so the rail never lies about how many claims this session
+currently holds.
+
 ### §3 shell-element states — Navigation pending state (nav-pending-fix)
 
 Addresses user report: clicking sidebar items (esp. Sources) showed nothing for a while — old

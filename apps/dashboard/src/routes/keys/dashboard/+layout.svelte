@@ -1056,7 +1056,12 @@
 
      The verdict keyboard shortcuts (a/w/u) bypass CSS hiding, so they are guarded
      separately in ConnectGraphExplorer's handleReviewKeydown, which early-returns
-     when a [data-mobile-readonly="true"] shell is present in the DOM. */
+     when a [data-mobile-readonly="true"] shell is present in the DOM.
+
+     W4.2 Stamping Desk (.desk-enter / .desk-mount): the entry button opens a
+     keyboard triage overlay whose S/W/X stamps PATCH validation. Hidden here so
+     it can't be opened on the read-only tier; the explorer ALSO re-checks the
+     mobile flag at call time (deskMutationBlocked) before entering/stamping. */
   .shell-mobile-readonly :global([data-mobile-hide]),
   .shell-mobile-readonly :global(.run-actions),
   .shell-mobile-readonly :global(.run-cancel-wrap),
@@ -1072,7 +1077,9 @@
   .shell-mobile-readonly :global(.lib-run-archive),
   .shell-mobile-readonly :global(.switcher-control),
   .shell-mobile-readonly :global(.item-actions),
-  .shell-mobile-readonly :global(.memory-revoke-error) {
+  .shell-mobile-readonly :global(.memory-revoke-error),
+  .shell-mobile-readonly :global(.desk-enter),
+  .shell-mobile-readonly :global(.desk-mount) {
     display: none !important;
   }
   .shell-mobile-readonly :global(a),
