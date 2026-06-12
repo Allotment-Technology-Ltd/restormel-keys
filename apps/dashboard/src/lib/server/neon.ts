@@ -38,6 +38,7 @@ import {
 import {
   requestLogMetadataWithSource,
   requestLogSourceFromMetadata,
+  parseRequestLogMetadata,
 } from "$lib/server/request-log-source";
 
 // ---------------------------------------------------------------------------
@@ -4587,6 +4588,12 @@ export type RequestLogRecord = {
   createdAt: number;
   /** K5: traffic source tag from metadata.source (e.g. "connect_ingest"); null for legacy/gateway rows. */
   source: string | null;
+  /**
+   * W3.3: the raw `metadata` JSONB blob (parsed) so /logs can render the full receipt
+   * (explanation / policy violations / stage / ingest_job_id). Additive — other consumers
+   * (home/routes/analytics aggregation) ignore it. Null when the column is empty.
+   */
+  metadata: Record<string, unknown> | null;
 };
 
 /** Insert a request log row. Used after route resolution and/or proxy. */
@@ -4672,6 +4679,9 @@ export async function listRequestLogs(
     // K5: expose the traffic-source tag (metadata.source) so /logs can badge
     // connect_ingest rows. The neon driver returns JSONB as a parsed object.
     source: requestLogSourceFromMetadata(r.metadata),
+    // W3.3: expose the parsed metadata blob for the /logs receipt (explanation,
+    // violations, stage, ingest_job_id). Parse-tolerant of raw-string JSONB.
+    metadata: parseRequestLogMetadata(r.metadata),
   })) as RequestLogRecord[];
 }
 

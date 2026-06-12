@@ -72,6 +72,41 @@ export function mergeRouteResolveFailure(
   return new Error(resolverMsg);
 }
 
+/**
+ * W3.3 (PR #292 follow-up #2) — failure-coverage error codes for Connect-ingest
+ * resolve attempts that fail BEFORE the upstream call. K5 only wrote a request_logs
+ * row when the upstream chat/embed HTTP call errored, so a total no_route resolve, a
+ * provider/model-less route step, an unsupported provider, and (most importantly)
+ * missing/undecryptable provider credentials all wrote nothing — making the most
+ * common ingest failures invisible in /logs. These codes tag the `failed` row so the
+ * failure is debuggable. Codes are stable, lowercase, and mirror the resolve endpoint's
+ * `failure.code` vocabulary where it overlaps (`+server.ts`: no_route / no_key_available /
+ * resolve_incomplete). Pure + exported so the mapping is unit-tested in src/lib.
+ */
+export type ConnectResolveFailureSite =
+  | "route_resolve_failed" // resolveRouteForExecution returned !ok (no_route, no_key_available, …)
+  | "resolve_incomplete" // resolved a step but it carries no provider/model
+  | "provider_unsupported" // resolved provider is not OpenAI-compatible / not an embedding provider
+  | "credentials_missing"; // no decryptable provider key for the resolved provider
+
+export function resolveAttemptFailureCode(
+  site: ConnectResolveFailureSite,
+  detail?: { resolverCode?: string | null; credentialCode?: string | null },
+): string {
+  switch (site) {
+    case "route_resolve_failed":
+      // Prefer the resolver's own code (no_route, no_key_available, resolve_incomplete…)
+      // so /logs shows the same failure vocabulary the HTTP resolve endpoint records.
+      return (detail?.resolverCode && detail.resolverCode.trim()) || "no_route";
+    case "credentials_missing":
+      return detail?.credentialCode && detail.credentialCode.trim()
+        ? `credentials_missing:${detail.credentialCode.trim()}`
+        : "credentials_missing";
+    default:
+      return site;
+  }
+}
+
 async function callResolvedChat(args: {
   ctx: ConnectRouteExecutionContext;
   stage: ConnectModelStage;
@@ -108,6 +143,16 @@ async function callResolvedChat(args: {
 
     if (!outcome.ok) {
       lastErr = mergeRouteResolveFailure(lastErr, attemptNumber, outcome.failure);
+      // W3.3: a total resolve failure (no_route etc.) previously wrote no log row.
+      writeResolveAttempt(args.ctx, args.stage, {
+        status: "failed",
+        routeId: outcome.failure.routeId ?? routeIdOverride ?? null,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("route_resolve_failed", {
+          resolverCode: outcome.failure.code,
+        }),
+        attemptNumber,
+      });
       break;
     }
 
@@ -116,6 +161,16 @@ async function callResolvedChat(args: {
     const modelId = resolved.modelId ?? "";
     if (!providerType || !modelId) {
       lastErr = new Error(resolved.explanation ?? "No provider/model on resolved route");
+      // W3.3: a step missing provider/model previously wrote no log row.
+      writeResolveAttempt(args.ctx, args.stage, {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType || null,
+        modelId: modelId || null,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("resolve_incomplete"),
+        attemptNumber,
+      });
       if (attemptNumber < MAX_ROUTE_ATTEMPTS - 1) {
         attemptNumber++;
         previousFailure = {
@@ -130,6 +185,16 @@ async function callResolvedChat(args: {
     const baseUrl = openAiCompatibleChatBaseUrl(providerType);
     if (!baseUrl) {
       lastErr = new Error(`Provider ${providerType} is not OpenAI-compatible for Knowledge ingestion yet`);
+      // W3.3: an unsupported provider previously wrote no log row.
+      writeResolveAttempt(args.ctx, args.stage, {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType,
+        modelId,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("provider_unsupported"),
+        attemptNumber,
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,
@@ -145,6 +210,19 @@ async function callResolvedChat(args: {
     });
     if (!keyOutcome.ok) {
       lastErr = new Error(`Provider credentials missing (${keyOutcome.code})`);
+      // W3.3: the most common ingest failure — a missing/undecryptable provider key —
+      // previously wrote no log row, so "why did my ingest fail?" was unanswerable in /logs.
+      writeResolveAttempt(args.ctx, args.stage, {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType,
+        modelId,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("credentials_missing", {
+          credentialCode: keyOutcome.code,
+        }),
+        attemptNumber,
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,
@@ -304,6 +382,16 @@ async function embedViaRoute(
 
     if (!outcome.ok) {
       lastErr = mergeRouteResolveFailure(lastErr, attemptNumber, outcome.failure);
+      // W3.3: a total embedding resolve failure (no_route etc.) wrote no log row.
+      writeResolveAttempt(ctx, "embedding", {
+        status: "failed",
+        routeId: outcome.failure.routeId ?? routeIdOverride ?? null,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("route_resolve_failed", {
+          resolverCode: outcome.failure.code,
+        }),
+        attemptNumber,
+      });
       break;
     }
 
@@ -312,6 +400,16 @@ async function embedViaRoute(
     const modelId = resolved.modelId ?? "";
     if (!providerType || !modelId) {
       lastErr = new Error(resolved.explanation ?? "No embedding model resolved");
+      // W3.3: an embedding step missing provider/model wrote no log row.
+      writeResolveAttempt(ctx, "embedding", {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType || null,
+        modelId: modelId || null,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("resolve_incomplete"),
+        attemptNumber,
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,
@@ -327,6 +425,18 @@ async function embedViaRoute(
     });
     if (!keyOutcome.ok) {
       lastErr = new Error(`Provider credentials missing (${keyOutcome.code})`);
+      // W3.3: missing/undecryptable embedding-provider credentials wrote no log row.
+      writeResolveAttempt(ctx, "embedding", {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: providerType,
+        modelId,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("credentials_missing", {
+          credentialCode: keyOutcome.code,
+        }),
+        attemptNumber,
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,
@@ -340,6 +450,16 @@ async function embedViaRoute(
       lastErr = new Error(
         `Embedding via ${providerType} is not supported in Connect ingest yet — use openai, voyage, together, or vercel`,
       );
+      // W3.3: an unsupported embedding provider wrote no log row.
+      writeResolveAttempt(ctx, "embedding", {
+        status: "failed",
+        routeId: resolved.route?.id ?? routeIdOverride ?? null,
+        provider: pt,
+        modelId,
+        latencyMs: Date.now() - startedAtMs,
+        errorCode: resolveAttemptFailureCode("provider_unsupported"),
+        attemptNumber,
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,

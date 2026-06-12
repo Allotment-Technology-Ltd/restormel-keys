@@ -33,3 +33,22 @@ export function requestLogSourceFromMetadata(raw: unknown): string | null {
   const src = (obj as Record<string, unknown>).source;
   return typeof src === "string" && src.trim() ? src.trim() : null;
 }
+
+/**
+ * W3.3 — parse a request-log row's `metadata` JSONB into a plain object for the /logs
+ * receipt. The neon driver usually returns JSONB pre-parsed, but it can also hand back
+ * a raw string; this tolerates both and returns null for empty/non-object metadata.
+ */
+export function parseRequestLogMetadata(raw: unknown): Record<string, unknown> | null {
+  let obj: unknown = raw;
+  if (typeof raw === "string") {
+    if (!raw.trim()) return null;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+  return obj as Record<string, unknown>;
+}
