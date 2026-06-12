@@ -9,6 +9,14 @@
 
   /** Streamed scorecard for the workspace's active graph (null = no graph to score yet). */
   export let scorecard: Promise<ConnectTrustScorecard | null>;
+  /**
+   * R3 — when mounted under the Home trust cap, the cap already renders the big
+   * numeral + sparkline + "last verified". Set `capped` so this component drops
+   * its own `.score-readout` numeral and section heading (one trust number on the
+   * page, no second trust display — rubric R3-V5/R3-S2) and renders only the
+   * factor rails / metric grid / states as the cap's receipts.
+   */
+  export let capped = false;
 
   const GRAPH_BASE = CLAIMS_HREF;
   const PIPELINE_STORE_HREF = INGEST_FLOW_HREF + "?step=store";
@@ -73,7 +81,9 @@
 </script>
 
 <section class="scorecard" aria-labelledby="trust-scorecard-heading">
-  <h2 id="trust-scorecard-heading" class="scorecard-heading">Graph trust scorecard</h2>
+  <h2 id="trust-scorecard-heading" class="scorecard-heading" class:visually-hidden={capped}>
+    {capped ? "Trust scorecard factors" : "Graph trust scorecard"}
+  </h2>
 
   {#await scorecard}
     <BrutalLoadingState message="Computing graph scorecard…" rows={3} />
@@ -91,10 +101,12 @@
       {@const neverVerified = !card.last_verified_at}
       <BrutalCard fill="white">
         <div class="score-head">
-          <div class="score-readout" role="group" aria-label="Trust score">
-            <span class="score-value">{card.trust_score}</span>
-            <span class="score-denominator">/100</span>
-          </div>
+          {#if !capped}
+            <div class="score-readout" role="group" aria-label="Trust score">
+              <span class="score-value">{card.trust_score}</span>
+              <span class="score-denominator">/100</span>
+            </div>
+          {/if}
           <dl class="score-meta">
             <div class="score-meta-row">
               <dt>G2 quality bar</dt>
@@ -251,6 +263,19 @@
     text-transform: uppercase;
     letter-spacing: var(--text-mono-tracking);
     margin: 0 0 var(--space-3);
+  }
+  /* R3: under the Home cap the numeral + heading live in the cap; keep the
+     scorecard's labelled-region heading for screen readers only. */
+  .scorecard-heading.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
   .score-head {
     display: flex;

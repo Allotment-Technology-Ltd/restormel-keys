@@ -235,6 +235,24 @@ Every user-facing flow must define and handle these states where applicable:
 
 **Destructive actions:** Require explicit user confirmation before execution (per [.cursor/rules/04-ux-safety.mdc](../.cursor/rules/04-ux-safety.mdc)). Confirmation copy must state the blast radius where applicable (e.g. "Cancel N running runs and delete M finished runs? Run history and quality reports for them are removed.").
 
+### §3 panel states — Home masthead (`/home`, Stage R3)
+
+The one Home is a masthead of streamed panels. Each panel below defines its four states; the
+trust number is quoted from the scorecard service (never recomputed), and a missing measurement
+renders an explicit absent-state, never a fabricated `0`.
+
+| Panel | Loading | Empty | Error | Populated |
+|-------|---------|-------|-------|-----------|
+| **Trust cap** | Skeleton via `BrutalLoadingState` inside a `role="status"` region | No graph yet → `EmptyState` "No verified context yet" + "Start your first ingest run" CTA | `BrutalErrorBanner` ("Trust scorecard unavailable") with **Try again** + **Check graph store** — the masthead numeral is never silently swallowed | Oversized numeral (quotes the scorecard service) + `TrustSparkline` + "last verified"; the capped `Trust scorecard` factor rails render below as the receipts |
+| **Trust sparkline** | (resolves with the cap's `qualityHistory`) | < 2 scored verdicts → "no history yet" text, no flat line | (shares the cap error) | 20-verdict polyline, `role="img"` + `aria-label` trend text + visible mono caption |
+| **Ready to verify** (K4 readiness ledger) | `ConnectPageSkeleton` (hub) | First-run → the **unlit** ledger rows ARE the checklist (one fix per row, no separate onboarding widget) | `ConnectVerifiedReadiness` error banner with **Try again** + **Open launch preflight** | Lit/partly-lit rows: `{status, evidence, fixHref}`, square glyph + status word, mono evidence, right-aligned fix link |
+| **Inbox** | (resolves with `scorecard` + `qualityHistory`) | No graph → "no graph yet — nothing to review"; no verdicts → "no verdicts recorded yet"; clean → "clear" | (panel rows degrade to absent-state honestly) | Review count → `/claims?filter=review`; latest regression → run diff; memory inbox → `/claims/memory` (pending count **deferred** — link only, no fabricated count) |
+| **Runs rail** | (resolves with `hub`) | No run → "no ingest run yet" + "ingest →" CTA | (shares the hub error banner) | Last-run glyph + outcome word + age, → `/runs/[id]`; W3.6 changed-source chip is a comment-marked mount point until the load can answer "changed since last run" |
+| **Agent traffic** | (resolves with `livePulse`) | 0 requests → "0 gateway requests" | analytics unavailable → "analytics unavailable — count not measured" (no fabricated count) | Answers-served · 24h count → `/logs?source=agent` |
+
+`/activity` and `/connect` 308-redirect to `/home` (see §A); login lands on `/home`. The page adds
+no new stats query — every value is read from the streamed load (Pivot Stage 1.8).
+
 ## 4. Section pattern (shell rhythm)
 
 One pattern for every major section so the product shares the same rhythm:
