@@ -153,7 +153,7 @@ describe("buildCompletionLedger", () => {
     expect(ledger.trustScore).toBe("88");
     expect(ledger.verdict).toBe("Strong");
     expect(ledger.trustTint).toBe("green");
-    expect(ledger.supportedPct).toBe(92);
+    expect(ledger.supportedPct).toBe("92");
     expect(ledger.supportedTint).toBe("green");
     expect(ledger.totalUnits).toBe("412");
     expect(ledger.isThisRunAudit).toBe(true);
@@ -167,12 +167,22 @@ describe("buildCompletionLedger", () => {
     expect(buildCompletionLedger({ trustScore: 41, okPct: 30 }).supportedTint).toBe("red");
   });
 
+  it("reuses the scorecard descriptor thresholds (not a forked copy)", () => {
+    // 60/80 trust, 50/80 supported boundaries come from ingest-quality-display.ts.
+    expect(buildCompletionLedger({ trustScore: 80, okPct: 80 }).trustTint).toBe("green");
+    expect(buildCompletionLedger({ trustScore: 79, okPct: 79 }).trustTint).toBe("yellow");
+    expect(buildCompletionLedger({ trustScore: 60, okPct: 50 }).supportedTint).toBe("yellow");
+    expect(buildCompletionLedger({ trustScore: 60, okPct: 49 }).supportedTint).toBe("red");
+  });
+
   it("renders honest absence when numbers were not reported (no fabricated score)", () => {
     const ledger = buildCompletionLedger({ trustScore: null, okPct: null, totalUnits: null });
     expect(ledger.trustScore).toBe("—");
     expect(ledger.trustTint).toBe("muted");
     expect(ledger.verdict).toBe("Recorded");
-    expect(ledger.supportedPct).toBe(0);
+    // MINOR-3: null okPct is honest "—" + muted, NOT a fabricated 0 in red.
+    expect(ledger.supportedPct).toBe("—");
+    expect(ledger.supportedTint).toBe("muted");
     expect(ledger.totalUnits).toBe("—");
   });
 });

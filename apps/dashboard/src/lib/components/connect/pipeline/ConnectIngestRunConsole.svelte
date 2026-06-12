@@ -85,6 +85,14 @@
       unsupported_pct?: number;
       stub_warning?: string | null;
       kg_audit?: { trust_score?: number; total_issues?: number } | null;
+      /**
+       * Real captured unit count for this run (persisted by `buildRunQualityReport`).
+       * This — NOT job-level `progress.processed`, which is the completed-STAGE count
+       * (= pipeline stage length) — is the honest "N units captured" headline.
+       */
+      units?: number;
+      /** Validation breakdown; its sum is the fallback unit count when `units` is absent. */
+      validation?: { ok: number; weak: number; unsupported: number; unvalidated: number };
       /** K4/K-P1-7: validating-family disclosure; absent until K5 persists attribution. */
       validation_family?: {
         validation_provider?: string;
@@ -142,6 +150,12 @@
   // tick-line visibly "breathes" with each worker signal. Pure UI state — it rides
   // the EXISTING SSE frames, adds no fetch (the 2-mutation-fetch invariant stands).
   let frameTick = 0;
+  // MINOR-2: when the viewer prefers reduced motion, the heartbeat tick-line must hold
+  // STILL — the static "Last worker signal Xs ago" text carries the signal instead (the
+  // claim the ux-contracts §3 / X9 row already makes). The CSS reduced-motion block
+  // kills the CSS animations/transitions, but the bar's filled-cell walk is JS-driven
+  // off `frameTick`, so it has to be frozen here too. Detected once on mount.
+  let prefersReducedMotion = false;
   // W3.1 live transport. SSE is the primary channel; the 2.5s jittered poll below
   // is the documented F8 fallback, engaged only when SSE is judged unhealthy.
   let liveClient: LiveRunEventClient | null = null;
@@ -181,6 +195,17 @@
   $: showCompletedLinkSourcesBanner =
     graphTask === "link-sources" && showCompletedGraphCta;
 
+  // MAJOR-1: render the "Run complete" success banner ONLY for graph-tool tasks whose
+  // copy is distinct from the completion ledger (repair / embed-backfill / revalidate
+  // handoffs). A plain full run (no graphTask, not fromGraph) gets the ledger alone —
+  // the duplicate default banner is deleted, so `.run-success` is absent there.
+  $: showCompletedTaskBanner =
+    showCompletedGraphCta &&
+    (graphTask === "auto-remediate" ||
+      graphTask === "embed-backfill" ||
+      graphTask === "revalidate" ||
+      (fromGraph && graphTask == null));
+
   $: isCompleted = job?.status === "completed";
   $: isInProgress = job?.status === "pending" || job?.status === "running";
   $: startingRun = isInProgress && loading && logLines.length === 0;
@@ -190,6 +215,22 @@
   $: showGraphRepairPanel = Boolean(graphRepair && isGraphRepairTask);
   $: trustScore = job?.progress?.quality_report?.kg_audit?.trust_score;
   $: okPct = job?.progress?.quality_report?.ok_pct;
+  // The REAL captured unit count for the completion cap. Job-level `progress.processed`
+  // is the completed-STAGE count (the reporter persists CONNECT_INGEST_PIPELINE_STAGES
+  // .length there), so it must NOT be quoted as units. The quality report carries the
+  // true count as `units` (mirrors neon.ts `total_count`: `report.units ??` the
+  // validation breakdown sum). Null → honest "—" in the cap (absence, not a stage count).
+  $: runUnitCount = (() => {
+    const qr = job?.progress?.quality_report;
+    if (!qr) return null;
+    if (typeof qr.units === "number" && Number.isFinite(qr.units)) return qr.units;
+    const v = qr.validation;
+    if (v) {
+      const sum = (v.ok ?? 0) + (v.weak ?? 0) + (v.unsupported ?? 0) + (v.unvalidated ?? 0);
+      if (Number.isFinite(sum)) return sum;
+    }
+    return null;
+  })();
 
   // ── K5 run attribution: which route/model served each stage ────────────────
   // Display-only (read-only): no fetch added → the mobile-readonly contract's
@@ -282,7 +323,9 @@
     workerHeartbeatAt: job?.worker_heartbeat_at,
     updatedAtIso: job?.updated_at,
     nowMs,
-    tick: frameTick,
+    // Reduced motion → freeze the walk at a constant tick so the bar holds still; the
+    // static signal-age label still informs. Otherwise the live frame counter advances it.
+    tick: prefersReducedMotion ? 0 : frameTick,
     stalled: isStalled,
   });
   // Per-stage odometers — extracted / validated / … counting up live from the real
@@ -295,7 +338,9 @@
     ? buildCompletionLedger({
         trustScore: trustScore ?? null,
         okPct: okPct ?? null,
-        totalUnits: job?.progress?.processed ?? null,
+        // Real captured unit count from the quality report — NOT the completed-stage
+        // count (`progress.processed`), which would headline "7 units captured".
+        totalUnits: runUnitCount,
       })
     : null;
 
@@ -331,11 +376,23 @@
     }
   }
 
+  let reducedMotionQuery: MediaQueryList | null = null;
+  function syncReducedMotion() {
+    prefersReducedMotion = reducedMotionQuery?.matches ?? false;
+  }
+
   onMount(() => {
     clockTimer = setInterval(() => {
       nowMs = Date.now();
     }, 1000);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    // MINOR-2: freeze the heartbeat walk when reduced motion is preferred; react live
+    // if the OS setting flips while the console is open.
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      syncReducedMotion();
+      reducedMotionQuery.addEventListener?.("change", syncReducedMotion);
+    }
   });
 
   async function cancelJob() {
@@ -586,6 +643,7 @@
     if (typeof document !== "undefined") {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     }
+    reducedMotionQuery?.removeEventListener?.("change", syncReducedMotion);
   });
 </script>
 
@@ -674,7 +732,13 @@
       </div>
     {/if}
 
-    {#if showCompletedGraphCta && graphTask !== "link-sources"}
+    <!-- W4.1 B-P1-1 (MAJOR-1): the default-case "Run complete" banner is DELETED, not
+         hidden — its CTAs (Open the graph explorer / connect your agent) duplicated the
+         completion ledger body that now stacks below on every full run. Only the
+         task-specific banners survive, where their content is distinct from the ledger
+         (graph-repair / embed-backfill / revalidate handoffs). `showCompletedTaskBanner`
+         gates strictly on those tasks, so a plain full run renders the ledger ALONE. -->
+    {#if showCompletedTaskBanner}
       <div class="run-success" role="status">
         <strong>Run complete.</strong>
         {#if graphTask === "auto-remediate"}
@@ -686,17 +750,11 @@
           Embed backfill finished — missing ideas were vectorized when the embedding route succeeded.
           <a href={CLAIMS_HREF + "?workspace=tools&focus=embed"}>Return to graph review</a>
           to confirm the embedded count (this page already reloaded graph data). Check the log for batch errors.
-        {:else if graphTask === "revalidate" || fromGraph}
+        {:else}
           Validation statuses were written to your graph store when source text was available.
           <a href={CLAIMS_HREF}>Return to graph review</a>
           to refresh the Supported / Unchecked counts (this page already reloaded graph data).
           If counts are unchanged, open the log below for “Skipped … no source text” lines.
-        {:else}
-          Your graph store should now have new units and relationships.
-          <a href={CLAIMS_HREF}>Open the graph explorer</a>
-          to review them, then
-          <a href={AGENTS_HREF}>connect your agent via MCP</a>.
-          Use <strong>Next run setup</strong> to change documents or domain pack before another ingest.
         {/if}
       </div>
     {/if}
@@ -728,11 +786,18 @@
             <span class="ledger-cap-word">{completionLedger.verdict}</span>
           </h2>
           <p class="ledger-cap-stats">
+            <!-- Honest absence (MINOR-3): no okPct reported → "— supported", muted, never
+                 a fabricated 0% in red. -->
             <span class="ledger-cap-stat ledger-cap-stat--{completionLedger.supportedTint}">
-              {completionLedger.supportedPct}% supported
+              {#if completionLedger.supportedPct === "—"}— supported{:else}{completionLedger.supportedPct}% supported{/if}
             </span>
-            <span class="ledger-cap-sep" aria-hidden="true">·</span>
-            <span class="ledger-cap-stat">{completionLedger.totalUnits} units captured</span>
+            <!-- Real captured unit count (quality report's `units`), never the
+                 completed-stage count. Dropped entirely when the run didn't report it,
+                 so the cap never headlines a stage tally as units. -->
+            {#if completionLedger.totalUnits !== "—"}
+              <span class="ledger-cap-sep" aria-hidden="true">·</span>
+              <span class="ledger-cap-stat">{completionLedger.totalUnits} units captured</span>
+            {/if}
           </p>
           <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
           {#if job.progress.quality_report.validation_family?.validation_provider}
@@ -1730,6 +1795,12 @@
 
   .ledger-cap-stat--red {
     color: var(--coral-alert, var(--brut-coral));
+  }
+
+  /* Honest-absence supported stat (no okPct reported): dimmed, not alarming red. */
+  .ledger-cap-stat--muted {
+    color: var(--rm-muted);
+    font-weight: 400;
   }
 
   .ledger-cap-sep {

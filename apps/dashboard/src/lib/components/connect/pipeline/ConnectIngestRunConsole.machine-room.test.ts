@@ -151,11 +151,19 @@ describe("ConnectIngestRunConsole Machine Room (W4.1)", () => {
           updated_at: "2026-06-12T10:08:00.000Z",
           progress: {
             percent: 100,
-            processed: 412,
+            // CRITICAL-1: the TRUE persisted shape. `progress.processed` is the
+            // completed-STAGE count (the reporter writes CONNECT_INGEST_PIPELINE_STAGES
+            // .length = 7 here), NOT a unit count. The fixture previously faked 412 here,
+            // masking that the cap was headlining the stage count as "units captured".
+            processed: 7,
+            total: 7,
             execution_mode: "full",
             quality_report: {
               ok_pct: 92,
               kg_audit: { trust_score: 88 },
+              // The real captured unit count lives on the quality report (units), exactly
+              // as `buildRunQualityReport` persists it. This — not processed — is the cap.
+              units: 412,
             },
           },
         },
@@ -185,11 +193,104 @@ describe("ConnectIngestRunConsole Machine Room (W4.1)", () => {
     // The verdict cap QUOTES the run's quality numbers (single-source).
     expect(container.querySelector(".ledger-cap-numeral")?.textContent).toBe("88");
     expect(container.querySelector(".ledger-cap-verdict")?.textContent).toContain("Strong");
-    expect(container.querySelector(".ledger-cap-stats")?.textContent).toContain("92% supported");
-    expect(container.querySelector(".ledger-cap-stats")?.textContent).toContain("412 units");
+    const stats = container.querySelector(".ledger-cap-stats")?.textContent ?? "";
+    expect(stats).toContain("92% supported");
+    // CRITICAL-1: the cap quotes the REAL unit count (412), never the completed-stage
+    // count (7). "7 units" would be the bug — the stage tally headlined as units.
+    expect(stats).toContain("412 units");
+    expect(stats).not.toMatch(/\b7 units\b/);
 
     // Machine Room instrumentation is for in-progress runs — absent once complete.
     expect(container.querySelector(".heartbeat-strip")).toBeNull();
     expect(container.querySelector(".odometer")).toBeNull();
+  });
+
+  it("MAJOR-1: a plain full completed run renders the ledger ALONE — no .run-success banner", async () => {
+    const fetchMock = vi.fn(async () =>
+      statusResponse({
+        job: {
+          id: "run-1",
+          status: "completed",
+          created_at: "2026-06-12T10:00:00.000Z",
+          updated_at: "2026-06-12T10:08:00.000Z",
+          progress: {
+            percent: 100,
+            processed: 7,
+            total: 7,
+            execution_mode: "full",
+            quality_report: {
+              ok_pct: 92,
+              kg_audit: { trust_score: 88 },
+              units: 412,
+            },
+          },
+        },
+        workspace_id: "ws-1",
+        log_lines: [],
+        log_line_total: 0,
+        since: 0,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    // No graphTask / fromGraph → the default-case success banner used to stack here.
+    const { container } = render(ConnectIngestRunConsole, {
+      props: { jobId: "run-1", statusApiBase: STATUS_BASE },
+    });
+    await tick();
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+    await vi.waitFor(() =>
+      expect(container.querySelector(".completion-ledger")).not.toBeNull(),
+    );
+
+    // The default-case "Run complete" banner is DELETED (not hidden): absent entirely.
+    expect(container.querySelector(".run-success")).toBeNull();
+    // The single completion ledger is the only completion summary.
+    expect(container.querySelectorAll(".completion-ledger").length).toBe(1);
+  });
+
+  it("MINOR-3: a completed run with no okPct shows honest '—' supported, not a red 0%", async () => {
+    const fetchMock = vi.fn(async () =>
+      statusResponse({
+        job: {
+          id: "run-1",
+          status: "completed",
+          created_at: "2026-06-12T10:00:00.000Z",
+          updated_at: "2026-06-12T10:08:00.000Z",
+          progress: {
+            percent: 100,
+            processed: 7,
+            total: 7,
+            execution_mode: "full",
+            // No ok_pct, no units → both stats are honest absences.
+            quality_report: { kg_audit: { trust_score: 88 } },
+          },
+        },
+        workspace_id: "ws-1",
+        log_lines: [],
+        log_line_total: 0,
+        since: 0,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    const { container } = render(ConnectIngestRunConsole, {
+      props: { jobId: "run-1", statusApiBase: STATUS_BASE },
+    });
+    await tick();
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+    await vi.waitFor(() =>
+      expect(container.querySelector(".completion-ledger")).not.toBeNull(),
+    );
+
+    const stats = container.querySelector(".ledger-cap-stats")?.textContent ?? "";
+    // Honest absence: "— supported", never a fabricated "0% supported".
+    expect(stats).toContain("— supported");
+    expect(stats).not.toContain("0% supported");
+    // The supported stat carries the muted (not red) tint.
+    expect(container.querySelector(".ledger-cap-stat--muted")).not.toBeNull();
+    expect(container.querySelector(".ledger-cap-stat--red")).toBeNull();
+    // Units absent → the units stat is dropped entirely (no "— units captured").
+    expect(stats).not.toContain("units captured");
   });
 });

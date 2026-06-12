@@ -17,6 +17,10 @@ import type { ConnectIngestStageProgress } from "@restormel/connect-core/ingest/
 import { CONNECT_INGEST_PIPELINE_STAGES } from "@restormel/connect-core/ingest/job-record";
 import { CONNECT_PIPELINE_STAGE_LABELS } from "@restormel/connect-core/ingest/pipeline-focus";
 import type { ConnectIngestStage } from "@restormel/contracts/connect";
+import {
+  trustScoreDescriptor,
+  unitsSupportedDescriptor,
+} from "$lib/connect/ingest-quality-display";
 
 // ── Heartbeat strip ─────────────────────────────────────────────────────────
 
@@ -148,8 +152,8 @@ export type CompletionLedger = {
   trustTint: CompletionLedgerTint;
   /** Plain verdict word for the cap ("Strong" / "Moderate" / "Needs attention"). */
   verdict: string;
-  /** Supported-% sub-stat. */
-  supportedPct: number;
+  /** Supported-% sub-stat, formatted for display ("92" or "—" when not reported). */
+  supportedPct: string;
   supportedTint: CompletionLedgerTint;
   /** Total units captured (display-only; "—" when not reported). */
   totalUnits: string;
@@ -157,29 +161,17 @@ export type CompletionLedger = {
   isThisRunAudit: boolean;
 };
 
-function tintForTrust(n: number): CompletionLedgerTint {
-  if (n < 60) return "red";
-  if (n < 80) return "yellow";
-  return "green";
-}
-
-function tintForSupported(n: number): CompletionLedgerTint {
-  if (n < 50) return "red";
-  if (n < 80) return "yellow";
-  return "green";
-}
-
-function verdictForTrust(n: number): string {
-  if (n < 60) return "Needs attention";
-  if (n < 80) return "Moderate";
-  return "Strong";
-}
-
 /**
  * Build the single completion ledger that replaces the stacked success-banner +
  * scorecard + "what to do next" blocks (B-P1-1). The trust/supported numbers QUOTE
  * the same quality-report values the scorecard surfaced (W2.3 single-source rule) —
  * this helper only formats them into the verdict cap; it never re-derives a score.
+ *
+ * Thresholds (60/80 for trust, 50/80 for supported) and verdict words are NOT forked
+ * here — they come from `trustScoreDescriptor` / `unitsSupportedDescriptor`
+ * (`ingest-quality-display.ts`), the single source the scorecard already uses. This
+ * helper only WRAPS them to add honest-absence handling: a null number renders "—"
+ * with a muted tint (mirroring how trust shows absence), never a fabricated 0 + red.
  */
 export function buildCompletionLedger(quality: {
   trustScore?: number | null;
@@ -188,16 +180,23 @@ export function buildCompletionLedger(quality: {
 }): CompletionLedger {
   const hasTrust = typeof quality.trustScore === "number" && Number.isFinite(quality.trustScore);
   const trust = hasTrust ? (quality.trustScore as number) : 0;
-  const supported =
-    typeof quality.okPct === "number" && Number.isFinite(quality.okPct)
-      ? Math.max(0, Math.round(quality.okPct))
-      : 0;
+  // Trust tint + verdict word reuse the scorecard descriptor (no copied thresholds).
+  const trustDesc = trustScoreDescriptor(hasTrust ? trust : null);
+
+  const hasSupported = typeof quality.okPct === "number" && Number.isFinite(quality.okPct);
+  const supported = hasSupported ? Math.max(0, Math.round(quality.okPct as number)) : 0;
+  // Supported tint reuses the scorecard descriptor; absent → muted "—" (MINOR-3),
+  // not a red 0 that would contradict the contract's honest-absence row.
+  const supportedTint: CompletionLedgerTint = hasSupported
+    ? unitsSupportedDescriptor(supported).tint
+    : "muted";
+
   return {
     trustScore: hasTrust ? String(trust) : "—",
-    trustTint: hasTrust ? tintForTrust(trust) : "muted",
-    verdict: hasTrust ? verdictForTrust(trust) : "Recorded",
-    supportedPct: supported,
-    supportedTint: tintForSupported(supported),
+    trustTint: hasTrust ? trustDesc.tint : "muted",
+    verdict: hasTrust ? trustDesc.label : "Recorded",
+    supportedPct: hasSupported ? String(supported) : "—",
+    supportedTint,
     totalUnits:
       typeof quality.totalUnits === "number" && Number.isFinite(quality.totalUnits)
         ? String(Math.max(0, quality.totalUnits))
