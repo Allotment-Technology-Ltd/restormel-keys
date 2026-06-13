@@ -12,7 +12,7 @@
   <h1>Integration walkthrough</h1>
   <p class="doc-tagline">From "I have an AI app" to "my app resolves, routes, enforces policies, and shows embeddable UI through Restormel Keys."</p>
 
-  <p>This walkthrough is the primary onboarding journey. It takes you through install, first resolve call, routes and fallbacks, policies, embeddable UI, and go-live. Use it with the Dashboard and Cloud API (Zuplo) as you go.</p>
+  <p>Part of <a href="/keys/docs/tutorials">Keys tutorials</a>. This walkthrough is the primary onboarding journey. It takes you through install, first resolve call, routes and fallbacks, policies, embeddable UI, and go-live. Use it with the Dashboard and Cloud API (Zuplo) as you go.</p>
 
   <h2>Before you begin</h2>
   <p>Prerequisites: an existing AI-powered app, a Restormel account, and your routing inventory (what you use today for model selection).</p>

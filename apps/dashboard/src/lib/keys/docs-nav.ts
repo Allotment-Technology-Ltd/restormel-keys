@@ -17,7 +17,11 @@ export type DocsNavBlock =
     }
   | { kind: "divider" };
 
-/** Tier 1 Keys docs sidebar (≤8 primary links + collapsed Reference). */
+/**
+ * Tier 1 Keys docs sidebar — one coherent spine: Start · Guides · Tutorials · Reference.
+ * Tutorials is the single home for the two step-by-step walkthroughs plus the
+ * persona "Choose your path" hub (formerly three competing trees).
+ */
 export const keysDocsNavBlocks: DocsNavBlock[] = [
   { kind: "link", href: "/docs", label: "Restormel docs" },
   { kind: "link", href: "/keys", label: "Keys" },
@@ -29,7 +33,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     items: [
       { href: "/keys/docs", label: "Overview" },
       { href: "/docs/how-it-fits-together", label: "How it fits together" },
-      { href: "/keys/docs/journeys/new-project", label: "Choose your path" },
+      { href: "/keys/docs/tutorials", label: "Tutorials" },
       { href: "/keys/docs/guides/provider-access-modes", label: "Provider access modes" },
     ],
   },
@@ -39,13 +43,24 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     label: "Guides",
     ariaLabel: "Guides section",
     items: [
-      { href: "/keys/docs/guides/integration-catalog", label: "Integration catalog" },
       { href: "/keys/docs/guides/verified-context", label: "Verified context" },
       { href: "/keys/docs/guides/mcp-verified-context", label: "MCP verified-context quickstart" },
       { href: "/keys/docs/guides/context-regression-ci", label: "Context-regression CI" },
       { href: "/keys/docs/guides/connect-first-graph-onboarding", label: "Connect first graph" },
+      { href: "/keys/docs/guides/integration-catalog", label: "Integration catalog" },
       { href: "/keys/docs/guides/keys-testing-onboarding", label: "Keys + Testing" },
       { href: "/keys/docs/guides/environment-vocabulary", label: "Environment vocabulary" },
+    ],
+  },
+  { kind: "divider" },
+  {
+    kind: "section",
+    label: "Tutorials",
+    ariaLabel: "Tutorials section",
+    items: [
+      { href: "/keys/docs/tutorials", label: "All tutorials" },
+      { href: "/keys/docs/walkthrough", label: "Keys integration walkthrough" },
+      { href: "/keys/docs/integrations-walkthrough", label: "Integrations: CLI / MCP / AAIF" },
     ],
   },
   { kind: "divider" },
@@ -56,8 +71,6 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     defaultCollapsed: true,
     items: [
       { href: "/keys/docs/search", label: "Search all docs" },
-      { href: "/keys/docs/walkthrough", label: "Walkthrough" },
-      { href: "/keys/docs/integrations-walkthrough/", label: "Integrations walkthrough" },
       { href: "/keys/docs/integrations", label: "Integrations hub" },
       { href: "/keys/docs/compatibility", label: "Compatibility" },
       { href: "/keys/docs/cloud-api", label: "Cloud API" },

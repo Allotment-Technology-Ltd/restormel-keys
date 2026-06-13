@@ -11,31 +11,28 @@
 <div class="doc-content">
   <h1>Keys docs</h1>
   <p class="doc-tagline">
-    Prefer the <a href="/docs">suite docs hub</a> for orientation. Use this tree for Keys-specific guides and reference
-    (search and collapsed Reference in the sidebar).
+    Prefer the <a href="/docs">suite docs hub</a> for orientation. This Keys tree has three parts: task-focused
+    <strong>Guides</strong>, step-by-step <a href="/keys/docs/tutorials">Tutorials</a>, and API/config
+    <strong>Reference</strong> (search and collapsed Reference in the sidebar).
   </p>
 
-  <h2>What brings you here?</h2>
+  <h2>Pick a starting point</h2>
   <div class="intent-grid">
-    <a class="intent-card" href="/keys/docs/journeys/new-project">
-      <strong>Starting a new project</strong>
-      <span>Get routing + first resolve in 15-20 minutes.</span>
+    <a class="intent-card" href="/keys/docs/tutorials">
+      <strong>Tutorials</strong>
+      <span>Choose your path by role, then follow the integration or CLI/MCP/AAIF walkthrough.</span>
     </a>
-    <a class="intent-card" href="/keys/docs/journeys/existing-stack">
-      <strong>Adding control to an existing stack</strong>
-      <span>OpenRouter/Vercel/Portkey + Restormel control-plane path.</span>
+    <a class="intent-card" href="/keys/docs/guides/provider-access-modes">
+      <strong>Provider access modes</strong>
+      <span>Decide how your stack reaches providers before you wire anything.</span>
     </a>
-    <a class="intent-card" href="/keys/docs/journeys/byok-saas">
-      <strong>Adding BYOK to a SaaS</strong>
-      <span>KeyManager + policy-bounded model choice for end users.</span>
+    <a class="intent-card" href="/keys/docs/guides/verified-context">
+      <strong>Verified context</strong>
+      <span>Provenance-traced, quality-gated context your agents can be held to.</span>
     </a>
-    <a class="intent-card" href="/keys/docs/journeys/agent-ide">
-      <strong>CLI, agent, or IDE path</strong>
-      <span>Developer tooling path (CLI, MCP, AAIF).</span>
-    </a>
-    <a class="intent-card" href="/keys/docs/journeys/platform-ops">
-      <strong>Running platform operations</strong>
-      <span>Lifecycle, readiness, coverage, CI/CD, governance.</span>
+    <a class="intent-card" href="/keys/docs/cloud-api">
+      <strong>Cloud API</strong>
+      <span>Resolve, routes, policies, catalog, and the project model index.</span>
     </a>
   </div>
 
@@ -86,7 +83,7 @@
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Restormel Testing onboarding</a> — Connections, Testing hub, Gateway keys, CLI env</li>
     <li><a href="/keys/docs/guides/integration-catalog">Integration catalog</a> — index of vendors and stacks with links to canonical guides</li>
     <li><a href="/docs/how-it-fits-together">How the suite fits together</a> — key types, API surfaces, and where each URL fits</li>
-    <li><a href="/keys/docs/walkthrough">Walkthrough</a> — step-by-step integration (Phase 0–6)</li>
+    <li><a href="/keys/docs/tutorials">Tutorials</a> — choose your path, the integration walkthrough (Phase 0–6), and CLI/MCP/AAIF onboarding</li>
     <li>
       <a href="/keys/docs/cloud-api">Cloud API</a> — Dashboard API (<code>rk_…</code>): resolve, routes, policies, catalog, <strong>project model index</strong>; Zuplo gateway (<code>zpka_…</code>); OpenAPI imports.
       Integrator note (index <code>data</code> shape, validation errors):

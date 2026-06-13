@@ -5,11 +5,22 @@
 
   $: suiteModules = $page.data.suiteModulesForUi ?? SUITE_MODULES;
   $: runRestormelHref = dashboardEntryHref($page.data.user);
+
+  /** Each product's docs hub lives in its own tree; this page is the one map across them. */
+  const DOCS_HREF: Record<string, string> = {
+    keys: "/keys/docs",
+    connect: "/connect/docs",
+    testing: "/testing/docs",
+    graph: "/graph/docs",
+  };
 </script>
 
 <div class="doc-content">
   <h1>Restormel documentation</h1>
-  <p class="doc-tagline">One suite map — deep reference lives in product trees and search.</p>
+  <p class="doc-tagline">
+    Restormel is the verified-context layer for AI. This is the suite map — start here, then go deep in each product's
+    own docs tree.
+  </p>
 
   <h2>What brings you here?</h2>
   <div class="intent-grid">
@@ -27,13 +38,23 @@
     </a>
   </div>
 
-  <h2>Capability docs</h2>
-  <ul>
+  <h2>Verified context</h2>
+  <p>
+    The thesis behind the suite: provenance-traced, quality-gated knowledge your agents can be held accountable to. Keys
+    routes and policies decide what runs; Connect supplies the evidence-bound context. Start with
+    <a href="/keys/docs/guides/verified-context">Verified context (Keys guide)</a> or the
+    <a href="/connect/docs">Connect API docs</a>.
+  </p>
+
+  <h2>Product docs</h2>
+  <p>Each product has its own docs tree. Jump to the one you need — no need to hunt across hubs.</p>
+  <ul class="product-list">
     {#each suiteModules as mod}
       <li>
-        <a href={mod.id === "connect" ? "/connect/docs" : `${mod.href}/docs`}>
-          {mod.capability} — {mod.product}
+        <a href={DOCS_HREF[mod.id] ?? `${mod.href}/docs`}>
+          <strong>{mod.product}</strong> — {mod.capability}
         </a>
+        <span class="product-summary">{mod.summary}</span>
       </li>
     {/each}
   </ul>
@@ -80,6 +101,23 @@
     font-size: var(--text-sm);
   }
   .intent-card span {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: 1.5;
+  }
+  .product-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-3) 0 var(--space-6);
+    display: grid;
+    gap: var(--space-3);
+  }
+  .product-list li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .product-summary {
     font-size: var(--text-sm);
     color: var(--rm-muted);
     line-height: 1.5;

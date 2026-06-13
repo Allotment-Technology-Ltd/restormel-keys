@@ -11,7 +11,7 @@
   <h1>Integrations walkthrough</h1>
   <p class="doc-tagline">From "What is Restormel Integrations?" to having CLI, MCP, or AAIF installed, configured, and verified.</p>
 
-  <p>This walkthrough is the primary onboarding journey for <strong>Restormel Integrations</strong> — the developer enablement layer (CLI, MCP, AAIF) that connects Restormel Keys to your terminal, agent workflows, and structured AI contracts. It uses the same principles, layout, and design as the <a href="/keys/docs/walkthrough">Keys walkthrough</a>: second person, present tense, step-by-step phases, and optional agent prompts (collapsed by default).</p>
+  <p>Part of <a href="/keys/docs/tutorials">Keys tutorials</a>. This walkthrough is the onboarding journey for <strong>Restormel Integrations</strong> — the developer enablement layer (CLI, MCP, AAIF) that connects Restormel Keys to your terminal, agent workflows, and structured AI contracts. It uses the same principles, layout, and design as the <a href="/keys/docs/walkthrough">Keys walkthrough</a>: second person, present tense, step-by-step phases, and optional agent prompts (collapsed by default).</p>
 
   <h2>Before you begin</h2>
   <p>Prerequisites: a Restormel account (or plan to create one), and a choice of surface — <strong>CLI</strong> (terminal), <strong>MCP</strong> (agent/IDE), or <strong>AAIF</strong> (typed contract). Phase 1 helps you choose and persist that choice.</p>
