@@ -14,13 +14,21 @@
  *
  * Env:
  * - `CONNECT_INGEST_WORKER_INTERVAL_MS` — sleep between drain sweeps
- *   (default 30_000, clamped to [1_000, 900_000]); ±10% jitter is applied per
+ *   (default 120_000, clamped to [1_000, 900_000]); ±10% jitter is applied per
  *   sweep so the daemon never phase-locks with the cron drain or a second worker.
+ *   120s default lets the Neon DB idle and scale-to-zero between sweeps; override
+ *   in staging/dev (e.g. 30_000) if sub-2-min queue latency matters there.
  * - `KNOWLEDGE_INGEST_WORKER_MAX_JOBS` — max jobs per sweep (drain clamps to 10).
  */
 import { drainConnectIngestQueue } from "$lib/server/connect-ingest-worker";
 
-export const CONNECT_INGEST_DAEMON_DEFAULT_INTERVAL_MS = 30_000;
+/**
+ * Default sweep interval raised from 30_000 to 120_000 (cost: Neon Launch
+ * charges per compute-second; the worker's constant DB queries kept the DB
+ * awake 24/7 even when the queue was empty). 2-minute gaps let Neon scale to
+ * zero between sweeps. Override via CONNECT_INGEST_WORKER_INTERVAL_MS env var.
+ */
+export const CONNECT_INGEST_DAEMON_DEFAULT_INTERVAL_MS = 120_000;
 export const CONNECT_INGEST_DAEMON_MIN_INTERVAL_MS = 1_000;
 export const CONNECT_INGEST_DAEMON_MAX_INTERVAL_MS = 15 * 60_000;
 /** ±10% — bounded so a sweep is never scheduled outside [0.9, 1.1] × base. */
