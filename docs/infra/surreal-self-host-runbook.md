@@ -53,9 +53,9 @@ shape this runbook (sources at bottom):
 
 ---
 
-## 2. Deploy SurrealDB 3.1.x
+## 2. Deploy SurrealDB 3.2.x
 
-Pin the image (never `:latest`); check Docker Hub for the current 3.1.x patch tag.
+Pin the image to match your Cloud version (3.2.x; never `:latest`); confirm the exact patch tag on Docker Hub.
 
 ### Option A — Coolify (recommended if you want a UI + Traefik TLS + scheduled backups)
 Install Coolify on the box, then add a **Docker Compose** resource with the compose below.
