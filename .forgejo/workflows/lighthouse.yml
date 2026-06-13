@@ -1,0 +1,132 @@
+# Forgejo CI — Lighthouse-CI for public routes (Phase 2 CI/CD).
+#
+# PURPOSE: Build apps/dashboard and run @lhci/cli against key public routes,
+# reporting Performance / Accessibility / Best-Practices / SEO scores.
+#
+# NON-BLOCKING (warn) mode — see "Flip to blocking" section below before hardening.
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  Flip to blocking when:                                                 │
+# │    • Scores are stable at ≥90 for Performance and ≥95 for the rest      │
+# │    • A baseline lhci collect artifact is stored (use lhci upload to     │
+# │      LHCI server or assert via .lighthouserc.yml assert.preset)         │
+# │  Change: set `assert.preset: lighthouse:recommended` in .lighthouserc.yml│
+# │  and remove `|| true` from the lhci assert step below.                 │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# Runner: `ubuntu-latest` (catthehacker/ubuntu:act-22.04) — ships Node, curl,
+# Chromium. The `docker` runner is reserved for tasks needing the host Docker
+# socket; Lighthouse only needs a headless browser.
+#
+# Secrets: none required. Runs on every push and PR (path-filtered to
+# dashboard / shared packages). Adjust the paths filter to taste.
+
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+      - '.forgejo/workflows/lighthouse.yml'
+  pull_request:
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+      - '.forgejo/workflows/lighthouse.yml'
+
+jobs:
+  lighthouse:
+    name: Lighthouse audit (public routes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Set up pnpm + Node (workspace install)
+        uses: ./.forgejo/actions/pnpm-workspace-install
+
+      # Build all workspace deps first (mirrors the `prebuild` script deps),
+      # then build the dashboard itself. This matches the production build path.
+      - name: Build platform packages (workspace deps for dashboard)
+        run: pnpm run build:platform-packages
+
+      - name: Build apps/dashboard
+        run: pnpm --filter dashboard run build
+
+      # Install @lhci/cli globally so `lhci` is on PATH.
+      # Pinned to a recent stable version; bump when LHCI releases security fixes.
+      - name: Install @lhci/cli
+        run: npm install -g @lhci/cli@0.14.0
+
+      # Install Chromium for Puppeteer/Lighthouse (headless).
+      # catthehacker/ubuntu:act-22.04 ships chromium-browser; this ensures it's
+      # linked where Lighthouse expects it.
+      - name: Install Chromium
+        run: |
+          which chromium-browser 2>/dev/null && echo "chromium-browser found" || \
+          (apt-get update -qq && apt-get install -y --no-install-recommends chromium-browser)
+          CHROME=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || true)
+          echo "CHROME_PATH=${CHROME}" >> "$GITHUB_ENV"
+
+      # Serve the built dashboard on port 4173 (vite preview default).
+      # Background the server, wait until it responds, then run LHCI.
+      - name: Serve dashboard (vite preview)
+        run: |
+          cd apps/dashboard
+          pnpm exec vite preview --port 4173 --strictPort --host 127.0.0.1 &
+          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null || (echo "Server failed to start"; exit 1)
+
+      # Run Lighthouse against each public route.
+      # --chrome-flags="--no-sandbox" is required in CI (headless/container env).
+      # Results land in .lighthouseci/ — uploaded as an artifact below.
+      - name: Run Lighthouse (collect)
+        run: |
+          lhci collect \
+            --url=http://127.0.0.1:4173/ \
+            --url=http://127.0.0.1:4173/keys \
+            --url=http://127.0.0.1:4173/keys/pricing \
+            --url=http://127.0.0.1:4173/keys/docs \
+            --settings.chromeFlags="--no-sandbox --headless=new --disable-dev-shm-usage" \
+            ${CHROME_PATH:+--settings.chromePath="${CHROME_PATH}"} \
+            --numberOfRuns=1
+
+      # Assert scores in warn-only mode (|| true keeps the job green).
+      # Remove `|| true` to make this blocking once scores are stable.
+      - name: Assert Lighthouse scores (warn-only)
+        run: |
+          lhci assert \
+            --preset=lighthouse:no-pwa \
+            --assertions.categories:performance=["warn",{"minScore":0.7}] \
+            --assertions.categories:accessibility=["warn",{"minScore":0.9}] \
+            --assertions.categories:best-practices=["warn",{"minScore":0.9}] \
+            --assertions.categories:seo=["warn",{"minScore":0.9}] \
+            || true
+
+      # Upload raw Lighthouse JSON reports as a workflow artifact (30-day retention).
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: https://code.forgejo.org/actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports-${{ github.sha }}
+          path: .lighthouseci/
+          retention-days: 30
+
+      # Stop the background preview server.
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [[ -n "${PREVIEW_PID:-}" ]]; then
+            kill "${PREVIEW_PID}" 2>/dev/null || true
+          fi

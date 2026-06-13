@@ -1,0 +1,104 @@
+# GitHub Actions — Lighthouse-CI for public routes (Phase 2 CI/CD).
+#
+# PURPOSE: Build apps/dashboard and run Lighthouse against key public routes,
+# reporting Performance / Accessibility / Best-Practices / SEO scores.
+#
+# Uses treosh/lighthouse-ci-action (wraps @lhci/cli, handles Chrome setup).
+#
+# NON-BLOCKING (warn) mode — see "Flip to blocking" section below before hardening.
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  Flip to blocking when:                                                 │
+# │    • Scores are stable at ≥90 for Performance and ≥95 for the rest      │
+# │    • Upload an LHCI server token to LHCI_GITHUB_APP_TOKEN / store a     │
+# │      .lighthouserc.yml with assert.preset for persistent baselines      │
+# │  Change: set `failOnError: true` in the treosh/lighthouse-ci-action     │
+# │  step and populate assert thresholds in .lighthouserc.yml.              │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# Runs on PRs and pushes to main (path-filtered to dashboard + shared packages).
+# Coolify production deploy is UNAFFECTED — this workflow only reads build output.
+
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+      - '.github/workflows/lighthouse.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+      - '.github/workflows/lighthouse.yml'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  lighthouse:
+    name: Lighthouse audit (public routes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: PNPM install (workspace)
+        uses: ./.github/actions/pnpm-workspace-install
+
+      # Build all workspace deps first (mirrors the `prebuild` script deps),
+      # then build the dashboard itself. This matches the production build path.
+      - name: Build platform packages (workspace deps for dashboard)
+        run: pnpm run build:platform-packages
+
+      - name: Build apps/dashboard
+        run: pnpm --filter dashboard run build
+
+      # Serve the built dashboard on port 4173 (vite preview default).
+      # Background the server, wait until it responds, then hand off to LHCI.
+      - name: Serve dashboard (vite preview)
+        run: |
+          cd apps/dashboard
+          pnpm exec vite preview --port 4173 --strictPort --host 127.0.0.1 &
+          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4173/ >/dev/null || (echo "Server failed to start"; exit 1)
+
+      # treosh/lighthouse-ci-action handles Chromium setup and lhci collect/assert.
+      # temporaryPublicStorage uploads results to the LHCI public storage for easy
+      # inspection — swap for an lhci server URL when you have one.
+      # failOnError: false = warn-only mode. Flip to true when scores are stable.
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@1be814f89f88e7e9ba534f7ce6553caa3c4ea6ba
+        with:
+          urls: |
+            http://127.0.0.1:4173/
+            http://127.0.0.1:4173/keys
+            http://127.0.0.1:4173/keys/pricing
+            http://127.0.0.1:4173/keys/docs
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          # Warn-only thresholds: flip to assert preset + failOnError:true to block.
+          runs: 1
+          # No .lighthouserc.yml yet — thresholds below are inline.
+
+      # Stop the background preview server.
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [[ -n "${PREVIEW_PID:-}" ]]; then
+            kill "${PREVIEW_PID}" 2>/dev/null || true
+          fi
