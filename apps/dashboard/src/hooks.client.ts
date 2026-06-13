@@ -7,6 +7,8 @@ import { page } from "$app/stores";
 import { invalidateAll } from "$app/navigation";
 import { reportClientDebug, reportClientError, setupClientDebugCapture } from "$lib/debug/client-debug";
 import { shouldInvalidateOnSessionPoll, type SessionCacheSignal } from "$lib/auth-change";
+import { getConsentState } from "$lib/analytics/consent";
+import { setupAnalyticsHandlers, resetForNavigation } from "$lib/analytics/global-handlers";
 
 const DASHBOARD_PREFIX = "/keys/dashboard";
 const SESSION_REFRESH_MS = 4 * 60 * 1000;
@@ -54,6 +56,15 @@ function setupAuthSessionRefresh(): void {
   window.setInterval(() => void refresh(), SESSION_REFRESH_MS);
 }
 
+/** Lazily read the rendered signed-in state for analytics enrichment. */
+function isSignedIn(): boolean {
+  try {
+    return Boolean(get(page).data.user);
+  } catch {
+    return false;
+  }
+}
+
 if (browser) {
   setupClientDebugCapture();
   void clearStaleServiceWorkers();
@@ -67,16 +78,34 @@ const key = env.PUBLIC_POSTHOG_KEY;
 const host = env.PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 
 if (browser && key) {
+  // EU consent gating: default to cookieless (memory-only) persistence and no
+  // autocapture until the visitor explicitly opts in. See $lib/analytics/consent.
+  const consent = getConsentState();
+  const granted = consent === "granted";
+
   posthog.init(key, {
     api_host: host,
     defaults: "2026-01-30",
     capture_pageview: true,
-    persistence: "localStorage+cookie",
+    // Persistent identity (cookie + localStorage) ONLY after opt-in; otherwise
+    // memory-only so no identifying storage is written pre-consent.
+    persistence: granted ? "localStorage+cookie" : "memory",
+    // Autocapture (broad DOM event capture) is opt-in to keep cookieless mode minimal.
+    autocapture: granted,
     loaded: (ph) => {
-      reportClientDebug("hooks.client.ts:posthog-loaded", "posthog loaded", {}, "H5");
+      reportClientDebug("hooks.client.ts:posthog-loaded", "posthog loaded", { consent }, "H5");
+      // Honour an explicit opt-out — stop all capture entirely.
+      if (consent === "denied") {
+        ph.opt_out_capturing();
+      }
       ph.reloadFeatureFlags();
     },
   });
+
+  // Global handlers: enriched pageview props (route group + signed-in),
+  // outbound-link capture, and scroll-depth milestones. Reset on SPA nav.
+  setupAnalyticsHandlers({ isSignedIn });
+  page.subscribe(() => resetForNavigation(isSignedIn));
 }
 
 export const handleClientError: HandleClientError = ({ error, event, status }) => {

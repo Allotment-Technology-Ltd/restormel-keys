@@ -2,6 +2,16 @@ import posthog from "posthog-js";
 import type { GraphModuleMode, ModuleFlags } from "$lib/module-flags-types";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import type { MonitorInterestItem } from "$lib/dashboard-monitor-interest";
+import { track } from "$lib/analytics/track";
+
+/**
+ * Re-export the typed analytics surface so existing `$lib/posthog` imports keep
+ * working while new public-page code can pull `track` / the event taxonomy from
+ * one place. New events live in `$lib/analytics` — see events.ts.
+ */
+export { track } from "$lib/analytics/track";
+export { ANALYTICS_EVENTS } from "$lib/analytics/events";
+export type { AnalyticsEventName, AnalyticsEventMap } from "$lib/analytics/events";
 
 /**
  * Returns the A/B test variant for the landing page.
@@ -50,29 +60,17 @@ export function getClientModuleFlagsFromPostHog(): ModuleFlags {
  * Track the signup CTA click.
  */
 export function trackSignupClick() {
-  try {
-    posthog.capture?.("signup_clicked");
-  } catch {
-    // PostHog not loaded — silently ignore
-  }
+  track("signup_clicked", {});
 }
 
 /** Suite IA: home intent doors (Run vs Embed). */
 export function trackSuiteIntent(intent: "run" | "embed") {
-  try {
-    posthog.capture?.("suite_intent_selected", { intent });
-  } catch {
-    // PostHog not loaded — silently ignore
-  }
+  track("suite_intent_selected", { intent });
 }
 
 /** Suite IA: dashboard first-run milestone for funnel analysis. */
 export function trackDashboardOnboardingStep(step: string) {
-  try {
-    posthog.capture?.("dashboard_onboarding_step", { step });
-  } catch {
-    // PostHog not loaded — silently ignore
-  }
+  track("dashboard_onboarding_step", { step });
 }
 
 /** Fake-door / coming-soon interest (Monitor: Usage, Logs, Health). */
@@ -87,13 +85,9 @@ export function trackDashboardFeatureInterest(params: {
   action: DashboardFeatureInterestAction;
   item?: MonitorInterestItem | null;
 }) {
-  try {
-    posthog.capture?.("dashboard_feature_interest", {
-      feature: params.feature,
-      action: params.action,
-      item: params.item ?? undefined,
-    });
-  } catch {
-    // PostHog not loaded — silently ignore
-  }
+  track("dashboard_feature_interest", {
+    feature: params.feature,
+    action: params.action,
+    item: params.item ?? undefined,
+  });
 }
