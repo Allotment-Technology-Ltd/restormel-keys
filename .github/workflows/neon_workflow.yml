@@ -14,6 +14,14 @@ on:
       - reopened
       - synchronize
       - closed
+    # COST: skip the Neon preview branch + migration + catalog-seed entirely for
+    # docs-only PRs. GitHub runs this workflow UNLESS *every* changed file matches a
+    # paths-ignore pattern, so a mixed docs+code PR still runs; only pure-docs PRs are
+    # skipped — no Neon compute woken to test markdown. (ci.yml already path-filters its
+    # own jobs; this brings neon_workflow in line.) See database-strategy cost pause.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
