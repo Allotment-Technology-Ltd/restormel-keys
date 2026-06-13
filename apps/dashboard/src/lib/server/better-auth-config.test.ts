@@ -69,6 +69,14 @@ describe("betterAuthOptions (P4 self-host config)", () => {
     expect(role.input).toBe(false);
   });
 
+  it("disables email self-service signup (GitHub-only; closes /sign-up/email)", async () => {
+    const { betterAuthOptions } = await import("./better-auth");
+    // enabled keeps the password-reset hook wired; disableSignUp closes open
+    // registration + the SMTP-amplification vector. Locks the invariant against drift.
+    expect(betterAuthOptions.emailAndPassword.enabled).toBe(true);
+    expect(betterAuthOptions.emailAndPassword.disableSignUp).toBe(true);
+  });
+
   it("emits __Secure-* cookies in production so the auth.ts alias logic applies", async () => {
     const { betterAuthOptions } = await import("./better-auth");
     expect(betterAuthOptions.advanced.useSecureCookies).toBe(true);

@@ -93,7 +93,13 @@ export const betterAuthOptions = {
     },
   },
   emailAndPassword: {
+    // Kept `enabled` so the password-reset hook (sendResetPassword) stays wired, but
+    // `disableSignUp` CLOSES `POST /sign-up/email`: GitHub is the only intended login,
+    // so open self-service email registration (+ `/sign-in/email` enumeration + an
+    // SMTP-amplification vector via emailVerification.sendOnSignUp) must not be exposed
+    // when AUTH_PROVIDER=self. (Security review of PR #329.)
     enabled: true,
+    disableSignUp: true,
     async sendResetPassword({ user, url }: { user: { email: string }; url: string }) {
       await sendPasswordResetMail({ to: user.email, resetUrl: url });
     },
