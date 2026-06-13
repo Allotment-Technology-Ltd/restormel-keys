@@ -46,6 +46,71 @@
     name="description"
     content="Planned Restormel Keys tiers (reference only). Early access is invite-only — request access via Founders Circle."
   />
+
+  <script type="application/ld+json">
+    {JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What counts as an API request?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "One call to the Restormel resolve endpoint. Health checks and validation runs do not count toward your limit.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What happens when I hit my request limit?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You'll receive a warning at 80% usage. Requests above the limit return a 429 with a clear error. No silent failures.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is there a free trial of Pro?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes — the first 50 founding members receive 12 months of Pro free through the Founders Circle program.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I use Keys without Testing or Graph?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Absolutely. Each module is independently adoptable.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I use Keys without paying?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. Start on Free for development and prototyping. Upgrade when you need production-grade limits and visibility.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What happens after I subscribe?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your workspace; you can create API keys and use the cloud API from there.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I change plan later?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. Billing is through Paddle. You can cancel any time and keep using Free.",
+          },
+        },
+      ],
+    })}
+  </script>
 </svelte:head>
 
 <article class="pricing-page">

@@ -4,6 +4,7 @@
   import SiteHeader from "$lib/components/site/SiteHeader.svelte";
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
   import { agentLog } from "$lib/debug/agent-log";
+  import { DEFAULT_OG_IMAGE_PATH } from "$lib/seo";
   import type { ModuleFlags } from "$lib/module-flags-types";
   import type { SuiteModule } from "$lib/suite/suite-modules";
 
@@ -15,6 +16,28 @@
   export let ogUrl: string;
   export let moduleFlags: ModuleFlags;
   export let suiteModulesForUi: SuiteModule[];
+
+  // Derive origin from ogUrl for absolute OG image URL
+  $: ogOrigin = (() => {
+    try {
+      return new URL(ogUrl).origin;
+    } catch {
+      return "";
+    }
+  })();
+
+  $: ogImageAbsolute = ogOrigin ? ogOrigin + DEFAULT_OG_IMAGE_PATH : DEFAULT_OG_IMAGE_PATH;
+
+  // Organization + SoftwareApplication JSON-LD for the suite marketing layout
+  $: orgJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Restormel",
+    url: ogOrigin ? ogOrigin + "/" : "/",
+    logo: ogOrigin ? ogOrigin + "/restormel-lockup-nav.svg" : "/restormel-lockup-nav.svg",
+    description: "Verified-context layer for AI products — provenance-traced, evidence-bound, auditable knowledge for agents.",
+    sameAs: ["https://restormel.dev"],
+  });
 
   onMount(() => {
     // #region agent log
@@ -30,10 +53,17 @@
 </script>
 
 <svelte:head>
+  <link rel="canonical" href={ogUrl} />
   <meta property="og:site_name" content="Restormel" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content={ogUrl} />
-  <meta property="twitter:card" content="summary" />
+  <meta property="og:image" content={ogImageAbsolute} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:image" content={ogImageAbsolute} />
+  <script type="application/ld+json">{@html orgJsonLd}</script>
 </svelte:head>
 
 <div class="marketing-page">

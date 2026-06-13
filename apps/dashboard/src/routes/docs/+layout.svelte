@@ -38,6 +38,29 @@
 
 <svelte:head>
   <title>Docs — Restormel</title>
+  <link rel="canonical" href={$page.url.origin + $page.url.pathname} />
+  <meta property="og:site_name" content="Restormel" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={$page.url.origin + $page.url.pathname} />
+  <meta property="og:image" content={$page.url.origin + "/og/default.png"} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:image" content={$page.url.origin + "/og/default.png"} />
+
+  <script type="application/ld+json">
+    {JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbItems.map((b, idx) => ({
+        "@type": "ListItem",
+        position: idx + 1,
+        name: b.name,
+        item: $page.url.origin + b.path,
+      })),
+    })}
+  </script>
 </svelte:head>
 
 <div class="marketing-shell">
