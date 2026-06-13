@@ -43,6 +43,6 @@ RESTORMEL_MODULE_FLAGS=connect pnpm --filter dashboard run test
 node scripts/check-mvp-doc-links.mjs
 ```
 
-Graph product decision: [GRAPH-MVP-PRODUCT-MEMO.md](../restormel/GRAPH-MVP-PRODUCT-MEMO.md).
+Graph product decision: [GRAPH-MVP-PRODUCT-MEMO.md](../product/GRAPH-MVP-PRODUCT-MEMO.md).
 
 Public npm guidance: [npm-packages.md](../reference/npm-packages.md) — deprecated packages (`@restormel/keys`, `keys-svelte`, `keys-react`, `ui-graph-svelte`) and non-MVP Testing packages are not promoted on default surfaces.

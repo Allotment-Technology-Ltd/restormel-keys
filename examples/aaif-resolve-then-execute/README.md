@@ -62,6 +62,6 @@ const req: AAIFRequest = {
 
 ## References
 
-- Canonical contract: [docs/keys-routing-contract.md](../../docs/keys-routing-contract.md)
+- Canonical contract: [docs/architecture/keys-routing-contract.md](../../docs/architecture/keys-routing-contract.md)
 - Closed checkpoints (tool overlap, semver): [docs/guides/routing-implementation-checkpoints-closed.md](../../docs/guides/routing-implementation-checkpoints-closed.md)
 - AAIF package: [packages/aaif/README.md](../../packages/aaif/README.md)

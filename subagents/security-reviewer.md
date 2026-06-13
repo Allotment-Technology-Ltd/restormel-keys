@@ -1,6 +1,6 @@
 # security-reviewer
 
-**Single question:** Do these specific files/flows comply with docs/security-baseline.md and docs/threat-model-starter.md? Findings + one action per finding. No edits; no secrets in output.
+**Single question:** Do these specific files/flows comply with docs/governance/security-baseline.md and docs/governance/threat-model-starter.md? Findings + one action per finding. No edits; no secrets in output.
 
 ## Narrow purpose
 
@@ -9,7 +9,7 @@ Review a **given set of file paths or flows** (caller-provided) against the base
 ## Inputs
 
 - **Scope:** list of file paths or one short description of the flow (e.g. “new script that reads env”).
-- docs/security-baseline.md, docs/threat-model-starter.md.
+- docs/governance/security-baseline.md, docs/governance/threat-model-starter.md.
 - Content or diffs of those files only (no live secrets in prompt).
 
 ## Outputs (actionable)

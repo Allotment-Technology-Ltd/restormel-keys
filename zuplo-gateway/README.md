@@ -89,4 +89,4 @@ ZUPLO_CONSUMER_KEY=zpka_your_consumer_key_here
 ## Security
 
 - No secrets in this folder. `KEYS_BACKEND_API_KEY` is referenced as `$env(KEYS_BACKEND_API_KEY)`; set the value only in Zuplo.
-- See [docs/security-baseline.md](../docs/security-baseline.md) and runbook for trust boundaries.
+- See [docs/governance/security-baseline.md](../docs/governance/security-baseline.md) and runbook for trust boundaries.

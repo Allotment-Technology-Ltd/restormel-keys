@@ -4,7 +4,7 @@
  *
  * Reads a results snapshot produced by scripts/reviews/verifier-efficacy.ts and asserts
  * the signed-off efficacy bars (product owner, 2026-06-10 — quoted in the roadmap and in
- * docs/verified-context-claims-ledger.md):
+ * docs/product/verified-context-claims-ledger.md):
  *
  *   On the CROSS-MODEL pairing (the product's default routing):
  *     - fabricated-tier strict recall   >= 95%   (legacy AND EBV paths)
@@ -119,7 +119,7 @@ export function renderBarTable(result, snapshotName) {
   out.push(
     result.ok
       ? "**All signed-off bars met.** Claims-ledger rows citing these bars remain proven."
-      : "**A signed-off bar regressed.** Per docs/verified-context-claims-ledger.md rule 3, flip the citing rows to `broken` and treat dependent marketing copy as broken until the bar recovers.",
+      : "**A signed-off bar regressed.** Per docs/product/verified-context-claims-ledger.md rule 3, flip the citing rows to `broken` and treat dependent marketing copy as broken until the bar recovers.",
   );
   return out.join("\n");
 }

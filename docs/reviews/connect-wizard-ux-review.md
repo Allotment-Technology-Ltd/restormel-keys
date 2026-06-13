@@ -34,10 +34,10 @@ phase). **The perceived clunkiness, if any, lives in the 700–1140-line step pa
 
 ## 3. Grade against these canonical specs (do not invent a rubric)
 
-- `docs/ux-contracts.md` — **state model** (loading / error / empty / success, each with a
+- `docs/design/ux-contracts.md` — **state model** (loading / error / empty / success, each with a
   recovery action), **copy registry** (canonical nouns; no synonyms), section/header pattern.
-- `docs/DESIGN-SPECIFICATION.md`, `docs/DESIGN-TOKENS.md`, `docs/design-system-index.md`,
-  `docs/COMPONENT-INVENTORY.md` — Neo-Brutalist v2 system: `BrutalErrorBanner`, `EmptyState`,
+- `docs/design/DESIGN-SPECIFICATION.md`, `docs/design/DESIGN-TOKENS.md`, `docs/design/design-system-index.md`,
+  `docs/design/COMPONENT-INVENTORY.md` — Neo-Brutalist v2 system: `BrutalErrorBanner`, `EmptyState`,
   `BrutalLoadingState`, `BrutalPageHeader`, tokens (`--rm-*` / `--rk-*`), 4px borders,
   `8px 8px 0` shadows, zero radius, monospace, 100ms press.
 

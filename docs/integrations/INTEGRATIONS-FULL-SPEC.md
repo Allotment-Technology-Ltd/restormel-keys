@@ -264,7 +264,7 @@ they validate the known fields and tolerate unknown/extra fields.
 
 **Runtime:** `@restormel/mcp` ships a stdio MCP server (`restormel-mcp`) and `createRestormelMcpServer()` for custom transports. See `packages/mcp/README.md`.
 
-**Restormel Support:** `@restormel/support` — doc-grounded in-product assistant runtime; dogfood on `apps/dashboard` / `restormel.dev`. See `packages/support/README.md` and `docs/restormel/RESTORMEL-SUPPORT.md`.
+**Restormel Support:** `@restormel/support` — doc-grounded in-product assistant runtime; dogfood on `apps/dashboard` / `restormel.dev`. See `packages/support/README.md` and `docs/architecture/RESTORMEL-SUPPORT.md`.
 
 Tools:
 

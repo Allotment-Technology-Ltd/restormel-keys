@@ -19,7 +19,7 @@ Put decisions where they belong (e.g. docs/decisions/, ARCHITECTURE.md, or a spe
 
 ## Workflow
 
-1. Choose the right place: docs/decisions/ (one file per decision or theme), ARCHITECTURE.md (high-level summary and pointers), or a topic-owned doc (e.g. docs/security-baseline.md for a security decision).
+1. Choose the right place: docs/decisions/ (one file per decision or theme), ARCHITECTURE.md (high-level summary and pointers), or a topic-owned doc (e.g. docs/governance/security-baseline.md for a security decision).
 2. Write a short entry: decision, rationale, status (confirmed/provisional), date or context.
 3. If updating ARCHITECTURE.md, keep it a summary with links to docs/decisions/ or other canonical docs; do not duplicate long text.
 4. Do not duplicate the same decision in multiple docs; link from ARCHITECTURE or index to the owning doc.

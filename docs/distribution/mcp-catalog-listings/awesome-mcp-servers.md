@@ -43,12 +43,12 @@ feat: add Restormel Verified Context (evidence-bound knowledge-graph retrieval)
 - [ ] `@restormel/mcp` is published on npm at the version being cited.
 - [ ] The quickstart at https://restormel.dev/keys/docs/guides/mcp-verified-context is live and publicly accessible.
 - [ ] You have read the awesome list's CONTRIBUTING guide and the row format matches what is currently used.
-- [ ] All quality/verification phrases in the PR body cite proven ledger rows (see `docs/verified-context-claims-ledger.md`).
+- [ ] All quality/verification phrases in the PR body cite proven ledger rows (see `docs/product/verified-context-claims-ledger.md`).
 - [ ] No credentials or internal URLs appear in the PR body.
 
 ## Claims provenance (required before submitting)
 
-All quality/verification language in this listing is limited to claims with proven status in `docs/verified-context-claims-ledger.md`:
+All quality/verification language in this listing is limited to claims with proven status in `docs/product/verified-context-claims-ledger.md`:
 - "evidence-bound" — ledger row 2 (proven)
 - "verification state" — ledger row 1, 4 (proven)
 - "provenance traces" — ledger row 7 (proven)

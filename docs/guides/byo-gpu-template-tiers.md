@@ -23,4 +23,4 @@
 ## Related
 
 - [BYO-GPU and NGC accessibility](byo-gpu-ngc-accessibility.md)
-- [GTM: PLG before enterprise](../restormel/gtm-plg-enterprise-sequencing.md)
+- [GTM: PLG before enterprise](../product/gtm-plg-enterprise-sequencing.md)

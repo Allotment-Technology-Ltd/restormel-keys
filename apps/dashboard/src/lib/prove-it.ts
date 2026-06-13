@@ -44,7 +44,7 @@ export const PROVE_LINK_CLASS = "prove-it";
  * silently drops to the default queue, those tiles render LINK-LESS (the
  * `vector_index` precedent — honest absence). A real coverage facet (per-unit
  * binding + embedding fields on the units API + an explorer facet + a server
- * breakdown) is the follow-up: see docs/ux-contracts.md §3 coverage-facet TODO.
+ * breakdown) is the follow-up: see docs/design/ux-contracts.md §3 coverage-facet TODO.
  */
 export type ProveFilter =
   | "review"

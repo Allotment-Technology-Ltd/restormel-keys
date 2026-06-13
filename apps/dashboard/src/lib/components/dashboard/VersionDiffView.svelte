@@ -8,7 +8,7 @@
    * exposes an "open in builder" affordance (rubric X4 — every diff row links to
    * the field it changed) via the optional `onOpenField` callback.
    *
-   * State model (docs/ux-contracts.md §3): the parent owns loading / error and
+   * State model (docs/design/ux-contracts.md §3): the parent owns loading / error and
    * passes them in; this component renders empty (no changes) + populated.
    */
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";

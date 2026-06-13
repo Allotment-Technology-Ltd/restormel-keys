@@ -3,7 +3,7 @@
 **Status:** **Approved 2026-06-09** (direction approved by product owner). No implementation
 has been done yet — Layer 1 lands in Verified Context roadmap Stage 1.0c, Layer 2 in Stage
 1.0d. Supersedes the implicit definition of "validated" used by the current Connect pipeline;
-foundation for the Verified Context roadmap (`docs/verified-context-pivot-roadmap.md`) and for
+foundation for the Verified Context roadmap (`docs/product/verified-context-pivot-roadmap.md`) and for
 the verified-memory pivot (P3).
 
 ## Context: why the current validation does not earn user trust

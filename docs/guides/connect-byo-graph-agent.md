@@ -1,7 +1,7 @@
 # Connect — BYO graph store for agents (MVP)
 
 **Status:** Reference (operator + integrator)  
-**Canonical product:** [docs/restormel/CONNECT-PRODUCT.md](../restormel/CONNECT-PRODUCT.md)
+**Canonical product:** [docs/product/CONNECT-PRODUCT.md](../product/CONNECT-PRODUCT.md)
 
 Restormel Connect MVP keeps the **knowledge graph on your SurrealDB** (Bring-Your-Own). Restormel hosts ingest orchestration, job metadata, and encrypted connection secrets — not your full corpus.
 

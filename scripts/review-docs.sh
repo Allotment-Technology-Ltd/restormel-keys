@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MISSING=0
 
 required_root="README.md ROADMAP.md STATUS.md CHANGELOG.md CONTRIBUTING.md ARCHITECTURE.md"
-required_docs="docs/bootstrap-plan.md docs/bootstrap-checklist.md docs/working-agreement.md docs/security-baseline.md docs/threat-model-starter.md docs/reliability-standards.md docs/testing-strategy.md docs/release-readiness.md docs/prompts-reference.md docs/prompt-governance.md docs/skills.md docs/subagents.md docs/runbooks.md"
+required_docs="docs/bootstrap-plan.md docs/bootstrap-checklist.md docs/governance/working-agreement.md docs/governance/security-baseline.md docs/governance/threat-model-starter.md docs/governance/reliability-standards.md docs/governance/testing-strategy.md docs/governance/release-readiness.md docs/governance/prompts-reference.md docs/governance/prompt-governance.md docs/governance/skills.md docs/governance/subagents.md docs/runbooks/README.md"
 required_extra="docs/decisions/README.md docs/archive/README.md"
 
 for f in $required_root; do

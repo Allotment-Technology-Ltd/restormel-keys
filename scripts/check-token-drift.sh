@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Check token parity between packages/svelte theme.css and packages/elements theme-inline.ts (--rk-*).
-# Exit 0 if they match; 1 if drift. See docs/design-system-index.md and @restormel/keys-tokens (npm) / restormel-platform.
+# Exit 0 if they match; 1 if drift. See docs/design/design-system-index.md and @restormel/keys-tokens (npm) / restormel-platform.
 
 set -e
 

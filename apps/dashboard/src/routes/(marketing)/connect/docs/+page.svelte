@@ -134,7 +134,7 @@
     <li><a href="/keys/docs/integrations/mcp">MCP integration</a></li>
     <li>
       <a
-        href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/CONNECT-PRODUCT.md"
+        href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/product/CONNECT-PRODUCT.md"
         >Connect product brief</a
       >
     </li>

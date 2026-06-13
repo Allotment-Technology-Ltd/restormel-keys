@@ -6,7 +6,7 @@
  * Rate-limited using the same in-process fixed-window guard used by memory writes
  * (per-workspace identity on POSTs, no limit on GETs which are read-only).
  *
- * W3.8 — docs/dashboard-world-class-roadmap.md §Stage W3.8
+ * W3.8 — docs/design/dashboard-world-class-roadmap.md §Stage W3.8
  */
 import {
   TESTING_VERDICT_SCHEMA_VERSION,

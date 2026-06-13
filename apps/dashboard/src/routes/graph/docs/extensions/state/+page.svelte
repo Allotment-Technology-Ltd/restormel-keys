@@ -41,7 +41,7 @@
       <li>
         <strong>SOPHIA / Stoa:</strong> dialogue-specific event builders are <strong>not</strong> in the npm package — copy the
         reference module from
-        <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/state-sophia-integration.md" rel="noopener noreferrer"
+        <a href="{GITHUB_REPO_URL}/blob/main/docs/architecture/state-sophia-integration.md" rel="noopener noreferrer"
           ><code>state-sophia-integration.md</code></a
         >
         into SOPHIA.
@@ -73,14 +73,14 @@
     </p>
     <ul>
       <li>
-        <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/RESTORMEL-STATE.md" rel="noopener noreferrer"
-          ><code>docs/restormel/RESTORMEL-STATE.md</code></a
+        <a href="{GITHUB_REPO_URL}/blob/main/docs/architecture/RESTORMEL-STATE.md" rel="noopener noreferrer"
+          ><code>docs/architecture/RESTORMEL-STATE.md</code></a
         >
         — overview, non-goals, core model.
       </li>
       <li>
-        <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/state-sophia-integration.md" rel="noopener noreferrer"
-          ><code>docs/restormel/state-sophia-integration.md</code></a
+        <a href="{GITHUB_REPO_URL}/blob/main/docs/architecture/state-sophia-integration.md" rel="noopener noreferrer"
+          ><code>docs/architecture/state-sophia-integration.md</code></a
         >
         — where to emit events in SOPHIA.
       </li>

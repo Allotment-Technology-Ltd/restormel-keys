@@ -9,8 +9,8 @@ Given **one change** (feature, fix, or refactor) and **phase** (00 vs 01+), reco
 ## Inputs
 
 - Change: what was added/changed/fixed and where (paths or short description).
-- Phase: 00 (scripts/CI only) or 01+ (unit/integration per docs/testing-strategy.md).
-- Optional: docs/testing-strategy.md.
+- Phase: 00 (scripts/CI only) or 01+ (unit/integration per docs/governance/testing-strategy.md).
+- Optional: docs/governance/testing-strategy.md.
 
 ## Outputs (actionable)
 

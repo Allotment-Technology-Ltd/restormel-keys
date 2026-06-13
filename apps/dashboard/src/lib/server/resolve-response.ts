@@ -5,7 +5,7 @@ import type { ResolvedRouteResult } from "$lib/server/route-resolver";
 import { normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
 import { RUNTIME_SWITCH_EVAL_VERSION } from "$lib/server/runtime-switch-eval";
 
-/** Bump when resolve/simulate JSON semantics change (see docs/release-readiness.md). */
+/** Bump when resolve/simulate JSON semantics change (see docs/governance/release-readiness.md). */
 export const RESOLVE_SIMULATE_CONTRACT_VERSION = "2026-04-16";
 
 /** Hosted POST …/runtime/invoke success payload (Phase 2 pipeline; Phase 3 switch-eval on upstream failure). */

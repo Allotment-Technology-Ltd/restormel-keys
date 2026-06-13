@@ -31,7 +31,7 @@ This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` Sve
 | [@restormel/keys-svelte](packages/svelte) | **Deprecated** | Use `@restormel/keys-elements` |
 | [@restormel/keys-react](packages/react) | **Deprecated** | Use `@restormel/keys-elements` |
 
-**Restormel Testing** (non-MVP by default — enable `restormel-module-testing` for public docs) — see [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md):
+**Restormel Testing** (non-MVP by default — enable `restormel-module-testing` for public docs) — see [docs/architecture/restormel-monorepo-packages.md](docs/architecture/restormel-monorepo-packages.md):
 
 | Package | Description |
 |---------|-------------|
@@ -44,7 +44,7 @@ This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` Sve
 
 *(Vue wrapper is not published.)*
 
-**Monorepo / packages / publish tags:** [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md). Hosting & CI: [docs/infra/](docs/infra/) (Coolify · Forgejo).
+**Monorepo / packages / publish tags:** [docs/architecture/restormel-monorepo-packages.md](docs/architecture/restormel-monorepo-packages.md). Hosting & CI: [docs/infra/](docs/infra/) (Coolify · Forgejo).
 
 ---
 

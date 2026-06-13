@@ -2,7 +2,7 @@
 
 **Status:** Canonical integrator guide  
 **Audience:** App developers moving off in-process `@restormel/keys` for hot paths  
-**Programme:** [SUITE-ARCHITECTURE-MIGRATION.md](../restormel/SUITE-ARCHITECTURE-MIGRATION.md) Phase 1  
+**Programme:** [SUITE-ARCHITECTURE-MIGRATION.md](../architecture/SUITE-ARCHITECTURE-MIGRATION.md) Phase 1  
 
 Restormel Keys hot paths — **resolve**, **catalog**, **models**, and **policy evaluation** — are available as **versioned HTTP APIs** at `/keys/v1/*`. Use a **Gateway key** (`rk_…`) as `Authorization: Bearer …` on the dashboard origin or through the Zuplo edge gateway.
 
@@ -148,7 +148,7 @@ OpenAPI: [openapi-suite-v1-draft.yaml](../api/openapi-suite-v1-draft.yaml) (Keys
 
 ## Related docs
 
-- [keys-routing-contract.md](../keys-routing-contract.md)
-- [keys-testing-onboarding.md](../keys-testing-onboarding.md)
+- [keys-routing-contract.md](../architecture/keys-routing-contract.md)
+- [keys-testing-onboarding.md](keys-testing-onboarding.md)
 - [restormel-environment-vocabulary.md](./restormel-environment-vocabulary.md)
-- [SUITE-ARCHITECTURE-MIGRATION.md](../restormel/SUITE-ARCHITECTURE-MIGRATION.md)
+- [SUITE-ARCHITECTURE-MIGRATION.md](../architecture/SUITE-ARCHITECTURE-MIGRATION.md)

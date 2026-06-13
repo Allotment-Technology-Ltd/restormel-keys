@@ -45,7 +45,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `/keys/dashboard/projects/[id]/routes/[routeId]` — Route detail (steps, default model, lifecycle warnings)
 - `/keys/dashboard/access` — **Access**: list/create/revoke Gateway Keys (across projects)
 - `/keys/dashboard/integrations` — **Connections**: connect providers; optional **hosted API key** (encrypted at rest) or vault **credential reference**
-- `/keys/dashboard/testing` — **Restormel Testing**: project/environment IDs, Gateway key reminder, copy-ready `RESTORMEL_*` snippets ([keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md))
+- `/keys/dashboard/testing` — **Restormel Testing**: project/environment IDs, Gateway key reminder, copy-ready `RESTORMEL_*` snippets ([keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md))
 - `/keys/dashboard/models` — **Models**: catalog (lifecycle, variants)
 - `/keys/dashboard/routes` — **Routes**: list routes across projects
 - `/keys/dashboard/policies` — **Policies**: list/create policies
@@ -68,7 +68,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 - `GET /keys/dashboard/api/usage-aggregates` — Usage aggregates or on-the-fly from request_logs
 - `GET/POST /keys/dashboard/api/auth/*` — Neon Auth proxy (sign-in, callback, sign-out)
 - `GET /keys/dashboard/api/health` — Health check
-- `POST /keys/dashboard/api/support-chat` — **Restormel Support** (session-only JSON `{ "messages": [{ "role": "user"|"assistant", "content": "…" }] }`; streams `text/plain`). See [docs/restormel/RESTORMEL-SUPPORT.md](../../docs/restormel/RESTORMEL-SUPPORT.md).
+- `POST /keys/dashboard/api/support-chat` — **Restormel Support** (session-only JSON `{ "messages": [{ "role": "user"|"assistant", "content": "…" }] }`; streams `text/plain`). See [docs/architecture/RESTORMEL-SUPPORT.md](../../docs/architecture/RESTORMEL-SUPPORT.md).
 - `GET /keys/admin/api/users` — List registered users (**session + service owner**).
 - `PATCH /keys/admin/api/users/[userId]` — Set `service_admins` membership: `{ "serviceOwner": boolean }` (**session + service owner**).
 - Legacy: `GET/PATCH /keys/dashboard/api/admin/users` — same behaviour (automation compatibility).
@@ -83,7 +83,7 @@ SvelteKit 2 + Svelte 5 **single app** for Restormel Keys: Keys landing, docs, wa
 | `FEEDBACK_GITHUB_REPO` | Optional | Target repo in `owner/repo` format for issue creation. Defaults to `Allotment-Technology-Ltd/restormel-keys`. |
 | `RESTORMEL_SERVICE_ADMIN_USER_IDS` | Optional | Comma-separated Better Auth user IDs for **service operators**: subscription-style limits and Pro UI gates waived. See [docs/runbooks/service-admin-operators.md](../../docs/runbooks/service-admin-operators.md). Also supports Neon Auth `user.role` (`admin`, `operator`, …), **`RESTORMEL_SERVICE_OWNER_EMAILS`**, and `service_admins` table. |
 | `RESTORMEL_SERVICE_OWNER_EMAILS` | Optional | Comma-separated sign-in emails treated as **service owners** (case-insensitive). When **unset**, built-in primary-operator defaults apply; set to empty to disable email-based grants. See runbook. |
-| `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` | Optional | **Required** to store **hosted API keys** under Connections (32-byte key, base64-encoded). If unset, POST with `apiKey` returns **503** `server_misconfigured`. See [docs/security-baseline.md](../../docs/security-baseline.md). |
+| `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` | Optional | **Required** to store **hosted API keys** under Connections (32-byte key, base64-encoded). If unset, POST with `apiKey` returns **503** `server_misconfigured`. See [docs/governance/security-baseline.md](../../docs/governance/security-baseline.md). |
 | `OPENAI_API_KEY` | Optional | **Required** for **Restormel Support** (`/keys/dashboard/api/support-chat`). If unset, support returns **503**. |
 | `RESTORMEL_SUPPORT_ENABLED` | Optional | Set to `false` to disable Restormel Support (API **503**). |
 | `RESTORMEL_SUPPORT_MODEL` | Optional | OpenAI model id for support (default `gpt-4o-mini`). |
@@ -148,4 +148,4 @@ Run migrations in `migrations/` (sorted `001` … `030`+ as needed) against the 
 ## Terminology
 
 - **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
-- **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_GATEWAY_KEY` (alias `RESTORMEL_KEYS_API_TOKEN`). See [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
+- **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_GATEWAY_KEY` (alias `RESTORMEL_KEYS_API_TOKEN`). See [docs/guides/keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md).

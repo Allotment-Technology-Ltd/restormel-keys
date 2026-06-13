@@ -35,7 +35,7 @@ Use the **`peerDependencies`** range published on npm for `@restormel/context-pa
 
 ### Host integration (persistence)
 
-Storage is **host-owned**. Prefer an append-only log with monotonic ordering (e.g. `recorded_at` ascending; tie-break with `StateEvent.id` and `ts`). **`StateEvent.id` must be unique** within each batch you append. See [docs/restormel/RESTORMEL-STATE.md](../../docs/restormel/RESTORMEL-STATE.md) for the canonical model.
+Storage is **host-owned**. Prefer an append-only log with monotonic ordering (e.g. `recorded_at` ascending; tie-break with `StateEvent.id` and `ts`). **`StateEvent.id` must be unique** within each batch you append. See [docs/architecture/RESTORMEL-STATE.md](../../docs/architecture/RESTORMEL-STATE.md) for the canonical model.
 
 ## Usage
 
@@ -76,7 +76,7 @@ const packInput = attachCorrelationToRetrievalInput(
 
 ## SOPHIA (Stoa)
 
-Stoa-specific event builders live **only in SOPHIA** — they are not part of this package. Copy the reference module from [docs/restormel/state-sophia-integration.md](../../docs/restormel/state-sophia-integration.md) into your app.
+Stoa-specific event builders live **only in SOPHIA** — they are not part of this package. Copy the reference module from [docs/architecture/state-sophia-integration.md](../../docs/architecture/state-sophia-integration.md) into your app.
 
 ## API (summary)
 
@@ -96,7 +96,7 @@ Tag **`platform-v*`** — [publish-restormel-platform.yml](../../.github/workflo
 ## Docs
 
 - **Integrator overview (in-app, same IA as Graph reasoning docs):** [Restormel State — restormel.dev](https://restormel.dev/graph/docs/extensions/state)
-- **Repo canonical spec:** [docs/restormel/RESTORMEL-STATE.md](../../docs/restormel/RESTORMEL-STATE.md) (where docs live, non-goals, model)
-- **SOPHIA hooks:** [docs/restormel/state-sophia-integration.md](../../docs/restormel/state-sophia-integration.md)
-- **Suite package map:** [docs/restormel-monorepo-packages.md](../../docs/restormel-monorepo-packages.md)
+- **Repo canonical spec:** [docs/architecture/RESTORMEL-STATE.md](../../docs/architecture/RESTORMEL-STATE.md) (where docs live, non-goals, model)
+- **SOPHIA hooks:** [docs/architecture/state-sophia-integration.md](../../docs/architecture/state-sophia-integration.md)
+- **Suite package map:** [docs/architecture/restormel-monorepo-packages.md](../../docs/architecture/restormel-monorepo-packages.md)
 - **npm reference:** [docs/reference/npm-packages.md](../../docs/reference/npm-packages.md)

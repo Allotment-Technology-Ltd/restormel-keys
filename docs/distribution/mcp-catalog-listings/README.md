@@ -7,7 +7,7 @@ This directory holds one file per MCP registry/catalog, each containing:
 - All required metadata fields filled in.
 - Step-by-step submission instructions for a human.
 - Claims provenance: every quality/verification phrase maps to a proven row in
-  `docs/verified-context-claims-ledger.md`.
+  `docs/product/verified-context-claims-ledger.md`.
 
 ## Catalogs covered
 
@@ -24,13 +24,13 @@ This directory holds one file per MCP registry/catalog, each containing:
 2. Confirm the quickstart at https://restormel.dev/keys/docs/guides/mcp-verified-context is live.
 3. Read the individual file's submission steps — each registry has its own format.
 4. Do a marketing-copy review: every quality phrase must map to a `proven` row in
-   `docs/verified-context-claims-ledger.md`. If a row was flipped to `broken` since this
+   `docs/product/verified-context-claims-ledger.md`. If a row was flipped to `broken` since this
    file was written, the phrase must be weakened or removed before submitting.
 5. Never include credentials or internal infrastructure URLs in external submissions.
 
 ## Claims integrity rule
 
-Per the Stage 4.2 scope contract and `docs/verified-context-pivot-roadmap.md`:
+Per the Stage 4.2 scope contract and `docs/product/verified-context-pivot-roadmap.md`:
 > Stage 4.2 marketing copy may only use rows marked **proven**.
 
 The distribution copy in each listing file is scoped to:

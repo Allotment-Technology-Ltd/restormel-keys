@@ -10,7 +10,7 @@ alwaysApply: true
 
 - **Runbook:** `docs/runbooks/restormel-dogfood-issue-implementation.md` — triage, security, minimal fix, tests, PR linkage, optional reply on source issue.
 - **Policy:** `docs/github-dogfood-feedback.md`.
-- **Security:** Do not copy secrets from relayed issue bodies into code, commits, or PRs. `docs/security-baseline.md`.
+- **Security:** Do not copy secrets from relayed issue bodies into code, commits, or PRs. `docs/governance/security-baseline.md`.
 - If the user pastes an issue number or asks to implement a dogfood item, use `gh issue view` when available, then follow the runbook’s **Cursor agent prompt** pattern (issue #N, no secrets).
 - **CI (optional):** `.github/workflows/dogfood-agent-open-pr.yml` can open a **draft** PR via `scripts/dogfood-agent-open-pr.mjs`; humans still review and merge. Do not put API keys in the repo — GitHub Actions **secrets** only (runbook §6).
 - **One draft PR per agent pickup (canonical):** If a **`dogfood/agent-issue-…`** draft PR already exists for the **`[Dogfood]`** issue you are extending, **commit and push on that branch** — do **not** start a parallel **`fix/…`** branch for the same issue. Human-only paths outside the agent allowlist (e.g. `.github/workflows`): still prefer stacking on the same `dogfood/agent-issue-…` branch when possible. Full rule: `docs/runbooks/restormel-dogfood-issue-implementation.md` § *One draft PR per dogfood agent pickup*.

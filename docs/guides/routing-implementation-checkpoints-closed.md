@@ -1,6 +1,6 @@
 # Routing parity — closed checkpoints (reference)
 
-**Status:** Reference — records outcomes of planning **CHECKPOINT** items from the Sophia routing parity plan. **Canonical routing API** remains [keys-routing-contract.md](../keys-routing-contract.md).
+**Status:** Reference — records outcomes of planning **CHECKPOINT** items from the Sophia routing parity plan. **Canonical routing API** remains [keys-routing-contract.md](../architecture/keys-routing-contract.md).
 
 ## Export / import schema vs DB and MCP
 
@@ -29,7 +29,7 @@
 
 ## Generated-from-markdown pipeline
 
-- **Not in use** for routing docs. If a pipeline is added later: amend [prompt-governance.md](../prompt-governance.md) and [prompts-reference.md](../prompts-reference.md) first so canonical vs generated duplication is explicit.
+- **Not in use** for routing docs. If a pipeline is added later: amend [prompt-governance.md](../governance/prompt-governance.md) and [prompts-reference.md](../governance/prompts-reference.md) first so canonical vs generated duplication is explicit.
 
 ## New MCP routing tools vs `routing.explain` and `routes.*`
 
@@ -51,7 +51,7 @@
 ## Cursor skill vs prompts
 
 - **Skill:** `.cursor/skills/restormel-keys-routing` (and `.agents` symlink) stays the live agent entry for multi-surface routing work.
-- **Prompts:** Governed under `prompts/` + [prompts-reference.md](../prompts-reference.md). Do not duplicate the skill body into prompt packs; **link** to the skill or canonical doc.
+- **Prompts:** Governed under `prompts/` + [prompts-reference.md](../governance/prompts-reference.md). Do not duplicate the skill body into prompt packs; **link** to the skill or canonical doc.
 
 ## Dashboard — publish vs draft (visual affordance)
 
@@ -64,7 +64,7 @@
 ## Catalog signals — opt-in read path (no default automation)
 
 - **Design:** [routing-catalog-signals.md](routing-catalog-signals.md).
-- **Keys (read-only, off by default):** `GET …/explain-chain?includeCatalogHints=true` attaches aggregated **crowd observation counts** per step model pair (same trust model as `GET /api/catalog`). **No** automatic cooldown or reorder; operators interpret hints. **Threat model:** automation that mutates routes stays **opt-in** and gated on product + [threat-model-starter.md](../threat-model-starter.md) (*Catalog observations → routing automation*) + [security baseline](../security-baseline.md).
+- **Keys (read-only, off by default):** `GET …/explain-chain?includeCatalogHints=true` attaches aggregated **crowd observation counts** per step model pair (same trust model as `GET /api/catalog`). **No** automatic cooldown or reorder; operators interpret hints. **Threat model:** automation that mutates routes stays **opt-in** and gated on product + [threat-model-starter.md](../governance/threat-model-starter.md) (*Catalog observations → routing automation*) + [security baseline](../governance/security-baseline.md).
 
 ## SOPHIA / stage enum / epic close-out
 

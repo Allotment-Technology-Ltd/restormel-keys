@@ -73,7 +73,7 @@ function buildBody({ tag, upstreamOwner, upstreamRepo, changelogExcerpt }) {
   const changelogUrl = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/CHANGELOG.md`;
   const dogfoodIssues = `https://github.com/${upstreamOwner}/${upstreamRepo}/issues?q=is%3Aissue+label%3Atask+%5BDogfood%5D`;
   const openapiUrl = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/docs/api/openapi.yaml`;
-  const keysCatalogSync = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/docs/restormel-integration/keys-catalog-sync.md`;
+  const keysCatalogSync = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/docs/guides/integration/keys-catalog-sync.md`;
   const resolveGuide = `https://github.com/${upstreamOwner}/${upstreamRepo}/blob/${tag}/docs/guides/resolve-to-execution-contract.md`;
 
   const excerptBlock =

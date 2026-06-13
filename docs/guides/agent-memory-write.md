@@ -1,7 +1,7 @@
 # Connect — agent memory write API (Stage 3.4)
 
 **Status:** Reference (integrator)
-**Canonical product:** [docs/restormel/CONNECT-PRODUCT.md](../restormel/CONNECT-PRODUCT.md)
+**Canonical product:** [docs/product/CONNECT-PRODUCT.md](../product/CONNECT-PRODUCT.md)
 
 `POST /connect/v1/memory` lets an agent submit observations into a workspace knowledge graph as **verified memory**. Every observation runs the **same EBV quality gate as document ingest** (no parallel pipeline) before it is persisted as a claim — nothing reaches retrieval unverified.
 

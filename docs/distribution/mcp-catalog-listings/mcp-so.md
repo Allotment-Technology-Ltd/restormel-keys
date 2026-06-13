@@ -73,4 +73,4 @@ mcp, model-context-protocol, rag, knowledge-graph, verification, citations, prov
 4. Fill in the fields above (copy-paste descriptions from this file).
 5. Use the GitHub source URL; mcp.so may auto-populate fields from the package.json.
 6. Submit and record the listing URL in this file once approved.
-7. **Do not submit until a marketing-copy review confirms all quality phrases cite proven ledger rows (see `docs/verified-context-claims-ledger.md`).**
+7. **Do not submit until a marketing-copy review confirms all quality phrases cite proven ledger rows (see `docs/product/verified-context-claims-ledger.md`).**

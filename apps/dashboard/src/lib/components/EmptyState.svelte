@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Shared empty-state block: title, description, and one primary recovery action.
-   * Use for no projects, no keys, billing not set up, etc. (docs/ux-contracts.md)
+   * Use for no projects, no keys, billing not set up, etc. (docs/design/ux-contracts.md)
    */
   import type { Snippet } from 'svelte';
 

@@ -14,8 +14,8 @@
   </p>
   <p>
     Canonical reference (same content, repo path):
-    <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/gtm-plg-enterprise-sequencing.md"
-      >docs/restormel/gtm-plg-enterprise-sequencing.md</a
+    <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/product/gtm-plg-enterprise-sequencing.md"
+      >docs/product/gtm-plg-enterprise-sequencing.md</a
     >.
   </p>
   <h2>Summary</h2>

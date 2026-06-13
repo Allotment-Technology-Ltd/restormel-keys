@@ -145,7 +145,7 @@
     <a href="/keys/docs/guides/resolve-to-execution-contract">Resolve → execution contract</a>).
     Integrator reference (stable <code>GET</code> <code>data</code> shape, <code>project_models_validation_failed</code>, global catalog vs index):
     <a
-      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/guides/integration/keys-catalog-sync.md"
       >keys-catalog-sync.md</a
     >.
   </p>

@@ -7,7 +7,7 @@ description: Use when configuring or explaining Restormel Keys multi-step routes
 
 ## First step
 
-1. Call MCP **`docs.canonical_resolve`** with topic **`keys_routing_contract`** (or read `docs/keys-routing-contract.md` in-repo).
+1. Call MCP **`docs.canonical_resolve`** with topic **`keys_routing_contract`** (or read `docs/architecture/keys-routing-contract.md` in-repo).
 2. For a machine-readable surface list, call suite tool **`routing.capabilities`** (read-only).
 
 ## Control plane (no LLM execution)
@@ -26,4 +26,4 @@ description: Use when configuring or explaining Restormel Keys multi-step routes
 
 ## Security
 
-- No raw keys in prompts or logs; use placeholders in examples ([`docs/security-baseline.md`](../../../docs/security-baseline.md)).
+- No raw keys in prompts or logs; use placeholders in examples ([`docs/governance/security-baseline.md`](../../../docs/governance/security-baseline.md)).

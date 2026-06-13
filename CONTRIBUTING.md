@@ -2,16 +2,16 @@
 
 ## Phase 00 (complete)
 
-Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/archive/2026-03-build-pack/bootstrap-plan.md](docs/archive/2026-03-build-pack/bootstrap-plan.md) and [docs/working-agreement.md](docs/working-agreement.md).
+Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/archive/2026-03-build-pack/bootstrap-plan.md](docs/archive/2026-03-build-pack/bootstrap-plan.md) and [docs/governance/working-agreement.md](docs/governance/working-agreement.md).
 
-**Cursor context:** Use **docs/archive/2026-03-build-pack/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/cursor-indexing-policy.md](docs/cursor-indexing-policy.md).
+**Cursor context:** Use **docs/archive/2026-03-build-pack/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/governance/cursor-indexing-policy.md](docs/governance/cursor-indexing-policy.md).
 
 ## How to work
 
 - **Plan Mode** before non-trivial work (multi-file, security-sensitive, repo structure, CI, rules/skills/subagents).
-- **One canonical source per topic.** Update the owning doc; avoid duplicating truth. See [docs/working-agreement.md](docs/working-agreement.md).
+- **One canonical source per topic.** Update the owning doc; avoid duplicating truth. See [docs/governance/working-agreement.md](docs/governance/working-agreement.md).
 - **Exact target files;** thin slices. Prefer scripts/CI for repeatable checks.
-- **Security:** No committed secrets; no raw key logging. [docs/security-baseline.md](docs/security-baseline.md) and [SECURITY.md](SECURITY.md).
+- **Security:** No committed secrets; no raw key logging. [docs/governance/security-baseline.md](docs/governance/security-baseline.md) and [SECURITY.md](SECURITY.md).
 - **Before PRs:** Run [docs/guides/pre-pr-security-review.md](docs/guides/pre-pr-security-review.md) (Cursor skill **restormel-high-risk-security**). Local gate complements CI `security` (TruffleHog + `pnpm audit`); it does not replace it.
 
 ## Restormel Testing (`@restormel/testing-*`)

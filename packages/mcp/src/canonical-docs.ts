@@ -27,20 +27,20 @@ export type CanonicalDocEntry = {
 const ENTRIES: Record<CanonicalDocTopic, Omit<CanonicalDocEntry, "topic">> = {
   keys_routing_contract: {
     title: "Keys routing contract (SOPHIA-class workloads)",
-    repoPath: "docs/keys-routing-contract.md",
+    repoPath: "docs/architecture/keys-routing-contract.md",
     publicUrl: "https://restormel.dev/keys/docs/guides/routing-contract",
   },
   horizon_programme: {
     title: "Horizon platform programme",
-    repoPath: "docs/restormel/HORIZON-PLATFORM-PROGRAMME.md",
+    repoPath: "docs/architecture/HORIZON-PLATFORM-PROGRAMME.md",
   },
   theme_l_ia_matrix: {
     title: "Theme L IA matrix",
-    repoPath: "docs/restormel/THEME-L-IA-MATRIX.md",
+    repoPath: "docs/architecture/THEME-L-IA-MATRIX.md",
   },
   restormel_state: {
     title: "Restormel State",
-    repoPath: "docs/restormel/RESTORMEL-STATE.md",
+    repoPath: "docs/architecture/RESTORMEL-STATE.md",
     publicUrl: "https://restormel.dev/graph/docs/extensions/state",
   },
   context_packs: {

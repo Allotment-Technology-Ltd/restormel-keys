@@ -45,8 +45,8 @@ The verification spine is live and proven end-to-end: evidence-bound verificatio
 binding + Layer 2 span-scoped cross-model entailment with abstention), trust scorecard,
 provenance traces, published quality bar (≥90% supported / ≤2% unsupported), and a weekly
 CI efficacy gate. All ten rows of the
-[claims ledger](docs/verified-context-claims-ledger.md) are `proven` (2026-06-13). Delivery +
-the claims-integrity rule: [docs/verified-context-pivot-roadmap.md](docs/verified-context-pivot-roadmap.md).
+[claims ledger](docs/product/verified-context-claims-ledger.md) are `proven` (2026-06-13). Delivery +
+the claims-integrity rule: [docs/product/verified-context-pivot-roadmap.md](docs/product/verified-context-pivot-roadmap.md).
 Marketing reposition (Stage 1.3) landed on `/`, `/connect`, `/keys/use-cases`; remaining
 public surfaces (`/keys` landing, docs IA, API-doc IA, nav) are the subject of the
 public-pages revamp programme.

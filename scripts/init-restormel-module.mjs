@@ -5,8 +5,8 @@
  * Usage:
  *   node scripts/init-restormel-module.mjs --out <dir> --slug <kebab> --title "<name>" [--path <url-segment>] [--platform-repo <path-to-restormel-platform>]
  *
- * @see docs/restormel-module-default-stack.md
- * @see docs/template-restormel-module-repo.md
+ * @see docs/architecture/restormel-module-default-stack.md
+ * @see docs/architecture/template-restormel-module-repo.md
  */
 import fs from "fs";
 import path from "path";

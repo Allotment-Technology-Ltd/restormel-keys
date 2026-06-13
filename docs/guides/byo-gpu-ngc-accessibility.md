@@ -32,5 +32,5 @@ See [BYO-GPU template tiers](byo-gpu-template-tiers.md) for what is **free** (ha
 
 ## Related
 
-- [GTM: PLG before enterprise](../restormel/gtm-plg-enterprise-sequencing.md)
+- [GTM: PLG before enterprise](../product/gtm-plg-enterprise-sequencing.md)
 - [Webhooks and audit MVP](../integrations/webhooks-audit-mvp.md)

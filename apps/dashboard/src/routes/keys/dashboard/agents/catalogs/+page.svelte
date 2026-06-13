@@ -101,7 +101,7 @@
     <div class="catalog-detail-body">
       <p class="hint">
         Cross-product read helpers. Same names as <code class="tool-name">@restormel/mcp</code> 0.2+.
-        <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/THEME-L-MCP-PARITY.md" class="btn-link">MCP parity table</a>
+        <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/architecture/THEME-L-MCP-PARITY.md" class="btn-link">MCP parity table</a>
         · HTTP envelope:
         <a href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/integrations/restormel-suite-tool-envelope.schema.json" class="btn-link">JSON Schema</a>
         · Memory writes:

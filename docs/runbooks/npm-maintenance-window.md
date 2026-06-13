@@ -1,7 +1,7 @@
 # Runbook — npm maintenance window (Phase 7)
 
 **Programme:** [PHASE7-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE7-SUITE-MIGRATION-STATUS.md)  
-**Canonical spec:** [SUITE-ARCHITECTURE-MIGRATION.md](../restormel/SUITE-ARCHITECTURE-MIGRATION.md) § Phase 7  
+**Canonical spec:** [SUITE-ARCHITECTURE-MIGRATION.md](../architecture/SUITE-ARCHITECTURE-MIGRATION.md) § Phase 7  
 
 ---
 

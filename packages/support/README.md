@@ -23,7 +23,7 @@
 
 ## Docs
 
-- Product / governance: [docs/restormel/RESTORMEL-SUPPORT.md](../../docs/restormel/RESTORMEL-SUPPORT.md)
+- Product / governance: [docs/architecture/RESTORMEL-SUPPORT.md](../../docs/architecture/RESTORMEL-SUPPORT.md)
 - Production checklist: [docs/runbooks/restormel-support-production.md](../../docs/runbooks/restormel-support-production.md)
 
 ## Publish

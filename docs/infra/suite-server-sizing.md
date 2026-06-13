@@ -148,4 +148,4 @@ or a product SLA) demands it.
 | Restormel cutover runbook | `docs/infra/coolify-cutover-runbook.md` |
 | Coolify app config (two-container draft) | `deploy/docker-compose.coolify.yml` |
 | **Sophia migration plan** | `docs/infra/sophia-coolify-migration-plan.md` |
-| Suite architecture / Sophia roles | `docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md` |
+| Suite architecture / Sophia roles | `docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md` |

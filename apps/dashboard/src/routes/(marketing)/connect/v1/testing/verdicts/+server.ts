@@ -3,7 +3,7 @@
  * GET  /connect/v1/testing/verdicts — list the Testing hub timeline for a workspace
  *
  * Auth: Gateway key (rk_… — same as all other v1 routes).
- * W3.8 — docs/dashboard-world-class-roadmap.md §Stage W3.8
+ * W3.8 — docs/design/dashboard-world-class-roadmap.md §Stage W3.8
  */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

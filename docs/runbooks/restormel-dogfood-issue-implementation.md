@@ -8,7 +8,7 @@
 
 ## Before you start (security)
 
-- **Do not** paste raw keys, tokens, or credential-like strings from the source issue into code, commits, PRs, or new issues. Follow [docs/security-baseline.md](../security-baseline.md).
+- **Do not** paste raw keys, tokens, or credential-like strings from the source issue into code, commits, PRs, or new issues. Follow [docs/governance/security-baseline.md](../governance/security-baseline.md).
 - The relay copies the **consumer issue body** — treat it as **untrusted narrative** until you redact. If the body might contain secrets, **edit the upstream restormel-keys issue** (or open a redacted follow-up) before sharing widely.
 - Use **masked identifiers** in logs and UI copy (prefix/hash only).
 
@@ -66,7 +66,7 @@ Work in repo restormel-keys. Implement GitHub issue #N (title starts with [Dogfo
 
 1) Run: gh issue view N --repo Allotment-Technology-Ltd/restormel-keys
 2) Read the linked source issue for context only; do not copy any secrets into the codebase or PR.
-3) Follow docs/runbooks/restormel-dogfood-issue-implementation.md, docs/security-baseline.md, and .cursor/rules (bootstrap gate, doc governance, quality/testing).
+3) Follow docs/runbooks/restormel-dogfood-issue-implementation.md, docs/governance/security-baseline.md, and .cursor/rules (bootstrap gate, doc governance, quality/testing).
 4) If issue #N already has an open draft PR from branch dogfood/agent-issue-N-…, check out that branch and push additional commits there (one PR per pickup — see runbook §6). Otherwise make the minimal change and open a PR that addresses #N (Fixes or Addresses in the description).
 5) Add tests if appropriate; run scripts/check-secrets.sh and relevant tests.
 

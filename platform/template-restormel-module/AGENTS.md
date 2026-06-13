@@ -4,11 +4,11 @@
 
 ## Stack
 
-Follow [Restormel module default stack](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-module-default-stack.md) (pnpm 9, Node 20, SvelteKit 2, Vercel, `@restormel/keys-tokens`).
+Follow [Restormel module default stack](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/architecture/restormel-module-default-stack.md) (pnpm 9, Node 20, SvelteKit 2, Vercel, `@restormel/keys-tokens`).
 
 ## Security
 
-- No committed secrets. Use obvious placeholders in env files. Align with the Keys [security baseline](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/security-baseline.md) for redaction and trust boundaries.
+- No committed secrets. Use obvious placeholders in env files. Align with the Keys [security baseline](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/governance/security-baseline.md) for redaction and trust boundaries.
 
 ## CI
 

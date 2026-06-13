@@ -36,7 +36,7 @@ env:
   RESTORMEL_PROJECT_ID: ${{ secrets.RESTORMEL_PROJECT_ID }} # from Keys dashboard → Restormel Testing
 ```
 
-Name repository secrets as you prefer; map them to these **runtime** names. Compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` (same values) still work. Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
+Name repository secrets as you prefer; map them to these **runtime** names. Compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` (same values) still work. Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/guides/keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md).
 
 Then:
 

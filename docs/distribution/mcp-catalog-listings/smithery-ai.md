@@ -62,7 +62,7 @@ Retrieve verified-claim envelopes from a Restormel Connect knowledge graph. Evid
 
 ## Claims provenance
 
-All quality/verification language is limited to proven rows in `docs/verified-context-claims-ledger.md`:
+All quality/verification language is limited to proven rows in `docs/product/verified-context-claims-ledger.md`:
 - "evidence-bound" — row 2 (proven)
 - "verified-claim envelopes" — row 4, 7 (proven)
 

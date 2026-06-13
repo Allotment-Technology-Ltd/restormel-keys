@@ -1,6 +1,6 @@
 # Third-party brand marks (vendor logos)
 
-**Status:** Canonical policy for **vendor logos and names** on Restormel marketing, docs, and dashboard surfaces. Restormel’s **own** brand rules remain in [design-system-index.md](../design-system-index.md).
+**Status:** Canonical policy for **vendor logos and names** on Restormel marketing, docs, and dashboard surfaces. Restormel’s **own** brand rules remain in [design-system-index.md](../design/design-system-index.md).
 
 ## Purpose
 
@@ -15,7 +15,7 @@ Make integration surfaces feel credible and scannable **without** misrepresentin
 ## Visual treatment
 
 - **Monochrome** on Restormel shells: recolor with `currentColor` or map fills to `--rm-text` / `--rm-muted` via CSS so logos sit on `--rm-surface` / `--rm-bg`.
-- **Size:** Target ~22–28px height in strips; touch targets remain governed by [ux-contracts.md](../ux-contracts.md) where the whole card is interactive.
+- **Size:** Target ~22–28px height in strips; touch targets remain governed by [ux-contracts.md](../design/ux-contracts.md) where the whole card is interactive.
 - **Density:** Prefer one horizontal strip or a small grid; avoid “logo soup.”
 
 ## Copy and legal posture

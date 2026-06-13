@@ -7,7 +7,7 @@
  *
  * Returns `null` when no domain pack is selected (or resolution fails). Callers must treat
  * `null` as "workspace not configured for retrieval" rather than silently falling back to a
- * philosophy taxonomy — see I12 in docs/audit/api-audit.md. The orchestrator surfaces this as
+ * philosophy taxonomy — see I12 in docs/reviews/api-audit.md. The orchestrator surfaces this as
  * HTTP 422 `domain_pack_required`.
  */
 import { type RetrievalConfig } from "@restormel/graphrag-core";

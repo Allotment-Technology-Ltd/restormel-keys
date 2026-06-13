@@ -1,6 +1,6 @@
 # Aikido Security MCP (Cursor)
 
-**Status:** Canonical setup for SAST and secret scanning from Cursor Agent. Product security baseline remains [security-baseline.md](../security-baseline.md); this guide is MCP wiring only.
+**Status:** Canonical setup for SAST and secret scanning from Cursor Agent. Product security baseline remains [security-baseline.md](../governance/security-baseline.md); this guide is MCP wiring only.
 
 ## What it provides
 
@@ -65,4 +65,4 @@ Scan any new or modified code with aikido_full_scan before finalizing security-s
 
 - Do **not** commit `AIKIDO_API_KEY` or paste tokens into `mcp.json` — use `${env:AIKIDO_API_KEY}` only.
 - Do **not** log scan output that might contain secret literals from findings.
-- Aikido complements — does not replace — BYOK review in [security-baseline.md](../security-baseline.md) and the **restormel-high-risk-security** skill ([pre-pr-security-review.md](./pre-pr-security-review.md)).
+- Aikido complements — does not replace — BYOK review in [security-baseline.md](../governance/security-baseline.md) and the **restormel-high-risk-security** skill ([pre-pr-security-review.md](./pre-pr-security-review.md)).

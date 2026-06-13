@@ -25,7 +25,7 @@ before Phase 1C.
 **Value:** Unblocks every developer trying to use the API today.
 
 ```
-Using the API audit at docs/audit/api-audit.md and the source file index at
+Using the API audit at docs/reviews/api-audit.md and the source file index at
 the bottom of that document, make the following changes to the Zuplo gateway
 and related configuration. No changes to dashboard route handlers or service
 logic in this phase.
@@ -96,7 +96,7 @@ content, navigation groups, and code sample language defaults.)
 that all multi-DB work depends on.
 
 ```
-Using the API audit at docs/audit/api-audit.md, unify the retrieval layer
+Using the API audit at docs/reviews/api-audit.md, unify the retrieval layer
 so all retrieval calls use the RetrievalOrchestrator. Also introduce the
 GraphStoreAdapter interface as the foundation for multi-database support.
 
@@ -181,7 +181,7 @@ Report every file changed.
 the product's core promise to external consumers.
 
 ```
-Using the API audit at docs/audit/api-audit.md, complete the public ingest
+Using the API audit at docs/reviews/api-audit.md, complete the public ingest
 API contract.
 
 Read before starting:
@@ -336,7 +336,7 @@ Run pnpm check and pnpm test. Report every file changed.
 **Value:** Makes the API feel like a coherent product, not assembled parts.
 
 ```
-Using the API audit at docs/audit/api-audit.md, fix auth and contract
+Using the API audit at docs/reviews/api-audit.md, fix auth and contract
 consistency. Targeted, surgical changes only.
 
 1. PER-CONSUMER BACKEND IDENTITY (C1)
@@ -386,7 +386,7 @@ Run pnpm check. Report every file changed.
 **Value:** Production polish. Makes the API feel trusted.
 
 ```
-Using docs/audit/api-audit.md (Section 5 and Section 8), implement
+Using docs/reviews/api-audit.md (Section 5 and Section 8), implement
 standard API behaviours.
 
 1. PAGINATION ON JOB LIST

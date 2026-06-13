@@ -23,7 +23,7 @@ info:
 
     **Project model index:** `GET/POST/PUT /api/projects/{projectId}/models`, `PATCH/DELETE .../models/{bindingId}` — project-scoped bindings
     for selectors. Each row has **`bindingKind`**: **`execution`** (canonical `providerType` + Keys catalog `modelId`, strict validation) or **`registry`** (arbitrary provider/model strings for host merge metadata; nested `model` may be null). **Default `GET` response:** the binding rows are in JSON **`data`** (array); there is no `data.bindings` key — integrators should read `data`. **Global catalog** remains `GET /api/models`. Legacy: `GET .../models?source=catalog`
-    on the project path returns the global list (deprecated — prefer `GET /api/models`). **Batch validation errors:** `POST`/`PUT` may return **400** with `error: project_models_validation_failed` and `errors[]` (see schema `ProjectModelsValidationError`). Spec: `docs/requirements/project-model-index-gateway-api.md`, integrator note: `docs/restormel-integration/keys-catalog-sync.md`.
+    on the project path returns the global list (deprecated — prefer `GET /api/models`). **Batch validation errors:** `POST`/`PUT` may return **400** with `error: project_models_validation_failed` and `errors[]` (see schema `ProjectModelsValidationError`). Spec: `docs/requirements/project-model-index-gateway-api.md`, integrator note: `docs/guides/integration/keys-catalog-sync.md`.
 
     **Suite migration (draft):** Planned versioned paths `/keys/v1/*`, `/graph/v1/*`, `/connect/v1/*` — see `docs/api/openapi-suite-v1-draft.yaml` and [SUITE-ARCHITECTURE-MIGRATION.md](../restormel/SUITE-ARCHITECTURE-MIGRATION.md).
 
@@ -901,7 +901,7 @@ paths:
 
         **Provider types:** Canonical values and `google`/`vertex` aliases: `docs/guides/resolve-to-execution-contract.md`.
 
-        **Integrator reference:** `docs/restormel-integration/keys-catalog-sync.md`.
+        **Integrator reference:** `docs/guides/integration/keys-catalog-sync.md`.
       operationId: listProjectModels
       tags: [Dashboard API]
       security:
@@ -960,7 +960,7 @@ paths:
       description: |
         Upserts bindings. Same `providerType` + `modelId` re-sends **enabled: true** (idempotent). **`bindingKind` `execution`** (default): validates canonical provider + catalog + variants when variants exist. **`bindingKind` `registry`**: length/sanity only; no catalog requirement.
 
-        **400:** `error` is **`project_models_validation_failed`** with **`errors[]`** (per-row `index`, `field`, `code`, `message`) for automated callers — see `ProjectModelsValidationError` and `docs/restormel-integration/keys-catalog-sync.md`.
+        **400:** `error` is **`project_models_validation_failed`** with **`errors[]`** (per-row `index`, `field`, `code`, `message`) for automated callers — see `ProjectModelsValidationError` and `docs/guides/integration/keys-catalog-sync.md`.
       operationId: addProjectModelBindings
       tags: [Dashboard API]
       security:

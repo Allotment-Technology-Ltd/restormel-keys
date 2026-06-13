@@ -1,7 +1,7 @@
 # Restormel Suite — versioned public API draft
 # Keys v1 (Phase 1), Graph v1 (Phase 2), Connect v1 (Phase 6): IMPLEMENTED on restormel.dev.
 # Canonical contracts: @restormel/contracts/connect, docs/api/openapi.yaml (Keys legacy /api)
-# Programme: docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md
+# Programme: docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md
 # Integrator guide: docs/guides/npm-to-rest-keys.md
 
 openapi: 3.0.3

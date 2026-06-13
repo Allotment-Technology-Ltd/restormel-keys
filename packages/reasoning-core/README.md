@@ -46,7 +46,7 @@ await runVerificationPipeline(request, {
 
 ## Publish
 
-Tag **`platform-v*`** in the restormel-keys monorepo — see [docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md](../../docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md) Phase 3.
+Tag **`platform-v*`** in the restormel-keys monorepo — see [docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md](../../docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md) Phase 3.
 
 ## Related
 

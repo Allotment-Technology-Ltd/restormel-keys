@@ -153,4 +153,4 @@ To revert to Firestore: you would need to restore the previous data layer and au
 ## 7. Security
 
 - **Secrets:** Never commit `DATABASE_URL` or paste it into docs or chat. Use `.env` (gitignored) locally and deployment secrets in production.
-- **Key storage:** Neon stores only `key_prefix` and `key_hash`; raw API keys are never persisted (same as Firestore). See [security-baseline.md](../security-baseline.md).
+- **Key storage:** Neon stores only `key_prefix` and `key_hash`; raw API keys are never persisted (same as Firestore). See [security-baseline.md](../governance/security-baseline.md).

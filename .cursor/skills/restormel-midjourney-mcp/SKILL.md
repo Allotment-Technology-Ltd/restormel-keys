@@ -67,4 +67,4 @@ MCP calls bill **AceDataCloud API credits**, not the user’s midjourney.com sub
 
 1. Add/ update `alt` and `og:image` in the relevant `+layout.svelte` or page
 2. Run `pnpm --filter dashboard run check`
-3. Mention [design-system-index.md](../../../docs/design-system-index.md) visual harmony checklist if the page layout changed
+3. Mention [design-system-index.md](../../../docs/design/design-system-index.md) visual harmony checklist if the page layout changed

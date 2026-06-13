@@ -19,10 +19,10 @@ journey friction, the five signature proposals),
 (**PERF** — PR #259 merged: region pin to London, hooks memoization, poll diet; the latency was
 geometry + chattiness, not compute, so this redesign assumes a fast baseline, must not regress
 the poll diet, and treats Coolify self-host as the eventual compute path, not a prerequisite),
-[`dashboard-world-class-roadmap.md`](../dashboard-world-class-roadmap.md) (**W-stages**),
-[`ux-contracts.md`](../ux-contracts.md) (re-baselined by W1.1), the
+[`dashboard-world-class-roadmap.md`](dashboard-world-class-roadmap.md) (**W-stages**),
+[`ux-contracts.md`](ux-contracts.md) (re-baselined by W1.1), the
 `restormel-neu-brutalist-ui` and `restormel-keys-vs-platform` skills, and
-[`keys-routing-contract.md`](../keys-routing-contract.md).
+[`keys-routing-contract.md`](../architecture/keys-routing-contract.md).
 
 **Delivery state at time of writing** (verified against `origin/main` git log, 2026-06-12):
 merged — W1.1–W1.7, W2.1, W3.4 (PR #256), W3.8 (PR #255), the latency taskforce (PR #259);
@@ -469,10 +469,10 @@ FIRST
 - docs/design/keys-northstar-redesign-2026-06.md §2 (tree + disposition + grammars)
   and §6 (the owner's recorded decisions — do not proceed on undecided items: mark
   them OPEN in the contract and fence the dependent rows).
-- docs/ux-contracts.md (the W1.1 re-baseline + changelog idiom — append, same style).
+- docs/design/ux-contracts.md (the W1.1 re-baseline + changelog idiom — append, same style).
 - Re-scope notes flagged in §4.1: K4 (one mount: Home masthead), W3.6 (chip mounts:
   Home + Runs), W4.6 (mobile folds into R6), W2.3 (mount: Home masthead) — edit
-  docs/dashboard-world-class-roadmap.md and the Wave K section of
+  docs/design/dashboard-world-class-roadmap.md and the Wave K section of
   docs/reviews/keys-core-journey-review-2026-06.md is NOT edited (reviews are frozen
   evidence); the roadmap is the living doc and takes the amendments.
 

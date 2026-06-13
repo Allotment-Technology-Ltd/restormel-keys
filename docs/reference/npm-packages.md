@@ -73,7 +73,7 @@ Not promoted on restormel.dev when module flags are at MVP defaults:
 - **Graph train:** tag `graph-v*` → `publish-graph.yml` (SOPHIA consumers)
 - **Platform train:** tag `platform-v*` → `publish-restormel-platform.yml`
 
-MVP publish matrix: [restormel-monorepo-packages.md](../restormel-monorepo-packages.md).
+MVP publish matrix: [restormel-monorepo-packages.md](../architecture/restormel-monorepo-packages.md).
 
 ---
 

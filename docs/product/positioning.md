@@ -6,8 +6,8 @@
 This is the single source of truth for **what Restormel is, who it is for, and why it wins**.
 Marketing copy, docs intros, decks, and external briefs derive from here. Every
 quality/verification claim must trace to a `proven` row in the
-[Verified Context claims ledger](../verified-context-claims-ledger.md) — see the
-[pivot roadmap's claims-integrity rule](../verified-context-pivot-roadmap.md).
+[Verified Context claims ledger](verified-context-claims-ledger.md) — see the
+[pivot roadmap's claims-integrity rule](verified-context-pivot-roadmap.md).
 
 ---
 
@@ -57,7 +57,7 @@ One signed-in workspace at **restormel.dev**. "Route · Ingest · Verify."
 | **Keys** | Route | **Live** | The **control plane for verified context**. BYOK custody, model→provider routing with fallback chains, policies, budgets, entitlements. Routing/BYOK are *supporting* capabilities, not the headline; gateway comparisons are removed, not rebutted. |
 | **Connect** | Ingest · Retrieve · Verify | **Live** | The knowledge pipeline carrying the verification spine. Ingest structured corpora, retrieve curated/ranked/citable context, verify claims against source. BYO Surreal/Postgres graph store. |
 | **Testing** | Assure | **Flag-off** (`restormel-module-testing`) | CI quality gates for AI behaviour. Real product; not in the MVP marketing/docs default. Docs archived under `docs/archive/testing/` until re-enabled. |
-| **Graph** | Visualise | **Flag-off** (`restormel-module-graph`) | Reasoning-graph UI components. Marketing + in-app docs exist behind the flag; see [GRAPH MVP memo](../restormel/GRAPH-MVP-PRODUCT-MEMO.md). |
+| **Graph** | Visualise | **Flag-off** (`restormel-module-graph`) | Reasoning-graph UI components. Marketing + in-app docs exist behind the flag; see [GRAPH MVP memo](GRAPH-MVP-PRODUCT-MEMO.md). |
 
 MVP defaults are enforced in code: `apps/dashboard/src/lib/module-flags-types.ts`
 (`MVP_MODULE_DEFAULTS`: `connect` + `keys` on; `testing`, `graph`, `gatewayProviders`,
@@ -67,7 +67,7 @@ MVP defaults are enforced in code: `apps/dashboard/src/lib/module-flags-types.ts
 ## 5. What we can prove (and therefore say)
 
 Marketing may only assert the `proven` rows of the
-[claims ledger](../verified-context-claims-ledger.md). As of 2026-06-13 all ten rows are
+[claims ledger](verified-context-claims-ledger.md). As of 2026-06-13 all ten rows are
 `proven`, including:
 
 - "Every claim is validated against its source" (omitted/unparseable verdict fails safe).
@@ -94,7 +94,7 @@ under cross-model routing.
 
 - **Motion:** invite-only **Founders Circle** while learning (first 50 founding members →
   12 months Pro). PLG / self-serve **before** heavy enterprise (see
-  [gtm-plg-enterprise-sequencing](../restormel/gtm-plg-enterprise-sequencing.md)).
+  [gtm-plg-enterprise-sequencing](gtm-plg-enterprise-sequencing.md)).
 - **Distribution:** MCP-native (verified-retrieval tool + catalog listings), AAIF envelope
   for non-MCP frameworks.
 - **Sovereignty angle:** UK/EU self-host (Coolify), BYOK custody, BYO graph store, EU-region
@@ -109,9 +109,9 @@ analytics; **Zuplo** gateway for the Cloud API; **Paddle** billing. See
 
 ## 9. Related canonical docs
 
-- [Verified Context claims ledger](../verified-context-claims-ledger.md) — what we can prove.
-- [Verified Context pivot roadmap](../verified-context-pivot-roadmap.md) — delivery + claims-integrity rule.
-- [Restormel Connect product brief](../restormel/CONNECT-PRODUCT.md) — Ingest/Retrieve/Verify.
-- [Suite operator model](../restormel/SUITE-OPERATOR-MODEL.md) — canonical operator vocabulary.
-- [Documentation strategy](../documentation-strategy.md) — IA + same-links rules.
-- [Monetisation](../restormel/gtm-plg-enterprise-sequencing.md) · pricing lives at `/keys/pricing`.
+- [Verified Context claims ledger](verified-context-claims-ledger.md) — what we can prove.
+- [Verified Context pivot roadmap](verified-context-pivot-roadmap.md) — delivery + claims-integrity rule.
+- [Restormel Connect product brief](CONNECT-PRODUCT.md) — Ingest/Retrieve/Verify.
+- [Suite operator model](SUITE-OPERATOR-MODEL.md) — canonical operator vocabulary.
+- [Documentation strategy](../governance/documentation-strategy.md) — IA + same-links rules.
+- [Monetisation](gtm-plg-enterprise-sequencing.md) · pricing lives at `/keys/pricing`.

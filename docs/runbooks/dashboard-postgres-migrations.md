@@ -72,4 +72,4 @@ Or a single file: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/dashboard/mig
 
 ## Security
 
-Do not commit connection strings. Treat **`DASHBOARD_DATABASE_URL_PROD`** as **production** access; rotate if leaked. See [`docs/security-baseline.md`](../security-baseline.md).
+Do not commit connection strings. Treat **`DASHBOARD_DATABASE_URL_PROD`** as **production** access; rotate if leaked. See [`docs/governance/security-baseline.md`](../governance/security-baseline.md).
