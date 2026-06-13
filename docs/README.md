@@ -22,6 +22,7 @@ not authoritative, Archive = superseded (traceability only).
 ## Product
 
 - [`product/positioning.md`](product/positioning.md) — positioning SSOT.
+- [`product/public-pages-revamp-plan.md`](product/public-pages-revamp-plan.md) — **Phase 2** programme (public pages + docs revamp; swarm plan).
 - [`product/CONNECT-PRODUCT.md`](product/CONNECT-PRODUCT.md) — Connect (Ingest · Retrieve · Verify).
 - [`product/CONNECT-DOMAIN-PACKS.md`](product/CONNECT-DOMAIN-PACKS.md) · [`CONNECT-EXTRACTION-MAP.md`](product/CONNECT-EXTRACTION-MAP.md) · [`CONNECT-INGEST-QUALITY-BAR.md`](product/CONNECT-INGEST-QUALITY-BAR.md).
 - [`product/SUITE-OPERATOR-MODEL.md`](product/SUITE-OPERATOR-MODEL.md) — operator vocabulary.
@@ -72,7 +73,8 @@ core journey). Dated by nature; not living docs.
 [`security-baseline.md`](governance/security-baseline.md) · [`threat-model-starter.md`](governance/threat-model-starter.md) ·
 [`release-readiness.md`](governance/release-readiness.md) · [`reliability-standards.md`](governance/reliability-standards.md) ·
 [`prompt-governance.md`](governance/prompt-governance.md) · [`skills.md`](governance/skills.md) · [`subagents.md`](governance/subagents.md) ·
-[`working-agreement.md`](governance/working-agreement.md) · [`seo-review.md`](reference/seo-review.md).
+[`working-agreement.md`](governance/working-agreement.md) · [`seo-review.md`](reference/seo-review.md) ·
+[`docs-archive-externalisation-plan.md`](governance/docs-archive-externalisation-plan.md) (deferred: move archive out of git).
 
 ## Platform & modules
 
