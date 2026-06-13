@@ -36,6 +36,8 @@ on:
       - 'apps/dashboard/**'
       - 'packages/**'
       - 'Dockerfile.dashboard'
+      - 'Dockerfile.worker'
+      - '.forgejo/workflows/deploy-dashboard.yml'
       - 'scripts/post-build.mjs'
       - 'scripts/copy-openapi.mjs'
       - 'pnpm-lock.yaml'

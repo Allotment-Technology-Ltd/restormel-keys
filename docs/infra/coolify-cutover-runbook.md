@@ -24,17 +24,17 @@ Use this to orient any session or model picking this up.
 - [x] **Stage 1: Git + CI on Forgejo** — `Allotment-Technology-Ltd/restormel-keys` mirrored;
       `.forgejo/workflows/` live; tag-triggered publishers ported; CI green on docker runner
 - [x] **Stage 2.0: Provision prod box** — **N/A: reusing the shared box `77.42.125.150`** (decision D1, 2026-06-12). It is already provisioned, hardened, and running Coolify/Forgejo (Stage 0/1). No new server. Phase A's A1–A3 are SKIPPED.
-- [ ] **Stage 2.1: Adapter + Dockerfile** — `svelte.config.js` still on adapter-vercel; Dockerfile still on node:20; `VERCEL_ENV` call sites not yet audited
-- [ ] **Stage 2.2: Worker daemon + inline-drain gate** — daemon script not yet written; `CONNECT_INGEST_INLINE_DRAIN` gate not yet implemented
-- [ ] **Stage 2.3: Staging deploy** — not yet done; `staging.restormel.dev` DNS not yet created
-- [ ] **Stage 2.4: Forgejo CI deploy pipeline** — `.forgejo/workflows/deploy-dashboard.yml` not yet written
-- [ ] **Stage 2.5: Production cutover** — not yet started; DNS apex still points to Vercel
-- [ ] **Stage 2.6: Post-cutover hardening** — deferred
+- [x] **Stage 2.1: Adapter + Dockerfile** — DONE (switchable adapter, Dockerfile.dashboard; healthcheck must hit 127.0.0.1 — busybox wget resolves localhost to ::1, PR #299)
+- [x] **Stage 2.2: Worker daemon + inline-drain gate** — DONE (#267; Dockerfile.worker is the deploy mechanism — Coolify ignores start_command for dockerfile build packs)
+- [x] **Stage 2.3: Staging deploy** — DONE 2026-06-12 23:33 UTC: both apps green on Coolify, LE cert issued, catalog 200, warm TTFB ~200ms. Deploys must run SERIALLY (two parallel workspace builds OOM the 8GB box).
+- [x] **Stage 2.4: Forgejo CI deploy pipeline** — workflow written + merged (#300: docker-capable runner image, Coolify API header-auth triggers, serial deploy-with-poll). PENDING: `COOLIFY_TOKEN` Forgejo secret (owner) to enable the auto-deploy jobs; possibly `container.docker_host: automount` in runner config.
+- [x] **Stage 2.5: Production cutover** — DONE: T0 = 2026-06-12T23:50:31Z (explicit apex A record rec_5c0a7eb9483083e493b3c61a overrides the Vercel ALIAS; rollback = delete that record). LE cert issued for restormel.dev (valid to 2026-09-10; proxy restart was needed to clear Traefik's cached pre-flip ACME failure). Owner waived the 1-week bake, 24h TTL pre-lowering, and 72h dual-run gates on 2026-06-12 (risk-tolerant directive).
+- [ ] **Stage 2.6: Post-cutover hardening** — E5 cron removal: already done (no crons in vercel.json or on the project). E4 TTFB: box warm TTFB ~110–220ms vs Vercel baseline 290–460ms. REMAINING (owner): E1 Vercel previews-only (+ www handling), E2 uptime monitoring, E3 Hetzner snapshots — see docs/infra/cutover-morning-checklist-2026-06-13.md
 
 ### Decisions outstanding (from migration plan §10)
 - [x] **D1** ~~Dedicated CX33 vs reuse shared box~~ — **DECIDED 2026-06-12: REUSE the shared box `77.42.125.150`.** Prototyping, low usage; revisit if contention appears. Wherever this runbook says `<prod-box-ip>`, use `77.42.125.150`.
 - [x] **D2** ~~Hetzner region~~ — **N/A** (no new server; shared box already placed).
-- [ ] **D5** Calendar date for T0 (the prod DNS flip) — after ≥1 week staging bake
+- [x] **D5** T0 executed 2026-06-12T23:50:31Z (owner waived the bake window)
 
 ### Cron drain status
 - [x] Vercel cron changed from `*/5 * * * *` to daily (`0 4 * * *`) — this is already
@@ -336,8 +336,8 @@ messages with no crash-restart loops.
 
 Work through this checklist in order. Do not proceed to Phase C until all pass.
 
-- [ ] `curl -sf https://staging.restormel.dev/keys/v1/catalog` returns HTTP 200 with JSON.
-- [ ] Opening `https://staging.restormel.dev/keys/dashboard` in a browser loads the UI.
+- [x] `curl -sf https://staging.restormel.dev/keys/v1/catalog` returns HTTP 200 with JSON. (2026-06-12 23:30 UTC)
+- [x] Opening `https://staging.restormel.dev/keys/dashboard` in a browser loads the UI. (308 → /home, title renders; browser click-through still owed)
 - [ ] Sign-in completes successfully (GitHub OAuth round-trip via Neon Auth).
 - [ ] After sign-in, the dashboard home page loads without errors.
 - [ ] Create a test ingest job from the dashboard UI.
@@ -347,7 +347,7 @@ Work through this checklist in order. Do not proceed to Phase C until all pass.
 - [ ] `kill -9` the worker container (Coolify → Containers → Stop, then wait for the
       restart policy to bring it back). Confirm the run console shows "reclaimed after stall"
       on the in-progress job and the restarted worker picks it up cleanly.
-- [ ] `curl -w "\nTime: %{time_total}s\n" https://staging.restormel.dev/keys/dashboard` —
+- [x] `curl -w "\nTime: %{time_total}s\n" https://staging.restormel.dev/keys/dashboard` — warm TTFB ~200ms, no cold-start signature —
       after the process has been running for 30+ minutes, first-byte time should show
       no 2-second cold-start signature. Compare to Vercel baseline (~290–460ms warm SSR).
 
@@ -493,9 +493,9 @@ in the kill criteria below).
 **T0 = the moment you save.** Note the time.
 
 **Immediately verify:**
-- [ ] `dig restormel.dev @1.1.1.1` returns `<prod-box-ip>`
-- [ ] `curl -sf https://restormel.dev/keys/v1/catalog` returns HTTP 200
-- [ ] `https://restormel.dev/keys/dashboard` loads in a browser with a valid TLS cert
+- [x] `dig restormel.dev @1.1.1.1` returns `77.42.125.150` (TTL 60; verified 23:51 UTC)
+- [x] `curl -sf https://restormel.dev/keys/v1/catalog` returns HTTP 200 (strict TLS, ssl_verify=0)
+- [x] `https://restormel.dev/keys/dashboard` loads with a valid LE cert (curl-level; browser click-through owed — morning checklist)
 - [ ] Sign in successfully (Neon Auth round-trip)
 - [ ] Check Coolify dashboard logs — worker is claiming jobs normally
 
