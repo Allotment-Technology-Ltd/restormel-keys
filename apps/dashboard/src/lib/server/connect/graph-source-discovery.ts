@@ -12,21 +12,29 @@ import {
   resolveWorkspaceDomainPack,
 } from "./domain-pack-service";
 import {
+  inferSourceTextSchemaPatch,
   isInvalidSourceTableMapping,
   isSourceTablePatchAllowed,
+  listCandidateSourceTables,
   probeSourceTextPackSuggestion,
   sourceTextPatchFromPack,
+  type CandidateTable,
   type SourceTextPackSuggestion,
   type SourceTextSchemaPatch,
 } from "./source-text-schema-probe";
 import { buildWorkspaceGraphStore } from "./surreal-graph-store";
 import {
   buildSourceScanMeta,
-  buildSourceSelectClause,
   extractSourcePreviewText,
   resolveSurrealSourceFullText,
   type SurrealSourceTextOrigin,
 } from "./surreal-source-text";
+import {
+  extractSourceKind,
+  extractSourceTitle,
+  extractSourceUrl,
+  normalizeAuthor,
+} from "./source-field-extract";
 import {
   countGraphImportedCatalogSources,
   findConnectSourceDocumentText,
@@ -39,6 +47,7 @@ export type DiscoveredSource = {
   title: string | null;
   url: string | null;
   kind: string | null;
+  author: string | null;
   hasFullText: boolean;
   hasPreviewText: boolean;
   textOrigin: SurrealSourceTextOrigin;
@@ -73,6 +82,16 @@ export type DiscoverSourcesResult = {
   mappingInvalid?: boolean;
   pipelineCatalogCount?: number;
   importAlreadySatisfied?: boolean;
+  /** Error message if reading the source table itself failed (never silently 0). */
+  scanError?: string | null;
+  /** The Surreal table the scan actually queried. */
+  sourceTableTried?: string;
+  /** When set, the scan used a detected source table that differs from the pack mapping. */
+  autoDetectedSourceTable?: string | null;
+  /** Tables that might hold sources, surfaced when total === 0 so users aren't told "no sources". */
+  candidateTables?: CandidateTable[];
+  /** True when total === 0 and no confident detection was possible — operator must map manually. */
+  needsManualMapping?: boolean;
 };
 
 export type ImportSourcesResult = {
@@ -85,21 +104,53 @@ export type ImportSourcesResult = {
 
 const DISCOVER_CAP = 500;
 const RESOLVE_BATCH = 20;
+const SAFE_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 type RawSourceRow = Record<string, unknown>;
 
+type SourceTableScan = {
+  rows: RawSourceRow[];
+  error: string | null;
+  tableTried: string;
+};
+
+function sourceTableIdent(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Read the source table with `SELECT *` so EVERY field is visible (the previous
+ * fixed field-name SELECT never fetched `canonical_url` / `source_type`, and a
+ * SCHEMAFULL table will error on an undefined column). Errors are returned, not
+ * swallowed, so a connection/permission failure is never reported as "0 sources".
+ *
+ * `overrideTable` lets the caller scan a detected table without mutating the pack
+ * (used for builtin packs that can't be auto-patched).
+ */
 async function querySurrealSourceTable(
   store: Awaited<ReturnType<typeof buildWorkspaceGraphStore>>,
   pack: Awaited<ReturnType<typeof resolveWorkspaceDomainPack>>,
-): Promise<RawSourceRow[]> {
-  if (!store || !pack) return [];
-  const sourceTable = pack.graph_schema.source_table.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  const select = buildSourceSelectClause(pack);
-  const q = `SELECT ${select} FROM ${sourceTable} LIMIT ${DISCOVER_CAP};`;
+  overrideTable?: string | null,
+): Promise<SourceTableScan> {
+  if (!store || !pack) return { rows: [], error: null, tableTried: "" };
+  const sourceTable = sourceTableIdent(overrideTable?.trim() || pack.graph_schema.source_table);
+  if (!SAFE_IDENT.test(sourceTable)) {
+    return {
+      rows: [],
+      error: `Source table name "${sourceTable}" is not a safe Surreal identifier.`,
+      tableTried: sourceTable,
+    };
+  }
+  const q = `SELECT * FROM ${sourceTable} LIMIT ${DISCOVER_CAP};`;
   try {
-    return await store.query<RawSourceRow[]>(q);
-  } catch {
-    return [];
+    const rows = await store.query<RawSourceRow[]>(q);
+    return { rows: Array.isArray(rows) ? rows : [], error: null, tableTried: sourceTable };
+  } catch (e) {
+    return {
+      rows: [],
+      error: e instanceof Error ? e.message : "Could not read the source table.",
+      tableTried: sourceTable,
+    };
   }
 }
 
@@ -110,7 +161,6 @@ async function resolveDiscoveredSource(
 ): Promise<DiscoveredSource> {
   const key = String(row.id ?? "");
   const previewText = extractSourcePreviewText(row);
-  const kindRaw = row.kind ?? row.source_kind;
   const resolved = await resolveSurrealSourceFullText({
     store,
     pack,
@@ -120,10 +170,13 @@ async function resolveDiscoveredSource(
   const hasFullText = resolved.quality === "full";
 
   return {
+    // Shape-tolerant: resolve identity fields across name synonyms (e.g. canonical_url,
+    // source_type, author[]) so BYO graphs aren't misread as title/url/kind-less.
     key,
-    title: typeof row.title === "string" && row.title.trim() ? row.title.trim() : null,
-    url: typeof row.url === "string" && row.url.trim() ? row.url.trim() : null,
-    kind: typeof kindRaw === "string" && kindRaw.trim() ? kindRaw.trim() : null,
+    title: extractSourceTitle(row),
+    url: extractSourceUrl(row),
+    kind: extractSourceKind(row),
+    author: normalizeAuthor(row.author),
     hasFullText,
     hasPreviewText: Boolean(previewText),
     textOrigin: resolved.origin,
@@ -148,14 +201,17 @@ async function resolveSourcesInBatches(
 async function runSourceDiscoveryScan(
   store: NonNullable<Awaited<ReturnType<typeof buildWorkspaceGraphStore>>>,
   pack: NonNullable<Awaited<ReturnType<typeof resolveWorkspaceDomainPack>>>,
+  overrideTable?: string | null,
 ): Promise<{
   sources: DiscoveredSource[];
   sourceRowCount: number;
   withText: number;
   withPassageText: number;
   withInlineText: number;
+  scanError: string | null;
+  sourceTableTried: string;
 }> {
-  const rows = await querySurrealSourceTable(store, pack);
+  const { rows, error, tableTried } = await querySurrealSourceTable(store, pack, overrideTable);
   const sources = await resolveSourcesInBatches(store, pack, rows);
   const withText = sources.filter((s) => s.hasFullText).length;
   return {
@@ -164,6 +220,8 @@ async function runSourceDiscoveryScan(
     withText,
     withPassageText: sources.filter((s) => s.textOrigin === "passage").length,
     withInlineText: sources.filter((s) => s.textOrigin === "inline").length,
+    scanError: error,
+    sourceTableTried: tableTried,
   };
 }
 
@@ -203,6 +261,7 @@ export async function discoverGraphSources(
   if (!pack) return { ...empty, storeType: "surreal" };
 
   let packSynced = false;
+  let autoDetectedSourceTable: string | null = null;
   let scan = await runSourceDiscoveryScan(store, pack);
 
   let packSuggestion = await probeSourceTextPackSuggestion({
@@ -213,21 +272,20 @@ export async function discoverGraphSources(
     total: scan.sources.length,
   });
 
-  const shouldAutoSync =
-    Boolean(options?.autoSyncPack) &&
-    packSuggestion?.canAutoApply &&
-    (packSuggestion.confidence === "high" || isInvalidSourceTableMapping(pack));
+  // Heal when the initial scan finds 0 sources OR 0 with text — but never on a
+  // hard read error (that's surfaced as scanError, not a missing-mapping problem).
+  const scanLooksUnhealthy =
+    scan.scanError == null && (scan.sources.length === 0 || scan.withText === 0);
 
-  if (shouldAutoSync && packSuggestion) {
+  if (scanLooksUnhealthy && packSuggestion?.canAutoApply && packSuggestion.confidence === "high") {
+    // Editable pack: auto-apply the detected mapping and re-scan — regardless of
+    // options.autoSyncPack. A high-confidence detection should always be applied
+    // for a custom pack so a re-test never shows a false "no sources".
     const mergedPatch = {
       ...sourceTextPatchFromPack(pack),
       ...packSuggestion.suggested,
     };
-    const updated = await persistDomainPackSourceTextMapping(
-      workspaceId,
-      pack.id,
-      mergedPatch,
-    );
+    const updated = await persistDomainPackSourceTextMapping(workspaceId, pack.id, mergedPatch);
     if (updated) {
       pack = updated;
       packSynced = true;
@@ -240,6 +298,33 @@ export async function discoverGraphSources(
         total: scan.sources.length,
       });
     }
+  } else if (scanLooksUnhealthy && pack.is_builtin) {
+    // Builtin pack: cannot mutate the pack, so scan the detected source table as a
+    // one-off OVERRIDE. This still discovers the operator's real sources.
+    const inferred = await inferSourceTextSchemaPatch(store, pack);
+    const detectedTable = inferred?.source_table?.trim();
+    if (
+      detectedTable &&
+      sourceTableIdent(detectedTable) !== sourceTableIdent(pack.graph_schema.source_table)
+    ) {
+      const overrideScan = await runSourceDiscoveryScan(store, pack, detectedTable);
+      if (overrideScan.scanError == null && overrideScan.sources.length > 0) {
+        scan = overrideScan;
+        autoDetectedSourceTable = sourceTableIdent(detectedTable);
+      }
+    }
+  }
+
+  // When the scan finds nothing usable, never assert "no sources" without first
+  // surfacing tables that might hold them so the operator can map manually.
+  let candidateTables: CandidateTable[] | undefined;
+  let needsManualMapping: boolean | undefined;
+  if (scan.sources.length === 0 && scan.scanError == null) {
+    candidateTables = await listCandidateSourceTables(store, pack);
+    const hasConfidentDetection =
+      Boolean(packSuggestion?.canAutoApply && packSuggestion.confidence === "high") ||
+      Boolean(autoDetectedSourceTable);
+    needsManualMapping = !hasConfidentDetection;
   }
 
   const pipelineCatalogCount = await countGraphImportedCatalogSources(workspaceId);
@@ -266,6 +351,11 @@ export async function discoverGraphSources(
     mappingInvalid: isInvalidSourceTableMapping(pack),
     pipelineCatalogCount,
     importAlreadySatisfied,
+    scanError: scan.scanError,
+    sourceTableTried: autoDetectedSourceTable ?? scan.sourceTableTried,
+    autoDetectedSourceTable,
+    ...(candidateTables ? { candidateTables } : {}),
+    ...(needsManualMapping != null ? { needsManualMapping } : {}),
   };
 }
 
@@ -426,8 +516,17 @@ export async function importGraphSourcesToPipeline(
     };
   }
 
-  const sourceTable = pack.graph_schema.source_table.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  const rows = await querySurrealSourceTable(store, pack);
+  const sourceTable = sourceTableIdent(pack.graph_schema.source_table);
+  const { rows, error } = await querySurrealSourceTable(store, pack);
+  if (error) {
+    return {
+      imported: 0,
+      skipped: 0,
+      alreadyPresent: 0,
+      error: "source_table_unreadable",
+      message: `Could not read the source table (${sourceTable}): ${error}`,
+    };
+  }
 
   let imported = 0;
   let skipped = 0;
@@ -446,9 +545,8 @@ export async function importGraphSourcesToPipeline(
     }
 
     const key = String(row.id ?? "");
-    const title =
-      typeof row.title === "string" && row.title.trim() ? row.title.trim() : null;
-    const url = typeof row.url === "string" && row.url.trim() ? row.url.trim() : null;
+    const title = extractSourceTitle(row);
+    const url = extractSourceUrl(row);
     const displayName = title ?? url ?? (key.includes(":") ? key : null);
     if (!displayName) {
       skipped++;

@@ -10,8 +10,35 @@ import {
   extractInlineSourceText,
   fetchPassageTextForSource,
 } from "./surreal-source-text";
+import {
+  extractSourceTitle,
+  extractSourceUrl,
+  SOURCE_KIND_FIELD_KEYS,
+  SOURCE_TITLE_FIELD_KEYS,
+  SOURCE_URL_FIELD_KEYS,
+} from "./source-field-extract";
 
 const SAFE_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+/** Min trimmed length for an arbitrary string field to count as substantial inline text. */
+const LONG_TEXT_MIN_CHARS = 200;
+
+/** Identity / metadata field names that should never be treated as inline text. */
+const NON_TEXT_IDENTITY_KEYS = new Set<string>([
+  "id",
+  "author",
+  "authors",
+  "created_at",
+  "updated_at",
+  "createdAt",
+  "updatedAt",
+  ...SOURCE_URL_FIELD_KEYS,
+  ...SOURCE_KIND_FIELD_KEYS,
+  ...SOURCE_TITLE_FIELD_KEYS,
+]);
+
+/** A table that might hold sources, surfaced to the operator when none were detected. */
+export type CandidateTable = { name: string; count: number };
 
 /** Tables that must never be treated as the bibliographic source catalog. */
 const SKIP_SOURCE_TABLE_CANDIDATES = new Set([
@@ -24,10 +51,34 @@ const SKIP_SOURCE_TABLE_CANDIDATES = new Set([
   "unresolved_thinker_reference",
 ]);
 
-function isBibliographicSourceRow(row: Record<string, unknown>): boolean {
-  const title = typeof row.title === "string" && row.title.trim();
-  const url = typeof row.url === "string" && row.url.trim();
-  return Boolean(title || url);
+/** True when any SOURCE_INLINE_TEXT_KEYS field is a non-empty string. */
+function hasInlineTextField(row: Record<string, unknown>): boolean {
+  for (const field of SOURCE_INLINE_TEXT_KEYS) {
+    const v = row[field];
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  return false;
+}
+
+/** True when any non-identity string field carries substantial text (≥ LONG_TEXT_MIN_CHARS). */
+function hasSubstantialStringField(row: Record<string, unknown>): boolean {
+  for (const [key, value] of Object.entries(row)) {
+    if (NON_TEXT_IDENTITY_KEYS.has(key)) continue;
+    if (typeof value === "string" && value.trim().length >= LONG_TEXT_MIN_CHARS) return true;
+  }
+  return false;
+}
+
+/**
+ * Recognise a source row by ANY identity-or-text signal — never by exact field
+ * names. A row counts as bibliographic if it has a resolvable title/URL (across
+ * synonyms) OR carries substantial inline text. This is what lets the owner's
+ * `{ title, canonical_url, source_type, author[] }` shape be read as a source.
+ */
+export function isBibliographicSourceRow(row: Record<string, unknown>): boolean {
+  if (extractSourceTitle(row) || extractSourceUrl(row)) return true;
+  if (hasInlineTextField(row)) return true;
+  return hasSubstantialStringField(row);
 }
 
 export function isInvalidSourceTableMapping(pack: ConnectDomainPack): boolean {
@@ -185,27 +236,54 @@ async function loadTableMeta(store: GraphStore, names: string[]): Promise<TableM
   return out.sort((a, b) => b.count - a.count);
 }
 
+/** Field-name hints that suggest a table holds bibliographic sources. */
+const SOURCE_NAME_HINTS = new Set([
+  "source",
+  "sources",
+  "document",
+  "documents",
+  "doc",
+  "docs",
+  "paper",
+  "papers",
+  "article",
+  "articles",
+  "corpus",
+  "reference",
+  "references",
+  "ref",
+  "publication",
+  "publications",
+  "book",
+  "books",
+  "dataset",
+  "datasets",
+  "file",
+  "files",
+  "library",
+]);
+
 function rankSourceTables(
   current: string,
   exclude: Set<string>,
   tables: TableMeta[],
 ): string[] {
-  const names = tables.map((t) => t.name);
   const ordered = new Set<string>();
   const add = (name: string | undefined) => {
     if (!name || !SAFE_IDENT.test(name) || exclude.has(name)) return;
     ordered.add(name);
   };
+  // Priority: exact "source", the current mapping, name-hinted tables, then
+  // ALWAYS every remaining non-excluded table (ranked by count). The previous
+  // implementation only fell back to all tables when nothing source-named existed,
+  // so a sources table named e.g. "documents" was never even sampled when the
+  // (empty) configured "source" table existed in the ranking.
   add("source");
   if (SAFE_IDENT.test(current)) add(current);
   for (const t of tables) {
-    if (t.name.includes("source")) add(t.name);
+    if (SOURCE_NAME_HINTS.has(t.name) || t.name.includes("source")) add(t.name);
   }
-  if (!ordered.size) {
-    for (const t of tables) {
-      if (!exclude.has(t.name)) add(t.name);
-    }
-  }
+  for (const t of tables) add(t.name);
   return [...ordered];
 }
 
@@ -226,10 +304,11 @@ async function sampleSourceRow(
   sourceTable: string,
 ): Promise<Record<string, unknown> | null> {
   if (!SAFE_IDENT.test(sourceTable)) return null;
-  const fields = ["id", "title", "url", ...SOURCE_INLINE_TEXT_KEYS].join(", ");
+  // SELECT * so the FULL row is visible — a fixed field list is blind to
+  // unconventional inline-text fields and to canonical_url / source_type.
   try {
     const rows = await store.query<Record<string, unknown>[]>(
-      `SELECT ${fields} FROM ${sourceTable} LIMIT 1;`,
+      `SELECT * FROM ${sourceTable} LIMIT 1;`,
     );
     return rows[0] ?? null;
   } catch {
@@ -237,10 +316,20 @@ async function sampleSourceRow(
   }
 }
 
-function detectInlineField(row: Record<string, unknown>): string | undefined {
+/**
+ * Resolve the inline-text field. Tries the conventional SOURCE_INLINE_TEXT_KEYS
+ * first; failing that, accepts ANY non-identity string field carrying substantial
+ * text (≥ LONG_TEXT_MIN_CHARS) — so full text under an unconventional field name
+ * (e.g. `abstract`, `excerpt`) is still found.
+ */
+export function detectInlineField(row: Record<string, unknown>): string | undefined {
   for (const field of SOURCE_INLINE_TEXT_KEYS) {
     const v = row[field];
     if (typeof v === "string" && v.trim()) return field;
+  }
+  for (const [key, value] of Object.entries(row)) {
+    if (NON_TEXT_IDENTITY_KEYS.has(key)) continue;
+    if (typeof value === "string" && value.trim().length >= LONG_TEXT_MIN_CHARS) return key;
   }
   return undefined;
 }
@@ -263,13 +352,20 @@ async function probeMapping(
 
   const looksLikeSource = sampleRow ? isBibliographicSourceRow(sampleRow) : false;
   const sourceNamedTable = sourceTable === "source" || sourceTable.includes("source");
+  const hasIdentity = sampleRow
+    ? Boolean(extractSourceTitle(sampleRow) || extractSourceUrl(sampleRow))
+    : false;
 
-  if (sampleRow && looksLikeSource) {
+  // Inline detection is DECOUPLED from looksLikeSource — a row whose only signal is
+  // a long text field still resolves inline. Confidence is high when the row also
+  // looks like a source or the inline field is conventional; otherwise medium.
+  if (sampleRow) {
     const inlineField = detectInlineField(sampleRow);
     if (inlineField) {
+      const conventional = (SOURCE_INLINE_TEXT_KEYS as readonly string[]).includes(inlineField);
       return {
         patch: { ...basePatch, source_text_field: inlineField },
-        confidence: "high",
+        confidence: looksLikeSource || conventional || hasIdentity ? "high" : "medium",
         resolved: "inline",
       };
     }
@@ -307,17 +403,36 @@ async function probeMapping(
     }
   }
 
-  if (sourceNamedTable && sampleRow && looksLikeSource) {
-    return { patch: basePatch, confidence: "medium", resolved: "none" };
+  // Recognised as a source by identity/text signal even though text didn't resolve
+  // here (it may live in a passage table or resolve on a later pass). A source
+  // RECORD existing is distinct from its text resolving — high when the table is
+  // also source-named, medium otherwise. Low ONLY when no identity and no text.
+  if (sampleRow && looksLikeSource) {
+    return {
+      patch: basePatch,
+      confidence: sourceNamedTable && hasIdentity ? "high" : "medium",
+      resolved: "none",
+    };
   }
 
   return { patch: basePatch, confidence: "low", resolved: "none" };
 }
 
-export async function inferSourceTextSchemaPatch(
+export type InferredSourceMapping = {
+  patch: SourceTextSchemaPatch;
+  /** Confidence of the DETECTION itself (independent of the original scan being empty). */
+  confidence: "high" | "medium" | "low";
+};
+
+/**
+ * Detect a source/passage mapping AND report the detection confidence. The
+ * confidence reflects what the probe actually resolved (inline text, passage
+ * text, or identity-only) — NOT whether the originally-configured scan was empty.
+ */
+export async function inferSourceTextSchemaMapping(
   store: GraphStore,
   pack: ConnectDomainPack,
-): Promise<SourceTextSchemaPatch | null> {
+): Promise<InferredSourceMapping | null> {
   let tableNames: string[] = [];
   try {
     const info = await store.query<unknown>(`INFO FOR DB;`);
@@ -372,7 +487,60 @@ export async function inferSourceTextSchemaPatch(
   }
 
   if (!best || !isSourceTablePatchAllowed(pack, best.patch)) return null;
-  return best.patch;
+  return { patch: best.patch, confidence: best.confidence };
+}
+
+/** Back-compat: return only the patch (callers that don't need the confidence). */
+export async function inferSourceTextSchemaPatch(
+  store: GraphStore,
+  pack: ConnectDomainPack,
+): Promise<SourceTextSchemaPatch | null> {
+  const inferred = await inferSourceTextSchemaMapping(store, pack);
+  return inferred?.patch ?? null;
+}
+
+/** Table names whose DEFINE SQL marks them as relation/edge tables. */
+function relationTableNames(raw: unknown): Set<string> {
+  const out = new Set<string>();
+  if (!raw || typeof raw !== "object") return out;
+  const tables = (raw as InfoForDb).tables;
+  if (!tables || typeof tables !== "object") return out;
+  for (const [name, def] of Object.entries(tables)) {
+    if (typeof def === "string" && /TYPE\s+RELATION/i.test(def)) {
+      const ident = tableIdent(name);
+      if (ident) out.add(ident);
+    }
+  }
+  return out;
+}
+
+/**
+ * List the tables that might hold the operator's sources, surfaced when a scan
+ * finds nothing so the UI can offer a manual mapping instead of asserting
+ * "no sources". Returns normal tables with count > 0, excluding the configured
+ * unit/group/passage tables, known skip tables, and relation/edge tables.
+ */
+export async function listCandidateSourceTables(
+  store: GraphStore,
+  pack: ConnectDomainPack,
+): Promise<CandidateTable[]> {
+  let rawInfo: unknown;
+  try {
+    rawInfo = await store.query<unknown>(`INFO FOR DB;`);
+  } catch {
+    return [];
+  }
+  const info = Array.isArray(rawInfo) ? rawInfo[0] : rawInfo;
+  const tableNames = parseInfoForDb(info);
+  if (tableNames.length === 0) return [];
+
+  const exclude = excludedSourceTables(pack);
+  const relations = relationTableNames(info);
+  const candidates = tableNames.filter((name) => !exclude.has(name) && !relations.has(name));
+  if (candidates.length === 0) return [];
+
+  const meta = await loadTableMeta(store, candidates);
+  return meta.map((t) => ({ name: t.name, count: t.count }));
 }
 
 export function buildSourceTextPackSuggestion(args: {
@@ -408,7 +576,7 @@ export async function probeSourceTextPackSuggestion(args: {
 }): Promise<SourceTextPackSuggestion | null> {
   if (!needsSchemaProbe(args)) return null;
 
-  const inferred = await inferSourceTextSchemaPatch(args.store, args.pack);
+  const inferred = await inferSourceTextSchemaMapping(args.store, args.pack);
   if (!inferred) return null;
 
   const reason = isInvalidSourceTableMapping(args.pack)
@@ -417,10 +585,14 @@ export async function probeSourceTextPackSuggestion(args: {
       ? "No rows were found in the configured source table — a different table may hold your sources."
       : "Sources were found but none resolved to full text with the current domain pack mapping.";
 
+  // Surface the DETECTION confidence — a high-confidence detection (resolved inline
+  // or passage text) should auto-apply even when the original scan was empty. The
+  // previous code force-downgraded to "medium" whenever the scan was empty, which
+  // blocked auto-healing for the very case that needs it (a wrong/empty mapping).
   return buildSourceTextPackSuggestion({
     pack: args.pack,
-    suggested: inferred,
-    confidence: args.withText === 0 && args.total === 0 ? "medium" : "high",
+    suggested: inferred.patch,
+    confidence: inferred.confidence,
     reason,
   });
 }
