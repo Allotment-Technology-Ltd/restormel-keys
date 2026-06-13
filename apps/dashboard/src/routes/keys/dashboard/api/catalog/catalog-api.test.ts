@@ -289,4 +289,22 @@ describe("GET /api/catalog", () => {
     expect(body.data[0].variants).toHaveLength(1);
     expect(body.data[0].variants[0].providerModelId).toBe("meta-llama/llama-3.3-70b-instruct");
   });
+
+  it("adds Cache-Control header on the happy path", async () => {
+    mockLoadCatalogExternalContext.mockImplementation(async () => ({
+      payload: recentExternalPayload(),
+      openRouterListedIds: null,
+    }));
+    const { listModels, listProviderModelVariantsByModelIds } = await import("$lib/server/db");
+    vi.mocked(listModels).mockResolvedValue([mockModel as never]);
+    vi.mocked(listProviderModelVariantsByModelIds).mockResolvedValue([]);
+
+    const { GET: handler } = await import("./+server");
+    const res = await handler(mockEvent() as unknown as Parameters<typeof handler>[0]);
+    expect(res.status).toBe(200);
+    const cc = res.headers.get("cache-control");
+    expect(cc).toBeTruthy();
+    expect(cc).toContain("max-age=60");
+  });
 });
+
