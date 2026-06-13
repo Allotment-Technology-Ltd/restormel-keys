@@ -23,6 +23,7 @@ not authoritative, Archive = superseded (traceability only).
 
 - [`product/positioning.md`](product/positioning.md) — positioning SSOT.
 - [`product/public-pages-revamp-plan.md`](product/public-pages-revamp-plan.md) — **Phase 2** programme (public pages + docs revamp; swarm plan).
+- [`product/model-catalogue-advisory-plan.md`](product/model-catalogue-advisory-plan.md) — **plan** (open provider/model selection + derived suitability & cost; provider-neutral + region filtering; broad self-maintaining catalogue; multi-agent delivery).
 - [`product/CONNECT-PRODUCT.md`](product/CONNECT-PRODUCT.md) — Connect (Ingest · Retrieve · Verify).
 - [`product/CONNECT-DOMAIN-PACKS.md`](product/CONNECT-DOMAIN-PACKS.md) · [`CONNECT-EXTRACTION-MAP.md`](product/CONNECT-EXTRACTION-MAP.md) · [`CONNECT-INGEST-QUALITY-BAR.md`](product/CONNECT-INGEST-QUALITY-BAR.md).
 - [`product/SUITE-OPERATOR-MODEL.md`](product/SUITE-OPERATOR-MODEL.md) — operator vocabulary.
