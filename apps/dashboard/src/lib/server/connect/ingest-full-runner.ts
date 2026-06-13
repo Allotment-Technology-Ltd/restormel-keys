@@ -57,12 +57,15 @@ import {
 } from "@restormel/connect-core/ingest/validation";
 import { loadGraphIngestContext } from "$lib/server/connect/graph-ingest-context";
 import {
+  clearConnectSourceDocumentTextToStore,
   getConnectDomainPackById,
   getConnectGraphTargetForWorkspace,
   insertConnectGraphSourcePostgres,
   listConnectDomainPacksForWorkspace,
   type ConnectIngestJobRecord,
 } from "$lib/server/neon";
+import { fetchSurrealSourceRecordText } from "$lib/server/connect/connect-source-text-resolve";
+import type { GraphStore } from "@restormel/graphrag-core";
 import { domainPackRecordToApi } from "$lib/server/connect/domain-pack-service";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { requireGraphUnitSourceId } from "$lib/server/connect/graph-ingest-source";
@@ -132,6 +135,82 @@ function sourceTextPreview(src: IngestSource): string | null {
   const fromProv = provenancePreviewText(src.provenance);
   if (fromProv) return fromProv;
   return src.text?.trim() ? src.text.trim().slice(0, 500) : null;
+}
+
+/**
+ * P2b read-back guard. After writeSource persists the source text into the user's own
+ * Surreal store, read it back through the SAME resolver the readers use
+ * (`fetchSurrealSourceRecordText` → `resolveSurrealSourceFullText`) and byte-compare it with
+ * the bytes evidence was bound against (`boundText`, already trimmed at ingest). Outcomes:
+ *
+ *   - CONFIRMED (store returns the exact bound bytes): the user's store is authoritative for
+ *     this source, so we drop OUR durable Postgres cache copy of the text (metadata row
+ *     stays; `provenance.graph_source_key` is stamped so a future re-ingest re-resolves from
+ *     the store). This is the ONLY case where new user content stops being cached.
+ *   - MISMATCH / MISSING (SCHEMAFULL dropped the inline field, the resolver returned nothing,
+ *     or a read error): we KEEP the cache copy untouched (re-validation's emergency fallback)
+ *     and log a structured warning so the degradation is visible, never silent.
+ *
+ * Best-effort and non-fatal: any thrown error is swallowed (cache kept) so the guard can
+ * never break a run. No row is deleted and no column is dropped here.
+ */
+async function reconcileSourceCacheWithStore(args: {
+  store: GraphStore | null;
+  pack: ConnectDomainPack;
+  workspaceId: string;
+  sourceId: string;
+  title: string | null;
+  url: string | null;
+  boundText: string;
+  reporter?: ConnectIngestProgressReporter;
+}): Promise<{ outcome: "confirmed" | "mismatch" | "store_unavailable"; clearedRows: number }> {
+  const { store, pack, workspaceId, sourceId, title, url, boundText, reporter } = args;
+  if (!store) {
+    // No store handle (unreachable BYO store) → keep the cache; never lose the fallback.
+    return { outcome: "store_unavailable", clearedRows: 0 };
+  }
+  try {
+    const readback = await fetchSurrealSourceRecordText(store, sourceId, pack);
+    // The resolver trims on read; we bound against the trimmed bytes (sourceText), so an
+    // exact === comparison is correct here. A trim mismatch would mean the store dropped or
+    // mutated the bytes — treat that as a miss and keep the cache.
+    const matches = readback.fullText != null && readback.fullText === boundText;
+    if (matches) {
+      const clearedRows = await clearConnectSourceDocumentTextToStore({
+        workspaceId,
+        name: title,
+        url,
+        graphSourceKey: sourceId,
+      });
+      if (clearedRows > 0) {
+        await reporter?.log(
+          "INGEST",
+          `Source text verified in your store — dropped our cached copy (store is authoritative): ${title ?? url ?? sourceId}`,
+        );
+      }
+      return { outcome: "confirmed", clearedRows };
+    }
+    // Read-back failed or mismatched — keep the cache and surface the degradation.
+    const reason =
+      readback.fullText == null
+        ? "store read-back returned no inline text (a SCHEMAFULL source table without the text field silently drops it)"
+        : "store read-back text did not match the bound bytes";
+    console.warn(
+      `[ingest-full-runner] P2b read-back guard: ${reason} for source "${title ?? url ?? sourceId}" ` +
+        `(${sourceId}) — keeping the Postgres cache copy as the re-validation fallback.`,
+    );
+    await reporter?.log(
+      "INGEST",
+      `Kept cached source text (store read-back unconfirmed) for: ${title ?? url ?? sourceId}`,
+    );
+    return { outcome: "mismatch", clearedRows: 0 };
+  } catch (err) {
+    console.warn(
+      `[ingest-full-runner] P2b read-back guard errored for source "${title ?? url ?? sourceId}" ` +
+        `(${sourceId}); keeping the Postgres cache copy. Error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return { outcome: "mismatch", clearedRows: 0 };
+  }
 }
 
 async function resolveDomainPack(job: ConnectIngestJobRecord): Promise<ConnectDomainPack | null> {
@@ -290,6 +369,15 @@ export async function runFullExtraction(args: {
   // Stage 3.2 incremental re-ingest tallies (verified-memory ADR §3).
   const reingest = { unchangedSources: 0, carriedClaims: 0, changedClaims: 0, removedClaims: 0 };
 
+  // P2b: a single store handle for the per-source read-back guard (built once, reused for
+  // every source). Null on a Postgres run (the spine IS the authoritative store, so the
+  // cache stays untouched there) or if the BYO store is unreachable (guard then no-ops →
+  // cache kept, never lost).
+  const readbackStore =
+    writer.provider === "surreal"
+      ? await buildWorkspaceGraphStore(job.workspaceId).catch(() => null)
+      : null;
+
   if (writer.provider === "surreal") {
     // Stage 3.2b: explicit operator log when the version-table opt-in is OFF.
     // When ON, probeVersionTable eagerly runs DDL; a permission failure degrades to OFF
@@ -331,6 +419,16 @@ export async function runFullExtraction(args: {
   for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
     const src = sources[sourceIndex]!;
     const title = src.title ?? src.url ?? "untitled";
+    // P2b trim-fix (gap B): normalize the source bytes ONCE, here, so the SAME trimmed
+    // bytes flow into the content hash, chunking, evidence binding (offsets + source_hash),
+    // the store-write, AND the cache. Every downstream resolver (`extractInlineSourceText`,
+    // `findConnectSourceDocumentText`, `recheckEvidenceSpanAgainstText`) trims on read, so a
+    // source with leading/trailing whitespace previously bound against UNtrimmed bytes yet
+    // re-resolved to trimmed bytes → deterministic Layer-1 hash_mismatch. Binding against the
+    // trimmed bytes makes every read-side `.trim()` a no-op, so the store round-trip and the
+    // cache round-trip both hash-match the bound bytes. (Postgres unit text is unchanged — we
+    // only re-point the source-text bytes that evidence is pinned to.)
+    const sourceText = src.text?.trim() ? src.text.trim() : null;
     // ── Precedence: resume checkpoint (1.6) before re-ingest planner (3.2) ──────
     // 1. The resume-checkpoint skip runs FIRST. A checkpoint for sources[0..idx] is
     //    only ever written AFTER each source's full per-source treatment finished —
@@ -357,7 +455,8 @@ export async function runFullExtraction(args: {
     }
     // Stage 3.2: stable source identity + content hash decide first-time ingest vs
     // unchanged re-ingest (skip entirely) vs changed re-ingest (diff this source only).
-    const probeHash = src.text?.trim() ? await contentHash(src.text) : null;
+    // Hash the trimmed bytes (P2b) — see the `sourceText` note above.
+    const probeHash = sourceText ? await contentHash(sourceText) : null;
     // Anonymous pasted text has no stable identity — key it by content so an unchanged
     // re-paste still skips, while a different paste is simply a new source (it can
     // never supersede an unrelated paste's claims).
@@ -375,8 +474,9 @@ export async function runFullExtraction(args: {
     }
     // Record content_hash only when this run will actually process the document —
     // a budget-exhausted registration must not let a later run skip it as "unchanged".
-    const willProcess = Boolean(src.text?.trim()) && chunkBudget > 0;
+    const willProcess = Boolean(sourceText) && chunkBudget > 0;
     await reporter?.setAction(`Registering source — ${title}`);
+    const originatesFromUserGraph = Boolean(src.provenance?.graph_source_key?.trim());
     const sourceId = requireGraphUnitSourceId(
       await writer.writeSource({
         title,
@@ -387,11 +487,11 @@ export async function runFullExtraction(args: {
         contentHash: willProcess ? probeHash : null,
         // P2a: persist the full parsed text into the user's own store (Surreal BYO) so
         // re-validation/evidence/coaching can resolve it on demand — byte-exact with the
-        // bytes evidence binds against below (sourceText: src.text). Postgres ignores it.
-        text: src.text ?? null,
+        // bytes evidence binds against below (sourceText). Postgres ignores it.
+        text: sourceText,
         // P2a guard: a source copied FROM the user's own graph already has its text in the
         // store under the original record — don't re-write/clobber it on this fresh copy.
-        originatesFromUserGraph: Boolean(src.provenance?.graph_source_key?.trim()),
+        originatesFromUserGraph,
       }),
     );
     await reporter?.log(
@@ -399,14 +499,36 @@ export async function runFullExtraction(args: {
       prior ? `Source changed — re-ingesting: ${title}` : `Source registered — ${title}`,
     );
 
-    if (!src.text?.trim() || chunkBudget <= 0) {
+    // ── P2b read-back guard (gap A): is the user's store provably authoritative? ──
+    // We stop durably caching NEW user content in our Postgres ONLY where the store
+    // demonstrably holds it. After writeSource, read the text back through the SAME
+    // resolver readers use and byte-compare it (modulo trim — the bytes are already
+    // trimmed, see `sourceText`). On a confirmed match we clear the Postgres cache copy
+    // for this source (metadata row stays — reversible, no DROP/DELETE). On any miss
+    // (SCHEMAFULL dropped the field, BYO-origin, Postgres spine, read error) we KEEP the
+    // cache so re-validation never breaks, and log a structured warning. Best-effort:
+    // the guard never throws into the run.
+    if (writer.provider === "surreal" && sourceText && !originatesFromUserGraph) {
+      await reconcileSourceCacheWithStore({
+        store: readbackStore,
+        pack,
+        workspaceId: job.workspaceId,
+        sourceId,
+        title,
+        url: src.url ?? null,
+        boundText: sourceText,
+        reporter,
+      });
+    }
+
+    if (!sourceText || chunkBudget <= 0) {
       await markSourceCheckpoint(sourceIndex);
       continue;
     }
 
     // EBV Layer 1: pin this source version once; all evidence spans bind against it.
     // (probeHash — and therefore sourceKey via the content fallback — is non-null here:
-    // src.text passed the guard above.)
+    // sourceText passed the guard above.)
     const sourceHash = probeHash as string;
     const claimSourceKey = sourceKey as string;
     const evidenceRows: EvidenceRow[] = [];
@@ -415,7 +537,7 @@ export async function runFullExtraction(args: {
 
     const sourceUnits: { id: string; text: string; type: string | null; chunkIndex: number }[] = [];
     const chunkTextByUnitId = new Map<string, string>();
-    const chunks = chunkDocument(src.text, pack.chunking).slice(0, chunkBudget);
+    const chunks = chunkDocument(sourceText, pack.chunking).slice(0, chunkBudget);
     await reporter?.beginStage(
       "extracting",
       `Extracting graph from ${title}`,
@@ -495,7 +617,7 @@ export async function runFullExtraction(args: {
       const chunkEvidence = buildEvidenceRows({
         extractedUnits: extraction.units,
         storedUnits: stored.units,
-        sourceText: src.text,
+        sourceText,
         sourceHash,
       });
       evidenceRows.push(...chunkEvidence.rows);
@@ -666,7 +788,7 @@ export async function runFullExtraction(args: {
                 ask: (units) =>
                   validateUnitsBatchDetailed({
                     units,
-                    sourceText: src.text!,
+                    sourceText,
                     pack,
                     generate: args.generates.validation,
                     qualityPreset: preset,
@@ -807,7 +929,7 @@ export async function runFullExtraction(args: {
         const pass = await runGraphRemediationPass({
           validationResults: remediable,
           textById,
-          sourceText: src.text,
+          sourceText,
           pack,
           writer,
           validationGenerate: args.generates.validation,

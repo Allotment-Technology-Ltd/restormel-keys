@@ -10,6 +10,7 @@ import {
   type FetchedDocument,
 } from "@restormel/connect-core";
 import type {
+  ConnectDomainPack,
   ConnectSourceDocument,
   ConnectSourceDocumentCreate,
   ConnectSourceProvenance,
@@ -187,17 +188,60 @@ export async function expandDocumentsToSources(
   { text: string; title: string; url?: string; provenance?: ConnectSourceProvenance }[]
 > {
   const rows = await getConnectSourceDocumentsByIds({ ids, workspaceId });
-  return rows
-    .filter((r) => r.status === "parsed" && r.text && r.text.trim())
-    .map((r) => {
-      const provenance = parseStoredProvenance(r.provenance);
-      const title = provenance?.title?.trim() || r.name;
-      const url = provenance?.canonical_url ?? provenance?.url ?? r.url ?? undefined;
-      return {
-        text: r.text as string,
-        title,
-        ...(url ? { url } : {}),
-        ...(provenance ? { provenance } : {}),
-      };
+  const out: { text: string; title: string; url?: string; provenance?: ConnectSourceProvenance }[] = [];
+  // P2b: a doc whose cached text was cleared after a confirmed store read-back carries no
+  // `text` but DOES carry `provenance.graph_source_key` (the Surreal source record id) — the
+  // user's store is now authoritative. Resolve those from the store so a re-ingest still
+  // works; lazily build the store only when such a doc appears.
+  let storeResolution: { store: import("@restormel/graphrag-core").GraphStore; pack: ConnectDomainPack } | null = null;
+  let storeResolutionTried = false;
+  for (const r of rows) {
+    if (r.status !== "parsed") continue;
+    const provenance = parseStoredProvenance(r.provenance);
+    const title = provenance?.title?.trim() || r.name;
+    const url = provenance?.canonical_url ?? provenance?.url ?? r.url ?? undefined;
+
+    let text = r.text && r.text.trim() ? r.text : null;
+    if (!text && provenance?.graph_source_key?.trim()) {
+      if (!storeResolutionTried) {
+        storeResolutionTried = true;
+        storeResolution = await buildStoreResolution(workspaceId).catch(() => null);
+      }
+      if (storeResolution) {
+        const { fetchSurrealSourceRecordText } = await import(
+          "$lib/server/connect/connect-source-text-resolve"
+        );
+        const fetched = await fetchSurrealSourceRecordText(
+          storeResolution.store,
+          provenance.graph_source_key,
+          storeResolution.pack,
+        ).catch(() => null);
+        if (fetched?.fullText?.trim()) text = fetched.fullText;
+      }
+    }
+    if (!text) continue;
+    out.push({
+      text,
+      title,
+      ...(url ? { url } : {}),
+      ...(provenance ? { provenance } : {}),
     });
+  }
+  return out;
+}
+
+/** Build the store + pack needed to resolve P2b store-authoritative source text. */
+async function buildStoreResolution(
+  workspaceId: string,
+): Promise<{ store: import("@restormel/graphrag-core").GraphStore; pack: ConnectDomainPack } | null> {
+  const { getConnectGraphTargetForWorkspace } = await import("$lib/server/neon");
+  const target = await getConnectGraphTargetForWorkspace(workspaceId);
+  if (!target || target.provider !== "surreal") return null;
+  const { buildWorkspaceGraphStore } = await import("$lib/server/connect/surreal-graph-store");
+  const store = await buildWorkspaceGraphStore(workspaceId);
+  if (!store) return null;
+  const { resolveWorkspaceDomainPack } = await import("$lib/server/connect/domain-pack-service");
+  const pack = await resolveWorkspaceDomainPack(workspaceId, null);
+  if (!pack) return null;
+  return { store, pack };
 }
