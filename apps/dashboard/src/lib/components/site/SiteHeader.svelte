@@ -1,11 +1,9 @@
 <script lang="ts">
   import { ADMIN_BASE, DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { developerPortalUrl } from "$lib/developer-portal-url";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import RestormelLogo from "$lib/components/RestormelLogo.svelte";
   import {
     companyNavLinks,
-    developerLinks,
     isCompanyNavActive,
     isIntegrationsActive,
     isLinkActive,
@@ -13,9 +11,6 @@
     normalizePath,
     productNavLinks,
   } from "$lib/site-nav";
-
-  $: portalUrl = developerPortalUrl();
-  $: devLinks = developerLinks(portalUrl);
 
   export let rightText: string | null = null;
   export let rightHref: string | null = null;
@@ -27,19 +22,18 @@
   let mobileOpen = false;
   let productOpen = false;
   let companyOpen = false;
-  let developersOpen = false;
 
   $: path = pathname.replace(/\/$/, "") || "/";
   $: if (pathname) {
     mobileOpen = false;
     productOpen = false;
     companyOpen = false;
-    developersOpen = false;
   }
 
   $: productNavOn = isProductNavActive(path);
   $: integrationsOn = isIntegrationsActive(path);
   $: companyNavOn = isCompanyNavActive(path);
+  $: isDashboardActive = path.startsWith(DASHBOARD_BASE);
 
   function toggleMobileMenu() {
     mobileOpen = !mobileOpen;
@@ -53,7 +47,6 @@
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
       companyOpen = false;
-      developersOpen = false;
     }
   }
 
@@ -61,15 +54,6 @@
     const el = e.currentTarget as HTMLDetailsElement;
     if (el.open) {
       productOpen = false;
-      developersOpen = false;
-    }
-  }
-
-  function onDevelopersToggle(e: Event) {
-    const el = e.currentTarget as HTMLDetailsElement;
-    if (el.open) {
-      productOpen = false;
-      companyOpen = false;
     }
   }
 
@@ -159,34 +143,14 @@
           </div>
         </details>
       </li>
-      <li class="nav-dropdown-wrap">
-        <details class="nav-details" bind:open={developersOpen} on:toggle={onDevelopersToggle}>
-          <summary
-            id="site-nav-summary-developers"
-            class="nav-summary"
-            aria-controls="site-nav-panel-developers"
-          >
-            Developers
-          </summary>
-          <div
-            id="site-nav-panel-developers"
-            class="nav-dropdown-panel"
-            role="region"
-            aria-labelledby="site-nav-summary-developers"
-          >
-            {#each devLinks as item}
-              <a
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Opens in a new tab"
-                aria-label={item.ariaLabel ?? `${item.label}, opens in new tab`}
-              >
-                {item.label}
-              </a>
-            {/each}
-          </div>
-        </details>
+      <li>
+        <a
+          href={DASHBOARD_BASE + "/home"}
+          class:active={isDashboardActive}
+          aria-current={isDashboardActive ? "page" : undefined}
+        >
+          Dashboard
+        </a>
       </li>
     </ul>
 
@@ -244,16 +208,12 @@
         aria-current={linkActive(item.href) ? "page" : undefined}
         on:click={closeMobileMenu}>{item.label}</a>
     {/each}
-    <span class="site-header-mobile-heading" role="presentation">Developers</span>
-    {#each devLinks as item}
-      <a
-        href={item.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Opens in a new tab"
-        aria-label={item.ariaLabel ?? `${item.label}, opens in new tab`}
-        on:click={closeMobileMenu}>{item.label}</a>
-    {/each}
+    <span class="site-header-mobile-heading" role="presentation">Dashboard</span>
+    <a
+      href={DASHBOARD_BASE + "/home"}
+      class:active={isDashboardActive}
+      aria-current={isDashboardActive ? "page" : undefined}
+      on:click={closeMobileMenu}>Open dashboard</a>
     <div class="site-header-mobile-divider" aria-hidden="true"></div>
     {#if user}
       <a href="/founders" on:click={closeMobileMenu}>Early access</a>

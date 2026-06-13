@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { developerPortalUrl } from "$lib/developer-portal-url";
   import RestormelLogo from "$lib/components/RestormelLogo.svelte";
   import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
   import type { ModuleFlags } from "$lib/module-flags-types";
@@ -7,7 +6,7 @@
   import {
     capabilityLinksFromModules,
     companyNavLinks,
-    developerLinks,
+    GITHUB_REPO_URL,
     productNavLinks,
     SUITE_DOCS_HREF,
   } from "$lib/site-nav";
@@ -15,8 +14,6 @@
   export let moduleFlags: ModuleFlags;
   export let suiteModulesForUi: SuiteModule[];
 
-  $: portalUrl = developerPortalUrl();
-  $: devLinks = developerLinks(portalUrl);
   $: capabilityLinks = capabilityLinksFromModules(suiteModulesForUi);
   $: flags = moduleFlags;
   $: showIntegrationCatalog = integrationCatalogForFlags(flags).length > 0;
@@ -68,11 +65,9 @@
       <span class="site-footer-title">Developers</span>
       <ul class="site-footer-links" aria-label="Developers">
         <li><a href={SUITE_DOCS_HREF}>Suite docs</a></li>
-        {#each devLinks as item}
-          <li>
-            <a href={item.href} target="_blank" rel="noopener noreferrer">{item.label}</a>
-          </li>
-        {/each}
+        <li>
+          <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer" aria-label="Restormel on GitHub, opens in new tab">GitHub</a>
+        </li>
       </ul>
     </div>
   </div>
