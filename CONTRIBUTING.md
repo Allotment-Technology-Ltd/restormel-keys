@@ -31,6 +31,8 @@ If you integrate Restormel Keys from another GitHub project, use **[docs/archive
 
 ## PRs
 
+**Primary remote is Forgejo** (`git.allotmentology.tech`) — open PRs there; GitHub is a read-only push-mirror kept for the Neon/Vercel preview legs. See [docs/infra/off-github-runbook.md](docs/infra/off-github-runbook.md).
+
 Use the repo PR template. Confirm scope respects bootstrap constraints and canonical docs are updated as needed.
 
-**Pre-PR security:** For code or security-sensitive docs, complete the [pre-PR security gate](docs/guides/pre-pr-security-review.md) (`PASS` before `gh pr create`). High-risk areas include BYOK storage, auth, Connect/MCP, gateway routes, and credential encryption.
+**Pre-PR security:** For code or security-sensitive docs, complete the [pre-PR security gate](docs/guides/pre-pr-security-review.md) (`PASS` before opening a PR). High-risk areas include BYOK storage, auth, Connect/MCP, gateway routes, and credential encryption.
