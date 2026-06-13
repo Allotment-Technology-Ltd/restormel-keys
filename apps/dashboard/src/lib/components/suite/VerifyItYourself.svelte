@@ -355,8 +355,8 @@
     border-left: 3px solid var(--color-ink);
     padding: 0.875rem 1rem;
     margin: 0 0 1.25rem;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    white-space: pre-line;
+    overflow-wrap: break-word;
   }
 
   .viy-source-quote {

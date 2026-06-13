@@ -54,15 +54,11 @@ export interface VerifyScenario {
 const SOURCE_BODY = [
   "7.2 Data Retention.",
   "",
-  "Customer records containing personal data MUST be retained for a minimum",
-  "of six (6) years from the date of the last transaction, after which they",
-  "are subject to scheduled deletion. Records under an active legal hold are",
-  "exempt from scheduled deletion until the hold is formally released by the",
-  "Data Protection Officer.",
+  "Customer records containing personal data MUST be retained for a minimum of six (6) years from the date of the last transaction, after which they are subject to scheduled deletion. Records under an active legal hold are exempt from scheduled deletion until the hold is formally released by the Data Protection Officer.",
 ].join("\n");
 
 /** Verbatim quote the supported claim is bound to. */
-const SUPPORTED_QUOTE = "retained for a minimum\nof six (6) years from the date of the last transaction";
+const SUPPORTED_QUOTE = "retained for a minimum of six (6) years from the date of the last transaction";
 
 function spanOf(body: string, quote: string): [number, number] {
   const start = body.indexOf(quote);
