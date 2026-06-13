@@ -54,9 +54,34 @@ describe("suggestGraphSchemaFromTables", () => {
       table("part_of"),
     ];
     const { suggested } = suggestGraphSchemaFromTables(tables);
+    expect(suggested.source_table).toBe("source");
     expect(suggested.unit_table).toBe("claim");
     expect(suggested.group_table).toBe("argument");
     expect(suggested.part_of_edge).toBe("part_of");
     expect(suggested.relation_edges).toEqual(expect.arrayContaining(["supports", "contradicts"]));
+  });
+
+  it("picks a shape-named source table (documents) when there is no literal 'source'", () => {
+    const tables: SurrealTableIntrospection[] = [
+      { name: "documents", kind: "normal", count: 120, has_text_field: true },
+      { name: "passage", kind: "normal", count: 800, has_text_field: true },
+      { name: "claim", kind: "normal", count: 500, has_text_field: true },
+      { name: "argument", kind: "normal", count: 40 },
+    ];
+    const { suggested } = suggestGraphSchemaFromTables(tables);
+    expect(suggested.source_table).toBe("documents");
+    expect(suggested.source_table).not.toBe("source");
+  });
+
+  it("warns and leaves a sentinel (no phantom 'source') when no source-like table exists", () => {
+    // Only the unit and passage tables exist — there is genuinely nothing that
+    // could be a bibliographic source. Must NOT hard-fall-back to a phantom "source".
+    const tables: SurrealTableIntrospection[] = [
+      { name: "claim", kind: "normal", count: 500, has_text_field: true },
+      { name: "passage", kind: "normal", count: 800, has_text_field: true },
+    ];
+    const { suggested, warnings } = suggestGraphSchemaFromTables(tables);
+    expect(suggested.source_table).not.toBe("source");
+    expect(warnings.some((w) => /source-like table/i.test(w))).toBe(true);
   });
 });

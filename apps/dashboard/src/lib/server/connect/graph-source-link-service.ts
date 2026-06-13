@@ -18,10 +18,14 @@ import {
 import { formatSurrealRecordId, surrealRecordRef } from "$lib/server/connect/graph-writer";
 import { resolveWorkspaceDomainPack } from "$lib/server/connect/domain-pack-service";
 import {
-  buildSourceSelectClause,
   extractInlineSourceText,
   resolveSurrealSourceFullText,
 } from "$lib/server/connect/surreal-source-text";
+import {
+  extractSourceKind,
+  extractSourceTitle,
+  extractSourceUrl,
+} from "$lib/server/connect/source-field-extract";
 import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import {
   loadSurrealProvenanceAggregateCounts,
@@ -338,10 +342,11 @@ async function loadSurrealGraphSources(
   }[]
 > {
   const sourceTable = tableIdent(pack.graph_schema.source_table, "source");
-  const select = buildSourceSelectClause(pack);
   try {
+    // SELECT * so every field is visible (shape-tolerant): title/url/kind resolve
+    // across name synonyms (canonical_url, source_type, …) via the shared extractors.
     const rows = await store.query<Record<string, unknown>[]>(
-      `SELECT ${select} FROM ${sourceTable} LIMIT 500;`,
+      `SELECT * FROM ${sourceTable} LIMIT 500;`,
     );
     const resolvedRows = await mapWithConcurrency(
       rows,
@@ -358,10 +363,10 @@ async function loadSurrealGraphSources(
         });
         return {
           id,
-          title: typeof row.title === "string" ? row.title : null,
-          url: typeof row.url === "string" ? row.url : null,
+          title: extractSourceTitle(row),
+          url: extractSourceUrl(row),
           textPreview: typeof row.text_preview === "string" ? row.text_preview : null,
-          sourceKind: typeof row.source_kind === "string" ? row.source_kind : null,
+          sourceKind: extractSourceKind(row),
           fullText: full.quality === "full" ? full.text : null,
           resolvedPreview: full.quality === "preview" ? full.text : null,
         };

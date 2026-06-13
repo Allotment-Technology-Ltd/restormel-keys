@@ -389,6 +389,7 @@
     title: string | null;
     url: string | null;
     kind: string | null;
+    author?: string | null;
     hasFullText: boolean;
     hasPreviewText: boolean;
     textOrigin?: "inline" | "passage" | "preview_only" | "none";
