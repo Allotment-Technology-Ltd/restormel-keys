@@ -46,8 +46,19 @@ agents and humans share.
   `.forgejo/workflows/ci.yml`, or explicitly document them as GitHub-mirror-only.
 - Update `CONTRIBUTING`/docs references from github.com URLs to Forgejo URLs.
 
+## Vercel previews → Coolify
+
+Preview builds are now **disabled at the Vercel ignore step**
+(`scripts/vercel-ignore-dashboard.sh`). Any deploy where `VERCEL_ENV == preview`,
+`VERCEL_GIT_PULL_REQUEST_ID` is set, or the branch is not `main`/`master` returns
+`exit 0` (skip), so Vercel neither builds the app nor creates a Neon preview branch.
+
+Previews are served on-demand from **Coolify at `preview.restormel.dev`**.
+
+**Vercel production (main branch) remains a frozen rollback standby** — the existing
+diff logic in the ignore script still runs for `main` pushes and builds only when
+dashboard-relevant paths change.
+
 ## What does NOT move
 
-- **Vercel preview deployments** stay wired to the GitHub mirror until the previews
-  question is resolved (decision D4/D6 in the migration plan).
 - **Neon** stays managed (Phase G is a separate, flagged project).
