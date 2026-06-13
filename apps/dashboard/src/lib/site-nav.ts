@@ -11,6 +11,9 @@ export const GITHUB_DISCUSSIONS_URL = `${GITHUB_REPO_URL}/discussions`;
 
 export const SUITE_DOCS_HREF = "/docs";
 
+/** In-site API reference (Scalar), served at this canonical path. */
+export const API_REFERENCE_HREF = "/keys/docs/api-reference";
+
 export type SiteNavLink = {
   href: string;
   label: string;
@@ -30,6 +33,7 @@ export const productNavLinks: SiteNavLink[] = [
   { href: "/product", label: "Capabilities" },
   { href: "/use-cases", label: "Use cases" },
   { href: SUITE_DOCS_HREF, label: "Documentation" },
+  { href: API_REFERENCE_HREF, label: "API reference" },
   { href: DASHBOARD_BASE, label: "Dashboard" },
 ];
 
@@ -74,24 +78,6 @@ export const connectPillarLinks: SiteNavLink[] = [
   { href: DASHBOARD_BASE + "/home", label: "Dashboard" },
 ];
 
-/** Developers bucket — API portal URL filled in by consumer (Zuplo). */
-export function developerLinks(portalUrl: string): SiteNavLink[] {
-  return [
-    {
-      href: portalUrl,
-      label: "API portal",
-      external: true,
-      ariaLabel: "API portal, opens in new tab",
-    },
-    {
-      href: GITHUB_REPO_URL,
-      label: "GitHub",
-      external: true,
-      ariaLabel: "Restormel on GitHub, opens in new tab",
-    },
-  ];
-}
-
 export function isProductNavActive(path: string): boolean {
   const p = normalizePath(path);
   return (
@@ -99,6 +85,7 @@ export function isProductNavActive(path: string): boolean {
     p === "/product" ||
     p === "/use-cases" ||
     p.startsWith(SUITE_DOCS_HREF) ||
+    p.startsWith(API_REFERENCE_HREF) ||
     p.startsWith("/keys") ||
     p.startsWith("/testing") ||
     p.startsWith("/graph") ||
@@ -147,6 +134,7 @@ export function isLinkActive(path: string, href: string): boolean {
   if (h === "/product") return p === "/product";
   if (h === "/use-cases") return p === "/use-cases";
   if (h === SUITE_DOCS_HREF) return p === SUITE_DOCS_HREF || p.startsWith(SUITE_DOCS_HREF + "/");
+  if (h === API_REFERENCE_HREF) return p === API_REFERENCE_HREF || p.startsWith(API_REFERENCE_HREF + "/");
   if (h === "/keys") return p === "/keys";
   if (h === "/testing") return p === "/testing";
   if (h === "/graph") return p === "/graph";

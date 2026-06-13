@@ -35,6 +35,11 @@
     mappingInvalid?: boolean;
     pipelineCatalogCount?: number;
     importAlreadySatisfied?: boolean;
+    scanError?: string | null;
+    sourceTableTried?: string;
+    autoDetectedSourceTable?: string | null;
+    candidateTables?: { name: string; count: number }[];
+    needsManualMapping?: boolean;
   };
 
   type ImportResult = {
@@ -689,9 +694,49 @@
               {discoveringLoading ? "Scanning…" : discoverResult ? "Re-scan graph" : "Scan graph for sources"}
             </button>
           </div>
-          {#if discoverResult && discoverResult.withText > 0}
+          {#if discoverResult && discoverResult.total > 0}
+            {#if discoverResult.withText > 0}
+              <p class="wizard-note brut-muted" role="status">
+                {discoverResult.withText} of {discoverResult.total} sources have resolvable text.
+              </p>
+            {:else}
+              <!-- Sources WERE found — text just hasn't resolved yet. Never say "missing sources". -->
+              <p class="wizard-note brut-muted" role="status">
+                Found {discoverResult.total}
+                {discoverResult.total === 1 ? "source" : "sources"} in
+                <code>{discoverResult.sourceTableTried ?? "your source table"}</code>. Their full
+                text will resolve from linked passages or documents during linking and
+                re-validation — nothing needs re-ingesting.
+              </p>
+            {/if}
+          {:else if discoverResult && discoverResult.scanError}
+            <!-- Hard read error — never report this as "no sources". -->
             <p class="wizard-note brut-muted" role="status">
-              {discoverResult.withText} of {discoverResult.total} sources have resolvable text.
+              Couldn't read your source table (<code>{discoverResult.sourceTableTried ?? "?"}</code>):
+              {discoverResult.scanError}. Re-test the connection or pick a different source table
+              above.
+            </p>
+          {:else if discoverResult && discoverResult.candidateTables && discoverResult.candidateTables.length > 0}
+            <!-- No sources in the configured table, but other tables might hold them. -->
+            <div class="wizard-note brut-muted" role="status">
+              <p>
+                No sources found in
+                <code>{discoverResult.sourceTableTried ?? "the configured table"}</code>. These
+                tables might hold your sources — set the source table above and re-scan:
+              </p>
+              <ul class="wizard-candidate-list">
+                {#each discoverResult.candidateTables as candidate (candidate.name)}
+                  <li>
+                    <code>{candidate.name}</code>
+                    ({candidate.count.toLocaleString()}
+                    {candidate.count === 1 ? "row" : "rows"})
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {:else if discoverResult}
+            <p class="wizard-note brut-muted" role="status">
+              No source records found in your graph yet.
             </p>
           {/if}
         {:else if catalogImportSatisfied}
@@ -1573,6 +1618,18 @@
     font-size: var(--text-xs);
     line-height: 1.45;
     max-width: 58ch;
+  }
+
+  .wizard-note > p {
+    margin: 0 0 var(--space-1);
+  }
+
+  .wizard-candidate-list {
+    margin: 0;
+    padding-left: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
   .wizard-note-caution {

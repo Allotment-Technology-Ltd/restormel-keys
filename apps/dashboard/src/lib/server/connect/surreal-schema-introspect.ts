@@ -103,11 +103,6 @@ export function suggestGraphSchemaFromTables(
   const normals = tables.filter((t) => t.kind === "normal");
   const relations = tables.filter((t) => t.kind === "relation");
 
-  const source_table =
-    pickName(["source"], names, []) ??
-    normals.find((t) => t.name.includes("source"))?.name ??
-    "source";
-
   const passage_table =
     pickName(["passage"], names, []) ??
     normals.find((t) => t.name.includes("passage"))?.name ??
@@ -132,6 +127,62 @@ export function suggestGraphSchemaFromTables(
 
   if (!names.has(unit_table)) {
     warnings.push(`Suggested unit table "${unit_table}" was not found — pick a table manually.`);
+  }
+
+  // Source-table selection mirrors unit detection: score normal tables (excluding
+  // unit/group/passage/relations/skip) by has_text_field, a source-name hint, and
+  // row count. Prefer an exact `source`/`sources`. Never hard-fall-back to a phantom
+  // literal "source" — leave a sentinel + warning when nothing source-like exists,
+  // so the operator can map manually instead of being told "no sources".
+  const SOURCE_NAME_HINTS = new Set([
+    "source",
+    "sources",
+    "document",
+    "documents",
+    "doc",
+    "paper",
+    "article",
+    "corpus",
+    "reference",
+    "ref",
+    "publication",
+    "book",
+    "dataset",
+    "file",
+  ]);
+  const relationNames = new Set(relations.map((r) => r.name));
+  const sourceCandidates = normals
+    .filter(
+      (t) =>
+        t.name !== unit_table &&
+        t.name !== passage_table &&
+        !relationNames.has(t.name),
+    )
+    .map((t) => {
+      let score = t.count;
+      if (t.has_text_field) score += 1_000_000;
+      if (SOURCE_NAME_HINTS.has(t.name)) score += 500_000;
+      if (t.name === "source" || t.name === "sources") score += 250_000;
+      return { table: t, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const SOURCE_TABLE_SENTINEL = "__unknown_source__";
+  let source_table: string;
+  if (names.has("source") && unit_table !== "source" && passage_table !== "source") {
+    source_table = "source";
+  } else if (names.has("sources") && unit_table !== "sources" && passage_table !== "sources") {
+    source_table = "sources";
+  } else if (sourceCandidates.length > 0) {
+    source_table = sourceCandidates[0]!.table.name;
+  } else {
+    source_table = SOURCE_TABLE_SENTINEL;
+    warnings.push(
+      "No source-like table detected — pick the table that holds your bibliographic sources manually.",
+    );
+  }
+  if (source_table !== SOURCE_TABLE_SENTINEL && !names.has(source_table)) {
+    warnings.push(`Suggested source table "${source_table}" was not found — pick a table manually.`);
   }
 
   const partOf = relations.find((r) => r.name === "part_of" || r.name.endsWith("_part_of"));

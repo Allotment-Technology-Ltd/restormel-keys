@@ -6,7 +6,7 @@
   import SiteFooter from "$lib/components/site/SiteFooter.svelte";
   import { page } from "$app/stores";
   import { marketingShellPropsFromPage } from "$lib/marketing-shell-props";
-  import { absoluteUrl } from "$lib/seo";
+  import { absoluteUrl, DEFAULT_OG_IMAGE_PATH } from "$lib/seo";
 
   $: shell = marketingShellPropsFromPage($page);
   $: user = shell.user;
@@ -14,32 +14,45 @@
   $: skipMarketingShell =
     pathname.startsWith("/keys/dashboard") || pathname.startsWith("/keys/admin");
 
-  const orgJsonLd = (baseUrl: URL) => ({
+  // Canonical URL — strip query params
+  $: canonicalUrl = absoluteUrl($page.url, $page.url.pathname);
+  $: ogImageAbsolute = $page.url.origin + DEFAULT_OG_IMAGE_PATH;
+
+  $: orgJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Restormel",
-    url: absoluteUrl(baseUrl, "/"),
-    logo: absoluteUrl(baseUrl, "/restormel-lockup-nav.svg"),
+    url: absoluteUrl($page.url, "/"),
+    logo: absoluteUrl($page.url, "/restormel-lockup-nav.svg"),
+    description: "Verified-context layer for AI products — provenance-traced, evidence-bound, auditable knowledge for agents.",
+    sameAs: ["https://restormel.dev"],
   });
 
-  const productJsonLd = (baseUrl: URL) => ({
+  $: productJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Restormel Keys",
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Any",
-    url: absoluteUrl(baseUrl, "/keys"),
+    url: absoluteUrl($page.url, "/keys"),
+    description: "Verified-context API gateway — provenance-traced, evidence-bound AI model routing with auditable RAG.",
   });
 </script>
 
 <svelte:head>
+  <link rel="canonical" href={canonicalUrl} />
   <meta property="og:site_name" content="Restormel Keys" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content={absoluteUrl($page.url, $page.url.pathname)} />
-  <meta property="twitter:card" content="summary" />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:image" content={ogImageAbsolute} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:image" content={ogImageAbsolute} />
 
-  <script type="application/ld+json">{JSON.stringify(orgJsonLd($page.url))}</script>
-  <script type="application/ld+json">{JSON.stringify(productJsonLd($page.url))}</script>
+  <script type="application/ld+json">{@html orgJsonLd}</script>
+  <script type="application/ld+json">{@html productJsonLd}</script>
 </svelte:head>
 
 {#if skipMarketingShell}

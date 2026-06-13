@@ -21,7 +21,7 @@
  *
  * Env:
  * - DATABASE_URL                        required (Neon Postgres)
- * - CONNECT_INGEST_WORKER_INTERVAL_MS   sleep between sweeps (default 30000, ±10% jitter)
+ * - CONNECT_INGEST_WORKER_INTERVAL_MS   sleep between sweeps (default 120000, ±10% jitter; raised from 30000 to allow Neon DB scale-to-zero)
  * - KNOWLEDGE_INGEST_WORKER_MAX_JOBS    max jobs per sweep (default 10, drain caps at 10)
  * - CONNECT_INGEST_WORKER_MODE          `full` auto-resolves when a graph store is connected
  *   (plus the full-mode vars in docs/runbooks/connect-ingest-hosted-worker.md)

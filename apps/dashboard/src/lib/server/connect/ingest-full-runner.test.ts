@@ -78,17 +78,35 @@ type FakeClaimVersion = {
 
 class FakeGraphWriter implements GraphWriter {
   readonly provider = "postgres" as const;
-  sources: { id: string; sourceKey: string | null; contentHash: string | null }[] = [];
+  sources: {
+    id: string;
+    sourceKey: string | null;
+    contentHash: string | null;
+    // P2a: the full text + BYO-origin flag the runner threads to the writer.
+    text: string | null;
+    originatesFromUserGraph: boolean;
+  }[] = [];
   units: { id: string; sourceId: string; text: string }[] = [];
   claimVersions: FakeClaimVersion[] = [];
   validationByUnitId = new Map<string, { status: string; note: string | null }>();
   calls = { writeSource: 0, touchSourceSeen: 0, setEvidence: 0, supersede: 0 };
   private seq = 0;
 
-  async writeSource(s: { sourceKey?: string | null; contentHash?: string | null }) {
+  async writeSource(s: {
+    sourceKey?: string | null;
+    contentHash?: string | null;
+    text?: string | null;
+    originatesFromUserGraph?: boolean;
+  }) {
     this.calls.writeSource += 1;
     const id = `src-${++this.seq}`;
-    this.sources.push({ id, sourceKey: s.sourceKey ?? null, contentHash: s.contentHash ?? null });
+    this.sources.push({
+      id,
+      sourceKey: s.sourceKey ?? null,
+      contentHash: s.contentHash ?? null,
+      text: s.text ?? null,
+      originatesFromUserGraph: s.originatesFromUserGraph === true,
+    });
     return id;
   }
 
@@ -314,15 +332,16 @@ function jobWith(text: string) {
     error: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    // Cast at the call site: the runner reads only the fields above.
-  } as never;
+    // Returned as a plain object so callers can spread it (e.g. jobWithSources);
+    // the runner reads only the fields above, so call sites cast to the job type.
+  };
 }
 
 async function run(writer: FakeGraphWriter, text: string) {
   const ports = buildGenerates();
   const { runFullExtraction } = await import("./ingest-full-runner");
   const result = await runFullExtraction({
-    job: jobWith(text),
+    job: jobWith(text) as never,
     writer,
     generates: ports.generates,
     validationModelId: "judge#test",
@@ -448,5 +467,55 @@ describe("runFullExtraction — Stage 3.2 incremental re-ingest", () => {
     expect(first.result.units).toBe(3);
     const current = writer.claimVersions.filter((v) => v.validTo == null);
     expect(current).toHaveLength(3);
+  });
+});
+
+// ── P2a: full text threaded to writer.writeSource (BYO source-of-truth) ─────────
+
+function jobWithSources(sources: unknown[]) {
+  return { ...jobWith("ignored"), sources } as never;
+}
+
+async function runJob(writer: FakeGraphWriter, job: unknown) {
+  const ports = buildGenerates();
+  const { runFullExtraction } = await import("./ingest-full-runner");
+  const result = await runFullExtraction({
+    job: job as never,
+    writer,
+    generates: ports.generates,
+    validationModelId: "judge#test",
+  });
+  return { result, ports };
+}
+
+describe("runFullExtraction — P2a source text to the user's store", () => {
+  it("threads the FULL parsed text (byte-exact) to writer.writeSource for a normal source", async () => {
+    const writer = new FakeGraphWriter();
+    await runJob(
+      writer,
+      jobWithSources([{ title: "Notes", url: "https://example.com/util", text: DOC_V1 }]),
+    );
+    expect(writer.sources).toHaveLength(1);
+    // Byte-exact: the runner passes src.text VERBATIM — the same bytes evidence binds against.
+    expect(writer.sources[0]!.text).toBe(DOC_V1);
+    expect(writer.sources[0]!.originatesFromUserGraph).toBe(false);
+  });
+
+  it("flags originatesFromUserGraph when the source carries a graph_source_key (BYO double-write guard)", async () => {
+    const writer = new FakeGraphWriter();
+    await runJob(
+      writer,
+      jobWithSources([
+        {
+          title: "Imported from my graph",
+          text: DOC_V1,
+          provenance: { graph_source_key: "source:abc123" },
+        },
+      ]),
+    );
+    expect(writer.sources).toHaveLength(1);
+    expect(writer.sources[0]!.originatesFromUserGraph).toBe(true);
+    // Text is still threaded (Postgres ignores it; Surreal writer is the one that skips it).
+    expect(writer.sources[0]!.text).toBe(DOC_V1);
   });
 });

@@ -44,8 +44,73 @@
   <title>Pricing — Restormel Keys</title>
   <meta
     name="description"
-    content="Planned Restormel Keys tiers (reference only). Early access is invite-only — request access via Founders Circle."
+    content="Planned Restormel Keys tiers (reference only) for the control plane for verified context. Early access is invite-only — request access via Founders Circle."
   />
+
+  <script type="application/ld+json">
+    {JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What counts as an API request?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "One call to the Restormel resolve endpoint. Health checks and validation runs do not count toward your limit.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What happens when I hit my request limit?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You'll receive a warning at 80% usage. Requests above the limit return a 429 with a clear error. No silent failures.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is there a free trial of Pro?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes — the first 50 founding members receive 12 months of Pro free through the Founders Circle program.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I use Keys without Testing or Graph?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Absolutely. Each module is independently adoptable.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I use Keys without paying?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. Start on Free for development and prototyping. Upgrade when you need production-grade limits and visibility.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What happens after I subscribe?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You're sent to the dashboard. Sign in with GitHub if you aren't already. Your tier applies to your workspace; you can create API keys and use the cloud API from there.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I change plan later?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. Billing is through Paddle. You can cancel any time and keep using Free.",
+          },
+        },
+      ],
+    })}
+  </script>
 </svelte:head>
 
 <article class="pricing-page">
@@ -61,8 +126,9 @@
       <h1 class="pricing-title">Planned tiers</h1>
       <p class="pricing-kicker">Reference pricing — checkout disabled during Founders Circle</p>
       <p class="pricing-intro">
-        <strong>Restormel Keys</strong> is the BYOK product layer above your gateway. We’re validating the full suite
-        with founders before opening self-serve billing. Use the form below to get dashboard access now.
+        <strong>Restormel Keys</strong> is the control plane for verified context — provenance-traced, evidence-bound
+        knowledge for your AI products, with BYOK and model routing built in. We’re validating the full suite with
+        founders before opening self-serve billing. Use the form below to get dashboard access now.
       </p>
       <aside class="suite-strip" aria-label="Early access">
         <p class="suite-strip-copy">
@@ -177,8 +243,13 @@
       <h2 id="features-heading" class="section-title">What you get across Keys</h2>
       <div class="features-grid">
         <div class="feat">
+          <span class="feat-name">Verified context</span><span class="feat-desc"
+            >Provenance-traced, evidence-bound knowledge served to your agents — every claim tied to a source span.</span
+          >
+        </div>
+        <div class="feat">
           <span class="feat-name">Provider access modes</span><span class="feat-desc"
-            >Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span
+            >Builder-managed direct, gateway-backed, or end-user BYOK — the model access that feeds context.</span
           >
         </div>
         <div class="feat">

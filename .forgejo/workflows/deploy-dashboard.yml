@@ -1,48 +1,42 @@
-# Forgejo CI deploy pipeline — dashboard container (infra Stage 2.4).
+# Forgejo CI deploy pipeline — dashboard + worker (infra Stage 2.4).
 #
-# Builds Dockerfile.dashboard on the `docker` runner, pushes the image to the
-# Forgejo container registry (git.allotmentology.tech), and triggers a Coolify
-# deploy via its webhook API.
+# Triggers a Coolify deploy via its API. Coolify builds the image FROM SOURCE
+# itself (dockerfile build pack: it pulls the repo via its read-only deploy key
+# and runs `docker build`), so there is deliberately NO build-and-push-to-registry
+# job here: on the shared box the Forgejo runner and Coolify are the same machine,
+# so building on the runner then rebuilding in Coolify is pure waste — and the
+# runner's job containers have no Docker socket, which is what made the old
+# build-and-push job fail. Deploying straight through the Coolify API is simpler,
+# needs no registry, and works with only the COOLIFY_TOKEN secret.
 #
-# Secrets required (org-level Forgejo Actions secrets — set by OWNER-ACTION):
-#   COOLIFY_STAGING_DEPLOY_WEBHOOK — Coolify deploy webhook URL for staging app
-#                                    (Coolify UI → Application → Deployments → Webhook)
-#   COOLIFY_PROD_DEPLOY_WEBHOOK    — same, for the production app (unused until Stage 2.5+)
-#   COOLIFY_TOKEN                  — Coolify API bearer token (optional, for future API calls)
+# Secrets required (Forgejo Actions secret):
+#   COOLIFY_TOKEN — Coolify API bearer token (read+write+deploy). Without it the
+#                   jobs no-op cleanly (GitHub mirror, forks, first-time setup).
 #
-# Registry: git.allotmentology.tech (Forgejo built-in OCI registry, no extra secret needed —
-# uses the built-in FORGEJO_TOKEN which has write access to the org packages).
+# Deploys run SERIALLY (dashboard → poll to terminal → worker): two parallel
+# full-workspace Docker builds OOM the 8 GB box (no swap).
 #
-# GitHub mirror note: this workflow lives in .forgejo/workflows/ which overrides .github/
-# on the Forgejo runner. The GitHub mirror re-triggers GitHub Actions which ignore this file.
-# The `if: env.COOLIFY_STAGING_DEPLOY_WEBHOOK != ''` guard ensures the job exits cleanly
-# when the webhook secret is absent (GitHub mirror, forks, first-time CI setup).
+# Coolify API is reached at the host bridge address http://10.0.1.1:8000 from the
+# runner's job container (header bearer auth; the webhook-with-embedded-token 401s).
 #
-# Prod deploy: manual workflow_dispatch (or tag dashboard-v*) — never auto-deploy prod from
-# day one (decision D8, migration plan §7/Stage 2.4).
+# GitHub mirror note: this workflow lives in .forgejo/workflows/ which overrides
+# .github/ on the Forgejo runner. The Forgejo→GitHub push mirror re-triggers GitHub
+# Actions, which ignore this file. The COOLIFY_TOKEN guard makes the jobs no-op there.
+#
+# Prod deploy: manual workflow_dispatch (environment=prod) or a `dashboard-v*` tag —
+# never auto-deploy prod from a main push (decision D8, migration plan §7/Stage 2.4).
 
 name: Deploy dashboard
 
 on:
+  # COST-PAUSE (2026-06-13): auto-deploy on main pushes is intentionally DISABLED
+  # while staging + workers are stopped during the database-strategy migration
+  # (see docs/infra/database-strategy-roadmap.md). Re-enable by restoring the
+  # `branches: [main]` + `paths:` push trigger below once we resume push-to-deploy.
   push:
-    branches:
-      - main
     tags:
-      # Manual prod release tag: `git tag dashboard-v1.2.3 && git push --tags`
+      # Prod release tag: `git tag dashboard-v1.2.3 && git push --tags`.
       - 'dashboard-v*'
-    paths:
-      # Rebuild when dashboard source or its direct dependencies change.
-      # Note: tag pushes always trigger regardless of paths filter.
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - 'Dockerfile.dashboard'
-      - 'Dockerfile.worker'
-      - '.forgejo/workflows/deploy-dashboard.yml'
-      - 'scripts/post-build.mjs'
-      - 'scripts/copy-openapi.mjs'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'package.json'
   workflow_dispatch:
     inputs:
       environment:
@@ -54,80 +48,13 @@ on:
           - staging
           - prod
 
-env:
-  REGISTRY: git.allotmentology.tech
-  IMAGE_NAME: git.allotmentology.tech/allotment-technology-ltd/restormel-keys/dashboard
-
 jobs:
-  build-and-push:
-    name: Build image and push to registry
-    # ubuntu-latest label -> catthehacker/ubuntu:act-22.04: ships docker CLI + git.
-    # The runner config automounts the host docker socket into job containers.
-    runs-on: ubuntu-latest
-    # Skip on the GitHub mirror: FORGEJO_TOKEN is only set on Forgejo runners.
-    # (GitHub equivalent is GITHUB_TOKEN which is always set — distinguish via registry.)
-    outputs:
-      image_tag: ${{ steps.meta.outputs.sha_tag }}
-    steps:
-      - name: Checkout
-        uses: https://code.forgejo.org/actions/checkout@v4
-        with:
-          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
-          token: ${{ secrets.FORGEJO_TOKEN }}
-
-      - name: Derive image tags
-        id: meta
-        shell: bash
-        run: |
-          SHA="${GITHUB_SHA::12}"
-          REF="${GITHUB_REF_NAME}"
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == refs/tags/* ]]; then
-            # Tag push: dashboard-v1.2.3 → tag "v1.2.3" + "latest"
-            VERSION="${REF#dashboard-}"
-            echo "tags=${IMAGE_NAME}:${VERSION},${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
-            echo "sha_tag=${VERSION}" >> "$GITHUB_OUTPUT"
-          else
-            # Branch push / workflow_dispatch: tag with short SHA + "staging"
-            echo "tags=${IMAGE_NAME}:${SHA},${IMAGE_NAME}:staging" >> "$GITHUB_OUTPUT"
-            echo "sha_tag=${SHA}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Log in to Forgejo registry
-        shell: bash
-        env:
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
-        run: |
-          if [[ -z "${FORGEJO_TOKEN:-}" ]]; then
-            echo "FORGEJO_TOKEN not set — cannot push image. Set the secret to enable."
-            exit 1
-          fi
-          echo "${FORGEJO_TOKEN}" | docker login "${REGISTRY}" -u "${{ github.actor }}" --password-stdin
-
-      - name: Build and push
-        shell: bash
-        env:
-          TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          set -euo pipefail
-          TAG_ARGS=""
-          IFS=',' read -ra TAG_LIST <<< "${TAGS}"
-          for tag in "${TAG_LIST[@]}"; do
-            TAG_ARGS="${TAG_ARGS} -t ${tag}"
-          done
-          docker build -f Dockerfile.dashboard ${TAG_ARGS} .
-          for tag in "${TAG_LIST[@]}"; do
-            docker push "${tag}"
-          done
-          echo "Pushed: ${TAGS}"
-
   deploy-staging:
     name: Trigger Coolify staging deploy
     runs-on: docker
-    needs: [build-and-push]
-    # Only deploy staging from main branch pushes or explicit workflow_dispatch targeting staging.
+    # Staging deploys from main-branch pushes or an explicit workflow_dispatch=staging.
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
     steps:
       - name: Trigger Coolify staging deploys (serial)
         shell: bash
@@ -138,12 +65,9 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${COOLIFY_TOKEN:-}" ]]; then
-            echo "COOLIFY_TOKEN not set — skipping deploy trigger."
+            echo "COOLIFY_TOKEN not set — skipping deploy trigger (expected on the GitHub mirror)."
             exit 0
           fi
-          # Coolify API on the host bridge address; webhook-with-embedded-token 401s,
-          # header auth is the supported path. Deploys run SERIALLY — two parallel
-          # workspace builds OOM the 8GB box (no swap).
           API="http://10.0.1.1:8000/api/v1"
           auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}")
           deploy_and_wait() {
@@ -165,14 +89,13 @@ jobs:
           }
           deploy_and_wait "${DASHBOARD_UUID}" "dashboard"
           deploy_and_wait "${WORKER_UUID}" "worker"
-          echo "Staging deploys complete for image tag: ${IMAGE_TAG:-n/a}"
+          echo "Staging deploys complete."
 
   deploy-prod:
     name: Trigger Coolify production deploy
     runs-on: docker
-    needs: [build-and-push]
-    # Only deploy prod on explicit tag push (dashboard-v*) or workflow_dispatch targeting prod.
-    # Never auto-deploy prod from main pushes (decision D8).
+    # Prod deploys ONLY on an explicit tag push (dashboard-v*) or workflow_dispatch=prod.
+    # Never auto-deploy prod from a main push (decision D8).
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dashboard-v')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
@@ -210,4 +133,4 @@ jobs:
           }
           deploy_and_wait "${DASHBOARD_UUID}" "dashboard"
           deploy_and_wait "${WORKER_UUID}" "worker"
-          echo "Production deploys complete for image tag: ${IMAGE_TAG:-n/a}"
+          echo "Production deploys complete."

@@ -494,7 +494,14 @@ export const ConnectSourceProvenanceSchema = z.object({
   authors: z.array(z.string().max(200)).max(20).optional(),
   description: z.string().max(2000).optional(),
   site_name: z.string().max(200).optional(),
-  published_at: z.string().max(80).optional()
+  published_at: z.string().max(80).optional(),
+  /**
+   * Surreal record id of the bibliographic source this document was copied FROM when it
+   * originated in the user's own BYO graph (set by graph-import). Its presence tells the
+   * ingest writer the user's store already holds the full source text under this record,
+   * so re-ingest must NOT re-write / clobber it (P2a BYO double-write guard).
+   */
+  graph_source_key: z.string().max(2000).optional()
 });
 export type ConnectSourceProvenance = z.infer<typeof ConnectSourceProvenanceSchema>;
 

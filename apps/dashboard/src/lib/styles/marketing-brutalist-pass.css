@@ -121,47 +121,6 @@
   opacity: 1;
 }
 
-/* ── Product demo: brutalist chrome + stepper (marketing frame only) ── */
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-btn,
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-num {
-  border-radius: 0;
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-active .wizard-step-btn {
-  background: var(--color-yellow);
-  color: var(--color-ink);
-  border: 2px solid var(--color-ink);
-  font-weight: 800;
-  box-shadow: var(--mkt-btn-shadow);
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-step-btn {
-  border: 2px solid var(--color-ink);
-  background: var(--color-surface);
-  box-shadow: 2px 2px 0 var(--color-ink);
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline button.wizard-step-btn:hover {
-  background: var(--color-yellow);
-  color: var(--color-ink);
-  border-color: var(--color-ink);
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo.connect-pipeline .wizard-connector {
-  height: 2px;
-  background: var(--color-ink);
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo .demo-route-visual {
-  border-radius: 0;
-  border-width: 2px;
-}
-
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo-eyebrow,
-:is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .product-demo .suite-section-tag {
-  letter-spacing: 0.15em;
-}
-
 /* ── Proof gallery + stack rail (module landings) ── */
 :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .proof-gallery-frame,
 :is(.marketing-page, .marketing-page-pad.module-landing, .marketing-sections) .stack-rail-outer-stamp {

@@ -1,3 +1,4 @@
+<p><a href="/keys/docs/tutorials">← All tutorials</a></p>
 <h1>Journey: Add control to an existing stack</h1>
 <p>Best for OpenRouter, Vercel AI Gateway, Portkey, or custom stacks.</p>
 <ol>

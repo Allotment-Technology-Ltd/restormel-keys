@@ -1,3 +1,4 @@
+<p><a href="/keys/docs/tutorials">← All tutorials</a></p>
 <h1>Journey: Starting a new project</h1>
 <p>Best for solo builders and teams starting from zero.</p>
 <ol>

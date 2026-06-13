@@ -5,6 +5,7 @@
 import type { DocsNavBlock } from "$lib/keys/docs-nav";
 
 export const knowledgeDocsNavBlocks: DocsNavBlock[] = [
+  { kind: "link", href: "/docs", label: "Restormel docs" },
   { kind: "link", href: "/connect", label: "Connect" },
   {
     kind: "section",
@@ -12,6 +13,7 @@ export const knowledgeDocsNavBlocks: DocsNavBlock[] = [
     ariaLabel: "Concepts section",
     items: [
       { href: "/connect/docs", label: "Overview" },
+      { href: "/keys/docs/guides/verified-context", label: "Verified context" },
       { href: "/connect/docs#endpoints", label: "Endpoints" },
       { href: "/connect/docs#contract", label: "Contract" },
     ],

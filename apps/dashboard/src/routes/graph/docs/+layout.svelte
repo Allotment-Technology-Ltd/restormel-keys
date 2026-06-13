@@ -33,10 +33,16 @@
 
 <svelte:head>
   <title>Docs — Restormel Graph</title>
+  <link rel="canonical" href={absoluteUrl($page.url, $page.url.pathname)} />
   <meta property="og:site_name" content="Restormel Graph" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content={absoluteUrl($page.url, $page.url.pathname)} />
-  <meta property="twitter:card" content="summary" />
+  <meta property="og:image" content={$page.url.origin + "/og/default.png"} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:image" content={$page.url.origin + "/og/default.png"} />
 
   <script type="application/ld+json">
     {JSON.stringify({

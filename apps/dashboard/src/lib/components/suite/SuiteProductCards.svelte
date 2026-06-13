@@ -9,10 +9,10 @@ primary: openai/gpt-4o-mini
 fallback: anthropic/claude-3-5
 policy:  cost-cap-pass`;
 
-  const connectCode = `# agent context layer
-graph:    847 ideas · 2.1k edges
+  const connectCode = `# verified-context layer
+ingest:   sources → bound claims
 retrieve: graph + vector hybrid
-verify:   94% claims supported
+verify:   bar ≥90% supported / ≤2% unsupp.
 domain:   configurable schema`;
 
   function tagClass(mod: SuiteModule): string {
