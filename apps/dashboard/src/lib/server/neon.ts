@@ -9253,6 +9253,65 @@ export async function findConnectSourceDocumentText(params: {
   return null;
 }
 
+/**
+ * P2b: after the runner reads source text back out of the user's own store and confirms
+ * it matches the bound bytes, drop OUR durable cache copy for that source — we stop
+ * holding NEW user content once the store is provably authoritative. Matched by url first,
+ * then exact/fuzzy name (the same precedence findConnectSourceDocumentText reads by) so the
+ * row whose text fed re-validation is the row we clear. REVERSIBLE: only the `text` column
+ * is NULLed (metadata row + status stay), and `provenance.graph_source_key` is stamped with
+ * the Surreal source record id so expandDocumentsToSources can re-resolve from the store on
+ * a future re-ingest. No column is dropped; no row is deleted (that destructive purge is a
+ * later, owner-present step). Returns the number of rows whose text was cleared.
+ */
+export async function clearConnectSourceDocumentTextToStore(params: {
+  workspaceId: string;
+  name?: string | null;
+  url?: string | null;
+  graphSourceKey: string;
+}): Promise<number> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  // Merge graph_source_key into existing provenance (COALESCE so NULL provenance becomes {}).
+  // The @neondatabase/serverless tagged template does not compose `sql` fragments, so each
+  // branch is a complete statement; jsonb_build_object keeps the stamp parameterized.
+  const gsk = params.graphSourceKey;
+  const url = params.url?.trim();
+  if (url) {
+    const rows = (await sql`
+      UPDATE knowledge_source_documents
+      SET text = NULL,
+          provenance = COALESCE(provenance, '{}'::jsonb) || jsonb_build_object('graph_source_key', ${gsk}::text)
+      WHERE workspace_id = ${params.workspaceId} AND url = ${url}
+        AND status = 'parsed' AND text IS NOT NULL
+      RETURNING id
+    `) as { id: string }[];
+    if (rows.length > 0) return rows.length;
+  }
+  const name = params.name?.trim();
+  if (name) {
+    const exact = (await sql`
+      UPDATE knowledge_source_documents
+      SET text = NULL,
+          provenance = COALESCE(provenance, '{}'::jsonb) || jsonb_build_object('graph_source_key', ${gsk}::text)
+      WHERE workspace_id = ${params.workspaceId} AND name = ${name}
+        AND status = 'parsed' AND text IS NOT NULL
+      RETURNING id
+    `) as { id: string }[];
+    if (exact.length > 0) return exact.length;
+    const fuzzy = (await sql`
+      UPDATE knowledge_source_documents
+      SET text = NULL,
+          provenance = COALESCE(provenance, '{}'::jsonb) || jsonb_build_object('graph_source_key', ${gsk}::text)
+      WHERE workspace_id = ${params.workspaceId} AND name ILIKE ${name}
+        AND status = 'parsed' AND text IS NOT NULL
+      RETURNING id
+    `) as { id: string }[];
+    if (fuzzy.length > 0) return fuzzy.length;
+  }
+  return 0;
+}
+
 export async function deleteConnectSourceDocument(params: { id: string; workspaceId: string }): Promise<boolean> {
   await ensureIngestionRoutingSchema();
   const sql = getSql();
