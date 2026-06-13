@@ -23,7 +23,6 @@ const ALWAYS_ON_PATHS: string[] = [
   // Keys marketing
   "/keys",
   "/keys/pricing",
-  "/keys/use-cases",
   "/keys/privacy",
   "/keys/terms",
   "/keys/refund-policy",
