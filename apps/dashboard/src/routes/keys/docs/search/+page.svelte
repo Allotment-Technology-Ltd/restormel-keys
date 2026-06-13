@@ -7,8 +7,9 @@
 
   const docsIndexAll: DocsIndexEntry[] = [
     { title: "Docs overview", href: "/keys/docs", tags: "overview intro" },
-    { title: "Walkthrough", href: "/keys/docs/walkthrough", tags: "phase migration" },
-    { title: "Integrations walkthrough", href: "/keys/docs/integrations-walkthrough", tags: "cli mcp aaif" },
+    { title: "Tutorials", href: "/keys/docs/tutorials", tags: "tutorials walkthrough journeys choose your path getting started step by step onboarding" },
+    { title: "Walkthrough", href: "/keys/docs/walkthrough", tags: "phase migration tutorial" },
+    { title: "Integrations walkthrough", href: "/keys/docs/integrations-walkthrough", tags: "cli mcp aaif tutorial" },
     {
       title: "Environment vocabulary",
       href: "/keys/docs/guides/environment-vocabulary",
