@@ -312,10 +312,14 @@ export COOLIFY_TOKEN=...                   # owner-provided (§1.2)
 
 # 3.5a — Store the private key Coolify will use to reach the new box.
 #   Use the same key the agent created in §2.1 (no passphrase — Coolify requires none).
+#   Build the JSON with jq so the multi-line key (and any special chars) is escaped safely
+#   — do NOT hand-escape newlines with awk/sed.
 curl -sf -X POST "$COOLIFY/private-keys" \
   -H "Authorization: Bearer $COOLIFY_TOKEN" -H "Content-Type: application/json" \
-  -d "{\"name\":\"surreal-box-key\",\"private_key\":\"$(awk '{printf "%s\\n",$0}' ~/.ssh/id_surreal_box)\"}"
+  -d "$(jq -n --arg name surreal-box-key --rawfile key ~/.ssh/id_surreal_box \
+          '{name: $name, private_key: $key}')"
 # → returns {"uuid":"<KEY_UUID>"}
+# (No jq? python3 -c 'import json,sys;print(json.dumps({"name":"surreal-box-key","private_key":open(sys.argv[1]).read()}))' ~/.ssh/id_surreal_box)
 
 # 3.5b — Register the new box as a server. instant_validate=true makes Coolify SSH in,
 #   check Docker, and install it if missing.
@@ -382,6 +386,8 @@ services:
       - --deny-all
       - --allow-funcs
       - rocksdb:/data/surreal.db        # positional storage path (on-disk, crash-consistent)
+      # No --web-crt/--web-key here on purpose: TLS is terminated by Traefik (labels below),
+      # which proxies to plain HTTP/WS on :8000 inside the private container network.
     environment:
       SURREAL_USER: ${SURREAL_ROOT_USER}      # Coolify secret
       SURREAL_PASS: ${SURREAL_ROOT_PASS}      # Coolify secret: openssl rand -base64 32 | tr -d '/+='
@@ -556,6 +562,10 @@ unnecessary attack surface. Laptop (Surrealist) access then goes over **WireGuar
 **No app change beyond the endpoint:** Sophia's only change is its Surreal endpoint
 (`wss://surreal.restormel.dev` → `ws://10.0.1.2:8000`) + it keeps the same scoped `sophia_app`
 user/ns/db.
+
+> Note the deliberate `wss://` → `ws://` (TLS dropped): plain WebSocket is intentional and safe
+> here because the traffic never leaves the Hetzner **private network** (`10.0.1.x`), which is
+> isolated from the internet — there's no public hop to encrypt. (Surreal auth still applies.)
 
 ## 4. Phase-2 cutover
 
