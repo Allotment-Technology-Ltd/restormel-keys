@@ -26,10 +26,13 @@ PATHS=(
   pnpm-workspace.yaml
 )
 
-# PR / preview deployments should always build so reviewers get a fresh URL.
-if [[ "${VERCEL_ENV:-}" == "preview" ]] || [[ -n "${VERCEL_GIT_PULL_REQUEST_ID:-}" ]]; then
-  log "preview/PR deployment — build"
-  exit 1
+# Preview / PR deployments are now served by Coolify (preview.restormel.dev).
+# Skip them here so Vercel does not build or create a Neon branch for every PR.
+if [[ "${VERCEL_ENV:-}" == "preview" ]] \
+   || [[ -n "${VERCEL_GIT_PULL_REQUEST_ID:-}" ]] \
+   || [[ "${VERCEL_GIT_COMMIT_REF:-}" != "main" && "${VERCEL_GIT_COMMIT_REF:-}" != "master" ]]; then
+  log "preview deployments disabled — previews are served by Coolify (preview.restormel.dev)"
+  exit 0
 fi
 
 current="${VERCEL_GIT_COMMIT_SHA:-}"
