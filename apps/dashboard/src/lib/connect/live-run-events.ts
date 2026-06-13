@@ -107,16 +107,23 @@ export const STREAM_HEARTBEAT_MS = 15_000;
 
 /**
  * Server internal data-layer poll cadences (NOT client intervals — each is bounded
- * by STREAM_BUDGET_MS and pauses when the tab is hidden via the client). Tuned to
- * stay at or below the pre-W3.1 pull cost:
+ * by STREAM_BUDGET_MS and pauses when the tab is hidden via the client).
+ *
+ * ACTIVE cadences keep UX responsive during live runs (unchanged):
  *  - focused (run console) active = 2.5s → equals the old `/status` poll;
- *  - workspace (chip / runs list) active = 5s, idle = 30s → the chip's old 30s
- *    coarse cadence when nothing runs, modestly fresher while a run is active.
+ *  - workspace (chip / runs list) active = 5s.
+ *
+ * IDLE cadences are tuned for Neon DB scale-to-zero (cost): Neon Launch charges
+ * per compute-second; chatty idle polling kept the DB awake 24/7. Raising idle
+ * cadences to 60s/30s lets the DB suspend between queries during the common
+ * steady state (dashboard open, no run in progress):
+ *  - workspace idle = 60s (was 30s) — chip/runs-list re-query when no run active;
+ *  - focused idle = 30s (was 10s) — run console when its run is idle.
  */
 export const STREAM_TICK_FOCUSED_ACTIVE_MS = 2_500;
-export const STREAM_TICK_FOCUSED_IDLE_MS = 10_000;
+export const STREAM_TICK_FOCUSED_IDLE_MS = 30_000;
 export const STREAM_TICK_WORKSPACE_ACTIVE_MS = 5_000;
-export const STREAM_TICK_WORKSPACE_IDLE_MS = 30_000;
+export const STREAM_TICK_WORKSPACE_IDLE_MS = 60_000;
 
 /** Reconnect backoff the client advertises / honours, in ms. */
 export const RECONNECT_BASE_MS = 1_000;
