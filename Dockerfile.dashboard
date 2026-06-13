@@ -35,6 +35,11 @@ RUN pnpm install --frozen-lockfile --prod=false
 
 # Build dashboard with adapter-node output.
 ENV DEPLOY_TARGET=node
+# Raise V8 old-space limit for the build. The SvelteKit/Vite production build of the
+# dashboard (many routes + the Better Auth scaffold + dual-driver pg deps) exceeds Node's
+# ~2GB default old-space and aborts with SIGABRT (exit 134, "Reached heap limit — JavaScript
+# heap out of memory"). 4096MB is backed by RAM + swap on the build host.
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm --filter dashboard build
 
 # --- Serve stage (production-only deps, non-root user) ---
