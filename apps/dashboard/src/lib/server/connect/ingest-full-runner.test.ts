@@ -332,15 +332,16 @@ function jobWith(text: string) {
     error: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    // Cast at the call site: the runner reads only the fields above.
-  } as never;
+    // Returned as a plain object so callers can spread it (e.g. jobWithSources);
+    // the runner reads only the fields above, so call sites cast to the job type.
+  };
 }
 
 async function run(writer: FakeGraphWriter, text: string) {
   const ports = buildGenerates();
   const { runFullExtraction } = await import("./ingest-full-runner");
   const result = await runFullExtraction({
-    job: jobWith(text),
+    job: jobWith(text) as never,
     writer,
     generates: ports.generates,
     validationModelId: "judge#test",
