@@ -1,12 +1,17 @@
-# Restormel Keys
+# Restormel
 
-Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless core is the product; UI wrappers are delivery mechanisms.
+**The verified-context layer for AI products** — provenance-traced, quality-gated knowledge
+an agent (or its auditor) can trace back to the exact source span. One workspace to **route**
+model requests (Keys) and to **ingest, retrieve, and verify** knowledge (Connect).
 
-**Phase:** 01 (gate lifted). **State:** [STATUS.md](STATUS.md) | **Plan:** [docs/bootstrap-plan.md](docs/bootstrap-plan.md)
+This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` SvelteKit app
+(marketing site, docs, dashboard, Cloud API surfaces) and the `@restormel/*` packages.
 
-**Docs:** [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [CONTRIBUTING](CONTRIBUTING.md) · [docs/](docs/) (canonical package)
+**Start here:** [Positioning](docs/product/positioning.md) · [STATUS](STATUS.md) · [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [docs index](docs/README.md)
 
-**License:** MIT — [LICENSE](LICENSE)
+**Phase:** 01 (implementation). **Stack:** UK/EU self-host on Coolify · Forgejo-native CI · Neon Postgres + BYO SurrealDB · PostHog EU · Zuplo gateway · Paddle billing.
+
+**Contributing:** [CONTRIBUTING](CONTRIBUTING.md) · **License:** MIT — [LICENSE](LICENSE)
 
 ---
 
@@ -39,7 +44,7 @@ Library-first 'Bring Your Own Key'(BYOK) and provider-routing product. Headless 
 
 *(Vue wrapper is not published.)*
 
-**Monorepo / Vercel / publish tags:** [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md) · [docs/monorepo-vercel.md](docs/monorepo-vercel.md)
+**Monorepo / packages / publish tags:** [docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md). Hosting & CI: [docs/infra/](docs/infra/) (Coolify · Forgejo).
 
 ---
 

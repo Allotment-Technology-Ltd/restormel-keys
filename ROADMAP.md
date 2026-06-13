@@ -2,6 +2,8 @@
 
 Execution roadmap. Single source for milestones; keep aligned with [STATUS.md](STATUS.md). See [docs/release-readiness.md](docs/release-readiness.md) for gate criteria.
 
+**Positioning:** [docs/product/positioning.md](docs/product/positioning.md) — the **verified-context layer**; Keys is the control plane, routing/BYOK are supporting. **MVP:** Keys + Connect (Testing & Graph flag-off). **Hosting:** Coolify + Forgejo-native CI (cutover 2026-06-13) — [docs/infra/](docs/infra/). Verified-context delivery + claims-integrity rule: [docs/verified-context-pivot-roadmap.md](docs/verified-context-pivot-roadmap.md).
+
 ## Phase 00 — Bootstrap (complete)
 
 - Repo foundation, canonical docs, .cursor/rules, skills, subagents, scripts, .github workflows/templates. No product or business logic.
@@ -37,7 +39,7 @@ PostHog **`restormel-module-*`** flags gate non-core surfaces (MVP default: **Ke
 
 **Post-MVP re-enable:** flip flags in PostHog or set `RESTORMEL_MODULE_FLAGS` on preview/staging; no code deletion required.
 
-- **Hosted no-code route runtime (partial):** **`POST …/routes/{routeId}/runtime/invoke`** — Phases **1–2** pipeline + Phase **3** **allowlisted** `advanceOn` / **`fallbackOn`** failure advance; OpenAPI **1.5.0**, contract **`2026-06-01`**. **`POST …/runtime/jobs`** + job rows: **linear** completes; **parallel fan-out** gated (**501**). **Not** shipped: full async worker, continuation tokens, streaming — [docs/rfc/keys-no-code-route-runtime.md](docs/rfc/keys-no-code-route-runtime.md), [docs/rfc/keys-hosted-runtime-parallel-jobs.md](docs/rfc/keys-hosted-runtime-parallel-jobs.md), [docs/roadmap/hosted-runtime-deferred-spikes.md](docs/roadmap/hosted-runtime-deferred-spikes.md).
+- **Hosted no-code route runtime (partial):** **`POST …/routes/{routeId}/runtime/invoke`** — Phases **1–2** pipeline + Phase **3** **allowlisted** `advanceOn` / **`fallbackOn`** failure advance; OpenAPI **1.5.0**, contract **`2026-06-01`**. **`POST …/runtime/jobs`** + job rows: **linear** completes; **parallel fan-out** gated (**501**). **Not** shipped: full async worker, continuation tokens, streaming — [docs/archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md](docs/archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md), [docs/archive/deferred-products/hosted-runtime/keys-hosted-runtime-parallel-jobs.md](docs/archive/deferred-products/hosted-runtime/keys-hosted-runtime-parallel-jobs.md), [docs/archive/deferred-products/hosted-runtime/hosted-runtime-deferred-spikes.md](docs/archive/deferred-products/hosted-runtime/hosted-runtime-deferred-spikes.md).
 - **Restormel Testing — business acceptance criteria (shipped `0.1.3`):** suite **`user_story`** + **`acceptance_criteria`** with stable ids; goal **`acceptance_criterion_ids`**; roll-up on **`RunRecord.acceptanceResults`**; **`testing run --ac`**; Markdown/GitHub/JSON reports; mission env **`RESTORMEL_TESTING_ACCEPTANCE_CRITERIA_JSON`**. Full autonomous “one rubric per AC” execution (Plotbudget R-BA-4 style) remains future work on top of **`execution_mode: agent`**.
 - **Keys + Testing seamless path (shipped in repo):** hosted provider credentials (AES-256-GCM at rest, masked API/UI), `POST /v1/testing/resolve-model` decrypt path for logical refs, auto-provisioned **Restormel Testing** project + model bindings, dashboard **Restormel Testing** hub and Connections UX, CLI `doctor` hint for `RESTORMEL_PROJECT_ID`. Canonical onboarding: [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md). **Onboarding simplification:** canonical Testing env **`RESTORMEL_KEYS_BASE`** + **`RESTORMEL_GATEWAY_KEY`** (with `RESTORMEL_KEYS_API_*` compatibility in the adapter), **Gateway keys** beside **Restormel Testing** in sidebar, overview **Restormel Testing in CI** track + first-run hint.
 - **First publish done:** @restormel/keys v0.1.0 on npm; Phase 1 manual steps complete.
@@ -69,11 +71,11 @@ Phased plan to move Keys, Graph, and Knowledge to REST / Web Components / MCP in
 
 ## Dogfood-driven priorities (from SOPHIA Phase 5)
 
-Findings from the first real integration. See [docs/reference/sophia-dogfood-findings.md](docs/reference/sophia-dogfood-findings.md) for full context and workarounds.
+Findings from the first real integration. See [docs/archive/reference/sophia-dogfood-findings.md](docs/archive/reference/sophia-dogfood-findings.md) for full context and workarounds.
 
 - **Project model index — Gateway Key API (shipped):** `POST`/`PUT`/`PATCH`/`DELETE` on `/keys/dashboard/api/projects/{projectId}/models` (+ binding id) with **`rk_`**; OpenAPI 1.3.2 + Cloud API curls; **`bindingKind`** execution vs registry. **Spec / FR traceability:** [docs/requirements/project-model-index-gateway-api.md](docs/requirements/project-model-index-gateway-api.md).
 
-**Restormel-first strategy:** Production issues on Sophia should be treated in two layers: (1) Restormel does more heavy lifting (stronger contract, typings, component behavior, model filtering, diagnostics); (2) then simplify the host app and reassess what is truly app-specific. See [docs/reference/restormel-first-assessment.md](docs/reference/restormel-first-assessment.md).
+**Restormel-first strategy:** Production issues on Sophia should be treated in two layers: (1) Restormel does more heavy lifting (stronger contract, typings, component behavior, model filtering, diagnostics); (2) then simplify the host app and reassess what is truly app-specific. See [docs/archive/reference/restormel-first-assessment.md](docs/archive/reference/restormel-first-assessment.md).
 
 1. **Publish UI packages to npm.** `@restormel/keys-svelte`, `@restormel/keys-react`, `@restormel/keys-elements` — installable from npm with release smoke tests. Currently 404.
 2. **KeyManager async persistence.** `onKeyAdded`/`onKeyRemoved` should accept promises; show loading/error states; close only on host success.
