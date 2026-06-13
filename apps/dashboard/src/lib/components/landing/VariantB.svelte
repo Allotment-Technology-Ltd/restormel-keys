@@ -1,38 +1,50 @@
 <script lang="ts">
+  /**
+   * Marketing claims ledger citations (docs/verified-context-claims-ledger.md):
+   * - "caught structurally, not by model opinion" → row #3 (proven, misattribution recall 100% under EBV)
+   * - "Unsupported claims are excluded, not blended" → row #4 (proven)
+   * - "Every claim carries a provenance trace" → row #7 (proven)
+   */
   import { trackSignupClick } from "$lib/posthog";
 </script>
 
 <section class="section section-hero" aria-labelledby="hero-heading">
   <div class="container">
-    <h1 id="hero-heading" class="hero-headline">Stop paying your users' AI bills</h1>
+    <p class="hero-eyebrow">The control plane for verified context</p>
+    <h1 id="hero-heading" class="hero-headline">Stop letting "the AI said so" into your answers</h1>
     <p class="hero-subhead">
-      Restormel Keys adds BYOK to your AI app — with drop-in key management UI, routing, and plan-based model control.
-      One middleware call. No proxy, no infrastructure.
+      Restormel Keys serves agents provenance-traced, evidence-bound knowledge — every claim tied to the exact
+      source span it came from. For domains where an unsupported answer is a liability, not a quirk.
     </p>
 
     <div class="variant-features">
       <div class="variant-card">
-        <h3 class="variant-card-title">User-supplied keys</h3>
+        <h3 class="variant-card-title">Misattribution caught structurally</h3>
         <p class="variant-card-copy">
-          Users supply their own OpenAI, Anthropic, Google, or any of 15 supported provider keys.
-          You control which models they access per plan tier — configured in the dashboard, not hardcoded.
+          A quote cited against the wrong source fails to bind — caught structurally, not by model opinion.
+          It's a deterministic check, not a vibe.
         </p>
       </div>
       <div class="variant-card">
-        <h3 class="variant-card-title">Drop-in components</h3>
+        <h3 class="variant-card-title">Unsupported claims excluded, not blended</h3>
         <p class="variant-card-copy">
-          On any stack: use <code>&lt;rk-key-manager&gt;</code> and <code>&lt;rk-model-selector&gt;</code> from
-          <code>@restormel/keys-elements</code> with Keys REST for resolve — one Web Components path for SvelteKit, React, and Astro.
+          Strict retrieval returns only supported claims. Contradicted, inferred, and unverified statements are
+          left out of the agent's context — never silently blended in.
         </p>
       </div>
       <div class="variant-card">
-        <h3 class="variant-card-title">Dashboard-managed access</h3>
+        <h3 class="variant-card-title">An exportable audit trail</h3>
         <p class="variant-card-copy">
-          Routes, policies, and budget caps live in the dashboard. Promote a user to Pro and their
-          model access updates without a deploy.
+          Every query records a provenance trace — which claims were considered, their verification state, and why
+          anything was excluded. Export it as JSON for your compliance file.
         </p>
       </div>
     </div>
+
+    <p class="variant-supporting">
+      BYOK and policy-bounded model routing are built in — the supporting plumbing that feeds verified context, with
+      drop-in key-management and model-selector components for any stack.
+    </p>
 
     <div class="hero-ctas">
       <a
@@ -42,7 +54,7 @@
       >
         Start free — first 50 signups get 12 months of Pro
       </a>
-      <a href="/keys/docs" class="hero-docs-link">Browse the docs →</a>
+      <a href="/keys/docs/guides/verified-context" class="hero-docs-link">See how verification works →</a>
     </div>
   </div>
 </section>
@@ -57,6 +69,15 @@
   .section-hero {
     padding-top: var(--space-8);
     padding-bottom: var(--space-12);
+  }
+  .hero-eyebrow {
+    margin: 0 0 var(--space-2);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: var(--font-semibold);
+    color: var(--rm-sage);
   }
   .hero-headline {
     font-family: var(--rm-font-display);
@@ -99,12 +120,11 @@
     margin: 0;
     line-height: var(--leading-relaxed);
   }
-  .variant-card-copy code {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: var(--rm-surface);
-    padding: 0.1em 0.35em;
-    border-radius: 3px;
+  .variant-supporting {
+    font-size: var(--text-sm);
+    color: var(--rm-dim);
+    margin: 0 0 var(--space-6);
+    max-width: 65ch;
   }
   .hero-ctas {
     display: flex;

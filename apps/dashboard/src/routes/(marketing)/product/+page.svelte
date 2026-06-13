@@ -13,14 +13,18 @@
 
 <svelte:head>
   <title>Capabilities — Restormel suite</title>
-  <meta name="description" content="{SUITE_CAPABILITY_TAGLINE} — four capabilities in one Restormel workspace." />
+  <meta
+    name="description"
+    content="Restormel is the verified-context layer for AI products. Keys is the control plane; Testing, Graph, and Connect round out one workspace for provenance-traced, quality-gated knowledge."
+  />
 </svelte:head>
 
 <div class="product-page container">
     <h1>Restormel capabilities</h1>
     <p class="lead">
-      One signed-in workspace. Route model traffic with Keys, assure quality with Testing, visualise graphs in your
-      app, and connect documents to agents with Connect.
+      One signed-in workspace built around verified context — provenance-traced, evidence-bound, quality-gated
+      knowledge your agents can be held to. Keys is the control plane for it; Testing assures quality, Graph
+      visualises it in your app, and Connect serves it to agents.
     </p>
     <div class="ctas">
       <a class="btn btn-primary" href={runRestormelHref}>Run Restormel</a>

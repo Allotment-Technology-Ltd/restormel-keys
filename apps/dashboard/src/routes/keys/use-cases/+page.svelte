@@ -12,11 +12,11 @@
   const heroThesisPanels = [
     {
       title: "What Keys actually is",
-      body: "A library-first control layer you embed in your app: routing, policy, fallbacks, BYOK boundaries, entitlements, and optional UI—without running Keys as your traffic proxy or model marketplace.",
+      body: "The control plane for verified context: provenance-traced, evidence-bound, quality-gated knowledge your agents can be held to. Routing, policy, fallbacks, BYOK boundaries, and entitlements are the supporting plumbing that feeds it—embedded in your app, library-first.",
     },
     {
       title: "What this page proves",
-      body: "Two shipped products stress different constraints. The overlap is not coincidence: the same primitives (resolve, policy, allowlists, server-side keys) keep showing up because that is the product.",
+      body: "Two shipped products stress different constraints. The overlap is not coincidence: the same primitives (resolve, policy, allowlists, server-side keys) keep showing up because that is the foundation verified context is built on.",
     },
   ];
 
@@ -103,10 +103,10 @@
 </script>
 
 <svelte:head>
-  <title>Use cases — Restormel Keys</title>
+  <title>Use cases — Restormel Keys, the control plane for verified context</title>
   <meta
     name="description"
-    content="Proof from PLOT and Sophia: Restormel Keys as the embeddable builder-side layer for routing, BYOK, policy, and fallbacks—library-first, not a gateway."
+    content="Proof from PLOT and Sophia: Restormel Keys as the control plane for verified context — provenance-traced, evidence-bound knowledge, with routing, policy, and BYOK as the supporting plumbing that feeds it."
   />
 </svelte:head>
 
@@ -115,15 +115,15 @@
     <!-- 1. Hero: thesis + dual panels -->
     <header class="hero-ledger" aria-labelledby="use-cases-heading">
       <div class="hero-copy">
-        <p class="hero-eyebrow">Product proof</p>
-        <h1 id="use-cases-heading" class="hero-title">The control layer builders stop rebuilding</h1>
+        <p class="hero-eyebrow">Product proof · the control plane for verified context</p>
+        <h1 id="use-cases-heading" class="hero-title">Knowledge your agents can be held to</h1>
         <p class="hero-subhead">
-          Every serious AI app eventually needs the same things: who may call which model, what happens when it fails, where keys live, and how ops
-          changes behavior without shipping new branching logic.
+          Serious AI apps eventually need more than an answer: they need to know which source it came from, whether that source says it, and what was
+          left out. Underneath that sits routing, policy, key custody, and recovery—the plumbing that feeds verified context.
         </p>
         <p class="hero-point">
-          Restormel Keys is that layer—<strong>library-first</strong>, embedded in <em>your</em> app, not a separate traffic hop or model store.
-          Below, two real products show the same primitives under different pressure—evidence of a reusable product, not two anecdotes.
+          Restormel Keys is that control plane—<strong>library-first</strong>, embedded in <em>your</em> app, not a separate traffic hop or model store.
+          Below, two real products show the same primitives under different pressure—evidence of a reusable foundation, not two anecdotes.
         </p>
         <div class="hero-actions">
           <a href="/keys/dashboard/login" class="btn btn-primary">Start free</a>

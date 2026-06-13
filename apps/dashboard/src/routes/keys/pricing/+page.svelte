@@ -44,7 +44,7 @@
   <title>Pricing — Restormel Keys</title>
   <meta
     name="description"
-    content="Planned Restormel Keys tiers (reference only). Early access is invite-only — request access via Founders Circle."
+    content="Planned Restormel Keys tiers (reference only) for the control plane for verified context. Early access is invite-only — request access via Founders Circle."
   />
 </svelte:head>
 
@@ -61,8 +61,9 @@
       <h1 class="pricing-title">Planned tiers</h1>
       <p class="pricing-kicker">Reference pricing — checkout disabled during Founders Circle</p>
       <p class="pricing-intro">
-        <strong>Restormel Keys</strong> is the BYOK product layer above your gateway. We’re validating the full suite
-        with founders before opening self-serve billing. Use the form below to get dashboard access now.
+        <strong>Restormel Keys</strong> is the control plane for verified context — provenance-traced, evidence-bound
+        knowledge for your AI products, with BYOK and model routing built in. We’re validating the full suite with
+        founders before opening self-serve billing. Use the form below to get dashboard access now.
       </p>
       <aside class="suite-strip" aria-label="Early access">
         <p class="suite-strip-copy">
@@ -177,8 +178,13 @@
       <h2 id="features-heading" class="section-title">What you get across Keys</h2>
       <div class="features-grid">
         <div class="feat">
+          <span class="feat-name">Verified context</span><span class="feat-desc"
+            >Provenance-traced, evidence-bound knowledge served to your agents — every claim tied to a source span.</span
+          >
+        </div>
+        <div class="feat">
           <span class="feat-name">Provider access modes</span><span class="feat-desc"
-            >Gateway-backed (OpenRouter/Vercel/Portkey) or builder-managed direct.</span
+            >Builder-managed direct, gateway-backed, or end-user BYOK — the model access that feeds context.</span
           >
         </div>
         <div class="feat">
