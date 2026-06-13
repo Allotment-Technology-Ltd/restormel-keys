@@ -17,6 +17,80 @@ import { listCatalogModelObservationsForPairs, listModels, listProviderModelVari
 import { GATEWAY_PROVIDER_TYPES } from "$lib/server/module-gates";
 import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 
+// ---------------------------------------------------------------------------
+// Serve-stale: last-known-good catalog response (in-process module-level cache).
+//
+// Mirrors the pattern from auth.ts `lastKnownGoodOrDegraded` (~:169).
+// On a DB/Neon error we return the last successful catalog body rather than
+// propagating a 500.  The external contract shape is preserved exactly.
+// ---------------------------------------------------------------------------
+
+type CatalogResponseBody = Record<string, unknown>;
+
+/** Last successfully built catalog payload, or null on a cold process. */
+let _lastKnownGoodCatalog: CatalogResponseBody | null = null;
+/** Epoch-ms timestamp of the last successful catalog build (for logging). */
+let _lastKnownGoodAt = 0;
+
+function writeCatalogCache(body: CatalogResponseBody): void {
+  _lastKnownGoodCatalog = body;
+  _lastKnownGoodAt = Date.now();
+}
+
+/**
+ * Returns a serve-stale catalog JSON response, or a clearly-degraded 503 if no
+ * prior successful response has been cached (cold process + DB down).
+ *
+ * The returned body carries `degraded: true` so consumers can detect infra blips
+ * without the shape breaking.  On the stale path the `contract_version` and all
+ * fields are identical to the last live response — the external contract is preserved.
+ */
+function serveStaleCatalogOrDegraded(dbError: unknown): Response {
+  const errMessage = dbError instanceof Error ? dbError.message : String(dbError);
+
+  if (_lastKnownGoodCatalog !== null) {
+    // Serve last-known-good with the same shape + a degraded marker.
+    const staleBody: CatalogResponseBody = {
+      ..._lastKnownGoodCatalog,
+      degraded: true,
+      degradedReason: "db_error",
+      degradedAt: new Date().toISOString(),
+      lastKnownGoodAt: new Date(_lastKnownGoodAt).toISOString(),
+    };
+    return json(staleBody, {
+      status: 200,
+      headers: {
+        // Short re-validation TTL so consumers retry promptly once the DB recovers.
+        "cache-control": "public, max-age=30, stale-while-revalidate=120",
+        "x-catalog-degraded": "true",
+      },
+    });
+  }
+
+  // Cold process + DB down: return a valid-shaped degraded 503.
+  return json(
+    {
+      contract_version: CONTRACT_VERSION,
+      source: "restormel-keys",
+      generatedAt: new Date().toISOString(),
+      compatibility: CATALOG_COMPATIBILITY,
+      degraded: true,
+      degradedReason: "db_error_cold_start",
+      degradedDetail: errMessage,
+      providers: [],
+      data: [],
+      paging: { limit: 0, offset: 0, count: 0 },
+    },
+    {
+      status: 503,
+      headers: {
+        "cache-control": "no-store",
+        "x-catalog-degraded": "true",
+      },
+    }
+  );
+}
+
 /** Bump when response semantics change (e.g. default allowlist, externalSignals, crowd observations). */
 const CONTRACT_VERSION = "2026-03-26.catalog.v6";
 const CATALOG_COMPATIBILITY = {
@@ -88,13 +162,34 @@ export const GET: RequestHandler = async ({ url }) => {
     url.searchParams.get("skipDefaultAllowlist") === "1" ||
     url.searchParams.get("skipDefaultAllowlist")?.toLowerCase() === "true";
 
-  const [rawModels, externalCtx] = await Promise.all([
-    listModels({ lifecycleState, family, limit, offset, includeUnhealthy }),
-    flags.catalogExternalSignals ? loadCatalogExternalContext() : Promise.resolve(null),
-  ]);
+  // -------------------------------------------------------------------------
+  // DB reads — wrapped to serve last-known-good on any DB/Neon error.
+  // Three reads at the original lines :91, :97, :173 are all covered here.
+  // -------------------------------------------------------------------------
+  let rawModels: Awaited<ReturnType<typeof listModels>>;
+  let externalCtx: Awaited<ReturnType<typeof loadCatalogExternalContext>> | null;
+  let rawVariants: Awaited<ReturnType<typeof listProviderModelVariantsByModelIds>>;
+  let crowdByKey: Awaited<ReturnType<typeof listCatalogModelObservationsForPairs>>;
+
+  try {
+    [rawModels, externalCtx] = await Promise.all([
+      listModels({ lifecycleState, family, limit, offset, includeUnhealthy }),
+      flags.catalogExternalSignals ? loadCatalogExternalContext() : Promise.resolve(null),
+    ]);
+  } catch (err) {
+    console.error("[catalog] DB error on listModels/loadCatalogExternalContext — serving stale", err);
+    return serveStaleCatalogOrDegraded(err);
+  }
+
   const models = rawModels;
   const modelIds = models.map((m) => m.id);
-  const rawVariants = await listProviderModelVariantsByModelIds(modelIds);
+
+  try {
+    rawVariants = await listProviderModelVariantsByModelIds(modelIds);
+  } catch (err) {
+    console.error("[catalog] DB error on listProviderModelVariantsByModelIds — serving stale", err);
+    return serveStaleCatalogOrDegraded(err);
+  }
   let variants = includeUnhealthy
     ? rawVariants
     : rawVariants.filter((variant) => isViableCatalogVariantAvailability(variant.availabilityStatus));
@@ -170,7 +265,13 @@ export const GET: RequestHandler = async ({ url }) => {
     catalogProviderId: v.catalogProviderId ?? v.providerIntegrationType,
     providerModelId: v.providerModelId,
   }));
-  const crowdByKey = await listCatalogModelObservationsForPairs(observationPairs);
+
+  try {
+    crowdByKey = await listCatalogModelObservationsForPairs(observationPairs);
+  } catch (err) {
+    console.error("[catalog] DB error on listCatalogModelObservationsForPairs — serving stale", err);
+    return serveStaleCatalogOrDegraded(err);
+  }
 
   const data = models.map((model) => {
     const modelVariants = variantsByModel.get(model.id) ?? [];
@@ -232,7 +333,8 @@ export const GET: RequestHandler = async ({ url }) => {
       })
     : null;
 
-  return json({
+  // Build the response body and update the serve-stale cache before returning.
+  const responseBody: CatalogResponseBody = {
     contract_version: CONTRACT_VERSION,
     source: "restormel-keys",
     generatedAt: new Date().toISOString(),
@@ -252,5 +354,17 @@ export const GET: RequestHandler = async ({ url }) => {
     providers,
     data,
     paging: { limit, offset, count: data.length },
+  };
+
+  // Update last-known-good cache so a subsequent DB error can serve this response.
+  writeCatalogCache(responseBody);
+
+  return json(responseBody, {
+    headers: {
+      // Short public TTL: the catalog changes infrequently and is externally consumed by
+      // allotmentology.tech; a 60 s max-age lets any CDN/Traefik layer absorb repeat reads
+      // while keeping data reasonably fresh. stale-while-revalidate gives a grace window.
+      "cache-control": "public, max-age=60, stale-while-revalidate=300",
+    },
   });
 };

@@ -5,7 +5,8 @@
 # Auth and DB config are runtime env (Better Auth + Neon); no build-time secrets.
 #
 # Port: 8080 (set via ENV; override at runtime with PORT= if needed).
-# Healthcheck: GET /keys/v1/catalog — the catalog contract endpoint (§4.6 of migration plan).
+# Healthcheck: GET /healthz — DB-independent liveness probe (no DB calls). The catalog
+# endpoint (/keys/v1/catalog) is the public contract but must NOT be the liveness probe.
 #
 # NOTE: This image is for the dashboard container only. The ingest-worker container
 # builds from Dockerfile.worker (Coolify ignores custom start commands for
@@ -65,11 +66,15 @@ ENV PORT=8080 \
 
 EXPOSE 8080
 
-# Healthcheck: /keys/v1/catalog doubles as the container liveness probe and
-# MUST target 127.0.0.1 — busybox wget resolves localhost to ::1 but node binds IPv4,
-# is the contract endpoint consumed by allotmentology.tech (§4.6, §4.3).
+# Healthcheck: /healthz is the container liveness probe — it is DB-independent
+# and returns 200 with no external calls. The catalog (/keys/v1/catalog) is the
+# public contract endpoint but must NOT be the liveness probe: a DB/Neon blip
+# failing the catalog must never trigger a container eviction (the exact cascade
+# that caused the 2026-06-12 outage — Neon 402 → catalog 500 → probe fail → 503).
+#
+# MUST target 127.0.0.1 — busybox wget resolves localhost to ::1 but node binds IPv4.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:${PORT}/keys/v1/catalog || exit 1
+    CMD wget -qO- http://127.0.0.1:${PORT}/healthz || exit 1
 
 # adapter-node entry point (workspace root layout — see serve-stage COPY note).
 # The worker app overrides this with its daemon start command in Coolify.
