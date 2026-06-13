@@ -385,6 +385,13 @@ export async function runFullExtraction(args: {
         sourceKind: src.url ? "url" : "text",
         sourceKey,
         contentHash: willProcess ? probeHash : null,
+        // P2a: persist the full parsed text into the user's own store (Surreal BYO) so
+        // re-validation/evidence/coaching can resolve it on demand — byte-exact with the
+        // bytes evidence binds against below (sourceText: src.text). Postgres ignores it.
+        text: src.text ?? null,
+        // P2a guard: a source copied FROM the user's own graph already has its text in the
+        // store under the original record — don't re-write/clobber it on this fresh copy.
+        originatesFromUserGraph: Boolean(src.provenance?.graph_source_key?.trim()),
       }),
     );
     await reporter?.log(

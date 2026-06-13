@@ -77,6 +77,20 @@ export interface GraphWriter {
     sourceKey?: string | null;
     /** Stage 3.2: content hash of the source version being registered. */
     contentHash?: string | null;
+    /**
+     * P2a (BYO source-of-truth): the FULL parsed source text, byte-exact with the bytes
+     * evidence spans bound against. Persisted inline into the user's own store (Surreal
+     * writer) under the pack's `source_text_field` so re-validation / evidence-dossier /
+     * coaching can resolve source text on demand from the user's store — not just from
+     * our Postgres cache. Null when no full text is available (registration-only rows).
+     */
+    text?: string | null;
+    /**
+     * P2a guard: true when this document was copied FROM the user's own BYO graph
+     * (graph-import). The user's store already holds the source text under its original
+     * record, so the Surreal writer must NOT re-write it (avoids double-write/clobber).
+     */
+    originatesFromUserGraph?: boolean;
   }): Promise<string>;
   /**
    * Stage 3.2: latest registered version of a source by stable source key, or null when
@@ -178,6 +192,11 @@ class PostgresGraphWriter implements GraphWriter {
     sourceKind: string;
     sourceKey?: string | null;
     contentHash?: string | null;
+    // P2a fields are Surreal-only: the Postgres spine already persists full source text
+    // in knowledge_source_documents.text and resolves it from there, so the writer ignores
+    // `text` / `originatesFromUserGraph` here.
+    text?: string | null;
+    originatesFromUserGraph?: boolean;
   }) {
     return insertConnectGraphSourcePostgres({
       workspaceId: this.workspaceId,
@@ -340,6 +359,17 @@ function ident(name: string, fallback: string): string {
   return SAFE_IDENT.test(s) ? s : fallback;
 }
 
+/**
+ * P2a: resolve the inline field on the source table that holds the full document text.
+ * Honors the pack's `source_text_field` VERBATIM when it is a safe identifier (so a BYO
+ * pack mapping text to e.g. `full_text` round-trips with resolveSurrealSourceFullText,
+ * which reads the configured field first); otherwise defaults to `text`. Unlike `ident()`
+ * this never lower-cases / rewrites the field name — it must match what the resolver reads.
+ */
+function sourceTextFieldIdent(name: string | null | undefined): string {
+  return name && SAFE_IDENT.test(name) ? name : "text";
+}
+
 /** Walk nested Surreal HTTP result shapes from CREATE … RETURN id. */
 export function extractCreatedRecordId(res: unknown): string | null {
   const queue: unknown[] = [res];
@@ -478,14 +508,34 @@ class SurrealGraphWriter implements GraphWriter {
     sourceKind: string;
     sourceKey?: string | null;
     contentHash?: string | null;
+    text?: string | null;
+    originatesFromUserGraph?: boolean;
   }) {
     const table = ident(this.schema.source_table, "source");
+    // P2a: persist the FULL parsed source text inline in the user's own store under the
+    // pack's source_text_field (default `text`) so re-validation / evidence-dossier
+    // span-binding / coaching can resolve it on demand from the user's store (matching
+    // resolveSurrealSourceFullText's inline read), not just from our Postgres cache.
+    //
+    // Byte-exactness: we write `s.text` VERBATIM — the same bytes the runner chunked and
+    // bound evidence spans against (EBV Layer-1 offsets + content hash). No trim/normalise.
+    //
+    // BYO double-write guard: when the document was copied FROM the user's own graph
+    // (originatesFromUserGraph), the user's store ALREADY holds the source text under its
+    // original record — re-writing it onto this fresh copy would duplicate/clobber, so we
+    // skip the inline text (text_preview still lands for display).
+    const textField = sourceTextFieldIdent(this.schema.source_text_field);
+    const fullText = s.text?.trim() ? s.text : null;
+    const writeInlineText = Boolean(fullText) && s.originatesFromUserGraph !== true;
     const id = await this.createReturningId(table, {
       title: s.title,
       url: s.url,
       text_preview: s.textPreview,
       source_kind: s.sourceKind,
       ingested_at: new Date().toISOString(),
+      // P2a inline full text (byte-exact). Keyed under the configured field so the existing
+      // resolver finds it. Omitted for BYO-graph-origin sources (already in the store).
+      ...(writeInlineText ? { [textField]: fullText } : {}),
       // Stage 3.2 identity fields — written opportunistically (SCHEMAFULL tables drop
       // them) so the data is in place when Surreal incremental re-ingest lands.
       ...(s.sourceKey ? { source_key: s.sourceKey } : {}),
