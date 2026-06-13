@@ -48,16 +48,29 @@ agents and humans share.
 
 ## Vercel previews → Coolify
 
-Preview builds are now **disabled at the Vercel ignore step**
-(`scripts/vercel-ignore-dashboard.sh`). Any deploy where `VERCEL_ENV == preview`,
-`VERCEL_GIT_PULL_REQUEST_ID` is set, or the branch is not `main`/`master` returns
-`exit 0` (skip), so Vercel neither builds the app nor creates a Neon preview branch.
+The Vercel **Git integration is disconnected** (project `restormel-keys`,
+`prj_ckFMpwWIVSuDUolzUKaLHCQMb2ek`, team `adams-projects-d2aa6fc5`). Vercel no
+longer creates deployments or posts commit/PR checks for pushes to this repo —
+all hosting (production + previews) is served by **Coolify on Hetzner**:
+production at `restormel.dev`, previews on-demand at `preview.restormel.dev`.
 
-Previews are served on-demand from **Coolify at `preview.restormel.dev`**.
+Because Git is severed, the old `scripts/vercel-ignore-dashboard.sh` ignore step
+and the `vercel.json` / `apps/dashboard/vercel.json` build config are gone — they
+only drove Vercel Git-integration builds, so they were removed. The
+switchable SvelteKit adapter (`DEPLOY_TARGET=node` → adapter-node for Coolify;
+default → adapter-vercel) and `scripts/post-build.mjs` /
+`scripts/vercel-copy-build-output.mjs` are **kept**: they still drive the build
+and leave a working adapter-vercel path if Vercel deploys are ever re-enabled.
 
-**Vercel production (main branch) remains a frozen rollback standby** — the existing
-diff logic in the ignore script still runs for `main` pushes and builds only when
-dashboard-relevant paths change.
+**Re-enabling Vercel deploys (rollback standby):** reconnect from the Vercel
+dashboard (Project → Settings → Git → Connect Git Repository) or
+`vercel git connect` with the project linked. No repo change is required to
+re-deploy on Vercel once Git is reconnected, though you would want to restore an
+ignore step first to avoid building every preview.
+
+> **DNS is unaffected.** `restormel.dev` DNS stays hosted on Vercel
+> (`ns1/ns2.vercel-dns.com`); disconnecting Git does not touch the domain or its
+> records. Do **not** remove the domain or delete the Vercel project.
 
 ## What does NOT move
 
