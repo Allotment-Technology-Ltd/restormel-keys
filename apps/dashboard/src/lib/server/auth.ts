@@ -1,12 +1,37 @@
 /**
- * Neon Auth: proxy + session. Auth is managed in Neon Console (OAuth, etc.).
- * Requires NEON_AUTH_BASE_URL. NEON Auth URL must come from `$env/dynamic/private` so
- * `apps/dashboard/.env.local` is respected (Vite envDir); `process.env` alone does not.
+ * Auth chokepoints: `getSession` + `proxyAuthRequest`. These are the TWO server
+ * branch points the rest of the dashboard depends on — `hooks.server.ts`,
+ * `session-auth-cache.ts`, the auth routes, the session-cache route and the
+ * logout load all consume the contract below and need ZERO changes regardless of
+ * provider.
+ *
+ * Provider switch (P4): `AUTH_PROVIDER` selects the backend, DEFAULTING to
+ * `"neon"`:
+ *   - `neon` (default): forward to Neon Auth over HTTP at `NEON_AUTH_BASE_URL`.
+ *     This is the historical behaviour, byte-for-byte unchanged. Prod runs this.
+ *   - `self`: call an IN-PROCESS Better Auth instance (`$lib/server/better-auth`),
+ *     which is dynamic-imported ONLY on this path so the `neon` bundle/footprint
+ *     is untouched. The result is then run through the SAME Set-Cookie /
+ *     localhost-alias / degraded / last-known-good machinery below (it is
+ *     transport-agnostic — we preserve it rather than reinvent it).
+ *
+ * NEON Auth URL must come from `$env/dynamic/private` so `apps/dashboard/.env.local`
+ * is respected (Vite envDir); `process.env` alone does not.
  */
 import { env } from "$env/dynamic/private";
 import { dev } from "$app/environment";
 
 export const baseUrl = () => env.NEON_AUTH_BASE_URL?.replace(/\/$/, "") ?? "";
+
+/**
+ * The configured auth provider. DEFAULTS to `"neon"` so production behaviour is
+ * unchanged until an explicit, owner-gated cutover flips `AUTH_PROVIDER=self`.
+ * Any unrecognised value also resolves to `neon` (fail-safe to the known-good path).
+ */
+export type AuthProvider = "neon" | "self";
+export function authProvider(): AuthProvider {
+  return (env.AUTH_PROVIDER ?? "").trim().toLowerCase() === "self" ? "self" : "neon";
+}
 
 function getSessionUrl(): string {
   const base = baseUrl();
@@ -241,6 +266,58 @@ async function fetchSessionFromNeon(
 }
 
 /**
+ * SELF path — resolve the session from the IN-PROCESS Better Auth instance, then
+ * run the SAME caching / degraded / last-known-good / Set-Cookie-rewrite machinery
+ * the Neon path uses. Better Auth is dynamic-imported here so it is never loaded
+ * on the `neon` path (keeps that bundle/footprint unchanged).
+ *
+ * Contract parity with `fetchSessionFromNeon`:
+ *   - signed in            → cache the result (last-known-good) + return user.
+ *   - definitive signed-out → EVICT any last-known-good (fail-closed on revocation),
+ *                             return a clean signed-out (degraded:false).
+ *   - verification FAILURE (a throw from the in-process call) → last-known-good if
+ *                             present, else degraded:true (never a silent demotion).
+ *
+ * `decodeLocalhostCookieHeader` has already mapped our `rksecure-*` localhost alias
+ * back to `__Secure-*` before we get here, so Better Auth sees the cookie names it
+ * set; `rewriteAuthSetCookiesForHost` re-applies the alias on the way out.
+ */
+async function fetchSessionFromSelf(
+  cookie: string,
+  host: string,
+  cacheKey: string,
+): Promise<GetSessionResult> {
+  const { getBetterAuth } = await import("$lib/server/better-auth");
+  const auth = getBetterAuth();
+  // Build a headers object carrying the (decoded) cookie so Better Auth can read it.
+  const headers = new Headers();
+  if (cookie) headers.set("cookie", cookie);
+
+  const { headers: respHeaders, response } = await auth.api.getSession({
+    headers,
+    returnHeaders: true,
+  });
+  const setCookies = rewriteAuthSetCookiesForHost(readSetCookieHeaders(respHeaders), host);
+
+  const user = (response?.user ?? null) as SessionUser | null;
+  if (user) {
+    const result: GetSessionResult = {
+      data: { user },
+      error: null,
+      setCookies,
+      degraded: false,
+    };
+    writeSessionCache(cacheKey, result);
+    return result;
+  }
+  // Definitive signed-out: Better Auth resolved the cookie to no session. EVICT any
+  // last-known-good so a subsequent throw can't resurrect a revoked session in the
+  // resilience window — mirrors the Neon path's M1 fail-closed posture.
+  sessionCache.delete(cacheKey);
+  return { data: null, error: null, setCookies, degraded: false };
+}
+
+/**
  * Neon Auth (Better Auth) session cookies are always `__Secure-*` in production
  * (`rksecure-*` is our localhost alias, decoded back before this check). A request
  * without one cannot resolve to a session, so we can skip the get-session round-trip —
@@ -272,9 +349,15 @@ export async function getSession(
   request: Request,
   host = ""
 ): Promise<GetSessionResult> {
+  const provider = authProvider();
+  // `neon` requires NEON_AUTH_BASE_URL; `self` requires the in-process Better Auth
+  // (which needs DATABASE_URL + BETTER_AUTH_SECRET). If the provider's backend is
+  // not configured, treat as genuinely no session (not degraded — nothing to verify).
   const url = getSessionUrl();
-  // Not configured: genuinely no session (not degraded — there is nothing to verify).
-  if (!url) {
+  if (provider === "neon" && !url) {
+    return { data: null, error: null, setCookies: [], degraded: false };
+  }
+  if (provider === "self" && !env.DATABASE_URL) {
     return { data: null, error: null, setCookies: [], degraded: false };
   }
   const cookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", host);
@@ -291,24 +374,104 @@ export async function getSession(
     const inFlight = sessionInFlight.get(cacheKey);
     if (inFlight) return inFlight;
 
-    const promise = fetchSessionFromNeon(url, cookie, host, cacheKey).finally(() => {
+    // Same cache/in-flight/dedupe path for both providers — only the underlying
+    // verification source differs.
+    const verify =
+      provider === "self"
+        ? fetchSessionFromSelf(cookie, host, cacheKey)
+        : fetchSessionFromNeon(url, cookie, host, cacheKey);
+    const promise = verify.finally(() => {
       sessionInFlight.delete(cacheKey);
     });
     sessionInFlight.set(cacheKey, promise);
     return await promise;
   } catch (e) {
-    // A network throw is a verification FAILURE, not a signed-out signal. Fall back to
-    // last-known-good if we have one; otherwise report degraded so the request renders an
-    // auth-error/retry state instead of silently demoting a signed-in user to signed-out.
+    // A throw (network for neon, in-process for self) is a verification FAILURE, not
+    // a signed-out signal. Fall back to last-known-good if we have one; otherwise
+    // report degraded so the request renders an auth-error/retry state instead of
+    // silently demoting a signed-in user to signed-out.
     const fallback = lastKnownGoodOrDegraded(cacheKey, [], "unreachable");
     return { ...fallback, error: e instanceof Error ? e : new Error(String(e)) };
   }
 }
 
 /**
- * Proxy a request to Neon Auth and return the response, optionally rewriting Set-Cookie and Location to our host.
+ * Auth request entrypoint — dispatches on `AUTH_PROVIDER`.
+ *   - `neon` (default): proxy to Neon Auth over HTTP (`proxyToNeon`), unchanged.
+ *   - `self`: hand the request to the in-process Better Auth handler
+ *     (`proxyToBetterAuth`), then run the SAME Set-Cookie / localhost-alias rewrite.
  */
 export async function proxyAuthRequest(
+  path: string,
+  request: Request,
+  ourUrl: URL
+): Promise<Response> {
+  if (authProvider() === "self") {
+    return proxyToBetterAuth(path, request, ourUrl);
+  }
+  return proxyToNeon(path, request, ourUrl);
+}
+
+/**
+ * SELF path — route the request to the in-process Better Auth handler. Better Auth
+ * is mounted at the SAME prefix the Neon proxy uses (`/keys/dashboard/api/auth`),
+ * so we rebuild the request with the canonical URL (decoding our `rksecure-*`
+ * localhost cookie alias back to `__Secure-*` so Better Auth sees the names it set),
+ * then re-apply `rewriteAuthSetCookiesForHost` on the response — the same machinery
+ * the Neon path runs. Better Auth is dynamic-imported here so it never loads on `neon`.
+ */
+export async function proxyToBetterAuth(
+  path: string,
+  request: Request,
+  ourUrl: URL,
+): Promise<Response> {
+  const ourHost = ourUrl.host;
+  const { getBetterAuth, BETTER_AUTH_BASE_PATH } = await import("$lib/server/better-auth");
+  const auth = getBetterAuth();
+
+  // Canonical URL Better Auth's router should match: our origin + the auth base path
+  // + the requested sub-path, preserving the query string.
+  const pathPart = path.replace(/^\//, "");
+  const target = new URL(`${BETTER_AUTH_BASE_PATH}/${pathPart}`, ourUrl.origin);
+  target.search = ourUrl.search;
+
+  // Decode the localhost cookie alias so Better Auth reads the `__Secure-*` names it set.
+  const headers = new Headers(request.headers);
+  const decodedCookie = decodeLocalhostCookieHeader(request.headers.get("cookie") ?? "", ourHost);
+  if (decodedCookie) headers.set("cookie", decodedCookie);
+  else headers.delete("cookie");
+
+  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const baReq = new Request(target.toString(), {
+    method: request.method,
+    headers,
+    body: hasBody ? request.body : undefined,
+    ...(hasBody && { duplex: "half" as const }),
+  } as RequestInit);
+
+  const res = await auth.handler(baReq);
+
+  // Re-apply the SAME Set-Cookie / localhost-alias rewrite the Neon path uses, so the
+  // existing cookie machinery (and `cookieHeaderMayCarrySession`) keeps working unchanged.
+  const outHeaders = new Headers(res.headers);
+  const rewritten = rewriteAuthSetCookiesForHost(readSetCookieHeaders(res.headers), ourHost);
+  if (rewritten.length > 0) {
+    outHeaders.delete("Set-Cookie");
+    for (const cookie of rewritten) {
+      outHeaders.append("Set-Cookie", cookie);
+    }
+  }
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: outHeaders,
+  });
+}
+
+/**
+ * Proxy a request to Neon Auth and return the response, optionally rewriting Set-Cookie and Location to our host.
+ */
+export async function proxyToNeon(
   path: string,
   request: Request,
   ourUrl: URL

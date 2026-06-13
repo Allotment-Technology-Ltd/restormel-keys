@@ -47,6 +47,20 @@ services:
       RESTORMEL_CREDENTIALS_ENCRYPTION_KEY: "${RESTORMEL_CREDENTIALS_ENCRYPTION_KEY}"
       CRON_SECRET: "${CRON_SECRET}"              # generate a fresh secret — do NOT reuse Vercel's
 
+      # ---- P4 auth provider switch (DEFAULT neon; self only after owner-gated cutover) ----
+      # Unset/empty AUTH_PROVIDER == neon (current prod behaviour, byte-for-byte unchanged).
+      # The BETTER_AUTH_*/GITHUB_*/SMTP_*/EMAIL_* values are consumed ONLY when AUTH_PROVIDER=self.
+      AUTH_PROVIDER: "${AUTH_PROVIDER}"          # neon | self  (default neon)
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      SMTP_HOST: "${SMTP_HOST}"
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USER: "${SMTP_USER}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      EMAIL_FROM: "${EMAIL_FROM}"
+      EMAIL_REPLY_TO: "${EMAIL_REPLY_TO}"
+
       # ---- F9 fix: disable inline post-POST drain (worker owns execution) ----
       CONNECT_INGEST_INLINE_DRAIN: "0"
 

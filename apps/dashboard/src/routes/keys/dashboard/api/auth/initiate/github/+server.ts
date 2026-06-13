@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { setAuthReturnCookie } from "$lib/server/auth-return-cookie";
+import { authProvider } from "$lib/server/auth";
 import { env } from "$env/dynamic/private";
 
 /** Collect all Set-Cookie values from a response (handles multi-value headers). */
@@ -20,11 +21,70 @@ function normaliseCookie(cookie: string): string {
     .replace(/;\s*Path=[^;]+/gi, "; Path=/");
 }
 
+/**
+ * SELF path — start GitHub sign-in via the in-process Better Auth `signInSocial`
+ * API. Better Auth returns the GitHub authorization URL (+ any challenge cookie);
+ * we 302 the browser there, forwarding the challenge cookie scoped to our root.
+ * The OAuth `callbackURL` lands on Better Auth's own `/callback/github` (mounted
+ * under the auth base path), which sets the session cookie, then redirects to our
+ * `/api/auth/redeem` where we consume `rm_auth_return` and land the user.
+ */
+async function initiateSelfGithub(url: URL): Promise<Response> {
+  const { getBetterAuth } = await import("$lib/server/better-auth");
+  const auth = getBetterAuth();
+  // After Better Auth completes the GitHub callback + sets the session cookie, send
+  // the browser to our redeem route, which consumes rm_auth_return and lands them.
+  const callbackURL = `${url.origin}${DASHBOARD_BASE}/api/auth/redeem`;
+  try {
+    const res = (await auth.api.signInSocial({
+      body: {
+        provider: "github",
+        callbackURL,
+        newUserCallbackURL: callbackURL,
+        errorCallbackURL: callbackURL,
+      },
+      asResponse: true,
+    })) as Response;
+
+    let redirectTo: string | null = null;
+    const location = res.headers.get("Location");
+    if (location && res.status >= 300 && res.status < 400) redirectTo = location;
+    if (!redirectTo) {
+      let data: unknown = null;
+      try {
+        data = await res.clone().json();
+      } catch {
+        /* ignore */
+      }
+      if (data && typeof data === "object" && "url" in data && typeof (data as any).url === "string") {
+        redirectTo = (data as any).url;
+      }
+    }
+    if (!redirectTo) {
+      return json({ error: "Better Auth did not return a GitHub redirect URL" }, { status: 502 });
+    }
+    const response = new Response(null, { status: 302, headers: { Location: redirectTo } });
+    for (const cookie of getSetCookies(res.headers)) {
+      response.headers.append("Set-Cookie", normaliseCookie(cookie));
+    }
+    return response;
+  } catch (e) {
+    console.error("[auth] Better Auth signInSocial error", {
+      error: e instanceof Error ? e.message : String(e),
+      callbackURL,
+    });
+    return json({ error: "Failed to start GitHub sign-in (self)" }, { status: 502 });
+  }
+}
+
 export const GET: RequestHandler = async ({ url, cookies }) => {
   setAuthReturnCookie(cookies, {
     redirect: url.searchParams.get("redirect"),
     template: url.searchParams.get("template"),
   });
+  if (authProvider() === "self") {
+    return initiateSelfGithub(url);
+  }
   const neonAuthBase = (env.NEON_AUTH_BASE_URL ?? "").replace(/\/$/, "");
   if (!neonAuthBase) {
     return json({ error: "Neon Auth not configured" }, { status: 503 });
