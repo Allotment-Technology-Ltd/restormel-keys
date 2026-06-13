@@ -1,5 +1,14 @@
 <script lang="ts">
-  /** Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages. */
+  /**
+   * Restormel Keys landing — migrated from Astro (Phase B). Code samples use vars so bundler does not resolve workspace packages.
+   *
+   * Marketing claims ledger citations (docs/verified-context-claims-ledger.md):
+   * - "verbatim quote you can check yourself" + offsets/hash + re-verify → row #2 (proven)
+   * - "second model family checks the extraction by default" → row #5 (proven)
+   * - "misattribution caught structurally, not by model opinion" → row #3 (proven)
+   * - "every claim carries a provenance trace" (state + citation + trace ref) → row #7 (proven)
+   * - "unsupported claims excluded, not blended; strict retrieval returns only supported claims" → row #4 (proven)
+   */
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import CodeBlock from "$lib/components/docs/CodeBlock.svelte";
@@ -48,12 +57,12 @@ pnpm exec keys doctor`;
   $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
   $: suiteExpanded = isSuiteMarketingExpanded(flags);
   $: keysMetaDescription = suiteExpanded
-    ? "The missing application layer for AI apps: BYOK, routing, and product-level controls on top of your existing AI stack. Works with OpenRouter, Portkey, Vercel AI, or direct providers. No proxy. No infrastructure. No migration."
-    : "BYOK routing and control for AI apps — direct providers, Gateway keys, and Connect knowledge paths. No proxy. No migration.";
+    ? "The control plane for verified context: provenance-traced, evidence-bound, quality-gated knowledge an agent or its auditor can trace to the exact source span. BYOK and policy-bounded model routing built in."
+    : "Restormel Keys — the control plane for verified context. Provenance-traced, evidence-bound knowledge for AI products, with BYOK and model routing built in.";
 </script>
 
 <svelte:head>
-  <title>Restormel Keys — BYOK for AI apps</title>
+  <title>Restormel Keys — the control plane for verified context</title>
   <meta name="description" content={keysMetaDescription} />
 </svelte:head>
 
@@ -72,17 +81,17 @@ pnpm exec keys doctor`;
     <div class="container">
       <h2 id="intent-heading" class="section-title">What brings you here?</h2>
       <div class="intent-grid">
+        <a class="intent-card" href="/keys/docs/guides/verified-context">
+          <strong>Serving knowledge an agent can be held to</strong>
+          <span>Evidence-bound, provenance-traced claims your auditor can check.</span>
+        </a>
         <a class="intent-card" href="/keys/docs/walkthrough">
           <strong>Starting a new project</strong>
           <span>Get routing + first resolve in 15-20 minutes.</span>
         </a>
         <a class="intent-card" href="/keys/docs/walkthrough/migration-paths">
           <strong>Adding control to an existing stack</strong>
-          <span
-            >{flags.gatewayProviders
-              ? "OpenRouter/Vercel/Portkey + Restormel control-plane path."
-              : "Direct providers + Restormel control-plane path."}</span
-          >
+          <span>Bring your own providers; add a verified-context control plane on top.</span>
         </a>
         <a class="intent-card" href="/keys/docs/walkthrough/phase-5-ui">
           <strong>Adding BYOK to a SaaS</strong>
@@ -123,46 +132,85 @@ pnpm exec keys doctor`;
 
   <section class="section section-alt" aria-labelledby="why-heading">
     <div class="container container-narrow">
-      <h2 id="why-heading" class="section-title">AI infrastructure is solved. Product logic isn’t.</h2>
+      <h2 id="why-heading" class="section-title">"The AI said so" is not a citation.</h2>
       <p class="section-intro">
-        Tools like OpenRouter, Portkey, Vercel AI Gateway, and LiteLLM handle infrastructure concerns: provider access, aggregation, and (often) proxy-style routing.
-        But every AI product still has to build the application layer: end-user BYOK, plan-based model access, budgets, and routing decisions based on user context.
-        <strong>Restormel Keys</strong> is that missing application layer — designed to sit above your existing stack.
+        Most AI products can route to a model and get an answer back. What they can't do is tell you <em>why</em>
+        an answer is trustworthy — which source it came from, whether that source actually says it, and what was left
+        out. <strong>Restormel Keys is the control plane for verified context</strong>: provenance-traced,
+        evidence-bound, quality-gated knowledge an agent — or its auditor — can trace to the exact source span.
+        BYOK and model routing are the supporting plumbing that feeds it.
       </p>
     </div>
   </section>
 
-  <section class="section section-modes" aria-labelledby="modes-heading">
+  <section class="section section-proof" aria-labelledby="proof-heading">
     <div class="container">
-      <h2 id="modes-heading" class="section-title">Restormel sits above your existing stack</h2>
+      <h2 id="proof-heading" class="section-title">Claim → citation → trace</h2>
       <p class="section-intro">
-        Keep your infrastructure. Restormel adds the application layer: BYOK for your users, routing based on user + plan, cost awareness before execution, and embeddable UX for key management.
+        Every claim Keys serves can be followed from the answer back to the source. These guarantees are tied to
+        tests and CI gates in the
+        <a class="section-intro-link" href="/keys/docs/guides/verified-context">verified-context guide</a> — not to
+        a marketing promise.
       </p>
-      <div class="two-layer" aria-label="Two-layer model">
-        <div class="layer-card">
-          <p class="layer-kicker">Layer 1 — Infrastructure</p>
-          <p class="layer-copy">OpenRouter / Portkey / Vercel AI / direct providers</p>
-        </div>
-        <div class="layer-card">
-          <p class="layer-kicker">Layer 2 — Application</p>
-          <p class="layer-copy">Restormel Keys (BYOK, routing, policies, entitlements, budgets)</p>
-        </div>
-      </div>
+      <ol class="proof-steps" aria-label="From claim to source span">
+        <li class="proof-step">
+          <span class="proof-step-num" aria-hidden="true">1</span>
+          <div class="proof-step-body">
+            <h3 class="proof-step-title">Claim</h3>
+            <p>
+              A second model family checks the extraction by default — the model that wrote a claim never grades its
+              own work.
+            </p>
+          </div>
+        </li>
+        <li class="proof-step">
+          <span class="proof-step-num" aria-hidden="true">2</span>
+          <div class="proof-step-body">
+            <h3 class="proof-step-title">Citation</h3>
+            <p>
+              Every supported claim is backed by a verbatim quote you can check yourself, bound to character offsets
+              and a hash of the source version. A quote cited against the wrong source fails to bind — misattribution
+              is caught structurally, not by model opinion.
+            </p>
+          </div>
+        </li>
+        <li class="proof-step">
+          <span class="proof-step-num" aria-hidden="true">3</span>
+          <div class="proof-step-body">
+            <h3 class="proof-step-title">Trace</h3>
+            <p>
+              Every claim carries a provenance trace — its verification state, its citation, and a trace ref.
+              Unsupported claims are excluded, not blended; strict retrieval returns only supported claims. Export
+              the trace as JSON for your compliance file.
+            </p>
+          </div>
+        </li>
+      </ol>
+      <p class="proof-cta">
+        <a href="/keys/docs/guides/verified-context">Read what "verified" means on this API →</a>
+      </p>
+    </div>
+  </section>
 
-      <h3 class="section-subtitle">Three ways to use it</h3>
-      <p class="section-intro">Gateway-backed, builder-managed direct, or end-user BYOK. Same core; adopt progressively.</p>
+  <section class="section section-modes section-alt" aria-labelledby="modes-heading">
+    <div class="container">
+      <h2 id="modes-heading" class="section-title">Three ways to feed it</h2>
+      <p class="section-intro">
+        Verified context needs model access underneath it. Keys gives you three supporting ways to supply that —
+        builder-managed direct, gateway-backed, or end-user BYOK — without changing how verification works on top.
+      </p>
       <div class="modes-grid">
-        <div class="mode-card">
-          <h3 class="mode-title">Gateway-backed</h3>
-          <p class="mode-copy">Keep OpenRouter / Portkey / Vercel AI Gateway as your provider-access layer. Use Restormel for routing policies, health, analytics, and progressive rollout.</p>
-        </div>
         <div class="mode-card">
           <h3 class="mode-title">Builder-managed direct</h3>
           <p class="mode-copy">Keep provider keys in your env/secrets manager. Restormel resolves the route/model/provider decision; you supply provider access from your own infrastructure.</p>
         </div>
         <div class="mode-card">
-          <h3 class="mode-title">End-user BYOK (builder-managed)</h3>
-          <p class="mode-copy">Offer a KeyManager UX for users, but store credentials in <em>your</em> backend (or a gateway-backed scheme). Restormel remains the control layer.</p>
+          <h3 class="mode-title">Gateway-backed</h3>
+          <p class="mode-copy">Already route through a provider-access layer? Keep it. Restormel adds routing policies, health, analytics, and progressive rollout on top.</p>
+        </div>
+        <div class="mode-card">
+          <h3 class="mode-title">End-user BYOK</h3>
+          <p class="mode-copy">Offer a KeyManager UX for users while credentials stay in <em>your</em> backend. Policy-bounded model choice per plan tier — Restormel stays the control plane.</p>
         </div>
       </div>
     </div>
@@ -241,51 +289,15 @@ pnpm exec keys doctor`;
   <section class="section section-features section-alt" aria-labelledby="features-heading">
     <div class="container">
       <h2 id="features-heading" class="section-title">What's in the box</h2>
-      <p class="section-intro">Routing, policies, health, cost, and embeddable UX that sit alongside your existing provider access.</p>
+      <p class="section-intro">Verified context first — with the routing, policy, and BYOK plumbing that feeds it.</p>
       <div class="features-grid">
-        <div class="feature-card"><h3 class="feature-title">Integrations</h3><p>Works with OpenRouter, Vercel AI Gateway, Portkey, and direct providers.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Restormel Resolve</h3><p>Model → provider resolution. One middleware, multiple backends.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Cost</h3><p>Per-model cost and budget comparison. Estimate before you call.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Entitlements</h3><p>Gate features by tier. Optional usage limits.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Embeddable UX</h3><p>ModelSelector, CostEstimator, and optional KeyManager. Svelte, React, or Web Components.</p></div>
-        <div class="feature-card"><h3 class="feature-title">Restormel Doctor & Validate</h3><p>Health checks you can run locally or in CI to catch bad config and broken provider access before deploy.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Verified context</h3><p>Provenance-traced, evidence-bound, quality-gated knowledge served to your agents — every claim tied to a source span.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Cross-model validation</h3><p>An independent model family checks each extraction by default, so a claim is never graded by the model that wrote it.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Provenance traces</h3><p>Every retrieval records which claims were considered, their verification state, and why anything was excluded — exportable as JSON.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Restormel Resolve</h3><p>Model → provider resolution. One middleware, multiple backends — the routing that feeds context.</p></div>
+        <div class="feature-card"><h3 class="feature-title">BYOK &amp; embeddable UX</h3><p>ModelSelector, CostEstimator, and optional KeyManager for policy-bounded model choice. Svelte, React, or Web Components.</p></div>
+        <div class="feature-card"><h3 class="feature-title">Restormel Doctor &amp; Validate</h3><p>Health checks you can run locally or in CI to catch bad config and broken provider access before deploy.</p></div>
       </div>
-    </div>
-  </section>
-
-  <section class="section section-alt" aria-labelledby="fit-heading">
-    <div class="container">
-      <h2 id="fit-heading" class="section-title">Where Restormel fits in your AI stack</h2>
-      <div class="table-wrap" role="region" aria-label="Where Restormel fits comparison table">
-        <table class="fit-table">
-          <thead>
-            <tr>
-              <th>Capability</th>
-              <th>LiteLLM / Portkey / OpenRouter</th>
-              <th>Restormel Keys</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Primary role</td><td>Infrastructure / gateway / proxy</td><td>Application-layer library</td></tr>
-            <tr><td>How it runs</td><td>Hosted service or self-hosted infra</td><td>Runs inside your app</td></tr>
-            <tr><td>Request routing</td><td>Yes (proxy-based)</td><td>Yes (in-app, key-aware)</td></tr>
-            <tr><td>Request/response normalisation</td><td>Yes</td><td>Handled by your provider or gateway</td></tr>
-            <tr><td>Caching</td><td>Sometimes built-in</td><td>Use your existing cache (Redis, CDN, gateway)</td></tr>
-            <tr><td>Observability / tracing</td><td>Often built-in</td><td>Use your existing observability tools</td></tr>
-            <tr><td>Access to multiple providers</td><td>Yes (via proxy or aggregation)</td><td>Yes (via your providers or OpenRouter)</td></tr>
-            <tr><td>End-user BYOK (bring your own keys)</td><td>No</td><td>Yes — first-class</td></tr>
-            <tr><td>Embeddable key management UI</td><td>No</td><td>Yes — drop-in components</td></tr>
-            <tr><td>Per-user model availability</td><td>No</td><td>Yes — based on user keys</td></tr>
-            <tr><td>Cost estimation (before request)</td><td>Limited</td><td>Yes — built-in</td></tr>
-            <tr><td>Plan-based entitlements</td><td>Limited</td><td>Yes — first-class</td></tr>
-            <tr><td>Library-first (no infra required)</td><td>No</td><td>Yes</td></tr>
-            <tr><td>Works with existing stack</td><td>N/A (is the stack)</td><td>Yes — designed to sit on top</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="fit-note">
-        Restormel doesn’t replace your AI gateway — it completes it. Use OpenRouter, Portkey, or direct providers for infrastructure. Use Restormel to add BYOK, routing logic, and product-level controls.
-      </p>
     </div>
   </section>
 
@@ -318,8 +330,8 @@ pnpm exec keys doctor`;
 
   <section class="section section-cta" aria-labelledby="cta-heading">
     <div class="container">
-      <h2 id="cta-heading" class="cta-headline">Add governance to your AI stack</h2>
-      <p class="cta-sub">Install the packages, pick gateway-backed or direct provider access, then add routes and policies. The walkthrough guides you step by step.</p>
+      <h2 id="cta-heading" class="cta-headline">Serve knowledge your agents can be held to</h2>
+      <p class="cta-sub">Install the packages, supply model access the way that fits your stack, then serve verified context your auditors can check. The walkthrough guides you step by step.</p>
       <a href="/keys/docs" class="btn btn-primary">Get started</a>
     </div>
   </section>
@@ -380,38 +392,62 @@ pnpm exec keys doctor`;
   .btn-primary:hover {
     filter: brightness(1.1);
   }
-  .section-subtitle {
-    margin: var(--space-8) 0 var(--space-3);
-    font-size: var(--text-lg);
-    color: var(--rm-text);
-    font-family: var(--rm-font-display);
-  }
-  .two-layer {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-4);
+  .proof-steps {
+    list-style: none;
     margin: 0 0 var(--space-6);
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
   }
-  .layer-card {
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
+  .proof-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     background: var(--rm-surface-raised);
-    padding: var(--space-4);
+    border: 1px solid var(--rm-border);
+    border-top: 4px solid var(--rm-sage);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
   }
-  .layer-kicker {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--rm-dim);
+  .proof-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--rm-sage) 16%, var(--rm-surface));
+    color: var(--rm-sage);
+    font-family: var(--rm-font-display);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
   }
-  .layer-copy {
+  .proof-step-title {
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--rm-text);
+    margin: 0 0 var(--space-2);
+  }
+  .proof-step-body p {
     margin: 0;
+    font-size: var(--text-sm);
     color: var(--rm-muted);
     line-height: var(--leading-relaxed);
   }
-  @media (max-width: 760px) {
-    .two-layer {
+  .proof-cta {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+  .proof-cta a {
+    color: var(--rm-sage);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: var(--font-medium);
+  }
+  @media (max-width: 860px) {
+    .proof-steps {
       grid-template-columns: 1fr;
     }
   }
@@ -497,40 +533,6 @@ pnpm exec keys doctor`;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
     gap: var(--space-4);
-  }
-  .table-wrap {
-    overflow-x: auto;
-    border: 1px solid var(--rm-border);
-    border-radius: var(--radius-md);
-    background: var(--rm-surface);
-    margin: 0 0 var(--space-4);
-  }
-  .fit-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 52rem;
-    font-size: var(--text-sm);
-  }
-  .fit-table th,
-  .fit-table td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--rm-border);
-    vertical-align: top;
-    text-align: left;
-  }
-  .fit-table thead th {
-    background: var(--rm-surface-raised);
-    color: var(--rm-text);
-    font-weight: var(--font-medium);
-  }
-  .fit-table tbody td {
-    color: var(--rm-muted);
-  }
-  .fit-note {
-    margin: 0;
-    color: var(--rm-muted);
-    max-width: var(--rm-container-narrow);
-    line-height: var(--leading-relaxed);
   }
   .feature-card {
     background: var(--rm-surface-raised);

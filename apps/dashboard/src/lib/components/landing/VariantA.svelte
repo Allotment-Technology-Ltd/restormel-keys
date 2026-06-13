@@ -1,41 +1,50 @@
 <script lang="ts">
+  /**
+   * Marketing claims ledger citations (docs/verified-context-claims-ledger.md):
+   * - "backed by a verbatim quote you can check yourself" → row #2 (proven)
+   * - "Every claim carries a provenance trace" → row #7 (proven)
+   * - "A different model family checks the extraction" → row #5 (proven)
+   */
   import { trackSignupClick } from "$lib/posthog";
 </script>
 
 <section class="section section-hero" aria-labelledby="hero-heading">
   <div class="container">
-    <h1 id="hero-heading" class="hero-headline">Stop rebuilding AI routing logic in every project</h1>
+    <p class="hero-eyebrow">The control plane for verified context</p>
+    <h1 id="hero-heading" class="hero-headline">Knowledge your agent can trace back to the source</h1>
     <p class="hero-subhead">
-      Restormel Keys is a one-middleware control layer for routing, fallback chains, and policy enforcement.
-      Works above OpenRouter, Portkey, Vercel AI Gateway, or direct providers. No proxy. No new infrastructure.
+      Restormel Keys is the control plane for verified context: provenance-traced, evidence-bound, quality-gated
+      knowledge an agent — or its auditor — can trace to the exact source span. BYOK and model routing come built in
+      to feed it.
     </p>
 
     <div class="variant-features">
       <div class="variant-card">
-        <h3 class="variant-card-title">One middleware call</h3>
+        <h3 class="variant-card-title">Evidence-bound claims</h3>
         <p class="variant-card-copy">
-          One <code>createResolveMiddleware()</code> call replaces your custom provider-selection logic.
-          Your backend asks Restormel which provider and model to use; you keep calling the provider directly.
+          Every supported claim is backed by a verbatim quote you can check yourself — bound to character offsets
+          and a hash of the source version, so a skeptic can re-verify it with no model in the loop.
         </p>
       </div>
       <div class="variant-card">
-        <h3 class="variant-card-title">Dashboard-configured</h3>
+        <h3 class="variant-card-title">A second model family checks</h3>
         <p class="variant-card-copy">
-          Fallback chains, model allowlists, and budget caps configured in the dashboard — not scattered
-          across environment variables and try/catch blocks.
+          The model that extracts a claim never grades its own work. An independent model family validates the
+          extraction by default, so the answer isn't graded by the system that wrote it.
         </p>
       </div>
       <div class="variant-card">
-        <h3 class="variant-card-title">Pre-deploy health checks</h3>
+        <h3 class="variant-card-title">An audit trail per query</h3>
         <p class="variant-card-copy">
-          Health checks run locally or in CI via <code>keys doctor</code> and <code>keys validate</code>
-          before anything breaks in production.
+          Every claim carries a provenance trace: its verification state, its citation, and a trace ref —
+          exportable as JSON for your compliance file.
         </p>
       </div>
     </div>
 
     <p class="variant-supporting">
-      Works with OpenRouter, Portkey, Vercel AI Gateway, and direct providers. 15-minute integration path for Next.js, React, and SvelteKit.
+      BYOK and policy-bounded model routing are built in — the supporting plumbing that feeds verified context, not a
+      separate product to wire up. SvelteKit, Next.js, React, and Web Components paths.
     </p>
 
     <div class="hero-ctas">
@@ -46,7 +55,7 @@
       >
         Start free — first 50 signups get 12 months of Pro
       </a>
-      <a href="/keys/docs" class="hero-docs-link">Browse the docs →</a>
+      <a href="/keys/docs/guides/verified-context" class="hero-docs-link">See how verification works →</a>
     </div>
   </div>
 </section>
@@ -61,6 +70,15 @@
   .section-hero {
     padding-top: var(--space-8);
     padding-bottom: var(--space-12);
+  }
+  .hero-eyebrow {
+    margin: 0 0 var(--space-2);
+    font-family: var(--rm-font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: var(--font-semibold);
+    color: var(--rm-sage);
   }
   .hero-headline {
     font-family: var(--rm-font-display);
@@ -102,13 +120,6 @@
     color: var(--rm-muted);
     margin: 0;
     line-height: var(--leading-relaxed);
-  }
-  .variant-card-copy code {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: var(--rm-surface);
-    padding: 0.1em 0.35em;
-    border-radius: 3px;
   }
   .variant-supporting {
     font-size: var(--text-sm);
