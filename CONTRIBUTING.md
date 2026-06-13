@@ -2,9 +2,9 @@
 
 ## Phase 00 (complete)
 
-Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/bootstrap-plan.md](docs/bootstrap-plan.md) and [docs/working-agreement.md](docs/working-agreement.md).
+Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/archive/2026-03-build-pack/bootstrap-plan.md](docs/archive/2026-03-build-pack/bootstrap-plan.md) and [docs/working-agreement.md](docs/working-agreement.md).
 
-**Cursor context:** Use **docs/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/cursor-indexing-policy.md](docs/cursor-indexing-policy.md).
+**Cursor context:** Use **docs/archive/2026-03-build-pack/bootstrap-plan.md** as the controlling Phase 00 plan and **docs/reference/bootstrap_prompts.md** as the execution companion for bootstrap work. See [docs/cursor-indexing-policy.md](docs/cursor-indexing-policy.md).
 
 ## How to work
 
@@ -17,17 +17,17 @@ Bootstrap complete. Gate lifted; Phase 01 implementation may begin. See [docs/bo
 ## Restormel Testing (`@restormel/testing-*`)
 
 - **Packages:** `packages/testing-*`; publish train **tag `testing-v*`** → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
-- **Composite GitHub Action:** `packages/testing-github-action/` — **semver Git tags** `testing-action-v*.*.*` for consumer pins (not npm). Maintainer workflow: [.github/workflows/release-testing-action-version.yml](.github/workflows/release-testing-action-version.yml). See [docs/testing/github-action-semver.md](docs/testing/github-action-semver.md).
-- **Config contract:** [docs/testing/schema-stability-policy.md](docs/testing/schema-stability-policy.md) (patch/minor/major vs `schema_version`).
-- **GA quickstart (external adopters):** [docs/testing/quickstart-ga.md](docs/testing/quickstart-ga.md).
+- **Composite GitHub Action:** `packages/testing-github-action/` — **semver Git tags** `testing-action-v*.*.*` for consumer pins (not npm). Maintainer workflow: [.github/workflows/release-testing-action-version.yml](.github/workflows/release-testing-action-version.yml). See [docs/archive/testing/testing/github-action-semver.md](docs/archive/testing/testing/github-action-semver.md).
+- **Config contract:** [docs/archive/testing/testing/schema-stability-policy.md](docs/archive/testing/testing/schema-stability-policy.md) (patch/minor/major vs `schema_version`).
+- **GA quickstart (external adopters):** [docs/archive/testing/testing/quickstart-ga.md](docs/archive/testing/testing/quickstart-ga.md).
 
 ## A3 BYOK dogfood (maintainers)
 
-Optional workflow proves Keys resolve for `judge_rubric` using **GitHub Environment** secrets — [docs/testing/testing-a3-dogfood-workflow.md](docs/testing/testing-a3-dogfood-workflow.md). No credential values belong in the repo.
+Optional workflow proves Keys resolve for `judge_rubric` using **GitHub Environment** secrets — [docs/archive/testing/testing/testing-a3-dogfood-workflow.md](docs/archive/testing/testing/testing-a3-dogfood-workflow.md). No credential values belong in the repo.
 
 ## Dogfood feedback (other repos)
 
-If you integrate Restormel Keys from another GitHub project, use **[docs/github-dogfood-feedback.md](docs/github-dogfood-feedback.md)**. For **trusted** consumer repos, the default is **label-based relay** (`restormel-feedback` → issue here); copy **[docs/reference/restormel-dogfood-relay-consumer-pack.md](docs/reference/restormel-dogfood-relay-consumer-pack.md)** into the consumer repo for setup. **Do not** put secrets in issues.
+If you integrate Restormel Keys from another GitHub project, use **[docs/archive/github-workflow/github-dogfood-feedback.md](docs/archive/github-workflow/github-dogfood-feedback.md)**. For **trusted** consumer repos, the default is **label-based relay** (`restormel-feedback` → issue here); copy **[docs/archive/reference/restormel-dogfood-relay-consumer-pack.md](docs/archive/reference/restormel-dogfood-relay-consumer-pack.md)** into the consumer repo for setup. **Do not** put secrets in issues.
 
 ## PRs
 

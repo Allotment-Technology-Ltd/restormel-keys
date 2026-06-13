@@ -1,6 +1,6 @@
 # Reliability Standards
 
-Canonical reliability baseline. Aligns to [bootstrap-plan.md](bootstrap-plan.md). Operational procedures: [runbooks.md](runbooks.md). Release gate: [release-readiness.md](release-readiness.md).
+Canonical reliability baseline. Aligns to [bootstrap-plan.md](archive/2026-03-build-pack/bootstrap-plan.md). Operational procedures: [runbooks.md](runbooks.md). Release gate: [release-readiness.md](release-readiness.md).
 
 ## Principles
 

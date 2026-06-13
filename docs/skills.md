@@ -1,6 +1,6 @@
 # Skills
 
-Skill inventory and when to use. **Single source** for the Phase 00 set; full definitions in `skills/<name>/SKILL.md`. Plan: [bootstrap-plan.md](bootstrap-plan.md).
+Skill inventory and when to use. **Single source** for the Phase 00 set; full definitions in `skills/<name>/SKILL.md`. Plan: [bootstrap-plan.md](archive/2026-03-build-pack/bootstrap-plan.md).
 
 | Skill | Use when |
 |-------|----------|

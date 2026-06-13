@@ -26,4 +26,4 @@ description: Use when configuring or explaining Restormel Keys multi-step routes
 
 ## Security
 
-- No raw keys in prompts or logs; use placeholders in examples ([`docs/security-baseline.md`](../../docs/security-baseline.md)).
+- No raw keys in prompts or logs; use placeholders in examples ([`docs/security-baseline.md`](../../../docs/security-baseline.md)).

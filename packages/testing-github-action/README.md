@@ -10,7 +10,7 @@ Pin **`uses`** to an **immutable Git tag** on this repository, **not** only `@ma
 uses: YourOrg/restormel-keys/packages/testing-github-action@testing-action-v1.0.0
 ```
 
-Tags are created with workflow **[release-testing-action-version.yml](../../.github/workflows/release-testing-action-version.yml)** (`testing-action-vMAJOR.MINOR.PATCH`). Full policy: [docs/testing/github-action-semver.md](../../docs/testing/github-action-semver.md).
+Tags are created with workflow **[release-testing-action-version.yml](../../.github/workflows/release-testing-action-version.yml)** (`testing-action-vMAJOR.MINOR.PATCH`). Full policy: [docs/archive/testing/testing/github-action-semver.md](../../docs/archive/testing/testing/github-action-semver.md).
 
 There is **no hosted control plane** in this MVP; `poll_interval_seconds` and `timeout_minutes` inputs are reserved for documentation alignment only.
 

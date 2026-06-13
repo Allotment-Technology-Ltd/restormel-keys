@@ -40,4 +40,4 @@ Clients should parse JSON on non-2xx; do not rely only on thrown `Error.message`
 
 `environment_restriction`, `privacy_constraint`, `downstream_exposure` — not in the engine yet.
 
-See [routes-bridging.md](routes-bridging.md) for route/policy context.
+See [routes-bridging.md](../archive/reference/routes-bridging.md) for route/policy context.

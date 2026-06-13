@@ -38,4 +38,4 @@ Point `environments.local.base_url` at your **Vercel preview** or set the Action
 
 ## GitHub Actions
 
-See [examples/testing-github-actions/README.md](../testing-github-actions/README.md) and [docs/testing/github-action-io-spec.md](../../docs/testing/github-action-io-spec.md).
+See [examples/testing-github-actions/README.md](../testing-github-actions/README.md) and [docs/archive/testing/testing/github-action-io-spec.md](../../docs/archive/testing/testing/github-action-io-spec.md).

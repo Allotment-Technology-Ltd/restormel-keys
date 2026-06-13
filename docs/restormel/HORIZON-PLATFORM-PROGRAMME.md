@@ -2,7 +2,7 @@
 
 **Purpose:** Single **programme-level** document for Restormel’s horizon themes (capabilities A–J), **Theme L** (IA, dashboard shell, experience), **Theme M** (draft: Restormel Support Agent / platform-market packaging), **MCP/AAIF suite inventory**, **stakeholder capability shortlist**, and **canonical source boundaries**. It does **not** duplicate operational specs—those live in the linked files below.
 
-**Horizon implementation phases:** **Horizon Phase 1** = Theme L + suite MCP/AAIF (see [THEME-L-IA-MATRIX.md](./THEME-L-IA-MATRIX.md)). This is **not** [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md) (platform npm extraction: graph-core, contracts, etc.).
+**Horizon implementation phases:** **Horizon Phase 1** = Theme L + suite MCP/AAIF (see [THEME-L-IA-MATRIX.md](./THEME-L-IA-MATRIX.md)). This is **not** [phase1-restormel-engineering-spec.md](../archive/suite-migration-status/phase1-restormel-engineering-spec.md) (platform npm extraction: graph-core, contracts, etc.).
 
 **Status:** Canonical for **horizon programme narrative** in this repo. Package APIs and behaviour remain owned by package READMEs and topic-specific docs.
 
@@ -49,14 +49,14 @@
 | Topic                                            | Canonical doc / location                                                                                                     | This programme doc            |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | Restormel State (library non-goals, correlation) | [RESTORMEL-STATE.md](./RESTORMEL-STATE.md)                                                                                   | Links only                    |
-| Phase 1 platform extraction objectives           | [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md)                                               | Links only                    |
+| Phase 1 platform extraction objectives           | [phase1-restormel-engineering-spec.md](../archive/suite-migration-status/phase1-restormel-engineering-spec.md)                                               | Links only                    |
 | Package map, publish trains                      | [docs/restormel-monorepo-packages.md](../restormel-monorepo-packages.md)                                                     | Links only                    |
-| **Suite architecture migration (Keys/Graph/Knowledge)** | [SUITE-ARCHITECTURE-MIGRATION.md](./SUITE-ARCHITECTURE-MIGRATION.md), [PHASE0-SUITE-MIGRATION-STATUS.md](./PHASE0-SUITE-MIGRATION-STATUS.md) | Links only; Testing npm migration **out of scope** |
+| **Suite architecture migration (Keys/Graph/Knowledge)** | [SUITE-ARCHITECTURE-MIGRATION.md](./SUITE-ARCHITECTURE-MIGRATION.md), [PHASE0-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE0-SUITE-MIGRATION-STATUS.md) | Links only; Testing npm migration **out of scope** |
 | npm install truth                                | [docs/reference/npm-packages.md](../reference/npm-packages.md)                                                               | Links only                    |
 | Doc IA, same-links, agent-readability            | [docs/documentation-strategy.md](../documentation-strategy.md)                                                               | Extends with Theme L patterns |
 | Security, secrets, UX safety                     | [docs/security-baseline.md](../security-baseline.md), [.cursor/rules/04-ux-safety.mdc](../../.cursor/rules/04-ux-safety.mdc) | Mandatory for dashboard + MCP |
 | MCP server rollout (ops)                         | [docs/runbooks/mcp-implementation-workflow.md](../runbooks/mcp-implementation-workflow.md)                                   | Complements §3                |
-| Testing adoption / Plotbudget class              | [docs/testing/oss-consumption.md](../testing/oss-consumption.md)                                                             | Links only                    |
+| Testing adoption / Plotbudget class              | [docs/archive/testing/testing/oss-consumption.md](../archive/testing/testing/oss-consumption.md)                                                             | Links only                    |
 
 
 **Rule:** When a capability bet (A–J) ships, add or update **one** topic owner doc; link it from here only if the programme narrative needs a pointer—do not copy full specs into this file.
@@ -218,5 +218,5 @@ A **Restormel Support Agent** is an **in-product guide**: help signed-in (and, l
 ## 7. Related links
 
 - [state-sophia-integration.md](./state-sophia-integration.md)
-- [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md)
+- [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md)
 - [docs/integrations/INTEGRATIONS-FULL-SPEC.md](../integrations/INTEGRATIONS-FULL-SPEC.md)

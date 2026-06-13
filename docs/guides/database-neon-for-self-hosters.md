@@ -64,7 +64,7 @@ If you operate the **Testing runs** HTTP API with durable job storage, use a Pos
 
 ## Related (repo)
 
-- Dashboard env and Vercel-oriented notes: `docs/reference/extraction-vercel.md`
+- Dashboard env and Vercel-oriented notes: `docs/archive/reference/extraction-vercel.md`
 - Production migration runbook: `docs/runbooks/dashboard-postgres-migrations.md`
 - Default stack (includes Neon): `docs/restormel-module-default-stack.md`
 - Keys + Testing onboarding: `docs/keys-testing-onboarding.md`

@@ -8,7 +8,7 @@
 
 ## Horizon implementation phases (naming)
 
-**Horizon Phase 1** means **Theme L + suite MCP/AAIF** (this matrix, MCP read tools, AAIF parity). It is **not** the same document as [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md) (platform package extraction: contracts, graph-core, etc.).
+**Horizon Phase 1** means **Theme L + suite MCP/AAIF** (this matrix, MCP read tools, AAIF parity). It is **not** the same document as [phase1-restormel-engineering-spec.md](../archive/suite-migration-status/phase1-restormel-engineering-spec.md) (platform package extraction: contracts, graph-core, etc.).
 
 ---
 

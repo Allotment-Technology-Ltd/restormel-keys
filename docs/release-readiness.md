@@ -1,8 +1,8 @@
 # Release Readiness
 
-Phase and release gate expectations. **Single source** for “when can we move?” Checklist content in [bootstrap-checklist.md](bootstrap-checklist.md).
+Phase and release gate expectations. **Single source** for “when can we move?” Checklist content in [bootstrap-checklist.md](archive/2026-03-build-pack/bootstrap-checklist.md).
 
-**Phase 00 → Phase 01:** May begin when bootstrap-checklist is satisfied, root and docs/ are coherent, rules/skills/subagents/scripts/workflows exist per [bootstrap-plan.md](bootstrap-plan.md), baselines are documented, no product logic added, and release-readiness-checker (or equivalent) has been run and approved.
+**Phase 00 → Phase 01:** May begin when bootstrap-checklist is satisfied, root and docs/ are coherent, rules/skills/subagents/scripts/workflows exist per [bootstrap-plan.md](archive/2026-03-build-pack/bootstrap-plan.md), baselines are documented, no product logic added, and release-readiness-checker (or equivalent) has been run and approved.
 
 **Approval:** Gate lift is manual. **Gate lifted:** Phase 00 complete; Phase 01 implementation may begin. No provider, routing, billing, or hosted logic was added during Phase 00.
 

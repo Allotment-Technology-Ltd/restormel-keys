@@ -36,7 +36,7 @@ See [restormel-dashboard-docs-data-onboarding.md](restormel-dashboard-docs-data-
 | Policy, PolicyBinding | Yes (table only) | `apps/dashboard`: `policies`, `policy_bindings` | Phased groundwork (004). |
 | RequestLog     | Yes (table only) | `apps/dashboard`: `request_logs` | Phased groundwork; ingestion from gateway later. |
 | UsageAggregate | Yes (table only) | `apps/dashboard`: `usage_aggregates` | Phased groundwork; aggregation job later. |
-| AuditEvent     | Yes        | `apps/dashboard`: `audit_events` | Written on Gateway key create/revoke; see [control-plane-schema-004.md](control-plane-schema-004.md). |
+| AuditEvent     | Yes        | `apps/dashboard`: `audit_events` | Written on Gateway key create/revoke; see [control-plane-schema-004.md](../archive/reference/control-plane-schema-004.md). |
 | CustomerTenant, ExposureRule | No | — | Placeholder. |
 | PricingRecord, RateLimitRecord, LifecycleEvent | No | — | Placeholder. |
 

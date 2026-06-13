@@ -14,10 +14,10 @@ Apply the repo’s canonical voice, terminology, and section patterns to landing
 
 ## Canonical sources (read first)
 
-- **Positioning:** `docs/01-product-strategy.md` — library-first control layer; provider credentials stay in gateway or env; no default hosted vault.
-- **Voice and tone:** `docs/walkthrough/01-writing-style-guide.md` — second person (“you”), present tense, active voice; confident but not cocky; short sentences (15–20 words); no filler (“simply,” “just,” “easily”).
+- **Positioning:** `docs/archive/2026-03-build-pack/01-product-strategy.md` — library-first control layer; provider credentials stay in gateway or env; no default hosted vault.
+- **Voice and tone:** `docs/archive/walkthrough-source/walkthrough/01-writing-style-guide.md` — second person (“you”), present tense, active voice; confident but not cocky; short sentences (15–20 words); no filler (“simply,” “just,” “easily”).
 - **Copy registry and CTAs:** `docs/ux-contracts.md` — product nouns (Gateway Key, Dashboard, Sign in, etc.), CTA grammar, key-handling copy.
-- **Tone rules:** `docs/reference/restormel-onboarding-copy.md` (§24) — define nouns before configuring; plain English first; tell the user what happens next; powerful but legible.
+- **Tone rules:** `docs/archive/reference/restormel-onboarding-copy.md` (§24) — define nouns before configuring; plain English first; tell the user what happens next; powerful but legible.
 - **Design principles:** `docs/design-system-index.md` — technical credibility over ornament; calm, analytical; restraint.
 
 ## Marketing best practice (apply alongside brand)
@@ -44,6 +44,6 @@ Apply the repo’s canonical voice, terminology, and section patterns to landing
 
 ## Done criteria
 
-- Copy aligns with docs/walkthrough/01-writing-style-guide.md and docs/ux-contracts.md.
+- Copy aligns with docs/archive/walkthrough-source/walkthrough/01-writing-style-guide.md and docs/ux-contracts.md.
 - Headlines and intros are benefit-led and scannable; primary CTA is clear.
 - No placeholder or artifact text; no invented product terms.

@@ -12,7 +12,7 @@
 | **Integrators (in-app)** | [Restormel Graph docs — Restormel State](https://restormel.dev/graph/docs/extensions/state) | Same information architecture as **Reasoning extensions** and **context packs**: graph-aware LLM stacks often adopt State alongside canvas + `platform-v*` packages. State is **not** a `graph-v*` canvas package; the Graph docs site is a **discovery surface**, not an ownership boundary. |
 | **Suite package map** | [`docs/restormel-monorepo-packages.md`](../restormel-monorepo-packages.md) | Workspace path and publish train. |
 | **npm consumers** | [`docs/reference/npm-packages.md`](../reference/npm-packages.md) | `npm view`, install notes. |
-| **Programme context** | [`phase1-restormel-engineering-spec.md`](./phase1-restormel-engineering-spec.md) | Platform objectives table. |
+| **Programme context** | [`phase1-restormel-engineering-spec.md`](../archive/suite-migration-status/phase1-restormel-engineering-spec.md) | Platform objectives table. |
 
 **Not under Restormel Graph as a product line:** Restormel State is **suite platform** (Keys, SOPHIA, plotbudget, allotment.works, and so on). It is documented under **Graph → Extensions** on restormel.dev only because that is where integrators already find **context packs** and **reasoning extensions**—the same “retrieval + LLM + optional UI” story.
 
@@ -36,6 +36,6 @@ Step-by-step hook points (Stoa dialogue, escalation): [state-sophia-integration.
 ## Related docs
 
 - Append-only host storage: [state-host-persistence-recipe.md](./state-host-persistence-recipe.md)
-- Context packs: [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md)
-- Platform programme: [phase1-restormel-engineering-spec.md](./phase1-restormel-engineering-spec.md)
+- Context packs: [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md)
+- Platform programme: [phase1-restormel-engineering-spec.md](../archive/suite-migration-status/phase1-restormel-engineering-spec.md)
 - npm reference: [docs/reference/npm-packages.md](../reference/npm-packages.md)

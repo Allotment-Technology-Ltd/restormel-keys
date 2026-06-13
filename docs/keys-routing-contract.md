@@ -8,11 +8,11 @@
 
 - **Keys** stores **intent**: named routes, ordered steps, policies, workload/stage metadata, optional JSON policies on steps (`switchCriteria`, `retryPolicy`, `costPolicy`), timeouts, and `fallbackOn` hints.
 - **Hosts / SOPHIA** run the **data plane**: they call providers, handle retries, parse responses, and decide when to advance tiers using **their** runtime signals unless you later add a hosted execution proxy in Keys.
-- Keys **resolve** and **simulate** do **not** execute upstream LLM calls; they return provider/model decisions and **rich step metadata** for hosts to consume. **`switchCriteria.advanceOn`** remains a **hint** on resolve/simulate success payloads. **Exception:** **`POST …/runtime/invoke`** (hosted runtime) evaluates **`advanceOn`** against an **allowlisted** subset for **upstream failure → try next step** behaviour; see **`runtimeSwitchEvalVersion`** on success and simulate **`hostedRuntimeSwitch`** when requested ([rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md)).
+- Keys **resolve** and **simulate** do **not** execute upstream LLM calls; they return provider/model decisions and **rich step metadata** for hosts to consume. **`switchCriteria.advanceOn`** remains a **hint** on resolve/simulate success payloads. **Exception:** **`POST …/runtime/invoke`** (hosted runtime) evaluates **`advanceOn`** against an **allowlisted** subset for **upstream failure → try next step** behaviour; see **`runtimeSwitchEvalVersion`** on success and simulate **`hostedRuntimeSwitch`** when requested ([rfc/keys-no-code-route-runtime.md](archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md)).
 
 ### Optional future: hosted “no-code” runtime
 
-A **full** no-code product (hosted execution of route graphs without customer-side orchestration code) requires a **separate data-plane** path: server-side upstream calls, continuation semantics, and strict security/tenancy controls. That is **not** implied by resolve-only or by the dashboard **visual graph** alone. Phased design and trust boundaries: [docs/rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md).
+A **full** no-code product (hosted execution of route graphs without customer-side orchestration code) requires a **separate data-plane** path: server-side upstream calls, continuation semantics, and strict security/tenancy controls. That is **not** implied by resolve-only or by the dashboard **visual graph** alone. Phased design and trust boundaries: [docs/archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md](archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md).
 
 ## Contract versions
 
@@ -124,7 +124,7 @@ Step-by-step adoption for workers outside this repo: [sophia-keys-routing-consum
 
 ## Changelog (doc)
 
-- **2026-04-14:** Draft RFC for **hosted no-code route runtime** (phased: single-step invoke → graph walk → optional evaluators): [docs/rfc/keys-no-code-route-runtime.md](rfc/keys-no-code-route-runtime.md).
+- **2026-04-14:** Draft RFC for **hosted no-code route runtime** (phased: single-step invoke → graph walk → optional evaluators): [docs/archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md](archive/deferred-products/hosted-runtime/keys-no-code-route-runtime.md).
 - **2026-04-15:** `GET .../export` route graph bundle (schema 1.0.0); `POST .../routes/import` apply bundle; `GET .../explain-chain` agent summary (route + steps + policy bindings); MCP **`routing.export`** / **`routing.import`** / **`routing.explain_chain`**; simulate **`includeRoutingAttempts`** + **`routingAttempts`**; `stepChain` **`advanceOn`** / **`retryOn`** hints from step JSON.
 - **2026-04-16:** **`contractVersion` `2026-04-16`** — model pools (`model_pool`), `selectedPoolMemberIndex`, parallel metadata echoes; see RFC [docs/rfc/keys-routing-phase-f-dynamic-chains.md](rfc/keys-routing-phase-f-dynamic-chains.md).
 - **2026-04-14:** Rich `stepChain`, simulate `stepDiagnostics`, `ingestion_remediation` stage, contract `2026-04-14`; optional AAIF **`integrationStack`** (host environment metadata; validated in `@restormel/aaif`) aligned with Dashboard stack wizard and [integration catalog](https://restormel.dev/keys/docs/guides/integration-catalog).

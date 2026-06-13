@@ -2,7 +2,7 @@
 
 **Purpose:** When an issue appears in **restormel-keys** with title prefix **`[Dogfood]`** (relayed from a consumer repo such as SOPHIA), use this process so work is **triaged, implemented, and traceable** without copying secrets or skipping checks.
 
-**Canonical relay policy:** [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md). **SOPHIA reference setup:** subsection *Reference implementation: SOPHIA* in that doc.
+**Canonical relay policy:** [docs/archive/github-workflow/github-dogfood-feedback.md](../archive/github-workflow/github-dogfood-feedback.md). **SOPHIA reference setup:** subsection *Reference implementation: SOPHIA* in that doc.
 
 ---
 
@@ -53,7 +53,7 @@
 
 - Comment on the **restormel-keys** issue with the **merge commit** or **release** note.
 - If useful for the consumer team, add a short comment on the **source** (SOPHIA) issue linking to the PR or release — **no secrets**. When **`DOGFOOD_NOTIFY_CONSUMER`** and the PAT are set, **`.github/workflows/dogfood-pr-comment-consumer.yml`** posts to the consumer issue automatically on PR **open** and on **merge to `main`** (if the PR body uses **Fixes/Closes/Addresses #N** and the upstream issue has the relay **`[View source issue](...)`** link).
-- **Automated consumer ping:** When you push **`keys-v*`** or **`restormel-v*`** (notify **independent of npm publish**), optional **`.github/workflows/dogfood-upstream-notify-consumer.yml`** + **`scripts/sophia-release-notify-issue.mjs`** can open a **SOPHIA backlog** issue with **CHANGELOG** excerpt and triage for API/dashboard/docs (variable **`DOGFOOD_NOTIFY_CONSUMER`**, PAT **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**). Spec: [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md) § *Upstream → consumer notify*.
+- **Automated consumer ping:** When you push **`keys-v*`** or **`restormel-v*`** (notify **independent of npm publish**), optional **`.github/workflows/dogfood-upstream-notify-consumer.yml`** + **`scripts/sophia-release-notify-issue.mjs`** can open a **SOPHIA backlog** issue with **CHANGELOG** excerpt and triage for API/dashboard/docs (variable **`DOGFOOD_NOTIFY_CONSUMER`**, PAT **`DOGFOOD_NOTIFY_CONSUMER_TOKEN`**). Spec: [docs/archive/github-workflow/github-dogfood-feedback.md](../archive/github-workflow/github-dogfood-feedback.md) § *Upstream → consumer notify*.
 
 ---
 

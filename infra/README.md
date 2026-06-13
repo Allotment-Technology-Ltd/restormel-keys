@@ -70,7 +70,7 @@ done
 
 Or in **GCP Console:** IAM & Admin → IAM → select the principal → Edit → Add another role → add the three roles above → Save.
 
-2. **Deploy identity (GitHub Actions)** — the service account used by the Deploy workflow (WIF or key-based) must have **Artifact Registry Writer** and **Cloud Run Admin** on the same project so it can push the site image and deploy. See [docs/domain-mapping-restormel-dev.md](../docs/domain-mapping-restormel-dev.md) §9 (Troubleshooting: `uploadArtifacts` denied).
+2. **Deploy identity (GitHub Actions)** — the service account used by the Deploy workflow (WIF or key-based) must have **Artifact Registry Writer** and **Cloud Run Admin** on the same project so it can push the site image and deploy. See [docs/archive/infra-superseded/domain-mapping-restormel-dev.md](../docs/archive/infra-superseded/domain-mapping-restormel-dev.md) §9 (Troubleshooting: `uploadArtifacts` denied).
 
 ## Enable APIs
 
@@ -107,4 +107,4 @@ The dashboard uses **Neon Postgres** for data (workspaces, projects, Gateway key
 5. **Run migrations once** against the Neon database: from repo root, `psql "$DATABASE_URL" -f apps/dashboard/migrations/001_initial.sql` (and optionally `002_better_auth.sql` if you had previously used in-app Better Auth; Neon Auth uses its own `neon_auth` schema).
 6. **GitHub OAuth App:** Set **Authorization callback URL** to your dashboard’s auth callback: `https://<your-domain>/keys/dashboard/api/auth/callback/github` so the OAuth flow is proxied through the app.
 
-See **docs/reference/phase-3-manual-steps.md** §B and **docs/reference/phase-3-deployment.md** §5.2 and §5.4 for troubleshooting.
+See **docs/archive/reference/phase-3-manual-steps.md** §B and **docs/archive/reference/phase-3-deployment.md** §5.2 and §5.4 for troubleshooting.

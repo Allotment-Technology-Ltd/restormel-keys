@@ -11,7 +11,7 @@ There is **no** Plot dependency and no build step for the app itself.
 | `home-shell` | **Home:** `/` loads; copy includes `basic-web`, `runner-ready`, port **4173**, “About this demo”; **`main`** + **`nav`**; `main h1` text is **`basic-web`**. |
 | `about-shell` | **Secondary route:** `about.html` is served at **`/about`** (`serve` redirects `/about.html` → `/about`); **`about-basic-web`** copy; **`main`**; `main h1` matches. |
 
-All criteria are **deterministic** (no `judge_rubric` / `ac_sequence`). Same surface area as a longer multi-goal suite, **fewer navigations** — see [docs/testing/checklists/adopter-appendix-b-parity/v1.md](../../docs/testing/checklists/adopter-appendix-b-parity/v1.md).
+All criteria are **deterministic** (no `judge_rubric` / `ac_sequence`). Same surface area as a longer multi-goal suite, **fewer navigations** — see [docs/archive/testing/testing/checklists/adopter-appendix-b-parity/v1.md](../../docs/archive/testing/testing/checklists/adopter-appendix-b-parity/v1.md).
 
 Config file name: **`restormel-testing.yaml`** (hyphenated — matches the CLI default).
 

@@ -24,8 +24,8 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 - Keys library publish: tag **`keys-v*`** → [.github/workflows/publish.yml](.github/workflows/publish.yml).
 - Tokens publish: tag **`tokens-v*`** → [.github/workflows/publish-keys-tokens.yml](.github/workflows/publish-keys-tokens.yml).
 - Testing packages publish: tag **`testing-v*`** or workflow dispatch → [.github/workflows/publish-testing.yml](.github/workflows/publish-testing.yml).
-- Graph packages publish: tag **`graph-v*`** → [.github/workflows/publish-graph.yml](.github/workflows/publish-graph.yml). SOPHIA / SvelteKit consumer runbook: [docs/restormel-graph-sophia-consumer.md](docs/restormel-graph-sophia-consumer.md).
-- Platform packages publish: tag **`platform-v*`** → [.github/workflows/publish-restormel-platform.yml](.github/workflows/publish-restormel-platform.yml) (includes **`@restormel/context-packs`** — Phase 2 context packing: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](docs/restormel/PHASE2-EXTRACTION-STATUS.md); **`@restormel/state`** — Restormel State: [docs/restormel/RESTORMEL-STATE.md](docs/restormel/RESTORMEL-STATE.md)).
+- Graph packages publish: tag **`graph-v*`** → [.github/workflows/publish-graph.yml](.github/workflows/publish-graph.yml). SOPHIA / SvelteKit consumer runbook: [docs/archive/deferred-products/restormel-graph-sophia-consumer.md](docs/archive/deferred-products/restormel-graph-sophia-consumer.md).
+- Platform packages publish: tag **`platform-v*`** → [.github/workflows/publish-restormel-platform.yml](.github/workflows/publish-restormel-platform.yml) (includes **`@restormel/context-packs`** — Phase 2 context packing: [docs/archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md](docs/archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md); **`@restormel/state`** — Restormel State: [docs/restormel/RESTORMEL-STATE.md](docs/restormel/RESTORMEL-STATE.md)).
 - Restormel Support publish: tag **`support-v*`** → [.github/workflows/publish-support.yml](.github/workflows/publish-support.yml) (`@restormel/support`). Owner doc: [docs/restormel/RESTORMEL-SUPPORT.md](docs/restormel/RESTORMEL-SUPPORT.md). **Horizon programme** (capability themes A–J, Theme L IA, Theme M, MCP inventory): [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](docs/restormel/HORIZON-PLATFORM-PROGRAMME.md).
 
 ## Cursor skills and rules
@@ -38,7 +38,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 
 - End-to-end onboarding (Connections, encrypted provider keys, Testing hub, CLI env): [docs/keys-testing-onboarding.md](docs/keys-testing-onboarding.md); in-product [/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding).
 - Self-host **Postgres / Neon** (default recommendation, Neon Auth, CI previews, ingestion/graph context): [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md); in-product [/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
-- GA OSS quickstart, config schema policy, composite Action semver tags: [docs/testing/quickstart-ga.md](docs/testing/quickstart-ga.md), [docs/testing/schema-stability-policy.md](docs/testing/schema-stability-policy.md), [docs/testing/github-action-semver.md](docs/testing/github-action-semver.md).
+- GA OSS quickstart, config schema policy, composite Action semver tags: [docs/archive/testing/testing/quickstart-ga.md](docs/archive/testing/testing/quickstart-ga.md), [docs/archive/testing/testing/schema-stability-policy.md](docs/archive/testing/testing/schema-stability-policy.md), [docs/archive/testing/testing/github-action-semver.md](docs/archive/testing/testing/github-action-semver.md).
 
 ## Inventory
 

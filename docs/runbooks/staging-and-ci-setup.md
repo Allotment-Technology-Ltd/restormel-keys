@@ -3,7 +3,7 @@
 **Public guide:** For the full step-by-step guide with **where to get** each value, **what to call it**, **where to save it**, and **how to rotate or replace it**, use the walkthrough:
 
 - **In-app:** [Staging and CI setup](/keys/docs/walkthrough/staging-and-ci-setup) (restormel.dev/keys/docs/walkthrough/staging-and-ci-setup)
-- **In repo:** [docs/walkthrough/12-staging-and-ci-setup.md](../walkthrough/12-staging-and-ci-setup.md)
+- **In repo:** [docs/archive/walkthrough-source/walkthrough/12-staging-and-ci-setup.md](../archive/walkthrough-source/walkthrough/12-staging-and-ci-setup.md)
 
 This runbook is a short **ops checklist** for anyone who has already read the guide and needs a reminder.
 
@@ -47,4 +47,4 @@ This runbook is a short **ops checklist** for anyone who has already read the gu
 - **Gateway Key:** Dashboard → API Keys → revoke old, generate new → update the secret value in GitHub/GCP. No code change.
 - **Project / environment / route / blocked model:** Update the corresponding secret with the new value. No code change.
 
-For full detail on each secret (where to get it, what to call it, where to save it, rotate/replace), use the [Staging and CI setup](../walkthrough/12-staging-and-ci-setup.md) walkthrough page.
+For full detail on each secret (where to get it, what to call it, where to save it, rotate/replace), use the [Staging and CI setup](../archive/walkthrough-source/walkthrough/12-staging-and-ci-setup.md) walkthrough page.

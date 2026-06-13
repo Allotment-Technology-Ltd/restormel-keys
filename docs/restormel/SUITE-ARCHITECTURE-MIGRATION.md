@@ -68,7 +68,7 @@ Migrate the Restormel suite from **framework-specific npm packages** to **delive
 | **`restormel-keys`** | Canonical home for Keys/Graph/Knowledge **products**: packages, dashboard routes, OpenAPI, Zuplo, MCP tools, migrations, marketing/docs, publish trains. |
 | **`sophia`** | **Extraction source** and **first consumer**. Keeps showcase UX (Stoa, Learn, billing, philosophy corpus). Replaces in-repo logic with npm/workspace packages + HTTP clients slice by slice. |
 
-**Canonical extraction precedent:** [@restormel/context-packs](../../packages/context-packs/) — see [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md) for the extract → publish → SOPHIA adapter → delete duplicate pattern.
+**Canonical extraction precedent:** [@restormel/context-packs](../../packages/context-packs/) — see [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md) for the extract → publish → SOPHIA adapter → delete duplicate pattern.
 
 ---
 
@@ -172,7 +172,7 @@ Record sign-off in the phase PR description: `Stage gate: automated ✅ manual �
 
 **Manual gate:** Product owner approves phase ordering and Testing exclusion.
 
-**Status tracking:** [PHASE0-SUITE-MIGRATION-STATUS.md](./PHASE0-SUITE-MIGRATION-STATUS.md)
+**Status tracking:** [PHASE0-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE0-SUITE-MIGRATION-STATUS.md)
 
 ---
 
@@ -197,7 +197,7 @@ Record sign-off in the phase PR description: `Stage gate: automated ✅ manual �
 
 **Manual gate:** External integrator smoke (one non-Svelte app calling resolve via gateway); OpenAPI review.
 
-**Status tracking:** [PHASE1-SUITE-MIGRATION-STATUS.md](./PHASE1-SUITE-MIGRATION-STATUS.md)
+**Status tracking:** [PHASE1-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE1-SUITE-MIGRATION-STATUS.md)
 
 ---
 
@@ -220,7 +220,7 @@ Record sign-off in the phase PR description: `Stage gate: automated ✅ manual �
 
 **Manual gate:** WC embed demo; layout API parity vs in-process `graph-core` helpers.
 
-**Status tracking:** [PHASE2-SUITE-MIGRATION-STATUS.md](./PHASE2-SUITE-MIGRATION-STATUS.md)
+**Status tracking:** [PHASE2-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE2-SUITE-MIGRATION-STATUS.md)
 
 ---
 
@@ -268,7 +268,7 @@ Record sign-off in the phase PR description: `Stage gate: automated ✅ manual �
 | --- | --- |
 | Core retrieval | `src/lib/server/retrieval.ts` |
 | Hybrid / seeds | `hybridCandidateGeneration.ts`, `seedSetConstructor.ts`, `surrealRetrievalEnhancements.ts` |
-| Context assembly | `contextPacks.ts` — **consolidate with** `@restormel/context-packs` (already extracted); delete duplicate per [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md) |
+| Context assembly | `contextPacks.ts` — **consolidate with** `@restormel/context-packs` (already extracted); delete duplicate per [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md) |
 | Consumers to reintegrate | `learn/graphGrounding.ts`, `stoa/grounding.ts`, `kgAudit/benchmarkRetrieval.ts`, `/api/analyse` |
 
 **Design constraint:** Package must accept **injected graph store interface** (Surreal today) — no hard import of sophia `db.ts`. All reads/writes are scoped by **`workspace_id`** (Keys workspace) passed from the caller; see [§10 Resolved decisions](#10-resolved-decisions).
@@ -479,12 +479,12 @@ Decisions recorded **2026-06-01** (product owner). Phase 3+ work proceeds on thi
 | Topic | Document |
 | --- | --- |
 | Horizon programme | [HORIZON-PLATFORM-PROGRAMME.md](./HORIZON-PLATFORM-PROGRAMME.md) |
-| Context packs extraction | [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md) |
+| Context packs extraction | [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md) |
 | Keys routing / BYOK | [keys-routing-contract.md](../keys-routing-contract.md) |
 | SOPHIA consumer routing | [sophia-keys-routing-consumer.md](../guides/sophia-keys-routing-consumer.md) |
-| Graph consumer | [restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) |
+| Graph consumer | [restormel-graph-sophia-consumer.md](../archive/deferred-products/restormel-graph-sophia-consumer.md) |
 | Package map | [restormel-monorepo-packages.md](../restormel-monorepo-packages.md) |
-| **Local review setup** | [SUITE-MIGRATION-LOCAL-SETUP.md](./SUITE-MIGRATION-LOCAL-SETUP.md) |
+| **Local review setup** | [SUITE-MIGRATION-LOCAL-SETUP.md](../archive/suite-migration-status/SUITE-MIGRATION-LOCAL-SETUP.md) |
 | SOPHIA architecture | [sophia repo `docs/sophia/architecture.md`](https://github.com/Allotment-Technology-Ltd/sophia/blob/main/docs/sophia/architecture.md) |
 | SOPHIA migration pointer | [sophia repo `docs/sophia/platform-migration.md`](https://github.com/Allotment-Technology-Ltd/sophia/blob/main/docs/sophia/platform-migration.md) |
 

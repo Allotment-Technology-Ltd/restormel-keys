@@ -1,6 +1,6 @@
 # GTM sequencing — self-serve (PLG) before heavy enterprise procurement
 
-**Status:** Canonical operational note for go-to-market ordering. Complements [docs/01-product-strategy.md](../01-product-strategy.md) and [ROADMAP.md](../../ROADMAP.md).
+**Status:** Canonical operational note for go-to-market ordering. Complements [docs/archive/2026-03-build-pack/01-product-strategy.md](../archive/2026-03-build-pack/01-product-strategy.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Why this matters
 
@@ -32,4 +32,4 @@ Treat **events, webhooks, and hosted MCP** as **Phase 2 attach** unless a buyer 
 
 - [BYO-GPU and NGC accessibility](../guides/byo-gpu-ngc-accessibility.md) (repo doc; mirrored in-app under Keys guides)
 - [Webhooks and audit MVP](../integrations/webhooks-audit-mvp.md)
-- [Restormel-first assessment](../reference/restormel-first-assessment.md) (integration contract / less PS)
+- [Restormel-first assessment](../archive/reference/restormel-first-assessment.md) (integration contract / less PS)

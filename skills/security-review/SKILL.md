@@ -2,7 +2,7 @@
 
 **Superseded for Cursor:** use project skill **[restormel-high-risk-security](../../.cursor/skills/restormel-high-risk-security/SKILL.md)** and runbook **[docs/guides/pre-pr-security-review.md](../../docs/guides/pre-pr-security-review.md)** before PRs.
 
-This file remains for Codex `$CODEX_HOME/skills` installs and [docs/skills.md](../docs/skills.md) inventory. When invoked, follow the **restormel-high-risk-security** workflow (baseline + threat model + hygiene scripts + Aikido when available).
+This file remains for Codex `$CODEX_HOME/skills` installs and [docs/skills.md](../../docs/skills.md) inventory. When invoked, follow the **restormel-high-risk-security** workflow (baseline + threat model + hygiene scripts + Aikido when available).
 
 ## Purpose
 

@@ -1,6 +1,6 @@
 # Subagents
 
-Subagent inventory and boundaries. **Single source** for the Phase 00 set; definitions in `subagents/<name>.md`. Plan: [bootstrap-plan.md](bootstrap-plan.md).
+Subagent inventory and boundaries. **Single source** for the Phase 00 set; definitions in `subagents/<name>.md`. Plan: [bootstrap-plan.md](archive/2026-03-build-pack/bootstrap-plan.md).
 
 | Subagent | Purpose |
 |----------|---------|

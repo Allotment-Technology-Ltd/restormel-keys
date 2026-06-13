@@ -66,5 +66,5 @@ Detail: [neon-operator-security.md](../../.cursor/skills/restormel-high-risk-sec
 ## Related
 
 - [aikido-cursor-mcp.md](./aikido-cursor-mcp.md)
-- [subagents/security-reviewer.md](../subagents/security-reviewer.md) — narrow baseline table
+- [subagents/security-reviewer.md](../../subagents/security-reviewer.md) — narrow baseline table
 - [SECURITY.md](../../SECURITY.md)

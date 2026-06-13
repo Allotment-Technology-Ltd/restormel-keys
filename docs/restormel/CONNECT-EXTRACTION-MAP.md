@@ -32,7 +32,7 @@ Maps SOPHIA implementation paths to target Restormel packages. Use this when ope
 | `src/lib/server/hybridCandidateGeneration.ts` | Yes | |
 | `src/lib/server/seedSetConstructor.ts` | Yes | |
 | `src/lib/server/surrealRetrievalEnhancements.ts` | Yes | Inject store interface |
-| `src/lib/server/contextPacks.ts` | **Replace** | Use `@restormel/context-packs` per [PHASE2-EXTRACTION-STATUS.md](./PHASE2-EXTRACTION-STATUS.md) |
+| `src/lib/server/contextPacks.ts` | **Replace** | Use `@restormel/context-packs` per [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md) |
 | `src/lib/server/domainClassifier.ts` | No | Showcase domains |
 | `src/lib/server/learn/graphGrounding.ts` | No | Adapter consumer |
 | `src/lib/server/stoa/grounding.ts` | No | Adapter consumer |

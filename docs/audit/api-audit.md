@@ -288,7 +288,7 @@ TESTING RUNS SIDECAR (@restormel/testing-runs-server, separate Node process):
   POST /v1/runs
   GET  /v1/runs ; GET /v1/runs/:id
 AUTH: optional RESTORMEL_RUNS_API_TOKEN Bearer.
-STATUS: working — docs/testing/runs-api-v1.md
+STATUS: working — docs/archive/testing/testing/runs-api-v1.md
 
 @restormel/core server library (embedded in consumer apps, not hosted):
   GET/POST/DELETE /keys (configurable) — key wallet via createMiddleware
@@ -715,7 +715,7 @@ A developer would need to know (not consistently documented in one place):
 | AAIF package | `packages/aaif/src/*` |
 | MCP Connect tools | `packages/mcp/src/connect-knowledge-tools.ts`, `register-suite-tools.ts` |
 | Canonical OpenAPI | `docs/api/openapi.yaml`, `docs/api/openapi-suite-v1-draft.yaml` |
-| Runbooks | `docs/runbooks/zuplo-setup.md`, `docs/runbooks/zuplo-developer-portal-go-live.md` |
+| Runbooks | `docs/runbooks/zuplo-setup.md`, `docs/archive/zuplo-portal/zuplo-developer-portal-go-live.md` |
 
 ---
 

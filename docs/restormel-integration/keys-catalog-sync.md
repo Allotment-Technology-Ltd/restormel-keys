@@ -60,4 +60,4 @@ Apply Postgres migrations **`020_project_model_bindings.sql`** then **`021_proje
 
 ## Consumer feedback into this repo
 
-Trusted consumers relay improvement requests via **`[Dogfood]`** issues; policy and relay setup: [docs/github-dogfood-feedback.md](../github-dogfood-feedback.md). SOPHIA-oriented test notes: [docs/reference/restormel-dogfood-sophia-handover.md](../reference/restormel-dogfood-sophia-handover.md).
+Trusted consumers relay improvement requests via **`[Dogfood]`** issues; policy and relay setup: [docs/archive/github-workflow/github-dogfood-feedback.md](../archive/github-workflow/github-dogfood-feedback.md). SOPHIA-oriented test notes: [docs/archive/reference/restormel-dogfood-sophia-handover.md](../archive/reference/restormel-dogfood-sophia-handover.md).

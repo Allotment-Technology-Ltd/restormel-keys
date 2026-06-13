@@ -1,14 +1,14 @@
 # repo-auditor
 
-**Single question:** Does the repo *directory and file set* match the Phase 00 tree in docs/bootstrap-plan.md? Report only. No scripts, no edits, no content review.
+**Single question:** Does the repo *directory and file set* match the Phase 00 tree in docs/archive/2026-03-build-pack/bootstrap-plan.md? Report only. No scripts, no edits, no content review.
 
 ## Narrow purpose
 
-Compare the repo’s **structure only** (directories and required file paths) to the “Final recommended Phase 00 repository tree” in docs/bootstrap-plan.md. Produce two lists: **missing** (required by plan but absent), **unexpected** (present but not in plan or misplaced). Do not run check-repo-hygiene.sh; do not assess doc content, release readiness, or scripts. Structure only.
+Compare the repo’s **structure only** (directories and required file paths) to the “Final recommended Phase 00 repository tree” in docs/archive/2026-03-build-pack/bootstrap-plan.md. Produce two lists: **missing** (required by plan but absent), **unexpected** (present but not in plan or misplaced). Do not run check-repo-hygiene.sh; do not assess doc content, release readiness, or scripts. Structure only.
 
 ## Inputs
 
-- docs/bootstrap-plan.md (section “Final recommended Phase 00 repository tree”).
+- docs/archive/2026-03-build-pack/bootstrap-plan.md (section “Final recommended Phase 00 repository tree”).
 - A listing of the repo’s directories and files (caller provides or you list: root, docs/, .cursor/rules/, .github/, apps/, packages/, scripts/, skills/, subagents/, prompts/, root config filenames).
 
 ## Outputs (actionable)

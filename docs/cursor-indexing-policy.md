@@ -4,7 +4,7 @@ Minimal policy so Cursor stays aligned with the bootstrap plan and companion pro
 
 ## Governing context
 
-- **Controlling plan:** [docs/bootstrap-plan.md](bootstrap-plan.md) — Phase 00 operating plan.
+- **Controlling plan:** [docs/archive/2026-03-build-pack/bootstrap-plan.md](archive/2026-03-build-pack/bootstrap-plan.md) — Phase 00 operating plan.
 - **Execution companion:** [docs/reference/bootstrap_prompts.md](reference/bootstrap_prompts.md) — use alongside the plan for bootstrap execution.
 
 Cursor should treat the plan as source of truth and the prompts doc as the execution companion. Do not treat prompt packs as canonical without governance.
@@ -15,11 +15,11 @@ Root docs, canonical docs/ (bootstrap-plan, working-agreement, security, threat-
 
 ## What is excluded (.cursorignore)
 
-Build/deps (node_modules, dist, build), .env, OS junk, logs/temp; wrongly-named duplicate **docs/bootstrap_plan.md** (canonical is **docs/bootstrap-plan.md**); **docs/archive/**; Phase 1–4 prompt packs under **docs/reference/** (07–10) so default context stays Phase 00–focused. Add those files explicitly with @ when working on a later phase.
+Build/deps (node_modules, dist, build), .env, OS junk, logs/temp; wrongly-named duplicate **docs/bootstrap_plan.md** (canonical is **docs/archive/2026-03-build-pack/bootstrap-plan.md**); **docs/archive/**; Phase 1–4 prompt packs under **docs/reference/** (07–10) so default context stays Phase 00–focused. Add those files explicitly with @ when working on a later phase.
 
 ## Cursor Docs (add manually)
 
-Add as Cursor Docs for persistent guidance: **docs/bootstrap-plan.md** and **docs/reference/bootstrap_prompts.md**. Optionally root **README.md**, **STATUS.md**, **docs/working-agreement.md**.
+Add as Cursor Docs for persistent guidance: **docs/archive/2026-03-build-pack/bootstrap-plan.md** and **docs/reference/bootstrap_prompts.md**. Optionally root **README.md**, **STATUS.md**, **docs/working-agreement.md**.
 
 ## Maintenance
 
