@@ -29,25 +29,14 @@
 name: Deploy dashboard
 
 on:
+  # COST-PAUSE (2026-06-13): auto-deploy on main pushes is intentionally DISABLED
+  # while staging + workers are stopped during the database-strategy migration
+  # (see docs/infra/database-strategy-roadmap.md). Re-enable by restoring the
+  # `branches: [main]` + `paths:` push trigger below once we resume push-to-deploy.
   push:
-    branches:
-      - main
     tags:
-      # Manual prod release tag: `git tag dashboard-v1.2.3 && git push --tags`
+      # Prod release tag: `git tag dashboard-v1.2.3 && git push --tags`.
       - 'dashboard-v*'
-    paths:
-      # Redeploy when dashboard source or its direct dependencies change.
-      # Note: tag pushes always trigger regardless of the paths filter.
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - 'Dockerfile.dashboard'
-      - 'Dockerfile.worker'
-      - '.forgejo/workflows/deploy-dashboard.yml'
-      - 'scripts/post-build.mjs'
-      - 'scripts/copy-openapi.mjs'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'package.json'
   workflow_dispatch:
     inputs:
       environment:
@@ -65,8 +54,7 @@ jobs:
     runs-on: docker
     # Staging deploys from main-branch pushes or an explicit workflow_dispatch=staging.
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
     steps:
       - name: Trigger Coolify staging deploys (serial)
         shell: bash
