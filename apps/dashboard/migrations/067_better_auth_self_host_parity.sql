@@ -1,0 +1,30 @@
+-- P4 — Better Auth 1.4.9 self-host schema parity (ADDITIVE, idempotent).
+--
+-- The self-hosted Better Auth path (AUTH_PROVIDER=self) constructs the SAME core
+-- schema as 002_better_auth.sql. Diffing the columns Better Auth 1.4.9 expects for
+-- our config (github social provider + emailAndPassword + emailVerification +
+-- a `role` additional field on user) against 002 surfaced exactly ONE gap:
+--
+--   "user".role  — required by the `user.additionalFields.role` config, which the
+--                  service-admin gate (`resolveServiceAdminStatus(uid, role, email)`)
+--                  keys off. 002 predates that field, so it is missing.
+--
+-- Everything else in 002 matches Better Auth 1.4.9's expectation byte-for-column:
+--   session  — expiresAt, token, createdAt, updatedAt, ipAddress, userAgent, userId : all present
+--   account  — accountId, providerId, userId, accessToken, refreshToken, idToken,
+--              accessTokenExpiresAt, refreshTokenExpiresAt, scope, password,
+--              createdAt, updatedAt : all present
+--   verification — identifier, value, expiresAt, createdAt, updatedAt : all present
+--
+-- This migration ONLY adds the missing `role` column. It does NOT edit 002, does
+-- NOT touch the `neon` path (which runs against Neon Auth's own managed schema),
+-- and is safe to run repeatedly (ADD COLUMN IF NOT EXISTS).
+--
+-- No backfill: `role` defaults NULL, which `resolveServiceAdminStatus` already
+-- treats as "no role claim" (it falls back to the service-owner email / id allow
+-- lists). User-ID reconciliation between the Neon Auth user store and this table
+-- is a SEPARATE, owner-pending decision handled at cutover — NOT here.
+--
+-- ROLLBACK: ALTER TABLE "user" DROP COLUMN IF EXISTS role;
+
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS role TEXT;

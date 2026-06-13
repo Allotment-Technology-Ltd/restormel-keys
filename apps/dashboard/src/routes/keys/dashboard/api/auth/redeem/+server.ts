@@ -1,11 +1,20 @@
 import type { RequestHandler } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { proxyAuthRequest, baseUrl } from "$lib/server/auth";
+import { proxyAuthRequest, baseUrl, authProvider } from "$lib/server/auth";
 import { buildPostAuthLocation, consumeAuthReturnCookie } from "$lib/server/auth-return-cookie";
 import { redirect } from "@sveltejs/kit";
 
 export const GET: RequestHandler = async ({ url, request, cookies }) => {
   const authReturn = consumeAuthReturnCookie(cookies);
+
+  // SELF path — there is no Neon `neon_auth_session_verifier`. Better Auth has
+  // already set the session cookie on its own `/callback/github`; redeem just
+  // consumes `rm_auth_return` and lands the user on the post-auth destination.
+  if (authProvider() === "self") {
+    const target = buildPostAuthLocation(url.origin, authReturn, `${DASHBOARD_BASE}/`);
+    throw redirect(302, target);
+  }
+
   if (!baseUrl()) {
     throw redirect(302, DASHBOARD_BASE + "/?error=auth-not-configured");
   }
