@@ -18,13 +18,13 @@ product per [positioning.md](positioning.md). Built to run as a parallel agent s
 
 | ID | Workstream | Key files | Discipline / model | Deps |
 |----|-----------|-----------|--------------------|------|
-| **W1** | Marketing reposition | `apps/dashboard/src/routes/keys/+page.svelte` (gateway table ~ll.256–290), `VariantA/B.svelte`, `(marketing)/product`, `keys/use-cases`, `keys/pricing` | marketing/sales + copy → **Fable** | W4, W5/W6 helpers |
+| **W1** | Marketing reposition | `apps/dashboard/src/routes/keys/+page.svelte` (gateway table ~ll.256–290), `VariantA/B.svelte`, `(marketing)/product`, `keys/use-cases`, `keys/pricing` | marketing/sales + copy → **Opus, high thinking** (Fable preferred for copy quality but unavailable in this env) | W4, W5/W6 helpers |
 | **W2** | Docs IA consolidation | `routes/docs/**`, `routes/keys/docs/**`, `lib/keys/docs-nav.ts`, `docs-walkthrough-nav.ts`, `docs-integrations-walkthrough-nav.ts` (collapse 3 tutorial trees) | technical writing + IA → **Opus** | W4 |
 | **W3** | API documentation IA | `routes/keys/docs/api-reference/+page.svelte`, `cloud-api/+page.svelte`, OpenAPI tag groups, `scripts/copy-openapi.mjs` | tech writing + SWE → **Opus** | W2 |
 | **W4** | Navigation & global IA | `lib/components/site/SiteHeader.svelte`, `SiteFooter.svelte`, `lib/site-nav.ts`, `developer-portal-url.ts` | UX/UI + SWE → **Sonnet** | — |
 | **W5** | Analytics pipeline (PostHog EU) | `hooks.client.ts`, `lib/posthog.ts`, new `lib/analytics/*`, root `+layout.svelte`; PostHog dashboards via MCP | analytics + SWE → **Opus** | — |
 | **W6** | SEO | `lib/seo.ts` (OG is SVG → PNG), `routes/sitemap.xml/+server.ts` (curated→exhaustive), `robots.txt`, JSON-LD in layouts, OG image pipeline | SEO + SWE → **Sonnet** | — |
-| **W7** | Accessibility & UX/UI polish | rewritten surfaces (focus, contrast, landmarks, CSS-only tabs) | a11y + UX → **Fable/Sonnet** | W1–W4 |
+| **W7** | Accessibility & UX/UI polish | rewritten surfaces (focus, contrast, landmarks, CSS-only tabs) | a11y + UX → **Opus, high thinking** (Fable preferred, unavailable) | W1–W4 |
 | **CD** | CI/CD & deployment | `.forgejo/workflows/*`, `.github/workflows/*`, Lighthouse-CI for public routes, build verification for all Phase 2 PRs | DevOps → **Sonnet** | — |
 
 ## Acceptance criteria (per workstream)
@@ -49,6 +49,9 @@ product per [positioning.md](positioning.md). Built to run as a parallel agent s
 ## Orchestration model
 - **Orchestrator:** the main Claude Code thread — defines non-overlapping file ownership,
   sequences waves, integrates PRs, runs per-PR review before merge ([[merge-after-review-verdict]]).
+  **Run the orchestrator on the top tier: Opus (1M context) + high/extended thinking** — it
+  must hold the whole programme + all open PRs + the positioning/claims constraints in context
+  and make correctness-critical merge/conflict verdicts. Do not down-tier orchestration.
 - **Wave 1 (parallel):** CD, W4, W5, W6, W1, W2 — foundation + top-priority + mostly disjoint.
 - **Wave 2:** W3 (after W2 settles the docs tree), then W7 (reviews everyone's output).
 - **Conventions for every agent:** branch off `origin/main`; tight scope; **Draft PR, never
@@ -57,8 +60,10 @@ product per [positioning.md](positioning.md). Built to run as a parallel agent s
   `restormel-use-cases-page`, `restormel-product-flow-diagrams`, `restormel-integration-docs-hub`,
   `restormel-admin-technical-writing`, `restormel-design-imagery`, PostHog skills); STOP and
   ask if scope changes.
-- **Model tiering:** Opus for IA/analytics judgment + SWE-critical; Sonnet for bounded SWE/config;
-  **Fable for design/usability/copy** ([[multi-agent-orchestration-preference]]).
+- **Model tiering:** Opus (high thinking) for orchestration, IA/analytics judgment, SWE-critical,
+  and **design/usability/copy** (Fable preferred for copy quality per
+  [[multi-agent-orchestration-preference]] but **unavailable in this environment** — fall back to
+  Opus); Sonnet for bounded SWE/config (W4 nav, W6 SEO, CI/CD).
 
 ## Success metrics (PostHog EU)
 Organic traffic ↑, landing bounce ↓, docs-engagement (search + page depth), founders-apply funnel
