@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
 
   /**
-   * Error state with a clear message + recovery action slot (docs/ux-contracts.md).
+   * Error state with a clear message + recovery action slot (docs/design/ux-contracts.md).
    * Always render at least one recovery action via the `actions` slot.
    */
   export let title = "Something went wrong";

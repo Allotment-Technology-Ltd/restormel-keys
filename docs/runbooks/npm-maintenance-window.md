@@ -1,7 +1,7 @@
 # Runbook — npm maintenance window (Phase 7)
 
-**Programme:** [PHASE7-SUITE-MIGRATION-STATUS.md](../restormel/PHASE7-SUITE-MIGRATION-STATUS.md)  
-**Canonical spec:** [SUITE-ARCHITECTURE-MIGRATION.md](../restormel/SUITE-ARCHITECTURE-MIGRATION.md) § Phase 7  
+**Programme:** [PHASE7-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE7-SUITE-MIGRATION-STATUS.md)  
+**Canonical spec:** [SUITE-ARCHITECTURE-MIGRATION.md](../architecture/SUITE-ARCHITECTURE-MIGRATION.md) § Phase 7  
 
 ---
 
@@ -66,7 +66,7 @@ Then:
 - [ ] Final patch publish if needed
 - [ ] Remove deprecated packages from default publish docs / walkthrough “install” paths
 - [ ] SOPHIA: remove archived deps (except any explicitly deferred — Graph WC should complete in Phase 8 **before** ui-graph-svelte archive)
-- [ ] Update [PHASE7-SUITE-MIGRATION-STATUS.md](../restormel/PHASE7-SUITE-MIGRATION-STATUS.md) to **closed**
+- [ ] Update [PHASE7-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE7-SUITE-MIGRATION-STATUS.md) to **closed**
 
 ---
 
@@ -83,5 +83,5 @@ Verifies `@restormel/keys-elements` and `@restormel/graph-elements` build, expor
 ## Related
 
 - [npm-to-rest-keys.md](../guides/npm-to-rest-keys.md)
-- [restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md)
+- [restormel-graph-sophia-consumer.md](../archive/deferred-products/restormel-graph-sophia-consumer.md)
 - [npm-packages.md](../reference/npm-packages.md)

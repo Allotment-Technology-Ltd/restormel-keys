@@ -1,7 +1,7 @@
 # Resolver sequence: model pools (Keys → host)
 
 **Audience:** Integrators implementing `POST …/resolve` consumers.  
-**Contract:** `contractVersion` **`2026-04-16`** — see [keys-routing-contract.md](../keys-routing-contract.md).
+**Contract:** `contractVersion` **`2026-04-16`** — see [keys-routing-contract.md](../architecture/keys-routing-contract.md).
 
 ## Roles
 

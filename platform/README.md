@@ -18,14 +18,14 @@ See [docs/cursor-init.md](./docs/cursor-init.md) and [cursor-template/](./cursor
 
 ## New Restormel modules
 
-Canonical **default stack:** [docs/restormel-module-default-stack.md](../docs/restormel-module-default-stack.md).
+Canonical **default stack:** [docs/architecture/restormel-module-default-stack.md](../docs/architecture/restormel-module-default-stack.md).
 
 **GitHub:** [restormel-platform](https://github.com/Allotment-Technology-Ltd/restormel-platform). **Module template:** [restormel-module-template](https://github.com/Allotment-Technology-Ltd/restormel-module-template).
 
-**Source in Keys:** [template-restormel-module/](template-restormel-module/) — [docs/template-restormel-module-repo.md](../docs/template-restormel-module-repo.md). **Init:** `pnpm run init-module -- …` from Keys root (npm tokens by default; optional **`--platform-repo`** for `file:` to **restormel-platform** `packages/tokens`). Template ships **09-suite-vs-platform-boundary** + **restormel-suite-vs-platform** skill for Cursor.
+**Source in Keys:** [template-restormel-module/](template-restormel-module/) — [docs/architecture/template-restormel-module-repo.md](../docs/architecture/template-restormel-module-repo.md). **Init:** `pnpm run init-module -- …` from Keys root (npm tokens by default; optional **`--platform-repo`** for `file:` to **restormel-platform** `packages/tokens`). Template ships **09-suite-vs-platform-boundary** + **restormel-suite-vs-platform** skill for Cursor.
 
 ## Secrets (CI)
 
 npm publish uses **`NPM_TOKEN`** on **restormel-platform** only (not in this folder’s workflows for tokens).
 
-No live credentials in repo; see [docs/security-baseline.md](../docs/security-baseline.md).
+No live credentials in repo; see [docs/governance/security-baseline.md](../docs/governance/security-baseline.md).

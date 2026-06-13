@@ -4,8 +4,8 @@
 **Builds on:** `docs/infra/coolify-migration-plan-2026-06.md` (Restormel Stage 2 — the proven
 adapter-node + worker + DNS-flip pattern this plan reuses) and `docs/infra/suite-server-sizing.md`
 (decision: all four products on one **CAX31** all-in-one box).
-**Cross-ref:** `docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md` (Sophia = reference consumer),
-`docs/restormel/SOPHIA-CONNECT-INGEST-CUTOVER.md` (the *app-level* ingest cutover, separate
+**Cross-ref:** `docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md` (Sophia = reference consumer),
+`docs/runbooks/sophia-connect-ingest-cutover.md` (the *app-level* ingest cutover, separate
 from this *infra* move).
 
 > **One-paragraph summary:** move the Sophia showcase app (Stoa SSE dialogue, Learn, Paddle
@@ -224,5 +224,5 @@ Either way, keep `CONNECT_INGEST_CUTOVER=0` as the documented rollback for the a
 | Suite server sizing (all-in-one decision) | `docs/infra/suite-server-sizing.md` |
 | Restormel Coolify migration (proven pattern) | `docs/infra/coolify-migration-plan-2026-06.md` |
 | Coolify app config (two-container draft) | `deploy/docker-compose.coolify.yml` |
-| Sophia connect-ingest cutover (app-level) | `docs/restormel/SOPHIA-CONNECT-INGEST-CUTOVER.md` |
-| Suite architecture / Sophia roles | `docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md` |
+| Sophia connect-ingest cutover (app-level) | `docs/runbooks/sophia-connect-ingest-cutover.md` |
+| Suite architecture / Sophia roles | `docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md` |

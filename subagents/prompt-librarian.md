@@ -4,12 +4,12 @@
 
 ## Narrow purpose
 
-Given a **list of prompt files** (paths or “full inventory”: prompts/*, docs/reference/*, bootstrap_prompts, etc.), assign **class** (canonical | reference | archive) and, if applicable, **promotion** (Skill | Rule | Subagent | —). Output a single table. Do not move files; do not edit docs/prompts-reference.md or docs/prompt-governance.md. Rule 05 defines governance; this subagent only classifies and recommends.
+Given a **list of prompt files** (paths or “full inventory”: prompts/*, docs/reference/*, bootstrap_prompts, etc.), assign **class** (canonical | reference | archive) and, if applicable, **promotion** (Skill | Rule | Subagent | —). Output a single table. Do not move files; do not edit docs/governance/prompts-reference.md or docs/governance/prompt-governance.md. Rule 05 defines governance; this subagent only classifies and recommends.
 
 ## Inputs
 
 - Prompt files to classify: explicit list or “full inventory.”
-- docs/prompt-governance.md, docs/prompts-reference.md (current inventory).
+- docs/governance/prompt-governance.md, docs/governance/prompts-reference.md (current inventory).
 
 ## Outputs (actionable)
 
@@ -18,7 +18,7 @@ Given a **list of prompt files** (paths or “full inventory”: prompts/*, docs
    - Move to? = e.g. `prompts/reference/` or “—”.
    - Promote to? = Skill | Rule | Subagent | — (one-line rationale in table or next column).
 2. **Suggested prompts-reference.md updates:** “Add row: <file> | <class> | …” (skill or human applies).
-3. **Next action:** “Hand off to **prompt-librarian** skill to apply table and update docs/prompts-reference.md.”
+3. **Next action:** “Hand off to **prompt-librarian** skill to apply table and update docs/governance/prompts-reference.md.”
 
 No prose. No file operations. Overlap with skill: skill *does* inventory and updates; this subagent only produces the table and recommendations.
 

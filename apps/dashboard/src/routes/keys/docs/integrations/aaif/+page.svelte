@@ -88,7 +88,7 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
   AAIF does <strong>not</strong> call the dashboard resolve HTTP API; for a full <code class="inline-code">stepChain</code> from Keys, use <code class="inline-code">@restormel/keys</code> <code class="inline-code">resolve()</code> (Gateway key) then execute the model in your worker.
 </p>
 <p class="docs-p">
-  Canonical semantics: <a href="/keys/docs/guides/routing-contract">Routing contract</a> (mirrors <code class="inline-code">docs/keys-routing-contract.md</code>). Agents: MCP <code class="inline-code">docs.canonical_resolve</code> topic <code class="inline-code">keys_routing_contract</code> or suite tool <code class="inline-code">routing.capabilities</code>.
+  Canonical semantics: <a href="/keys/docs/guides/routing-contract">Routing contract</a> (mirrors <code class="inline-code">docs/architecture/keys-routing-contract.md</code>). Agents: MCP <code class="inline-code">docs.canonical_resolve</code> topic <code class="inline-code">keys_routing_contract</code> or suite tool <code class="inline-code">routing.capabilities</code>.
 </p>
 
 <h2 class="docs-h2">When to choose AAIF vs MCP vs CLI</h2>

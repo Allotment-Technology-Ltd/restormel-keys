@@ -88,7 +88,7 @@
       <a href="/keys/docs/cloud-api">Cloud API</a> — Dashboard API (<code>rk_…</code>): resolve, routes, policies, catalog, <strong>project model index</strong>; Zuplo gateway (<code>zpka_…</code>); OpenAPI imports.
       Integrator note (index <code>data</code> shape, validation errors):
       <a
-        href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+        href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/guides/integration/keys-catalog-sync.md"
         target="_blank"
         rel="noopener noreferrer"><code>keys-catalog-sync.md</code></a>.
     </li>

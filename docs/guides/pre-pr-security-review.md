@@ -1,6 +1,6 @@
 # Pre-PR security review
 
-**Status:** Canonical gate before opening a PR on Restormel Keys. Product rules remain [security-baseline.md](../security-baseline.md) and [threat-model-starter.md](../threat-model-starter.md).
+**Status:** Canonical gate before opening a PR on Restormel Keys. Product rules remain [security-baseline.md](../governance/security-baseline.md) and [threat-model-starter.md](../governance/threat-model-starter.md).
 
 ## Why local before CI?
 
@@ -36,7 +36,7 @@ bash scripts/check-repo-hygiene.sh
 bash scripts/check-dependency-policy.sh
 ```
 
-Then manually review the diff against [security-baseline.md](../security-baseline.md) for BYOK paths.
+Then manually review the diff against [security-baseline.md](../governance/security-baseline.md) for BYOK paths.
 
 ## Local vs CI
 
@@ -66,5 +66,5 @@ Detail: [neon-operator-security.md](../../.cursor/skills/restormel-high-risk-sec
 ## Related
 
 - [aikido-cursor-mcp.md](./aikido-cursor-mcp.md)
-- [subagents/security-reviewer.md](../subagents/security-reviewer.md) — narrow baseline table
+- [subagents/security-reviewer.md](../../subagents/security-reviewer.md) — narrow baseline table
 - [SECURITY.md](../../SECURITY.md)

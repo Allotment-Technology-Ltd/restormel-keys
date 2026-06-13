@@ -10,7 +10,7 @@
   <h1>Connect first graph onboarding</h1>
   <p class="doc-intro">
     <strong>Canonical repo copy:</strong>
-    <code class="inline-code">docs/connect-first-graph-onboarding.md</code> — same operational steps; update that file first, then keep this page aligned.
+    <code class="inline-code">docs/guides/connect-first-graph-onboarding.md</code> — same operational steps; update that file first, then keep this page aligned.
   </p>
 
   <div class="callout callout-tip">

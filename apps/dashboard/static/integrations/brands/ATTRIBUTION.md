@@ -1,6 +1,6 @@
 # Third-party logo assets
 
-SVG files in this directory are used on Restormel marketing and docs surfaces to indicate **technical compatibility** only (see [docs/guides/third-party-brand-marks.md](../../../../docs/guides/third-party-brand-marks.md)).
+SVG files in this directory are used on Restormel marketing and docs surfaces to indicate **technical compatibility** only (see [docs/guides/third-party-brand-marks.md](../../../../../docs/guides/third-party-brand-marks.md)).
 
 | File | Source |
 |------|--------|

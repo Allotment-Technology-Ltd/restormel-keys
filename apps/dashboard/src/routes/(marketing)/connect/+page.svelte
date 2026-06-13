@@ -11,7 +11,7 @@
   $: flags = $page.data.moduleFlags ?? MVP_MODULE_DEFAULTS;
 
   /**
-   * Marketing claims ledger citations (docs/verified-context-claims-ledger.md):
+   * Marketing claims ledger citations (docs/product/verified-context-claims-ledger.md):
    * - "Every claim carries a provenance trace" → row #7 (proven)
    * - "Published quality bar: ≥90% supported, ≤2% unsupported" → row #8 (proven)
    * - "The validator catches fabricated claims" → row #6 (proven, continuously enforced)

@@ -34,7 +34,7 @@ The four changes a developer needs before they can use the API productively.
 No business logic changes. All changes are in Zuplo config and the gateway layer.
 
 ```
-Using the API audit at docs/audit/api-audit.md and the source file index at
+Using the API audit at docs/reviews/api-audit.md and the source file index at
 the bottom of that document, make the following changes to the Zuplo gateway
 and related configuration. No changes to dashboard route handlers or service
 logic in this phase.
@@ -118,7 +118,7 @@ Migrate the legacy retrieve path to the orchestrator. After this phase there
 is one retrieval path, not two.
 
 ```
-Using the API audit at docs/audit/api-audit.md, unify the retrieval layer so
+Using the API audit at docs/reviews/api-audit.md, unify the retrieval layer so
 that all retrieval calls — REST, MCP, and internal — use the RetrievalOrchestrator
 via graph-orchestrator-service.ts. The legacy retrieve-service.ts must be
 deprecated, not deleted (delete in a later cleanup pass).
@@ -208,7 +208,7 @@ The ingest API needs to deliver what makes Restormel valuable: quality reports
 and production workflow integration via webhooks.
 
 ```
-Using the API audit at docs/audit/api-audit.md, complete the public ingest API
+Using the API audit at docs/reviews/api-audit.md, complete the public ingest API
 contract so developers building production workflows get the data and events
 they need.
 
@@ -311,7 +311,7 @@ Addresses: C1, I4, I5, I9, O1, O2
 Make the API feel like a coherent product, not assembled parts.
 
 ```
-Using the API audit at docs/audit/api-audit.md, fix the auth and contract
+Using the API audit at docs/reviews/api-audit.md, fix the auth and contract
 consistency issues. These are targeted, surgical changes — do not refactor
 auth architecture, only fix the specific gaps listed.
 
@@ -408,7 +408,7 @@ Run pnpm check. Report every file changed.
 Addresses: remaining Important and Cosmetic gaps, missing standard behaviours
 
 ```
-Using the API audit at docs/audit/api-audit.md (Section 5: Missing standard
+Using the API audit at docs/reviews/api-audit.md (Section 5: Missing standard
 behaviours and Section 8 Cosmetic items), implement the standard API
 behaviours that a developer expects from a production API.
 

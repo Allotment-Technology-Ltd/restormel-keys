@@ -21,7 +21,7 @@ Get skills into the environment in a repeatable way: list what’s available, in
 ### 1. List curated installable skills
 
 - Read the curated list. For Restormel Keys this repo, the curated set is the nine skills under `skills/`: skill-installer, repo-bootstrapper, docs-maintainer, roadmap-status-sync, changelog-updater, prompt-librarian, security-review, architecture-recorder, release-prep.
-- Output the list with names and one-line purpose (from each SKILL.md). If the list lives in a file (e.g. `skills/curated-list.md` or docs/skills.md), read that and output it.
+- Output the list with names and one-line purpose (from each SKILL.md). If the list lives in a file (e.g. `skills/curated-list.md` or docs/governance/skills.md), read that and output it.
 
 ### 2. Install a curated skill
 

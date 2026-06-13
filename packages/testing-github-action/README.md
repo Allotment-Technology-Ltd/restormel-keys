@@ -10,7 +10,7 @@ Pin **`uses`** to an **immutable Git tag** on this repository, **not** only `@ma
 uses: YourOrg/restormel-keys/packages/testing-github-action@testing-action-v1.0.0
 ```
 
-Tags are created with workflow **[release-testing-action-version.yml](../../.github/workflows/release-testing-action-version.yml)** (`testing-action-vMAJOR.MINOR.PATCH`). Full policy: [docs/testing/github-action-semver.md](../../docs/testing/github-action-semver.md).
+Tags are created with workflow **[release-testing-action-version.yml](../../.github/workflows/release-testing-action-version.yml)** (`testing-action-vMAJOR.MINOR.PATCH`). Full policy: [docs/archive/testing/testing/github-action-semver.md](../../docs/archive/testing/testing/github-action-semver.md).
 
 There is **no hosted control plane** in this MVP; `poll_interval_seconds` and `timeout_minutes` inputs are reserved for documentation alignment only.
 
@@ -36,7 +36,7 @@ env:
   RESTORMEL_PROJECT_ID: ${{ secrets.RESTORMEL_PROJECT_ID }} # from Keys dashboard → Restormel Testing
 ```
 
-Name repository secrets as you prefer; map them to these **runtime** names. Compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` (same values) still work. Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md).
+Name repository secrets as you prefer; map them to these **runtime** names. Compatibility: `RESTORMEL_KEYS_API_BASE_URL` / `RESTORMEL_KEYS_API_TOKEN` (same values) still work. Or set `RESTORMEL_TESTING_OPENAI_FALLBACK=1` and `OPENAI_API_KEY` only with explicit team approval (documented escape hatch). Full guide: [docs/guides/keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md).
 
 Then:
 

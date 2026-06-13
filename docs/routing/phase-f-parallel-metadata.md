@@ -1,7 +1,7 @@
 # Resolver sequence: parallel metadata (v1 informational)
 
 **Audience:** Integrators using `parallel_group_id` / `parallel_branch_role` on steps.  
-**Contract:** `contractVersion` **`2026-04-16`** — see [keys-routing-contract.md](../keys-routing-contract.md).
+**Contract:** `contractVersion` **`2026-04-16`** — see [keys-routing-contract.md](../architecture/keys-routing-contract.md).
 
 ## v1 behaviour
 

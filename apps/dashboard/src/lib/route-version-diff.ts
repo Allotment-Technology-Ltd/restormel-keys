@@ -6,7 +6,7 @@
  * from `route_version_events`; nothing here re-derives or approximates a version.
  *
  * The route diff is computed client-side over those snapshots (no route `/diff`
- * endpoint exists — see docs/dashboard-world-class-roadmap.md W3.5 FIRST note).
+ * endpoint exists — see docs/design/dashboard-world-class-roadmap.md W3.5 FIRST note).
  * The policy diff is computed server-side (`/api/policies/{id}/diff`) and is
  * normalised into the same `DiffModel` here so a single renderer serves both.
  *

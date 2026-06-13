@@ -18,8 +18,8 @@
       <strong>Hosted credentials (optional):</strong> In the Keys dashboard you can store encrypted provider keys under <strong>Connections</strong> and use
       <strong>Restormel Testing</strong> (<code>/keys/dashboard/testing</code>) for <code>RESTORMEL_PROJECT_ID</code> and environment IDs. End-to-end guide:
       <a href={keysTestingOnboardingUrl} rel="noopener noreferrer">Keys + Testing onboarding</a> (repo:
-      <a href={`${githubRepoUrl}/blob/main/docs/keys-testing-onboarding.md`} rel="noopener noreferrer"
-        ><code>docs/keys-testing-onboarding.md</code></a
+      <a href={`${githubRepoUrl}/blob/main/docs/guides/keys-testing-onboarding.md`} rel="noopener noreferrer"
+        ><code>docs/guides/keys-testing-onboarding.md</code></a
       >).
     </p>
     <p>MVP integration points:</p>

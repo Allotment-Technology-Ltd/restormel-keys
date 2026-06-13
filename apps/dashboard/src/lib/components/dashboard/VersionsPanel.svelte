@@ -6,7 +6,7 @@
    * Accepts endpoint URLs for history, publish, and rollback so it works for
    * both routes and policies without duplicating logic.
    *
-   * docs/ux-contracts.md §3 state model: loading / error / empty / success.
+   * docs/design/ux-contracts.md §3 state model: loading / error / empty / success.
    * Publish and rollback are state-changing actions; rollback requires confirmation.
    */
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
@@ -166,7 +166,7 @@
     // snapshot so the operator sees exactly what is about to go live. Policies
     // have no client-side draft model, so they fall back to the most-recent
     // published change, explicitly labelled (the asymmetry is noted in
-    // docs/ux-contracts.md §3, W3.5).
+    // docs/design/ux-contracts.md §3, W3.5).
     const context = publishConfirmContext;
     if (
       !confirm(

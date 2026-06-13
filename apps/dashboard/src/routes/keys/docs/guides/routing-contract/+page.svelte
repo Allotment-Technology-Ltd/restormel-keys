@@ -10,7 +10,7 @@
   <h1>Routing contract (canonical)</h1>
   <p class="doc-intro">
     This page mirrors the repository source of truth
-    <code class="inline-code">docs/keys-routing-contract.md</code>. It describes how Restormel Keys exposes
+    <code class="inline-code">docs/architecture/keys-routing-contract.md</code>. It describes how Restormel Keys exposes
     <strong>multi-step routes</strong>, <strong>resolve</strong>, and <strong>simulate</strong> for complex hosts (for example SOPHIA ingestion), without executing LLM calls in Keys.
   </p>
 

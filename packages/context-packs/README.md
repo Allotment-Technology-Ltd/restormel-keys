@@ -66,5 +66,5 @@ Tag **`platform-v*`** triggers [publish-restormel-platform.yml](../../.github/wo
 
 ## Docs
 
-- Scope and parity: [docs/restormel/phase2-context-packs-extraction-scope.md](../../docs/restormel/phase2-context-packs-extraction-scope.md)
-- Status / integration: [docs/restormel/PHASE2-EXTRACTION-STATUS.md](../../docs/restormel/PHASE2-EXTRACTION-STATUS.md)
+- Scope and parity: [docs/archive/suite-migration-status/phase2-context-packs-extraction-scope.md](../../docs/archive/suite-migration-status/phase2-context-packs-extraction-scope.md)
+- Status / integration: [docs/archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md](../../docs/archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md)

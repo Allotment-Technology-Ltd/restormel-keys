@@ -5,7 +5,7 @@ Every criterion is pass/fail against the diff + the running surface. A criterion
 evaluated from the PR (no screenshot, no test, no reachable state) is a **fail** — provability is
 the product's own thesis; PRs inherit it.*
 
-Standards cited: `docs/design/keys-northstar-redesign-2026-06.md` (NS), `docs/ux-contracts.md`
+Standards cited: `docs/design/keys-northstar-redesign-2026-06.md` (NS), `docs/design/ux-contracts.md`
 (UXC, incl. §2 registry + §A redirect map), the `restormel-neu-brutalist-ui` skill (SKILL).
 
 ---

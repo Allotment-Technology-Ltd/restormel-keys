@@ -19,7 +19,7 @@ description: >-
 
 ## Agent workflow
 
-1. **Tokens:** Edit **`packages/keys-tokens`**. Publish with tag **`tokens-v*`** (see `.github/workflows/publish-keys-tokens.yml`). Keep [docs/design-tokens.css](../../../docs/design-tokens.css) aligned when values change.
+1. **Tokens:** Edit **`packages/keys-tokens`**. Publish with tag **`tokens-v*`** (see `.github/workflows/publish-keys-tokens.yml`). Keep [docs/design/design-tokens.css](../../../docs/design/design-tokens.css) aligned when values change.
 2. **Templates / external scaffold parity:** If a change must apply to **new repos** cut from the template, update **`platform/template-restormel-module/`** (and `platform/.github/actions/` if composites are part of that story) alongside root `.github/actions/` where they are duplicated.
 3. **Do not** treat a separate **restormel-platform** GitHub repo as canonical for tokens; this repo owns **`@restormel/keys-tokens`** source.
 

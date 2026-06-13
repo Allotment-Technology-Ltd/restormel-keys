@@ -66,9 +66,9 @@ curl -sS "https://restormel.dev/keys/dashboard/api/catalog?includeUnhealthy=1&li
     Full matrix, curl examples, and validation errors (<code>project_models_validation_failed</code>): <a href="/keys/docs/cloud-api">Cloud API</a>.
     Maintainer-facing contract summary:
     <a
-      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel-integration/keys-catalog-sync.md"
+      href="https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/guides/integration/keys-catalog-sync.md"
       target="_blank"
-      rel="noopener noreferrer"><code>docs/restormel-integration/keys-catalog-sync.md</code></a>
+      rel="noopener noreferrer"><code>docs/guides/integration/keys-catalog-sync.md</code></a>
     in the repo.
   </p>
 

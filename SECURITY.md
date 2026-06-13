@@ -23,7 +23,7 @@ Security reports are most helpful when they relate to:
 - Access control around project data and API keys.
 - Leakage of secrets or keys in the application, logs, or configuration.
 - Data integrity or confidentiality issues in the dashboard or public API surface.
-- **Restormel Testing** (`@restormel/testing-*` on npm, composite Action under `packages/testing-github-action/`): credential handling in CI configs, `judge_rubric` / agent flows that could exfiltrate page content to third parties, or bypass of documented egress controls. See [docs/security-baseline.md](docs/security-baseline.md) and [docs/testing/testing-autonomous-browsing-threat-addendum.md](docs/testing/testing-autonomous-browsing-threat-addendum.md).
+- **Restormel Testing** (`@restormel/testing-*` on npm, composite Action under `packages/testing-github-action/`): credential handling in CI configs, `judge_rubric` / agent flows that could exfiltrate page content to third parties, or bypass of documented egress controls. See [docs/governance/security-baseline.md](docs/governance/security-baseline.md) and [docs/archive/testing/testing/testing-autonomous-browsing-threat-addendum.md](docs/archive/testing/testing/testing-autonomous-browsing-threat-addendum.md).
 
 **Reporting scope for published packages:** Vulnerabilities that affect **consumers** of the Testing CLI or Action (e.g. path traversal from untrusted config, unsafe defaults when running in CI) are in scope. Purely stylistic or non-security test flakes are not.
 

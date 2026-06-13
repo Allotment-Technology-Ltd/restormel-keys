@@ -1,6 +1,6 @@
 # Connect Ingestion Setup Wizard — UX/UI Findings
 
-Audit per `docs/reviews/connect-wizard-ux-review.md` (static review against `docs/ux-contracts.md`
+Audit per `docs/reviews/connect-wizard-ux-review.md` (static review against `docs/design/ux-contracts.md`
 + Neo-Brutalist v2 specs, candidate validation UX1–UX5, best-effort rendered pass). Audit only —
 no code was changed.
 

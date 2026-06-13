@@ -2,7 +2,7 @@
 
 **Status:** Accepted (Phase F wave 1 shipped in repo: pools + parallel metadata + contract `2026-04-16`).  
 **Audience:** Restormel Keys maintainers, SOPHIA / host integrators.  
-**Canonical routing:** [docs/keys-routing-contract.md](../keys-routing-contract.md), [`RESOLVE_SIMULATE_CONTRACT_VERSION`](../../apps/dashboard/src/lib/server/resolve-response.ts).
+**Canonical routing:** [docs/architecture/keys-routing-contract.md](../architecture/keys-routing-contract.md), [`RESOLVE_SIMULATE_CONTRACT_VERSION`](../../apps/dashboard/src/lib/server/resolve-response.ts).
 
 ## Problem
 
@@ -26,7 +26,7 @@ Keys remains **intent + resolution + policy evaluation metadata**. **Hosts execu
 | **F1** | **Model pools** (`model_pool` JSON on `route_steps`), resolver selection, policy per member, dashboard + export | Shipped |
 | **F2** | **Parallel metadata** (`parallel_group_id`, `parallel_branch_role`) echoed on resolve/simulate | Shipped (linear selection unchanged) |
 | **F3** | **Dynamic chaining** | **Option A (host-driven):** document-only + existing `attemptNumber` / `switchCriteria` / `retryPolicy` echoes — no control-plane graph in v1. **Option B (graph):** future; requires migrations + resolver graph walk. |
-| **F4** | **Integrators + security** | Consumer docs, OpenAPI alignment, masked identifiers only in logs ([security baseline](../security-baseline.md)). |
+| **F4** | **Integrators + security** | Consumer docs, OpenAPI alignment, masked identifiers only in logs ([security baseline](../governance/security-baseline.md)). |
 
 ## Design summary
 
@@ -49,7 +49,7 @@ Keys remains **intent + resolution + policy evaluation metadata**. **Hosts execu
 
 - **Policies:** Evaluated against **each pool member** candidate in order (same types as single-step routes).
 - **Consumers:** [sophia-keys-routing-consumer.md](../guides/sophia-keys-routing-consumer.md).
-- **Security:** No raw secrets in logs; pool JSON must not contain secrets ([security baseline](../security-baseline.md)).
+- **Security:** No raw secrets in logs; pool JSON must not contain secrets ([security baseline](../governance/security-baseline.md)).
 
 ## Deliverables (closed for wave 1)
 
@@ -60,7 +60,7 @@ Keys remains **intent + resolution + policy evaluation metadata**. **Hosts execu
 
 ## References
 
-- [docs/keys-routing-contract.md](../keys-routing-contract.md)
+- [docs/architecture/keys-routing-contract.md](../architecture/keys-routing-contract.md)
 - [CHANGELOG.md](../../CHANGELOG.md)
 - Resolver: [`apps/dashboard/src/lib/server/route-resolver.ts`](../../apps/dashboard/src/lib/server/route-resolver.ts)
 - Model pool helper: [`apps/dashboard/src/lib/server/model-pool.ts`](../../apps/dashboard/src/lib/server/model-pool.ts)

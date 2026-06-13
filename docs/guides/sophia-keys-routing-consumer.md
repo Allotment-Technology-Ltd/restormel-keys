@@ -6,7 +6,7 @@
 
 For each logical stage (extraction, relations, …):
 
-1. Create a dedicated route with `workload: "ingestion"` and the matching `stage` (see [keys-routing-contract.md](../keys-routing-contract.md#ingestion-workload--stage)), **or** use a shared ingestion route with null `stage` as fallback.
+1. Create a dedicated route with `workload: "ingestion"` and the matching `stage` (see [keys-routing-contract.md](../architecture/keys-routing-contract.md#ingestion-workload--stage)), **or** use a shared ingestion route with null `stage` as fallback.
 2. Publish the route (`version === publishedVersion`) before production traffic.
 
 ## 2. Resolve
@@ -20,7 +20,7 @@ with at least `environmentId`, and either `routeId` or **`workload` + optional `
 Read:
 
 - **`providerType` / `modelId`** for the winning tier.
-- **`stepChain`** for the full ordered list (with rich metadata; contract **`2026-04-16`** adds optional **model pool** fields and **parallel** metadata echoes — see [keys-routing-contract.md](../keys-routing-contract.md)).
+- **`stepChain`** for the full ordered list (with rich metadata; contract **`2026-04-16`** adds optional **model pool** fields and **parallel** metadata echoes — see [keys-routing-contract.md](../architecture/keys-routing-contract.md)).
 - **`selectedPoolMemberIndex`** when the winning step used a **model pool** (otherwise null).
 - **`fallbackCandidates`** for tiers after the winner.
 

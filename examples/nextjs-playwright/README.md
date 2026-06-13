@@ -34,8 +34,8 @@ Artefacts are written under `.restormel-testing/runs/` (see `testing report <dir
 
 ## CI / preview URLs
 
-Point `environments.local.base_url` at your **Vercel preview** or set the Action input `target_url` to the preview origin. Keep cookies/session in a `storage_state` file via hooks if needed — see [keys-testing-onboarding.md](../../docs/keys-testing-onboarding.md) and the dashboard Testing docs.
+Point `environments.local.base_url` at your **Vercel preview** or set the Action input `target_url` to the preview origin. Keep cookies/session in a `storage_state` file via hooks if needed — see [keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md) and the dashboard Testing docs.
 
 ## GitHub Actions
 
-See [examples/testing-github-actions/README.md](../testing-github-actions/README.md) and [docs/testing/github-action-io-spec.md](../../docs/testing/github-action-io-spec.md).
+See [examples/testing-github-actions/README.md](../testing-github-actions/README.md) and [docs/archive/testing/testing/github-action-io-spec.md](../../docs/archive/testing/testing/github-action-io-spec.md).

@@ -29,7 +29,7 @@ import { isAAIFRequest, isAAIFResponse } from "@restormel/aaif";
 - **`integrationStack`** (optional) declares **third-party products** in the host environment (Neon, Vercel, gateways, model providers, CI). It does **not** change resolve or model selection; use it for logs, MCP agents, and analytics. Shape: `{ schemaVersion: "1", templateId?: string, components: { id: string, role?: string }[] }` where each `id` is one of **`INTEGRATION_COMPONENT_IDS`** exported from this package (see `src/integration-stack-catalog.ts`). **`isAAIFRequest`** validates the field when present. The dashboard **Stack setup** wizard and marketing **ecosystem** catalog use the same ids via **`INTEGRATION_CATALOG`** / **`INTEGRATION_STACK_TEMPLATES`**.
 - **Semver (pre-1.0):** additive optional fields on `AAIFRequest` and expansions to `AAIFRoutingPlan*` / `AAIFRoutingPlanStep` are **patch** bumps (for example **0.0.10 → 0.0.11** for `routingPlan`). Hosts should pin a range and read the package **CHANGELOG** when upgrading.
 - **Full `stepChain`** and **simulate diagnostics** come from the **dashboard HTTP API** (`POST …/resolve`, `POST …/routes/{routeId}/simulate`), not from `executeAAIFRequest`. Typical pattern: **resolve → execute** in the host. Example walkthrough (placeholders only): [examples/aaif-resolve-then-execute/README.md](../../examples/aaif-resolve-then-execute/README.md).
-- Human + agent canonical doc: [docs/keys-routing-contract.md](../../docs/keys-routing-contract.md) — public mirror [/keys/docs/guides/routing-contract](https://restormel.dev/keys/docs/guides/routing-contract). MCP: `docs.canonical_resolve` topic **`keys_routing_contract`**, suite tool **`routing.capabilities`**.
+- Human + agent canonical doc: [docs/architecture/keys-routing-contract.md](../../docs/architecture/keys-routing-contract.md) — public mirror [/keys/docs/guides/routing-contract](https://restormel.dev/keys/docs/guides/routing-contract). MCP: `docs.canonical_resolve` topic **`keys_routing_contract`**, suite tool **`routing.capabilities`**.
 
 ## Runtime helper (routing + cost)
 
@@ -132,5 +132,5 @@ Full integration guide: [docs/guides/aaif-verified-context.md](../../docs/guides
 
 **Optional type:** `import type { RestormelSuiteToolName } from "@restormel/aaif"` — the same string union as **`@restormel/mcp`** suite tools (kept in sync in source; optional peer **`@restormel/mcp@>=0.2.0`** when you use the MCP server). Future work may add a typed AAIF extension or a shared JSON Schema for a generic “tool envelope” across HTTP and MCP.
 
-Human / agent parity table: [docs/restormel/THEME-L-MCP-PARITY.md](../../docs/restormel/THEME-L-MCP-PARITY.md).
+Human / agent parity table: [docs/architecture/THEME-L-MCP-PARITY.md](../../docs/architecture/THEME-L-MCP-PARITY.md).
 

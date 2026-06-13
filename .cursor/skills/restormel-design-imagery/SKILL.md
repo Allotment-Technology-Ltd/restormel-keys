@@ -11,8 +11,8 @@ description: >-
 
 ## Canonical references
 
-- Design system index: [docs/design-system-index.md](../../../docs/design-system-index.md)
-- Neo-brutalist tokens: [docs/DESIGN-TOKENS.md](../../../docs/DESIGN-TOKENS.md) (`#F3EAD0` canvas, `#FFD600` yellow accent, `#0C0C0C` ink, `#1A3F8A` blueprint blue, Barlow Condensed / DM Sans / Space Mono)
+- Design system index: [docs/design/design-system-index.md](../../../docs/design/design-system-index.md)
+- Neo-brutalist tokens: [docs/design/DESIGN-TOKENS.md](../../../docs/design/DESIGN-TOKENS.md) (`#F3EAD0` canvas, `#FFD600` yellow accent, `#0C0C0C` ink, `#1A3F8A` blueprint blue, Barlow Condensed / DM Sans / Space Mono)
 - Midjourney MCP setup: [docs/guides/midjourney-cursor-mcp.md](../../../docs/guides/midjourney-cursor-mcp.md)
 
 ## Choose the right medium (decision tree)
@@ -23,7 +23,7 @@ description: >-
 | Vendor / integration logos | Monochrome SVG from Simple Icons or press kit | [restormel-third-party-brand-marks](../restormel-third-party-brand-marks/SKILL.md) |
 | Hero photo/illustration, OG image, editorial texture | Midjourney MCP (if configured) or manual sub export | [restormel-midjourney-mcp](../restormel-midjourney-mcp/SKILL.md) |
 | Fast placeholder / icon concept | Cursor **GenerateImage** | Built-in tool — not for final brand-critical art |
-| UI chrome (cards, nav, buttons) | CSS + tokens — **never** rasterize | [design-system-index](../../../docs/design-system-index.md) |
+| UI chrome (cards, nav, buttons) | CSS + tokens — **never** rasterize | [design-system-index](../../../docs/design/design-system-index.md) |
 
 **Default:** Prefer code (SVG + tokens) over generative raster when the message is structural. Use Midjourney when the page needs **atmosphere** (hero, social card, case-study mood) without inventing fake metrics or vendor logos.
 

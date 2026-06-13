@@ -4,7 +4,7 @@
  * This module is importable by both the Svelte component and unit tests.
  * It has no server-side imports (no $lib/server/*).
  *
- * Nav-registry destinations are sourced from docs/ux-contracts.md §1 (the canonical
+ * Nav-registry destinations are sourced from docs/design/ux-contracts.md §1 (the canonical
  * nav model). Per-stage cross-links are also added here so the registry stays the
  * single source of truth for palette nav commands.
  */

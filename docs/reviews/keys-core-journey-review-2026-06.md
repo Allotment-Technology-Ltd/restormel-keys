@@ -11,8 +11,8 @@ every UI surface, BFF endpoint, and data-layer function on each path, with file:
 points. Cross-referenced against
 [`dashboard-functionality-review-2026-06.md`](dashboard-functionality-review-2026-06.md)
 (**FUNC**), [`dashboard-ux-review-2026-06.md`](dashboard-ux-review-2026-06.md) (**UX**),
-[`docs/dashboard-world-class-roadmap.md`](../dashboard-world-class-roadmap.md) (**W-stages**),
-[`docs/keys-routing-contract.md`](../keys-routing-contract.md), and the
+[`docs/design/dashboard-world-class-roadmap.md`](../design/dashboard-world-class-roadmap.md) (**W-stages**),
+[`docs/architecture/keys-routing-contract.md`](../architecture/keys-routing-contract.md), and the
 `restormel-keys-routing` skill. Findings are marked **NEW** (not in either prior review) or
 **DEEPENS** (sharpens a prior finding with new evidence). Review only; **no code changed**.
 

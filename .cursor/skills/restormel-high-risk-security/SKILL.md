@@ -9,7 +9,7 @@ description: >-
 
 # Restormel high-risk security
 
-Orchestrates **local, pre-PR** security review for Restormel Keys. Canonical human runbook: [docs/guides/pre-pr-security-review.md](../../../docs/guides/pre-pr-security-review.md). Product rules: [docs/security-baseline.md](../../../docs/security-baseline.md), [docs/threat-model-starter.md](../../../docs/threat-model-starter.md).
+Orchestrates **local, pre-PR** security review for Restormel Keys. Canonical human runbook: [docs/guides/pre-pr-security-review.md](../../../docs/guides/pre-pr-security-review.md). Product rules: [docs/governance/security-baseline.md](../../../docs/governance/security-baseline.md), [docs/governance/threat-model-starter.md](../../../docs/governance/threat-model-starter.md).
 
 **Do not** implement product fixes unless the user asks; default is **review + findings + gate recommendation**.
 
@@ -33,8 +33,8 @@ Stop and report blockers if any step finds **Critical** issues. Summarize all fi
 
 Read fully (do not paraphrase from memory):
 
-- [docs/security-baseline.md](../../../docs/security-baseline.md)
-- [docs/threat-model-starter.md](../../../docs/threat-model-starter.md)
+- [docs/governance/security-baseline.md](../../../docs/governance/security-baseline.md)
+- [docs/governance/threat-model-starter.md](../../../docs/governance/threat-model-starter.md)
 
 For Connect/MCP/agent routes also skim [docs/guides/restormel-environment-vocabulary.md](../../../docs/guides/restormel-environment-vocabulary.md) and [docs/runbooks/mcp-implementation-workflow.md](../../../docs/runbooks/mcp-implementation-workflow.md).
 

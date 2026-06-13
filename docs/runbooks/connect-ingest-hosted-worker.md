@@ -1,7 +1,7 @@
 # Knowledge Ingest hosted worker
 
 **Status:** Phase 10 (5d stub)  
-**Related:** [PHASE10-SUITE-MIGRATION-STATUS.md](../restormel/PHASE10-SUITE-MIGRATION-STATUS.md)
+**Related:** [PHASE10-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE10-SUITE-MIGRATION-STATUS.md)
 
 ---
 

@@ -49,5 +49,5 @@ Authenticated with **session** or **management key** (same class as integrations
 ## Related
 
 - In-app: `/keys/docs/integrations/webhooks-audit`
-- [Security baseline](../security-baseline.md)
-- [Threat model starter](../threat-model-starter.md) (webhook section)
+- [Security baseline](../governance/security-baseline.md)
+- [Threat model starter](../governance/threat-model-starter.md) (webhook section)

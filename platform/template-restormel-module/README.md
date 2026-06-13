@@ -33,4 +33,4 @@ This app depends on **`@restormel/keys-tokens`** (`--rm-*` / semantic CSS). Impo
 
 ## Template placeholders
 
-If this repo was created from the **Keys** template folder, replace `__MODULE_*__`, `__ROOT_PKG_NAME__`, and `__APP_PKG_NAME__` in all files, **or** run the init script from a **restormel-keys** clone (see [docs/template-restormel-module-repo.md](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/template-restormel-module-repo.md)).
+If this repo was created from the **Keys** template folder, replace `__MODULE_*__`, `__ROOT_PKG_NAME__`, and `__APP_PKG_NAME__` in all files, **or** run the init script from a **restormel-keys** clone (see [docs/architecture/template-restormel-module-repo.md](https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/architecture/template-restormel-module-repo.md)).

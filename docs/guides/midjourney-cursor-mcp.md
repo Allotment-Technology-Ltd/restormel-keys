@@ -1,6 +1,6 @@
 # Midjourney via Cursor MCP (Restormel design assets)
 
-**Status:** Canonical setup for agent-generated marketing and OG imagery. **Not** a substitute for the in-repo design token system — see [design-system-index.md](../design-system-index.md).
+**Status:** Canonical setup for agent-generated marketing and OG imagery. **Not** a substitute for the in-repo design token system — see [design-system-index.md](../design/design-system-index.md).
 
 ## Subscription vs MCP billing
 
@@ -58,6 +58,6 @@ Managed endpoint (no local Python server):
 
 ## Related docs
 
-- [DESIGN-TOKENS.md](../DESIGN-TOKENS.md) — neo-brutalist palette for prompts
+- [DESIGN-TOKENS.md](../design/DESIGN-TOKENS.md) — neo-brutalist palette for prompts
 - [third-party-brand-marks.md](./third-party-brand-marks.md) — logos (not generative)
-- [security-baseline.md](../security-baseline.md) — secrets and logging
+- [security-baseline.md](../governance/security-baseline.md) — secrets and logging

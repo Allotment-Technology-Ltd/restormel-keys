@@ -11,7 +11,7 @@
     <a href="/keys/dashboard/models">Model Catalog</a> in the dashboard.
   </p>
   <p>
-    Canonical repo copy: <code>docs/model-registry.md</code>.
+    Canonical repo copy: <code>docs/reference/model-registry.md</code>.
   </p>
   <p><a href="/keys/docs/reference/cli">CLI options</a> · <a href="/keys/docs">Keys docs home</a></p>
 </div>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Neo-Brutalist token governance (docs/DESIGN-SPECIFICATION.md v3).
+# Neo-Brutalist token governance (docs/design/DESIGN-SPECIFICATION.md v3).
 # Guards the canonical palette against drift back to pastels/soft SaaS, and verifies
 # the brutalist layer is wired into the app + that motion is reduced-motion safe.
 # Exit 0 if all checks pass; 1 otherwise.

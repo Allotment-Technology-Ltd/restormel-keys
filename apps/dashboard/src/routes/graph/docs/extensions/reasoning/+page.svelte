@@ -124,7 +124,7 @@ const delta = diffGraphs(before, after);
       <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/phase1-restormel-engineering-spec.md" rel="noopener noreferrer"
         >phase1-restormel-engineering-spec.md</a
       >,
-      <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel-monorepo-packages.md" rel="noopener noreferrer"
+      <a href="{GITHUB_REPO_URL}/blob/main/docs/architecture/restormel-monorepo-packages.md" rel="noopener noreferrer"
         >restormel-monorepo-packages.md</a
       >. SOPHIA consumer notes:
       <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel-graph-sophia-consumer.md" rel="noopener noreferrer"
@@ -149,7 +149,7 @@ const delta = diffGraphs(before, after);
       observability <code>run_id</code> alignment). Same <code>platform-v*</code> train as contracts, context-packs, and this
       extensions package—not <code>graph-v*</code>. Integrator overview:
       <a href="{base}/docs/extensions/state">Restormel State (agent memory)</a>; repo spec:
-      <a href="{GITHUB_REPO_URL}/blob/main/docs/restormel/RESTORMEL-STATE.md" rel="noopener noreferrer"
+      <a href="{GITHUB_REPO_URL}/blob/main/docs/architecture/RESTORMEL-STATE.md" rel="noopener noreferrer"
         >RESTORMEL-STATE.md</a
       >.
     </p>

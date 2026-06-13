@@ -13,7 +13,7 @@ See [`sample-workflow.yml`](./sample-workflow.yml) for a full `pull_request` exa
 ## Fork pull requests (safe defaults)
 
 - **Default:** `fork_pr_policy: skip` and `is_fork_pr: ${{ github.event.pull_request.head.repo.fork }}`. Fork PR workflows **do not** run the suite unless you opt in. That avoids failing jobs that cannot access repository secrets or private preview URLs.
-- **Branch protection:** when the action **skips**, the step exits **0** (green). If you need a required check to show “tests did not run”, add a separate job or policy (see [hardening follow-up review](../../docs/testing/restormel-testing-hardening-follow-up-review.md)).
+- **Branch protection:** when the action **skips**, the step exits **0** (green). If you need a required check to show “tests did not run”, add a separate job or policy (see [hardening follow-up review](../../docs/archive/testing/testing/restormel-testing-hardening-follow-up-review.md)).
 - **Same-repo PRs** run normally (`is_fork_pr` is false).
 - **To run on forks:** set `fork_pr_policy: run` and ensure goals target **public** URLs only and do not rely on `secrets.*` (fork workflows from outside collaborators do not receive those secrets on `pull_request`).
 - Prefer the `pull_request` event unless you have a specific, reviewed reason to use `pull_request_target` (which has different security properties). In-app explainer: [`/testing/docs/guides/ci-security`](https://restormel.dev/testing/docs/guides/ci-security).

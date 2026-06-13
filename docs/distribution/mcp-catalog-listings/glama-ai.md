@@ -43,7 +43,7 @@ Quick start: `keys init --mcp --mcp-client claude-code` (requires `@restormel/ke
 
 ## Claims provenance
 
-All quality/verification language in this listing is limited to proven rows in `docs/verified-context-claims-ledger.md`:
+All quality/verification language in this listing is limited to proven rows in `docs/product/verified-context-claims-ledger.md`:
 - "evidence-bound" — row 2 (proven)
 - "supported claims only in strict mode" — row 4 (proven)
 - "provenance trace export URL" — row 7 (proven)

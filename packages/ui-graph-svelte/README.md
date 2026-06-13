@@ -6,7 +6,7 @@
 
 Svelte 5 implementation of the Restormel Graph canvas (`GraphCanvas`, optional `NodeDetail`), aligned with **Contract v0** in `@restormel/graph-core` (`viewModel.ts`). Ported from the SOPHIA app for modular reuse.
 
-**SOPHIA / maintainer depth:** **[docs/restormel-graph-sophia-consumer.md](../../docs/restormel-graph-sophia-consumer.md)** (npm versions, `pnpm.overrides` + tarballs, peers, Vite `ssr.noExternal` for **both** packages, CSS tokens).
+**SOPHIA / maintainer depth:** **[docs/archive/deferred-products/restormel-graph-sophia-consumer.md](../../docs/archive/deferred-products/restormel-graph-sophia-consumer.md)** (npm versions, `pnpm.overrides` + tarballs, peers, Vite `ssr.noExternal` for **both** packages, CSS tokens).
 
 ## Dependencies
 
@@ -36,7 +36,7 @@ Build `@restormel/graph-core` before consuming subpath imports in dev toolchains
 
 The canvas uses SOPHIA design tokens as CSS variables (for example `--color-bg`, `--color-sage`, `--color-text`, `--radius-md`, `--font-ui`, `--text-meta`). Host apps should load a compatible token sheet. The demo app mirrors SOPHIA’s `design-tokens.css` under `apps/restormel-graph-demo/src/lib/graph-demo-tokens.css`.
 
-**`@restormel/ui-graph-svelte/styles.css`:** optional; ships **component-scoped** rules from the library build. It does **not** define `:root` palette variables. If the host already loads the same token names as SOPHIA’s `design-tokens.css`, importing `styles.css` is **not** required for colours (see **[docs/restormel-graph-sophia-consumer.md](../../docs/restormel-graph-sophia-consumer.md)** §3).
+**`@restormel/ui-graph-svelte/styles.css`:** optional; ships **component-scoped** rules from the library build. It does **not** define `:root` palette variables. If the host already loads the same token names as SOPHIA’s `design-tokens.css`, importing `styles.css` is **not** required for colours (see **[docs/archive/deferred-products/restormel-graph-sophia-consumer.md](../../docs/archive/deferred-products/restormel-graph-sophia-consumer.md)** §3).
 
 ## Usage
 

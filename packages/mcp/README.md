@@ -170,7 +170,7 @@ import { ALL_TOOLS } from "@restormel/mcp";
 
 ## Suite inventory and roadmap
 
-Maintainer table of **implemented tools** (read vs act) and **desired** Testing / Graph / State / observability coverage: [docs/restormel/HORIZON-PLATFORM-PROGRAMME.md](../../docs/restormel/HORIZON-PLATFORM-PROGRAMME.md) (section 3).
+Maintainer table of **implemented tools** (read vs act) and **desired** Testing / Graph / State / observability coverage: [docs/architecture/HORIZON-PLATFORM-PROGRAMME.md](../../docs/architecture/HORIZON-PLATFORM-PROGRAMME.md) (section 3).
 
 ## Security
 
@@ -178,4 +178,4 @@ Maintainer table of **implemented tools** (read vs act) and **desired** Testing 
 - This package does **not** log raw credentials. Errors are generic when validation or HTTP calls fail.
 - Key lifecycle helpers only emit masked metadata + fingerprints in generated contracts/templates (never raw key values).
 
-See repo `docs/security-baseline.md` for the full baseline.
+See repo `docs/governance/security-baseline.md` for the full baseline.

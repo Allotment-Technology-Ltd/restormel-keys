@@ -10,7 +10,7 @@
   <h1>Keys + Restormel Testing onboarding</h1>
   <p class="doc-intro">
     <strong>Canonical repo copy:</strong>
-    <code class="inline-code">docs/keys-testing-onboarding.md</code> — same operational steps; update that file first, then keep this page aligned.
+    <code class="inline-code">docs/guides/keys-testing-onboarding.md</code> — same operational steps; update that file first, then keep this page aligned.
   </p>
 
   <div class="callout callout-tip">

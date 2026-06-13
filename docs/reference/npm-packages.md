@@ -59,8 +59,8 @@ Not promoted on restormel.dev when module flags are at MVP defaults:
 
 | Train | Packages | When public |
 |-------|----------|-------------|
-| **Testing** | `@restormel/testing-*` | Enable `restormel-module-testing` — [docs/testing/oss-consumption.md](../testing/oss-consumption.md) |
-| **Graph pillar** | `@restormel/graph-core`, `@restormel/graph-elements` | Enable `restormel-module-graph` (preview+) — [restormel-graph-sophia-consumer.md](../restormel-graph-sophia-consumer.md) |
+| **Testing** | `@restormel/testing-*` | Enable `restormel-module-testing` — [docs/archive/testing/testing/oss-consumption.md](../archive/testing/testing/oss-consumption.md) |
+| **Graph pillar** | `@restormel/graph-core`, `@restormel/graph-elements` | Enable `restormel-module-graph` (preview+) — [restormel-graph-sophia-consumer.md](../archive/deferred-products/restormel-graph-sophia-consumer.md) |
 | **Platform** | `@restormel/contracts`, `@restormel/observability`, `@restormel/state`, … | Graph extensions / dogfood only — not Keys MVP onboarding |
 
 ---
@@ -73,7 +73,7 @@ Not promoted on restormel.dev when module flags are at MVP defaults:
 - **Graph train:** tag `graph-v*` → `publish-graph.yml` (SOPHIA consumers)
 - **Platform train:** tag `platform-v*` → `publish-restormel-platform.yml`
 
-MVP publish matrix: [restormel-monorepo-packages.md](../restormel-monorepo-packages.md).
+MVP publish matrix: [restormel-monorepo-packages.md](../architecture/restormel-monorepo-packages.md).
 
 ---
 

@@ -94,4 +94,4 @@ The sticky comment uses the GitHub-compatible issues API at `GITHUB_API_URL`, wh
 ## See also
 
 - Guide: [Context-regression CI](https://restormel.dev/keys/docs/guides/context-regression-ci) (same content in the in-app docs)
-- Claims integrity: [.github/workflows/connect-efficacy-weekly.yml](../../.github/workflows/connect-efficacy-weekly.yml) + [docs/verified-context-claims-ledger.md](../../docs/verified-context-claims-ledger.md)
+- Claims integrity: [.github/workflows/connect-efficacy-weekly.yml](../../.github/workflows/connect-efficacy-weekly.yml) + [docs/product/verified-context-claims-ledger.md](../../docs/product/verified-context-claims-ledger.md)

@@ -1,6 +1,6 @@
 /**
  * Restormel Connect — public REST API contracts (Phase 0 draft).
- * Canonical programme: docs/restormel/SUITE-ARCHITECTURE-MIGRATION.md
+ * Canonical programme: docs/architecture/SUITE-ARCHITECTURE-MIGRATION.md
  * OpenAPI mirror: docs/api/openapi-suite-v1-draft.yaml
  */
 import { z } from 'zod';

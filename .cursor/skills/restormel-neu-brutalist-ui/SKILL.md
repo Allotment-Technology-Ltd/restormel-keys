@@ -9,7 +9,7 @@ description: >-
 
 # Restormel neu-brutalist UI
 
-Canonical references: [docs/DESIGN-TOKENS.md](../../../docs/DESIGN-TOKENS.md), [docs/design-system-index.md](../../../docs/design-system-index.md), [neubrutalism.com](https://neubrutalism.com/) (visual grammar).
+Canonical references: [docs/design/DESIGN-TOKENS.md](../../../docs/design/DESIGN-TOKENS.md), [docs/design/design-system-index.md](../../../docs/design/design-system-index.md), [neubrutalism.com](https://neubrutalism.com/) (visual grammar).
 
 ## Visual DNA (non-negotiable)
 

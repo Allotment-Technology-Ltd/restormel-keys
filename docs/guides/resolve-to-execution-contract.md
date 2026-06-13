@@ -38,7 +38,7 @@ It is **intentionally narrower** than the project model index: **`GET/POST .../p
 
 ### Project model index (`GET/POST/PUT .../models`, `PATCH/DELETE .../models/{bindingId}`)
 
-Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Rows may be **`bindingKind: execution`** (canonical `providerType` per this table, catalog-backed) or **`bindingKind: registry`** (opaque provider/model for host metadata when off-catalog). **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), [requirements spec](../requirements/project-model-index-gateway-api.md), and [keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md). Global catalog remains **`GET /api/models`** (unauthenticated).
+Integrators merge **`GET /api/projects/{projectId}/models`** (Dashboard API, **Gateway Key**) with local catalogs. Rows may be **`bindingKind: execution`** (canonical `providerType` per this table, catalog-backed) or **`bindingKind: registry`** (opaque provider/model for host metadata when off-catalog). **Mutations** (`POST` batch add, `PUT` replace, `PATCH` `enabled`, `DELETE`) are Gateway Key–authenticated on the same base path — see in-app **Cloud API** doc, [openapi.yaml](../api/openapi.yaml), [requirements spec](../requirements/project-model-index-gateway-api.md), and [keys-catalog-sync.md](integration/keys-catalog-sync.md). Global catalog remains **`GET /api/models`** (unauthenticated).
 
 ### Project model index: response shape and validation errors
 

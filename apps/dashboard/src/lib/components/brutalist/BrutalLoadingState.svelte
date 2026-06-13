@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** Loading state with optional skeleton rows (docs/ux-contracts.md state conventions). */
+  /** Loading state with optional skeleton rows (docs/design/ux-contracts.md state conventions). */
   export let message = "Loading…";
   export let rows = 0;
 </script>

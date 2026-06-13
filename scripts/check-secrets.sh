@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Search for obvious secret patterns and tracked .env. Exit 0 if clean; exit 1 if something suspicious.
-# Aligns to docs/bootstrap-plan.md and docs/security-baseline.md (no committed secrets).
+# Aligns to docs/bootstrap-plan.md and docs/governance/security-baseline.md (no committed secrets).
 # Requires: bash, git (for tracked-file checks). Run from repo root or scripts/.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,7 +26,7 @@ for pattern in $PATTERNS; do
     matches=$(grep -rE "$pattern" --include='*.md' --include='*.ts' --include='*.js' --include='*.json' --include='*.yaml' --include='*.yml' . 2>/dev/null | grep -vE "$EXCLUDE" || true)
   fi
   if [ -n "$matches" ]; then
-    echo "Possible secret pattern in tracked files: $pattern — review and remove or redact (see docs/security-baseline.md)."
+    echo "Possible secret pattern in tracked files: $pattern — review and remove or redact (see docs/governance/security-baseline.md)."
     FOUND=1
   fi
 done

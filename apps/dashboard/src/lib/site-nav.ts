@@ -1,6 +1,6 @@
 /**
  * Marketing site nav — suite-first IA (Theme L).
- * URLs stay canonical per docs/documentation-strategy.md.
+ * URLs stay canonical per docs/governance/documentation-strategy.md.
  */
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import type { SuiteModule } from "$lib/suite/suite-modules";

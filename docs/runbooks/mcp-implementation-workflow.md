@@ -46,7 +46,7 @@ This runbook focuses on wiring the MCP server/tools so your agent workflow can:
 
 ## Server-side environment (production rollout) — user journey
 
-MCP reads **only** the **stdio server process environment** (your IDE/agent host). Treat that env as **server-side**: never commit keys, never expose Gateway keys to the browser, and assume MCP host logs are untrusted. Canonical security rules: [docs/security-baseline.md](../security-baseline.md).
+MCP reads **only** the **stdio server process environment** (your IDE/agent host). Treat that env as **server-side**: never commit keys, never expose Gateway keys to the browser, and assume MCP host logs are untrusted. Canonical security rules: [docs/governance/security-baseline.md](../governance/security-baseline.md).
 
 **Canonical names** for every `RESTORMEL_*` variable and URL role (Gateway key vs server token, `KEYS_BASE` vs control plane vs evaluate): **[docs/guides/restormel-environment-vocabulary.md](../guides/restormel-environment-vocabulary.md)** (in-product: [Environment vocabulary](https://restormel.dev/keys/docs/guides/environment-vocabulary)). Other docs should link there instead of inventing alternate names.
 

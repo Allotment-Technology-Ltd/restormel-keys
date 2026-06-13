@@ -4,12 +4,12 @@
 
 ## Narrow purpose
 
-For a **stated gate** (e.g. “Phase 00 → Phase 01”), evaluate docs/bootstrap-checklist.md and docs/release-readiness.md. **Run** scripts/review-docs.sh, check-repo-hygiene.sh, check-secrets.sh, check-dependency-policy.sh. Map script results and presence of required items (root docs, docs/ canonical set, rules, skills, subagents, workflows) to each checklist item. Output: **Pass/Fail per item**, **blockers** (must fix), **open questions** (should resolve), **one-line recommendation**. Do not re-audit structure (that’s **repo-auditor**) or doc consistency (that’s **docs-maintainer**); only checklist + script outputs.
+For a **stated gate** (e.g. “Phase 00 → Phase 01”), evaluate docs/archive/2026-03-build-pack/bootstrap-checklist.md and docs/governance/release-readiness.md. **Run** scripts/review-docs.sh, check-repo-hygiene.sh, check-secrets.sh, check-dependency-policy.sh. Map script results and presence of required items (root docs, docs/ canonical set, rules, skills, subagents, workflows) to each checklist item. Output: **Pass/Fail per item**, **blockers** (must fix), **open questions** (should resolve), **one-line recommendation**. Do not re-audit structure (that’s **repo-auditor**) or doc consistency (that’s **docs-maintainer**); only checklist + script outputs.
 
 ## Inputs
 
 - Gate: e.g. “Phase 00 → Phase 01” or “first package release.”
-- docs/bootstrap-checklist.md, docs/release-readiness.md.
+- docs/archive/2026-03-build-pack/bootstrap-checklist.md, docs/governance/release-readiness.md.
 - Script outputs (you run the four scripts and use their exit code + stdout).
 
 ## Outputs (actionable)

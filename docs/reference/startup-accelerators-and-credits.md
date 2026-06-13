@@ -79,7 +79,7 @@ High effort vs **vendor credits**; best run in **parallel** once you have bandwi
 
 ## 6. Related internal docs
 
-- Security and redaction when describing infra: [docs/security-baseline.md](../security-baseline.md)
+- Security and redaction when describing infra: [docs/governance/security-baseline.md](../governance/security-baseline.md)
 - Parent-company pitch deck (Restormel + PLOT + SOPHIA): [allotment-technology-pitch-deck.md](./allotment-technology-pitch-deck.md)
 
 ---

@@ -8,7 +8,7 @@
 
 <div class="doc-content">
   <h1>Suite operator model</h1>
-  <p>Canonical vocabulary for one Restormel workspace. Repo mirror: <code>docs/restormel/SUITE-OPERATOR-MODEL.md</code>.</p>
+  <p>Canonical vocabulary for one Restormel workspace. Repo mirror: <code>docs/product/SUITE-OPERATOR-MODEL.md</code>.</p>
 
   <table class="doc-table">
     <thead>

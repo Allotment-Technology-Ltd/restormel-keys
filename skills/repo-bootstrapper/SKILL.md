@@ -1,6 +1,6 @@
 # repo-bootstrapper
 
-Create or align the Phase 00 scaffold against docs/bootstrap-plan.md.
+Create or align the Phase 00 scaffold against docs/archive/2026-03-build-pack/bootstrap-plan.md.
 
 ## Purpose
 
@@ -13,12 +13,12 @@ Bring the repo to the agreed Phase 00 structure (root docs, docs/ canonical set,
 
 ## Inputs
 
-- docs/bootstrap-plan.md as controlling plan.
+- docs/archive/2026-03-build-pack/bootstrap-plan.md as controlling plan.
 - Current repo state (inspect before proposing).
 
 ## Workflow
 
-1. Read docs/bootstrap-plan.md (target tree and Phase 00 objectives).
+1. Read docs/archive/2026-03-build-pack/bootstrap-plan.md (target tree and Phase 00 objectives).
 2. Inspect current repo: list root, docs/, .cursor/, .github/, apps/, packages/, scripts/, skills/, subagents/, prompts/, config files.
 3. Diff current vs target: missing dirs/files, duplicates, misplaced items.
 4. Propose minimal set of creates/edits (no product logic).

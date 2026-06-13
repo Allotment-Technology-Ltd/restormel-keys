@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
 
   /**
-   * Canonical dashboard/docs page header (docs/ux-contracts.md section pattern).
+   * Canonical dashboard/docs page header (docs/design/ux-contracts.md section pattern).
    * H1 + description + optional kicker and trailing action slot.
    */
   export let title: string;

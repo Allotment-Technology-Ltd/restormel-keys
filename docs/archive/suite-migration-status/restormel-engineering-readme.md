@@ -1,0 +1,17 @@
+# Restormel engineering docs (SOPHIA extraction)
+
+High-level programme docs for lifting shared surfaces from SOPHIA into this monorepo.
+
+| Doc | Purpose |
+|-----|---------|
+| [PHASE1-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE1-EXTRACTION-STATUS.md) | Phase 1 status index + pointer to Phase 2 |
+| [phase1-agent-prompt-restormel-engineering.md](../archive/suite-migration-status/phase1-agent-prompt-restormel-engineering.md) | Phase 1 copy-paste agent prompt |
+| [phase1-restormel-engineering-spec.md](../archive/suite-migration-status/phase1-restormel-engineering-spec.md) | Phase 1 engineering spec |
+| [04-delivery/restormel-graph-sophia-extraction-artifacts.md](../archive/suite-migration-status/restormel-graph-sophia-extraction-artifacts.md) | Graph/UI extraction map + parity |
+| [PHASE2-EXTRACTION-STATUS.md](../archive/suite-migration-status/PHASE2-EXTRACTION-STATUS.md) | Context packs status + post-publish steps |
+| [phase2-context-packs-extraction-scope.md](../archive/suite-migration-status/phase2-context-packs-extraction-scope.md) | Context packs API, tests, docs checklist |
+| [phase2-agent-prompt-restormel-engineering.md](../archive/suite-migration-status/phase2-agent-prompt-restormel-engineering.md) | Phase 2 copy-paste agent prompt |
+| [RESTORMEL-STATE.md](./RESTORMEL-STATE.md) | `@restormel/state` — agent memory events, projection, correlation (canonical spec; integrator mirror: `/graph/docs/extensions/state`) |
+| [state-sophia-integration.md](./state-sophia-integration.md) | SOPHIA Stoa / escalation hook points for state events |
+
+Consumer handoff (Vite, npm, `ssr.noExternal`): [restormel-graph-sophia-consumer.md](../archive/deferred-products/restormel-graph-sophia-consumer.md).

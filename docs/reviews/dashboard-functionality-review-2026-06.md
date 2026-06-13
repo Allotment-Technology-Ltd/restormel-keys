@@ -8,7 +8,7 @@ Connect v1 API surface as it relates to dashboard UI coverage.
 services it calls, a dev-server probe of unauthenticated behaviour, endpoint-to-UI consumer
 mapping (grep for fetch targets in `.svelte`), and the `vitest` baseline.
 **Context:** this follows the Verified Context roadmap completion
-(`docs/verified-context-pivot-roadmap.md`) and the Stage 1.5 perf review
+(`docs/product/verified-context-pivot-roadmap.md`) and the Stage 1.5 perf review
 (`docs/reviews/connect-runtime-reliability-perf.md` — F8/F9 still open, confirmed below).
 A login-session regression is being fixed by another agent and is **noted but not
 investigated** here.

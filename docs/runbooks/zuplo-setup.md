@@ -81,7 +81,7 @@ In the Zuplo project, open **Code** → **routes.oas.json** and use the **Route 
 
 **Path alignment:**
 
-- Dashboard (Vercel) is served at base path `/keys/dashboard`; API routes are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc. (see [phase-3-deployment](../reference/phase-3-deployment.md)).
+- Dashboard (Vercel) is served at base path `/keys/dashboard`; API routes are `/keys/dashboard/api/health`, `/keys/dashboard/api/projects`, etc. (see [phase-3-deployment](../archive/reference/phase-3-deployment.md)).
 - **Recommendation:** **Path** = `/*`, **Forward to** = `${env.KEYS_BACKEND_URL}` with value `https://restormel.dev/keys/dashboard`. Client calls `https://<gateway>/api/health`, `https://<gateway>/api/projects`, etc.; backend receives the same path.
 
 ### 2.2 Path rewrite (if gateway path ≠ backend path)
@@ -237,7 +237,7 @@ forward it automatically.
 **Current status:** Not yet implemented as a custom module. Track as a follow-up: create
 `zuplo-gateway/modules/inject-backend-auth.ts` using `ZuploContext.consumer` to set the header.
 
-For deployment of the dashboard and site, see [phase-3-deployment](../reference/phase-3-deployment.md) and [extraction-vercel](../reference/extraction-vercel.md).
+For deployment of the dashboard and site, see [phase-3-deployment](../archive/reference/phase-3-deployment.md) and [extraction-vercel](../archive/reference/extraction-vercel.md).
 
 ---
 

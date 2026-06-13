@@ -32,4 +32,4 @@ Path contains or equals (case-sensitive globs as substrings unless noted):
 - `ROADMAP`, `CHANGELOG` without security policy edits
 - Token/CSS-only changes under `packages/keys-tokens`
 
-When in doubt, treat as **medium** and read [security-baseline.md](../../../../docs/security-baseline.md).
+When in doubt, treat as **medium** and read [security-baseline.md](../../../../docs/governance/security-baseline.md).

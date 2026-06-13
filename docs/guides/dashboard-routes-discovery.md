@@ -19,4 +19,4 @@ Set **`RESTORMEL_DASHBOARD_UI_HIDDEN`** (comma-separated) on the dashboard deplo
 ## Related
 
 - Operator env overview: [`docs/guides/restormel-environment-vocabulary.md`](restormel-environment-vocabulary.md)
-- Routing contract (API semantics): [`docs/keys-routing-contract.md`](../keys-routing-contract.md)
+- Routing contract (API semantics): [`docs/architecture/keys-routing-contract.md`](../architecture/keys-routing-contract.md)

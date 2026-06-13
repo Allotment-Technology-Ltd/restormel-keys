@@ -32,4 +32,4 @@ The mark is a **four-quadrant router**: Keys (blue), Graph (neon), Testing (cora
 - **Favicon:** `favicon.svg`
 - **Collapsed sidebar / icon-only:** `RestormelLogo variant="mark"`
 
-See [docs/design-system-index.md](../docs/design-system-index.md) for sizing rules.
+See [docs/design/design-system-index.md](../docs/design/design-system-index.md) for sizing rules.

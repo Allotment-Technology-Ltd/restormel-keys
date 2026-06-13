@@ -13,7 +13,7 @@
   const CONNECT_INGEST_BASE = `${DASHBOARD_BASE}/runs`;
   const GRAPH_EXPLORER_HREF = `${DASHBOARD_BASE}/claims`;
   const ENGINEERING_DOC_HREF =
-    "https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/restormel/CONNECT-INGEST-QUALITY-BAR.md";
+    "https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/product/CONNECT-INGEST-QUALITY-BAR.md";
 
   function statusForGate(gateId: string): GateStatusRow | undefined {
     return data.gateStatuses.find((row) => row.gateId === gateId);

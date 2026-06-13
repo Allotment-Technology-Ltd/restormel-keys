@@ -14,7 +14,7 @@
 
 | Symptom | Likely cause | What to do |
 |---------|----------------|------------|
-| `RST_SUITE_UNKNOWN_TOPIC` | Invalid `topic` for `docs.canonical_resolve` | Call with a topic from `CANONICAL_DOC_TOPICS` (`@restormel/mcp`) or see [THEME-L-IA-MATRIX.md](../restormel/THEME-L-IA-MATRIX.md). |
+| `RST_SUITE_UNKNOWN_TOPIC` | Invalid `topic` for `docs.canonical_resolve` | Call with a topic from `CANONICAL_DOC_TOPICS` (`@restormel/mcp`) or see [THEME-L-IA-MATRIX.md](../architecture/THEME-L-IA-MATRIX.md). |
 | `RST_SUITE_TRACE_SHAPE` / `RST_SUITE_TRACE_PARSE` | `traceJson` not valid **RunTrace** JSON | Validate against `@restormel/contracts` **RunTraceSchema**; ensure `source`, `events`, `snapshots` are present. |
 | `RST_SUITE_GRAPH_SHAPE` | `graphJson` missing arrays | Root object must have `nodes`, `edges`, `ghostNodes`, `ghostEdges` arrays (Contract v0 **GraphData** shape). |
 | `RST_SUITE_STATE_*` | Bad **StateEvent** array or reducer error | Events must be a JSON **array** of typed events; see `@restormel/state` types. |
@@ -33,4 +33,4 @@
 - Do not log full config YAML, trace JSON, or state event bodies in support tickets.
 - `state.memory_preview` returns **text lengths only**, not cell content.
 
-See also [mcp-implementation-workflow.md](./mcp-implementation-workflow.md) and [security-baseline.md](../security-baseline.md).
+See also [mcp-implementation-workflow.md](./mcp-implementation-workflow.md) and [security-baseline.md](../governance/security-baseline.md).

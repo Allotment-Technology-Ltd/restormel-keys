@@ -9,7 +9,7 @@
    * summarizes (rubric X4). It is an indicator, not a dashboard: a headline
    * status plus the one actionable number, with the full matrix behind a toggle.
    *
-   * docs/ux-contracts.md §3 state model: loading / error / empty / success.
+   * docs/design/ux-contracts.md §3 state model: loading / error / empty / success.
    */
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";

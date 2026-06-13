@@ -2,9 +2,9 @@
 
 **Scope.** Every authenticated surface under `/keys/dashboard/**`, the `/keys/admin` consoles, and
 the full ingest experience (setup wizard, run console, progress, quality surfaces). Graded against
-`docs/ux-contracts.md` (state model, copy registry, nav model), the Neo-Brutalist system
-(`.claude/skills/restormel-neu-brutalist-ui/SKILL.md`, `docs/design-system-index.md`,
-`docs/COMPONENT-INVENTORY.md`), and the prior wizard review
+`docs/design/ux-contracts.md` (state model, copy registry, nav model), the Neo-Brutalist system
+(`.claude/skills/restormel-neu-brutalist-ui/SKILL.md`, `docs/design/design-system-index.md`,
+`docs/design/COMPONENT-INVENTORY.md`), and the prior wizard review
 (`docs/reviews/connect-wizard-ux-review.md` / `connect-wizard-ux-findings.md`, fixed in PR #190 —
 re-audited below). Review only; no code changed.
 
@@ -55,13 +55,13 @@ actual evidence. Fix the five P0s and the skeleton of a world-class product is a
 | # | Gap | Evidence |
 |---|---|---|
 | IA-1 | **No account menu.** ux-contracts §2 mandates "Avatar opens a menu with Profile & settings, Subscription, and Sign out." The topbar renders title + two help links only. Settings, Billing, and **Sign out** are unreachable. | `apps/dashboard/src/routes/keys/dashboard/+layout.svelte:268-299`; `nav-config.ts:48-81` (no settings/billing/logout items); only inbound `/logout` link is the expired-session error at `+layout.svelte:306` |
-| IA-2 | **The contract itself is stale.** ux-contracts §1 describes sidebar groups "Set Up (… Rules, Guard Rails …), Monitor, Advanced (… Test & Preview, GitHub Setup …) plus Overview and Profile". The shipped IA is Work / Configure / Monitor / More, with Connect — the product's centre — absent from the contract entirely. The law no longer matches the building, so new surfaces can't be graded against it. | `docs/ux-contracts.md:34` vs `nav-config.ts:34-81` |
+| IA-2 | **The contract itself is stale.** ux-contracts §1 describes sidebar groups "Set Up (… Rules, Guard Rails …), Monitor, Advanced (… Test & Preview, GitHub Setup …) plus Overview and Profile". The shipped IA is Work / Configure / Monitor / More, with Connect — the product's centre — absent from the contract entirely. The law no longer matches the building, so new surfaces can't be graded against it. | `docs/design/ux-contracts.md:34` vs `nav-config.ts:34-81` |
 | IA-3 | **Two competing "homes".** Login lands on Overview (`/activity`) whose checklist is 100% Keys-routing (project → connection → gateway key → route → request → logs) and never mentions the graph, trust, or verification. The Connect hub calls itself "Your workspace home". The product's headline (verified context) is invisible on the actual landing page. | `+page.server.ts:7` (redirect), `activity/+page.svelte:81-89` (checklist), `connect/+page.svelte:33` ("Your workspace home") |
 | IA-4 | **Verification spine discoverability.** Clicks from login to "why is this claim trusted": Overview → Connect (1) → scroll past ledger to scorecard → "Triage flagged ideas" (2) → select a claim (3) → … and the journey ends at a status badge + AI note. The evidence span — the actual *why* — is never shown (see P0-5). The spine is 3 clicks deep and the last vertebra is missing. | route walk; `ConnectGraphExplorer.svelte:2357-2403` |
 | IA-5 | **New surfaces cohere unevenly.** Trust scorecard + quality history sit naturally on the hub (good). Readiness library is buried ~2,750 lines inside the graph explorer with no tab or nav entry of its own. Ingest-quality admin lives in a separate `/keys/admin` shell whose only crosslink is "← Connect hub" — fine for operators, but the operator gets no path *into* admin from the dashboard. Graph explorer itself is one 4,877-line component serving triage, tools, schema mapping, and readiness. | `ConnectGraphExplorer.svelte:2751`; `keys/admin/+layout.svelte:63` |
 | IA-6 | **Dead deep-link contract.** Four surfaces link to `/connect/graph?filter=review` (scorecard, run console ×2, graph-health issues) but neither the graph page nor the explorer reads a `filter` param — only `workspace` and `focus` are parsed. It works today by coincidence (the queue defaults to review scope); the moment that default changes, every quality CTA silently rots. | `ConnectTrustScorecard.svelte:164`, `ConnectIngestRunConsole.svelte:345,406`, `graph-health-summary.ts:54` vs `ConnectGraphExplorer.svelte:632,660` |
 | IA-7 | **Orphan run-start.** `/connect/ingest/new` is a parallel "create run" form (URLs, pasted text, profiles, stop-after-stage) with zero inbound links, duplicating the wizard's launch step with different gating. Delete or merge. | `connect/ingest/new/+page.svelte` (no references found outside the route) |
-| IA-8 | **Topbar title holes.** `/billing` has no `PATH_TO_TITLE` entry (blank topbar). Hub tab says "Ingest routes", topbar says "Connect · Models", the registry says the page is "Models & keys" — three names for one page. | `nav-config.ts:137-157`; `dashboard-hub-nav.ts:15`; `docs/ux-contracts.md` ("Models & keys") |
+| IA-8 | **Topbar title holes.** `/billing` has no `PATH_TO_TITLE` entry (blank topbar). Hub tab says "Ingest routes", topbar says "Connect · Models", the registry says the page is "Models & keys" — three names for one page. | `nav-config.ts:137-157`; `dashboard-hub-nav.ts:15`; `docs/design/ux-contracts.md` ("Models & keys") |
 
 ---
 
@@ -426,5 +426,5 @@ the brand.
    carry the most product-story value per engineering day).
 
 *Companion docs: the wizard-specific history lives in `connect-wizard-ux-findings.md`; component
-inventory in `docs/COMPONENT-INVENTORY.md`. This review supersedes neither — it extends them to
+inventory in `docs/design/COMPONENT-INVENTORY.md`. This review supersedes neither — it extends them to
 the whole authenticated surface.*

@@ -2,9 +2,9 @@
 
 This runbook covers switching the dashboard storage from **Firestore** to **Neon Postgres**, and optionally migrating existing data.
 
-**Canonical:** This doc is the single source for Neon storage setup. See also [03-infrastructure-and-billing.md](../03-infrastructure-and-billing.md) for overall infra.
+**Canonical:** This doc is the single source for Neon storage setup. See also [03-infrastructure-and-billing.md](../archive/2026-03-build-pack/03-infrastructure-and-billing.md) for overall infra.
 
-**Dashboard and site on Vercel:** After Neon and Neon Auth are configured, see [extraction-vercel.md](../reference/extraction-vercel.md) for **NEON_AUTH_BASE_URL** and dashboard URL. Dashboard is at `https://restormel.dev/keys/dashboard`.
+**Dashboard and site on Vercel:** After Neon and Neon Auth are configured, see [extraction-vercel.md](../archive/reference/extraction-vercel.md) for **NEON_AUTH_BASE_URL** and dashboard URL. Dashboard is at `https://restormel.dev/keys/dashboard`.
 
 ---
 
@@ -153,4 +153,4 @@ To revert to Firestore: you would need to restore the previous data layer and au
 ## 7. Security
 
 - **Secrets:** Never commit `DATABASE_URL` or paste it into docs or chat. Use `.env` (gitignored) locally and deployment secrets in production.
-- **Key storage:** Neon stores only `key_prefix` and `key_hash`; raw API keys are never persisted (same as Firestore). See [security-baseline.md](../security-baseline.md).
+- **Key storage:** Neon stores only `key_prefix` and `key_hash`; raw API keys are never persisted (same as Firestore). See [security-baseline.md](../governance/security-baseline.md).

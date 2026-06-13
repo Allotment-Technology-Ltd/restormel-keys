@@ -1,7 +1,7 @@
 # Requirements: Project model index — API mutations (Gateway Key)
 
 **Status:** **Implemented** (dashboard `+server` handlers, migrations `020`–`021`, OpenAPI 1.3.2, Cloud API). **Audience:** Integrators + implementers.  
-**Canonical:** This file records the original FRs and semantics. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md), [docs/restormel-integration/keys-catalog-sync.md](../restormel-integration/keys-catalog-sync.md), [docs/api/openapi.yaml](../api/openapi.yaml), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte).
+**Canonical:** This file records the original FRs and semantics. **Related:** [docs/guides/resolve-to-execution-contract.md](../guides/resolve-to-execution-contract.md), [docs/guides/integration/keys-catalog-sync.md](../guides/integration/keys-catalog-sync.md), [docs/api/openapi.yaml](../api/openapi.yaml), [apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte](../../apps/dashboard/src/routes/keys/docs/cloud-api/+page.svelte).
 
 ## Problem (historical)
 

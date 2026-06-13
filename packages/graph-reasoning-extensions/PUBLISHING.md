@@ -20,7 +20,7 @@ Requires **`NPM_TOKEN`**. `pnpm publish` rewrites `workspace:*` to semver.
 
 ## SOPHIA reintegration
 
-Replace `@sophia/graph-reasoning-extensions` imports with `@restormel/graph-reasoning-extensions` per [docs/restormel/phase1-restormel-engineering-spec.md](../../docs/restormel/phase1-restormel-engineering-spec.md) §6.
+Replace `@sophia/graph-reasoning-extensions` imports with `@restormel/graph-reasoning-extensions` per [docs/archive/suite-migration-status/phase1-restormel-engineering-spec.md](../../docs/archive/suite-migration-status/phase1-restormel-engineering-spec.md) §6.
 
 ## Versioning policy
 
@@ -37,5 +37,5 @@ Replace `@sophia/graph-reasoning-extensions` imports with `@restormel/graph-reas
 
 ## Related
 
-- [Restormel Graph — SOPHIA extraction artefacts](../../docs/restormel/04-delivery/restormel-graph-sophia-extraction-artifacts.md)
-- [Phase 1 engineering spec](../../docs/restormel/phase1-restormel-engineering-spec.md)
+- [Restormel Graph — SOPHIA extraction artefacts](../../docs/archive/suite-migration-status/restormel-graph-sophia-extraction-artifacts.md)
+- [Phase 1 engineering spec](../../docs/archive/suite-migration-status/phase1-restormel-engineering-spec.md)

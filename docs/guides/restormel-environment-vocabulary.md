@@ -4,7 +4,7 @@
 
 **Do not duplicate** this table in other docs as an alternate source of truth. Link here instead: `docs/guides/restormel-environment-vocabulary.md` (repo) or in-product [Environment vocabulary](https://restormel.dev/keys/docs/guides/environment-vocabulary).
 
-**See also:** end-to-end Keys + Testing setup (project IDs, Connections, CLI): [keys-testing-onboarding.md](../keys-testing-onboarding.md). Self-host database (Neon recommended): [database-neon-for-self-hosters.md](database-neon-for-self-hosters.md) — [published guide](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
+**See also:** end-to-end Keys + Testing setup (project IDs, Connections, CLI): [keys-testing-onboarding.md](keys-testing-onboarding.md). Self-host database (Neon recommended): [database-neon-for-self-hosters.md](database-neon-for-self-hosters.md) — [published guide](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
 
 ---
 
@@ -90,7 +90,7 @@ flowchart LR
   Resolve -->|same_origin_as| KeysBase[RESTORMEL_KEYS_BASE]
 ```
 
-End-to-end checklist: [keys-testing-onboarding.md](../keys-testing-onboarding.md).
+End-to-end checklist: [keys-testing-onboarding.md](keys-testing-onboarding.md).
 
 ---
 
@@ -146,7 +146,7 @@ Provider keys and local entitlement config are documented in **`packages/mcp/REA
 
 ## Security and logging
 
-Never log raw Gateway keys or tokens. Trust boundaries: [security-baseline.md](../security-baseline.md).
+Never log raw Gateway keys or tokens. Trust boundaries: [security-baseline.md](../governance/security-baseline.md).
 
 ---
 

@@ -5,7 +5,7 @@
  * Auth: Gateway key, management key, or dashboard session — same pattern as the other
  * Knowledge v1 routes (authorizeKnowledgeWorkspaceRequest).
  *
- * Stage 2.4 of docs/verified-context-pivot-roadmap.md.
+ * Stage 2.4 of docs/product/verified-context-pivot-roadmap.md.
  */
 import {
   CONNECT_EVAL_VERDICT_SCHEMA_VERSION,

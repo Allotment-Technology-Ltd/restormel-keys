@@ -10,7 +10,7 @@ description: >-
 
 ## Canonical policy
 
-Human-readable rules: [docs/guides/third-party-brand-marks.md](../../../docs/guides/third-party-brand-marks.md) (linked from [docs/design-system-index.md](../../../docs/design-system-index.md)).
+Human-readable rules: [docs/guides/third-party-brand-marks.md](../../../docs/guides/third-party-brand-marks.md) (linked from [docs/design/design-system-index.md](../../../docs/design/design-system-index.md)).
 
 ## Agent rules
 

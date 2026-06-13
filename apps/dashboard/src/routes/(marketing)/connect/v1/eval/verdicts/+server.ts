@@ -3,7 +3,7 @@
  * GET  /connect/v1/eval/verdicts — list quality-history timeline for a workspace
  *
  * Auth: Gateway key (rk_… — same as all other Knowledge v1 routes).
- * Stage 2.4 — docs/verified-context-pivot-roadmap.md §Stage 2.4
+ * Stage 2.4 — docs/product/verified-context-pivot-roadmap.md §Stage 2.4
  */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";

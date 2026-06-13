@@ -29,7 +29,7 @@ Add **`AGENTS.md`** at the product repo root: point to your canonical **security
 
 ## 5. Default stack for new modules
 
-Before scaffolding app code, align with **[docs/restormel-module-default-stack.md](../../docs/restormel-module-default-stack.md)** (pnpm, Node 20, SvelteKit default; Next or Python as documented variants). Use the **Initiation prompt** block in that doc for Cursor or ChatGPT.
+Before scaffolding app code, align with **[docs/architecture/restormel-module-default-stack.md](../../docs/architecture/restormel-module-default-stack.md)** (pnpm, Node 20, SvelteKit default; Next or Python as documented variants). Use the **Initiation prompt** block in that doc for Cursor or ChatGPT.
 
 ## 6. Product-specific rules
 
