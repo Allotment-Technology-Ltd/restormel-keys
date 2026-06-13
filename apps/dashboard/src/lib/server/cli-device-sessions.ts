@@ -2,7 +2,7 @@
  * CLI device linking (OAuth 2.0 device grant patterns). Ephemeral pending_raw_key; never log raw values.
  */
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { createApiKey, deleteApiKey, getProject } from "./neon";
 
@@ -15,7 +15,8 @@ const USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): routes via the shared adapter (neon-http or pg Pool).
+  return getDb(url);
 }
 
 function hashDeviceCode(raw: string): string {

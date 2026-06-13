@@ -4,14 +4,15 @@
  */
 import type { AdminUserListRow } from "$lib/admin-user-list";
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import { emailImpliesServiceOwner, normalizeEmailForServiceOwnerMatch } from "$lib/server/service-admin";
 import { listServiceAdminEmails } from "$lib/server/service-admin-emails";
 
 function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): routes via the shared adapter (neon-http or pg Pool).
+  return getDb(url);
 }
 
 function parseAdminUserIdsEnvLocal(): Set<string> {

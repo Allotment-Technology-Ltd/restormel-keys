@@ -12,7 +12,7 @@
  * See scripts/apply-migrations.mts for the CI runner.
  */
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import { randomBytes, createHash } from "crypto";
 import {
   decryptProviderSecret,
@@ -146,7 +146,9 @@ export type ApiKeyRecord = {
 export function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): neon-http for Neon/ws URLs, pg Pool for plain Postgres.
+  // URL-scheme detection lives in db-adapter.ts; the API shape is unchanged.
+  return getDb(url);
 }
 
 /** Max users who receive founding Pro on first workspace creation (default 50). 0 = disable new grants. */
