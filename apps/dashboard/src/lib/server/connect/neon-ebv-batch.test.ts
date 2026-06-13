@@ -18,7 +18,11 @@ vi.mock("@neondatabase/serverless", () => ({
   },
 }));
 
-process.env.DATABASE_URL = "postgres://test:test@localhost/test";
+// P3a dual-driver: a neon.tech host routes through the (here-mocked) neon-http
+// path, which is exactly the capturing stub these tests assert against. A plain
+// postgres:// URL would now correctly route to a real pg Pool (the whole point
+// of the adapter) and try to open a TCP socket — not what this unit test wants.
+process.env.DATABASE_URL = "postgres://test:test@ep-test-123.neon.tech/test";
 
 // $env/dynamic/private snapshots at vite startup in tests — point it at process.env.
 vi.mock("$env/dynamic/private", () => ({ env: process.env }));

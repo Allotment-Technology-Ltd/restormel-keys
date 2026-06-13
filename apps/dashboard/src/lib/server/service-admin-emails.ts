@@ -2,7 +2,7 @@
  * Operator email grants — admins can promote emails before first sign-in.
  */
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import { normalizeEmailForServiceOwnerMatch } from "$lib/server/service-admin";
 
 export type ServiceAdminEmailRow = {
@@ -15,7 +15,8 @@ export type ServiceAdminEmailRow = {
 function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): routes via the shared adapter (neon-http or pg Pool).
+  return getDb(url);
 }
 
 const MIGRATION_HINT =

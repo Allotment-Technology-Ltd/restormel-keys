@@ -11,13 +11,14 @@
  * Never log raw session payloads; do not treat this as customer RBAC for multi-tenant end users.
  */
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import { isServiceAdminEmailInDb } from "$lib/server/service-admin-emails";
 
 function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): routes via the shared adapter (neon-http or pg Pool).
+  return getDb(url);
 }
 
 /** Primary operator emails when RESTORMEL_SERVICE_OWNER_EMAILS is not set (GitHub may return either Gmail alias). */

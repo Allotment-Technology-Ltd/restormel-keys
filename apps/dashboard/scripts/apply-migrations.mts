@@ -13,7 +13,7 @@
  */
 
 import "./load-dashboard-env.mjs";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "../src/lib/server/db-adapter.ts";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +29,10 @@ async function main() {
     process.exit(1);
   }
 
-  const sql = neon(dbUrl) as unknown as SqlFn;
+  // Dual-driver (P3a): getDb routes to neon-http for Neon URLs or a pg Pool for
+  // plain Postgres. The migration runner's transaction callback + statement
+  // splitting are driver-agnostic and work identically on both.
+  const sql = getDb(dbUrl) as unknown as SqlFn;
 
   console.log("Dashboard migration runner (Stage 1.7)");
   console.log(`Migrations dir: ${MIGRATIONS_DIR}`);

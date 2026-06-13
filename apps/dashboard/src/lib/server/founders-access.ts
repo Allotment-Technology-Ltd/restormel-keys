@@ -3,7 +3,7 @@
  * Service operators bypass via service-admin resolution.
  */
 import { env } from "$env/dynamic/private";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "$lib/server/db-adapter";
 import {
   emailImpliesServiceOwner,
   normalizeEmailForServiceOwnerMatch,
@@ -25,7 +25,8 @@ export type FoundersAccessRow = {
 function getSql() {
   const url = env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Dual-driver (P3a): routes via the shared adapter (neon-http or pg Pool).
+  return getDb(url);
 }
 
 export function normalizeFoundersEmail(email: string | null | undefined): string | null {
