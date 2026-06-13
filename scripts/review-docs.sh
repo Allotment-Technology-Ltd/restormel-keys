@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Check required canonical docs exist and basic doc structure is coherent.
 # Exit 0 if all required files present; exit 1 with actionable messages otherwise.
-# Aligns to docs/bootstrap-plan.md Phase 00 canonical docs.
+# Aligns to the Phase 00 canonical docs. (The original bootstrap-plan/-checklist were
+# archived as superseded in d446a837 → docs/archive/2026-03-build-pack/.)
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MISSING=0
 
 required_root="README.md ROADMAP.md STATUS.md CHANGELOG.md CONTRIBUTING.md ARCHITECTURE.md"
-required_docs="docs/bootstrap-plan.md docs/bootstrap-checklist.md docs/governance/working-agreement.md docs/governance/security-baseline.md docs/governance/threat-model-starter.md docs/governance/reliability-standards.md docs/governance/testing-strategy.md docs/governance/release-readiness.md docs/governance/prompts-reference.md docs/governance/prompt-governance.md docs/governance/skills.md docs/governance/subagents.md docs/runbooks/README.md"
+required_docs="docs/governance/working-agreement.md docs/governance/security-baseline.md docs/governance/threat-model-starter.md docs/governance/reliability-standards.md docs/governance/testing-strategy.md docs/governance/release-readiness.md docs/governance/prompts-reference.md docs/governance/prompt-governance.md docs/governance/skills.md docs/governance/subagents.md docs/runbooks/README.md"
 required_extra="docs/decisions/README.md docs/archive/README.md"
 
 for f in $required_root; do
@@ -18,13 +19,13 @@ for f in $required_root; do
 done
 for f in $required_docs; do
   if [ ! -f "$ROOT/$f" ]; then
-    echo "Missing doc: $f — add under docs/ (see docs/bootstrap-plan.md)."
+    echo "Missing doc: $f — add under docs/ (see docs/README.md)."
     MISSING=1
   fi
 done
 for f in $required_extra; do
   if [ ! -f "$ROOT/$f" ]; then
-    echo "Missing: $f — create the file (see docs/bootstrap-plan.md)."
+    echo "Missing: $f — create the file (see docs/README.md)."
     MISSING=1
   fi
 done
