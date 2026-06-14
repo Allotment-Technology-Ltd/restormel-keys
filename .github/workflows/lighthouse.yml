@@ -1,104 +1,71 @@
-# GitHub Actions — Lighthouse-CI for public routes (Phase 2 CI/CD).
-#
-# PURPOSE: Build apps/dashboard and run Lighthouse against key public routes,
-# reporting Performance / Accessibility / Best-Practices / SEO scores.
-#
-# Uses treosh/lighthouse-ci-action (wraps @lhci/cli, handles Chrome setup).
-#
-# NON-BLOCKING (warn) mode — see "Flip to blocking" section below before hardening.
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Flip to blocking when:                                                 │
-# │    • Scores are stable at ≥90 for Performance and ≥95 for the rest      │
-# │    • Upload an LHCI server token to LHCI_GITHUB_APP_TOKEN / store a     │
-# │      .lighthouserc.yml with assert.preset for persistent baselines      │
-# │  Change: set `failOnError: true` in the treosh/lighthouse-ci-action     │
-# │  step and populate assert thresholds in .lighthouserc.yml.              │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# Runs on PRs and pushes to main (path-filtered to dashboard + shared packages).
-# Coolify production deploy is UNAFFECTED — this workflow only reads build output.
+# GitHub Actions — Lighthouse audit of the LIVE public pages (mirror of the
+# Forgejo primary workflow). Audits the real production pages on a schedule
+# instead of rebuilding + serving the heavy SSR dashboard in CI (which hard-failed
+# on every PR). Same four categories. Warn-only. See .forgejo/workflows/lighthouse.yml
+# for the full rationale.
 
-name: Lighthouse CI
+name: Lighthouse (live site)
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - '.github/workflows/lighthouse.yml'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - '.github/workflows/lighthouse.yml'
-
-permissions:
-  contents: read
-  pull-requests: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  schedule:
+    - cron: '17 3 * * *' # nightly 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to audit'
+        required: false
+        default: 'https://restormel.dev'
 
 jobs:
   lighthouse:
-    name: Lighthouse audit (public routes)
+    name: Lighthouse audit (live public routes)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: Install @lhci/cli
+        run: npm install -g @lhci/cli@0.14.0
 
-      - name: PNPM install (workspace)
-        uses: ./.github/actions/pnpm-workspace-install
-
-      # Build all workspace deps first (mirrors the `prebuild` script deps),
-      # then build the dashboard itself. This matches the production build path.
-      - name: Build platform packages (workspace deps for dashboard)
-        run: pnpm run build:platform-packages
-
-      - name: Build apps/dashboard
-        run: pnpm --filter dashboard run build
-
-      # Serve the built dashboard on port 4173 (vite preview default).
-      # Background the server, wait until it responds, then hand off to LHCI.
-      - name: Serve dashboard (vite preview)
+      - name: Collect (live production URLs)
+        env:
+          BASE: ${{ github.event.inputs.base_url || 'https://restormel.dev' }}
         run: |
-          cd apps/dashboard
-          pnpm exec vite preview --port 4173 --strictPort --host 127.0.0.1 &
-          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:4173/ >/dev/null 2>&1; then
-              echo "Server ready after ${i}s"
-              break
-            fi
-            sleep 1
-          done
-          curl -sf http://127.0.0.1:4173/ >/dev/null || (echo "Server failed to start"; exit 1)
+          lhci collect \
+            --url="${BASE}/" \
+            --url="${BASE}/keys" \
+            --url="${BASE}/keys/pricing" \
+            --url="${BASE}/keys/docs" \
+            --settings.chromeFlags="--no-sandbox --headless=new --disable-dev-shm-usage" \
+            --numberOfRuns=2
 
-      # treosh/lighthouse-ci-action handles Chromium setup and lhci collect/assert.
-      # temporaryPublicStorage uploads results to the LHCI public storage for easy
-      # inspection — swap for an lhci server URL when you have one.
-      # failOnError: false = warn-only mode. Flip to true when scores are stable.
-      - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
-        with:
-          urls: |
-            http://127.0.0.1:4173/
-            http://127.0.0.1:4173/keys
-            http://127.0.0.1:4173/keys/pricing
-            http://127.0.0.1:4173/keys/docs
-          uploadArtifacts: true
-          temporaryPublicStorage: true
-          # Warn-only thresholds: flip to assert preset + failOnError:true to block.
-          runs: 1
-          # No .lighthouserc.yml yet — thresholds below are inline.
-
-      # Stop the background preview server.
-      - name: Stop preview server
-        if: always()
+      - name: Assert scores (warn-only)
         run: |
-          if [[ -n "${PREVIEW_PID:-}" ]]; then
-            kill "${PREVIEW_PID}" 2>/dev/null || true
+          set +e
+          lhci assert \
+            --preset=lighthouse:no-pwa \
+            --assertions.categories:performance=["warn",{"minScore":0.7}] \
+            --assertions.categories:accessibility=["warn",{"minScore":0.9}] \
+            --assertions.categories:best-practices=["warn",{"minScore":0.9}] \
+            --assertions.categories:seo=["warn",{"minScore":0.9}] \
+            2>&1 | tee /tmp/lhci-assert.txt
+          exit 0
+
+      - name: Telegram alert on sub-threshold (no-op without secrets)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "${TG_TOKEN}" ] || [ -z "${TG_CHAT}" ]; then
+            echo "Telegram secrets unset — skipping alert."; exit 0
           fi
+          if grep -qiE "warning|fail|below the|minScore" /tmp/lhci-assert.txt; then
+            curl -s -m 15 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id="${TG_CHAT}" \
+              --data-urlencode "text=⚠️ Lighthouse (live) — a category dropped below threshold on restormel.dev public pages. Run #${{ github.run_number }}." >/dev/null || true
+          fi
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-live-${{ github.run_number }}
+          path: .lighthouseci/
+          retention-days: 30

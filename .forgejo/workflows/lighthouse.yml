@@ -1,132 +1,95 @@
-# Forgejo CI — Lighthouse-CI for public routes (Phase 2 CI/CD).
+# Forgejo CI — Lighthouse audit of the LIVE public pages.
 #
-# PURPOSE: Build apps/dashboard and run @lhci/cli against key public routes,
-# reporting Performance / Accessibility / Best-Practices / SEO scores.
+# WHY scheduled-against-live (not per-PR build):
+#   The dashboard is a heavy SSR app. The previous per-PR job rebuilt 20+ workspace
+#   packages + the full memory-heavy dashboard, then served it with `vite preview`
+#   and pointed Lighthouse at routes that need a real backend (DATABASE_URL / auth /
+#   env). It could not reliably build+serve in CI, so it hard-failed on EVERY PR
+#   (the score assertions were already warn-only) — pure red noise.
 #
-# NON-BLOCKING (warn) mode — see "Flip to blocking" section below before hardening.
+#   This audits the REAL, fully-rendered production pages instead: no build, no
+#   serve, no backend stubbing. Same four categories (Performance / Accessibility /
+#   Best-Practices / SEO). Runs nightly + on demand. Warn-only for now; flip to
+#   blocking by removing the warn level once scores are stable (see assert step).
 #
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  Flip to blocking when:                                                 │
-# │    • Scores are stable at ≥90 for Performance and ≥95 for the rest      │
-# │    • A baseline lhci collect artifact is stored (use lhci upload to     │
-# │      LHCI server or assert via .lighthouserc.yml assert.preset)         │
-# │  Change: set `assert.preset: lighthouse:recommended` in .lighthouserc.yml│
-# │  and remove `|| true` from the lhci assert step below.                 │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# Runner: `ubuntu-latest` (catthehacker/ubuntu:act-22.04) — ships Node, curl,
-# Chromium. The `docker` runner is reserved for tasks needing the host Docker
-# socket; Lighthouse only needs a headless browser.
-#
-# Secrets: none required. Runs on every push and PR (path-filtered to
-# dashboard / shared packages). Adjust the paths filter to taste.
+# Optional Telegram regression alert: set Forgejo Actions secrets TELEGRAM_BOT_TOKEN
+# and TELEGRAM_CHAT_ID to get a ping when a category drops below threshold. The step
+# is a clean no-op until both are set.
 
-name: Lighthouse CI
+name: Lighthouse (live site)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - '.forgejo/workflows/lighthouse.yml'
-  pull_request:
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - '.forgejo/workflows/lighthouse.yml'
+  schedule:
+    - cron: '17 3 * * *' # nightly 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to audit'
+        required: false
+        default: 'https://restormel.dev'
 
 jobs:
   lighthouse:
-    name: Lighthouse audit (public routes)
+    name: Lighthouse audit (live public routes)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: https://code.forgejo.org/actions/checkout@v4
-        with:
-          token: ${{ secrets.FORGEJO_TOKEN }}
-
-      - name: Set up pnpm + Node (workspace install)
-        uses: ./.forgejo/actions/pnpm-workspace-install
-
-      # Build all workspace deps first (mirrors the `prebuild` script deps),
-      # then build the dashboard itself. This matches the production build path.
-      - name: Build platform packages (workspace deps for dashboard)
-        run: pnpm run build:platform-packages
-
-      - name: Build apps/dashboard
-        run: pnpm --filter dashboard run build
-
-      # Install @lhci/cli globally so `lhci` is on PATH.
-      # Pinned to a recent stable version; bump when LHCI releases security fixes.
       - name: Install @lhci/cli
         run: npm install -g @lhci/cli@0.14.0
 
-      # Install Chromium for Puppeteer/Lighthouse (headless).
-      # catthehacker/ubuntu:act-22.04 ships chromium-browser; this ensures it's
-      # linked where Lighthouse expects it.
       - name: Install Chromium
         run: |
-          which chromium-browser 2>/dev/null && echo "chromium-browser found" || \
-          (apt-get update -qq && apt-get install -y --no-install-recommends chromium-browser)
+          which chromium-browser >/dev/null 2>&1 || \
+            (apt-get update -qq && apt-get install -y --no-install-recommends chromium-browser)
           CHROME=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || true)
           echo "CHROME_PATH=${CHROME}" >> "$GITHUB_ENV"
 
-      # Serve the built dashboard on port 4173 (vite preview default).
-      # Background the server, wait until it responds, then run LHCI.
-      - name: Serve dashboard (vite preview)
-        run: |
-          cd apps/dashboard
-          pnpm exec vite preview --port 4173 --strictPort --host 127.0.0.1 &
-          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:4173/ >/dev/null 2>&1; then
-              echo "Server ready after ${i}s"
-              break
-            fi
-            sleep 1
-          done
-          curl -sf http://127.0.0.1:4173/ >/dev/null || (echo "Server failed to start"; exit 1)
-
-      # Run Lighthouse against each public route.
-      # --chrome-flags="--no-sandbox" is required in CI (headless/container env).
-      # Results land in .lighthouseci/ — uploaded as an artifact below.
-      - name: Run Lighthouse (collect)
+      - name: Collect (live production URLs)
+        env:
+          BASE: ${{ github.event.inputs.base_url || 'https://restormel.dev' }}
         run: |
           lhci collect \
-            --url=http://127.0.0.1:4173/ \
-            --url=http://127.0.0.1:4173/keys \
-            --url=http://127.0.0.1:4173/keys/pricing \
-            --url=http://127.0.0.1:4173/keys/docs \
+            --url="${BASE}/" \
+            --url="${BASE}/keys" \
+            --url="${BASE}/keys/pricing" \
+            --url="${BASE}/keys/docs" \
             --settings.chromeFlags="--no-sandbox --headless=new --disable-dev-shm-usage" \
             ${CHROME_PATH:+--settings.chromePath="${CHROME_PATH}"} \
-            --numberOfRuns=1
+            --numberOfRuns=2
 
-      # Assert scores in warn-only mode (|| true keeps the job green).
-      # Remove `|| true` to make this blocking once scores are stable.
-      - name: Assert Lighthouse scores (warn-only)
+      - name: Assert scores (warn-only) + capture
         run: |
+          set +e
           lhci assert \
             --preset=lighthouse:no-pwa \
             --assertions.categories:performance=["warn",{"minScore":0.7}] \
             --assertions.categories:accessibility=["warn",{"minScore":0.9}] \
             --assertions.categories:best-practices=["warn",{"minScore":0.9}] \
             --assertions.categories:seo=["warn",{"minScore":0.9}] \
-            || true
+            2>&1 | tee /tmp/lhci-assert.txt
+          # warn-only: never fail the scheduled job on score regressions (yet).
+          exit 0
 
-      # Upload raw Lighthouse JSON reports as a workflow artifact (30-day retention).
+      - name: Telegram alert on sub-threshold (no-op without secrets)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "${TG_TOKEN}" ] || [ -z "${TG_CHAT}" ]; then
+            echo "Telegram secrets unset — skipping alert."; exit 0
+          fi
+          if grep -qiE "warning|fail|below the|minScore" /tmp/lhci-assert.txt; then
+            MSG="⚠️ Lighthouse (live) — a category dropped below threshold on restormel.dev public pages. Run #${{ github.run_number }}; see the lighthouse-live artifact for the report."
+            curl -s -m 15 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id="${TG_CHAT}" --data-urlencode "text=${MSG}" >/dev/null || true
+            echo "Telegram regression alert sent."
+          else
+            echo "All categories within threshold — no alert."
+          fi
+
       - name: Upload Lighthouse reports
         if: always()
         uses: https://code.forgejo.org/actions/upload-artifact@v4
         with:
-          name: lighthouse-reports-${{ github.sha }}
+          name: lighthouse-live-${{ github.run_number }}
           path: .lighthouseci/
           retention-days: 30
-
-      # Stop the background preview server.
-      - name: Stop preview server
-        if: always()
-        run: |
-          if [[ -n "${PREVIEW_PID:-}" ]]; then
-            kill "${PREVIEW_PID}" 2>/dev/null || true
-          fi
