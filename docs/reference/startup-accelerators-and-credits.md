@@ -1,3 +1,15 @@
+---
+title: Startup accelerators, API credits, and cloud credits (reference)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Startup accelerators, API credits, and cloud credits (reference)
 
 **Status:** Reference only. Programs change terms, caps, and URLs frequently—confirm on the provider’s site before applying.

@@ -1,3 +1,15 @@
+---
+title: Requirements: Project model index — API mutations (Gateway Key)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-26
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Requirements: Project model index — API mutations (Gateway Key)
 
 **Status:** **Implemented** (dashboard `+server` handlers, migrations `020`–`021`, OpenAPI 1.3.2, Cloud API). **Audience:** Integrators + implementers.  

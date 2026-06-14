@@ -1,3 +1,15 @@
+---
+title: Coolify cutover runbook — restormel-keys (Stage 2)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-12
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Coolify cutover runbook — restormel-keys (Stage 2)
 
 **Written for:** product owner new to self-hosting  

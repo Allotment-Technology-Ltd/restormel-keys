@@ -1,3 +1,15 @@
+---
+title: Policy enforcement: what is enforced
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Policy enforcement: what is enforced
 
 **Status:** Reference. Aligns with dashboard `evaluatePolicies` and resolve route resolution.

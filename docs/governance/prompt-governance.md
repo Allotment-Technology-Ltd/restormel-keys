@@ -1,3 +1,15 @@
+---
+title: Prompt Governance
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Prompt Governance
 
 Prompt lifecycle and classification rules. **Single source** for how prompts are governed; inventory in [prompts-reference.md](prompts-reference.md).

@@ -1,3 +1,15 @@
+---
+title: World-Class Dashboard — Delivery Roadmap
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # World-Class Dashboard — Delivery Roadmap
 
 **Thesis** (synthesis of the June 2026 reviews): the Verified Context engine is complete —

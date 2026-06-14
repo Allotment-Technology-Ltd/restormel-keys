@@ -1,3 +1,15 @@
+---
+title: Dashboard Postgres migrations (CI/CD)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Dashboard Postgres migrations (CI/CD)
 
 Canonical note for **Neon** schema used by `apps/dashboard`. SQL lives under [`apps/dashboard/migrations/`](../../apps/dashboard/migrations/). Apply script: [`scripts/apply-dashboard-migrations.sh`](../../scripts/apply-dashboard-migrations.sh) (runs every `*.sql` in **sorted** order; idempotent where files use `IF NOT EXISTS` / `IF EXISTS`).

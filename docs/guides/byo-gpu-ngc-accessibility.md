@@ -1,3 +1,15 @@
+---
+title: BYO-GPU and NGC accessibility — opinionated paths for Restormel Keys
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # BYO-GPU and NGC accessibility — opinionated paths for Restormel Keys
 
 **Status:** Reference guide. **Canonical product positioning:** Restormel does **not** host your GPU; you run **OpenAI-compatible** inference (vLLM, Triton, NVIDIA NIM–shaped servers, etc.) in **your** cloud, bare metal, or GPU rental account. Keys provides **routing, policy, aliases, and health semantics**.

@@ -1,3 +1,15 @@
+---
+title: Webhooks and audit — MVP specification
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Webhooks and audit — MVP specification
 
 **Status:** Canonical reference for the first outbound webhook train. Complements the dashboard **audit** API (`GET /keys/dashboard/api/audit`).

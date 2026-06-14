@@ -1,3 +1,15 @@
+---
+title: MCP catalog listing — Smithery.ai
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-11
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # MCP catalog listing — Smithery.ai
 
 **Target registry URL:** https://smithery.ai (submit via https://smithery.ai/submit or the deploy-to-Smithery flow)

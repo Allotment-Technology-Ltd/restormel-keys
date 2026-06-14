@@ -1,3 +1,15 @@
+---
+title: Morning operator checklist — 2026-06-13 (post-cutover-night)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Morning operator checklist — 2026-06-13 (post-cutover-night)
 
 Status when written: see the bottom-of-file "overnight outcome" section, updated as the

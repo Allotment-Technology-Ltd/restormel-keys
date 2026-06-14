@@ -1,3 +1,15 @@
+---
+title: Keys MVP mode
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-04
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Keys MVP mode
 
 Restormel **Keys + Connect** production defaults hide non-core suite modules behind PostHog feature flags. Code stays in the monorepo; surfaces are **gated**, not deleted.

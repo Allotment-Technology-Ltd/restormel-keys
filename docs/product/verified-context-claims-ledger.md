@@ -1,3 +1,15 @@
+---
+title: Verified Context — Claims Ledger
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Verified Context — Claims Ledger
 
 **This document is the contract between what Restormel says and what it can prove.**

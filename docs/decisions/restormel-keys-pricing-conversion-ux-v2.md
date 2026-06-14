@@ -1,3 +1,15 @@
+---
+title: Restormel Keys — Pricing, Conversion, and UX Strategy (v2)
+class: decision
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-18
+last-reviewed: 2026-03-18
+review-interval: P12M
+---
+
 # Restormel Keys — Pricing, Conversion, and UX Strategy (v2)
 
 ## Core correction

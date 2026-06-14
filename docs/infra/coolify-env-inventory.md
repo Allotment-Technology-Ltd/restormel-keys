@@ -1,3 +1,15 @@
+---
+title: Coolify environment-variable inventory — restormel-keys dashboard + worker
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-12
+last-reviewed: 2026-06-12
+review-interval: P12M
+---
+
 # Coolify environment-variable inventory — restormel-keys dashboard + worker
 
 **For:** product owner performing the Coolify migration (Stage 2)

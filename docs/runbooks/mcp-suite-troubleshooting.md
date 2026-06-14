@@ -1,3 +1,15 @@
+---
+title: MCP suite tools — troubleshooting
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # MCP suite tools — troubleshooting
 
 **Scope:** Horizon Phase 1 **suite read** tools (`docs.canonical_resolve`, `testing.config_validate`, `observability.trace_summarize`, `graph.fixture_validate`, `state.memory_preview`) via **stdio MCP** or **HTTP** (`POST …/suite/invoke`).

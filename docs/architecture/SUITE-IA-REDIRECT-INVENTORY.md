@@ -1,3 +1,15 @@
+---
+title: Suite IA overhaul — redirect and disclosure inventory
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Suite IA overhaul — redirect and disclosure inventory
 
 **Status:** Reference (Theme L IA programme). **Canonical onboarding:** dashboard-first per [documentation-strategy.md](../governance/documentation-strategy.md) and [SUITE-OPERATOR-MODEL.md](../product/SUITE-OPERATOR-MODEL.md).

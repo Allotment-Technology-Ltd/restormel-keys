@@ -1,3 +1,15 @@
+---
+title: Security Monitoring Roadmap
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-14
+last-reviewed: 2026-06-14
+review-interval: P12M
+---
+
 # Security Monitoring Roadmap
 
 Dependency scanning and infrastructure monitoring for the self-hosted Coolify/Hetzner stack. This document covers the two workstreams (scanning gate + infra observability), the vulnerability management policy, a phased delivery checklist, and the agent orchestration model.

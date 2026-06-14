@@ -1,3 +1,15 @@
+---
+title: Routing parity — closed checkpoints (reference)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-14
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Routing parity — closed checkpoints (reference)
 
 **Status:** Reference — records outcomes of planning **CHECKPOINT** items from the Sophia routing parity plan. **Canonical routing API** remains [keys-routing-contract.md](../architecture/keys-routing-contract.md).

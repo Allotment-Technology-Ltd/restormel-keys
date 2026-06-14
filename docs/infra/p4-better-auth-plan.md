@@ -1,3 +1,15 @@
+---
+title: P4 — Self-hosted Better Auth (scaffold + cutover plan)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # P4 — Self-hosted Better Auth (scaffold + cutover plan)
 
 Status: **SCAFFOLD LANDED. NOT cut over. Default = `neon`.** Production behaviour is

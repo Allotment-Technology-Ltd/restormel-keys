@@ -1,3 +1,15 @@
+---
+title: Implemented behaviour (dashboard and product)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Implemented behaviour (dashboard and product)
 
 **Status:** Reference. Describes what is actually implemented so docs and runbooks do not contradict the product. Update when behaviour or terminology changes.

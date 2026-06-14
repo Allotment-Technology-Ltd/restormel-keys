@@ -1,3 +1,15 @@
+---
+title: Theme L — product × surface IA matrix
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Theme L — product × surface IA matrix
 
 **Purpose:** Repeatable map of where each Restormel product appears across **marketing**, **public docs**, **signed-in dashboard**, **Zuplo gateway / developer portal**, and **MCP** (`@restormel/mcp`). Use this when adding features so navigation and vocabulary stay aligned with [documentation-strategy.md](../governance/documentation-strategy.md).

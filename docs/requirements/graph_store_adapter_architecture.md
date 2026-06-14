@@ -1,3 +1,15 @@
+---
+title: Restormel — Database-Agnostic Graph Store Architecture
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-07
+last-reviewed: 2026-06-07
+review-interval: P12M
+---
+
 # Restormel — Database-Agnostic Graph Store Architecture
 
 **Status:** Planning  

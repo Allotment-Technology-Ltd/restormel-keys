@@ -1,3 +1,15 @@
+---
+title: Catalog governance (hybrid)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-19
+last-reviewed: 2026-03-26
+review-interval: P12M
+---
+
 # Catalog governance (hybrid)
 
 **Canonical:** Which provider model strings in `@restormel/keys` must appear in the dashboard model catalog seed, and how CI enforces it.

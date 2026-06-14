@@ -1,3 +1,15 @@
+---
+title: Connect first graph onboarding (canonical)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Connect first graph onboarding (canonical)
 
 Single operational path: connect **Surreal Cloud**, wire **chat and embedding** ingestion routes in Keys, load the **starter philosophy corpus**, **describe** your graph schema with Graph Designer, then run your first ingest.

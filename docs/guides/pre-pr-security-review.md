@@ -1,3 +1,15 @@
+---
+title: Pre-PR security review
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-05
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Pre-PR security review
 
 **Status:** Canonical gate before opening a PR on Restormel Keys. Product rules remain [security-baseline.md](../governance/security-baseline.md) and [threat-model-starter.md](../governance/threat-model-starter.md).

@@ -1,3 +1,15 @@
+---
+title: Midjourney via Cursor MCP (Restormel design assets)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-05
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Midjourney via Cursor MCP (Restormel design assets)
 
 **Status:** Canonical setup for agent-generated marketing and OG imagery. **Not** a substitute for the in-repo design token system — see [design-system-index.md](../design/design-system-index.md).

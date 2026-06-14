@@ -1,3 +1,15 @@
+---
+title: Restormel suite — ChatGPT Projects briefing (single file)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel suite — ChatGPT Projects briefing (single file)
 
 **Purpose:** One markdown file to attach or paste into **ChatGPT Projects** (or similar) and **re-sync often** (e.g. daily) from this repo so assistants stay aligned with the suite.

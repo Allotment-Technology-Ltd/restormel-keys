@@ -1,3 +1,15 @@
+---
+title: Threat Model Starter
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-14
+review-interval: P12M
+---
+
 # Threat Model Starter
 
 Trust boundaries and initial risks. **Single source** for boundaries and risk list; security rules in [security-baseline.md](security-baseline.md).

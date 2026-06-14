@@ -1,3 +1,15 @@
+---
+title: Project model index and global catalog (integrator reference)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Project model index and global catalog (integrator reference)
 
 **Audience:** Host apps and consumer repos that call the **Dashboard API** with a **Gateway Key** (`rk_…`) to merge Restormel’s project model allowlist with local pickers or ingestion UX.

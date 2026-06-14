@@ -1,3 +1,15 @@
+---
+title: Runbook: Implement relayed dogfood issues (SOPHIA → restormel-keys)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-26
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Runbook: Implement relayed dogfood issues (SOPHIA → restormel-keys)
 
 **Purpose:** When an issue appears in **restormel-keys** with title prefix **`[Dogfood]`** (relayed from a consumer repo such as SOPHIA), use this process so work is **triaged, implemented, and traceable** without copying secrets or skipping checks.

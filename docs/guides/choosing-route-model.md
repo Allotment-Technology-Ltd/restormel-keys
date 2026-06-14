@@ -1,3 +1,15 @@
+---
+title: Choosing a route model
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-20
+last-reviewed: 2026-03-20
+review-interval: P12M
+---
+
 # Choosing a route model
 
 Use this guide to choose between **shared generic routes** and **dedicated stage-aware routes**.

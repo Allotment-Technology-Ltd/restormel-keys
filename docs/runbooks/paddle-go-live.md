@@ -1,3 +1,15 @@
+---
+title: Paddle go-live — Restormel Keys (production)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-18
+last-reviewed: 2026-04-10
+review-interval: P12M
+---
+
 # Paddle go-live — Restormel Keys (production)
 
 This runbook takes Paddle from sandbox-only to **production live** for Restormel Keys.

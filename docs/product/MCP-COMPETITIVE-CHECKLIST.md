@@ -1,3 +1,15 @@
+---
+title: Restormel MCP — internal positioning checklist
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel MCP — internal positioning checklist
 
 **Audience:** engineering and GTM narrative (not public marketing unless legal review). **Purpose:** contrast Restormel’s MCP surface with common alternatives.

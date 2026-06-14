@@ -1,3 +1,15 @@
+---
+title: MCP catalog listing — awesome-mcp-servers (GitHub)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-11
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # MCP catalog listing — awesome-mcp-servers (GitHub)
 
 **Target registry URL:** https://github.com/punkpeye/awesome-mcp-servers (the canonical community-maintained awesome list for MCP servers)

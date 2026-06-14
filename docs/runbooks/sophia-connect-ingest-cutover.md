@@ -1,3 +1,15 @@
+---
+title: SOPHIA → Connect ingest cutover
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # SOPHIA → Connect ingest cutover
 
 Single pipeline truth: SOPHIA staging wave-1 moves from local `scripts/ingest.ts` to Connect hosted REST + shared `@restormel/connect-core` quality package.

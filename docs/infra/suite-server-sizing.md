@@ -1,3 +1,15 @@
+---
+title: Suite server sizing — PoC topology for the four products
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-12
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Suite server sizing — PoC topology for the four products
 
 **Date:** 2026-06-12 · **Status:** decided (product owner, 2026-06-12)

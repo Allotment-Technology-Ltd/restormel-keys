@@ -1,3 +1,15 @@
+---
+title: P3 — Self-hosted Postgres cutover runbook
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # P3 — Self-hosted Postgres cutover runbook
 
 > **Scope.** Move the dashboard's **operational** database off Neon onto a self-hosted

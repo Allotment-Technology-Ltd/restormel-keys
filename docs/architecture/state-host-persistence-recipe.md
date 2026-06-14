@@ -1,3 +1,15 @@
+---
+title: Restormel State — host persistence recipe (append-only log)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel State — host persistence recipe (append-only log)
 
 `@restormel/state` does **not** choose a database. Hosts store an **append-only** sequence of `StateEvent` JSON values and load them back for `projectWorkingMemory`. This page is a minimal recipe so integrators (SOPHIA, Surreal, Postgres, Firebase, and so on) align on **ordering** and **identity** without inventing incompatible shapes.

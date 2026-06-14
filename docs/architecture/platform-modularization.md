@@ -1,3 +1,15 @@
+---
+title: Platform modularisation (Restormel suite)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Platform modularisation (Restormel suite)
 
 **Status:** Canonical for suite structure. **Phase 3** structural splits are **deferred** until product need outweighs solo maintenance cost.

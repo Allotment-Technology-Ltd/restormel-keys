@@ -1,3 +1,15 @@
+---
+title: Public pages & docs revamp — Phase 2 plan
+class: planning
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Public pages & docs revamp — Phase 2 plan
 
 **Status:** Active programme plan. **Created:** 2026-06-13. **Owner:** Allotment Technology Ltd.

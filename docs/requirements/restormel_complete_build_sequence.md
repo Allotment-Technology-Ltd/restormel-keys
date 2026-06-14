@@ -1,3 +1,15 @@
+---
+title: Restormel — Complete Build Sequence
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-07
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel — Complete Build Sequence
 # All remaining prompts, dependency-resolved and priority-ordered
 # One document to run from, start to finish

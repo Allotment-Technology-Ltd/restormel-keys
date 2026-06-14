@@ -1,3 +1,15 @@
+---
+title: Security Baseline
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Security Baseline
 
 Canonical security baseline. BYOK-safe defaults. **Single source** for security rules; trust boundaries and risks in [threat-model-starter.md](threat-model-starter.md).

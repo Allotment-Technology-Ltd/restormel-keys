@@ -1,3 +1,15 @@
+---
+title: Cursor indexing and context policy
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Cursor indexing and context policy
 
 Minimal policy so Cursor stays aligned with the bootstrap plan and companion prompts without wasting context or credits.

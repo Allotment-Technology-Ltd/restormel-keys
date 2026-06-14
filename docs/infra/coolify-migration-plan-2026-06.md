@@ -1,3 +1,15 @@
+---
+title: Hetzner/Coolify migration plan — infra Stage 2 (dashboard + ingest worker)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-12
+last-reviewed: 2026-06-12
+review-interval: P12M
+---
+
 # Hetzner/Coolify migration plan — infra Stage 2 (dashboard + ingest worker)
 
 **Date:** 2026-06-12 · **Status:** proposed, awaiting owner decisions (§9)

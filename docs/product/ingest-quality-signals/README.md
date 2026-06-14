@@ -1,3 +1,15 @@
+---
+title: Ingest quality signal briefs
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Ingest quality signal briefs
 
 Threshold evaluation runs from **Restormel Admin → Ingest quality** (`/keys/admin/ingest-quality`).

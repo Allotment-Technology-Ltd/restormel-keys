@@ -1,3 +1,15 @@
+---
+title: Private and OpenAI-compatible endpoints — compatibility notes for Keys
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-04-10
+review-interval: P12M
+---
+
 # Private and OpenAI-compatible endpoints — compatibility notes for Keys
 
 **Status:** Reference for operators. Restormel Keys treats many self-hosted stacks as **OpenAI-compatible HTTP** providers. Exact flags vary by server; this page lists **common** integration points and **caveats**.

@@ -1,3 +1,15 @@
+---
+title: Model Lifecycle in Restormel Keys
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Model Lifecycle in Restormel Keys
 
 ## Overview

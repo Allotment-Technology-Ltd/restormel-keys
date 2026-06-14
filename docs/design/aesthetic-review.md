@@ -1,3 +1,15 @@
+---
+title: Restormel — Aesthetic Coherence Review
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-07
+last-reviewed: 2026-06-07
+review-interval: P12M
+---
+
 # Restormel — Aesthetic Coherence Review
 
 > Produced after completing the five implementation phases:

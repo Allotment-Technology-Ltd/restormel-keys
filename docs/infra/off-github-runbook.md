@@ -1,3 +1,15 @@
+---
+title: Phase F runbook — Forgejo as primary remote (off-GitHub)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Phase F runbook — Forgejo as primary remote (off-GitHub)
 
 Status: DRAFTED 2026-06-13 (cutover night). Prerequisite met: Forgejo CI is green on

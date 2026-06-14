@@ -1,3 +1,15 @@
+---
+title: Third-party brand marks (vendor logos)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-14
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Third-party brand marks (vendor logos)
 
 **Status:** Canonical policy for **vendor logos and names** on Restormel marketing, docs, and dashboard surfaces. Restormel’s **own** brand rules remain in [design-system-index.md](../design/design-system-index.md).

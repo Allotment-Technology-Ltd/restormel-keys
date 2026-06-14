@@ -1,3 +1,15 @@
+---
+title: Connect Ingestion Setup Wizard — UX/UI Findings
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Connect Ingestion Setup Wizard — UX/UI Findings
 
 Audit per `docs/reviews/connect-wizard-ux-review.md` (static review against `docs/design/ux-contracts.md`
