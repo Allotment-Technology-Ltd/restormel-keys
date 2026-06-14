@@ -199,29 +199,79 @@ export interface PgClientLike {
  * interpolated values into a params array — IDENTICAL to neon-http. The values
  * are NEVER concatenated into the SQL text, so injection is impossible.
  */
+/**
+ * Marker for a composable SQL fragment built by the pg tagged template. Neon's tagged template
+ * returns a LAZY, composable query object, so `` sql`... ${sql`AND x = ${y}`}` `` inlines the inner
+ * fragment. We mirror that here: without it, the pg path would eagerly execute the inner fragment
+ * (an invalid standalone `AND ...` query) and bind its result as a parameter — the cause of
+ * `syntax error at or near "$n"` / `"AND"` on self-hosted Postgres.
+ */
+const SQL_FRAGMENT = Symbol("rkPgSqlFragment");
+
+interface SqlFragment {
+  text: string;
+  params: unknown[];
+  [SQL_FRAGMENT]: true;
+}
+
+export function isSqlFragment(v: unknown): v is SqlFragment {
+  return typeof v === "object" && v !== null && (v as Record<symbol, unknown>)[SQL_FRAGMENT] === true;
+}
+
+/** Shift `$1, $2, …` in a fragment's text by `offset` so it slots into the outer param sequence. */
+function offsetPlaceholders(text: string, offset: number): string {
+  return offset === 0 ? text : text.replace(/\$(\d+)/g, (_m, n) => "$" + (Number(n) + offset));
+}
+
+/**
+ * Build the parameterised query for a tagged-template invocation, FLATTENING any interpolated
+ * SqlFragment (neon-style composition). A non-fragment value becomes a bound `$n` parameter
+ * (never string-interpolated → injection-safe); a fragment's text+params are inlined with
+ * renumbered placeholders.
+ */
 export function buildParameterizedQuery(
   strings: TemplateStringsArray,
   values: unknown[],
 ): TxnQuery {
   let text = "";
+  const params: unknown[] = [];
   for (let i = 0; i < strings.length; i++) {
     text += strings[i];
     if (i < values.length) {
-      text += "$" + (i + 1);
+      const v = values[i];
+      if (isSqlFragment(v)) {
+        text += offsetPlaceholders(v.text, params.length);
+        params.push(...v.params);
+      } else {
+        params.push(v);
+        text += "$" + params.length;
+      }
     }
   }
-  return { text, params: values };
+  return { text, params };
 }
 
 /** Build the neon-shaped client over a `pg` Pool. */
 export function makePgClient(pool: PgPoolLike): DbClient {
-  const tagged = (async (
+  const tagged = ((
     strings: TemplateStringsArray,
     ...values: unknown[]
   ): Promise<Row[]> => {
     const { text, params } = buildParameterizedQuery(strings, values);
-    const result = await pool.query(text, params);
-    return result.rows;
+    // Lazy + composable, mirroring neon's query object: awaiting executes (once, memoised);
+    // interpolating into another tagged template inlines via buildParameterizedQuery (never
+    // executes standalone). This is what makes `${sql`AND ...`}` composition work on pg.
+    let pending: Promise<Row[]> | null = null;
+    const run = (): Promise<Row[]> => (pending ??= pool.query(text, params).then((r) => r.rows));
+    const fragment: SqlFragment & PromiseLike<Row[]> = {
+      text,
+      params,
+      [SQL_FRAGMENT]: true,
+      then: (onfulfilled, onrejected) => run().then(onfulfilled, onrejected),
+      catch: (onrejected: ((reason: unknown) => unknown) | null | undefined) => run().catch(onrejected),
+      finally: (onfinally: (() => void) | null | undefined) => run().finally(onfinally),
+    } as SqlFragment & Promise<Row[]>;
+    return fragment as unknown as Promise<Row[]>;
   }) as DbClient;
 
   tagged.query = async (text: string, params: unknown[] = []): Promise<Row[]> => {

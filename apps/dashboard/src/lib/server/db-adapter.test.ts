@@ -208,6 +208,47 @@ describe("makePgClient — query execution shape (neon-default rows[])", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Composable SQL fragments (neon-style `${sql`...`}` composition)
+// ---------------------------------------------------------------------------
+
+describe("makePgClient — composable SQL fragments", () => {
+  it("inlines an interpolated fragment instead of executing it standalone", async () => {
+    const { pool, poolCalls } = makeFakePool({ rows: [{ ok: 1 }] });
+    const sql = makePgClient(pool);
+    const projectId = "p1";
+    const frag = sql`AND project_id = ${projectId}`; // built, NOT awaited
+    const rows = await sql`SELECT * FROM t WHERE ws = ${"w1"} ${frag} LIMIT 1`;
+    expect(rows).toEqual([{ ok: 1 }]);
+    // Exactly ONE query executed — the fragment was inlined, never run standalone.
+    expect(poolCalls).toHaveLength(1);
+    expect(poolCalls[0].text).toBe("SELECT * FROM t WHERE ws = $1 AND project_id = $2 LIMIT 1");
+    expect(poolCalls[0].params).toEqual(["w1", "p1"]);
+  });
+
+  it("an empty fragment inlines nothing (the `: sql`` ` branch)", async () => {
+    const { pool, poolCalls } = makeFakePool();
+    const sql = makePgClient(pool);
+    const empty = sql``;
+    await sql`SELECT * FROM t WHERE ws = ${"w1"} ${empty}`;
+    expect(poolCalls).toHaveLength(1);
+    expect(poolCalls[0].text).toBe("SELECT * FROM t WHERE ws = $1 ");
+    expect(poolCalls[0].params).toEqual(["w1"]);
+  });
+
+  it("renumbers placeholders across multiple fragments + scalars", async () => {
+    const { pool, poolCalls } = makeFakePool();
+    const sql = makePgClient(pool);
+    const f1 = sql`AND a = ${"A"}`;
+    const f2 = sql`AND b = ${"B"} AND c = ${"C"}`;
+    await sql`SELECT * FROM t WHERE ws = ${"w"} ${f1} ${f2} AND d = ${"D"}`;
+    expect(poolCalls[0].text).toBe(
+      "SELECT * FROM t WHERE ws = $1 AND a = $2 AND b = $3 AND c = $4 AND d = $5",
+    );
+    expect(poolCalls[0].params).toEqual(["w", "A", "B", "C", "D"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (b) transaction: BEGIN/COMMIT on success, ROLLBACK on error
 // ---------------------------------------------------------------------------
 
