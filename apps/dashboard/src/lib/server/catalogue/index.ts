@@ -10,3 +10,4 @@ export * from "./ranking";
 export * from "./repository";
 export * from "./seed-repository";
 export * from "./stage-advisory";
+export * from "./stage-advisory-serialize";
