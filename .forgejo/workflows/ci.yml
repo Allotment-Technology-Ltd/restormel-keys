@@ -1,15 +1,24 @@
-# Forgejo CI — Stage 1 proof that the self-hosted `docker` runner builds the
-# pnpm monorepo green. Faithful subset: install + build the platform packages.
+# Forgejo CI — primary pipeline for the restormel-keys monorepo on the
+# self-hosted Forgejo instance (git.allotmentology.tech).
 #
-# Stage 1.7: the `apply-migrations` job runs the idempotent TS migration runner
-# against the Forgejo-environment DB when FORGEJO_DATABASE_URL is set (secret).
-# If the secret is absent the step is skipped cleanly — zero friction for
-# operators who haven't wired the DB yet.
+# Jobs:
+#   build          — install + build platform packages (smoke: runner is healthy)
+#   security       — OSV-Scanner + gitleaks + pnpm audit + Trivy config/fs
+#                    (required PR check; blocks on HIGH/CRITICAL)
+#   apply-migrations — DB migration runner (push-to-main only; needs secret)
 #
-# Intentionally NOT ported from .github/workflows/ci.yml (yet): the path-filter
-# matrix, security composite actions, the Vercel deploy job, and the Zuplo
-# gateway deploy. Those are Vercel-specific or Stage 2+ concerns (the dashboard
-# moves to Coolify) and each needs its own decision — see INFRA-RUNBOOK.md.
+# Security job:
+#   Composite: .forgejo/actions/security-scan (OSV-Scanner, gitleaks, pnpm audit)
+#   Trivy config: scans Dockerfile.* + deploy/docker-compose.coolify.yml for
+#     misconfigurations (no built image needed — static analysis only).
+#   Trivy fs: filesystem dep scan + secrets (no Docker required).
+#   NOTE: trivy image (OS/layer CVEs) runs on-box via a Coolify Scheduled Task
+#     against the Coolify-built image — NOT here (Coolify builds images from
+#     source on the box; there is no CI-built image to scan).
+#   Severity gate: scripts/security/severity-gate.mjs — HIGH/CRITICAL blocks.
+#
+# Path filter: security runs on any code, repo-config, or script change.
+# Gate is intended to be a required status check on PRs to main (see plan A7).
 name: CI
 on:
   push:
@@ -26,6 +35,87 @@ jobs:
       - uses: ./.forgejo/actions/pnpm-workspace-install
       - name: Build platform packages
         run: pnpm run build:platform-packages
+
+  security:
+    name: Security scan (OSV + gitleaks + pnpm audit + Trivy)
+    runs-on: docker
+    # Run on every push and PR — this job is intended to be a required check.
+    # Runs on any code, repo-config, Dockerfile, or script change.
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          # Full history for gitleaks (detects secrets in prior commits too).
+          fetch-depth: 0
+
+      # ── OSV-Scanner + gitleaks + pnpm audit (via composite) ────────────────
+      - name: Run security composite (OSV + gitleaks + pnpm audit)
+        uses: ./.forgejo/actions/security-scan
+
+      # ── Trivy: install pinned binary ────────────────────────────────────────
+      - name: Install Trivy v0.71.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          TRIVY_VERSION="0.71.0"
+          TRIVY_TARBALL="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          TRIVY_URL="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${TRIVY_TARBALL}"
+          # SHA256 from https://github.com/aquasecurity/trivy/releases/download/v0.71.0/trivy_0.71.0_checksums.txt
+          TRIVY_SHA256="30a3d22b23f88c233f1658f562fb477cae3b3e8b4761109d515b7698daf85814"
+          curl -fsSL "${TRIVY_URL}" -o "/tmp/${TRIVY_TARBALL}"
+          echo "${TRIVY_SHA256}  /tmp/${TRIVY_TARBALL}" | sha256sum -c -
+          tar -xzf "/tmp/${TRIVY_TARBALL}" -C /tmp trivy
+          mv /tmp/trivy /usr/local/bin/trivy
+          chmod +x /usr/local/bin/trivy
+          trivy --version
+
+      # ── Trivy config: Dockerfiles + compose misconfiguration scan ──────────
+      # Scans static files only — no built image required. Blocks on CRITICAL/HIGH misconfigs.
+      # .trivyignore (if present) can suppress known false-positives.
+      - name: Trivy config scan (Dockerfiles + compose)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TRIVY_ARGS="--exit-code 1 --severity HIGH,CRITICAL"
+          if [[ -f .trivyignore ]]; then
+            TRIVY_ARGS="${TRIVY_ARGS} --ignorefile .trivyignore"
+          fi
+
+          echo "::group::Trivy config — Dockerfile.dashboard"
+          # shellcheck disable=SC2086
+          trivy config ${TRIVY_ARGS} Dockerfile.dashboard
+          echo "::endgroup::"
+
+          echo "::group::Trivy config — Dockerfile.worker"
+          # shellcheck disable=SC2086
+          trivy config ${TRIVY_ARGS} Dockerfile.worker
+          echo "::endgroup::"
+
+          echo "::group::Trivy config — Dockerfile.site"
+          # shellcheck disable=SC2086
+          trivy config ${TRIVY_ARGS} Dockerfile.site
+          echo "::endgroup::"
+
+          echo "::group::Trivy config — deploy/docker-compose.coolify.yml"
+          # shellcheck disable=SC2086
+          trivy config ${TRIVY_ARGS} deploy/docker-compose.coolify.yml
+          echo "::endgroup::"
+
+      # ── Trivy fs: filesystem dependency + secrets scan ─────────────────────
+      # Scans the working tree for known-vulnerable packages and embedded secrets.
+      # Complements OSV-Scanner (Trivy uses a different advisory DB).
+      - name: Trivy fs scan (deps + secrets)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Trivy fs — filesystem scan"
+          trivy fs \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --scanners vuln,secret \
+            --skip-dirs node_modules \
+            .
+          echo "::endgroup::"
 
   apply-migrations:
     name: Apply dashboard migrations (Forgejo DB)

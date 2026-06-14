@@ -1,13 +1,51 @@
 name: "JS workspace security scan"
-description: "TruffleHog on repo root and pnpm audit --audit-level critical (caller must checkout and run pnpm install first)."
+description: >-
+  TruffleHog + OSV-Scanner + pnpm audit on the restormel-keys monorepo.
+  Caller must checkout (with fetch-depth 0) and run pnpm install first.
+  The severity gate (scripts/security/severity-gate.mjs) is shared with the
+  Forgejo primary pipeline so both pipelines enforce the same SLA thresholds.
+
 runs:
   using: composite
   steps:
+    # ── TruffleHog (verified secrets, existing step — keep as-is) ────────────
     - name: TruffleHog
       uses: trufflesecurity/trufflehog@bff3d2670b362bbb4a0bcdeffea146cbc2ad3abd
       with:
         path: ./
         extra_args: --only-verified
-    - name: pnpm audit
-      run: pnpm audit --audit-level critical
+
+    # ── OSV-Scanner (transitive CVE scan on lockfile) ─────────────────────────
+    - name: Install osv-scanner v2.3.8
       shell: bash
+      run: |
+        set -euo pipefail
+        OSV_VERSION="2.3.8"
+        OSV_URL="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+        # SHA256 from https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_SHA256SUMS
+        OSV_SHA256="bc98e15319ed0d515e3f9235287ba53cdc5535d576d24fd573978ecfe9ab92dc"
+        curl -fsSL "${OSV_URL}" -o /usr/local/bin/osv-scanner
+        echo "${OSV_SHA256}  /usr/local/bin/osv-scanner" | sha256sum -c -
+        chmod +x /usr/local/bin/osv-scanner
+        osv-scanner --version
+
+    - name: OSV-Scanner (lockfile CVE scan)
+      shell: bash
+      run: |
+        set -euo pipefail
+        osv-scanner scan --lockfile pnpm-lock.yaml --format json \
+          --output /tmp/osv-results.json || true
+        osv-scanner scan --lockfile pnpm-lock.yaml || true
+
+    - name: Severity gate (blocks on HIGH/CRITICAL)
+      shell: bash
+      run: |
+        set -euo pipefail
+        node scripts/security/severity-gate.mjs /tmp/osv-results.json
+
+    # ── pnpm audit (secondary signal; OSV gate is authoritative) ─────────────
+    - name: pnpm audit
+      shell: bash
+      run: |
+        set -euo pipefail
+        pnpm audit --audit-level high || true
