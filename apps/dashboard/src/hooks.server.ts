@@ -9,6 +9,7 @@ import { json, redirect } from "@sveltejs/kit";
 import { dev } from "$app/environment";
 import { agentLogServer } from "$lib/debug/agent-log.server";
 import { perfSpan } from "$lib/debug/server-perf";
+import { captureServerPostHogEvent } from "$lib/server/posthog-capture";
 import { cookieHeaderMayCarrySession, getSession } from "$lib/server/auth";
 import { getBearerToken } from "$lib/server/bearer";
 import { verifyGatewayKey, verifyManagementKey } from "$lib/server/neon";
@@ -291,6 +292,48 @@ export const handle: Handle = async ({ event, resolve }) => {
   });
 };
 
+/**
+ * Redacted PostHog server-error capture.
+ *
+ * Capture contract (mirrors security-baseline.md redaction rules):
+ *   ALLOWED:  error name, truncated message (no body echoes), pathname (no query),
+ *             HTTP status, SvelteKit route ID.
+ *   STRIPPED: error.stack (may contain file paths + data), event.url.search
+ *             (query params may carry tokens), any property not listed above.
+ *
+ * Fire-and-forget; never blocks the error response. No-ops when POSTHOG_API_KEY is unset.
+ */
+function captureServerError(
+  error: unknown,
+  event: Parameters<HandleServerError>[0]["event"],
+  status: number,
+): void {
+  const apiKey = process.env.POSTHOG_API_KEY ?? process.env.PUBLIC_POSTHOG_KEY;
+  if (!apiKey) return;
+
+  const errorName = error instanceof Error ? error.name : "NonError";
+  // Truncate message to 300 chars; never log stack (may echo request data).
+  const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 300);
+
+  const distinctId =
+    event.locals.user?.uid
+      ? `uid_${event.locals.user.uid.slice(0, 12)}`
+      : "server_anon";
+
+  // Capture pathname only — never search/hash (may contain auth tokens or key IDs).
+  const pathname = event.url.pathname.slice(0, 200);
+  const routeId = event.route?.id ?? null;
+
+  void captureServerPostHogEvent(distinctId, "server_error", {
+    error_name: errorName.slice(0, 80),
+    error_message: errorMessage,
+    pathname,
+    route_id: routeId ? String(routeId).slice(0, 120) : null,
+    status,
+    $lib: "restormel-hooks-server",
+  });
+}
+
 export const handleError: HandleServerError = ({ error, event, status }) => {
   const msg = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
@@ -306,6 +349,8 @@ export const handleError: HandleServerError = ({ error, event, status }) => {
     },
     "H4"
   );
+  // PostHog exception capture (redacted — see captureServerError above).
+  captureServerError(error, event, status);
   return { message: "Internal Error" };
 };
 
