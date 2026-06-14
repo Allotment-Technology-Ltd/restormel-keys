@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "GHSA-gv7w-rqvm-qjhr",
+    "reason": "esbuild@0.28.1 fix conflicts with vite@6.4.2 (requires ^0.25.0) and tsx@4.21.0 (~0.27.0). Cannot upgrade esbuild without a coordinated vite/tsx major bump. The vuln is a missing binary integrity check in the Deno module path — the dashboard build uses Node/pnpm, not Deno, so this code path is unreachable in production. Track via a follow-up vite upgrade. Expiry set to 30-day max per High policy.",
+    "expires": "2026-07-14"
+  },
+  {
+    "id": "GHSA-rcmh-qjqh-p98v",
+    "reason": "nodemailer DoS fix (CVE-2025-14874) requires v7.0.11 which is a breaking major bump from v6.x (new API surface). Bumping without full auth-flow regression testing risks breaking transactional email in production. Scheduled for coordinated upgrade with better-auth email plugin review. Expiry set to 30-day max per High policy.",
+    "expires": "2026-07-14"
+  }
+]
