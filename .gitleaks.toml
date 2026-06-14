@@ -37,6 +37,13 @@ paths = [
   # Build artifacts (defensive; normally absent in a fresh CI checkout)
   '''(^|/)\.next/''',
   '''(^|/)(dist|build|coverage)/''',
+  # Installed dependencies & VCS internals. `gitleaks --no-git` scans the WHOLE
+  # working tree, which after `pnpm install` includes node_modules (full of
+  # dependency test fixtures with fake keys). Those are not our secrets — and
+  # scanning them was what failed the CI gate.
+  '''(^|/)node_modules/''',
+  '''(^|/)\.git/''',
+  '''(^|/)\.pnpm-store/''',
 ]
 
 regexes = [
