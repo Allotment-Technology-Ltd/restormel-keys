@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "__MODULE_TITLE__ — Restormel suite module (SvelteKit + pnpm).",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.28.2",
   "engines": {
     "node": ">=20"
   },
