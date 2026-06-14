@@ -1,0 +1,41 @@
+# Records governance — Phase 2 (WARN-ONLY).
+# Per the Records & IA plan every check here is NON-BLOCKING; a red pipeline on day one
+# just trains people to ignore it. Phase 4 flips tier-2/3 to blocking by setting
+# RECORDS_ENFORCE=1 on the relevant steps. Lives in .forgejo/workflows (overrides .github
+# on the mirror); Forgejo is primary CI. Scripts are dependency-free — plain `node`.
+name: Records governance (warn-only)
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'records/**'
+      - 'governance/**'
+      - 'evidence/**'
+      - 'planning/**'
+      - 'legal/**'
+      - 'people/**'
+      - 'CODEOWNERS'
+      - 'scripts/records/**'
+      - '.forgejo/workflows/records-governance.yml'
+  pull_request:
+
+jobs:
+  records-governance:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          fetch-depth: 0   # ledger-append-guard + mirror-verify need history
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Front-matter validation
+        run: node scripts/records/frontmatter-validate.mjs
+      - name: Freshness check
+        run: node scripts/records/freshness-check.mjs
+      - name: Register up to date (register-verify)
+        run: node scripts/records/register.mjs --check
+      - name: Ledger append-only guard
+        run: node scripts/records/ledger-append-guard.mjs
+      - name: CODEOWNERS coverage
+        run: node scripts/records/codeowners-check.mjs
+      - name: Mirror discipline
+        run: node scripts/records/mirror-verify.mjs

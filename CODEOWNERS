@@ -1,0 +1,17 @@
+# CODEOWNERS — records ownership (Phase 2).
+# codeowners-check asserts every tracked record path is covered by a rule here.
+# The handle is a PLACEHOLDER pending Decision #1 (single founder owner for now).
+# >>> Replace @adam-boon with your real Forgejo username so review requests actually route. <<<
+
+# Catch-all so no record path is ever orphaned.
+*                  @adam-boon
+
+# Per-area ownership (split to specific owners later as the team grows).
+/docs/             @adam-boon
+/docs/decisions/   @adam-boon
+/records/          @adam-boon
+/governance/       @adam-boon      # ISMS owner
+/evidence/         @adam-boon
+/planning/         @adam-boon
+/legal/            @adam-boon      # counsel reviews out-of-band
+/people/           @adam-boon
