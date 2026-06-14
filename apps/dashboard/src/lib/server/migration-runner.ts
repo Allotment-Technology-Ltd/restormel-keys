@@ -136,6 +136,20 @@ export function splitSqlStatements(content: string): string[] {
 // Runner
 // ---------------------------------------------------------------------------
 
+/**
+ * Ensure the tracking table exists BEFORE applying any migration. Each migration's record
+ * step INSERTs into schema_migrations, but 059_schema_migrations_tracking.sql doesn't create
+ * it until 58 files in — so a FROM-SCRATCH run (fresh local / self-hosted DB) fails on 001
+ * without this. Idempotent: a no-op on existing DBs, and makes 059's own CREATE a no-op too.
+ * Schema mirrors 059 exactly.
+ */
+export async function ensureTrackingTable(sql: SqlFn): Promise<void> {
+  await sql`CREATE TABLE IF NOT EXISTS schema_migrations (
+    filename   TEXT        PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
+}
+
 /** Load the set of already-applied filenames from schema_migrations. */
 export async function loadApplied(sql: SqlFn): Promise<Set<string>> {
   try {
@@ -166,6 +180,10 @@ export async function runMigrations(
   if (sqlFiles.length === 0) {
     throw new Error("No .sql files found in migrations directory");
   }
+
+  // Bootstrap the tracking table up-front so a from-scratch run works (the per-migration
+  // INSERT needs it, but 059 creates it too late). No-op on existing DBs.
+  await ensureTrackingTable(sql);
 
   const applied = await loadApplied(sql);
   const result: RunnerResult = { applied: [], skipped: [] };

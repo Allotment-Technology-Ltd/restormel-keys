@@ -20,17 +20,21 @@ import {
 function makeMockSql(appliedRows: string[] = []): {
   sql: SqlFn;
   transactionCalls: Array<{ content: string; filename: string }>;
+  taggedCalls: string[];
 } {
   const transactionCalls: Array<{ content: string; filename: string }> = [];
+  const taggedCalls: string[] = [];
 
   const tagged = (async (
     strings: TemplateStringsArray,
     ...values: unknown[]
   ): Promise<unknown[]> => {
-    // Tagged template call — SELECT filename FROM schema_migrations
-    void strings;
+    const text = strings.join(" ");
+    taggedCalls.push(text);
     void values;
-    return appliedRows.map((filename) => ({ filename }));
+    // Only the loadApplied SELECT returns rows; DDL (the tracking-table bootstrap) returns nothing.
+    if (/SELECT/i.test(text)) return appliedRows.map((filename) => ({ filename }));
+    return [];
   }) as SqlFn;
 
   tagged.query = async (_text: string, _params?: unknown[]): Promise<unknown[]> => [];
@@ -53,7 +57,7 @@ function makeMockSql(appliedRows: string[] = []): {
     return [];
   };
 
-  return { sql: tagged, transactionCalls };
+  return { sql: tagged, transactionCalls, taggedCalls };
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +163,18 @@ describe("runMigrations", () => {
     expect(result.applied).toEqual(files);
     expect(result.skipped).toEqual([]);
     expect(transactionCalls).toHaveLength(3);
+  });
+
+  it("bootstraps schema_migrations before applying (from-scratch DB)", async () => {
+    const { sql, taggedCalls, transactionCalls } = makeMockSql([]); // fresh: no tracking rows
+    await runMigrations(
+      sql,
+      () => ["001_initial.sql"],
+      () => "CREATE TABLE foo (id TEXT PRIMARY KEY);",
+      noop,
+    );
+    expect(taggedCalls.some((s) => /CREATE TABLE IF NOT EXISTS schema_migrations/i.test(s))).toBe(true);
+    expect(transactionCalls).toHaveLength(1); // the migration still applied atomically
   });
 
   it("skips already-applied files", async () => {

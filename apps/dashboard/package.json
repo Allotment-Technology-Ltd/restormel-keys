@@ -20,6 +20,11 @@
     "seed:catalog:from-keys": "node scripts/seed-model-catalog-from-keys.mjs",
     "sync:aizolo-seed": "node scripts/sync-aizolo-catalog-seed.mjs",
     "migrate": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/apply-migrations.mts",
+    "db:up": "docker compose -f ../../deploy/docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f ../../deploy/docker-compose.dev.yml down",
+    "db:reset": "docker compose -f ../../deploy/docker-compose.dev.yml down -v && pnpm db:up && pnpm migrate",
+    "db:logs": "docker compose -f ../../deploy/docker-compose.dev.yml logs -f postgres",
+    "dev:local": "pnpm db:up && pnpm migrate && pnpm dev",
     "hosted-runtime-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/hosted-runtime-worker.ts",
     "connect-ingest-worker": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker.ts",
     "connect-ingest-worker:daemon": "pnpm -w exec tsx --tsconfig ./apps/dashboard/scripts/tsconfig.json ./apps/dashboard/scripts/connect-ingest-worker-daemon.ts"
