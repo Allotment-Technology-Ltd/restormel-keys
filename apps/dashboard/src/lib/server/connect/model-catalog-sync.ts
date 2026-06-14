@@ -12,6 +12,8 @@ type SeedVariant = {
   providerIntegrationType: string;
   providerModelId: string;
   availabilityStatus?: string | null;
+  /** Where inference actually runs for this route (§3.8). Null = unverified (e.g. Aizolo). */
+  processingRegion?: string | null;
   pricingRef?: string | null;
   rateLimitRef?: string | null;
   sourceLastVerifiedAt?: string | null;
@@ -31,6 +33,8 @@ type SeedModel = {
   modalities?: string[] | null;
   capabilities?: string[] | null;
   editorialSummary?: string | null;
+  /** Vendor's legal home jurisdiction (§3.8). Null = unresolvable from seed data. */
+  homeJurisdiction?: string | null;
   deprecationDate?: string | null;
   retirementDate?: string | null;
   replacementModelId?: string | null;
@@ -65,11 +69,13 @@ async function upsertSeedModels(models: SeedModel[]): Promise<number> {
         id, canonical_name, family, lifecycle_state, description,
         context_window, max_output_tokens, supports_tools, supports_structured_output, supports_mcp,
         modalities, capabilities, editorial_summary,
+        home_jurisdiction,
         deprecation_date, retirement_date, replacement_model_id, source_last_verified_at
       ) VALUES (
         ${m.id}, ${m.canonicalName}, ${m.family ?? null}, ${m.lifecycleState ?? null}, ${m.description ?? null},
         ${m.contextWindow ?? null}, ${m.maxOutputTokens ?? null}, ${m.supportsTools ?? null}, ${m.supportsStructuredOutput ?? null}, ${m.supportsMcp ?? null},
         ${modalities}, ${capabilities}, ${m.editorialSummary ?? null},
+        ${m.homeJurisdiction ?? null},
         ${catalogSeedEpochMs(m.deprecationDate)}, ${catalogSeedEpochMs(m.retirementDate)}, ${m.replacementModelId ?? null}, ${catalogSeedEpochMs(m.sourceLastVerifiedAt)}
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -85,6 +91,7 @@ async function upsertSeedModels(models: SeedModel[]): Promise<number> {
         modalities = EXCLUDED.modalities,
         capabilities = EXCLUDED.capabilities,
         editorial_summary = EXCLUDED.editorial_summary,
+        home_jurisdiction = EXCLUDED.home_jurisdiction,
         deprecation_date = EXCLUDED.deprecation_date,
         retirement_date = EXCLUDED.retirement_date,
         replacement_model_id = EXCLUDED.replacement_model_id,
@@ -97,16 +104,17 @@ async function upsertSeedModels(models: SeedModel[]): Promise<number> {
       await sql`
         INSERT INTO provider_model_variants (
           id, model_id, provider_integration_type, provider_model_id,
-          availability_status, pricing_ref, rate_limit_ref, source_last_verified_at,
+          availability_status, processing_region, pricing_ref, rate_limit_ref, source_last_verified_at,
           catalog_provider_id
         ) VALUES (
           ${variantId}, ${m.id}, ${v.providerIntegrationType}, ${v.providerModelId},
-          ${v.availabilityStatus ?? null}, ${v.pricingRef ?? null}, ${v.rateLimitRef ?? null}, ${catalogSeedEpochMs(v.sourceLastVerifiedAt)},
+          ${v.availabilityStatus ?? null}, ${v.processingRegion ?? null}, ${v.pricingRef ?? null}, ${v.rateLimitRef ?? null}, ${catalogSeedEpochMs(v.sourceLastVerifiedAt)},
           ${v.providerIntegrationType}
         )
         ON CONFLICT (id) DO UPDATE SET
           provider_model_id = EXCLUDED.provider_model_id,
           availability_status = EXCLUDED.availability_status,
+          processing_region = EXCLUDED.processing_region,
           pricing_ref = EXCLUDED.pricing_ref,
           rate_limit_ref = EXCLUDED.rate_limit_ref,
           source_last_verified_at = EXCLUDED.source_last_verified_at,

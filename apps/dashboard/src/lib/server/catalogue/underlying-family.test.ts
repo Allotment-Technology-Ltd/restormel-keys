@@ -48,4 +48,15 @@ describe("resolveUnderlyingFamily — aggregators resolve to the underlying vend
     const fam = resolveUnderlyingFamily("unmapped-id", { provider: "together" });
     expect(fam).not.toBe("together");
   });
+
+  it("inference hosts (groq) resolve via the model id, not the host", () => {
+    // family/provider "groq" is the host, not the vendor — resolve from the id.
+    expect(resolveUnderlyingFamily("llama-3-3-70b-versatile", { provider: "groq", family: "groq" })).toBe("meta");
+    expect(resolveUnderlyingFamily("mixtral-8x7b-32768", { provider: "groq", family: "groq" })).toBe("mistral");
+    expect(resolveUnderlyingFamily("gemma2-9b-it", { provider: "groq", family: "groq" })).toBe("google");
+    // so two different Groq-hosted architectures are NOT mistaken for the same family
+    const a = resolveUnderlyingFamily("llama-3-1-8b-instant", { provider: "groq", family: "groq" });
+    const b = resolveUnderlyingFamily("gemma2-9b-it", { provider: "groq", family: "groq" });
+    expect(a).not.toBe(b);
+  });
 });

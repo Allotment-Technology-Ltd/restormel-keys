@@ -16,6 +16,8 @@ const FAMILY_ALIASES: Record<string, string> = {
   gpt: "openai",
   google: "google",
   gemini: "google",
+  gemma: "google",
+  gemma2: "google",
   vertex: "google",
   deepseek: "deepseek",
   "deepseek-ai": "deepseek",
@@ -25,6 +27,7 @@ const FAMILY_ALIASES: Record<string, string> = {
   llama: "meta",
   mistral: "mistral",
   mistralai: "mistral",
+  mixtral: "mistral",
   cohere: "cohere",
   grok: "xai",
   xai: "xai",
@@ -35,6 +38,7 @@ const FAMILY_ALIASES: Record<string, string> = {
   "zai-org": "zai",
   glm: "zai",
   microsoft: "microsoft",
+  e5: "microsoft",
   nvidia: "nvidia",
   perplexity: "perplexity",
   hunyuan: "hunyuan",
@@ -42,14 +46,25 @@ const FAMILY_ALIASES: Record<string, string> = {
   mimo: "mimo",
 };
 
-/** Aggregator providers that front other vendors — never a family on their own. */
-const AGGREGATOR_PROVIDERS = new Set(["together", "aizolo", "openrouter"]);
+/**
+ * Inference hosts / aggregators front OTHER vendors — never a family on their own. A model whose
+ * `family` or `provider` is one of these (e.g. Groq-hosted Llama with family "groq") must resolve
+ * via the model id instead, so Groq-Llama (meta) ≠ Groq-Gemma (google) for cross-model checks.
+ */
+const INFERENCE_HOSTS = new Set(["together", "aizolo", "openrouter", "groq", "fireworks"]);
 
 export function normaliseFamily(token: string | null | undefined): string | null {
   if (!token) return null;
   const t = token.trim().toLowerCase();
   if (!t) return null;
   return FAMILY_ALIASES[t] ?? t;
+}
+
+/** Normalise to a canonical family, treating inference hosts as "not a vendor" (null). */
+function canonicalFamily(token: string | null | undefined): string | null {
+  const n = normaliseFamily(token);
+  if (!n || INFERENCE_HOSTS.has(n)) return null;
+  return n;
 }
 
 /** Aizolo catalogue ids encode the vendor: `aizolo-{vendor}-{rest}` → vendor. */
@@ -89,14 +104,14 @@ export function resolveUnderlyingFamily(
   const pmid = (opts.providerModelId ?? "").trim();
   if (pmid.includes("/")) return normaliseFamily(pmid.split("/")[0]);
 
-  // 4. Explicit family on the model row.
-  const fromFamily = normaliseFamily(opts.family ?? null);
+  // 4. Explicit family on the model row — but only if it's a real vendor (not an inference host).
+  const fromFamily = canonicalFamily(opts.family ?? null);
   if (fromFamily) return fromFamily;
 
-  // 5. A direct (non-aggregator) provider IS the family.
-  const provider = (opts.provider ?? "").trim().toLowerCase();
-  if (provider && !AGGREGATOR_PROVIDERS.has(provider)) return normaliseFamily(provider);
+  // 5. A direct (non-host) provider IS the family.
+  const fromProvider = canonicalFamily(opts.provider ?? null);
+  if (fromProvider) return fromProvider;
 
-  // 6. Last resort: the id's own leading token.
+  // 6. Last resort: the id's own leading token (resolves Groq-hosted `llama-*` → meta etc.).
   return normaliseFamily(id.split(/[-/]/)[0]);
 }
