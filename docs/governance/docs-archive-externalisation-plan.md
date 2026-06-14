@@ -1,3 +1,15 @@
+---
+title: Docs archive externalisation — plan (deferred)
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Docs archive externalisation — plan (deferred)
 
 **Status:** Deferred — owner investigating the store choice first (2026-06-13).

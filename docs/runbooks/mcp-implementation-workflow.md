@@ -1,3 +1,15 @@
+---
+title: MCP Implementation Workflow
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-19
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # MCP Implementation Workflow
 
 ## Overview

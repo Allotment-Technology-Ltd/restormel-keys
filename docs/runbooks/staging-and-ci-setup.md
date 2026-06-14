@@ -1,3 +1,15 @@
+---
+title: Staging and CI setup — Restormel Keys
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-19
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Staging and CI setup — Restormel Keys
 
 **Public guide:** For the full step-by-step guide with **where to get** each value, **what to call it**, **where to save it**, and **how to rotate or replace it**, use the walkthrough:

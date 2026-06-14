@@ -1,3 +1,15 @@
+---
+title: Restormel Support (@restormel/support)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel Support (`@restormel/support`)
 
 **Purpose:** Topic owner for the **Restormel Support** in-product assistant (Horizon **Theme M**). Describes behaviour, trust boundaries, and links to implementation — not a duplicate of OpenAI or Vercel docs.

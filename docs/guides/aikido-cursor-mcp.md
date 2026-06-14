@@ -1,3 +1,15 @@
+---
+title: Aikido Security MCP (Cursor)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-05
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Aikido Security MCP (Cursor)
 
 **Status:** Canonical setup for SAST and secret scanning from Cursor Agent. Product security baseline remains [security-baseline.md](../governance/security-baseline.md); this guide is MCP wiring only.

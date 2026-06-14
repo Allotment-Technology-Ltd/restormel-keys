@@ -1,3 +1,15 @@
+---
+title: Restormel Support — production (restormel.dev)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-04-10
+review-interval: P12M
+---
+
 # Restormel Support — production (restormel.dev)
 
 **Purpose:** Configure and validate **Restormel Support** on the live dashboard deploy (`apps/dashboard` on Vercel or equivalent).

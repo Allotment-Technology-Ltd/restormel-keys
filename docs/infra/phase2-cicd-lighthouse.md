@@ -1,3 +1,15 @@
+---
+title: Phase 2 CI/CD — Lighthouse-CI for public routes
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Phase 2 CI/CD — Lighthouse-CI for public routes
 
 Landed as part of the Phase 2 CI/CD swarm.  

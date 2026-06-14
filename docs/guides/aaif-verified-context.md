@@ -1,3 +1,15 @@
+---
+title: AAIF verified-context integration guide
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-11
+last-reviewed: 2026-06-11
+review-interval: P12M
+---
+
 # AAIF verified-context integration guide
 
 **Audience:** LangChain / LlamaIndex / custom-orchestrator authors who want to consume

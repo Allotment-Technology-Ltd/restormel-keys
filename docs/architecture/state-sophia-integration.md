@@ -1,3 +1,15 @@
+---
+title: SOPHIA — wiring @restormel/state (Stoa + escalation)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # SOPHIA — wiring `@restormel/state` (Stoa + escalation)
 
 SOPHIA’s **Stoa** dialogue stack (`src/routes/api/stoa/dialogue/+server.ts`), **prompt history** (`src/lib/server/stoa/prompt.ts`), and **escalation / summarization** (`src/lib/server/stoa/escalation.ts`) already mutate conversation state in production. This document describes how to **emit Restormel State events** alongside that logic without extracting Firebase or document stores into this monorepo.

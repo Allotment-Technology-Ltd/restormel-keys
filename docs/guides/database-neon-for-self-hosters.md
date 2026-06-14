@@ -1,3 +1,15 @@
+---
+title: Database for self-hosters: Neon (recommended)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-12
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Database for self-hosters: Neon (recommended)
 
 **Status:** Canonical (adopter-facing). **Published in-product:** [https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters)

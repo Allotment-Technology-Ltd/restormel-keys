@@ -1,3 +1,15 @@
+---
+title: Restormel Design System - Component Inventory
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel Design System - Component Inventory
 
 **Version:** 1.0.0  

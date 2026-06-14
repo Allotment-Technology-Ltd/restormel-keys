@@ -1,3 +1,15 @@
+---
+title: Model catalog ingestion
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-06-04
+review-interval: P12M
+---
+
 # Model catalog ingestion
 
 Reference only. Canonical process: this doc and the scripts it describes.

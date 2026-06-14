@@ -1,3 +1,15 @@
+---
+title: Zuplo config reference (Restormel Keys)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-15
+last-reviewed: 2026-03-15
+review-interval: P12M
+---
+
 # Zuplo config reference (Restormel Keys)
 
 **Purpose:** Reference shapes for `config/routes.oas.json` and `config/policies.json` so a Cursor agent (or human) can generate or update a Zuplo gateway project from code. These files are **not** the live Zuplo project — they are templates to copy into your Zuplo project repo (or the project created in the portal and synced via GitHub).

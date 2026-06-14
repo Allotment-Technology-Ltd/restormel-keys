@@ -1,3 +1,15 @@
+---
+title: Restormel module — default core stack
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel module — default core stack
 
 **Status:** Canonical. **Single source of truth** for what new Restormel-owned modules should assume unless a written ADR opts out. Use this for GitHub repo templates, init scripts, and agent prompts.

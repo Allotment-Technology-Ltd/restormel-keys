@@ -1,3 +1,15 @@
+---
+title: Firestore to Neon migration — Restormel Keys dashboard
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Firestore to Neon migration — Restormel Keys dashboard
 
 This runbook covers switching the dashboard storage from **Firestore** to **Neon Postgres**, and optionally migrating existing data.

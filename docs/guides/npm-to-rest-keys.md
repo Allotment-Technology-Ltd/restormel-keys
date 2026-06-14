@@ -1,3 +1,15 @@
+---
+title: Migrate from @restormel/keys npm to Keys REST (Phase 1)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-04
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Migrate from `@restormel/keys` npm to Keys REST (Phase 1)
 
 **Status:** Canonical integrator guide  

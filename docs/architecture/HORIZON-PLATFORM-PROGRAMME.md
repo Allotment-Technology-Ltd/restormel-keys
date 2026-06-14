@@ -1,3 +1,15 @@
+---
+title: Horizon platform programme
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Horizon platform programme
 
 **Purpose:** Single **programme-level** document for Restormel’s horizon themes (capabilities A–J), **Theme L** (IA, dashboard shell, experience), **Theme M** (draft: Restormel Support Agent / platform-market packaging), **MCP/AAIF suite inventory**, **stakeholder capability shortlist**, and **canonical source boundaries**. It does **not** duplicate operational specs—those live in the linked files below.

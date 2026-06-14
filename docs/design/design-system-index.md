@@ -1,3 +1,15 @@
+---
+title: Restormel Design System — Canonical Index
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel Design System — Canonical Index
 
 **Status:** Canonical. All Restormel Keys UI must align with this design system.

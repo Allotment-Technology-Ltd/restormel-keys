@@ -1,3 +1,15 @@
+---
+title: GTM sequencing — self-serve (PLG) before heavy enterprise procurement
+class: planning
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # GTM sequencing — self-serve (PLG) before heavy enterprise procurement
 
 **Status:** Canonical operational note for go-to-market ordering. Complements [docs/archive/2026-03-build-pack/01-product-strategy.md](../archive/2026-03-build-pack/01-product-strategy.md) and [ROADMAP.md](../../ROADMAP.md).

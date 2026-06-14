@@ -1,3 +1,15 @@
+---
+title: Connect — BYO graph store for agents (MVP)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-05
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Connect — BYO graph store for agents (MVP)
 
 **Status:** Reference (operator + integrator)  

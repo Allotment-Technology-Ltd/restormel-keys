@@ -1,3 +1,15 @@
+---
+title: Restormel Integrations — Full Product, UX, and Implementation Spec
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-19
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel Integrations — Full Product, UX, and Implementation Spec
 
 ## 0. Purpose

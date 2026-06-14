@@ -1,3 +1,15 @@
+---
+title: ADR: Verified memory — claim identity, temporal validity, incremental re-ingest
+class: decision
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-10
+review-interval: P12M
+---
+
 # ADR: Verified memory — claim identity, temporal validity, incremental re-ingest
 
 **Status:** Provisional — **pending review. No implementation has been done.** (Verified

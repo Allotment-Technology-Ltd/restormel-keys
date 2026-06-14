@@ -1,3 +1,15 @@
+---
+title: Restormel Keys — platform inventory (frozen reference)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel Keys — platform inventory (frozen reference)
 
 **Status:** Reference. Operational truth for CI and hosting remains in repo config files; this page snapshots facts for modularisation and cross-repo planning.

@@ -1,3 +1,15 @@
+---
+title: Service admin operators (Allotment)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-01
+last-reviewed: 2026-06-05
+review-interval: P12M
+---
+
 # Service admin operators (Allotment)
 
 Internal Restormel Keys operators can bypass **subscription-style limits** (project count, monthly resolve quota) and **Pro dashboard gates** (e.g. System Health) so dogfooding is not blocked by Free tier caps.

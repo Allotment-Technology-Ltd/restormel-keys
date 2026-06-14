@@ -1,3 +1,15 @@
+---
+title: Connect Ingestion — Review Prompts
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-09
+review-interval: P12M
+---
+
 # Connect Ingestion — Review Prompts
 
 Two reusable prompts for driving an advanced-model review agent (Fable 5 / Opus) over the

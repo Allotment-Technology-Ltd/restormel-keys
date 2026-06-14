@@ -1,3 +1,15 @@
+---
+title: Restormel — Aesthetic Audit
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-07
+last-reviewed: 2026-06-07
+review-interval: P12M
+---
+
 # Restormel — Aesthetic Audit
 
 Audit of the current implementation against [`aesthetic-brief.md`](./aesthetic-brief.md).

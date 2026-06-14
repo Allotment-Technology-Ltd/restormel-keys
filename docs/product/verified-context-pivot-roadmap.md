@@ -1,3 +1,15 @@
+---
+title: Verified Context — Pivot Delivery Roadmap
+class: planning
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Verified Context — Pivot Delivery Roadmap
 
 **Thesis** (from the June 2026 functionality/competitive review): routing is a commodity

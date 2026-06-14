@@ -1,3 +1,15 @@
+---
+title: Zuplo gateway setup — Restormel Keys
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-15
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Zuplo gateway setup — Restormel Keys
 
 This runbook sets up the **Zuplo API gateway** for the Keys cloud API. External clients call Zuplo with **consumer keys** (`zpka_...`); Zuplo validates them, applies policies, and forwards requests to the **dashboard backend** (Vercel) using a single **backend Gateway key** (`rk_...`).

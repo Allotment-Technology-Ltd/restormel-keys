@@ -1,3 +1,15 @@
+---
+title: Founding Pro promo (first N signups)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-18
+last-reviewed: 2026-03-18
+review-interval: P12M
+---
+
 # Founding Pro promo (first N signups)
 
 ## Behaviour
