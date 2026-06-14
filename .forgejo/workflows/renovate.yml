@@ -1,0 +1,94 @@
+# .forgejo/workflows/renovate.yml
+#
+# Self-hosted Renovate running as a Forgejo Actions scheduled job.
+# Renovate scans for outdated + vulnerable dependencies and raises prioritised PRs.
+#
+# Secrets required (set in Forgejo → Settings → Secrets and Variables → Actions):
+#   RENOVATE_TOKEN  — a Forgejo personal access token (PAT) scoped to:
+#                     - contents: write  (push update branches)
+#                     - issues: write    (create dependency dashboard issue)
+#                     - pull-requests: write (open/update PRs)
+#                     The PAT must belong to a bot user or the repo owner.
+#                     Create at: https://git.allotmentology.tech/user/settings/applications
+#
+# Auto-merge policy (encoded in renovate.json):
+#   - patch/minor devDependencies   → auto-merge on green CI
+#   - major bumps                   → PR for human review, never auto-merge
+#   - runtime-critical packages     → PR for human review, never auto-merge
+#   - vulnerability/security alerts → immediate PR, high priority, never auto-merge
+#
+# Schedule: weekly (Mon 03:00–06:00 Europe/London) + on-demand via workflow_dispatch.
+# This mirrors the GitHub-side Dependabot schedule; keep both in sync.
+#
+# Note: Renovate is the PRIMARY auto-dependency-update engine on Forgejo.
+# GitHub-mirror Dependabot remains the secondary feed (do not disable it).
+
+name: Renovate
+
+on:
+  schedule:
+    # Weekly Monday 03:30 UTC (04:30 BST / 03:30 GMT) — renovate.json timezone handles display
+    - cron: "30 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (discover updates without opening PRs)"
+        required: false
+        type: boolean
+        default: false
+      log_level:
+        description: "Log level (debug | info | warn)"
+        required: false
+        type: string
+        default: "info"
+
+jobs:
+  renovate:
+    name: Run Renovate
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+
+      - name: Run Renovate (self-hosted, Node)
+        shell: bash
+        env:
+          # Required: Forgejo PAT with contents+issues+pull-requests write scope
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          # Optional dry-run from workflow_dispatch
+          RENOVATE_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && 'full' || '' }}
+          LOG_LEVEL: ${{ github.event.inputs.log_level || 'info' }}
+          # Point Renovate at the Forgejo instance
+          RENOVATE_ENDPOINT: "https://git.allotmentology.tech"
+          RENOVATE_PLATFORM: "gitea"
+          RENOVATE_REPOSITORIES: "Allotment-Technology-Ltd/restormel-keys"
+          # Use the config from the repo root
+          RENOVATE_CONFIG_FILE: "renovate.json"
+          # Restrict auto-merge to PRs that pass the required `security` CI check
+          RENOVATE_REQUIRED_STATUS_CHECKS: "security"
+        run: |
+          set -euo pipefail
+          if [[ -z "${RENOVATE_TOKEN:-}" ]]; then
+            echo "RENOVATE_TOKEN secret not set."
+            echo "Create a Forgejo PAT with contents+issues+pull-requests write scope."
+            echo "Set it at: Forgejo → Settings → Secrets and Variables → Actions → RENOVATE_TOKEN"
+            exit 1
+          fi
+
+          # Install Renovate (pinned patch version for reproducibility)
+          # Renovate is a devDependency of the CI environment, not the product.
+          npm install --global renovate@39.261.3
+
+          echo "Renovate version: $(renovate --version)"
+
+          if [[ "${RENOVATE_DRY_RUN}" == "full" ]]; then
+            echo "Running in DRY-RUN mode — no PRs will be opened."
+          fi
+
+          renovate \
+            --platform="${RENOVATE_PLATFORM}" \
+            --endpoint="${RENOVATE_ENDPOINT}" \
+            --token="${RENOVATE_TOKEN}" \
+            ${RENOVATE_DRY_RUN:+--dry-run="${RENOVATE_DRY_RUN}"} \
+            "${RENOVATE_REPOSITORIES}"

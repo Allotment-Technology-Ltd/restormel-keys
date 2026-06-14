@@ -1,0 +1,108 @@
+# .forgejo/actions/security-scan/action.yml
+#
+# Composite security scan: OSV-Scanner + gitleaks + pnpm audit
+# Installs pinned static binaries via curl (no GitHub-marketplace action deps),
+# verifies sha256, then runs all three scanners.
+# Caller must checkout first; pnpm install is handled via pnpm-workspace-install.
+#
+# Tool versions pinned here — bump by updating version + sha256 together:
+#   osv-scanner  v2.3.8   https://github.com/google/osv-scanner/releases
+#   gitleaks     v8.30.1  https://github.com/gitleaks/gitleaks/releases
+#   trivy        v0.71.0  https://github.com/aquasecurity/trivy/releases
+#
+# Severity gate logic lives in scripts/security/severity-gate.mjs (node, no deps).
+# OSV-Scanner is the authoritative blocker (HIGH/CRITICAL → exit 1).
+# pnpm audit runs at --audit-level high (warn-only; OSV gate is the hard block).
+# gitleaks exits non-zero on any secret detection → blocks build.
+
+name: "Restormel security scan"
+description: >-
+  Pinned OSV-Scanner + gitleaks + pnpm audit with severity-gated exit codes.
+  Caller must checkout + run pnpm install first (use pnpm-workspace-install).
+
+runs:
+  using: composite
+  steps:
+    # ── 1. pnpm install (workspace deps needed for pnpm audit) ────────────────
+    - name: Install workspace dependencies
+      uses: ./.forgejo/actions/pnpm-workspace-install
+
+    # ── 2. Install OSV-Scanner (pinned binary, verify sha256) ────────────────
+    - name: Install osv-scanner v2.3.8
+      shell: bash
+      run: |
+        set -euo pipefail
+        OSV_VERSION="2.3.8"
+        OSV_URL="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+        # SHA256 from https://github.com/google/osv-scanner/releases/download/v2.3.8/osv-scanner_SHA256SUMS
+        OSV_SHA256="bc98e15319ed0d515e3f9235287ba53cdc5535d576d24fd573978ecfe9ab92dc"
+        curl -fsSL "${OSV_URL}" -o /usr/local/bin/osv-scanner
+        echo "${OSV_SHA256}  /usr/local/bin/osv-scanner" | sha256sum -c -
+        chmod +x /usr/local/bin/osv-scanner
+        osv-scanner --version
+
+    # ── 3. Install gitleaks (pinned tarball, verify sha256) ──────────────────
+    - name: Install gitleaks v8.30.1
+      shell: bash
+      run: |
+        set -euo pipefail
+        GL_VERSION="8.30.1"
+        GL_TARBALL="gitleaks_${GL_VERSION}_linux_x64.tar.gz"
+        GL_URL="https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/${GL_TARBALL}"
+        # SHA256 from https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+        GL_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        curl -fsSL "${GL_URL}" -o "/tmp/${GL_TARBALL}"
+        echo "${GL_SHA256}  /tmp/${GL_TARBALL}" | sha256sum -c -
+        tar -xzf "/tmp/${GL_TARBALL}" -C /tmp gitleaks
+        mv /tmp/gitleaks /usr/local/bin/gitleaks
+        chmod +x /usr/local/bin/gitleaks
+        gitleaks version
+
+    # ── 4. OSV-Scanner: scan pnpm-lock.yaml ─────────────────────────────────
+    - name: OSV-Scanner (lockfile CVE scan)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "::group::OSV-Scanner — pnpm-lock.yaml"
+        # Output JSON for the severity gate; also print human-readable to stdout
+        osv-scanner scan --lockfile pnpm-lock.yaml --format json \
+          --output /tmp/osv-results.json || true
+        # Print a human-readable summary (ignores exit code — gate handles it)
+        osv-scanner scan --lockfile pnpm-lock.yaml || true
+        echo "::endgroup::"
+
+    # ── 5. Severity gate (OSV results) ──────────────────────────────────────
+    - name: Severity gate (blocks on HIGH/CRITICAL)
+      shell: bash
+      run: |
+        set -euo pipefail
+        node scripts/security/severity-gate.mjs /tmp/osv-results.json
+
+    # ── 6. gitleaks: working-tree secret scan (allowlist: .gitleaks.toml) ────
+    - name: gitleaks (secret detection)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "::group::gitleaks — working-tree scan"
+        # --no-git: scan current files, not unfixable git history (current-code hygiene).
+        # --config .gitleaks.toml: default rules + allowlist for verified false positives.
+        # --no-banner: clean CI logs; --redact: never print secret values.
+        gitleaks detect \
+          --source . \
+          --no-git \
+          --config .gitleaks.toml \
+          --no-banner \
+          --redact \
+          --exit-code 1
+        echo "::endgroup::"
+
+    # ── 7. pnpm audit (warn-only at high; OSV gate is the hard block) ────────
+    - name: pnpm audit (high severity, warn-only)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "::group::pnpm audit"
+        # Exit 0 even if advisories found — OSV-Scanner + severity-gate is the gate.
+        # We keep this as a secondary signal visible in CI logs.
+        pnpm audit --audit-level high || true
+        echo "::endgroup::"
