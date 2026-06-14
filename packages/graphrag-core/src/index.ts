@@ -69,6 +69,7 @@ export {
   ensureClaimSearchIndex,
   ensurePassageEmbeddingIndex,
   ensureClaimAcceptPassageEvent,
+  DEFAULT_PASSAGE_EMBEDDING_DIMENSIONS,
 } from "./surreal-retrieval-enhancements.js";
 
 export {
