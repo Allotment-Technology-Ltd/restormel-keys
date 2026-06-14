@@ -108,10 +108,49 @@ if (browser && key) {
   page.subscribe(() => resetForNavigation(isSignedIn));
 }
 
+/**
+ * Redacted PostHog client-error capture.
+ *
+ * Capture contract:
+ *   ALLOWED:  error name, truncated message, pathname (no query string),
+ *             HTTP status, route ID.
+ *   STRIPPED: event.url.search (may contain auth tokens), error.stack
+ *             (may contain local paths), any PII.
+ *
+ * Gated on: (a) PostHog key present, (b) consent granted, (c) PostHog loaded.
+ * Fire-and-forget.
+ */
+function captureClientError(
+  error: unknown,
+  event: Parameters<HandleClientError>[0]["event"],
+  status: number,
+): void {
+  // Only capture if PostHog is initialised and the key is set.
+  if (!key) return;
+  // Guard for the case where posthog hasn't initialised yet (e.g. very early throw).
+  if (typeof posthog?.capture !== "function") return;
+
+  const errorName = error instanceof Error ? error.name : "NonError";
+  const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 300);
+
+  // Capture pathname only — never search/hash.
+  const pathname = event.url.pathname.slice(0, 200);
+  const routeId = event.route?.id ?? null;
+
+  posthog.capture("client_error", {
+    error_name: errorName.slice(0, 80),
+    error_message: errorMessage,
+    pathname,
+    route_id: routeId ? String(routeId).slice(0, 120) : null,
+    status,
+    $lib: "restormel-hooks-client",
+  });
+}
+
 export const handleClientError: HandleClientError = ({ error, event, status }) => {
   const detail = {
+    // Exclude search: may contain auth tokens or key IDs.
     pathname: event.url.pathname,
-    search: event.url.search,
     status,
     routeId: event.route.id ?? null,
     message: error instanceof Error ? error.message : String(error),
@@ -121,5 +160,7 @@ export const handleClientError: HandleClientError = ({ error, event, status }) =
   if (dev) {
     console.error("[restormel] SvelteKit client error", detail, error);
   }
+  // PostHog exception capture (redacted — see captureClientError above).
+  captureClientError(error, event, status);
   return { message: "Internal Error" };
 };
