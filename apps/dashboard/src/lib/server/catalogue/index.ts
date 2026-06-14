@@ -6,4 +6,5 @@ export * from "./types";
 export * from "./underlying-family";
 export * from "./suitability";
 export * from "./cost";
+export * from "./ranking";
 export * from "./repository";
