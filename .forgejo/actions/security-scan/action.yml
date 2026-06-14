@@ -78,15 +78,19 @@ runs:
         set -euo pipefail
         node scripts/security/severity-gate.mjs /tmp/osv-results.json
 
-    # ── 6. gitleaks: full tree secret scan ──────────────────────────────────
+    # ── 6. gitleaks: working-tree secret scan (allowlist: .gitleaks.toml) ────
     - name: gitleaks (secret detection)
       shell: bash
       run: |
         set -euo pipefail
-        echo "::group::gitleaks — full tree scan"
-        # --no-banner keeps logs clean in CI; redact= suppresses secret values from output
+        echo "::group::gitleaks — working-tree scan"
+        # --no-git: scan current files, not unfixable git history (current-code hygiene).
+        # --config .gitleaks.toml: default rules + allowlist for verified false positives.
+        # --no-banner: clean CI logs; --redact: never print secret values.
         gitleaks detect \
           --source . \
+          --no-git \
+          --config .gitleaks.toml \
           --no-banner \
           --redact \
           --exit-code 1

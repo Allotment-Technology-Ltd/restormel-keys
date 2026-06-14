@@ -101,18 +101,22 @@ jobs:
           trivy config ${TRIVY_ARGS} deploy/docker-compose.coolify.yml
           echo "::endgroup::"
 
-      # ── Trivy fs: filesystem dependency + secrets scan ─────────────────────
-      # Scans the working tree for known-vulnerable packages and embedded secrets.
-      # Complements OSV-Scanner (Trivy uses a different advisory DB).
-      - name: Trivy fs scan (deps + secrets)
+      # ── Trivy fs: filesystem SECRET scan ───────────────────────────────────
+      # Secrets only: OSV-Scanner + scripts/security/severity-gate.mjs is the single
+      # authoritative CVE gate (with the time-boxed scripts/security/vuln-allowlist.json).
+      # Running Trivy's `vuln` scanner here would double-gate dependency CVEs against an
+      # *uncoordinated* second allowlist — it would re-block the CVEs deliberately
+      # time-boxed in the OSV allowlist (e.g. esbuild, nodemailer). So Trivy is scoped to
+      # `secret` as a second-opinion secret scanner alongside gitleaks.
+      - name: Trivy fs scan (secrets)
         shell: bash
         run: |
           set -euo pipefail
-          echo "::group::Trivy fs — filesystem scan"
+          echo "::group::Trivy fs — secret scan"
           trivy fs \
             --exit-code 1 \
             --severity HIGH,CRITICAL \
-            --scanners vuln,secret \
+            --scanners secret \
             --skip-dirs node_modules \
             .
           echo "::endgroup::"

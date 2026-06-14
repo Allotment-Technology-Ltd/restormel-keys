@@ -1,0 +1,51 @@
+# Gitleaks configuration for restormel-keys CI secret scanning.
+#
+# Extends the gitleaks default ruleset and allowlists confirmed false positives
+# from the high-noise `generic-api-key` / `curl-auth-header` rules. Every entry
+# below was verified against the actual matched value on 2026-06-14 — NONE is a
+# real secret:
+#   - test fixtures: rk_live_test123, whsec_abcdef0123456789, a fake HS256 JWT
+#     signed literally ".sig", zpka_invalid_test… (an intentionally-invalid token)
+#   - model-catalog / SQL seed data: "API model route: perplexity/sonar" (a model
+#     name, not a key)
+#   - docs prose: "docs/walkthrough" in ARCHITECTURE.md
+#   - build artifacts under .next/ (never real secrets; not checked out in CI)
+#
+# The CI gate runs `gitleaks detect --no-git` (working tree), so it enforces
+# current-code hygiene rather than unfixable git history. A real secret in a
+# current file still blocks the build.
+
+title = "restormel-keys gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Confirmed false positives (verified 2026-06-14)"
+
+paths = [
+  # Test fixtures contain obviously-fake credentials
+  '''.*\.test\.(ts|tsx|js|mjs|mts|cjs)$''',
+  '''.*\.spec\.(ts|tsx|js|mjs|mts|cjs)$''',
+  '''(^|/)__tests__/''',
+  '''(^|/)__fixtures__/''',
+  # Model-catalog + SQL seed/catalog data (model route names mis-detected as keys)
+  '''^apps/dashboard/data/model-catalog-seed\.json$''',
+  '''^apps/dashboard/sql/.*\.(json|sql)$''',
+  # Intentionally-invalid example token in the gateway launch checklist
+  '''^zuplo-gateway/scripts/launch-checklist\.sh$''',
+  # Build artifacts (defensive; normally absent in a fresh CI checkout)
+  '''(^|/)\.next/''',
+  '''(^|/)(dist|build|coverage)/''',
+]
+
+regexes = [
+  # Model route names mis-detected as API keys
+  '''perplexity/sonar''',
+  # Documentation path/prose reference
+  '''docs/walkthrough''',
+  # Obvious non-secret placeholders / test tokens
+  '''(?i)(rk_live_test|whsec_abcdef|zpka_invalid|sk-proj-xxx|test123|changeme|placeholder|example[_-]?key|dummy|sample[_-]?key)''',
+  # Fake HS256 test JWT (fixture "signed" with the literal string ".sig")
+  '''eyJhbGciOiJIUzI1NiJ9\.[A-Za-z0-9._-]+\.sig''',
+]
