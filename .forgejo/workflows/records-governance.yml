@@ -38,4 +38,7 @@ jobs:
       - name: CODEOWNERS coverage
         run: node scripts/records/codeowners-check.mjs
       - name: Mirror discipline
+        env:
+          # Read-only ls-remote target for divergence comparison — never pushed to.
+          MIRROR_URL: https://github.com/Allotment-Technology-Ltd/restormel-keys.git
         run: node scripts/records/mirror-verify.mjs
