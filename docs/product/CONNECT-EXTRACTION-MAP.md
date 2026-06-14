@@ -1,3 +1,15 @@
+---
+title: Knowledge extraction map — SOPHIA → Restormel
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Knowledge extraction map — SOPHIA → Restormel
 
 **Status:** Reference (companion to [SUITE-ARCHITECTURE-MIGRATION.md](../architecture/SUITE-ARCHITECTURE-MIGRATION.md))  

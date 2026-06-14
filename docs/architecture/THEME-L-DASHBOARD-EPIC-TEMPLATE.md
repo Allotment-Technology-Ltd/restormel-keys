@@ -1,3 +1,15 @@
+---
+title: Theme L — dashboard epic template
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Theme L — dashboard epic template
 
 **Purpose:** Checklist for any new **hosted** capability that needs a home in [`apps/dashboard`](../../apps/dashboard) when the customer does not build their own UI.

@@ -1,3 +1,15 @@
+---
+title: Public-page analytics — spec (PostHog EU)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Public-page analytics — spec (PostHog EU)
 
 Phase 2 / W5 foundation for measuring the **public** marketing + docs surface of

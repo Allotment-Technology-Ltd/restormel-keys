@@ -1,3 +1,15 @@
+---
+title: Model catalogue — open selection + suitability & cost advisory plan
+class: planning
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Model catalogue — open selection + suitability & cost advisory plan
 
 **Status:** Plan (not built) · decided by product owner 2026-06-13

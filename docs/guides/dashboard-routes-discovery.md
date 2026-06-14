@@ -1,3 +1,15 @@
+---
+title: Dashboard: finding Routes (control-plane rules)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-14
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Dashboard: finding Routes (control-plane rules)
 
 **Audience:** Operators and integrators who expect a “Routes” entry in the Restormel Keys dashboard.

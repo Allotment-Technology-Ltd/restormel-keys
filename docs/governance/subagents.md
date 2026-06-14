@@ -1,3 +1,15 @@
+---
+title: Subagents
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Subagents
 
 Subagent inventory and boundaries. **Single source** for the Phase 00 set; definitions in `subagents/<name>.md`. Plan: [bootstrap-plan.md](../archive/2026-03-build-pack/bootstrap-plan.md).

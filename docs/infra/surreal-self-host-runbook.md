@@ -1,3 +1,15 @@
+---
+title: Self-host SurrealDB 3.2 — comprehensive phased runbook (private network + Coolify 2nd server)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Self-host SurrealDB 3.2 — comprehensive phased runbook (private network + Coolify 2nd server)
 
 > **Scope & motivation.** Replace the **£25/mo Surreal Cloud** instance (Adam's dogfooding

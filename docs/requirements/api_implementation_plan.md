@@ -1,3 +1,15 @@
+---
+title: Restormel API Layer — Implementation Plan & Cursor Prompts
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-07
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel API Layer — Implementation Plan & Cursor Prompts
 
 Based on audit dated 2026-06-05. Addresses gaps C1–C5 and I1–I12 in priority order.

@@ -1,3 +1,15 @@
+---
+title: Prompts Reference
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Prompts Reference
 
 Prompt inventory. **Single source** for what exists and its class; rules in [prompt-governance.md](prompt-governance.md).

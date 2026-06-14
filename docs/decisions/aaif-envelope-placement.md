@@ -1,3 +1,15 @@
+---
+title: ADR: AAIF envelope placement
+class: decision
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-08
+last-reviewed: 2026-06-11
+review-interval: P12M
+---
+
 # ADR: AAIF envelope placement
 
 **Status:** Provisional — **pending review. No implementation has been done.** (Stage 5B item 4.)

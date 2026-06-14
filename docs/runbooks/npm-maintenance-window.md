@@ -1,3 +1,15 @@
+---
+title: Runbook — npm maintenance window (Phase 7)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-04
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Runbook — npm maintenance window (Phase 7)
 
 **Programme:** [PHASE7-SUITE-MIGRATION-STATUS.md](../archive/suite-migration-status/PHASE7-SUITE-MIGRATION-STATUS.md)  

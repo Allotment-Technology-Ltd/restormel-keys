@@ -1,3 +1,15 @@
+---
+title: Connect Ingestion Setup Wizard — UX/UI Review Kit
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Connect Ingestion Setup Wizard — UX/UI Review Kit
 
 Context + prompt for an advanced-model UX/UI review of the ingestion **setup wizard**.

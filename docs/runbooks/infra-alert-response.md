@@ -1,3 +1,15 @@
+---
+title: Infra Alert Response Runbook
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-14
+last-reviewed: 2026-06-14
+review-interval: P12M
+---
+
 # Infra Alert Response Runbook
 
 Scaffold mapping each planned alert to likely causes and first remedial actions. Pairs with skill `restormel-infra-alert-response`.

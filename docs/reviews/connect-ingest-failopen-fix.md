@@ -1,3 +1,15 @@
+---
+title: Ready-to-run: fix the validation/remediation fail-open cluster (C1–C3)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-09
+review-interval: P12M
+---
+
 # Ready-to-run: fix the validation/remediation fail-open cluster (C1–C3)
 
 Hand this verbatim to a repo-grounded agent (Fable 5 / Opus) running via the CLI. It is the

@@ -1,3 +1,15 @@
+---
+title: Restormel documentation index
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel documentation index
 
 The map of the `docs/` tree. Per [doc governance](../.cursor/rules/01-doc-governance.mdc):

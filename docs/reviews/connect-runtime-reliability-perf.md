@@ -1,3 +1,15 @@
+---
+title: Connect runtime reliability & performance review (Stage 1.5)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-10
+last-reviewed: 2026-06-10
+review-interval: P12M
+---
+
 # Connect runtime reliability & performance review (Stage 1.5)
 
 **Date:** 2026-06-10 · **Scope:** the three product-owner reports — (1) runs freeze randomly,

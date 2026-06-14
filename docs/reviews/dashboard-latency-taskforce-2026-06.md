@@ -1,3 +1,15 @@
+---
+title: Dashboard latency task force — empirical diagnosis + safe fixes
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-12
+last-reviewed: 2026-06-12
+review-interval: P12M
+---
+
 # Dashboard latency task force — empirical diagnosis + safe fixes
 
 **Date:** 2026-06-12 · **Trigger:** product owner (2026-06-11): "the whole dashboard is really

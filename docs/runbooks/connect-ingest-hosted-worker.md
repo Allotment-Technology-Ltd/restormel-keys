@@ -1,3 +1,15 @@
+---
+title: Knowledge Ingest hosted worker
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-04
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Knowledge Ingest hosted worker
 
 **Status:** Phase 10 (5d stub)  

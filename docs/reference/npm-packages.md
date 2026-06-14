@@ -1,3 +1,15 @@
+---
+title: npm packages — scope and install path
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-18
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # npm packages — scope and install path
 
 Canonical reference for **which packages exist**, **what to install when**, and **how to verify** they resolve from npm.

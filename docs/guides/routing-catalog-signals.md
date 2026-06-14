@@ -1,3 +1,15 @@
+---
+title: Routing and catalog signals (design note)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-14
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Routing and catalog signals (design note)
 
 **Status:** Reference — not an operational runbook until product opts in.

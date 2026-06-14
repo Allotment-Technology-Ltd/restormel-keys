@@ -1,3 +1,15 @@
+---
+title: Technical appendix: Restormel Keys — need, technical development, validation and outputs
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-24
+last-reviewed: 2026-03-24
+review-interval: P12M
+---
+
 # Technical appendix: Restormel Keys — need, technical development, validation and outputs
 
 **Project:** Restormel Keys — a drop-in BYOK (Bring Your Own Key) and multi-provider routing layer for AI-powered applications  

@@ -1,3 +1,15 @@
+---
+title: Zuplo launch — CLI execution path
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-03-16
+review-interval: P12M
+---
+
 # Zuplo launch — CLI execution path
 
 Single-path runbook to take Zuplo from zero to launch-ready using the CLI, with Portal (or browser MCP) only where the CLI cannot act.

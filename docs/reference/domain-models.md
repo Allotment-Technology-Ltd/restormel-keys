@@ -1,3 +1,15 @@
+---
+title: Canonical domain models
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-16
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Canonical domain models
 
 **Status:** Reference. Canonical types live in code; this doc points to them and describes current persistence.

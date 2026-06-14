@@ -1,3 +1,15 @@
+---
+title: Viewing user subscription data in Neon
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-03-19
+last-reviewed: 2026-03-19
+review-interval: P12M
+---
+
 # Viewing user subscription data in Neon
 
 **Purpose:** See which subscription level each workspace is on, when it's due for renewal, and when it expired or was cancelled.

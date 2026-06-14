@@ -1,3 +1,15 @@
+---
+title: Keys MVP module flags
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-04
+last-reviewed: 2026-06-04
+review-interval: P12M
+---
+
 # Keys MVP module flags
 
 Canonical registry for **PostHog `restormel-module-*` flags** and the **`RESTORMEL_MODULE_FLAGS`** env override used by the dashboard and MCP stdio server.

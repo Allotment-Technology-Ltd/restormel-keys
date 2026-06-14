@@ -1,3 +1,15 @@
+---
+title: MCP catalog listing — Glama.ai MCP Hub
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-11
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # MCP catalog listing — Glama.ai MCP Hub
 
 **Target registry URL:** https://glama.ai/mcp/servers (submit via https://glama.ai/mcp/servers/submit or the GitHub-linked auto-import)

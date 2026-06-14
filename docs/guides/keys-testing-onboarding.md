@@ -1,3 +1,15 @@
+---
+title: Keys + Restormel Testing onboarding (canonical)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Keys + Restormel Testing onboarding (canonical)
 
 Single operational path: store provider material securely in Restormel Keys, bind models for the **Restormel Testing** project, then run the Testing CLI with Gateway auth.

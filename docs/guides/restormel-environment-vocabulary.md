@@ -1,3 +1,15 @@
+---
+title: Restormel environment vocabulary (canonical)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-01
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel environment vocabulary (canonical)
 
 **Canonical** naming for `RESTORMEL_*` environment variables and dashboard URLs when integrating applications, CI, MCP, and internal admin tools.

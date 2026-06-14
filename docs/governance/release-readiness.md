@@ -1,3 +1,15 @@
+---
+title: Release Readiness
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Release Readiness
 
 Phase and release gate expectations. **Single source** for “when can we move?” Checklist content in [bootstrap-checklist.md](../archive/2026-03-build-pack/bootstrap-checklist.md).

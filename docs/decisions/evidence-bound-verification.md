@@ -1,3 +1,15 @@
+---
+title: ADR: Evidence-Bound Verification (EBV) — what verified must mean
+class: decision
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # ADR: Evidence-Bound Verification (EBV) — what "verified" must mean
 
 **Status:** **Approved 2026-06-09** (direction approved by product owner). No implementation

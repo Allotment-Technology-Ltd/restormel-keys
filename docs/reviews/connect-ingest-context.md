@@ -1,3 +1,15 @@
+---
+title: Connect Ingestion — Reviewer Context Pack
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-09
+last-reviewed: 2026-06-09
+review-interval: P12M
+---
+
 # Connect Ingestion — Reviewer Context Pack
 
 **Purpose.** This pack front-loads orientation so an advanced-model review agent spends

@@ -1,3 +1,15 @@
+---
+title: Reliability Standards
+class: governance
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Reliability Standards
 
 Canonical reliability baseline. Aligns to [bootstrap-plan.md](../archive/2026-03-build-pack/bootstrap-plan.md). Operational procedures: [runbooks.md](../runbooks/README.md). Release gate: [release-readiness.md](release-readiness.md).

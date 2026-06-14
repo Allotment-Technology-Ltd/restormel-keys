@@ -1,3 +1,15 @@
+---
+title: Restormel State (@restormel/state)
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-06-13
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # Restormel State (`@restormel/state`)
 
 **Purpose:** Portable **agent memory timeline** types, deterministic **materialized views**, and **correlation** hooks that tie working memory to `@restormel/context-packs` and `@restormel/observability` runs.

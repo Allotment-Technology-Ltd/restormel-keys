@@ -1,3 +1,15 @@
+---
+title: BYO-GPU template tiers — free vs optional paid
+class: technical
+owner: founder
+status: approved
+classification: internal
+control-tier: 1
+created: 2026-04-10
+last-reviewed: 2026-06-13
+review-interval: P12M
+---
+
 # BYO-GPU template tiers — free vs optional paid
 
 **Status:** Reference. Aligns pricing copy with **no implied GPU subsidy** from Restormel.
