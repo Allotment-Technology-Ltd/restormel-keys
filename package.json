@@ -4,6 +4,10 @@
   "private": true,
   "description": "Restormel monorepo: Keys (BYOK), Testing runner/CLI, design tokens, dashboard, and integrations.",
   "scripts": {
+    "infra": "bash scripts/infra.sh up",
+    "infra:status": "bash scripts/infra.sh status",
+    "infra:down": "bash scripts/infra.sh down",
+    "infra:open": "bash scripts/infra.sh open",
     "review-docs": "bash scripts/review-docs.sh",
     "docs-checklist": "bash scripts/docs-update-checklist.sh",
     "hygiene": "bash scripts/check-repo-hygiene.sh",
