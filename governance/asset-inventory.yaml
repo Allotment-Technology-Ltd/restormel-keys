@@ -4,17 +4,79 @@
 #   class: governance
 #   control-tier: 2
 #   owner: founder
-#   status: draft
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# DRAFT skeleton seeded with known assets. Fields: id, asset, type, owner, location, notes.
+# ISMS scope: Restormel product and supporting infrastructure only.
+# Plot / Sophia / allotmentology.tech are explicitly out of scope at this stage.
 
 assets:
-  - id: AST-001  asset: "restormel-keys repo"   type: code/records  owner: founder  location: "Forgejo (canonical) + GitHub mirror"  notes: "system of record"
-  - id: AST-002  asset: "restormel-ops repo"    type: ops/records   owner: founder  location: "Forgejo only (no mirror — see OPS-BACKLOG backup)"  notes: "operator cockpit"
-  - id: AST-003  asset: "Forgejo / Coolify host" type: infrastructure owner: founder  location: "[CONFIRM VPS provider/region]"  notes: "governance plane + app host"
-  - id: AST-004  asset: "Neon Postgres"          type: data store    owner: founder  location: "[CONFIRM region]"  notes: "verification spine"
-  - id: AST-005  asset: "restormel.dev domain"   type: domain        owner: founder  location: "[CONFIRM registrar]"  notes: ""
-  - id: AST-006  asset: "Founder workstation (Mac)" type: endpoint    owner: founder  location: UK  notes: "holds repo clones + relay/token"
-# [PLACEHOLDER — founder: complete (other domains, DNS, secrets store, banking access, etc.).]
+  - id: AST-001
+    asset: "restormel-keys repo"
+    type: code/records
+    owner: founder
+    location: "Forgejo (canonical) + GitHub mirror (push-only)"
+    notes: >
+      System of record. Contains governance docs and Restormel SvelteKit app
+      (apps/dashboard) and CI configuration. Forgejo is primary; GitHub mirror
+      is push-only.
+
+  - id: AST-002
+    asset: "restormel-ops repo"
+    type: ops/records
+    owner: founder
+    location: "Forgejo only (no mirror)"
+    notes: "Operator cockpit; cowork-relay, playbooks, cowork-outbox"
+
+  - id: AST-003
+    asset: "Coolify host — Hetzner, Helsinki"
+    type: infrastructure
+    owner: founder
+    location: "Hetzner, Helsinki FI (EU)"
+    notes: >
+      Self-hosts: Forgejo, Restormel SvelteKit app, self-hosted Postgres
+      (verification spine), BetterAuth. Primary compute plane for all
+      in-scope services.
+
+  - id: AST-004
+    asset: "Neon Postgres (legacy — decommissioning)"
+    type: data-store
+    owner: founder
+    location: "Neon SaaS / AWS eu-west"
+    notes: >
+      DECOMMISSIONING. Backup only while self-hosted Postgres on AST-003
+      settles. Planned removal ~2026-06-30. No new data to be written here.
+      Remove this entry and the matching suppliers.yaml row on confirmed deletion.
+
+  - id: AST-005
+    asset: "restormel.dev domain"
+    type: domain
+    owner: founder
+    location: "Vercel (registrar + DNS)"
+    notes: "Primary product domain; DNS managed by Vercel."
+
+  - id: AST-006
+    asset: "Founder workstation (MacBook)"
+    type: endpoint
+    owner: founder
+    location: "UK (remote)"
+    notes: >
+      Holds repo clones, cowork-relay token, SSH keys, Mac keychain entries.
+      FileVault full-disk encryption: confirmed enabled (2026-06-15).
+      .env files on local disk are gitignored and not committed to any repo.
+
+  - id: AST-007
+    asset: "Secrets estate (distributed — control gap)"
+    type: secrets
+    owner: founder
+    location: "Multiple — see notes"
+    notes: >
+      Secrets currently distributed across: .env files (server/local disk,
+      gitignored — not committed), Forgejo CI secrets/variables, GitHub
+      secrets/variables (legacy mirror), Restormel app internal credential
+      store, Mac keychain. Unification into a single auditable secrets store
+      is a planned improvement. Until unified, quarterly access review must
+      cover all locations. Tracked as a risk in risk-register.yaml.
