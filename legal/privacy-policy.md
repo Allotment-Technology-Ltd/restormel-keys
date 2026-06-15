@@ -3,28 +3,18 @@ id: REC-LEG-003
 title: Privacy Policy
 class: legal
 owner: founder
-status: draft
+status: approved
 classification: public
 control-tier: 2
 created: 2026-03-18
 last-reviewed: 2026-06-15
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-15
 retention: P6Y-after-superseded
-effective: 2026-03-18
+effective: 2026-06-15
 related: [REC-GOV-005, REC-GOV-007, REC-GOV-003]
 ---
-
-> **[PLACEHOLDER — counsel] — reconcile before publishing.** This is the existing policy migrated
-> **verbatim**; it is `status: draft` so the publish gate keeps it off the public site until reviewed.
-> Before approval it must be brought into line with the approved governance, **without drift**:
-> - **Sub-processors (§4) and international transfers (§5)** still reflect the prior Vercel / Neon / US
->   setup. The current, authoritative list — EU self-hosted (Hetzner, Helsinki) — is published at
->   [/legal/sub-processors](/legal/sub-processors) from `governance/suppliers.yaml`.
-> - **Data categories + lawful bases** must be confirmed against `governance/data-inventory.yaml` and
->   the RoPA (`governance/ropa.yaml`, REC-GOV-007).
-> - **Controller / ICO** details below are the confirmed facts.
->
-> Counsel to finalise the binding wording. The live `/keys/privacy` page is unchanged until then.
 
 ## 1. Who we are
 
@@ -34,70 +24,79 @@ We are registered with the UK Information Commissioner's Office (ICO), registrat
 
 Contact: [contact@restormel.dev](mailto:contact@restormel.dev)
 
-## 2. What we process
+## 2. Where your data is held
+
+Restormel is **self-hosted in the EU** (Hetzner, Helsinki, Finland). Your account data, keys/control-plane data, and audit logs reside in a **self-hosted PostgreSQL database in the EU**. We use a small number of sub-processors for specific functions (analytics, billing, error tracking, email) — the current, authoritative list, with role and location, is published at **[/legal/sub-processors](/legal/sub-processors)** and kept up to date.
+
+## 3. What we process
 
 ### Account and authentication
 
-When you sign in to the Dashboard, we receive identifiers (such as your GitHub-linked account email and an internal user ID) via our authentication provider. We use these to create your workspace and let you manage projects.
+When you sign in to the Dashboard we create an account using **BetterAuth** (self-hosted). We hold your **email and name**, session tokens, and OAuth account links; where you sign in with GitHub, this may include your GitHub avatar URL. We do not collect a company name or phone number. This data is held in our self-hosted EU PostgreSQL database.
+
+### Keys, projects, and control-plane data
+
+We store your projects, routing configurations, policies, budgets, entitlements, and related control-plane data, linked to your account. **Gateway API keys are stored as a prefix + hash — never in plaintext.** If you use **Connections** to store provider (BYOK) credentials, they are held **encrypted at rest** as ciphertext where your deployment operator has enabled encryption; the UI shows masked labels only. You may instead store a non-secret **credential reference** and keep the real secret elsewhere.
+
+### Connect ingest and verification
+
+Ingest job metadata, verification results, and provenance traces are operational data and do **not** contain user-identifiable content. Knowledge-graph data lives in **your own BYO graph store** (e.g. SurrealDB), not in Restormel.
+
+### Product usage, operational logs, and audit events
+
+We process request metadata and operational logs (timestamps, request status, performance metrics) to run the service and investigate abuse and incidents. We keep **audit events** (user ID, action, timestamp, and **IP address**) for security and accountability, in our self-hosted EU database.
 
 ### Billing and payments (Paddle as merchant of record)
 
-If you subscribe to Pro, Paddle processes payments as Merchant of Record. We do not store full card details. We store billing metadata needed to reflect your plan status (for example: plan, subscription status, and provider customer/subscription identifiers).
-
-### Product usage and operational data
-
-We process request metadata and operational logs (for example timestamps, request status, and performance metrics) to operate the service, improve reliability, and investigate abuse and incidents.
-
-### Keys and credentials (BYOK-first)
-
-Restormel Keys is BYOK-first. You can keep provider material entirely in your gateway or secret store, or optionally use **Connections** to store provider API keys **encrypted at rest** when your deployment operator configures encryption.
-
-- **Gateway Keys** (used to call Restormel APIs) are stored as a prefix + hash; we do not store raw values.
-- **Provider credentials** (OpenAI/Anthropic/etc.): if you add a **hosted API key** in the Dashboard, we store ciphertext (not plaintext) where encryption is enabled; the UI shows masked labels only and does not display the full secret after save. You may instead enter a **credential reference** (non-secret label) if you keep the real secret elsewhere. Rotate or revoke from Connections when your security policy requires it.
+If you subscribe, **Paddle** acts as Merchant of Record and holds the billing and payment data (name, email, address, payment details) on its side. **We store only Paddle's opaque subscription/customer IDs** — no name, email, address, or payment details on our systems.
 
 ### Analytics
 
-We may use product analytics (for example PostHog) to understand feature usage and improve the product. We do not intentionally send secrets to analytics tools.
+We use **PostHog (EU region)** for product analytics. Events are **pseudonymous** (device/session identifiers only; we do not send your email or name). Non-essential analytics run **only with your consent** — you choose in the cookie banner, and analytics stay off (cookieless) until you opt in.
 
-## 3. Why we process data (legal bases)
+### Error tracking
 
-- **Contract**: to provide the Dashboard, APIs, and subscription features you request.
-- **Legitimate interests**: service security, abuse prevention, diagnostics, and product improvement.
-- **Legal obligation**: finance/tax records and lawful requests where required.
+We use **Sentry** for error tracking. Error payloads are configured to contain **no personal data** (`sendDefaultPii` is off).
 
-## 4. Sharing and sub-processors
+### Email
 
-We do not sell personal data. We share data with vendors only to provide Restormel Keys, such as:
+We use **Google Workspace (Gmail)** for correspondence, which may include your name, email address, and message content when you contact us.
 
-- **Authentication provider**: to support sign-in and sessions.
-- **Neon**: hosted Postgres database.
-- **Vercel**: hosting for the Dashboard and site surfaces.
-- **Paddle**: checkout, subscriptions, and billing administration (Merchant of Record).
-- **Zuplo**: control-plane API gateway (where enabled).
-- **PostHog**: product analytics (where enabled).
+## 4. Why we process data (legal bases)
 
-## 5. International transfers
+- **Contract** (UK GDPR Art 6(1)(b)) — to provide the Dashboard, APIs, and subscription features you request (terms accepted at sign-up).
+- **Legitimate interests** (Art 6(1)(f)) — service security and protection of users, product improvement and reliability, and customer support.
+- **Legal obligation** (Art 6(1)(c)) — finance/tax records (Companies Act 2006, HMRC) and lawful requests.
+- **Consent** (PECR / Art 6(1)(a)) — non-essential analytics cookies, which you can accept or reject.
 
-Some processors may handle data outside the UK/EEA (including in the US). Where required, we rely on appropriate safeguards made available by our providers.
+## 5. Sharing and sub-processors
 
-## 6. Retention
+We do **not** sell personal data. We share data with sub-processors only to provide the service. The current list — what each provides, its role, and its location — is at **[/legal/sub-processors](/legal/sub-processors)**; material changes are notified per our sub-processor change policy. The sub-processors that may handle data relevant to your use of the service include EU-hosted infrastructure (Hetzner), EU product analytics (PostHog), billing (Paddle, UK/EU), error tracking (Sentry), and email (Google Workspace).
 
-- **Account/workspace records**: retained while your account is active.
-- **Billing records**: retained as required for accounting and compliance.
+## 6. International transfers
+
+Restormel's infrastructure is in the **EU**. A small number of sub-processors operate outside the UK/EEA (for example Sentry and Google Workspace in the US, and an optional US-edge API gateway where enabled). Where personal data is involved, we rely on appropriate safeguards (such as Standard Contractual Clauses / the UK IDTA) made available by those providers. Error-tracking and the optional edge gateway are configured to keep personal data **off** those paths.
+
+## 7. Retention
+
+- **Account/workspace records and keys/control-plane data**: retained while your account is active; deleted on account closure.
+- **Billing records**: held by Paddle per its policy; we retain only opaque IDs for the duration of the subscription.
 - **Operational logs**: retained for a limited period for security and reliability.
+- **Audit events**: 12 months hot, then archived for up to 6 years.
+- **Analytics**: PostHog EU default (currently 2 years), reviewed annually.
 
-## 7. Your rights
+## 8. Your rights
 
 Depending on your location and applicable law, you may request access, correction, deletion, portability, restriction, or objection. Send requests to [contact@restormel.dev](mailto:contact@restormel.dev). We may verify identity before acting.
 
-## 8. Children
+## 9. Children
 
 Restormel Keys is intended for users 18+ and is not directed to children.
 
-## 9. Security
+## 10. Security
 
-We use technical and organizational controls, including encryption in transit, access controls, and production access restrictions. Never share raw keys in support messages.
+We use technical and organizational controls, including encryption in transit, **encrypted-at-rest storage for BYOK credentials**, **hashing of gateway API keys (never plaintext)**, access controls, and production-access restrictions. Never share raw keys in support messages.
 
-## 10. Changes
+## 11. Changes
 
 We may update this policy. Material updates will be reflected by a new version and effective date.
