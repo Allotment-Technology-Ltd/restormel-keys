@@ -2,127 +2,21 @@
  * Policy for server-side connections to workspace-configured Surreal endpoints (SSRF mitigation).
  * Accepts https/wss (secure) and http/ws (insecure). Local dev may use http/ws on localhost;
  * production requires a secure endpoint (https:// or wss://) and blocks private/metadata targets.
+ *
+ * This is now a thin wrapper over the shared outbound-URL guard
+ * (`outbound-url-guard.ts`, the generalised egress allow-list, REC-PLAN-010 §B2).
+ * The block-list / scheme rules live in ONE place; this keeps only the
+ * Surreal-specific error wording via the `"surreal"` family. The Surreal family
+ * accepts the SurrealDB scheme set — http/https for the HTTP API and ws/wss for
+ * the native WebSocket protocol (PR #57): production requires a secure scheme
+ * (https/wss); cleartext (http/ws) is allowed in dev only to localhost. Do NOT
+ * re-implement the IP/host/scheme checks here — extend the shared guard so there
+ * is exactly ONE validator.
  */
-
-const BLOCKED_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "0.0.0.0",
-  "::1",
-  "metadata.google.internal",
-  "metadata.google",
-  "169.254.169.254",
-]);
-
-function isProductionRuntime(): boolean {
-  return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
-}
-
-function parseEndpointUrl(endpoint: string): URL | null {
-  const trimmed = endpoint.trim();
-  if (!trimmed) return null;
-  try {
-    return new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
-  } catch {
-    return null;
-  }
-}
-
-function ipv4ToInt(host: string): number | null {
-  const parts = host.split(".");
-  if (parts.length !== 4) return null;
-  let n = 0;
-  for (const p of parts) {
-    const octet = Number(p);
-    if (!Number.isInteger(octet) || octet < 0 || octet > 255) return null;
-    n = (n << 8) + octet;
-  }
-  return n >>> 0;
-}
-
-function isPrivateOrReservedIpv4(host: string): boolean {
-  const n = ipv4ToInt(host);
-  if (n === null) return false;
-  if ((n & 0xff) === 0x7f) return true; // 127.0.0.0/8
-  if ((n & 0xff000000) === 0x0a000000) return true; // 10.0.0.0/8
-  if ((n & 0xfff00000) === 0xac100000) return true; // 172.16.0.0/12
-  if ((n & 0xffff0000) === 0xc0a80000) return true; // 192.168.0.0/16
-  if ((n & 0xffff0000) === 0xa9fe0000) return true; // 169.254.0.0/16 link-local
-  if (n === 0) return true;
-  return false;
-}
-
-function isPrivateOrReservedIpv6(host: string): boolean {
-  const h = host.toLowerCase();
-  if (h === "::1") return true;
-  if (h.startsWith("fc") || h.startsWith("fd")) return true; // unique local
-  if (h.startsWith("fe80")) return true; // link-local
-  return false;
-}
-
-function hostLooksBlocked(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (BLOCKED_HOSTNAMES.has(host)) return true;
-  if (host.endsWith(".internal")) return true;
-  if (isPrivateOrReservedIpv4(host)) return true;
-  if (host.includes(":") && isPrivateOrReservedIpv6(host)) return true;
-  return false;
-}
-
-function allowPrivateEndpoints(): boolean {
-  return process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT === "1";
-}
+import { validateOutboundUrl } from "$lib/server/connect/outbound-url-guard";
 
 export function validateOutboundSurrealEndpoint(
   endpoint: string,
 ): { ok: true } | { ok: false; message: string } {
-  const url = parseEndpointUrl(endpoint);
-  if (!url) {
-    return { ok: false, message: "Invalid Surreal endpoint URL." };
-  }
-
-  const proto = url.protocol.replace(":", "");
-  const host = url.hostname;
-  const prod = isProductionRuntime();
-
-  const isSecure = proto === "https" || proto === "wss";
-  const isInsecure = proto === "http" || proto === "ws";
-  if (!isSecure && !isInsecure) {
-    return { ok: false, message: "Surreal endpoint must use https, wss, http, or ws." };
-  }
-
-  if (prod && !isSecure) {
-    return {
-      ok: false,
-      message: "Production requires a secure Surreal endpoint (https:// or wss://).",
-    };
-  }
-
-  const h = host.toLowerCase();
-  const isLoopback = h === "localhost" || h === "127.0.0.1" || h === "::1";
-
-  if (!prod && isInsecure) {
-    if (!isLoopback) {
-      return {
-        ok: false,
-        message:
-          "In development, http:// and ws:// are only allowed for localhost (use https:// or wss:// for remote hosts).",
-      };
-    }
-    return { ok: true };
-  }
-
-  if (!prod && isLoopback) {
-    return { ok: true };
-  }
-
-  if (!allowPrivateEndpoints() && hostLooksBlocked(host)) {
-    return {
-      ok: false,
-      message:
-        "This endpoint is not allowed from Restormel servers (private or metadata addresses). Use a public HTTPS/WSS Surreal URL, or set RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT=1 for local operator testing only.",
-    };
-  }
-
-  return { ok: true };
+  return validateOutboundUrl(endpoint, "surreal");
 }

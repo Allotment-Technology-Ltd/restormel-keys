@@ -20,6 +20,7 @@ import {
   secretDisplaySuffix,
 } from "$lib/server/credential-crypto";
 import { resolveModuleFlagsSync } from "$lib/server/module-flags";
+import { normalizeUpstreamPhysicalKey } from "$lib/server/upstream-physical-key";
 import { normalizeConnectIngestStages } from "@restormel/connect-core";
 import { reconcileConnectIngestJobStagesForApi } from "$lib/connect/ingest-progress-ui";
 import {
@@ -2763,6 +2764,44 @@ export async function ensureIngestionRoutingSchema(): Promise<void> {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_knowledge_graph_targets_workspace
       ON knowledge_graph_targets (workspace_id, updated_at DESC)
+    `;
+    // Verifying-proxy upstream MCP target registration (REC-PLAN-010 / W2-2 Phase B).
+    // Mirrors migration 069. Per-workspace, encrypted secret at rest; cross-row unique
+    // on the normalised physical upstream so two workspaces can't resolve the same server.
+    await sql`
+      CREATE TABLE IF NOT EXISTS upstream_mcp_targets (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        label TEXT,
+        transport TEXT NOT NULL DEFAULT 'streamable-http',
+        endpoint TEXT NOT NULL,
+        namespace TEXT,
+        database TEXT,
+        secret_ciphertext TEXT,
+        secret_iv TEXT,
+        secret_auth_tag TEXT,
+        secret_encryption_version INTEGER NOT NULL DEFAULT 0,
+        allowed_tools JSONB,
+        status TEXT NOT NULL DEFAULT 'untested',
+        last_tested_at BIGINT,
+        last_error TEXT,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        CONSTRAINT upstream_mcp_targets_transport_check CHECK (transport IN ('streamable-http', 'stdio')),
+        CONSTRAINT upstream_mcp_targets_status_check CHECK (status IN ('untested', 'ok', 'error'))
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_upstream_mcp_targets_workspace
+      ON upstream_mcp_targets (workspace_id, updated_at DESC)
+    `;
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_upstream_mcp_targets_physical
+      ON upstream_mcp_targets (
+        lower(rtrim(endpoint, '/')),
+        COALESCE(namespace, ''),
+        COALESCE(database, '')
+      )
     `;
     // Cache of computed graph stats per saved graph — avoids re-scanning a large BYO
     // store on every Connect tab load (full count() scans took minutes on big graphs).
@@ -7104,6 +7143,206 @@ export async function deleteConnectGraphTarget(params: {
     RETURNING id
   `;
   return rows.length > 0;
+}
+
+// ─── Verifying-proxy: upstream MCP target registration (REC-PLAN-010 / W2-2 B1) ──
+//
+// Per-workspace registration of a user's own upstream MCP server. Mirrors the
+// knowledge_graph_targets persistence pattern (encrypted secret at rest, never
+// echoed). The encrypted-secret columns hold ciphertext only; the plaintext is
+// resolved via credential-crypto in the service layer and NEVER stored or logged.
+
+export type UpstreamMcpTargetRecord = {
+  id: string;
+  workspaceId: string;
+  label: string | null;
+  transport: string;
+  endpoint: string;
+  namespace: string | null;
+  database: string | null;
+  allowedTools: string[] | null;
+  secretCiphertext: string | null;
+  secretIv: string | null;
+  secretAuthTag: string | null;
+  secretEncryptionVersion: number;
+  status: string;
+  lastTestedAt: number | null;
+  lastError: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+function mapUpstreamMcpTargetRow(row: Record<string, unknown>): UpstreamMcpTargetRecord {
+  const allowed = row.allowed_tools;
+  const allowedTools = Array.isArray(allowed)
+    ? allowed.filter((x): x is string => typeof x === "string")
+    : null;
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    label: row.label != null ? String(row.label) : null,
+    transport: String(row.transport),
+    endpoint: String(row.endpoint),
+    namespace: row.namespace != null ? String(row.namespace) : null,
+    database: row.database != null ? String(row.database) : null,
+    allowedTools,
+    secretCiphertext: row.secret_ciphertext != null ? String(row.secret_ciphertext) : null,
+    secretIv: row.secret_iv != null ? String(row.secret_iv) : null,
+    secretAuthTag: row.secret_auth_tag != null ? String(row.secret_auth_tag) : null,
+    secretEncryptionVersion: Number(row.secret_encryption_version ?? 0),
+    status: String(row.status),
+    lastTestedAt: row.last_tested_at != null ? Number(row.last_tested_at) : null,
+    lastError: row.last_error != null ? String(row.last_error) : null,
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
+  };
+}
+
+export async function listUpstreamMcpTargetsForWorkspace(
+  workspaceId: string,
+): Promise<UpstreamMcpTargetRecord[]> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM upstream_mcp_targets WHERE workspace_id = ${workspaceId} ORDER BY updated_at DESC
+  `;
+  return rows.map((r) => mapUpstreamMcpTargetRow(r as Record<string, unknown>));
+}
+
+export async function getUpstreamMcpTargetById(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<UpstreamMcpTargetRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT * FROM upstream_mcp_targets WHERE id = ${params.id} AND workspace_id = ${params.workspaceId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapUpstreamMcpTargetRow(rows[0] as Record<string, unknown>);
+}
+
+/**
+ * Find any workspace already owning this physical upstream (endpoint, namespace,
+ * database). Used by the service layer to raise `upstream_scope_conflict` BEFORE
+ * the DB unique index trips — workspace A must never resolve workspace B's target.
+ */
+export async function findUpstreamMcpTargetByPhysical(params: {
+  endpoint: string;
+  namespace?: string | null;
+  database?: string | null;
+}): Promise<UpstreamMcpTargetRecord | null> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const key = normalizeUpstreamPhysicalKey(params);
+  const rows = await sql`
+    SELECT * FROM upstream_mcp_targets
+    WHERE lower(rtrim(endpoint, '/')) = ${key.endpoint}
+      AND COALESCE(namespace, '') = ${key.namespace}
+      AND COALESCE(database, '') = ${key.database}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapUpstreamMcpTargetRow(rows[0] as Record<string, unknown>);
+}
+
+export async function upsertUpstreamMcpTarget(params: {
+  id?: string;
+  workspaceId: string;
+  label?: string | null;
+  transport: string;
+  endpoint: string;
+  namespace?: string | null;
+  database?: string | null;
+  allowedTools?: string[] | null;
+  status?: "untested" | "ok" | "error";
+  /** Encrypted secret payload; omit to keep an existing secret. */
+  secret?: {
+    ciphertext: string;
+    iv: string;
+    authTag: string;
+    encryptionVersion: number;
+  } | null;
+}): Promise<UpstreamMcpTargetRecord> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  const existing = params.id
+    ? await getUpstreamMcpTargetById({ id: params.id, workspaceId: params.workspaceId })
+    : null;
+  const id = existing?.id ?? params.id ?? crypto.randomUUID();
+  const setSecret = params.secret != null;
+  const cipher = setSecret ? params.secret!.ciphertext : (existing?.secretCiphertext ?? null);
+  const iv = setSecret ? params.secret!.iv : (existing?.secretIv ?? null);
+  const tag = setSecret ? params.secret!.authTag : (existing?.secretAuthTag ?? null);
+  const version = setSecret ? params.secret!.encryptionVersion : (existing?.secretEncryptionVersion ?? 0);
+  const createdAt = existing?.createdAt ?? now;
+  const label = params.label !== undefined ? params.label : (existing?.label ?? null);
+  const allowedTools =
+    params.allowedTools !== undefined ? params.allowedTools : (existing?.allowedTools ?? null);
+  const allowedJson = allowedTools != null ? JSON.stringify(allowedTools) : null;
+  const status = params.status ?? existing?.status ?? "untested";
+  await sql`
+    INSERT INTO upstream_mcp_targets (
+      id, workspace_id, label, transport, endpoint, namespace, database,
+      allowed_tools, secret_ciphertext, secret_iv, secret_auth_tag, secret_encryption_version,
+      status, last_tested_at, last_error, created_at, updated_at
+    ) VALUES (
+      ${id}, ${params.workspaceId}, ${label}, ${params.transport}, ${params.endpoint},
+      ${params.namespace ?? null}, ${params.database ?? null},
+      ${allowedJson}::jsonb, ${cipher}, ${iv}, ${tag}, ${version},
+      ${status}, NULL, NULL, ${createdAt}, ${now}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      label = ${label},
+      transport = EXCLUDED.transport,
+      endpoint = EXCLUDED.endpoint,
+      namespace = EXCLUDED.namespace,
+      database = EXCLUDED.database,
+      allowed_tools = ${allowedJson}::jsonb,
+      secret_ciphertext = ${cipher},
+      secret_iv = ${iv},
+      secret_auth_tag = ${tag},
+      secret_encryption_version = ${version},
+      status = ${status},
+      last_error = NULL,
+      updated_at = ${now}
+  `;
+  const updated = await getUpstreamMcpTargetById({ id, workspaceId: params.workspaceId });
+  if (!updated) throw new Error("upstream mcp target upsert failed");
+  return updated;
+}
+
+export async function deleteUpstreamMcpTarget(params: {
+  id: string;
+  workspaceId: string;
+}): Promise<boolean> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = await sql`
+    DELETE FROM upstream_mcp_targets WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+export async function updateUpstreamMcpTargetStatus(params: {
+  id: string;
+  workspaceId: string;
+  status: "untested" | "ok" | "error";
+  lastError?: string | null;
+}): Promise<void> {
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const now = Date.now();
+  await sql`
+    UPDATE upstream_mcp_targets
+    SET status = ${params.status},
+        last_tested_at = ${now},
+        last_error = ${params.lastError ?? null},
+        updated_at = ${now}
+    WHERE id = ${params.id} AND workspace_id = ${params.workspaceId}
+  `;
 }
 
 /**
