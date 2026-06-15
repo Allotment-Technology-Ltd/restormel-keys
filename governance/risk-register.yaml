@@ -20,8 +20,8 @@
 # treatment_type: mitigate | accept | transfer | avoid
 # status: open | in-treatment | closed
 #
-# Reviewed: 2026-06-15. Next scheduled review: isms-mid-year-governance-check (2026-06-15 + annual)
-# and isms-annual-management-review (2026-12-15).
+# Reviewed: 2026-06-15. Next scheduled review: isms-mid-year-governance-check (Jun)
+# and isms-annual-management-review (Dec 2026).
 
 risks:
 
@@ -116,7 +116,6 @@ risks:
       materially inaccurate: lists Vercel as app host (it is DNS/registrar only)
       and Neon as the active database (decommissioning). Hetzner/Coolify, the
       actual compute host processing all in-scope data, is not listed.
-      If reviewed by a data subject or regulator, this would be misleading.
     asset: "PROC-001 — Service delivery; privacy notice"
     likelihood: L
     impact: M
@@ -178,3 +177,28 @@ risks:
     owner: founder
     status: open
     review: 2026-12-15
+
+  - id: RISK-008
+    risk: >
+      MFA not yet confirmed enabled across all in-scope systems. This creates
+      a risk of account compromise via credential theft or phishing on any
+      system without a second factor — including high-value targets such as
+      Google Workspace (admin), Hetzner control panel, Coolify, Forgejo,
+      Mettle (banking), and Paddle (billing).
+    asset: "AST-007 — All systems listed in access-control-policy.md §3"
+    likelihood: M
+    impact: H
+    rating: High
+    treatment_type: mitigate
+    treatment: >
+      URGENT. Enable MFA on all systems in the priority order defined in
+      access-control-policy.md §3 (Priority 1 first: Google Workspace admin,
+      Hetzner, Coolify, Forgejo, Mettle, Paddle). Scheduled remediation task:
+      isms-mfa-remediation. Update the MFA status table in the access control
+      policy and close this risk once all Priority 1 and Priority 2 systems
+      are confirmed. When any new service is onboarded, MFA must be enabled
+      within 24 hours per access-control-policy.md §2.
+    treatment_status: "Open — URGENT. Remediation task scheduled."
+    owner: founder
+    status: open
+    review: 2026-07-15
