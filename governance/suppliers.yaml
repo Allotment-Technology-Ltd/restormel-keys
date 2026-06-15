@@ -1,0 +1,30 @@
+# record:
+#   id: REC-GOV-005
+#   title: Supplier / sub-processor register
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: draft
+#   classification: internal
+#   retention: P6Y-after-superseded
+#
+# Seeded from sub-processors identified during setup (FACTUAL — these are in use). Per-entry
+# DPA status, data categories, and exact data location need [CONFIRM]. "sovereignty" flags the
+# US-SaaS / sovereignty-trade-off connectors. role: processor | sub-processor | tooling.
+
+suppliers:
+  - name: Neon                provides: "Postgres (verification spine)"        role: sub-processor  location: "[CONFIRM region]"  dpa: "[CONFIRM]"  sovereignty: review
+  - name: PostHog EU          provides: "Product analytics"                    role: sub-processor  location: EU                  dpa: "[CONFIRM]"  sovereignty: ok
+  - name: Coolify host        provides: "Self-host compute (Forgejo, app)"     role: sub-processor  location: "[CONFIRM VPS provider/region]"  dpa: "[CONFIRM]"  sovereignty: ok
+  - name: Paddle              provides: "Billing / merchant of record"         role: sub-processor  location: "[CONFIRM]"         dpa: "[CONFIRM]"  sovereignty: review
+  - name: Zuplo               provides: "Cloud API gateway"                    role: sub-processor  location: "US edge"           dpa: "[CONFIRM]"  sovereignty: flagged
+  - name: Sentry              provides: "Error tracking"                       role: sub-processor  location: "US (check EU option)"  dpa: "[CONFIRM]"  sovereignty: flagged
+  - name: Google Workspace    provides: "Email (Gmail), Drive"                 role: sub-processor  location: US                  dpa: "[CONFIRM]"  sovereignty: flagged
+  - name: Notion              provides: "Docs/workspace"                       role: tooling        location: US                  dpa: "[CONFIRM]"  sovereignty: flagged
+  - name: Anthropic (Claude/Cowork)  provides: "AI assistant / operator"       role: tooling        location: US                  dpa: "[CONFIRM]"  sovereignty: "flagged — not for regulated data"
+  - name: GitHub              provides: "Code mirror (push-only)"              role: tooling        location: US                  dpa: "n/a (mirror)"  sovereignty: review
+  - name: Mettle              provides: "Business banking"                     role: sub-processor  location: UK                  dpa: "[CONFIRM]"  sovereignty: ok
+  - name: FreeAgent           provides: "Accounting (canonical)"               role: sub-processor  location: UK                  dpa: "[CONFIRM]"  sovereignty: ok
+  - name: Quality Company Formations  provides: "Formation agent / company secretary"  role: tooling  location: UK  dpa: "[CONFIRM]"  sovereignty: ok
+# [PLACEHOLDER — founder: confirm DPA + data location per supplier; add any missing. Sub-processor
+# changes must fire the customer change-notification hook (Phase 5).]

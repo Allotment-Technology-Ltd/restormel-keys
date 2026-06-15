@@ -1,0 +1,20 @@
+# record:
+#   id: REC-GOV-006
+#   title: Asset inventory (CIS Control 1)
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: draft
+#   classification: internal
+#   retention: P6Y-after-superseded
+#
+# DRAFT skeleton seeded with known assets. Fields: id, asset, type, owner, location, notes.
+
+assets:
+  - id: AST-001  asset: "restormel-keys repo"   type: code/records  owner: founder  location: "Forgejo (canonical) + GitHub mirror"  notes: "system of record"
+  - id: AST-002  asset: "restormel-ops repo"    type: ops/records   owner: founder  location: "Forgejo only (no mirror — see OPS-BACKLOG backup)"  notes: "operator cockpit"
+  - id: AST-003  asset: "Forgejo / Coolify host" type: infrastructure owner: founder  location: "[CONFIRM VPS provider/region]"  notes: "governance plane + app host"
+  - id: AST-004  asset: "Neon Postgres"          type: data store    owner: founder  location: "[CONFIRM region]"  notes: "verification spine"
+  - id: AST-005  asset: "restormel.dev domain"   type: domain        owner: founder  location: "[CONFIRM registrar]"  notes: ""
+  - id: AST-006  asset: "Founder workstation (Mac)" type: endpoint    owner: founder  location: UK  notes: "holds repo clones + relay/token"
+# [PLACEHOLDER — founder: complete (other domains, DNS, secrets store, banking access, etc.).]
