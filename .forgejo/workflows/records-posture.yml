@@ -1,0 +1,42 @@
+# Records posture — Phase 6 evidence agent (scheduled). Generates a dated Tier-3 posture report,
+# opens issues for overdue/incomplete Tier-2 records, and opens a PR with the report. Forgejo-
+# native; origin only (never the github mirror). Canonical scheduler (runs without the laptop).
+name: Records posture (evidence agent)
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # Mondays 08:00 UTC
+  workflow_dispatch:
+env:
+  FORGEJO_API: https://git.allotmentology.tech/api/v1
+  FORGEJO_OWNER: Allotment-Technology-Ltd
+  FORGEJO_REPO: restormel-keys
+jobs:
+  posture:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Generate posture report + issue list
+        run: |
+          node scripts/records/register.mjs
+          node scripts/records/posture.mjs --issues-out /tmp/posture-issues.json
+      - name: Open issues for overdue / incomplete Tier-2
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: node scripts/records/open-issues.mjs /tmp/posture-issues.json
+      - name: Open a PR with the posture report
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          DATE=$(date -u +%F); BR="evidence/posture-$DATE"
+          git config user.name "Restormel Evidence Agent"
+          git config user.email "evidence-agent@allotmentology.tech"
+          git checkout -b "$BR"
+          git add evidence/posture records/register.yaml
+          git commit -m "evidence: posture report $DATE" || { echo "nothing to commit"; exit 0; }
+          git push origin "$BR"
+          curl -sS -X POST "$FORGEJO_API/repos/$FORGEJO_OWNER/$FORGEJO_REPO/pulls" \
+            -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"head\":\"$BR\",\"base\":\"main\",\"title\":\"Evidence — posture report $DATE\",\"body\":\"Automated weekly ISMS posture report (Phase 6 evidence agent).\"}" || true
