@@ -620,7 +620,11 @@
       <form class="form advanced" on:submit|preventDefault={saveTarget}>
         <label class="field">
           <span class="field-label">Endpoint URL</span>
-          <input class="input" type="url" bind:value={endpoint} placeholder="https://your-surreal-host:8000" required />
+          <input class="input" type="url" bind:value={endpoint} placeholder="wss://your-surreal-host:8000" required />
+          <span class="field-hint">
+            <code>wss://</code> or <code>https://</code> (self-hosted instances usually use <code>wss://</code>).
+            <code>ws://</code>/<code>http://</code> are allowed only for <code>localhost</code> in development.
+          </span>
         </label>
         <div class="row">
           <label class="field">

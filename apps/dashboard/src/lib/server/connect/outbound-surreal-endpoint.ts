@@ -1,6 +1,7 @@
 /**
- * Policy for server-side fetch to workspace-configured Surreal HTTP endpoints (SSRF mitigation).
- * Local dev may use http://localhost; production requires HTTPS and blocks private/metadata targets.
+ * Policy for server-side connections to workspace-configured Surreal endpoints (SSRF mitigation).
+ * Accepts https/wss (secure) and http/ws (insecure). Local dev may use http/ws on localhost;
+ * production requires a secure endpoint (https:// or wss://) and blocks private/metadata targets.
  */
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -84,25 +85,28 @@ export function validateOutboundSurrealEndpoint(
   const host = url.hostname;
   const prod = isProductionRuntime();
 
-  if (prod && proto !== "https") {
-    return {
-      ok: false,
-      message: "Production requires an HTTPS Surreal endpoint (e.g. https://….surreal.cloud).",
-    };
+  const isSecure = proto === "https" || proto === "wss";
+  const isInsecure = proto === "http" || proto === "ws";
+  if (!isSecure && !isInsecure) {
+    return { ok: false, message: "Surreal endpoint must use https, wss, http, or ws." };
   }
 
-  if (!prod && proto !== "https" && proto !== "http") {
-    return { ok: false, message: "Surreal endpoint must use http or https." };
+  if (prod && !isSecure) {
+    return {
+      ok: false,
+      message: "Production requires a secure Surreal endpoint (https:// or wss://).",
+    };
   }
 
   const h = host.toLowerCase();
   const isLoopback = h === "localhost" || h === "127.0.0.1" || h === "::1";
 
-  if (!prod && proto === "http") {
+  if (!prod && isInsecure) {
     if (!isLoopback) {
       return {
         ok: false,
-        message: "In development, HTTP is only allowed for localhost (use HTTPS for remote hosts).",
+        message:
+          "In development, http:// and ws:// are only allowed for localhost (use https:// or wss:// for remote hosts).",
       };
     }
     return { ok: true };
@@ -116,7 +120,7 @@ export function validateOutboundSurrealEndpoint(
     return {
       ok: false,
       message:
-        "This endpoint is not allowed from Restormel servers (private or metadata addresses). Use a public HTTPS Surreal URL, or set RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT=1 for local operator testing only.",
+        "This endpoint is not allowed from Restormel servers (private or metadata addresses). Use a public HTTPS/WSS Surreal URL, or set RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT=1 for local operator testing only.",
     };
   }
 

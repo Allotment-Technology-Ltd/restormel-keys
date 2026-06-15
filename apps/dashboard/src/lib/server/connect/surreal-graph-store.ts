@@ -12,6 +12,7 @@ import {
   surrealHttpQuery,
   type SurrealHttpConn,
 } from "$lib/server/connect/graph-target-service";
+import { isWebSocketSurrealEndpoint, surrealSdkQuery } from "$lib/server/connect/surreal-sdk";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 
 class SurrealHttpGraphStore implements GraphStore {
@@ -30,6 +31,16 @@ class SurrealHttpGraphStore implements GraphStore {
   }
 
   async query<T>(sql: string, vars?: Record<string, unknown>): Promise<T> {
+    // ws/wss endpoints use the SDK (native var binding); http/https use the HTTP /sql client.
+    if (isWebSocketSurrealEndpoint(this.conn.endpoint)) {
+      const wsResult = await surrealSdkQuery({ ...this.conn, sql, vars });
+      if (!wsResult.ok) {
+        throw new GraphStoreUnavailableError(wsResult.error);
+      }
+      const wsEnvelopes = Array.isArray(wsResult.data) ? wsResult.data : [];
+      const wsLast = wsEnvelopes[wsEnvelopes.length - 1] as { result?: unknown } | undefined;
+      return (wsLast?.result ?? []) as T;
+    }
     // Surreal HTTP /sql does not bind vars; inline a LET preamble when provided.
     const preamble = vars
       ? Object.entries(vars)
