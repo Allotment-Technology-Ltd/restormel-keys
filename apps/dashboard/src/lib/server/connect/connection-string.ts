@@ -36,9 +36,14 @@ function normalizeInput(input: string): string {
   return stripWrappingQuotes(input.replace(/\r\n/g, "\n").trim());
 }
 
-function mapSchemeToHttpEndpoint(scheme: string, host: string): string {
-  const httpScheme = scheme === "ws" || scheme === "http" ? "http" : "https";
-  return `${httpScheme}://${host}`;
+function mapSchemeToEndpoint(scheme: string, host: string): string {
+  // Preserve real transport schemes (the Surreal SDK speaks ws/wss/http/https);
+  // `surrealdb`/`surreal` aliases have no wire scheme, so default them to secure HTTPS.
+  const normalized =
+    scheme === "ws" || scheme === "wss" || scheme === "http" || scheme === "https"
+      ? scheme
+      : "https";
+  return `${normalized}://${host}`;
 }
 
 function pathToNsDb(pathname: string): { namespace?: string; database?: string } {
@@ -87,7 +92,7 @@ function parseUriLike(raw: string): ParsedSurrealConnection | null {
 
   const { namespace, database } = pathToNsDb(path);
   return {
-    endpoint: mapSchemeToHttpEndpoint(scheme, host),
+    endpoint: mapSchemeToEndpoint(scheme, host),
     namespace,
     database,
     username,
@@ -106,7 +111,7 @@ function parseWithUrlConstructor(withScheme: string): ParsedSurrealConnection | 
   if (!URL_SCHEMES.has(scheme)) return null;
   if (!url.hostname) return { error: "Connection string is missing a host." };
 
-  const endpoint = mapSchemeToHttpEndpoint(scheme, url.host);
+  const endpoint = mapSchemeToEndpoint(scheme, url.host);
   const { namespace, database } = pathToNsDb(url.pathname);
   const username = url.username ? decodeURIComponent(url.username) : undefined;
   const secret = url.password ? decodeURIComponent(url.password) : undefined;

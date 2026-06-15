@@ -25,6 +25,7 @@ import {
 } from "$lib/server/neon";
 import { looksLikeSurrealJwt, parseSurrealConnectionString } from "$lib/server/connect/connection-string";
 import { validateOutboundSurrealEndpoint } from "$lib/server/connect/outbound-surreal-endpoint";
+import { isWebSocketSurrealEndpoint, surrealSdkQuery } from "$lib/server/connect/surreal-sdk";
 
 export { parseSurrealConnectionString };
 
@@ -502,7 +503,7 @@ export async function testGraphTargetConnection(
   }
   const secret = decryptGraphTargetSecret(row);
   try {
-    const result = await surrealHttpQuery({
+    const result = await surrealQuery({
       endpoint: row.endpoint,
       namespace: row.namespace,
       database: row.database,
@@ -547,7 +548,7 @@ export async function testGraphTargetDraft(
       message: "Add a token or password to test, or keep your CLI paste in the box above.",
     };
   }
-  const result = await surrealHttpQuery({
+  const result = await surrealQuery({
     endpoint: draft.endpoint,
     namespace: draft.namespace,
     database: draft.database,
@@ -662,4 +663,26 @@ export async function surrealHttpQuery(params: {
   } catch {
     return { ok: false, error: "Invalid Surreal response" };
   }
+}
+
+/**
+ * Dispatch a Surreal query by endpoint scheme: ws/wss → the SDK (WebSocket RPC),
+ * http/https → the HTTP /sql client. Returns the same `{ ok, data }` envelope shape
+ * either way (data = [{ result }, …], one entry per statement).
+ */
+export async function surrealQuery(params: {
+  endpoint: string;
+  namespace: string;
+  database: string;
+  username?: string | null;
+  password?: string | null;
+  bearerToken?: string | null;
+  timeoutMs?: number;
+  vars?: Record<string, unknown>;
+  sql: string;
+}): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  if (isWebSocketSurrealEndpoint(params.endpoint)) {
+    return surrealSdkQuery(params);
+  }
+  return surrealHttpQuery(params);
 }

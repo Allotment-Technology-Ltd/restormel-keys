@@ -71,6 +71,7 @@
     "nodemailer": "^6.9.0",
     "pg": "^8.20.0",
     "posthog-js": "^1.364.1",
+    "surrealdb": "2.0.3",
     "svelte": "^5.55.7",
     "svelte-check": "^4.0.0",
     "typescript": "^5.0.0",
