@@ -19,6 +19,7 @@ data:
     classification: confidential
     store: "FreeAgent (accounting) / Mettle (banking)"
     contains_personal_data: "yes — director (Adam Boon)"
+    retention: "7 years (Companies Act / HMRC requirement)"
     notes: ""
 
   - id: DAT-002
@@ -30,10 +31,11 @@ data:
       yes — user email, name, session tokens, OAuth account links;
       may include GitHub avatar URL where user authenticates via GitHub OAuth.
       No company name or phone number collected.
+    retention: "Duration of account; deleted on account closure"
     notes: >
       BetterAuth standard tables: user, session, account, verification.
       Avatar URL pulled through automatically on GitHub OAuth; review whether
-      it needs to be surfaced in privacy notice.
+      it needs to be surfaced in the privacy notice.
 
   - id: DAT-003
     data: "Keys / control-plane data"
@@ -41,6 +43,7 @@ data:
     classification: confidential
     store: "Self-hosted Postgres on AST-003"
     contains_personal_data: "minimal — rows linked to user account via foreign key; no standalone PII"
+    retention: "Duration of project/workspace; deleted on account closure"
     notes: >
       Projects, API key hashes (rk_… prefix — hash only, never plaintext),
       routing configs, policies, budgets, entitlements, BYOK custody metadata
@@ -52,6 +55,7 @@ data:
     classification: confidential
     store: "Self-hosted Postgres on AST-003"
     contains_personal_data: "no — corpus metadata and verification results only"
+    retention: "Duration of corpus/workspace; deleted on account closure"
     notes: >
       Ingest job metadata, verification results, provenance traces, source
       corpus references, trust scorecards. Knowledge graph data lives in the
@@ -64,6 +68,7 @@ data:
     classification: internal
     store: "PostHog EU"
     contains_personal_data: "pseudonymous — device/session IDs only; no identify() calls with email or name"
+    retention: "PostHog EU default (2 years); review annually"
     notes: "Confirmed pseudonymous (2026-06-15)."
 
   - id: DAT-006
@@ -72,6 +77,7 @@ data:
     classification: internal
     store: "Forgejo repos (AST-001, AST-002)"
     contains_personal_data: "minimal — director name in document front-matter only"
+    retention: "P6Y-after-superseded (per SCHEMA.md)"
     notes: ""
 
   - id: DAT-007
@@ -80,6 +86,7 @@ data:
     classification: confidential
     store: "Google Workspace / Gmail"
     contains_personal_data: "yes — correspondents' names, email addresses, message content"
+    retention: "No formal policy set; review when email provider decision made"
     notes: >
       Includes customer and prospect communications. Founder evaluating
       alternative email provider to reduce Google Workspace dependency.
@@ -91,12 +98,12 @@ data:
     classification: confidential
     store: "Paddle (merchant of record) + Postgres (IDs only)"
     contains_personal_data: "no — Restormel Postgres stores only Paddle subscription/customer IDs; no name, email, address, or payment data"
+    retention: "Paddle-side: per Paddle policy; Restormel IDs: duration of subscription"
     notes: >
       Paddle acts as merchant of record and holds all personal and payment
       data on its side. Restormel receives Paddle webhook events but persists
-      only opaque subscription/customer IDs. Paddle DPA covers their
-      processing; no GDPR Art 30 entry required for Restormel-side storage
-      of these IDs.
+      only opaque subscription/customer IDs. No GDPR Art 30 entry required
+      for Restormel-side storage of these IDs.
 
   - id: DAT-009
     data: "Error and exception data"
@@ -104,11 +111,12 @@ data:
     classification: internal
     store: "Sentry (US)"
     contains_personal_data: "no — confirmed: error payloads contain no user IDs, emails, or PII; sendDefaultPii not enabled"
+    retention: "Sentry default (90 days); acceptable given no PII"
     notes: >
-      Sentry is flagged sovereignty:flagged (US) in suppliers.yaml. No
-      personal data transfer to US confirmed, removing the IDTA/SCC
-      requirement for this flow. Sovereignty flag retained as a reminder
-      to review if Sentry config changes.
+      Sentry is sovereignty:flagged (US) in suppliers.yaml. No personal data
+      transfer to US confirmed, removing the IDTA/SCC requirement for this
+      flow. Sovereignty flag retained as a reminder to review if Sentry
+      config changes.
 
   - id: DAT-010
     data: "Audit events"
@@ -116,7 +124,8 @@ data:
     classification: confidential
     store: "Self-hosted Postgres on AST-003 (audit_events table)"
     contains_personal_data: "yes — user ID, action, timestamp, IP address"
+    retention: "12 months online (hot); 6 years archived (cold). Annual compliance review scheduled."
     notes: >
       Key evidence record for ISO 27001 A.8.15 (logging and monitoring).
-      Retention period to be set in retention policy; recommend minimum 12
-      months online, 6 years archived to align with REC-GOV-006 retention.
+      Retention confirmed by founder 2026-06-15. Annual review task scheduled
+      in Cowork to verify retention is being enforced and evidence is intact.

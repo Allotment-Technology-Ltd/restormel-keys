@@ -4,27 +4,147 @@
 #   class: governance
 #   control-tier: 2
 #   owner: founder
-#   status: draft
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# Seeded from sub-processors identified during setup (FACTUAL — these are in use). Per-entry
-# DPA status, data categories, and exact data location need [CONFIRM]. "sovereignty" flags the
-# US-SaaS / sovereignty-trade-off connectors. role: processor | sub-processor | tooling.
+# ISMS scope: Restormel only.
+# DPA note: for standard SaaS products, acceptance of T&Cs at signup constitutes
+# valid DPA acceptance where the DPA is embedded in those T&Cs (UK GDPR Art 28).
+# Two exceptions require explicit in-portal acceptance and are flagged: Google
+# Workspace (Admin Console → Account → Legal) and Hetzner (control panel AVV).
+# Sub-processor changes must fire the customer change-notification hook (Phase 5).
 
 suppliers:
-  - name: Neon                provides: "Postgres (verification spine)"        role: sub-processor  location: "[CONFIRM region]"  dpa: "[CONFIRM]"  sovereignty: review
-  - name: PostHog EU          provides: "Product analytics"                    role: sub-processor  location: EU                  dpa: "[CONFIRM]"  sovereignty: ok
-  - name: Coolify host        provides: "Self-host compute (Forgejo, app)"     role: sub-processor  location: "[CONFIRM VPS provider/region]"  dpa: "[CONFIRM]"  sovereignty: ok
-  - name: Paddle              provides: "Billing / merchant of record"         role: sub-processor  location: "[CONFIRM]"         dpa: "[CONFIRM]"  sovereignty: review
-  - name: Zuplo               provides: "Cloud API gateway"                    role: sub-processor  location: "US edge"           dpa: "[CONFIRM]"  sovereignty: flagged
-  - name: Sentry              provides: "Error tracking"                       role: sub-processor  location: "US (check EU option)"  dpa: "[CONFIRM]"  sovereignty: flagged
-  - name: Google Workspace    provides: "Email (Gmail), Drive"                 role: sub-processor  location: US                  dpa: "[CONFIRM]"  sovereignty: flagged
-  - name: Notion              provides: "Docs/workspace"                       role: tooling        location: US                  dpa: "[CONFIRM]"  sovereignty: flagged
-  - name: Anthropic (Claude/Cowork)  provides: "AI assistant / operator"       role: tooling        location: US                  dpa: "[CONFIRM]"  sovereignty: "flagged — not for regulated data"
-  - name: GitHub              provides: "Code mirror (push-only)"              role: tooling        location: US                  dpa: "n/a (mirror)"  sovereignty: review
-  - name: Mettle              provides: "Business banking"                     role: sub-processor  location: UK                  dpa: "[CONFIRM]"  sovereignty: ok
-  - name: FreeAgent           provides: "Accounting (canonical)"               role: sub-processor  location: UK                  dpa: "[CONFIRM]"  sovereignty: ok
-  - name: Quality Company Formations  provides: "Formation agent / company secretary"  role: tooling  location: UK  dpa: "[CONFIRM]"  sovereignty: ok
-# [PLACEHOLDER — founder: confirm DPA + data location per supplier; add any missing. Sub-processor
-# changes must fire the customer change-notification hook (Phase 5).]
+
+  # --- INFRASTRUCTURE ---
+
+  - name: Hetzner (Coolify host)
+    provides: "Self-hosted compute — Forgejo, Restormel app, Postgres, BetterAuth"
+    role: sub-processor
+    location: "Helsinki, Finland (EU)"
+    data_processed: "All in-scope Restormel data (transits / resides on this host)"
+    dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
+    sovereignty: ok
+
+  - name: Neon
+    provides: "Postgres (legacy backup — decommissioning)"
+    role: sub-processor
+    location: "AWS eu-west"
+    data_processed: "Product spine data (backup only; no new writes)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: ok
+    notes: "DECOMMISSIONING ~2026-06-30. Remove this entry on confirmed deletion."
+
+  - name: Vercel
+    provides: "Domain registrar + DNS (restormel.dev)"
+    role: sub-processor
+    location: "US"
+    data_processed: "Domain registration contact data (director name/email/address)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: review
+    notes: "No customer data; only domain registration details. Low risk."
+
+  # --- PRODUCT / ANALYTICS ---
+
+  - name: PostHog EU
+    provides: "Product analytics"
+    role: sub-processor
+    location: "EU"
+    data_processed: "Pseudonymous usage events (device/session IDs only; no PII)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: ok
+
+  - name: Zuplo
+    provides: "Cloud API gateway"
+    role: sub-processor
+    location: "US edge"
+    data_processed: "API request metadata, auth headers; kept off the verification path"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: flagged
+    notes: "US edge SaaS; kept off verification/PII path per sovereignty policy. Review if personal data scope changes."
+
+  - name: Sentry
+    provides: "Error tracking"
+    role: sub-processor
+    location: "US (sentry.io default)"
+    data_processed: "Error payloads — confirmed no PII (sendDefaultPii: off)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: flagged
+    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes."
+
+  # --- BILLING ---
+
+  - name: Paddle
+    provides: "Billing / merchant of record"
+    role: sub-processor
+    location: "UK / EU (Paddle is a UK company)"
+    data_processed: "Customer billing data (name, email, address, payment — held by Paddle as MoR); Restormel stores only Paddle subscription/customer IDs"
+    dpa: "accepted (standard terms at signup — Paddle merchant agreement includes data processing terms)"
+    sovereignty: ok
+
+  # --- COMMUNICATIONS / PRODUCTIVITY ---
+
+  - name: Google Workspace
+    provides: "Email (Gmail)"
+    role: sub-processor
+    location: "US"
+    data_processed: "Email correspondence including customer/prospect names, emails, message content"
+    dpa: "verify-and-accept — Google Data Processing Amendment requires explicit acceptance in Google Admin Console → Account → Legal; confirm this has been done"
+    sovereignty: flagged
+    notes: "Founder evaluating alternative email provider. Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
+
+  - name: Notion
+    provides: "Docs / workspace (internal tooling)"
+    role: tooling
+    location: "US"
+    data_processed: "Internal company docs; minimal PII (director only)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: flagged
+    notes: "Internal tooling only. No customer or regulated data stored here."
+
+  - name: Anthropic (Claude / Cowork)
+    provides: "AI assistant / operator (governance and dev tooling)"
+    role: tooling
+    location: "US"
+    data_processed: "Conversation content during governance and development work; not for regulated or customer data"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: "flagged — not for regulated data"
+    notes: "Internal tooling only. Governance guardrail: no customer PII or API keys to be passed in Cowork sessions."
+
+  - name: GitHub
+    provides: "Code mirror (push-only from Forgejo)"
+    role: tooling
+    location: "US"
+    data_processed: "Source code only; no customer data"
+    dpa: "n/a (push-only mirror; no personal data)"
+    sovereignty: review
+
+  # --- FINANCE / LEGAL ---
+
+  - name: Mettle
+    provides: "Business banking"
+    role: sub-processor
+    location: "UK"
+    data_processed: "Director financial data, transaction records"
+    dpa: "n/a — UK FCA-regulated bank; data processing covered by regulatory framework and banking T&Cs"
+    sovereignty: ok
+
+  - name: FreeAgent
+    provides: "Accounting (canonical)"
+    role: sub-processor
+    location: "UK"
+    data_processed: "Director and company financial/accounting records"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: ok
+
+  - name: Quality Company Formations
+    provides: "Formation agent / company secretary (one-off)"
+    role: tooling
+    location: "UK"
+    data_processed: "Director personal data used during company formation (one-off)"
+    dpa: "accepted (standard terms at signup)"
+    sovereignty: ok
+    notes: "Ongoing data processing is minimal; relationship is largely complete post-formation."
