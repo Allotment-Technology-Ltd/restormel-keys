@@ -112,7 +112,7 @@ records:
   - id: REC-POL-001
     title: Information Security Policy
     class: governance
-    status: draft
+    status: approved
     classification: internal
     control-tier: 2
     owner: founder
@@ -124,7 +124,7 @@ records:
   - id: REC-POL-002
     title: Access Control Policy
     class: governance
-    status: draft
+    status: approved
     classification: internal
     control-tier: 2
     owner: founder
