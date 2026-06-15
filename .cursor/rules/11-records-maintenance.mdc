@@ -1,0 +1,19 @@
+---
+description: Records keep themselves current — proactively stage register updates
+globs:
+alwaysApply: true
+---
+
+# Self-maintaining records
+
+When an action introduces or changes a managed fact — a new asset, sub-processor/connector,
+data flow, capability, or decision (or a material change to one) — stage the matching
+register/document update in the SAME change, without waiting to be asked:
+
+- assets → `governance/asset-inventory.yaml`; tools/services → `governance/suppliers.yaml`
+- data flows → `governance/data-inventory.yaml` + `governance/ropa.yaml`
+- decisions → an ADR in `docs/decisions/`
+
+Route through normal PR/CI; never silently edit an approved document. If unsure which record
+applies, flag it rather than skipping. Canonical norm: `records/SCHEMA.md` → "Maintenance norm".
+Anything derivable from source is generated (`scripts/records/register.mjs`), not hand-maintained.

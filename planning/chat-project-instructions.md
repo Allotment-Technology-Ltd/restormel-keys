@@ -93,3 +93,10 @@ record change is handed to **Cowork** (operator/drafting-to-repo) or **Claude Co
 
 The founder leaves with a usable artifact — a draft, a decision, or a brief — grounded in
 `/planning`, in the right hat's voice, with execution cleanly handed to Cowork or Claude Code.
+
+## Self-maintaining records
+When you identify that an action or decision should update a managed record — an asset,
+sub-processor, data flow, capability, or decision — say so explicitly and include it in your
+hand-off (**"Hand to Cowork:"** / **"Hand to Claude Code:"**), so registers don't drift. (This
+project can't stage bundles itself; the executing surface does.) Canonical norm:
+`records/SCHEMA.md` → "Maintenance norm".
