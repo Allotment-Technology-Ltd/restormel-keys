@@ -1,7 +1,7 @@
 {
   "$schema": "Seed data for the model catalog. Ingest with: pnpm run seed:catalog",
   "source": "static",
-  "lastUpdated": "2026-06-05",
+  "lastUpdated": "2026-06-14",
   "models": [
     {
       "id": "gpt-5.2",
@@ -14,9 +14,19 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools", "ingestion_extraction", "ingestion_validation"],
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "capabilities": [
+        "chat",
+        "vision",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_validation"
+      ],
       "editorialSummary": "Recommended for validation/cross-model checks when Anthropic extracts.",
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -26,12 +36,14 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-5.2",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-5.2"
         },
         {
           "providerIntegrationType": "together",
           "providerModelId": "openai/gpt-5.4",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-openai-gpt-5.4"
         }
       ]
@@ -47,9 +59,19 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools", "ingestion_extraction", "ingestion_grouping"],
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "capabilities": [
+        "chat",
+        "vision",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_grouping"
+      ],
       "editorialSummary": "Primary extraction pick for production ingest preset.",
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -59,12 +81,14 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-sonnet-4-6",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-sonnet-4-6"
         },
         {
           "providerIntegrationType": "together",
           "providerModelId": "anthropic/claude-sonnet-4-6",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-anthropic-claude-sonnet-4-6"
         }
       ]
@@ -80,9 +104,18 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools", "ingestion_validation"],
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "capabilities": [
+        "chat",
+        "vision",
+        "tools",
+        "ingestion_validation"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -92,12 +125,14 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-3.1-pro",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-3.1-pro"
         },
         {
           "providerIntegrationType": "together",
           "providerModelId": "google/gemini-3.1-pro-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-google-gemini-3.1-pro-preview"
         }
       ]
@@ -113,9 +148,15 @@
       "supportsTools": false,
       "supportsStructuredOutput": false,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["embedding", "ingestion_embedding"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "embedding",
+        "ingestion_embedding"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -125,6 +166,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-3-large",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "voyage-3-large"
         }
       ]
@@ -150,6 +192,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -159,6 +202,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4o",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4o"
         }
       ]
@@ -184,6 +228,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -193,12 +238,14 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4o-mini",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4o-mini"
         },
         {
           "providerIntegrationType": "together",
           "providerModelId": "openai/gpt-4o-mini",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-openai-gpt-4o-mini"
         }
       ]
@@ -224,6 +271,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -233,6 +281,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4o-nano",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4o-nano"
         }
       ]
@@ -256,6 +305,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -265,6 +315,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "o1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-o1"
         }
       ]
@@ -288,6 +339,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -297,6 +349,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "o1-mini",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-o1-mini"
         }
       ]
@@ -320,6 +373,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": 1761696000000,
       "replacementModelId": "claude-sonnet-4",
@@ -329,6 +383,7 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-3-5-sonnet-20241022",
           "availabilityStatus": "retired",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-3-5-sonnet"
         }
       ]
@@ -352,6 +407,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -361,6 +417,7 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-sonnet-4",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-sonnet-4"
         }
       ]
@@ -384,6 +441,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -393,6 +451,7 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-haiku-4.5",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-haiku-4-5"
         }
       ]
@@ -416,6 +475,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -425,6 +485,7 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-opus-4",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-opus-4"
         }
       ]
@@ -450,6 +511,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -459,6 +521,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-2.5-pro",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-2-5-pro"
         }
       ]
@@ -484,6 +547,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -493,6 +557,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-2.5-flash",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-2-5-flash"
         }
       ]
@@ -519,6 +584,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -528,6 +594,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-3.1-pro-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-3-1-pro-preview"
         }
       ]
@@ -553,6 +620,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -562,52 +630,9 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-3-flash-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-3-flash-preview"
         }
-      ]
-    },
-    {
-      "id": "gemini-3.1-pro-preview",
-      "canonicalName": "gemini-3.1-pro-preview",
-      "family": "gemini",
-      "lifecycleState": "preview",
-      "description": "Gemini 3.1 Pro (preview): frontier multimodal model on the Google Generative Language API.",
-      "contextWindow": 1048576,
-      "maxOutputTokens": 65536,
-      "supportsTools": true,
-      "supportsStructuredOutput": true,
-      "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools", "reasoning"],
-      "editorialSummary": null,
-      "deprecationDate": null,
-      "retirementDate": null,
-      "replacementModelId": null,
-      "sourceLastVerifiedAt": null,
-      "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-3.1-pro-preview", "availabilityStatus": "available", "pricingRef": "google-gemini-3-1-pro-preview" }
-      ]
-    },
-    {
-      "id": "gemini-3-flash-preview",
-      "canonicalName": "gemini-3-flash-preview",
-      "family": "gemini",
-      "lifecycleState": "preview",
-      "description": "Gemini 3 Flash (preview): fast multimodal model on the Google Generative Language API.",
-      "contextWindow": 1048576,
-      "maxOutputTokens": 65536,
-      "supportsTools": true,
-      "supportsStructuredOutput": true,
-      "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools"],
-      "editorialSummary": null,
-      "deprecationDate": null,
-      "retirementDate": null,
-      "replacementModelId": null,
-      "sourceLastVerifiedAt": null,
-      "variants": [
-        { "providerIntegrationType": "google", "providerModelId": "gemini-3-flash-preview", "availabilityStatus": "available", "pricingRef": "google-gemini-3-flash-preview" }
       ]
     },
     {
@@ -630,6 +655,7 @@
         "audio"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -639,6 +665,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4o-audio-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4o-audio-preview"
         }
       ]
@@ -664,6 +691,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -673,6 +701,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4.1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4-1"
         }
       ]
@@ -698,6 +727,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -707,6 +737,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "gpt-4.1-mini",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-gpt-4-1-mini"
         }
       ]
@@ -730,6 +761,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -739,6 +771,7 @@
           "providerIntegrationType": "openai",
           "providerModelId": "o3-mini",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "openai-o3-mini"
         }
       ]
@@ -762,6 +795,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": "claude-haiku-4.5",
@@ -771,6 +805,7 @@
           "providerIntegrationType": "anthropic",
           "providerModelId": "claude-3-5-haiku-20241022",
           "availabilityStatus": "unavailable",
+          "processingRegion": "US",
           "pricingRef": "anthropic-claude-3-5-haiku"
         }
       ]
@@ -796,6 +831,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": "gemini-2.5-flash",
@@ -805,6 +841,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-2.0-flash-exp",
           "availabilityStatus": "unavailable",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-2-0-flash-exp"
         }
       ]
@@ -830,6 +867,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": "gemini-2.5-pro",
@@ -839,6 +877,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-1.5-pro",
           "availabilityStatus": "unavailable",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-1-5-pro"
         }
       ]
@@ -864,6 +903,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": "gemini-2.5-flash",
@@ -873,6 +913,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-1.5-flash",
           "availabilityStatus": "unavailable",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-1-5-flash"
         }
       ]
@@ -896,6 +937,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": "gemini-2.5-flash",
@@ -905,6 +947,7 @@
           "providerIntegrationType": "google",
           "providerModelId": "gemini-1.5-flash-8b",
           "availabilityStatus": "unavailable",
+          "processingRegion": "US",
           "pricingRef": "google-gemini-1-5-flash-8b"
         }
       ]
@@ -927,6 +970,7 @@
         "embedding"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -936,6 +980,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-3",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -958,6 +1003,7 @@
         "embedding"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -967,6 +1013,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-3-lite",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -989,6 +1036,7 @@
         "embedding"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -998,6 +1046,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-large-2",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1020,6 +1069,7 @@
         "embedding"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1029,6 +1079,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-large-2-instruct",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1051,6 +1102,7 @@
         "embedding"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1060,6 +1112,7 @@
           "providerIntegrationType": "voyage",
           "providerModelId": "voyage-code-2",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1083,6 +1136,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1092,6 +1146,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "mistral-large-latest",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-mistral-large-latest"
         }
       ]
@@ -1115,6 +1170,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1124,6 +1180,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "mistral-medium-latest",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-mistral-medium-latest"
         }
       ]
@@ -1147,6 +1204,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1156,6 +1214,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "mistral-small-latest",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-mistral-small-latest"
         }
       ]
@@ -1180,6 +1239,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1189,6 +1249,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "codestral-latest",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-codestral-latest"
         }
       ]
@@ -1212,6 +1273,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1221,6 +1283,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "open-mistral-nemo",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-open-mistral-nemo"
         }
       ]
@@ -1246,6 +1309,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1255,6 +1319,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "pixtral-12b-2409",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-pixtral-12b-2409"
         }
       ]
@@ -1280,6 +1345,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1289,6 +1355,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "pixtral-large-latest",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-pixtral-large-latest"
         }
       ]
@@ -1312,6 +1379,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1321,6 +1389,7 @@
           "providerIntegrationType": "mistral",
           "providerModelId": "minstral-8b-2409",
           "availabilityStatus": "available",
+          "processingRegion": "EU",
           "pricingRef": "mistral-minstral-8b-2409"
         }
       ]
@@ -1344,6 +1413,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1353,6 +1423,7 @@
           "providerIntegrationType": "deepseek",
           "providerModelId": "deepseek-chat",
           "availabilityStatus": "available",
+          "processingRegion": "CN",
           "pricingRef": "deepseek-deepseek-chat"
         }
       ]
@@ -1376,6 +1447,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1385,6 +1457,7 @@
           "providerIntegrationType": "deepseek",
           "providerModelId": "deepseek-reasoner",
           "availabilityStatus": "available",
+          "processingRegion": "CN",
           "pricingRef": "deepseek-deepseek-reasoner"
         }
       ]
@@ -1409,6 +1482,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1418,6 +1492,7 @@
           "providerIntegrationType": "deepseek",
           "providerModelId": "deepseek-coder",
           "availabilityStatus": "available",
+          "processingRegion": "CN",
           "pricingRef": "deepseek-deepseek-coder"
         }
       ]
@@ -1441,6 +1516,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1450,6 +1526,7 @@
           "providerIntegrationType": "deepseek",
           "providerModelId": "deepseek-r1",
           "availabilityStatus": "available",
+          "processingRegion": "CN",
           "pricingRef": "deepseek-deepseek-r1"
         }
       ]
@@ -1473,6 +1550,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1482,6 +1560,7 @@
           "providerIntegrationType": "deepseek",
           "providerModelId": "deepseek-r1-distill-llama-70b",
           "availabilityStatus": "available",
+          "processingRegion": "CN",
           "pricingRef": "deepseek-deepseek-r1-distill-llama-70b"
         }
       ]
@@ -1504,6 +1583,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1513,6 +1593,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1537,6 +1618,7 @@
         "vision"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1546,6 +1628,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1568,6 +1651,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1577,6 +1661,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "meta-llama/Llama-3.1-8B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1599,6 +1684,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1608,6 +1694,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "meta-llama/Llama-3.1-70B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1630,6 +1717,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1639,6 +1727,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "meta-llama/Llama-3.1-405B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1661,6 +1750,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1670,6 +1760,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "mistralai/Mixtral-8x7B-Instruct-v0.1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1692,6 +1783,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1701,6 +1793,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "mistralai/Mistral-7B-Instruct-v0.3",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1723,6 +1816,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1732,6 +1826,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "Qwen/Qwen2.5-72B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1754,6 +1849,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1763,6 +1859,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "Qwen/Qwen2.5-7B-Instruct-Turbo",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1785,6 +1882,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1794,6 +1892,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "deepseek-ai/DeepSeek-V3",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1817,6 +1916,7 @@
         "reasoning"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1826,6 +1926,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "deepseek-ai/DeepSeek-R1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1848,6 +1949,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1857,6 +1959,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "google/gemma-2-27b-it",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1879,6 +1982,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1888,6 +1992,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "NousResearch/Hermes-3-Llama-3.1-405B",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": null
         }
       ]
@@ -1903,9 +2008,20 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text", "vision"],
-      "capabilities": ["chat", "vision", "tools", "ingestion_extraction", "ingestion_grouping", "ingestion_validation"],
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "capabilities": [
+        "chat",
+        "vision",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_grouping",
+        "ingestion_validation"
+      ],
       "editorialSummary": "Strong Together-native pick when one key should cover all ingest stages.",
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1915,6 +2031,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "Qwen/Qwen3.5-397B-A17B",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-qwen3.5-397b"
         }
       ]
@@ -1930,9 +2047,16 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools", "ingestion_extraction"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1942,6 +2066,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "Qwen/Qwen3.5-9B",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-qwen3.5-9b"
         }
       ]
@@ -1957,9 +2082,17 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools", "ingestion_extraction", "ingestion_grouping"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_grouping"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1969,6 +2102,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "moonshotai/Kimi-K2.5",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-kimi-k2.5"
         }
       ]
@@ -1984,9 +2118,16 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools", "ingestion_validation"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_validation"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -1996,6 +2137,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "deepseek-ai/DeepSeek-V3.1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-deepseek-v3.1"
         }
       ]
@@ -2011,9 +2153,16 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools", "ingestion_validation"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_validation"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2023,6 +2172,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "openai/gpt-oss-120b",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-gpt-oss-120b"
         }
       ]
@@ -2038,9 +2188,15 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2050,6 +2206,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "openai/gpt-oss-20b",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-gpt-oss-20b"
         }
       ]
@@ -2065,9 +2222,16 @@
       "supportsTools": true,
       "supportsStructuredOutput": true,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["chat", "tools", "ingestion_extraction"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction"
+      ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2077,6 +2241,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "zai-org/GLM-5.1",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-glm-5.1"
         }
       ]
@@ -2092,9 +2257,15 @@
       "supportsTools": false,
       "supportsStructuredOutput": false,
       "supportsMcp": false,
-      "modalities": ["text"],
-      "capabilities": ["embedding", "ingestion_embedding"],
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "embedding",
+        "ingestion_embedding"
+      ],
       "editorialSummary": "Default Together embedding when Voyage/OpenAI keys are not connected.",
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2104,6 +2275,7 @@
           "providerIntegrationType": "together",
           "providerModelId": "intfloat/multilingual-e5-large-instruct",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "together-multilingual-e5-large"
         }
       ]
@@ -2127,6 +2299,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2136,6 +2309,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "command-r-plus",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-command-r-plus"
         }
       ]
@@ -2159,6 +2333,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2168,6 +2343,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "command-r",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-command-r"
         }
       ]
@@ -2191,6 +2367,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2200,6 +2377,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "command-r7b",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-command-r7b"
         }
       ]
@@ -2222,6 +2400,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2231,6 +2410,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "command-light",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-command-light"
         }
       ]
@@ -2254,6 +2434,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2263,6 +2444,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "command-a",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-command-a"
         }
       ]
@@ -2285,6 +2467,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2294,6 +2477,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "aya-23-8b",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-aya-23-8b"
         }
       ]
@@ -2316,6 +2500,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CA",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2325,6 +2510,7 @@
           "providerIntegrationType": "cohere",
           "providerModelId": "aya-23-35b",
           "availabilityStatus": "available",
+          "processingRegion": "CA",
           "pricingRef": "cohere-aya-23-35b"
         }
       ]
@@ -2348,6 +2534,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2357,6 +2544,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-3.3-70b-versatile",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-3-3-70b-versatile"
         }
       ]
@@ -2381,6 +2569,7 @@
         "vision"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2390,6 +2579,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-3.2-90b-vision-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-3-2-90b-vision-preview"
         }
       ]
@@ -2414,6 +2604,7 @@
         "vision"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2423,6 +2614,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-3.2-11b-vision-preview",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-3-2-11b-vision-preview"
         }
       ]
@@ -2446,6 +2638,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2455,6 +2648,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-3.1-8b-instant",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-3-1-8b-instant"
         }
       ]
@@ -2478,6 +2672,7 @@
         "tools"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2487,6 +2682,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-3.1-70b-versatile",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-3-1-70b-versatile"
         }
       ]
@@ -2509,6 +2705,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2518,6 +2715,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "mixtral-8x7b-32768",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-mixtral-8x7b-32768"
         }
       ]
@@ -2540,6 +2738,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2549,6 +2748,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "gemma2-9b-it",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-gemma2-9b-it"
         }
       ]
@@ -2571,6 +2771,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2580,6 +2781,7 @@
           "providerIntegrationType": "groq",
           "providerModelId": "llama-guard-3-8b",
           "availabilityStatus": "available",
+          "processingRegion": "US",
           "pricingRef": "groq-llama-guard-3-8b"
         }
       ]
@@ -2602,6 +2804,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2611,6 +2814,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai"
         }
       ]
@@ -2633,6 +2837,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2642,6 +2847,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5.4",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5.4"
         }
       ]
@@ -2664,6 +2870,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2673,6 +2880,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5.4-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5.4-mini"
         }
       ]
@@ -2695,6 +2903,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2704,6 +2913,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5.4-nano",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5.4-nano"
         }
       ]
@@ -2726,6 +2936,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2735,6 +2946,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5.2",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5.2"
         }
       ]
@@ -2757,6 +2969,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2766,6 +2979,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5.1",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5.1"
         }
       ]
@@ -2788,6 +3002,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2797,6 +3012,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5"
         }
       ]
@@ -2819,6 +3035,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2828,6 +3045,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5-mini"
         }
       ]
@@ -2850,6 +3068,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2859,6 +3078,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-5-nano",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-5-nano"
         }
       ]
@@ -2881,6 +3101,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2890,6 +3111,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/o3",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-o3"
         }
       ]
@@ -2912,6 +3134,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2921,6 +3144,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/o4-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-o4-mini"
         }
       ]
@@ -2943,6 +3167,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2952,6 +3177,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-4.1",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-4.1"
         }
       ]
@@ -2974,6 +3200,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -2983,6 +3210,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-4.1-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-4.1-mini"
         }
       ]
@@ -3005,6 +3233,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3014,6 +3243,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-4.1-nano",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-4.1-nano"
         }
       ]
@@ -3036,6 +3266,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3045,6 +3276,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-4o",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-4o"
         }
       ]
@@ -3067,6 +3299,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3076,6 +3309,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "openai/gpt-4o-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-openai-gpt-4o-mini"
         }
       ]
@@ -3098,6 +3332,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3107,6 +3342,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini"
         }
       ]
@@ -3129,6 +3365,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3138,6 +3375,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-3.1-flash-lite-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-3.1-flash-lite-preview"
         }
       ]
@@ -3160,6 +3398,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3169,6 +3408,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-3.1-pro-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-3.1-pro-preview"
         }
       ]
@@ -3191,6 +3431,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3200,6 +3441,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-3-flash-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-3-flash-preview"
         }
       ]
@@ -3222,6 +3464,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3231,6 +3474,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-2.5-flash-lite",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-2.5-flash-lite"
         }
       ]
@@ -3253,6 +3497,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3262,6 +3507,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-2.5-flash",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-2.5-flash"
         }
       ]
@@ -3284,6 +3530,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3293,6 +3540,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "gemini/gemini-2.5-pro",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-gemini-gemini-2.5-pro"
         }
       ]
@@ -3315,6 +3563,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3324,6 +3573,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "deepseek",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-deepseek"
         }
       ]
@@ -3346,6 +3596,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3355,6 +3606,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "deepseek/deepseek-chat",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-deepseek-deepseek-chat"
         }
       ]
@@ -3377,6 +3629,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3386,6 +3639,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "deepseek/deepseek-reasoner",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-deepseek-deepseek-reasoner"
         }
       ]
@@ -3408,6 +3662,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3417,6 +3672,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok"
         }
       ]
@@ -3439,6 +3695,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3448,6 +3705,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok/grok-4-1-fast-non-reasoning",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok-grok-4-1-fast-non-reasoning"
         }
       ]
@@ -3470,6 +3728,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3479,6 +3738,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok/grok-4-1-fast-reasoning",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok-grok-4-1-fast-reasoning"
         }
       ]
@@ -3501,6 +3761,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3510,6 +3771,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok/grok-4-fast-non-reasoning",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok-grok-4-fast-non-reasoning"
         }
       ]
@@ -3532,6 +3794,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3541,6 +3804,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok/grok-4-fast-reasoning",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok-grok-4-fast-reasoning"
         }
       ]
@@ -3563,6 +3827,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3572,6 +3837,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "grok/grok-3-mini",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-grok-grok-3-mini"
         }
       ]
@@ -3594,6 +3860,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3603,6 +3870,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude"
         }
       ]
@@ -3625,6 +3893,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3634,6 +3903,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-sonnet-4-6",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-sonnet-4-6"
         }
       ]
@@ -3656,6 +3926,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3665,6 +3936,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-sonnet-4-5-20250929",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-sonnet-4-5-20250929"
         }
       ]
@@ -3687,6 +3959,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3696,6 +3969,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-sonnet-4-20250514",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-sonnet-4-20250514"
         }
       ]
@@ -3718,6 +3992,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3727,6 +4002,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-opus-4-7",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-opus-4-7"
         }
       ]
@@ -3749,6 +4025,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3758,6 +4035,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-opus-4-6",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-opus-4-6"
         }
       ]
@@ -3780,6 +4058,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3789,6 +4068,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-opus-4-5-20251101",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-opus-4-5-20251101"
         }
       ]
@@ -3811,6 +4091,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3820,6 +4101,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-haiku-4-5-20251001",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-haiku-4-5-20251001"
         }
       ]
@@ -3842,6 +4124,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3851,6 +4134,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-3-5-haiku-20241022",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-3-5-haiku-20241022"
         }
       ]
@@ -3873,6 +4157,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3882,6 +4167,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "claude/claude-3-haiku-20240307",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-claude-claude-3-haiku-20240307"
         }
       ]
@@ -3904,6 +4190,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3913,6 +4200,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "perplexity",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-perplexity"
         }
       ]
@@ -3935,6 +4223,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3944,6 +4233,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "perplexity/sonar",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-perplexity-sonar"
         }
       ]
@@ -3966,6 +4256,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -3975,6 +4266,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "perplexity/sonar-reasoning-pro",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-perplexity-sonar-reasoning-pro"
         }
       ]
@@ -3997,6 +4289,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4006,6 +4299,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "perplexity/sonar-deep-research",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-perplexity-sonar-deep-research"
         }
       ]
@@ -4028,6 +4322,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4037,6 +4332,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "meta",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-meta"
         }
       ]
@@ -4059,6 +4355,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4068,6 +4365,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "microsoft",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-microsoft"
         }
       ]
@@ -4090,6 +4388,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4099,6 +4398,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "qwen",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-qwen"
         }
       ]
@@ -4121,6 +4421,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "EU/FR",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4130,6 +4431,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "mistral",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-mistral"
         }
       ]
@@ -4152,6 +4454,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "US",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4161,6 +4464,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "nvidia",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-nvidia"
         }
       ]
@@ -4183,6 +4487,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4192,6 +4497,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "zai",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-zai"
         }
       ]
@@ -4214,6 +4520,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4223,6 +4530,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "hunyuan",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-hunyuan"
         }
       ]
@@ -4245,6 +4553,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4254,6 +4563,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "longcat",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-longcat"
         }
       ]
@@ -4276,6 +4586,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4285,6 +4596,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi"
         }
       ]
@@ -4307,6 +4619,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4316,6 +4629,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2.5",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2.5"
         }
       ]
@@ -4338,6 +4652,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4347,6 +4662,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2-0905-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2-0905-preview"
         }
       ]
@@ -4369,6 +4685,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4378,6 +4695,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2-0711-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2-0711-preview"
         }
       ]
@@ -4400,6 +4718,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4409,6 +4728,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2-thinking",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2-thinking"
         }
       ]
@@ -4431,6 +4751,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4440,6 +4761,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2-turbo-preview",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2-turbo-preview"
         }
       ]
@@ -4462,6 +4784,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4471,6 +4794,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "kimi/kimi-k2-thinking-turbo",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-kimi-kimi-k2-thinking-turbo"
         }
       ]
@@ -4493,6 +4817,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4502,6 +4827,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "mimo",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-mimo"
         }
       ]
@@ -4524,6 +4850,7 @@
         "chat"
       ],
       "editorialSummary": null,
+      "homeJurisdiction": "CN",
       "deprecationDate": null,
       "retirementDate": null,
       "replacementModelId": null,
@@ -4533,6 +4860,7 @@
           "providerIntegrationType": "aizolo",
           "providerModelId": "mimo/mimo-v2-flash",
           "availabilityStatus": "available",
+          "processingRegion": null,
           "pricingRef": "aizolo-mimo-mimo-v2-flash"
         }
       ]

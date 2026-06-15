@@ -4,6 +4,22 @@ const DEFAULT_UNIT_TABLE = "claim";
 const DEFAULT_PASSAGE_TABLE = "passage";
 const DEFAULT_GROUNDED_IN_EDGE = "grounded_in";
 
+/**
+ * Default vector dimension for the Surreal HNSW passage-embedding index.
+ *
+ * 1024 matches the domain-pack default (voyage-3 / voyage-3-large at their
+ * native width, and the Together-gateway embedding model). The Neo4j adapter
+ * uses DEFAULT_EMBEDDING_DIMENSIONS = 1536 (OpenAI text-embedding-3-small);
+ * that constant is NOT reused here because OpenAI is not the primary embedding
+ * provider for the Surreal path and conflating the two would misrepresent both.
+ *
+ * NOTE: HNSW DDL uses `IF NOT EXISTS`, so indexes created with the old
+ * hardcoded 768 are NOT altered — they stay at 768 until you drop and recreate
+ * the index after re-embedding (see the re-embed roadmap item).  Do NOT
+ * attempt dimension migration here.
+ */
+export const DEFAULT_PASSAGE_EMBEDDING_DIMENSIONS = 1024;
+
 export function isRetrievalBm25Enabled(): boolean {
   const v = (process.env.RETRIEVAL_USE_BM25 ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
@@ -193,12 +209,13 @@ export async function fetchTaxonomySeedClaimIds(
 
 export async function ensurePassageEmbeddingIndex(
   db: { query: (sql: string) => Promise<unknown> },
-  opts?: { passageTable?: string }
+  opts?: { passageTable?: string; dimensions?: number }
 ): Promise<void> {
   if (!isRetrievalPassageGroundedEnabled()) return;
   const passageTable = opts?.passageTable ?? DEFAULT_PASSAGE_TABLE;
+  const dimensions = opts?.dimensions ?? DEFAULT_PASSAGE_EMBEDDING_DIMENSIONS;
   await db.query(`
-    DEFINE INDEX IF NOT EXISTS ${passageTable}_embedding ON ${passageTable} FIELDS embedding HNSW DIMENSION 768 DIST COSINE;
+    DEFINE INDEX IF NOT EXISTS ${passageTable}_embedding ON ${passageTable} FIELDS embedding HNSW DIMENSION ${dimensions} DIST COSINE;
   `);
 }
 
