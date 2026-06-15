@@ -1,0 +1,33 @@
+# record:
+#   id: REC-GOV-002
+#   title: Risk register
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: draft
+#   classification: internal
+#   retention: P6Y-after-superseded
+#
+# DRAFT skeleton. Rows below marked EXAMPLE are illustrative — replace with real risks.
+# Fields: id, risk, asset, likelihood (L/M/H), impact (L/M/H), treatment, owner, status, review.
+
+risks:
+  - id: RISK-001            # EXAMPLE — replace
+    risk: "Loss of the self-hosted Forgejo server takes the canonical record offline"
+    asset: "Forgejo / Coolify host"
+    likelihood: M
+    impact: H
+    treatment: "[PLACEHOLDER — founder: backups + DR; see OPS-BACKLOG backup item]"
+    owner: founder
+    status: open
+    review: 2026-12-15
+  - id: RISK-002            # EXAMPLE — replace
+    risk: "Sub-processor data exposure (US-SaaS connectors hold company/customer data)"
+    asset: "Gmail / Notion / Sentry / Cowork"
+    likelihood: M
+    impact: M
+    treatment: "[PLACEHOLDER — founder: keep regulated data out; DPAs; supplier register]"
+    owner: founder
+    status: open
+    review: 2026-12-15
+# [PLACEHOLDER — founder: add the real risk set. Keep proportionate to stage.]

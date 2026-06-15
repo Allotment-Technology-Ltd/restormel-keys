@@ -1,0 +1,19 @@
+# record:
+#   id: REC-GOV-007
+#   title: Data inventory (CIS Control 2; feeds the RoPA)
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: draft
+#   classification: internal
+#   retention: P6Y-after-superseded
+#
+# DRAFT skeleton. Fields: id, data, categories, classification, store, contains_personal_data.
+
+data:
+  - id: DAT-001  data: "Company + accounting records"  categories: "financial"  classification: confidential  store: "FreeAgent / Mettle"  contains_personal_data: "yes (director)"
+  - id: DAT-002  data: "Product/spine data"            categories: "[CONFIRM]"  classification: "[CONFIRM]"  store: "Neon"  contains_personal_data: "[CONFIRM]"
+  - id: DAT-003  data: "Product analytics events"      categories: "usage"      classification: internal  store: "PostHog EU"  contains_personal_data: "[CONFIRM — pseudonymous?]"
+  - id: DAT-004  data: "Governance + records"          categories: "operational"  classification: internal  store: "Forgejo repos"  contains_personal_data: "minimal"
+  - id: DAT-005  data: "Email correspondence"          categories: "comms"      classification: confidential  store: "Google Workspace"  contains_personal_data: "yes"
+# [PLACEHOLDER — founder: complete; each personal-data row should map to a RoPA processing activity.]

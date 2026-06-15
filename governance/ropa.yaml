@@ -1,0 +1,25 @@
+# record:
+#   id: REC-GOV-003
+#   title: Record of Processing Activities (RoPA — UK GDPR Art 30)
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: draft
+#   classification: internal
+#   retention: life-of-processing
+#
+# DRAFT skeleton. One entry per processing activity. The data-inventory feeds this.
+# Fields per Art 30: purpose, lawful basis, data subjects, data categories, recipients
+# (sub-processors), transfers (+ safeguards), retention, security measures.
+
+processing_activities:
+  - id: PROC-001            # EXAMPLE — replace
+    purpose: "[PLACEHOLDER — e.g. operating the Restormel product for users]"
+    lawful_basis: "[PLACEHOLDER — founder/counsel: e.g. contract / legitimate interests]"
+    data_subjects: "[PLACEHOLDER — e.g. product users, founder]"
+    data_categories: "[PLACEHOLDER — see data-inventory.yaml]"
+    recipients: "[PLACEHOLDER — sub-processors from suppliers.yaml]"
+    transfers: "[PLACEHOLDER — any non-UK/EU transfers + safeguards (SCCs/IDTA)]"
+    retention: "[PLACEHOLDER — per retention policy]"
+    security_measures: "Repo-anchored records, access control, encryption in transit; [PLACEHOLDER: complete]"
+# [PLACEHOLDER — founder/counsel: enumerate all processing activities. RoPA is a living register.]
