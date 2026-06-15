@@ -45,3 +45,5 @@ there. Since a direct Forgejo→Projects sync may not be available, use whicheve
 The planning context pack is a **dated snapshot**. Per the IA plan it will eventually be replaced
 by the dog-food Connect MCP serving always-current, verified context (a later milestone). Until
 then, keep it current here and re-project to the Claude Project.
+
+<!-- drive-mirror round-trip smoke test — 2026-06-15 -->
