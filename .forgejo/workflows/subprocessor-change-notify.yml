@@ -1,0 +1,26 @@
+# Sub-processor change notification — Phase 5 (REC-PLAN-005).
+# Fires the customer sub-processor change-notification (UK GDPR Art 28) when the supplier /
+# sub-processor register changes on main. Lives in .forgejo (Forgejo is primary CI); never
+# touches the GitHub mirror. Non-blocking — the notify step always exits 0.
+name: Sub-processor change notification
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'governance/suppliers.yaml'
+
+jobs:
+  notify-subprocessor-change:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          fetch-depth: 2   # need the previous commit to diff suppliers.yaml
+      - name: Notify on sub-processor register change
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          # Optional: configure to deliver the notification to a channel / customer-notify service.
+          SUBPROCESSOR_NOTIFY_WEBHOOK: ${{ secrets.SUBPROCESSOR_NOTIFY_WEBHOOK }}
+        run: node scripts/governance/notify-subprocessor-change.mjs
