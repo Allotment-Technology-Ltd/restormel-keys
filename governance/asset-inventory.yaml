@@ -80,3 +80,16 @@ assets:
       store, Mac keychain. Unification into a single auditable secrets store
       is a planned improvement. Until unified, quarterly access review must
       cover all locations. Tracked as a risk in risk-register.yaml.
+
+  - id: AST-008
+    asset: "Company Google Drive (allotmenttech@gmail.com)"
+    type: cloud-storage
+    owner: founder
+    location: "Google (US)"
+    notes: >
+      Hosts the Drive⇄Forgejo mirror (My Drive/Restormel/): a markdown projection of
+      public/internal records for the Claude chat project, with Drive edits round-tripping
+      back via the relay. Markdown only; the classification gate keeps confidential/restricted
+      records out (they never leave Forgejo) and evidence/ is excluded. Google is a
+      sub-processor (suppliers.yaml). US-SaaS — sovereignty trade-off accepted for
+      internal/non-regulated records only.
