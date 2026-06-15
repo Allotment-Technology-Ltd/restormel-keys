@@ -311,3 +311,27 @@ export {
   G2_UNSUPPORTED_PCT_MAX,
   type G2QualityMetrics,
 } from "./ingest/golden-eval.js";
+
+// Verifying proxy — Phase A reference integration (W2-1). Pure verify core; no MCP, no keys.
+export {
+  parseMode1Result,
+  retrieveQuotes,
+  EVIDENCE_RETRIEVAL_SYSTEM,
+  verifyEnvelope,
+  deriveEnvelopeStatus,
+  assertValidatorIndependent,
+  ValidatorIndependenceError,
+  makeFailClosedValidator,
+  makeStubValidator,
+  type VerifyEnvelopeArgs,
+  type RestormelValidator,
+  type StubVerdict,
+  type Mode1Source,
+  type Mode1Result,
+  type ClaimWithSources,
+  type EnvelopeStatus,
+  type AnswerAuthor,
+  type EnvelopeClaim,
+  type EnvelopeMeta,
+  type VerifiedEnvelope,
+} from "./proxy/index.js";

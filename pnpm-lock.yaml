@@ -665,6 +665,9 @@ importers:
       '@restormel/aaif':
         specifier: workspace:*
         version: link:../aaif
+      '@restormel/connect-core':
+        specifier: workspace:*
+        version: link:../connect-core
       '@restormel/contracts':
         specifier: workspace:*
         version: link:../contracts
