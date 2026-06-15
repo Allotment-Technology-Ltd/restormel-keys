@@ -4,30 +4,177 @@
 #   class: governance
 #   control-tier: 2
 #   owner: founder
-#   status: draft
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# DRAFT skeleton. Rows below marked EXAMPLE are illustrative — replace with real risks.
-# Fields: id, risk, asset, likelihood (L/M/H), impact (L/M/H), treatment, owner, status, review.
+# ISMS scope: Restormel product and supporting infrastructure only.
+#
+# Risk rating matrix (likelihood × impact):
+#   L×L = Low   L×M = Low    L×H = Medium
+#   M×L = Low   M×M = Medium M×H = High
+#   H×L = Medium H×M = High  H×H = High
+#
+# treatment_type: mitigate | accept | transfer | avoid
+# status: open | in-treatment | closed
+#
+# Reviewed: 2026-06-15. Next scheduled review: isms-mid-year-governance-check (2026-06-15 + annual)
+# and isms-annual-management-review (2026-12-15).
 
 risks:
-  - id: RISK-001            # EXAMPLE — replace
-    risk: "Loss of the self-hosted Forgejo server takes the canonical record offline"
-    asset: "Forgejo / Coolify host"
+
+  - id: RISK-001
+    risk: >
+      Coolify host (Hetzner Helsinki) is a single point of failure. Loss or
+      unreachability of this server takes down the Restormel app, Forgejo
+      (canonical repo), self-hosted Postgres (verification spine), and
+      BetterAuth simultaneously.
+    asset: "AST-003 — Coolify host, Hetzner Helsinki"
     likelihood: M
     impact: H
-    treatment: "[PLACEHOLDER — founder: backups + DR; see OPS-BACKLOG backup item]"
+    rating: High
+    treatment_type: mitigate
+    treatment: >
+      Hetzner automated server backups enabled (confirm backup schedule and
+      restore-test frequency). DR runbook to be documented in restormel-ops
+      covering: repo recovery from GitHub mirror, DB restore from backup,
+      Coolify re-provision steps. Accept residual downtime risk at solo-founder
+      stage; target RTO < 4 hours.
+    treatment_status: "Partial — backups assumed on; DR runbook not yet documented"
     owner: founder
     status: open
     review: 2026-12-15
-  - id: RISK-002            # EXAMPLE — replace
-    risk: "Sub-processor data exposure (US-SaaS connectors hold company/customer data)"
-    asset: "Gmail / Notion / Sentry / Cowork"
+
+  - id: RISK-002
+    risk: >
+      Secrets estate is fragmented across .env files (gitignored), Forgejo CI
+      secrets/variables, GitHub secrets/variables (mirror), Restormel app
+      credential store, and Mac keychain. Risk of missed rotation, stale
+      credentials, and incomplete access review coverage.
+    asset: "AST-007 — Secrets estate (distributed)"
     likelihood: M
     impact: M
-    treatment: "[PLACEHOLDER — founder: keep regulated data out; DPAs; supplier register]"
+    rating: Medium
+    treatment_type: mitigate
+    treatment: >
+      Planned: unify into a single auditable secrets store (e.g. Infisical,
+      Doppler, or 1Password Secrets). Until unified, quarterly access review
+      (playbooks/quarterly-access-review.md) must explicitly cover all
+      secret locations. GitHub mirror secrets to be audited and minimised.
+    treatment_status: "Open — unification not yet started"
     owner: founder
     status: open
     review: 2026-12-15
-# [PLACEHOLDER — founder: add the real risk set. Keep proportionate to stage.]
+
+  - id: RISK-003
+    risk: >
+      US-SaaS sub-processors handling or transiting personal data without
+      confirmed Standard Contractual Clauses (SCCs / IDTA) in place.
+      Specifically: Google Workspace (email — customer PII) and Zuplo
+      (API gateway — request metadata). Google Workspace DPA also requires
+      explicit in-portal acceptance not yet confirmed.
+    asset: "Google Workspace (DAT-007), Zuplo (PROC-001)"
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      1. Accept Google Workspace Data Processing Amendment in Admin Console
+         → Account → Legal (Google's SCCs are incorporated by reference).
+      2. Confirm Zuplo DPA includes IDTA/SCCs for UK→US transfer.
+      3. Evaluate email provider migration to reduce Google Workspace dependency.
+      Risk reduces to accepted residual once DPAs confirmed.
+    treatment_status: "Open — both DPA confirmations outstanding (see suppliers.yaml)"
+    owner: founder
+    status: open
+    review: 2026-09-15
+
+  - id: RISK-004
+    risk: >
+      Neon Postgres (legacy backup) remains active beyond planned decommission
+      date (~2026-06-30), leaving an unneeded attack surface and keeping
+      stale entries in the privacy notice and suppliers register.
+    asset: "AST-004 — Neon Postgres (decommissioning)"
+    likelihood: L
+    impact: L
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      Complete Neon decommission by 2026-06-30: delete project in Neon console,
+      remove AST-004 from asset-inventory.yaml, remove Neon from suppliers.yaml,
+      update privacy notice. Stage a cowork-outbox bundle on completion.
+    treatment_status: "Open — decommission pending"
+    owner: founder
+    status: open
+    review: 2026-07-15
+
+  - id: RISK-005
+    risk: >
+      Published privacy notice (restormel.dev/keys/privacy v2026-03-18) is
+      materially inaccurate: lists Vercel as app host (it is DNS/registrar only)
+      and Neon as the active database (decommissioning). Hetzner/Coolify, the
+      actual compute host processing all in-scope data, is not listed.
+      If reviewed by a data subject or regulator, this would be misleading.
+    asset: "PROC-001 — Service delivery; privacy notice"
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      Publish a corrected privacy notice version before significant customer
+      volume: remove "Vercel: hosting", remove "Neon" once decommissioned,
+      add "Hetzner (Coolify)" as primary compute sub-processor. Adam to
+      update restormel.dev/keys/privacy directly (outside governance repo).
+    treatment_status: "Open — privacy notice update not yet published"
+    owner: founder
+    status: open
+    review: 2026-09-15
+
+  - id: RISK-006
+    risk: >
+      No formal incident response procedure documented beyond the
+      incident-capture.md playbook skeleton. In the event of a personal data
+      breach, the 72-hour ICO notification window (UK GDPR Art 33) would be
+      difficult to meet without a pre-planned procedure.
+    asset: "All personal-data assets (DAT-002, DAT-007, DAT-010)"
+    likelihood: L
+    impact: H
+    rating: Medium
+    treatment_type: accept
+    treatment: >
+      Accepted risk at pre-customer solo-founder stage. Mitigation plan:
+      complete incident response playbook (playbooks/incident-capture.md)
+      before first paying customer, covering: breach identification, severity
+      assessment, ICO notification decision (Art 33 threshold), data subject
+      notification (Art 34), and evidence capture. Escalate to mitigate on
+      first customer sign-up.
+    treatment_status: "Accepted — escalate to mitigate before first paying customer"
+    owner: founder
+    status: open
+    review: 2026-12-15
+
+  - id: RISK-007
+    risk: >
+      Founder is a single point of failure: sole director Adam Boon holds all
+      system credentials, operational knowledge, and recovery procedures.
+      Incapacity or extended unavailability would make service recovery or
+      ISMS continuity extremely difficult.
+    asset: "AST-006 — Founder workstation; AST-001/002 — repos; all credentials"
+    likelihood: L
+    impact: H
+    rating: Medium
+    treatment_type: accept
+    treatment: >
+      Accepted risk at solo-founder stage. Partial mitigations in place:
+      GitHub mirror provides code redundancy; Forgejo is self-hosted with
+      Hetzner backups. Mitigation plan: document a handover/DR brief
+      (break-glass document) covering critical credentials, recovery steps,
+      and key contacts. Store securely and share with a named trusted person.
+      Expand access controls and knowledge distribution when first team
+      member joins.
+    treatment_status: "Accepted — break-glass document not yet written"
+    owner: founder
+    status: open
+    review: 2026-12-15
