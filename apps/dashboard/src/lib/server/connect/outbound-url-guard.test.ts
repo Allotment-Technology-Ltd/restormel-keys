@@ -52,6 +52,73 @@ describe("validateOutboundUrl (shared SSRF / egress guard)", () => {
     });
   }
 
+  // ── SSRF bypass regressions (these MUST stay closed) ────────────────────────
+  // FIX 1: the loopback /8 check used to mask the WRONG octet, so only 127.0.0.1
+  // (saved by a hostname literal) was blocked and the rest of 127/8 leaked
+  // through to loopback.
+  const loopbackBypass = [
+    ["127.0.0.2 (whole /8 routes to loopback)", "https://127.0.0.2/mcp"],
+    ["127.1.2.3 (whole /8 routes to loopback)", "https://127.1.2.3/mcp"],
+  ] as const;
+  for (const [label, url] of loopbackBypass) {
+    it(`mcp: BLOCKS ${label} in production`, () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT;
+      expect(validateOutboundUrl(url, "mcp").ok).toBe(false);
+    });
+    it(`mcp: BLOCKS ${label} in development`, () => {
+      process.env.NODE_ENV = "development";
+      delete process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT;
+      expect(validateOutboundUrl(url, "mcp").ok).toBe(false);
+    });
+  }
+
+  // FIX 2: IPv4-mapped IPv6 (::ffff:a.b.c.d) used to bypass the IPv4 block-list
+  // entirely and reach loopback / IMDS / RFC-1918. WHATWG URL normalises the
+  // dotted form to the hex form, so we assert via the URL path (real parser).
+  const mappedBypass = [
+    ["::ffff:127.0.0.1 (mapped loopback)", "https://[::ffff:127.0.0.1]/mcp"],
+    ["::ffff:127.0.0.1 over http", "http://[::ffff:127.0.0.1]/mcp"],
+    ["::ffff:169.254.169.254 (mapped IMDS)", "https://[::ffff:169.254.169.254]/latest/meta-data/"],
+    ["::ffff:10.0.0.1 (mapped RFC-1918)", "https://[::ffff:10.0.0.1]/mcp"],
+    [":: unspecified", "https://[::]/mcp"],
+  ] as const;
+  for (const [label, url] of mappedBypass) {
+    it(`mcp: BLOCKS ${label} in production`, () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT;
+      expect(validateOutboundUrl(url, "mcp").ok).toBe(false);
+    });
+    it(`mcp: BLOCKS ${label} in development too`, () => {
+      process.env.NODE_ENV = "development";
+      delete process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT;
+      expect(validateOutboundUrl(url, "mcp").ok).toBe(false);
+    });
+  }
+
+  // Surreal family is the SAME guard — the mapped-IPv6 bypass must be closed there too.
+  it("surreal: BLOCKS ::ffff:127.0.0.1 (mapped loopback) in production", () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT;
+    expect(validateOutboundUrl("wss://[::ffff:127.0.0.1]/rpc", "surreal").ok).toBe(false);
+  });
+
+  // Over-blocking regression: a public IP ending in .127 must NOT be caught by the
+  // loopback /8 check, and a normal public IPv6 must not be caught by the ULA prefix.
+  it("mcp: ALLOWS a public host ending in .127 (8.8.8.127) — not loopback", () => {
+    process.env.NODE_ENV = "production";
+    expect(validateOutboundUrl("https://8.8.8.127/sse", "mcp")).toEqual({ ok: true });
+  });
+  it("mcp: ALLOWS a normal public IPv6 (2606:4700:4700::1111)", () => {
+    process.env.NODE_ENV = "production";
+    expect(validateOutboundUrl("https://[2606:4700:4700::1111]/sse", "mcp")).toEqual({ ok: true });
+  });
+  it("mcp: ALLOWS a public IPv6 with an 'fc' hextet that is NOT the prefix", () => {
+    process.env.NODE_ENV = "production";
+    // fc appears mid-address, not as the fc00::/7 ULA prefix → must be allowed.
+    expect(validateOutboundUrl("https://[2606:4700::fc11]/sse", "mcp")).toEqual({ ok: true });
+  });
+
   // ── Allows ──────────────────────────────────────────────────────────────────
   it("mcp: ALLOWS public https in production", () => {
     process.env.NODE_ENV = "production";

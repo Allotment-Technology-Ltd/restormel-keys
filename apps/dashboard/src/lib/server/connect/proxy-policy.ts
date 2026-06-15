@@ -56,7 +56,8 @@ export function parseProxyPolicyRule(raw: unknown): ProxyPolicyRule {
     allowedUpstreams: strArr(r.allowedUpstreams),
     allowedTools: strArr(r.allowedTools),
     minTrustScore: minTrust,
-    profile: r.profile === "connect-readonly" ? "connect-readonly" : "connect-readonly",
+    // Phase B ships exactly one tool profile, so this always normalises to it.
+    profile: "connect-readonly",
   };
 }
 

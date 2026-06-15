@@ -170,18 +170,54 @@ export async function registerUpstreamMcpTarget(
   }
 
   const label = input.label?.trim() || input.endpoint;
-  const row = await upsertUpstreamMcpTarget({
-    id: opts?.id,
-    workspaceId,
-    label,
-    transport,
-    endpoint: input.endpoint.trim(),
-    namespace: input.namespace ?? null,
-    database: input.database ?? null,
-    allowedTools: input.allowedTools ?? null,
-    secret: secret.payload,
-  });
+  let row: UpstreamMcpTargetRecord;
+  try {
+    row = await upsertUpstreamMcpTarget({
+      id: opts?.id,
+      workspaceId,
+      label,
+      transport,
+      endpoint: input.endpoint.trim(),
+      namespace: input.namespace ?? null,
+      database: input.database ?? null,
+      allowedTools: input.allowedTools ?? null,
+      secret: secret.payload,
+    });
+  } catch (e) {
+    // The pre-flight findUpstreamMcpTargetByPhysical check above is a TOCTOU window:
+    // two concurrent INSERTs of the same physical upstream can both pass it and then
+    // race the `uq_upstream_mcp_targets_physical` unique index. The loser throws a
+    // Postgres unique-violation (23505). Fail closed (the duplicate IS prevented) but
+    // return the SAME clean 409 as the in-code check instead of an unhandled 500.
+    if (isPhysicalUpstreamConflict(e)) {
+      return {
+        ok: false,
+        status: 409,
+        error: "upstream_scope_conflict",
+        message: "This upstream (endpoint/namespace/database) is already registered.",
+      };
+    }
+    throw e;
+  }
   return { ok: true, target: toPublic(row) };
+}
+
+/**
+ * True when an upsert failure is the cross-row physical-uniqueness conflict
+ * (`uq_upstream_mcp_targets_physical`). Matches the Postgres unique-violation SQLSTATE
+ * (23505) and, as a belt-and-braces fallback, the constraint name in the message — the
+ * neon serverless driver does not always surface `.code` on every wrapping.
+ */
+function isPhysicalUpstreamConflict(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const code = (e as { code?: unknown }).code;
+  if (code === "23505") return true;
+  const message = (e as { message?: unknown }).message;
+  return (
+    typeof message === "string" &&
+    (message.includes("uq_upstream_mcp_targets_physical") ||
+      (message.includes("duplicate key") && message.includes("upstream_mcp_targets")))
+  );
 }
 
 export async function listUpstreamMcpTargets(

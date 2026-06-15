@@ -66,7 +66,12 @@ function isPrivateOrReservedIpv4(host: string): boolean {
   // 172.16.x / 192.168.x the high bit is set, so a bare signed `&` compares a
   // negative int32 against a positive literal and silently misses the range.
   const mask = (m: number): number => (n & m) >>> 0;
-  if ((n & 0xff) === 0x7f) return true; // 127.0.0.0/8 loopback
+  // Loopback is the MOST-significant octet (127.0.0.0/8). The previous
+  // `(n & 0xff) === 0x7f` masked the LEAST-significant octet, so only 127.0.0.1
+  // (caught by a hostname literal) was blocked while 127.0.0.2 / 127.1.2.3 / all
+  // of 127/8 passed — and public IPs ending in .127 (e.g. 8.8.8.127) were
+  // falsely blocked. Mask the top octet so the whole loopback /8 is covered.
+  if (mask(0xff000000) === 0x7f000000) return true; // 127.0.0.0/8 loopback
   if (mask(0xff000000) === 0x0a000000) return true; // 10.0.0.0/8
   if (mask(0xfff00000) === 0xac100000) return true; // 172.16.0.0/12
   if (mask(0xffff0000) === 0xc0a80000) return true; // 192.168.0.0/16
@@ -75,11 +80,44 @@ function isPrivateOrReservedIpv4(host: string): boolean {
   return false;
 }
 
+/**
+ * Extract the embedded IPv4 from an IPv4-mapped IPv6 address (::ffff:0:0/96), in
+ * either form the parser/UI may hand us:
+ *   - dotted:  `::ffff:127.0.0.1`          (some URL libs keep this)
+ *   - hex:     `::ffff:7f00:1`             (WHATWG URL normalises to this)
+ * Returns the IPv4 dotted-quad string, or null when not an IPv4-mapped address.
+ */
+function extractMappedIpv4(host: string): string | null {
+  const m = /^::ffff:(.+)$/.exec(host);
+  if (!m) return null;
+  const tail = m[1];
+  // Dotted form: ::ffff:127.0.0.1
+  if (tail.includes(".")) return tail;
+  // Hex form: ::ffff:7f00:1 → two 16-bit groups → four octets.
+  const groups = tail.split(":");
+  if (groups.length !== 2) return null;
+  const hi = Number.parseInt(groups[0], 16);
+  const lo = Number.parseInt(groups[1], 16);
+  if (!Number.isInteger(hi) || !Number.isInteger(lo) || hi < 0 || hi > 0xffff || lo < 0 || lo > 0xffff) {
+    return null;
+  }
+  return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff].join(".");
+}
+
 function isPrivateOrReservedIpv6(host: string): boolean {
   const h = host.toLowerCase();
   if (h === "::1") return true; // loopback
-  if (h.startsWith("fc") || h.startsWith("fd")) return true; // unique local (ULA)
-  if (h.startsWith("fe80")) return true; // link-local
+  if (h === "::") return true; // unspecified (0.0.0.0 equivalent)
+  // IPv4-mapped IPv6 (::ffff:a.b.c.d) routes to the embedded IPv4, so an attacker
+  // can reach loopback / IMDS / RFC-1918 through it (e.g. ::ffff:127.0.0.1,
+  // ::ffff:169.254.169.254, ::ffff:10.0.0.1). Decode the IPv4 and apply the IPv4
+  // block-list. Without this the mapped forms bypassed every check above.
+  const mapped = extractMappedIpv4(h);
+  if (mapped !== null && isPrivateOrReservedIpv4(mapped)) return true;
+  // ULA fc00::/7 — match the address PREFIX, not a substring (so a legitimate
+  // public address like 2606:...:fc11 is NOT over-blocked).
+  if (/^f[cd][0-9a-f]*:/.test(h) || h === "fc00::" || h === "fd00::") return true; // unique local (ULA)
+  if (h.startsWith("fe80:") || h === "fe80::") return true; // link-local
   return false;
 }
 
