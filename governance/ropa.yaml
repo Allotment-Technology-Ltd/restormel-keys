@@ -4,22 +4,173 @@
 #   class: governance
 #   control-tier: 2
 #   owner: founder
-#   status: draft
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: life-of-processing
 #
-# DRAFT skeleton. One entry per processing activity. The data-inventory feeds this.
-# Fields per Art 30: purpose, lawful basis, data subjects, data categories, recipients
-# (sub-processors), transfers (+ safeguards), retention, security measures.
+# Controller: Allotment Technology Ltd, company no. 16925574, contact@restormel.dev
+# ISMS scope: Restormel product only. Plot/Sophia out of scope at this stage.
+#
+# Lawful bases used:
+#   CONTRACT   — UK GDPR Art 6(1)(b): processing necessary to perform a contract with the data subject
+#   LI         — UK GDPR Art 6(1)(f): legitimate interests of the controller
+#   LEGAL-OBL  — UK GDPR Art 6(1)(c): compliance with a legal obligation
+#
+# Privacy notice: https://restormel.dev/keys/privacy (v2026-03-18)
+# NOTE: Privacy notice sub-processor list is out of date — see action items below.
+#
+# Action items for next privacy notice version bump:
+#   - Remove "Vercel: hosting" (Vercel is DNS/registrar only; app is on Hetzner/Coolify)
+#   - Remove "Neon" once decommissioned (~2026-06-30)
+#   - Add "Hetzner (Coolify)" as the primary compute sub-processor
+#   - Clarify "authentication provider" = BetterAuth (self-hosted on Hetzner)
 
 processing_activities:
-  - id: PROC-001            # EXAMPLE — replace
-    purpose: "[PLACEHOLDER — e.g. operating the Restormel product for users]"
-    lawful_basis: "[PLACEHOLDER — founder/counsel: e.g. contract / legitimate interests]"
-    data_subjects: "[PLACEHOLDER — e.g. product users, founder]"
-    data_categories: "[PLACEHOLDER — see data-inventory.yaml]"
-    recipients: "[PLACEHOLDER — sub-processors from suppliers.yaml]"
-    transfers: "[PLACEHOLDER — any non-UK/EU transfers + safeguards (SCCs/IDTA)]"
-    retention: "[PLACEHOLDER — per retention policy]"
-    security_measures: "Repo-anchored records, access control, encryption in transit; [PLACEHOLDER: complete]"
-# [PLACEHOLDER — founder/counsel: enumerate all processing activities. RoPA is a living register.]
+
+  - id: PROC-001
+    purpose: >
+      Provide the Restormel Keys SaaS service — user accounts, dashboard,
+      API routing, BYOK custody, Connect ingest/verify pipelines.
+    lawful_basis: "CONTRACT — T&Cs accepted at sign-up (Art 6(1)(b))"
+    data_subjects: "Registered users (Founders Circle members and paying customers)"
+    data_categories:
+      - "Account identity: email address, display name, internal user ID"
+      - "GitHub avatar URL (where user authenticates via GitHub OAuth)"
+      - "Session tokens and OAuth account links (BetterAuth)"
+      - "Workspace / project metadata"
+      - "Gateway key hashes (rk_… prefix + hash; plaintext never stored)"
+      - "Provider credential ciphertext (where Connections used; encrypted at rest)"
+      - "Connect: ingest job metadata, verification results, provenance traces"
+    recipients:
+      - "Hetzner (Coolify host, Helsinki EU) — self-hosted compute; all data transits/resides here"
+      - "Zuplo (US edge) — control-plane API gateway; API request metadata only"
+    transfers: >
+      Core service: no transfer (self-hosted EU, Hetzner Helsinki).
+      Zuplo (US): API request metadata; Zuplo DPA + SCCs apply.
+    retention: >
+      Account and workspace data: retained while account is active; deleted
+      within 30 days of account closure on request.
+    security_measures: >
+      TLS encryption in transit; BetterAuth session management; API key
+      hashing (prefix + hash only); provider credential encryption at rest
+      (where Connections enabled); access controls on self-hosted Postgres;
+      Forgejo-anchored audit trail.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §2–3"
+
+  - id: PROC-002
+    purpose: >
+      Billing and subscription management — record and reflect plan status
+      for paying customers; maintain financial records for legal compliance.
+    lawful_basis: >
+      CONTRACT — subscription T&Cs (Art 6(1)(b));
+      LEGAL-OBL — accounting/tax records (Companies Act 2006, HMRC) (Art 6(1)(c))
+    data_subjects: "Paying customers"
+    data_categories:
+      - "Paddle customer ID and subscription ID (opaque identifiers — no name, email, or card data)"
+      - "Plan status and subscription metadata"
+      - "Director financial data (accounting records — FreeAgent/Mettle)"
+    recipients:
+      - "Paddle (UK, merchant of record) — holds all personal billing data (name, email, address, card); Restormel stores IDs only"
+      - "FreeAgent (UK) — accounting records (director-only data)"
+      - "Mettle (UK, FCA-regulated) — business banking (director-only data)"
+    transfers: >
+      None — Paddle is a UK company; FreeAgent and Mettle are UK-based.
+    retention: >
+      Paddle IDs: duration of subscription.
+      Accounting records: 7 years (Companies Act / HMRC requirement).
+    security_measures: >
+      Paddle processes all sensitive billing data as MoR; Restormel stores
+      only opaque IDs. FreeAgent and Mettle have their own regulatory
+      security obligations.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §2 (billing), §3"
+
+  - id: PROC-003
+    purpose: >
+      Service security, abuse prevention, and incident investigation —
+      maintaining audit logs and operational monitoring to protect the
+      service and its users.
+    lawful_basis: "LI — security of the service and protection of users (Art 6(1)(f))"
+    data_subjects: "All registered users"
+    data_categories:
+      - "Audit events: user ID, action type, timestamp, IP address"
+      - "Operational logs: request status, performance metrics, error codes"
+    recipients:
+      - "Hetzner (Coolify host, Helsinki EU) — self-hosted Postgres; audit_events table"
+      - "Sentry (US) — error/exception tracking; confirmed no PII in payloads (sendDefaultPii: off)"
+    transfers: >
+      Audit logs: no transfer (self-hosted EU).
+      Sentry (US): error payloads only; no personal data confirmed; Sentry DPA applies.
+    retention: >
+      Audit events: 12 months online (hot); 6 years archived (cold).
+      Annual compliance review scheduled (Cowork task: isms-audit-events-retention-review).
+      Operational logs: limited period per Sentry default (90 days).
+    security_measures: >
+      Self-hosted Postgres with access controls; Sentry configured with
+      sendDefaultPii: off; IP addresses treated as personal data and
+      subject to same retention limits.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §2 (operational data), §3"
+
+  - id: PROC-004
+    purpose: >
+      Product analytics and improvement — understanding feature usage to
+      improve reliability and guide product development.
+    lawful_basis: "LI — product improvement and service reliability (Art 6(1)(f))"
+    data_subjects: "All registered users (pseudonymous)"
+    data_categories:
+      - "Pseudonymous usage events: device/session IDs, feature interactions, page views"
+      - "No names, emails, or directly identifying fields sent to analytics"
+    recipients:
+      - "PostHog EU — product analytics (EU-hosted instance)"
+    transfers: "None — PostHog EU data residency."
+    retention: "PostHog EU default (2 years); reviewed annually."
+    security_measures: >
+      Pseudonymisation at source (no identify() calls with email or name);
+      PostHog EU instance ensures data residency within EEA.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §2 (analytics), §3"
+
+  - id: PROC-005
+    purpose: >
+      Customer and prospect communications — responding to support requests,
+      managing early-access/Founders Circle onboarding, commercial outreach.
+    lawful_basis: "LI — customer relationship management and support (Art 6(1)(f))"
+    data_subjects: "Customers, Founders Circle members, prospects, correspondents"
+    data_categories:
+      - "Names and email addresses"
+      - "Message content of support and commercial correspondence"
+    recipients:
+      - "Google Workspace / Gmail (US) — email platform"
+    transfers: >
+      UK → US (Google Workspace). Google Workspace Data Processing Amendment
+      + SCCs apply. NOTE: DPA acceptance must be confirmed in Google Admin
+      Console → Account → Legal (flagged as verify-and-accept in suppliers.yaml).
+    retention: >
+      No formal retention period set. Action: define and implement before
+      significant customer volume. Interim: review and purge annually.
+    security_measures: >
+      Google Workspace built-in security (TLS, at-rest encryption, 2FA on
+      admin account). Founder evaluating alternative email provider.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §4 (sharing)"
+
+  - id: PROC-006
+    purpose: >
+      Statutory company records — maintaining records required by Companies
+      Act 2006 and HMRC for Allotment Technology Ltd.
+    lawful_basis: "LEGAL-OBL — Companies Act 2006, HMRC requirements (Art 6(1)(c))"
+    data_subjects: "Director / PSC (Adam Boon)"
+    data_categories:
+      - "Director name, address (registered), nationality, date of birth (Companies House)"
+      - "PSC details (persons with significant control)"
+      - "Financial and accounting records"
+    recipients:
+      - "FreeAgent (UK) — accounting"
+      - "Mettle (UK, FCA-regulated) — banking"
+      - "Quality Company Formations (UK) — formation agent (one-off; largely complete)"
+      - "Companies House (UK) — statutory filing (controller, not processor)"
+    transfers: "None — all UK."
+    retention: "7 years (Companies Act / HMRC); Companies House filings: permanent public record."
+    security_measures: >
+      FreeAgent and Mettle subject to their own UK regulatory security
+      obligations. Companies House is a public register by statute.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §3 (legal obligation)"
