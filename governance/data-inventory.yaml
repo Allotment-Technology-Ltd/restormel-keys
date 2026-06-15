@@ -4,16 +4,119 @@
 #   class: governance
 #   control-tier: 2
 #   owner: founder
-#   status: draft
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# DRAFT skeleton. Fields: id, data, categories, classification, store, contains_personal_data.
+# ISMS scope: Restormel only. Each personal-data row maps to a RoPA processing activity.
 
 data:
-  - id: DAT-001  data: "Company + accounting records"  categories: "financial"  classification: confidential  store: "FreeAgent / Mettle"  contains_personal_data: "yes (director)"
-  - id: DAT-002  data: "Product/spine data"            categories: "[CONFIRM]"  classification: "[CONFIRM]"  store: "Neon"  contains_personal_data: "[CONFIRM]"
-  - id: DAT-003  data: "Product analytics events"      categories: "usage"      classification: internal  store: "PostHog EU"  contains_personal_data: "[CONFIRM — pseudonymous?]"
-  - id: DAT-004  data: "Governance + records"          categories: "operational"  classification: internal  store: "Forgejo repos"  contains_personal_data: "minimal"
-  - id: DAT-005  data: "Email correspondence"          categories: "comms"      classification: confidential  store: "Google Workspace"  contains_personal_data: "yes"
-# [PLACEHOLDER — founder: complete; each personal-data row should map to a RoPA processing activity.]
+  - id: DAT-001
+    data: "Company and accounting records"
+    categories: "financial, contractual"
+    classification: confidential
+    store: "FreeAgent (accounting) / Mettle (banking)"
+    contains_personal_data: "yes — director (Adam Boon)"
+    notes: ""
+
+  - id: DAT-002
+    data: "User accounts and auth sessions"
+    categories: "identity"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003 (BetterAuth tables)"
+    contains_personal_data: >
+      yes — user email, name, session tokens, OAuth account links;
+      may include GitHub avatar URL where user authenticates via GitHub OAuth.
+      No company name or phone number collected.
+    notes: >
+      BetterAuth standard tables: user, session, account, verification.
+      Avatar URL pulled through automatically on GitHub OAuth; review whether
+      it needs to be surfaced in privacy notice.
+
+  - id: DAT-003
+    data: "Keys / control-plane data"
+    categories: "operational"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003"
+    contains_personal_data: "minimal — rows linked to user account via foreign key; no standalone PII"
+    notes: >
+      Projects, API key hashes (rk_… prefix — hash only, never plaintext),
+      routing configs, policies, budgets, entitlements, BYOK custody metadata
+      (encrypted connection secrets). Plaintext keys are never persisted.
+
+  - id: DAT-004
+    data: "Connect ingest and verification data"
+    categories: "operational, knowledge"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003"
+    contains_personal_data: "no — corpus metadata and verification results only"
+    notes: >
+      Ingest job metadata, verification results, provenance traces, source
+      corpus references, trust scorecards. Knowledge graph data lives in the
+      customer's BYO SurrealDB store, not in Restormel Postgres. Verification
+      payloads do not contain user-identifiable content.
+
+  - id: DAT-005
+    data: "Product analytics events"
+    categories: "usage"
+    classification: internal
+    store: "PostHog EU"
+    contains_personal_data: "pseudonymous — device/session IDs only; no identify() calls with email or name"
+    notes: "Confirmed pseudonymous (2026-06-15)."
+
+  - id: DAT-006
+    data: "Governance and records"
+    categories: "operational"
+    classification: internal
+    store: "Forgejo repos (AST-001, AST-002)"
+    contains_personal_data: "minimal — director name in document front-matter only"
+    notes: ""
+
+  - id: DAT-007
+    data: "Email correspondence"
+    categories: "communications"
+    classification: confidential
+    store: "Google Workspace / Gmail"
+    contains_personal_data: "yes — correspondents' names, email addresses, message content"
+    notes: >
+      Includes customer and prospect communications. Founder evaluating
+      alternative email provider to reduce Google Workspace dependency.
+      Until migrated, Google Workspace DPA and SCCs apply.
+
+  - id: DAT-008
+    data: "Billing and subscription records"
+    categories: "financial"
+    classification: confidential
+    store: "Paddle (merchant of record) + Postgres (IDs only)"
+    contains_personal_data: "no — Restormel Postgres stores only Paddle subscription/customer IDs; no name, email, address, or payment data"
+    notes: >
+      Paddle acts as merchant of record and holds all personal and payment
+      data on its side. Restormel receives Paddle webhook events but persists
+      only opaque subscription/customer IDs. Paddle DPA covers their
+      processing; no GDPR Art 30 entry required for Restormel-side storage
+      of these IDs.
+
+  - id: DAT-009
+    data: "Error and exception data"
+    categories: "operational"
+    classification: internal
+    store: "Sentry (US)"
+    contains_personal_data: "no — confirmed: error payloads contain no user IDs, emails, or PII; sendDefaultPii not enabled"
+    notes: >
+      Sentry is flagged sovereignty:flagged (US) in suppliers.yaml. No
+      personal data transfer to US confirmed, removing the IDTA/SCC
+      requirement for this flow. Sovereignty flag retained as a reminder
+      to review if Sentry config changes.
+
+  - id: DAT-010
+    data: "Audit events"
+    categories: "security, operational"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003 (audit_events table)"
+    contains_personal_data: "yes — user ID, action, timestamp, IP address"
+    notes: >
+      Key evidence record for ISO 27001 A.8.15 (logging and monitoring).
+      Retention period to be set in retention policy; recommend minimum 12
+      months online, 6 years archived to align with REC-GOV-006 retention.
