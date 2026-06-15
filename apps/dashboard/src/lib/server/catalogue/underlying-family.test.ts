@@ -49,6 +49,21 @@ describe("resolveUnderlyingFamily — aggregators resolve to the underlying vend
     expect(fam).not.toBe("together");
   });
 
+  it("native xAI Grok and aizolo-hosted Grok resolve to the same underlying family", () => {
+    // Native xAI catalogue ids — family "grok" maps to xai, and the leading id token also resolves.
+    expect(resolveUnderlyingFamily("grok-3", { provider: "xai", family: "grok" })).toBe("xai");
+    expect(resolveUnderlyingFamily("grok-2-vision-1212", { provider: "xai", family: "grok" })).toBe("xai");
+    // A prefixed form resolves via the leading token too.
+    expect(resolveUnderlyingFamily("xai-grok-3")).toBe("xai");
+    // Aizolo-hosted Grok encodes the vendor in the id → same underlying family.
+    expect(resolveUnderlyingFamily("aizolo-grok")).toBe("xai");
+    expect(resolveUnderlyingFamily("aizolo-grok-grok-3-mini")).toBe("xai");
+    // So the cross-model guard treats native-xai and aizolo-hosted-grok as the SAME family.
+    expect(resolveUnderlyingFamily("grok-3", { provider: "xai", family: "grok" })).toBe(
+      resolveUnderlyingFamily("aizolo-grok-grok-3-mini"),
+    );
+  });
+
   it("inference hosts (groq) resolve via the model id, not the host", () => {
     // family/provider "groq" is the host, not the vendor — resolve from the id.
     expect(resolveUnderlyingFamily("llama-3-3-70b-versatile", { provider: "groq", family: "groq" })).toBe("meta");

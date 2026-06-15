@@ -22,6 +22,7 @@ export const CANONICAL_PROVIDER_TYPES = [
   "together",
   "cohere",
   "groq",
+  "xai",
   "aizolo",
 ] as const;
 
@@ -47,6 +48,9 @@ export function normalizeProviderToCanonicalApi(raw: string | null | undefined):
   const k = slugProviderInput(String(raw));
   if (k === "google" || k === "vertex" || k === "google_cloud" || k === "vertex_ai" || k === "generative_ai") {
     return "vertex";
+  }
+  if (k === "xai" || k === "grok" || k === "x.ai" || k === "x_ai") {
+    return "xai";
   }
   if (CANONICAL_SET.has(k)) return k;
   return null;

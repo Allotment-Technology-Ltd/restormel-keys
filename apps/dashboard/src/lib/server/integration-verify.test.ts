@@ -160,7 +160,7 @@ describe("runIntegrationVerificationProbe — taxonomy", () => {
 
 describe("runIntegrationVerificationProbe — auth shapes per family", () => {
   it("openai-compatible families send Authorization: Bearer", async () => {
-    for (const provider of ["openai", "mistral", "together", "deepseek", "groq", "cohere", "voyage", "aizolo"]) {
+    for (const provider of ["openai", "mistral", "together", "deepseek", "groq", "xai", "cohere", "voyage", "aizolo"]) {
       const captured: CapturedRequest[] = [];
       await probe(provider, mockFetch(() => jsonResponse(200, {}), captured));
       expect(captured).toHaveLength(1);
@@ -260,7 +260,25 @@ describe("isVerifiableProviderType", () => {
     expect(isVerifiableProviderType("vercel_ai_gateway")).toBe(true);
     expect(isVerifiableProviderType("voyage")).toBe(true);
     expect(isVerifiableProviderType("aizolo")).toBe(true);
+    expect(isVerifiableProviderType("xai")).toBe(true);
+    expect(isVerifiableProviderType("grok")).toBe(true);
+    expect(isVerifiableProviderType("x.ai")).toBe(true);
     expect(isVerifiableProviderType("totally_unknown")).toBe(false);
+  });
+
+  it("xai probes the x.ai models list with Bearer auth", async () => {
+    const captured: CapturedRequest[] = [];
+    await probe("xai", mockFetch(() => jsonResponse(200, {}), captured));
+    expect(captured[0].url).toBe("https://api.x.ai/v1/models");
+    expect(captured[0].headers.Authorization).toBe(`Bearer ${KEY}`);
+  });
+
+  it("xai free-text aliases resolve to the same probe", async () => {
+    for (const alias of ["grok", "x.ai", "x_ai", "XAI"]) {
+      const captured: CapturedRequest[] = [];
+      await probe(alias, mockFetch(() => jsonResponse(200, {}), captured));
+      expect(captured[0].url).toBe("https://api.x.ai/v1/models");
+    }
   });
 });
 

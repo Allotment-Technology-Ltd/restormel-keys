@@ -76,6 +76,9 @@ const PROVIDER_ALIASES: Record<string, string> = {
   google: "vertex",
   google_cloud: "vertex",
   vertex_ai: "vertex",
+  grok: "xai",
+  "x.ai": "xai",
+  x_ai: "xai",
 };
 
 function slugProvider(raw: string): string {
@@ -117,6 +120,9 @@ function probeSpecForCanonicalProvider(canonical: string): ProbeSpec | null {
       return { method: "GET", url: "https://api.deepseek.com/v1/models", headers: bearer };
     case "groq":
       return { method: "GET", url: "https://api.groq.com/openai/v1/models", headers: bearer };
+    case "xai":
+      // Mirrors @restormel/keys xaiProvider.validateKey (GET /v1/models with Bearer auth).
+      return { method: "GET", url: "https://api.x.ai/v1/models", headers: bearer };
     case "cohere":
       return { method: "GET", url: "https://api.cohere.com/v1/models?page_size=1", headers: bearer };
     case "voyage":

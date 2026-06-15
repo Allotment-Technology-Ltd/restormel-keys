@@ -4,6 +4,7 @@ export const BYOK_PROVIDER_ORDER = [
   'vertex',
   'anthropic',
   'openai',
+  'xai',
   'groq',
   'mistral',
   'deepseek',
@@ -23,6 +24,7 @@ export const REASONING_PROVIDER_ORDER = [
   'vertex',
   'anthropic',
   'openai',
+  'xai',
   'groq',
   'mistral',
   'deepseek',
@@ -66,6 +68,12 @@ export const PROVIDER_UI_META: Record<ByokProvider, ProviderUiMeta> = {
     modelLabel: 'OpenAI',
     hint: 'Use an OpenAI API key. Stored encrypted per account.',
     placeholder: 'sk-proj-...'
+  },
+  xai: {
+    label: 'xAI',
+    modelLabel: 'Grok',
+    hint: 'Use an xAI API key for Grok models (OpenAI-compatible chat completions). Stored encrypted per account.',
+    placeholder: 'xai-...'
   },
   groq: {
     label: 'Groq',
@@ -155,6 +163,15 @@ export const DEFAULT_MODEL_CATALOG: Record<ReasoningProvider, string[]> = {
     'o3',
     'o3-mini',
     'o4-mini'
+  ],
+  /** Aligned with @restormel/keys XAI_MODELS (Grok 3 / Grok 2 families). */
+  xai: [
+    'grok-3-fast',
+    'grok-3',
+    'grok-3-mini',
+    'grok-2-vision-1212',
+    'grok-2-1212',
+    'grok-2-mini'
   ],
   groq: [
     'llama-3.3-70b-versatile',
@@ -256,6 +273,7 @@ export const REASONING_PROVIDER_PLATFORM_API_KEY_ENV: Partial<Record<ReasoningPr
   vertex: 'GOOGLE_AI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
   openai: 'OPENAI_API_KEY',
+  xai: 'XAI_API_KEY',
   groq: 'GROQ_API_KEY',
   mistral: 'MISTRAL_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
@@ -268,6 +286,7 @@ export const REASONING_PROVIDER_PLATFORM_API_KEY_ENV: Partial<Record<ReasoningPr
 
 export const REASONING_PROVIDER_BASE_URL_ENV: Partial<Record<ReasoningProvider, string>> = {
   openai: 'OPENAI_BASE_URL',
+  xai: 'XAI_BASE_URL',
   groq: 'GROQ_BASE_URL',
   mistral: 'MISTRAL_BASE_URL',
   deepseek: 'DEEPSEEK_BASE_URL',
@@ -279,6 +298,7 @@ export const REASONING_PROVIDER_BASE_URL_ENV: Partial<Record<ReasoningProvider, 
 };
 
 export const REASONING_PROVIDER_DEFAULT_BASE_URL: Partial<Record<ReasoningProvider, string>> = {
+  xai: 'https://api.x.ai/v1',
   groq: 'https://api.groq.com/openai/v1',
   mistral: 'https://api.mistral.ai/v1',
   deepseek: 'https://api.deepseek.com/v1',

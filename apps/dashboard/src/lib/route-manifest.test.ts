@@ -57,6 +57,7 @@ const ROUTE_CLASSIFICATION: Record<string, { kind: string; via: string }> = {
   "/cli/connect": { kind: "out-of-nav functional", via: "CLI device-code approval flow (§2.3 KEEP out-of-nav)" },
   "/copy-for-ci": { kind: "page-link", via: "Testing hub tab (TESTING_HUB_TABS)" },
   "/access/audit": { kind: "redirect", via: "+page.server.ts → 308 /prove/audit (R5 D5; deep link kept from /access)" },
+  "/connect/model-advisory": { kind: "redirect", via: "+page.server.ts → 308 /models?view=rank (unified Models page, rank lens)" },
   "/sources/ingest": { kind: "page-link", via: "Home journey CTAs + palette action:start-ingest-flow (flows are not places — §2.1)" },
   "/claims/memory": { kind: "page-link", via: "palette nav:claims-memory + dev-tools/mcp memory-inbox links (R3 inbox strip mounts it on Home)" },
   "/routes/ingestion": { kind: "page-link", via: "ledger fix links (run-preflight/journey fixHrefs) + palette nav:ingest-routes" },

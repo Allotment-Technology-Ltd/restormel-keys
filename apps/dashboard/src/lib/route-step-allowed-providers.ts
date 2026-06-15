@@ -16,6 +16,7 @@ export const ROUTE_STEP_ALLOWED_STORAGE_PROVIDER_IDS = [
   "together",
   "cohere",
   "groq",
+  "xai",
   "aizolo",
 ] as const;
 

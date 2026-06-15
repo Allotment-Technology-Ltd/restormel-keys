@@ -1,51 +1,32 @@
 <script lang="ts">
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { invalidateAll } from "$app/navigation";
-  import { page } from "$app/stores";
-  import { tick, onMount } from "svelte";
-  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
-  import { DIRECT_PROVIDER_CONNECT_CARDS } from "$lib/route-step-providers";
-  import type { IntegrationSummary } from "./+page.server";
+  import type { IntegrationSummary, ProviderSuggestion } from "./+page.server";
 
-  export let data: { integrations: IntegrationSummary[]; error: string | null };
+  export let data: {
+    integrations: IntegrationSummary[];
+    providerSuggestions: ProviderSuggestion[];
+    error: string | null;
+  };
 
-  const GATEWAY_PROVIDER_VALUES = new Set(["openrouter", "portkey", "vercel_ai_gateway"]);
-
-  const ALL_PROVIDER_CARDS = [
-    ...DIRECT_PROVIDER_CONNECT_CARDS,
-    { value: "openrouter", label: "OpenRouter" },
-    { value: "portkey", label: "Portkey" },
-    { value: "vercel_ai_gateway", label: "Vercel AI" },
-    { value: "other", label: "Other" },
-  ];
-
-  $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
-  $: PROVIDER_CARDS = ALL_PROVIDER_CARDS.filter(
-    (card) => gatewayProvidersOn || !GATEWAY_PROVIDER_VALUES.has(card.value)
-  );
-  $: showGatewayJourneys = gatewayProvidersOn;
+  // Provider suggestions are DERIVED FROM THE MODEL CATALOGUE (server load) — every provider with
+  // models, offered equally. No vendor is featured; the field is free-text, so anything can be typed.
+  $: providerSuggestions = data.providerSuggestions ?? [];
 
   let connecting = false;
   let connectError = "";
-  /** null until the user picks a provider tile (avoids looking pre-filled on landing). */
-  let providerType: string | null = null;
-  let otherProviderType = "";
+  /** Free-text provider type; suggestions are advisory only. */
+  let providerInput = "";
   let displayName = "";
   let credentialRef = "";
   /** One-time hosted API key; encrypted at rest when server is configured. Cleared after successful submit. */
   let apiKey = "";
 
-  $: effectiveProviderType =
-    !providerType ? "" : providerType === "other" ? otherProviderType.trim() : providerType;
-  $: providerReady = Boolean(
-    providerType && (providerType !== "other" || otherProviderType.trim()),
-  );
+  $: effectiveProviderType = providerInput.trim();
+  $: providerReady = Boolean(effectiveProviderType);
   $: selectedProviderLabel =
-    !providerType
-      ? ""
-      : providerType === "other"
-        ? otherProviderType.trim() || "Other"
-        : (PROVIDER_CARDS.find((c) => c.value === providerType)?.label ?? providerType);
+    providerSuggestions.find((p) => p.value === effectiveProviderType.toLowerCase())?.label ||
+    effectiveProviderType;
   $: canConnect = Boolean(
     effectiveProviderType &&
       displayName.trim() &&
@@ -56,32 +37,8 @@
     document.getElementById("connect-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function selectProvider(value: string) {
-    if (providerType !== value) {
-      displayName = "";
-      credentialRef = "";
-      apiKey = "";
-    }
-    providerType = value;
-    if (value !== "other") otherProviderType = "";
-    connectError = "";
-    void focusConnectStep2();
-  }
-
-  async function focusConnectStep2() {
-    await tick();
-    if (!providerReady) return;
-    document.getElementById("connect-step-2")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    const label = document.getElementById("integration-label");
-    if (label instanceof HTMLInputElement) {
-      label.removeAttribute("readonly");
-      label.focus();
-    }
-  }
-
   function resetConnectForm() {
-    providerType = null;
-    otherProviderType = "";
+    providerInput = "";
     displayName = "";
     credentialRef = "";
     apiKey = "";
@@ -92,34 +49,6 @@
   function unlockAutofillGuard(e: FocusEvent) {
     const el = e.currentTarget;
     if (el instanceof HTMLInputElement) el.removeAttribute("readonly");
-  }
-
-  onMount(() => {
-    if (!providerType) resetConnectForm();
-  });
-
-  function startJourney(kind: "openrouter" | "vercel_ai_gateway" | "portkey" | "direct") {
-    connectError = "";
-    if (kind === "openrouter") {
-      providerType = "openrouter";
-      displayName = "OpenRouter";
-      credentialRef = "";
-    } else if (kind === "vercel_ai_gateway") {
-      providerType = "vercel_ai_gateway";
-      displayName = "Vercel AI Gateway";
-      credentialRef = "";
-    } else if (kind === "portkey") {
-      providerType = "portkey";
-      displayName = "Portkey";
-      credentialRef = "";
-    } else {
-      providerType = null;
-      displayName = "";
-      credentialRef = "";
-      jumpToForm();
-      return;
-    }
-    void focusConnectStep2();
   }
 
   async function connectProvider() {
@@ -186,86 +115,42 @@
 {#if data.error}
   <p class="error-msg" role="alert">{data.error}</p>
 {:else}
+  <!-- Provider-neutral access-mode explainer. Replaces the former per-vendor "journey"
+       cards (OpenRouter / Vercel / Portkey) that funneled specific providers down their
+       own branded paths — Restormel treats every provider equally (provider-equality
+       principle), so connection guidance is framed by ACCESS MODE, not by vendor. -->
   {#if data.integrations.length > 0}
-    <details class="section journey-details">
-      <summary>How does this work? →</summary>
-      <div class="journeys-grid">
-        {#if showGatewayJourneys}
-        <div class="journey-card">
-          <h3 class="journey-title">OpenRouter</h3>
-          <p class="journey-desc">Keep OpenRouter as execution. Use Restormel for rules, guard rails, and fallbacks.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("openrouter")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/openrouter" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        <div class="journey-card">
-          <h3 class="journey-title">Vercel AI Gateway</h3>
-          <p class="journey-desc">Keep Vercel gateway auth/observability. Let Restormel handle rule governance.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("vercel_ai_gateway")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/vercel-ai-gateway" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        <div class="journey-card">
-          <h3 class="journey-title">Portkey</h3>
-          <p class="journey-desc">Keep Portkey as the gateway. Use Restormel for explicit rule and fallback governance.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("portkey")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/portkey" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        {/if}
-        <div class="journey-card">
-          <h3 class="journey-title">Direct providers</h3>
-          <p class="journey-desc">Keep provider keys in your own secret manager. Restormel applies routing decisions.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("direct")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">Modes →</a>
-          </div>
-        </div>
+    <details class="section access-modes-details">
+      <summary>How connections work →</summary>
+      <div class="access-modes-body">
+        <p class="section-desc">
+          Connect any provider below — Restormel treats every provider equally for routing, rules, and
+          fallbacks. Two access modes are supported, and you can mix them per connection:
+        </p>
+        <ul class="access-modes">
+          <li><strong>Direct provider key</strong> — paste a hosted API key (encrypted at rest) or reference a non-secret label from your own secrets manager.</li>
+          <li><strong>Through a gateway you already run</strong> — keep your existing gateway for execution, auth, and observability; Restormel applies rule and fallback governance on top.</li>
+        </ul>
+        <p class="section-desc">
+          See <a class="btn-link" href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">access modes →</a> for details.
+        </p>
       </div>
     </details>
   {:else}
-    <section class="section" aria-labelledby="journeys-heading">
-      <h2 id="journeys-heading" class="section-title">How do you connect?</h2>
-      <p class="section-desc">Pick the journey that matches your stack. This is the first step when no connections exist.</p>
-      <div class="journeys-grid">
-        {#if showGatewayJourneys}
-        <div class="journey-card">
-          <h3 class="journey-title">OpenRouter</h3>
-          <p class="journey-desc">Keep OpenRouter as execution. Use Restormel for rules, guard rails, and fallbacks.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("openrouter")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/openrouter" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        <div class="journey-card">
-          <h3 class="journey-title">Vercel AI Gateway</h3>
-          <p class="journey-desc">Keep Vercel gateway auth/observability. Let Restormel handle rule governance.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("vercel_ai_gateway")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/vercel-ai-gateway" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        <div class="journey-card">
-          <h3 class="journey-title">Portkey</h3>
-          <p class="journey-desc">Keep Portkey as the gateway. Use Restormel for explicit rule and fallback governance.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("portkey")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/portkey" target="_blank" rel="noopener noreferrer">Guide →</a>
-          </div>
-        </div>
-        {/if}
-        <div class="journey-card">
-          <h3 class="journey-title">Direct providers</h3>
-          <p class="journey-desc">Keep provider keys in your own secret manager. Restormel applies routing decisions.</p>
-          <div class="journey-actions">
-            <button type="button" class="btn btn-secondary" onclick={() => startJourney("direct")}>Start</button>
-            <a class="btn-link" href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">Modes →</a>
-          </div>
-        </div>
-      </div>
+    <section class="section" aria-labelledby="access-modes-heading">
+      <h2 id="access-modes-heading" class="section-title">How connections work</h2>
+      <p class="section-desc">
+        Connect any provider below — Restormel treats every provider equally for routing, rules, and
+        fallbacks. Two access modes are supported, and you can mix them per connection:
+      </p>
+      <ul class="access-modes">
+        <li><strong>Direct provider key</strong> — paste a hosted API key (encrypted at rest) or reference a non-secret label from your own secrets manager.</li>
+        <li><strong>Through a gateway you already run</strong> — keep your existing gateway for execution, auth, and observability; Restormel applies rule and fallback governance on top.</li>
+      </ul>
+      <p class="section-desc">
+        Pick a provider under <strong>Add a connection</strong> below to get started, or read the
+        <a class="btn-link" href="/keys/docs/guides/provider-access-modes" target="_blank" rel="noopener noreferrer">access modes guide →</a>.
+      </p>
     </section>
   {/if}
 
@@ -288,55 +173,39 @@
         <p class="wizard-step">Step 1</p>
         <p class="wizard-title">Provider</p>
         <p class="provider-selection-hint" aria-live="polite">
-          {#if !providerType}
-            Choose a provider to continue.
-          {:else if providerType === "other" && !otherProviderType.trim()}
-            Selected: <strong>Other</strong> — enter your integration type below to unlock the next steps.
+          {#if !providerReady}
+            Type or pick any provider — suggestions are the providers in the model catalogue.
           {:else}
             Selected: <strong>{selectedProviderLabel}</strong> — add a display name and credential below.
           {/if}
         </p>
-        <div class="provider-grid" role="radiogroup" aria-label="Provider">
-          {#each PROVIDER_CARDS as opt}
-            <button
-              type="button"
-              class="provider-btn"
-              class:provider-btn-active={providerType === opt.value}
-              role="radio"
-              aria-checked={providerType === opt.value}
-              onclick={() => selectProvider(opt.value)}
-            >
-              <span class="provider-btn-label">{opt.label}</span>
-              {#if providerType === opt.value}
-                <span class="provider-btn-check" aria-hidden="true">Selected</span>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      </div>
-      {#if providerType === "other"}
-        <div class="form-row wizard-row-nested">
-          <label for="integration-other-type">Integration type value</label>
+        <div class="form-row">
           <input
-            id="integration-other-type"
-            name="integration-other-type"
+            id="integration-provider"
+            name="integration-provider"
             type="text"
-            bind:value={otherProviderType}
             class="input"
-            placeholder="e.g. custom_provider"
+            list="provider-suggestions"
+            placeholder="e.g. openai, cohere, groq…"
+            aria-label="Provider type"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
-            readonly
-            onfocus={unlockAutofillGuard}
-            oninput={() => {
-              if (otherProviderType.trim()) void focusConnectStep2();
-            }}
+            bind:value={providerInput}
           />
+          <datalist id="provider-suggestions">
+            {#each providerSuggestions as p (p.value)}
+              <option value={p.value}>{p.label}</option>
+            {/each}
+          </datalist>
+          <p class="helper">
+            Any provider works — Restormel treats them equally. The {providerSuggestions.length} providers
+            in the model catalogue are suggested as you type; type any other to connect it.
+          </p>
         </div>
-      {/if}
+      </div>
       {#if providerReady}
-      {#key providerType}
+      {#key effectiveProviderType}
       <div class="wizard-row" id="connect-step-2">
         <p class="wizard-step">Step 2</p>
         <div class="form-row">
@@ -497,11 +366,6 @@
     display: block;
     cursor: pointer;
   }
-  .provider-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
-    gap: var(--space-2);
-  }
   .provider-selection-hint {
     margin: 0 0 var(--space-3);
     font-size: var(--text-sm);
@@ -511,63 +375,6 @@
   .provider-selection-hint strong {
     color: var(--rm-text);
     font-weight: 600;
-  }
-  .provider-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    min-height: 2.75rem;
-    border: 2px solid var(--rm-border);
-    border-radius: var(--rm-radius);
-    background: var(--rm-surface-raised);
-    color: var(--rm-muted);
-    padding: var(--space-2);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      color 0.15s ease,
-      box-shadow 0.15s ease;
-  }
-  .provider-btn:hover {
-    border-color: var(--rm-text);
-    color: var(--rm-text);
-  }
-  .provider-btn:focus-visible {
-    outline: 2px solid var(--rm-sage);
-    outline-offset: 2px;
-  }
-  .provider-btn-active {
-    border-color: var(--rm-text);
-    background: var(--rm-sage-bg, var(--rm-surface));
-    color: var(--rm-text);
-    box-shadow: 0 0 0 1px var(--rm-text);
-    font-weight: 600;
-  }
-  .provider-btn-label {
-    line-height: 1.2;
-    text-align: center;
-  }
-  .provider-btn-check {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--rm-sage);
-  }
-  .wizard-row-nested {
-    margin: calc(-1 * var(--space-2)) 0 var(--space-3);
-    padding: 0 var(--space-3) var(--space-3);
-  }
-  .wizard-row-nested label {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--rm-text);
-    margin-bottom: var(--space-1);
   }
   .helper {
     margin: var(--space-1) 0 0;
@@ -649,16 +456,28 @@
     margin-top: var(--space-1);
   }
 
-  .journeys-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: var(--space-4);
-    margin-top: var(--space-3);
-  }
-  .journey-details summary {
+  .access-modes-details summary {
     cursor: pointer;
     color: var(--rm-sage);
     font-size: var(--text-sm);
+  }
+  .access-modes-body {
+    margin-top: var(--space-3);
+  }
+  .access-modes {
+    margin: var(--space-2) 0;
+    padding-left: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .access-modes li {
+    font-size: var(--text-sm);
+    color: var(--rm-muted);
+    line-height: var(--leading-relaxed);
+  }
+  .access-modes li strong {
+    color: var(--rm-text);
   }
   .list-head {
     display: flex;
@@ -666,29 +485,6 @@
     align-items: center;
     gap: var(--space-3);
     margin-bottom: var(--space-2);
-  }
-  .journey-card {
-    border: var(--border-thin);
-    border-radius: var(--radius-md);
-    background: var(--rm-surface-raised);
-    padding: var(--space-4);
-  }
-  .journey-title {
-    margin: 0 0 var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--rm-text);
-  }
-  .journey-desc {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-sm);
-    color: var(--rm-muted);
-    line-height: var(--leading-relaxed);
-  }
-  .journey-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
   }
   .btn-link {
     font-size: var(--text-sm);

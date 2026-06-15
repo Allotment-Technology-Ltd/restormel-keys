@@ -1707,6 +1707,11 @@ export type ModelRecord = {
   retirementDate: number | null;
   replacementModelId: string | null;
   sourceLastVerifiedAt: number | null;
+  /**
+   * Migration 068: vendor's legal home jurisdiction (e.g. US, EU/FR, UK, CA, CN). NULL = unknown.
+   * Optional so existing inline ModelRecord fixtures stay valid; `mapModelRow` always populates it.
+   */
+  homeJurisdiction?: string | null;
 };
 
 export type ProviderModelVariantRecord = {
@@ -1720,6 +1725,12 @@ export type ProviderModelVariantRecord = {
   rateLimitRef: string | null;
   metadata: Record<string, unknown> | null;
   sourceLastVerifiedAt: number | null;
+  /**
+   * Migration 068: where inference actually runs for this route (aggregator region for aggregators).
+   * NULL = unknown. Optional so existing inline variant fixtures stay valid; `mapVariantRow` always
+   * populates it.
+   */
+  processingRegion?: string | null;
 };
 
 function mapModelRow(r: Record<string, unknown>): ModelRecord {
@@ -1745,6 +1756,7 @@ function mapModelRow(r: Record<string, unknown>): ModelRecord {
     retirementDate: r.retirementDate != null ? Number(r.retirementDate) : null,
     replacementModelId: (r.replacementModelId as string) ?? null,
     sourceLastVerifiedAt: r.sourceLastVerifiedAt != null ? Number(r.sourceLastVerifiedAt) : null,
+    homeJurisdiction: (r.homeJurisdiction as string) ?? null,
   };
 }
 
@@ -1760,6 +1772,7 @@ function mapVariantRow(r: Record<string, unknown>): ProviderModelVariantRecord {
     rateLimitRef: (r.rateLimitRef as string) ?? null,
     metadata: (r.metadata as Record<string, unknown>) ?? null,
     sourceLastVerifiedAt: r.sourceLastVerifiedAt != null ? Number(r.sourceLastVerifiedAt) : null,
+    processingRegion: (r.processingRegion as string) ?? null,
   };
 }
 
@@ -1813,7 +1826,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE lifecycle_state = ${lifecycleState} AND family = ${family}
       ORDER BY canonical_name ASC
@@ -1826,7 +1840,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE lifecycle_state = ${lifecycleState} AND family = ${family}
         AND (retirement_date IS NULL OR retirement_date > ${nowMs})
@@ -1844,7 +1859,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE lifecycle_state = ${lifecycleState}
       ORDER BY canonical_name ASC
@@ -1857,7 +1873,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE lifecycle_state = ${lifecycleState}
         AND (retirement_date IS NULL OR retirement_date > ${nowMs})
@@ -1875,7 +1892,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE family = ${family}
       ORDER BY canonical_name ASC
@@ -1888,7 +1906,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
              supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
              editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
              avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+             replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+             home_jurisdiction AS "homeJurisdiction"
       FROM models
       WHERE family = ${family}
         AND (retirement_date IS NULL OR retirement_date > ${nowMs})
@@ -1906,7 +1925,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
            supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
            editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
            avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+           home_jurisdiction AS "homeJurisdiction"
     FROM models
     ORDER BY canonical_name ASC
     LIMIT ${safeLimit} OFFSET ${safeOffset}
@@ -1918,7 +1938,8 @@ export async function listModels(filters: ListModelsFilters = {}): Promise<Model
            supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
            editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
            avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+           home_jurisdiction AS "homeJurisdiction"
     FROM models
     WHERE (retirement_date IS NULL OR retirement_date > ${nowMs})
       AND (lifecycle_state IS NULL OR LOWER(TRIM(lifecycle_state)) NOT IN ('deprecated', 'retired'))
@@ -1938,7 +1959,8 @@ export async function getModel(id: string): Promise<ModelRecord | null> {
            supports_structured_output AS "supportsStructuredOutput", supports_mcp AS "supportsMcp",
            editorial_summary AS "editorialSummary", strengths, weaknesses, recommended_for AS "recommendedFor",
            avoid_for AS "avoidFor", deprecation_date AS "deprecationDate", retirement_date AS "retirementDate",
-           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt"
+           replacement_model_id AS "replacementModelId", source_last_verified_at AS "sourceLastVerifiedAt",
+           home_jurisdiction AS "homeJurisdiction"
     FROM models
     WHERE id = ${id}
     LIMIT 1
@@ -1985,7 +2007,7 @@ export async function listProviderModelVariants(modelId: string): Promise<Provid
            catalog_provider_id AS "catalogProviderId",
            provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
            pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
-           source_last_verified_at AS "sourceLastVerifiedAt"
+           source_last_verified_at AS "sourceLastVerifiedAt", processing_region AS "processingRegion"
     FROM provider_model_variants
     WHERE model_id = ${modelId}
     ORDER BY provider_integration_type ASC, provider_model_id ASC
@@ -2006,7 +2028,7 @@ export async function listProviderModelVariantsByModelIds(
            catalog_provider_id AS "catalogProviderId",
            provider_model_id AS "providerModelId", availability_status AS "availabilityStatus",
            pricing_ref AS "pricingRef", rate_limit_ref AS "rateLimitRef", metadata,
-           source_last_verified_at AS "sourceLastVerifiedAt"
+           source_last_verified_at AS "sourceLastVerifiedAt", processing_region AS "processingRegion"
     FROM provider_model_variants
     WHERE model_id = ANY(${uniqueModelIds})
     ORDER BY model_id ASC, provider_integration_type ASC, provider_model_id ASC

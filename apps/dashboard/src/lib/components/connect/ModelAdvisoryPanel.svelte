@@ -1,15 +1,16 @@
 <script lang="ts">
   import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import BrutalBadge from "$lib/components/brutalist/BrutalBadge.svelte";
-  import BrutalButton from "$lib/components/brutalist/BrutalButton.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
+  import { DASHBOARD_BASE } from "$lib/dashboard-base";
 
   // ── Types ──────────────────────────────────────────────────────────────────
 
   type Verdict = "recommended" | "usable" | "caveat" | "unknown" | "wrong_type";
   type Stage = "extraction" | "grouping" | "validation" | "remediation" | "embedding";
 
+  /** A single flat, pre-ranked candidate (provider-neutral order from the engine). */
   interface AdvisoryModel {
     id: string;
     name: string;
@@ -18,25 +19,22 @@
     blocked: boolean;
     homeJurisdiction: string | null;
     processingRegion: string | null;
-    providerModelId: string;
+    providerModelId: string | null;
     lifecycleState: string | null;
     costPerMillion: string;
     runCost: string;
-  }
-
-  interface AdvisoryProvider {
     provider: string;
-    hiddenByRegion: number;
-    hiddenUnknownRegion: number;
-    models: AdvisoryModel[];
+    connected: boolean;
   }
 
   interface StageSuitabilityResponse {
     stage: Stage;
-    provider_types: string[];
+    connected_providers: string[];
     region_filter: unknown;
     upstream_families: string[];
-    providers: AdvisoryProvider[];
+    models: AdvisoryModel[];
+    hidden_by_region: number;
+    hidden_unknown_region: number;
   }
 
   // ── Stage options ──────────────────────────────────────────────────────────
@@ -89,12 +87,16 @@
     },
   };
 
+  const INTEGRATIONS_HREF = `${DASHBOARD_BASE}/integrations`;
+
   // ── Reactive state ─────────────────────────────────────────────────────────
 
   let selectedStage: Stage = "extraction";
   let regionPreset: RegionPreset = "none";
   let keepUnknown = true;
   let query = "";
+  /** When true, show only models on providers the user has connected. Presentation-only filter. */
+  let connectedOnly = false;
 
   let loading = false;
   let error: string | null = null;
@@ -180,42 +182,49 @@
   $: stageLabel = STAGES.find((s) => s.id === selectedStage)?.label ?? selectedStage;
   $: q = query.trim().toLowerCase();
 
-  // Apply the client-side name search on top of the server result.
-  $: visibleProviders = result
-    ? result.providers.map((p) => ({
-        ...p,
-        models: q
-          ? p.models.filter(
-              (m) =>
-                (m.name || m.id).toLowerCase().includes(q) ||
-                m.providerModelId.toLowerCase().includes(q),
-            )
-          : p.models,
-      }))
-    : [];
+  // The server hands back ONE flat, pre-ranked list. The client search filters on
+  // both model name AND provider — it NEVER reorders (the suitability order is the
+  // engine's provider-neutral verdict→cost ranking).
+  $: allModels = result?.models ?? [];
+  $: visibleModels = allModels.filter((m) => {
+    if (connectedOnly && !m.connected) return false;
+    if (
+      q &&
+      !(
+        (m.name || m.id).toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(q) ||
+        (m.providerModelId ?? "").toLowerCase().includes(q)
+      )
+    )
+      return false;
+    return true;
+  });
+  $: connectedCount = allModels.filter((m) => m.connected).length;
 
-  $: totalModels = visibleProviders.reduce((n, p) => n + p.models.length, 0);
-  $: totalBlocked = visibleProviders.reduce(
-    (n, p) => n + p.models.filter((m) => m.blocked).length,
-    0,
-  );
-  $: totalViable = totalModels - totalBlocked;
-  $: totalHiddenByRegion = result
-    ? result.providers.reduce((n, p) => n + p.hiddenByRegion, 0)
-    : 0;
-  // Every provider returned, but the current filter/search leaves nothing to show.
-  $: allEmpty = !!result && result.providers.length > 0 && totalModels === 0;
+  // Split into viable (shown directly) and blocked (collapsed). Order preserved.
+  $: viableModels = visibleModels.filter((m) => !m.blocked);
+  $: blockedModels = visibleModels.filter((m) => m.blocked);
+
+  $: totalModels = visibleModels.length;
+  $: totalBlocked = blockedModels.length;
+  $: totalViable = viableModels.length;
+  $: providerCount = new Set(visibleModels.map((m) => m.provider)).size;
+  $: totalHiddenByRegion = result?.hidden_by_region ?? 0;
+  // The server returned models, but the current filter/search leaves nothing to show.
+  $: allEmpty = !!result && allModels.length > 0 && totalModels === 0;
+  // The catalogue itself returned nothing for this stage/region (rare).
+  $: noCatalogue = !!result && allModels.length === 0;
 
   // Short, screen-reader-announced summary of the current result.
   $: summary = !result
     ? ""
     : loading
       ? "Loading model advisory…"
-      : allEmpty
+      : allEmpty || noCatalogue
         ? `${stageLabel}: no models match the current filters` +
           (totalHiddenByRegion > 0 ? ` (${totalHiddenByRegion} hidden by region)` : "")
-        : `${stageLabel}: ${result.providers.length} provider${result.providers.length === 1 ? "" : "s"}, ` +
-          `${totalViable} suitable, ${totalBlocked} blocked` +
+        : `${stageLabel}: ${totalViable} suitable, ${totalBlocked} blocked across ` +
+          `${providerCount} provider${providerCount === 1 ? "" : "s"}` +
           (totalHiddenByRegion > 0 ? `, ${totalHiddenByRegion} hidden by region` : "");
 
   // ── Radiogroup keyboard navigation (stage + region strips) ─────────────────
@@ -272,6 +281,24 @@
             <span class="blocked-marker" aria-label="Blocked: wrong model type for this stage">
               blocked
             </span>
+          {/if}
+        </div>
+
+        <!-- Provider + connection affordance -->
+        <div class="model-provider-row">
+          <span class="provider-tag" title="Provider integration">{model.provider}</span>
+          {#if model.connected}
+            <span class="connected-badge" aria-label="Provider {model.provider} is connected" title="You have connected {model.provider}">
+              connected
+            </span>
+          {:else}
+            <a
+              class="connect-link brut-focus"
+              href={INTEGRATIONS_HREF}
+              aria-label="Connect {model.provider} on the integrations page"
+            >
+              Connect ↗
+            </a>
           {/if}
         </div>
 
@@ -333,7 +360,7 @@
     </div>
     <div class="advisory-cap-side">
       {#if result && !loading}
-        <BrutalBadge variant="secondary" label="{result.providers.length} provider{result.providers.length === 1 ? '' : 's'}" />
+        <BrutalBadge variant="secondary" label="{providerCount} provider{providerCount === 1 ? '' : 's'}" />
         <BrutalBadge variant="secondary" label="{totalViable} suitable" />
         {#if totalBlocked > 0}
           <BrutalBadge variant="secondary" label="{totalBlocked} blocked" />
@@ -396,17 +423,25 @@
           />
           <span class="unknown-label">Show unknown region</span>
         </label>
+        <label class="unknown-toggle">
+          <input
+            type="checkbox"
+            bind:checked={connectedOnly}
+            class="unknown-checkbox"
+          />
+          <span class="unknown-label">Connected only{#if connectedCount}&nbsp;({connectedCount}){/if}</span>
+        </label>
       </div>
     </fieldset>
 
-    <!-- Model name search -->
+    <!-- Model search (name or provider) -->
     <div class="search-row">
       <label class="search-label" for="advisory-search">Find model</label>
       <input
         id="advisory-search"
         type="search"
         class="search-input brut-focus"
-        placeholder="Filter by model name…"
+        placeholder="Filter by model or provider…"
         autocomplete="off"
         bind:value={query}
       />
@@ -427,7 +462,7 @@
         {/snippet}
       </BrutalErrorBanner>
     {:else if result}
-      {#if allEmpty}
+      {#if allEmpty || noCatalogue}
         <div class="empty-state" role="status">
           <p class="empty-title">
             {#if q}No models match “{query}”{:else}No models in this view{/if}
@@ -435,6 +470,9 @@
           <p class="empty-desc">
             {#if q}
               Clear the search or pick a different stage.
+            {:else if connectedOnly}
+              None of your connected providers have a suitable model for {stageLabel}.
+              Turn off <strong>Connected only</strong> to see the whole catalogue, or connect a provider.
             {:else if totalHiddenByRegion > 0}
               All {totalHiddenByRegion} model{totalHiddenByRegion === 1 ? "" : "s"} for {stageLabel} are
               hosted outside your selected region. Relax the region filter{keepUnknown
@@ -445,62 +483,42 @@
             {/if}
           </p>
         </div>
-      {:else if result.providers.length === 0}
-        <div class="empty-state" role="status">
-          <p class="empty-title">No providers connected</p>
-          <p class="empty-desc">Connect a model provider to see ranked suitability for this stage.</p>
-        </div>
       {:else}
-        <div class="providers-list" aria-label="Model advisory results">
-          {#each visibleProviders as providerBlock (providerBlock.provider)}
-            {@const viable = providerBlock.models.filter((m) => !m.blocked)}
-            {@const blocked = providerBlock.models.filter((m) => m.blocked)}
-            <section class="provider-section" aria-labelledby="provider-{providerBlock.provider}-heading">
-              <header class="provider-header">
-                <h3 id="provider-{providerBlock.provider}-heading" class="provider-name">
-                  {providerBlock.provider}
-                </h3>
-                <span class="provider-count">
-                  {viable.length} suitable{blocked.length ? ` · ${blocked.length} blocked` : ""}
-                </span>
-                {#if providerBlock.hiddenByRegion > 0}
-                  <p class="hidden-notice" role="note">
-                    <span class="hidden-notice-count">{providerBlock.hiddenByRegion}</span>
-                    hidden by region filter
-                    {#if providerBlock.hiddenUnknownRegion > 0}
-                      ({providerBlock.hiddenUnknownRegion} unknown region)
-                    {/if}
-                  </p>
-                {/if}
-              </header>
+        <div class="results" aria-label="Model advisory results">
+          {#if totalHiddenByRegion > 0}
+            <p class="hidden-notice" role="note">
+              <span class="hidden-notice-count">{totalHiddenByRegion}</span>
+              hidden by region filter
+              {#if result.hidden_unknown_region > 0}
+                ({result.hidden_unknown_region} unknown region)
+              {/if}
+            </p>
+          {/if}
 
-              <BrutalCard fill="white">
-                {#if providerBlock.models.length === 0}
-                  <p class="no-models">No models match “{query}”.</p>
-                {:else}
-                  {#if viable.length > 0}
-                    <ul class="model-list" aria-label="Suitable models for {providerBlock.provider}">
-                      {#each viable as model (model.id)}
-                        {@render modelRow(model)}
-                      {/each}
-                    </ul>
-                  {/if}
-                  {#if blocked.length > 0}
-                    <details class="blocked-details">
-                      <summary class="blocked-summary brut-focus">
-                        {blocked.length} model{blocked.length === 1 ? "" : "s"} incompatible with {stageLabel}
-                      </summary>
-                      <ul class="model-list model-list-blocked" aria-label="Incompatible models for {providerBlock.provider}">
-                        {#each blocked as model (model.id)}
-                          {@render modelRow(model)}
-                        {/each}
-                      </ul>
-                    </details>
-                  {/if}
-                {/if}
-              </BrutalCard>
-            </section>
-          {/each}
+          <BrutalCard fill="white">
+            {#if viableModels.length > 0}
+              <ul class="model-list" aria-label="Suitable models for {stageLabel}, ranked by suitability and cost">
+                {#each viableModels as model (model.provider + ":" + model.id)}
+                  {@render modelRow(model)}
+                {/each}
+              </ul>
+            {:else}
+              <p class="no-models">No suitable models for {stageLabel} in this view.</p>
+            {/if}
+
+            {#if blockedModels.length > 0}
+              <details class="blocked-details">
+                <summary class="blocked-summary brut-focus">
+                  {blockedModels.length} model{blockedModels.length === 1 ? "" : "s"} incompatible with {stageLabel}
+                </summary>
+                <ul class="model-list model-list-blocked" aria-label="Incompatible models for {stageLabel}">
+                  {#each blockedModels as model (model.provider + ":" + model.id)}
+                    {@render modelRow(model)}
+                  {/each}
+                </ul>
+              </details>
+            {/if}
+          </BrutalCard>
         </div>
       {/if}
     {:else}
@@ -727,34 +745,11 @@
     user-select: none;
   }
 
-  /* ── Provider sections ───────────────────────────────────────────────────── */
-  .providers-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  .provider-section {
+  /* ── Results region ──────────────────────────────────────────────────────── */
+  .results {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-  }
-
-  .provider-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-3);
-  }
-
-  .provider-name {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-md);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-ink);
   }
 
   .hidden-notice {
@@ -800,9 +795,9 @@
    * Blocked / wrong-type: a full-opacity disabled treatment. We do NOT use
    * `opacity` here — dimming a text container drops every cell below the WCAG AA
    * contrast threshold (worst case ~2.4:1), and the Embedding stage blocks ~all
-   * models, so that would fail at scale. "Blocked" is instead conveyed by the
-   * ✗ verdict badge, the strikethrough name, the coral `blocked` marker, AND a
-   * coral left rule + faint tint on the row — none of which touch text contrast.
+   * generative models, so that would fail at scale. "Blocked" is instead conveyed
+   * by the ✗ verdict badge, the strikethrough name, the coral `blocked` marker,
+   * AND a coral left rule + faint tint on the row — none of which touch text contrast.
    */
   .model-row-blocked {
     border-left: 3px solid var(--state-fail-fg, #991b1b);
@@ -940,6 +935,58 @@
     border-color: var(--state-fail-fg, #991b1b);
   }
 
+  /* ── Provider + connection row ───────────────────────────────────────────── */
+  .model-provider-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .provider-tag {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-ink);
+    border: var(--border-thin);
+    padding: 1px 6px;
+    background: var(--color-surface);
+  }
+
+  /* Connected — solid yellow brutalist chip (accent = "you already have this") */
+  .connected-badge {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    border: var(--border-thin);
+    border-color: var(--color-ink);
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+
+  /* Connect — subtle actionable link (ink underline, not the accent fill) */
+  .connect-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 1px 2px;
+  }
+
+  .connect-link:hover {
+    color: var(--color-blue);
+  }
+
   /* Rationale */
   .model-rationale {
     display: flex;
@@ -1064,7 +1111,7 @@
     outline-offset: 2px;
   }
 
-  /* ── Model name search ───────────────────────────────────────────────────── */
+  /* ── Model search ────────────────────────────────────────────────────────── */
   .search-row {
     display: flex;
     align-items: center;
@@ -1094,16 +1141,6 @@
   }
 
   .search-input::placeholder {
-    color: var(--color-ink-muted);
-  }
-
-  /* ── Per-provider count chip ─────────────────────────────────────────────── */
-  .provider-count {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: var(--color-ink-muted);
   }
 

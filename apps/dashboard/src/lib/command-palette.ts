@@ -81,7 +81,7 @@ export const NAV_COMMANDS: NavCommand[] = [
   { id: "nav:testing", label: "Testing", section: "Navigate", url: DASHBOARD_BASE + "/testing" },
   // Foundation group
   { id: "nav:connections", label: "Connections", section: "Navigate", url: DASHBOARD_BASE + "/integrations" },
-  { id: "nav:model-advisory", label: "Model advisory", section: "Navigate", url: DASHBOARD_BASE + "/connect/model-advisory" },
+  { id: "nav:model-advisory", label: "Model advisory", section: "Navigate", url: DASHBOARD_BASE + "/models?view=rank" },
   { id: "nav:gateway-keys", label: "Gateway keys", section: "Navigate", url: DASHBOARD_BASE + "/access" },
   { id: "nav:routes", label: "Routes", section: "Navigate", url: DASHBOARD_BASE + "/routes" },
   { id: "nav:ingest-routes", label: "Routes · Ingest routes", section: "Navigate", url: DASHBOARD_BASE + "/routes/ingestion" },

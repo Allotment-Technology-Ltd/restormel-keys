@@ -68,7 +68,6 @@ describe("sidebar nav (§2.2)", () => {
       ["Guard rails", DASHBOARD_BASE + "/policies"],
       ["Projects", DASHBOARD_BASE + "/projects"],
       ["Model catalog", DASHBOARD_BASE + "/models"],
-      ["Model advisory", DASHBOARD_BASE + "/connect/model-advisory"],
       ["Request tester", DASHBOARD_BASE + "/sandbox"],
     ]);
   });
@@ -88,10 +87,10 @@ describe("sidebar nav (§2.2)", () => {
       TESTING_NAV_ITEM.href,
       ...NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)),
     ];
-    // The Connect hub IA is dissolved, but the model-advisory surface is a live route that
-    // still physically lives under /connect/. Only that allow-listed route may use /connect.
-    const ALLOWED_CONNECT_HREFS = new Set([DASHBOARD_BASE + "/connect/model-advisory"]);
-    expect(allHrefs.filter((h) => h.includes("/connect") && !ALLOWED_CONNECT_HREFS.has(h))).toEqual([]);
+    // The Connect hub IA is fully dissolved from nav: model advisory is now a lens of the
+    // unified Models page (/models?view=rank), so NO nav href may point under /connect.
+    // (The /connect/model-advisory route still exists, but only as a 308 redirect to that lens.)
+    expect(allHrefs.filter((h) => h.includes("/connect"))).toEqual([]);
     // Graph-module stub is out of nav (D8); dev-tools merges into Agents in R5.
     expect(allHrefs.filter((h) => h.endsWith("/graph") || h.includes("/dev-tools"))).toEqual([]);
   });

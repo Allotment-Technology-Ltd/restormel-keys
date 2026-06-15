@@ -1,8 +1,9 @@
 /**
  * Stage suitability advisory (advisory plan §3.2/§3.4/§3.8) — derived, provider-neutral, region-
  * filterable. Read-only and ADDITIVE: it does not replace the existing model-recommendations
- * endpoint or the live pickers. Catalogue is read from the bundled seed (offline; the Neon/
- * replacement-PG repo is the deferred swap-in for discovered/registered models).
+ * endpoint or the live pickers. Catalogue is read from the live operational DB
+ * (DbCatalogueRepository) so discovered/registered models surface; it falls back to the bundled
+ * seed when the DB has zero models (offline / unsynced).
  *
  * Query params: stage, home, region, excludeHome, excludeRegion (comma lists), keepUnknown=1.
  */
@@ -21,15 +22,17 @@ import {
 } from "$lib/server/connect/stage-routing";
 import { resolveUpstreamValidationContext } from "$lib/server/connect/resolve-stage-route-models";
 import {
-  SeedCatalogueRepository,
-  computeStageAdvisory,
-  serializeStageAdvisory,
+  DbCatalogueRepository,
+  computeFlatStageAdvisory,
+  serializeFlatStageAdvisory,
   resolveUnderlyingFamily,
   type RegionFilter,
 } from "$lib/server/catalogue";
 import { CONNECT_MODEL_STAGES, type ConnectModelStage } from "@restormel/contracts/connect";
 
-const repo = new SeedCatalogueRepository();
+// DB-backed (Phase-1 swap): reads the live synced catalogue (incl. natively-registered models the
+// bundled seed lacks). Falls back to the seed automatically when the DB has zero models.
+const repo = new DbCatalogueRepository();
 
 function parseList(v: string | null): string[] | undefined {
   if (!v) return undefined;
@@ -62,7 +65,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   const workspace = await getOrCreateDefaultWorkspace(user.uid);
   const userId = user.uid;
   const integrations = await listProviderIntegrations(workspace.id).catch(() => []);
-  const providerTypes = [...new Set(integrations.map((i) => i.providerType).filter(Boolean))];
+  // Connected providers (normalized) — marks rows + still drives the validation upstream context.
+  // It does NOT restrict the candidate set: the flat advisory ranks the WHOLE catalogue.
+  const connected = new Set(
+    integrations.map((i) => (i.providerType ?? "").trim().toLowerCase()).filter(Boolean),
+  );
+  const allProviders = await repo.listProviders();
 
   // Cross-model caveat needs the underlying families bound upstream (validation only).
   const upstreamFamilies = new Set<string>();
@@ -98,18 +106,22 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     }
   }
 
-  const advisories = await computeStageAdvisory(repo, {
-    providerTypes,
+  const flat = await computeFlatStageAdvisory(repo, {
     stage,
+    providers: allProviders,
+    connected,
     upstreamFamilies,
     regionFilter: hasFilter ? regionFilter : undefined,
   });
+  const serialized = serializeFlatStageAdvisory(flat);
 
   return json({
     stage,
-    provider_types: providerTypes,
+    connected_providers: [...connected],
     region_filter: hasFilter ? regionFilter : null,
     upstream_families: [...upstreamFamilies],
-    providers: serializeStageAdvisory(advisories),
+    models: serialized.models,
+    hidden_by_region: serialized.hiddenByRegion,
+    hidden_unknown_region: serialized.hiddenUnknownRegion,
   });
 };

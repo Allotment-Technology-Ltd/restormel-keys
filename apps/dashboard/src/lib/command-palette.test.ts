@@ -184,19 +184,17 @@ describe("NAV_COMMANDS registry", () => {
   });
 
   it("registers no dissolved /connect URLs (R2)", () => {
-    // The Connect hub IA is dissolved, but the model-advisory surface is a live route that
-    // still physically lives under /connect/. Only that allow-listed command may use /connect.
-    const ALLOWED_CONNECT_IDS = new Set(["nav:model-advisory"]);
+    // The Connect hub IA is fully dissolved: model advisory is now a lens of the unified
+    // Models page (/models?view=rank). No palette command may point under /connect.
     for (const cmd of NAV_COMMANDS) {
-      if (ALLOWED_CONNECT_IDS.has(cmd.id)) continue;
       expect(cmd.url.includes("/connect"), `${cmd.id} still points at /connect`).toBe(false);
     }
   });
 
-  it("registers the model-advisory nav destination", () => {
+  it("registers the model-advisory nav destination (unified Models page, rank lens)", () => {
     const advisory = NAV_COMMANDS.find((c) => c.id === "nav:model-advisory");
     expect(advisory).toBeDefined();
-    expect(advisory?.url).toBe("/keys/dashboard/connect/model-advisory");
+    expect(advisory?.url).toBe("/keys/dashboard/models?view=rank");
     expect(advisory?.label).toBe("Model advisory");
   });
 

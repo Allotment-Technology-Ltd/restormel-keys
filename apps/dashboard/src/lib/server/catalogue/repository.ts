@@ -17,6 +17,12 @@ export interface RegisterUnverifiedInput {
 export interface CatalogueRepository {
   /** Every catalogue model offering a variant on this provider integration. */
   listModelsForProvider(providerType: string): Promise<CatalogueModel[]>;
+  /**
+   * Distinct provider integration types across the WHOLE catalogue (lowercased, trimmed, sorted).
+   * The flat advisory ranks every provider's models — connected or not — so this is the source of
+   * the candidate provider set, independent of which providers the user has connected. §3.2
+   */
+  listProviders(): Promise<string[]>;
   getModel(modelId: string): Promise<CatalogueModel | null>;
   capabilitiesFor(modelId: string): Promise<string[]>;
   variantsFor(modelId: string): Promise<CatalogueVariant[]>;
@@ -40,6 +46,17 @@ export class InMemoryCatalogueRepository implements CatalogueRepository {
     return [...this.models.values()].filter((m) =>
       (m.variants ?? []).some((v) => v.providerIntegrationType.trim().toLowerCase() === p),
     );
+  }
+
+  async listProviders(): Promise<string[]> {
+    const providers = new Set<string>();
+    for (const m of this.models.values()) {
+      for (const v of m.variants ?? []) {
+        const p = v.providerIntegrationType.trim().toLowerCase();
+        if (p) providers.add(p);
+      }
+    }
+    return [...providers].sort();
   }
 
   async getModel(modelId: string): Promise<CatalogueModel | null> {

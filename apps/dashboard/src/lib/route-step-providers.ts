@@ -14,6 +14,7 @@ export const ROUTE_STEP_PROVIDER_OPTIONS = [
   "openrouter",
   "vercel",
   "portkey",
+  "xai",
   "aizolo",
 ] as const;
 

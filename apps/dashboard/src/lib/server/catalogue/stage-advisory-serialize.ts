@@ -2,7 +2,7 @@
  * Serialize stage advisory to a stable JSON shape for the binding pickers (advisory plan §3.4/§3.7).
  * Pure + offline-testable; the +server.ts endpoint is thin glue over this.
  */
-import type { ProviderStageAdvisory } from "./stage-advisory";
+import type { ProviderStageAdvisory, FlatStageAdvisory } from "./stage-advisory";
 import type { AnnotatedModel } from "./ranking";
 import type { SuitabilityVerdict } from "./types";
 import { formatCostPerMillion, formatRunCost } from "./cost";
@@ -55,4 +55,28 @@ export function serializeStageAdvisory(
     hiddenUnknownRegion: adv.result.hiddenUnknownRegion,
     models: adv.result.ranked.map(serializeModel),
   }));
+}
+
+// ── Flat advisory serialization ──────────────────────────────────────────────
+/** A flat ranked row: the base advisory fields plus its provider + connection state. */
+export interface SerializedFlatModel extends SerializedAdvisoryModel {
+  provider: string;
+  connected: boolean;
+}
+
+/** Serialize the single flat ranked list (order is preserved verbatim from the engine). */
+export function serializeFlatStageAdvisory(flat: FlatStageAdvisory): {
+  models: SerializedFlatModel[];
+  hiddenByRegion: number;
+  hiddenUnknownRegion: number;
+} {
+  return {
+    models: flat.ranked.map((e) => ({
+      ...serializeModel(e),
+      provider: e.provider,
+      connected: e.connected,
+    })),
+    hiddenByRegion: flat.hiddenByRegion,
+    hiddenUnknownRegion: flat.hiddenUnknownRegion,
+  };
 }

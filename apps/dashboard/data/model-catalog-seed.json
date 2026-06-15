@@ -2787,6 +2787,219 @@
       ]
     },
     {
+      "id": "grok-3-fast",
+      "canonicalName": "grok-3-fast",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 3 Fast: low-latency frontier reasoning for ingestion extraction and validation.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_validation"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-3-fast",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-3-fast"
+        }
+      ]
+    },
+    {
+      "id": "grok-3",
+      "canonicalName": "grok-3",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 3: flagship reasoning and structured output for ingestion extraction and validation.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_validation"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-3",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-3"
+        }
+      ]
+    },
+    {
+      "id": "grok-3-mini",
+      "canonicalName": "grok-3-mini",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 3 Mini: cost-efficient Grok 3 tier for lighter ingestion stages.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-3-mini",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-3-mini"
+        }
+      ]
+    },
+    {
+      "id": "grok-2-vision-1212",
+      "canonicalName": "grok-2-vision-1212",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 2 Vision: multimodal Grok 2 with image understanding.",
+      "contextWindow": 32768,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "capabilities": [
+        "chat",
+        "vision",
+        "tools",
+        "ingestion_extraction"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-2-vision-1212",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-2-vision-1212"
+        }
+      ]
+    },
+    {
+      "id": "grok-2-1212",
+      "canonicalName": "grok-2-1212",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 2: general-purpose Grok 2 text generation.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools",
+        "ingestion_extraction",
+        "ingestion_validation"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-2-1212",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-2-1212"
+        }
+      ]
+    },
+    {
+      "id": "grok-2-mini",
+      "canonicalName": "grok-2-mini",
+      "family": "grok",
+      "lifecycleState": "active",
+      "description": "xAI Grok 2 Mini: cost-efficient Grok 2 tier for lighter ingestion stages.",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "supportsTools": true,
+      "supportsStructuredOutput": true,
+      "supportsMcp": false,
+      "modalities": [
+        "text"
+      ],
+      "capabilities": [
+        "chat",
+        "tools"
+      ],
+      "editorialSummary": null,
+      "homeJurisdiction": "US",
+      "deprecationDate": null,
+      "retirementDate": null,
+      "replacementModelId": null,
+      "sourceLastVerifiedAt": null,
+      "variants": [
+        {
+          "providerIntegrationType": "xai",
+          "providerModelId": "grok-2-mini",
+          "availabilityStatus": "available",
+          "processingRegion": "US",
+          "pricingRef": "xai-grok-2-mini"
+        }
+      ]
+    },
+    {
       "id": "aizolo-openai",
       "canonicalName": "aizolo-openai",
       "family": "aizolo",

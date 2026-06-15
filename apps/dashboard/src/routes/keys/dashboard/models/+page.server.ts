@@ -36,11 +36,14 @@ export const load: PageServerLoad = async ({ url }) => {
       let allowlistAlignedVariantCount = 0;
       let crowdDeprecatedReports = 0;
       let crowdRetiredReports = 0;
+      const processingRegions = new Set<string>();
       for (const v of variants) {
         const catalogProviderId = v.catalogProviderId ?? v.providerIntegrationType;
         if (isProviderModelInDefaultAllowlist(catalogProviderId, v.providerModelId, DEFAULT_ALLOWLIST)) {
           allowlistAlignedVariantCount += 1;
         }
+        const region = (v.processingRegion ?? "").trim();
+        if (region) processingRegions.add(region);
         const key = `${catalogProviderId}\t${v.providerModelId}`;
         const obs = observationMap.get(key);
         if (obs) {
@@ -49,8 +52,12 @@ export const load: PageServerLoad = async ({ url }) => {
         }
       }
 
+      const homeJurisdiction = (m.homeJurisdiction ?? "").trim() || null;
+
       return {
         ...m,
+        homeJurisdiction,
+        processingRegions: [...processingRegions].sort((a, b) => a.localeCompare(b)),
         variantsSummary: {
           providerCount: new Set(variants.map((v) => v.catalogProviderId ?? v.providerIntegrationType)).size,
           providerIds: [...new Set(variants.map((v) => (v.catalogProviderId ?? v.providerIntegrationType).toLowerCase()))].sort(),
@@ -68,9 +75,27 @@ export const load: PageServerLoad = async ({ url }) => {
     });
 
     const availableProviders = [...new Set(enriched.flatMap((m) => m.variantsSummary.providerIds))].sort();
-    return { models: enriched, availableProviders, error: null as string | null };
+    const availableJurisdictions = [
+      ...new Set(enriched.map((m) => m.homeJurisdiction).filter((j): j is string => !!j)),
+    ].sort((a, b) => a.localeCompare(b));
+    const availableRegions = [
+      ...new Set(enriched.flatMap((m) => m.processingRegions)),
+    ].sort((a, b) => a.localeCompare(b));
+    return {
+      models: enriched,
+      availableProviders,
+      availableJurisdictions,
+      availableRegions,
+      error: null as string | null,
+    };
   } catch (e) {
     console.error("[models] load failed:", e);
-    return { models: [], availableProviders: [], error: "Unable to load model catalog" };
+    return {
+      models: [],
+      availableProviders: [],
+      availableJurisdictions: [],
+      availableRegions: [],
+      error: "Unable to load model catalog",
+    };
   }
 };
