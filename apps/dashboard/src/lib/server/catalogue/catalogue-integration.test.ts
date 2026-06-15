@@ -9,8 +9,8 @@ import { computeStageAdvisory } from "./stage-advisory";
 const repo = new SeedCatalogueRepository();
 
 describe("seed repository", () => {
-  it("loads the 145-model catalogue", () => {
-    expect(loadSeedModels().length).toBeGreaterThan(100);
+  it("loads the 143-model catalogue", () => {
+    expect(loadSeedModels().length).toBe(143);
   });
   it("lists models for a provider", async () => {
     expect((await repo.listModelsForProvider("openai")).length).toBeGreaterThan(0);

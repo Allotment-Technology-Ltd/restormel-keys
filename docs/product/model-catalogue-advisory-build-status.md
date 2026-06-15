@@ -6,7 +6,7 @@
 **Built:** 2026-06-14 (overnight, multi-agent)
 
 > **One-paragraph summary:** The derived advisory **engine** is built and tested end-to-end against
-> the real 145-model catalogue — suitability verdicts (with the embedding two-way hard guard),
+> the real 143-model catalogue — suitability verdicts (with the embedding two-way hard guard),
 > aggregator/inference-host family resolution, cost ($/1M + $/run, never $0), provider-neutral
 > ranking, and jurisdiction/region filtering — plus the data facets, the Surreal dimension fix, an
 > additive read-only API, a neo-brutalist advisory UI, and the §3.9 discovery scaffold. **Everything
@@ -19,7 +19,7 @@
 |---|---|---|
 | Keystone | `CatalogueRepository` interface + in-memory & seed-backed impls; derived suitability (embedding hard-guard both ways); cost; aggregator/inference-host `underlyingFamily` | 48 unit tests |
 | Graph | Surreal HNSW `DIMENSION` parameterized (was hardcoded 768 → derives, default 1024) | graphrag typecheck + 93 tests |
-| Data | `homeJurisdiction` (per model) + `processingRegion` (per variant) on all 145 models via re-runnable enrich script; migration `068`; sync columns; capability hygiene test | seed-hygiene test |
+| Data | `homeJurisdiction` (per model) + `processingRegion` (per variant) on all 143 models via re-runnable enrich script; migration `068`; sync columns; capability hygiene test | seed-hygiene test |
 | Ranking | Provider-neutral ranking + region/jurisdiction filtering (allow/exclude, unknown handling, hidden counts) | neutrality test |
 | Advisory | `SeedCatalogueRepository` + `computeStageAdvisory` + serializer; integration tests on the REAL catalogue | integration tests |
 | API | `GET /keys/dashboard/api/connect/ingest/stage-suitability` (read-only, additive) | svelte-check |

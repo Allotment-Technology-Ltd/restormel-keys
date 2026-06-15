@@ -76,6 +76,35 @@ describe("region/jurisdiction filtering (§3.8)", () => {
     expect(evaluateRegion(chatModel("y", "p", "US", "US"), { providerIntegrationType: "p", providerModelId: "y", processingRegion: "US" }, f).pass).toBe(true);
   });
 
+  it("home-jurisdiction filter is hierarchy/prefix-aware: `EU` admits `EU/FR`, leaves `US` unaffected", () => {
+    const euFr = chatModel("eu-fr", "p", "EU/FR", "EU");
+    const euDe = chatModel("eu-de", "p", "EU/DE", "EU");
+    const us = chatModel("us", "p", "US", "US");
+    const euVariant = euFr.variants![0];
+    const usVariant = us.variants![0];
+
+    // Allow `EU` matches the EU/FR hierarchy but not US.
+    expect(evaluateRegion(euFr, euVariant, { homeJurisdictions: ["EU"] }).pass).toBe(true);
+    expect(evaluateRegion(us, usVariant, { homeJurisdictions: ["EU"] }).pass).toBe(false);
+
+    // Exclude `EU` drops EU/FR (exclude beats allow) but never US.
+    expect(evaluateRegion(euFr, euVariant, { excludeHomeJurisdictions: ["EU"] }).pass).toBe(false);
+    expect(evaluateRegion(us, usVariant, { excludeHomeJurisdictions: ["EU"] }).pass).toBe(true);
+
+    // End-to-end through the ranker: `EU` keeps both EU children, drops US.
+    const res = rankModelsForStage([euFr, euDe, us], "extraction", {
+      providerType: "p",
+      costResolver: flatCost,
+      regionFilter: { homeJurisdictions: ["EU"] },
+    });
+    expect(res.ranked.map((a) => a.model.id).sort()).toEqual(["eu-de", "eu-fr"]);
+    expect(res.hiddenByRegion).toBe(1);
+
+    // Segment-wise: a sibling token like `US` does not match `EU/FR`, and an exact child still works.
+    expect(evaluateRegion(euFr, euVariant, { homeJurisdictions: ["US"] }).pass).toBe(false);
+    expect(evaluateRegion(euFr, euVariant, { homeJurisdictions: ["EU/FR"] }).pass).toBe(true);
+  });
+
   it("unknown (null) region is dropped by a positive filter unless keepUnknownRegion", () => {
     const m = chatModel("aiz", "aizolo", "US", null); // aizolo processing region unknown
     const variant = m.variants![0];

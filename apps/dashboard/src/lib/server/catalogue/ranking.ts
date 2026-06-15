@@ -55,6 +55,29 @@ function nonEmpty(arr?: string[]): boolean {
   return Array.isArray(arr) && arr.length > 0;
 }
 
+/**
+ * Hierarchy/prefix-aware home-jurisdiction match. Jurisdictions are stored as `/`-separated
+ * hierarchies (e.g. `EU/FR`). A filter token matches a stored value if it equals it OR is a
+ * leading path segment of it — so token `EU` matches stored `EU/FR`, but token `US` does not.
+ * Matching is segment-wise (token `EU` does not match a hypothetical `EUR`).
+ */
+function homeJurisdictionMatches(filterTokens: string[], stored: string): boolean {
+  const storedSegments = stored.split("/");
+  for (const token of filterTokens) {
+    const tokenSegments = token.split("/");
+    if (tokenSegments.length > storedSegments.length) continue;
+    let ok = true;
+    for (let i = 0; i < tokenSegments.length; i++) {
+      if (tokenSegments[i] !== storedSegments[i]) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
 export interface RegionDecision {
   pass: boolean;
   /** True when a constraint applied but the model's region value was null (unknown). */
@@ -72,18 +95,19 @@ export function evaluateRegion(
   const region = variant?.processingRegion ?? null;
   let unknown = false;
 
-  // Exclusions first (a known excluded value always fails).
-  if (nonEmpty(filter.excludeHomeJurisdictions) && home && filter.excludeHomeJurisdictions!.includes(home)) {
+  // Exclusions first (a known excluded value always fails). Exclude beats allow, so the
+  // hierarchy-aware match must apply here too (excluding `EU` drops an `EU/FR` model).
+  if (nonEmpty(filter.excludeHomeJurisdictions) && home && homeJurisdictionMatches(filter.excludeHomeJurisdictions!, home)) {
     return { pass: false, unknown: false };
   }
   if (nonEmpty(filter.excludeProcessingRegions) && region && filter.excludeProcessingRegions!.includes(region)) {
     return { pass: false, unknown: false };
   }
 
-  // Positive allow-lists.
+  // Positive allow-lists. Home jurisdiction is hierarchy/prefix-aware: filter `EU` admits `EU/FR`.
   if (nonEmpty(filter.homeJurisdictions)) {
     if (home === null) unknown = true;
-    else if (!filter.homeJurisdictions!.includes(home)) return { pass: false, unknown: false };
+    else if (!homeJurisdictionMatches(filter.homeJurisdictions!, home)) return { pass: false, unknown: false };
   }
   if (nonEmpty(filter.processingRegions)) {
     if (region === null) unknown = true;

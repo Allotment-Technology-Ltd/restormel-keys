@@ -2,7 +2,7 @@
  * CatalogueRepository backed by the bundled seed JSON (advisory plan §3.1).
  *
  * Fully offline — no DB. The seed (apps/dashboard/data/model-catalog-seed.json) is the canonical
- * source for the 145 catalogue models, so this serves the advisory read path everywhere today.
+ * source for the 143 catalogue models, so this serves the advisory read path everywhere today.
  * Free-text/discovered models register into an in-memory overlay for the process lifetime; durable
  * persistence is the Neon → replacement-Postgres impl (Phase 1, deferred). When that lands, swap
  * the repository binding — no consumer changes (the whole point of the interface).

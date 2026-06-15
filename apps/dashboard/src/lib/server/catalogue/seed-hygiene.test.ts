@@ -107,6 +107,64 @@ describe("model-catalog-seed.json — region facet hygiene (§3.8)", () => {
   });
 });
 
+describe("model-catalog-seed.json — id & field integrity", () => {
+  const seed = loadSeed();
+  const models = seed.models;
+
+  it("all model ids are unique (no duplicate entries)", () => {
+    const ids = models.map((m) => m.id);
+    const unique = new Set(ids);
+    if (ids.length !== unique.size) {
+      const seen = new Map<string, number>();
+      for (const id of ids) seen.set(id, (seen.get(id) ?? 0) + 1);
+      const dups = [...seen.entries()].filter(([, n]) => n > 1);
+      throw new Error(
+        `duplicate model id(s):\n  ${dups
+          .map(([id, n]) => `${id} (x${n})`)
+          .join("\n  ")}`,
+      );
+    }
+    expect(ids.length).toBe(unique.size);
+  });
+
+  it("every model has a non-empty id and canonicalName", () => {
+    const offenders: string[] = [];
+    for (const m of models) {
+      if (typeof m.id !== "string" || m.id.trim() === "") {
+        offenders.push(`model with empty id: ${JSON.stringify(m).slice(0, 80)}`);
+        continue;
+      }
+      if (typeof m.canonicalName !== "string" || m.canonicalName.trim() === "") {
+        offenders.push(`${m.id}: empty canonicalName`);
+      }
+    }
+    if (offenders.length > 0) {
+      throw new Error(
+        `${offenders.length} model(s) with empty id/canonicalName:\n  ${offenders.join("\n  ")}`,
+      );
+    }
+  });
+
+  it("every variant has a non-empty providerModelId", () => {
+    const offenders: string[] = [];
+    for (const m of models) {
+      for (const v of m.variants ?? []) {
+        if (
+          typeof v.providerModelId !== "string" ||
+          v.providerModelId.trim() === ""
+        ) {
+          offenders.push(`${m.id} [${v.providerIntegrationType}]`);
+        }
+      }
+    }
+    if (offenders.length > 0) {
+      throw new Error(
+        `${offenders.length} variant(s) with empty providerModelId:\n  ${offenders.join("\n  ")}`,
+      );
+    }
+  });
+});
+
 describe("model-catalog-seed.json — capability hygiene (§3.3)", () => {
   const seed = loadSeed();
   const models = seed.models;
