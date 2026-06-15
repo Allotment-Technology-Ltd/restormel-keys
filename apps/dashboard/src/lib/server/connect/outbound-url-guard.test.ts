@@ -132,7 +132,7 @@ describe("validateOutboundSurrealEndpoint (delegates to the shared guard)", () =
     else process.env.RESTORMEL_ALLOW_PRIVATE_SURREAL_ENDPOINT = origAllowPrivate;
   });
 
-  it("preserves http/https-only surreal behaviour: allows public https in prod", () => {
+  it("preserves surreal behaviour: allows public https in prod", () => {
     process.env.NODE_ENV = "production";
     expect(validateOutboundSurrealEndpoint("https://instance.surreal.cloud")).toEqual({ ok: true });
   });
@@ -145,8 +145,11 @@ describe("validateOutboundSurrealEndpoint (delegates to the shared guard)", () =
     expect(validateOutboundSurrealEndpoint("https://10.0.0.5").ok).toBe(false);
   });
 
-  it("surreal family rejects wss (Surreal is http/https only)", () => {
+  // PR #57: SurrealDB's native protocol is WebSocket, so the surreal family must
+  // accept wss (secure) — production rejects cleartext ws but allows wss.
+  it("surreal family allows wss (SurrealDB native WebSocket protocol, PR #57)", () => {
     process.env.NODE_ENV = "production";
-    expect(validateOutboundSurrealEndpoint("wss://instance.surreal.cloud").ok).toBe(false);
+    expect(validateOutboundSurrealEndpoint("wss://instance.surreal.cloud")).toEqual({ ok: true });
+    expect(validateOutboundSurrealEndpoint("ws://instance.surreal.cloud").ok).toBe(false);
   });
 });

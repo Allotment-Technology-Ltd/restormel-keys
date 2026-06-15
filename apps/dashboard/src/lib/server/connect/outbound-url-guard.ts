@@ -136,9 +136,13 @@ export type OutboundUrlVerdict = { ok: true } | { ok: false; message: string };
  * Validate a user-supplied outbound URL against the egress allow-list.
  *
  * @param endpoint  raw user input (may be a bare host; default scheme applied)
- * @param family    "surreal" → http/https only (legacy parity);
+ * @param family    "surreal" → http/https (HTTP API) AND ws/wss (SurrealDB's
+ *                              native WebSocket protocol — PR #57);
  *                  "mcp"     → http/https for streamable-HTTP MCP, ws/wss for
- *                              transports that upgrade — both restricted to TLS in prod.
+ *                              transports that upgrade.
+ *                  Both families accept the same scheme set and require TLS
+ *                  (https/wss) in production; they differ only in error wording
+ *                  and the optional upstream host allow-list (mcp only).
  */
 export function validateOutboundUrl(
   endpoint: string,
@@ -154,8 +158,11 @@ export function validateOutboundUrl(
   const host = url.hostname;
   const prod = isProductionRuntime();
 
-  const secureSchemes = family === "mcp" ? ["https", "wss"] : ["https"];
-  const insecureSchemes = family === "mcp" ? ["http", "ws"] : ["http"];
+  // Both families accept the secure WebSocket/HTTPS pair and the cleartext pair.
+  // Surreal needs ws/wss for its native protocol (PR #57); MCP needs them for
+  // transports that upgrade. Production rejects the cleartext pair below.
+  const secureSchemes = ["https", "wss"];
+  const insecureSchemes = ["http", "ws"];
   const allSchemes = [...secureSchemes, ...insecureSchemes];
 
   if (!allSchemes.includes(proto)) {
@@ -164,7 +171,7 @@ export function validateOutboundUrl(
       message:
         family === "mcp"
           ? "Upstream URL must use https, wss, http, or ws."
-          : "Surreal endpoint must use http or https.",
+          : "Surreal endpoint must use https, wss, http, or ws.",
     };
   }
 
@@ -175,7 +182,7 @@ export function validateOutboundUrl(
       message:
         family === "mcp"
           ? "Production requires an HTTPS or WSS upstream URL (no cleartext egress)."
-          : "Production requires an HTTPS Surreal endpoint (e.g. https://….surreal.cloud).",
+          : "Production requires a secure Surreal endpoint (https:// or wss://).",
     };
   }
 
