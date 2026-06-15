@@ -3,7 +3,9 @@ id: REC-GOV-000
 title: Governance — ISMS document home
 class: governance
 owner: founder
-status: draft
+status: approved
+approved-by: Adam Boon
+approved-on: 2026-06-15
 classification: internal
 control-tier: 2
 created: 2026-06-15
@@ -14,28 +16,62 @@ retention: P6Y-after-superseded
 
 # /governance — ISMS governance home
 
-Tier-2 governance documents for the Restormel ISMS (ISO 27001 target). Everything here is a
-**skeleton seeded in Phase 4** — structure plus `[PLACEHOLDER — founder/counsel]` markers, not
-finished policy. Real content (commitments, control statuses, retention specifics, legal text)
-comes from the founder and, where flagged, counsel.
-
-> **CI note:** these drafts will warn under `frontmatter-validate` (Tier 2 needs `approved-by`
-> / `approved-on`, deliberately omitted until a real approval). That's expected — complete and
-> approve a document, set those fields, *then* the Phase 4 blocking-flip can enforce it.
+Tier-2 governance documents for the Restormel ISMS (ISO 27001 target).
+ISMS scope: **Restormel product and supporting infrastructure only.**
+Controller: **Allotment Technology Ltd**, company no. 16925574.
 
 ## Contents
-| File | id | What |
+
+| File | ID | Review interval | Status |
+|---|---|---|---|
+| `information-security-policy.md` | REC-POL-001 | Annual | draft |
+| `access-control-policy.md` | REC-POL-002 | Annual | draft |
+| `risk-register.yaml` | REC-GOV-002 | 6-monthly + event-triggered | draft |
+| `ropa.yaml` | REC-GOV-003 | Annual + event-triggered | approved |
+| `soa.md` | REC-GOV-004 | Annual | draft |
+| `suppliers.yaml` | REC-GOV-005 | Annual + event-triggered | approved |
+| `asset-inventory.yaml` | REC-GOV-006 | 6-monthly | approved |
+| `data-inventory.yaml` | REC-GOV-007 | 6-monthly | approved |
+
+---
+
+## Review cadence
+
+Three scheduled Cowork tasks govern the review cycle:
+
+| Task ID | Fires | Covers |
 |---|---|---|
-| `information-security-policy.md` | REC-POL-001 | Top-level ISMS policy |
-| `access-control-policy.md` | REC-POL-002 | Access control policy |
-| `risk-register.yaml` | REC-GOV-002 | Living risk register |
-| `ropa.yaml` | REC-GOV-003 | Record of Processing Activities (GDPR Art 30) |
-| `soa.md` | REC-GOV-004 | Statement of Applicability (Annex A) |
-| `suppliers.yaml` | REC-GOV-005 | Supplier / sub-processor register |
-| `asset-inventory.yaml` | REC-GOV-006 | Asset inventory (CIS Control 1) |
-| `data-inventory.yaml` | REC-GOV-007 | Data inventory (CIS Control 2; feeds RoPA) |
+| `isms-mid-year-governance-check` | 15 June, 09:00 | Asset inventory, data inventory, suppliers, RoPA, risk register |
+| `isms-audit-events-retention-review` | 15 June, 09:00 | DAT-010 audit_events retention enforcement |
+| `isms-annual-management-review` | 15 December, 09:00 | All documents + policies + SoA + performance summary (ISO 27001 Cl. 9.3) |
+
+Quarterly: `playbooks/quarterly-access-review.md` (manual, founder-led).
+
+---
+
+## Event-triggered update criteria
+
+Any of the following events **must trigger an immediate update** to the relevant document(s),
+outside the scheduled review cycle. Stage a cowork-outbox bundle on the same day as the event.
+
+| Event | Documents to update |
+|---|---|
+| New sub-processor or tool adopted | `suppliers.yaml`, `ropa.yaml`, privacy notice |
+| Sub-processor removed or decommissioned | `suppliers.yaml`, `ropa.yaml`, privacy notice |
+| New data category collected or processing activity started | `data-inventory.yaml`, `ropa.yaml` |
+| Infrastructure change (new host, region, domain) | `asset-inventory.yaml`, `suppliers.yaml` |
+| Security incident (any severity) | `risk-register.yaml`; major incidents → all docs reviewed |
+| New employee, contractor, or third-party access granted | `access-control-policy.md`, `asset-inventory.yaml` |
+| Change in lawful basis or privacy notice | `ropa.yaml`, `information-security-policy.md` |
+| UK GDPR / ICO guidance change relevant to the ISMS | `ropa.yaml`, `information-security-policy.md`, `soa.md` |
+| Customer data subject request or complaint | `ropa.yaml` (verify accuracy); log in evidence/ |
+| Sub-processor data breach notification received | `suppliers.yaml`, `risk-register.yaml` |
+| API key or credential rotation (material change) | `asset-inventory.yaml` (AST-007 notes) |
+
+---
 
 ## Proportionate to stage
-Restormel is a solo-founder UK LTD. These are lean templates — not a 200-person compliance
-bureaucracy. Complete what a real ISMS needs; mark everything else "later / when customers
-require it".
+
+Restormel is a solo-founder UK LTD. These are lean, evidence-based documents — not a
+200-person compliance bureaucracy. Controls that are "N/A — justified" or "later, when
+we have customers/staff" are legitimate and documented in `soa.md`.
