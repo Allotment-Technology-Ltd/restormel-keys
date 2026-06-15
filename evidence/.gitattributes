@@ -1,0 +1,9 @@
+# Binary evidence via Forgejo LFS (Decision #3 default).
+# Requires `git lfs install` locally + LFS enabled on the Forgejo repo. Inert until a binary
+# is added (evidence starts text-only). Each binary also gets a <file>.meta.yaml sidecar.
+*.pdf  filter=lfs diff=lfs merge=lfs -text
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.zip  filter=lfs diff=lfs merge=lfs -text
+*.xlsx filter=lfs diff=lfs merge=lfs -text
