@@ -90,3 +90,23 @@ The `control-tier` field sets how strictly the record is governed (see ADR
 Binaries can't carry front-matter. A binary record (a signed PDF, an exported report)
 gets a **sidecar** `<filename>.meta.yaml` carrying the same fields, plus a register
 entry. Example: `evidence/q1-access-review.pdf` + `evidence/q1-access-review.pdf.meta.yaml`.
+
+## Maintenance norm — records keep themselves current
+
+Records and registers must not drift from reality. **When any agent (Cowork, the chat project,
+or Claude Code) takes an action that introduces or changes a managed fact — a new asset,
+sub-processor/connector, data flow, capability, or decision, or a material change to an existing
+one — it stages the matching register/document update in the SAME turn, without waiting to be
+asked.** Examples: connecting a new tool → `governance/suppliers.yaml` + `asset-inventory.yaml`;
+a new data flow → `data-inventory.yaml` + `ropa.yaml`; a settled choice → the decision log / an ADR.
+
+Rules:
+- **Route through the relay / PR / CI** like any record — never silently hand-edit an approved
+  document; the PR plus founder merge is the review gate.
+- **Identify every affected register**, not just the obvious one.
+- **If unsure which record applies, flag it** rather than skipping.
+- Anything *derivable from source* is **generated, not hand-maintained** (e.g. the register via
+  `scripts/records/register.mjs`).
+
+The scheduled reconciliation (Phase 6 evidence agent) is the safety net: it flags
+register-vs-reality drift and opens issues for whatever this norm misses.
