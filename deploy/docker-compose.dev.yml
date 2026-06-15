@@ -1,0 +1,36 @@
+# Local dev Postgres for the dashboard — PERSISTENT across sessions.
+#
+# The dashboard's operational DB for `pnpm dev` on localhost. Data lives in the named
+# volume `restormel_dev_pgdata`, so it survives container restarts/recreations: your
+# signed-in user, sessions, and seeded catalogue all persist — set up once, reuse forever.
+#
+# One-command workflow (from apps/dashboard, or `pnpm --filter dashboard <script>`):
+#   pnpm db:up      # start + wait healthy (idempotent)
+#   pnpm migrate    # apply pending migrations (tracked in schema_migrations)
+#   pnpm dev:local  # db:up + migrate + dev, in one go
+#   pnpm db:reset   # wipe the volume and rebuild from scratch
+#
+# Schema is 100% vanilla-Postgres-portable (verified in the P3 runbook) — no Neon needed.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: restormel-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: restormel
+      POSTGRES_PASSWORD: restormel
+      POSTGRES_DB: restormel_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - restormel_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restormel -d restormel_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  restormel_dev_pgdata:
+    name: restormel_dev_pgdata
