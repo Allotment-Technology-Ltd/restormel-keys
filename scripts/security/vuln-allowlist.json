@@ -8,5 +8,10 @@
     "id": "GHSA-rcmh-qjqh-p98v",
     "reason": "nodemailer DoS fix (CVE-2025-14874) requires v7.0.11 which is a breaking major bump from v6.x (new API surface). Bumping without full auth-flow regression testing risks breaking transactional email in production. Scheduled for coordinated upgrade with better-auth email plugin review. Expiry set to 30-day max per High policy.",
     "expires": "2026-07-14"
+  },
+  {
+    "id": "GHSA-fx2h-pf6j-xcff",
+    "reason": "vite@6.4.2 server.fs.deny bypass (CVE-2026-53571) affects the Vite DEV server on Windows alternate paths only. Restormel production runs the built adapter-node output on Linux (node:22-alpine) with no Vite dev server exposed, so the path is not reachable in production. A patched vite requires a coordinated vite/esbuild major bump (esbuild is pinned to 0.25.0 per GHSA-gv7w-rqvm-qjhr) — scheduled with that upgrade. Expiry set to 30-day max per High policy.",
+    "expires": "2026-07-14"
   }
 ]
