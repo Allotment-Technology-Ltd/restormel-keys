@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { env } from "$env/dynamic/public";
   import SupportAssistant from "$lib/components/site/SupportAssistant.svelte";
+  import CookieConsent from "$lib/components/site/CookieConsent.svelte";
   import { agentLog } from "$lib/debug/agent-log";
   import type { LayoutData } from "./$types";
 
@@ -33,4 +34,5 @@
 </script>
 
 <SupportAssistant user={data.user ?? undefined} />
+<CookieConsent />
 <slot />
