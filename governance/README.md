@@ -26,12 +26,14 @@ Controller: **Allotment Technology Ltd**, company no. 16925574.
 |---|---|---|---|
 | `information-security-policy.md` | REC-POL-001 | Annual | draft |
 | `access-control-policy.md` | REC-POL-002 | Annual | draft |
+| `cyber-security-policy.md` | REC-POL-003 | Annual | draft |
 | `risk-register.yaml` | REC-GOV-002 | 6-monthly + event-triggered | draft |
 | `ropa.yaml` | REC-GOV-003 | Annual + event-triggered | approved |
 | `soa.md` | REC-GOV-004 | Annual | draft |
 | `suppliers.yaml` | REC-GOV-005 | Annual + event-triggered | approved |
 | `asset-inventory.yaml` | REC-GOV-006 | 6-monthly | approved |
 | `data-inventory.yaml` | REC-GOV-007 | 6-monthly | approved |
+| `ce-control-mapping.md` | REC-GOV-021 | 6-monthly + event-triggered | draft |
 
 ---
 
@@ -67,6 +69,7 @@ outside the scheduled review cycle. Stage a cowork-outbox bundle on the same day
 | Customer data subject request or complaint | `ropa.yaml` (verify accuracy); log in evidence/ |
 | Sub-processor data breach notification received | `suppliers.yaml`, `risk-register.yaml` |
 | API key or credential rotation (material change) | `asset-inventory.yaml` (AST-007 notes) |
+| Change to a Cyber Essentials control (MFA, firewall, patching, device/host config) | `ce-control-mapping.md`, `cyber-security-policy.md`, `soa.md` |
 
 ---
 
