@@ -1,0 +1,40 @@
+name: Task / chore
+about: Maintenance or non-feature work
+title: "[task] "
+labels:
+  - kind/task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Files a **task / chore** (infra, refactor, docs, ops). For a time-boxed
+        investigation, use `kind/spike` instead (relabel after creating).
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Done when
+      value: |
+        - [ ]
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (informational — set the matching area/* label after)
+      options:
+        - engine
+        - proxy
+        - mcp
+        - site
+        - docs
+        - infra
+        - security
+        - gtm
+    validations:
+      required: false

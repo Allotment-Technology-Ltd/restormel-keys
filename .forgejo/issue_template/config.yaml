@@ -1,0 +1,12 @@
+# Issue chooser config. blank_issues_enabled keeps a quick "open blank issue" path
+# (handy for API/MCP-created items); the triage Action flags any that arrive without a kind.
+blank_issues_enabled: true
+# Optional: add quick links shown on the "new issue" chooser. Replace <ORG> with your
+# Forgejo org, then uncomment. Left empty by default so nothing 404s.
+# contact_links:
+#   - name: Roadmap (narrative)
+#     url: https://git.allotmentology.tech/<ORG>/restormel-ops/src/branch/main/gtm/ROADMAP.md
+#     about: The canonical wave roadmap — read before filing a feature
+#   - name: Records SCHEMA
+#     url: https://git.allotmentology.tech/<ORG>/restormel-keys/src/branch/main/records/SCHEMA.md
+#     about: For anything records-/ISMS-related
