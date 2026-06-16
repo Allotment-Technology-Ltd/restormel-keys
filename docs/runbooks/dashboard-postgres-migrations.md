@@ -12,7 +12,25 @@ review-interval: P12M
 
 # Dashboard Postgres migrations (CI/CD)
 
-Canonical note for **Neon** schema used by `apps/dashboard`. SQL lives under [`apps/dashboard/migrations/`](../../apps/dashboard/migrations/). Apply script: [`scripts/apply-dashboard-migrations.sh`](../../scripts/apply-dashboard-migrations.sh) (runs every `*.sql` in **sorted** order; idempotent where files use `IF NOT EXISTS` / `IF EXISTS`).
+Canonical note for the Postgres schema used by `apps/dashboard`. SQL lives under [`apps/dashboard/migrations/`](../../apps/dashboard/migrations/). The runner ([`apps/dashboard/scripts/apply-migrations.mts`](../../apps/dashboard/scripts/apply-migrations.mts) → [`migration-runner.ts`](../../apps/dashboard/src/lib/server/migration-runner.ts), invoked by `pnpm --filter dashboard run migrate`) applies pending `*.sql` files in **numeric order**, tracking each applied file in the `schema_migrations` table. It is **idempotent** (already-applied files are skipped; each migration runs in its own transaction with an `ON CONFLICT DO NOTHING` tracking insert) and **fail-closed** (any migration error → non-zero exit).
+
+## Production (Coolify — applied automatically on deploy)
+
+The prod dashboard runs on **Coolify** (self-hosted box, plain Postgres via `DATABASE_URL`), built from [`Dockerfile.dashboard`](../../Dockerfile.dashboard). **Migrations are applied automatically on every deploy** by the container entrypoint ([`apps/dashboard/docker-entrypoint.sh`](../../apps/dashboard/docker-entrypoint.sh)) **before** the SvelteKit server starts. This closes the gap that caused the 2026-06-15 catalogue 503 — deployed code needed migration `068` while prod was still at `067`, because Coolify deploys do not run migrations and the Forgejo CI "Apply dashboard migrations" step only targets the **CI** DB, never prod.
+
+How it works (issue #18):
+
+1. `ENTRYPOINT` runs `node --import tsx apps/dashboard/scripts/apply-migrations.mts` against the container's `DATABASE_URL` (tsx + the runner ship in the serve stage — same full-workspace image the ingest worker uses).
+2. **Fail-closed:** if any migration errors, the entrypoint (`set -e`) exits non-zero, the server is never started, `/healthz` never goes green, and **Coolify marks the deploy failed** — a half-migrated DB is never served, and the previous (healthy) container keeps running.
+3. On success the entrypoint `exec`s the server CMD (node stays PID 1 for clean SIGTERM).
+
+**Concurrency caveat (multi-replica):** the runner does **not** take a Postgres advisory lock. The dashboard is deployed as a **single container** today, so concurrent migration runs cannot happen. If the dashboard is ever scaled to **>1 replica**, two replicas could start concurrently and both attempt the same pending migration; each migration is atomic and the tracking insert is `ON CONFLICT DO NOTHING`, so the worst case is one replica's transaction failing on a duplicate object and exiting non-zero (fail-closed, not corruption). Before scaling horizontally, gate the runner behind a `pg_advisory_lock`, or run migrations as a separate one-shot deploy job instead of in the per-replica entrypoint.
+
+**Manual / hotfix (operator):** the same runner can be invoked by hand against prod (see [Local / operator](#local--operator)) — it is safe to re-run (idempotent).
+
+## Legacy: Neon + GitHub Actions (historical)
+
+> The section below describes the **pre-Coolify** Neon + Vercel/GitHub-Actions flow. It is retained for history; production is now the Coolify entrypoint above. The Forgejo CI `apply-migrations` job still runs the same runner against the **CI** DB only.
 
 ## Production (GitHub Actions)
 

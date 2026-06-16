@@ -49,10 +49,15 @@ WORKDIR /app
 
 # Ship the full built workspace: npm cannot resolve pnpm's workspace:* protocol,
 # and the ingest worker needs scripts/ + tsx + workspace libs at runtime (it runs
-# TS via tsx, not the adapter bundle). Fat image; slimming via `pnpm deploy` is a
+# TS via tsx, not the adapter bundle). The same full workspace + devDependencies
+# (tsx) are what the docker-entrypoint relies on to run the migration runner on
+# startup — see ENTRYPOINT below. Fat image; slimming via `pnpm deploy` is a
 # filed follow-up once staging is proven.
 COPY --from=build /app /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Make the migration entrypoint executable (COPY does not preserve a script's +x).
+RUN chmod +x /app/apps/dashboard/docker-entrypoint.sh
 
 # Create a non-root user to run the server.
 RUN addgroup -S restormel && adduser -S restormel -G restormel && \
@@ -81,6 +86,15 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD wget -qO- http://127.0.0.1:${PORT}/healthz || exit 1
 
+# ENTRYPOINT applies pending DB migrations against DATABASE_URL BEFORE starting the
+# server, then exec's the CMD (issue #18). Fail-closed: if a migration errors the
+# entrypoint exits non-zero, the container never starts the server, /healthz never
+# goes green, and Coolify marks the deploy failed — so a half-migrated DB is never
+# served. See apps/dashboard/docker-entrypoint.sh for the full rationale + the
+# multi-replica concurrency caveat (single-container deploy today).
+ENTRYPOINT ["/app/apps/dashboard/docker-entrypoint.sh"]
+
 # adapter-node entry point (workspace root layout — see serve-stage COPY note).
+# Passed to the entrypoint as "$@" and exec'd after migrations succeed.
 # The worker app overrides this with its daemon start command in Coolify.
 CMD ["node", "apps/dashboard/build/index.js"]
