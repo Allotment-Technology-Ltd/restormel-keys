@@ -39,7 +39,13 @@ assets:
     notes: >
       Self-hosts: Forgejo, Restormel SvelteKit app, self-hosted Postgres
       (verification spine), BetterAuth. Primary compute plane for all
-      in-scope services.
+      in-scope services. PLANNED SPLIT (REC-PLAN-012, ready-for-execution): this
+      single-box topology is being split into Box A (.167) running the live
+      product alone — dashboard, worker, app Postgres, Ory Hydra — and Box B
+      (.150) running build/ops (Forgejo, CI runner, Coolify, monitoring) plus
+      SurrealDB (migrated from .167), connected over a private network
+      (restormel-internal, 10.10.0.0/16). Treats RISK-001. On execution, update
+      this entry to the two-box topology and add the private-network + Hydra assets.
 
   - id: AST-004
     asset: "Neon Postgres (legacy — decommissioning)"
