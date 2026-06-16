@@ -53,7 +53,17 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Exit explicitly on success. The pg-Pool path (self-hosted Postgres — the
+    // prod driver) leaves an open pool that keeps the event loop alive, so the
+    // process would otherwise hang. This CLI is a one-shot runner (CI step AND
+    // the container entrypoint), so a clean exit(0) is the correct terminal state.
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error(err instanceof Error ? err.message : String(err));
+    // Non-zero exit is the fail-closed contract: the docker-entrypoint aborts
+    // container startup on this, so a half-migrated DB is never served.
+    process.exit(1);
+  });
