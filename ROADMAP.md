@@ -97,6 +97,10 @@ Do these before over-rotating on host-app fixes:
 - **Semantic docs clarity** — keep route model categories and resolve-to-execution contract explicit to avoid host-side inference errors.
 - **Archetype entry routing** — route new users by intent (new project, existing stack, BYOK SaaS, agent/IDE, platform ops) before deep walkthrough phases.
 
+### Agent interoperability — A2A protocol (Door 3) — planned
+
+**Decision (2026-06-16):** build a spec-conformant **A2A (Agent2Agent)** peer greenfield, rather than relabel the existing model-execution envelope. A conformance review found `@restormel/aaif` is *not* A2A (0 conforms / 3 diverge / 15 missing); that envelope is retained + renamed as an internal Keys helper. Strategic core: serve **verified context** (the EBV verified-claim envelope) over A2A as a DataPart/extension. Phased plan + reuse map: **[REC-PLAN-014](planning/a2a-protocol-implementation-plan.md)** (Agent Card → JSON-RPC transport → Task lifecycle → Message/Part/Artifact → security → streaming → conformance). Flag-gated (`RESTORMEL_A2A`); no prod exposure until validated. Complements Door 2 (the verifying MCP proxy, REC-ADR-005).
+
 ---
 
 *Update when milestones change. Use roadmap-status-sync skill to keep ROADMAP and STATUS aligned.*
