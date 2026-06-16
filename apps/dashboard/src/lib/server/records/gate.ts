@@ -17,8 +17,9 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-// Reuse the one parser — do NOT fork. Types live in scripts/records/lib.d.mts.
-import { parseFrontMatter } from "../../../../../../scripts/records/lib.mjs";
+// Parser is vendored locally (see ./frontmatter) — the shared scripts/records/lib.mjs
+// escapes the SvelteKit app root and vite build/Rollup cannot bundle it. Keep in sync.
+import { parseFrontMatter } from "./frontmatter";
 
 /** Repo root, resolved from this module's location (robust under prerender — not cwd). */
 export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
