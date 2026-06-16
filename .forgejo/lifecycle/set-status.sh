@@ -33,9 +33,15 @@ printf '%s' "$labels_json" | jq -r '.[]|select(.name|startswith("status/"))|.id'
   [ -n "$id" ] && curl -fsS "${AUTH[@]}" -X DELETE "$API/issues/${ISSUE}/labels/${id}" >/dev/null || true
 done
 
-# add the new status by name (Forgejo accepts names here on recent versions; if your
-# instance only accepts ids, resolve via GET /repos/$REPO/labels and map name->id).
-curl -fsS "${AUTH[@]}" -X POST "$API/issues/${ISSUE}/labels" -d "{\"labels\":[\"${NEW}\"]}" >/dev/null
+# Add the new status BY ID. Adding by name is a silent no-op on this Forgejo: the labels are
+# org-level, and POST /issues/N/labels by name only matches *repo* labels (returns 200, adds
+# nothing). So resolve name->id from org + repo labels, then add by id.
+new_id="$(
+  { curl -fsS "${AUTH[@]}" "${FORGEJO_URL%/}/api/v1/orgs/${REPO%%/*}/labels?limit=200" 2>/dev/null || true
+    curl -fsS "${AUTH[@]}" "$API/labels?limit=200" 2>/dev/null || true; } \
+  | jq -r --arg n "$NEW" '.[]?|select(.name==$n)|.id' | head -1)"
+if [ -z "$new_id" ]; then echo "! label not found (run apply-forgejo-pm.sh?): $NEW"; exit 1; fi
+curl -fsS "${AUTH[@]}" -X POST "$API/issues/${ISSUE}/labels" -d "{\"labels\":[${new_id}]}" >/dev/null
 
 # timeline comment = the audit trail entry
 note="${STATUS_NOTE:-}"
