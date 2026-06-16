@@ -1,0 +1,69 @@
+# OPTIONAL automated lifecycle — moves status/* on dev events. NOT auto-shipped (touches CI
+# → plan first, 00-bootstrap-gate). To enable: copy this to the repo's
+# `.forgejo/workflows/lifecycle.yml` AND copy `.forgejo/lifecycle/set-status.sh`, then add a
+# repo/org secret FORGEJO_TOKEN (a PAT with repo write). Requires the status/* labels
+# (apply-forgejo-pm.sh creates them). jq is preinstalled on the runner image.
+#
+# Transition map (guarded so it never regresses):
+#   commit/branch references #N  ->  status/in-progress   (from triage|ready|none)
+#   PR opened referencing #N     ->  status/in-review      (from triage|ready|in-progress)
+#   PR merged to main            ->  status/ready-deploy   (from in-review|in-progress)
+#   Coolify deploy success       ->  status/deployed + close   (see lifecycle/deploy-callback.sh)
+#
+# IMPORTANT: for items you want tracked through deploy, reference the issue with `Ref #N`
+# (not `Closes #N`) so the merge doesn't auto-close it before it's deployed. Use `Closes #N`
+# only for items that are truly done at merge (docs/chores).
+name: pm-lifecycle
+on:
+  push:
+  pull_request:
+    types: [opened, reopened, closed]
+
+env:
+  FORGEJO_URL: ${{ github.server_url }}
+  REPO: ${{ github.repository }}
+  FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+
+jobs:
+  on-commit:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # if your instance can't resolve this, use the full URL, e.g. https://code.forgejo.org/actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          chmod +x .forgejo/lifecycle/set-status.sh
+          nums=$(jq -r '.commits[]?.message // empty' "$GITHUB_EVENT_PATH" | grep -oE '#[0-9]+' | tr -d '#' | sort -u || true)
+          bnum=$(printf '%s' "${GITHUB_REF_NAME:-}" | grep -oE '^[0-9]+' | head -1 || true)
+          for n in $nums $bnum; do
+            STATUS_NOTE="work on ${GITHUB_REF_NAME}" \
+              .forgejo/lifecycle/set-status.sh "$n" status/in-progress "status/triage,status/ready" || true
+          done
+
+  on-pr-open:
+    if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          chmod +x .forgejo/lifecycle/set-status.sh
+          nums=$(jq -r '(.pull_request.title // "") + "\n" + (.pull_request.body // "")' "$GITHUB_EVENT_PATH" | grep -oE '#[0-9]+' | tr -d '#' | sort -u || true)
+          for n in $nums; do
+            STATUS_NOTE="PR #${{ github.event.pull_request.number }} opened" \
+              .forgejo/lifecycle/set-status.sh "$n" status/in-review "status/triage,status/ready,status/in-progress" || true
+          done
+
+  on-pr-merge:
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          chmod +x .forgejo/lifecycle/set-status.sh
+          nums=$(jq -r '(.pull_request.title // "") + "\n" + (.pull_request.body // "")' "$GITHUB_EVENT_PATH" | grep -oE '#[0-9]+' | tr -d '#' | sort -u || true)
+          for n in $nums; do
+            STATUS_NOTE="merged via PR #${{ github.event.pull_request.number }}" \
+              .forgejo/lifecycle/set-status.sh "$n" status/ready-deploy "status/in-review,status/in-progress" || true
+          done
