@@ -77,6 +77,12 @@ export type HydraResourceServerConfig = {
   requiredScope?: string;
   /** Clock skew tolerance in seconds for `exp`/`nbf` checks (default 0). */
   clockToleranceSeconds?: number;
+  /**
+   * Optional upper bound on token age (seconds since `iat`), enforced by jose on
+   * the JWKS path. When set, tokens older than this are rejected even if `exp`
+   * is still in the future. Unset ⇒ only `exp` bounds lifetime.
+   */
+  maxTokenAgeSeconds?: number;
 };
 
 /**
@@ -144,7 +150,14 @@ function checkClaims(
 ): VerifyAccessTokenFailure | null {
   const tolerance = config.clockToleranceSeconds ?? 0;
 
-  if (!opts.skipExpiry && typeof raw.exp === "number") {
+  // `exp` is REQUIRED. A token without a numeric `exp` never expires, so it would
+  // validate indefinitely — reject it fail-closed rather than skip the check.
+  // (jose's `requiredClaims: ["exp"]` guards the JWKS path; this guards the
+  // introspection path and is a defence-in-depth backstop for both.)
+  if (!opts.skipExpiry) {
+    if (typeof raw.exp !== "number") {
+      return fail("token_expired", "Access token is missing a valid expiry (exp)");
+    }
     if (raw.exp + tolerance < nowSeconds()) {
       return fail("token_expired", "Access token has expired");
     }
@@ -155,8 +168,16 @@ function checkClaims(
     return fail("wrong_audience", "Access token audience does not include this resource");
   }
 
-  if (config.issuer && typeof raw.iss === "string" && raw.iss !== config.issuer) {
-    return fail("invalid_token", "Access token issuer mismatch");
+  // When an issuer is configured it MUST be asserted. jose enforces `iss` on the
+  // JWKS path, but introspection results flow only through this check — so a
+  // missing/non-string `iss` must be rejected here, not silently skipped.
+  if (config.issuer) {
+    if (typeof raw.iss !== "string") {
+      return fail("invalid_token", "Access token is missing a valid issuer (iss)");
+    }
+    if (raw.iss !== config.issuer) {
+      return fail("invalid_token", "Access token issuer mismatch");
+    }
   }
 
   if (config.requiredScope) {
@@ -271,6 +292,9 @@ export async function buildHydraVerifierFromEnv(
   const jwksUri = (env.ORY_HYDRA_JWKS_URI ?? "").trim();
   const adminUrl = (env.ORY_HYDRA_ADMIN_URL ?? "").trim();
   const requiredScope = (env.ORY_HYDRA_REQUIRED_SCOPE ?? "").trim() || undefined;
+  const maxTokenAgeRaw = Number.parseInt((env.ORY_HYDRA_MAX_TOKEN_AGE_SECONDS ?? "").trim(), 10);
+  const maxTokenAgeSeconds =
+    Number.isFinite(maxTokenAgeRaw) && maxTokenAgeRaw > 0 ? maxTokenAgeRaw : undefined;
 
   if (!audience) return null;
   if (!jwksUri && !adminUrl) return null;
@@ -280,6 +304,7 @@ export async function buildHydraVerifierFromEnv(
     issuer,
     requiredScope,
     clockToleranceSeconds: 5,
+    maxTokenAgeSeconds,
   };
 
   let jwksVerifier: JwksJwtVerifier | undefined;
@@ -292,6 +317,11 @@ export async function buildHydraVerifierFromEnv(
         audience,
         issuer,
         clockTolerance: config.clockToleranceSeconds,
+        // Reject any JWT that does not carry an `exp` claim — without this a
+        // signature-valid token with no expiry would verify indefinitely.
+        requiredClaims: ["exp"],
+        // Optional belt-and-braces lifetime cap (needs `iat`); unset ⇒ omitted.
+        ...(maxTokenAgeSeconds !== undefined ? { maxTokenAge: maxTokenAgeSeconds } : {}),
       });
       return { payload: payload as Record<string, unknown> };
     };
