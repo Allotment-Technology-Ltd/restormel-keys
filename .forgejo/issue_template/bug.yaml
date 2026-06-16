@@ -1,0 +1,53 @@
+name: Bug
+about: Something is broken or incorrect
+title: "[bug] "
+labels:
+  - kind/bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Files a **bug**. If it's customer-facing or a security issue, add `priority/now`
+        (and `area/security` where relevant) after creating.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you observe?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / links
+      description: Sentry link, request id, etc. Auto-formatted as code.
+      render: shell
+    validations:
+      required: false
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - critical — outage / data / security
+        - high — broken core flow
+        - normal — degraded, has workaround
+        - low — cosmetic / minor
+    validations:
+      required: true

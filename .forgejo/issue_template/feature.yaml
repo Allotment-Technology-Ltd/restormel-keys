@@ -1,0 +1,53 @@
+name: Feature / story
+about: A new capability or user-facing story
+title: "[feat] "
+labels:
+  - kind/feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Files a product **feature / story**. After creating, set `priority/{now,next,later}`
+        and `wave/{w0..w3}` labels (or let triage do it). Keep it small — split if it spans waves.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / user need
+      description: Who is it for and what can't they do today?
+      placeholder: As an MCP founder, I can't … so …
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: The shape of the change. Link any ADR/decision.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Done = these are true. One checkbox per criterion.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: horizon
+    attributes:
+      label: Roadmap horizon (informational — set the matching priority/* label after)
+      options:
+        - now
+        - next
+        - later
+    validations:
+      required: false
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      description: Issue/PR references this is blocked by, e.g. #123
+    validations:
+      required: false
