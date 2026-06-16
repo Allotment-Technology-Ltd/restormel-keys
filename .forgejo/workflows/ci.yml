@@ -68,7 +68,24 @@ jobs:
 
       # (a) Full dashboard vite build — the exact step that failed in prod.
       #     Its `prebuild` builds every workspace dependency's dist/ first.
+      #
+      #     Env MUST mirror the working Coolify build (Dockerfile.dashboard),
+      #     otherwise this step fails in CI even though prod builds fine:
+      #
+      #     - DEPLOY_TARGET=node: svelte.config.js selects @sveltejs/adapter-node
+      #       when this is "node" (else adapter-vercel). The prod container runs
+      #       the adapter-node output (apps/dashboard/build/index.js), so the gate
+      #       must build that exact artifact — not the default Vercel build.
+      #
+      #     - NODE_OPTIONS=--max-old-space-size=4096: the dashboard's SSR vite
+      #       build (10k+ modules) exceeds Node's ~2GB default old-space and
+      #       aborts with "Reached heap limit — JavaScript heap out of memory"
+      #       (exit 134 / SIGABRT). This is exactly what happened on the
+      #       self-hosted runner; Dockerfile.dashboard sets the same 4096MB cap.
       - name: Build dashboard (vite) + workspace deps
+        env:
+          DEPLOY_TARGET: node
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm --filter dashboard build
 
       # (b) connect-core typecheck + tests (proxy/verify-envelope logic).
