@@ -37,12 +37,16 @@ risks:
     rating: High
     treatment_type: mitigate
     treatment: >
-      Hetzner automated server backups enabled (confirm backup schedule and
-      restore-test frequency). DR runbook to be documented in restormel-ops
-      covering: repo recovery from GitHub mirror, DB restore from backup,
-      Coolify re-provision steps. Accept residual downtime risk at solo-founder
-      stage; target RTO < 4 hours.
-    treatment_status: "Partial — backups assumed on; DR runbook not yet documented"
+      STRUCTURAL (REC-PLAN-012): split the single-box topology so the live product
+      runs alone on Box A (.167) while CI / Forgejo / Coolify / SurrealDB run on the
+      build/ops Box B (.150), over a private network — removing the "everything on
+      one host" blast radius and the CI noisy-neighbour OOM/disk incidents that
+      crashed Forgejo's Postgres. Plan ready-for-execution
+      (planning/infra-split-migration-plan.md); swap added to both boxes as an OOM
+      cushion. PLUS: Hetzner automated server backups + nightly pg_dump → BX11
+      storage box; DR runbook to be documented in restormel-ops (repo recovery from
+      GitHub mirror, DB restore from backup, Coolify re-provision). Target RTO < 4 hours.
+    treatment_status: "In-treatment — split planned (REC-PLAN-012, ready-for-execution); swap added; DR runbook still to write"
     owner: founder
     status: open
     review: 2026-12-15
@@ -202,3 +206,26 @@ risks:
     owner: founder
     status: open
     review: 2026-07-15
+
+  - id: RISK-009
+    risk: >
+      The Hetzner infrastructure split + migration (REC-PLAN-012) moves live data
+      stores between boxes — SurrealDB (.167 → .150), the app Postgres, and Ory
+      Hydra's DB onto the new prod box (.167) — and repoints DNS. A failed cutover
+      risks data loss, extended downtime, or a broken BYO-graph / wss dependency.
+    asset: "AST-003 — compute host(s); SurrealDB; app Postgres"
+    likelihood: L
+    impact: H
+    rating: Medium
+    treatment_type: mitigate
+    treatment: >
+      Per REC-PLAN-012: full backups to BX11 before any move (SurrealDB export,
+      pg_dump app + Forgejo, Coolify config export); test-restore into scratch
+      first; keep the source copy until the destination is verified; per-phase
+      do → verify → rollback with low-TTL DNS and a warm fallback; cut over only
+      after verification. The RESTORMEL_VERIFYING_PROXY_REMOTE flag stays OFF until
+      Hydra's JWKS/issuer validate.
+    treatment_status: "Open — pre-execution; controls defined in REC-PLAN-012"
+    owner: founder
+    status: open
+    review: 2026-09-15
