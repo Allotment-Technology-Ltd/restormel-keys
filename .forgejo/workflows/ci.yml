@@ -3,6 +3,9 @@
 #
 # Jobs:
 #   build          — install + build platform packages (smoke: runner is healthy)
+#   build-and-test — full dashboard vite build + connect-core/mcp tests
+#                    (required PR check; catches dashboard build breaks and
+#                     proxy/mcp regressions before they reach main)
 #   security       — OSV-Scanner + gitleaks + pnpm audit + Trivy config/fs
 #                    (required PR check; blocks on HIGH/CRITICAL)
 #   apply-migrations — DB migration runner (push-to-main only; needs secret)
@@ -35,6 +38,68 @@ jobs:
       - uses: ./.forgejo/actions/pnpm-workspace-install
       - name: Build platform packages
         run: pnpm run build:platform-packages
+
+  build-and-test:
+    name: Full build + connect-core/mcp tests
+    runs-on: docker
+    # Required PR check. Runs on every push and PR.
+    #
+    # Why this job exists: the `build` job above only builds the platform
+    # packages. It does NOT run the dashboard vite build, nor the
+    # @restormel/connect-core / @restormel/mcp tests — so a dashboard build
+    # break or a proxy/mcp regression could reach main undetected (this caused
+    # a failed prod deploy). This job closes that gap.
+    #
+    # Build order: `pnpm --filter dashboard build` runs the dashboard's own
+    # `prebuild` first, which builds the FULL workspace dependency graph
+    # (@restormel/connect-core, @restormel/testing-config, @restormel/mcp, …)
+    # into each package's dist/ — the exact artifacts consumers import. After
+    # that build, the connect-core and mcp tests resolve their workspace
+    # imports against real dist/ output, so no vitest src-alias is needed.
+    # Running the dashboard build first is therefore both the gate's primary
+    # check (the exact vite build that failed in prod) AND the build-order
+    # prerequisite for the package tests below.
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+
+      # (a) Full dashboard vite build — the exact step that failed in prod.
+      #     Its `prebuild` builds every workspace dependency's dist/ first.
+      #
+      #     Env MUST mirror the working Coolify build (Dockerfile.dashboard),
+      #     otherwise this step fails in CI even though prod builds fine:
+      #
+      #     - DEPLOY_TARGET=node: svelte.config.js selects @sveltejs/adapter-node
+      #       when this is "node" (else adapter-vercel). The prod container runs
+      #       the adapter-node output (apps/dashboard/build/index.js), so the gate
+      #       must build that exact artifact — not the default Vercel build.
+      #
+      #     - NODE_OPTIONS=--max-old-space-size=4096: the dashboard's SSR vite
+      #       build (10k+ modules) exceeds Node's ~2GB default old-space and
+      #       aborts with "Reached heap limit — JavaScript heap out of memory"
+      #       (exit 134 / SIGABRT). This is exactly what happened on the
+      #       self-hosted runner; Dockerfile.dashboard sets the same 4096MB cap.
+      - name: Build dashboard (vite) + workspace deps
+        env:
+          DEPLOY_TARGET: node
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm --filter dashboard build
+
+      # (b) connect-core typecheck + tests (proxy/verify-envelope logic).
+      #     dist/ for its deps already exists from the dashboard prebuild.
+      - name: Typecheck @restormel/connect-core
+        run: pnpm --filter @restormel/connect-core run typecheck
+      - name: Test @restormel/connect-core
+        run: pnpm --filter @restormel/connect-core test
+
+      # (c) mcp tests (proxy client ↔ fixture upstream; suite tools).
+      #     Resolves @restormel/connect-core + @restormel/testing-config from
+      #     their built dist/ (produced by the dashboard prebuild above).
+      - name: Test @restormel/mcp
+        run: pnpm --filter @restormel/mcp test
 
   security:
     name: Security scan (OSV + gitleaks + pnpm audit + Trivy)
