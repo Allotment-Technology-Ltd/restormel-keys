@@ -149,6 +149,21 @@ SurrealDB (lower-criticality) shares the noisy box. Coolify deploys A from B ove
 - Run a heavy CI build on `.150`; confirm `.167` unaffected. DB restore drill from BX11. Confirm
   monitoring (`.150` + external dead-man's-switch) watches `.167`.
 
+## CI capacity (build parallelism)
+
+The build/ops box currently runs a **single-task Forgejo runner**, so CI serialises — and the new
+full-build merge gate (the dashboard `vite build` needs a ~4 GB Node heap) makes the queue the long
+pole. Folded into this migration because **the split itself frees the capacity**: once the dashboard
++ Postgres + Hydra move to `.167`, Box B (`.150`) is dedicated to build/ops and can give CI real
+headroom.
+
+- **Raise runner concurrency** (act_runner `capacity`) from 1 → ~2-3, **bounded by RAM**: the
+  dashboard build alone wants ~4 GB heap, so on an 8 GB box keep heavy builds to ~1-2 concurrent
+  (lighter jobs — tests, security, migrations — run alongside). Swap is the cushion, not the answer.
+- **Escape hatch** if CI is still the bottleneck: upgrade Box B to **CX43 (16 GB)** (already the
+  documented upgrade path) and/or add a second / ephemeral runner. Never run CI on the prod-runtime box.
+- *Verify:* a PR's jobs run in parallel without OOMing the build; the full-build gate stays green under load.
+
 ## Risks
 - **SurrealDB migration** (Phase 2) — it's a live BYO-graph dependency; export/import + verify before the
   DNS repoint; keep `.167`'s copy until confirmed.
