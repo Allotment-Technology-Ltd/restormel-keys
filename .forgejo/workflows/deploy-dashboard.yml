@@ -23,19 +23,22 @@
 # .github/ on the Forgejo runner. The Forgejo→GitHub push mirror re-triggers GitHub
 # Actions, which ignore this file. The COOLIFY_TOKEN guard makes the jobs no-op there.
 #
-# Prod deploy: manual workflow_dispatch (environment=prod) or a `dashboard-v*` tag —
-# never auto-deploy prod from a main push (decision D8, migration plan §7/Stage 2.4).
+# Prod deploy: a `dashboard-v*` tag (auto-created per main merge by auto-tag-release.yml,
+# or pushed by hand) or a manual workflow_dispatch=prod. Keyed off the tag so every
+# prod deploy maps to a named, revertable release (auto-tag-on-merge, 2026-06-16).
 
 name: Deploy dashboard
 
 on:
-  # COST-PAUSE (2026-06-13): auto-deploy on main pushes is intentionally DISABLED
-  # while staging + workers are stopped during the database-strategy migration
-  # (see docs/infra/database-strategy-roadmap.md). Re-enable by restoring the
-  # `branches: [main]` + `paths:` push trigger below once we resume push-to-deploy.
+  # AUTO-DEPLOY via auto-tag-on-merge (2026-06-16): the D8 cost-pause is lifted.
+  # Prod is GATED on a `dashboard-v*` tag (below); auto-tag-release.yml creates that
+  # tag automatically on every push to main, so each merge ships to prod with an
+  # explicit, revertable release artifact. We deliberately key prod off the TAG (not
+  # a direct main-push trigger) so a deploy always corresponds to a named release.
   push:
     tags:
-      # Prod release tag: `git tag dashboard-v1.2.3 && git push --tags`.
+      # Prod release tag — auto-created per main merge by auto-tag-release.yml; can
+      # also be pushed by hand for a manual release: `git tag dashboard-v1.2.3 && git push --tags`.
       - 'dashboard-v*'
   workflow_dispatch:
     inputs:
@@ -94,8 +97,8 @@ jobs:
   deploy-prod:
     name: Trigger Coolify production deploy
     runs-on: docker
-    # Prod deploys ONLY on an explicit tag push (dashboard-v*) or workflow_dispatch=prod.
-    # Never auto-deploy prod from a main push (decision D8).
+    # Prod deploys on a dashboard-v* tag push (auto-created per main merge by
+    # auto-tag-release.yml) or an explicit workflow_dispatch=prod.
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dashboard-v')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')

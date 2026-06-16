@@ -1,0 +1,74 @@
+# Auto-tag a dashboard release on every push to main — decision "auto-tag on merge"
+# (2026-06-16, supersedes the D8 cost-pause for prod deploys).
+#
+# Prod stays GATED on a `dashboard-v*` tag (see deploy-dashboard.yml); this workflow
+# just creates that tag automatically so each main merge ships to production, with an
+# explicit, revertable release artifact (the tag) per deploy. Rollback = redeploy a
+# previous dashboard-v* tag (workflow_dispatch=prod on that tag's ref).
+#
+# WHY the tag is pushed with secrets.FORGEJO_TOKEN (a PAT) and not the runner's
+# automatic token: a ref pushed by the automatic Actions token does NOT trigger
+# another workflow run, so the tag-gated deploy would never fire. A PAT push does.
+#
+# Scope note: this tags + deploys on EVERY main push, including docs-only merges. That
+# matches "a release per merge"; if redeploying prod for non-app changes becomes
+# wasteful, add a `paths:` filter (apps/dashboard/**, packages/**) here.
+
+name: Auto-tag release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: auto-tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag dashboard release
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.FORGEJO_TOKEN }}
+
+      - name: Compute next dashboard-v* and push the release tag
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force --quiet
+
+          # Highest existing dashboard-v<MAJOR.MINOR.PATCH>, numerically sorted.
+          latest=$(git tag -l 'dashboard-v*' \
+            | sed 's/^dashboard-v//' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -t. -k1,1n -k2,2n -k3,3n \
+            | tail -n1)
+
+          if [ -z "${latest}" ]; then
+            next="0.1.0"
+          else
+            MA=${latest%%.*}; rest=${latest#*.}; MI=${rest%%.*}; PA=${rest##*.}
+            next="${MA}.${MI}.$((PA + 1))"
+          fi
+          TAG="dashboard-v${next}"
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists — nothing to release."; exit 0
+          fi
+
+          echo "Releasing ${TAG} at ${SHA}"
+          git config user.name "forgejo-actions[bot]"
+          git config user.email "actions@allotmentology.tech"
+          git tag -a "${TAG}" -m "Auto-release on main merge (${SHA})"
+
+          # Push with the PAT (token masked in logs) so the tag push triggers
+          # deploy-dashboard.yml's `dashboard-v*` prod deploy.
+          git push "https://forgejo-actions:${FORGEJO_TOKEN}@git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys.git" \
+            "refs/tags/${TAG}"
+
+          echo "Pushed ${TAG}. deploy-dashboard.yml (dashboard-v* trigger) will run the prod deploy."
