@@ -31,7 +31,10 @@ jobs:
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
         with:
-          fetch-depth: 0
+          # Default shallow checkout (just the merge commit). Do NOT add
+          # fetch-depth: 0 — fetching every ref races with the branch deletions
+          # that happen on merge and fails the step with "some refs were not
+          # updated". Existing tags are read via `git ls-remote` below instead.
           token: ${{ secrets.FORGEJO_TOKEN }}
 
       - name: Compute next dashboard-v* and push the release tag
@@ -40,14 +43,16 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          git fetch --tags --force --quiet
 
-          # Highest existing dashboard-v<MAJOR.MINOR.PATCH>, numerically sorted.
-          latest=$(git tag -l 'dashboard-v*' \
-            | sed 's/^dashboard-v//' \
+          # Read existing dashboard-v* tags straight from the remote (no local fetch
+          # of objects/branches — avoids the ref-update race). A successful query
+          # that matches nothing exits 0 with empty output (fine for the first run).
+          remote_tags=$(git ls-remote --tags --refs origin 'dashboard-v*')
+          latest=$(printf '%s\n' "${remote_tags}" \
+            | sed -E 's#.*refs/tags/dashboard-v##' \
             | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
             | sort -t. -k1,1n -k2,2n -k3,3n \
-            | tail -n1)
+            | tail -n1 || true)
 
           if [ -z "${latest}" ]; then
             next="0.1.0"
@@ -57,8 +62,8 @@ jobs:
           fi
           TAG="dashboard-v${next}"
 
-          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-            echo "Tag ${TAG} already exists — nothing to release."; exit 0
+          if git ls-remote --tags --refs origin "${TAG}" | grep -q .; then
+            echo "Tag ${TAG} already exists on the remote — nothing to release."; exit 0
           fi
 
           echo "Releasing ${TAG} at ${SHA}"
