@@ -1,0 +1,36 @@
+# OPTIONAL starter triage Action — NOT auto-shipped (touches CI → plan first,
+# 00-bootstrap-gate). To enable: copy to the repo's `.forgejo/workflows/pm-triage.yml` and
+# add a repo/org secret FORGEJO_TOKEN (a PAT with repo write). Requires the status/* + kind/*
+# labels (apply-forgejo-pm.sh creates them). jq is preinstalled on the runner image.
+#
+# Behaviour on a new issue: if it has no status/* label, set status/triage; if it has no
+# kind/* label, post a short triage checklist. (Template-created issues already carry kind/*.)
+name: pm-triage
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Triage new issue
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          set -euo pipefail
+          API="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          AUTH=(-H "Authorization: token ${FORGEJO_TOKEN}" -H 'Content-Type: application/json')
+          NUM=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
+          HAS_STATUS=$(jq -r '[.issue.labels[]?.name|select(startswith("status/"))]|length' "$GITHUB_EVENT_PATH")
+          HAS_KIND=$(jq -r '[.issue.labels[]?.name|select(startswith("kind/"))]|length' "$GITHUB_EVENT_PATH")
+          if [ "$HAS_STATUS" = "0" ]; then
+            curl -fsS "${AUTH[@]}" -X POST "$API/issues/$NUM/labels" -d '{"labels":["status/triage"]}' \
+              || echo "note: could not add status/triage (run apply-forgejo-pm.sh so the label exists)"
+          fi
+          if [ "$HAS_KIND" = "0" ]; then
+            curl -fsS "${AUTH[@]}" -X POST "$API/issues/$NUM/comments" \
+              -d '{"body":"**Triage needed.** Set a `kind/*`, a `priority/{now,next,later}`, and (if roadmap-bound) a `wave/wN` label. Add a milestone to schedule it."}' \
+              || echo "note: could not post triage comment"
+          fi
+          echo "triaged #$NUM"
