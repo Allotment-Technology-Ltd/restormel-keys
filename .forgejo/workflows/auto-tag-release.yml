@@ -9,16 +9,23 @@
 # WHY the tag is pushed with secrets.FORGEJO_TOKEN (a PAT) and not the runner's
 # automatic token: a ref pushed by the automatic Actions token does NOT trigger
 # another workflow run, so the tag-gated deploy would never fire. A PAT push does.
+# The tag is pushed via `git push origin` using the credentials persisted by the
+# checkout step (token: secrets.FORGEJO_TOKEN), which sets the correct auth header
+# for origin — an explicit https://user:token@host URL was rejected 403 because the
+# baked-in username did not match the token owner.
 #
-# Scope note: this tags + deploys on EVERY main push, including docs-only merges. That
-# matches "a release per merge"; if redeploying prod for non-app changes becomes
-# wasteful, add a `paths:` filter (apps/dashboard/**, packages/**) here.
+# Scope note: a `paths:` filter is now in place (apps/dashboard/**, packages/**), so
+# only app-affecting merges tag + deploy prod. A docs/planning/workflow-only merge
+# gets no release tag — that is intentional (no prod redeploy for non-app changes).
 
 name: Auto-tag release
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
 
 concurrency:
   group: auto-tag-release
@@ -39,7 +46,6 @@ jobs:
 
       - name: Compute next dashboard-v* and push the release tag
         env:
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -71,9 +77,9 @@ jobs:
           git config user.email "actions@allotmentology.tech"
           git tag -a "${TAG}" -m "Auto-release on main merge (${SHA})"
 
-          # Push with the PAT (token masked in logs) so the tag push triggers
+          # Push with the credentials persisted by the checkout step (the PAT in
+          # secrets.FORGEJO_TOKEN, token masked in logs) so the tag push triggers
           # deploy-dashboard.yml's `dashboard-v*` prod deploy.
-          git push "https://forgejo-actions:${FORGEJO_TOKEN}@git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys.git" \
-            "refs/tags/${TAG}"
+          git push origin "refs/tags/${TAG}"
 
           echo "Pushed ${TAG}. deploy-dashboard.yml (dashboard-v* trigger) will run the prod deploy."
