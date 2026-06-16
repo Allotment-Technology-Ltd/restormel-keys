@@ -37,6 +37,8 @@ export type MintOptions = {
   scope?: string;
   /** Seconds from now; negative ⇒ already expired. Default +300. */
   expiresInSeconds?: number;
+  /** When true, omit the `exp` claim entirely (a token that never expires). */
+  noExp?: boolean;
   /** Extra raw claims. */
   extra?: Record<string, unknown>;
 };
@@ -53,8 +55,12 @@ export async function mintToken(keys: TokenKeys, opts: MintOptions = {}): Promis
   let builder = new SignJWT(payload)
     .setProtectedHeader({ alg: ALG })
     .setSubject(opts.subject ?? "sub-default")
-    .setAudience(opts.audience ?? "proxy-resource")
-    .setExpirationTime(now + (opts.expiresInSeconds ?? 300));
+    .setAudience(opts.audience ?? "proxy-resource");
+  // Omit `exp` entirely when `noExp` is set, so tests can exercise the
+  // "token with no expiry is rejected" fail-closed path.
+  if (!opts.noExp) {
+    builder = builder.setExpirationTime(now + (opts.expiresInSeconds ?? 300));
+  }
   if (opts.issuer) builder = builder.setIssuer(opts.issuer);
 
   return builder.sign(keys.privateKey);

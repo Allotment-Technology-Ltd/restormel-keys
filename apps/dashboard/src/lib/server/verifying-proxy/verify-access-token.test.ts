@@ -142,6 +142,26 @@ describe("verifyAccessToken — JWKS (preferred path)", () => {
     if (res.ok) return;
     expect(res.error).toBe("invalid_token");
   });
+
+  it("rejects a signature-valid token with no exp (401 token_expired)", async () => {
+    // A JWT that carries no `exp` would otherwise validate indefinitely. The
+    // fixture verifier (like a permissive JWKS verifier) does NOT require `exp`,
+    // so this asserts the in-code fail-closed backstop in checkClaims. In
+    // production buildHydraVerifierFromEnv additionally passes jose
+    // `requiredClaims: ["exp"]`, rejecting it one layer earlier.
+    const token = await mintToken(keys, {
+      audience: AUDIENCE,
+      issuer: ISSUER,
+      workspaceId: "ws-a",
+      scope: "connect.proxy",
+      noExp: true,
+    });
+    const res = await verifyAccessToken(token, jwksDeps());
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.status).toBe(401);
+    expect(res.error).toBe("token_expired");
+  });
 });
 
 describe("verifyAccessToken — introspection (fallback path)", () => {
@@ -187,7 +207,10 @@ describe("verifyAccessToken — introspection (fallback path)", () => {
           active: true,
           sub: "sub-a",
           aud: "some-other-resource",
+          iss: ISSUER,
           scope: "connect.proxy",
+          // valid exp + iss so this case isolates the audience check
+          exp: Math.floor(Date.now() / 1000) + 300,
         },
       }),
     };
@@ -206,6 +229,75 @@ describe("verifyAccessToken — introspection (fallback path)", () => {
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.error).toBe("verifier_unavailable");
+  });
+
+  it("rejects an active token with no exp (401 token_expired)", async () => {
+    // RFC 7662 makes `exp` optional in the response. An active token with no
+    // `exp` would otherwise be treated as never-expiring on the Restormel side;
+    // checkClaims must reject it fail-closed.
+    const deps: VerifyAccessTokenDeps = {
+      config: CONFIG,
+      introspect: makeIntrospectionClient({
+        "no-exp": {
+          active: true,
+          sub: "sub-a",
+          aud: AUDIENCE,
+          iss: ISSUER,
+          scope: "connect.proxy",
+          // exp intentionally omitted
+        },
+      }),
+    };
+    const res = await verifyAccessToken("no-exp", deps);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.status).toBe(401);
+    expect(res.error).toBe("token_expired");
+  });
+
+  it("rejects an active token with no iss when an issuer is configured (401 invalid_token)", async () => {
+    // jose enforces `iss` on the JWKS path; introspection results flow only
+    // through checkClaims, so a missing/non-string `iss` must be rejected here.
+    const deps: VerifyAccessTokenDeps = {
+      config: CONFIG,
+      introspect: makeIntrospectionClient({
+        "no-iss": {
+          active: true,
+          sub: "sub-a",
+          aud: AUDIENCE,
+          scope: "connect.proxy",
+          exp: Math.floor(Date.now() / 1000) + 300,
+          // iss intentionally omitted
+        },
+      }),
+    };
+    const res = await verifyAccessToken("no-iss", deps);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.status).toBe(401);
+    expect(res.error).toBe("invalid_token");
+  });
+
+  it("rejects an active token with a non-string iss when an issuer is configured (401 invalid_token)", async () => {
+    const deps: VerifyAccessTokenDeps = {
+      config: CONFIG,
+      introspect: makeIntrospectionClient({
+        "bad-iss": {
+          active: true,
+          sub: "sub-a",
+          aud: AUDIENCE,
+          scope: "connect.proxy",
+          exp: Math.floor(Date.now() / 1000) + 300,
+          // a hostile/malformed iss that is not a string
+          iss: 1234 as unknown as string,
+        },
+      }),
+    };
+    const res = await verifyAccessToken("bad-iss", deps);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.status).toBe(401);
+    expect(res.error).toBe("invalid_token");
   });
 });
 
