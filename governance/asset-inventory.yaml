@@ -6,12 +6,16 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-15
+#   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
 # ISMS scope: Restormel product and supporting infrastructure only.
 # Plot / Sophia / allotmentology.tech are explicitly out of scope at this stage.
+#
+# Last updated: 2026-06-17 — AST-003 notes updated to reflect in-execution split;
+#   added AST-009 (Box A prod runtime), AST-010 (Box B build/ops), AST-011 (private network),
+#   AST-012 (BX11 + restic backup repos) per REC-PLAN-012 / REC-PLAN-015.
 
 assets:
   - id: AST-001
@@ -32,20 +36,51 @@ assets:
     notes: "Operator cockpit; cowork-relay, playbooks, cowork-outbox"
 
   - id: AST-003
-    asset: "Coolify host — Hetzner, Helsinki"
+    asset: "Hetzner Helsinki compute — two-box topology (in-execution split)"
     type: infrastructure
     owner: founder
     location: "Hetzner, Helsinki FI (EU)"
     notes: >
-      Self-hosts: Forgejo, Restormel SvelteKit app, self-hosted Postgres
-      (verification spine), BetterAuth. Primary compute plane for all
-      in-scope services. PLANNED SPLIT (REC-PLAN-012, ready-for-execution): this
-      single-box topology is being split into Box A (.167) running the live
-      product alone — dashboard, worker, app Postgres, Ory Hydra — and Box B
-      (.150) running build/ops (Forgejo, CI runner, Coolify, monitoring) plus
-      SurrealDB (migrated from .167), connected over a private network
-      (restormel-internal, 10.10.0.0/16). Treats RISK-001. On execution, update
-      this entry to the two-box topology and add the private-network + Hydra assets.
+      IN-EXECUTION SPLIT (REC-PLAN-012 + REC-PLAN-015): formerly a single-box
+      topology ("everything on .150"). Now splitting into two CX33 boxes:
+      Box A (.167, AST-009) for the live product and Box B (.150, AST-010) for
+      build/ops + SurrealDB, connected over a private network (AST-011).
+      Treats RISK-001. See AST-009/010/011 for per-box detail.
+
+  - id: AST-009
+    asset: "Box A — prod runtime (77.42.124.167)"
+    type: infrastructure
+    owner: founder
+    location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.124.167, private 172.16.0.3"
+    notes: >
+      Post-split prod runtime box (REC-PLAN-012). Runs: Restormel dashboard
+      (Coolify app UUID mxq1lnsehg7sdfzn0a8tnkxo), worker (UUID ppvmqm1hbnu09kjgttdl5og4),
+      self-hosted app Postgres, Ory Hydra + its DB. Connected to Box B over
+      private network AST-011. Coolify-managed from Box B. Backup: restic
+      cron 03:00 daily → BX11 repo restic-surreal (AST-012). During migration
+      transition: also temporarily hosts SurrealDB until Phase 2 complete.
+
+  - id: AST-010
+    asset: "Box B — build/ops (77.42.125.150)"
+    type: infrastructure
+    owner: founder
+    location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.125.150, private 172.16.0.2"
+    notes: >
+      Build/ops box (REC-PLAN-012). Runs: Forgejo (canonical repo), Forgejo
+      CI runner, Coolify (manages Box A over private net), self-hosted monitoring,
+      SurrealDB (migrated from .167 in Phase 2). Backup: restic cron 02:00
+      daily → BX11 repo restic-buildops (AST-012). deploy@ is the SSH user.
+
+  - id: AST-011
+    asset: "Private network — restormel-internal"
+    type: infrastructure
+    owner: founder
+    location: "Hetzner eu-central (Helsinki), CIDR 172.16.0.0/16, subnet 172.16.0.0/24"
+    notes: >
+      Hetzner private network connecting Box A (172.16.0.3) and Box B (172.16.0.2).
+      Used for: Coolify (.150) deploying to .167; dashboard (.167) → SurrealDB (.150);
+      SSH/management private-only once public SSH is hardened. No egress cost
+      intra-zone. Created as part of REC-PLAN-012 Phase 1.
 
   - id: AST-004
     asset: "Neon Postgres (legacy — decommissioning)"
@@ -99,3 +134,22 @@ assets:
       records out (they never leave Forgejo) and evidence/ is excluded. Google is a
       sub-processor (suppliers.yaml). US-SaaS — sovereignty trade-off accepted for
       internal/non-regulated records only.
+
+  - id: AST-012
+    asset: "BX11 Storage Box + restic backup repos"
+    type: backup/storage
+    owner: founder
+    location: "Hetzner Storage Box BX11, Falkenstein DE (EU) — u613941.your-storagebox.de"
+    notes: >
+      Hetzner BX11 (1 TB) used as the offsite backup target for all Restormel
+      infrastructure. Accessed via SFTP/restic from Box A and Box B.
+      Two restic repos:
+        - restic-surreal: Box A SurrealDB data → BX11:/restic-surreal (cron 03:00 UTC,
+          Box A 77.42.124.167). Covers SurrealDB data directory.
+        - restic-buildops: Box B build/ops data → BX11:/restic-buildops (cron 02:00 UTC,
+          Box B 77.42.125.150). Covers Forgejo, Coolify config, Box B Postgres.
+      Both repos: retention keep-daily 7 / keep-weekly 4 / keep-monthly 6.
+      Repos are restic-encrypted (passphrase in secrets estate / AST-007).
+      EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control
+      for RISK-001 and RISK-009. Restore drill required per REC-PLAN-015 (Phase 8).
+      DR runbook: planning/infra-migration-rollback-runbook.md (REC-PLAN-015).
