@@ -107,8 +107,11 @@ jobs:
         shell: bash
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          DASHBOARD_UUID: mxq1lnsehg7sdfzn0a8tnkxo
-          WORKER_UUID: ppvmqm1hbnu09kjgttdl5og4
+          # Prod migrated to Box A (.167) on 2026-06-17 (REC-PLAN-012). Coolify still
+          # runs on .150 (API via 10.0.1.1:8000) and orchestrates the .167 deploy over
+          # the private network — these UUIDs are the .167 prod apps.
+          DASHBOARD_UUID: deibtxcn1kl5flye5d3koiln
+          WORKER_UUID: s5cf1bkq5egny7r4jqbxc1gn
         run: |
           set -euo pipefail
           if [[ -z "${COOLIFY_TOKEN:-}" ]]; then
