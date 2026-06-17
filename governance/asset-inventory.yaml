@@ -18,6 +18,12 @@
 #   AST-012 (BX11 + restic backup repos) per REC-PLAN-012 / REC-PLAN-015;
 #   added AST-013 (self-hosted Infisical secret manager, secrets.restormel.dev)
 #   and updated AST-007 to reflect secrets-estate unification into Infisical (REC-POL-004).
+# 2026-06-17 (cowork/company-portal-governance): added AST-014 (SurrealDB,
+#   surreal.restormel.dev — previously only referenced inside the box assets);
+#   flagged the AST-003/009/010/011 region for Helsinki-vs-Nuremberg/Falkenstein
+#   reconcile + added the firewall note; listed Infisical in AST-010's services;
+#   recorded the no-enterprise-OIDC decision on AST-013. (Re-applies the intent of a
+#   stale 2026-06-15 Cowork bundle that mis-assigned Infisical/SurrealDB to AST-008/009.)
 
 assets:
   - id: AST-001
@@ -41,13 +47,20 @@ assets:
     asset: "Hetzner Helsinki compute — two-box topology (in-execution split)"
     type: infrastructure
     owner: founder
-    location: "Hetzner, Helsinki FI (EU)"
+    location: "Hetzner Cloud, EU — region [PLACEHOLDER — founder: confirm Helsinki FI vs Nuremberg/Falkenstein DE]"
     notes: >
       IN-EXECUTION SPLIT (REC-PLAN-012 + REC-PLAN-015): formerly a single-box
       topology ("everything on .150"). Now splitting into two CX33 boxes:
       Box A (.167, AST-009) for the live product and Box B (.150, AST-010) for
       build/ops + SurrealDB, connected over a private network (AST-011).
       Treats RISK-001. See AST-009/010/011 for per-box detail.
+      REGION RECONCILE (2026-06-17): AST-003/009/010/011 record the region as
+      "Helsinki FI", but INFRA-RUNBOOK.md records the pilot box (IP 77.42.125.150)
+      as Nuremberg/Falkenstein, DE. [PLACEHOLDER — founder: confirm the true Hetzner
+      region and align all four box assets.] Both are EU, so no transfer/sovereignty
+      change either way — this is a record-accuracy fix.
+      FIREWALL: the Hetzner Cloud Firewall allows inbound 22/80/443 only; Coolify's
+      :8000 admin port is not internet-exposed. Single point of failure — RISK-001.
 
   - id: AST-009
     asset: "Box A — prod runtime (77.42.124.167)"
@@ -70,7 +83,8 @@ assets:
     notes: >
       Build/ops box (REC-PLAN-012). Runs: Forgejo (canonical repo), Forgejo
       CI runner, Coolify (manages Box A over private net), self-hosted monitoring,
-      SurrealDB (migrated from .167 in Phase 2). Backup: restic cron 02:00
+      the Infisical secret manager (AST-013, secrets.restormel.dev), and SurrealDB
+      (AST-014; migrated from .167 in Phase 2). Backup: restic cron 02:00
       daily → BX11 repo restic-buildops (AST-012). deploy@ is the SSH user.
 
   - id: AST-011
@@ -184,5 +198,33 @@ assets:
       deciding reasons for self-hosting rather than a SaaS secret manager. SSH
       private keys are deliberately NOT migrated into Infisical — they remain key
       files on disk. Recovery point for the store is a pg_dump of the Infisical
-      Postgres (covered by the Box B restic backup, AST-012). Single point of
-      failure for runtime secret retrieval — see RISK-010.
+      Postgres (covered by the Box B restic backup, AST-012).
+      OIDC/SAML federation deliberately NOT adopted: Infisical gates it behind a paid
+      enterprise licence (~£18/mo), judged not worth it for a single self-hosted
+      product at this stage — it keeps its own login (admin MFA still to be enabled,
+      tracked in RISK-010). [PLACEHOLDER — founder: confirm] whether the
+      allotmentology.tech app yet sources its secrets from Infisical (confirmed in
+      place for Restormel; the allotmentology.tech app itself remains out of ISMS
+      scope until the company portal ships).
+      Single point of failure for runtime secret retrieval — see RISK-010.
+
+  - id: AST-014
+    asset: "SurrealDB — verification / knowledge-graph store"
+    type: data-store
+    owner: founder
+    location: "Self-hosted, surreal.restormel.dev (EU); host [PLACEHOLDER — founder: confirm — currently mid-migration Box A (.167, AST-009) → Box B (.150, AST-010) per RISK-009 / REC-PLAN-012]"
+    notes: >
+      Restormel verification / knowledge-graph store (buildWorkspaceGraphStore /
+      surreal-graph-store.ts). Confirmed IN ISMS scope (founder, 2026-06-17) — it was
+      previously only referenced inside the box assets (AST-009/010/012), never given
+      its own entry. Accessed via the Surrealist client using the root account +
+      password. CONTROL OBSERVATION: routine access via a shared root credential
+      conflicts with the least-privilege / individual-accounts principle
+      (REC-POL-002 §2). Recommended: create scoped SurrealDB users for routine use,
+      store their credentials in Infisical (AST-013), and reserve root for break-glass
+      (the root password necessarily remains in /opt/surreal/.env on the box for
+      runtime — see RISK-002 treatment_status). SurrealDB has no OIDC/SSO at the
+      database layer, so it cannot join a BetterAuth single sign-on directly; if a web
+      admin UI is exposed at surreal.restormel.dev it can sit behind the shared Traefik
+      forward-auth gate (company portal plan) — same login to reach it, DB credential
+      still separate. Backed up via restic-surreal → BX11 (AST-012).
