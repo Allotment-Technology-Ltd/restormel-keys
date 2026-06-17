@@ -24,7 +24,13 @@
 # Gate is intended to be a required status check on PRs to main (see plan A7).
 name: CI
 on:
+  # Run on direct pushes to main only (post-merge sanity + the deploy/auto-tag gate).
+  # Feature-branch commits are covered by the pull_request trigger below, so a PR
+  # commit runs the job set ONCE instead of twice (push + pull_request). This halves
+  # CI load on the capacity-2 runner without weakening the merge gate — the required
+  # check remains "Security scan ... (pull_request)".
   push:
+    branches: [main]
   pull_request:
 
 jobs:
