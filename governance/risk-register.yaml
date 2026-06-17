@@ -65,13 +65,18 @@ risks:
     rating: Medium
     treatment_type: mitigate
     treatment: >
-      Planned: unify into a single auditable secrets store (e.g. Infisical,
-      Doppler, or 1Password Secrets). Until unified, quarterly access review
-      (playbooks/quarterly-access-review.md) must explicitly cover all
-      secret locations. GitHub mirror secrets to be audited and minimised.
-    treatment_status: "Open — unification not yet started"
+      IN TREATMENT (2026-06-17): a self-hosted Infisical secret manager (AST-013,
+      secrets.restormel.dev) is now deployed as the single auditable store —
+      EU-sovereign, OSS, on Box B. Server-side plaintext env/token files are being
+      migrated into it (Infisical project restormel-ops, env prod) with the
+      plaintext sources retained until end-to-end verification, then removed.
+      Access + rotation governed by the Secret Management Policy (REC-POL-004).
+      Until migration completes, quarterly access review
+      (playbooks/quarterly-access-review.md) must continue to cover all secret
+      locations; GitHub mirror secrets to be audited and minimised.
+    treatment_status: "In-treatment — Infisical deployed 2026-06-17; first secrets imported; plaintext removal pending founder verification; CI/mirror secrets still to consolidate"
     owner: founder
-    status: open
+    status: in-treatment
     review: 2026-12-15
 
   - id: RISK-003
@@ -239,6 +244,39 @@ risks:
       in RISK-001 treatment but not anchored in a policy. Owner to create before
       ISO certification attempt.
     treatment_status: "In-treatment — execution in progress; restic backup controls active; restore drill pending (Phase 8); break-glass runbook REC-PLAN-015 published"
+    owner: founder
+    status: open
+    review: 2026-09-15
+
+  - id: RISK-010
+    risk: >
+      The self-hosted Infisical secret manager (AST-013, secrets.restormel.dev) is a
+      new single point of failure and a high-value target. (a) If the box is lost or
+      Infisical's Postgres is corrupted without a recoverable backup, runtime secret
+      retrieval breaks for anything that depends on `infisical run`. (b) The master
+      ENCRYPTION_KEY / AUTH_SECRET live only in /opt/infisical/.env on the box —
+      loss of that file means the encrypted secret store cannot be decrypted; theft
+      of it plus the Postgres data means full secret disclosure. (c) The admin
+      account does not yet have MFA.
+    asset: "AST-013 — Infisical secret manager; AST-007 — secrets estate"
+    likelihood: L
+    impact: H
+    rating: Medium
+    treatment_type: mitigate
+    treatment: >
+      1. BACKUP: include the Infisical Postgres in the Box B restic backup
+         (AST-012, restic-buildops) via a pg_dump of /opt/infisical/pg, and back up
+         /opt/infisical/.env (master key material) to the encrypted backup repo —
+         without these, the store is unrecoverable. Add a restore drill to the DR
+         procedure. 2. NO PLAINTEXT DELETION until the founder verifies Infisical
+         end-to-end (the original plaintext files remain the fallback in the
+         meantime). 3. MFA: enable MFA on the Infisical admin account (tracked with
+         RISK-008). 4. LEAST PRIVILEGE: CLI access via a read-only (viewer) machine
+         identity scoped to one project/env; rotate its client secret on suspected
+         exposure (REC-POL-004 §5). 5. SECRET HANDLING: never echo secret values;
+         treat any exposure as an incident (REC-POL-004 §7) — this treats the
+         in-session credential-exposure risk that motivated the migration.
+    treatment_status: "Open — Infisical deployed 2026-06-17; Postgres/master-key backup + restore drill, admin MFA, and plaintext-removal-after-verification all still to do"
     owner: founder
     status: open
     review: 2026-09-15
