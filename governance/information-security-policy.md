@@ -4,12 +4,12 @@ title: Information Security Policy
 class: governance
 owner: founder
 status: approved
-approved-by: Adam Boon
-approved-on: 2026-06-15
+approved-by: founder
+approved-on: 2026-06-17
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-17
 review-interval: P12M
 retention: P6Y-after-superseded
 ---
@@ -30,16 +30,33 @@ at least annually and on material change.
 
 ## 2. Scope
 
-The ISMS covers the development, operation, and support of the Restormel product
-(Keys, Connect) and its supporting infrastructure: the self-hosted Coolify/Hetzner
-compute plane (Helsinki, EU), the restormel-keys and restormel-ops repositories hosted
-on Forgejo, and associated SaaS sub-processors listed in the supplier register
-(`suppliers.yaml`, REC-GOV-005).
+The ISMS covers the information assets, development, operation, and support of Allotment
+Technology Ltd's in-scope products and their shared supporting infrastructure. In scope at
+this stage:
 
-**Explicitly out of scope at this stage:** other Allotment Technology Ltd products
-(Plot, Sophia) and their infrastructure. The scope boundary will be reviewed and
-expanded when those products reach customer-facing maturity or share in-scope
-infrastructure with Restormel.
+- **Restormel** (Keys, Connect) — the live product.
+- **allotmentology.tech** — the company portal. Currently a founder-only portal with public
+  contact/enquiry handling, hosted on the same self-hosted Coolify/Hetzner compute plane
+  (Helsinki, EU) as Restormel.
+
+Shared supporting infrastructure in scope: the self-hosted Coolify/Hetzner compute plane
+(Helsinki, EU; two-server cluster) with encrypted backups to a Hetzner Storage Box
+(Falkenstein, DE), self-hosted Postgres, BetterAuth, the self-hosted Infisical secrets manager,
+the restormel-keys, restormel-ops, and allotmentology-tech repositories on Forgejo (with
+push-only GitHub mirrors where noted), and the SaaS sub-processors listed in the supplier
+register (`suppliers.yaml`, REC-GOV-005).
+
+**Explicitly out of scope at this stage:** the Plot (plotbudget.com) and Sophia (usesophia.app)
+products and their infrastructure. The scope boundary is reviewed and expanded as each product
+reaches customer-facing maturity or shares in-scope infrastructure; Plot and Sophia are
+scheduled for later expansion phases.
+
+**Multi-product governance cadence.** A single ISMS governs all in-scope products. Governance
+documents and registers are maintained company-wide rather than per product; per-product scope
+differences are recorded with a `product:` tag on the relevant asset, data, supplier,
+processing, and risk entries. Adding a product to scope, or any material change to a product's
+processing or infrastructure, triggers a review of each governance document under the
+self-maintaining-records norm.
 
 ## 3. Roles and responsibilities
 

@@ -5,16 +5,20 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: Adam Boon
-#   approved-on: 2026-06-15
+#   approved-by: founder
+#   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Restormel only. Each personal-data row maps to a RoPA processing activity.
+# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
+# (Restormel + allotmentology.tech) and their shared supporting infrastructure.
+# Plot (plotbudget.com) and Sophia (usesophia.app) remain OUT of scope until their phases.
+# Per-row scope is in the product: field. Each personal-data row maps to a RoPA processing activity.
 
 data:
   - id: DAT-001
     data: "Company and accounting records"
+    product: shared
     categories: "financial, contractual"
     classification: confidential
     store: "FreeAgent (accounting) / Mettle (banking)"
@@ -24,6 +28,7 @@ data:
 
   - id: DAT-002
     data: "User accounts and auth sessions"
+    product: restormel
     categories: "identity"
     classification: confidential
     store: "Self-hosted Postgres on AST-003 (BetterAuth tables)"
@@ -39,6 +44,7 @@ data:
 
   - id: DAT-003
     data: "Keys / control-plane data"
+    product: restormel
     categories: "operational"
     classification: confidential
     store: "Self-hosted Postgres on AST-003"
@@ -51,6 +57,7 @@ data:
 
   - id: DAT-004
     data: "Connect ingest and verification data"
+    product: restormel
     categories: "operational, knowledge"
     classification: confidential
     store: "Self-hosted Postgres on AST-003"
@@ -64,6 +71,7 @@ data:
 
   - id: DAT-005
     data: "Product analytics events"
+    product: restormel
     categories: "usage"
     classification: internal
     store: "PostHog EU"
@@ -73,6 +81,7 @@ data:
 
   - id: DAT-006
     data: "Governance and records"
+    product: shared
     categories: "operational"
     classification: internal
     store: "Forgejo repos (AST-001, AST-002)"
@@ -82,6 +91,7 @@ data:
 
   - id: DAT-007
     data: "Email correspondence"
+    product: shared
     categories: "communications"
     classification: confidential
     store: "Google Workspace / Gmail"
@@ -94,6 +104,7 @@ data:
 
   - id: DAT-008
     data: "Billing and subscription records"
+    product: restormel
     categories: "financial"
     classification: confidential
     store: "Paddle (merchant of record) + Postgres (IDs only)"
@@ -107,6 +118,7 @@ data:
 
   - id: DAT-009
     data: "Error and exception data"
+    product: restormel
     categories: "operational"
     classification: internal
     store: "Sentry (US)"
@@ -120,6 +132,7 @@ data:
 
   - id: DAT-010
     data: "Audit events"
+    product: restormel
     categories: "security, operational"
     classification: confidential
     store: "Self-hosted Postgres on AST-003 (audit_events table)"
@@ -129,3 +142,30 @@ data:
       Key evidence record for ISO 27001 A.8.15 (logging and monitoring).
       Retention confirmed by founder 2026-06-15. Annual review task scheduled
       in Cowork to verify retention is being enforced and evidence is intact.
+
+  - id: DAT-011
+    data: "allotmentology.tech portal account & auth sessions"
+    categories: "identity"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003 (allotmentology.tech BetterAuth tables)"
+    contains_personal_data: "yes — founder (director): email, name, session tokens. Founder-only; no external users at this stage."
+    retention: "Duration of account"
+    product: allotmentology.tech
+    notes: >
+      Self-contained BetterAuth instance for the company portal (separate from Restormel's
+      DAT-002). Magic-link sign-in via Migadu. If the portal opens to additional users, revisit
+      this row, the RoPA, and the access policy.
+
+  - id: DAT-012
+    data: "Contact / enquiry form submissions (PLANNED — not yet configured)"
+    categories: "contact, communications"
+    classification: confidential
+    store: "TARGET: self-hosted Postgres on AST-003 (EU); notification email via the EU mail path (Migadu). Avoid US form SaaS."
+    contains_personal_data: "yes — enquirer name, email address, message content"
+    retention: "TARGET: delete or anonymise within 12 months of the enquiry being closed (adjust at launch)"
+    product: allotmentology.tech
+    notes: >
+      Not yet built — this row sets the privacy-by-design target. Lawful basis: Legitimate
+      Interests (responding to enquiries) — see RoPA PROC-008. A published privacy notice MUST
+      be live before the form collects any data (none today — see risk register RISK-011).
+      Keep submissions on EU infrastructure.

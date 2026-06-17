@@ -5,13 +5,15 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: Adam Boon
+#   approved-by: founder
 #   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Restormel product and supporting infrastructure only.
-# Plot / Sophia / allotmentology.tech are explicitly out of scope at this stage.
+# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
+# (Restormel + allotmentology.tech) and their shared supporting infrastructure.
+# Plot (plotbudget.com) and Sophia (usesophia.app) remain OUT of scope until their phases.
+# Per-asset scope is in the product: field.
 #
 # Last updated: 2026-06-17 — AST-003 notes updated to reflect in-execution split;
 #   added AST-009 (Box A prod runtime), AST-010 (Box B build/ops), AST-011 (private network),
@@ -24,12 +26,19 @@
 #   reconcile + added the firewall note; listed Infisical in AST-010's services;
 #   recorded the no-enterprise-OIDC decision on AST-013. (Re-applies the intent of a
 #   stale 2026-06-15 Cowork bundle that mis-assigned Infisical/SurrealDB to AST-008/009.)
+# 2026-06-17 (Phase 2 ISMS expansion — company-wide): scope → company-wide; AST-003
+#   region resolved to Helsinki (the Falkenstein flag was the storage box AST-012);
+#   added AST-015 (allotmentology-tech repo), AST-016 (allotmentology.tech domain),
+#   AST-017 (allotmentology.tech company portal); product: tags on every asset. The
+#   spec's "Hetzner Storage Box (STORAGE_BOX_ID)" is the EXISTING AST-012 (BX11) — mapped,
+#   NOT duplicated (the company-portal/infra-split PRs already added it).
 
 assets:
   - id: AST-001
     asset: "restormel-keys repo"
     type: code/records
     owner: founder
+    product: restormel
     location: "Forgejo (canonical) + GitHub mirror (push-only)"
     notes: >
       System of record. Contains governance docs and Restormel SvelteKit app
@@ -40,32 +49,35 @@ assets:
     asset: "restormel-ops repo"
     type: ops/records
     owner: founder
+    product: shared
     location: "Forgejo only (no mirror)"
     notes: "Operator cockpit; cowork-relay, playbooks, cowork-outbox"
 
   - id: AST-003
-    asset: "Hetzner Helsinki compute — two-box topology (in-execution split)"
+    asset: "Coolify compute — Hetzner (Helsinki, two-server cluster)"
     type: infrastructure
     owner: founder
-    location: "Hetzner Cloud, EU — region [PLACEHOLDER — founder: confirm Helsinki FI vs Nuremberg/Falkenstein DE]"
+    product: shared
+    location: "Hetzner Cloud, Helsinki, FI (EU)"
     notes: >
-      IN-EXECUTION SPLIT (REC-PLAN-012 + REC-PLAN-015): formerly a single-box
-      topology ("everything on .150"). Now splitting into two CX33 boxes:
-      Box A (.167, AST-009) for the live product and Box B (.150, AST-010) for
-      build/ops + SurrealDB, connected over a private network (AST-011).
-      Treats RISK-001. See AST-009/010/011 for per-box detail.
-      REGION RECONCILE (2026-06-17): AST-003/009/010/011 record the region as
-      "Helsinki FI", but INFRA-RUNBOOK.md records the pilot box (IP 77.42.125.150)
-      as Nuremberg/Falkenstein, DE. [PLACEHOLDER — founder: confirm the true Hetzner
-      region and align all four box assets.] Both are EU, so no transfer/sovereignty
-      change either way — this is a record-accuracy fix.
-      FIREWALL: the Hetzner Cloud Firewall allows inbound 22/80/443 only; Coolify's
-      :8000 admin port is not internet-exposed. Single point of failure — RISK-001.
+      Two Hetzner Cloud servers in Helsinki, managed together as a single Coolify cluster,
+      form the primary compute plane — Box A (.167, AST-009) for the live product and Box B
+      (.150, AST-010) for build/ops, over a private network (AST-011). Self-hosts Forgejo
+      (git.allotmentology.tech), the Restormel app, the allotmentology.tech Next.js company
+      portal (AST-017), self-hosted Postgres, BetterAuth, Infisical (AST-013), and SurrealDB
+      (AST-014). Backups target the encrypted Hetzner Storage Box in Falkenstein (AST-012).
+      Firewall: inbound 22/80/443 only; Coolify :8000 not internet-exposed. Single compute
+      region/cluster — see RISK-001 (treated via the split + backups). See AST-009/010/011
+      for per-box detail.
+      REGION RECONCILED (2026-06-17, founder): compute is Helsinki, FI; the earlier
+      "Nuremberg/Falkenstein DE" flag referred to the Falkenstein storage box (AST-012),
+      not the compute. The AST-009/010/011 "Helsinki FI" region is confirmed correct.
 
   - id: AST-009
     asset: "Box A — prod runtime (77.42.124.167)"
     type: infrastructure
     owner: founder
+    product: shared
     location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.124.167, private 172.16.0.3"
     notes: >
       Post-split prod runtime box (REC-PLAN-012). Runs: Restormel dashboard
@@ -79,6 +91,7 @@ assets:
     asset: "Box B — build/ops (77.42.125.150)"
     type: infrastructure
     owner: founder
+    product: shared
     location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.125.150, private 172.16.0.2"
     notes: >
       Build/ops box (REC-PLAN-012). Runs: Forgejo (canonical repo), Forgejo
@@ -91,6 +104,7 @@ assets:
     asset: "Private network — restormel-internal"
     type: infrastructure
     owner: founder
+    product: shared
     location: "Hetzner eu-central (Helsinki), CIDR 172.16.0.0/16, subnet 172.16.0.0/24"
     notes: >
       Hetzner private network connecting Box A (172.16.0.3) and Box B (172.16.0.2).
@@ -102,6 +116,7 @@ assets:
     asset: "Neon Postgres (legacy — decommissioning)"
     type: data-store
     owner: founder
+    product: restormel
     location: "Neon SaaS / AWS eu-west"
     notes: >
       DECOMMISSIONING. Backup only while self-hosted Postgres on AST-003
@@ -112,6 +127,7 @@ assets:
     asset: "restormel.dev domain"
     type: domain
     owner: founder
+    product: restormel
     location: "Vercel (registrar + DNS)"
     notes: "Primary product domain; DNS managed by Vercel."
 
@@ -119,6 +135,7 @@ assets:
     asset: "Founder workstation (MacBook)"
     type: endpoint
     owner: founder
+    product: shared
     location: "UK (remote)"
     notes: >
       Holds repo clones, cowork-relay token, SSH keys, Mac keychain entries.
@@ -129,6 +146,7 @@ assets:
     asset: "Secrets estate (distributed — control gap, unification in progress)"
     type: secrets
     owner: founder
+    product: shared
     location: "Multiple — see notes; primary store now AST-013 (Infisical)"
     notes: >
       Secrets currently distributed across: .env files (server/local disk,
@@ -146,6 +164,7 @@ assets:
     asset: "Company Google Drive (allotmenttech@gmail.com)"
     type: cloud-storage
     owner: founder
+    product: shared
     location: "Google (US)"
     notes: >
       Hosts the Drive⇄Forgejo mirror (My Drive/Restormel/): a markdown projection of
@@ -159,6 +178,7 @@ assets:
     asset: "BX11 Storage Box + restic backup repos"
     type: backup/storage
     owner: founder
+    product: shared
     location: "Hetzner Storage Box BX11, Falkenstein DE (EU) — u613941.your-storagebox.de"
     notes: >
       Hetzner BX11 (1 TB) used as the offsite backup target for all Restormel
@@ -173,11 +193,16 @@ assets:
       EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control
       for RISK-001 and RISK-009. Restore drill required per REC-PLAN-015 (Phase 8).
       DR runbook: planning/infra-migration-rollback-runbook.md (REC-PLAN-015).
+      Shared encrypted backup target for the company-wide Helsinki cluster (Restormel +
+      allotmentology.tech) — covers self-hosted Postgres dumps and Infisical backups. This
+      is the asset the Phase-2 spec called "Hetzner Storage Box (STORAGE_BOX_ID)" — mapped
+      to the existing AST-012, NOT duplicated.
 
   - id: AST-013
     asset: "Infisical — self-hosted secret manager"
     type: secrets-store
     owner: founder
+    product: shared
     location: "Box B build/ops .150 (77.42.125.150), Helsinki FI (EU); FQDN secrets.restormel.dev"
     notes: >
       Self-hosted open-source secret management platform (infisical/infisical
@@ -212,6 +237,7 @@ assets:
     asset: "SurrealDB — verification / knowledge-graph store"
     type: data-store
     owner: founder
+    product: restormel
     location: "Self-hosted, surreal.restormel.dev (EU); host [PLACEHOLDER — founder: confirm — currently mid-migration Box A (.167, AST-009) → Box B (.150, AST-010) per RISK-009 / REC-PLAN-012]"
     notes: >
       Restormel verification / knowledge-graph store (buildWorkspaceGraphStore /
@@ -228,3 +254,36 @@ assets:
       admin UI is exposed at surreal.restormel.dev it can sit behind the shared Traefik
       forward-auth gate (company portal plan) — same login to reach it, DB credential
       still separate. Backed up via restic-surreal → BX11 (AST-012).
+
+  - id: AST-015
+    asset: "allotmentology-tech repo"
+    type: code/records
+    owner: founder
+    product: allotmentology.tech
+    location: "Forgejo (canonical) + GitHub mirror (push-only)"
+    notes: >
+      Source for the allotmentology.tech Next.js company portal. Forgejo org
+      Allotment-Technology-Ltd; GitHub mirror is push-only.
+
+  - id: AST-016
+    asset: "allotmentology.tech domain"
+    type: domain
+    owner: founder
+    product: allotmentology.tech
+    location: "Registrar/DNS: get.tech (Radix)"
+    notes: >
+      Company-portal domain, registered via get.tech. git.allotmentology.tech resolves to the
+      Helsinki compute plane (AST-003). get.tech is a sub-processor for domain registration
+      contact data (see suppliers.yaml).
+
+  - id: AST-017
+    asset: "allotmentology.tech company portal (BetterAuth auth)"
+    type: service/web-app
+    owner: founder
+    product: allotmentology.tech
+    location: "Self-hosted on AST-003 (Coolify), allotmentology.tech"
+    notes: >
+      Next.js company portal with self-contained BetterAuth auth. Founder-only; NO SSO
+      federation to other products (no current plan). Public surface is a contact/enquiry form
+      (not yet configured — see RoPA PROC-008). App secrets currently in local .env, NOT yet in
+      Infisical — residual location under RISK-002. Auth email via Migadu (prod cutover gated).
