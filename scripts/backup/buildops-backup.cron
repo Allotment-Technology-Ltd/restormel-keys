@@ -1,0 +1,11 @@
+# buildops-backup — daily restic backup to Hetzner Storage Box BX11
+# Staggered from Surreal job (03:00 on .167) by one hour.
+# Managed by restormel-keys scripts/backup/ — DO NOT EDIT HERE.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+# UPTIME_KUMA_PUSH_URL is set to the push URL for the buildops-backup monitor in Uptime Kuma.
+# On .150: https://uptimekuma-txct20gto5hv75gktchd511m.77.42.125.150.sslip.io/api/push/<token>
+# The actual token is stored in /etc/cron.d/buildops-backup on .150 (not in VCS).
+UPTIME_KUMA_PUSH_URL=https://uptimekuma-txct20gto5hv75gktchd511m.77.42.125.150.sslip.io/api/push/REPLACE_WITH_PUSH_TOKEN
+
+0 2 * * * root /opt/buildops-backup/backup.sh >> /var/log/buildops-backup.log 2>&1
