@@ -29,10 +29,10 @@ related: [REC-PLAN-012, REC-GOV-002, REC-GOV-006]
 
 | Resource | Public IP | Private IP | Purpose |
 |---|---|---|---|
-| Box A — prod runtime | `77.42.124.167` | `10.10.1.3` | dashboard, worker, app Postgres, Ory Hydra |
-| Box B — build/ops | `77.42.125.150` | `10.10.1.2` | Forgejo, CI runner, Coolify, monitoring, SurrealDB |
+| Box A — prod runtime | `77.42.124.167` | `172.16.0.3` | dashboard, worker, app Postgres, Ory Hydra |
+| Box B — build/ops | `77.42.125.150` | `172.16.0.2` | Forgejo, CI runner, Coolify, monitoring, SurrealDB |
 | BX11 Storage Box | `u613941.your-storagebox.de` | — | Backups (restic) |
-| Private network | `restormel-internal` | `10.10.0.0/16` | Inter-box traffic |
+| Private network | `restormel-internal` | `172.16.0.0/16` | Inter-box traffic |
 | Coolify app UUID | `mxq1lnsehg7sdfzn0a8tnkxo` | — | dashboard Coolify resource |
 | Coolify worker UUID | `ppvmqm1hbnu09kjgttdl5og4` | — | worker Coolify resource |
 
@@ -45,7 +45,7 @@ ssh deploy@77.42.125.150
 # Box A (prod runtime) — via Box B jump or private network (once private net configured)
 ssh -J deploy@77.42.125.150 deploy@77.42.124.167
 # or, if on Box B already:
-ssh deploy@10.10.1.3
+ssh deploy@172.16.0.3
 ```
 
 **Restic repo locations (BX11):**
@@ -255,8 +255,8 @@ on BX11; row counts mismatch.
 3. Drop databases if they were partially created (connect via psql from Box B over
    private net or port-forward):
    ```bash
-   psql -h 10.10.1.3 -U postgres -c "DROP DATABASE IF EXISTS app;"
-   psql -h 10.10.1.3 -U postgres -c "DROP DATABASE IF EXISTS hydra;"
+   psql -h 172.16.0.3 -U postgres -c "DROP DATABASE IF EXISTS app;"
+   psql -h 172.16.0.3 -U postgres -c "DROP DATABASE IF EXISTS hydra;"
    ```
 4. Investigate failure:
    - Check logs: `docker logs <postgres-container> --tail 50`

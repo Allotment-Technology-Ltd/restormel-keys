@@ -60,6 +60,10 @@ SurrealDB (lower-criticality) shares the noisy box. Coolify deploys A from B ove
 - **Create:** Name `restormel-internal`, Network Zone **`eu-central`** (Helsinki), IP range
   **`10.10.0.0/16`**, subnet **`10.10.1.0/24`**. Range chosen to avoid Coolify's `10.0.1.x` docker
   bridge and the `172.16–31` docker default.
+  - **⚠️ Implemented (2026-06-17) as `172.16.0.0/16`** (`.150 → 172.16.0.2`, `.167 → 172.16.0.3`),
+    not the proposed `10.10.0.0/16`. Verified clear of docker's address pool on both boxes (docker
+    allocates upward from `172.17`); inter-box reachability confirmed. The operational rollback
+    runbook (REC-PLAN-015) and asset-inventory use the implemented `172.16.x` addresses.
 - **Attach** both servers (e.g. `.150 → 10.10.1.2`, `.167 → 10.10.1.3`).
 - **Uses:** Coolify (`.150`) → manage/deploy `.167` privately; dashboard (`.167`) → SurrealDB (`.150`)
   privately; SSH/management private-only.
