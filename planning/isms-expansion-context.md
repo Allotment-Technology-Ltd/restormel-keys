@@ -1,5 +1,5 @@
 ---
-id: REC-PLAN-002
+id: REC-PLAN-016
 title: Allotment Technology — ISMS company-wide expansion context pack
 class: planning
 owner: founder
@@ -235,7 +235,9 @@ Risks: RISK-001 to RISK-010 taken. **Next: RISK-011.** (RISK-009 = box-migration
 Suppliers: keyed by **name** — there are no `SUP-` numeric ids in suppliers.yaml, so the old
   "SUP-001–014 / next SUP-015" guidance is moot. Add a new supplier as a named entry; prefer
   `products:` tags over duplicates for shared suppliers.
-Records: REC-GOV-002–007, REC-POL-001–002, REC-PLAN-001–002, REC-ADR-001 taken.
+Records: REC-GOV-002–007, REC-POL-001–002, REC-PLAN-000–016, REC-ADR-001 taken.
+  [2026-06-17: this pack was reassigned from a colliding REC-PLAN-002 to the next-free
+  REC-PLAN-016; REC-PLAN-002 stays with records-architecture-implementation-plan.md.]
 
 ---
 
