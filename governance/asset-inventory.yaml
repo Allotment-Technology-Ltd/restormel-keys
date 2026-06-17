@@ -15,7 +15,9 @@
 #
 # Last updated: 2026-06-17 — AST-003 notes updated to reflect in-execution split;
 #   added AST-009 (Box A prod runtime), AST-010 (Box B build/ops), AST-011 (private network),
-#   AST-012 (BX11 + restic backup repos) per REC-PLAN-012 / REC-PLAN-015.
+#   AST-012 (BX11 + restic backup repos) per REC-PLAN-012 / REC-PLAN-015;
+#   added AST-013 (self-hosted Infisical secret manager, secrets.restormel.dev)
+#   and updated AST-007 to reflect secrets-estate unification into Infisical (REC-POL-004).
 
 assets:
   - id: AST-001
@@ -110,17 +112,21 @@ assets:
       .env files on local disk are gitignored and not committed to any repo.
 
   - id: AST-007
-    asset: "Secrets estate (distributed — control gap)"
+    asset: "Secrets estate (distributed — control gap, unification in progress)"
     type: secrets
     owner: founder
-    location: "Multiple — see notes"
+    location: "Multiple — see notes; primary store now AST-013 (Infisical)"
     notes: >
       Secrets currently distributed across: .env files (server/local disk,
       gitignored — not committed), Forgejo CI secrets/variables, GitHub
       secrets/variables (legacy mirror), Restormel app internal credential
-      store, Mac keychain. Unification into a single auditable secrets store
-      is a planned improvement. Until unified, quarterly access review must
-      cover all locations. Tracked as a risk in risk-register.yaml.
+      store, Mac keychain. UNIFICATION IN PROGRESS (2026-06-17): a self-hosted
+      Infisical secret manager (AST-013) is now deployed as the single auditable
+      store; plaintext server-side env/token files are being migrated into it
+      (see secret-management-policy.md, REC-POL-004) and removed only once the
+      founder verifies Infisical end to end. Until migration completes, quarterly
+      access review must continue to cover all locations. Tracked as a risk in
+      risk-register.yaml (RISK-002).
 
   - id: AST-008
     asset: "Company Google Drive (allotmenttech@gmail.com)"
@@ -153,3 +159,30 @@ assets:
       EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control
       for RISK-001 and RISK-009. Restore drill required per REC-PLAN-015 (Phase 8).
       DR runbook: planning/infra-migration-rollback-runbook.md (REC-PLAN-015).
+
+  - id: AST-013
+    asset: "Infisical — self-hosted secret manager"
+    type: secrets-store
+    owner: founder
+    location: "Box B build/ops .150 (77.42.125.150), Helsinki FI (EU); FQDN secrets.restormel.dev"
+    notes: >
+      Self-hosted open-source secret management platform (infisical/infisical
+      v0.154.6), deployed 2026-06-17 as a raw docker-compose under /opt/infisical
+      on the build/ops box (AST-010), published via the Coolify Traefik proxy
+      (router rule Host secrets.restormel.dev, TLS certresolver letsencrypt) on the
+      shared `coolify` external network — mirroring the SurrealDB publish pattern
+      (/opt/surreal). Becomes the single auditable store for the secrets estate
+      (AST-007), treating RISK-002. Three containers: Infisical backend (web UI +
+      REST API, port 8080), a dedicated Postgres 14 (stores encrypted secret blobs
+      + metadata; internal-only network; volume /opt/infisical/pg), and a dedicated
+      Redis 7 (queues/cache; internal-only; volume /opt/infisical/redis). The
+      backend's own master ENCRYPTION_KEY + AUTH_SECRET live only in
+      /opt/infisical/.env (root-owned, 0600) on the box — never committed to any
+      repo. Access paths: web UI (founder admin account; MFA to be enabled) and the
+      `infisical` CLI authenticated by a machine identity / service token for
+      `infisical run -- <cmd>` secret injection. EU sovereignty + OSS were the
+      deciding reasons for self-hosting rather than a SaaS secret manager. SSH
+      private keys are deliberately NOT migrated into Infisical — they remain key
+      files on disk. Recovery point for the store is a pg_dump of the Infisical
+      Postgres (covered by the Box B restic backup, AST-012). Single point of
+      failure for runtime secret retrieval — see RISK-010.
