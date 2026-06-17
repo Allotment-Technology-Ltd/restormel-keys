@@ -6,7 +6,7 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-15
+#   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -38,15 +38,17 @@ risks:
     treatment_type: mitigate
     treatment: >
       STRUCTURAL (REC-PLAN-012): split the single-box topology so the live product
-      runs alone on Box A (.167) while CI / Forgejo / Coolify / SurrealDB run on the
-      build/ops Box B (.150), over a private network — removing the "everything on
-      one host" blast radius and the CI noisy-neighbour OOM/disk incidents that
-      crashed Forgejo's Postgres. Plan ready-for-execution
+      runs alone on Box A (.167, AST-009) while CI / Forgejo / Coolify / SurrealDB
+      run on the build/ops Box B (.150, AST-010), over a private network (AST-011) —
+      removing the "everything on one host" blast radius and the CI noisy-neighbour
+      OOM/disk incidents that crashed Forgejo's Postgres. Plan in-execution
       (planning/infra-split-migration-plan.md); swap added to both boxes as an OOM
-      cushion. PLUS: Hetzner automated server backups + nightly pg_dump → BX11
-      storage box; DR runbook to be documented in restormel-ops (repo recovery from
-      GitHub mirror, DB restore from backup, Coolify re-provision). Target RTO < 4 hours.
-    treatment_status: "In-treatment — split planned (REC-PLAN-012, ready-for-execution); swap added; DR runbook still to write"
+      cushion. PLUS: scheduled restic backups → BX11 (AST-012) with retention
+      keep-daily 7 / keep-weekly 4 / keep-monthly 6, encrypted; restore drill
+      required before Phase 8 complete. BREAK-GLASS DR RUNBOOK:
+      planning/infra-migration-rollback-runbook.md (REC-PLAN-015) — covers per-phase
+      rollback and global abort for migration. Target RTO < 4 hours.
+    treatment_status: "In-treatment — split in execution (REC-PLAN-012); restic backups active (AST-012); break-glass runbook published (REC-PLAN-015)"
     owner: founder
     status: open
     review: 2026-12-15
@@ -213,19 +215,30 @@ risks:
       stores between boxes — SurrealDB (.167 → .150), the app Postgres, and Ory
       Hydra's DB onto the new prod box (.167) — and repoints DNS. A failed cutover
       risks data loss, extended downtime, or a broken BYO-graph / wss dependency.
-    asset: "AST-003 — compute host(s); SurrealDB; app Postgres"
+    asset: "AST-009/AST-010 — Box A/B compute hosts; SurrealDB; app Postgres; AST-012 BX11"
     likelihood: L
     impact: H
     rating: Medium
     treatment_type: mitigate
     treatment: >
-      Per REC-PLAN-012: full backups to BX11 before any move (SurrealDB export,
-      pg_dump app + Forgejo, Coolify config export); test-restore into scratch
+      Per REC-PLAN-012: full backups to BX11 (AST-012) before any move (SurrealDB
+      export, pg_dump app + Forgejo, Coolify config export); test-restore into scratch
       first; keep the source copy until the destination is verified; per-phase
       do → verify → rollback with low-TTL DNS and a warm fallback; cut over only
       after verification. The RESTORMEL_VERIFYING_PROXY_REMOTE flag stays OFF until
       Hydra's JWKS/issuer validate.
-    treatment_status: "Open — pre-execution; controls defined in REC-PLAN-012"
+      DR CONTROLS (added 2026-06-17): scheduled restic backups to BX11 are the
+      primary DR controls — restic-surreal (Box A, cron 03:00 UTC) and
+      restic-buildops (Box B, cron 02:00 UTC), both with retention keep-daily 7 /
+      keep-weekly 4 / keep-monthly 6, encrypted. A restore drill is required as part
+      of Phase 8 (REC-PLAN-012) before the migration is declared complete. Consolidated
+      break-glass rollback runbook: planning/infra-migration-rollback-runbook.md
+      (REC-PLAN-015) — covers per-phase rollback + global abort procedure.
+      GAP: no formal BCP/DR policy document exists (governance/bcp-dr-policy.md not yet
+      created). This is a noted gap against ISO 27001 A.5.29/A.5.30; RTO < 4h is stated
+      in RISK-001 treatment but not anchored in a policy. Owner to create before
+      ISO certification attempt.
+    treatment_status: "In-treatment — execution in progress; restic backup controls active; restore drill pending (Phase 8); break-glass runbook REC-PLAN-015 published"
     owner: founder
     status: open
     review: 2026-09-15
