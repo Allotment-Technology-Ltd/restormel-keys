@@ -31,7 +31,7 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "ai": ">=4.0.0"
+    "ai": ">=5.0.52"
   },
   "peerDependenciesMeta": {
     "ai": {
@@ -39,7 +39,7 @@
     }
   },
   "devDependencies": {
-    "ai": "^4.3.19",
+    "ai": "^5.0.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
   },
