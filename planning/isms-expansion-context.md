@@ -57,8 +57,8 @@ All 8 Tier-2 governance documents approved and committed to `restormel-keys` on 
 | REC-GOV-002 | Risk Register | governance/risk-register.yaml | 8 risks (RISK-001–008) |
 | REC-GOV-003 | RoPA | governance/ropa.yaml | 6 processing activities (PROC-001–006) |
 | REC-GOV-004 | Statement of Applicability | governance/soa.md | All 93 ISO 27001:2022 Annex A controls |
-| REC-GOV-005 | Supplier Register | governance/suppliers.yaml | 14 suppliers (SUP-001–014) |
-| REC-GOV-006 | Asset Inventory | governance/asset-inventory.yaml | 7 assets (AST-001–007) |
+| REC-GOV-005 | Supplier Register | governance/suppliers.yaml | 15 suppliers (keyed by name; no SUP- ids) |
+| REC-GOV-006 | Asset Inventory | governance/asset-inventory.yaml | 14 assets (AST-001–014) |
 | REC-GOV-007 | Data Inventory | governance/data-inventory.yaml | 10 data rows (DAT-001–010) |
 
 **Outstanding Phase 1 actions (not blocked on expansion, but track):**
@@ -225,12 +225,16 @@ Run these at the start of the relevant phase session.
 
 ## 8. Document ID registry — do not reuse any of these
 
-Assets: AST-001 to AST-007 taken. **Next: AST-008.**
+Assets: AST-001 to AST-014 taken (AST-014 = SurrealDB, added 2026-06-17). **Next: AST-015.**
+  [Reconciled 2026-06-17: this previously read "AST-001–007 / next AST-008" — stale. Main has
+  since assigned AST-008 (Company Google Drive), AST-009–012 (infra split), AST-013 (Infisical),
+  AST-014 (SurrealDB).]
 Data rows: DAT-001 to DAT-010 taken. **Next: DAT-011.**
 Processing activities: PROC-001 to PROC-006 taken. **Next: PROC-007.**
-Risks: RISK-001 to RISK-008 taken. **Next: RISK-009.**
-Suppliers: SUP-001 to SUP-014 taken. **Next: SUP-015** (only if genuinely net-new; prefer
-  adding `products:` tags to existing supplier entries rather than creating duplicates).
+Risks: RISK-001 to RISK-010 taken. **Next: RISK-011.** (RISK-009 = box-migration; RISK-010 = Infisical SPOF.)
+Suppliers: keyed by **name** — there are no `SUP-` numeric ids in suppliers.yaml, so the old
+  "SUP-001–014 / next SUP-015" guidance is moot. Add a new supplier as a named entry; prefer
+  `products:` tags over duplicates for shared suppliers.
 Records: REC-GOV-002–007, REC-POL-001–002, REC-PLAN-001–002, REC-ADR-001 taken.
 
 ---

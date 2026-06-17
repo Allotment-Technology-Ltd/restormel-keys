@@ -94,7 +94,23 @@ suppliers:
     data_processed: "Email correspondence including customer/prospect names, emails, message content"
     dpa: "verify-and-accept — Google Data Processing Amendment requires explicit acceptance in Google Admin Console → Account → Legal; confirm this has been done"
     sovereignty: flagged
-    notes: "Founder evaluating alternative email provider. Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
+    notes: "Founder evaluating alternative email provider (see Migadu). Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
+
+  - name: Migadu
+    provides: "Transactional / company email (auth magic-links + notifications for the allotmentology.tech app)"
+    role: sub-processor
+    location: "Swiss company; EU mail servers"
+    data_processed: "Email addresses + message content for authentication and notification emails (founder / internal addresses at this stage)"
+    dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
+    sovereignty: "flagged — pending confirmation"
+    notes: >
+      Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
+      Google Workspace dependency. Validated on staging during the auth migration
+      (Neon Auth → Better Auth); production cutover is gated. Currently serves the
+      allotmentology.tech app (recorded here as a supporting email supplier; the app
+      itself enters ISMS scope when the company portal ships). If/when it carries
+      customer email, revisit data-inventory + ROPA and fire the sub-processor
+      change-notification hook.
 
   - name: Notion
     provides: "Docs / workspace (internal tooling)"

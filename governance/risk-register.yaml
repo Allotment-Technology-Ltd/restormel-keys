@@ -48,6 +48,11 @@ risks:
       required before Phase 8 complete. BREAK-GLASS DR RUNBOOK:
       planning/infra-migration-rollback-runbook.md (REC-PLAN-015) — covers per-phase
       rollback and global abort for migration. Target RTO < 4 hours.
+      BREAK-GLASS (2026-06-17): if BetterAuth becomes the SSO for Forgejo/Coolify,
+      retain local admin logins on both as a break-glass path so an auth-layer outage
+      cannot lock the founder out of recovery. The SPOF blast radius now also includes
+      the Infisical secret manager (AST-013, on Box B); its own failure modes are
+      tracked separately in RISK-010.
     treatment_status: "In-treatment — split in execution (REC-PLAN-012); restic backups active (AST-012); break-glass runbook published (REC-PLAN-015)"
     owner: founder
     status: open
@@ -95,7 +100,10 @@ risks:
       1. Accept Google Workspace Data Processing Amendment in Admin Console
          → Account → Legal (Google's SCCs are incorporated by reference).
       2. Confirm Zuplo DPA includes IDTA/SCCs for UK→US transfer.
-      3. Evaluate email provider migration to reduce Google Workspace dependency.
+      3. Evaluate email provider migration to reduce Google Workspace dependency —
+         Migadu is now the candidate in the supplier register (suppliers.yaml),
+         validated on staging during the Better Auth migration; production cutover is
+         gated and its terms/DPA + data residency are pending confirmation.
       Risk reduces to accepted residual once DPAs confirmed.
     treatment_status: "Open — both DPA confirmations outstanding (see suppliers.yaml)"
     owner: founder
