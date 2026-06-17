@@ -5,12 +5,14 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: Adam Boon
+#   approved-by: founder
 #   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Restormel product and supporting infrastructure only.
+# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
+# (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
+# Per-risk scope is in the product: field.
 #
 # Risk rating matrix (likelihood × impact):
 #   L×L = Low   L×M = Low    L×H = Medium
@@ -27,11 +29,13 @@ risks:
 
   - id: RISK-001
     risk: >
-      Coolify host (Hetzner Helsinki) is a single point of failure. Loss or
-      unreachability of this server takes down the Restormel app, Forgejo
-      (canonical repo), self-hosted Postgres (verification spine), and
+      The Hetzner Helsinki compute (now a 2-server Coolify cluster, AST-003) is a
+      single point of failure. Loss or unreachability of the cluster takes down the
+      Restormel app, the allotmentology.tech company portal (AST-017), Forgejo
+      (canonical repo), self-hosted Postgres (verification spine), Infisical, and
       BetterAuth simultaneously.
-    asset: "AST-003 — Coolify host, Hetzner Helsinki"
+    asset: "AST-003 — Coolify compute (2-server Helsinki cluster); AST-017 portal"
+    product: shared
     likelihood: M
     impact: H
     rating: High
@@ -62,9 +66,11 @@ risks:
     risk: >
       Secrets estate is fragmented across .env files (gitignored), Forgejo CI
       secrets/variables, GitHub secrets/variables (mirror), Restormel app
-      credential store, and Mac keychain. Risk of missed rotation, stale
-      credentials, and incomplete access review coverage.
+      credential store, the allotmentology.tech app's local .env (AST-017), and
+      Mac keychain. Risk of missed rotation, stale credentials, and incomplete
+      access review coverage.
     asset: "AST-007 — Secrets estate (distributed)"
+    product: shared
     likelihood: M
     impact: M
     rating: Medium
@@ -92,6 +98,7 @@ risks:
       (API gateway — request metadata). Google Workspace DPA also requires
       explicit in-portal acceptance not yet confirmed.
     asset: "Google Workspace (DAT-007), Zuplo (PROC-001)"
+    product: shared
     likelihood: L
     impact: M
     rating: Low
@@ -104,6 +111,9 @@ risks:
          Migadu is now the candidate in the supplier register (suppliers.yaml),
          validated on staging during the Better Auth migration; production cutover is
          gated and its terms/DPA + data residency are pending confirmation.
+      4. NOTE (Phase 2): the allotmentology.tech enquiry form (PROC-008, planned) will
+         also send notification copies to Google Workspace (US) — same DPA/SCC dependency
+         as PROC-005.
       Risk reduces to accepted residual once DPAs confirmed.
     treatment_status: "Open — both DPA confirmations outstanding (see suppliers.yaml)"
     owner: founder
@@ -116,6 +126,7 @@ risks:
       date (~2026-06-30), leaving an unneeded attack surface and keeping
       stale entries in the privacy notice and suppliers register.
     asset: "AST-004 — Neon Postgres (decommissioning)"
+    product: restormel
     likelihood: L
     impact: L
     rating: Low
@@ -136,6 +147,7 @@ risks:
       and Neon as the active database (decommissioning). Hetzner/Coolify, the
       actual compute host processing all in-scope data, is not listed.
     asset: "PROC-001 — Service delivery; privacy notice"
+    product: restormel
     likelihood: L
     impact: M
     rating: Low
@@ -157,6 +169,7 @@ risks:
       breach, the 72-hour ICO notification window (UK GDPR Art 33) would be
       difficult to meet without a pre-planned procedure.
     asset: "All personal-data assets (DAT-002, DAT-007, DAT-010)"
+    product: company-wide
     likelihood: L
     impact: H
     rating: Medium
@@ -180,6 +193,7 @@ risks:
       Incapacity or extended unavailability would make service recovery or
       ISMS continuity extremely difficult.
     asset: "AST-006 — Founder workstation; AST-001/002 — repos; all credentials"
+    product: company-wide
     likelihood: L
     impact: H
     rating: Medium
@@ -205,6 +219,7 @@ risks:
       Google Workspace (admin), Hetzner control panel, Coolify, Forgejo,
       Mettle (banking), and Paddle (billing).
     asset: "AST-007 — All systems listed in access-control-policy.md §3"
+    product: company-wide
     likelihood: M
     impact: H
     rating: High
@@ -229,6 +244,7 @@ risks:
       Hydra's DB onto the new prod box (.167) — and repoints DNS. A failed cutover
       risks data loss, extended downtime, or a broken BYO-graph / wss dependency.
     asset: "AST-009/AST-010 — Box A/B compute hosts; SurrealDB; app Postgres; AST-012 BX11"
+    product: shared
     likelihood: L
     impact: H
     rating: Medium
@@ -267,6 +283,7 @@ risks:
       of it plus the Postgres data means full secret disclosure. (c) The admin
       account does not yet have MFA.
     asset: "AST-013 — Infisical secret manager; AST-007 — secrets estate"
+    product: shared
     likelihood: L
     impact: H
     rating: Medium
@@ -299,3 +316,23 @@ risks:
     owner: founder
     status: in-treatment
     review: 2026-09-15
+
+  - id: RISK-011
+    risk: >
+      The allotmentology.tech contact/enquiry form will collect personal data (name, email,
+      message) but no privacy notice is published for the domain. Enabling the form before a
+      notice is live would breach the UK GDPR Art 13 transparency duty.
+    asset: "AST-017 (company portal); DAT-012 (enquiry submissions); PROC-008"
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      Publish a UK GDPR-compliant privacy notice at allotmentology.tech BEFORE the enquiry form
+      is enabled (draft in progress via Claude Code). Gate the form so it cannot collect data
+      until the notice is live. Set PROC-008 privacy_notice_ref to the published URL on completion.
+    treatment_status: "In-treatment — notice being drafted; form not yet enabled (no data collected yet)"
+    owner: founder
+    status: in-treatment
+    review: 2026-09-15
+    product: allotmentology.tech

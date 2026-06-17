@@ -5,12 +5,14 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: Adam Boon
-#   approved-on: 2026-06-15
+#   approved-by: founder
+#   approved-on: 2026-06-17
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Restormel only.
+# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
+# (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
+# Per-supplier scope is in the products: field.
 # DPA note: for standard SaaS products, acceptance of T&Cs at signup constitutes
 # valid DPA acceptance where the DPA is embedded in those T&Cs (UK GDPR Art 28).
 # Two exceptions require explicit in-portal acceptance and are flagged: Google
@@ -22,15 +24,17 @@ suppliers:
   # --- INFRASTRUCTURE ---
 
   - name: Hetzner (Coolify host)
-    provides: "Self-hosted compute — Forgejo, Restormel app, Postgres, BetterAuth"
+    provides: "Self-hosted compute (Helsinki, 2-server Coolify cluster) + encrypted Storage Box backups (Falkenstein)"
     role: sub-processor
-    location: "Helsinki, Finland (EU)"
-    data_processed: "All in-scope Restormel data (transits / resides on this host)"
-    dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
+    location: "Helsinki, FI (compute) + Falkenstein, DE (storage box) — both EU"
+    data_processed: "All in-scope Restormel and allotmentology.tech data; backups on the Falkenstein storage box"
+    dpa: "verify-and-accept — Hetzner AVV requires explicit acceptance in the control panel; confirm done"
     sovereignty: ok
+    products: [restormel, allotmentology.tech]
 
   - name: Neon
     provides: "Postgres (legacy backup — decommissioning)"
+    products: [restormel]
     role: sub-processor
     location: "AWS eu-west"
     data_processed: "Product spine data (backup only; no new writes)"
@@ -45,7 +49,21 @@ suppliers:
     data_processed: "Domain registration contact data (director name/email/address)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: review
+    products: [restormel]
     notes: "No customer data; only domain registration details. Low risk."
+
+  - name: get.tech (Radix)
+    provides: "Domain registrar + DNS (allotmentology.tech)"
+    role: sub-processor
+    location: "[PLACEHOLDER — confirm registrar entity/jurisdiction — Radix, operator of the .tech TLD; likely UAE/India]"
+    data_processed: "Domain registration contact data (director name/email/address)"
+    dpa: "accepted (standard terms at signup); confirm registrant-data terms"
+    sovereignty: review
+    products: [allotmentology.tech]
+    notes: >
+      Registrar for allotmentology.tech (analogous to Vercel for restormel.dev). Holds only
+      domain-registration contact details — no customer or regulated data. Low risk. Confirm
+      registrar jurisdiction and whether WHOIS privacy is enabled.
 
   # --- PRODUCT / ANALYTICS ---
 
@@ -56,9 +74,12 @@ suppliers:
     data_processed: "Pseudonymous usage events (device/session IDs only; no PII)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: ok
+    products: [restormel]
+    notes: "Extend to allotmentology.tech if the portal adds analytics / error tracking."
 
   - name: Zuplo
     provides: "Cloud API gateway"
+    products: [restormel]
     role: sub-processor
     location: "US edge"
     data_processed: "API request metadata, auth headers; kept off the verification path"
@@ -73,12 +94,14 @@ suppliers:
     data_processed: "Error payloads — confirmed no PII (sendDefaultPii: off)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: flagged
-    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes."
+    products: [restormel]
+    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes. Extend to allotmentology.tech if the portal adds analytics / error tracking."
 
   # --- BILLING ---
 
   - name: Paddle
     provides: "Billing / merchant of record"
+    products: [restormel]
     role: sub-processor
     location: "UK / EU (Paddle is a UK company)"
     data_processed: "Customer billing data (name, email, address, payment — held by Paddle as MoR); Restormel stores only Paddle subscription/customer IDs"
@@ -89,6 +112,7 @@ suppliers:
 
   - name: Google Workspace
     provides: "Email (Gmail)"
+    products: [restormel, allotmentology.tech]
     role: sub-processor
     location: "US"
     data_processed: "Email correspondence including customer/prospect names, emails, message content"
@@ -103,6 +127,7 @@ suppliers:
     data_processed: "Email addresses + message content for authentication and notification emails (founder / internal addresses at this stage)"
     dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
     sovereignty: "flagged — pending confirmation"
+    products: [allotmentology.tech]
     notes: >
       Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
       Google Workspace dependency. Validated on staging during the auth migration
@@ -114,6 +139,7 @@ suppliers:
 
   - name: Notion
     provides: "Docs / workspace (internal tooling)"
+    products: [company-wide]
     role: tooling
     location: "US"
     data_processed: "Internal company docs; minimal PII (director only)"
@@ -123,6 +149,7 @@ suppliers:
 
   - name: Anthropic (Claude / Cowork)
     provides: "AI assistant / operator (governance and dev tooling)"
+    products: [company-wide]
     role: tooling
     location: "US"
     data_processed: "Conversation content during governance and development work; not for regulated or customer data"
@@ -132,6 +159,7 @@ suppliers:
 
   - name: GitHub
     provides: "Code mirror (push-only from Forgejo)"
+    products: [restormel, allotmentology.tech]
     role: tooling
     location: "US"
     data_processed: "Source code only; no customer data"
@@ -142,6 +170,7 @@ suppliers:
 
   - name: Mettle
     provides: "Business banking"
+    products: [company-wide]
     role: sub-processor
     location: "UK"
     data_processed: "Director financial data, transaction records"
@@ -150,6 +179,7 @@ suppliers:
 
   - name: FreeAgent
     provides: "Accounting (canonical)"
+    products: [company-wide]
     role: sub-processor
     location: "UK"
     data_processed: "Director and company financial/accounting records"
@@ -158,6 +188,7 @@ suppliers:
 
   - name: Quality Company Formations
     provides: "Formation agent / company secretary (one-off)"
+    products: [company-wide]
     role: tooling
     location: "UK"
     data_processed: "Director personal data used during company formation (one-off)"

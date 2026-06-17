@@ -4,12 +4,12 @@ title: Access Control Policy
 class: governance
 owner: founder
 status: approved
-approved-by: Adam Boon
-approved-on: 2026-06-15
+approved-by: founder
+approved-on: 2026-06-17
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-17
 review-interval: P12M
 retention: P6Y-after-superseded
 ---
@@ -20,9 +20,9 @@ retention: P6Y-after-superseded
 
 ## 1. Purpose and scope
 
-Govern how access to Restormel systems and data is granted, reviewed, and revoked.
-Supports the Information Security Policy (`REC-POL-001`) and ISO 27001 Annex A
-controls A.5.15–A.5.18 and A.8.2–A.8.5.
+Govern how access to **Allotment Technology Ltd systems and data (across all in-scope
+products)** is granted, reviewed, and revoked. Supports the Information Security Policy
+(`REC-POL-001`) and ISO 27001 Annex A controls A.5.15–A.5.18 and A.8.2–A.8.5.
 
 Scope: all systems in the asset inventory (`asset-inventory.yaml`, REC-GOV-006)
 and sub-processors in the supplier register (`suppliers.yaml`, REC-GOV-005).
@@ -41,9 +41,10 @@ available. See §3 for the system-by-system requirement and current status.
 **Secrets handling.** Credentials are never committed to version control (`.env`
 files are gitignored and not committed). API keys are stored as hashes or ciphertext
 only. Tokens are scoped to least privilege and rotated on any suspected exposure.
-The current secrets estate is documented as a control gap in the asset inventory
-(AST-007) and risk register (RISK-002); unification into a single auditable secrets
-store is a planned improvement.
+Secrets are consolidating into the self-hosted Infisical secrets manager (see
+`asset-inventory.yaml`), now live as the store of record; residual locations (CI secrets,
+app credential stores including the allotmentology.tech app's local `.env`, and the Mac
+keychain) are being migrated in. Tracked as RISK-002 (in-treatment).
 
 **New system onboarding.** When a new system or service is adopted, MFA must be
 enabled within 24 hours of account creation. The system must be added to the asset
@@ -74,6 +75,8 @@ order for remediation given the sensitivity of the data or access granted.
 | Sentry | Error tracking | Yes | 2 — High | ⚠ Confirm enabled |
 | Neon | Legacy DB (decommissioning) | Yes | 3 — Medium | ⚠ Confirm enabled |
 | Notion | Internal tooling | Yes | 3 — Medium | ⚠ Confirm enabled |
+| allotmentology.tech portal / BetterAuth admin | Portal (magic-link auth) | Yes | 2 — High | ✅ Enabled (magic-link; founder-only) |
+| Migadu | Transactional/company email | Yes | 2 — High | ✅ Enabled |
 
 Mac login serves as a hardware second factor for SSH key-based access to the
 Coolify/Hetzner host. FileVault is confirmed enabled (2026-06-15).
@@ -92,6 +95,11 @@ and supplier register (REC-GOV-005).
 
 Remote access to the Coolify/Hetzner host is via SSH key only; password
 authentication is disabled on the server.
+
+The allotmentology.tech portal uses its own self-contained BetterAuth authentication and is
+currently founder-only. There is no SSO federation to other ATL products at this stage; if
+introduced later, this section and the risk register must be revisited (a shared auth service
+would carry cross-product blast radius).
 
 ## 5. Joiner / mover / leaver
 

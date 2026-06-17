@@ -68,9 +68,9 @@ records:
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-17
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-17
     retention: P6Y-after-superseded
     path: governance/soa.md
   - id: REC-GOV-020
@@ -416,9 +416,9 @@ records:
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-17
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-17
     retention: P6Y-after-superseded
     path: governance/information-security-policy.md
   - id: REC-POL-002
@@ -428,9 +428,9 @@ records:
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-17
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-17
     retention: P6Y-after-superseded
     path: governance/access-control-policy.md
   - id: REC-POL-003
