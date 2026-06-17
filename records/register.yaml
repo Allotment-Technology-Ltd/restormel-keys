@@ -230,18 +230,6 @@ records:
     retention: review-only
     path: planning/planning-context.md
   - id: REC-PLAN-002
-    title: Allotment Technology — ISMS company-wide expansion context pack
-    class: planning
-    status: approved
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-06-17
-    review-interval: P6M
-    next-review: 2026-12-17
-    retention: review-only
-    path: planning/isms-expansion-context.md
-  - id: REC-PLAN-002
     title: "Records & Information Architecture — Implementation Plan"
     class: planning
     status: approved
@@ -409,6 +397,18 @@ records:
     next-review: 2026-09-17
     retention: P6Y-after-superseded
     path: planning/infra-migration-rollback-runbook.md
+  - id: REC-PLAN-016
+    title: Allotment Technology — ISMS company-wide expansion context pack
+    class: planning
+    status: approved
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-06-17
+    review-interval: P6M
+    next-review: 2026-12-17
+    retention: review-only
+    path: planning/isms-expansion-context.md
   - id: REC-POL-001
     title: Information Security Policy
     class: governance
