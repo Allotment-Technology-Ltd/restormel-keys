@@ -74,7 +74,7 @@ risks:
       Until migration completes, quarterly access review
       (playbooks/quarterly-access-review.md) must continue to cover all secret
       locations; GitHub mirror secrets to be audited and minimised.
-    treatment_status: "In-treatment — Infisical deployed 2026-06-17; first secrets imported; plaintext removal pending founder verification; CI/mirror secrets still to consolidate"
+    treatment_status: "In-treatment (updated 2026-06-17) — Infisical deployed; 27 secrets imported + founder-verified; Mac plaintext *.env/*.token files removed (local CLI access via macOS keychain, read-only viewer identity); server /opt/surreal/.env still holds the SurrealDB root password by necessity (runtime). REMAINING: consolidate Forgejo CI + GitHub mirror secrets into Infisical; admin MFA (RISK-008/RISK-010)"
     owner: founder
     status: in-treatment
     review: 2026-12-15
@@ -276,7 +276,18 @@ risks:
          exposure (REC-POL-004 §5). 5. SECRET HANDLING: never echo secret values;
          treat any exposure as an incident (REC-POL-004 §7) — this treats the
          in-session credential-exposure risk that motivated the migration.
-    treatment_status: "Open — Infisical deployed 2026-06-17; Postgres/master-key backup + restore drill, admin MFA, and plaintext-removal-after-verification all still to do"
+    treatment_status: >
+      In-treatment (updated 2026-06-17): items 1, 2, 4, 5 DONE. (1) BACKUP — the
+      Infisical Postgres (pg_dump -Fc) and /opt/infisical/.env master key are now
+      included in the Box B restic backup (restic-buildops → BX11); restore drill
+      PASSED (snapshot 038f431e: restore exit 0, 509-entry dump TOC, ENCRYPTION_KEY +
+      AUTH_SECRET present). (2) PLAINTEXT — founder verified 27 secrets in the vault;
+      the Mac plaintext *.env/*.token files have been deleted (SSH keys retained as
+      files). (4) LEAST PRIVILEGE — the restormel-cli machine identity's temporary
+      admin grant was revoked; it is now viewer/read-only (verified: read 200,
+      write 403); local CLI creds held in the macOS keychain (no plaintext on disk).
+      (5) SECRET HANDLING — enforced this session (values never echoed). REMAINING:
+      item 3, admin MFA — blocked on an Infisical plan upgrade (tracked with RISK-008).
     owner: founder
-    status: open
+    status: in-treatment
     review: 2026-09-15

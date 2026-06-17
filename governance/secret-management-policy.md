@@ -102,6 +102,16 @@ The machine-identity client credentials live only in `/opt/infisical/.env`
 (root, `0600`) on the box and are used by the `/opt/infisical/infisical-run.sh`
 wrapper. They are not committed and not printed.
 
+**Operator workstation (Mac).** Local operator access uses the same read-only
+machine identity, but the client credentials are stored in the **macOS keychain**
+(`security` service entries `infisical-cli-*`), never in a plaintext file. A
+helper (`~/.local/bin/infisical-get <KEY>`) reads the credentials from the
+keychain, exchanges them for a short-lived access token, and prints a single
+secret value to stdout for use in a command substitution. This replaced the
+former `~/.config/restormel/*.env` and `*.token` plaintext files, which were
+deleted on 2026-06-17 after the vault was verified (see §6). SSH private keys
+remain as files under `~/.config/restormel/` (excluded from the vault by design).
+
 **Project/environment model.** Secrets are organised by Infisical *project* (e.g.
 `restormel-ops` for build/ops infrastructure secrets) and *environment*
 (`dev` / `staging` / `prod`). Production operational secrets live in `prod`.
@@ -121,12 +131,18 @@ history.
 
 ## 6. Migration from plaintext files
 
-As of 2026-06-17 the server-side plaintext secret files on Box B
-(`/root/.config/*.env`, `*.token`, rclone storage-box config, restic password)
-are being migrated into Infisical (project `restormel-ops`, env `prod`). The
-plaintext source files are **retained** until the founder verifies Infisical
-end-to-end, then removed as a deliberate, logged follow-up (not before). SSH
-private keys are explicitly excluded from the migration and remain as key files.
+As of 2026-06-17 the operator workstation (Mac) plaintext secret files
+(`~/.config/restormel/*.env`, `*.token`) have been migrated into Infisical
+(project `restormel-ops`, env `prod`) and **deleted** after the founder verified
+the vault end-to-end (27 secrets present and fetchable; representative values
+cross-checked by length). Local access is now keychain-backed (§4). SSH private
+keys are explicitly excluded from the migration and remain as key files under
+`~/.config/restormel/`. Server-side, `/opt/infisical/.env` (master key) and
+`/opt/surreal/.env` (SurrealDB root password, needed at container start) remain
+as `0600` root-owned files by operational necessity; both are captured in the
+encrypted BX11 backup. **Remaining migration work:** consolidate Forgejo CI
+secrets/variables and GitHub mirror secrets into (or under the governance of)
+Infisical, audited at the quarterly access review.
 EU sovereignty and the use of open-source software were the deciding reasons for
 self-hosting Infisical rather than adopting a SaaS secret manager, consistent with
 the sovereignty posture in REC-POL-001 §4.

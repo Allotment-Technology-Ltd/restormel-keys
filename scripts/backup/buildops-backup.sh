@@ -15,6 +15,9 @@ LOG="/var/log/buildops-backup.log"
 DUMP_DIR="/tmp/buildops-dumps"
 FORGEJO_DATA="/var/lib/docker/volumes/nrghbzywi1smlfrpnmdkmd7d_forgejo-data/_data"
 COOLIFY_DATA="/data/coolify"
+# Infisical config dir (master key: ENCRYPTION_KEY + AUTH_SECRET in .env) — RISK-010.
+# The pg data dir and redis are excluded (DB captured via pg_dump below).
+INFISICAL_CONFIG="/opt/infisical"
 
 # Uptime Kuma push monitor slug (set after creation via API)
 UPTIME_KUMA_PUSH_URL="${UPTIME_KUMA_PUSH_URL:-https://uptimekuma-txct20gto5hv75gktchd511m.77.42.125.150.sslip.io/api/push/db55d068bd754a7b85cb}"
@@ -83,6 +86,18 @@ docker exec "$COOLIFY_PG" pg_dump -U coolify -Fc coolify > "$DUMP_DIR/coolify.du
   || fail "Coolify pg_dump failed"
 log "  coolify.dump: $(du -sh "$DUMP_DIR/coolify.dump" | cut -f1)"
 
+# Infisical (self-hosted secret manager) — RISK-010. DB holds the (encrypted) secrets;
+# /opt/infisical/.env holds the ENCRYPTION_KEY/AUTH_SECRET needed to decrypt them.
+INFISICAL_PG=$(docker ps --format '{{.Names}}' | grep '^infisical-infisical-db' | head -1)
+if [ -n "$INFISICAL_PG" ]; then
+  log "Dumping infisical (Infisical Postgres)..."
+  docker exec "$INFISICAL_PG" pg_dump -U infisical -Fc infisical > "$DUMP_DIR/infisical.dump" \
+    || fail "Infisical pg_dump failed"
+  log "  infisical.dump: $(du -sh "$DUMP_DIR/infisical.dump" | cut -f1)"
+else
+  log "  WARN: Infisical Postgres container not found — skipping (non-fatal)"
+fi
+
 # Write checksums
 sha256sum "$DUMP_DIR"/*.dump > "$DUMP_DIR/SHA256SUMS"
 log "SHA256SUMS written"
@@ -96,8 +111,11 @@ restic backup \
   "$DUMP_DIR" \
   "$FORGEJO_DATA" \
   "$COOLIFY_DATA" \
+  "$INFISICAL_CONFIG" \
   --exclude="$COOLIFY_DATA/backups" \
   --exclude="$COOLIFY_DATA/source" \
+  --exclude="$INFISICAL_CONFIG/pg" \
+  --exclude="$INFISICAL_CONFIG/redis" \
   2>&1 || fail "restic backup failed"
 
 # ── Retention / prune ──────────────────────────────────────────────────────────
