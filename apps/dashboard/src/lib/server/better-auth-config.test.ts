@@ -11,8 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("$lib/server/db-adapter", () => ({
   getPool: vi.fn(() => ({ __fakePool: true })),
 }));
-vi.mock("$lib/server/email/send-mail", () => ({
+vi.mock("$lib/server/email/verification-email", () => ({
   sendVerificationEmail: vi.fn(),
+}));
+vi.mock("$lib/server/email/password-reset-email", () => ({
   sendPasswordResetEmail: vi.fn(),
 }));
 vi.mock("$env/dynamic/private", () => ({
