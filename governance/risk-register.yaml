@@ -336,3 +336,32 @@ risks:
     status: in-treatment
     review: 2026-09-15
     product: allotmentology.tech
+
+  - id: RISK-012
+    risk: >
+      Email deliverability & compliance. Two failure modes as the email programme grows:
+      (1) DELIVERABILITY — mixing marketing/bulk mail with transactional/auth mail on one
+      domain/reputation can get the sending domain flagged or blocklisted, landing sign-in,
+      verification and access-grant emails in spam (users locked out); (2) CONSENT — sending
+      marketing email without a valid lawful basis, or without a working unsubscribe, breaches
+      PECR reg. 22 / UK GDPR.
+    asset: "AST-003 (compute/Postgres); Migadu + Brevo (suppliers); PROC-001, PROC-009; DAT-013"
+    product: restormel
+    likelihood: M
+    impact: M
+    rating: Medium
+    treatment_type: mitigate
+    treatment: >
+      STRUCTURAL (REC-PLAN-017): strict two-stream separation — transactional via Migadu on a
+      dedicated send.restormel.dev subdomain; marketing via Brevo (managed EU deliverability) on a
+      separate news.restormel.dev subdomain; each with its own SPF/DKIM/DMARC so reputations are
+      isolated and a marketing complaint cannot harm auth delivery. DMARC ramped none→quarantine→
+      reject with rua monitoring. CONSENT: double opt-in (net-new) + documented PECR soft opt-in
+      (existing); RFC-8058 one-click unsubscribe on every marketing message; sovereign consent
+      ledger (email_preferences) honouring opt-out immediately; transactional email never gated by
+      marketing prefs. Plain-text alternative on all mail. Public privacy notice marketing section
+      live BEFORE first marketing send (gated, publish-when-live).
+    treatment_status: "Open — plan approved as REC-PLAN-017; Phase 1 (transactional pilot) in build; marketing stack (Brevo, subdomains, DMARC, unsubscribe, consent ledger) is Phase 2, not yet implemented"
+    owner: founder
+    status: open
+    review: 2026-12-15

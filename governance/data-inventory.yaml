@@ -169,3 +169,18 @@ data:
       Interests (responding to enquiries) — see RoPA PROC-008. A published privacy notice MUST
       be live before the form collects any data (none today — see risk register RISK-011).
       Keep submissions on EU infrastructure.
+
+  - id: DAT-013
+    data: "Marketing subscriber list & consent records (PLANNED — not yet configured)"
+    categories: "identity, communications, consent"
+    classification: confidential
+    store: "Authoritative ledger: self-hosted Postgres on AST-003 (email_preferences, EU). Operational send list: Brevo (Sendinblue SAS, France/EU)."
+    contains_personal_data: "yes — subscriber email, display name, per-category opt-in flags, consent source + timestamps, unsubscribe timestamp, ESP engagement events (opens/clicks)"
+    retention: "While subscribed; on unsubscribe retain a minimal suppression record (email hash + timestamp) to honour opt-out; consent audit trail per accountability needs"
+    product: restormel
+    notes: >
+      Not yet built — sets the privacy-by-design target (REC-PLAN-017). Maps to RoPA PROC-009.
+      Lawful basis: consent (double opt-in, net-new) + PECR soft opt-in (existing customers/
+      enquirers). The consent ledger is OUR Postgres (sovereign source of truth, re-platformable);
+      Brevo holds only the operational send list. Every marketing email carries RFC-8058 one-click
+      unsubscribe. Public privacy notice section gated to Phase 2 launch (publish-when-live).
