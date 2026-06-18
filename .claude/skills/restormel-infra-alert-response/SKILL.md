@@ -30,7 +30,7 @@ Use this to identify the alert class and pick the first action. Then read the de
 |-------|------------------|--------------|
 | Host RAM critical | Concurrent Coolify builds, container memory leak | Open Beszel → identify top consumer → pause any in-progress build in Coolify |
 | Host swap high | RAM budget exceeded, pages into swap | Pre-cursor to RAM critical — treat same as above, act before OOM |
-| Host disk critical | Coolify image/build cache accumulation (most common), restic backup growth on surreal-box | `docker builder prune -f` on the affected box, check disk-guard log |
+| Host disk critical | Coolify image/build cache accumulation (most common), restic backup growth on build/ops box (.150) | `docker builder prune -f` on the affected box, check disk-guard log |
 | 5xx spike | Unhandled exception in SvelteKit route, bad deploy, DB connection failure | PostHog Error Tracking → identify error class → check Coolify deploy log |
 | Auth-failure spike | Credential stuffing / brute-force, broken OAuth callback | PostHog events → check IP distribution → confirm fail2ban is active |
 | DB-compute/egress runaway | Full-table scan, background job loop, analytics query on prod | SSH → `psql` → `pg_stat_activity` → kill runaway query → trace source in PostHog |
