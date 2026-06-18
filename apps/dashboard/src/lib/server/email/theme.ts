@@ -25,6 +25,25 @@ export const emailTheme = {
     okFg: "#166534", // --state-ok-fg
   },
   /**
+   * Deliberate DARK-mode variant. Clients (Apple/iOS Mail, Gmail app, Outlook.com) auto-transform
+   * light emails for dark mode — left alone this muddies the cream to brown and inverts the CTA's
+   * ink text to white-on-yellow (a contrast failure). We ship this explicit dark palette via the
+   * render.ts `@media (prefers-color-scheme: dark)` + Outlook `[data-ogsc]/[data-ogsb]` overrides so
+   * dark mode looks intentional and stays accessible. CTA stays ink-on-yellow in BOTH modes.
+   */
+  dark: {
+    canvas: "#0c0c0c", // ink canvas
+    card: "#1a1812", // raised warm-dark card
+    text: "#f3ead0", // cream body text (≥ 12:1 on canvas)
+    muted: "#cfc6ad",
+    link: "#9db8ff", // lightened blue (AA on dark)
+    footer: "#b7ad94",
+    border: "#f3ead0", // cream frame on dark
+    accent: "#ffd600", // wordmark "Keys" + CTA fill
+    chipBg: "#16351f",
+    chipFg: "#7ee0a3",
+  },
+  /**
    * Font stacks: the brand fonts (Barlow Condensed / DM Sans / Space Mono) are Google
    * Fonts and are absent from almost every mail client, so the web-safe fallbacks carry
    * the layout. The brand fonts are loaded as a progressive enhancement via the document

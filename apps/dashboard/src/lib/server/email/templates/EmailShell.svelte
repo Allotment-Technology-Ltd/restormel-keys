@@ -39,6 +39,7 @@
   cellpadding="0"
   cellspacing="0"
   border="0"
+  class="rm-canvas"
   style="background:{t.color.canvas};margin:0;padding:0;width:100%;"
 >
   <tbody>
@@ -51,21 +52,23 @@
           cellpadding="0"
           cellspacing="0"
           border="0"
-          class="rm-fluid"
+          class="rm-fluid rm-card"
           style="max-width:{t.maxWidth};width:100%;background:{t.color.surface};border:{t.border};box-shadow:{t.shadow};"
         >
           <tbody>
             <tr>
-              <td style="padding:22px 28px;border-bottom:{t.border};">
+              <td class="rm-header" style="padding:22px 28px;border-bottom:{t.border};">
                 <span
+                  class="rm-wordmark"
                   style="font-family:{t.font
                     .mono};font-size:12px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:{t
-                    .color.ink};">Restormel <span style="color:{t.color.blue};">Keys</span></span
+                    .color.ink};">Restormel <span class="rm-accent" style="color:{t.color.blue};">Keys</span></span
                 >
               </td>
             </tr>
             <tr>
               <td
+                class="rm-body"
                 style="padding:28px;font-family:{t.font.body};font-size:15px;line-height:1.65;color:{t
                   .color.ink};"
               >
@@ -88,6 +91,7 @@
           <tbody>
             <tr>
               <td
+                class="rm-footer"
                 style="padding:18px 10px;font-family:{t.font.mono};font-size:10px;line-height:1.7;letter-spacing:0.04em;color:{t
                   .color.inkFaint};text-align:center;"
               >
