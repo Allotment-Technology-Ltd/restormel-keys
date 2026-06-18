@@ -164,6 +164,19 @@ export function isPublishable(r: { classification: string; status: string }): bo
   return r.classification === PUBLIC && r.status === APPROVED;
 }
 
+/**
+ * THE INTERNAL GATE: a record is internally readable iff it is approved AND its
+ * classification is `public` OR `internal`. `confidential`/`restricted` NEVER pass,
+ * even when approved. This is the threshold for the AUTHED internal records feed
+ * (Step 5) — strictly wider than {@link isPublishable} (public-only) and strictly
+ * narrower than "all classifications". Reuses {@link APPROVED}; fail-closed on a
+ * missing/unknown classification.
+ */
+export const INTERNAL_READABLE = [PUBLIC, "internal"] as const;
+export function isInternalReadable(r: { classification: string; status: string }): boolean {
+  return (INTERNAL_READABLE as readonly string[]).includes(r.classification) && r.status === APPROVED;
+}
+
 /** Effective dates + prior versions from the supersedes lineage and git history (dates only — never bodies of non-public predecessors). */
 export function versionsFor(r: RecordDoc, byId: Map<string, RecordDoc>): RecordVersion[] {
   const versions: RecordVersion[] = [...gitVersions(r.path)];
@@ -200,6 +213,23 @@ export function loadPublicRecords(opts?: { class?: string }): PublishedRecord[] 
   const byId = new Map(all.map((r) => [r.id, r]));
   return all
     .filter(isPublishable) // ← the gate: classification public AND status approved
+    .filter((r) => !opts?.class || r.class === opts.class)
+    .map((r) => ({ ...r, versions: versionsFor(r, byId) }))
+    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate) || a.title.localeCompare(b.title));
+}
+
+/**
+ * The internal-readable set: `public` OR `internal` records that are `approved`, optionally
+ * narrowed by `class`. Enriched with version history exactly as {@link loadPublicRecords}.
+ * This is the single source the AUTHED internal records feed (Step 5) may render from —
+ * `confidential`/`restricted` are never included, and `evidence/` is never scanned (the
+ * exclusion lives in {@link loadAllRecords}'s root list). NEVER use this for a public route.
+ */
+export function loadInternalRecords(opts?: { class?: string }): PublishedRecord[] {
+  const all = loadAllRecords();
+  const byId = new Map(all.map((r) => [r.id, r]));
+  return all
+    .filter(isInternalReadable) // ← the internal gate: (public|internal) AND status approved
     .filter((r) => !opts?.class || r.class === opts.class)
     .map((r) => ({ ...r, versions: versionsFor(r, byId) }))
     .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate) || a.title.localeCompare(b.title));
