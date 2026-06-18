@@ -66,7 +66,7 @@ function runtimeDdlEnabled(): boolean {
  * the current codebase to work correctly.  Update this constant whenever a new
  * migration adds tables/columns that neon.ts functions depend on at runtime.
  */
-const REQUIRED_MIGRATION = "065_projects_connect_infrastructure_flag.sql";
+const REQUIRED_MIGRATION = "070_knowledge_graph_targets_graph_library.sql";
 
 /**
  * Drift gate used by the ensure* functions when runtime DDL is disabled
