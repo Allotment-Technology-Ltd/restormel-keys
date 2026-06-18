@@ -228,4 +228,42 @@ processing_activities:
     privacy_notice_ref: >
       [PLACEHOLDER — none published yet]. A privacy notice MUST be live at allotmentology.tech
       before the form collects data (see risk register RISK-011).
+
+  - id: PROC-009
+    purpose: >
+      Marketing-email consent and preference management — recording, on a per-address basis, which
+      categories of marketing email (product updates, newsletter, release notes) a person has
+      consented to, the source and time of that consent, and any withdrawal (unsubscribe). The
+      authoritative consent ledger backing the in-product preference centre and the one-click
+      unsubscribe flow (REC-PLAN-017 Phase 3). NO marketing is sent yet — infrastructure only.
+    lawful_basis: >
+      CONSENT / PECR soft-opt-in (Art 6(1)(a) + PECR reg. 22) — opt-in by default, never opt-out;
+      consent_source records the basis (soft-opt-in / double-opt-in / import). Transactional and
+      security email is out of scope of this activity (it relies on CONTRACT / LI per PROC-001/003).
+    data_subjects: "Subscribers / account holders who receive (or may receive) marketing email"
+    data_categories:
+      - "Email address (identifier)"
+      - "Linked account id (when known)"
+      - "Per-category marketing opt-in flags"
+      - "Consent source + timestamp; unsubscribe timestamp"
+      - "Opaque unsubscribe token (capability secret)"
+    recipients:
+      - "Self-hosted Postgres on AST-003 (EU) — email_preferences (DAT-013)"
+      - "Brevo (EU) — PLANNED Phase 4 downstream send list, synced FROM this ledger (not yet wired)"
+    transfers: >
+      Storage: none (self-hosted EU). When the Phase 4 send path lands, the send list is synced to
+      Brevo (EU); add Brevo to suppliers.yaml + the privacy notice before any marketing is sent.
+    retention: >
+      Consent and withdrawal records kept for the life of the marketing relationship plus an
+      evidentiary tail to demonstrate consent/withdrawal; suppression rows retained so an
+      unsubscribed address is not re-mailed.
+    security_measures: >
+      EU-only storage; TLS; parameterised queries; consent recorded as the system of record (not
+      delegated to the ESP). Unsubscribe is public but token-gated by a signed (HMAC), constant-time
+      verified, opaque capability token; the endpoint is rate-limited, idempotent, never reveals
+      whether an address exists, and never logs the token or address. Preference centre is
+      session-authenticated and scoped to the signed-in user. See security-baseline.md.
+    privacy_notice_ref: >
+      https://restormel.dev/keys/privacy — update at the next version bump to describe the consent
+      ledger, the preference centre, and (when wired) Brevo as a marketing sub-processor.
     product: allotmentology.tech

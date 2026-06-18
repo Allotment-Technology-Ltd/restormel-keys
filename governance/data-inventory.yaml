@@ -169,3 +169,26 @@ data:
       Interests (responding to enquiries) — see RoPA PROC-008. A published privacy notice MUST
       be live before the form collects any data (none today — see risk register RISK-011).
       Keep submissions on EU infrastructure.
+
+  - id: DAT-013
+    data: "Email marketing-consent ledger (email_preferences)"
+    categories: "contact, consent / preferences"
+    classification: confidential
+    store: "Self-hosted Postgres on AST-003 (EU) — email_preferences table (migration 070)"
+    contains_personal_data: >
+      yes — email address (primary key), linked account id, per-category opt-in flags
+      (product_updates / newsletter / release_notes), consent source + timestamp, unsubscribe
+      timestamp, and an opaque per-address unsubscribe token (a capability secret, not a password).
+    retention: >
+      Consent records (including withdrawals) are kept for the life of the marketing relationship
+      plus an evidentiary tail to prove consent/withdrawal under UK GDPR/PECR; suppression rows are
+      retained so an unsubscribed address is never re-mailed. Reviewed when the Brevo send path
+      (REC-PLAN-017 Phase 4) lands.
+    product: restormel
+    notes: >
+      AUTHORITATIVE, sovereign system of record for marketing-email consent (REC-PLAN-017 Phase 3).
+      Brevo (Phase 4) will be a downstream send list synced FROM this table, never the source of
+      truth. Lawful basis: Consent / PECR soft-opt-in — see RoPA PROC-009. Governs MARKETING email
+      ONLY; transactional/security email (DAT-002 auth, billing, security alerts) has its own lawful
+      basis and is NOT user-suppressible here. No marketing is sent yet — this is consent +
+      preference infrastructure only (publish-when-live).
