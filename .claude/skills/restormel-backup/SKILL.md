@@ -5,8 +5,8 @@ description: >-
   drills, dead-man's-switch checks, and scheduling. Use whenever asked to: run or check a backup,
   run a restore drill, add a new service to the backup scope, investigate a missed-backup alert,
   rotate the restic password, or add a new box to the backup fleet. Knows the two-box topology
-  (.150 = buildops, .167 = surreal), the BX11 repo paths, rclone/restic installation pattern,
-  and the Phase 8 restore drill procedure.
+  (.150 = buildops/SurrealDB, .167 = prod runtime), the BX11 repo paths, rclone/restic installation
+  pattern, and the Phase 8 restore drill procedure.
 ---
 
 # Restormel backup / DR skill
@@ -20,8 +20,15 @@ Authoritative scripts are version-controlled in `scripts/backup/` in this repo.
 
 | Box | IP | Role | Restic repo on BX11 | Cron | Installed |
 |-----|-----|------|---------------------|------|-----------|
-| `.167` | `77.42.124.167` | SurrealDB/ops | `rclone:storagebox:restic-surreal` | `0 3 * * *` root | 2026-06-13 |
-| `.150` | `77.42.125.150` | Build/ops (Forgejo, Coolify, app) | `rclone:storagebox:restic-buildops` | `0 2 * * *` root | 2026-06-17 |
+| `.167` | `77.42.124.167` | Prod runtime (dashboard, worker, Postgres, Ory Hydra) | `rclone:storagebox:restic-surreal` | `0 3 * * *` root | 2026-06-13 |
+| `.150` | `77.42.125.150` | Build/ops (Forgejo, Coolify, SurrealDB, Infisical) | `rclone:storagebox:restic-buildops` | `0 2 * * *` root | 2026-06-17 |
+
+> **Note (2026-06-18):** SurrealDB migrated from `.167` → `.150` in Phase 2 (AST-010/AST-014 in
+> asset-inventory.yaml). The `restic-surreal` repo on BX11 retains its name for historical
+> continuity but now covers Box A (.167) prod-runtime data (Postgres dumps etc.), NOT SurrealDB.
+> SurrealDB data on `.150` is covered by `restic-buildops`. <!-- VERIFY post-Phase-2: confirm
+> whether the restic-surreal cron on .167 has been updated to cover current .167 services (Postgres,
+> Hydra) rather than SurrealDB (which moved to .150). -->
 
 Both share the **same rclone `storagebox` remote** and the **same restic passphrase file** (`/root/.config/restic-password`).
 

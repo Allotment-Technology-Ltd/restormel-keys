@@ -28,11 +28,12 @@ Trust boundaries and initial risks. **Single source** for boundaries and risk li
 ### Infrastructure layer (self-hosted, Coolify/Hetzner)
 
 - **Prod box (`77.42.125.150`)** runs Coolify, Traefik reverse-proxy, and the dashboard/worker/site containers. SSH access is the highest-privilege boundary; Traefik is the only public ingress.
-- **`surreal-box` (`77.42.124.167`)** runs SurrealDB (data store for graph/routing), the monitoring control plane (Beszel hub, Uptime-Kuma), and is adopted as a second Coolify server. Treated as semi-trusted infra; not public-facing for application traffic.
-- **Coolify control plane** (running on `surreal-box`): manages deployments and environment secrets across both boxes. Compromise of the Coolify API token grants full deployment control.
+- **Prod-runtime box (`77.42.124.167`)** runs the Restormel dashboard/worker, app Postgres, and Ory Hydra. Treated as semi-trusted infra; Traefik is the only public ingress. <!-- VERIFY post-Phase-2: confirm whether Beszel hub, Uptime-Kuma, and the second Coolify server remain on .167 after SurrealDB migrated to .150, or have moved. Pre-Phase-2 this box was labelled "surreal-box" — that label is no longer accurate. -->
+- **Build/ops box (`77.42.125.150`)** runs Forgejo, CI runner, Coolify (primary control plane), Infisical, and SurrealDB (AST-010/AST-014 — migrated from `.167` in Phase 2 per asset-inventory.yaml). Treated as semi-trusted infra; not public-facing for application traffic.
+- **Coolify control plane** (running on `.150` build/ops box): manages deployments and environment secrets across both boxes. Compromise of the Coolify API token grants full deployment control.
 - **Forgejo (`git.allotmentology.tech`)** is the **primary** git host and CI runner. A compromised Forgejo token or poisoned workflow can alter CI outputs, inject malicious code, or expose secrets passed as CI environment variables. GitHub is a push-mirror and fallback — it has lower trust because it is external and outside the network perimeter.
 - **Operational Postgres** runs on the prod box. DB credentials in the Coolify environment are the trust boundary for data access; they must never appear in logs, responses, or CI output.
-- **SurrealDB** (on `surreal-box`): connection credentials held in Coolify env; the DB is not public-facing but is reachable from the prod box over the private network.
+- **SurrealDB** (on `.150` build/ops box, post-Phase-2 — AST-014): connection credentials held in Coolify env; the DB is not public-facing but is reachable from the prod box over the private network (AST-011).
 - **Hetzner network**: both boxes are on the same Hetzner private network (VLAN). Internal traffic between boxes is trusted at the network layer, but credentials are still passed explicitly.
 - **Storage Box (Hetzner Robot)**: off-box backup target for `surreal-backup` cron and planned `forgejo dump` cron. Compromise exposes backup archives including DB dumps.
 
@@ -82,7 +83,7 @@ The Coolify API token grants full deployment control over both boxes, including 
 
 ### SurrealDB self-host
 
-SurrealDB root credentials are held in Coolify environment variables. The DB is on `surreal-box`'s internal network and not publicly reachable. Risk: if `surreal-box` is compromised, the SurrealDB root credential is accessible from the Coolify environment store. Mitigation: restrict network exposure; rotate credentials after migration; least-privilege namespaces for application users.
+SurrealDB root credentials are held in Coolify environment variables. The DB is on the `.150` build/ops box (AST-010), internal network only and not publicly reachable. Risk: if the build/ops box is compromised, the SurrealDB root credential is accessible from the Coolify environment store. Mitigation: restrict network exposure; rotate credentials after migration; least-privilege namespaces for application users.
 
 ### Operational Postgres on-box
 
