@@ -5,14 +5,12 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: founder
-#   approved-on: 2026-06-17
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-15
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
-# (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
-# Per-supplier scope is in the products: field.
+# ISMS scope: Restormel only.
 # DPA note: for standard SaaS products, acceptance of T&Cs at signup constitutes
 # valid DPA acceptance where the DPA is embedded in those T&Cs (UK GDPR Art 28).
 # Two exceptions require explicit in-portal acceptance and are flagged: Google
@@ -24,17 +22,15 @@ suppliers:
   # --- INFRASTRUCTURE ---
 
   - name: Hetzner (Coolify host)
-    provides: "Self-hosted compute (Helsinki, 2-server Coolify cluster) + encrypted Storage Box backups (Falkenstein)"
+    provides: "Self-hosted compute — Forgejo, Restormel app, Postgres, BetterAuth"
     role: sub-processor
-    location: "Helsinki, FI (compute) + Falkenstein, DE (storage box) — both EU"
-    data_processed: "All in-scope Restormel and allotmentology.tech data; backups on the Falkenstein storage box"
-    dpa: "verify-and-accept — Hetzner AVV requires explicit acceptance in the control panel; confirm done"
+    location: "Helsinki, Finland (EU)"
+    data_processed: "All in-scope Restormel data (transits / resides on this host)"
+    dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
     sovereignty: ok
-    products: [restormel, allotmentology.tech]
 
   - name: Neon
     provides: "Postgres (legacy backup — decommissioning)"
-    products: [restormel]
     role: sub-processor
     location: "AWS eu-west"
     data_processed: "Product spine data (backup only; no new writes)"
@@ -49,21 +45,23 @@ suppliers:
     data_processed: "Domain registration contact data (director name/email/address)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: review
-    products: [restormel]
     notes: "No customer data; only domain registration details. Low risk."
 
-  - name: get.tech (Radix)
-    provides: "Domain registrar + DNS (allotmentology.tech)"
-    role: sub-processor
-    location: "[PLACEHOLDER — confirm registrar entity/jurisdiction — Radix, operator of the .tech TLD; likely UAE/India]"
-    data_processed: "Domain registration contact data (director name/email/address)"
-    dpa: "accepted (standard terms at signup); confirm registrant-data terms"
+  - name: Entri
+    provides: "DNS automation — used by Brevo's automatic domain authentication to write authentication records into the Vercel DNS zone"
+    role: tooling
+    location: "US [PLACEHOLDER — confirm entity/region]"
+    data_processed: "DNS zone configuration for restormel.dev (domain/record data only; no customer or personal data)"
+    dpa: "n/a — no personal data processed [PLACEHOLDER — confirm if any terms apply]"
     sovereignty: review
-    products: [allotmentology.tech]
     notes: >
-      Registrar for allotmentology.tech (analogous to Vercel for restormel.dev). Holds only
-      domain-registration contact details — no customer or regulated data. Low risk. Confirm
-      registrar jurisdiction and whether WHOIS privacy is enabled.
+      Added 2026-06-18. Granted OAuth-authorized write access to the Vercel DNS zone on
+      2026-06-18 to add Brevo's news.restormel.dev authentication records (Brevo code + DKIM
+      CNAMEs). Standing OAuth grant, not ongoing-required (Brevo DKIM rotation runs via
+      Brevo-controlled CNAME targets, no further DNS writes needed). Logged as a connector with
+      DNS-write scope — NOT a credential exposure (OAuth authorize; no credentials shared).
+      RECOMMEND revoking the Entri/Brevo authorization in Vercel (Settings → Integrations /
+      Connected accounts) per least privilege now the records are written.
 
   # --- PRODUCT / ANALYTICS ---
 
@@ -74,12 +72,9 @@ suppliers:
     data_processed: "Pseudonymous usage events (device/session IDs only; no PII)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: ok
-    products: [restormel]
-    notes: "Extend to allotmentology.tech if the portal adds analytics / error tracking."
 
   - name: Zuplo
     provides: "Cloud API gateway"
-    products: [restormel]
     role: sub-processor
     location: "US edge"
     data_processed: "API request metadata, auth headers; kept off the verification path"
@@ -94,14 +89,12 @@ suppliers:
     data_processed: "Error payloads — confirmed no PII (sendDefaultPii: off)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: flagged
-    products: [restormel]
-    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes. Extend to allotmentology.tech if the portal adds analytics / error tracking."
+    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes."
 
   # --- BILLING ---
 
   - name: Paddle
     provides: "Billing / merchant of record"
-    products: [restormel]
     role: sub-processor
     location: "UK / EU (Paddle is a UK company)"
     data_processed: "Customer billing data (name, email, address, payment — held by Paddle as MoR); Restormel stores only Paddle subscription/customer IDs"
@@ -112,7 +105,6 @@ suppliers:
 
   - name: Google Workspace
     provides: "Email (Gmail)"
-    products: [restormel, allotmentology.tech]
     role: sub-processor
     location: "US"
     data_processed: "Email correspondence including customer/prospect names, emails, message content"
@@ -121,25 +113,37 @@ suppliers:
     notes: "Founder evaluating alternative email provider (see Migadu). Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
 
   - name: Migadu
-    provides: "Transactional / company email (auth magic-links + notifications for the allotmentology.tech app)"
+    provides: "Transactional + company email (auth magic-links / notifications for the allotmentology.tech app)"
     role: sub-processor
-    location: "Swiss company; EU mail servers"
-    data_processed: "Email addresses + message content for authentication and notification emails (founder / internal addresses at this stage)"
-    dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
-    sovereignty: "flagged — pending confirmation"
-    products: [allotmentology.tech]
+    location: "Switzerland (company) — mail servers in France (EU). ⚠ confirm residency"
+    data_processed: "Email addresses + message content for authentication and notification emails (founder/internal addresses at this stage)"
+    dpa: "verify — confirm Migadu terms/DPA accepted. Switzerland holds UK & EU adequacy; EU mail servers keep data in-region."
+    sovereignty: ok
     notes: >
-      Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
-      Google Workspace dependency. Validated on staging during the auth migration
-      (Neon Auth → Better Auth); production cutover is gated. Currently serves the
-      allotmentology.tech app (recorded here as a supporting email supplier; the app
-      itself enters ISMS scope when the company portal ships). If/when it carries
-      customer email, revisit data-inventory + ROPA and fire the sub-processor
-      change-notification hook.
+      Added 2026-06-17. Validated on staging during the auth migration (Neon Auth →
+      Better Auth); production cutover is gated. Likely the alternative email provider
+      anticipated in RISK-003 to reduce Google Workspace dependency. Confirm data
+      residency + terms acceptance at prod cutover. If/when it carries customer email,
+      revisit data-inventory + ROPA and fire the sub-processor change-notification hook.
+
+  - name: Brevo (Sendinblue)
+    provides: "Marketing email — newsletters / release notes from news.restormel.dev; isolated from the transactional stream (Migadu)"
+    role: sub-processor
+    location: "EU — HQ Paris; data hosted in EU (OVH France/Germany; Google Cloud Belgium)"
+    data_processed: "Marketing contact data — subscriber email addresses, names, and engagement/event data for marketing sends"
+    dpa: "accepted — DPA embedded in Brevo General Conditions of Use (UK GDPR Art 28). DPA PDF available to file as evidence [PLACEHOLDER — confirm filed in evidence/]"
+    sovereignty: ok
+    notes: >
+      Added 2026-06-18 for the two-stream email split (REC-PLAN-017). Sending domain
+      news.restormel.dev authenticated 2026-06-18 (Brevo code + DKIM CNAMEs brevo1/brevo2);
+      org DMARC covers it via sp=none, so no Brevo DMARC was added. Brevo ISO 27001:2022
+      certified. API + SMTP credentials stored in Infisical (restormel-ops/prod, BREVO_*);
+      MCP server API key deliberately NOT enabled. Public privacy-notice / sub-processor
+      disclosure update is GATED publish-when-live (first marketing send). Follow-up: add the
+      marketing-email processing activity to ROPA before the first send.
 
   - name: Notion
     provides: "Docs / workspace (internal tooling)"
-    products: [company-wide]
     role: tooling
     location: "US"
     data_processed: "Internal company docs; minimal PII (director only)"
@@ -149,7 +153,6 @@ suppliers:
 
   - name: Anthropic (Claude / Cowork)
     provides: "AI assistant / operator (governance and dev tooling)"
-    products: [company-wide]
     role: tooling
     location: "US"
     data_processed: "Conversation content during governance and development work; not for regulated or customer data"
@@ -159,7 +162,6 @@ suppliers:
 
   - name: GitHub
     provides: "Code mirror (push-only from Forgejo)"
-    products: [restormel, allotmentology.tech]
     role: tooling
     location: "US"
     data_processed: "Source code only; no customer data"
@@ -170,7 +172,6 @@ suppliers:
 
   - name: Mettle
     provides: "Business banking"
-    products: [company-wide]
     role: sub-processor
     location: "UK"
     data_processed: "Director financial data, transaction records"
@@ -179,7 +180,6 @@ suppliers:
 
   - name: FreeAgent
     provides: "Accounting (canonical)"
-    products: [company-wide]
     role: sub-processor
     location: "UK"
     data_processed: "Director and company financial/accounting records"
@@ -188,7 +188,6 @@ suppliers:
 
   - name: Quality Company Formations
     provides: "Formation agent / company secretary (one-off)"
-    products: [company-wide]
     role: tooling
     location: "UK"
     data_processed: "Director personal data used during company formation (one-off)"
