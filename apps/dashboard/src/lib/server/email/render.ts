@@ -51,6 +51,7 @@ export function renderEmailDocument<P extends Record<string, unknown>>(
     .rm-link { color:${d.link} !important; }
     .rm-footer { color:${d.footer} !important; }
     .rm-chip { background:${d.chipBg} !important; color:${d.chipFg} !important; border-color:${d.border} !important; }
+    .rm-chip-warn { background:${d.chipWarnBg} !important; color:${d.chipWarnFg} !important; border-color:${d.border} !important; }
     .rm-cta { background:${t.color.yellow} !important; border-color:${t.color.ink} !important; box-shadow:3px 3px 0 ${d.border} !important; }
     .rm-cta a, a.rm-cta-link { color:${t.color.ink} !important; }
   }

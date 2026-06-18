@@ -23,6 +23,9 @@ export const emailTheme = {
     onBlue: "#fffef0", // --color-on-blue
     okBg: "#d8f3e3", // --state-ok-bg (success chip)
     okFg: "#166534", // --state-ok-fg
+    warnBg: "#fef3c7", // --state-warn-bg (warning/alert chip) — distinct from the yellow CTA
+    warnFg: "#92400e", // --state-warn-fg (AA on warnBg)
+    amber: "#e6a700", // --brut-amber (alert accents)
   },
   /**
    * Deliberate DARK-mode variant. Clients (Apple/iOS Mail, Gmail app, Outlook.com) auto-transform
@@ -42,6 +45,8 @@ export const emailTheme = {
     accent: "#ffd600", // wordmark "Keys" + CTA fill
     chipBg: "#16351f",
     chipFg: "#7ee0a3",
+    chipWarnBg: "#2a2207", // dark warning chip
+    chipWarnFg: "#fcd34d",
   },
   /**
    * Font stacks: the brand fonts (Barlow Condensed / DM Sans / Space Mono) are Google
