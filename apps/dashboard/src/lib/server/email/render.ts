@@ -30,9 +30,11 @@ export function renderEmailDocument<P extends Record<string, unknown>>(
 <meta name="supported-color-schemes" content="light dark" />
 <title>Restormel Keys</title>
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap");
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
-  body { margin:0 !important; padding:0 !important; background:${t.color.canvas}; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  body { margin:0 !important; padding:0 !important; background:${t.color.canvas}; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+  /* Crisp text on dark mode + retina (fixes "blurry" heavy headlines in Apple Mail/WebKit). */
+  .rm-h1, .rm-body, .rm-body p, .rm-wordmark { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; }
   table { border-collapse:collapse; }
   img { border:0; line-height:100%; outline:none; text-decoration:none; }
   @media only screen and (max-width:620px) {

@@ -50,8 +50,11 @@ export const emailTheme = {
    * `<style>` in render.ts and only show in clients that honour it (e.g. Apple Mail).
    */
   font: {
-    display: "'Barlow Condensed', 'Arial Narrow', Arial, sans-serif",
-    body: "'DM Sans', Arial, Helvetica, sans-serif",
+    // Display: drop 'Arial Narrow' (renders awkward/blurry when faux-condensed) — fall back to a
+    // clean bold sans instead, so non-loading clients get crisp wide letters not muddy condensed ones.
+    display: "'Barlow Condensed', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    // Body: brand DM Sans, then a native system stack for pin-sharp rendering everywhere.
+    body: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     mono: "'Space Mono', 'Courier New', monospace",
   },
   border: "2px solid #0c0c0c",

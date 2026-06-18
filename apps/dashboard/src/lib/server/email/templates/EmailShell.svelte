@@ -69,8 +69,9 @@
             <tr>
               <td
                 class="rm-body"
-                style="padding:28px;font-family:{t.font.body};font-size:15px;line-height:1.65;color:{t
-                  .color.ink};"
+                style="padding:28px;font-family:{t.font
+                  .body};font-size:16px;line-height:1.6;color:{t.color
+                  .ink};-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
               >
                 {@render children()}
               </td>

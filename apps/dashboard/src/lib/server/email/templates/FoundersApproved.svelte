@@ -40,9 +40,9 @@
 
   <h1
     class="rm-h1"
-    style="margin:0 0 14px 0;font-family:{t.font
-      .display};font-size:34px;line-height:1.0;font-weight:900;letter-spacing:-0.01em;color:{t
-      .color.ink};"
+    style="margin:0 0 16px 0;font-family:{t.font
+      .display};font-size:38px;line-height:1.05;font-weight:800;letter-spacing:0.01em;color:{t.color
+      .ink};-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
   >
     You're in.
   </h1>
