@@ -77,16 +77,23 @@ export function buildMailEnvelope(args: {
 
 let _transport: Transporter | null = null;
 
-/** Process-singleton SMTP transport (implicit TLS on 465 by default). */
+/**
+ * Process-singleton SMTP transport. Port-aware TLS: 465 = implicit TLS,
+ * everything else (e.g. Migadu's 587) = STARTTLS. Default port is 587 to match the
+ * deployed Coolify env. Accepts `SMTP_PASS` (the deployed var name) or `SMTP_PASSWORD`.
+ */
 export function getTransport(): Transporter {
   if (_transport) return _transport;
+  const port = Number(env.SMTP_PORT) || 587;
+  const secure = port === 465; // 465 = implicit TLS; 587/25 = STARTTLS upgrade
   _transport = nodemailer.createTransport({
     host: env.SMTP_HOST,
-    port: Number(env.SMTP_PORT) || 465,
-    secure: true, // 465 = implicit TLS
+    port,
+    secure,
+    requireTLS: !secure,
     auth: {
       user: env.SMTP_USER,
-      pass: env.SMTP_PASSWORD,
+      pass: env.SMTP_PASS ?? env.SMTP_PASSWORD,
     },
   });
   return _transport;
