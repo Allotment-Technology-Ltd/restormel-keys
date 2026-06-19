@@ -2,8 +2,25 @@ import { randomUUID } from "node:crypto";
 import { fail } from "@sveltejs/kit";
 import type { Actions, PageServerLoad } from "./$types";
 import { env } from "$env/dynamic/private";
+import { env as publicEnv } from "$env/dynamic/public";
 import { countFoundersApplications, insertFoundersApplication } from "$lib/server/db";
 import { upsertFoundersAccessPending } from "$lib/server/founders-access";
+import { sendFoundersApplyConfirmationEmail } from "$lib/server/email/founders-apply-confirmation-email";
+import { sendFoundersAdminNotifyEmail } from "$lib/server/email/founders-admin-notify-email";
+import { ADMIN_BASE } from "$lib/dashboard-base";
+
+/** Public site base for absolute links in mail — PUBLIC_KEYS_DASHBOARD_URL override else request origin. */
+function siteBase(origin: string): string {
+  const override = (publicEnv.PUBLIC_KEYS_DASHBOARD_URL ?? "").trim();
+  if (override) {
+    try {
+      return new URL(override).origin;
+    } catch {
+      /* fall through to request origin */
+    }
+  }
+  return origin;
+}
 
 function foundersSlotsTotal(): number {
   const n = parseInt(process.env.FOUNDERS_CIRCLE_SLOTS_TOTAL ?? "50", 10);
@@ -72,7 +89,7 @@ function parseModules(formData: FormData): string[] {
 }
 
 export const actions: Actions = {
-  default: async ({ request, fetch: serverFetch }) => {
+  default: async ({ request, fetch: serverFetch, url }) => {
     const formData = await request.formData();
 
     const name = String(formData.get("name") ?? "").trim();
@@ -148,6 +165,28 @@ export const actions: Actions = {
           status: delivered.status,
         });
       }
+    }
+
+    // Notify on submission — FAIL-OPEN: the application is already saved, so an email/SMTP
+    // failure must never fail this request. Each send records its own outcome (success
+    // message-id or sanitised failure reason) to the durable send log. We log ONLY an opaque
+    // error name here — an SMTP error can echo the recipient (PII per the security baseline).
+    const base = siteBase(url.origin);
+    const docsUrl = `${base}/keys/docs`;
+    const reviewUrl = `${base}${ADMIN_BASE}/founders`;
+    // (a) Applicant confirmation + honest verified-context marketing moment.
+    try {
+      await sendFoundersApplyConfirmationEmail({ to: email, name, docsUrl });
+    } catch (e) {
+      const code = (e as { code?: string })?.code ?? (e instanceof Error ? e.name : "unknown");
+      console.error("[founders-apply-confirmation] send failed:", String(code).slice(0, 40));
+    }
+    // (b) Admin "needs review" notification to the service-owner address(es).
+    try {
+      await sendFoundersAdminNotifyEmail({ applicantEmail: email, applicantName: name, reviewUrl });
+    } catch (e) {
+      const code = (e as { code?: string })?.code ?? (e instanceof Error ? e.name : "unknown");
+      console.error("[founders-admin-notify] send failed:", String(code).slice(0, 40));
     }
 
     return { success: true as const };

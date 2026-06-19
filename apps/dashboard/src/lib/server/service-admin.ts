@@ -72,6 +72,16 @@ export function emailImpliesServiceOwner(email: string | null | undefined): bool
   return parseServiceOwnerEmailSet().has(n);
 }
 
+/**
+ * The normalised service-owner / admin email recipients (from RESTORMEL_SERVICE_OWNER_EMAILS,
+ * or the built-in defaults when that env is unset). Used to address internal ops mail (e.g. the
+ * Founders Circle "needs review" notification). Returns a de-duplicated array; never empty unless
+ * the env is explicitly set to a blank value.
+ */
+export function serviceOwnerEmails(): string[] {
+  return Array.from(parseServiceOwnerEmailSet());
+}
+
 export async function isServiceAdminUserIdInDb(userId: string): Promise<boolean> {
   try {
     const sql = getSql();

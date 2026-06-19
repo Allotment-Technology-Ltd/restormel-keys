@@ -7,8 +7,9 @@
  * Kept separate from send-mail.ts so the transport + identity primitives stay free of any
  * Svelte/template imports (and their pure unit tests stay light).
  */
-import { buildMailEnvelope, sendMail, type MailEnvelope } from "./send-mail";
+import { buildMailEnvelope, type MailEnvelope } from "./send-mail";
 import { renderEmailDocument } from "./render";
+import { sendAndRecord } from "./email-send-log";
 import FoundersApproved from "./templates/FoundersApproved.svelte";
 
 export type FoundersApprovedArgs = {
@@ -62,7 +63,13 @@ export function buildFoundersApprovedEmail(args: FoundersApprovedArgs): MailEnve
   });
 }
 
-/** Render + send the approval email via the transactional mailbox. */
+/** Render + send the approval email via the transactional mailbox, recording the outcome
+ *  (success message-id or sanitised failure reason) to the durable send log keyed by the
+ *  applicant email so the admin Founders UI can show the delivery status. */
 export async function sendFoundersApprovedEmail(args: FoundersApprovedArgs): Promise<void> {
-  await sendMail(buildFoundersApprovedEmail(args));
+  await sendAndRecord({
+    envelope: buildFoundersApprovedEmail(args),
+    category: "founders_approved",
+    contextKey: args.to,
+  });
 }
