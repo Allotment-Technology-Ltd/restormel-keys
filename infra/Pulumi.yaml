@@ -1,3 +1,0 @@
-name: restormel-keys
-runtime: nodejs
-description: Restormel Keys GCP infrastructure (dashboard, Artifact Registry, load balancer).
