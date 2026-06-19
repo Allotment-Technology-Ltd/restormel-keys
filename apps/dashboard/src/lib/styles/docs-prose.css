@@ -96,13 +96,16 @@
   border-radius: 0;
 }
 
+/* Inline code — restrained ink-on-subtle chip (matches app.css). A thin ink
+   hairline on a warm surface fill reads as a quiet technical token rather than a
+   saturated-yellow highlighter on every word; yellow stays reserved for CTAs. */
 .docs-main :global(.inline-code),
 .docs-main :global(.doc-code-inline) {
   font-family: var(--font-mono);
-  font-size: var(--text-mono-md);
-  padding: 0.08rem 0.35rem;
-  border: var(--border-thin);
-  background: var(--color-yellow);
+  font-size: 0.9em;
+  padding: 0.12em 0.4em;
+  border: 1px solid var(--color-ink);
+  background: var(--color-surface);
   color: var(--color-ink);
   border-radius: 0;
   /* Prevent long inline tokens clipping at container edge. */
@@ -110,7 +113,16 @@
   word-break: break-word;
 }
 
-/* Bare <pre class="code-block"> elements inside .docs-main — scroll horizontally. */
+/* Inline code inside a link inherits the link colour rather than ink. */
+.docs-main :global(a .inline-code),
+.docs-main :global(a .doc-code-inline) {
+  color: inherit;
+  border-color: currentColor;
+}
+
+/* Bare <pre class="code-block"> presentation is owned by app.css (background,
+   border, ink offset shadow, size). Here we only re-assert the scroll affordance,
+   since .docs-shell clips overflow. */
 .docs-main :global(pre.code-block) {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

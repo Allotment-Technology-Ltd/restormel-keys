@@ -105,12 +105,22 @@ a.brut-link-accent,
 .marketing-shell pre,
 .marketing-shell .codeblock {
   border-radius: 0;
-  border: 2px solid var(--code-bg);
-  box-shadow: 3px 3px 0 var(--color-yellow);
+  /* Ink border + canonical hard ink offset shadow — matches the CodeBlock
+     component and docs pre blocks. (Was an invisible same-as-bg border plus a
+     loud yellow CTA shadow; block code is non-interactive, so it stays calm.) */
+  border: var(--border);
+  box-shadow: var(--shadow-md);
   /* Scroll long lines; prevent page-wide horizontal overflow on mobile. */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .marketing-shell pre,
+  .marketing-shell .codeblock {
+    box-shadow: var(--shadow-sm);
+  }
 }
 
 /* ── Dashboard main ── */

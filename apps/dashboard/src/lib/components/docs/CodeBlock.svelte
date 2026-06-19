@@ -167,12 +167,22 @@
 
   .codeblock-pre {
     margin: 0;
-    padding: var(--space-4);
+    padding: var(--space-5) var(--space-5);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.7;
-    color: var(--color-surface);
+    /* 13.5px — readable command lines / JSON (was 11px label size). */
+    font-size: 0.84375rem;
+    line-height: 1.6;
+    color: var(--code-fg);
     background: var(--code-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (max-width: 640px) {
+    .codeblock-pre {
+      padding: var(--space-4);
+    }
   }
 </style>
