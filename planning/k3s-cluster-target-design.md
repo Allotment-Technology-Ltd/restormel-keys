@@ -22,6 +22,9 @@ pass (2026-06-19) against verified live infra; **read-only — no infra/config c
 founder's locked decisions (HA across the 3 boxes; Hetzner Object Storage for CNPG; UseSophia full
 migration; cost-constrained Forgejo/CI placement).
 
+> Per-product migration phasing + the PlotBudget Supabase ADR live in the overarching
+> [full-migration-plan-k3s.md](full-migration-plan-k3s.md); the shared Decisions register there is authoritative.
+
 > **Founder decisions (2026-06-19)** — refining §3.3/§3.4/§4.4 and resolving the first four §10 questions:
 > **(1) Migration = Path A** — build the cluster on the **€20 one-off temp dedicated server**, migrate
 > state onto it, fold the 3 boxes in, then retire the temp node (de-risks converting the live prod box).

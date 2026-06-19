@@ -6,7 +6,7 @@ status: draft
 classification: internal
 control-tier: 1
 created: 2026-06-19
-last-reviewed: 2026-06-19
+last-reviewed: 2026-06-20
 review-interval: P12M
 ---
 
@@ -19,18 +19,43 @@ this machine (Restormel, Allotmentology, UseSophia, **and PlotBudget**) plus the
 **Target (decided in prior planning — built on, not re-litigated):** one sovereign **K3s** cluster on the
 3 existing Hetzner boxes (2× CX33 + 1× CX43, Helsinki) + autoscaled burst nodes via **hetzner-k3s**;
 Hetzner EU, OSS-only; Postgres via **CloudNativePG (CNPG)**; SurrealDB in-cluster on **Hetzner CSI**;
-backups to the **1 TB Storage Box**; **Coolify retired** as orchestrator.
+Postgres backups via **CNPG Barman (PITR) → Hetzner Object Storage (fsn1, cross-region)** + the **1 TB
+Storage Box** for cold copies / SurrealDB exports; **Coolify retired**. The cluster / CNPG / ingress /
+secrets / backup **how** is specified in the companion **[k3s-cluster-target-design.md](k3s-cluster-target-design.md)**;
+this plan owns the **what/when**.
 
 **Phasing:** **Phase A** = existing Coolify stack → K3s (Restormel, Allotmentology, SurrealDB, CI, the
 self-hosted Postgres DBs). **Phase B** = PlotBudget + UseSophia → K3s **directly** (not via Coolify).
 
-> ⚠️ **The K3s/CNPG target design does not exist yet** — confirmed with the founder 2026-06-19 (not in this
-> repo, not in a prior pack). A full sweep found **zero** k3s/hetzner-k3s/CNPG/Velero/Barman references;
-> everything in-repo describes the *previous* Coolify two-box split (REC-PLAN-012) — the current state K3s
-> replaces. **The target design is therefore a deliverable of this effort** — a companion doc
-> `k3s-cluster-target-design.md` produced by a dedicated, skilled design pass, gated on the founder decisions
-> in §E (asked directly, not just filed). This plan maps current-state → target-shape; the companion design
-> fills in the cluster / CNPG / CSI / ingress / autoscaling detail.
+> ✅ **The K3s/CNPG target design now EXISTS** — `k3s-cluster-target-design.md` (+ the
+> `restormel-k3s-architecture` skill), all founder decisions folded in. Ownership: this plan = what/when;
+> design doc = how. The **Decisions register** below is authoritative for both.
+
+---
+
+## Decisions register (authoritative — agreed with the K3s target design)
+
+This table is the single source of truth for the cross-cutting decisions; both this plan and
+[k3s-cluster-target-design.md](k3s-cluster-target-design.md) defer to it (so the two docs can't silently drift).
+
+| Area | Decision |
+|---|---|
+| Cluster topology | 3 existing boxes as HA embedded-etcd control-plane (schedulable) + scale-to-zero burst pool (enabled day-1, min=0/max=2) |
+| **Migration approach** | **Path A "bootstrap node": cluster starts on the €20 one-off temp dedicated server → migrate state onto the cluster → fold the 3 existing boxes in as they free up → retire the temp node. NEVER convert a live prod box in-place.** |
+| Postgres | CloudNativePG, hybrid (shared `pg-platform` + dedicated `pg-restormel` + `pg-plotbudget`); instances:2 |
+| PG backups | CNPG Barman → Hetzner Object Storage **fsn1** (cross-region PITR) + restic → Storage Box (cold) |
+| SurrealDB | in-cluster 1-replica StatefulSet on Hetzner CSI; `surreal.restormel.dev` DNS kept stable (UseSophia dependency) |
+| Secrets | External Secrets Operator ← self-hosted Infisical (no sealed-secrets) |
+| Ingress/CNI | Traefik (Helm) + cert-manager; Cilium CNI; single-node ingress (no paid LB) |
+| DNS | consolidate onto **Hetzner DNS** (DNS-01 wildcards; deSEC fallback; **avoid Cloudflare**) — a migration task |
+| Forgejo + Infisical | **off-cluster permanently** (bootstrap anchors) |
+| GitOps | Argo CD; prod sync manual/gated; preserves the PBI lifecycle callbacks |
+| Auth | Better Auth for Restormel / Allotmentology / **UseSophia**; Ory Hydra scoped to the gateway only; **PlotBudget keeps GoTrue now → migrate to Better Auth LATER (separate ADR, post-cutover)** |
+| **UseSophia** | **migrate FULLY**: its own Neon Postgres → CNPG, Neon Auth → Better Auth (plus the SurrealDB cross-phase re-point) |
+| **PlotBudget** | **Option 1** (self-host Supabase: GoTrue+PostgREST+Storage+Realtime on K3s, backed by CNPG); **short maintenance-window cutover** (pg_dump/restore + rehearsed runbook + positive/negative RLS revalidation) |
+| Restormel/Allotmentology cutover | short pg_dump maintenance window |
+| DR targets | RTO ≤ 2h; RPO ≤ 5min (Postgres) / ~1h (SurrealDB hourly export) |
+| Cost | ~+€7–9/mo (fsn1 object storage + tight CSI volumes); burst €0 at rest; €20 one-off temp node |
 
 ---
 
@@ -65,7 +90,6 @@ Railway/Coolify + `.secrets-sync.local`) which are needed for *actual* data migr
 - `usesophia.app` DNS registrar access.
 
 **General (all products)**
-- The **K3s target design pack** (see the warning above) — the single biggest missing input.
 - Confirmation of the Storage Box access path for backups (SFTP today — see §D backups).
 
 ---
@@ -181,38 +205,42 @@ env vars** — pure env cutover, no code change. Recommended:
    old `.150` SurrealDB warm as rollback until Sophia's reads/writes are verified in-cluster.
 3. **Do not** move SurrealDB and re-point Sophia in the same window.
 
-**Separate decision — Sophia's own Neon Postgres + Neon Auth.** The SurrealDB-focused brief does **not**
-cover Sophia's *own* database. Sophia still runs on **Neon Postgres + Neon Auth** (unlike Restormel, which
-is now fully off Neon). Either keep Neon SaaS (K3s Sophia keeps `DATABASE_URL` → Neon eu-west-2) or schedule
-a separate Postgres-into-CNPG migration + an auth move (Neon Auth → Better Auth, mirroring Restormel). This
-is a genuine founder decision (see §E) and a sovereignty item (Neon = US company, eu-west-2 AWS).
+**DECIDED — Sophia migrates FULLY (its own Neon Postgres + Neon Auth too).** The SurrealDB-focused brief
+did not cover Sophia's *own* database; that gap is now closed. Sophia today runs on **Neon Postgres + Neon
+Auth** (unlike Restormel, which is already fully off Neon) — both move: **its own Neon Postgres → CNPG** and
+**Neon Auth → Better Auth** (mirroring Restormel), on top of the SurrealDB cross-phase re-point. This is a
+sovereignty win (Neon = US company, eu-west-2 AWS) and is recorded in the Decisions register above.
 
 ---
 
 ## D. End-to-end migration map
 
 ```
-PHASE A  (Coolify → K3s; the foundation)                         depends on
+PHASE A  (Coolify → K3s; the foundation — Path-A bootstrap)        depends on
 ─────────────────────────────────────────────────────           ──────────
-A0  Stand up K3s cluster (hetzner-k3s) + ingress + cert-manager   ← FOUNDER's K3s design pack (missing)
-A1  CNPG operator + cluster(s); storage classes (Hetzner CSI)     ← A0
-A2  SurrealDB StatefulSet on CSI; restore dump; keep DNS stable   ← A1   ⟶ unblocks UseSophia (Phase B)
-A3  Migrate self-hosted Postgres → CNPG (pg_dump/restore;          ← A1
-    logical replication if near-zero-downtime needed)
+A0  Provision the €20 temp dedicated server + bootstrap the K3s    ← Decisions register (Path A)
+    cluster on it (hetzner-k3s) + ingress + cert-manager
+A1  CNPG operator + cluster(s) on cluster storage (Hetzner CSI)    ← A0
+A2  SurrealDB StatefulSet on CSI; restore dump; keep              ← A1   ⟶ unblocks UseSophia (Phase B)
+    surreal.restormel.dev DNS stable
+A3  Migrate self-hosted Postgres → CNPG (short pg_dump windows)    ← A1
 A4  Move Restormel (dashboard + worker) + Allotmentology apps      ← A1,A3 (+A2 for Restormel graph)
-    to Deployments; rewrite deploy pipeline off the Coolify API
-A5  Decide Forgejo + CI runner + Infisical: in-cluster vs on-box   ← (recommend STAY on box for bootstrap)
-A6  Backups: CNPG → Storage Box (S3 gateway or restic CronJob)     ← A1,A3
-A7  Retire Coolify + Traefik                                       ← A4 stable
+    to Deployments; rewrite deploy off Coolify-API → Argo CD
+A5  Join the 3 existing boxes into the cluster as their            ← A4 stable
+    workloads move; then retire the temp node
+    (Forgejo + Infisical stay off-cluster)
+A6  Backups: CNPG Barman → fsn1 + restic → Storage Box             ← A1,A3
+A7  Retire Coolify                                                 ← A4 stable
 
 PHASE B  (PlotBudget + UseSophia → K3s DIRECTLY, not via Coolify)
 ─────────────────────────────────────────────────────
-B1  UseSophia → K3s: deploy app; CronJob for ingestion tick;       ← A2 stable (SurrealDB in-cluster)
-    re-point SURREAL_URL (env-only); decide its Neon Postgres
-B2  PlotBudget → K3s: deploy self-hosted Supabase (Opt 1) OR        ← A0/A1 cluster stable
-    CNPG + rebuilt auth/API (Opt 2); migrate Supabase Postgres
-    + auth.users; **RE-VALIDATE RLS** (positive+negative tests);
-    move Next.js app off Vercel; DNS cutover
+B1  UseSophia → K3s: migrate fully — deploy app; CronJob for       ← A2 stable (SurrealDB in-cluster)
+    ingestion tick; re-point SURREAL_URL (env-only); its own
+    Neon Postgres → CNPG + Neon Auth → Better Auth
+B2  PlotBudget → K3s: Option 1 (self-host Supabase, backed by      ← A0/A1 cluster stable
+    CNPG); short maintenance-window cutover; migrate Supabase
+    Postgres + auth.users; **RE-VALIDATE RLS** (positive+negative
+    tests); move Next.js app off Vercel; DNS cutover
 ```
 
 **Ordering / dependencies:**
@@ -221,8 +249,8 @@ B2  PlotBudget → K3s: deploy self-hosted Supabase (Opt 1) OR        ← A0/A1 
 - **PlotBudget (B2)** depends only on a stable cluster (A0/A1) — independent of Sophia. It is the **heaviest,
   highest-risk** unit (Supabase + RLS + auth data + Vercel cutover) → schedule it **last**, after Phase A and
   B1 have proven the cluster.
-- **Forgejo chicken-and-egg:** Forgejo + its PG are the CI substrate that would deploy K3s. **Recommend they
-  stay on a box during Phase A** (bootstrap safety); consider moving in-cluster only once the cluster is proven.
+- **Forgejo chicken-and-egg:** Forgejo + its PG (and Infisical) are the CI/secret substrate that deploys K3s,
+  so they stay **off-cluster permanently (decided)** — bootstrap anchors that must survive a cluster rebuild.
 
 **Cutover + rollback points (per product):** each app keeps its old home warm (Coolify app / Vercel / Railway)
 until the K3s deployment is verified, with DNS as the cutover switch and the rollback = re-point DNS + env
@@ -232,26 +260,37 @@ that needs a formal, tested cutover runbook** (it's a security boundary over rea
 
 ---
 
-## E. Flags for founder decision
+## E. Decisions (resolved) + remaining open items
 
-1. **PlotBudget Supabase path — recommendation now firm: Option 1 (self-host Supabase on K3s, backed by
-   CNPG).** Deep-dive confirmed Auth + PostgREST + Storage + 158 `auth.uid()`-keyed RLS policies are all
-   load-bearing → Option 2 (rewrite) is deferred to an optional later "own auth on Better Auth" ADR.
-2. **Sophia's own Neon Postgres + Neon Auth** — keep Neon SaaS, or migrate into CNPG + Better Auth (mirrors
-   Restormel, full sovereignty)? Separate from the SurrealDB move. **Your call.**
-3. **K3s/CNPG target design — being created now** (companion doc `k3s-cluster-target-design.md`, dedicated
-   design pass). It needs the answers to Q1/Q2/Q4 below before it can be finalized. Phase A detail follows it.
-4. **Backups: Storage Box is SFTP/SMB, not S3.** CNPG's Barman wants an S3 target → either front the Storage
-   Box with an S3 gateway (MinIO/rclone) or keep a **restic CronJob doing `pg_dump`** (continues today's
-   pattern). **Decision needed.** Also: no `governance/bcp-dr-policy.md` exists yet to anchor the RTO<4h claim.
-5. **Data residency** — both PlotBudget's Supabase (**eu-west-2**) and Sophia's Neon (**eu-west-2**) are
-   *already EU* (AWS London). Moving to Hetzner EU is a **control / self-hosting** win (off managed US-owned
-   SaaS), **not** a data-leaving-EU fix — frame it that way in the privacy notice / ROPA.
-6. **Forgejo/CI + Infisical: in-cluster vs on-box** during Phase A (recommend on-box for bootstrap safety).
-7. **Secrets into the cluster** — land via **External Secrets Operator** (backed by Infisical) or
-   **sealed-secrets**, consistent with the ISMS (no plaintext, repo-anchored where appropriate). Pick one.
-8. **Downtime windows** — Restormel/Allotmentology/Sophia tolerate short dump/restore freezes; **PlotBudget's
-   auth+RLS data migration is the sensitive one** and may warrant logical replication + a rehearsed cutover.
+**Resolved** — per the Decisions register above (agreed with the K3s target design); no longer open:
+
+1. **PlotBudget Supabase path → Option 1** (self-host Supabase on K3s, backed by CNPG). Deep-dive confirmed
+   Auth + PostgREST + Storage + 158 `auth.uid()`-keyed RLS policies are all load-bearing → Option 2 (rewrite)
+   is deferred to an optional later "own auth on Better Auth" ADR. Cutover = **short maintenance window**.
+2. **Sophia migrates fully** — its own Neon Postgres → CNPG **and** Neon Auth → Better Auth (mirrors Restormel,
+   full sovereignty), on top of the SurrealDB re-point.
+3. **K3s/CNPG target design exists** — `k3s-cluster-target-design.md` (+ the `restormel-k3s-architecture`
+   skill); the design is the **how**, this plan the **what/when**, the register authoritative for both.
+4. **PG backups → CNPG Barman → Hetzner Object Storage fsn1** (cross-region PITR) + restic → Storage Box (cold).
+5. **Forgejo + Infisical → off-cluster permanently** (bootstrap anchors).
+6. **Secrets → External Secrets Operator ← self-hosted Infisical** (no sealed-secrets).
+7. **Cutover windows → short pg_dump maintenance windows** (pre-launch, low traffic; logical replication
+   deferred until live with real users). PlotBudget's auth + RLS migration still gets a **rehearsed, tested
+   cutover runbook** with positive/negative RLS revalidation (security boundary over real financial data).
+8. **Migration approach → Path A temp-node bootstrap** (build on the €20 one-off temp server, fold the boxes
+   in, retire the temp node; never convert a live prod box in-place).
+9. **PlotBudget auth → Better Auth LATER** (separate ADR, post-cutover; GoTrue moves as-is at cutover).
+
+**Still genuinely OPEN (factual gaps / outstanding work):**
+
+- **PlotBudget production domain** — needed for ingress + Supabase `SITE_URL`/JWT. Supply when known.
+- **`governance/bcp-dr-policy.md` still needs writing** to anchor the RTO<4h target (the register sets RTO ≤ 2h
+   / RPO ≤ 5min PG; the policy record is owed).
+- **Live secret values supplied at cutover** — connection strings / service-role keys / OAuth creds, redacted
+   until the cutover window (planning needs none).
+- **Data residency framing (context, not a decision)** — both PlotBudget's Supabase (**eu-west-2**) and Sophia's
+   Neon (**eu-west-2**) are *already EU* (AWS London); the move is a **control / self-hosting** win off managed
+   US-owned SaaS, **not** a data-leaving-EU fix — frame it that way in the privacy notice / ROPA.
 
 ---
 
