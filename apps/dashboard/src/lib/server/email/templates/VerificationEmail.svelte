@@ -1,3 +1,7 @@
+<!-- Runes opt-in — see EmailShell.svelte. Project default is runes:false; this template
+     uses $props(), which mis-lowers (ReferenceError: props is not defined) without this. -->
+<svelte:options runes={true} />
+
 <script lang="ts">
   /**
    * Transactional email: email address verification (finish sign-in / confirm account).

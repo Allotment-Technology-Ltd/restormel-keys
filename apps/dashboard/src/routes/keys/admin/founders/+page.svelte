@@ -1,11 +1,25 @@
 <script lang="ts">
   import { ADMIN_BASE } from "$lib/dashboard-base";
   import type { FoundersAccessRow } from "$lib/server/founders-access";
+  import type { FoundersSendStatusBrief } from "./+page.server";
 
   export let data: {
     foundersAccess: FoundersAccessRow[];
     foundersLoadError: string | null;
+    sendStatus: Record<string, FoundersSendStatusBrief>;
   };
+
+  // Last transactional email outcome for a row (approval / apply-confirmation), surfaced so the
+  // operator can SEE whether the approval email actually delivered — the "no way of knowing" gap.
+  function sendLabel(email: string): { text: string; kind: "ok" | "fail" | "none" } {
+    const s = data.sendStatus?.[email];
+    if (!s) return { text: "—", kind: "none" };
+    const verb = s.category === "founders_approved" ? "Approval email" : "Confirmation email";
+    if (s.success) {
+      return { text: `${verb}: sent ✓ ${new Date(s.sentAtMs).toLocaleString()}`, kind: "ok" };
+    }
+    return { text: `${verb}: FAILED — ${s.errorReason ?? "unknown"}`, kind: "fail" };
+  }
 
   let rows = data.foundersAccess;
   let savingEmail: string | null = null;
@@ -73,13 +87,14 @@
         <th scope="col">Name</th>
         <th scope="col">Status</th>
         <th scope="col">Submitted</th>
+        <th scope="col">Email</th>
         <th scope="col">Actions</th>
       </tr>
     </thead>
     <tbody>
       {#if rows.length === 0}
         <tr>
-          <td colspan="5" class="empty">No applications yet.</td>
+          <td colspan="6" class="empty">No applications yet.</td>
         </tr>
       {:else}
         {#each rows as row}
@@ -92,6 +107,20 @@
               </span>
             </td>
             <td>{formatWhen(row.submittedAtMs)}</td>
+            <td>
+              {#key data.sendStatus}
+                {@const sl = sendLabel(row.email)}
+                <span
+                  class="send-status"
+                  class:send-ok={sl.kind === "ok"}
+                  class:send-fail={sl.kind === "fail"}
+                  class:send-none={sl.kind === "none"}
+                  title={sl.text}
+                >
+                  {sl.text}
+                </span>
+              {/key}
+            </td>
             <td class="actions">
               {#if row.status !== "approved"}
                 <button
@@ -216,5 +245,21 @@
   }
   .btn-reject {
     border-color: color-mix(in srgb, var(--rm-danger, #b91c1c) 35%, var(--rm-border));
+  }
+  .send-status {
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    font-size: var(--text-xs);
+    display: inline-block;
+    max-width: 22rem;
+  }
+  .send-ok {
+    color: #166534;
+  }
+  .send-fail {
+    color: var(--rm-danger, #b91c1c);
+    font-weight: 600;
+  }
+  .send-none {
+    color: var(--rm-dim);
   }
 </style>

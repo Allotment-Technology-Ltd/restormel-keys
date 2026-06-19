@@ -1,3 +1,15 @@
+<!--
+  RUNES OPT-IN (load-bearing): the dashboard sets `compilerOptions.runes: false`
+  (svelte.config.js). This template is authored with runes (`$props()`, snippets).
+  Under the project default, `$props` mis-lowers to a store read of an undefined
+  `props` identifier → `ReferenceError: props is not defined` at SSR render time —
+  which silently broke EVERY transactional email in production (REC-INC: founders
+  approval no-send). `<svelte:options runes={true} />` opts this component into runes
+  mode regardless of the project default. DO NOT REMOVE without reverting to legacy
+  `export let` (see SocialProof.svelte / changelog/+page.svelte for that pattern).
+-->
+<svelte:options runes={true} />
+
 <script lang="ts">
   /**
    * Neo-brutalist email frame: warm cream canvas, ink-bordered surface card with an offset

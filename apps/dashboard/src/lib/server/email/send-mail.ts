@@ -127,9 +127,13 @@ export function getTransport(): Transporter {
   return _transport;
 }
 
-/** Send a fully-formed envelope through the SMTP transport. */
-export async function sendMail(envelope: MailEnvelope): Promise<void> {
-  await getTransport().sendMail({
+/** Result of a transport send — the provider message-id is opaque (non-PII) and is recorded
+ *  by the send-observability layer (email-send-log.ts). */
+export type SendMailResult = { messageId: string | null };
+
+/** Send a fully-formed envelope through the SMTP transport. Returns the provider message-id. */
+export async function sendMail(envelope: MailEnvelope): Promise<SendMailResult> {
+  const info = await getTransport().sendMail({
     to: envelope.to,
     from: envelope.from,
     replyTo: envelope.replyTo,
@@ -137,6 +141,7 @@ export async function sendMail(envelope: MailEnvelope): Promise<void> {
     text: envelope.text,
     html: envelope.html,
   });
+  return { messageId: (info as { messageId?: string })?.messageId ?? null };
 }
 
 /** Better Auth `sendVerificationEmail` hook → transactional mailbox. */
