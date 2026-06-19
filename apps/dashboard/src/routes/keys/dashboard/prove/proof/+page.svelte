@@ -61,6 +61,7 @@
       routes={data.routes}
       suggestCacheKey={data.suggestCacheKey}
       proveBase={data.proveBase}
+      workspaceId={data.workspaceId}
     />
   {:catch}
     <BrutalErrorBanner

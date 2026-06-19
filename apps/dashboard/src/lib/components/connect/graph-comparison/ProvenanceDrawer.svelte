@@ -2,9 +2,12 @@
   import type { ProvenanceClaim, RetrievalTrace } from "$lib/connect/graph-comparison-types";
   import { proveDossierHref } from "$lib/prove-it";
   import ProveLink from "$lib/components/connect/ProveLink.svelte";
+  import { captureVerifiedClaimSourceSpanOpened } from "$lib/analytics/verified-claim";
 
   export let claims: ProvenanceClaim[] = [];
   export let trace: RetrievalTrace;
+  /** Opaque workspace id for the Phase 3 north metric (non-PII). Null when unknown. */
+  export let workspaceId: string | null = null;
 
   let open = false;
 
@@ -20,6 +23,18 @@
    */
   function dossierHref(claim: ProvenanceClaim): string {
     return proveDossierHref(claim.id);
+  }
+
+  /**
+   * Phase 3 north metric: the user clicked a verified claim through to its source
+   * span. Fires before navigation; PII-free (see analytics/verified-claim.ts).
+   * ProveLink renders a plain <a> and does not forward `on:click`, so we capture
+   * the gesture on the claim row via delegation, scoped to the prove-it link.
+   */
+  function onClaimRowClick(claim: ProvenanceClaim, ev: MouseEvent): void {
+    const target = ev.target as Element | null;
+    if (!target?.closest("[data-prove-it]")) return;
+    captureVerifiedClaimSourceSpanOpened({ claim, workspaceId, surface: "prove_console" });
   }
 </script>
 
@@ -41,7 +56,14 @@
       {:else}
         <ul class="claim-list">
           {#each claims as claim (claim.id)}
-            <li class="claim" class:weak={claim.verification === "weak"}>
+            <!-- The metric fires on the prove-it link inside this row (delegated);
+                 the row itself is not interactive, so no extra a11y role is needed. -->
+            <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+            <li
+              class="claim"
+              class:weak={claim.verification === "weak"}
+              on:click={(ev) => onClaimRowClick(claim, ev)}
+            >
               <p class="claim-text">
                 <!-- W4.3: the shared ProveLink renders the prove-it affordance (dotted
                      underline + ↗) so the gesture is one component, not a hand-rolled <a>. -->

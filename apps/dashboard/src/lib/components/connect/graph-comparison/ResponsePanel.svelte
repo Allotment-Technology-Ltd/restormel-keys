@@ -9,6 +9,8 @@
   export let retrieval: RetrievalSummary | null = null;
   export let error: string | null = null;
   export let onRetry: () => void;
+  /** Opaque workspace id forwarded to the provenance drawer's claim→span metric. */
+  export let workspaceId: string | null = null;
 
   $: isGraph = variant === "graph";
   $: heading = isGraph ? "WITH YOUR KNOWLEDGE GRAPH" : "WITHOUT KNOWLEDGE GRAPH";
@@ -44,7 +46,7 @@
   </div>
 
   {#if isGraph && status === "complete" && retrieval}
-    <ProvenanceDrawer claims={retrieval.claims} trace={retrieval.trace} />
+    <ProvenanceDrawer claims={retrieval.claims} trace={retrieval.trace} {workspaceId} />
   {/if}
 </article>
 

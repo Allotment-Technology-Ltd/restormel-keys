@@ -18,6 +18,8 @@
   export let routes: ChatRouteOption[] = [];
   export let suggestCacheKey = "";
   export let proveBase = "/keys/dashboard/prove";
+  /** Opaque workspace id (non-PII) threaded to the claim→span north metric. */
+  export let workspaceId: string | null = null;
 
   type PanelMode = "raw" | "graph";
   type PanelState = {
@@ -252,6 +254,7 @@
         retrieval={panelGraph.retrieval}
         error={panelGraph.error}
         onRetry={() => retry("graph")}
+        {workspaceId}
       />
     </div>
 
