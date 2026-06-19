@@ -118,7 +118,13 @@ This **avoids provisioning a 4th server**, meeting the stated preference.
 **Host the entire Operations Centre (observability stack + GlitchTip) on the build box `.166`
 (`restormel-build`, CX43, 16 GB).** No 4th server.
 
-**Justification (documented figures; live `free`/`df` still to be captured — see §G/flag F-1):**
+**Justification (live figures captured 2026-06-19 SSH check — F-1 resolved):**
+
+- **Live capacity (2026-06-19).** Build box `.166`: **13 Gi RAM free / 16 Gi total**, **120 G disk free /
+  150 G (17% used)**, only the Forgejo runner resident (45 MiB). `.167` prod: 5.4 Gi free, 44 G free (39%).
+  `.150` control: 3.2 Gi avail, 24 G free (67% used — the tightest box, and where Beszel + Uptime-Kuma
+  already run). **Conclusion: the build box absorbs the ~3.5–4.5 GB Ops Centre with room to spare; no 4th
+  server.** (Nit: `.166` has no swap configured.)
 
 - **Headroom.** The build box is 16 GB and idle outside CI builds (which spike ~2–4 GB, infrequently).
   Estimated Ops Centre footprint at our scale (<10 services, low cardinality):
@@ -195,8 +201,9 @@ These are fallbacks, not the recommendation.
    - **Forgejo `/metrics`** (built-in; must be enabled — see §E);
    - **Traefik** metrics (Coolify can expose Traefik's Prometheus endpoint);
    - Prometheus self + Grafana + Loki + GlitchTip internal metrics where available;
-   - **Postgres** via `postgres_exporter` *for the self-hosted PGs on `.150`* (Forgejo PG, restormel PG).
-     **Prod app DB is Neon (external) — Neon does not expose Prometheus metrics**; see §E gap.
+   - **Postgres** via `postgres_exporter` — **prod app DB is self-hosted Postgres on `.167`** (`app-postgres`,
+     db `restormel_ops`, confirmed live 2026-06-19) plus the self-hosted PGs on `.150` (Forgejo PG, restormel PG).
+     All are directly scrapable. **Neon is no longer in the prod path** (legacy standby, decommissioning).
 3. **Logs — Loki (central, on `.166`).** Single-binary mode, filesystem/boltdb-shipper backend (sufficient
    at our scale). Receives: Docker logs via Alloy; **GlitchTip issue/alert webhooks** via the central Alloy's
    `loki.source.api` HTTP receiver (see §B.5); optionally PostHog webhooks (§E source 7).
@@ -312,16 +319,16 @@ Per-source status from the integration audit. Effort is rough (one Claude Code s
 | **Coolify** (container logs) | ✅ on `.150` | 🟡 private/tunnel | Ship Docker logs via **Alloy `loki.source.docker`** per box; Coolify itself has **no Prometheus `/metrics`** (would need a custom API exporter — defer) | S (logs) / L (metrics, optional) |
 | **Hetzner nodes** (CPU/RAM/disk/net) | ❌ no node_exporter | ✅ private mesh | Use **Alloy `prometheus.exporter.unix`** on each box → `remote_write` to Prometheus (no separate node_exporter needed) | S |
 | **Forgejo** (`/metrics`) | 🟡 built-in, **not enabled** | 🟡 internal on `.150` | Enable `[metrics]` in Forgejo `app.ini` (Coolify env `FORGEJO__METRICS__ENABLED=true`, optional bearer token); add Prometheus scrape | S |
-| **Postgres** | 🟡 split | 🟡 | Self-hosted PGs on `.150` (Forgejo, restormel): add **`postgres_exporter`** sidecar. **Prod app DB is Neon (external) → no Prometheus metrics**; use Neon Console / Neon API polling or app-layer query timing. See gap. | M (self-hosted) / L (Neon) |
+| **Postgres** | ✅ self-hosted | ✅ private mesh | **Prod app DB is self-hosted Postgres on `.167`** (`app-postgres`, db `restormel_ops`) + self-hosted PGs on `.150` (Forgejo, restormel) → add **`postgres_exporter`** to each. **Neon is no longer in the prod path** (legacy standby, decommissioning ~2026-06-30). | M |
 | **SvelteKit dashboard logs** | ✅ structured-ish (`[prefix]` + `[dashboard-perf]` JSON; testing-runs-server already JSON-per-line) | ✅ stdout→Docker | Tail via Alloy `loki.source.docker`. Quick win: converge dashboard logs to **JSON-per-line** for clean LogQL parsing | S (ship) / S (JSON-ify) |
 | **PostHog EU** (errors+analytics) | ✅ **live** (`hooks.server.ts:337`) | ✅ `eu.i.posthog.com` | Optional: PostHog **webhook → Alloy `loki.source.api`** to mirror chosen events into Loki for unified alerting (analytics stays in PostHog UI). Decide overlap with GlitchTip (§D.5) | S (optional) |
 
 Legend: S ≈ small (hours), M ≈ medium (≈1 session), L ≈ large (multi-session / custom code).
 
 **Key gaps called out:**
-- **Neon gives no Prometheus metrics.** DB observability for prod is limited to Neon's own console unless we
-  poll the Neon API into Prometheus (custom) — *or* until the planned migration off Neon to self-hosted
-  Postgres (see `database-strategy` roadmap), after which `postgres_exporter` works directly.
+- **Prod DB is self-hosted (not Neon).** Confirmed live 2026-06-19: prod `DATABASE_URL` → `172.16.0.3:5432`
+  (self-hosted `app-postgres` on `.167`), so `postgres_exporter` scrapes it directly — there is **no
+  Neon-metrics gap**. Neon remains only as a legacy standby pending decommission (~2026-06-30).
 - **Coolify exposes no Prometheus endpoint** — container *logs* are easy via Alloy; Coolify *metrics* would
   need a custom API exporter (defer; low value at our scale).
 - **node_exporter is absent everywhere** — Alloy's unix exporter closes this without an extra component.
@@ -333,10 +340,10 @@ Legend: S ≈ small (hours), M ≈ medium (≈1 session), L ≈ large (multi-ses
 Re-ordered from the brief because **Sentry decommission is a no-op** and **GlitchTip is no longer a blocker
 for anything**. Each stage is sized to ≈ one Claude Code session. Dependencies noted.
 
-> **Stage 0 — Live capacity confirmation (PREREQUISITE, blocks all).**
-> With founder-approved SSH, capture `free -h`, `df -h`, `docker stats` on `.166` (and `.150`/`.167` for
-> baseline), confirm build-box disk size, and confirm the disk-guard cron is replicated on `.166`. Decide
-> finally whether co-location holds or a 4th box is needed. *No build proceeds until this is green.* (Flag F-1.)
+> **Stage 0 — Live capacity confirmation — ✅ DONE (2026-06-19).**
+> Captured via SSH: `.166` has **13 Gi RAM free / 120 G disk free (150 G total)** — ample. Co-location holds;
+> no 4th box. Remaining nits (fold into Stage 6): `.166` has **no swap** configured, and confirm/add the
+> disk-guard cron on `.166`.
 
 | Stage | Scope | Depends on | Notes |
 |---|---|---|---|
@@ -355,10 +362,9 @@ gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded 
 
 ## G. Flags for founder decision
 
-- **F-1 — Live capacity not yet measured (blocks build).** All sizing uses *documented* specs; no
-  `free`/`df`/`docker stats` were run (no SSH per access rules). **Need approval to SSH `.166`/`.150`/`.167`
-  for live figures** before committing to co-location. Especially: build-box disk size (undocumented) and
-  whether the disk-guard cron exists on `.166`. *Recommended: approve a one-off read-only capacity check.*
+- **F-1 — ✅ RESOLVED (2026-06-19).** Live SSH capacity check done: build box `.166` has **13 Gi RAM free /
+  120 G disk free** — co-location confirmed, no 4th server. Open nits: `.166` has no swap; confirm/add the
+  disk-guard cron on `.166` (Stage 6).
 
 - **F-2 — CI vs monitoring on one box.** The build box doubles as CI runner. Co-locating the Ops Centre means
   heavy builds and monitoring share CPU/RAM/disk. Acceptable at current build cadence; the alternative is a
@@ -377,9 +383,15 @@ gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded 
     SaaS** (PostHog Inc is US) — which sits in tension with the brief's "no US-hosted SaaS / open-source
     self-hosted only" ethos. *Self-hosting GlitchTip/Bugsink would actually improve sovereignty over the
     PostHog-cloud status quo for error data.*
-  > **Recommendation:** if a dedicated error tracker is wanted, **GlitchTip** per the brief — but given the
-  > greenfield reality + box headroom being the constraint, **Bugsink is a legitimate lean alternative worth a
-  > closer look.** This is close enough to warrant an explicit founder call.
+  > **DECISION (founder, 2026-06-19): keep PostHog Error Tracking if it covers our needs; switch to Bugsink
+  > only if it falls short. GlitchTip is dropped.** Assessment: our actual need is server+client exception
+  > capture (already live via `handleError` → PostHog), issue grouping, stack traces (+ optional source maps),
+  > and spike alerting → Telegram. PostHog Error Tracking provides all of these and adds **zero new infra**
+  > (already EU-hosted, already wired). **Recommend: keep PostHog**; revisit **Bugsink** (lean single-container,
+  > EU-built, Sentry-SDK-native) only if we later need breadcrumb / release-health / trace features PostHog
+  > lacks. Forward chosen PostHog error events to Loki for unified alerting. *Live event flow is verifiable via
+  > the connected PostHog MCP as a confirmation step.* This removes GlitchTip from Stages 4–5 (they become
+  > optional / no-op unless Bugsink is later adopted).
 
 - **F-4 — Additive/layered (recommended) vs replace.** The Ops Centre layers **on top of** the approved
   monitoring roadmap rather than replacing it. **Keep PostHog (analytics + errors), Uptime-Kuma (probes,
@@ -390,11 +402,12 @@ gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded 
   is a small amendment to the roadmap — "host metrics via Alloy→Prometheus instead of Beszel" — not a
   rewrite). The earlier "supersede" framing is withdrawn.
 
-- **F-5 — Sovereignty footnote.** Two SaaS dependencies touch telemetry today and sit slightly outside the
-  "fully self-hosted EU" ethos: **PostHog EU Cloud** (analytics+errors) and **Neon** (prod DB, AWS eu-west-2).
-  Neither is in scope to change here, but the Ops Centre is the moment to note them — self-hosting error
-  tracking narrows the PostHog dependency, and the planned Neon→self-hosted-Postgres migration would close the
-  DB metrics gap *and* the DB-sovereignty gap together.
+- **F-5 — Sovereignty footnote (updated).** **Neon is already out of the prod path** (confirmed
+  2026-06-19 — prod runs self-hosted Postgres on `.167`; Neon is a legacy standby, decommission ~2026-06-30
+  per the RISK register). So the only remaining telemetry SaaS is **PostHog EU Cloud** (EU-hosted, but
+  PostHog Inc is US). Keeping PostHog (F-3) is a deliberate, pragmatic exception to the "self-host everything"
+  ethos — acceptable since it's EU-region and already in use. No action needed unless full self-hosting of
+  analytics later becomes a requirement.
 
 - **F-6 — Pre-existing backup gaps to fix opportunistically:** `.167` restic-surreal script not
   version-controlled; no native `forgejo dump`; no BCP/DR policy doc; restore drill never executed. Cheap to
