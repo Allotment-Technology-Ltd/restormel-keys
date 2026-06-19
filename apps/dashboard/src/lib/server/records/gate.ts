@@ -21,8 +21,27 @@ import { execFileSync } from "node:child_process";
 // escapes the SvelteKit app root and vite build/Rollup cannot bundle it. Keep in sync.
 import { parseFrontMatter } from "./frontmatter";
 
-/** Repo root, resolved from this module's location (robust under prerender — not cwd). */
-export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
+/**
+ * Repo root. The module-relative path is correct under SvelteKit prerender (build
+ * time), but in the bundled adapter-node RUNTIME the gate is bundled at a shallower
+ * depth, so that fixed relative path overshoots (e.g. to "/") and finds no records.
+ * Resolve robustly: prefer the module-relative path when it actually contains the
+ * workspace marker (preserves prior prerender behaviour exactly); otherwise walk up
+ * from cwd (the container WORKDIR is the repo root) to find `pnpm-workspace.yaml`.
+ */
+function resolveRepoRoot(): string {
+  const rel = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
+  if (existsSync(join(rel, "pnpm-workspace.yaml"))) return rel;
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return rel;
+}
+export const REPO_ROOT = resolveRepoRoot();
 
 /**
  * Roots that may hold a publishable record. `evidence/` is deliberately excluded
@@ -164,6 +183,19 @@ export function isPublishable(r: { classification: string; status: string }): bo
   return r.classification === PUBLIC && r.status === APPROVED;
 }
 
+/**
+ * THE INTERNAL GATE: a record is internally readable iff it is approved AND its
+ * classification is `public` OR `internal`. `confidential`/`restricted` NEVER pass,
+ * even when approved. This is the threshold for the AUTHED internal records feed
+ * (Step 5) — strictly wider than {@link isPublishable} (public-only) and strictly
+ * narrower than "all classifications". Reuses {@link APPROVED}; fail-closed on a
+ * missing/unknown classification.
+ */
+export const INTERNAL_READABLE = [PUBLIC, "internal"] as const;
+export function isInternalReadable(r: { classification: string; status: string }): boolean {
+  return (INTERNAL_READABLE as readonly string[]).includes(r.classification) && r.status === APPROVED;
+}
+
 /** Effective dates + prior versions from the supersedes lineage and git history (dates only — never bodies of non-public predecessors). */
 export function versionsFor(r: RecordDoc, byId: Map<string, RecordDoc>): RecordVersion[] {
   const versions: RecordVersion[] = [...gitVersions(r.path)];
@@ -200,6 +232,23 @@ export function loadPublicRecords(opts?: { class?: string }): PublishedRecord[] 
   const byId = new Map(all.map((r) => [r.id, r]));
   return all
     .filter(isPublishable) // ← the gate: classification public AND status approved
+    .filter((r) => !opts?.class || r.class === opts.class)
+    .map((r) => ({ ...r, versions: versionsFor(r, byId) }))
+    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate) || a.title.localeCompare(b.title));
+}
+
+/**
+ * The internal-readable set: `public` OR `internal` records that are `approved`, optionally
+ * narrowed by `class`. Enriched with version history exactly as {@link loadPublicRecords}.
+ * This is the single source the AUTHED internal records feed (Step 5) may render from —
+ * `confidential`/`restricted` are never included, and `evidence/` is never scanned (the
+ * exclusion lives in {@link loadAllRecords}'s root list). NEVER use this for a public route.
+ */
+export function loadInternalRecords(opts?: { class?: string }): PublishedRecord[] {
+  const all = loadAllRecords();
+  const byId = new Map(all.map((r) => [r.id, r]));
+  return all
+    .filter(isInternalReadable) // ← the internal gate: (public|internal) AND status approved
     .filter((r) => !opts?.class || r.class === opts.class)
     .map((r) => ({ ...r, versions: versionsFor(r, byId) }))
     .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate) || a.title.localeCompare(b.title));
