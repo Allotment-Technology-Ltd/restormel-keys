@@ -7,6 +7,7 @@
 #   status: approved
 #   approved-by: founder
 #   approved-on: 2026-06-17
+#   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -157,18 +158,16 @@ data:
       this row, the RoPA, and the access policy.
 
   - id: DAT-012
-    data: "Contact / enquiry form submissions (PLANNED — not yet configured)"
+    data: "Contact / enquiry form submissions"
     categories: "contact, communications"
     classification: confidential
-    store: "TARGET: self-hosted Postgres on AST-003 (EU); notification email via the EU mail path (Migadu). Avoid US form SaaS."
+    store: "Migadu EU mailbox (hello@ + notify@ on allotmentology.tech); copy in founder's Google Workspace (US) inbox. No database persistence."
     contains_personal_data: "yes — enquirer name, email address, message content"
-    retention: "TARGET: delete or anonymise within 12 months of the enquiry being closed (adjust at launch)"
+    retention: "Delete/purge from mailboxes within 12 months of enquiry being closed."
     product: allotmentology.tech
     notes: >
-      Not yet built — this row sets the privacy-by-design target. Lawful basis: Legitimate
-      Interests (responding to enquiries) — see RoPA PROC-008. A published privacy notice MUST
-      be live before the form collects any data (none today — see risk register RISK-011).
-      Keep submissions on EU infrastructure.
+      Form live 2026-06-19. Email-only — no Postgres persistence. Privacy notice v1.1 published at
+      allotmentology.tech/privacy. Lawful basis: Legitimate Interests (PROC-008).
 
   - id: DAT-013
     data: "Marketing subscriber list & consent records (PLANNED — not yet configured)"

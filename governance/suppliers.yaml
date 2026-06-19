@@ -122,23 +122,30 @@ suppliers:
     notes: "Founder evaluating alternative email provider (see Migadu). Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
 
   - name: Migadu
-    provides: "Transactional / company email — Restormel product transactional mail (auth verification/reset, access-grant notifications, security alerts) + allotmentology.tech app auth magic-links/notifications"
+    provides: "Transactional / company email — Restormel product transactional mail (auth verification/reset, access-grant notifications, security alerts) + allotmentology.tech app auth magic-links/notifications + allotmentology.tech enquiry notifications"
     role: sub-processor
     location: "Swiss company; EU mail servers"
-    data_processed: "Email addresses + message content for authentication, access-grant and notification emails (registered users + founder/internal addresses)"
-    dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
-    sovereignty: "flagged — pending confirmation"
+    data_processed: >
+      Email addresses + message content for authentication, access-grant and notification
+      emails (registered users + founder/internal addresses). Additionally, from 2026-06-19:
+      enquirer personal data (name, email address, message content) via allotmentology.tech
+      enquiry-notification emails (third-party data subjects — PROC-008 / DAT-012).
+    dpa: "[founder to confirm: Migadu standard terms / DPA accepted — confirm Art 28 basis for processing enquirer personal data; confirm DPA acceptance date]"
+    sovereignty: "EU mail servers (Swiss company); DPA confirmation pending — [founder to confirm acceptance date]"
     products: [restormel, allotmentology.tech]
     notes: >
       Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
-      Google Workspace dependency. Validated on staging during the auth migration
-      (Neon Auth → Better Auth); production cutover is gated.
+      Google Workspace dependency. NOW IN PRODUCTION for both Restormel and allotmentology.tech:
+      auth transactional emails (magic-link, reset, verification, security alerts, welcome-on-approval)
+      and allotmentology.tech enquiry notifications (third-party enquirer PII).
       Scope expanded 2026-06-18 (REC-PLAN-017): Migadu is the TRANSACTIONAL stream for the
       Restormel product (restormel.dev mailboxes admin@/notify@/contact@, moving to a
       dedicated send.restormel.dev sending subdomain). Transactional ONLY — marketing/bulk
       email goes via Brevo (separate entry, separate subdomain) so the two reputations stay
-      isolated. allotmentology.tech app enters ISMS scope when the company portal ships.
-      Revisit data-inventory + ROPA and fire the sub-processor change-notification hook on
+      isolated.
+      SCOPE EXPANDED 2026-06-19: allotmentology.tech enquiry form live — Migadu now carries
+      third-party enquirer PII (name/email/message). Art 28 DPA coverage required; confirm
+      Migadu's standard terms cover this. Fire the sub-processor change-notification hook on
       any further scope change.
 
   - name: Brevo (Sendinblue)

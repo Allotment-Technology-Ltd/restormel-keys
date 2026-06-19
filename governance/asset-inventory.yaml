@@ -38,6 +38,10 @@
 #   Coolify server registration names, and workload placement; note legacy/misleading Hetzner
 #   server names; update AST-011 to include Box C private IP; align AST-018 spec to cx43
 #   confirmed; add surreal-stack exited flag to AST-014 for founder verification.
+# 2026-06-19 (chore/allotmentology-isms-handover-2026-06-19): AST-017 — form live, Migadu
+#   in production, Coolify forward-auth note, secrets location resolved. AST-013 — Infisical
+#   sourcing PLACEHOLDER resolved (allotmentology.tech does NOT source app-wide from Infisical;
+#   Coolify env is primary). AST-014 PLACEHOLDER already closed by PR #146.
 #   last-reviewed updated to 2026-06-19 (founder re-approval of reconciled facts requested).
 
 assets:
@@ -258,10 +262,12 @@ assets:
       OIDC/SAML federation deliberately NOT adopted: Infisical gates it behind a paid
       enterprise licence (~£18/mo), judged not worth it for a single self-hosted
       product at this stage — it keeps its own login (admin MFA still to be enabled,
-      tracked in RISK-010). [PLACEHOLDER — founder: confirm] whether the
-      allotmentology.tech app yet sources its secrets from Infisical (confirmed in
-      place for Restormel; the allotmentology.tech app itself remains out of ISMS
-      scope until the company portal ships).
+      tracked in RISK-010).
+      INFISICAL SOURCING (allotmentology.tech, resolved 2026-06-19): the allotmentology.tech
+      app does NOT source secrets app-wide from Infisical. Most runtime secrets are held
+      in the Coolify environment (project allotmentology-pilot). Specific operational secrets
+      (e.g. RECORDS_FEED_TOKEN) are canonical in Infisical project restormel-ops/prod.
+      App-wide Infisical migration for allotmentology.tech is deferred (no current plan).
       Single point of failure for runtime secret retrieval — see RISK-010.
 
   - id: AST-014
@@ -318,10 +324,18 @@ assets:
     product: allotmentology.tech
     location: "Self-hosted on AST-003 (Coolify), allotmentology.tech"
     notes: >
-      Next.js company portal with self-contained BetterAuth auth. Founder-only; NO SSO
-      federation to other products (no current plan). Public surface is a contact/enquiry form
-      (not yet configured — see RoPA PROC-008). App secrets currently in local .env, NOT yet in
-      Infisical — residual location under RISK-002. Auth email via Migadu (prod cutover gated).
+      Next.js company portal with self-contained BetterAuth auth. Founder-only.
+      Public surface includes a contact/enquiry form — LIVE as of 2026-06-19 (RoPA PROC-008;
+      privacy notice v1.1 at allotmentology.tech/privacy).
+      Auth email (magic-link, security alerts) via Migadu — in production.
+      Enquiry notifications via Migadu — in production (third-party enquirer PII in scope).
+      Coolify admin dashboard (coolify.allotmentology.tech) is published behind this portal's
+      BetterAuth session via Traefik forwardAuth — portal login is required before Coolify
+      becomes reachable. Two-layer protection: portal BetterAuth + Coolify's own local login.
+      App secrets held in Coolify environment (Coolify project allotmentology-pilot); some
+      operational secrets (e.g. RECORDS_FEED_TOKEN) are canonical in Infisical project
+      restormel-ops/prod. App-wide Infisical sourcing for allotmentology.tech remains deferred
+      (most secrets live in Coolify env, not Infisical). Residual location tracked under RISK-002.
 
   - id: AST-018
     asset: "Box 3 — dedicated CI build runner (204.168.216.166)"

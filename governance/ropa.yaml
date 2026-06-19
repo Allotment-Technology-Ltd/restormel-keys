@@ -7,6 +7,7 @@
 #   status: approved
 #   approved-by: founder
 #   approved-on: 2026-06-17
+#   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: life-of-processing
 #
@@ -14,8 +15,8 @@
 # ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
 # (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
 # Per-activity scope is in the product: field.
-# allotmentology.tech requires its own published privacy notice before PROC-008 collects
-# data (none yet — see risk register RISK-011).
+# allotmentology.tech privacy notice v1.1 published 2026-06-19 at https://allotmentology.tech/privacy.
+# PROC-008 form is live as of 2026-06-19 (RISK-011 closed).
 #
 # Lawful bases used:
 #   CONTRACT   — UK GDPR Art 6(1)(b): processing necessary to perform a contract with the data subject
@@ -210,26 +211,21 @@ processing_activities:
   - id: PROC-008
     purpose: >
       Contact / enquiry handling — receiving and responding to enquiries via the
-      allotmentology.tech contact form. PLANNED — not yet configured; this sets the target.
+      allotmentology.tech contact form. Live — form deployed 2026-06-19.
     lawful_basis: "LI — responding to enquiries the person initiated (Art 6(1)(f))"
     data_subjects: "Enquirers / correspondents (public, prospects)"
     data_categories:
       - "Name, email address"
       - "Message content of the enquiry"
     recipients:
-      - "Self-hosted Postgres on AST-003 (EU) — target store"
-      - "Migadu (EU mail) — enquiry-notification transport"
+      - "Migadu (EU mail) — enquiry-notification transport (enquirer data arrives here as notification)"
       - "Google Workspace / Gmail (US) — founder inbox copy (cf. PROC-005, DAT-007); SCCs/DPA apply"
     transfers: >
-      Storage: none (self-hosted EU). Notification copy lands in Google Workspace (US) — Google
-      DPA + SCCs apply, as with PROC-005.
-    retention: "Target: delete or anonymise within 12 months of the enquiry being closed."
+      Enquiry data held in Migadu EU mailbox; copy to Google Workspace (US) — Google DPA + SCCs apply.
+    retention: "Mailbox copies, deleted within 12 months of enquiry closed."
     security_measures: >
-      Keep submissions on EU infrastructure (no US form SaaS); TLS; self-hosted Postgres access
-      controls; spam/abuse protection on the form.
-    privacy_notice_ref: >
-      [PLACEHOLDER — none published yet]. A privacy notice MUST be live at allotmentology.tech
-      before the form collects data (see risk register RISK-011).
+      TLS; honeypot + server-side validation (zod); spam protection. Data minimisation: email-only, no DB.
+    privacy_notice_ref: "https://allotmentology.tech/privacy (v1.1, 2026-06-19)"
     product: allotmentology.tech
 
   - id: PROC-009
