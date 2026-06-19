@@ -37,12 +37,12 @@ review-interval: P12M
 
 ---
 
-## Group A — Database / Neon
+## Group A — Database / Postgres
 
-| Name | Purpose | Service | On Vercel? | Criticality | Notes |
-|---|---|---|---|---|---|
-| `DATABASE_URL` | Neon Postgres connection string (pooled or direct, sslmode=require) | both | Yes | boot-blocking | Staging: use the Forgejo-CI Neon branch URL (not prod). Prod: copy from Vercel. Never share between staging and prod. |
-| `NEON_AUTH_BASE_URL` | Neon Auth base URL for sign-in proxy routes — the `/api/auth/*` proxy target | dashboard | Yes | boot-blocking | Returns 503 if unset. Staging: owner must add `https://staging.restormel.dev` as a **trusted origin** in Neon Console (Auth → Trusted Origins) — not yet done; it is the gating step for Stage 2.3. |
+| Name | Purpose | Service | Criticality | Notes |
+|---|---|---|---|---|
+| `DATABASE_URL` | Postgres connection string (pooled or direct, sslmode per host) | both | boot-blocking | **Prod = self-hosted Postgres on the prod box (`.167`), not Neon/Vercel.** Staging: a separate Postgres from prod. Never share between staging and prod. |
+| `NEON_AUTH_BASE_URL` | **Legacy** Neon Auth base URL (`/api/auth/*` proxy target) — only used when `AUTH_PROVIDER=neon` | dashboard | not used in prod | Prod runs `AUTH_PROVIDER=self` (self-hosted Better Auth), so this is unset in prod. Being retired with the Neon decommission (~2026-06-30). |
 
 ---
 

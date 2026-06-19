@@ -8,7 +8,7 @@ High-level architecture summary. **Single entry point** for structure; details l
 
 **Phase 01:** Implementation. Keys (control plane) + Connect (Ingest · Retrieve · Verify) are the MVP; Testing and Graph are flag-off. See [STATUS.md](STATUS.md) and [docs/product/positioning.md](docs/product/positioning.md).
 
-**Hosting:** UK/EU self-host on **Coolify**; **Forgejo-native** CI (migrated off GitHub Actions/Vercel, cutover 2026-06-13). **Neon Postgres** (spine) + **BYO SurrealDB** (graph); **PostHog EU** analytics; **Zuplo** Cloud API gateway; **Paddle** billing. Runbooks: [docs/infra/](docs/infra/).
+**Hosting:** UK/EU self-host on **Coolify**; **Forgejo-native** CI (migrated off GitHub Actions/Vercel, cutover 2026-06-13). **self-hosted Postgres** (spine) + **BYO SurrealDB** (graph); **PostHog EU** analytics; **Zuplo** Cloud API gateway; **Paddle** billing. Runbooks: [docs/infra/](docs/infra/).
 
 **Trust/security:** Verified-context first — evidence-bound verification (quoted span + source-version hash, deterministically re-checkable), cross-model entailment with abstention, and exportable provenance traces — with **BYOK custody** on every LLM stage. [docs/product/positioning.md](docs/product/positioning.md), [docs/product/verified-context-claims-ledger.md](docs/product/verified-context-claims-ledger.md), [docs/governance/security-baseline.md](docs/governance/security-baseline.md), [docs/governance/threat-model-starter.md](docs/governance/threat-model-starter.md).
 
