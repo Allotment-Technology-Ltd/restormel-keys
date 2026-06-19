@@ -105,4 +105,14 @@
   background: var(--color-yellow);
   color: var(--color-ink);
   border-radius: 0;
+  /* Prevent long inline tokens clipping at container edge. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Bare <pre class="code-block"> elements inside .docs-main — scroll horizontally. */
+.docs-main :global(pre.code-block) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
