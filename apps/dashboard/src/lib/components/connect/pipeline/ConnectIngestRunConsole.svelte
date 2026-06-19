@@ -834,7 +834,7 @@
             <li class="run-next-item">
               <span class="run-next-num">3</span>
               <span class="run-next-text">Run again with more documents</span>
-              <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>New run →</a>
+              <a class="btn btn-outline btn-sm" href={pipelineWizardHref("sources")}>New run →</a>
             </li>
           {/if}
         </ol>

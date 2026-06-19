@@ -88,6 +88,108 @@
   };
 
   const INTEGRATIONS_HREF = `${DASHBOARD_BASE}/integrations`;
+  const APPLY_API = `/keys/dashboard/api/connect/pipeline/stage-models/apply`;
+
+  // ── Apply-to-stage state ───────────────────────────────────────────────────
+
+  /** Applied model per stage: provider:providerModelId → stage key. */
+  type AppliedStageSnapshot = Record<
+    string,
+    { provider: string | null; providerModelId: string | null; routeId: string } | null
+  >;
+
+  /** Per-model apply status for the currently selected stage. */
+  type ApplyStatus = "idle" | "applying" | "applied" | "error";
+
+  let appliedStages: AppliedStageSnapshot = {};
+  let applyStatusMap: Record<string, ApplyStatus> = {}; // keyed: provider + ":" + providerModelId
+  let applyErrorMap: Record<string, string> = {};
+
+  /** Load initial applied-model snapshot for all stages. */
+  async function loadAppliedStages() {
+    try {
+      const res = await fetch(APPLY_API);
+      if (!res.ok) return;
+      const data = (await res.json()) as { stages?: AppliedStageSnapshot };
+      if (data.stages) appliedStages = data.stages;
+    } catch {
+      // non-fatal — the apply button still works
+    }
+  }
+
+  function isAppliedToCurrentStage(model: AdvisoryModel): boolean {
+    const snap = appliedStages[selectedStage];
+    if (!snap || !snap.providerModelId) return false;
+    const mId = model.providerModelId ?? model.id;
+    return (
+      snap.providerModelId === mId &&
+      snap.provider?.toLowerCase() === model.provider.toLowerCase()
+    );
+  }
+
+  function modelApplyKey(model: AdvisoryModel): string {
+    return `${model.provider}:${model.providerModelId ?? model.id}`;
+  }
+
+  async function applyModelToStage(model: AdvisoryModel) {
+    const key = modelApplyKey(model);
+    applyStatusMap = { ...applyStatusMap, [key]: "applying" };
+    applyErrorMap = { ...applyErrorMap, [key]: "" };
+
+    try {
+      const res = await fetch(APPLY_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage: selectedStage,
+          provider: model.provider,
+          providerModelId: model.providerModelId ?? model.id,
+        }),
+      });
+
+      const data = (await res.json()) as {
+        ok?: boolean;
+        stage?: string;
+        routeId?: string;
+        provider?: string;
+        providerModelId?: string;
+        error?: string;
+        message?: string;
+      };
+
+      if (!res.ok || !data.ok) {
+        const msg = data.message ?? data.error ?? `HTTP ${res.status}`;
+        applyStatusMap = { ...applyStatusMap, [key]: "error" };
+        applyErrorMap = { ...applyErrorMap, [key]: msg };
+        return;
+      }
+
+      // Update local applied snapshot optimistically.
+      appliedStages = {
+        ...appliedStages,
+        [selectedStage]: {
+          routeId: data.routeId!,
+          provider: data.provider!,
+          providerModelId: data.providerModelId!,
+        },
+      };
+      applyStatusMap = { ...applyStatusMap, [key]: "applied" };
+
+      // Reset "applied" flash after 3 s so it settles to the permanent state badge.
+      setTimeout(() => {
+        applyStatusMap = { ...applyStatusMap, [key]: "idle" };
+      }, 3000);
+    } catch (e) {
+      applyStatusMap = {
+        ...applyStatusMap,
+        [key]: "error",
+      };
+      applyErrorMap = {
+        ...applyErrorMap,
+        [key]: e instanceof Error ? e.message : "Unexpected error",
+      };
+    }
+  }
 
   // ── Reactive state ─────────────────────────────────────────────────────────
 
@@ -104,6 +206,16 @@
 
   // Rationale expanded state: keyed by model id
   let expandedRationale: Record<string, boolean> = {};
+
+  // Load applied stages on mount.
+  loadAppliedStages();
+
+  // Clear per-model transient apply state when the user switches stages
+  // (so stale "applying" or "error" states don't bleed across stage views).
+  $: if (selectedStage) {
+    applyStatusMap = {};
+    applyErrorMap = {};
+  }
 
   // ── Build API URL from current filter state ────────────────────────────────
 
@@ -300,7 +412,62 @@
               Connect ↗
             </a>
           {/if}
+
+          <!-- ── Apply-to-stage action (connected models only) ──────────────── -->
+          {#if model.connected && !model.blocked}
+            {@const applyKey = modelApplyKey(model)}
+            {@const applyStatus = applyStatusMap[applyKey] ?? "idle"}
+            {@const applied = isAppliedToCurrentStage(model)}
+            {#if applied && applyStatus === "idle"}
+              <!-- Permanent APPLIED badge (this is the active model for the stage) -->
+              <span
+                class="applied-badge"
+                aria-label="This model is currently applied to the {stageLabel} stage"
+                title="Applied to {stageLabel}"
+              >
+                ■ applied
+              </span>
+            {:else if applyStatus === "applied"}
+              <!-- Flash confirmation immediately after apply -->
+              <span class="applied-badge applied-badge-flash" aria-live="polite">
+                ■ applied ✓
+              </span>
+            {:else if applyStatus === "applying"}
+              <span class="apply-btn apply-btn-applying" aria-busy="true">applying…</span>
+            {:else if applyStatus === "error"}
+              <button
+                type="button"
+                class="apply-btn apply-btn-error brut-focus"
+                title={applyErrorMap[applyKey] ?? "Apply failed — click to retry"}
+                aria-label="Apply to {stageLabel} failed: {applyErrorMap[applyKey] ?? 'unknown error'}. Click to retry."
+                on:click={() => applyModelToStage(model)}
+              >
+                ✗ retry
+              </button>
+            {:else}
+              <button
+                type="button"
+                class="apply-btn brut-pressable brut-focus"
+                aria-label="Apply {model.name || model.id} to {stageLabel} stage"
+                title="Use this model for the {stageLabel} stage"
+                on:click={() => applyModelToStage(model)}
+              >
+                Use for {stageLabel} →
+              </button>
+            {/if}
+          {:else if !model.connected && !model.blocked}
+            <span class="apply-btn-disabled" aria-label="Connect {model.provider} to apply this model">
+              connect to apply
+            </span>
+          {/if}
         </div>
+
+        <!-- Apply error inline notice -->
+        {#if applyStatusMap[modelApplyKey(model)] === "error"}
+          <p class="apply-error-notice" role="alert">
+            ✗ Apply failed: {applyErrorMap[modelApplyKey(model)] ?? "unknown error"}
+          </p>
+        {/if}
 
         <!-- Rationale: show inline, expandable for long text -->
         <div class="model-rationale">
@@ -357,6 +524,19 @@
     <div class="advisory-cap-main">
       <p class="advisory-kicker">Connect · Model advisory</p>
       <h2 id="advisory-panel-heading" class="advisory-headline">Stage suitability</h2>
+      {#if appliedStages[selectedStage]?.providerModelId}
+        <p class="advisory-applied-notice" aria-live="polite">
+          <span class="advisory-applied-label">■ {stageLabel}:</span>
+          {appliedStages[selectedStage]!.providerModelId}
+          {#if appliedStages[selectedStage]!.provider}
+            <span class="advisory-applied-provider">via {appliedStages[selectedStage]!.provider}</span>
+          {/if}
+        </p>
+      {:else}
+        <p class="advisory-no-model-notice" aria-live="polite">
+          No model applied to {stageLabel} — click "Use for {stageLabel} →" on a connected model below.
+        </p>
+      {/if}
     </div>
     <div class="advisory-cap-side">
       {#if result && !loading}
@@ -582,6 +762,43 @@
     color: var(--color-ink);
     text-transform: uppercase;
     letter-spacing: var(--text-display-tracking);
+  }
+
+  /* Applied model notice in the cap — compact mono line */
+  .advisory-applied-notice {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .advisory-applied-label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--color-ink);
+    color: var(--color-yellow, #ffd600);
+    padding: 1px 5px;
+  }
+
+  .advisory-applied-provider {
+    color: var(--color-ink-muted);
+    font-weight: 400;
+    text-transform: lowercase;
+  }
+
+  .advisory-no-model-notice {
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   /* ── Body card (overlaps cap by 4px — ledger overlap idiom) ─────────────── */
@@ -987,6 +1204,108 @@
     color: var(--color-blue);
   }
 
+  /* ── Apply-to-stage: CTA button (neu-brutalist, yellow accent) ───────────── */
+  /*
+   * WCAG AA: ink (#0C0C0C) on yellow (#ffd600) at this font size passes at ~14.4:1.
+   * The flash variant uses a green-tinted fill (still ink text).
+   */
+  .apply-btn {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: var(--border);
+    border-color: var(--color-ink);
+    border-radius: 0;
+    background: var(--color-yellow, #ffd600);
+    color: var(--color-ink);
+    cursor: pointer;
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+    transition: box-shadow 0.08s ease, transform 0.08s ease;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .apply-btn:hover {
+    /* brut-pressable: lifts on hover */
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .apply-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 var(--color-ink);
+  }
+
+  .apply-btn-applying {
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    cursor: default;
+    box-shadow: none;
+  }
+
+  .apply-btn-error {
+    background: var(--state-fail-bg, #fee2e2);
+    color: var(--state-fail-fg, #991b1b);
+    border-color: var(--state-fail-fg, #991b1b);
+    box-shadow: 2px 2px 0 0 var(--state-fail-fg, #991b1b);
+  }
+
+  .apply-btn-error:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--state-fail-fg, #991b1b);
+  }
+
+  /* APPLIED badge — permanent state indicator for the active model */
+  .applied-badge {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: var(--border);
+    border-color: var(--color-ink);
+    border-radius: 0;
+    background: var(--color-ink);
+    color: var(--color-yellow, #ffd600);
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Brief flash fill after a successful apply (slightly lighter to distinguish) */
+  .applied-badge-flash {
+    background: #1a6632;
+    color: #f0fdf4;
+    border-color: #166534;
+    box-shadow: 2px 2px 0 0 #166534;
+  }
+
+  /* Disabled "connect to apply" hint for non-connected models */
+  .apply-btn-disabled {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-muted);
+    padding: 2px 4px;
+    border: var(--border-thin);
+    border-style: dashed;
+    border-color: var(--color-ink-muted);
+    background: transparent;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
+  }
+
   /* Rationale */
   .model-rationale {
     display: flex;
@@ -1168,6 +1487,21 @@
 
   .model-list-blocked {
     margin-top: var(--space-1);
+  }
+
+  /* ── Apply error inline notice ──────────────────────────────────────────── */
+  .apply-error-notice {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--state-fail-fg, #991b1b);
+    background: var(--state-fail-bg, #fee2e2);
+    border: var(--border-thin);
+    border-color: var(--state-fail-fg, #991b1b);
+    padding: 2px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   /* ── Screen-reader-only live region ──────────────────────────────────────── */

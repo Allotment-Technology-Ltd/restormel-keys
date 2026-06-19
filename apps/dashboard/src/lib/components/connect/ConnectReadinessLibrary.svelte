@@ -36,6 +36,12 @@
   export let loading = false;
   export let creating = false;
   export let error: string | null = null;
+  /**
+   * Friendly (not-an-error) state shown when a "New run" could not form a cohort
+   * because the graph is fully validated. Distinct from `error`: rendered with the
+   * neon accent + an actionable next step, never as a red alert.
+   */
+  export let notice: string | null = null;
   /** Default cohort size offered in the "new run" control. */
   export let defaultSize = 100;
 
@@ -43,6 +49,7 @@
     select: { runId: string | null };
     create: { size: number };
     archive: { runId: string };
+    dismissNotice: void;
   }>();
 
   let newSize = defaultSize;
@@ -79,6 +86,23 @@
 
   {#if error}
     <BrutalErrorBanner title="Readiness runs" message={error} />
+  {/if}
+
+  {#if notice}
+    <div class="lib-notice" role="status">
+      <p class="lib-notice-kicker">
+        <span class="lib-notice-glyph" aria-hidden="true">✓</span>
+        Nothing left to check
+      </p>
+      <p class="lib-notice-msg">{notice}</p>
+      <button
+        type="button"
+        class="lib-notice-dismiss brut-focus"
+        on:click={() => dispatch("dismissNotice")}
+      >
+        Dismiss
+      </button>
+    </div>
   {/if}
 
   <ul class="lib-list" role="list">
@@ -194,6 +218,72 @@
     line-height: 1.45;
     max-width: 60ch;
     color: color-mix(in oklab, var(--color-ink) 80%, transparent);
+  }
+
+  .lib-notice {
+    border: var(--brut-border-width, 3px) solid var(--brut-ink);
+    border-left-width: 8px;
+    background: var(--brut-neon, #e8ff47);
+    color: var(--brut-ink);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: var(--brut-shadow, var(--shadow-md));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .lib-notice-kicker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .lib-notice-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--brut-ink);
+    color: var(--brut-neon, #e8ff47);
+    font-weight: 900;
+  }
+
+  .lib-notice-msg {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.45;
+    max-width: 60ch;
+  }
+
+  .lib-notice-dismiss {
+    align-self: flex-start;
+    min-height: 44px;
+    padding: 0.4rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: var(--brut-border-micro) solid var(--brut-ink);
+    background: var(--brut-white);
+    color: var(--brut-ink);
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  .lib-notice-dismiss:hover,
+  .lib-notice-dismiss:focus-visible {
+    background: var(--brut-ink);
+    color: var(--brut-neon, #e8ff47);
+    outline: none;
   }
 
   .lib-list {

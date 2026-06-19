@@ -63,11 +63,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   }
 
   if ((run.sizeActual ?? 0) === 0) {
+    // The graph has no unchecked ideas left, so there is nothing to put in a
+    // cohort. The run still exists (created above) but is an empty draft — the
+    // client surfaces a friendly "fully validated" state and does NOT activate
+    // it. `reason` lets the client render that state distinctly from an error.
     return json(
       {
         run,
+        reason: "empty_cohort",
         warning:
-          "No unchecked ideas were available to form a cohort — the graph may be fully validated already.",
+          "Your graph is fully validated — there are no unchecked ideas to put in a run. Re-import sources or add content, then start a new run.",
       },
       { status: 201 },
     );

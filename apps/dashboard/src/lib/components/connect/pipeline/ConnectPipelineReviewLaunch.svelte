@@ -52,6 +52,14 @@
   let bindBusyProvider: string | null = null;
   let preflightMsg: string | null = null;
 
+  /**
+   * Re-ingest guard: when a graph already exists, the user must explicitly
+   * acknowledge that they're re-ingesting the selected documents. This prevents
+   * silent re-ingest of all prior sources when "Start new run" lands on this step.
+   */
+  let reingestConfirmed = false;
+  $: requiresReingestConfirm = progress.hasGraph && runDefaults.documents.length > 0;
+
   $: livePreflight = refreshedPreflight ?? preflight;
   $: preflightFailing = failingPreflightRows(livePreflight);
   $: preflightWarning = livePreflight ? livePreflight.status !== "pass" : false;
@@ -60,12 +68,15 @@
   // R4-S2: a run with no graph store dies mid-flight with graph_target_not_configured.
   // Gate START RUN on a connected store (the jobs BFF re-enforces server-side).
   // K3 ADDS the provider preflight to the existing gate — never bypasses it.
+  // FIX(ingest-safety): re-ingest guard — when a graph exists, canStart also
+  // requires explicit acknowledgement to prevent accidental silent re-ingest.
   $: canStart =
     runDefaults.documents.length > 0 &&
     Boolean(selectedPackId) &&
     progress.hasGraphStore &&
     modelsReady &&
     preflightAllowsLaunch(livePreflight, legacyOverride) &&
+    (!requiresReingestConfirm || reingestConfirmed) &&
     !submitting;
   $: docWarning =
     progress.parsedDocumentCount > 0 &&
@@ -160,7 +171,9 @@
           ? "Fix the provider credential issues above before starting."
           : !progress.hasGraphStore
             ? "Configure a graph store before starting — the run needs a durable home for the graph."
-            : "Select documents, a domain pack, and configure routes before starting.";
+            : requiresReingestConfirm && !reingestConfirmed
+              ? "Confirm re-ingest above before starting — check the box to proceed."
+              : "Select documents, a domain pack, and configure routes before starting.";
       return;
     }
     error = null;
@@ -482,6 +495,32 @@
         </div>
       </aside>
 
+      {#if requiresReingestConfirm}
+        <!-- FIX(ingest-safety): explicit re-ingest confirmation — prevents accidental
+             re-ingest of all prior sources when landing on the launch step. This gate
+             only appears when a graph already exists (progress.hasGraph). -->
+        <div class="reingest-guard" role="group" aria-labelledby="reingest-guard-label">
+          <div class="reingest-guard-header">
+            <span class="reingest-guard-glyph" aria-hidden="true">▲</span>
+            <span id="reingest-guard-label" class="reingest-guard-title">This run will re-ingest {runDefaults.documents.length} document{runDefaults.documents.length === 1 ? "" : "s"} into your existing graph</span>
+          </div>
+          <p class="reingest-guard-note">
+            Your workspace already has a knowledge graph. Starting this run will process the
+            {runDefaults.documents.length} selected document{runDefaults.documents.length === 1 ? "" : "s"} and add them to (or overwrite entries in) the graph.
+            This uses LLM calls and may duplicate existing graph content.
+            Go back to <strong>Sources</strong> to change your selection.
+          </p>
+          <label class="reingest-confirm-label">
+            <input
+              type="checkbox"
+              bind:checked={reingestConfirmed}
+              class="reingest-confirm-checkbox"
+            />
+            <span>I understand — re-ingest {runDefaults.documents.length} document{runDefaults.documents.length === 1 ? "" : "s"} into my existing graph</span>
+          </label>
+        </div>
+      {/if}
+
       {#if error}<p class="err" role="alert">{error}</p>{/if}
     </form>
   </section>
@@ -498,5 +537,60 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* FIX(ingest-safety): re-ingest guard — neu-brutalist warn block */
+  .reingest-guard {
+    border: var(--border);
+    background: var(--state-warn-bg, #fff8e1);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-3) var(--space-4);
+    margin: var(--space-4) 0 0;
+  }
+  .reingest-guard-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+  }
+  .reingest-guard-glyph {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    color: var(--state-warn-fg, var(--color-ink));
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .reingest-guard-title {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--state-warn-fg, var(--color-ink));
+  }
+  .reingest-guard-note {
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    margin: 0 0 var(--space-3);
+    line-height: 1.5;
+  }
+  .reingest-confirm-label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink);
+    cursor: pointer;
+    min-height: 44px;
+    align-items: center;
+  }
+  .reingest-confirm-checkbox {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-ink);
+    cursor: pointer;
   }
 </style>
