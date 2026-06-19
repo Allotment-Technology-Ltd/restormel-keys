@@ -151,6 +151,47 @@ export async function setFoundersAccessStatus(params: {
   }
 }
 
+/**
+ * Hard-delete a founders access request (admin capability — manage founders post-go-live
+ * and clear test/spam entries). Returns the removed row's email + applicant name so the
+ * caller can optionally send a deletion notice. Mirrors the error handling above
+ * (42P01 → table missing). Normalises the email so it matches the stored key.
+ */
+export async function deleteFoundersAccess(
+  email: string,
+): Promise<
+  | { ok: true; email: string; applicantName: string | null }
+  | { ok: false; code: "not_found" | "db_error"; message: string }
+> {
+  const normalized = normalizeFoundersEmail(email);
+  if (!normalized) {
+    return { ok: false, code: "not_found", message: "Invalid email." };
+  }
+
+  try {
+    const sql = getSql();
+    const rows = await sql`
+      DELETE FROM founders_circle_access
+      WHERE email = ${normalized}
+      RETURNING email, applicant_name AS "applicantName"
+    `;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: false, code: "not_found", message: "No such founders request." };
+    }
+    const row = rows[0] as { applicantName?: string | null };
+    const applicantName = row.applicantName != null ? String(row.applicantName) : null;
+    return { ok: true, email: normalized, applicantName };
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code === "42P01") {
+      return { ok: false, code: "not_found", message: "No such founders request." };
+    }
+    const msg = e instanceof Error ? e.message : "Database error";
+    console.error("[founders-access] delete failed:", msg.slice(0, 80));
+    return { ok: false, code: "db_error", message: "Could not delete access request." };
+  }
+}
+
 export async function listFoundersAccessForAdmin(): Promise<FoundersAccessRow[]> {
   try {
     const sql = getSql();

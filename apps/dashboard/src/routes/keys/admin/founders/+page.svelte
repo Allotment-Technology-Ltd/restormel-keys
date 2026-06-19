@@ -14,7 +14,14 @@
   function sendLabel(email: string): { text: string; kind: "ok" | "fail" | "none" } {
     const s = data.sendStatus?.[email];
     if (!s) return { text: "—", kind: "none" };
-    const verb = s.category === "founders_approved" ? "Approval email" : "Confirmation email";
+    const verb =
+      s.category === "founders_approved"
+        ? "Approval email"
+        : s.category === "founders_rejected"
+          ? "Rejection email"
+          : s.category === "founders_deleted"
+            ? "Removal email"
+            : "Confirmation email";
     if (s.success) {
       return { text: `${verb}: sent ✓ ${new Date(s.sentAtMs).toLocaleString()}`, kind: "ok" };
     }
@@ -24,6 +31,9 @@
   let rows = data.foundersAccess;
   let savingEmail: string | null = null;
   let errorMessage: string | null = null;
+  // Per-row opt-in: notify the applicant when their request is deleted. Default OFF — deleting
+  // test/spam entries shouldn't email anyone; the operator ticks this for a genuine person.
+  let notifyOnDelete: Record<string, boolean> = {};
 
   $: rows = data.foundersAccess;
   $: pendingCount = rows.filter((r) => r.status === "pending").length;
@@ -54,6 +64,38 @@
       rows = rows.map((r) =>
         r.email === row.email ? { ...r, status, reviewedAtMs: Date.now() } : r
       );
+    } catch {
+      errorMessage = "Network error. Try again.";
+    } finally {
+      savingEmail = null;
+    }
+  }
+
+  async function deleteRow(row: FoundersAccessRow) {
+    const notify = notifyOnDelete[row.email] === true;
+    const confirmMsg = notify
+      ? `Delete the Founders Circle request for ${row.email} AND email them that it was removed? This cannot be undone.`
+      : `Delete the Founders Circle request for ${row.email}? This cannot be undone. (No email will be sent.)`;
+    if (!window.confirm(confirmMsg)) return;
+
+    errorMessage = null;
+    savingEmail = row.email;
+    try {
+      const qs = notify ? "?notify=1" : "";
+      const res = await fetch(
+        `${ADMIN_BASE}/api/founders/${encodeURIComponent(row.email)}${qs}`,
+        {
+          method: "DELETE",
+          credentials: "same-origin",
+        }
+      );
+      const payload = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!res.ok) {
+        errorMessage = payload.message ?? payload.error ?? `Request failed (${res.status})`;
+        return;
+      }
+      // Optimistically drop the row.
+      rows = rows.filter((r) => r.email !== row.email);
     } catch {
       errorMessage = "Network error. Try again.";
     } finally {
@@ -142,6 +184,24 @@
                   Reject
                 </button>
               {/if}
+              <span class="delete-group">
+                <button
+                  type="button"
+                  class="btn-action btn-delete"
+                  disabled={savingEmail === row.email}
+                  on:click={() => deleteRow(row)}
+                >
+                  Delete
+                </button>
+                <label class="notify-toggle" title="Email the applicant that their request was removed (default: silent)">
+                  <input
+                    type="checkbox"
+                    bind:checked={notifyOnDelete[row.email]}
+                    disabled={savingEmail === row.email}
+                  />
+                  email applicant
+                </label>
+              </span>
             </td>
           </tr>
         {/each}
@@ -245,6 +305,27 @@
   }
   .btn-reject {
     border-color: color-mix(in srgb, var(--rm-danger, #b91c1c) 35%, var(--rm-border));
+  }
+  .delete-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .btn-delete {
+    border-color: color-mix(in srgb, var(--rm-danger, #b91c1c) 60%, var(--rm-border));
+    background: color-mix(in srgb, var(--rm-danger, #b91c1c) 8%, var(--rm-surface));
+  }
+  .notify-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .notify-toggle input {
+    cursor: pointer;
   }
   .send-status {
     font-family: var(--rm-font-mono, ui-monospace, monospace);
