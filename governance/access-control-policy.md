@@ -4,8 +4,8 @@ title: Access Control Policy
 class: governance
 owner: founder
 status: approved
-approved-by: founder
-approved-on: 2026-06-17
+approved-by: Adam Boon
+approved-on: 2026-06-19
 classification: internal
 control-tier: 2
 created: 2026-06-15

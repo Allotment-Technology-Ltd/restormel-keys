@@ -10,8 +10,8 @@ created: 2026-06-15
 last-reviewed: 2026-06-19
 review-interval: P12M
 retention: P6Y-after-superseded
-approved-by: founder
-approved-on: 2026-06-17
+approved-by: Adam Boon
+approved-on: 2026-06-19
 ---
 
 # Statement of Applicability (SoA)
