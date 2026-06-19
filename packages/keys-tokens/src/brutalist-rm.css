@@ -85,9 +85,12 @@
 
   /* ── Code block syntax (dark panel) ── */
   --code-bg: #1c1917;
+  --code-fg: #fffef0; /* default code text on --code-bg (17:1, AA) */
   --code-keyword: #ffd600;
   --code-value: #7ecba8;
-  --code-comment: #808080;
+  /* Comment grey lifted #808080 → #969089 to clear WCAG AA (5.5:1) on --code-bg
+     at small mono sizes; warm-neutral so it harmonises with the cream palette. */
+  --code-comment: #969089;
   --code-accent: #bfa8ff;
 
   /* ── Legacy --brut-* aliases (backward compat) ── */

@@ -212,15 +212,27 @@ button {
 
 :where(.doc-content, .page-desc, .section-desc, .callout, .notice, .empty-desc, .doc-table) code {
   font-family: var(--font-mono);
-  font-size: var(--text-mono-md);
-  padding: 0.08rem 0.35rem;
+  /* Track body size (0.9em of 15px ≈ 13.5px) instead of the tiny 11px label
+     size, so inline tokens read as comfortably as the prose around them. */
+  font-size: 0.9em;
+  /* Vertical padding in em keeps the chip on the text baseline without
+     stretching line-height; horizontal padding gives the token room to breathe. */
+  padding: 0.12em 0.4em;
   border-radius: 0;
-  border: var(--border-thin);
-  background: var(--color-yellow);
+  /* Ink hairline on a warm surface fill — restrained "ink-on-subtle" rather
+     than a saturated-yellow highlighter on every token (yellow stays a CTA accent). */
+  border: 1px solid var(--color-ink);
+  background: var(--color-surface);
   color: var(--color-ink);
-  /* Wrap long tokens rather than clip; yellow pill style is preserved. */
+  /* Wrap long tokens rather than clip; never push past the container edge. */
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Inline code inside a link should not fight the link colour. */
+:where(.doc-content, .page-desc, .section-desc) a code {
+  color: inherit;
+  border-color: currentColor;
 }
 
 :where(pre code, .codeblock pre code) {
@@ -231,25 +243,42 @@ button {
   white-space: pre;
 }
 
-/* Bare <pre class="code-block"> elements used in docs pages — scroll horizontally
-   so long lines never push past the container. The .docs-shell overflow:hidden clips
-   content that overflows without this. */
+/* Bare <pre class="code-block"> elements used in docs pages — a calm dark panel
+   that matches the CodeBlock component. Scroll long lines horizontally so they
+   never push past the container (the .docs-shell overflow:hidden would clip them).
+   Block code is non-interactive, so it carries the canonical hard ink offset
+   shadow (not a yellow CTA shadow) and a comfortable reading size. */
 pre.code-block,
 .code-block pre {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
   white-space: pre;
-  margin: 0 0 var(--space-4);
-  padding: var(--space-4);
-  background: var(--code-bg, #1a1a1a);
-  color: var(--color-surface, #f3ead0);
+  /* Breathing room above so blocks sit clear of the paragraph that introduces them. */
+  margin: var(--space-5) 0 var(--space-6);
+  padding: var(--space-5) var(--space-5);
+  background: var(--code-bg);
+  color: var(--code-fg);
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.7;
+  /* 13.5px — readable command lines / JSON, between the 13px label size and body. */
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  letter-spacing: 0;
   border: var(--border);
   border-radius: 0;
-  box-shadow: 3px 3px 0 var(--color-yellow);
+  box-shadow: var(--shadow-md);
+  /* Crisper glyph rendering on the dark panel. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* On phones the 5px ink offset eats horizontal room and looks heavy; soften it. */
+@media (max-width: 640px) {
+  pre.code-block,
+  .code-block pre {
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
 .status-success {
