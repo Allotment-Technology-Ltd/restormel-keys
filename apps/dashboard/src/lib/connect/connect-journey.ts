@@ -275,7 +275,10 @@ export function buildConnectOperationalActions(input: BuildOperationalActionsInp
       id: "new_run",
       title: "New ingest run",
       description: "Start a run with your saved store, routes, domain pack, and document selection.",
-      href: pipelineWizardHref("launch"),
+      // FIX(ingest-safety): land at sources step, not launch, so the user
+      // must consciously review/change their document selection before starting.
+      // Jumping straight to launch let prior selections re-ingest silently.
+      href: pipelineWizardHref("sources"),
       cta: "Start new run",
       primary: true,
     },

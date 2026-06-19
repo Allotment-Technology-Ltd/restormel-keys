@@ -15,7 +15,9 @@
   import type { LiveRunChipJob } from "$lib/connect/live-run-chip";
 
   const API = DASHBOARD_BASE + "/api/connect/ingest/jobs";
-  const NEW_RUN_HREF = pipelineWizardHref("launch");
+  // FIX(ingest-safety): "New run" starts at sources step so the user reviews
+  // their document selection before reaching launch — prevents silent re-ingest.
+  const NEW_RUN_HREF = pipelineWizardHref("sources");
   const PAGE_SIZE = 20;
 
   type Job = {
