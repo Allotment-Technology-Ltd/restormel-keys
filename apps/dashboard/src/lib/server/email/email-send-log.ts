@@ -19,6 +19,8 @@ import { sendMail, type MailEnvelope } from "./send-mail";
 /** Logical category for a send — also the `email_send_log.category` value. */
 export type EmailSendCategory =
   | "founders_approved"
+  | "founders_rejected"
+  | "founders_deleted"
   | "founders_apply_confirmation"
   | "founders_admin_notify"
   | "verification"
@@ -172,7 +174,7 @@ export async function getLastFoundersSend(
       SELECT category, success, message_id AS "messageId", error_reason AS "errorReason", sent_at_ms AS "sentAtMs"
       FROM email_send_log
       WHERE context_key = ${key}
-        AND category IN ('founders_approved', 'founders_apply_confirmation')
+        AND category IN ('founders_approved', 'founders_rejected', 'founders_deleted', 'founders_apply_confirmation')
       ORDER BY sent_at_ms DESC
       LIMIT 1
     `;
@@ -218,7 +220,7 @@ export async function getLastFoundersSendsFor(
         message_id AS "messageId", error_reason AS "errorReason", sent_at_ms AS "sentAtMs"
       FROM email_send_log
       WHERE context_key = ANY(${keys})
-        AND category IN ('founders_approved', 'founders_apply_confirmation')
+        AND category IN ('founders_approved', 'founders_rejected', 'founders_deleted', 'founders_apply_confirmation')
       ORDER BY context_key, sent_at_ms DESC
     `;
     for (const r of rows as Array<Record<string, unknown>>) {
