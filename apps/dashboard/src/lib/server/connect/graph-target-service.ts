@@ -204,6 +204,51 @@ function resolveSecretPayload(
   };
 }
 
+/**
+ * A Postgres error string/code that indicates the persisted schema is BEHIND the
+ * code — an undefined column (42703) or undefined table (42P01). This is the
+ * deploy/migration-drift signature (cf. incident 2026-06-16 catalogue 503 and
+ * 2026-06-18 add-graph 500): the only fix is to apply the pending migration, not
+ * to retry. We surface a distinct, actionable message for it.
+ */
+function isSchemaDriftError(message: string): boolean {
+  return (
+    /\b42703\b/.test(message) || // undefined_column
+    /\b42P01\b/.test(message) || // undefined_table
+    /column .* does not exist/i.test(message) ||
+    /relation .* does not exist/i.test(message)
+  );
+}
+
+/**
+ * Map a thrown persistence error to a typed GraphTargetSaveResult so the route
+ * never returns a bare 500. NEVER include the secret/credentials in the log or
+ * the response — only the workspace id and a sanitised DB error string. The
+ * encrypted ciphertext stays at rest; nothing here can leak plaintext.
+ */
+function mapGraphTargetPersistError(e: unknown, workspaceId: string): GraphTargetSaveResult {
+  const raw = e instanceof Error ? e.message : String(e);
+  // Defensive: cap and strip any accidental credential-looking material from logs.
+  const safe = raw.replace(/\s+/g, " ").slice(0, 280);
+  console.error("[graph-target-service] persist failed", { workspaceId, error: safe });
+  if (isSchemaDriftError(raw)) {
+    return {
+      ok: false,
+      status: 503,
+      error: "server_misconfigured",
+      message:
+        "The server's database is missing a required migration for graph connections. " +
+        "This is a deploy/configuration issue, not your credentials — please retry shortly or contact support if it persists.",
+    };
+  }
+  return {
+    ok: false,
+    status: 503,
+    error: "storage_unavailable",
+    message: "Couldn't save the graph connection — the database is temporarily unavailable. Please try again.",
+  };
+}
+
 /** Shared core: persist a Surreal graph (create when `id` is absent) and optionally activate it. */
 async function persistGraphTarget(
   workspaceId: string,
@@ -220,42 +265,53 @@ async function persistGraphTarget(
 
   const label = input.label?.trim() || `${input.namespace}/${input.database}`;
 
-  // Stage 3.2b: persist the version-table opt-in in the settings JSONB so it travels
-  // with the graph and survives reconnections. We must merge with the existing settings
-  // rather than replace them, so other settings keys (ingest_document_ids etc.) are preserved.
-  const existingSettings: Record<string, unknown> = opts.id
-    ? ((await getConnectGraphTargetById({ id: opts.id, workspaceId }))?.settings ?? {})
-    : {};
-  const newSettings: Record<string, unknown> = {
-    ...existingSettings,
-    // Only write when the caller sent the field (undefined = keep existing value).
-    ...(input.allow_claim_versions_table !== undefined
-      ? { allow_claim_versions_table: input.allow_claim_versions_table }
-      : {}),
-  };
+  // Persist + (optionally) activate. Every DB call below can throw — most notably
+  // on schema drift, where prod runs migrations behind the code and a referenced
+  // column/table does not yet exist (incident 2026-06-18: the Graph Library
+  // columns label/default_domain_pack_id/settings lived only in runtime DDL,
+  // which is disabled in prod). An UNCAUGHT throw here became a bare HTTP 500
+  // ("Internal Error") on every save. Map it to a clear, typed result instead,
+  // and log the failure WITHOUT the secret (only ws id + sanitised DB error).
+  try {
+    // Stage 3.2b: persist the version-table opt-in in the settings JSONB so it travels
+    // with the graph and survives reconnections. We must merge with the existing settings
+    // rather than replace them, so other settings keys (ingest_document_ids etc.) are preserved.
+    const existingSettings: Record<string, unknown> = opts.id
+      ? ((await getConnectGraphTargetById({ id: opts.id, workspaceId }))?.settings ?? {})
+      : {};
+    const newSettings: Record<string, unknown> = {
+      ...existingSettings,
+      // Only write when the caller sent the field (undefined = keep existing value).
+      ...(input.allow_claim_versions_table !== undefined
+        ? { allow_claim_versions_table: input.allow_claim_versions_table }
+        : {}),
+    };
 
-  const row = await upsertConnectGraphTarget({
-    id: opts.id,
-    workspaceId,
-    label,
-    provider: input.provider,
-    endpoint: input.endpoint,
-    namespace: input.namespace,
-    database: input.database,
-    username: input.username ?? null,
-    defaultDomainPackId: input.default_domain_pack_id ?? undefined,
-    settings: newSettings,
-    secret: secret.payload,
-  });
+    const row = await upsertConnectGraphTarget({
+      id: opts.id,
+      workspaceId,
+      label,
+      provider: input.provider,
+      endpoint: input.endpoint,
+      namespace: input.namespace,
+      database: input.database,
+      username: input.username ?? null,
+      defaultDomainPackId: input.default_domain_pack_id ?? undefined,
+      settings: newSettings,
+      secret: secret.payload,
+    });
 
-  let isActive = false;
-  if (opts.activate) {
-    await activateGraphTarget(workspaceId, row.id);
-    isActive = true;
-  } else {
-    isActive = (await getActiveGraphTargetId(workspaceId)) === row.id;
+    let isActive = false;
+    if (opts.activate) {
+      await activateGraphTarget(workspaceId, row.id);
+      isActive = true;
+    } else {
+      isActive = (await getActiveGraphTargetId(workspaceId)) === row.id;
+    }
+    return { ok: true, target: graphTargetRecordToApi(row, { isActive }) };
+  } catch (e) {
+    return mapGraphTargetPersistError(e, workspaceId);
   }
-  return { ok: true, target: graphTargetRecordToApi(row, { isActive }) };
 }
 
 /**

@@ -103,7 +103,10 @@ export async function setFoundersAccessStatus(params: {
   status: FoundersAccessStatus;
   reviewerUserId: string;
   note?: string | null;
-}): Promise<{ ok: true } | { ok: false; code: "not_found" | "db_error"; message: string }> {
+}): Promise<
+  | { ok: true; email: string; applicantName: string | null }
+  | { ok: false; code: "not_found" | "db_error"; message: string }
+> {
   const normalized = normalizeFoundersEmail(params.email);
   if (!normalized) {
     return { ok: false, code: "not_found", message: "Invalid email." };
@@ -119,8 +122,9 @@ export async function setFoundersAccessStatus(params: {
           reviewed_by_user_id = ${params.reviewerUserId},
           note = ${params.note ?? null}
       WHERE email = ${normalized}
-      RETURNING email
+      RETURNING email, applicant_name AS "applicantName"
     `;
+    let applicantName: string | null = null;
     if (!Array.isArray(rows) || rows.length === 0) {
       await sql`
         INSERT INTO founders_circle_access (
@@ -135,8 +139,11 @@ export async function setFoundersAccessStatus(params: {
           ${now}
         )
       `;
+    } else {
+      const row = rows[0] as { applicantName?: string | null };
+      applicantName = row.applicantName != null ? String(row.applicantName) : null;
     }
-    return { ok: true };
+    return { ok: true, email: normalized, applicantName };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Database error";
     console.error("[founders-access] set status failed:", msg.slice(0, 80));
