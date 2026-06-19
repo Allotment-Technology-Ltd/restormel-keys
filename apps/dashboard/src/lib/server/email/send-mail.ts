@@ -9,8 +9,18 @@
  * `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD`.
  *
  * Mailbox mapping (owner decision — keep stable):
- *   - transactional (verification, password reset): From = notify@, Reply-To = contact@
- *   - security / ops alerts:                         From = admin@,  Reply-To = admin@
+ *   - transactional (verification, password reset): From = notify@send., Reply-To = contact@
+ *   - security / ops alerts:                         From = notify@send. (SECURITY_EMAIL_FROM),
+ *                                                    Reply-To = admin@ (SECURITY_EMAIL_REPLY_TO)
+ *
+ * Background: Migadu enforces sender ownership — From must be a mailbox owned by the
+ * authenticated SMTP user (notify@send.restormel.dev). Pinning From=admin@restormel.dev
+ * causes a 553 5.7.1 rejection. Reply-To requires no sender ownership, so admin@ can
+ * still receive all replies.
+ *
+ * Env overrides (all optional — production Coolify env sets SECURITY_EMAIL_FROM):
+ *   SECURITY_EMAIL_FROM     — From for security/ops alerts (default: "Restormel Security <{EMAIL_FROM mailbox}>")
+ *   SECURITY_EMAIL_REPLY_TO — Reply-To for security/ops alerts (default: admin@restormel.dev)
  */
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "$env/dynamic/private";
@@ -18,8 +28,11 @@ import { env } from "$env/dynamic/private";
 /** Default mailbox identities. Overridable via env for staging. */
 export const DEFAULT_EMAIL_FROM = "Restormel Keys <notify@restormel.dev>";
 export const DEFAULT_EMAIL_REPLY_TO = "contact@restormel.dev";
-/** Security / ops alerts always originate from and reply to admin@. */
-export const SECURITY_EMAIL_ADDRESS = "admin@restormel.dev";
+/**
+ * Default Reply-To for security/ops alerts. Replies still reach the admin inbox even
+ * though the From address is the send.-owned mailbox.
+ */
+export const DEFAULT_SECURITY_REPLY_TO = "admin@restormel.dev";
 
 export type MailEnvelope = {
   to: string;
@@ -34,9 +47,13 @@ export type MailCategory = "transactional" | "security";
 
 /**
  * Resolve the From/Reply-To pair for a message category. Transactional mail uses
- * the `EMAIL_FROM` / `EMAIL_REPLY_TO` env (defaulting to notify@ / contact@);
- * security/ops mail is pinned to admin@ for both From and Reply-To so alerts are
- * unambiguous and replies reach the operator inbox.
+ * the `EMAIL_FROM` / `EMAIL_REPLY_TO` env (defaulting to notify@ / contact@).
+ *
+ * Security/ops mail uses:
+ *   From    = SECURITY_EMAIL_FROM env  (default: "Restormel Security <{transactional mailbox}>")
+ *             — MUST be a mailbox owned by the SMTP user (Migadu 553 enforcement).
+ *   Reply-To = SECURITY_EMAIL_REPLY_TO env (default: admin@restormel.dev)
+ *             — no sender ownership required; replies reach the admin inbox.
  *
  * Pure + dependency-free so it can be unit-tested without a transport.
  */
@@ -44,11 +61,22 @@ export function resolveMailIdentity(category: MailCategory): {
   from: string;
   replyTo: string;
 } {
+  const transactionalFrom = (env.EMAIL_FROM ?? "").trim() || DEFAULT_EMAIL_FROM;
   if (category === "security") {
-    return { from: SECURITY_EMAIL_ADDRESS, replyTo: SECURITY_EMAIL_ADDRESS };
+    // Default From: replace the display name on the transactional mailbox so the
+    // sending address stays owned by the SMTP user while the label is distinct.
+    const defaultSecurityFrom = transactionalFrom.replace(
+      /^[^<]*</,
+      "Restormel Security <",
+    );
+    return {
+      from: (env.SECURITY_EMAIL_FROM ?? "").trim() || defaultSecurityFrom,
+      replyTo:
+        (env.SECURITY_EMAIL_REPLY_TO ?? "").trim() || DEFAULT_SECURITY_REPLY_TO,
+    };
   }
   return {
-    from: (env.EMAIL_FROM ?? "").trim() || DEFAULT_EMAIL_FROM,
+    from: transactionalFrom,
     replyTo: (env.EMAIL_REPLY_TO ?? "").trim() || DEFAULT_EMAIL_REPLY_TO,
   };
 }
@@ -139,7 +167,7 @@ export async function sendPasswordResetEmail(args: {
   await sendMail(envelope);
 }
 
-/** Security / ops alert → admin@ mailbox (From + Reply-To). */
+/** Security / ops alert → send.-owned From, Reply-To=admin@restormel.dev. */
 export async function sendSecurityAlertEmail(args: {
   to: string;
   subject: string;

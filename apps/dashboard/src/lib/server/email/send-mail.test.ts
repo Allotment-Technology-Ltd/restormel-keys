@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// P4 — the mailbox mapping must be exact: transactional mail (verification, reset)
-// goes From=notify@ / Reply-To=contact@; security/ops mail goes From+Reply-To=admin@.
-// We assert the envelope builder (pure) and that the verification hook produces a
-// transactional envelope, with the SMTP transport stubbed so nothing is sent.
+// P4 — the mailbox mapping must be exact:
+//   transactional (verification, reset): From=notify@ / Reply-To=contact@
+//   security/ops alerts: From=notify@send. (send.-owned, Migadu 553 fix) / Reply-To=admin@
+//
+// Background: Migadu enforces sender ownership — the SMTP user (notify@send.restormel.dev)
+// cannot send as admin@restormel.dev (cross-domain → 553 5.7.1). The security From must
+// therefore be a send.-owned address; Reply-To is used to route replies to admin@.
+//
+// We assert the envelope builder (pure) and that the verification/security hooks produce
+// correct envelopes, with the SMTP transport stubbed so nothing is sent.
 
 const sendMailSpy = vi.fn(async (_opts: { from: string; replyTo: string; to: string; subject: string; text: string }) => {});
 vi.mock("nodemailer", () => ({
@@ -16,7 +22,8 @@ vi.mock("$env/dynamic/private", () => ({
     SMTP_PORT: "465",
     SMTP_USER: "u",
     SMTP_PASSWORD: "p",
-    // EMAIL_FROM / EMAIL_REPLY_TO intentionally unset → defaults apply.
+    // EMAIL_FROM / EMAIL_REPLY_TO / SECURITY_EMAIL_FROM / SECURITY_EMAIL_REPLY_TO
+    // intentionally unset → defaults apply.
   },
 }));
 
@@ -37,12 +44,16 @@ describe("send-mail mailbox mapping (P4)", () => {
     });
   });
 
-  it("security category → From=admin@, Reply-To=admin@", async () => {
+  it("security category → From is send.-owned (Restormel Security label), Reply-To=admin@", async () => {
+    // The From must be the transactional mailbox (send.-owned) to satisfy Migadu's 553
+    // sender-ownership check; the display name is swapped to "Restormel Security".
+    // Reply-To routes operator replies to admin@ without sender ownership.
     const { resolveMailIdentity } = await import("./send-mail");
-    expect(resolveMailIdentity("security")).toEqual({
-      from: "admin@restormel.dev",
-      replyTo: "admin@restormel.dev",
-    });
+    const id = resolveMailIdentity("security");
+    expect(id.from).toBe("Restormel Security <notify@restormel.dev>");
+    expect(id.replyTo).toBe("admin@restormel.dev");
+    // From must NOT be admin@restormel.dev — that domain is not owned by the SMTP user
+    expect(id.from).not.toContain("admin@restormel.dev");
   });
 
   it("buildMailEnvelope stamps the transactional identity onto the message", async () => {
@@ -69,13 +80,43 @@ describe("send-mail mailbox mapping (P4)", () => {
     expect(arg.text).toContain("https://restormel.dev/verify?token=x");
   });
 
-  it("security-alert email sends from admin@ (From + Reply-To)", async () => {
+  it("security-alert email sends From a send.-owned address with Reply-To=admin@", async () => {
     const { sendSecurityAlertEmail } = await import("./send-mail");
     await sendSecurityAlertEmail({ to: "admin@restormel.dev", subject: "alert", body: "something happened" });
     expect(sendMailSpy).toHaveBeenCalledTimes(1);
     const arg = sendMailSpy.mock.calls[0][0];
-    expect(arg.from).toBe("admin@restormel.dev");
+    // From must be owned by the SMTP user (send.restormel.dev domain or EMAIL_FROM mailbox)
+    expect(arg.from).toBe("Restormel Security <notify@restormel.dev>");
+    expect(arg.from).not.toContain("admin@restormel.dev");
+    // Reply-To routes replies to the admin inbox
     expect(arg.replyTo).toBe("admin@restormel.dev");
+  });
+
+  it("SECURITY_EMAIL_FROM env overrides the default security From", async () => {
+    vi.resetModules();
+    vi.doMock("$env/dynamic/private", () => ({
+      env: {
+        SMTP_HOST: "smtp.test",
+        SECURITY_EMAIL_FROM: "Restormel Security <notify@send.restormel.dev>",
+      },
+    }));
+    const { resolveMailIdentity } = await import("./send-mail");
+    const id = resolveMailIdentity("security");
+    expect(id.from).toBe("Restormel Security <notify@send.restormel.dev>");
+    expect(id.replyTo).toBe("admin@restormel.dev");
+  });
+
+  it("SECURITY_EMAIL_REPLY_TO env overrides the default security Reply-To", async () => {
+    vi.resetModules();
+    vi.doMock("$env/dynamic/private", () => ({
+      env: {
+        SMTP_HOST: "smtp.test",
+        SECURITY_EMAIL_REPLY_TO: "ops@restormel.dev",
+      },
+    }));
+    const { resolveMailIdentity } = await import("./send-mail");
+    const id = resolveMailIdentity("security");
+    expect(id.replyTo).toBe("ops@restormel.dev");
   });
 
   it("EMAIL_FROM / EMAIL_REPLY_TO env override the transactional defaults", async () => {
@@ -92,5 +133,21 @@ describe("send-mail mailbox mapping (P4)", () => {
       from: "Staging <notify@staging.restormel.dev>",
       replyTo: "contact@staging.restormel.dev",
     });
+  });
+
+  it("security From inherits the EMAIL_FROM mailbox when SECURITY_EMAIL_FROM is unset", async () => {
+    // If EMAIL_FROM is customised (e.g. staging), the security From should derive from that
+    // mailbox so it stays send.-owned, just with the "Restormel Security" display name.
+    vi.resetModules();
+    vi.doMock("$env/dynamic/private", () => ({
+      env: {
+        SMTP_HOST: "smtp.test",
+        EMAIL_FROM: "Staging Keys <notify@send.staging.restormel.dev>",
+      },
+    }));
+    const { resolveMailIdentity } = await import("./send-mail");
+    const id = resolveMailIdentity("security");
+    expect(id.from).toBe("Restormel Security <notify@send.staging.restormel.dev>");
+    expect(id.replyTo).toBe("admin@restormel.dev");
   });
 });
