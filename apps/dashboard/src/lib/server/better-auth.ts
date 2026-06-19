@@ -25,10 +25,8 @@ import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { env } from "$env/dynamic/private";
 import { getPool } from "$lib/server/db-adapter";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import {
-  sendVerificationEmail as sendVerificationMail,
-  sendPasswordResetEmail as sendPasswordResetMail,
-} from "$lib/server/email/send-mail";
+import { sendVerificationEmail as sendVerificationMail } from "$lib/server/email/verification-email";
+import { sendPasswordResetEmail as sendPasswordResetMail } from "$lib/server/email/password-reset-email";
 
 /** The auth base path — mirrors the Neon proxy prefix exactly. */
 export const BETTER_AUTH_BASE_PATH = `${DASHBOARD_BASE}/api/auth`;
