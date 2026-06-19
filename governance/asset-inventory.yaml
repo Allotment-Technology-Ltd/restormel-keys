@@ -295,3 +295,18 @@ assets:
       federation to other products (no current plan). Public surface is a contact/enquiry form
       (not yet configured — see RoPA PROC-008). App secrets currently in local .env, NOT yet in
       Infisical — residual location under RISK-002. Auth email via Migadu (prod cutover gated).
+
+  - id: AST-018
+    asset: "Box C — dedicated CI build runner (204.168.216.166)"
+    type: infrastructure
+    owner: founder
+    product: shared
+    location: "Hetzner cx43 (8 vCPU shared / 16 GB / 160 GB), Helsinki FI (EU) — public IP 204.168.216.166, private 172.16.0.4 (restormel-internal)"
+    notes: >
+      Dedicated Forgejo CI build runner ('hetzner-build'), provisioned 2026-06-19 to move build
+      execution OFF AST-010 (.150) so CI builds no longer contend with SurrealDB (AST-014) — the
+      durable fix for the REC-INC-002 SurrealDB-504 / RISK-001 noisy-neighbour root cause. Docker +
+      fail2ban; runner capacity 2; x86 (matches prod arch). AST-010's CI runner is stopped
+      (restart=no, retained for rollback). Coolify image-build relocation is a follow-up. Stateless
+      runner (re-registerable) — not in restic scope. Right-sized from an initial ccx23 to cx43
+      (shared vCPU adequate for bursty builds; ~€16/mo).
