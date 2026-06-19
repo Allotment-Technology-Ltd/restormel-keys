@@ -24,13 +24,13 @@ backups to the **1 TB Storage Box**; **Coolify retired** as orchestrator.
 **Phasing:** **Phase A** = existing Coolify stack → K3s (Restormel, Allotmentology, SurrealDB, CI, the
 self-hosted Postgres DBs). **Phase B** = PlotBudget + UseSophia → K3s **directly** (not via Coolify).
 
-> ⚠️ **The K3s/CNPG target design is NOT in this repo.** A full sweep of `planning/`, `governance/`,
-> `deploy/`, `.forgejo/`, `docs/infra/` found **zero** references to k3s, hetzner-k3s, CloudNativePG,
-> Velero, or Barman. Everything in-repo describes the *previous* migration (the Coolify two-box split,
-> REC-PLAN-012) — i.e. the **current state** K3s replaces. **The cluster design, CNPG topology,
-> SurrealDB-on-CSI manifests, ingress/cert-manager choice, and the burst-node autoscaling pool live in a
-> Claude Project and must be supplied** before Phase A implementation. This plan maps current-state →
-> target-shape and flags every place that prior pack is the missing input.
+> ⚠️ **The K3s/CNPG target design does not exist yet** — confirmed with the founder 2026-06-19 (not in this
+> repo, not in a prior pack). A full sweep found **zero** k3s/hetzner-k3s/CNPG/Velero/Barman references;
+> everything in-repo describes the *previous* Coolify two-box split (REC-PLAN-012) — the current state K3s
+> replaces. **The target design is therefore a deliverable of this effort** — a companion doc
+> `k3s-cluster-target-design.md` produced by a dedicated, skilled design pass, gated on the founder decisions
+> in §E (asked directly, not just filed). This plan maps current-state → target-shape; the companion design
+> fills in the cluster / CNPG / CSI / ingress / autoscaling detail.
 
 ---
 
@@ -52,9 +52,8 @@ Railway/Coolify + `.secrets-sync.local`) which are needed for *actual* data migr
 ### A. Information-request checklist (narrow — code is in hand)
 
 **PlotBudget**
-- Live **Supabase project region** (is user data currently in a US region? — determines the residency delta).
-- Confirmation of which Supabase features are live **in production** vs merely present in code (the
-  Realtime/Storage/PostgREST question — the deep-dive answers most of this from code; confirm prod usage).
+- ~~Supabase region~~ — **answered: `eu-west-2` (London), already EU** (project ref `jxykecjepxtxzprxheaz`).
+- ~~Which features are live~~ — **answered by the deep-dive:** Auth + PostgREST + Storage + Realtime all used.
 - Secret values for migration: `SUPABASE_PROD_DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
   `SUPABASE_JWT_SECRET`, project ref — **supply at cutover, redacted until then**.
 - Vercel project: build settings, env, custom domains/DNS, any Vercel KV/Blob/Cron/Edge config in the dashboard.
@@ -73,9 +72,9 @@ Railway/Coolify + `.secrets-sync.local`) which are needed for *actual* data migr
 
 ## B. PlotBudget — stack findings + the Supabase decision (ADR-ready)
 
-> **Note:** a focused Supabase/RLS feature deep-dive is finalizing the policy-by-policy inventory and the
-> Realtime/Storage/PostgREST usage verdict; this section states the findings to date and the recommendation
-> they point to. The deep-dive's table will be appended/confirmed before this plan is marked ready.
+> **Deep-dive complete (2026-06-19).** Hosted facts: Supabase **Postgres 17.6.1 / GoTrue 2.186 / Storage 1.37
+> / PostgREST 14.1**, region **AWS `eu-west-2` (London)** — so user data is *already in the EU*; the move is a
+> **control / self-hosting win (managed EU SaaS → self-hosted EU)**, not a data-leaving-EU fix.
 
 **App / Vercel platform**
 - **Next.js 16.2.6 + React 19** (`apps/web`), plus `apps/marketing`, `apps/native` (Expo/React Native),
@@ -86,23 +85,35 @@ Railway/Coolify + `.secrets-sync.local`) which are needed for *actual* data migr
   an image-optimization story + cron as K8s CronJobs).
 
 **Supabase usage (the crux)**
-- **Postgres + RLS — certain.** `supabase/migrations/` = **82 SQL files** (2024-02 → 2026-06-11);
-  **27 contain `ENABLE ROW LEVEL SECURITY` / `CREATE POLICY`** (household-scoped, e.g.
-  `project_budgets_select_household`).
-- **Auth (GoTrue) — used:** `@supabase/ssr` + `@supabase/supabase-js@2.102.1`; SSR cookie/session handling.
-  Supabase Auth is PlotBudget's identity system.
-- **Edge Functions — used:** Deno functions under `supabase/functions/` (e.g. `send-resend-email`).
-- **PostgREST / Realtime / Storage** — pending the deep-dive's definitive prod-usage verdict.
+- **Auth (GoTrue) — CRITICAL, the whole identity system.** `@supabase/ssr` cookie SSR; middleware runs
+  `supabase.auth.getUser()` on **every** protected request; Google+Apple OAuth, password/OTP/magic-link/
+  recovery; GoTrue **admin API** (`createUser`/`deleteUser`/`generateLink`/`listUsers`); an
+  `auth.users → public.users` provisioning trigger (`handle_new_user()`). Passkeys/WebAuthn layer *on top* of
+  GoTrue, not a replacement.
+- **PostgREST — CRITICAL, the dominant data layer.** **1,201 `supabase.from('…')` calls** across ~40 tables,
+  **no ORM** — normal reads/writes ride PostgREST under the anon key, secured by RLS. (Only 3 `.rpc()`.)
+- **Storage — used (real).** Buckets `vault-documents` (private, household-scoped RLS) + `avatars` (public):
+  upload/signed-url/download/delete — integral to the Vault module.
+- **Realtime — used, narrow.** 2 `postgres_changes` subscriptions (live avatar update, grocery/shopping sync).
+- **Edge Functions — one, and it's GoTrue infra.** `send-resend-email` = the GoTrue *Send-Email Hook* (HMAC,
+  `verify_jwt=false`), fired by GoTrue, **never `functions.invoke`d by the app** — lives/dies with GoTrue.
+- **Extensions — essentially none** (`uuid-ossp` only; no pgvector/pg_cron/postgis/etc.).
+- **RLS = 42 tables / 158 policies** (was under-counted at 27 files; the real policy count is 158).
 - Env names confirm the model: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`,
   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_PROD_DATABASE_URL`/`_PROJECT_REF`,
   `POSTGRES_URL`/`_NON_POOLING`/`_PRISMA_URL`, plus `VERCEL_*`.
 
-**RLS dependency assessment (security-critical — ISMS).** The household-scoped policies depend on Supabase
-**auth primitives** (`auth.uid()` / `auth.jwt()` / the `auth` schema + JWT claims surfaced by PostgREST via
-`request.jwt.claims`). **On plain CNPG Postgres without the Supabase auth layer, `auth.uid()` does not exist
-→ every such policy fails closed (or, worse, must be disabled) → the data-exposure boundary breaks.** Any
-plan touching RLS MUST include a re-validation + test step proving policies behave **identically**
-post-migration (positive *and* negative tests: a user must still be unable to read another household's rows).
+**RLS dependency assessment (security-critical — ISMS).** **42 tables RLS-enabled, 158 policies, and *every
+one* keys on a single primitive — `auth.uid()` (171 occurrences). ZERO use of `auth.jwt()`, `auth.role()`, or
+`request.jwt.claims`.** Pattern is uniformly household-scoped (inline `EXISTS … households WHERE
+owner_id/partner_user_id = auth.uid()`) or owner-scoped (`user_id = auth.uid()`); no helper function to
+recreate. Other schema deps: `auth` (the `auth.users` FK target + the provisioning trigger) and `storage`
+(bucket/object policies). **On plain CNPG without the Supabase layer, all 171 `auth.uid()` refs fail, the
+`auth.users` FK + trigger die, and storage RLS is gone → the boundary breaks.** The cheap fix under vanilla
+PG: a one-line `auth.uid()` shim reading a per-transaction GUC the app sets
+(`set_config('request.jwt.claim.sub', <uid>, true)`) — then **all 158 policies port verbatim**. The catch:
+*something must still authenticate the user and set that GUC.* Any RLS-touching plan MUST include
+re-validation with positive **and** negative tests (a user still cannot read another household's rows).
 
 **Auth & user data.** `auth.users` / `auth.identities` / sessions are a **sensitive, security-critical**
 migration item (hashed credentials, OAuth identities). Data residency: confirm the current Supabase region;
@@ -119,15 +130,22 @@ moving to Hetzner EU is a **sovereignty improvement** if it's currently US-hoste
 | Ops cost | **heavier** multi-container stack (Postgres, GoTrue, PostgREST, Realtime, Storage, Kong, Studio) | lighter, consistent with the rest of the cluster |
 | Sovereignty | ✅ off Supabase cloud → Hetzner EU | ✅ same, plus fewer moving parts long-term |
 
-**Preliminary recommendation: Option 1 (self-host Supabase).** PlotBudget leans on Supabase **Auth (GoTrue)**
-+ a **27-policy RLS set keyed on `auth.uid()`** + **edge functions** (and likely PostgREST data access —
-deep-dive to confirm). Rewriting all of that (Option 2) is a large, security-critical project with a full
-RLS re-validation — high risk for a solo operator and not the goal of *this* migration, which is a
-**sovereignty move** (Supabase cloud → Hetzner EU). Option 1 preserves the working security boundary intact
-and is the lower-risk path to "off US SaaS." **Trade-off to accept:** self-hosted Supabase is a heavier
-stack to run/maintain on K3s — but it ships as a known compose/Helm bundle and matches what the app already
-expects. **Revisit Option 2 only if** the deep-dive shows PostgREST/Realtime/Storage are *not* load-bearing
-and RLS is thin — then "Postgres + RLS + app-owned auth" becomes viable and cleaner long-term.
+**Recommendation: Option 1 (self-host the full Supabase stack on K3s) — now decisive.** The deep-dive removed
+the ambiguity: Auth (GoTrue) is the *entire* identity system (SSR sessions, per-request `getUser()`, OAuth,
+admin API, the `auth.users` trigger, *and* a GoTrue email hook); PostgREST is the *only* data layer (1,201
+calls / 40 tables, no ORM); Storage holds real household-scoped private documents. Option 2 would mean
+rebuilding all of that **plus** migrating bcrypt hashes + OAuth identities out of `auth.*` — the
+highest-risk, most security-sensitive rewrite possible, over real financial data. Meanwhile the usual
+*pro-Option-2* cost drivers are **absent**: no exotic extensions (just `uuid-ossp`), no edge runtime, no
+Vercel KV/Blob/Postgres, Redis already self-host-ready (`REDIS_URL`), and a **standalone Dockerfile already
+built** (`output:'standalone'`). So self-hosting Supabase is mostly an **ops/Helm** exercise, not an app
+rewrite, and RLS ports **unchanged** (`auth.uid()` keeps resolving). Shape: GoTrue + PostgREST + Storage +
+Realtime (+ Studio) fronted by the existing Traefik/ingress, **backed by CNPG** as the Postgres operator
+(HA/backups from CNPG, Supabase services pointed at it); re-register Google/Apple OAuth on self-hosted
+GoTrue, redeploy the email hook, migrate `auth.*` + `public.*` + buckets. **Option 2 is worth it only as a
+separate, *later* ADR** if you choose to consolidate identity onto Better Auth (as allotmentology.tech uses)
+— a deliberate auth project (rehash-on-login, OAuth re-link, the `auth.uid()` GUC shim), not bundled into the
+infra cutover.
 
 ---
 
@@ -216,18 +234,19 @@ that needs a formal, tested cutover runbook** (it's a security boundary over rea
 
 ## E. Flags for founder decision
 
-1. **PlotBudget Supabase path — Option 1 (self-host Supabase) vs Option 2 (CNPG + rewrite).** The centre of
-   gravity. Preliminary rec = **Option 1** (preserve the RLS/auth boundary; lower risk). Final call pending
-   the deep-dive's PostgREST/Realtime/Storage verdict. **Your call.**
+1. **PlotBudget Supabase path — recommendation now firm: Option 1 (self-host Supabase on K3s, backed by
+   CNPG).** Deep-dive confirmed Auth + PostgREST + Storage + 158 `auth.uid()`-keyed RLS policies are all
+   load-bearing → Option 2 (rewrite) is deferred to an optional later "own auth on Better Auth" ADR.
 2. **Sophia's own Neon Postgres + Neon Auth** — keep Neon SaaS, or migrate into CNPG + Better Auth (mirrors
    Restormel, full sovereignty)? Separate from the SurrealDB move. **Your call.**
-3. **K3s/CNPG target design pack is not in-repo** — must be supplied (cluster layout, CNPG topology,
-   SurrealDB CSI manifest, ingress/cert-manager, burst autoscaling). Phase A can't be detailed without it.
+3. **K3s/CNPG target design — being created now** (companion doc `k3s-cluster-target-design.md`, dedicated
+   design pass). It needs the answers to Q1/Q2/Q4 below before it can be finalized. Phase A detail follows it.
 4. **Backups: Storage Box is SFTP/SMB, not S3.** CNPG's Barman wants an S3 target → either front the Storage
    Box with an S3 gateway (MinIO/rclone) or keep a **restic CronJob doing `pg_dump`** (continues today's
    pattern). **Decision needed.** Also: no `governance/bcp-dr-policy.md` exists yet to anchor the RTO<4h claim.
-5. **Data residency** — confirm where PlotBudget's Supabase and Sophia's Neon currently store user data
-   (region). Moving both to Hetzner EU is a sovereignty win; quantify the delta for the privacy notice / ROPA.
+5. **Data residency** — both PlotBudget's Supabase (**eu-west-2**) and Sophia's Neon (**eu-west-2**) are
+   *already EU* (AWS London). Moving to Hetzner EU is a **control / self-hosting** win (off managed US-owned
+   SaaS), **not** a data-leaving-EU fix — frame it that way in the privacy notice / ROPA.
 6. **Forgejo/CI + Infisical: in-cluster vs on-box** during Phase A (recommend on-box for bootstrap safety).
 7. **Secrets into the cluster** — land via **External Secrets Operator** (backed by Infisical) or
    **sealed-secrets**, consistent with the ISMS (no plaintext, repo-anchored where appropriate). Pick one.
