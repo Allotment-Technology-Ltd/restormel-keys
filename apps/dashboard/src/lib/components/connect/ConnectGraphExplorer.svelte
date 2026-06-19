@@ -478,12 +478,19 @@
   let activeRunId: string | null = null;
   let runsLoading = false;
   let runsError: string | null = null;
+  /**
+   * Friendly (not-an-error) notice shown when a run could not form a cohort
+   * because the graph is fully validated. Surfaced prominently in the readiness
+   * library so the "New run" button never silently produces an empty ghost run.
+   */
+  let emptyCohortNotice: string | null = null;
   let creatingRun = false;
   $: activeRun = activeRunId ? readinessRuns.find((r) => r.id === activeRunId) ?? null : null;
 
-  async function loadReadinessRuns() {
+  async function loadReadinessRuns(opts?: { keepNotice?: boolean }) {
     runsLoading = true;
     runsError = null;
+    if (!opts?.keepNotice) emptyCohortNotice = null;
     try {
       const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`);
       const body = await res.json().catch(() => ({}));
@@ -504,6 +511,7 @@
     if (creatingRun || !(size > 0)) return;
     creatingRun = true;
     runsError = null;
+    emptyCohortNotice = null;
     try {
       const res = await fetch(`${CONNECT_PIPELINE_API}/graph/readiness/runs`, {
         method: "POST",
@@ -516,6 +524,18 @@
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         runsError = typeof body.message === "string" ? body.message : "Could not create readiness run.";
+        return;
+      }
+      const createdEmpty = (body.run?.sizeActual ?? 0) === 0;
+      if (createdEmpty || body.reason === "empty_cohort") {
+        // Fully-validated graph: no unchecked ideas to put in a cohort. Surface a
+        // friendly, actionable notice instead of silently activating a 0-member
+        // ghost run (or burying the warning where nobody sees it).
+        emptyCohortNotice =
+          typeof body.warning === "string"
+            ? body.warning
+            : "Your graph is fully validated — there are no unchecked ideas to put in a run. Re-import sources or add content, then start a new run.";
+        await loadReadinessRuns({ keepNotice: true });
         return;
       }
       if (typeof body.warning === "string") runsError = body.warning;
@@ -2483,7 +2503,24 @@
   }
 
   async function startEmbedBackfill() {
-    if (!embedOptions?.enabled || !embedOptions.health.actionNeeded || embeddingBackfill) return;
+    if (embeddingBackfill) return;
+    if (!embedOptions?.enabled) {
+      // The embed button can render enabled-by-default (embedEnabled falls back to
+      // graph.stats?.units); surface why nothing happened instead of exiting silently.
+      embedError = embedOptionsLoading
+        ? "Embedding options are still loading — try again in a moment."
+        : "Embedding isn't available yet — add some ideas to the graph, then refresh.";
+      return;
+    }
+    if (embedOptions.embedReady === false) {
+      embedError =
+        "No embedding route is configured — set one up in Models & Keys, then refresh.";
+      return;
+    }
+    if (!embedOptions.health.actionNeeded) {
+      embedError = "Every idea is already embedded — there's nothing to backfill.";
+      return;
+    }
     embedError = null;
     embeddingBackfill = true;
     try {
@@ -2523,7 +2560,15 @@
   }
 
   async function startBatchValidation() {
-    if (!revalidateOptions?.enabled || batchValidating) return;
+    if (batchValidating) return;
+    if (!revalidateOptions?.enabled) {
+      // Mirror startSourceLinking: never exit silently from a button that renders
+      // enabled-by-default. Distinguish "still loading" from "not configured".
+      batchValidateError = revalidateOptionsLoading
+        ? "Validation options are still loading — try again in a moment."
+        : "Validation isn't available yet — add some ideas and configure an AI route in Models & Keys, then refresh.";
+      return;
+    }
     batchValidateError = null;
     batchValidating = true;
     try {
@@ -4095,9 +4140,11 @@
             loading={runsLoading}
             creating={creatingRun}
             error={runsError}
+            notice={emptyCohortNotice}
             on:select={(e) => { activeRunId = e.detail.runId; }}
             on:create={(e) => createReadinessRun(e.detail.size)}
             on:archive={(e) => archiveReadinessRun(e.detail.runId)}
+            on:dismissNotice={() => { emptyCohortNotice = null; }}
           />
           {#if activeRun && activeRun.status !== "complete"}
             <p class="readiness-active-run brut-muted" role="status">
