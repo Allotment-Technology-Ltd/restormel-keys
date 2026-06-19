@@ -95,3 +95,24 @@ related: [REC-TPL-004, REC-INC-003]
     INC-005). *(stage with the PR)*
   - **Closed:** 2026-06-19 (fix implemented + PR opened; pending founder deploy-verify of
     migration 072 on Box B `.167`).
+
+---
+
+## Deployment confirmation — 2026-06-19
+
+Migration **072** (`knowledge_readiness_runs` + `knowledge_readiness_run_units`) was
+**deployed to production on 2026-06-19**:
+
+- **Coolify deploy** triggered on Box A `.167` (`77.42.124.167`); app status confirmed
+  `running:healthy` post-deploy. Fail-closed migration runner applied pending migrations
+  before the server started — no startup bypass.
+- **Image build:** performed on the new dedicated build server `restormel-build-c-166`
+  (`204.168.216.166` / `172.16.0.4`, cx43 16 GB). Image pushed to the Forgejo container
+  registry at `git.allotmentology.tech` and pulled on `.167` at deploy time. Both hosts
+  (`restormel-build-c-166` and `.167`) were `docker login`'d to the registry prior to
+  this deployment.
+- **Landed via:** PR #150 (merged to `main`).
+- **Verification:** The `knowledge_readiness_runs` and `knowledge_readiness_run_units`
+  relations now exist in the production database; the readiness-check 500 error is
+  resolved. `schema_migrations` high-water mark advanced to `072`.
+- **Status remains:** `closed`.
