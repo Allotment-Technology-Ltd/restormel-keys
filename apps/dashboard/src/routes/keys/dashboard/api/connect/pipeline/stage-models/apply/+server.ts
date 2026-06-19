@@ -30,7 +30,13 @@ import {
   isKnowledgeSessionFailure,
   resolveKnowledgeSessionContext,
 } from "$lib/server/connect/session-context";
-import { upsertConnectStageRoutingConfig, listRoutes } from "$lib/server/neon";
+import {
+  upsertConnectStageRoutingConfig,
+  listRoutes,
+  getModel,
+  resolveCanonicalModelIdForProviderModel,
+} from "$lib/server/neon";
+import { ensureModelCatalogSynced } from "$lib/server/connect/model-catalog-sync";
 import { INGESTION_WORKLOAD } from "$lib/server/ingestion-routing";
 import {
   normalizeProviderForStorage,
@@ -87,6 +93,26 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json(
       { error: "invalid_model", message: "providerModelId must be a non-empty string." },
       { status: 400 },
+    );
+  }
+
+  // ── Resolve the CANONICAL model id (route_steps.model_id FKs to models.id) ──
+  // The client sends the PROVIDER's model string; writing it straight into model_id 500s with
+  // a route_steps_model_id_fkey violation (the original "Apply failed: internal error" bug).
+  // Sync the catalogue, then map (provider, providerModelId) → canonical models.id.
+  await ensureModelCatalogSynced();
+  let canonicalModelId = await resolveCanonicalModelIdForProviderModel(provider, providerModelId);
+  if (!canonicalModelId && (await getModel(providerModelId))) {
+    // Client already passed a canonical models.id (provider with no distinct variant string).
+    canonicalModelId = providerModelId;
+  }
+  if (!canonicalModelId) {
+    return json(
+      {
+        error: "model_not_in_catalog",
+        message: `Model "${providerModelId}" (${provider}) isn't in the model catalogue yet — refresh the catalogue and try again, or pick another model.`,
+      },
+      { status: 422 },
     );
   }
 
@@ -179,7 +205,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (primaryStep) {
     await updateRouteStep(primaryStep.id, routeId, projectId, ctx.userId, {
       providerPreference: provider,
-      modelId: providerModelId,
+      modelId: canonicalModelId,
     });
   } else {
     await createRouteStep({
@@ -188,7 +214,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       userId: ctx.userId,
       orderIndex: 0,
       providerPreference: provider,
-      modelId: providerModelId,
+      modelId: canonicalModelId,
       label: null,
       enabled: true,
     });

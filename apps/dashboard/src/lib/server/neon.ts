@@ -2037,6 +2037,38 @@ export async function listProviderModelVariantsByModelIds(
   return (rows as Record<string, unknown>[]).map(mapVariantRow);
 }
 
+/**
+ * Resolve a CANONICAL model id (`models.id` — the `route_steps.model_id` FK target) from a
+ * provider + the provider's own model string, via the `provider_model_variants` catalog.
+ * Prefers a variant whose provider matches, then the most recently verified one; falls back to
+ * any variant carrying that `provider_model_id`. Returns `null` when the pair isn't in the
+ * (synced) catalog.
+ *
+ * This is the fix for the "Apply failed: internal error" bug: the one-click apply flow used to
+ * write the raw provider model string into `route_steps.model_id`, which 500s with a
+ * `route_steps_model_id_fkey` violation. Callers must resolve to the canonical id first.
+ */
+export async function resolveCanonicalModelIdForProviderModel(
+  provider: string | null | undefined,
+  providerModelId: string | null | undefined,
+): Promise<string | null> {
+  const pmId = (providerModelId ?? "").trim();
+  if (!pmId) return null;
+  await ensureCatalogProviderIdColumn();
+  const sql = getSql();
+  const prov = (provider ?? "").trim();
+  const rows = await sql`
+    SELECT model_id AS "modelId"
+    FROM provider_model_variants
+    WHERE provider_model_id = ${pmId}
+    ORDER BY (provider_integration_type = ${prov}) DESC NULLS LAST,
+             source_last_verified_at DESC NULLS LAST
+    LIMIT 1
+  `;
+  const row = (rows as Record<string, unknown>[])[0];
+  return row?.modelId ? String(row.modelId) : null;
+}
+
 // ---------------------------------------------------------------------------
 // Project model index (per-project bindings for selectors / host merges)
 // ---------------------------------------------------------------------------
