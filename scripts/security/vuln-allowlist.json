@@ -10,6 +10,11 @@
     "expires": "2026-07-14"
   },
   {
+    "id": "GHSA-p6gq-j5cr-w38f",
+    "reason": "nodemailer message-level `raw` option bypasses disableFileAccess/disableUrlAccess (arbitrary file read + SSRF). HIGH (CVSS 3.1 8.1). Fixed only in 9.0.1 (affected range [0,9.0.1) — no 6.x/7.x/8.x backport), a 6.x->9.x triple-major bump on a runtime-critical auth-email package. NOT reachable: the sole sendMail call site (apps/dashboard/src/lib/server/email/send-mail.ts) passes a fixed internal field set (to/from/replyTo/subject/text/html) and never sets `raw`, attachments, file paths or URLs; the module is also dormant under the default neon AUTH_PROVIDER. Advisory published 2026-06-18 against the unchanged lockfile, so it blocks the whole open-PR train. Time-boxed risk-accept; coordinated nodemailer 9.x upgrade tracked in forgejo#141 (closes this + GHSA-rcmh-qjqh-p98v). Expiry within the 30-day max per High policy.",
+    "expires": "2026-07-14"
+  },
+  {
     "id": "GHSA-fx2h-pf6j-xcff",
     "reason": "vite@6.4.2 server.fs.deny bypass (CVE-2026-53571) affects the Vite DEV server on Windows alternate paths only. Restormel production runs the built adapter-node output on Linux (node:22-alpine) with no Vite dev server exposed, so the path is not reachable in production. A patched vite requires a coordinated vite/esbuild major bump (esbuild is pinned to 0.25.0 per GHSA-gv7w-rqvm-qjhr) — scheduled with that upgrade. Expiry set to 30-day max per High policy.",
     "expires": "2026-07-14"
