@@ -7,11 +7,11 @@ status: approved
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-17
+last-reviewed: 2026-06-19
 review-interval: P12M
 retention: P6Y-after-superseded
-approved-by: founder
-approved-on: 2026-06-17
+approved-by: Adam Boon
+approved-on: 2026-06-19
 ---
 
 # Statement of Applicability (SoA)
@@ -46,7 +46,7 @@ Per-control row: `control | title | applicable? | justification | status | evide
 | A.5.13 | Labelling of information | Partial | Classification reflected in YAML front-matter of all governance records. Production data and application objects not yet systematically labelled. Planned for Phase 5. | Partial | REC-GOV-007 front-matter |
 | A.5.14 | Information transfer | Partial | TLS enforced for all data in transit. DPAs in place for sub-processors. UK→US transfer safeguards partially confirmed; Google Workspace and Zuplo DPAs outstanding (RISK-003); allotmentology.tech enquiry notifications (PROC-008) also route to Google Workspace. | Partial | REC-GOV-005; RISK-003 |
 | A.5.15 | Access control | Yes | Access control policy approved | Implemented | REC-POL-002 |
-| A.5.16 | Identity management | Yes | BetterAuth (self-hosted on AST-003); named accounts only; no shared logins; allotmentology.tech runs a self-contained BetterAuth instance (AST-017) | Implemented | REC-POL-002; AST-003; AST-017 |
+| A.5.16 | Identity management | Yes | BetterAuth (self-hosted on AST-003); named accounts only; no shared logins; allotmentology.tech runs a self-contained BetterAuth instance (AST-017). Coolify dashboard (coolify.allotmentology.tech) is accessed via Traefik forwardAuth gate backed by the portal BetterAuth session — a controlled forward-auth gate, not a federated IdP. | Implemented | REC-POL-002; AST-003; AST-017 |
 | A.5.17 | Authentication information | Partial | MFA required per REC-POL-002 §3; enablement in progress across all systems (RISK-008); remediation task scheduled. allotmentology.tech portal & Migadu MFA on (positive); RISK-008 still open for Priority-1 systems. | Partial | REC-POL-002 §3; RISK-008 |
 | A.5.18 | Access rights | Yes | Least-privilege principle; quarterly access review; access rights reviewed and documented | Implemented | REC-POL-002 §5–6; evidence/access-reviews/ |
 | A.5.19 | Information security in supplier relationships | Yes | Supplier / sub-processor register maintained; DPA status tracked per supplier | Implemented | REC-GOV-005 |
@@ -61,10 +61,10 @@ Per-control row: `control | title | applicable? | justification | status | evide
 | A.5.28 | Collection of evidence | Partial | Audit events table (DAT-010, 12 months online / 6 years archived); governance records in Forgejo with long retention. Formal evidence collection procedure not yet documented. | Partial | DAT-010; REC-GOV-006 retention |
 | A.5.29 | Information security during disruption | Partial | Hetzner automated backups in place; GitHub mirror provides code redundancy. Formal BCP not yet documented. RISK-001. | Partial | RISK-001; AST-003 Hetzner backups |
 | A.5.30 | ICT readiness for business continuity | Partial | Same rationale as A.5.29. DR runbook to be documented in restormel-ops. Target RTO < 4 hours. | Partial | RISK-001 |
-| A.5.31 | Legal, statutory, regulatory and contractual requirements | Yes | UK GDPR compliance: RoPA (REC-GOV-003), DPAs (REC-GOV-005), privacy notice (restormel.dev/keys/privacy), data-inventory (REC-GOV-007). ICO registration: ZC092549. Companies Act: statutory records (FreeAgent/Mettle, 7-year retention). allotmentology.tech privacy notice pending (RISK-011). | Implemented | REC-GOV-003; REC-GOV-007; REC-GOV-005; RISK-011 |
+| A.5.31 | Legal, statutory, regulatory and contractual requirements | Yes | UK GDPR compliance: RoPA (REC-GOV-003), DPAs (REC-GOV-005), privacy notices (restormel.dev/keys/privacy + allotmentology.tech/privacy v1.1, 2026-06-19), data-inventory (REC-GOV-007). ICO registration: ZC092549. Companies Act: statutory records (FreeAgent/Mettle, 7-year retention). RISK-011 closed. | Implemented | REC-GOV-003; REC-GOV-007; REC-GOV-005; https://allotmentology.tech/privacy |
 | A.5.32 | Intellectual property rights | Yes | Product code in private Forgejo repo; LICENSE file present; third-party OSS managed via pnpm with Renovate tracking | Implemented | LICENSE; renovate.json; restormel-keys repo |
 | A.5.33 | Protection of records | Yes | Governance records in Forgejo with SCHEMA.md-defined retention periods; 6-year minimum for governance documents; audit events 6-year archive (DAT-010) | Implemented | records/SCHEMA.md; REC-GOV-007 retention |
-| A.5.34 | Privacy and protection of PII | Yes | Restormel PII protections in place (RoPA, data-inventory, published notice, DPAs). allotmentology.tech enquiry processing (PROC-008) is gated on publishing its own privacy notice — none yet (RISK-011); no allotmentology.tech PII collected until then. | Partial | REC-GOV-003; REC-GOV-007; restormel.dev/keys/privacy; RISK-011 |
+| A.5.34 | Privacy and protection of PII | Yes | Restormel PII protections in place (RoPA, data-inventory, published notice, DPAs). allotmentology.tech privacy notice v1.1 published 2026-06-19 at https://allotmentology.tech/privacy; enquiry form live; PROC-008 and DAT-012 updated to live state; RISK-011 closed. | Implemented | REC-GOV-003; REC-GOV-007; restormel.dev/keys/privacy; https://allotmentology.tech/privacy (v1.1, 2026-06-19); RISK-011 |
 | A.5.35 | Independent review of information security | Planned | No independent review yet; planned before ISO 27001 certification attempt. Proportionate at pre-certification stage. | Planned | — |
 | A.5.36 | Compliance with policies, rules and standards | Yes | Quarterly access review; annual management review; CI enforces governance record schema; scheduled Cowork tasks enforce cadence | Implemented | REC-GOV-000; playbooks/; isms-annual-management-review task |
 | A.5.37 | Documented operating procedures | Partial | Playbooks documented in restormel-ops (quarterly-access-review, policy-review, incident-capture, annual-management-review, governance-drafting). DR/recovery procedures not yet fully documented (RISK-001). | Partial | playbooks/; RISK-001 |
@@ -152,11 +152,11 @@ Per-control row: `control | title | applicable? | justification | status | evide
 
 | Theme | Total | Implemented | Partial | Planned | N/A — justified |
 |---|---|---|---|---|---|
-| A.5 Organisational | 37 | 13 | 17 | 3 | 4 |
+| A.5 Organisational | 37 | 14 | 16 | 3 | 4 |
 | A.6 People | 8 | 3 | 1 | 1 | 3 |
 | A.7 Physical | 14 | 4 | 4 | 0 | 6 |
 | A.8 Technological | 34 | 14 | 14 | 0 | 6 |
-| **Total** | **93** | **34** | **36** | **4** | **19** |
+| **Total** | **93** | **35** | **35** | **4** | **19** |
 
 > Key gaps driving the Partial count: MFA remediation (RISK-008, urgent), incident response
 > playbook (RISK-006), UK→US transfer DPAs (RISK-003), staging environment (RISK-001). These

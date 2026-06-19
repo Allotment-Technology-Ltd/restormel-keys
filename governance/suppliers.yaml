@@ -6,7 +6,7 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-15
+#   approved-on: 2026-06-19
 #   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: P6Y-after-superseded
@@ -122,24 +122,41 @@ suppliers:
     notes: "Founder evaluating alternative email provider (see Migadu). Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
 
   - name: Migadu
-    provides: "Transactional / company email — Restormel product transactional mail (auth verification/reset, access-grant notifications, security alerts) + allotmentology.tech app auth magic-links/notifications"
+    provides: "Transactional / company email — Restormel product transactional mail (auth verification/reset, access-grant notifications, security alerts) + allotmentology.tech app auth magic-links/notifications + allotmentology.tech enquiry notifications"
     role: sub-processor
     location: "Swiss company; EU mail servers"
-    data_processed: "Email addresses + message content for authentication, access-grant and notification emails (registered users + founder/internal addresses)"
-    dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
-    sovereignty: "flagged — pending confirmation"
+    data_processed: >
+      Email addresses + message content for authentication, access-grant and notification
+      emails (registered users + founder/internal addresses). Additionally, from 2026-06-19:
+      enquirer personal data (name, email address, message content) via allotmentology.tech
+      enquiry-notification emails (third-party data subjects — PROC-008 / DAT-012).
+    dpa: >
+      Accepted via Migadu's published terms. Migadu's Privacy Policy and Data Processing
+      Agreement are combined in a single public document at https://migadu.com/privacy/ which
+      states: "This document serves both as our Privacy Policy and as our Data Processing
+      Agreement (DPA)." The document confirms GDPR and Swiss FDPA compliance, identifies
+      Migadu-Mail GmbH as data controller, discloses sub-processors (Stripe, PayPal) under
+      GDPR-compliant agreements, and commits to processing data only for defined purposes.
+      Art 28 basis: relying on Migadu's standard published terms (controller/processor
+      obligations covered by the public DPA). No separate private signed DPA is available;
+      the public DPA at migadu.com/privacy/ constitutes the Art 28 instrument for standard
+      accounts. Accepted at account signup (2026-06-17). Verified 2026-06-19.
+    sovereignty: "EU mail servers (Swiss company — Migadu-Mail GmbH, Schachen, Switzerland); DPA covered by public terms at https://migadu.com/privacy/"
     products: [restormel, allotmentology.tech]
     notes: >
       Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
-      Google Workspace dependency. Validated on staging during the auth migration
-      (Neon Auth → Better Auth); production cutover is gated.
+      Google Workspace dependency. NOW IN PRODUCTION for both Restormel and allotmentology.tech:
+      auth transactional emails (magic-link, reset, verification, security alerts, welcome-on-approval)
+      and allotmentology.tech enquiry notifications (third-party enquirer PII).
       Scope expanded 2026-06-18 (REC-PLAN-017): Migadu is the TRANSACTIONAL stream for the
       Restormel product (restormel.dev mailboxes admin@/notify@/contact@, moving to a
       dedicated send.restormel.dev sending subdomain). Transactional ONLY — marketing/bulk
       email goes via Brevo (separate entry, separate subdomain) so the two reputations stay
-      isolated. allotmentology.tech app enters ISMS scope when the company portal ships.
-      Revisit data-inventory + ROPA and fire the sub-processor change-notification hook on
-      any further scope change.
+      isolated.
+      SCOPE EXPANDED 2026-06-19: allotmentology.tech enquiry form live — Migadu now carries
+      third-party enquirer PII (name/email/message). Art 28 DPA coverage confirmed via
+      Migadu's publicly published combined Privacy Policy + DPA (https://migadu.com/privacy/).
+      Fire the sub-processor change-notification hook on any further scope change.
 
   - name: Brevo (Sendinblue)
     provides: "Marketing email — newsletters / release notes from news.restormel.dev; isolated from the transactional stream (Migadu)"

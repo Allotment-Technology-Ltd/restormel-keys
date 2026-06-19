@@ -4,12 +4,12 @@ title: Access Control Policy
 class: governance
 owner: founder
 status: approved
-approved-by: founder
-approved-on: 2026-06-17
+approved-by: Adam Boon
+approved-on: 2026-06-19
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-17
+last-reviewed: 2026-06-19
 review-interval: P12M
 retention: P6Y-after-superseded
 ---
@@ -65,7 +65,7 @@ order for remediation given the sensitivity of the data or access granted.
 |---|---|---|---|---|
 | Google Workspace (admin) | Email + admin | Yes | 1 — Urgent | ⚠ Confirm enabled |
 | Hetzner control panel | Compute host | Yes | 1 — Urgent | ⚠ Confirm enabled |
-| Coolify | App/infra control | Yes | 1 — Urgent | ⚠ Confirm enabled |
+| Coolify | App/infra control | Yes | 1 — Urgent | ⚠ Confirm enabled (compensating control: Coolify dashboard additionally gated by portal BetterAuth forwardAuth — portal MFA required to reach Coolify) |
 | Forgejo | Canonical repo | Yes | 1 — Urgent | ⚠ Confirm enabled |
 | Mettle | Business banking | Yes | 1 — Urgent | ⚠ Confirm enabled |
 | Paddle | Billing / customer data | Yes | 1 — Urgent | ⚠ Confirm enabled |
@@ -97,9 +97,13 @@ Remote access to the Coolify/Hetzner host is via SSH key only; password
 authentication is disabled on the server.
 
 The allotmentology.tech portal uses its own self-contained BetterAuth authentication and is
-currently founder-only. There is no SSO federation to other ATL products at this stage; if
-introduced later, this section and the risk register must be revisited (a shared auth service
-would carry cross-product blast radius).
+currently founder-only. Coolify dashboard (coolify.allotmentology.tech) is published behind
+the allotmentology.tech portal's BetterAuth session via Traefik forwardAuth. All Coolify
+access requires an authenticated, approved portal session. This is a controlled forward-auth
+gate — not a federated identity protocol. Coolify's own local-auth login layer is retained as
+a second layer of protection. Note: this is a forward-auth gate, not SSO federation; if a
+true federated IdP (SAML/OIDC) is introduced later, this section and the risk register must
+be revisited (a shared auth service would carry cross-product blast radius).
 
 ## 5. Joiner / mover / leaver
 

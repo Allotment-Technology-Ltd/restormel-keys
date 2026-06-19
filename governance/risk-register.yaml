@@ -5,8 +5,9 @@
 #   control-tier: 2
 #   owner: founder
 #   status: approved
-#   approved-by: founder
-#   approved-on: 2026-06-17
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-19
+#   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -331,9 +332,9 @@ risks:
       Publish a UK GDPR-compliant privacy notice at allotmentology.tech BEFORE the enquiry form
       is enabled (draft in progress via Claude Code). Gate the form so it cannot collect data
       until the notice is live. Set PROC-008 privacy_notice_ref to the published URL on completion.
-    treatment_status: "In-treatment — notice being drafted; form not yet enabled (no data collected yet)"
+    treatment_status: "Mitigated — privacy notice v1.1 published 2026-06-19 at https://allotmentology.tech/privacy; form live. RISK-011 closed."
     owner: founder
-    status: in-treatment
+    status: closed
     review: 2026-09-15
     product: allotmentology.tech
 

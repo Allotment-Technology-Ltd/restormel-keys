@@ -5,11 +5,11 @@ class: governance
 owner: founder
 status: approved
 approved-by: Adam Boon
-approved-on: 2026-06-17
+approved-on: 2026-06-19
 classification: internal
 control-tier: 2
 created: 2026-06-17
-last-reviewed: 2026-06-17
+last-reviewed: 2026-06-19
 review-interval: P12M
 retention: P6Y-after-superseded
 ---
@@ -23,15 +23,16 @@ retention: P6Y-after-superseded
 Govern how application and infrastructure **secrets** — API tokens, database
 credentials, encryption keys, backup passphrases, bot tokens, storage-box
 credentials, and similar — are stored, accessed, injected, and rotated across
-Restormel. This policy supports the Information Security Policy (`REC-POL-001`)
+all Allotment Technology Ltd in-scope products (Restormel + allotmentology.tech).
+This policy supports the Information Security Policy (`REC-POL-001`)
 and the Access Control Policy (`REC-POL-002`), and implements ISO 27001:2022
 Annex A controls **A.5.17 (authentication information)**, **A.8.5 (secure
 authentication)**, **A.8.12 (data leakage prevention)** and **A.8.24 (use of
 cryptography)** for secret material.
 
 A *secret* is any credential or key whose disclosure would let a party
-authenticate as Restormel, decrypt Restormel data, or access a Restormel system
-or sub-processor.
+authenticate as an ATL product or service, decrypt ATL data, or access an ATL
+system or sub-processor.
 
 Scope: all systems in the asset inventory (`asset-inventory.yaml`, REC-GOV-006),
 in particular the secrets estate (AST-007) and the self-hosted secret manager
@@ -75,6 +76,7 @@ treats the in-session credential-exposure risk that prompted the migration — s
 | Forgejo CI secrets/variables | CI/CD-time secrets for pipelines | Forgejo project secrets; least-privilege; audited at access review |
 | GitHub secrets (legacy mirror) | Residual mirror-side secrets | Being audited and minimised (RISK-002 treatment) |
 | Restormel app credential store | BYOK / customer-supplied credentials handled by the product | Application-layer encryption (out of scope of operator secrets, covered by product security review) |
+| allotmentology.tech app secrets (Coolify env) | Runtime secrets for the allotmentology.tech portal — including `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` (Migadu SMTP credentials for auth email + enquiry notifications, active production secrets as of 2026-06-19) | Coolify environment variables (project allotmentology-pilot); specific operational secrets (e.g. RECORDS_FEED_TOKEN) canonical in Infisical project restormel-ops/prod; app-wide Infisical migration for allotmentology.tech deferred — most secrets remain in Coolify env |
 | Host key files | **SSH private keys** and host TLS material | Remain as files on disk with `0600` perms — deliberately **not** migrated into Infisical (a key store should not hold the keys used to reach it) |
 | Mac keychain (founder workstation, AST-006) | Local developer credentials | OS keychain; FileVault full-disk encryption enabled |
 
