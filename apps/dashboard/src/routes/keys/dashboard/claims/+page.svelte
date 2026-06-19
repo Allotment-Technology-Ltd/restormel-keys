@@ -1,11 +1,14 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
   import ConnectGraphPageSkeleton from "$lib/components/connect/ConnectGraphPageSkeleton.svelte";
+  import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
+  import type { ConnectSpine } from "$lib/connect/connect-spine";
 
   export let data: {
     signedIn: boolean;
+    spine?: Promise<ConnectSpine | null>;
     graph: Promise<{
       store?: "postgres" | "surreal" | "none";
       storeLabel?: string;
@@ -73,6 +76,15 @@
 {#if !data.signedIn}
   <SignInNotice message="Sign in to view your graph." />
 {:else}
+  <!-- Phase 2 spine: Claims is the home of stages ③ Make ready + ④ Review.
+       Streamed, so a slow spine never blocks the explorer. -->
+  {#if data.spine}
+    {#await data.spine then spine}
+      {#if spine}
+        <ConnectSpineLedger {spine} activeStageId="make_ready" />
+      {/if}
+    {/await}
+  {/if}
   {#await data.graph}
     <ConnectGraphPageSkeleton />
   {:then graph}

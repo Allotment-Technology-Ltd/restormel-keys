@@ -4,8 +4,10 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { page } from "$app/stores";
   import ConnectBuilderReturnBar from "$lib/components/connect/ConnectBuilderReturnBar.svelte";
+  import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import { parseReturnTo, withReturnTo } from "$lib/connect/pipeline-config";
+  import type { ConnectSpine } from "$lib/connect/connect-spine";
   import { matchActiveToRecommended, type ActiveModelMatch } from "$lib/connect/stage-active-model";
 
   type StageRow = {
@@ -49,7 +51,7 @@
     apiBase: string;
   };
 
-  export let data: { signedIn: boolean; models: Models | null };
+  export let data: { signedIn: boolean; models: Models | null; spine?: Promise<ConnectSpine | null> };
 
   $: returnContext = parseReturnTo($page.url.searchParams);
   $: builderReturnContext = returnContext;
@@ -268,6 +270,14 @@
 </svelte:head>
 
 <section aria-labelledby="models-heading">
+  <!-- Phase 2 spine: ingest routes is the home of stage ⑤ Go live. Streamed. -->
+  {#if data.spine}
+    {#await data.spine then spine}
+      {#if spine}
+        <ConnectSpineLedger {spine} activeStageId="go_live" />
+      {/if}
+    {/await}
+  {/if}
   {#if builderReturnContext}
     <ConnectBuilderReturnBar context={builderReturnContext} />
   {/if}

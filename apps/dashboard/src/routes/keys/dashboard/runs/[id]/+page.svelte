@@ -2,8 +2,12 @@
   import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import ConnectIngestRunConsole from "$lib/components/connect/pipeline/ConnectIngestRunConsole.svelte";
+  import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
+  import type { ConnectSpine } from "$lib/connect/connect-spine";
+
+  export let data: { spine?: Promise<ConnectSpine | null> } = {};
 
   type GraphRepairTask = "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill";
 
@@ -34,6 +38,15 @@
 </svelte:head>
 
 <section aria-labelledby="job-heading">
+  <!-- Phase 2 spine: the run console is stage ② Ingest. Streamed; never blocks. -->
+  {#if data.spine}
+    {#await data.spine then spine}
+      {#if spine}
+        <ConnectSpineLedger {spine} activeStageId="ingest" />
+      {/if}
+    {/await}
+  {/if}
+
   <p class="back">
     {#if fromGraph}
       <a href={CLAIMS_HREF}>← Claims review</a>

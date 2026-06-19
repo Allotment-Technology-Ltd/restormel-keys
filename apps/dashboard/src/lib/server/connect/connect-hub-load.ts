@@ -23,6 +23,11 @@ import { isCredentialEncryptionConfigured } from "$lib/server/credential-crypto"
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
 import { computeConnectVerifiedReadiness } from "$lib/server/connect/verified-readiness";
 import { readinessStepDetail, type ConnectVerifiedReadiness } from "$lib/connect/verified-readiness";
+import { buildConnectSpine, type ConnectSpine } from "$lib/connect/connect-spine";
+import {
+  graphStatsToSpineSignal,
+  readinessToSpineSignal,
+} from "$lib/connect/connect-spine-adapt";
 import { listStarterCorpusDocuments } from "$lib/server/connect/starter-corpus";
 import { graphStatsToHealthSummary } from "$lib/server/connect/kg-audit-summary";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
@@ -75,6 +80,13 @@ export type ConnectHubPayload = {
    * the compute failed — the panel renders its error state with recovery actions.
    */
   readiness: ConnectVerifiedReadiness | null;
+  /**
+   * Phase 2 spine: the five-stage "where am I / what's next" ledger
+   * (Connect · Ingest · Make ready · Review · Go live). Derived from the same
+   * readiness + graph-stats this payload already holds — no extra queries.
+   * Null only when readiness itself could not be computed.
+   */
+  spine: ConnectSpine | null;
 };
 
 export async function loadConnectHubPage(
@@ -213,6 +225,21 @@ export async function loadConnectHubPage(
     const agentReady = surrealStoreReady && modelsStatus.modelsReady && hasGraph;
     const graphHealth = stats ? graphStatsToHealthSummary(stats) : null;
 
+    // Phase 2 spine: assembled from data already loaded above (readiness ledger,
+    // graph stats, run history, store/docs prereqs) — no additional queries.
+    const spine: ConnectSpine | null = readiness
+      ? buildConnectSpine({
+          readiness: readinessToSpineSignal(readiness),
+          ingest: {
+            jobCount: jobs.length,
+            latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
+            storeReady: Boolean(target && target.status === "ok"),
+            documentsReady: parsedDocs.length > 0,
+          },
+          graph: graphStatsToSpineSignal(stats),
+        })
+      : null;
+
     const payload = {
       phase,
       journey: {
@@ -237,6 +264,7 @@ export async function loadConnectHubPage(
       surrealStoreReady,
       routingProject,
       readiness,
+      spine,
     };
     endHub();
     return payload;
@@ -245,6 +273,61 @@ export async function loadConnectHubPage(
     // (e.g. schema-gate or store error) is never silently misread as "not logged in".
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[connect-hub] loadConnectHubPage failed (rendering signed-out state):", msg.slice(0, 300));
+    return null;
+  }
+}
+
+/**
+ * Phase 2 spine, standalone — for Connect surfaces other than Home (the run
+ * console, claims explorer, ingest routes) so the five-stage "where am I /
+ * what's next" ledger is the SAME object everywhere. Reuses the existing
+ * readiness compute + graph stats + run/store/doc counts; introduces no new
+ * backend. Streamed (returns a promise the caller awaits) so it never blocks
+ * the host surface's primary content. Resolves null when signed out or when the
+ * readiness compute failed — the ledger then renders its quiet fallback.
+ */
+export async function loadConnectSpine(
+  event: Pick<ServerLoadEvent, "locals" | "parent">,
+): Promise<ConnectSpine | null> {
+  if (!event.locals.user || event.locals.user.authType !== "session") {
+    return null;
+  }
+  try {
+    const workspace = await requireConnectWorkspace(
+      event.locals,
+      event.parent as () => Promise<{ connectWorkspace: { id: string; userId: string } | null }>,
+    );
+    const wsId = workspace.id;
+    const userId = event.locals.user.uid;
+    const requestMemo = event.locals.connectStatsRequestMemo as ConnectStatsRequestMemo | undefined;
+
+    const [readiness, stats, target, jobs, documents] = await Promise.all([
+      computeConnectVerifiedReadiness({ workspaceId: wsId, userId, dashboardBase: DASHBOARD_BASE }).catch(
+        () => null,
+      ),
+      resolveConnectGraphStats(wsId, { requestMemo }).catch(() => null),
+      getGraphTargetForUi(wsId).catch(() => null),
+      listConnectIngestJobsForWorkspace({ workspaceId: wsId }).catch(() => []),
+      listSourceDocuments(wsId).catch(() => []),
+    ]);
+    if (!readiness) return null;
+
+    const latestJob = jobs[0] ?? null;
+    const parsedCount = documents.filter((d) => d.status === "parsed").length;
+
+    return buildConnectSpine({
+      readiness: readinessToSpineSignal(readiness),
+      ingest: {
+        jobCount: jobs.length,
+        latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
+        storeReady: Boolean(target && target.status === "ok"),
+        documentsReady: parsedCount > 0,
+      },
+      graph: graphStatsToSpineSignal(stats),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[connect-hub] loadConnectSpine failed:", msg.slice(0, 300));
     return null;
   }
 }

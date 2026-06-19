@@ -1,13 +1,14 @@
 import type { PageServerLoad } from "./$types";
 import { perfSpan } from "$lib/debug/server-perf";
 import { loadConnectGraphView } from "$lib/server/connect/graph-explorer-service";
+import { loadConnectSpine } from "$lib/server/connect/connect-hub-load";
 import { getConnectWorkspaceCached } from "$lib/server/connect/workspace-cache";
 import { sessionUser } from "$lib/server/session-user";
 
 export const load: PageServerLoad = async (event) => {
   const user = sessionUser(event.locals);
   if (!user) {
-    return { signedIn: false, graph: Promise.resolve(null) };
+    return { signedIn: false, graph: Promise.resolve(null), spine: Promise.resolve(null) };
   }
 
   const workspace = await getConnectWorkspaceCached(user.uid);
@@ -27,5 +28,8 @@ export const load: PageServerLoad = async (event) => {
     }
   })();
 
-  return { signedIn: true, graph };
+  // Phase 2 spine — streamed so it never blocks the explorer's primary render.
+  const spine = loadConnectSpine(event);
+
+  return { signedIn: true, graph, spine };
 };
