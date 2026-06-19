@@ -109,6 +109,18 @@ records:
     next-review: 2027-06-16
     retention: P6Y
     path: evidence/incidents/2026-06-16-catalog-503-missing-migration.md
+  - id: REC-INC-003
+    title: Incident — Prod 'Add a graph' returns HTTP 500 (Graph Library schema drift; runtime-only DDL disabled in prod)
+    class: evidence
+    status: closed
+    classification: internal
+    control-tier: 3
+    owner: "@adam"
+    last-reviewed: 2026-06-18
+    review-interval: P12M
+    next-review: 2027-06-18
+    retention: P6Y
+    path: evidence/incidents/2026-06-18-prod-add-graph-500.md
   - id: REC-LEG-001
     title: Terms of Service
     class: legal
