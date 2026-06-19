@@ -18,6 +18,7 @@
   import LivePulse from "$lib/components/dashboard/LivePulse.svelte";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectVerifiedReadiness from "$lib/components/connect/ConnectVerifiedReadiness.svelte";
+  import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
@@ -314,6 +315,10 @@
     {:else}
       {@const journey = hub.journey}
       {@const latestJob = journey.latestJob}
+
+      <!-- Phase 2 spine: the five-stage "where am I / what's next" ledger.
+           The hub is stage ①'s home, so no surface is marked active here. -->
+      <ConnectSpineLedger spine={hub.spine} />
 
       <div class="masthead-grid">
         <!-- READY TO VERIFY — the K4 readiness ledger. The unlit/partially-lit rows
