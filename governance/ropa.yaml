@@ -50,9 +50,11 @@ processing_activities:
     recipients:
       - "Hetzner (Coolify host, Helsinki EU) — self-hosted compute; all data transits/resides here"
       - "Zuplo (US edge) — control-plane API gateway; API request metadata only"
+      - "Migadu (EU mail) — transactional product email (auth verification/reset, access-grant notifications, security alerts); email address + message content only"
     transfers: >
       Core service: no transfer (self-hosted EU, Hetzner Helsinki).
       Zuplo (US): API request metadata; Zuplo DPA + SCCs apply.
+      Transactional email: none — Migadu EU mail servers (REC-PLAN-017).
     retention: >
       Account and workspace data: retained while account is active; deleted
       within 30 days of account closure on request.
@@ -228,42 +230,42 @@ processing_activities:
     privacy_notice_ref: >
       [PLACEHOLDER — none published yet]. A privacy notice MUST be live at allotmentology.tech
       before the form collects data (see risk register RISK-011).
+    product: allotmentology.tech
 
   - id: PROC-009
     purpose: >
-      Marketing-email consent and preference management — recording, on a per-address basis, which
-      categories of marketing email (product updates, newsletter, release notes) a person has
-      consented to, the source and time of that consent, and any withdrawal (unsubscribe). The
-      authoritative consent ledger backing the in-product preference centre and the one-click
-      unsubscribe flow (REC-PLAN-017 Phase 3). NO marketing is sent yet — infrastructure only.
+      Marketing communications (Restormel) — product newsletters, release notes, and product
+      updates to subscribers who have opted in. PLANNED (REC-PLAN-017) — not yet operating;
+      this sets the target. Strictly separate from transactional/auth email (PROC-001).
     lawful_basis: >
-      CONSENT / PECR soft-opt-in (Art 6(1)(a) + PECR reg. 22) — opt-in by default, never opt-out;
-      consent_source records the basis (soft-opt-in / double-opt-in / import). Transactional and
-      security email is out of scope of this activity (it relies on CONTRACT / LI per PROC-001/003).
-    data_subjects: "Subscribers / account holders who receive (or may receive) marketing email"
+      CONSENT — Art 6(1)(a) for net-new newsletter sign-ups (double opt-in);
+      PECR reg. 22(3) "soft opt-in" (relied on as legitimate interests, Art 6(1)(f)) for existing
+      customers / Founders Circle members / prior enquirers receiving updates about the same
+      product, with a clear opt-out in every message. DPIA screening outcome: not high-risk; no
+      full DPIA required (revisit if behavioural profiling/segmentation or third-party list import added).
+    data_subjects: "Subscribers who opted in (customers, Founders Circle members, enquirers, newsletter sign-ups)"
     data_categories:
-      - "Email address (identifier)"
-      - "Linked account id (when known)"
-      - "Per-category marketing opt-in flags"
-      - "Consent source + timestamp; unsubscribe timestamp"
-      - "Opaque unsubscribe token (capability secret)"
+      - "Email address and display name"
+      - "Marketing list membership + per-category opt-in flags (product_updates, newsletter, release_notes)"
+      - "Consent records: source (soft-opt-in | double-opt-in | import), consent timestamp, unsubscribe timestamp"
+      - "Email engagement events (opens/clicks) via the ESP"
     recipients:
-      - "Self-hosted Postgres on AST-003 (EU) — email_preferences (DAT-013)"
-      - "Brevo (EU) — PLANNED Phase 4 downstream send list, synced FROM this ledger (not yet wired)"
-    transfers: >
-      Storage: none (self-hosted EU). When the Phase 4 send path lands, the send list is synced to
-      Brevo (EU); add Brevo to suppliers.yaml + the privacy notice before any marketing is sent.
+      - "Self-hosted Postgres on AST-003 (email_preferences — authoritative consent/preference ledger, EU)"
+      - "Brevo (Sendinblue SAS, France/EU) — operational marketing send list + delivery; EU residency"
+    transfers: "None — consent ledger self-hosted EU; sending via Brevo EU (EU residency). Brevo DPA to be accepted at engagement."
     retention: >
-      Consent and withdrawal records kept for the life of the marketing relationship plus an
-      evidentiary tail to demonstrate consent/withdrawal; suppression rows retained so an
-      unsubscribed address is not re-mailed.
+      Subscriber + consent records: kept while subscribed; on unsubscribe, retain a minimal
+      suppression record (email hash + unsubscribe timestamp) to honour the opt-out, and remove
+      from active list. Consent audit trail retained per accountability needs.
     security_measures: >
-      EU-only storage; TLS; parameterised queries; consent recorded as the system of record (not
-      delegated to the ESP). Unsubscribe is public but token-gated by a signed (HMAC), constant-time
-      verified, opaque capability token; the endpoint is rate-limited, idempotent, never reveals
-      whether an address exists, and never logs the token or address. Preference centre is
-      session-authenticated and scoped to the signed-in user. See security-baseline.md.
+      Double opt-in for net-new; soft opt-in (documented lawful basis) for existing; RFC 8058
+      one-click List-Unsubscribe header + visible footer link on EVERY marketing email; no-login
+      unsubscribe page writing our DB first then syncing suppression to Brevo; in-product
+      preference centre; transactional/security email never gated by marketing preferences;
+      separate sending subdomain (news.restormel.dev) with its own SPF/DKIM/DMARC.
     privacy_notice_ref: >
-      https://restormel.dev/keys/privacy — update at the next version bump to describe the consent
-      ledger, the preference centre, and (when wired) Brevo as a marketing sub-processor.
-    product: allotmentology.tech
+      [PLACEHOLDER — gated to Phase 2 launch (REC-PLAN-017 §8, publish-when-live)]. The public
+      privacy notice (https://restormel.dev/keys/privacy) MUST carry a marketing-communications
+      section (lawful basis, categories, retention, right to object/withdraw) BEFORE the first
+      marketing send.
+    product: restormel

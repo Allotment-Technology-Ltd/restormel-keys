@@ -121,21 +121,43 @@ suppliers:
     notes: "Founder evaluating alternative email provider (see Migadu). Until migrated, DPA acceptance is required for UK GDPR Art 28 compliance."
 
   - name: Migadu
-    provides: "Transactional / company email (auth magic-links + notifications for the allotmentology.tech app)"
+    provides: "Transactional / company email — Restormel product transactional mail (auth verification/reset, access-grant notifications, security alerts) + allotmentology.tech app auth magic-links/notifications"
     role: sub-processor
     location: "Swiss company; EU mail servers"
-    data_processed: "Email addresses + message content for authentication and notification emails (founder / internal addresses at this stage)"
+    data_processed: "Email addresses + message content for authentication, access-grant and notification emails (registered users + founder/internal addresses)"
     dpa: "[PLACEHOLDER — founder: confirm terms/DPA + residency at prod cutover]"
     sovereignty: "flagged — pending confirmation"
-    products: [allotmentology.tech]
+    products: [restormel, allotmentology.tech]
     notes: >
       Added 2026-06-17. The candidate email provider anticipated in RISK-003 to reduce
       Google Workspace dependency. Validated on staging during the auth migration
-      (Neon Auth → Better Auth); production cutover is gated. Currently serves the
-      allotmentology.tech app (recorded here as a supporting email supplier; the app
-      itself enters ISMS scope when the company portal ships). If/when it carries
-      customer email, revisit data-inventory + ROPA and fire the sub-processor
-      change-notification hook.
+      (Neon Auth → Better Auth); production cutover is gated.
+      Scope expanded 2026-06-18 (REC-PLAN-017): Migadu is the TRANSACTIONAL stream for the
+      Restormel product (restormel.dev mailboxes admin@/notify@/contact@, moving to a
+      dedicated send.restormel.dev sending subdomain). Transactional ONLY — marketing/bulk
+      email goes via Brevo (separate entry, separate subdomain) so the two reputations stay
+      isolated. allotmentology.tech app enters ISMS scope when the company portal ships.
+      Revisit data-inventory + ROPA and fire the sub-processor change-notification hook on
+      any further scope change.
+
+  - name: Brevo
+    provides: "Marketing email (newsletters, release notes, product updates) — bulk/broadcast sending + subscriber list management"
+    role: sub-processor
+    location: "EU (Sendinblue SAS, France; EU data residency)"
+    data_processed: "Subscriber email address + display name, marketing list membership, per-category opt-in state, email engagement events (opens/clicks). NO product/keys data."
+    dpa: "[PLACEHOLDER — founder: create EU account, accept Brevo DPA, confirm EU residency at engagement]"
+    sovereignty: "ok (EU) — pending DPA confirmation"
+    products: [restormel]
+    notes: >
+      SELECTED 2026-06-18 (REC-PLAN-017) — PLANNED / NOT YET ENGAGED: no data processed until
+      Phase 2. Brevo is the MARKETING stream, kept strictly separate from the transactional
+      stream (Migadu) and sent from a dedicated news.restormel.dev subdomain so a marketing
+      complaint/blocklist cannot harm auth-email deliverability. The AUTHORITATIVE consent +
+      preference ledger stays in our own Postgres (email_preferences on AST-003, DAT-013);
+      Brevo holds only the operational send list (sovereignty: re-platformable without losing
+      consent history). Every marketing message carries RFC-8058 one-click unsubscribe.
+      ACTION at engagement: accept DPA, confirm EU residency, fire the Art-28 sub-processor
+      change-notification hook, add to legal/sub-processors.md + the public privacy notice.
 
   - name: Notion
     provides: "Docs / workspace (internal tooling)"
