@@ -22,6 +22,15 @@ pass (2026-06-19) against verified live infra; **read-only — no infra/config c
 founder's locked decisions (HA across the 3 boxes; Hetzner Object Storage for CNPG; UseSophia full
 migration; cost-constrained Forgejo/CI placement).
 
+> **Founder decisions (2026-06-19)** — refining §3.3/§3.4/§4.4 and resolving the first four §10 questions:
+> **(1) Migration = Path A** — build the cluster on the **€20 one-off temp dedicated server**, migrate
+> state onto it, fold the 3 boxes in, then retire the temp node (de-risks converting the live prod box).
+> **(2) DNS = consolidate onto Hetzner DNS** (free) → cert-manager **DNS-01** (wildcards); **deSEC** is the
+> fallback; **avoid Cloudflare**. Zones are currently spread across registrars + Vercel, so DNS migration
+> is an explicit task of this work. **(3) DB cutover = short pg_dump maintenance window** (pre-launch, low
+> traffic; logical replication deferred until live with real users). **(4) Public entry = single-node
+> ingress, no LB.**
+
 ---
 
 ## 1. Executive summary
