@@ -2,7 +2,7 @@
   import { tick } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { buildRouteFlowSegments, type RouteFlowSegment } from "$lib/route-flow-segments";
-  import { invalidateAll } from "$app/navigation";
+  import { invalidate } from "$app/navigation";
 
   /** Marketing / embedded preview — hides toolbar and add controls; cards are non-interactive. */
   export let preview = false;
@@ -45,6 +45,15 @@
   export let onToolbarBusyChange: ((busy: boolean) => void) | undefined = undefined;
   /** After a successful **Apply to server** (steps PATCH and/or graph PUT). */
   export let onFlowAppliedToServer: (() => void) | undefined = undefined;
+  /**
+   * Scoped refresh after a successful graph PUT — the parent's `refreshRouteDetail()`
+   * (`invalidate('app:route-detail:<id>')`). Supplied so Apply does NOT call
+   * `invalidateAll()`: that re-runs every load on the page including the dashboard
+   * layout load, whose `throw redirect(...)` branches can bounce the operator out of
+   * the route (to /projects or /login) on a transient backend blip mid-apply. Falls
+   * back to the route-detail key when the parent omits it.
+   */
+  export let onScopedRefresh: (() => void | Promise<void>) | undefined = undefined;
   /** Selection highlight for step cards (matches parent inspector step; parent blocks updates until save/discard). */
   export let selectedInspectorStepId: string | null = null;
   /** Add a parallel branch: for a linear step, starts a parallel group + second branch; for grouped steps, adds another member. */
@@ -259,7 +268,13 @@
           saveError = (body as { error?: string }).error ?? `Apply failed (${res.status})`;
           return false;
         }
-        await invalidateAll();
+        // Scoped refresh only — never invalidateAll() (re-runs the layout load,
+        // whose redirect branches can eject the operator from the route mid-apply).
+        if (onScopedRefresh) {
+          await onScopedRefresh();
+        } else {
+          await invalidate(`app:route-detail:${routeId}`);
+        }
         /** Let parent props (edges, flowLayout) flush before syncing draft edges from server. */
         await tick();
         await tick();

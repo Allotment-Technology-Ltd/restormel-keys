@@ -219,6 +219,12 @@
     }
   }
   let routeSaving = false;
+  /** True while the unified "Save changes" action bar flushes every pending draft in one click. */
+  let unifiedSaving = false;
+  /** True while the unified "Publish" action promotes the working version to live. */
+  let publishBusy = false;
+  let publishError = "";
+  let publishSuccess = "";
   /** Step the user asked to open while the current model still has unsaved edits (resolved in-panel, not via silent discard). */
   let pendingInspectorStep: (typeof data.steps)[number] | null = null;
 
@@ -1102,6 +1108,123 @@
     }
   }
 
+  /**
+   * Any unsaved work on this route — route metadata OR an open inspector edit OR
+   * a committed-but-not-PATCHed step OR a map/edge draft OR a queued guard-rail op.
+   * One flag so a single action bar can speak for the whole surface.
+   */
+  $: anyUnsavedWork =
+    routeDirty || stepDirty || flowDraftPendingServer;
+
+  /**
+   * Unified save: flush EVERY pending draft on the route in one click, regardless
+   * of which tab the operator is on, so "save my edit" is one action — not three
+   * scattered buttons across Configuration / Flow map / Versions.
+   *
+   * Order matters: merge any in-progress inspector edit into the local map first,
+   * then persist route metadata, then the step/graph/guard-rail apply pipeline
+   * (which refreshes through the scoped `app:route-detail` key — no invalidateAll,
+   * so the operator is never bounced out of the route). Returns true only when
+   * everything that was dirty is now on the server.
+   */
+  async function saveAllPending(): Promise<boolean> {
+    if (unifiedSaving) return false;
+    if (!anyUnsavedWork) return true;
+    unifiedSaving = true;
+    saveError = "";
+    publishError = "";
+    publishSuccess = "";
+    try {
+      // 1) Fold an in-progress inspector edit (Call settings / Advanced) into the
+      //    local map overlay so it is included in the step apply below.
+      if (stepDirty) {
+        const mergedOk = await commitAllEditingToLocalRouteMap();
+        if (!mergedOk) return false;
+      }
+      // 2) Route metadata (name/status/billing/workload/stage/description).
+      if (routeDirty) {
+        const okRoute = await persistRoute();
+        if (!okRoute) return false;
+      }
+      // 3) Steps + edges/layout + queued guard rails (scoped refresh, stays in route).
+      if (flowDraftPendingServer) {
+        const okFlow = await persistFlowDraftsToServer();
+        if (!okFlow) return false;
+      }
+      lastClientFlowApplyAtMs = Date.now();
+      return true;
+    } finally {
+      unifiedSaving = false;
+    }
+  }
+
+  /**
+   * The working configuration on the server differs from the published (live)
+   * version — i.e. there is a saved draft waiting to go live. The draft↔live
+   * split is real (publish promotes `version` → `publishedVersion`), so publish
+   * stays ONE deliberate action — but surfaced on the always-visible action bar,
+   * not stranded in the Versions tab.
+   */
+  $: hasUnpublishedDraft =
+    data.route?.version != null &&
+    data.route?.publishedVersion != null &&
+    data.route.version !== data.route.publishedVersion;
+  $: neverPublished = data.route != null && data.route.publishedVersion == null;
+
+  /**
+   * Unified publish: save any pending edits first (so what you publish is what
+   * you see), then promote the working version to live via the SAME publish
+   * endpoint the Versions panel uses. Stays on the route — no navigation.
+   */
+  async function publishRoute() {
+    if (!data.project || !data.route || publishBusy || unifiedSaving) return;
+    publishError = "";
+    publishSuccess = "";
+    // Flush drafts first so the live version reflects the operator's current work.
+    if (anyUnsavedWork) {
+      const saved = await saveAllPending();
+      if (!saved) {
+        publishError = saveError || "Could not save your changes before publishing.";
+        return;
+      }
+    }
+    if (
+      !confirm(
+        "Publish this route? This makes the current configuration the live version — it begins receiving traffic immediately."
+      )
+    ) {
+      return;
+    }
+    publishBusy = true;
+    try {
+      const res = await fetch(
+        `${DASHBOARD_BASE}/api/projects/${data.project.id}/routes/${data.route.id}/publish`,
+        { method: "POST", headers: { "Content-Type": "application/json" } }
+      );
+      const body = (await res.json().catch(() => ({}))) as {
+        data?: { publishedVersion?: number };
+        error?: string;
+        message?: string;
+        errors?: { message: string }[];
+      };
+      if (!res.ok) {
+        publishError =
+          body.errors?.map((e) => e.message).join("; ") ??
+          body.message ??
+          body.error ??
+          `Publish failed (${res.status})`;
+        return;
+      }
+      const v = body.data?.publishedVersion;
+      publishSuccess = v != null ? `Version ${v} is now live.` : "Route is now live.";
+      await refreshRouteDetail();
+    } catch (e) {
+      publishError = e instanceof Error ? e.message : "Publish failed";
+    } finally {
+      publishBusy = false;
+    }
+  }
+
   function openAddStepDialog(anchorId: string | null) {
     addStepAnchorId = anchorId;
     addStepDialogEl?.showModal();
@@ -1710,16 +1833,65 @@
         </div>
       </div>
 
-  {#if data.route.version != null && data.route.publishedVersion != null && data.route.version !== data.route.publishedVersion}
-    <div class="publish-draft-banner" role="status">
-      <span><strong>Draft route:</strong> working version {data.route.version} differs from published version {data.route.publishedVersion}.
-      Publish to send this route live.</span>
+  <!--
+    Unified route action bar — ONE place to save and ONE place to publish, visible
+    from every tab. Save changes flushes every pending draft (route config + flow
+    map + steps + guard rails) in one click; Publish promotes the saved working
+    version to live. Both stay on the route (scoped refresh, no navigation).
+  -->
+  <div class="route-action-bar" role="region" aria-label="Save and publish this route">
+    <div class="route-action-status" role="status" aria-live="polite">
+      {#if unifiedSaving}
+        <span class="route-status-pill route-status-pill--busy">Saving…</span>
+      {:else if anyUnsavedWork}
+        <span class="route-status-pill route-status-pill--dirty">Unsaved changes</span>
+      {:else if neverPublished}
+        <span class="route-status-pill route-status-pill--draft">Saved · not live yet</span>
+      {:else if hasUnpublishedDraft}
+        <span class="route-status-pill route-status-pill--draft"
+          >Saved · v{data.route.version} not yet live (live: v{data.route.publishedVersion})</span
+        >
+      {:else}
+        <span class="route-status-pill route-status-pill--live"
+          >Live · v{data.route.publishedVersion}{#if flowLastSavedLabel}<span class="route-status-time"> · saved {flowLastSavedLabel}</span>{/if}</span
+        >
+      {/if}
+    </div>
+    <div class="route-action-buttons">
       <button
         type="button"
-        class="btn btn-primary publish-draft-banner-btn"
-        onclick={() => (workspaceTab = "versions")}
-      >Publish draft</button>
+        class="btn btn-secondary"
+        disabled={!anyUnsavedWork || unifiedSaving || publishBusy}
+        onclick={() => void saveAllPending()}
+      >
+        {unifiedSaving ? "Saving…" : "Save changes"}
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={publishBusy || unifiedSaving || (!anyUnsavedWork && !hasUnpublishedDraft && !neverPublished)}
+        onclick={() => void publishRoute()}
+        title={anyUnsavedWork ? "Saves your changes, then makes the route live" : "Make this route live"}
+      >
+        {#if publishBusy}
+          Publishing…
+        {:else if neverPublished}
+          Save &amp; publish
+        {:else if anyUnsavedWork}
+          Save &amp; publish
+        {:else}
+          Publish v{data.route.version}
+        {/if}
+      </button>
     </div>
+  </div>
+  {#if publishError}
+    <p class="error-msg route-action-msg" role="alert">{publishError}</p>
+  {/if}
+  {#if publishSuccess}
+    <p class="route-action-success route-action-msg" role="status">{publishSuccess}
+      <button type="button" class="route-action-link" onclick={() => (workspaceTab = "versions")}>View version history</button>
+    </p>
   {/if}
 
   {#if data.modelLifecycleWarnings?.length > 0}
@@ -1852,6 +2024,7 @@
                 onMapDraftDirty={(d) => {
                   mapDraftDirty = d;
                 }}
+                onScopedRefresh={() => refreshRouteDetail()}
                 onFlowAppliedToServer={() => {
                   lastClientFlowApplyAtMs = Date.now();
                 }}
@@ -3212,23 +3385,85 @@
     color: var(--rm-text);
     margin: 0 0 var(--space-2);
   }
-  .publish-draft-banner {
+  /* Unified route action bar — neo-brutalist: hard border, zero radius, mono status. */
+  .route-action-bar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-3);
     flex-wrap: wrap;
     margin: 0 0 var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--rm-radius);
-    border: 1px solid color-mix(in oklab, var(--coral-alert) 40%, var(--rm-border));
-    background: color-mix(in oklab, var(--coral-alert) 8%, var(--rm-surface));
-    font-size: var(--text-sm);
+    padding: var(--space-3);
+    border: var(--border, 2px solid var(--rm-text));
+    border-radius: 0;
+    background: var(--rm-surface, #fff);
+    box-shadow: var(--shadow-md, 4px 4px 0 var(--rm-text));
+  }
+  .route-action-status {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .route-status-pill {
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    padding: 4px var(--space-3);
+    border: 1px solid var(--rm-text);
+    border-radius: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .route-status-pill--dirty {
+    background: var(--brut-neon, #d6ff3f);
     color: var(--rm-text);
   }
-  .publish-draft-banner-btn {
+  .route-status-pill--busy {
+    background: var(--rm-surface-raised, #eee);
+    color: var(--rm-muted);
+  }
+  .route-status-pill--draft {
+    background: color-mix(in oklab, var(--brut-neon, #d6ff3f) 30%, var(--rm-surface, #fff));
+    color: var(--rm-text);
+  }
+  .route-status-pill--live {
+    background: var(--rm-text, #0c0c0c);
+    color: var(--brut-white, #fff);
+  }
+  .route-status-time {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .route-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     flex-shrink: 0;
-    font-size: var(--text-xs);
-    padding: var(--space-1) var(--space-3);
+  }
+  .route-action-msg {
+    margin: 0 0 var(--space-3);
+  }
+  .route-action-success {
+    font-size: var(--text-sm);
+    color: var(--rm-sage, #4a7c59);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+  .route-action-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--rm-sage, #4a7c59);
+    text-decoration: underline;
+    cursor: pointer;
   }
   .section {
     margin-bottom: var(--space-6);
