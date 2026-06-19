@@ -47,6 +47,7 @@
 
   {#each sections as s}
     <h2
+      class="rm-h2"
       style="margin:0 0 6px 0;font-family:{t.font
         .display};font-size:19px;line-height:1.2;font-weight:700;color:{t.color
         .ink};-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
@@ -73,7 +74,7 @@
             class="rm-cta-link"
             style="display:inline-block;padding:15px 28px;font-family:{t.font
               .mono};font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:{t
-              .color.ink};text-decoration:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
+              .color.ink};text-decoration:none;white-space:nowrap;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
           >
             {ctaLabel} →
           </a>

@@ -45,7 +45,7 @@
             class="rm-cta-link"
             style="display:inline-block;padding:14px 28px;font-family:{t.font
               .mono};font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:{t
-              .color.ink};text-decoration:none;min-height:44px;line-height:1.2;"
+              .color.ink};text-decoration:none;white-space:nowrap;min-height:44px;line-height:1.2;"
           >
             Reset password →
           </a>
@@ -67,11 +67,13 @@
     cellpadding="0"
     cellspacing="0"
     border="0"
+    class="rm-notice"
     style="margin:0 0 20px 0;width:100%;"
   >
     <tbody>
       <tr>
         <td
+          class="rm-notice"
           style="background:{t.color.canvasDeep};border:{t.border};padding:12px 16px;font-family:{t
             .font.body};font-size:14px;line-height:1.5;color:{t.color.inkMuted};"
         >

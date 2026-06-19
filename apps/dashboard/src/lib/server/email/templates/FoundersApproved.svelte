@@ -65,7 +65,7 @@
             class="rm-cta-link"
             style="display:inline-block;padding:15px 28px;font-family:{t.font
               .mono};font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:{t
-              .color.ink};text-decoration:none;"
+              .color.ink};text-decoration:none;white-space:nowrap;"
           >
             Open your dashboard →
           </a>

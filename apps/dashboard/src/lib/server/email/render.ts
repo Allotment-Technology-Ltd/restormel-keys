@@ -39,13 +39,15 @@ export function renderEmailDocument<P extends Record<string, unknown>>(
   img { border:0; line-height:100%; outline:none; text-decoration:none; }
   @media only screen and (max-width:620px) {
     .rm-fluid { width:100% !important; max-width:100% !important; }
+    /* Mobile CTA: prevent label wrapping on narrow viewports */
+    .rm-cta a, a.rm-cta-link { white-space:nowrap !important; font-size:11px !important; padding:12px 18px !important; letter-spacing:0.04em !important; }
   }
   /* ── Intentional dark-mode variant ── */
   @media (prefers-color-scheme: dark) {
     body, .rm-canvas { background:${d.canvas} !important; }
     .rm-card { background:${d.card} !important; border-color:${d.border} !important; }
     .rm-header { border-bottom-color:${d.border} !important; }
-    .rm-wordmark, .rm-h1, .rm-body, .rm-body p { color:${d.text} !important; }
+    .rm-wordmark, .rm-h1, .rm-h2, .rm-body, .rm-body p { color:${d.text} !important; }
     .rm-accent { color:${d.accent} !important; }
     .rm-muted { color:${d.muted} !important; }
     .rm-link { color:${d.link} !important; }
@@ -54,14 +56,26 @@ export function renderEmailDocument<P extends Record<string, unknown>>(
     .rm-chip-warn { background:${d.chipWarnBg} !important; color:${d.chipWarnFg} !important; border-color:${d.border} !important; }
     .rm-cta { background:${t.color.yellow} !important; border-color:${t.color.ink} !important; box-shadow:3px 3px 0 ${d.border} !important; }
     .rm-cta a, a.rm-cta-link { color:${t.color.ink} !important; }
+    /* Notice block (e.g. password-reset reassurance box) */
+    .rm-notice { background:${d.card} !important; border-color:${d.border} !important; color:${d.muted} !important; }
+    .rm-notice td { color:${d.muted} !important; }
   }
   /* ── Outlook.com dark mode (ignores the media query) ── */
   [data-ogsb] body, [data-ogsb] .rm-canvas { background:${d.canvas} !important; }
   [data-ogsb] .rm-card { background:${d.card} !important; }
   [data-ogsc] .rm-card { border-color:${d.border} !important; }
-  [data-ogsc] .rm-wordmark, [data-ogsc] .rm-h1, [data-ogsc] .rm-body, [data-ogsc] .rm-body p { color:${d.text} !important; }
+  [data-ogsc] .rm-wordmark, [data-ogsc] .rm-h1, [data-ogsc] .rm-h2, [data-ogsc] .rm-body, [data-ogsc] .rm-body p { color:${d.text} !important; }
   [data-ogsc] .rm-accent { color:${d.accent} !important; }
+  [data-ogsc] .rm-muted { color:${d.muted} !important; }
+  [data-ogsc] .rm-link { color:${d.link} !important; }
   [data-ogsc] .rm-footer { color:${d.footer} !important; }
+  [data-ogsb] .rm-chip { background:${d.chipBg} !important; }
+  [data-ogsc] .rm-chip { color:${d.chipFg} !important; border-color:${d.border} !important; }
+  [data-ogsb] .rm-chip-warn { background:${d.chipWarnBg} !important; }
+  [data-ogsc] .rm-chip-warn { color:${d.chipWarnFg} !important; border-color:${d.border} !important; }
+  [data-ogsb] .rm-notice { background:${d.card} !important; }
+  [data-ogsc] .rm-notice { border-color:${d.border} !important; color:${d.muted} !important; }
+  [data-ogsc] .rm-notice td { color:${d.muted} !important; }
   [data-ogsb] .rm-cta { background:${t.color.yellow} !important; }
   [data-ogsc] a.rm-cta-link { color:${t.color.ink} !important; }
 </style>
