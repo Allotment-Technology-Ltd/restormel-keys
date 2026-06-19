@@ -186,3 +186,34 @@ headroom.
 Confirm **G1–G6**; create the **private network**; run **Phase 0** (resolve `.167` access, measure Surreal,
 full backups to BX11). Fastest parallel unblock for the live wss bug: one-click Coolify UI deploy of the
 dashboard from latest `main`.
+
+---
+
+## Execution log
+
+### 2026-06-19
+
+**(a) Build server `restormel-build-c-166` registered as Coolify build server.**
+A dedicated cx43 (16 GB, `204.168.216.166` / `172.16.0.4`) was provisioned and registered in
+Coolify as a **build server**, offloading image builds off the 8 GB app-runtime (`.167`) and the
+8 GB build/ops box (`.150`). Both `.150` and `.167` performed `docker login` to the Forgejo
+container registry (`git.allotmentology.tech`) so they can push (build server) and pull (prod
+runtime) images. This realises the CI-capacity escape hatch documented in the "CI capacity"
+section above without touching the CX43 upgrade path for `.150` itself.
+
+**(b) Prod transactional email cutover to `send.restormel.dev`.**
+Outbound transactional email (auth codes, notifications) was cut over to the dedicated sending
+subdomain `send.restormel.dev`, sending address `notify@send.restormel.dev`. Isolates transactional
+reputation from human-mail on the root domain and from any future marketing stream — aligns with
+Decision D2 recorded in `planning/email-system-plan.md`.
+
+**(c) Migration 072 (`knowledge_readiness_runs`) deployed to prod.**
+Migration `072_knowledge_readiness_runs.sql` (idempotently creates `knowledge_readiness_runs` +
+`knowledge_readiness_run_units`) applied automatically on deploy to Box A `.167`. Image built on
+`restormel-build-c-166`, pushed to the Forgejo registry, pulled on `.167`. App confirmed
+`running:healthy`; readiness-check 500 (REC-INC-005) resolved. Landed via PR #150 (merged to `main`).
+
+**(d) `.167` root SSH key recorded in Infisical.**
+The root SSH private key for Box A (`.167`) was stored in Infisical (self-hosted,
+`secrets.restormel.dev`, project `restormel-ops`, env `prod`) as secret `SSH_KEY_PROD_167`.
+Completes the secret-manager consolidation started 2026-06-17 (Finalisation-2 above).
