@@ -69,11 +69,30 @@ The estate has **no time-series metrics backend and no log store**. The approved
   (catalog)] [down] 503" Telegram alert fired on 2026-06-16).
 - **Loki** appears only as a **Phase-2 candidate** ("a small self-hosted Loki *or* PostHog Logs").
 
-**Consequence:** this Operations Centre is **not an increment on the documented plan — it is a pivot** from
-"Beszel + Uptime-Kuma + PostHog" to a full Grafana/Prometheus/Loki stack. Running both in parallel wastes
-RAM on already-tight boxes. §G asks the founder to choose: **supersede** the Beszel design with Grafana,
-or keep Beszel for hosts and use Grafana only for logs+errors. This plan assumes **supersede** (Grafana
-stack becomes the single observability surface) unless the founder decides otherwise.
+**Consequence — and this is additive, not a rip-out.** Mapping the brief against what we have/plan, only
+**one** capability overlaps, and it is not yet built:
+
+| Capability | Today / planned | Grafana stack | Verdict |
+|---|---|---|---|
+| **Logs** | *nothing* | Loki + Alloy | **Pure gain** — no overlap |
+| **Metrics backend** | *nothing* | Prometheus | **Pure gain** (Forgejo/Traefik/Postgres/app) |
+| **Uptime** | Uptime-Kuma (planned) | — | **Keep Kuma** — its built-in `/metrics` *feeds* Prometheus → Grafana |
+| **App errors + analytics** | PostHog (live) | — | **Keep PostHog** — forward events to Loki for unified alerting |
+| **Alert channel** | Telegram (live) | — | **Keep Telegram** — added as a Grafana contact point |
+| **Host metrics** | **Beszel** (planned, *not built*) | Alloy unix-exporter → Prometheus | **Only overlap** |
+
+The single overlap is **host metrics (Beszel vs Prometheus+node)**. Because Beszel **isn't deployed yet**
+(so not building it ≠ removing it) and we are **adding Alloy anyway for logs** (one Alloy agent does host
+metrics *and* log shipping for free), the clean move is: **don't build the now-redundant Beszel — let Alloy
+feed host metrics into Prometheus.** Beszel also keeps metrics in its own SQLite/PocketBase store with no
+Prometheus scrape, so it never integrated cleanly with Grafana anyway.
+
+**Therefore this plan adopts an ADDITIVE / LAYERED design (not a pivot):** keep PostHog + Uptime-Kuma +
+Telegram (+ fail2ban/Traefik); **add** Loki + Prometheus + Grafana + Alloy as the aggregation + alerting
+pane; Uptime-Kuma's `/metrics` and (optionally) PostHog webhooks flow into it; **GlitchTip stays optional**
+(PostHog already captures errors — add it only for dedicated Sentry-SDK engineering triage). Same result —
+single Grafana pane + unified Telegram alerting, fully EU-sovereign — with no planned/live work discarded.
+Only Beszel is "not built," and it was never built.
 
 ### Finding 3 — **The build box is the only server with real headroom. That decides hosting and avoids a 4th server.**
 
@@ -184,6 +203,11 @@ These are fallbacks, not the recommendation.
 4. **Dashboards + alerting — Grafana (on `.166`).** Single pane over Prometheus + Loki. Grafana unified
    alerting evaluates rules across **metrics (Prometheus)** and **logs (Loki/LogQL)** and routes to a
    **contact point** — reuse the existing **Telegram** channel (already live) so we don't fragment alerting.
+   **Kept sources feed in additively:** **Uptime-Kuma** keeps doing endpoint probes and exposes its built-in
+   **`/metrics`**, which Prometheus scrapes → uptime is visible and alertable in Grafana (no second uptime
+   system needed); **PostHog** stays the analytics + app-error system and can **webhook selected events into
+   Loki** for unified alerting (analytics itself stays in the PostHog UI). **Beszel is not built** — Alloy's
+   unix exporter (step 1) provides host metrics to Prometheus, so there is no host-metrics duplication.
 5. **GlitchTip → Loki pipeline (the brief's unified-alerting requirement).** GlitchTip supports outbound
    webhooks on new issues/alerts. Configure a GlitchTip webhook → **Alloy `loki.source.api`** HTTP receiver
    on `.166` → `loki.write` → Loki with labels `{source="glitchtip", env="prod", level="error"}`. Grafana
@@ -322,7 +346,7 @@ for anything**. Each stage is sized to ≈ one Claude Code session. Dependencies
 | **4 — GlitchTip deploy** | GlitchTip (web+worker+beat+PG+Redis) on `.166`; Traefik route; DSN → Infisical; governance records (asset/supplier/ropa/privacy) | Stage 1 (independent of 2–3) | **Only after §G flag F-3 decision.** Can run parallel to 2–3. |
 | **5 — GlitchTip → Loki webhook** | GlitchTip webhook → Alloy `loki.source.api` → Loki `{source=glitchtip}`; verify unified view in Grafana | Stage 4 + Stage 1 | The brief's unified-alerting requirement. |
 | **6 — Alerting + backup extension** | Grafana unified alert rules (5xx spike, disk, RAM, error spike, target-down) → Telegram; **`restic-ops` repo + cron on `.166`**; restore-drill the new repo; external dead-man's-switch | Stages 2–5 | Fold the brief's "Stage 5 alerting" + "Stage 6 backup" together — they're small and related. |
-| **7 — Supersede / cleanup** | Per §G F-4: retire or scope-down Beszel/Uptime-Kuma if Grafana supersedes them; reconcile PostHog vs GlitchTip error ownership; update `security-monitoring-roadmap.md` + SoA to reflect reality | Stage 6 | Replaces the brief's "Sentry decommission" (which is a no-op). |
+| **7 — Reconcile + document** | Per §G F-4 (additive): keep Uptime-Kuma (feeding Grafana) + PostHog; reconcile PostHog vs GlitchTip error ownership (if GlitchTip adopted); amend `security-monitoring-roadmap.md` ("host metrics via Alloy→Prometheus, not Beszel") + SoA to reflect reality | Stage 6 | Replaces the brief's "Sentry decommission" (a no-op). No tool is retired. |
 
 App instrumentation with the GlitchTip SDK (the `@sentry/sveltekit` wiring) is a **separate follow-on task**
 gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded into a stage here.
@@ -357,11 +381,14 @@ gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded 
   > greenfield reality + box headroom being the constraint, **Bugsink is a legitimate lean alternative worth a
   > closer look.** This is close enough to warrant an explicit founder call.
 
-- **F-4 — Supersede Beszel/Uptime-Kuma, or run alongside?** The approved monitoring roadmap chose the
-  *lighter* Beszel+Kuma stack for 8 GB boxes. A Grafana/Prometheus/Loki stack **does the same jobs and more**,
-  but heavier. Running both wastes RAM. **Recommend: Grafana stack supersedes Beszel (host metrics) and
-  Uptime-Kuma (use Grafana/Prometheus blackbox-exporter for uptime), keep Telegram + the external
-  dead-man's-switch.** Confirm this pivot, since it changes the approved roadmap.
+- **F-4 — Additive/layered (recommended) vs replace.** The Ops Centre layers **on top of** the approved
+  monitoring roadmap rather than replacing it. **Keep PostHog (analytics + errors), Uptime-Kuma (probes,
+  surfaced in Grafana via its `/metrics`), Telegram (alert channel), fail2ban/Traefik (host defence), and
+  the external dead-man's-switch.** The *only* thing not built is **Beszel** — and only because Alloy
+  (added for logs) supplies host metrics to Prometheus for free, making a separate Beszel agent redundant.
+  Beszel was never deployed, so this discards no live work. **Recommend: confirm the additive design** (this
+  is a small amendment to the roadmap — "host metrics via Alloy→Prometheus instead of Beszel" — not a
+  rewrite). The earlier "supersede" framing is withdrawn.
 
 - **F-5 — Sovereignty footnote.** Two SaaS dependencies touch telemetry today and sit slightly outside the
   "fully self-hosted EU" ethos: **PostHog EU Cloud** (analytics+errors) and **Neon** (prod DB, AWS eu-west-2).
