@@ -9,7 +9,7 @@ This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` Sve
 
 **Start here:** [Positioning](docs/product/positioning.md) · [STATUS](STATUS.md) · [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [docs index](docs/README.md)
 
-**Phase:** 01 (implementation). **Stack:** UK/EU self-host on Coolify · Forgejo-native CI · Neon Postgres + BYO SurrealDB · PostHog EU · Zuplo gateway · Paddle billing.
+**Phase:** 01 (implementation). **Stack:** UK/EU self-host on Coolify · Forgejo-native CI · self-hosted Postgres + BYO SurrealDB · PostHog EU · Zuplo gateway · Paddle billing.
 
 **Contributing:** [CONTRIBUTING](CONTRIBUTING.md) · **License:** MIT — [LICENSE](LICENSE)
 

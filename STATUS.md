@@ -31,7 +31,7 @@ GitHub Actions + Vercel). Deploy from the single `apps/dashboard` SvelteKit app.
 [docs/infra/coolify-cutover-runbook.md](docs/infra/coolify-cutover-runbook.md),
 [docs/infra/coolify-env-inventory.md](docs/infra/coolify-env-inventory.md),
 [docs/infra/suite-server-sizing.md](docs/infra/suite-server-sizing.md),
-[docs/infra/off-github-runbook.md](docs/infra/off-github-runbook.md). Data: **Neon Postgres**
+[docs/infra/off-github-runbook.md](docs/infra/off-github-runbook.md). Data: **self-hosted Postgres**
 (spine) + **BYO SurrealDB** (graph). Analytics: **PostHog EU**. Cloud API gateway: **Zuplo**.
 Billing: **Paddle**.
 
@@ -56,7 +56,7 @@ public-pages revamp programme.
 - **Single app:** all surfaces in `apps/dashboard` (SvelteKit 2 + Svelte 5) — `/keys` landing,
   `/keys/pricing`, suite docs at `/docs` + product docs at `/keys/docs`, dashboard at
   `/keys/dashboard`. `apps/site` is archived.
-- **Auth (v1):** Gateway Key (`rk_…`) for programmatic access; Neon Auth (GitHub sign-in)
+- **Auth (v1):** Gateway Key (`rk_…`) for programmatic access; Better Auth (self-hosted)
   session for dashboard admin/config.
 - **npm surface:** Keys REST + `@restormel/keys-elements` (Web Components) recommended;
   `@restormel/keys`, `-svelte`, `-react` deprecated (maintenance until 2026-12-01).

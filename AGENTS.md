@@ -37,7 +37,7 @@ Coding agents and humans: this is the **Restormel** monorepo — **Keys** (BYOK,
 ## Keys + Restormel Testing
 
 - End-to-end onboarding (Connections, encrypted provider keys, Testing hub, CLI env): [docs/guides/keys-testing-onboarding.md](docs/guides/keys-testing-onboarding.md); in-product [/keys/docs/guides/keys-testing-onboarding](https://restormel.dev/keys/docs/guides/keys-testing-onboarding).
-- Self-host **Postgres / Neon** (default recommendation, Neon Auth, CI previews, ingestion/graph context): [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md); in-product [/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
+- Self-host **Postgres** (Restormel prod = self-hosted Postgres + Better Auth; Neon is one managed option for *external* self-hosters, not our prod): [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md); in-product [/keys/docs/guides/database-neon-for-self-hosters](https://restormel.dev/keys/docs/guides/database-neon-for-self-hosters).
 - GA OSS quickstart, config schema policy, composite Action semver tags: [docs/archive/testing/testing/quickstart-ga.md](docs/archive/testing/testing/quickstart-ga.md), [docs/archive/testing/testing/schema-stability-policy.md](docs/archive/testing/testing/schema-stability-policy.md), [docs/archive/testing/testing/github-action-semver.md](docs/archive/testing/testing/github-action-semver.md).
 
 ## Inventory
@@ -56,9 +56,9 @@ This Cloud Agent workspace also includes the sibling repo **`/agent/repos/sophia
 ### restormel-keys (this repo)
 
 - **Install:** `pnpm install` from repo root (pnpm 9).
-- **Dashboard dev server:** `pnpm --filter dashboard dev --host 0.0.0.0 --port 5173` → http://localhost:5173/keys (marketing/docs work without env; authenticated routes need Neon).
+- **Dashboard dev server:** `pnpm --filter dashboard dev --host 0.0.0.0 --port 5173` → http://localhost:5173/keys (marketing/docs work without env; authenticated routes need a local DB + auth — use `pnpm dev:local` for Docker Postgres + Better Auth).
 - **First dev boot gotcha:** `pnpm --filter dashboard run check` (or `build`) prebuilds workspace packages (`@restormel/graph-core`, `@restormel/ui-graph-svelte`, platform packages, etc.). If `vite dev` errors on unresolved `@restormel/graph-*` imports, run `pnpm --filter dashboard run check` once, then restart dev.
-- **Env (optional for marketing/docs):** copy `apps/dashboard/.env.example` → `apps/dashboard/.env.local`; set `DATABASE_URL` + `NEON_AUTH_BASE_URL` from the **same** Neon branch for login/dashboard CRUD. See [apps/dashboard/README.md](apps/dashboard/README.md).
+- **Env (optional for marketing/docs):** copy `apps/dashboard/.env.example` → `apps/dashboard/.env.local`; set `DATABASE_URL` (local Docker Postgres via `pnpm dev:local`, or any Postgres) for login/dashboard CRUD. Auth is self-hosted Better Auth (`AUTH_PROVIDER=self`). See [apps/dashboard/README.md](apps/dashboard/README.md).
 - **Quality gate (local):** `pnpm run quality` (dashboard check/build/test + docs/secrets/hygiene). Testing-only slice: `pnpm run check:testing` (152 tests; Playwright browser tests need Chromium — run once: `cd packages/testing-browser-playwright && pnpm exec playwright install chromium`).
 - **Node:** dashboard `engines` pin **20.x**; Node 22 usually works but may warn.
 
