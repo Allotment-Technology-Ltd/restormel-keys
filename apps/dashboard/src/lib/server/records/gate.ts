@@ -21,8 +21,27 @@ import { execFileSync } from "node:child_process";
 // escapes the SvelteKit app root and vite build/Rollup cannot bundle it. Keep in sync.
 import { parseFrontMatter } from "./frontmatter";
 
-/** Repo root, resolved from this module's location (robust under prerender — not cwd). */
-export const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
+/**
+ * Repo root. The module-relative path is correct under SvelteKit prerender (build
+ * time), but in the bundled adapter-node RUNTIME the gate is bundled at a shallower
+ * depth, so that fixed relative path overshoots (e.g. to "/") and finds no records.
+ * Resolve robustly: prefer the module-relative path when it actually contains the
+ * workspace marker (preserves prior prerender behaviour exactly); otherwise walk up
+ * from cwd (the container WORKDIR is the repo root) to find `pnpm-workspace.yaml`.
+ */
+function resolveRepoRoot(): string {
+  const rel = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
+  if (existsSync(join(rel, "pnpm-workspace.yaml"))) return rel;
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return rel;
+}
+export const REPO_ROOT = resolveRepoRoot();
 
 /**
  * Roots that may hold a publishable record. `evidence/` is deliberately excluded
