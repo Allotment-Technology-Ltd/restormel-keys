@@ -107,6 +107,10 @@ a.brut-link-accent,
   border-radius: 0;
   border: 2px solid var(--code-bg);
   box-shadow: 3px 3px 0 var(--color-yellow);
+  /* Scroll long lines; prevent page-wide horizontal overflow on mobile. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
 /* ── Dashboard main ── */
