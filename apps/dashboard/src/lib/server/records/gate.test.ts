@@ -2,12 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   loadAllRecords,
   loadPublicRecords,
+  loadInternalRecords,
   isPublic,
   isPublishable,
+  isInternalReadable,
   versionsFor,
   PUBLIC,
   APPROVED,
   NON_PUBLIC,
+  INTERNAL_READABLE,
   type RecordDoc,
 } from "./gate";
 
@@ -70,6 +73,69 @@ describe("publish classification gate (Phase 5 — REC-PLAN-005)", () => {
   it("a missing classification field is treated as non-public (fail-closed)", () => {
     const noClass: RecordDoc = mkRecord({ id: "REC-X", classification: "" });
     expect(isPublic(noClass)).toBe(false);
+  });
+});
+
+describe("internal records gate (Step 5 — AUTHED internal records feed)", () => {
+  const all = loadAllRecords();
+  const internal = loadInternalRecords();
+
+  // ── predicate-level acceptance ───────────────────────────────────────
+  it("PASS: internal + approved and public + approved", () => {
+    expect(isInternalReadable({ classification: "internal", status: "approved" })).toBe(true);
+    expect(isInternalReadable({ classification: "public", status: "approved" })).toBe(true);
+  });
+
+  it("PASS-NOT: confidential/restricted even when approved", () => {
+    expect(isInternalReadable({ classification: "confidential", status: "approved" })).toBe(false);
+    expect(isInternalReadable({ classification: "restricted", status: "approved" })).toBe(false);
+  });
+
+  it("PASS-NOT: any non-approved status drops (draft/deprecated/superseded/empty)", () => {
+    for (const status of ["draft", "deprecated", "superseded", "review", ""]) {
+      expect(isInternalReadable({ classification: "internal", status })).toBe(false);
+      expect(isInternalReadable({ classification: "public", status })).toBe(false);
+    }
+  });
+
+  it("PASS-NOT: a missing/unknown classification is fail-closed", () => {
+    expect(isInternalReadable({ classification: "", status: "approved" })).toBe(false);
+    expect(isInternalReadable({ classification: "secret", status: "approved" })).toBe(false);
+  });
+
+  it("INTERNAL_READABLE is exactly {public, internal} — not widened", () => {
+    expect([...INTERNAL_READABLE].sort()).toEqual(["internal", "public"]);
+  });
+
+  // ── loader-level acceptance ──────────────────────────────────────────
+  it("every internal-readable record is approved AND public|internal — no exceptions", () => {
+    for (const r of internal) {
+      expect(r.status).toBe(APPROVED);
+      expect((INTERNAL_READABLE as readonly string[]).includes(r.classification)).toBe(true);
+    }
+  });
+
+  it("NEVER includes a confidential/restricted record, even if approved", () => {
+    const leaked = internal.filter((r) => ["confidential", "restricted"].includes(r.classification));
+    expect(leaked.map((r) => `${r.path} [${r.classification}]`)).toEqual([]);
+  });
+
+  it("NEVER includes a non-approved record", () => {
+    const notApproved = all.filter(
+      (r) => (INTERNAL_READABLE as readonly string[]).includes(r.classification) && r.status !== APPROVED,
+    );
+    const includedPaths = new Set(internal.map((r) => r.path));
+    for (const r of notApproved) expect(includedPaths.has(r.path)).toBe(false);
+  });
+
+  it("`evidence/` is never scanned (append-only proof, never served)", () => {
+    expect(internal.some((r) => r.path.startsWith("evidence/"))).toBe(false);
+  });
+
+  it("is a superset of the public publishable set (public+approved all present)", () => {
+    const publishable = loadPublicRecords();
+    const internalPaths = new Set(internal.map((r) => r.path));
+    for (const r of publishable) expect(internalPaths.has(r.path)).toBe(true);
   });
 });
 
