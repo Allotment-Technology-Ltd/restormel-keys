@@ -1,5 +1,5 @@
 ---
-id: REC-INC-002
+id: REC-INC-003
 title: "Incident — Prod 'Add a graph' returns HTTP 500 (Graph Library schema drift; runtime-only DDL disabled in prod)"
 class: evidence
 owner: "@adam"
