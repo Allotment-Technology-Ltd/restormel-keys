@@ -7,6 +7,7 @@
 #   status: approved
 #   approved-by: founder
 #   approved-on: 2026-06-17
+#   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -32,6 +33,12 @@
 #   AST-017 (allotmentology.tech company portal); product: tags on every asset. The
 #   spec's "Hetzner Storage Box (STORAGE_BOX_ID)" is the EXISTING AST-012 (BX11) — mapped,
 #   NOT duplicated (the company-portal/infra-split PRs already added it).
+# 2026-06-19 (chore/asset-inventory-topology-2026-06): reconcile AST-003/009/010/011/018
+#   to verified topology (Hetzner API + Coolify API, 2026-06-19); correct box roles, IPs,
+#   Coolify server registration names, and workload placement; note legacy/misleading Hetzner
+#   server names; update AST-011 to include Box C private IP; align AST-018 spec to cx43
+#   confirmed; add surreal-stack exited flag to AST-014 for founder verification.
+#   last-reviewed updated to 2026-06-19 (founder re-approval of reconciled facts requested).
 
 assets:
   - id: AST-001
@@ -54,53 +61,68 @@ assets:
     notes: "Operator cockpit; cowork-relay, playbooks, cowork-outbox"
 
   - id: AST-003
-    asset: "Coolify compute — Hetzner (Helsinki, two-server cluster)"
+    asset: "Coolify compute — Hetzner (Helsinki, three-server cluster)"
     type: infrastructure
     owner: founder
     product: shared
     location: "Hetzner Cloud, Helsinki, FI (EU)"
     notes: >
-      Two Hetzner Cloud servers in Helsinki, managed together as a single Coolify cluster,
-      form the primary compute plane — Box A (.167, AST-009) for the live product and Box B
-      (.150, AST-010) for build/ops, over a private network (AST-011). Self-hosts Forgejo
+      Three Hetzner Cloud servers in Helsinki (hel1-dc2), managed together, form the primary
+      compute plane: Box 1 (.150 / AST-010) is the Coolify control plane + Traefik, Forgejo,
+      and shared services; Box 2 (.167 / AST-009) is the live production runtime
+      (restormel-dashboard-prod, restormel-worker-prod); Box 3 (.166 / AST-018) is the
+      dedicated CI build runner (not a Coolify server). Boxes 1 and 2 are connected over
+      private network AST-011; Box 3 shares the same private network. Self-hosts Forgejo
       (git.allotmentology.tech), the Restormel app, the allotmentology.tech Next.js company
       portal (AST-017), self-hosted Postgres, BetterAuth, Infisical (AST-013), and SurrealDB
       (AST-014). Backups target the encrypted Hetzner Storage Box in Falkenstein (AST-012).
       Firewall: inbound 22/80/443 only; Coolify :8000 not internet-exposed. Single compute
-      region/cluster — see RISK-001 (treated via the split + backups). See AST-009/010/011
+      region/cluster — see RISK-001 (treated via the split + backups). See AST-009/010/011/018
       for per-box detail.
+      NOTE: the Hetzner server NAMES are legacy and misleading — "allotmentology-pilot" is
+      Box 1 (.150, Coolify/buildops), "surreal-forgejo" is Box 2 (.167, prod runtime), and
+      "restormel-build" is Box 3 (.166, CI runner). Names reflect initial provisioning, not
+      current roles.
       REGION RECONCILED (2026-06-17, founder): compute is Helsinki, FI; the earlier
       "Nuremberg/Falkenstein DE" flag referred to the Falkenstein storage box (AST-012),
       not the compute. The AST-009/010/011 "Helsinki FI" region is confirmed correct.
 
   - id: AST-009
-    asset: "Box A — prod runtime (77.42.124.167)"
+    asset: "Box 2 — live production runtime (77.42.124.167)"
     type: infrastructure
     owner: founder
     product: shared
-    location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.124.167, private 172.16.0.3"
+    location: "Hetzner CX33 (4 vCPU / 8 GB / 80 GB), Helsinki FI (EU) hel1-dc2 — public IP 77.42.124.167, private 172.16.0.3 — ~€8.49/mo"
     notes: >
-      Post-split prod runtime box (REC-PLAN-012). Runs: Restormel dashboard
-      (Coolify app UUID mxq1lnsehg7sdfzn0a8tnkxo), worker (UUID ppvmqm1hbnu09kjgttdl5og4),
-      self-hosted app Postgres, Ory Hydra + its DB. Connected to Box B over
-      private network AST-011. Coolify-managed from Box B. Backup: restic
-      cron 03:00 daily → BX11 repo restic-surreal (AST-012). SurrealDB was
-      temporarily hosted here during migration transition but has now moved to Box B (.150)
-      in Phase 2 (see AST-010, AST-014). <!-- VERIFY post-Phase-2: confirm whether
-      Beszel hub, Uptime-Kuma, and the second Coolify server remain on .167 or moved to .150. -->
+      VERIFIED 2026-06-19 (Hetzner API + Coolify API). Live production runtime box
+      (REC-PLAN-012). Hetzner server name: "surreal-forgejo" — LEGACY/MISLEADING;
+      this box is NOT the primary Surreal or Forgejo host; it runs production Restormel.
+      Coolify server registration: "restormel-prod-a-167". Managed by the Coolify control
+      plane on Box 1 (.150) over private network AST-011. Runs: restormel-dashboard-prod
+      (restormel.dev) and restormel-worker-prod. Backup: restic cron 03:00 daily → BX11
+      repo restic-surreal (AST-012).
 
   - id: AST-010
-    asset: "Box B — build/ops (77.42.125.150)"
+    asset: "Box 1 — Coolify control plane + shared services (77.42.125.150)"
     type: infrastructure
     owner: founder
     product: shared
-    location: "Hetzner CX33, Helsinki FI (EU) — public IP 77.42.125.150, private 172.16.0.2"
+    location: "Hetzner CX33 (4 vCPU / 8 GB / 80 GB), Helsinki FI (EU) hel1-dc2 — public IP 77.42.125.150, private 172.16.0.2 — ~€8.49/mo"
     notes: >
-      Build/ops box (REC-PLAN-012). Runs: Forgejo (canonical repo), Forgejo
-      CI runner, Coolify (manages Box A over private net), self-hosted monitoring,
-      the Infisical secret manager (AST-013, secrets.restormel.dev), and SurrealDB
-      (AST-014; migrated from .167 in Phase 2). Backup: restic cron 02:00
-      daily → BX11 repo restic-buildops (AST-012). deploy@ is the SSH user.
+      VERIFIED 2026-06-19 (Hetzner API + Coolify API). Coolify control plane + Traefik
+      proxy box (REC-PLAN-012). Hetzner server name: "allotmentology-pilot" —
+      LEGACY/MISLEADING; this is not the pilot app's dedicated host but the shared
+      control-plane and services box. Coolify server registration: "restormel-buildops-b-150".
+      Runs: Coolify control plane + Traefik proxy; Forgejo (git.allotmentology.tech) + its
+      Postgres; restormel-postgres (self-hosted app Postgres); allotmentology-postgres;
+      allotmentology-pilot app; staging and preview dashboard apps; monitoring (uptime-kuma,
+      beszel); Infisical secret manager (AST-013, secrets.restormel.dev); SurrealDB
+      (AST-014, surreal.restormel.dev — migrated here from Box 2 in Phase 2). NOTE: retired
+      prod standbys (restormel-dashboard-prod-OLD150-standby,
+      restormel-worker-prod-OLD150-standby) are present but in exited state. The Forgejo
+      Actions CI runner previously ran on this box but has moved to Box 3 (AST-018); the
+      runner on this box is stopped. Backup: restic cron 02:00 daily → BX11 repo
+      restic-buildops (AST-012). deploy@ is the SSH user.
 
   - id: AST-011
     asset: "Private network — restormel-internal"
@@ -109,10 +131,12 @@ assets:
     product: shared
     location: "Hetzner eu-central (Helsinki), CIDR 172.16.0.0/16, subnet 172.16.0.0/24"
     notes: >
-      Hetzner private network connecting Box A (172.16.0.3) and Box B (172.16.0.2).
-      Used for: Coolify (.150) deploying to .167; dashboard (.167) → SurrealDB (.150);
-      SSH/management private-only once public SSH is hardened. No egress cost
-      intra-zone. Created as part of REC-PLAN-012 Phase 1.
+      Hetzner private network connecting all three Helsinki boxes: Box 1 / .150 (172.16.0.2),
+      Box 2 / .167 (172.16.0.3), Box 3 / .166 (172.16.0.4). Used for: Coolify (.150)
+      deploying to .167; dashboard (.167) → SurrealDB (.150); CI runner (.166) pulling from
+      Forgejo (.150); SSH/management private-only once public SSH is hardened. No egress cost
+      intra-zone. Created as part of REC-PLAN-012 Phase 1; Box 3 joined on provisioning
+      (AST-018, 2026-06-19).
 
   - id: AST-004
     asset: "Neon Postgres (legacy — decommissioning)"
@@ -245,7 +269,7 @@ assets:
     type: data-store
     owner: founder
     product: restormel
-    location: "Self-hosted, surreal.restormel.dev (EU); host Box B (.150, AST-010) — migrated from Box A (.167) in Phase 2 per RISK-009 / REC-PLAN-012"
+    location: "Self-hosted, surreal.restormel.dev (EU); host Box 1 (.150, AST-010) — migrated from Box 2 (.167) in Phase 2 per RISK-009 / REC-PLAN-012"
     notes: >
       Restormel verification / knowledge-graph store (buildWorkspaceGraphStore /
       surreal-graph-store.ts). Confirmed IN ISMS scope (founder, 2026-06-17) — it was
@@ -260,8 +284,11 @@ assets:
       database layer, so it cannot join a BetterAuth single sign-on directly; if a web
       admin UI is exposed at surreal.restormel.dev it can sit behind the shared Traefik
       forward-auth gate (company portal plan) — same login to reach it, DB credential
-      still separate. Backed up via restic-buildops → BX11 (AST-012) — SurrealDB data is on Box B
+      still separate. Backed up via restic-buildops → BX11 (AST-012) — SurrealDB data is on Box 1
       (.150) post-Phase-2; the restic-buildops repo covers it (not restic-surreal).
+      FLAG (2026-06-19, verified topology): Coolify service "surreal-stack" currently shows
+      status `exited` — SurrealDB placement/availability needs founder verification before
+      treating this asset as operationally confirmed.
 
   - id: AST-015
     asset: "allotmentology-tech repo"
@@ -297,16 +324,18 @@ assets:
       Infisical — residual location under RISK-002. Auth email via Migadu (prod cutover gated).
 
   - id: AST-018
-    asset: "Box C — dedicated CI build runner (204.168.216.166)"
+    asset: "Box 3 — dedicated CI build runner (204.168.216.166)"
     type: infrastructure
     owner: founder
     product: shared
-    location: "Hetzner cx43 (8 vCPU shared / 16 GB / 160 GB), Helsinki FI (EU) — public IP 204.168.216.166, private 172.16.0.4 (restormel-internal)"
+    location: "Hetzner CX43 (8 vCPU / 16 GB / 160 GB), Helsinki FI (EU) hel1-dc2 — public IP 204.168.216.166, private 172.16.0.4 (restormel-internal) — ~€15.99/mo"
     notes: >
-      Dedicated Forgejo CI build runner ('hetzner-build'), provisioned 2026-06-19 to move build
-      execution OFF AST-010 (.150) so CI builds no longer contend with SurrealDB (AST-014) — the
-      durable fix for the REC-INC-002 SurrealDB-504 / RISK-001 noisy-neighbour root cause. Docker +
-      fail2ban; runner capacity 2; x86 (matches prod arch). AST-010's CI runner is stopped
-      (restart=no, retained for rollback). Coolify image-build relocation is a follow-up. Stateless
-      runner (re-registerable) — not in restic scope. Right-sized from an initial ccx23 to cx43
-      (shared vCPU adequate for bursty builds; ~€16/mo).
+      VERIFIED 2026-06-19 (Hetzner API). Hetzner server name: "restormel-build". NOT a Coolify
+      server — CI-only; standalone. Dedicated Forgejo Actions CI runner ('hetzner-build', root,
+      /opt/forgejo-runner), provisioned 2026-06-19 to move build execution OFF AST-010 (.150) so
+      CI builds no longer contend with SurrealDB (AST-014) — the durable fix for the REC-INC-002
+      SurrealDB-504 / RISK-001 noisy-neighbour root cause. Docker + fail2ban; runner capacity 2;
+      x86 (matches prod arch). AST-010's CI runner is stopped (restart=no, retained for rollback).
+      Coolify image-build relocation is a follow-up. Stateless runner (re-registerable) — not in
+      restic scope. Right-sized from an initial ccx23 to cx43 (shared vCPU adequate for bursty
+      builds; ~€15.99/mo). Connected to private network AST-011 (172.16.0.4).

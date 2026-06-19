@@ -7,6 +7,7 @@
 #   status: approved
 #   approved-by: Adam Boon
 #   approved-on: 2026-06-15
+#   last-reviewed: 2026-06-19
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -22,10 +23,18 @@ suppliers:
   # --- INFRASTRUCTURE ---
 
   - name: Hetzner (Coolify host)
-    provides: "Self-hosted compute — Forgejo, Restormel app, Postgres, BetterAuth"
+    provides: >
+      Self-hosted compute — three Helsinki hel1-dc2 servers: Box 1 / .150 (CX33,
+      "allotmentology-pilot" — LEGACY NAME; actual role: Coolify control plane + Traefik +
+      Forgejo + shared services; Coolify reg: restormel-buildops-b-150); Box 2 / .167 (CX33,
+      "surreal-forgejo" — LEGACY NAME; actual role: live prod runtime restormel-dashboard-prod +
+      restormel-worker-prod; Coolify reg: restormel-prod-a-167); Box 3 / .166 (CX43,
+      "restormel-build"; role: dedicated Forgejo CI build runner, NOT a Coolify server).
+      Plus BX11 Falkenstein storage box (u613941.your-storagebox.de) for restic backups.
+      See AST-009/010/018/012.
     role: sub-processor
-    location: "Helsinki, Finland (EU)"
-    data_processed: "All in-scope Restormel data (transits / resides on this host)"
+    location: "Helsinki, Finland (EU) — compute; Falkenstein, Germany (EU) — storage"
+    data_processed: "All in-scope Restormel data (transits / resides on these hosts)"
     dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
     sovereignty: ok
 
