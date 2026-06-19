@@ -15,9 +15,10 @@ Full runbook with detailed steps: [docs/runbooks/infra-alert-response.md](../../
 
 Infrastructure overview:
 - **Prod box** `77.42.125.150`: Coolify, Traefik, dashboard/worker/site containers. 7.6 GB RAM + 4 GB swap. Disk-guard cron backstops at 80%.
-- **surreal-box** `77.42.124.167`: SurrealDB, Beszel hub, Uptime-Kuma, second Coolify server. 8 GB + 2 GB swap.
-- **Monitoring control plane** on `surreal-box` watches the prod box; all alerts route to Telegram.
-- **External dead-man's-switch** (healthchecks.io / UptimeRobot): fires if `surreal-box` itself goes silent.
+- **Build/ops box (`.150`)** also hosts SurrealDB, Forgejo, Infisical (AST-010 / AST-014 — SurrealDB migrated from `.167` in Phase 2 per asset-inventory.yaml).
+- **Prod-runtime box** `77.42.124.167`: prod app, Postgres, Ory Hydra. 8 GB + 2 GB swap. <!-- VERIFY post-Phase-2: confirm whether Beszel hub, Uptime-Kuma, and the second Coolify server remain on .167 after SurrealDB moved to .150, or have also moved. The label "surreal-box" no longer describes this box accurately now that SurrealDB is on .150. -->
+- **Monitoring control plane** location post-Phase-2 unconfirmed — see VERIFY note above; all alerts route to Telegram.
+- **External dead-man's-switch** (healthchecks.io / UptimeRobot): fires if the monitoring host itself goes silent. <!-- VERIFY post-Phase-2: confirm which box (`.150` or `.167`) hosts the dead-man's-switch heartbeat sender. -->
 
 ---
 
@@ -29,13 +30,13 @@ Use this to identify the alert class and pick the first action. Then read the de
 |-------|------------------|--------------|
 | Host RAM critical | Concurrent Coolify builds, container memory leak | Open Beszel → identify top consumer → pause any in-progress build in Coolify |
 | Host swap high | RAM budget exceeded, pages into swap | Pre-cursor to RAM critical — treat same as above, act before OOM |
-| Host disk critical | Coolify image/build cache accumulation (most common), restic backup growth on surreal-box | `docker builder prune -f` on the affected box, check disk-guard log |
+| Host disk critical | Coolify image/build cache accumulation (most common), restic backup growth on build/ops box (.150) | `docker builder prune -f` on the affected box, check disk-guard log |
 | 5xx spike | Unhandled exception in SvelteKit route, bad deploy, DB connection failure | PostHog Error Tracking → identify error class → check Coolify deploy log |
 | Auth-failure spike | Credential stuffing / brute-force, broken OAuth callback | PostHog events → check IP distribution → confirm fail2ban is active |
 | DB-compute/egress runaway | Full-table scan, background job loop, analytics query on prod | SSH → `psql` → `pg_stat_activity` → kill runaway query → trace source in PostHog |
 | Ingest error rate | Schema change without consumer update, malformed payload, downstream quota | PostHog Error Tracking → check recent `audit_events` → inspect payload shape |
 | Endpoint down | Container crashed, Traefik misroute, box down, Forgejo Postgres crash | Coolify → check app status → `docker ps` on box → `df -h` (disk full is common) |
-| External dead-man's-switch | `surreal-box` is down or offline | Hetzner Cloud console → check surreal-box status → reset if needed |
+| External dead-man's-switch | Monitoring host is down or offline | Hetzner Cloud console → check monitoring host status → reset if needed <!-- VERIFY post-Phase-2: confirm monitoring host box (.150 or .167) --> |
 | SSH ban spike | Automated brute-force scan, password-auth misconfigured | `fail2ban-client status sshd` → check `/var/log/auth.log` → verify `PasswordAuthentication no` |
 
 ---
@@ -50,7 +51,7 @@ The prod box (7.6 GB + 4 GB swap) can be pushed into swap by a concurrent Coolif
 1. If a Coolify build is running: pause or cancel it in Coolify → Deployments.
 2. If a container is leaking: Coolify → Applications → restart the container.
 3. If swap is also exhausted (`free -h` shows swap ≈ 0): SSH to the box, check `dmesg | grep -i oom` and `journalctl -u docker` for OOM kills.
-4. If SurrealDB is the cause on `surreal-box`: check whether a large HNSW index rebuild is running; pause Sophia if applicable.
+4. If SurrealDB is the cause (SurrealDB runs on `.150`, the build/ops box, post-Phase-2): check whether a large HNSW index rebuild is running; pause Sophia if applicable.
 5. Escalate to owner if: box is unresponsive, SSH fails, or the OOM repeats after container restart.
 
 ---
@@ -64,7 +65,7 @@ The prod box (7.6 GB + 4 GB swap) can be pushed into swap by a concurrent Coolif
 2. `docker builder prune -f` — frees build cache immediately without touching running containers.
 3. `docker image prune -af --filter until=24h` — removes images not used in the last 24 h.
 4. Check `/var/log/disk-guard.log` — if the cron ran, note what it freed.
-5. On `surreal-box`: check `/var/backups/surreal/` for restic archive growth; prune old snapshots if needed.
+5. On `.150` (build/ops box): check restic archive growth; prune old snapshots if needed. SurrealDB data is on `.150` post-Phase-2. <!-- VERIFY post-Phase-2: confirm current path for SurrealDB backup archives on .150 (was /var/backups/surreal/ on .167 pre-migration). -->
 6. Escalate to owner if disk is ≥ 95% and Docker prune has not freed enough.
 
 After recovery: confirm the disk-guard cron is running (`systemctl status cron`, `cat /etc/cron.d/disk-guard`) and verify Coolify's docker-cleanup is set to hourly at ~65% threshold (Coolify UI → server settings).
@@ -117,10 +118,11 @@ After recovery: confirm the disk-guard cron is running (`systemctl status cron`,
 
 ## External dead-man's-switch
 
-This fires when `surreal-box` (the monitoring host) has stopped sending its heartbeat. Both boxes may be down.
+This fires when the monitoring host has stopped sending its heartbeat. Both boxes may be down.
+<!-- VERIFY post-Phase-2: confirm which box hosts the dead-man's-switch heartbeat sender (Uptime-Kuma / healthchecks.io). Pre-Phase-2 this was .167; post-SurrealDB move to .150 the monitoring host location is unconfirmed. Update the steps below once confirmed. -->
 
 **Steps:**
-1. Hetzner Cloud console → `surreal-box` (`77.42.124.167`) → power status.
+1. Hetzner Cloud console → check the monitoring host power status. <!-- VERIFY: was `77.42.124.167` pre-Phase-2; confirm current host. -->
 2. If down: Power → Reset via Hetzner console.
 3. If prod box is also unreachable: check it in Hetzner console in the same session.
 4. After recovery: `df -h` and `docker ps` on both boxes before bringing services up.
@@ -132,7 +134,7 @@ This fires when `surreal-box` (the monitoring host) has stopped sending its hear
 When creating or editing an alert in Beszel, PostHog, or Uptime-Kuma, verify the alert body includes:
 
 - [ ] The metric value that triggered (not just "alert fired")
-- [ ] Which box (`prod 77.42.125.150` or `surreal-box 77.42.124.167`)
+- [ ] Which box (`build/ops .150 77.42.125.150` or `prod-runtime .167 77.42.124.167`) <!-- VERIFY post-Phase-2: update label for .167 once monitoring host confirmed -->
 - [ ] Top 3 processes or top error class (auto-captured where supported)
 - [ ] Single concrete first action
 - [ ] Link to `docs/runbooks/infra-alert-response.md#<section>`
