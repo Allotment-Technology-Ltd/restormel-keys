@@ -84,8 +84,10 @@ assets:
       (Coolify app UUID mxq1lnsehg7sdfzn0a8tnkxo), worker (UUID ppvmqm1hbnu09kjgttdl5og4),
       self-hosted app Postgres, Ory Hydra + its DB. Connected to Box B over
       private network AST-011. Coolify-managed from Box B. Backup: restic
-      cron 03:00 daily → BX11 repo restic-surreal (AST-012). During migration
-      transition: also temporarily hosts SurrealDB until Phase 2 complete.
+      cron 03:00 daily → BX11 repo restic-surreal (AST-012). SurrealDB was
+      temporarily hosted here during migration transition but has now moved to Box B (.150)
+      in Phase 2 (see AST-010, AST-014). <!-- VERIFY post-Phase-2: confirm whether
+      Beszel hub, Uptime-Kuma, and the second Coolify server remain on .167 or moved to .150. -->
 
   - id: AST-010
     asset: "Box B — build/ops (77.42.125.150)"
@@ -184,10 +186,15 @@ assets:
       Hetzner BX11 (1 TB) used as the offsite backup target for all Restormel
       infrastructure. Accessed via SFTP/restic from Box A and Box B.
       Two restic repos:
-        - restic-surreal: Box A SurrealDB data → BX11:/restic-surreal (cron 03:00 UTC,
-          Box A 77.42.124.167). Covers SurrealDB data directory.
+        - restic-surreal: Box A prod-runtime data → BX11:/restic-surreal (cron 03:00 UTC,
+          Box A 77.42.124.167). Covers prod-runtime services on .167.
+          NOTE (2026-06-18): SurrealDB migrated to Box B (.150) in Phase 2 (AST-010/AST-014).
+          restic-surreal no longer covers SurrealDB data. <!-- VERIFY post-Phase-2: confirm
+          what .167 services are currently in scope for this backup job (Postgres, Hydra, etc.)
+          and update this entry accordingly. -->
         - restic-buildops: Box B build/ops data → BX11:/restic-buildops (cron 02:00 UTC,
-          Box B 77.42.125.150). Covers Forgejo, Coolify config, Box B Postgres.
+          Box B 77.42.125.150). Covers Forgejo, Coolify config, Box B Postgres, and SurrealDB
+          (post-Phase-2 migration from .167 per AST-010/AST-014).
       Both repos: retention keep-daily 7 / keep-weekly 4 / keep-monthly 6.
       Repos are restic-encrypted (passphrase in secrets estate / AST-007).
       EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control
@@ -238,7 +245,7 @@ assets:
     type: data-store
     owner: founder
     product: restormel
-    location: "Self-hosted, surreal.restormel.dev (EU); host [PLACEHOLDER — founder: confirm — currently mid-migration Box A (.167, AST-009) → Box B (.150, AST-010) per RISK-009 / REC-PLAN-012]"
+    location: "Self-hosted, surreal.restormel.dev (EU); host Box B (.150, AST-010) — migrated from Box A (.167) in Phase 2 per RISK-009 / REC-PLAN-012"
     notes: >
       Restormel verification / knowledge-graph store (buildWorkspaceGraphStore /
       surreal-graph-store.ts). Confirmed IN ISMS scope (founder, 2026-06-17) — it was
@@ -253,7 +260,8 @@ assets:
       database layer, so it cannot join a BetterAuth single sign-on directly; if a web
       admin UI is exposed at surreal.restormel.dev it can sit behind the shared Traefik
       forward-auth gate (company portal plan) — same login to reach it, DB credential
-      still separate. Backed up via restic-surreal → BX11 (AST-012).
+      still separate. Backed up via restic-buildops → BX11 (AST-012) — SurrealDB data is on Box B
+      (.150) post-Phase-2; the restic-buildops repo covers it (not restic-surreal).
 
   - id: AST-015
     asset: "allotmentology-tech repo"
