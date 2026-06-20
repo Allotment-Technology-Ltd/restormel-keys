@@ -14,8 +14,8 @@
 
 ## Path-A bootstrap (the one-paragraph version)
 
-The cluster is **first stood up on a TEMPORARY Hetzner CLOUD node** (≈ **CCX23**,
-x86, 4 vCPU / 16 GB) funded by the **€20 "Hetzner Cloud Community" credit
+The cluster is **first stood up on a TEMPORARY Hetzner CLOUD node** (≈ **CX43**,
+x86 shared-vCPU, 8 vCPU / 16 GB, €15.99/mo) funded by the **€20 "Hetzner Cloud Community" credit
 (redeem before 31 Aug 2026)** — a Hetzner **Cloud** server, **not** a
 Robot/dedicated box (€20 won't cover one, and `hetzner-k3s` provisions Cloud
 only). State is migrated onto the cluster, then the **three existing boxes
@@ -43,7 +43,7 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
    existing private network name in `cluster/cluster_config.yaml`. Export
    `HCLOUD_TOKEN` from the secret store (never write it to disk).
 2. **Create the cluster** — `hetzner-k3s create --config cluster/cluster_config.yaml`
-   (provisions the **temp CCX23 bootstrap node** only).
+   (provisions the **temp CX43 bootstrap node** only).
 3. **Hetzner CCM + CSI** — install the cloud-controller-manager + CSI driver
    (needs the hcloud token; delivered in-cluster by ESO once it's up, or via a
    one-shot operator Secret to bootstrap).
@@ -60,7 +60,7 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
    CNPG, SurrealDB, the apps, then `ingress/ingress-routes.yaml` (the Services it
    references are created by those PRs — applying it earlier yields intentional 503s).
 8. **Fold the boxes in & retire the temp node** — per `cluster/nodes-target.md`
-   (`.166` → `.150` → `.167`), then delete the temp CCX23.
+   (`.166` → `.150` → `.167`), then delete the temp CX43.
 
 > GitOps (Argo CD) takes over routine syncs after bootstrap (design §8). Prod
 > sync stays **manual / gated** (prod is never main-auto-deploy). Forgejo +

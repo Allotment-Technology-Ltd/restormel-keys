@@ -14,7 +14,7 @@
 (.167 / .150 / .166) — Robot/dedicated machines running prod, **not** new Cloud
 nodes. Setting `instance_count: 3` would spin up three *extra* Cloud servers
 (unwanted spend, wrong machines). So the tool provisions **one** node — the
-temporary CCX23 bootstrap node — and the boxes are **hand-joined** as additional
+temporary CX43 bootstrap node — and the boxes are **hand-joined** as additional
 control-plane servers out-of-band. hetzner-k3s then *manages* the resulting
 cluster (CCM / CSI / autoscaler).
 
@@ -23,7 +23,7 @@ cluster (CCM / CSI / autoscaler).
 ```
 STAGE 0  bootstrap        STAGE 1  fold boxes in            STAGE 2  retire temp
 ─────────────────         ────────────────────────         ──────────────────────
- temp CCX23 (Cloud)        temp CCX23  (still CP)            [temp node DELETED]
+ temp CX43 (Cloud)         temp CX43   (still CP)            [temp node DELETED]
  16GB · cluster-init  ──▶  + .166 joined as CP+etcd    ──▶   .167  CP+etcd
  single etcd member        + .150 joined as CP+etcd          .150  CP+etcd
  hel1, €20 credit          + .167 joined as CP+etcd          .166  CP+etcd
@@ -33,7 +33,7 @@ STAGE 0  bootstrap        STAGE 1  fold boxes in            STAGE 2  retire temp
 Join order for the existing boxes (design §3.3, lowest-risk first):
 **`.166` → `.150` → `.167`** (prod box `.167` last), as each box's workloads
 move onto the cluster and free it. Once all three are joined and stable, the
-temp CCX23 is removed from etcd and **deleted** (stop the €20-credit burn).
+temp CX43 is removed from etcd and **deleted** (stop the €20-credit burn).
 
 ## Target 3-box control plane (post-fold-in)
 
