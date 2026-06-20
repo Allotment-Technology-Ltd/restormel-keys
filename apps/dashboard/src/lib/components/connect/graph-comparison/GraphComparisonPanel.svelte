@@ -16,6 +16,9 @@
   import ExportTraceLink from "./ExportTraceLink.svelte";
   import FirstRunStrip from "./FirstRunStrip.svelte";
   import GetCodePanel from "./GetCodePanel.svelte";
+  import RoutingStrip from "./RoutingStrip.svelte";
+  import CrossModelDisclosure from "./CrossModelDisclosure.svelte";
+  import PublishConfigPanel from "./PublishConfigPanel.svelte";
 
   export let graphNodeCount = 0;
   export let hasGraph = false;
@@ -37,6 +40,47 @@
 
   /** First-run strip is shown until dismissed; only meaningful over the demo graph. */
   let firstRunDismissed = false;
+
+  /**
+   * Stage 4 — inline routing context shared by the strip, the cross-model
+   * disclosure, and the publish panel. The validation provider grounds the
+   * "validated by …" claim; the publish counts drive the "go live" action. These
+   * are fetched once (and re-fetched after any model change / publish) from the
+   * routing-strip snapshot — the same source of truth the strip renders.
+   */
+  let routingValidationProvider: string | null = null;
+  let routingNeedsPublish = 0;
+  let routingHasLive = false;
+  /** RoutingStrip instance — its reload() refreshes the strip after publish/change. */
+  let routingStripRef: { reload: () => Promise<void> } | undefined;
+
+  /** Pull the validation provider + publish state for disclosure/publish surfaces. */
+  async function refreshRoutingContext(): Promise<void> {
+    try {
+      const res = await fetch("/keys/dashboard/prove/api/routing-strip");
+      if (!res.ok) return;
+      const snap = (await res.json()) as {
+        validationProvider?: string | null;
+        needsPublishCount?: number;
+        stages?: { isChat: boolean; isPublished: boolean; modelId: string | null }[];
+      };
+      routingValidationProvider = snap.validationProvider ?? null;
+      routingNeedsPublish = snap.needsPublishCount ?? 0;
+      routingHasLive = (snap.stages ?? []).some(
+        (s) => s.isChat && s.isPublished && !!s.modelId,
+      );
+    } catch {
+      /* non-fatal — disclosure simply omits the validator side */
+    }
+  }
+
+  /** A stage's model changed (or config published) — refresh strip + context. */
+  async function onRoutingChanged(): Promise<void> {
+    await Promise.allSettled([
+      refreshRoutingContext(),
+      routingStripRef?.reload() ?? Promise.resolve(),
+    ]);
+  }
 
   type PanelMode = "raw" | "graph";
   type PanelState = {
@@ -270,6 +314,7 @@
 
   onMount(() => {
     void loadSuggestions();
+    if (!noRoutes) void refreshRoutingContext();
   });
 
   onDestroy(() => {
@@ -347,8 +392,23 @@
       onSelectSuggestion={handleSelectSuggestion}
     />
 
+    <!-- Stage 4: the routing strip sits in service of the query — the models behind
+         the answer, changeable in-context without a screen-hop. -->
+    <RoutingStrip bind:this={routingStripRef} on:changed={onRoutingChanged} />
+
     {#if verdict}
       <VerdictBadge summary={verdict} />
+    {/if}
+
+    <!-- Stage 4: cross-model disclosure ties routing to the verdict. Grounded in the
+         live answer model + the applied validation model; only asserts cross-family
+         when both are known, different families. -->
+    {#if hasAnswer && panelGraph.model}
+      <CrossModelDisclosure
+        answerProvider={panelGraph.model.provider}
+        validationProvider={routingValidationProvider}
+        claimCount={panelGraph.retrieval?.claims.length ?? 0}
+      />
     {/if}
 
     <!-- Hero: the verified answer. The raw baseline is opt-in depth (below). -->
@@ -369,6 +429,18 @@
       <div class="trace-row">
         <ExportTraceLink href={panelGraph.traceExportUrl} />
       </div>
+    {/if}
+
+    <!-- Publish = config deploy (Stage 4): promote THIS routing to a live endpoint
+         the user's app calls. Resolves the publish-stranding (K-P0-3) for the common
+         case without hopping into the advanced route builder. Sits just above
+         Get-Code: publish first, then copy the snippet that calls the live config. -->
+    {#if panelGraph.status === "complete" && workspaceId && lastQuestion}
+      <PublishConfigPanel
+        needsPublishCount={routingNeedsPublish}
+        hasLiveConfig={routingHasLive}
+        on:published={onRoutingChanged}
+      />
     {/if}
 
     <!-- Get Code (Stage 2): once an answer renders, the console becomes the API

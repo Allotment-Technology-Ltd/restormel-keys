@@ -1,14 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import {
-  getProject,
-  getProjectInWorkspace,
-  getRouteWithSteps,
-  updateRoute,
-  insertRouteVersionEvent,
-  insertAuditEvent,
-} from "$lib/server/db";
-import { validateRouteStepsForPublish } from "$lib/server/route-publish-validation";
+import { getProjectInWorkspace } from "$lib/server/db";
+import { publishRouteInScope } from "$lib/server/route-publish";
 
 async function projectScope(
   locals: App.Locals,
@@ -32,61 +25,27 @@ export const POST: RequestHandler = async ({ params, locals }) => {
     const scope = await projectScope(locals, params.id);
     if (!scope) return json({ error: "Not found" }, { status: 404 });
 
-    const routeWithSteps = await getRouteWithSteps(params.routeId, scope.projectId, scope.userId);
-    if (!routeWithSteps) return json({ error: "route_not_found" }, { status: 404 });
+    const result = await publishRouteInScope({
+      routeId: params.routeId,
+      projectId: scope.projectId,
+      userId: scope.userId,
+      actorId: locals.user.uid,
+      actorType: locals.user.authType ?? "session",
+    });
 
-    const publishErrors = validateRouteStepsForPublish(routeWithSteps.route, routeWithSteps.steps);
-    if (publishErrors.length > 0) {
+    if (!result.ok) {
+      if (result.code === "route_not_found") return json({ error: "route_not_found" }, { status: 404 });
       return json(
         {
           error: "publish_validation_failed",
           message: "Route steps are not ready to publish (missing executable provider/model).",
-          errors: publishErrors,
+          errors: result.errors,
         },
         { status: 400 }
       );
     }
 
-    const nextVersion = Math.max(routeWithSteps.route.version ?? 1, (routeWithSteps.route.publishedVersion ?? 1)) + 1;
-    const published = await updateRoute(params.routeId, scope.projectId, scope.userId, {
-      version: nextVersion,
-      publishedVersion: nextVersion,
-      updatedVia: locals.user.authType ?? "session",
-      updatedBy: locals.user.uid,
-      changeSummary: `Published route version ${nextVersion}`,
-    });
-    if (!published) return json({ error: "route_not_found" }, { status: 404 });
-
-    await insertRouteVersionEvent({
-      routeId: params.routeId,
-      projectId: scope.projectId,
-      version: nextVersion,
-      action: "publish",
-      actorId: locals.user.uid,
-      actorType: locals.user.authType ?? "session",
-      summary: `Published route version ${nextVersion}`,
-      routeSnapshot: published as unknown as Record<string, unknown>,
-      stepsSnapshot: routeWithSteps.steps as unknown as Record<string, unknown>[],
-    });
-
-    try {
-      const project = await getProject(scope.projectId, scope.userId);
-      if (project?.workspaceId) {
-        await insertAuditEvent({
-          workspaceId: project.workspaceId,
-          actorId: locals.user.uid,
-          actorType: locals.user.authType ?? "session",
-          eventType: "route_published",
-          targetType: "route",
-          targetId: params.routeId,
-          summary: `Route published (v${nextVersion})`,
-        });
-      }
-    } catch {
-      // Best effort; publishing should not fail if audit write fails.
-    }
-
-    return json({ data: { route: published, publishedVersion: nextVersion } });
+    return json({ data: { route: result.route, publishedVersion: result.publishedVersion } });
   } catch (e) {
     console.error("[route.publish] internal error:", e);
     return json({ error: "internal_error", detail: "route_publish_failed" }, { status: 500 });
