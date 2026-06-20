@@ -49,6 +49,11 @@
 #   Bucket provisioned + connectivity-verified 2026-06-20; will hold prod backups once the K3s
 #   migration applies (currently empty). ROPA unchanged (same sub-processor Hetzner; no new
 #   data category). last-reviewed → 2026-06-20 (founder re-approval via merge).
+# 2026-06-20 (govern/dns-hetzner-migration): DNS for restormel.dev (off Vercel DNS) and
+#   allotmentology.tech (off orderbox registrar DNS) migrated to Hetzner Cloud DNS; added
+#   AST-020/AST-021 (the two DNS zones); updated AST-005/AST-016 (registrar retained, DNS→Hetzner);
+#   extended the Hetzner supplier scope (suppliers.yaml); added RISK-013 (DNS SPOF/concentration,
+#   accepted). RoPA unchanged (same sub-processor Hetzner, same AVV; DNS holds no customer data).
 
 assets:
   - id: AST-001
@@ -164,8 +169,12 @@ assets:
     type: domain
     owner: founder
     product: restormel
-    location: "Vercel (registrar + DNS)"
-    notes: "Primary product domain; DNS managed by Vercel."
+    location: "Registrar: Vercel (US); authoritative DNS: Hetzner Cloud DNS (EU) since 2026-06-20 (zone AST-020)"
+    notes: >
+      Primary product domain. DNS migrated off Vercel DNS to Hetzner Cloud DNS on 2026-06-20
+      (zone AST-020; nameservers *.ns.hetzner.com) — Vercel remains the REGISTRAR only. App/web
+      A-records still point at the existing Coolify boxes (.167/.150); they re-point to the K3s
+      cluster at cutover. DNS availability concentration tracked as RISK-013.
 
   - id: AST-006
     asset: "Founder workstation (MacBook)"
@@ -317,11 +326,13 @@ assets:
     type: domain
     owner: founder
     product: allotmentology.tech
-    location: "Registrar/DNS: get.tech (Radix)"
+    location: "Registrar: get.tech (Radix); authoritative DNS: Hetzner Cloud DNS (EU) since 2026-06-20 (zone AST-021)"
     notes: >
-      Company-portal domain, registered via get.tech. git.allotmentology.tech resolves to the
-      Helsinki compute plane (AST-003). get.tech is a sub-processor for domain registration
-      contact data (see suppliers.yaml).
+      Company-portal domain, registered via get.tech. DNS migrated off the get.tech/orderbox
+      registrar DNS to Hetzner Cloud DNS on 2026-06-20 (zone AST-021; nameservers *.ns.hetzner.com)
+      — get.tech remains the REGISTRAR only. git.allotmentology.tech resolves to the Helsinki
+      compute plane (AST-003). get.tech is a sub-processor for domain registration contact data
+      (see suppliers.yaml). DNS availability concentration tracked as RISK-013.
 
   - id: AST-017
     asset: "allotmentology.tech company portal (BetterAuth auth)"
@@ -381,3 +392,32 @@ assets:
       Distinct from AST-012 (BX11 Storage Box, SFTP/restic): AST-019 is S3 for CNPG Barman;
       BX11 remains the restic cold-copy target (SurrealDB exports + PVCs). EU-sovereign,
       no third-party SaaS. Hetzner sub-processor: suppliers.yaml.
+
+  - id: AST-020
+    asset: "restormel.dev DNS zone (Hetzner Cloud DNS)"
+    type: dns-zone
+    owner: founder
+    product: restormel
+    location: "Hetzner Cloud DNS (EU) — nameservers *.ns.hetzner.com; registrar Vercel (AST-005)"
+    notes: >
+      Authoritative DNS zone for restormel.dev, migrated 2026-06-20 off Vercel DNS to Hetzner
+      Cloud DNS (Hetzner folded standalone DNS into the Cloud Console; the zone is managed via the
+      Cloud API). Holds public zone records only (apex/www → Coolify boxes; surreal/secrets/
+      staging/preview; Migadu + send + Brevo mail-auth records; CAA letsencrypt). Imported from a
+      reviewed BIND file (Vercel-specific records dropped). A-records re-point to the K3s cluster
+      at cutover. cert-manager DNS-01 wildcard issuance uses this zone via the official hcloud
+      webhook (a dedicated Hetzner Cloud read+write API token, HETZNER_DNS_API_TOKEN in AST-013).
+      Availability concentration: RISK-013. Hetzner sub-processor: suppliers.yaml.
+
+  - id: AST-021
+    asset: "allotmentology.tech DNS zone (Hetzner Cloud DNS)"
+    type: dns-zone
+    owner: founder
+    product: allotmentology.tech
+    location: "Hetzner Cloud DNS (EU) — nameservers *.ns.hetzner.com; registrar get.tech/Radix (AST-016)"
+    notes: >
+      Authoritative DNS zone for allotmentology.tech, migrated 2026-06-20 off the orderbox
+      registrar DNS to Hetzner Cloud DNS (fully propagated). Holds public zone records only
+      (apex/www/coolify → .150; git.allotmentology.tech → Forgejo .150 — HARD invariant; Migadu
+      mail-auth records; added CAA letsencrypt). A-records re-point to the K3s cluster at cutover.
+      Availability concentration: RISK-013. Hetzner sub-processor: suppliers.yaml.

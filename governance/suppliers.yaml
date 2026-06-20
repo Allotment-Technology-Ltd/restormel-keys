@@ -33,12 +33,21 @@ suppliers:
       Plus BX11 Falkenstein storage box (u613941.your-storagebox.de) for restic backups,
       and (added 2026-06-20) Hetzner Object Storage (S3, fsn1 Falkenstein) for CloudNativePG
       Postgres backups — cross-region PITR for the K3s migration (bucket
-      restormel-cnpg-backups-fsn1). See AST-009/010/018/012/019.
+      restormel-cnpg-backups-fsn1). And (added 2026-06-20) Hetzner Cloud DNS — authoritative
+      DNS hosting for restormel.dev and allotmentology.tech (zones migrated 2026-06-20 off
+      Vercel DNS and the orderbox registrar DNS respectively; nameservers *.ns.hetzner.com).
+      See AST-009/010/018/012/019 and AST-020/021 (DNS zones).
     role: sub-processor
-    location: "Helsinki, Finland (EU) — compute; Falkenstein, Germany (EU) — storage (BX11 + Object Storage)"
-    data_processed: "All in-scope Restormel data (transits / resides on these hosts)"
+    location: "Helsinki, Finland (EU) — compute; Falkenstein, Germany (EU) — storage (BX11 + Object Storage); Hetzner Cloud DNS (EU)"
+    data_processed: "All in-scope Restormel data (transits / resides on these hosts); plus public DNS zone records (hostname→address) and transient resolver/client IPs for the two domains"
     dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
     sovereignty: ok
+    notes: >
+      DNS hosting added 2026-06-20 (Hetzner Cloud DNS) — SAME legal entity + SAME AVV as
+      compute/storage, so this EXTENDS the existing sub-processor (no new sub-processor to
+      onboard, no new Art 28 notification beyond this register entry). DNS holds only public
+      zone records, below the application/customer-data path. Sovereignty-positive: restormel.dev
+      DNS moved off US Vercel DNS to EU Hetzner. Availability concentration tracked as RISK-013.
 
   - name: Neon
     provides: "Postgres (legacy backup — decommissioning)"
@@ -50,13 +59,18 @@ suppliers:
     notes: "DECOMMISSIONING ~2026-06-30. Remove this entry on confirmed deletion."
 
   - name: Vercel
-    provides: "Domain registrar + DNS (restormel.dev)"
+    provides: "Domain REGISTRAR for restormel.dev (DNS hosting retired 2026-06-20 → Hetzner Cloud DNS, AST-020)"
     role: sub-processor
     location: "US"
     data_processed: "Domain registration contact data (director name/email/address)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: review
-    notes: "No customer data; only domain registration details. Low risk."
+    notes: >
+      Registrar only as of 2026-06-20 — both app hosting (long retired) and DNS hosting (moved to
+      Hetzner Cloud DNS, AST-020) are now off Vercel; nameservers were re-pointed at the registrar
+      to *.ns.hetzner.com. No customer data; only domain registration details. Low risk. The
+      Entri/Brevo OAuth grant that wrote into the Vercel DNS zone is now moot (DNS moved) — see the
+      Entri entry's revoke recommendation.
 
   - name: Entri
     provides: "DNS automation — used by Brevo's automatic domain authentication to write authentication records into the Vercel DNS zone"
