@@ -45,7 +45,10 @@ data:
   GOTRUE_HOOK_SEND_EMAIL_URI: "http://send-resend-email.supabase.svc.cluster.local:9000/send-resend-email"
 
   # PostgREST
-  PGRST_DB_SCHEMAS: "public,storage,graphql_public"
+  # graphql_public dropped: PlotBudget uses no GraphQL (no pg_graphql in any migration);
+  # keeping it would require the pg_graphql extension / a custom image. Re-add both
+  # together if GraphQL is ever exposed. See cnpg/plotbudget-supabase-bootstrap.sql.
+  PGRST_DB_SCHEMAS: "public,storage"
   PGRST_DB_ANON_ROLE: "anon"
   PGRST_DB_USE_LEGACY_GUCS: "false"
 
