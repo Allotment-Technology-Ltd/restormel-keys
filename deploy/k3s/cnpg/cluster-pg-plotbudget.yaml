@@ -1,0 +1,83 @@
+# =============================================================================
+# CNPG Cluster: pg-plotbudget — backs SELF-HOSTED Supabase (medium criticality)
+# =============================================================================
+# DESIGN ARTEFACT ONLY — not applied.
+#
+# plotbudget currently uses MANAGED Supabase (external Postgres). The sovereign
+# migration self-hosts Supabase; this CNPG cluster is the Postgres engine under
+# that self-hosted Supabase stack (`plotbudget` database).
+#
+# NOTE for the operator: self-hosted Supabase expects specific roles/extensions
+# (e.g. `supabase_admin`, `authenticator`, `anon`, `service_role`; extensions
+# pgcrypto/pgjwt/uuid-ossp, and — if used — pgvector/pg_graphql). The CNPG
+# postgresql:16 image does NOT ship every Supabase extension; pgvector/pg_graphql
+# may require a custom image or the Supabase-flavoured Postgres image wrapped for
+# CNPG. Confirm the Supabase extension set against the chosen image BEFORE apply
+# (flagged in MIGRATION.md + the founder-gap list). instances: 2, Hetzner CSI,
+# separate walStorage, backups → fsn1.
+# -----------------------------------------------------------------------------
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-plotbudget
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-migration
+    restormel.dev/criticality: shared
+spec:
+  # If Supabase extensions force a custom image, override imageName here.
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.8
+  instances: 2
+  primaryUpdateStrategy: unsupervised
+
+  bootstrap:
+    initdb:
+      database: plotbudget
+      owner: plotbudget_app
+      secret:
+        name: pg-plotbudget-app-creds
+      encoding: UTF8
+      localeCType: C
+      localeCollate: C
+      # Supabase needs these extensions present; CNPG runs the list post-initdb.
+      # Confirm availability in the chosen image (see header note).
+      postInitSQL:
+        - "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+        - "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: pg-plotbudget-superuser
+
+  storageClass: &sc hcloud-volumes
+  storage:
+    size: 10Gi
+    storageClass: *sc
+  walStorage:
+    size: 4Gi
+    storageClass: *sc
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: "256MB"
+      archive_timeout: "60s"
+
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backups-fsn1
+
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred

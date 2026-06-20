@@ -1,0 +1,62 @@
+# =============================================================================
+# ScheduledBackup — one per cluster, method: plugin (Barman Cloud Plugin → fsn1)
+# =============================================================================
+# DESIGN ARTEFACT ONLY — not applied.
+#
+# These take the periodic BASE backups. Continuous PITR coverage between base
+# backups comes from WAL archiving, which is owned by the `isWALArchiver: true`
+# plugin entry on each Cluster (see cluster-*.yaml) — NOT configured here.
+#
+# `method: plugin` + `pluginConfiguration.name: barman-cloud.cloudnative-pg.io`
+# routes the backup through the plugin to the fsn1 ObjectStore.
+# `schedule` is a 6-field Go cron (sec min hour dom mon dow).
+# `immediate: true` triggers one backup right after the resource is created.
+# `backupOwnerReference: self` so the Backup objects GC with this resource.
+# -----------------------------------------------------------------------------
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-restormel-daily
+  namespace: cnpg-system
+spec:
+  # 02:30 UTC daily — prod app DB.
+  schedule: "0 30 2 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: pg-restormel
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-platform-daily
+  namespace: cnpg-system
+spec:
+  # 03:00 UTC daily — shared cluster.
+  schedule: "0 0 3 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: pg-platform
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-plotbudget-daily
+  namespace: cnpg-system
+spec:
+  # 03:30 UTC daily — plotbudget / self-hosted Supabase.
+  schedule: "0 30 3 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: pg-plotbudget
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

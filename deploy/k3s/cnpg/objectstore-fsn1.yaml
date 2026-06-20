@@ -1,0 +1,75 @@
+# =============================================================================
+# Barman Cloud Plugin — ObjectStore → Hetzner Object Storage (fsn1, Falkenstein)
+# =============================================================================
+# DESIGN ARTEFACT ONLY — not applied. Cross-region PITR target for all three
+# CNPG clusters (compute is in the EU compute region; backups land in fsn1, a
+# DIFFERENT region, so a region loss does not take the backups with it).
+#
+# Schema: barmancloud.cnpg.io/v1 / kind ObjectStore (Barman Cloud PLUGIN).
+# This REPLACES the deprecated in-tree `.spec.backup.barmanObjectStore`
+# (removed in CNPG 1.30). The Cluster references this object by name via its
+# `.spec.plugins[].parameters.barmanObjectName` (see cluster-*.yaml).
+#
+# One ObjectStore per logical backup namespace. Each cluster writes under its
+# own `serverName` (CNPG derives it from the cluster name) inside destinationPath,
+# so a single bucket safely holds all three clusters' base backups + WAL.
+# -----------------------------------------------------------------------------
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: backups-fsn1
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-migration
+spec:
+  # ---- retention: keep 30 days of recoverability (base backups + WAL) --------
+  # Lives at spec.configuration.retentionPolicy in the plugin ObjectStore.
+  # Barman retention syntax: "<n>d" (days) or "<n> WEEKS"/"MONTHS".
+  retentionPolicy: "30d"
+
+  configuration:
+    # ---- where: S3 path. {serverName} is filled per-cluster by CNPG. ---------
+    # Bucket must already exist in fsn1 (owner item). One bucket, per-cluster
+    # subpaths keyed by serverName.
+    destinationPath: "s3://restormel-cnpg-backups-fsn1/"
+
+    # ---- Hetzner Object Storage S3 endpoint for the fsn1 (Falkenstein) region.
+    # The region MUST match the bucket's region or listings come back empty.
+    endpointURL: "https://fsn1.your-objectstorage.com"
+
+    # ---- S3 credentials via ESO-rendered Secret (NO real creds in this repo).
+    # Secret `s3-backup-creds-fsn1` is rendered by ESO from Infisical
+    # (see eso-secret-placeholders.yaml). Keys are placeholders only.
+    s3Credentials:
+      accessKeyId:
+        name: s3-backup-creds-fsn1
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: s3-backup-creds-fsn1
+        key: SECRET_ACCESS_KEY
+
+    # ---- WAL archiving: gzip compression, bounded parallelism. ---------------
+    # gzip keeps WAL egress + storage down; maxParallel speeds archive/restore.
+    wal:
+      compression: gzip
+      maxParallel: 4
+
+    # ---- base-backup data compression (also gzip). ---------------------------
+    data:
+      compression: gzip
+      # immediateCheckpoint trades a brief I/O spike for a faster, more
+      # consistent base backup start — fine on these small DBs.
+      immediateCheckpoint: true
+
+  # ---- sidecar that runs barman-cloud inside each instance pod. -------------
+  # retentionPolicyIntervalSeconds: how often the sidecar enforces retention.
+  # Resources are tight — these are small DBs; raise only if WAL volume grows.
+  instanceSidecarConfiguration:
+    retentionPolicyIntervalSeconds: 1800
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"

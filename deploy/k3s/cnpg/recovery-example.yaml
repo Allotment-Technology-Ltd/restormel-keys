@@ -1,0 +1,75 @@
+# =============================================================================
+# REFERENCE ONLY — PITR / DR restore from fsn1 via the Barman Cloud Plugin
+# =============================================================================
+# DESIGN ARTEFACT — DO NOT APPLY alongside the live clusters.
+#
+# This shows how to stand up a NEW cluster that bootstraps by RECOVERING from
+# the fsn1 ObjectStore to a point in time. Two scenarios:
+#
+#   A) Full DR — the live cluster/region is gone. Restore the latest recoverable
+#      state into a fresh cluster (omit recoveryTarget => recover to end of WAL).
+#
+#   B) PITR — recover to a specific timestamp (e.g. just before a bad migration
+#      or an accidental DELETE). Set recoveryTarget.targetTime.
+#
+# The recovery reads from the SAME ObjectStore (backups-fsn1). `serverName` MUST
+# match the ORIGINAL cluster's server name (CNPG uses the source cluster's name),
+# so it reads that cluster's backups out of the shared bucket.
+#
+# IMPORTANT: give the recovery cluster a DIFFERENT metadata.name than the source
+# (here `pg-restormel-restore`) so it does not collide with / clobber the live
+# cluster. Repoint the app at it only after verifying the restore.
+# -----------------------------------------------------------------------------
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-restormel-restore
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-migration
+    restormel.dev/role: dr-restore
+spec:
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.8
+  instances: 2
+  primaryUpdateStrategy: unsupervised
+
+  storageClass: &sc hcloud-volumes
+  storage:
+    size: 10Gi
+    storageClass: *sc
+  walStorage:
+    size: 4Gi
+    storageClass: *sc
+
+  superuserSecret:
+    name: pg-restormel-superuser
+  enableSuperuserAccess: true
+
+  # ---- bootstrap by RECOVERY from the external (object-store) source. --------
+  bootstrap:
+    recovery:
+      source: pg-restormel-source
+      # ----- scenario B: PITR. Uncomment to recover to a moment in time. -----
+      # recoveryTarget:
+      #   targetTime: "2026-06-20 09:15:00.000000+00:00"
+      #   # Promote at the recovery target (default exclusive=false includes it):
+      #   # targetTLI: "latest"
+
+  # ---- the external cluster = the fsn1 backups of the ORIGINAL cluster. ------
+  # plugin entry (NOT the deprecated barmanObjectStore). serverName is the
+  # SOURCE cluster's name so the right backups are read from the shared bucket.
+  externalClusters:
+    - name: pg-restormel-source
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: backups-fsn1
+          serverName: pg-restormel
+
+  # After recovery the new cluster begins archiving under ITS OWN name. To keep
+  # archiving to fsn1, add the WAL-archiver plugin (same as the live clusters):
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backups-fsn1
