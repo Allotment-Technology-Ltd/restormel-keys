@@ -36,6 +36,17 @@ vi.mock("$lib/server/connect/source-documents", () => ({
   ]),
 }));
 
+vi.mock("$lib/server/connect/source-health", () => ({
+  loadSourceHealthSummary: vi.fn().mockResolvedValue({
+    cards: [
+      { kind: "upload", indexed: 1, failed: 0, pending: 0, lastSyncedAt: "2026-06-20T00:00:00.000Z", status: "healthy" },
+    ],
+    exceptions: [],
+    totals: { indexed: 1, failed: 0, pending: 0, exceptions: 0 },
+    lastSyncedAt: "2026-06-20T00:00:00.000Z",
+  }),
+}));
+
 vi.mock("$lib/debug/server-perf", () => ({
   perfSpan: vi.fn().mockReturnValue(() => {}),
 }));
@@ -46,6 +57,12 @@ type PanelResult = {
   graphs: { id: string; status: string }[];
   packs: { id: string; title: string; slug: string }[];
   documents: { id: string; name: string; source_kind: string; status: string; char_count: number; chunk_count: number }[];
+  health: {
+    cards: unknown[];
+    exceptions: unknown[];
+    totals: { indexed: number; failed: number; pending: number; exceptions: number };
+    lastSyncedAt: string | null;
+  };
   selectedPackId: string | null;
   loadFailed: boolean;
 };
@@ -90,6 +107,10 @@ describe("Sources page server load — streaming shape (nav-pending-fix)", () =>
     expect(panels.documents).toHaveLength(1);
     expect(panels.documents[0].id).toBe("d-1");
     expect(panels.selectedPackId).toBe("p-1");
+    // Phase 3 Stage 3 — watched-source health is part of the streamed panels.
+    expect(panels.health.totals.indexed).toBe(1);
+    expect(panels.health.cards).toHaveLength(1);
+    expect(panels.health.exceptions).toEqual([]);
   });
 
   it("signed-out guard — signedIn false, panels resolves immediately to empty", async () => {

@@ -22,6 +22,7 @@ import {
   resolveKnowledgeSessionContext,
 } from "$lib/server/connect/session-context";
 import { expandDocumentsToSources } from "$lib/server/connect/source-documents";
+import { autoProvisionDefaultRoutes } from "$lib/server/connect/auto-provision-default-routes";
 import { computeConnectRunPreflight } from "$lib/server/connect/run-preflight";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { INGEST_FLOW_HREF } from "$lib/nav-config";
@@ -123,6 +124,21 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       { status: 422 },
     );
   }
+
+  // Phase 3 Stage 3 — break the ingest→query gate for the DEFAULT path.
+  // Starting ingestion must not require manually publishing chat + embedding routes
+  // first. If this workspace has a connected provider key but no published ingest
+  // routes, auto-provision the cheap defaults (same idempotent Stage-0 engine the
+  // demo bootstrap uses) BEFORE the preflight runs — so a run started straight from
+  // the watched Sources surface routes through real published routes instead of the
+  // legacy environment key. Best-effort and idempotent: a no-key / no-project / has-
+  // routes workspace is an instant no-op, and any failure here never blocks the run
+  // (the preflight below still gates correctly; the run can fall back to legacy_env).
+  await autoProvisionDefaultRoutes({
+    workspaceId: ctx.workspaceId,
+    userId: ctx.userId,
+    actorType: "ingest_run",
+  }).catch(() => undefined);
 
   // K3 (K-P0-2): the same binding/credential lookup the worker performs mid-run,
   // enforced at submit time. Adds a gate — never bypasses existing validation above.

@@ -3,8 +3,16 @@ import { perfSpan } from "$lib/debug/server-perf";
 import { listGraphTargetsForUi } from "$lib/server/connect/graph-target-service";
 import { listDomainPacksForUi, getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
+import { loadSourceHealthSummary, type SourceHealthSummary } from "$lib/server/connect/source-health";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 import { isSignedInSession } from "$lib/server/session-user";
+
+const EMPTY_HEALTH: SourceHealthSummary = {
+  cards: [],
+  exceptions: [],
+  totals: { indexed: 0, failed: 0, pending: 0, exceptions: 0 },
+  lastSyncedAt: null,
+};
 
 export type SourcesDocumentRow = {
   id: string;
@@ -51,6 +59,7 @@ export const load: PageServerLoad = async (event) => {
         graphs: [] as Awaited<ReturnType<typeof listGraphTargetsForUi>>,
         packs: [] as { id: string; title: string; slug: string }[],
         documents: [] as SourcesDocumentRow[],
+        health: EMPTY_HEALTH,
         selectedPackId: null as string | null,
         loadFailed: false,
       }),
@@ -69,6 +78,7 @@ export const load: PageServerLoad = async (event) => {
         graphs: [] as Awaited<ReturnType<typeof listGraphTargetsForUi>>,
         packs: [] as { id: string; title: string; slug: string }[],
         documents: [] as SourcesDocumentRow[],
+        health: EMPTY_HEALTH,
         selectedPackId: null as string | null,
         loadFailed: true,
       }),
@@ -87,7 +97,11 @@ export const load: PageServerLoad = async (event) => {
     listDomainPacksForUi(workspace.id),
     listSourceDocuments(workspace.id),
     getSelectedDomainPackId(workspace.id),
-  ]).then(([graphs, packs, documents, selectedPackId]) => {
+    // Phase 3 Stage 3 — watched-source health + exceptions, aggregated from the same
+    // documents/runs the pipeline already records (no new tables). Best-effort: a
+    // health-aggregation failure degrades to EMPTY_HEALTH rather than failing the page.
+    loadSourceHealthSummary(workspace.id).catch(() => EMPTY_HEALTH),
+  ]).then(([graphs, packs, documents, selectedPackId, health]) => {
     end();
     return {
       graphs,
@@ -100,6 +114,7 @@ export const load: PageServerLoad = async (event) => {
         char_count: d.char_count,
         chunk_count: d.chunk_count,
       })),
+      health,
       selectedPackId,
       loadFailed: false,
     };
@@ -107,6 +122,7 @@ export const load: PageServerLoad = async (event) => {
     graphs: Awaited<ReturnType<typeof listGraphTargetsForUi>>;
     packs: { id: string; title: string; slug: string }[];
     documents: SourcesDocumentRow[];
+    health: SourceHealthSummary;
     selectedPackId: string | null;
     loadFailed: boolean;
   } => {
@@ -117,6 +133,7 @@ export const load: PageServerLoad = async (event) => {
       graphs: [],
       packs: [],
       documents: [],
+      health: EMPTY_HEALTH,
       selectedPackId: null,
       loadFailed: true,
     };

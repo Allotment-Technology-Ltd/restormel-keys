@@ -1,13 +1,16 @@
 <script lang="ts">
   import ConnectGraphLibrary from "$lib/components/connect/ConnectGraphLibrary.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
+  import SourceHealthCards from "$lib/components/connect/sources/SourceHealthCards.svelte";
+  import SourceExceptionsQueue from "$lib/components/connect/sources/SourceExceptionsQueue.svelte";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import { invalidateAll } from "$app/navigation";
-  import { INGEST_FLOW_HREF } from "$lib/nav-config";
+  import { INGEST_FLOW_HREF, RUNS_HREF } from "$lib/nav-config";
   import { formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
+  import type { SourceHealthSummary } from "$lib/connect/source-health-types";
   import type { SourcesDocumentRow } from "./+page.server";
 
   export let data: {
@@ -16,10 +19,19 @@
       graphs: ConnectGraphTarget[];
       packs: { id: string; title: string; slug: string }[];
       documents: SourcesDocumentRow[];
+      health: SourceHealthSummary;
       selectedPackId: string | null;
       loadFailed: boolean;
     }>;
   };
+
+  // "Connect a source" is the front door. The full wizard stays reachable as the
+  // first step of the guided flow; advanced control is collapsed (founder decision).
+  const CONNECT_SOURCE_HREF = `${INGEST_FLOW_HREF}?step=sources`;
+
+  // Advanced disclosure — collapsed by default. The full guided flow (extract / link /
+  // embed / validate / remediate / store + chunk/embed knobs) lives behind this.
+  let advancedOpen = false;
 </script>
 
 <svelte:head>
@@ -30,87 +42,81 @@
 <div class="sources-page">
   <BrutalPageHeader
     kicker="Sources"
-    title="What goes in"
-    description="Documents, domain packs, and what changed since your last run — then launch the guided ingest flow."
+    title="Watched sources"
+    description="Connect a source — it ingests and verifies in the background. You only step in for exceptions."
   >
     {#snippet actions()}
-      <a class="btn btn-primary" href={INGEST_FLOW_HREF}>Ingest →</a>
+      <a class="btn btn-primary" href={CONNECT_SOURCE_HREF}>Connect a source →</a>
     {/snippet}
   </BrutalPageHeader>
 
   {#if !data.signedIn}
     <SignInNotice message="Sign in to manage your sources." />
   {:else}
-    <!-- Changed-source state (W3.6). The server cannot yet answer "what changed
-         since the last run", so this is an honest absent-state — never a
-         fabricated count. -->
-    <section class="sources-section" aria-labelledby="changed-heading">
-      <h2 id="changed-heading" class="section-title">Changed since last run</h2>
-      <div class="changed-absent" role="status">
-        <p class="changed-absent-title">Change tracking not available yet</p>
-        <p class="changed-absent-sub">
-          We don't track which sources changed between runs yet, so there's nothing to re-ingest
-          selectively. Run ingest to process your current document selection.
-        </p>
-        <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Start an ingest run →</a>
-      </div>
-    </section>
-
-    <!-- Streamed panels: documents + packs + graphs resolve after the shell paints.
-         Shell (header, changed-source section, section headings) renders immediately;
-         BrutalLoadingState skeletons fill the panels while the DB queries are in flight. -->
     {#await data.panels}
-      <!-- Documents loading skeleton -->
-      <section class="sources-section" aria-labelledby="docs-heading-loading">
+      <!-- Health loading skeleton -->
+      <section class="sources-section" aria-labelledby="health-heading-loading">
         <div class="section-head">
-          <h2 id="docs-heading-loading" class="section-title">Documents</h2>
+          <h2 id="health-heading-loading" class="section-title">Health</h2>
         </div>
-        <BrutalLoadingState message="Loading documents…" rows={3} />
-      </section>
-
-      <!-- Packs loading skeleton -->
-      <section class="sources-section" aria-labelledby="packs-heading-loading">
-        <div class="section-head">
-          <h2 id="packs-heading-loading" class="section-title">Packs &amp; graphs</h2>
-        </div>
-        <BrutalLoadingState message="Loading packs…" rows={2} />
+        <BrutalLoadingState message="Checking your sources…" rows={2} />
       </section>
     {:then panels}
       {@const parsedCount = panels.documents.filter((d) => d.status === "parsed").length}
       {@const selectedPack = panels.packs.find((p) => p.id === panels.selectedPackId) ?? null}
+      {@const health = panels.health}
 
-      <!-- Documents -->
-      <section class="sources-section" aria-labelledby="docs-heading">
-        <div class="section-head">
-          <h2 id="docs-heading" class="section-title">Documents</h2>
-          <a class="section-link" href={`${INGEST_FLOW_HREF}?step=sources`}>Manage sources →</a>
+      {#if panels.loadFailed}
+        <!-- R4-S3/X7: a load failure is distinct from a genuinely empty workspace. -->
+        <BrutalErrorBanner
+          title="Couldn't load your sources"
+          message="We couldn't reach your sources just now. Your documents are unchanged — try again."
+        >
+          {#snippet actions()}
+            <button type="button" class="btn btn-primary btn-sm" on:click={() => invalidateAll()}>
+              Try again
+            </button>
+            <a class="btn btn-outline btn-sm" href={CONNECT_SOURCE_HREF}>Connect a source →</a>
+          {/snippet}
+        </BrutalErrorBanner>
+      {:else if panels.documents.length === 0}
+        <!-- Zero-source first run: the watched model framed as an invitation, not a wizard. -->
+        <div class="first-run">
+          <p class="first-run-title">No sources connected yet</p>
+          <p class="first-run-sub">
+            Connect a document source — a URL, an upload, or a connector. Restormel ingests and
+            verifies it in the background, then it answers queries. No routes to build first.
+          </p>
+          <a class="btn btn-primary" href={CONNECT_SOURCE_HREF}>Connect a source →</a>
         </div>
-        {#if panels.loadFailed}
-          <!-- R4-S3/X7: a load failure is distinct from a genuinely empty workspace —
-               show an error + retry, never a misleading "No documents yet". -->
-          <BrutalErrorBanner
-            title="Couldn't load your documents"
-            message="We couldn't reach your sources just now. Your documents are unchanged — try again."
-          >
-            {#snippet actions()}
-              <button type="button" class="btn btn-primary btn-sm" on:click={() => invalidateAll()}>
-                Try again
-              </button>
-              <a class="btn btn-outline btn-sm" href={`${INGEST_FLOW_HREF}?step=sources`}>Manage sources →</a>
-            {/snippet}
-          </BrutalErrorBanner>
-        {:else if panels.documents.length === 0}
-          <div class="empty-state">
-            <p class="empty-title">No documents yet</p>
-            <p class="empty-sub">
-              Import documents from URLs, uploads, connectors, or crawls in the guided flow.
-            </p>
-            <a class="btn btn-primary btn-sm" href={`${INGEST_FLOW_HREF}?step=sources`}>Add documents →</a>
+      {:else}
+        <!-- Watched-source health: docs indexed · failed · last-synced · status per kind. -->
+        <section class="sources-section" aria-labelledby="health-heading">
+          <div class="section-head">
+            <h2 id="health-heading" class="section-title">Health</h2>
+            <span class="section-meta">
+              {health.totals.indexed} indexed · {health.totals.failed} failed
+            </span>
           </div>
-        {:else}
+          <SourceHealthCards cards={health.cards} />
+        </section>
+
+        <!-- Exceptions queue: only what needs a human. -->
+        <SourceExceptionsQueue
+          exceptions={health.exceptions}
+          total={health.totals.exceptions}
+          onResolved={() => invalidateAll()}
+        />
+
+        <!-- Documents (the full, parsed inventory). -->
+        <section class="sources-section" aria-labelledby="docs-heading">
+          <div class="section-head">
+            <h2 id="docs-heading" class="section-title">Documents</h2>
+            <a class="section-link" href={CONNECT_SOURCE_HREF}>Manage sources →</a>
+          </div>
           <p class="docs-summary">
             {panels.documents.length} document{panels.documents.length === 1 ? "" : "s"} ·
-            {parsedCount} ready
+            {parsedCount} ready · <a class="inline-link" href={RUNS_HREF}>see runs →</a>
           </p>
           <ul class="doc-list">
             {#each panels.documents as doc (doc.id)}
@@ -121,26 +127,48 @@
               </li>
             {/each}
           </ul>
+        </section>
+      {/if}
+
+      <!-- Advanced (collapsed by default): full guided flow + packs/graphs. Founder
+           decision — keep full control, collapsed. The wizard is no longer the
+           required front door, but every stage and knob stays one click away. -->
+      <section class="sources-section advanced" aria-labelledby="advanced-heading">
+        <button
+          type="button"
+          class="advanced-toggle"
+          aria-expanded={advancedOpen}
+          on:click={() => (advancedOpen = !advancedOpen)}
+        >
+          <span class="advanced-caret" aria-hidden="true">{advancedOpen ? "▾" : "▸"}</span>
+          <span id="advanced-heading" class="section-title">Advanced</span>
+          <span class="section-meta">Full pipeline control · packs &amp; graphs · per-stage settings</span>
+        </button>
+        {#if advancedOpen}
+          <div class="advanced-body">
+            <p class="advanced-note">
+              The guided flow gives you the full pipeline — extract, link, embed, validate,
+              remediate, store — plus chunk and embedding knobs. Most sources never need it;
+              it's here when you do.
+            </p>
+            <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open guided ingest flow →</a>
+
+            <div class="advanced-packs">
+              <div class="section-head">
+                <h3 class="section-subtitle">Packs &amp; graphs</h3>
+                {#if selectedPack}
+                  <span class="section-meta">Flow pack: {selectedPack.title}</span>
+                {/if}
+              </div>
+              <ConnectGraphLibrary initialGraphs={panels.graphs} packs={panels.packs} />
+            </div>
+          </div>
         {/if}
       </section>
-
-      <!-- Packs (the absorbed /connect/library view). Pack selection is shared with
-           the guided flow via getSelectedDomainPackId — no re-selection. -->
-      <section class="sources-section" aria-labelledby="packs-heading">
-        <div class="section-head">
-          <h2 id="packs-heading" class="section-title">Packs &amp; graphs</h2>
-          {#if selectedPack}
-            <span class="section-meta">Flow pack: {selectedPack.title}</span>
-          {/if}
-        </div>
-        <ConnectGraphLibrary initialGraphs={panels.graphs} packs={panels.packs} />
-      </section>
     {:catch}
-      <!-- Streamed panels failed (network error reaching the panels promise itself,
-           distinct from the loadFailed flag inside the resolved value). -->
       <section class="sources-section" aria-labelledby="docs-heading-err">
         <div class="section-head">
-          <h2 id="docs-heading-err" class="section-title">Documents</h2>
+          <h2 id="docs-heading-err" class="section-title">Sources</h2>
         </div>
         <BrutalErrorBanner
           title="Couldn't load sources"
@@ -186,6 +214,15 @@
     margin: 0;
     color: var(--color-ink);
   }
+  .section-subtitle {
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm, 1.1rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: var(--text-display-tracking);
+    margin: 0;
+    color: var(--color-ink);
+  }
   .section-link,
   .section-meta {
     font-family: var(--font-mono);
@@ -198,28 +235,32 @@
   .section-link:hover {
     text-decoration: underline;
   }
-  .changed-absent,
-  .empty-state {
+  .inline-link {
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+  }
+  .first-run {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
     align-items: flex-start;
-    padding: var(--space-4);
+    padding: var(--space-5);
     border: var(--border);
-    background: var(--color-bg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
   }
-  .changed-absent-title,
-  .empty-title {
+  .first-run-title {
     font-family: var(--font-display);
+    font-size: var(--text-display-md, 1.5rem);
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: var(--text-display-tracking);
     margin: 0;
     color: var(--color-ink);
   }
-  .changed-absent-sub,
-  .empty-sub {
+  .first-run-sub {
     margin: 0;
+    max-width: 38rem;
     color: var(--color-ink-muted);
   }
   .docs-summary {
@@ -233,13 +274,14 @@
     margin: 0;
     padding: 0;
     border: var(--border);
+    background: var(--color-surface);
   }
   .doc-row {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border);
+    border-bottom: var(--border-thin);
   }
   .doc-row:last-child {
     border-bottom: none;
@@ -261,5 +303,50 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     text-transform: uppercase;
+  }
+
+  /* ── Advanced disclosure ── */
+  .advanced {
+    border-top: var(--border);
+    padding-top: var(--space-4);
+  }
+  .advanced-toggle {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+  }
+  .advanced-toggle:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 2px;
+  }
+  .advanced-caret {
+    font-family: var(--font-mono);
+    color: var(--color-ink);
+  }
+  .advanced-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+    margin-top: var(--space-3);
+  }
+  .advanced-note {
+    margin: 0;
+    max-width: 40rem;
+    color: var(--color-ink-muted);
+  }
+  .advanced-packs {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
   }
 </style>
