@@ -16,8 +16,8 @@
   $: heading = isGraph ? "VERIFIED ANSWER" : "BASELINE (NO GRAPH)";
   $: claimCount = retrieval?.claims.length ?? 0;
   $: idlePlaceholder = isGraph
-    ? "Ask a question above to get a verified, cited answer."
-    : "The base model response will appear here.";
+    ? "Ask your sources a question above — your answer appears here, with every claim cited."
+    : "The same question with no sources — the raw model answer appears here to compare against.";
 
   $: subLabel = (() => {
     if (!model) return isGraph ? "model · provider + verified claims" : "model · provider";
@@ -36,7 +36,7 @@
     {#if status === "idle"}
       <p class="panel-placeholder">{idlePlaceholder}</p>
     {:else if status === "retrieving"}
-      <p class="panel-retrieving">Retrieving from knowledge graph…</p>
+      <p class="panel-retrieving">Finding the evidence in your sources…</p>
     {:else if status === "error"}
       <p class="panel-error">Response failed — {error ?? "unknown error"}.</p>
       <button type="button" class="panel-retry brut-focus" on:click={onRetry}>Try again</button>

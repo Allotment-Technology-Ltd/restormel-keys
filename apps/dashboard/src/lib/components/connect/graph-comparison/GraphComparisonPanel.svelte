@@ -326,9 +326,10 @@
 <section class="proof">
   <header class="proof-head">
     <div class="proof-headings">
-      <span class="proof-tag">ASK · GET A VERIFIED ANSWER</span>
+      <span class="proof-tag">ASK YOUR SOURCES · GET AN ANSWER YOU CAN TRUST</span>
       <p class="proof-lede">
-        Ask a question — get an answer bound to verified claims, each quoting its source.
+        Ask your sources a question. The answer comes back bound to verified claims — click any
+        one to the exact quote it came from. Happy with it? Ship the same query into your app.
       </p>
     </div>
     {#if !noRoutes}
@@ -347,28 +348,30 @@
 
   {#if isDemo && hasGraph}
     <p class="demo-banner">
-      <strong>Demo graph.</strong> You're asking a small pre-loaded knowledge graph so you can see a
-      verified answer right away — connect your own sources to answer over your data.
+      <strong>This is a demo graph to play with.</strong> Ask it anything below and watch a verified,
+      cited answer come back right away — no setup. When you're ready, connect your own sources and
+      ask over your data instead.
     </p>
   {/if}
 
   {#if !hasGraph}
     <div class="empty">
-      <h2 class="empty-title">NOTHING TO ANSWER FROM YET</h2>
+      <h2 class="empty-title">CONNECT A SOURCE TO ASK</h2>
       <p class="empty-body">
-        Connect a source and run your first ingest to build a knowledge graph, then ask it a question
-        here to get a verified, cited answer.
+        Point Restormel at a source — a doc, a URL, a connector — and it builds a knowledge graph in
+        the background. Then ask it anything here and get an answer bound to verified claims, each one
+        clickable straight to its source quote.
       </p>
       <a class="empty-cta brut-pressable brut-focus" href={INGEST_FLOW_HREF}>
-        START YOUR FIRST RUN →
+        CONNECT YOUR FIRST SOURCE →
       </a>
     </div>
   {:else if noRoutes}
     <div class="notice">
       <p>
-        Configure a model route in
+        Pick a model in
         <a href={INGEST_ROUTES_HREF}>Ingest routes</a>
-        before asking your graph a question.
+        and you're ready to ask your sources a question.
       </p>
     </div>
   {:else}

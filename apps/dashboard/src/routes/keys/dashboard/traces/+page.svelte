@@ -31,10 +31,10 @@
     const v = t.verdict;
     const detail =
       v.verdict === "abstained"
-        ? "No verified claim in your graph matched this question — the answer was not graph-grounded."
+        ? "Your sources didn't cover this, so your app held back rather than guess — the safe default."
         : v.verdict === "uncertain"
-          ? `${v.supportedCount} supported, ${v.weakCount} weaker — the cited sources were flagged for review.`
-          : `Bound to ${v.supportedCount} verified ${v.supportedCount === 1 ? "claim" : "claims"}, each quoting its source.`;
+          ? `${v.supportedCount} supported, ${v.weakCount} weaker — the cited sources were flagged for a second look.`
+          : `Backed by ${v.supportedCount} verified ${v.supportedCount === 1 ? "claim" : "claims"}, each traceable to the exact quote it came from.`;
     return {
       verdict: v.verdict,
       label: v.label,
@@ -99,7 +99,7 @@
   <BrutalPageHeader
     kicker="Observe"
     title="Traces"
-    description="What your app actually asked. Every verified query — the same entity the Answer Console produced — with its trust verdict, cited sources, and the model that answered. Abstentions are flagged on purpose: an honest decline is a feature."
+    description="What your app actually asked in production. Every query your app sent — the same verified answers you see in the Answer Console — with its trust verdict, cited sources, and the model that answered. When your app abstained, you'll see it flagged here: an honest decline is the feature working, not a bug."
   >
     {#snippet actions()}
       <BrutalButton href={ANSWER_CONSOLE_HREF} variant="blue">Open Answer Console</BrutalButton>
@@ -159,8 +159,8 @@
 
   {#if data.traces.length === 0 && !data.error}
     <EmptyState
-      title="No verified queries yet"
-      description="Ask a question in the Answer Console — verified or honestly abstained — and it lands here as a trace your app can be audited against."
+      title="No queries yet"
+      description="Once your app starts asking — or you ask here in the Answer Console — every query lands here with its evidence, so you can always see what was asked and trust what you shipped."
     >
       {#snippet children()}
         <BrutalButton href={ANSWER_CONSOLE_HREF} variant="blue">Ask the first question</BrutalButton>

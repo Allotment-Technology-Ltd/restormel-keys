@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
    * R5: Prove / Proof tab — moved from /prove root (was /connect/proof).
-   * Graph-vs-baseline comparison panel. Reach in ≤ 2 clicks from Home (auditor journey §1.3).
+   * The Answer Console: ask your sources, get a verified answer, ship the same query
+   * into your app. The dashboard's home surface (Phase 3) for the solo builder.
    */
   import { invalidateAll } from "$app/navigation";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
@@ -39,16 +40,16 @@
 </script>
 
 <svelte:head>
-  <title>Answer console – Restormel Dashboard</title>
+  <title>Answer Console – Restormel Dashboard</title>
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 {#if !data.signedIn}
-  <SignInNotice message="Sign in to ask your knowledge graph a verified question." />
+  <SignInNotice message="Sign in to ask your sources a question and get an answer you can trust." />
 {:else if data.loadError}
   <BrutalErrorBanner
-    title="Proof unavailable"
-    message="Could not load the Proof panel. Your data is unaffected — this is a load failure."
+    title="Answer Console unavailable"
+    message="Couldn't load the Answer Console just now. Your sources and data are untouched — this is only a load failure."
   >
     {#snippet actions()}
       <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
@@ -75,8 +76,8 @@
     />
   {:catch}
     <BrutalErrorBanner
-      title="Proof unavailable"
-      message="Could not load the Proof panel. Your data is unaffected — this is a load failure."
+      title="Answer Console unavailable"
+      message="Couldn't load the Answer Console just now. Your sources and data are untouched — this is only a load failure."
     >
       {#snippet actions()}
         <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>

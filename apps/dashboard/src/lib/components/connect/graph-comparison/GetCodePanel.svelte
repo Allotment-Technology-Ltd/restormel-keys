@@ -50,16 +50,16 @@
       on:click={() => (open = !open)}
     >
       <span class="caret" class:open aria-hidden="true">▶</span>
-      GET CODE — REPRODUCE THIS QUERY AGAINST THE API
+      GET CODE — WIRE THIS QUERY INTO YOUR APP
     </button>
 
     {#if open}
       <div class="getcode-body">
         <p class="getcode-lede">
-          The exact <code>retrieve_context</code> call this answer came from, against
-          <code>POST {`/connect/v1/graph`}</code>. Set your Gateway key as
-          <code>RESTORMEL_GATEWAY_KEY</code> in the environment — it is never written
-          into this snippet.
+          Copy this into your app and it asks the exact same question you just asked here — same
+          verified answer, same citations — by calling <code>POST {`/connect/v1/graph`}</code>. Set
+          your Gateway key as <code>RESTORMEL_GATEWAY_KEY</code> in the environment; it's never
+          written into the snippet.
         </p>
         <CodeBlock tabs={snippet.tabs} />
       </div>

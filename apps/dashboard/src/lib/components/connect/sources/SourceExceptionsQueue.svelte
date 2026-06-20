@@ -86,7 +86,7 @@
       Exceptions queue
       {#if total > 0}<span class="count-badge" aria-label={`${total} items need attention`}>{total}</span>{/if}
     </h2>
-    <p class="exceptions-sub">Only what needs a human — failed documents and runs. Everything else ingests in the background.</p>
+    <p class="exceptions-sub">Just the things that need you — documents and runs that failed. Everything else ingests on its own in the background.</p>
   </div>
 
   {#if actionError}
@@ -97,8 +97,8 @@
     <div class="queue-clear" role="status">
       <span class="clear-mark" aria-hidden="true">✓</span>
       <div>
-        <p class="clear-title">Queue clear</p>
-        <p class="clear-sub">No documents or runs need attention. Sources are ingesting cleanly.</p>
+        <p class="clear-title">All clear</p>
+        <p class="clear-sub">Nothing needs you right now — your sources are ingesting cleanly in the background.</p>
       </div>
     </div>
   {:else}

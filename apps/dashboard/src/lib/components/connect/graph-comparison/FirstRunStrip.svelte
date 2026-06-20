@@ -24,22 +24,22 @@
   $: ordered = [...answerable, ...abstention];
 </script>
 
-<aside class="firstrun" aria-label="Try the seeded demo graph">
+<aside class="firstrun" aria-label="Try a question on the demo graph">
   <div class="firstrun-head">
-    <span class="firstrun-tag">START HERE — SEEDED DEMO GRAPH</span>
+    <span class="firstrun-tag">START HERE — TRY A QUESTION</span>
     <button
       type="button"
       class="firstrun-dismiss brut-focus"
       on:click={onDismiss}
-      aria-label="Dismiss the demo suggestions"
+      aria-label="Dismiss the suggested questions"
     >
       DISMISS ✕
     </button>
   </div>
   <p class="firstrun-lede">
-    Tap a question to get a verified, cited answer right now — no setup. The last one
-    is a question the graph <strong>can't</strong> answer, so you can see it
-    <strong>abstain</strong> instead of guessing.
+    Tap any question to get a verified, cited answer right now — no setup needed. The last one
+    is something the sources <strong>don't</strong> cover, so you'll see Restormel
+    <strong>abstain</strong> rather than make something up. That refusal is the point.
   </p>
   <div class="firstrun-chips">
     {#each ordered as q (q.question)}
