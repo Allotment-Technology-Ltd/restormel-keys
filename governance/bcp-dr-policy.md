@@ -3,9 +3,9 @@ id: REC-POL-005
 title: Business Continuity & Disaster Recovery Policy
 class: governance
 owner: founder
-status: draft
-approved-by: PENDING-FOUNDER-SIGNOFF
-approved-on: PENDING
+status: approved
+approved-by: Adam Boon
+approved-on: 2026-06-20
 classification: internal
 control-tier: 2
 created: 2026-06-20
@@ -17,13 +17,13 @@ related: [REC-PLAN-012, REC-PLAN-015, RISK-001, AST-003, AST-009, AST-010]
 
 # Business Continuity & Disaster Recovery Policy
 
-**Allotment Technology Ltd** · Version 2026-06-20 · **DRAFT — awaiting founder sign-off**
+**Allotment Technology Ltd** · Version 2026-06-20 · **APPROVED — founder sign-off 2026-06-20**
 
-> **Status: DRAFT.** `approved-by` / `approved-on` are placeholders pending founder review and
-> sign-off. On approval, set `status: approved`, `approved-by: Adam Boon`, and `approved-on` to the
-> sign-off date. This document **anchors the RTO < 4 h continuity claim** referenced in the sovereign
-> migration plan and is the previously-missing `governance/bcp-dr-policy.md` flagged in
+> **Status: APPROVED** (founder sign-off 2026-06-20, Adam Boon). This document **anchors the
+> RTO < 4 h continuity claim** referenced in the sovereign migration plan and is the
+> previously-missing `governance/bcp-dr-policy.md` flagged in
 > [`planning/full-migration-plan-k3s.md`](../planning/full-migration-plan-k3s.md) §E.4.
+> Next review due per `review-interval` (P12M → 2027-06-20); revise only via a versioned update.
 
 ## 1. Purpose and scope
 
@@ -71,7 +71,8 @@ RPO ≤ 5 min (Postgres) / ~1 h (SurrealDB hourly export)**. (The hourly Surreal
 
 ### 3.1 Postgres — CNPG + Barman (continuous WAL + PITR)
 - Every CNPG cluster archives **WAL continuously** to **Hetzner Object Storage**
-  (region-matched endpoint `https://hel1.your-objectstorage.com`, S3v4) with a **daily base backup**
+  (endpoint `https://fsn1.your-objectstorage.com`, S3v4 — `fsn1`/Falkenstein is **deliberately a
+  different region from the `hel1` compute**, so backups survive a `hel1`-wide loss; see §4.3) with a **daily base backup**
   (`ScheduledBackup`) and a **14-day retention policy**.
 - Continuous WAL gives **PITR to within minutes** → the **≤ 5 min RPO**. DR restore bootstraps a
   **fresh** CNPG cluster from the same object store via `bootstrap.recovery` + `externalClusters`.
