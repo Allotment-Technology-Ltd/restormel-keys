@@ -72,14 +72,20 @@ networking:
   ssh:
     port: 22
     use_agent: false
-    # Operator SSH keypair already registered in Hetzner Cloud. Reference the
-    # existing key by name so hetzner-k3s does not upload a new one.
-    existing_ssh_key_name: "restormel-operator"
-    public_key_path: "~/.ssh/restormel_operator.pub"
-    private_key_path: "~/.ssh/restormel_operator"
+    # Operator SSH keypair — an EXISTING Hetzner Cloud key (referenced by name so
+    # hetzner-k3s does not upload a new one). The bootstrap node `ubuntu-16gb-hel1-4`
+    # (172.16.0.5) was provisioned 2026-06-20 with BOTH `adam@allotment-hetzner` and
+    # `surreal-box-coolify` attached. We use `adam@allotment-hetzner` — its private
+    # key is on the operator Mac at ~/.ssh/id_hetzner_allotment (fingerprint MD5
+    # da:1f:62:…:66:17, confirmed to match the registered key 2026-06-20).
+    existing_ssh_key_name: "adam@allotment-hetzner"
+    public_key_path: "~/.ssh/id_hetzner_allotment.pub"
+    private_key_path: "~/.ssh/id_hetzner_allotment"
 
   # --- LOCKED ACCESS (design §3.1: "lock allowed_networks.api/ssh to operator IP")
   # Replace <OPERATOR_IP>/32 with the operator's current egress IP before apply.
+  # (As of 2026-06-20 the existing `surreal-box-fw` allows SSH from 82.42.129.209/32
+  #  — likely the operator egress IP; CONFIRM it's current before using, IPs change.)
   # Do NOT widen to 0.0.0.0/0. The private network handles intra-cluster traffic.
   allowed_networks:
     ssh:
@@ -96,8 +102,11 @@ networking:
 
   # --- REUSE THE EXISTING PRIVATE NETWORK (design §3.1) ----------------------
   # Do NOT let the tool create a new network. The existing private net is
-  # 172.16.0.0/16 ("restormel-internal"); .150=172.16.0.2 .167=172.16.0.3
-  # .166=172.16.0.4. The temp CX43 bootstrap node joins THIS network so the
+  # 172.16.0.0/16 ("restormel-internal"; verified hcloud API 2026-06-20 — one /24
+  # subnet 172.16.0.0/24, eu-central zone [covers hel1], gateway .1):
+  #   .150=172.16.0.2 (cx33)  .167=172.16.0.3 (cx33)  .166=172.16.0.4 (cx43)
+  # All three are EXISTING Hetzner Cloud servers in hel1 (NOT Robot/dedicated).
+  # The temp CX43 bootstrap node joins THIS network (it would take .5) so the
   # existing boxes can later be folded into the same L2 without renumbering.
   private_network:
     enabled: true
