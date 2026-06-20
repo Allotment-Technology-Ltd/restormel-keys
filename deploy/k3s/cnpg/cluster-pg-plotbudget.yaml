@@ -7,14 +7,20 @@
 # migration self-hosts Supabase; this CNPG cluster is the Postgres engine under
 # that self-hosted Supabase stack (`plotbudget` database).
 #
-# NOTE for the operator: self-hosted Supabase expects specific roles/extensions
-# (e.g. `supabase_admin`, `authenticator`, `anon`, `service_role`; extensions
-# pgcrypto/pgjwt/uuid-ossp, and — if used — pgvector/pg_graphql). The CNPG
-# postgresql:16 image does NOT ship every Supabase extension; pgvector/pg_graphql
-# may require a custom image or the Supabase-flavoured Postgres image wrapped for
-# CNPG. Confirm the Supabase extension set against the chosen image BEFORE apply
-# (flagged in MIGRATION.md + the founder-gap list). instances: 2, Hetzner CSI,
-# separate walStorage, backups → fsn1.
+# SUPABASE DB CONTRACT (resolves the "custom image" founder-flag — 2026-06-20):
+#   Self-hosted Supabase expects standard roles (`anon`, `authenticated`,
+#   `service_role`, `authenticator`, `supabase_*_admin`) + schemas (`auth`,
+#   `storage`, `_realtime`) + a few extensions. The managed Supabase image
+#   pre-bakes these; we run STOCK CNPG Postgres and recreate the contract via
+#   `plotbudget-supabase-bootstrap.sql` (roles/schemas/grants) + `spec.managed.roles`
+#   (login + ESO-delivered passwords) below.
+#   NO CUSTOM IMAGE is needed for PlotBudget: its schema uses ONLY `uuid-ossp`
+#   (verified — zero pgjwt / pg_graphql / pgvector references in all migrations +
+#   config.toml). pgcrypto + uuid-ossp both ship in the stock image. `pg_graphql`
+#   would only be needed to expose GraphQL, which PlotBudget does not use, so
+#   `graphql_public` is dropped from PGRST_DB_SCHEMAS (20-config.yaml). Re-introduce
+#   a custom image ONLY if GraphQL is later wanted.
+# instances: 2, Hetzner CSI, separate walStorage, backups → fsn1.
 # -----------------------------------------------------------------------------
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -25,7 +31,7 @@ metadata:
     app.kubernetes.io/part-of: restormel-sovereign-migration
     restormel.dev/criticality: shared
 spec:
-  # If Supabase extensions force a custom image, override imageName here.
+  # STOCK image — no custom image needed (see header). pgcrypto + uuid-ossp both ship here.
   imageName: ghcr.io/cloudnative-pg/postgresql:16.8
   instances: 2
   primaryUpdateStrategy: unsupervised
@@ -39,11 +45,53 @@ spec:
       encoding: UTF8
       localeCType: C
       localeCollate: C
-      # Supabase needs these extensions present; CNPG runs the list post-initdb.
-      # Confirm availability in the chosen image (see header note).
-      postInitSQL:
-        - "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-        - "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+      # The Supabase DB contract (roles + schemas + grants + extensions) is applied
+      # in the APPLICATION database (`plotbudget`) — NOT in postInitSQL, which runs
+      # in the `postgres` DB where CREATE EXTENSION would land in the wrong database
+      # (the prior inline postInitSQL did exactly that; fixed). The SQL lives in
+      # plotbudget-supabase-bootstrap.sql, surfaced as a ConfigMap at apply time, e.g.
+      #   kustomize configMapGenerator → name: pg-plotbudget-supabase-bootstrap
+      #   from file: bootstrap.sql=plotbudget-supabase-bootstrap.sql
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - name: pg-plotbudget-supabase-bootstrap   # key: bootstrap.sql (see README)
+            key: bootstrap.sql
+
+  # ---------------------------------------------------------------------------
+  # Declarative role management — attaches LOGIN + ESO-delivered passwords to the
+  # service roles the bootstrap SQL created (without passwords). CNPG reconciles
+  # these onto the existing roles. NOLOGIN group roles (anon/authenticated/
+  # service_role) carry no password and stay SQL-managed.
+  # ---------------------------------------------------------------------------
+  managed:
+    roles:
+      - name: authenticator            # PostgREST connects as this; NOINHERIT (SET ROLE only)
+        ensure: present
+        login: true
+        inherit: false
+        passwordSecret:
+          name: pg-plotbudget-authenticator
+      - name: supabase_auth_admin      # GoTrue
+        ensure: present
+        login: true
+        inherit: false
+        passwordSecret:
+          name: pg-plotbudget-auth-admin
+      - name: supabase_storage_admin   # Storage API
+        ensure: present
+        login: true
+        inherit: false
+        passwordSecret:
+          name: pg-plotbudget-storage-admin
+      - name: supabase_admin           # Realtime / admin. Standard Supabase attribute set —
+        ensure: present                # NOT superuser (see bootstrap.sql §6 + apply-time caveat).
+        login: true
+        createdb: true
+        createrole: true
+        replication: true
+        bypassrls: true
+        passwordSecret:
+          name: pg-plotbudget-supabase-admin
 
   enableSuperuserAccess: true
   superuserSecret:
@@ -70,6 +118,9 @@ spec:
       max_connections: "100"
       shared_buffers: "256MB"
       archive_timeout: "60s"
+      # Supabase Realtime needs logical decoding. CNPG already runs wal_level=logical
+      # by default (replication slots), so Realtime's change feed is satisfied —
+      # confirm `SHOW wal_level;` = logical during the rehearsal before wiring Realtime.
 
   plugins:
     - name: barman-cloud.cloudnative-pg.io

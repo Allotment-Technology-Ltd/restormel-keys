@@ -13,7 +13,8 @@
 | `objectstore-fsn1.yaml` | Barman Cloud **Plugin** `ObjectStore` → Hetzner Object Storage **fsn1** (cross-region PITR target). Shared by all three clusters. |
 | `cluster-pg-platform.yaml` | Shared cluster — `allotmentology`, `restormel-staging`, and `UseSophia` (after Sophia's DB migration). |
 | `cluster-pg-restormel.yaml` | The **live prod app DB** (`restormel_ops`). Highest criticality; isolated cluster. |
-| `cluster-pg-plotbudget.yaml` | Cluster backing **self-hosted Supabase** for plotbudget (replaces managed Supabase). |
+| `cluster-pg-plotbudget.yaml` | Cluster backing **self-hosted Supabase** for plotbudget (replaces managed Supabase). Carries the Supabase role/schema contract via `managed.roles` + the bootstrap SQL below. |
+| `plotbudget-supabase-bootstrap.sql` | **Supabase DB contract** — roles (`anon`/`authenticated`/`service_role`/`authenticator`/`supabase_*_admin`) + schemas (`auth`/`storage`/`_realtime`) + grants + extensions, run once at initdb in the `plotbudget` DB. Replaces the assumed "custom Supabase image": PlotBudget needs **no** custom image (uses only `uuid-ossp`; no pgjwt/pg_graphql/pgvector). Apply via a ConfigMap (below). |
 | `scheduledbackup.yaml` | One `ScheduledBackup` per cluster (`method: plugin`). |
 | `recovery-example.yaml` | **Reference-only** PITR/DR `bootstrap.recovery` cluster — how to restore from fsn1 to a point in time. Do not apply alongside the live clusters. |
 | `eso-secret-placeholders.yaml` | External Secrets Operator (ESO) `ExternalSecret` placeholders that render the S3 creds + superuser secrets. **No real secret material.** |
@@ -67,6 +68,37 @@ same cluster is a chicken-and-egg failure mode:
 See `MIGRATION.md` §"Bootstrap-sensitive: do not migrate" for the rationale and the
 later, separate treatment.
 
+## Supabase DB bootstrap (`pg-plotbudget`) — no custom image
+
+Self-hosted Supabase needs standard Postgres roles/schemas/grants that the managed Supabase
+image pre-bakes. We run **stock CNPG Postgres** and recreate that contract:
+
+- **`plotbudget-supabase-bootstrap.sql`** — roles + schemas + grants + extensions, run once at
+  initdb via `bootstrap.initdb.postInitApplicationSQLRefs` (in the `plotbudget` DB, not `postgres`).
+- **`spec.managed.roles`** — attaches LOGIN + ESO-delivered passwords to the four service roles
+  (`authenticator`, `supabase_auth_admin`, `supabase_storage_admin`, `supabase_admin`).
+
+**No custom image:** PlotBudget's schema uses only `uuid-ossp`; there is **no** pgjwt / pg_graphql /
+pgvector anywhere (verified 2026-06-20), and `graphql_public` was dropped from `PGRST_DB_SCHEMAS`.
+Re-introduce a custom image **only** if GraphQL is later exposed.
+
+Surface the SQL as the ConfigMap the cluster references (`pg-plotbudget-supabase-bootstrap`,
+key `bootstrap.sql`), e.g. via kustomize:
+
+```yaml
+configMapGenerator:
+  - name: pg-plotbudget-supabase-bootstrap
+    files:
+      - bootstrap.sql=plotbudget-supabase-bootstrap.sql
+generatorOptions:
+  disableNameSuffixHash: true   # CNPG references a stable ConfigMap name
+```
+
+**⚠ Apply-time verification (settle during the rehearsal — see the `.sql` header):** re-check each
+pinned service image's bundled migrations for extra extension/role expectations; prove whether
+`supabase_admin` can manage the `supabase_realtime` publication **without** SUPERUSER (high-risk
+sign-off if it can't); confirm `SHOW wal_level;` = `logical` for Realtime.
+
 ## Prerequisites (NOT created here — owner/operator items)
 
 - CNPG operator ≥ 1.27 installed in the cluster.
@@ -74,3 +106,4 @@ later, separate treatment.
 - External Secrets Operator (ESO) installed and wired to Infisical (`secrets.restormel.dev`).
 - Hetzner CSI driver installed; `hcloud-volumes` StorageClass present.
 - A Hetzner Object Storage bucket in **fsn1** + an S3 access key/secret, stored in Infisical.
+- Infisical keys for the four `pg-plotbudget` Supabase role passwords (see `eso-secret-placeholders.yaml`).
