@@ -201,7 +201,9 @@
   })();
 
   function isActivePath(href: string): boolean {
-    return currentPath === href || currentPath.startsWith(href + "/");
+    // Delegate to the nav matcher so the Answer Console (/prove/proof) and the
+    // demoted Prove-audit (/prove) don't both light up (Phase 3 Stage 6).
+    return isWorkNavActive(currentPath, href);
   }
 
   /** Reveal the group that contains the current page without collapsing others. */
@@ -317,14 +319,24 @@
                 {:else}
                   {#each group.items as item}
                     {@const isGroupItemPending = pendingHref === item.href && !isActivePath(item.href)}
+                    {@const claimsBadge =
+                      item.href === CLAIMS_HREF && $connectReviewCount && $connectReviewCount > 0
+                        ? $connectReviewCount
+                        : null}
                     <a
                       href={item.href}
                       class="nav-link"
                       class:nav-link-active={isActivePath(item.href)}
                       class:nav-link-pending={isGroupItemPending}
                       aria-current={isActivePath(item.href) ? "page" : undefined}
+                      aria-label={claimsBadge
+                        ? `${item.label} — ${claimsBadge} ${claimsBadge === 1 ? "claim needs" : "claims need"} review`
+                        : undefined}
                     >
                       {item.label}
+                      {#if claimsBadge}
+                        <span class="nav-badge" aria-hidden="true">{claimsBadge}</span>
+                      {/if}
                     </a>
                   {/each}
                 {/if}

@@ -30,42 +30,61 @@ import {
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
-describe("sidebar nav (§2.2)", () => {
-  it("orders the six work sections as the product loop", () => {
+describe("sidebar nav (Phase 3 Stage 6 — operator desk collapsed to depth)", () => {
+  it("leads the work nav with the four verified-query surfaces", () => {
+    // Stage 6: Answer Console (home) · Sources · Traces · Keys & Routing.
     expect(WORK_NAV_ITEMS.map((i) => i.label)).toEqual([
-      "Home",
+      "Answer Console",
       "Sources",
-      "Runs",
-      "Claims",
-      "Prove",
-      "Agents",
+      "Traces",
+      "Keys & Routing",
     ]);
     expect(WORK_NAV_ITEMS.map((i) => i.href)).toEqual([
-      HOME_HREF,
+      DASHBOARD_BASE + "/prove/proof",
       SOURCES_HREF,
-      RUNS_HREF,
-      CLAIMS_HREF,
-      PROVE_HREF,
-      AGENTS_HREF,
+      DASHBOARD_BASE + "/traces",
+      DASHBOARD_BASE + "/access",
     ]);
+  });
+
+  it("demotes the operator/audit surfaces out of the primary work nav", () => {
+    const workHrefs = WORK_NAV_ITEMS.map((i) => i.href);
+    // Runs, Claims/Stamping, Prove-audit, Agents and the operator Home are no
+    // longer primary destinations (they live in the collapsed Operator group).
+    expect(workHrefs).not.toContain(HOME_HREF);
+    expect(workHrefs).not.toContain(RUNS_HREF);
+    expect(workHrefs).not.toContain(CLAIMS_HREF);
+    expect(workHrefs).not.toContain(PROVE_HREF);
+    expect(workHrefs).not.toContain(AGENTS_HREF);
   });
 
   it("workspace landing is the verified Answer Console (Phase 3 Stage 1)", () => {
     // Stage 1 makes the verified-query surface the default landing (North Star =
-    // verified answers at query time). `/home` remains the operator masthead in nav.
+    // verified answers at query time); Stage 6 makes it the first work item too.
     expect(WORKSPACE_HOME_HREF).toBe(DASHBOARD_BASE + "/prove/proof");
+    expect(WORK_NAV_ITEMS[0].href).toBe(WORKSPACE_HOME_HREF);
   });
 
-  it("has exactly two collapsed groups: Foundation and Observe", () => {
-    expect(NAV_GROUPS.map((g) => g.id)).toEqual(["foundation", "observe"]);
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(["Foundation", "Observe"]);
+  it("has three collapsed groups: Operator (demoted desk), Foundation, Observe", () => {
+    expect(NAV_GROUPS.map((g) => g.id)).toEqual(["operator", "foundation", "observe"]);
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual(["Operator", "Foundation", "Observe"]);
   });
 
-  it("Foundation matches §2.2 exactly (incl. Projects and Request tester)", () => {
+  it("Operator group preserves the demoted desk (Home masthead, Runs, Stamping, Prove-audit, Agents)", () => {
+    const operator = NAV_GROUPS.find((g) => g.id === "operator")!;
+    expect(operator.items.map((i) => [i.label, i.href])).toEqual([
+      ["Operator home", HOME_HREF],
+      ["Runs", RUNS_HREF],
+      ["Stamping desk", CLAIMS_HREF],
+      ["Prove (audit)", PROVE_HREF],
+      ["Agents", AGENTS_HREF],
+    ]);
+  });
+
+  it("Foundation keeps configuration depth (Routes stays; Gateway keys promoted to top-level)", () => {
     const foundation = NAV_GROUPS.find((g) => g.id === "foundation")!;
     expect(foundation.items.map((i) => [i.label, i.href])).toEqual([
       ["Connections", DASHBOARD_BASE + "/integrations"],
-      ["Gateway keys", DASHBOARD_BASE + "/access"],
       ["Routes", DASHBOARD_BASE + "/routes"],
       ["Guard rails", DASHBOARD_BASE + "/policies"],
       ["Projects", DASHBOARD_BASE + "/projects"],
@@ -74,11 +93,9 @@ describe("sidebar nav (§2.2)", () => {
     ]);
   });
 
-  it("Observe matches §2.2 exactly", () => {
+  it("Observe drops Traces (promoted to a lead surface) and keeps telemetry", () => {
     const observe = NAV_GROUPS.find((g) => g.id === "observe")!;
     expect(observe.items.map((i) => [i.label, i.href])).toEqual([
-      // Traces leads Observe (Phase 3 Stage 5 — verified-query surface).
-      ["Traces", DASHBOARD_BASE + "/traces"],
       ["Logs", DASHBOARD_BASE + "/logs"],
       ["Usage", DASHBOARD_BASE + "/analytics"],
       ["Health", DASHBOARD_BASE + "/healthcheck"],
@@ -104,7 +121,8 @@ describe("sidebar nav (§2.2)", () => {
     expect(WORK_NAV_ITEMS.map((i) => i.label)).not.toContain("Testing");
   });
 
-  it("collapses both groups by default", () => {
+  it("collapses all groups by default (incl. the demoted Operator group)", () => {
+    expect(defaultNavGroupsOpen().operator).toBe(false);
     expect(defaultNavGroupsOpen().foundation).toBe(false);
     expect(defaultNavGroupsOpen().observe).toBe(false);
   });
@@ -115,11 +133,14 @@ describe("sidebar nav (§2.2)", () => {
     expect(hydrateNavGroupsOpen({ connect: true }).foundation).toBe(true);
     expect(hydrateNavGroupsOpen({ monitor: true }).observe).toBe(true);
     expect(hydrateNavGroupsOpen({ keys: false, monitor: false })).toEqual({
+      operator: false,
       foundation: false,
       observe: false,
     });
     // New keys win over legacy ones.
     expect(hydrateNavGroupsOpen({ foundation: false, keys: true }).foundation).toBe(false);
+    // The Operator group key round-trips (new in Stage 6, no legacy successor).
+    expect(hydrateNavGroupsOpen({ operator: true }).operator).toBe(true);
     expect(hydrateNavGroupsOpen(null)).toEqual(defaultNavGroupsOpen());
   });
 
@@ -130,6 +151,18 @@ describe("sidebar nav (§2.2)", () => {
     expect(isWorkNavActive(DASHBOARD_BASE + "/routes", RUNS_HREF)).toBe(false);
     expect(isWorkNavActive(HOME_HREF, HOME_HREF)).toBe(true);
     expect(isWorkNavActive(CLAIMS_HREF, HOME_HREF)).toBe(false);
+  });
+
+  it("keeps Answer Console (/prove/proof) and Prove-audit (/prove) highlights disjoint", () => {
+    const answer = DASHBOARD_BASE + "/prove/proof";
+    // On the Answer Console: the Answer Console lights up, Prove-audit does NOT.
+    expect(isWorkNavActive(answer, answer)).toBe(true);
+    expect(isWorkNavActive(answer, PROVE_HREF)).toBe(false);
+    expect(isWorkNavActive(answer + "/run-1", answer)).toBe(true);
+    // On the Prove-audit desk: Prove-audit lights up, Answer Console does NOT.
+    expect(isWorkNavActive(PROVE_HREF, PROVE_HREF)).toBe(true);
+    expect(isWorkNavActive(PROVE_HREF, answer)).toBe(false);
+    expect(isWorkNavActive(PROVE_HREF + "/history", PROVE_HREF)).toBe(true);
   });
 
   it("highlights Testing hub on CI snippets path", () => {
@@ -144,11 +177,40 @@ describe("sidebar nav (§2.2)", () => {
     expect(navGroupContainsPath(foundation, CLAIMS_HREF)).toBe(false);
   });
 
-  it("gates the five Connect sections on the connect flag; Home always shows", () => {
+  it("detects active path inside the demoted Operator group", () => {
+    const operator = NAV_GROUPS.find((g) => g.id === "operator")!;
+    expect(navGroupContainsPath(operator, RUNS_HREF + "/job-1")).toBe(true);
+    expect(navGroupContainsPath(operator, CLAIMS_MEMORY_HREF)).toBe(true);
+    expect(navGroupContainsPath(operator, PROVE_HREF)).toBe(true);
+    // The Answer Console subtree belongs to the work nav, not the Operator group.
+    expect(navGroupContainsPath(operator, DASHBOARD_BASE + "/prove/proof")).toBe(false);
+  });
+
+  it("gates the verified-corpus work surfaces on the connect flag; Answer Console + Keys always show", () => {
     const withConnect = filterWorkNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, connect: true });
-    expect(withConnect.map((i) => i.label)).toEqual(["Home", "Sources", "Runs", "Claims", "Prove", "Agents"]);
+    expect(withConnect.map((i) => i.label)).toEqual([
+      "Answer Console",
+      "Sources",
+      "Traces",
+      "Keys & Routing",
+    ]);
     const withoutConnect = filterWorkNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, connect: false });
-    expect(withoutConnect.map((i) => i.label)).toEqual(["Home"]);
+    expect(withoutConnect.map((i) => i.label)).toEqual(["Answer Console", "Keys & Routing"]);
+  });
+
+  it("gates the Operator desk's Connect surfaces on the connect flag; Operator home always shows", () => {
+    const withConnect = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, connect: true });
+    const opOn = withConnect.find((g) => g.id === "operator");
+    expect(opOn?.items.map((i) => i.label)).toEqual([
+      "Operator home",
+      "Runs",
+      "Stamping desk",
+      "Prove (audit)",
+      "Agents",
+    ]);
+    const withoutConnect = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, connect: false });
+    const opOff = withoutConnect.find((g) => g.id === "operator");
+    expect(opOff?.items.map((i) => i.label)).toEqual(["Operator home"]);
   });
 
   it("gates Testing nav on the testing flag", () => {
@@ -163,11 +225,11 @@ describe("sidebar nav (§2.2)", () => {
     expect(observe?.items).toEqual([]);
   });
 
-  it("shows Observe links when monitor flag on", () => {
+  it("shows Observe links when monitor flag on (Traces is now a lead surface)", () => {
     const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, monitor: true });
     const observe = filtered.find((g) => g.id === "observe");
     expect(observe?.comingSoon).toBeUndefined();
-    expect(observe?.items.map((i) => i.label)).toEqual(["Traces", "Logs", "Usage", "Health"]);
+    expect(observe?.items.map((i) => i.label)).toEqual(["Logs", "Usage", "Health"]);
   });
 
   it("hides Guard rails when guardrails flag off", () => {
@@ -247,18 +309,24 @@ describe("navigation pending-state derivation (nav-pending-fix)", () => {
     expect(derivePendingHref(dest, workNav, testingNav, groups)).toBe(RUNS_HREF);
   });
 
-  it("resolves Claims when navigating to /claims", () => {
+  it("resolves the demoted Stamping desk when navigating to /claims", () => {
     expect(derivePendingHref(CLAIMS_HREF, workNav, testingNav, groups)).toBe(CLAIMS_HREF);
-    expect(derivePendingLabel(CLAIMS_HREF, workNav, testingNav, groups)).toBe("Claims");
+    expect(derivePendingLabel(CLAIMS_HREF, workNav, testingNav, groups)).toBe("Stamping desk");
   });
 
   it("resolves Claims for /claims/memory", () => {
     expect(derivePendingHref(CLAIMS_MEMORY_HREF, workNav, testingNav, groups)).toBe(CLAIMS_HREF);
   });
 
-  it("resolves Home when navigating to /home", () => {
+  it("resolves the demoted Operator home when navigating to /home", () => {
     expect(derivePendingHref(HOME_HREF, workNav, testingNav, groups)).toBe(HOME_HREF);
-    expect(derivePendingLabel(HOME_HREF, workNav, testingNav, groups)).toBe("Home");
+    expect(derivePendingLabel(HOME_HREF, workNav, testingNav, groups)).toBe("Operator home");
+  });
+
+  it("resolves the Answer Console (not Prove-audit) when navigating to /prove/proof", () => {
+    const answer = DASHBOARD_BASE + "/prove/proof";
+    expect(derivePendingHref(answer, workNav, testingNav, groups)).toBe(answer);
+    expect(derivePendingLabel(answer, workNav, testingNav, groups)).toBe("Answer Console");
   });
 
   it("resolves Testing when navigating to the testing hub", () => {
@@ -304,13 +372,15 @@ describe("navigation pending-state derivation (nav-pending-fix)", () => {
 });
 
 describe("topbarTitle", () => {
-  it("titles the six work sections", () => {
-    expect(topbarTitle(HOME_HREF)).toBe("Home");
+  it("titles the work + demoted-desk sections", () => {
+    expect(topbarTitle(HOME_HREF)).toBe("Operator home");
     expect(topbarTitle(SOURCES_HREF)).toBe("Sources");
     expect(topbarTitle(RUNS_HREF)).toBe("Runs");
-    expect(topbarTitle(CLAIMS_HREF)).toBe("Claims");
+    expect(topbarTitle(CLAIMS_HREF)).toBe("Stamping desk");
     expect(topbarTitle(PROVE_HREF)).toBe("Prove");
+    expect(topbarTitle(DASHBOARD_BASE + "/prove/proof")).toBe("Answer Console");
     expect(topbarTitle(AGENTS_HREF)).toBe("Agents");
+    expect(topbarTitle(DASHBOARD_BASE + "/traces")).toBe("Traces");
   });
 
   it("titles section detail pages", () => {
