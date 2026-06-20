@@ -17,6 +17,8 @@ The GitOps control plane for the K3s cluster:
 - An **app-of-apps** root `Application` that renders every child `Application`.
 - **Per-app `Application` manifests** for the workloads, with **prod sync = MANUAL**
   (prod is never main-auto-deploy) and **auto-sync only on staging**.
+- The **prod PBI lifecycle PostSync hook** Job (in the prod dashboard chart) — flips
+  `status/ready-deploy` PBIs → `status/deployed`+close on the operator's prod Sync success.
 
 ## Version pins (verified 2026-06-20)
 
@@ -38,18 +40,24 @@ deploy/k3s/gitops/
 │   └── appprojects.yaml                AppProjects: restormel-prod / -nonprod / cluster-addons
 ├── root/
 │   └── root-app.yaml              ← app-of-apps ROOT (auto-syncs Application objects)
-└── applications/
-    ├── addons/
-    │   └── 00-cluster-addons.yaml ← points at deploy/k3s/cluster/** (CNPG, Surreal,
-    │                                 Supabase, ingress, cert-manager, ESO) — AUTO-sync
-    └── workloads/
-        ├── restormel-dashboard-prod.yaml     PROD  · MANUAL
-        ├── restormel-worker-prod.yaml        PROD  · MANUAL · sync-wave after dashboard
-        ├── restormel-dashboard-staging.yaml  STAGING · AUTO  · Image-Updater opt-in
-        ├── restormel-preview.yaml            PREVIEW · MANUAL (cost guard, scale-to-zero)
-        ├── allotmentology-prod.yaml          PROD  · MANUAL
-        ├── usesophia-prod.yaml               PROD  · MANUAL · PHASE B (disabled)
-        └── plotbudget-supabase-prod.yaml     PROD  · MANUAL · PHASE B (disabled, founder flag)
+├── applications/
+│   ├── addons/
+│   │   └── 00-cluster-addons.yaml ← points at deploy/k3s/cluster/** (CNPG, Surreal,
+│   │                                 Supabase, ingress, cert-manager, ESO) — AUTO-sync
+│   └── workloads/
+│       ├── restormel-dashboard-prod.yaml     PROD  · MANUAL
+│       ├── restormel-worker-prod.yaml        PROD  · MANUAL · sync-wave after dashboard
+│       ├── restormel-dashboard-staging.yaml  STAGING · AUTO  · Image-Updater opt-in
+│       ├── restormel-preview.yaml            PREVIEW · MANUAL (cost guard, scale-to-zero)
+│       ├── allotmentology-prod.yaml          PROD  · MANUAL
+│       ├── usesophia-prod.yaml               PROD  · MANUAL · PHASE B (disabled)
+│       └── plotbudget-supabase-prod.yaml     PROD  · MANUAL · PHASE B (disabled, founder flag)
+└── charts/
+    └── restormel-dashboard/templates/
+        └── pbi-lifecycle-postsync.yaml       PROD PostSync HOOK Job + ESO token (#184).
+                                              Lives INSIDE the prod chart (NOT under
+                                              applications/) so it renders only on the prod
+                                              dashboard Sync — never swept by the root-app glob.
 ```
 
 ## The real `restormel-gitops` repo
@@ -67,8 +75,9 @@ from. **Manifests + Helm values only. No secrets, ever** (ESO handles secrets �
 | `root/root-app.yaml` | `applications/root/root-app.yaml` |
 | `applications/addons/*` | `applications/addons/*` |
 | `applications/workloads/*` | `applications/workloads/*` |
+| `charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml` | `charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml` (prod PostSync hook, #184) |
 | *(referenced, sibling PR)* | `cluster/**` — CNPG/Surreal/Supabase/ingress/ESO manifests |
-| *(referenced)* | `charts/<app>/` — per-app Helm chart |
+| *(referenced)* | `charts/<app>/` — remainder of per-app Helm chart (Deployment, Service, Ingress…) |
 | *(referenced)* | `values/<app>-<env>.yaml` — **`image.tag` lives here; CI bumps it** |
 
 So the canonical `restormel-gitops` layout is:
@@ -86,6 +95,7 @@ restormel-gitops/                       (Forgejo, manifests + values, NO secrets
 │   ├── surrealdb/     (StatefulSet, 1 replica, CSI PVC)
 │   └── supabase/      (Phase B)
 ├── charts/<app>/                       per-app Helm chart (templates)
+│   └── restormel-dashboard/templates/pbi-lifecycle-postsync.yaml  ← prod PostSync hook
 └── values/<app>-<env>.yaml             env values — image.tag is the bumped line
 ```
 
@@ -106,6 +116,10 @@ never main-auto-deploy)."** How it's enforced here, in layers:
    Creating an Application never rolls a workload; the child's own (absent) auto-sync
    policy governs that. So "Applications always exist + track git" and "prod only rolls
    on a click" hold simultaneously.
+5. **The PBI lifecycle PostSync hook fires only on prod Sync success.** It is a resource
+   *inside* the prod dashboard chart (not a child Application, not under
+   `applications/workloads/`), so it can never run at root-sync time and can never flip
+   PBIs ahead of a real operator Sync — the gate stays honest.
 
 Auto-sync is permitted **only** on `restormel-nonprod` (staging/preview) and on
 `cluster-addons` (platform invariants).
@@ -127,7 +141,8 @@ and design §10).
 ## Bootstrap order (operator, once — not automated here)
 
 See [`DEPLOY-PIPELINE.md`](./DEPLOY-PIPELINE.md) "Bootstrap order". Summary:
-ESO + Infisical SecretStore → Argo CD (Helm, pinned) → AppProjects + repo ExternalSecret
-→ `root-app.yaml` → Argo renders addons + workloads → operator syncs prod by hand.
+ESO + per-project Infisical SecretStores → Argo CD (Helm, pinned) → AppProjects + repo
+ExternalSecret → `root-app.yaml` → Argo renders addons + workloads → operator syncs prod by
+hand (the prod dashboard Sync then runs the PBI lifecycle PostSync hook on success).
 **Forgejo + Infisical + the CI runner stay OFF-cluster through migration** (design §8) so
 the thing that deploys the cluster never depends on the cluster being healthy.

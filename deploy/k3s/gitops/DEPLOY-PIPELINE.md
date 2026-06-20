@@ -40,8 +40,11 @@ push to main / dashboard-v* tag
   4b. PROD    : Application is OutOfSync → ***OPERATOR SYNCS BY HAND*** (manual gate)
         │
         ▼
-[ Forgejo Action — PBI lifecycle callback ]  ← PRESERVED UNCHANGED
-  5. on success, flip status/ready-deploy PBIs → status/deployed + close (label-ID logic kept)
+  5. PBI lifecycle callback — flip status/ready-deploy PBIs → status/deployed + close
+       STAGING : in-workflow step (auto-sync ⇒ deploy completes in-band)  ← PRESERVED UNCHANGED
+       PROD    : Argo PostSync HOOK Job (fires on the operator's Sync success)
+                 → charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml
+                   (label-ID logic kept byte-for-byte from commit 6bc3edac; outbound-only)
 ```
 
 ### Why "CI bumps the tag in git" is the primary path (not Image Updater) for prod
@@ -107,22 +110,26 @@ the `deploy_and_wait()` curl-to-`/deploy` + poll-`/deployments`, the `*_UUID` en
     # STAGING: Argo auto-syncs; nothing more to do.
 ```
 
-**Unchanged** — the entire `Lifecycle — close PBIs that were awaiting this deploy` step
-(below) is **copied verbatim**. It does not touch Coolify or Argo; it only talks to the
-Forgejo issues API with `FORGEJO_TOKEN`. It stays `if: success()` on the deploy job.
+**STAGING** keeps the existing in-workflow `Lifecycle — close PBIs that were awaiting this
+deploy` step **copied verbatim** (auto-sync ⇒ the deploy completes in-band, so `if: success()`
+on the deploy job is still the right trigger; it only talks to the Forgejo issues API with
+`FORGEJO_TOKEN`).
 
-> **The manual-sync gate and CI**: for prod, CI's job ends at "tag bumped + committed". The
-> deploy is *not* complete until the operator syncs. So the **PBI lifecycle callback must
-> NOT fire on the build/bump job for prod** — it must fire on **deploy completion**. Two
-> clean options (decide in the cutover PR):
-> - **(a) Argo PostSync hook** — a `Job` with the lifecycle script as an
->   `argocd.argoproj.io/hook: PostSync` resource in the prod chart, so PBIs flip exactly
->   when the operator's prod **Sync succeeds** (most faithful to "live = synced").
-> - **(b) keep it in the workflow** for **staging** (auto-sync ⇒ deploy completes in-band),
->   and run the prod lifecycle flip from the PostSync hook (a). This keeps the existing
->   label-ID logic; it just moves *where* it runs for prod.
-> Recommended: **(a)** for prod (truthful "deployed" = "synced"), **(b)**'s in-workflow form
-> retained for staging. Either way the **label-ID flip logic is preserved byte-for-byte**.
+**PROD** moves that same logic to an Argo **PostSync hook Job** —
+`charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml` (implemented in this PR;
+closes #184). Because prod's CI job ends at "tag bumped + committed" and the deploy is not complete
+until the operator Syncs, the prod flip MUST fire on **Sync success**, not on the build/bump
+job. The hook is the faithful "deployed == synced" trigger. **The label-ID flip logic is
+preserved byte-for-byte** (only `apt-get install jq` is dropped — the hook image already ships
+curl+jq; and the bash `auth=(...)` array is inlined per-curl because the hook runs under
+POSIX `/bin/sh`).
+
+> **The manual-sync gate and CI** (resolved): for prod, CI's job ends at "tag bumped +
+> committed". The deploy is *not* complete until the operator syncs. So the prod PBI flip is
+> the **PostSync hook Job (option (a))** — PBIs flip exactly when the operator's prod **Sync
+> succeeds** (most faithful to "live = synced"). Staging retains the **in-workflow step
+> (option (b))** since auto-sync completes the deploy in-band. Either way the **label-ID flip
+> logic is preserved byte-for-byte**.
 
 ## 5. PBI lifecycle callback — PRESERVED (do not rewrite)
 
@@ -139,17 +146,32 @@ contract to preserve (see the live file for the canonical copy):
 the body is identical. This is the single most important preservation requirement of the
 rewrite (design §8: "Preserve the PBI lifecycle callbacks — only the deploy step swaps").
 
+### Prod PostSync hook — outbound-only (REC-INC-006 invariant)
+
+The prod hook Job (`charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml`) makes **egress HTTPS calls only**,
+to the **public** Forgejo API `https://git.allotmentology.tech/api/v1`. It is NOT a
+runner→on-box step and never dials a box private IP (no `10.0.1.1` / `172.16.0.2` /
+cluster-internal host), so it cannot recreate the ephemeral-subnet route collision of
+REC-INC-006. Its only inbound dependency is the ESO-delivered `forgejo-pm-token` Secret
+(cluster-local; key `FORGEJO_PM_TOKEN` from the `infrastructure` Infisical project via the
+`infisical-infra` ClusterSecretStore). Token absent ⇒ the script no-ops cleanly, exactly like
+the workflow guard.
+
 ## 6. Bootstrap order (operator, once)
 
-1. **ESO + Infisical `ClusterSecretStore`** (`infisical-prod`) — machine-identity bootstrap is
-   the only out-of-band secret (design §6).
+1. **ESO + per-project Infisical `ClusterSecretStore`s** (`infisical-infra`,
+   `infisical-restormel`, `infisical-allotmentology`; sophia/plotbudget are Phase B — see
+   `deploy/k3s/secrets/secretstore-infisical.yaml`, PR #200). The **one** out-of-band secret is
+   the shared Infisical machine-identity bootstrap Secret `infisical-machine-identity` in ns
+   `external-secrets` (design §6).
 2. **Argo CD** — `helm upgrade --install argocd argo/argo-cd --version 9.5.22 -n argocd
    --create-namespace -f bootstrap/argocd-values.yaml`.
 3. **`bootstrap/appprojects.yaml`** + **`bootstrap/argocd-repo-externalsecret.yaml`** (repo +
-   registry creds via ESO).
+   registry creds via ESO — both from `infisical-infra`).
 4. **`root/root-app.yaml`** (`kubectl apply -n argocd -f …`) — renders addons + workloads.
 5. **cluster-addons** auto-syncs (CNPG, Surreal, Supabase[B], ingress, cert-manager, ESO).
-6. Workloads: staging auto-syncs; **operator syncs prod by hand**.
+6. Workloads: staging auto-syncs; **operator syncs prod by hand**. The prod dashboard sync
+   then runs the **PBI lifecycle PostSync hook** automatically on success.
 
 **Forgejo + Infisical + the CI runner stay OFF-cluster** through migration (design §8) — the
 deployer must not depend on the cluster it deploys.
@@ -159,9 +181,18 @@ deployer must not depend on the cluster it deploys.
 - **Docker-capable off-cluster runner** on `.166` is a hard prerequisite — today's runner has
   no docker socket (the reason the current pipeline calls Coolify instead of building). Either
   a rootless buildkit/buildx runner, or use a scale-to-zero burst node for builds.
-- **PBI-callback trigger point** for prod: PostSync hook (recommended) vs workflow — decide in
-  the cutover PR (§5). Logic preserved either way.
+- **PBI-callback trigger point** — **RESOLVED**: prod = Argo PostSync hook Job (implemented,
+  `charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml`, #184); staging =
+  in-workflow step. Logic preserved byte-for-byte either way.
 - **Forgejo container registry** must be enabled + a scoped push/pull token minted into
-  Infisical (`FORGEJO_REGISTRY_USER/TOKEN`).
+  Infisical (`FORGEJO_REGISTRY_USER/TOKEN`, infrastructure project). The PostSync hook image
+  `registry.allotmentology.tech/restormel/ci-curl-jq:1` must be pushed to that registry first
+  (a 2-line Dockerfile: `FROM alpine; RUN apk add --no-cache curl jq`), and the prod namespace
+  needs the `forgejo-registry-pull` imagePullSecret (or use a public curl+jq image to avoid the
+  bootstrap dependency).
+- **`FORGEJO_PM_TOKEN`** (Forgejo bot, issue-write on restormel-keys) must exist in the
+  `infrastructure` Infisical project so the prod PostSync hook's `forgejo-pm-token`
+  ExternalSecret resolves. Today the workflow uses the Forgejo Actions secret `FORGEJO_TOKEN`;
+  the hook needs the same identity delivered via ESO.
 - Phase B (usesophia, plotbudget/Supabase) deploys are disabled until Phase B; PlotBudget prod
   domain is an open §10 question that blocks its Supabase `SITE_URL`/JWT.
