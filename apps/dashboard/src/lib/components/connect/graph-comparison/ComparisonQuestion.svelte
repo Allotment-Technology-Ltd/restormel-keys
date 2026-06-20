@@ -15,9 +15,9 @@
 
   $: tooShort = value.trim().length < 10;
   $: disabledReason = graphEmpty
-    ? "Add at least one document to your graph first"
+    ? "Connect a source first, then ask it anything."
     : tooShort
-      ? "Ask a full question for a meaningful comparison."
+      ? "Ask a full question to get a useful answer."
       : "";
   $: canCompare = !running && !graphEmpty && !tooShort;
 
@@ -49,8 +49,8 @@
       on:keydown={onKeydown}
       rows="1"
       class="question-input"
-      placeholder="Ask something your ingested documents would know..."
-      aria-label="Question to compare"
+      placeholder="Ask your sources anything they'd know the answer to…"
+      aria-label="Your question"
     ></textarea>
     <button
       type="button"
@@ -59,7 +59,7 @@
       title={disabledReason || undefined}
       on:click={submit}
     >
-      COMPARE →
+      ASK →
     </button>
   </div>
 

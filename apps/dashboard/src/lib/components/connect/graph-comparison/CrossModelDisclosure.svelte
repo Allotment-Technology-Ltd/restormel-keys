@@ -58,10 +58,10 @@
       {/if}
     {:else if claimCount === 0}
       <span class="xmodel-sep" aria-hidden="true">·</span>
-      <span class="xmodel-note">no verified claims to cross-validate</span>
+      <span class="xmodel-note">no claims to cross-check — Restormel abstained on this one</span>
     {:else}
       <span class="xmodel-sep" aria-hidden="true">·</span>
-      <span class="xmodel-note">validator not set — apply a validation model to enable cross-checking</span>
+      <span class="xmodel-note">pick a validation model on a different family to have it double-check the answer model's work</span>
     {/if}
   </div>
 {/if}

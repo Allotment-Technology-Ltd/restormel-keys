@@ -72,7 +72,7 @@ export function deriveAnswerVerdict(
     return {
       verdict: "abstained",
       label: "Insufficient evidence — abstained",
-      detail: "No verified claim in your graph matched this question, so the answer is not graph-grounded.",
+      detail: "Your sources don't cover this, so Restormel won't answer rather than guess. That refusal is the feature.",
       supportedCount: 0,
       weakCount: 0,
       totalClaims: 0,
@@ -82,7 +82,7 @@ export function deriveAnswerVerdict(
     return {
       verdict: "uncertain",
       label: "Some uncertainty",
-      detail: `${supportedCount} supported, ${weakCount} weaker ${weakCount === 1 ? "claim" : "claims"} — read the cited sources before relying on this.`,
+      detail: `${supportedCount} supported, ${weakCount} weaker ${weakCount === 1 ? "claim" : "claims"} — click through to the quotes and judge it yourself before you ship.`,
       supportedCount,
       weakCount,
       totalClaims: claims.length,
@@ -91,7 +91,7 @@ export function deriveAnswerVerdict(
   return {
     verdict: "grounded",
     label: "Grounded",
-    detail: `Answer bound to ${supportedCount} verified ${supportedCount === 1 ? "claim" : "claims"}, each quoting its source.`,
+    detail: `Every claim is backed by your sources — click any one to the exact quote it came from (${supportedCount} verified ${supportedCount === 1 ? "claim" : "claims"}).`,
     supportedCount,
     weakCount: 0,
     totalClaims: claims.length,

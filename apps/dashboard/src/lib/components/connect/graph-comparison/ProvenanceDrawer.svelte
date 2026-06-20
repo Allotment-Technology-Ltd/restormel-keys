@@ -66,7 +66,8 @@
     <div class="drawer-body">
       {#if claims.length === 0}
         <p class="drawer-empty">
-          No verified claims backed this answer — it was not grounded in your graph.
+          Nothing in your sources backed this — so there's nothing to cite, and Restormel held back
+          rather than invent an answer.
         </p>
       {:else}
         <ol class="claim-list">

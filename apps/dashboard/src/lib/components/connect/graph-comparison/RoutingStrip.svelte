@@ -169,10 +169,10 @@
 
 <section class="strip" aria-label="Model routing per stage">
   <header class="strip-head">
-    <span class="strip-tag">ROUTING · MODEL PER STAGE</span>
+    <span class="strip-tag">THE MODELS BEHIND THIS ANSWER</span>
     <p class="strip-lede">
-      The models behind this answer. Change one without leaving the answer — defaults shown,
-      fallbacks visible.
+      Every model in the chain that produced this answer. Swap any one right here — no screen-hop —
+      and re-ask to see the difference.
     </p>
   </header>
 
@@ -185,7 +185,7 @@
     </p>
   {:else if !snapshot?.configured || visibleStages.length === 0}
     <p class="strip-state" role="status">
-      No model routing yet — apply a model to a stage to ground answers.
+      No models picked yet — choose one for each step and your answers get grounded in your sources.
     </p>
   {:else}
     <ul class="stage-list">
@@ -244,8 +244,9 @@
             <div class="picker" role="region" aria-label="Choose a model for {stage.label}">
               {#if stage.key === "validation"}
                 <p class="picker-note">
-                  A validation model on a <strong>different family</strong> than extraction makes the
-                  cross-model check meaningful.
+                  Pick a <strong>different model family</strong> here than the one that did the
+                  extraction. A model checking its own family's work tends to wave it through; a
+                  cross-family check actually catches the misses.
                 </p>
               {/if}
               {#if pickerLoading}

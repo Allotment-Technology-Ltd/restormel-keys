@@ -21,7 +21,7 @@
     </div>
   {:else if failed || questions.length === 0}
     <p class="suggested-fallback">
-      Type a question about your ingested content to compare responses.
+      Type a question your sources would know the answer to and ask away.
     </p>
   {:else}
     <div class="chips">

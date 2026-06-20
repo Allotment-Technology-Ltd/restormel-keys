@@ -42,8 +42,8 @@
 <div class="sources-page">
   <BrutalPageHeader
     kicker="Sources"
-    title="Watched sources"
-    description="Connect a source — it ingests and verifies in the background. You only step in for exceptions."
+    title="Your sources"
+    description="Connect a source and Restormel ingests and verifies it in the background, ready for the Answer Console to query. You only step in when something needs a look."
   >
     {#snippet actions()}
       <a class="btn btn-primary" href={CONNECT_SOURCE_HREF}>Connect a source →</a>
@@ -82,10 +82,11 @@
       {:else if panels.documents.length === 0}
         <!-- Zero-source first run: the watched model framed as an invitation, not a wizard. -->
         <div class="first-run">
-          <p class="first-run-title">No sources connected yet</p>
+          <p class="first-run-title">Connect your first source</p>
           <p class="first-run-sub">
-            Connect a document source — a URL, an upload, or a connector. Restormel ingests and
-            verifies it in the background, then it answers queries. No routes to build first.
+            A URL, an upload, or a connector — whatever your knowledge lives in. Restormel ingests and
+            verifies it in the background, then the Answer Console can give you cited answers from it.
+            Nothing to configure first.
           </p>
           <a class="btn btn-primary" href={CONNECT_SOURCE_HREF}>Connect a source →</a>
         </div>

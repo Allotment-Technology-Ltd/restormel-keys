@@ -63,10 +63,10 @@
 <section class="publish" aria-label="Publish the answer-serving config">
   <div class="publish-head">
     <div class="publish-headings">
-      <span class="publish-tag">PUBLISH · DEPLOY THIS CONFIG</span>
+      <span class="publish-tag">SHIP IT · GO LIVE FOR YOUR APP</span>
       <p class="publish-lede">
-        Promote this routing to a live endpoint your app calls
-        (<code>POST /connect/v1/graph</code> — the same one the snippet below targets).
+        Make this exact setup live so your app gets the same verified answers you just saw
+        (<code>POST /connect/v1/graph</code> — the endpoint the snippet below calls).
       </p>
     </div>
 
@@ -103,7 +103,7 @@
   {#if status === "done" && result}
     {#if result.live}
       <p class="publish-msg publish-msg-ok" role="status">
-        ✓ Config is live. Your app can call it now — use the snippet below.
+        ✓ You're live. Your app gets these verified answers now — grab the snippet below to wire it in.
       </p>
     {:else}
       <p class="publish-msg publish-msg-warn" role="alert">

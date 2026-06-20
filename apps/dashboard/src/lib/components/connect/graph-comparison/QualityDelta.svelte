@@ -32,14 +32,15 @@
   </div>
 
   <p class="delta-foot">
-    Response B drew on {delta.provenance_count}
-    verified {delta.provenance_count === 1 ? "claim" : "claims"} from your knowledge graph.
+    Your answer drew on {delta.provenance_count}
+    verified {delta.provenance_count === 1 ? "claim" : "claims"} from your sources; the raw answer drew
+    on none.
   </p>
 
   {#if delta.verdict === "minimal"}
     <p class="delta-note">
-      Similar responses may mean your question is answerable from training data alone. Try one of the
-      suggested questions for a stronger comparison.
+      Close answers usually mean the model already knew this from training — your sources didn't add
+      much here. Try a question only your sources could answer to see the difference.
     </p>
   {/if}
 </section>
