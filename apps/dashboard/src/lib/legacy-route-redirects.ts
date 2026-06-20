@@ -12,6 +12,7 @@
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import {
   AGENTS_HREF,
+  ANSWER_CONSOLE_HREF,
   CLAIMS_HREF,
   CLAIMS_MEMORY_HREF,
   HOME_HREF,
@@ -40,8 +41,11 @@ function withSearch(target: string, search: string): string {
 export function resolveLegacyDashboardRedirect(pathname: string, search = ""): string | null {
   const path = pathname !== BASE && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 
-  // ── One home (§2.3: `/keys/dashboard` → `/home`, `/activity` MERGE-INTO, `/connect` MERGE-INTO)
-  if (path === BASE) return withSearch(HOME_HREF, search);
+  // ── Default landing (Phase 3 Stage 1): the dashboard root opens on the verified
+  // Answer Console (North Star = verified answers at query time). `/home` stays the
+  // operator masthead, reachable from the work nav. `/activity` + `/connect` still
+  // merge into `/home` (§2.3).
+  if (path === BASE) return withSearch(ANSWER_CONSOLE_HREF, search);
   if (path === BASE + "/activity") return withSearch(HOME_HREF, search);
   if (path === CONNECT) return withSearch(HOME_HREF, search);
 

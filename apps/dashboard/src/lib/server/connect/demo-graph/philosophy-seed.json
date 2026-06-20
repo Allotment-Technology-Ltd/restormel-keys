@@ -1,0 +1,107 @@
+{
+  "id": "restormel-philosophy-demo-v1",
+  "label": "Philosophy demo graph",
+  "domain": "philosophy",
+  "license": "CC0-1.0",
+  "description": "Pre-extracted demo graph derived from the Restormel-authored CC0 philosophy starter corpus (ethics dialogue, epistemology sketch, utilitarian objection). Seeds the Postgres graph spine directly so the Prove console has verifiable claims with no ingest run. Swap this file (or point CONNECT_DEMO_GRAPH_SEED at another corpus id) to change the first-run domain.",
+  "sources": [
+    {
+      "key": "demo:philosophy:trolley-problem-dialogue",
+      "title": "Starter: The trolley problem — a dialogue",
+      "textPreview": "A dialogue contrasting the lever and bridge variants of the trolley problem, drawing the means/side-effect distinction between consequentialist and deontological reasoning.",
+      "units": [
+        {
+          "localId": "trolley-1",
+          "unitType": "claim",
+          "text": "In the lever variant of the trolley problem, diverting the trolley to kill one person instead of five is widely judged permissible because it produces a better net outcome."
+        },
+        {
+          "localId": "trolley-2",
+          "unitType": "claim",
+          "text": "In the footbridge variant, pushing one large person to their death to stop the trolley and save five is judged differently, because it uses that person as a means rather than redirecting an existing threat."
+        },
+        {
+          "localId": "trolley-3",
+          "unitType": "claim",
+          "text": "The moral difference between the lever and bridge cases turns on the distinction between intending harm as a means and merely accepting harm as a foreseen side effect, not on the numbers alone."
+        },
+        {
+          "localId": "trolley-4",
+          "unitType": "claim",
+          "text": "A deontologist holds that some constraints on how we may treat persons are not reducible to aggregate outcomes, so permission to pull the lever does not automatically license pushing someone off the bridge."
+        }
+      ],
+      "relations": [
+        { "fromLocalId": "trolley-3", "toLocalId": "trolley-1", "relationType": "explains" },
+        { "fromLocalId": "trolley-3", "toLocalId": "trolley-2", "relationType": "explains" },
+        { "fromLocalId": "trolley-4", "toLocalId": "trolley-3", "relationType": "supports" }
+      ]
+    },
+    {
+      "key": "demo:philosophy:knowledge-vs-belief",
+      "title": "Starter: Knowledge versus true belief",
+      "textPreview": "An epistemology sketch on the justified-true-belief analysis of knowledge and the Gettier challenge.",
+      "units": [
+        {
+          "localId": "knowledge-1",
+          "unitType": "claim",
+          "text": "The standard analysis defines knowledge as justified true belief: a belief counts as knowledge when it is true, the believer has adequate justification, and the justification is of the right kind."
+        },
+        {
+          "localId": "knowledge-2",
+          "unitType": "claim",
+          "text": "Gettier-style cases challenge the justified-true-belief analysis by describing beliefs that are true and justified yet seem not to be knowledge, because the justification is connected to the truth only by luck."
+        },
+        {
+          "localId": "knowledge-3",
+          "unitType": "claim",
+          "text": "One reply to Gettier cases holds that knowledge requires a reliable, safe, or sensitive connection between the belief and the fact, beyond mere justification."
+        }
+      ],
+      "relations": [
+        { "fromLocalId": "knowledge-2", "toLocalId": "knowledge-1", "relationType": "contradicts" },
+        { "fromLocalId": "knowledge-3", "toLocalId": "knowledge-2", "relationType": "responds_to" }
+      ]
+    },
+    {
+      "key": "demo:philosophy:utilitarian-objection",
+      "title": "Starter: A utilitarian objection",
+      "textPreview": "A utilitarian critique of rights absolutism and the rights theorist's reply.",
+      "units": [
+        {
+          "localId": "utilitarian-1",
+          "unitType": "claim",
+          "text": "Rights-based theories hold that certain actions are wrong even when they would produce a greater overall good, treating some constraints on persons as not reducible to welfare."
+        },
+        {
+          "localId": "utilitarian-2",
+          "unitType": "claim",
+          "text": "A utilitarian critic objects that rigid rights absolutism can produce catastrophic harm when the stakes are extreme, because it treats moral rules as free-floating constraints disconnected from human welfare."
+        },
+        {
+          "localId": "utilitarian-3",
+          "unitType": "claim",
+          "text": "A sophisticated utilitarian replies that long-run welfare itself depends on stable rights and trust, so a defensible utilitarianism need not endorse every trade-off that naive aggregation suggests."
+        }
+      ],
+      "relations": [
+        { "fromLocalId": "utilitarian-2", "toLocalId": "utilitarian-1", "relationType": "contradicts" },
+        { "fromLocalId": "utilitarian-3", "toLocalId": "utilitarian-2", "relationType": "qualifies" }
+      ]
+    }
+  ],
+  "suggestedQuestions": [
+    {
+      "type": "answerable",
+      "question": "Why is pulling the lever in the trolley problem treated differently from pushing someone off the footbridge?"
+    },
+    {
+      "type": "answerable",
+      "question": "What is the Gettier challenge to the justified-true-belief analysis of knowledge?"
+    },
+    {
+      "type": "abstention",
+      "question": "What did Kant say about the trolley problem?"
+    }
+  ]
+}

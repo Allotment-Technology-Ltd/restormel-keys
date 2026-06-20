@@ -20,6 +20,7 @@ import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import { buildWorkspaceGraphStore } from "$lib/server/connect/surreal-graph-store";
 import { buildGraphRagEmbedder } from "$lib/server/connect/stage-route-generate";
 import { resolveWorkspaceRetrievalConfig } from "$lib/server/connect-v1/workspace-retrieval-config";
+import { retrieveFromPostgresSpine } from "$lib/server/graph-comparison/postgres-graph-retrieve";
 
 const emptyGraphStore: GraphStore = {
   async query<T>(_sql: string, _vars?: Record<string, unknown>): Promise<T> {
@@ -55,19 +56,42 @@ export async function retrieveStructured(args: {
 }): Promise<StructuredRetrieval> {
   const targetRow = await getConnectGraphTargetForWorkspace(args.workspaceId);
   const hasTarget = Boolean(targetRow);
-  const targetSurreal = targetRow?.provider === "surreal";
   const targetOk = targetRow?.status === "ok";
+  const targetSurreal = targetRow?.provider === "surreal";
+  // Postgres-spine targets (incl. the one-click dashboard-DB demo graph): retrieve
+  // directly from the spine. This is what makes the Stage-0 seeded demo graph answer.
+  const targetPostgres =
+    targetRow?.provider === "postgres" ||
+    (targetRow?.useDashboardDatabase === true && targetRow?.provider !== "surreal");
 
-  if (!hasTarget || !targetSurreal || !targetOk) {
+  if (!hasTarget || !targetOk) {
     return {
       result: emptyResult(),
       contextBlock: "",
       degraded: true,
       degradedReason: !hasTarget
         ? "No graph store is configured for this workspace yet."
-        : !targetSurreal
-          ? "Comparison requires a SurrealDB graph target."
-          : "Graph store connection is failing or stale.",
+        : "Graph store connection is failing or stale.",
+    };
+  }
+
+  if (targetPostgres) {
+    const spine = await retrieveFromPostgresSpine({
+      workspaceId: args.workspaceId,
+      query: args.query,
+      maxClaims: args.maxClaims,
+      seedClaimIds: args.seedClaimIds,
+      verificationPolicy: args.verificationPolicy ?? COMPARISON_VERIFICATION_POLICY,
+    });
+    return spine;
+  }
+
+  if (!targetSurreal) {
+    return {
+      result: emptyResult(),
+      contextBlock: "",
+      degraded: true,
+      degradedReason: "This graph store provider is not supported for the Answer Console yet.",
     };
   }
 

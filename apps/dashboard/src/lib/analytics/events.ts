@@ -139,6 +139,31 @@ export interface AnalyticsEventMap {
     item?: string;
   };
 
+  // --- Verified-answer falsifiability (Phase 3 north metric) ---------------
+  /**
+   * THE Phase 3 north metric: a user clicked a verified claim in the Prove /
+   * Answer console through to its source span (evidence dossier) — the
+   * falsifiability test actually performed. Only non-PII ids/enums are captured;
+   * never the claim text, source title, or the user's question.
+   */
+  verified_claim_source_span_opened: {
+    /** Opaque workspace id (non-PII scoping key), or "anon" when unavailable. */
+    workspace_id: string;
+    /** Opaque claim/unit id the user clicked through (links to its source span). */
+    claim_id: string;
+    /** Verification verdict on the clicked claim. */
+    verification: ProvenanceVerification;
+    /** Trust-score bucket (not the raw score) — coarse, PII-free. */
+    trust_bucket: TrustBucket;
+    /**
+     * True when this is a first-run session (onboarding not yet completed) — the
+     * metric specifically tracks the FIRST-RUN falsifiability click.
+     */
+    is_first_run: boolean;
+    /** Where the click happened, e.g. "prove_console". */
+    surface: string;
+  };
+
   // --- Engagement (emitted by global handlers in hooks.client.ts) ----------
   /** A scroll-depth milestone was reached on the current page. */
   scroll_depth: {
@@ -147,6 +172,12 @@ export interface AnalyticsEventMap {
     group: RouteGroup;
   };
 }
+
+/** Trust-score bucket for verified-claim events (kept coarse + PII-free). */
+export type TrustBucket = "high" | "medium" | "low" | "unscored";
+
+/** Verdict on a verified claim (mirrors $lib/connect ProvenanceVerification). */
+export type ProvenanceVerification = "supported" | "weak";
 
 /** Scroll-depth milestones the global handler emits. */
 export type ScrollDepthMilestone = 25 | 50 | 75 | 100;
@@ -175,6 +206,7 @@ export const ANALYTICS_EVENTS = [
   "founders_apply_submitted",
   "dashboard_onboarding_step",
   "dashboard_feature_interest",
+  "verified_claim_source_span_opened",
   "scroll_depth",
 ] as const satisfies readonly AnalyticsEventName[];
 

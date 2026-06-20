@@ -9,12 +9,14 @@
   export let retrieval: RetrievalSummary | null = null;
   export let error: string | null = null;
   export let onRetry: () => void;
+  /** Opaque workspace id forwarded to the provenance drawer's claim→span metric. */
+  export let workspaceId: string | null = null;
 
   $: isGraph = variant === "graph";
-  $: heading = isGraph ? "WITH YOUR KNOWLEDGE GRAPH" : "WITHOUT KNOWLEDGE GRAPH";
+  $: heading = isGraph ? "VERIFIED ANSWER" : "BASELINE (NO GRAPH)";
   $: claimCount = retrieval?.claims.length ?? 0;
   $: idlePlaceholder = isGraph
-    ? "The knowledge graph response will appear here."
+    ? "Ask a question above to get a verified, cited answer."
     : "The base model response will appear here.";
 
   $: subLabel = (() => {
@@ -44,7 +46,7 @@
   </div>
 
   {#if isGraph && status === "complete" && retrieval}
-    <ProvenanceDrawer claims={retrieval.claims} trace={retrieval.trace} />
+    <ProvenanceDrawer claims={retrieval.claims} trace={retrieval.trace} {workspaceId} />
   {/if}
 </article>
 

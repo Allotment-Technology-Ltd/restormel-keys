@@ -18,6 +18,11 @@
     routes: ChatRouteOption[];
     suggestCacheKey: string;
     proveBase: string;
+    isDemo: boolean;
+    demoQuestions: { type: "answerable" | "abstention"; question: string }[];
+    projectId: string | null;
+    keyPrefixHint: string | null;
+    connectApiBase: string;
   };
 
   const panelImport = () => import("$lib/components/connect/graph-comparison/GraphComparisonPanel.svelte");
@@ -34,12 +39,12 @@
 </script>
 
 <svelte:head>
-  <title>Prove — Proof – Restormel Dashboard</title>
+  <title>Answer console – Restormel Dashboard</title>
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 {#if !data.signedIn}
-  <SignInNotice message="Sign in to prove your knowledge graph." />
+  <SignInNotice message="Sign in to ask your knowledge graph a verified question." />
 {:else if data.loadError}
   <BrutalErrorBanner
     title="Proof unavailable"
@@ -61,6 +66,12 @@
       routes={data.routes}
       suggestCacheKey={data.suggestCacheKey}
       proveBase={data.proveBase}
+      workspaceId={data.workspaceId}
+      isDemo={data.isDemo}
+      demoQuestions={data.demoQuestions}
+      projectId={data.projectId}
+      keyPrefixHint={data.keyPrefixHint}
+      connectApiBase={data.connectApiBase}
     />
   {:catch}
     <BrutalErrorBanner

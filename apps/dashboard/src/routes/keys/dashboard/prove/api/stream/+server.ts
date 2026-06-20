@@ -20,6 +20,7 @@ import { toRetrievalSummary } from "$lib/server/graph-comparison/provenance";
 import { buildProvenanceTraceFromRetrieval } from "$lib/server/connect-v1/provenance-trace-builder";
 import { insertProvenanceTrace } from "$lib/server/connect-traces";
 import { getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
+import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import type { ComparisonStreamEvent } from "$lib/connect/graph-comparison-types";
 import { sessionUser } from "$lib/server/session-user";
 
@@ -121,13 +122,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           if (!retrieval.degraded && retrieval.result.claims.length > 0) {
             try {
               const traceId = crypto.randomUUID();
+              const graphTarget = await getConnectGraphTargetForWorkspace(workspace.id).catch(
+                () => null,
+              );
               const trace = buildProvenanceTraceFromRetrieval({
                 traceId,
                 query: question,
                 workspaceId: workspace.id,
                 domainPack: (await getSelectedDomainPackId(workspace.id)) ?? "unknown",
-                graphStoreType: "surreal",
+                graphStoreType: graphTarget?.provider ?? "surreal",
                 queriedAt: new Date().toISOString(),
+                // Real answer-stage model: the BYOK target already resolved above. This is
+                // the only model the trace can honestly record today (retrieval/embedding
+                // stages are not yet captured per-stage — see Traces Stage 5).
+                answerModel: { provider: target.providerType, model: target.modelId },
                 verificationPolicy: COMPARISON_VERIFICATION_POLICY,
                 tokenBudget: 0,
                 retrieval: retrieval.result,

@@ -13,9 +13,9 @@ const B = "/keys/dashboard";
 
 /** [old pathname, query string, expected target] — mirrors §2.3 row by row. */
 const REDIRECT_TABLE: [string, string, string][] = [
-  // /keys/dashboard (root) → /home — "one home"
-  [`${B}`, "", `${B}/home`],
-  [`${B}/`, "", `${B}/home`],
+  // /keys/dashboard (root) → the verified Answer Console (Phase 3 Stage 1 landing)
+  [`${B}`, "", `${B}/prove/proof`],
+  [`${B}/`, "", `${B}/prove/proof`],
   // /activity MERGE-INTO /home
   [`${B}/activity`, "", `${B}/home`],
   [`${B}/activity`, "?monitor-interest=alerts", `${B}/home?monitor-interest=alerts`],
@@ -119,10 +119,10 @@ describe("R2 redirect routes serve 308 (permanent)", () => {
     expect(r.location).toBe(`${B}/analytics?project=p-1`);
   });
 
-  it("dashboard root 308s to /home", async () => {
+  it("dashboard root 308s to the Answer Console (Phase 3 Stage 1 landing)", async () => {
     const r = await caught(import("../routes/keys/dashboard/+page.server.js"), B);
     expect(r.status).toBe(308);
-    expect(r.location).toBe(`${B}/home`);
+    expect(r.location).toBe(`${B}/prove/proof`);
   });
 });
 

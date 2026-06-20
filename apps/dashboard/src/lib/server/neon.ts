@@ -7805,6 +7805,164 @@ export async function getConnectGraphExplorer(
   return { groups, units };
 }
 
+// ─── Postgres-spine retrieval readers (Phase 3 Stage 1) ─────────────────────
+// The Prove "Answer Console" retrieves verified claims from the Postgres graph
+// spine (the Stage-0 seeded demo graph and any real Postgres-target ingest).
+// These readers are the ONLY DB access for postgres-graph-retrieve.ts; they are
+// pure reads (no writes), workspace-scoped, and fully parameterized.
+
+/** A unit row shaped for retrieval, joined to its source for provenance/citation. */
+export type GraphSpineUnitRow = {
+  id: string;
+  text: string;
+  unitType: string | null;
+  domain: string | null;
+  validationStatus: string | null;
+  validationNote: string | null;
+  sourceId: string | null;
+  sourceTitle: string | null;
+  sourceUrl: string | null;
+  sourceKind: string | null;
+  /** Position of this unit within the workspace graph (stable created_at ordering). */
+  position: number;
+};
+
+/** A relation edge between two units in the Postgres spine. */
+export type GraphSpineRelationRow = {
+  fromUnitId: string;
+  toUnitId: string;
+  relationType: string;
+};
+
+function mapGraphSpineUnitRow(row: Record<string, unknown>, position: number): GraphSpineUnitRow {
+  return {
+    id: String(row.id),
+    text: String(row.text ?? ""),
+    unitType: row.unit_type != null ? String(row.unit_type) : null,
+    domain: row.domain != null ? String(row.domain) : null,
+    validationStatus: row.validation_status != null ? String(row.validation_status) : null,
+    validationNote: row.validation_note != null ? String(row.validation_note) : null,
+    sourceId: row.source_id != null ? String(row.source_id) : null,
+    sourceTitle: row.source_title != null ? String(row.source_title) : null,
+    sourceUrl: row.source_url != null ? String(row.source_url) : null,
+    sourceKind: row.source_kind != null ? String(row.source_kind) : null,
+    position,
+  };
+}
+
+/**
+ * Lexically seed retrieval over the Postgres spine: score units by how many of
+ * the supplied query terms appear in the unit text, returning the top matches.
+ *
+ * The demo graph (and any pre-embedding ingest) has no vectors, so lexical
+ * overlap is the seed signal. Terms are matched case-insensitively via ILIKE on
+ * the unit text. Each term is a bound parameter (ANY(${terms})), so this is fully
+ * parameterized — the terms never touch the SQL string. When no term matches, the
+ * caller decides whether to abstain (the designed honest-refusal state).
+ */
+export async function lexicalSeedGraphSpineUnits(params: {
+  workspaceId: string;
+  /** Already-tokenised, lowercased query terms (caller strips stopwords/short tokens). */
+  terms: string[];
+  limit: number;
+}): Promise<Array<GraphSpineUnitRow & { lexicalScore: number }>> {
+  const terms = params.terms.map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0);
+  if (terms.length === 0) return [];
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const limit = Math.min(Math.max(params.limit, 1), 200);
+  // Build ILIKE patterns (%term%) as bound params; count how many distinct terms
+  // each unit matches and rank by that score, then by recency for stability.
+  const patterns = terms.map((t) => `%${t}%`);
+  const rows = (await sql`
+    SELECT
+      u.id,
+      u.text,
+      u.unit_type,
+      u.domain,
+      u.validation_status,
+      u.validation_note,
+      u.source_id,
+      s.title AS source_title,
+      s.url AS source_url,
+      s.source_kind AS source_kind,
+      u.created_at,
+      (
+        SELECT count(*)
+        FROM unnest(${patterns}::text[]) AS p(pattern)
+        WHERE u.text ILIKE p.pattern
+      )::int AS lexical_score
+    FROM knowledge_graph_units u
+    LEFT JOIN knowledge_graph_sources s
+      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+    WHERE u.workspace_id = ${params.workspaceId}
+      AND u.text ILIKE ANY(${patterns}::text[])
+    ORDER BY lexical_score DESC, u.created_at DESC
+    LIMIT ${limit}
+  `) as Record<string, unknown>[];
+  return rows.map((row, i) => ({
+    ...mapGraphSpineUnitRow(row, i),
+    lexicalScore: Number(row.lexical_score ?? 0),
+  }));
+}
+
+/** Fetch specific units by id (for forced seeds and traversal hydration). */
+export async function readGraphSpineUnitsByIds(params: {
+  workspaceId: string;
+  unitIds: string[];
+}): Promise<GraphSpineUnitRow[]> {
+  const ids = params.unitIds.filter((id) => id && id.trim().length > 0);
+  if (ids.length === 0) return [];
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT
+      u.id,
+      u.text,
+      u.unit_type,
+      u.domain,
+      u.validation_status,
+      u.validation_note,
+      u.source_id,
+      s.title AS source_title,
+      s.url AS source_url,
+      s.source_kind AS source_kind,
+      u.created_at
+    FROM knowledge_graph_units u
+    LEFT JOIN knowledge_graph_sources s
+      ON s.id = u.source_id AND s.workspace_id = u.workspace_id
+    WHERE u.workspace_id = ${params.workspaceId}
+      AND u.id = ANY(${ids}::text[])
+    ORDER BY u.created_at DESC
+  `) as Record<string, unknown>[];
+  return rows.map((row, i) => mapGraphSpineUnitRow(row, i));
+}
+
+/**
+ * Read relation edges incident to the given unit ids (either endpoint), for the
+ * 1-hop traversal that pulls in supporting / contradicting / explaining claims.
+ */
+export async function readGraphSpineRelationsForUnits(params: {
+  workspaceId: string;
+  unitIds: string[];
+}): Promise<GraphSpineRelationRow[]> {
+  const ids = params.unitIds.filter((id) => id && id.trim().length > 0);
+  if (ids.length === 0) return [];
+  await ensureIngestionRoutingSchema();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT from_unit_id, to_unit_id, relation_type
+    FROM knowledge_graph_relations
+    WHERE workspace_id = ${params.workspaceId}
+      AND (from_unit_id = ANY(${ids}::text[]) OR to_unit_id = ANY(${ids}::text[]))
+  `) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    fromUnitId: String(row.from_unit_id),
+    toUnitId: String(row.to_unit_id),
+    relationType: String(row.relation_type ?? "related_to"),
+  }));
+}
+
 /**
  * Set embeddings on units (embedding stage). Batched (chunks of 200 to keep the
  * request payload bounded — vectors are large) instead of one round-trip per unit.

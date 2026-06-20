@@ -143,4 +143,29 @@ describe("buildProvenanceTrace", () => {
       excluded_flagged: true,
     });
   });
+
+  it("persists the canonical verification_category on included claims (Stage 5 cohesion)", () => {
+    const seed = trace.claims.find((c) => c.claim_id === "claim:seed");
+    const hop = trace.claims.find((c) => c.claim_id === "claim:hop");
+    expect(seed?.verification_category).toBe("supported");
+    expect(hop?.verification_category).toBe("weak");
+  });
+
+  it("records the real answer model when supplied, and null otherwise", () => {
+    expect(trace.answer_model ?? null).toBeNull();
+    const withModel = buildProvenanceTrace({
+      traceId: "trace-456",
+      query: "what is virtue?",
+      workspaceId: "ws-1",
+      domainPack: "philosophy",
+      graphStoreType: "postgres",
+      queriedAt: "2026-06-08T00:00:00.000Z",
+      tokenBudget: 0,
+      answerModel: { provider: "anthropic", model: "claude-3-5-sonnet" },
+      result: makeResult(),
+      timing: { seedMs: 0, expansionMs: 0, rankingMs: 0, totalMs: 42 },
+    });
+    expect(() => ProvenanceTraceSchema.parse(withModel)).not.toThrow();
+    expect(withModel.answer_model).toEqual({ provider: "anthropic", model: "claude-3-5-sonnet" });
+  });
 });
