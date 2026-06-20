@@ -68,13 +68,15 @@ metadata:
   namespace: ingress
 spec:
   secretName: wildcard-allotmentology-tech-tls
-  # Mirror into the `allotmentology` namespace (the only *.allotmentology.tech Ingress).
+  # Mirror into every namespace with a *.allotmentology.tech Ingress/IngressRoute:
+  # allotmentology (the app), and the Ops Centre — monitoring (grafana., status.) +
+  # argocd (argo.) — whose Traefik IngressRoutes consume this cert (see the ops-centre PR).
   secretTemplate:
     annotations:
       reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "allotmentology"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "allotmentology,monitoring,argocd"
       reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "allotmentology"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "allotmentology,monitoring,argocd"
   issuerRef:
     name: letsencrypt-staging
     kind: ClusterIssuer
