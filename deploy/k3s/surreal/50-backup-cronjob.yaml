@@ -1,0 +1,118 @@
+# SurrealDB logical backup: `surreal export` -> restic -> Hetzner Storage Box BX11.
+#
+# Cadence: HOURLY (task RPO decision). NOTE: this is TIGHTER than the design's stated
+# Surreal RPO anchor of <=24h (k3s-cluster-target-design.md §7) — flagged for the founder in
+# the README. Logical exports are cheap (581MB corpus); restic dedupes, so hourly is affordable.
+#
+# Reuses the existing restic+rclone->BX11 muscle (restormel-backup skill): the `restic-buildops`
+# (or a new `restic-surreal-k3s`) repo on the Storage Box, same passphrase convention. The
+# restic password, repository path, and rclone.conf all arrive via ESO (10-externalsecret.yaml),
+# never in git.
+#
+# Restore: `restic restore` the latest dump.surql, then `surreal import` into a fresh StatefulSet
+# (design §7). Pairs with the Phase-8 restore-drill procedure.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: surreal-backup
+  namespace: data
+  labels:
+    app.kubernetes.io/name: surrealdb
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "0 * * * *" # hourly, on the hour
+  concurrencyPolicy: Forbid # never overlap an export with a still-running one
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: surrealdb
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            restormel.dev/role: data
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            fsGroup: 65532
+          # initContainer runs `surreal export` against the in-cluster service; main container
+          # ships the dump to BX11 with restic. They share an emptyDir scratch volume.
+          initContainers:
+            - name: surreal-export
+              image: surrealdb/surrealdb:v3.2.0
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  TS="$(date -u +%Y%m%dT%H%M%SZ)"
+                  echo "Exporting NS=main DB=sophia at ${TS}"
+                  /surreal export \
+                    --endpoint http://surreal-db.data.svc.cluster.local:8000 \
+                    --username "$SURREAL_USER" --password "$SURREAL_PASS" --auth-level root \
+                    --namespace main --database sophia \
+                    /scratch/dump-main-sophia-${TS}.surql
+                  ln -sf /scratch/dump-main-sophia-${TS}.surql /scratch/latest.surql
+                  echo "Export complete:"; ls -la /scratch
+              env:
+                - name: SURREAL_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: surreal-root
+                      key: SURREAL_USER
+                - name: SURREAL_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: surreal-root
+                      key: SURREAL_PASS
+              volumeMounts:
+                - name: scratch
+                  mountPath: /scratch
+          containers:
+            - name: restic-ship
+              image: restic/restic:0.18.0
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  export RCLONE_CONFIG=/rclone/rclone.conf
+                  restic backup \
+                    --host surreal-k3s \
+                    --tag surreal --tag main-sophia \
+                    /scratch
+                  restic forget --prune \
+                    --keep-hourly 24 --keep-daily 7 --keep-weekly 4 --keep-monthly 6
+                  restic check --read-data-subset=5%
+              env:
+                - name: RESTIC_REPOSITORY
+                  valueFrom:
+                    secretKeyRef:
+                      name: surreal-backup
+                      key: RESTIC_REPOSITORY
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: surreal-backup
+                      key: RESTIC_PASSWORD
+              volumeMounts:
+                - name: scratch
+                  mountPath: /scratch
+                  readOnly: true
+                - name: rclone-config
+                  mountPath: /rclone
+                  readOnly: true
+          volumes:
+            - name: scratch
+              emptyDir: {}
+            - name: rclone-config
+              secret:
+                secretName: surreal-backup
+                items:
+                  - key: rclone.conf
+                    path: rclone.conf

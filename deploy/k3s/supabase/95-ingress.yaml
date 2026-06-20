@@ -1,0 +1,33 @@
+# Public ingress for the Supabase stack — everything goes through Kong (single entrypoint).
+# The PlotBudget app uses NEXT_PUBLIC_SUPABASE_URL = https://api.plotbudget.com, which Kong
+# fans out to auth/rest/realtime/storage. TLS via cert-manager (DNS-01 wildcard preferred).
+#
+# NOTE: `api.plotbudget.com` is a placeholder for the PlotBudget production domain, which is an
+# open question in the design (§3.5 / §10 — "PlotBudget production domain TBD"). Confirm with the
+# founder before apply; it also feeds GoTrue SITE_URL / API_EXTERNAL_URL and the OAuth redirect
+# URIs (20-config.yaml).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: supabase
+  namespace: supabase
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dns01
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - api.plotbudget.com
+      secretName: supabase-tls
+  rules:
+    - host: api.plotbudget.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kong
+                port:
+                  number: 8000

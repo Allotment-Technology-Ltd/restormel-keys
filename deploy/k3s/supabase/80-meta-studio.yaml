@@ -1,0 +1,129 @@
+# postgres-meta + Studio. Studio is the admin UI; it talks to postgres-meta (schema
+# introspection) and through Kong to the data services. Both point at the pg-plotbudget CNPG
+# cluster. Studio is reachable only via Kong's basic-auth-protected `/` route (70-kong.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meta
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: postgres-meta
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-meta
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-meta
+    spec:
+      containers:
+        - name: meta
+          image: supabase/postgres-meta:v0.96.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PG_META_PORT
+              value: "8080"
+            - name: PG_META_DB_HOST
+              valueFrom:
+                configMapKeyRef: { name: supabase-config, key: POSTGRES_HOST }
+            - name: PG_META_DB_PORT
+              valueFrom:
+                configMapKeyRef: { name: supabase-config, key: POSTGRES_PORT }
+            - name: PG_META_DB_NAME
+              valueFrom:
+                configMapKeyRef: { name: supabase-config, key: POSTGRES_DB }
+            - name: PG_META_DB_USER
+              value: "supabase_admin"
+            # README: replace with a discrete PG_META_DB_PASSWORD ESO key (do not reuse the URL).
+            - name: PG_META_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: DB_PLOTBUDGET_URL }
+          resources:
+            requests: { cpu: "25m", memory: "64Mi" }
+            limits: { cpu: "250m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meta
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: postgres-meta
+spec:
+  selector:
+    app.kubernetes.io/name: postgres-meta
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studio
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: studio
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: studio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: studio
+    spec:
+      containers:
+        - name: studio
+          image: supabase/studio:2026.06.03-sha-0bca601
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: STUDIO_PG_META_URL
+              value: "http://meta.supabase.svc.cluster.local:8080"
+            - name: SUPABASE_URL
+              value: "http://kong.supabase.svc.cluster.local:8000"
+            - name: SUPABASE_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef: { name: supabase-config, key: SUPABASE_PUBLIC_URL }
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: ANON_KEY }
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: SERVICE_ROLE_KEY }
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: JWT_SECRET }
+            - name: DEFAULT_ORGANIZATION_NAME
+              value: "PlotBudget"
+            - name: DEFAULT_PROJECT_NAME
+              value: "plotbudget"
+          resources:
+            requests: { cpu: "25m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studio
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: studio
+spec:
+  selector:
+    app.kubernetes.io/name: studio
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

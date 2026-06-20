@@ -1,0 +1,72 @@
+# send-resend-email — the GoTrue Send-Email Hook (full-migration-plan §B). This is GoTrue
+# infrastructure, NOT an app-invoked function: GoTrue calls it (HMAC-signed, verify_jwt=false)
+# whenever it needs to send an email. It lives/dies with GoTrue, so it ships in this stack.
+#
+# Runs on the Supabase Edge Runtime image, serving the function on :9000. GoTrue reaches it at
+# http://send-resend-email.supabase.svc.cluster.local:9000/send-resend-email (see
+# GOTRUE_HOOK_SEND_EMAIL_URI in supabase-config). The HMAC secret is shared via
+# GOTRUE_HOOK_SEND_EMAIL_SECRETS (GoTrue side) == SEND_EMAIL_HOOK_SECRET (this side).
+#
+# README — REDEPLOY required: the function's code must be mounted/baked into the image and the
+# hook secret re-issued on the self-hosted GoTrue (the hosted-Supabase hook secret does not
+# carry over). RESEND_API_KEY arrives via ESO.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: send-resend-email
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: send-resend-email
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: send-resend-email
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: send-resend-email
+    spec:
+      containers:
+        - name: edge-runtime
+          image: supabase/edge-runtime:v1.69.12
+          imagePullPolicy: IfNotPresent
+          args: ["start", "--main-service", "/home/deno/functions/main"]
+          ports:
+            - name: http
+              containerPort: 9000
+          env:
+            - name: SEND_EMAIL_HOOK_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-auth, key: SEND_EMAIL_HOOK_SECRET }
+            # RESEND_API_KEY is delivered via ESO (add to supabase-auth ExternalSecret at apply).
+            - name: VERIFY_JWT
+              value: "false"
+          volumeMounts:
+            # The function source is provided at apply time (baked image or a ConfigMap/PVC mount
+            # of supabase/functions/send-resend-email/). README documents this prerequisite.
+            - name: functions
+              mountPath: /home/deno/functions
+              readOnly: true
+          resources:
+            requests: { cpu: "25m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+      volumes:
+        - name: functions
+          emptyDir: {} # PLACEHOLDER — replace with the real function source mount at apply (see README)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: send-resend-email
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: send-resend-email
+spec:
+  selector:
+    app.kubernetes.io/name: send-resend-email
+  ports:
+    - name: http
+      port: 9000
+      targetPort: http

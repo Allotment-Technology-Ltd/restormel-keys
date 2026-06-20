@@ -1,0 +1,152 @@
+# Storage API — backs the PlotBudget Vault (vault-documents, private household-scoped RLS) +
+# avatars (public) buckets (full-migration-plan §B). Backend = Hetzner Object Storage (S3,
+# hel1) — see README for the choice. Metadata (bucket/object rows + RLS) live in the `storage`
+# schema on the pg-plotbudget CNPG cluster (DATABASE_URL from supabase-core).
+#
+# imgproxy sidecar service handles the avatar image transforms Storage proxies to.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: storage-api
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: storage-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: storage-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: storage
+          image: supabase/storage-api:v1.60.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: DB_PLOTBUDGET_URL
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: JWT_SECRET
+            - name: ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: ANON_KEY
+            - name: SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: SERVICE_ROLE_KEY
+            # Hetzner Object Storage credentials.
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: { name: supabase-storage-s3, key: AWS_ACCESS_KEY_ID }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-storage-s3, key: AWS_SECRET_ACCESS_KEY }
+            - name: POSTGREST_URL
+              value: "http://rest.supabase.svc.cluster.local:3000"
+            - name: SERVER_PORT
+              value: "5000"
+            # imgproxy for avatar transforms.
+            - name: IMGPROXY_URL
+              value: "http://imgproxy.supabase.svc.cluster.local:5001"
+            - name: ENABLE_IMAGE_TRANSFORMATION
+              value: "true"
+          envFrom:
+            - configMapRef:
+                name: supabase-config # STORAGE_BACKEND=s3, STORAGE_S3_* , STORAGE_FILE_SIZE_LIMIT, TENANT_ID
+          livenessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: storage-api
+spec:
+  selector:
+    app.kubernetes.io/name: storage-api
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+# imgproxy — image transformation backend for Storage (avatar resizing/optimization).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imgproxy
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: imgproxy
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: imgproxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: imgproxy
+    spec:
+      containers:
+        - name: imgproxy
+          image: darthsim/imgproxy:v3.30.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5001
+          env:
+            - name: IMGPROXY_BIND
+              value: ":5001"
+            - name: IMGPROXY_USE_ETAG
+              value: "true"
+            - name: IMGPROXY_ENABLE_WEBP_DETECTION
+              value: "true"
+          resources:
+            requests: { cpu: "25m", memory: "64Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: imgproxy
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: imgproxy
+spec:
+  selector:
+    app.kubernetes.io/name: imgproxy
+  ports:
+    - name: http
+      port: 5001
+      targetPort: http

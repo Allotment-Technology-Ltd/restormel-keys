@@ -1,0 +1,79 @@
+# PostgREST — the dominant PlotBudget data layer (1,201 supabase.from() calls, no ORM;
+# full-migration-plan §B). RLS (158 policies on auth.uid()) is enforced by Postgres itself;
+# PostgREST just sets the request role + JWT claims so auth.uid() resolves. Pointed at the
+# pg-plotbudget CNPG cluster via PGRST_DB_URI (from supabase-core).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rest
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: postgrest
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgrest
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgrest
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: postgrest
+          image: postgrest/postgrest:v14.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PGRST_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: DB_PLOTBUDGET_URL
+            - name: PGRST_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: JWT_SECRET
+            - name: PGRST_APP_SETTINGS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-core
+                  key: JWT_SECRET
+            - name: PGRST_SERVER_PORT
+              value: "3000"
+          envFrom:
+            - configMapRef:
+                name: supabase-config # PGRST_DB_SCHEMAS, PGRST_DB_ANON_ROLE, ...
+          livenessProbe:
+            httpGet: { path: /live, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rest
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: postgrest
+spec:
+  selector:
+    app.kubernetes.io/name: postgrest
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
