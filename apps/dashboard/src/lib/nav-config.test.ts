@@ -77,6 +77,8 @@ describe("sidebar nav (§2.2)", () => {
   it("Observe matches §2.2 exactly", () => {
     const observe = NAV_GROUPS.find((g) => g.id === "observe")!;
     expect(observe.items.map((i) => [i.label, i.href])).toEqual([
+      // Traces leads Observe (Phase 3 Stage 5 — verified-query surface).
+      ["Traces", DASHBOARD_BASE + "/traces"],
       ["Logs", DASHBOARD_BASE + "/logs"],
       ["Usage", DASHBOARD_BASE + "/analytics"],
       ["Health", DASHBOARD_BASE + "/healthcheck"],
@@ -165,7 +167,7 @@ describe("sidebar nav (§2.2)", () => {
     const filtered = filterNavGroupsForModuleFlags(NAV_GROUPS, { ...MVP_MODULE_DEFAULTS, monitor: true });
     const observe = filtered.find((g) => g.id === "observe");
     expect(observe?.comingSoon).toBeUndefined();
-    expect(observe?.items.map((i) => i.label)).toEqual(["Logs", "Usage", "Health"]);
+    expect(observe?.items.map((i) => i.label)).toEqual(["Traces", "Logs", "Usage", "Health"]);
   });
 
   it("hides Guard rails when guardrails flag off", () => {

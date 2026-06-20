@@ -132,6 +132,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 domainPack: (await getSelectedDomainPackId(workspace.id)) ?? "unknown",
                 graphStoreType: graphTarget?.provider ?? "surreal",
                 queriedAt: new Date().toISOString(),
+                // Real answer-stage model: the BYOK target already resolved above. This is
+                // the only model the trace can honestly record today (retrieval/embedding
+                // stages are not yet captured per-stage — see Traces Stage 5).
+                answerModel: { provider: target.providerType, model: target.modelId },
                 verificationPolicy: COMPARISON_VERIFICATION_POLICY,
                 tokenBudget: 0,
                 retrieval: retrieval.result,

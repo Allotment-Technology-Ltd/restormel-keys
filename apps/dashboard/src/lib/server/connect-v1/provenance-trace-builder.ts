@@ -8,6 +8,7 @@
 import {
   PROVENANCE_TRACE_SCHEMA_VERSION,
   truncateClaimText,
+  type AnswerModel,
   type ClaimTrace,
   type ExpansionHop,
   type ProvenanceTrace,
@@ -34,6 +35,11 @@ export interface BuildProvenanceTraceInput {
   verificationPolicy?: VerificationPolicy;
   /** Token budget the query ran under (0 when uncapped). */
   tokenBudget: number;
+  /**
+   * The real model that generated the answer for this query, when the caller resolved it.
+   * Set only from the resolved BYOK target — never fabricated; omit when unknown.
+   */
+  answerModel?: AnswerModel | null;
   result: OrchestratorResult;
   timing: { seedMs: number; expansionMs: number; rankingMs: number; totalMs: number };
 }
@@ -84,6 +90,7 @@ export function buildProvenanceTrace(input: BuildProvenanceTraceInput): Provenan
     claim_text: truncateClaimText(c.text),
     source_ref: c.source_title || null,
     verification_state: c.verification_state ?? null,
+    verification_category: c.verification_category ?? null,
     trust_score: typeof c.trust_score === "number" ? c.trust_score : null,
     confidence_score: typeof c.confidence === "number" ? c.confidence : null,
     included: true,
@@ -97,6 +104,7 @@ export function buildProvenanceTrace(input: BuildProvenanceTraceInput): Provenan
     claim_text: truncateClaimText(r.text ?? ""),
     source_ref: r.source_title || null,
     verification_state: null,
+    verification_category: null,
     trust_score: null,
     confidence_score: typeof r.confidence === "number" ? r.confidence : null,
     included: false,
@@ -123,6 +131,7 @@ export function buildProvenanceTrace(input: BuildProvenanceTraceInput): Provenan
     domain_pack: input.domainPack,
     graph_store_type: input.graphStoreType,
     queried_at: input.queriedAt,
+    answer_model: input.answerModel ?? null,
     verification_policy,
     seeds,
     expansion,

@@ -62,7 +62,15 @@ export const ClaimTraceSchema = z.object({
   /** Truncated to {@link PROVENANCE_TRACE_TEXT_LIMIT} characters. */
   claim_text: z.string(),
   source_ref: z.string().nullable(),
+  /** Raw engine verification state (e.g. "validated" | "weak" | "flagged" | null). */
   verification_state: z.string().nullable(),
+  /**
+   * Trust category the engine derived from `verification_state` ("supported" | "weak" |
+   * "unsupported" | "unverified"). Additive (v1.0-compatible) so a trace is self-describing:
+   * the Answer Console keys its verdict off this category, and Traces must use the SAME one
+   * for cohesion rather than re-deriving it from the raw state. Omitted on older traces.
+   */
+  verification_category: z.string().nullish(),
   trust_score: z.number().nullable(),
   confidence_score: z.number().nullable(),
   /** True when the claim appears in the returned context; false when filtered out. */
@@ -95,6 +103,21 @@ export const ProvenanceTraceTimingSchema = z.object({
 });
 export type ProvenanceTraceTiming = z.infer<typeof ProvenanceTraceTimingSchema>;
 
+/**
+ * The model that actually generated the answer for this query (answer stage), when the
+ * caller knows it. Additive (v1.0-compatible): older traces simply omit it, and consumers
+ * tolerate its absence. This is the ONLY model the trace records — the retrieval/embedding
+ * stages are not yet captured per-stage (see Traces Stage 5 honesty note). Never fabricated:
+ * set only from the resolved BYOK target, omitted when unknown.
+ */
+export const AnswerModelSchema = z.object({
+  /** Provider family that served the answer (e.g. "anthropic", "openai"). */
+  provider: z.string(),
+  /** Model id that served the answer (e.g. "claude-3-5-sonnet"). */
+  model: z.string()
+});
+export type AnswerModel = z.infer<typeof AnswerModelSchema>;
+
 export const ProvenanceTraceSchema = z.object({
   schema_version: z.literal(PROVENANCE_TRACE_SCHEMA_VERSION),
   trace_id: z.string(),
@@ -104,6 +127,8 @@ export const ProvenanceTraceSchema = z.object({
   graph_store_type: z.string(),
   /** ISO 8601 timestamp of when the query ran. */
   queried_at: z.string(),
+  /** Real answer-stage model when known (additive; omitted on older/unknown traces). */
+  answer_model: AnswerModelSchema.nullish(),
   verification_policy: ProvenanceVerificationPolicySchema,
   seeds: z.array(SeedRecordSchema),
   expansion: z.array(ExpansionHopSchema),
