@@ -84,11 +84,10 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
 - **PlotBudget production domain (TBD)** — needed for its wildcard `Certificate`,
   ingress route, and Supabase `SITE_URL`/JWT. Omitted here; add a Certificate +
   Ingress block when supplied (design §10).
-- **Object Storage region tension** — the **Decisions register + full plan say
-  `fsn1` (cross-region PITR)**, which is what the CNPG S3 config will target; the
-  *design doc §4.3* example says `hel1` (region-matched to compute). The register
-  is authoritative, so the ESO/CNPG creds here are framed for **fsn1**. Founder to
-  confirm fsn1 vs hel1 before the CNPG migration PR wires the endpoint.
+- **Object Storage region — DECIDED `fsn1`** (cross-region from the `hel1` compute,
+  for DR geo-separation; 2026-06-20). The Decisions register, full plan, and these
+  CNPG/ESO manifests all target **`fsn1`**; the design doc §4.3 is reconciled to match,
+  so the endpoint the CNPG migration PR wires is `https://fsn1.your-objectstorage.com`.
 - **Operator IP / SSH key name** — `<OPERATOR_IP>/32`, `restormel-operator` SSH key
   name, and `restormel-internal` private-network name are placeholders to confirm
   against live Hetzner before any apply.
