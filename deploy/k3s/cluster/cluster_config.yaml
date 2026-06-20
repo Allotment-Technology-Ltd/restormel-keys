@@ -1,0 +1,188 @@
+# =============================================================================
+# hetzner-k3s cluster_config.yaml — Sovereign Restormel/Allotment K3s cluster
+# -----------------------------------------------------------------------------
+# TOOL:    hetzner-k3s v2.5.0  (config_format_version: 2)
+#          https://github.com/vitobotta/hetzner-k3s  — `hetzner-k3s create --config cluster_config.yaml`
+# DESIGN:  planning/k3s-cluster-target-design.md §2, §3.1-3.3 ; Decisions register
+#          in planning/full-migration-plan-k3s.md (authoritative).
+#
+# *** CONFIG-ONLY ARTIFACT — NOTHING IS PROVISIONED OR APPLIED BY COMMITTING THIS ***
+# This file is authored for review in a PR. `hetzner-k3s create` is run manually,
+# off-cluster, by the operator during the migration window — never from CI.
+#
+# -----------------------------------------------------------------------------
+# PATH-A BOOTSTRAP TOPOLOGY (Decisions register: Migration approach = "Path A")
+# -----------------------------------------------------------------------------
+# The cluster is FIRST stood up on a TEMPORARY Hetzner CLOUD node — approx a
+# **CCX23** (x86 dedicated-vCPU, 4 vCPU / 16 GB), funded by the **€20 "Hetzner
+# Cloud Community" credit (REDEEM BEFORE 31 Aug 2026)**. This is a HETZNER CLOUD
+# server, NOT a Robot/dedicated server: €20 won't cover a dedicated box and
+# hetzner-k3s only provisions Cloud. State is migrated onto the cluster, then the
+# three existing boxes (.167/.150/.166) are folded in as control-plane members
+# and the temp node is retired. NEVER convert a live prod box in place.
+#
+# >>> BOOTSTRAP STAGE (this file as written): masters_pool provisions the single
+#     temp CCX23 Cloud node as cluster-init. To FOLD IN the existing boxes you
+#     do NOT re-run `create` against them (it would reprovision/wipe) — you
+#     hand-join them with `k3s server` per the design (§3.3 Path A→ B mechanics),
+#     and let hetzner-k3s manage the resulting cluster (CCM/CSI/autoscaler).
+#     The 3-box target topology is documented in cluster/nodes-target.md.
+# =============================================================================
+
+config_format_version: 2
+
+# --- Hetzner API token -------------------------------------------------------
+# NEVER inline a real token. hetzner-k3s reads the token from the HCLOUD_TOKEN
+# environment variable when `hetzner_token` is left empty. The operator exports
+# it for the single bootstrap invocation from the secret store, e.g.:
+#   export HCLOUD_TOKEN="$(infisical secrets get HCLOUD_TOKEN \
+#       --projectId=<restormel-ops> --env=prod \
+#       --domain=https://secrets.restormel.dev --plain)"
+# The same token is later consumed in-cluster by the Hetzner CCM + CSI driver,
+# delivered there via External Secrets Operator (see ../secrets/).
+hetzner_token: ""   # <-- intentionally empty; sourced from $HCLOUD_TOKEN at runtime
+
+cluster_name: restormel-sovereign
+kubeconfig_path: "./kubeconfig"        # written locally by the operator; gitignored
+
+# --- k3s version (PINNED) ----------------------------------------------------
+# Pinned to a stable (non-rc) line, deliberately NOT bleeding-edge.
+# Verified against k3s-io/k3s releases 2026-06-20 (latest stable line v1.36.1+k3s1;
+# we pin one minor back for soak). Bump deliberately, never float.
+k3s_version: v1.34.8+k3s1
+
+# Keep the cluster (and its nodes/network/firewall) from being torn down by an
+# accidental `delete`. Belt-and-braces for a solo operator.
+protect_against_deletion: true
+
+# --- Control-plane scheduling (Decision: HA boxes ARE the workers) -----------
+# All control-plane (etcd) nodes are schedulable — the boxes are the workers;
+# no separate static worker pool (cost). Tradeoff + mitigations: design §2.1.
+schedule_workloads_on_masters: true
+
+# Public API behind a Hetzner LB? NO — single-node ingress / no paid LB by
+# default (design §2.3). The k3s API is reached over SSH/private net by the
+# operator; not fronted by a cloud LB.
+create_load_balancer_for_the_kubernetes_api: false
+
+# =============================================================================
+# NETWORKING
+# =============================================================================
+networking:
+  ssh:
+    port: 22
+    use_agent: false
+    # Operator SSH keypair already registered in Hetzner Cloud. Reference the
+    # existing key by name so hetzner-k3s does not upload a new one.
+    existing_ssh_key_name: "restormel-operator"
+    public_key_path: "~/.ssh/restormel_operator.pub"
+    private_key_path: "~/.ssh/restormel_operator"
+
+  # --- LOCKED ACCESS (design §3.1: "lock allowed_networks.api/ssh to operator IP")
+  # Replace <OPERATOR_IP>/32 with the operator's current egress IP before apply.
+  # Do NOT widen to 0.0.0.0/0. The private network handles intra-cluster traffic.
+  allowed_networks:
+    ssh:
+      - "<OPERATOR_IP>/32"          # operator workstation egress only
+    api:
+      - "<OPERATOR_IP>/32"          # kube-apiserver reachable from operator only
+    # custom_firewall_rules: []     # add only with explicit justification
+
+  # Public network: nodes get public IPv4 (needed for hetzner-k3s SSH bootstrap
+  # of the temp Cloud node and for single-node ingress :80/:443). IPv6 enabled.
+  public_network:
+    ipv4: true
+    ipv6: true
+
+  # --- REUSE THE EXISTING PRIVATE NETWORK (design §3.1) ----------------------
+  # Do NOT let the tool create a new network. The existing private net is
+  # 172.16.0.0/16 ("restormel-internal"); .150=172.16.0.2 .167=172.16.0.3
+  # .166=172.16.0.4. The temp CCX23 bootstrap node joins THIS network so the
+  # existing boxes can later be folded into the same L2 without renumbering.
+  private_network:
+    enabled: true
+    existing_network_name: "restormel-internal"
+    subnet: "172.16.0.0/16"
+
+  # --- CNI: Cilium (design §3.2) ---------------------------------------------
+  # Cilium over flannel: NetworkPolicy to isolate prod DB traffic from build/ops
+  # pods on shared nodes (the whole point of leaving the single-blast-radius box)
+  # + Hubble observability. Flannel is the 1-line fallback if memory bites.
+  # hetzner-k3s installs Cilium (verified current stable v1.19.5, 2026-06-16);
+  # encryption left off at bootstrap (private net is trusted) — enable later if
+  # the threat model requires node-to-node encryption.
+  cni:
+    enabled: true
+    mode: cilium
+    encryption: false
+
+# =============================================================================
+# CONTROL-PLANE POOL
+# =============================================================================
+# BOOTSTRAP STAGE: a single temporary Hetzner CLOUD CCX23 (x86, 4 vCPU / 16 GB)
+# on the €20 credit, in Helsinki (hel1) to match the existing boxes' region.
+#
+# NOTE ON HA QUORUM: the *target* is a 3-member embedded-etcd quorum across the
+# three existing boxes (.167/.150/.166). During bootstrap there is ONE master
+# (the temp node) — embedded etcd starts single-member and grows to 3 as the
+# boxes are hand-joined as additional control-plane servers (design §2.1, §3.3).
+# We deliberately do NOT set instance_count: 3 here, because that would
+# provision THREE NEW Cloud nodes (extra spend + not the boxes we want). The
+# boxes are joined out-of-band; see cluster/nodes-target.md.
+masters_pool:
+  instance_type: ccx23        # x86 dedicated-vCPU, 4 vCPU / 16 GB — temp €20-credit bootstrap node
+  instance_count: 1           # bootstrap = 1 (temp node); grows to 3-member etcd by hand-joining the boxes
+  locations:
+    - hel1                    # Helsinki — same region as the existing boxes
+
+# =============================================================================
+# WORKER NODE POOLS — burst pool only (Decision: scale-to-zero, day-1 enabled)
+# =============================================================================
+# One autoscaled pool. min_instances: 0 → €0 at rest; Cluster Autoscaler scales
+# back to zero when idle. NoSchedule taint workload=burst → nothing lands here
+# unless a pod explicitly tolerates it (CI/heavy builds opt in). max=2 cap.
+# (design §2.2 ; Decisions register: "scale-to-zero burst pool ... min=0/max=2".)
+worker_node_pools:
+  - name: burst
+    instance_type: cpx31      # ~€16/mo ONLY while running; €0 at rest
+    location: hel1
+    autoscaling:
+      enabled: true
+      min_instances: 0        # scale to zero — no standing cost
+      max_instances: 2        # hard ceiling on burst spend
+    labels:
+      - key: workload
+        value: burst
+    taints:
+      # NoSchedule taint — only burst-tolerant pods (CI, heavy builds) schedule here.
+      - key: workload
+        value: burst
+        effect: NoSchedule
+
+# =============================================================================
+# ADD-ONS / EMBEDDED-ETCD HARDENING
+# =============================================================================
+# Keep swap ON as an OOM cushion on the tight boxes (design §2.1) and encrypt
+# Kubernetes Secrets at rest in etcd (design §6: `--secrets-encryption`).
+# hetzner-k3s passes extra args through to k3s server via these hooks.
+additional_pre_k3s_commands:
+  - "apt-get update"
+  - "apt-get install -y open-iscsi"   # Hetzner CSI block-volume attach support
+
+# Extra k3s server flags. fail-swap-on=false → kubelet tolerates swap (OOM
+# cushion). secrets-encryption → etcd-at-rest encryption for K8s Secrets.
+# disable traefik/servicelb → we run our OWN Traefik (Helm) + no Klipper LB
+# (single-node ingress, design §2.3 / §3.4).
+api_server_args: []
+kube_controller_manager_args: []
+kubelet_args:
+  - "fail-swap-on=false"
+k3s_server_args:
+  - "--secrets-encryption"
+  - "--disable=traefik"      # we install Traefik via Helm (../ingress/), NOT k3s' bundled one
+  - "--disable=servicelb"    # no Klipper service-LB; single-node ingress, no paid LB
+
+# Embedded etcd automatic snapshots (design §7: etcd snapshots for DR).
+etcd_snapshots:
+  retention: 20
+  schedule: "0 */6 * * *"    # every 6h; off-box copy handled by restic → BX11 (design §7)

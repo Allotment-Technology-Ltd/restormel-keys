@@ -1,0 +1,101 @@
+# =============================================================================
+# Traefik Helm values — our own ingress (NOT Coolify's, NOT k3s' bundled one)
+# -----------------------------------------------------------------------------
+# CHART:   traefik/traefik  (traefik-helm-chart v41.0.0, verified 2026-06-20)
+#          https://github.com/traefik/traefik-helm-chart
+# INSTALL (operator, off-cluster — config-only here, NOT applied by CI):
+#   helm repo add traefik https://traefik.github.io/charts
+#   helm install traefik traefik/traefik -n traefik --create-namespace \
+#       -f deploy/k3s/ingress/traefik-helm-values.yaml
+#
+# DESIGN:  k3s-cluster-target-design.md §3.4 (Traefik via own Helm chart,
+#          DaemonSet), §2.3 (single-node ingress, no paid LB).
+# NOTE:    cluster_config.yaml disables k3s' bundled traefik + servicelb, so
+#          this is the only ingress controller and there is no Klipper LB.
+# =============================================================================
+
+# --- DaemonSet, not Deployment (design §2.3 + §3.4) --------------------------
+# Traefik runs on every control-plane node so :80/:443 are answered on every
+# node IP. Public A/AAAA records point at ONE node's IP (no Hetzner LB / €6/mo);
+# adding the LB later is reversible.
+deployment:
+  kind: DaemonSet
+
+# --- Bind ports to the host (single-node ingress, no cloud LB) ---------------
+# hostPort so the node's own :80/:443 reach Traefik directly. No Service of
+# type=LoadBalancer (that would need Klipper or a paid Hetzner LB).
+service:
+  enabled: true
+  type: ClusterIP        # not LoadBalancer — we expose via hostPort below
+
+ports:
+  web:
+    port: 8000
+    hostPort: 80         # node :80  → Traefik web entrypoint
+    expose:
+      default: true
+    redirectTo:
+      port: websecure    # force HTTP→HTTPS
+  websecure:
+    port: 8443
+    hostPort: 443        # node :443 → Traefik websecure entrypoint
+    expose:
+      default: true
+    tls:
+      enabled: true
+  traefik:
+    # Dashboard/health entrypoint — kept internal (no hostPort, not exposed).
+    port: 9000
+    expose:
+      default: false
+
+# --- TLS comes from cert-manager, not Traefik's ACME -------------------------
+# We do NOT use Traefik's built-in ACME (certResolver). cert-manager issues the
+# certs (DNS-01 via Hetzner DNS, see clusterissuer-letsencrypt.yaml) and stores
+# them as Kubernetes TLS Secrets that Ingress objects reference. This keeps a
+# single ACME owner for the whole cluster.
+certificatesResolvers: {}
+
+# --- Provider scope ----------------------------------------------------------
+providers:
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: false
+  kubernetesCRD:
+    enabled: true        # IngressRoute CRDs available if needed (e.g. Surreal TCP/WS)
+    allowCrossNamespace: false
+
+# Make Traefik the default IngressClass so plain Ingress objects (no explicit
+# class) are picked up.
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+# --- Resource requests/limits (design §2.1: requests/limits on EVERY workload)
+# Tight — these boxes are small (8 GB) and co-resident with etcd.
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+
+# --- Observability + hardening ----------------------------------------------
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true        # access logs for incident response (ISMS evidence trail)
+
+# Run on the schedulable control-plane nodes (they ARE the workers). The burst
+# pool carries a NoSchedule taint we deliberately do NOT tolerate — ingress must
+# never live on an ephemeral scale-to-zero node.
+tolerations: []
+affinity: {}
+
+# Drop the unauthenticated API/dashboard surface in production.
+api:
+  dashboard: false
+  insecure: false
