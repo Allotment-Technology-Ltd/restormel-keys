@@ -1,0 +1,10 @@
+# The `ingress` namespace — holds the shared wildcard Certificates (ingress-routes.yaml).
+# Created here because nothing else does (the Ingresses themselves live in per-product
+# namespaces). Apply this BEFORE the Certificates (audit finding 2026-06-20).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign
+    restormel.dev/plane: infra

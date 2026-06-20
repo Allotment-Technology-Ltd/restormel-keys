@@ -152,7 +152,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: surrealdb        # StatefulSet Service (design §5)
+                name: surreal-db       # ClusterIP Service (surreal/30-service.yaml). Was 'surrealdb' — a name that exists NOWHERE (→ 503); 'surreal' is the headless StatefulSet svc, 'surreal-db' is the connection target.
                 port:
                   number: 8000
 ---
