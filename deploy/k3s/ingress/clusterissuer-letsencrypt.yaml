@@ -22,13 +22,13 @@
 # The token is delivered as the Secret `hetzner-dns-token` (key `token`) in the
 # cert-manager namespace by External Secrets Operator — see the `hetzner-dns-token`
 # ExternalSecret in ../secrets/externalsecrets.yaml (infisical-infra → Infisical key
-# HETZNER_DNS_API_TOKEN). NB: since Hetzner folded DNS into the Cloud Console, this is a
+# HCLOUD_TOKEN). NB: since Hetzner folded DNS into the Cloud Console, this is a
 # **Hetzner Cloud read+write API token** (the legacy standalone dns.hetzner.com DNS token
-# is retired) — the official hcloud webhook talks to the Cloud API. The Infisical key
-# name is kept for continuity; its VALUE is a Cloud token. Keep it SEPARATE from
-# HCLOUD_TOKEN (CCM/CSI) so cert-manager's token can rotate independently. Hetzner Cloud
-# tokens are project-wide read+write (no DNS-only scope) — accepted blast radius; the
-# Secret is ESO-delivered and namespaced to cert-manager. NO token value appears here.
+# is retired) — the official hcloud webhook talks to the Cloud API. FOUNDER DECISION
+# 2026-06-20: REUSE the existing HCLOUD_TOKEN (same Cloud token as CCM/CSI) — it already
+# carries the read+write scope to manage DNS records. Hetzner Cloud tokens are project-wide
+# read+write (no DNS-only scope) — accepted blast radius; the Secret is ESO-delivered and
+# namespaced to cert-manager. NO token value appears here.
 # =============================================================================
 ---
 # Staging issuer — use FIRST to avoid Let's Encrypt rate limits while validating
