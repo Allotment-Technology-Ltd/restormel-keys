@@ -16,8 +16,14 @@
 # Deploys run SERIALLY (dashboard → poll to terminal → worker): two parallel
 # full-workspace Docker builds OOM the 8 GB box (no swap).
 #
-# Coolify API is reached at the host bridge address http://10.0.1.1:8000 from the
+# Coolify API is reached at the host's private IP http://172.16.0.2:8000 from the
 # runner's job container (header bearer auth; the webhook-with-embedded-token 401s).
+# NB: we deliberately use the host IP 172.16.0.2 — NOT the Coolify bridge gateway
+# 10.0.1.1 — because the runner spins up an ephemeral per-job network from docker's
+# 10.0.0.0/8 default-address-pool, which overlaps Coolify's 10.0.1.0/24 and can
+# collide, blackholing the route to 10.0.1.1 (TCP timeout → deploy fails; REC-INC-006).
+# 172.16.0.2 is the box's real private-network IP, outside the docker pool, so no
+# per-job subnet can ever collide with it.
 #
 # GitHub mirror note: this workflow lives in .forgejo/workflows/ which overrides
 # .github/ on the Forgejo runner. The Forgejo→GitHub push mirror re-triggers GitHub
@@ -71,7 +77,7 @@ jobs:
             echo "COOLIFY_TOKEN not set — skipping deploy trigger (expected on the GitHub mirror)."
             exit 0
           fi
-          API="http://10.0.1.1:8000/api/v1"
+          API="http://172.16.0.2:8000/api/v1"
           auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}")
           deploy_and_wait() {
             local app_uuid="$1" name="$2"
@@ -108,7 +114,7 @@ jobs:
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           # Prod migrated to Box A (.167) on 2026-06-17 (REC-PLAN-012). Coolify still
-          # runs on .150 (API via 10.0.1.1:8000) and orchestrates the .167 deploy over
+          # runs on .150 (API via 172.16.0.2:8000) and orchestrates the .167 deploy over
           # the private network — these UUIDs are the .167 prod apps.
           DASHBOARD_UUID: deibtxcn1kl5flye5d3koiln
           WORKER_UUID: s5cf1bkq5egny7r4jqbxc1gn
@@ -118,7 +124,7 @@ jobs:
             echo "COOLIFY_TOKEN not set — skipping prod deploy trigger."
             exit 0
           fi
-          API="http://10.0.1.1:8000/api/v1"
+          API="http://172.16.0.2:8000/api/v1"
           auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}")
           deploy_and_wait() {
             local app_uuid="$1" name="$2"
