@@ -220,14 +220,14 @@ Infisical machine-identity bootstrap. etcd encrypted at rest (`--secrets-encrypt
 | Layer | Mechanism | Target | RPO | Restore |
 |---|---|---|---|---|
 | Postgres (all CNPG) | Barman continuous WAL + daily base | Hetzner Object Storage (fsn1, cross-region) | ~minutes (PITR) | bootstrap new cluster from store |
-| SurrealDB | `surreal export` CronJob → restic | BX11 | daily | import into fresh STS |
+| SurrealDB | `surreal export` CronJob (hourly) → restic | BX11 | **~1 h** | import into fresh STS |
 | PVCs | restic / volume snapshot | BX11 | daily | restic restore |
 | etcd | K3s etcd snapshots | Object Storage / BX11 | scheduled | `--cluster-reset` from snapshot |
 | GitOps repo | it IS source of truth | Forgejo + GitHub mirror | n/a | re-sync |
 
 **Velero: optional, not initial** (CNPG-Barman + restic + GitOps already cover state; add later if the
 etcd-snapshot + re-apply DR drill proves too manual). **RTO anchor ≤ 2 h** prod from a clean cluster;
-**RPO ≤ 5 min** Postgres, **≤ 24 h** Surreal/PVCs (founder to confirm, §10). DR drill reuses the
+**RPO ≤ 5 min** Postgres, **~1 h** Surreal (hourly export — founder-confirmed 2026-06-20, D-M10), **≤ 24 h** PVCs. DR drill reuses the
 existing Phase-8 restore-drill muscle.
 
 ---
@@ -273,7 +273,7 @@ recurring.
 - **Unified auth plane** — Better Auth everywhere (matches Restormel + the Sophia decision) vs Ory Hydra
   (REC-PLAN-011)? Design `auth.restormel.dev` once.
 - **Burst nodes day one?** (default: ship at `max_instances: 0`, add later — €0 either way).
-- **RTO ≤ 2 h / RPO ≤ 5 min (PG), ≤ 24 h (Surreal)** — acceptable or stricter?
+- ~~**RTO / RPO**~~ — **DECIDED 2026-06-20 (D-M10):** RTO ≤ 2 h; RPO ≤ 5 min (PG) / **~1 h (Surreal, hourly export)** / ≤ 24 h (PVCs).
 - ~~**Object Storage region**~~ — **DECIDED: `fsn1`** (cross-region from the `hel1` compute, for DR geo-separation; 2026-06-20).
 - **PlotBudget production domain** — needed for ingress + Supabase `SITE_URL`/JWT.
 - **Forgejo/Infisical** — keep off-cluster permanently (bootstrap anchors) or migrate in post-cutover?

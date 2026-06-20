@@ -26,6 +26,8 @@ spec:
   imageName: ghcr.io/cloudnative-pg/postgresql:16.8
   instances: 2                       # primary + 1 standby
   primaryUpdateStrategy: unsupervised
+  monitoring:
+    enablePodMonitor: true           # CNPG Prometheus exporter → Ops Centre (D-M2, founder-approved 2026-06-20). Surfaces WAL-archive-to-fsn1 + PITR readiness.
 
   # ---- bootstrap: an EMPTY cluster with the app DB + role. ------------------
   # Data is loaded by the pg_dump/restore cutover (see MIGRATION.md), NOT by
