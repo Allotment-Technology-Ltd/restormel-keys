@@ -22,9 +22,13 @@ pass (2026-06-19) against verified live infra; **read-only — no infra/config c
 founder's locked decisions (HA across the 3 boxes; Hetzner Object Storage for CNPG; UseSophia full
 migration; cost-constrained Forgejo/CI placement).
 
+> Per-product migration phasing + the PlotBudget Supabase ADR live in the overarching
+> [full-migration-plan-k3s.md](full-migration-plan-k3s.md); the shared Decisions register there is authoritative.
+
 > **Founder decisions (2026-06-19)** — refining §3.3/§3.4/§4.4 and resolving the first four §10 questions:
-> **(1) Migration = Path A** — build the cluster on the **€20 one-off temp dedicated server**, migrate
-> state onto it, fold the 3 boxes in, then retire the temp node (de-risks converting the live prod box).
+> **(1) Migration = Path A** — build the cluster on a temporary **Hetzner Cloud** node (**CX43**, shared vCPU, 8 vCPU / 16 GB, x86) on the **€20 "Hetzner Cloud Community" credit (redeem before 31 Aug 2026)** — NOT a Robot/dedicated
+> server (€20 won't cover one; hetzner-k3s provisions Cloud) — migrate state onto it, fold the 3 boxes in,
+> then retire the temp node (de-risks converting the live prod box).
 > **(2) DNS = consolidate onto Hetzner DNS** (free) → cert-manager **DNS-01** (wildcards); **deSEC** is the
 > fallback; **avoid Cloudflare**. Zones are currently spread across registrars + Vercel, so DNS migration
 > is an explicit task of this work. **(3) DB cutover = short pg_dump maintenance window** (pre-launch, low
@@ -131,10 +135,11 @@ Boxes **run prod during migration**, so `hetzner-k3s` must not reprovision them.
 - **Path B (€0, in-place):** manually `k3s install` on **`.166` first** (cluster-init, lowest risk), join,
   migrate least-critical workloads, free `.150`, join it, then `.167` last. hetzner-k3s then *manages* the
   hand-joined cluster (CCM/CSI/autoscaler). Keeps prod up, adds €0. **Order: `.166` → `.150` → `.167`.**
-- **Path A (uses the €20 temp-server credit):** stand the cluster up on a **temporary dedicated node**,
-  migrate state onto it, then fold the existing boxes in and retire the temp node. **The founder's €20
-  one-off credit makes this viable** and de-risks converting a live prod box in place. → **Founder
-  question in §10.** Default assumption remains Path B unless the €20 Path A is preferred.
+- **Path A — DECIDED (uses the €20 "Hetzner Cloud Community" credit):** stand the cluster up on a
+  **temporary Hetzner Cloud node** (**CX43**, shared vCPU, 8 vCPU / 16 GB, x86 — NOT a Robot/dedicated server; hetzner-k3s
+  provisions Cloud, and €20 won't cover a dedicated box), migrate state onto it, then fold the existing boxes
+  in and retire the temp node. De-risks converting a live prod box in place. **Redeem the credit before its
+  31 Aug 2026 expiry.** (This supersedes the Path-B default described above.)
 
 The Hetzner **Cloud Controller Manager + CSI driver** install into the cluster regardless (need a
 Hetzner API token from Infisical).
