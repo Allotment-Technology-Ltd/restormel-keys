@@ -29,6 +29,14 @@
 ---
 # --- Wildcard certificates (one per apex zone) -------------------------------
 # DNS-01 lets us issue wildcards, so a single cert covers all sub-hosts per zone.
+# CROSS-NAMESPACE TLS — resolves the gap documented in README §"Wildcard TLS
+# secrets are cross-namespace" (option a, RECOMMENDED). Each wildcard secret is
+# produced here in `ingress`, then MIRRORED into the consuming product namespaces
+# by kubernetes-reflector via the secretTemplate annotations below. One cert per
+# zone, copied — NOT re-issued per namespace, so no Let's Encrypt duplicate-cert
+# rate-limit risk. kubernetes-reflector is a bootstrap install (see README
+# apply-order). The reflection namespace lists below MUST match the namespaces of
+# the Ingresses that reference each `secretName`.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -36,6 +44,16 @@ metadata:
   namespace: ingress
 spec:
   secretName: wildcard-restormel-dev-tls
+  # Mirror the issued TLS secret into every namespace that runs a *.restormel.dev
+  # Ingress: restormel (dashboard), restormel-nonprod (staging/preview), data
+  # (surreal), auth (Phase B). Add a namespace here when a new restormel.dev host
+  # gets an Ingress in a new namespace.
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "restormel,restormel-nonprod,data,auth"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "restormel,restormel-nonprod,data,auth"
   issuerRef:
     name: letsencrypt-staging        # FLIP to letsencrypt-prod after staging green
     kind: ClusterIssuer
@@ -50,6 +68,15 @@ metadata:
   namespace: ingress
 spec:
   secretName: wildcard-allotmentology-tech-tls
+  # Mirror into every namespace with a *.allotmentology.tech Ingress/IngressRoute:
+  # allotmentology (the app), and the Ops Centre — monitoring (grafana., status.) +
+  # argocd (argo.) — whose Traefik IngressRoutes consume this cert (see the ops-centre PR).
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "allotmentology,monitoring,argocd"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "allotmentology,monitoring,argocd"
   issuerRef:
     name: letsencrypt-staging
     kind: ClusterIssuer
@@ -64,6 +91,13 @@ metadata:
   namespace: ingress
 spec:
   secretName: wildcard-usesophia-app-tls
+  # Mirror into the `sophia` namespace (Phase B — harmless until that Ingress applies).
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "sophia"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "sophia"
   issuerRef:
     name: letsencrypt-staging
     kind: ClusterIssuer
