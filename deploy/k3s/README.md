@@ -88,8 +88,10 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
   for DR geo-separation; 2026-06-20). The Decisions register, full plan, and these
   CNPG/ESO manifests all target **`fsn1`**; the design doc §4.3 is reconciled to match,
   so the endpoint the CNPG migration PR wires is `https://fsn1.your-objectstorage.com`.
-- **Operator IP / SSH key name** — `<OPERATOR_IP>/32`, `restormel-operator` SSH key
-  name, and `restormel-internal` private-network name are placeholders to confirm
-  against live Hetzner before any apply.
+- **Operator IP / SSH key name** — set `<OPERATOR_IP>/32` to the operator egress IP
+  before apply (the live `surreal-box-fw` currently allows SSH from `82.42.129.209/32`).
+  SSH key = **`adam@allotment-hetzner`** (resolved 2026-06-20 — already attached to the
+  bootstrap node; private key `~/.ssh/id_hetzner_allotment` on the operator Mac).
+  `restormel-internal` private network confirmed live.
 - **Auth plane** — `auth.restormel.dev` is routed to a `auth-plane` Service on the
   Better Auth decision (register); the concrete Deployment lands in a later PR.
