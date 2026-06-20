@@ -5,11 +5,11 @@ class: governance
 owner: founder
 status: approved
 approved-by: Adam Boon
-approved-on: 2026-06-19
+approved-on: 2026-06-20
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-19
+last-reviewed: 2026-06-20
 review-interval: P12M
 retention: P6Y-after-superseded
 ---
@@ -17,6 +17,18 @@ retention: P6Y-after-superseded
 # Access Control Policy
 
 **Allotment Technology Ltd** · Version 2026-06-15 · Effective 15 June 2026
+
+> **Change note — 2026-06-20 (founder merge = re-approval).** Records the per-project
+> Infisical access model: the single `restormel-ops` secret project is replaced by
+> **five dedicated projects** (one shared `infrastructure` project plus one per product),
+> so secret access is granted **per project** on least-privilege rather than estate-wide.
+> The in-cluster **External Secrets Operator (ESO)** uses **one shared, read-only
+> machine identity** (added to all five projects, READ on `prod`) — used only by ESO,
+> never by a human or external party — while the project boundaries constrain
+> human/external and non-ESO machine access. See the updated §2 "Secrets handling" and
+> §4. Full detail and rationale live in the Secret Management Policy (REC-POL-004 §3a,
+> §4) and `planning/secrets-architecture-infra-per-product.md`. The Phase-B product
+> projects (`sophia`, `plotbudget`) are defined but not yet populated or used.
 
 ## 1. Purpose and scope
 
@@ -41,10 +53,18 @@ available. See §3 for the system-by-system requirement and current status.
 **Secrets handling.** Credentials are never committed to version control (`.env`
 files are gitignored and not committed). API keys are stored as hashes or ciphertext
 only. Tokens are scoped to least privilege and rotated on any suspected exposure.
-Secrets are consolidating into the self-hosted Infisical secrets manager (see
-`asset-inventory.yaml`), now live as the store of record; residual locations (CI secrets,
-app credential stores including the allotmentology.tech app's local `.env`, and the Mac
-keychain) are being migrated in. Tracked as RISK-002 (in-treatment).
+Secrets are consolidated into the self-hosted Infisical secrets manager (see
+`asset-inventory.yaml`), now the store of record; residual locations (CI secrets,
+app credential stores including the allotmentology.tech app's Coolify env, and the Mac
+keychain) are being migrated in (tracked as RISK-002, in-treatment). Within Infisical,
+secrets are partitioned into **five dedicated projects** — one shared `infrastructure`
+project plus one per product (`restormel`, `allotmentology`, and the Phase-B
+`sophia` / `plotbudget`) — replacing the original single `restormel-ops` project.
+Access to a project's secrets is granted **per project**, on least privilege, so a
+leaked identity or a future collaborator is contained to one project rather than the
+whole estate. The full model (storage, the per-project ESO `ClusterSecretStore`s, and
+the one shared read-only ESO machine identity used only in-cluster) is governed by the
+Secret Management Policy (REC-POL-004).
 
 **New system onboarding.** When a new system or service is adopted, MFA must be
 enabled within 24 hours of account creation. The system must be added to the asset
@@ -96,6 +116,29 @@ and supplier register (REC-GOV-005).
 Remote access to the Coolify/Hetzner host is via SSH key only; password
 authentication is disabled on the server.
 
+**Secret access (per-project boundary).** Operational secrets live in the self-hosted
+Infisical manager (AST-013), partitioned into five dedicated projects — `infrastructure`
+(shared infra), `restormel`, `allotmentology`, and the Phase-B `sophia` / `plotbudget`.
+Access to secrets is granted **per project, on least privilege**, not estate-wide:
+
+- **Human access** is via the Infisical UI under the founder admin account, granted
+  per project. At the solo-founder stage the founder is admin on all five; the boundary
+  is enforced structurally so a future team member or external collaborator can be given
+  exactly the project(s) their role needs — e.g. a product contractor → that product's
+  project only, never `infrastructure`. There is **no external / third-party access** to
+  any project; sub-processors never receive Infisical credentials.
+- The `infrastructure` project (which holds the credentials that reach everything else)
+  carries the tightest boundary: founder plus the ESO machine identity only.
+- **In-cluster access** is via the External Secrets Operator (ESO), the only in-cluster
+  consumer of Infisical. ESO uses **one shared, read-only machine identity** added to all
+  five projects (READ on env `prod`) so it can render each workload's secrets into native
+  Kubernetes `Secret`s. That shared identity is used **only by ESO, only in-cluster** —
+  never by a human or external party — so it does not weaken the per-project human/external
+  boundary above. Its single bootstrap credential (`infisical-machine-identity` in
+  namespace `external-secrets`) is the one out-of-band secret, created by hand and excluded
+  from GitOps; its rotation and SPOF treatment are governed by REC-POL-004 (§5) and
+  RISK-010.
+
 The allotmentology.tech portal uses its own self-contained BetterAuth authentication and is
 currently founder-only. Coolify dashboard (coolify.allotmentology.tech) is published behind
 the allotmentology.tech portal's BetterAuth session via Traefik forwardAuth. All Coolify
@@ -113,7 +156,9 @@ the only user. This section will be expanded when the first team member joins.
 **When a new team member joins:** access is granted on the principle of least
 privilege for their role, documented in a named account per system, and recorded
 in an onboarding access log in `evidence/access-reviews/`. MFA must be enabled
-before production access is granted.
+before production access is granted. Secret access in particular is scoped to the
+specific Infisical project(s) the role requires (§4) — never the whole estate, and
+never the `infrastructure` project unless the role is operational.
 
 **When a team member leaves:** all access is revoked within 24 hours. API keys,
 tokens, and shared secrets they had access to are rotated. Revocation is documented
@@ -125,10 +170,14 @@ Access to all in-scope systems is reviewed **quarterly** via the access review
 playbook (`playbooks/quarterly-access-review.md`). The review covers:
 
 - All active accounts and their privilege levels
-- All secret locations (AST-007: .env files, Forgejo CI secrets, GitHub secrets,
-  app credential store, Mac keychain)
+- All secret locations (AST-007): the per-project Infisical estate (the
+  `infrastructure` / `restormel` / `allotmentology` projects, plus the Phase-B
+  `sophia` / `plotbudget` projects once active), Forgejo CI secrets, GitHub secrets,
+  app credential store, and the Mac keychain — including which identities (human and
+  machine) are attached to each Infisical project and at what role
 - MFA status on all systems in §3
-- Any stale, over-privileged, or shared accounts
+- Any stale, over-privileged, or shared accounts — including the ESO shared
+  machine identity (confirm it remains read-only and used only by ESO)
 
 Results are recorded in `evidence/access-reviews/` with the date and reviewer.
 Anomalies are remediated and tracked in the risk register.
