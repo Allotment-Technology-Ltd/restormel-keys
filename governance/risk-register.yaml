@@ -366,3 +366,30 @@ risks:
     owner: founder
     status: open
     review: 2026-12-15
+
+  - id: RISK-013
+    risk: >
+      DNS availability + provider concentration. Authoritative DNS for restormel.dev and
+      allotmentology.tech was consolidated onto Hetzner Cloud DNS on 2026-06-20 (off Vercel DNS
+      and the orderbox registrar DNS). This (a) makes Hetzner DNS a single point of failure for
+      reaching every in-scope service, and (b) reduces provider diversity by putting DNS on the
+      same vendor as compute + storage (a Hetzner-wide control-plane incident could affect DNS
+      and compute together).
+    asset: "AST-020/AST-021 — DNS zones (Hetzner Cloud DNS); AST-005/AST-016 domains"
+    product: shared
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: accept
+    treatment: >
+      ACCEPTED at this stage (sovereignty + single-pane operability outweigh the concentration at
+      solo-founder scale; Hetzner Cloud DNS is anycast/redundant within Hetzner). Mitigations: the
+      registrars (Vercel for restormel.dev, get.tech for allotmentology.tech) are RETAINED, so
+      nameservers can be re-delegated to a fallback DNS provider (e.g. deSEC) within a TTL window
+      if Hetzner DNS fails; keep an exported BIND zone copy of each zone in the repo/ops store for
+      fast re-creation; low record TTLs (300s on the A-records) during the migration window keep
+      re-delegation fast. Ties into the BCP/DR gap noted in RISK-009 / REC-POL-005.
+    treatment_status: "Open — accepted; fallback re-delegation path documented (registrars retained, deSEC fallback, zone export). No action required unless Hetzner DNS proves unreliable."
+    owner: founder
+    status: open
+    review: 2026-12-15
