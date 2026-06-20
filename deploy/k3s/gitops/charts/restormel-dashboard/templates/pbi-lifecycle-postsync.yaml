@@ -103,9 +103,12 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: lifecycle
-          # Tiny image that already ships curl + jq (the only two tools the script
-          # needs). Pinned by digest-able tag; no app code, no box access.
-          image: registry.allotmentology.tech/restormel/ci-curl-jq:1
+          # Tiny image shipping curl + jq (the only tools the script needs). No app code,
+          # no box access. Hosted in the FORGEJO container registry (founder decision
+          # 2026-06-20; registry.allotmentology.tech was never created). Publish the package
+          # PUBLIC so the cluster needs no imagePullSecret (generic tools image, no
+          # proprietary content). Build+push step is in the runbook / this PR's description.
+          image: git.allotmentology.tech/allotment-technology-ltd/ci-curl-jq:1
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
