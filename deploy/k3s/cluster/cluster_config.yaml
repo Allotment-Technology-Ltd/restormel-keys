@@ -14,7 +14,7 @@
 # PATH-A BOOTSTRAP TOPOLOGY (Decisions register: Migration approach = "Path A")
 # -----------------------------------------------------------------------------
 # The cluster is FIRST stood up on a TEMPORARY Hetzner CLOUD node — approx a
-# **CCX23** (x86 dedicated-vCPU, 4 vCPU / 16 GB), funded by the **€20 "Hetzner
+# **CX43** (x86 shared-vCPU, 8 vCPU / 16 GB, €15.99/mo), funded by the **€20 "Hetzner
 # Cloud Community" credit (REDEEM BEFORE 31 Aug 2026)**. This is a HETZNER CLOUD
 # server, NOT a Robot/dedicated server: €20 won't cover a dedicated box and
 # hetzner-k3s only provisions Cloud. State is migrated onto the cluster, then the
@@ -22,7 +22,7 @@
 # and the temp node is retired. NEVER convert a live prod box in place.
 #
 # >>> BOOTSTRAP STAGE (this file as written): masters_pool provisions the single
-#     temp CCX23 Cloud node as cluster-init. To FOLD IN the existing boxes you
+#     temp CX43 Cloud node as cluster-init. To FOLD IN the existing boxes you
 #     do NOT re-run `create` against them (it would reprovision/wipe) — you
 #     hand-join them with `k3s server` per the design (§3.3 Path A→ B mechanics),
 #     and let hetzner-k3s manage the resulting cluster (CCM/CSI/autoscaler).
@@ -97,7 +97,7 @@ networking:
   # --- REUSE THE EXISTING PRIVATE NETWORK (design §3.1) ----------------------
   # Do NOT let the tool create a new network. The existing private net is
   # 172.16.0.0/16 ("restormel-internal"); .150=172.16.0.2 .167=172.16.0.3
-  # .166=172.16.0.4. The temp CCX23 bootstrap node joins THIS network so the
+  # .166=172.16.0.4. The temp CX43 bootstrap node joins THIS network so the
   # existing boxes can later be folded into the same L2 without renumbering.
   private_network:
     enabled: true
@@ -119,7 +119,7 @@ networking:
 # =============================================================================
 # CONTROL-PLANE POOL
 # =============================================================================
-# BOOTSTRAP STAGE: a single temporary Hetzner CLOUD CCX23 (x86, 4 vCPU / 16 GB)
+# BOOTSTRAP STAGE: a single temporary Hetzner CLOUD CX43 (x86 shared-vCPU, 8 vCPU / 16 GB)
 # on the €20 credit, in Helsinki (hel1) to match the existing boxes' region.
 #
 # NOTE ON HA QUORUM: the *target* is a 3-member embedded-etcd quorum across the
@@ -130,7 +130,7 @@ networking:
 # provision THREE NEW Cloud nodes (extra spend + not the boxes we want). The
 # boxes are joined out-of-band; see cluster/nodes-target.md.
 masters_pool:
-  instance_type: ccx23        # x86 dedicated-vCPU, 4 vCPU / 16 GB — temp €20-credit bootstrap node
+  instance_type: cx43         # x86 shared-vCPU, 8 vCPU / 16 GB — temp €20-credit bootstrap node (€15.99/mo; CCX23 jumped to €85.99/mo on 15 Jun 2026, so it is NOT used)
   instance_count: 1           # bootstrap = 1 (temp node); grows to 3-member etcd by hand-joining the boxes
   locations:
     - hel1                    # Helsinki — same region as the existing boxes
