@@ -1,0 +1,232 @@
+# =============================================================================
+# Hostname → Ingress map  (design §3.5)
+# -----------------------------------------------------------------------------
+# *** CONFIG-ONLY — these reference Services that DO NOT EXIST YET. They are the
+#     reviewable target ingress map; the workload manifests (Deployments/
+#     Services) land in the per-product migration PRs (Phase A / B). Applying
+#     these before the Services exist yields 503s — intentional, not applied
+#     by CI. ***
+#
+# Ingress class: traefik (default). TLS via cert-manager wildcard Certificates
+# (DNS-01, Hetzner). ANNOTATE with `letsencrypt-staging` first, flip to
+# `letsencrypt-prod` once issuance is proven.
+#
+# Host map (design §3.5):
+#   restormel.dev                  → Restormel dashboard
+#   staging./preview.restormel.dev → non-prod
+#   surreal.restormel.dev          → SurrealDB Service  *** HARD INVARIANT ***
+#                                     (Sophia cross-phase dep — keep stable to
+#                                      cluster ingress, NEVER dark)
+#   auth.restormel.dev             → auth plane (Better Auth — register)
+#   secrets.restormel.dev          → Infisical (OFF-CLUSTER initially; host
+#                                     record bypasses ingress until/if moved in)
+#   git.allotmentology.tech        → Forgejo (OFF-CLUSTER; host record bypasses
+#                                     ingress — NOT routed here)
+#   allotmentology.tech            → Allotmentology app
+#   usesophia.app                  → UseSophia (Phase B)
+#   <plotbudget-domain TBD>        → Supabase Kong (Phase B) — founder to supply
+# =============================================================================
+---
+# --- Wildcard certificates (one per apex zone) -------------------------------
+# DNS-01 lets us issue wildcards, so a single cert covers all sub-hosts per zone.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-restormel-dev
+  namespace: ingress
+spec:
+  secretName: wildcard-restormel-dev-tls
+  issuerRef:
+    name: letsencrypt-staging        # FLIP to letsencrypt-prod after staging green
+    kind: ClusterIssuer
+  dnsNames:
+    - restormel.dev
+    - "*.restormel.dev"
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-allotmentology-tech
+  namespace: ingress
+spec:
+  secretName: wildcard-allotmentology-tech-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  dnsNames:
+    - allotmentology.tech
+    - "*.allotmentology.tech"
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-usesophia-app
+  namespace: ingress
+spec:
+  secretName: wildcard-usesophia-app-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  dnsNames:
+    - usesophia.app
+    - "*.usesophia.app"
+# NOTE: PlotBudget wildcard Certificate omitted until the production domain is
+# supplied (design §10 open item). Add a Certificate + Ingress block then.
+---
+# === Restormel dashboard =====================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: restormel-dashboard
+  namespace: restormel
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging   # FLIP to -prod when green
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [restormel.dev]
+      secretName: wildcard-restormel-dev-tls
+  rules:
+    - host: restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: restormel-dashboard      # created in the Restormel migration PR
+                port:
+                  number: 3000
+---
+# === Restormel staging / preview (non-prod) ==================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: restormel-nonprod
+  namespace: restormel-nonprod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [staging.restormel.dev, preview.restormel.dev]
+      secretName: wildcard-restormel-dev-tls
+  rules:
+    - host: staging.restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: restormel-staging, port: { number: 3000 } }
+    - host: preview.restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: restormel-preview, port: { number: 3000 } }
+---
+# === SurrealDB — HARD INVARIANT (Sophia cross-phase dependency) ==============
+# surreal.restormel.dev MUST resolve to the cluster SurrealDB Service and never
+# go dark (design §3.5, §5). Sophia hits wss://surreal.restormel.dev. Surreal
+# speaks HTTP + WebSocket on :8000, so a normal HTTP Ingress with WS upgrade is
+# sufficient; TLS terminates at Traefik.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: surrealdb
+  namespace: data
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [surreal.restormel.dev]
+      secretName: wildcard-restormel-dev-tls
+  rules:
+    - host: surreal.restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: surrealdb        # StatefulSet Service (design §5)
+                port:
+                  number: 8000
+---
+# === Auth plane (Better Auth — register decision; design auth.restormel.dev) ==
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-plane
+  namespace: auth
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [auth.restormel.dev]
+      secretName: wildcard-restormel-dev-tls
+  rules:
+    - host: auth.restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: auth-plane, port: { number: 3000 } }
+---
+# === Allotmentology ==========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: allotmentology
+  namespace: allotmentology
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [allotmentology.tech]
+      secretName: wildcard-allotmentology-tech-tls
+  rules:
+    - host: allotmentology.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: allotmentology-web, port: { number: 3000 } }
+---
+# === UseSophia (Phase B) =====================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: usesophia
+  namespace: sophia
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [usesophia.app]
+      secretName: wildcard-usesophia-app-tls
+  rules:
+    - host: usesophia.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: usesophia-web, port: { number: 3000 } }
+# =============================================================================
+# DELIBERATELY *NOT* ROUTED HERE (design §3.5):
+#   git.allotmentology.tech  → Forgejo, OFF-CLUSTER (host A record → host IP,
+#                              bypasses cluster ingress entirely; bootstrap anchor)
+#   secrets.restormel.dev    → Infisical, OFF-CLUSTER initially (same — host
+#                              record bypasses ingress until/if migrated in)
+#   <plotbudget>.<tld>       → Supabase Kong (Phase B) — add when the founder
+#                              supplies the production domain (design §10).
+# =============================================================================

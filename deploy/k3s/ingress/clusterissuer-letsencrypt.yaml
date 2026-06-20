@@ -1,0 +1,112 @@
+# =============================================================================
+# cert-manager ClusterIssuer — Let's Encrypt ACME, DNS-01 via Hetzner DNS
+# -----------------------------------------------------------------------------
+# COMPONENT: cert-manager v1.20.2 (verified 2026-06-20)
+#            + cert-manager-webhook-hetzner (official, hcloud Helm repo)
+# INSTALL (operator, off-cluster — config-only here, NOT applied by CI):
+#   helm repo add jetstack https://charts.jetstack.io
+#   helm install cert-manager jetstack/cert-manager -n cert-manager \
+#       --create-namespace --set crds.enabled=true
+#   helm repo add hcloud https://charts.hetzner.cloud
+#   helm install cert-manager-webhook-hetzner \
+#       hcloud/cert-manager-webhook-hetzner -n cert-manager
+#   kubectl apply -f clusterissuer-letsencrypt.yaml   # <-- applied by OPERATOR
+#
+# DESIGN: k3s-cluster-target-design.md §3.4 (cert-manager ClusterIssuer, ACME,
+#         DNS-01 wildcards) + Decisions register: DNS = Hetzner DNS (DNS-01),
+#         deSEC fallback, AVOID Cloudflare.
+#
+# WHY DNS-01 (not HTTP-01): single-node ingress behind one IP + we want WILDCARD
+# certs (*.restormel.dev). DNS-01 issues wildcards and works without inbound :80.
+#
+# The Hetzner DNS API token is delivered as the Secret `hetzner-dns-token` in the
+# cert-manager namespace via External Secrets Operator — see
+# ../secrets/externalsecret-hetzner-dns.yaml. NO token value appears here.
+# =============================================================================
+---
+# Staging issuer — use FIRST to avoid Let's Encrypt rate limits while validating
+# the DNS-01 solver. Switch Ingress/Certificate annotations to the prod issuer
+# only once staging issues cleanly.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: ops@restormel.dev                      # ACME account / expiry notices
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - dns01:
+          webhook:
+            solverName: hetzner
+            groupName: acme.hetzner.com           # official hetzner webhook groupName
+            config:
+              tokenSecretKeyRef:
+                name: hetzner-dns-token            # ESO-managed Secret (../secrets/)
+                key: token
+        selector:
+          dnsZones:
+            - restormel.dev
+            - allotmentology.tech
+            - usesophia.app
+            # PlotBudget production zone — TBD (design §10 / register open item).
+            # Add the zone here once the founder supplies it.
+---
+# Production issuer — the real Let's Encrypt CA. Switch to this after staging is
+# green. DNS-01 via the SAME Hetzner webhook solver.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ops@restormel.dev
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - dns01:
+          webhook:
+            solverName: hetzner
+            groupName: acme.hetzner.com
+            config:
+              tokenSecretKeyRef:
+                name: hetzner-dns-token
+                key: token
+        selector:
+          dnsZones:
+            - restormel.dev
+            - allotmentology.tech
+            - usesophia.app
+            # PlotBudget production zone — TBD (founder, design §10).
+---
+# -----------------------------------------------------------------------------
+# deSEC FALLBACK (design / Decisions register: "deSEC fallback; avoid Cloudflare")
+# -----------------------------------------------------------------------------
+# If Hetzner DNS is unsuitable for a given zone, the fallback is deSEC (NOT
+# Cloudflare), using cert-manager-webhook-desec. Keep this commented until/unless
+# a zone is moved to deSEC; documented here so the fallback path is on record.
+#
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: letsencrypt-prod-desec
+# spec:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: ops@restormel.dev
+#     privateKeySecretRef:
+#       name: letsencrypt-prod-desec-account-key
+#     solvers:
+#       - dns01:
+#           webhook:
+#             solverName: desec
+#             groupName: acme.desec.io
+#             config:
+#               apiUrl: https://desec.io/api/v1
+#               tokenSecretRef:
+#                 name: desec-dns-token        # ESO-managed; no value in git
+#                 key: token
