@@ -14,6 +14,8 @@ import {
 } from "$lib/server/connect/stage-routing";
 import type { ChatRouteOption } from "$lib/connect/graph-comparison-types";
 import { sessionUser } from "$lib/server/session-user";
+import { listApiKeys } from "$lib/server/neon";
+import { DEFAULT_CONNECT_API_BASE } from "$lib/connect/get-code-snippet";
 import {
   seedDemoGraph,
   demoGraphSuggestedQuestions,
@@ -34,6 +36,12 @@ type ProofData = {
   isDemo: boolean;
   /** Pre-authored demo questions (incl. a deliberate abstention) — first-run fallback. */
   demoQuestions: DemoGraphSuggestedQuestion[];
+  /** Project scope for the "Get Code" snippet (matches the Gateway key project). Null when unresolved. */
+  projectId: string | null;
+  /** Non-secret Gateway key prefix (`rk_xxxxxxxx…`) shown as a hint in "Get Code". Never the full key. */
+  keyPrefixHint: string | null;
+  /** Public Connect API origin for the "Get Code" snippet. */
+  connectApiBase: string;
 };
 
 type ProofDataWithState = ProofData & { signedIn: boolean; loadError: boolean };
@@ -47,6 +55,9 @@ const SIGNED_OUT: ProofDataWithState = {
   proveBase: DASHBOARD_BASE + "/prove",
   isDemo: false,
   demoQuestions: [],
+  projectId: null,
+  keyPrefixHint: null,
+  connectApiBase: DEFAULT_CONNECT_API_BASE,
   signedIn: false,
   loadError: false,
 };
@@ -60,6 +71,9 @@ const LOAD_ERROR: ProofDataWithState = {
   proveBase: DASHBOARD_BASE + "/prove",
   isDemo: false,
   demoQuestions: [],
+  projectId: null,
+  keyPrefixHint: null,
+  connectApiBase: DEFAULT_CONNECT_API_BASE,
   signedIn: true,
   loadError: true,
 };
@@ -110,18 +124,32 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
       target?.provider === "postgres" &&
       (firstRunSeeded || (await workspaceHasDemoGraph(wsId).catch(() => false)));
 
-    const routes = await resolveChatRoutes(wsId, userId).catch(() => [] as ChatRouteOption[]);
+    const chat = await resolveChatRoutes(wsId, userId).catch(
+      () => ({ routes: [] as ChatRouteOption[], projectId: null as string | null }),
+    );
     const demoQuestions = isDemo ? safeDemoQuestions() : [];
+
+    // "Get Code" snippet inputs (Phase 3 Stage 2). The Gateway key's RAW value is
+    // never recoverable (hashed at rest) — only the non-secret prefix is surfaced,
+    // and only as a hint. listApiKeys is project-scoped + parameterised; it selects
+    // key_prefix only (never key_hash). Best-effort: a key lookup failure must not
+    // break the console.
+    const keyPrefixHint = chat.projectId
+      ? await firstKeyPrefix(chat.projectId, userId).catch(() => null)
+      : null;
 
     return {
       workspaceId: wsId,
       graphNodeCount,
       hasGraph,
-      routes,
+      routes: chat.routes,
       suggestCacheKey: `${wsId}:${graphNodeCount}:${relations}`,
       proveBase: DASHBOARD_BASE + "/prove",
       isDemo,
       demoQuestions,
+      projectId: chat.projectId,
+      keyPrefixHint,
+      connectApiBase: resolveConnectApiBase(event.url.origin),
       signedIn: true,
       loadError: false,
     };
@@ -129,6 +157,27 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
     return LOAD_ERROR;
   }
 };
+
+/**
+ * Public Connect API origin for the "Get Code" snippet. Prefer the current request
+ * origin (so a non-prod / preview host produces a working snippet), falling back to
+ * the canonical prod origin when the origin is unusable.
+ */
+function resolveConnectApiBase(origin: string | undefined): string {
+  const o = (origin ?? "").trim();
+  if (o && /^https?:\/\//.test(o)) return o.replace(/\/+$/, "");
+  return DEFAULT_CONNECT_API_BASE;
+}
+
+/**
+ * The most-recent Gateway key PREFIX for a project, or null. Non-secret: the data
+ * layer (listApiKeys) selects key_prefix only — key_hash is never read. Used purely
+ * as a "which key" hint in the snippet, never as the live credential.
+ */
+async function firstKeyPrefix(projectId: string, userId: string): Promise<string | null> {
+  const keys = await listApiKeys(projectId, userId);
+  return keys[0]?.keyPrefix ?? null;
+}
 
 /** Demo seed questions, never throwing — a missing seed must not break the page. */
 function safeDemoQuestions(): DemoGraphSuggestedQuestion[] {
@@ -139,9 +188,12 @@ function safeDemoQuestions(): DemoGraphSuggestedQuestion[] {
   }
 }
 
-async function resolveChatRoutes(workspaceId: string, userId: string): Promise<ChatRouteOption[]> {
+async function resolveChatRoutes(
+  workspaceId: string,
+  userId: string,
+): Promise<{ routes: ChatRouteOption[]; projectId: string | null }> {
   const ctx = await resolveKnowledgeRouteExecutionContext({ workspaceId, userId });
-  if (!ctx) return [];
+  if (!ctx) return { routes: [], projectId: null };
 
   const rows = await listConnectStageRouteRows({
     workspaceId,
@@ -161,5 +213,5 @@ async function resolveChatRoutes(workspaceId: string, userId: string): Promise<C
       provider: row.activeModel?.provider ?? null,
     });
   }
-  return [...byId.values()];
+  return { routes: [...byId.values()], projectId: ctx.projectId };
 }

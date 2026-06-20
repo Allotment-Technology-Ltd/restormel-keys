@@ -20,6 +20,9 @@
     proveBase: string;
     isDemo: boolean;
     demoQuestions: { type: "answerable" | "abstention"; question: string }[];
+    projectId: string | null;
+    keyPrefixHint: string | null;
+    connectApiBase: string;
   };
 
   const panelImport = () => import("$lib/components/connect/graph-comparison/GraphComparisonPanel.svelte");
@@ -66,6 +69,9 @@
       workspaceId={data.workspaceId}
       isDemo={data.isDemo}
       demoQuestions={data.demoQuestions}
+      projectId={data.projectId}
+      keyPrefixHint={data.keyPrefixHint}
+      connectApiBase={data.connectApiBase}
     />
   {:catch}
     <BrutalErrorBanner

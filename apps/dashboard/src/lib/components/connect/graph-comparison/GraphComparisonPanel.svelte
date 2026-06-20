@@ -14,6 +14,8 @@
   import VerdictBadge from "./VerdictBadge.svelte";
   import QualityDeltaPanel from "./QualityDelta.svelte";
   import ExportTraceLink from "./ExportTraceLink.svelte";
+  import FirstRunStrip from "./FirstRunStrip.svelte";
+  import GetCodePanel from "./GetCodePanel.svelte";
 
   export let graphNodeCount = 0;
   export let hasGraph = false;
@@ -26,6 +28,15 @@
   export let isDemo = false;
   /** Pre-authored demo questions (incl. a deliberate abstention) — first-run fallback. */
   export let demoQuestions: { type: "answerable" | "abstention"; question: string }[] = [];
+  /** Project scope for the "Get Code" snippet (matches the Gateway key project). */
+  export let projectId: string | null = null;
+  /** Non-secret Gateway key prefix (`rk_xxxxxxxx…`) shown as a hint in "Get Code". Never the full key. */
+  export let keyPrefixHint: string | null = null;
+  /** Public Connect API origin for the "Get Code" snippet. */
+  export let connectApiBase = "https://restormel.dev";
+
+  /** First-run strip is shown until dismissed; only meaningful over the demo graph. */
+  let firstRunDismissed = false;
 
   type PanelMode = "raw" | "graph";
   type PanelState = {
@@ -194,6 +205,29 @@
     void ask(suggestion.question, suggestion.seedNodeIds);
   }
 
+  /**
+   * First-run (Phase 3 Stage 2): one-tap a curated demo question — including the
+   * deliberate abstention — straight into the same ask() path, so the very first
+   * action lands a verified (or honestly-abstained) answer with citations. This is
+   * the SAME flow as a typed question, so the claim→span north metric fires
+   * unchanged (ProvenanceDrawer wiring); no metric is duplicated here.
+   */
+  function runFirstRunQuestion(q: string): void {
+    firstRunDismissed = true; // value is on screen — collapse the prompt, don't block
+    void ask(q);
+  }
+
+  // Show the first-run strip only over the demo graph, before any answer, until the
+  // user dismisses it or asks something. Non-blocking: it sits above the input, never
+  // a modal, and the input stays fully usable while it is shown.
+  $: showFirstRun =
+    isDemo &&
+    hasGraph &&
+    !noRoutes &&
+    !firstRunDismissed &&
+    demoQuestions.length > 0 &&
+    panelGraph.status === "idle";
+
   /** Map the pre-authored demo questions into the suggestion shape (no seeds). */
   function demoToSuggestions(): SuggestedQuestion[] {
     return demoQuestions.map((q, i) => ({
@@ -293,6 +327,15 @@
       </p>
     </div>
   {:else}
+    {#if showFirstRun}
+      <FirstRunStrip
+        questions={demoQuestions}
+        disabled={running}
+        onRun={runFirstRunQuestion}
+        onDismiss={() => (firstRunDismissed = true)}
+      />
+    {/if}
+
     <ComparisonQuestion
       bind:value={question}
       {running}
@@ -326,6 +369,19 @@
       <div class="trace-row">
         <ExportTraceLink href={panelGraph.traceExportUrl} />
       </div>
+    {/if}
+
+    <!-- Get Code (Stage 2): once an answer renders, the console becomes the API
+         on-ramp — a copy-paste snippet reproducing THIS retrieve_context query.
+         The key is never embedded; the snippet reads it from the environment. -->
+    {#if panelGraph.status === "complete" && workspaceId && lastQuestion}
+      <GetCodePanel
+        {workspaceId}
+        question={lastQuestion}
+        {projectId}
+        {keyPrefixHint}
+        apiBase={connectApiBase}
+      />
     {/if}
 
     <!-- Optional depth: compare the same question without the graph. -->
