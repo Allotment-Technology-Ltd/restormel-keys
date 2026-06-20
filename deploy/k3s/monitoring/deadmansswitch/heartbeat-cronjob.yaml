@@ -1,0 +1,77 @@
+# =============================================================================
+# External dead-man's-switch — heartbeat CronJob  (plan §6, D-M9)
+# -----------------------------------------------------------------------------
+# A tiny in-cluster CronJob that pings an EXTERNAL heartbeat (healthchecks.io)
+# every 5 minutes. healthchecks.io expects a ping within a grace window; if the
+# cluster (or this CronJob, or scheduling, or egress) is dead, the ping STOPS and
+# healthchecks.io alarms via its OWN external channel (email/Telegram/etc.,
+# configured in the healthchecks.io dashboard — outside this estate).
+#
+# WHY a CronJob (in addition to the Alertmanager Watchdog route): it is the
+# simplest, most robust off-estate DMS — it does NOT depend on Alertmanager being
+# healthy, only on the cluster being able to schedule a Job + reach the internet.
+# Pair it with the Alertmanager Watchdog→webhook route (../alertmanager/) so two
+# independent paths feed the external heartbeat; either failing is detected.
+#
+# D-M9 (RESOLVED 2026-06-20): founder ACCEPTS the residual .166 SPOF. The
+# in-cluster meta-monitor + this heartbeat share the estate's failure domain;
+# the healthchecks.io external alarm is the ONLY guaranteed OFF-ESTATE pager.
+# D-M8 recommends a SECOND free external prober (UptimeRobot/Cronitor) hitting
+# restormel.dev + surreal.restormel.dev so the outermost layer is not a single
+# free-tier dependency — configured in those providers' dashboards (no manifest).
+#
+# EGRESS DISCIPLINE (REC-INC-006): this makes an OUTBOUND HTTPS GET only, to the
+# PUBLIC healthchecks.io ping URL. It never dials a box private IP / on-box
+# private API. The ping URL is a SECRET (it is a capability URL) → delivered by
+# ESO, never in git.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: deadmans-heartbeat
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  schedule: "*/5 * * * *"          # every 5 minutes (healthchecks.io period ~15m + grace)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 120
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 60
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: deadmans-heartbeat
+        spec:
+          restartPolicy: Never
+          # soft toward role=data; tolerate nothing special (must run on a CP node)
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: role
+                        operator: In
+                        values: ["data"]
+          containers:
+            - name: ping
+              image: curlimages/curl:8.11.1     # pinned, public
+              command: ["/bin/sh", "-c"]
+              args:
+                # fail-soft: a transient miss is fine (grace window); only a
+                # SUSTAINED absence trips the external alarm.
+                - 'curl -fsS -m 10 --retry 2 "$HEARTBEAT_PING_URL" >/dev/null && echo "heartbeat sent" || echo "heartbeat failed (transient ok)"'
+              env:
+                - name: HEARTBEAT_PING_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: deadmans-switch          # ESO-rendered, ../secrets/
+                      key: HEARTBEAT_PING_URL
+              resources:
+                requests: { memory: "16Mi", cpu: "10m" }
+                limits:   { memory: "32Mi", cpu: "50m" }

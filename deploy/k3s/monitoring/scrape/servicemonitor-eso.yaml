@@ -1,0 +1,31 @@
+# =============================================================================
+# ServiceMonitor — External Secrets Operator  (plan point 4 implied, §3 "ESO")
+# -----------------------------------------------------------------------------
+# ESO v2.6.0 (deploy/k3s/secrets/secretstore-infisical.yaml) exposes controller
+# metrics on the `external-secrets-metrics` Service, port 8080. ESO renders
+# EVERY pod's secrets incl. the CNPG->fsn1 S3 creds and the monitoring stack's
+# OWN creds (Grafana admin, Telegram token, Loki S3) — a sync failure silently
+# breaks backups, deploys, cold-start, AND this stack.
+#
+# Powers the §5.1 alert "ESO sync failing" (any ExternalSecret in error OR
+# SecretStore unreachable to off-cluster Infisical on .166). ESO exposes
+# `externalsecret_status_condition` / `externalsecret_sync_calls_error` (see
+# ../rules/secrets-rules.yaml). ESO runs in the `external-secrets` namespace.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: external-secrets
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["external-secrets"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-secrets
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics

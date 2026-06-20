@@ -1,0 +1,109 @@
+# =============================================================================
+# Argo CD Application — Ops Centre monitoring stack  (plan §8, D-M1/D-M3)
+# -----------------------------------------------------------------------------
+# A NEW child Application under applications/addons/. The app-of-apps ROOT
+# (root/root-app.yaml) globs `{addons/*.yaml,workloads/*.yaml}`, so dropping
+# this file here is picked up automatically — NO change to root-app.yaml needed
+# (plan §8).
+#
+# WHY a separate Application (not extend cluster-addons): the cluster-addons app
+# has `path: cluster` and sweeps deploy/k3s/cluster/** — it cannot recurse a
+# sibling dir. A separate child Application is the only correct route, and the
+# root glob makes it the cheap one (plan §8).
+#
+# SYNC-WAVE "-5": AFTER cluster-addons ("-10", which installs the platform incl.
+# any CRD layers) but EARLY, so the Prometheus-Operator CRDs (ServiceMonitor /
+# PodMonitor / PrometheusRule / Alertmanager bundled by kube-prometheus-stack)
+# land BEFORE the ServiceMonitors / PodMonitors / PrometheusRules that reference
+# them (plan §8). The Helm chart ships its own CRDs; ServerSideApply +
+# ApplyOutOfSyncOnly keep large CRD applies clean.
+#
+# AUTO-SYNC: monitoring is a platform invariant (like ESO/cert-manager) and must
+# be watching BEFORE prod state moves (plan §7 Phase 1.6) — so it mirrors
+# cluster-addons' automated policy (prune + selfHeal). The one gated carve-out
+# (alert-rule changes that could SILENCE a prod alert) is handled by review
+# discipline + the records-governance gate on this dir, not by withholding
+# auto-sync from the whole stack (plan §8).
+#
+# REPO-MOVE CAVEAT: authored here under deploy/k3s/gitops/**; the real GitOps
+# path is the restormel-gitops repo root (applications/addons/monitoring.yaml →
+# source.path `monitoring`). See deploy/k3s/gitops/README.md "Repo move map".
+#
+# NOTE — multi-source: this Application uses Argo's `sources[]` so the SAME app
+# rolls up BOTH the in-repo manifests (ServiceMonitors / PrometheusRules /
+# Alertmanager / ESO ExternalSecrets / Grafana dashboards) AND the three pinned
+# upstream Helm charts (kube-prometheus-stack, loki, alloy) with our values
+# files. One Argo health roll-up answers "is the Ops Centre up?".
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"   # after cluster-addons (-10), before app workloads
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cluster-addons          # platform invariant, not an app rollout
+  sources:
+    # --- 1. In-repo manifests (ESO secrets, ServiceMonitors/PodMonitors, rules,
+    #        Alertmanager config, dead-man's-switch, Grafana dashboards, ns) ----
+    # In restormel-gitops this path is `monitoring`; here it maps to
+    # deploy/k3s/monitoring/** (README "Repo move map").
+    - repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+      targetRevision: main
+      path: monitoring
+      directory:
+        recurse: true
+        # Exclude the Helm value files (consumed by the chart sources below) and
+        # this Application manifest itself.
+        exclude: '{**/values-*.yaml,applications/**}'
+
+    # --- 2. kube-prometheus-stack (pinned) ----------------------------------
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 86.3.2          # appVersion: prometheus-operator v0.91.0 (verified 2026-06-20)
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/monitoring/kube-prometheus-stack/values-kube-prometheus-stack.yaml
+
+    # --- 3. Loki (single-binary, pinned) ------------------------------------
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: 7.1.0           # appVersion: Loki 3.x (verified 2026-06-20)
+      helm:
+        releaseName: loki
+        valueFiles:
+          - $values/monitoring/loki/values-loki.yaml
+
+    # --- 4. Grafana Alloy (DaemonSet log collector, pinned) -----------------
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.10.0          # appVersion: Alloy v1.17.0 (verified 2026-06-20)
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/monitoring/alloy/values-alloy.yaml
+
+    # --- ref source so the chart sources can read value files from the repo --
+    - repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring          # the stack's home ns (plan §2.2 / D-M1)
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true       # large kube-prometheus-stack CRDs apply cleanly
+      - ApplyOutOfSyncOnly=true    # CRDs before the CRs that use them
+    retry:
+      limit: 5
+      backoff: { duration: 15s, factor: 2, maxDuration: 5m }

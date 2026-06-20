@@ -1,0 +1,71 @@
+# =============================================================================
+# Cilium Hubble — metrics + UI enablement  (plan req 3, §3 "Cilium + Hubble")
+# -----------------------------------------------------------------------------
+# Cilium is ALREADY the CNI, installed by hetzner-k3s (cni.mode: cilium,
+# verified v1.19.5 — deploy/k3s/cluster/cluster_config.yaml). hetzner-k3s OWNS
+# the Cilium Helm release, so we do NOT re-install Cilium here. Instead we:
+#   (a) enable Hubble metrics + the Hubble UI + the Prometheus metrics ports on
+#       the existing Cilium install (the operator applies this once, out of band —
+#       it is a change to a hetzner-k3s-managed component, NOT something Argo
+#       should fight over); and
+#   (b) ship ServiceMonitors (../scrape/servicemonitor-cilium-hubble.yaml) that
+#       scrape the resulting metrics endpoints into the same Prometheus.
+#
+# ENABLEMENT (operator, once — see ../../runbooks/monitoring.md "Hubble"):
+#   helm upgrade cilium cilium/cilium --namespace kube-system --reuse-values \
+#     --set hubble.enabled=true \
+#     --set hubble.relay.enabled=true \
+#     --set hubble.ui.enabled=true \
+#     --set hubble.metrics.enableOpenMetrics=true \
+#     --set 'hubble.metrics.enabled={dns,drop,tcp,flow,port-distribution,icmp,httpV2}' \
+#     --set prometheus.enabled=true \
+#     --set operator.prometheus.enabled=true
+#
+#   NB: hetzner-k3s may template Cilium via a k3s HelmChartConfig
+#   (/var/lib/rancher/k3s/server/manifests). If so, set the same keys there so
+#   the change survives a hetzner-k3s reconcile (documented in the runbook). The
+#   YAML below is the HelmChartConfig form for that case — apply ONE path, not both.
+#
+# Hubble metrics this enables (plan §3): policy-drops by reason/namespace, DNS
+# errors, HTTP flow latency/status app<->DB, TCP/flow counters. The Hubble UI is
+# kept CLUSTER-INTERNAL (plan D-M6 open / D-M15 recommend internal) — reach it via
+#   kubectl -n kube-system port-forward svc/hubble-ui 12000:80
+# No external Ingress is created for Hubble.
+# =============================================================================
+---
+# HelmChartConfig form (only if hetzner-k3s manages Cilium via k3s HelmChart;
+# otherwise use the `helm upgrade --reuse-values` command above). This patches
+# the existing cilium HelmChart's values WITHOUT redefining the whole chart.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
+      metrics:
+        enableOpenMetrics: true
+        enabled:
+          - dns
+          - drop
+          - tcp
+          - flow
+          - port-distribution
+          - icmp
+          - httpV2
+        # serviceMonitor here would make Cilium create its own ServiceMonitors;
+        # we instead author them explicitly in ../scrape so they live with the
+        # rest of the monitoring config and Prometheus discovery stays uniform.
+        serviceMonitor:
+          enabled: false
+    prometheus:
+      enabled: true               # cilium-agent /metrics on :9962
+    operator:
+      prometheus:
+        enabled: true             # cilium-operator /metrics on :9963

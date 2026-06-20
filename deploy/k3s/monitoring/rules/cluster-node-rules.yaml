@@ -1,0 +1,223 @@
+# =============================================================================
+# PrometheusRule — Cluster + Node alerts  (plan §5.1, Phase-A scope)
+# -----------------------------------------------------------------------------
+# Node down, disk pressure (PROMINENT — the .150/.167 boxes have a disk-full
+# incident history: the PG PANIC that crashed Forgejo), RAM/swap pressure, PVC
+# near-full, etcd quorum/fsync/snapshot, scheduler pending pods, autoscaler/burst
+# cost guard, target-down.
+#
+# Every alert carries the actionable template (plan §5): summary + first action +
+# runbook anchor. runbook_url -> docs/runbooks/infra-alert-response.md anchors.
+#
+# Severities: `page` = wake-the-operator; `warn` = investigate.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-node-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # =========================================================================
+    - name: nodes.disk-and-memory     # DISK PRESSURE — incident history (PROMINENT)
+      rules:
+        # ---- DISK PRESSURE: the headline alert. The disk-full PG PANIC crashed
+        #      Forgejo on a prod box; a 15-min cron prune backstop exists, so this
+        #      fires AHEAD of any prune (75%) to give runway. ------------------
+        - alert: NodeDiskPressureHigh
+          expr: |
+            (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint="/"}
+                  / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint="/"})) > 0.75
+          for: 10m
+          labels: { severity: warn, area: nodes }
+          annotations:
+            summary: "Disk >75% on {{ $labels.instance }} (root fs)"
+            description: >-
+              Root filesystem on {{ $labels.instance }} is
+              {{ $value | humanizePercentage }} full. INCIDENT HISTORY: a disk-full
+              PG PANIC previously crashed Forgejo on a prod box. This fires ahead of
+              the 15-min prune backstop to give runway.
+            first_action: >-
+              Identify top consumers (node-exporter / `du -x -d1 /var/lib`), prune
+              container images + old WAL, expand the volume if growth is legitimate.
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-disk-pressure"
+
+        - alert: NodeDiskPressureCritical
+          expr: |
+            (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint="/"}
+                  / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint="/"})) > 0.88
+          for: 5m
+          labels: { severity: page, area: nodes }
+          annotations:
+            summary: "DISK CRITICAL >88% on {{ $labels.instance }} — PG PANIC risk"
+            description: >-
+              Root fs on {{ $labels.instance }} is {{ $value | humanizePercentage }}
+              full. A full disk caused a Postgres PANIC that crashed Forgejo before.
+              Act now before WAL/PG stalls.
+            first_action: "Free space immediately (prune images, rotate logs); a full WAL volume stalls Postgres + breaks archiving."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-disk-pressure"
+
+        # ---- inode exhaustion (disk-full's quieter cousin) -------------------
+        - alert: NodeInodesLow
+          expr: |
+            (node_filesystem_files_free{mountpoint="/"} / node_filesystem_files{mountpoint="/"}) < 0.10
+          for: 10m
+          labels: { severity: warn, area: nodes }
+          annotations:
+            summary: "Inodes <10% free on {{ $labels.instance }}"
+            description: "Free inodes on {{ $labels.instance }} below 10% — many small files (logs/cache) can exhaust inodes before bytes."
+            first_action: "Find dirs with many small files; clean caches/old logs."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-disk-pressure"
+
+        # ---- RAM low + swap climbing (the deliberate OOM cushion is in use) ---
+        - alert: NodeMemoryPressure
+          expr: |
+            (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.10
+            and
+            (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) > (0.5 * node_memory_SwapTotal_bytes)
+          for: 10m
+          labels: { severity: warn, area: nodes }
+          annotations:
+            summary: "RAM <10% free + swap >50% used on {{ $labels.instance }}"
+            description: >-
+              {{ $labels.instance }} has <10% MemAvailable and is leaning on swap
+              (the deliberate OOM cushion). A prod-box OOM occurred during a prior
+              migration — get ahead of it.
+            first_action: "Top memory consumers (auto-captured); scale/limit the offender; consider moving WAL-heavy CNPG off this node."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-memory-pressure"
+
+    # =========================================================================
+    - name: nodes.health
+      rules:
+        - alert: NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels: { severity: page, area: nodes }
+          annotations:
+            summary: "Node {{ $labels.node }} NotReady > 5m"
+            description: >-
+              {{ $labels.node }} is NotReady. The 3-member etcd quorum tolerates
+              only ONE node loss — if a second is unhealthy, quorum is at risk.
+            first_action: "Check the box (SSH/console). If hard-down, treat quorum as at-risk; do NOT restart etcd blindly — see runbook."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-down"
+
+        - alert: KubeletDown
+          expr: up{job="kubelet"} == 0
+          for: 5m
+          labels: { severity: page, area: nodes }
+          annotations:
+            summary: "kubelet down on a node ({{ $labels.instance }})"
+            description: "Prometheus cannot scrape kubelet on {{ $labels.instance }} for 5m — node likely unhealthy."
+            first_action: "Correlate with NodeNotReady; check the box."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#node-down"
+
+        # ---- generic target-down (catches any scrape going dark) ------------
+        - alert: TargetDown
+          expr: up == 0
+          for: 10m
+          labels: { severity: warn, area: monitoring }
+          annotations:
+            summary: "Scrape target down: {{ $labels.job }} ({{ $labels.instance }})"
+            description: "Prometheus target {{ $labels.job }} / {{ $labels.instance }} has been down for 10m — metrics for this component are blind."
+            first_action: "Check the component pod/Service; verify the ServiceMonitor selector still matches."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#target-down"
+
+    # =========================================================================
+    - name: etcd.quorum
+      rules:
+        - alert: EtcdNoLeader
+          expr: etcd_server_has_leader == 0
+          for: 1m
+          labels: { severity: page, area: etcd }
+          annotations:
+            summary: "etcd member has NO leader ({{ $labels.instance }})"
+            description: "An embedded-etcd member reports no leader. Quorum tolerates only one node loss; cluster control plane is at risk."
+            first_action: "Do NOT restart blindly. Check all 3 members; --cluster-reset from snapshot is the LAST resort (runbook)."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#etcd-quorum"
+
+        - alert: EtcdHighLeaderChanges
+          expr: increase(etcd_server_leader_changes_seen_total[10m]) > 3
+          for: 0m
+          labels: { severity: warn, area: etcd }
+          annotations:
+            summary: "etcd leader churn (>3 changes/10m)"
+            description: "Frequent etcd leader changes — usually disk-fsync contention with co-resident CNPG/app I/O on small boxes."
+            first_action: "Check disk I/O on the etcd nodes; consider moving WAL-heavy CNPG off the pressured node."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#etcd-quorum"
+
+        - alert: EtcdSlowWalFsync
+          expr: |
+            histogram_quantile(0.99, sum by (le, instance) (rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m]))) > 0.1
+          for: 10m
+          labels: { severity: warn, area: etcd }
+          annotations:
+            summary: "etcd WAL fsync p99 >100ms on {{ $labels.instance }}"
+            description: "etcd is fsync-bound — a leading OOM/quorum risk on boxes shared with prod DB/app I/O."
+            first_action: "Check disk I/O contention; move WAL-heavy CNPG primaries off this node."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#etcd-quorum"
+
+        # ---- etcd SNAPSHOT age — treat like a backup-success alert (plan §3) --
+        # k3s emits the snapshot timestamp via the metric below when
+        # --etcd-snapshot metrics are available; if absent, the CronJob-success
+        # alert in kube-state-rules covers the k3s snapshot timer instead.
+        - alert: EtcdSnapshotStale
+          expr: |
+            (time() - max(etcd_debugging_snap_save_total_duration_seconds_count) ) > 86400
+            or
+            (time() - max(k3s_etcd_snapshot_last_success_timestamp_seconds)) > 86400
+          for: 15m
+          labels: { severity: page, area: etcd }
+          annotations:
+            summary: "etcd snapshot older than 24h"
+            description: >-
+              The k3s etcd snapshot used for --cluster-reset DR is stale (>24h). A
+              silently-failing etcd snapshot is as dangerous as a failing CNPG backup.
+            first_action: "Verify the k3s etcd snapshot timer + its target (local/S3/BX11); DR depends on this snapshot."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#etcd-snapshot-stale"
+
+    # =========================================================================
+    - name: scheduling.capacity
+      rules:
+        - alert: PodsPendingUnschedulable
+          expr: |
+            sum(kube_pod_status_phase{phase="Pending"}
+                * on(namespace,pod) group_left()
+                  kube_pod_status_unschedulable) > 0
+          for: 15m
+          labels: { severity: warn, area: scheduling }
+          annotations:
+            summary: "Pods unschedulable for >15m"
+            description: "Tight node capacity + CNPG anti-affinity + burst taints can silently block scheduling, hanging a deploy."
+            first_action: "kubectl describe the pending pod; check node capacity + taints; the autoscaler-stuck alert covers burst provisioning."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#pods-pending"
+
+    # =========================================================================
+    - name: autoscaler.burst-cost     # €-bleed guard (plan §3 / §5.1)
+      rules:
+        - alert: ClusterAutoscalerErrors
+          expr: increase(cluster_autoscaler_errors_total[15m]) > 0
+          for: 5m
+          labels: { severity: warn, area: autoscaler }
+          annotations:
+            summary: "Cluster Autoscaler errors rising"
+            description: "Burst capacity can't provision — CI/overflow pods will hang."
+            first_action: "Check Hetzner CCM creds + quota; inspect autoscaler logs."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#autoscaler-stuck"
+
+        # ---- BURST NODES NOT SCALING TO ZERO → silent €-bleed (the "€0 at rest"
+        #      guarantee). Burst nodes carry the taint workload=burst. ----------
+        - alert: BurstNodesNotScalingToZero
+          expr: |
+            count(kube_node_spec_taint{key="workload",value="burst"}) > 0
+          for: 30m
+          labels: { severity: warn, area: cost }
+          annotations:
+            summary: "Burst nodes up >30m — €0-at-rest guarantee breached"
+            description: >-
+              {{ $value }} burst node(s) have existed >30m. If there is no pending
+              burst workload this is silent €-bleed (the design's "€0 at rest" promise).
+            first_action: "Check autoscaler scale-down + node taints; cordon/drain idle burst nodes if needed."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#burst-cost"

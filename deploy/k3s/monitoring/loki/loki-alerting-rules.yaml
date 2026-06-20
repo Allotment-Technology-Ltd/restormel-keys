@@ -1,0 +1,94 @@
+# =============================================================================
+# Loki LogQL alerting rules  (plan §4 "the forensic layer behind every metric")
+# -----------------------------------------------------------------------------
+# These run in Loki's own RULER (configured in values-loki.yaml ->
+# loki.rulerConfig.alertmanager_url -> the in-cluster Alertmanager). They catch
+# failures visible only in LOG TEXT, not in metrics:
+#   - PG PANIC / FATAL              (the disk-full crash class)
+#   - Barman-plugin archive errors  (the mechanism failing in text)
+#   - OOMKill log lines             (correlates with the OOMKilled metric)
+#   - ACME / DNS-01 challenge failures
+#   - NetworkPolicy-drop bursts     (correlate with Hubble)
+#
+# DELIVERY: Loki loads ruler rules from a ConfigMap labelled for its sidecar, OR
+# from the ruler storage bucket. With the grafana/loki chart the simplest GitOps
+# path is a ConfigMap mounted into the ruler. The chart mounts rule files from a
+# ConfigMap whose name matches `loki.rulerConfig` storage; here we ship the rules
+# as a ConfigMap the ruler reads under the `fake` tenant (auth_enabled:false ->
+# single tenant id "fake"). Confirm the chart's exact ruler ConfigMap convention
+# at apply (runbook note) — rule SYNTAX below is the load-bearing part.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-alerting-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    # the loki ruler sidecar discovers rule ConfigMaps by this label
+    loki_rule: "1"
+data:
+  restormel-logs.yaml: |
+    groups:
+      - name: postgres.fatal
+        rules:
+          - alert: PostgresPanicOrFatal
+            # The disk-full PG PANIC that crashed Forgejo is THIS log class.
+            expr: |
+              sum by (namespace, pod) (
+                count_over_time({namespace="cnpg-system"} |~ "(?i)(PANIC|FATAL):" [5m])
+              ) > 0
+            for: 2m
+            labels: { severity: page, area: cnpg }
+            annotations:
+              summary: "Postgres PANIC/FATAL in logs ({{ $labels.pod }})"
+              description: "PANIC/FATAL log lines in cnpg-system — the disk-full PG PANIC that crashed Forgejo was this class."
+              first_action: "kubectl logs the CNPG pod; check disk (NodeDiskPressure) + WAL volume; this often precedes a crash."
+
+      - name: barman.archive
+        rules:
+          - alert: BarmanArchiveErrorLogs
+            expr: |
+              sum(count_over_time({namespace="cnpg-system", container=~"plugin-barman-cloud.*"} |~ "(?i)(error|failed|denied)" [10m])) > 0
+            for: 5m
+            labels: { severity: page, area: cnpg }
+            annotations:
+              summary: "Barman plugin archive errors in logs"
+              description: "The barman-cloud sidecar is logging errors — WAL archiving to fsn1 may be silently failing (mechanism-level)."
+              first_action: "Check the sidecar logs in full + its cert-manager cert + fsn1 S3 creds (s3-backup-creds-fsn1)."
+
+      - name: kernel.oom
+        rules:
+          - alert: OOMKillLogLines
+            expr: |
+              sum(count_over_time({namespace=~".+"} |~ "(?i)Out of memory: Killed process" [10m])) > 0
+            for: 1m
+            labels: { severity: warn, area: nodes }
+            annotations:
+              summary: "OOM-kill log lines observed"
+              description: "Kernel OOM-killer fired — correlate with the ContainerOOMKilled metric + NodeMemoryPressure."
+              first_action: "Identify the killed process/pod; raise limits or fix the leak."
+
+      - name: acme.challenges
+        rules:
+          - alert: ACMEChallengeFailureLogs
+            expr: |
+              sum(count_over_time({namespace="cert-manager"} |~ "(?i)(challenge failed|propagation|presented but dns record)" [15m])) > 0
+            for: 10m
+            labels: { severity: warn, area: edge }
+            annotations:
+              summary: "cert-manager ACME/DNS-01 challenge failures in logs"
+              description: "DNS-01 challenges are failing — wildcard cert renewals may stall (silent time-bomb at expiry)."
+              first_action: "Check the Hetzner DNS-01 solver webhook + the hetzner-dns-token ExternalSecret."
+
+      - name: cilium.policy-drops
+        rules:
+          - alert: NetworkPolicyDropBurst
+            expr: |
+              sum by (namespace) (count_over_time({namespace="kube-system", pod=~"cilium.*"} |~ "(?i)policy denied|Packet dropped" [10m])) > 50
+            for: 5m
+            labels: { severity: warn, area: network }
+            annotations:
+              summary: "Cilium NetworkPolicy drop burst"
+              description: "A burst of policy drops — attack/misconfig OR a broken legitimate path (prod-DB isolation is enforced by NetworkPolicy)."
+              first_action: "Open Hubble UI; identify the dropped flow (src/dst ns); fix the policy or block the source."

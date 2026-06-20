@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Grafana IngressRoute — grafana.allotmentology.tech, gated by the portal SSO.
+# ---------------------------------------------------------------------------
+# This is the Ops Centre front door: the company-portal "Ops Centre" tile points
+# here, and Grafana opens on the single-pane RAG dashboard (set as the Grafana
+# home dashboard / default org dashboard in the kube-prometheus-stack values).
+#
+# Host: grafana.allotmentology.tech  (D-M13 — same apex as the portal so the
+#   Better-Auth cookie flows; needs the *.allotmentology.tech wildcard cert via
+#   cert-manager DNS-01).
+# Auth: portal-forward-auth middleware (D-M14 — reuse, no oauth2-proxy).
+#
+# Grafana auth posture (set in kube-prometheus-stack `grafana.grafana.ini`):
+#   - auth.anonymous DISABLED (forwardAuth is the gate, but defence-in-depth:
+#     never serve Grafana anonymously even behind the proxy);
+#   - OPTIONAL hardening — auth.proxy enabled so a future portal change that
+#     forwards an identity header (e.g. X-WEBAUTH-USER) auto-provisions the
+#     Grafana user as a Viewer. NOT required for v1 (the forwardAuth gate alone
+#     is sufficient; admin login stays Grafana-local via ESO-rendered creds).
+#     If enabled, the forward-auth endpoint must be extended to RETURN the email
+#     header and the middleware must list it in authResponseHeaders — that is an
+#     AUTH change → restormel-high-risk-security.
+#
+# >>> AUTH SURFACE: restormel-high-risk-security before any PR. <<<
+# ---------------------------------------------------------------------------
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  entryPoints: ["websecure"]   # confirm the K3s Traefik entryPoint name (k3s default: `websecure`)
+  routes:
+    - kind: Rule
+      match: Host(`grafana.allotmentology.tech`)
+      middlewares:
+        - name: portal-forward-auth
+          namespace: monitoring
+      services:
+        # Service name from the kube-prometheus-stack release (commonly
+        # `<release>-grafana`); confirm at wiring time.
+        - name: kube-prometheus-stack-grafana
+          port: 80
+  tls:
+    # Wildcard cert *.allotmentology.tech issued by cert-manager DNS-01.
+    secretName: wildcard-allotmentology-tech-tls
+---
+# HTTP entrypoint -> force HTTPS.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-http
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  entryPoints: ["web"]   # k3s Traefik default plain-HTTP entryPoint name
+  routes:
+    - kind: Rule
+      match: Host(`grafana.allotmentology.tech`)
+      middlewares:
+        - name: https-redirect
+          namespace: monitoring
+      services:
+        - name: kube-prometheus-stack-grafana
+          port: 80

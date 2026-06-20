@@ -1,0 +1,88 @@
+# =============================================================================
+# Scrape — embedded k3s etcd  (plan §3 "Embedded etcd", §5.1 etcd alerts)
+# -----------------------------------------------------------------------------
+# k3s runs embedded etcd (3-member quorum across .167/.150/.166). Quorum
+# tolerates only ONE node loss, and etcd shares small 8 GB boxes with prod DB/app
+# I/O — fsync contention is a real OOM/quorum risk (plan §3). DR = --cluster-reset
+# from snapshot, so etcd health + snapshot age are crown-jewel signals.
+#
+# *** TWO OPERATOR PREREQUISITES (documented in ../../runbooks/monitoring.md) ***
+# 1. k3s must EXPOSE etcd metrics. By default embedded etcd serves /metrics on
+#    127.0.0.1:2381 only. Start k3s servers with:
+#        --etcd-expose-metrics=true
+#    so metrics bind on the node IP (2381). (A k3s config.yaml flag; restart
+#    required — schedule on the migration maintenance window.)
+# 2. Scraping etcd needs the etcd client cert/key. ESO renders the Secret
+#    `etcd-client-certs` (../secrets/externalsecrets-monitoring.yaml) from the
+#    k3s-generated client cert material placed into Infisical by the operator
+#    (the cert files live at /var/lib/rancher/k3s/server/tls/etcd/ on the nodes).
+#    This is the ONLY component whose scrape needs a client cert.
+#
+# Because embedded etcd has no Kubernetes Service, we scrape it as a static
+# Endpoints-backed target via an Endpoints object + a Service the ServiceMonitor
+# selects. The node IPs are the private-net addresses (design §2):
+#   .167 = 172.16.0.3 · .150 = 172.16.0.2 · .166 = 172.16.0.4
+# =============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k3s-etcd
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: k3s-etcd
+spec:
+  type: ClusterIP
+  clusterIP: None          # headless — endpoints below carry the real node IPs
+  ports:
+    - name: metrics
+      port: 2381
+      targetPort: 2381
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: k3s-etcd
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: k3s-etcd
+subsets:
+  - addresses:
+      - ip: 172.16.0.3      # node-a .167 (role=prod)
+      - ip: 172.16.0.2      # node-b .150 (role=ops)
+      - ip: 172.16.0.4      # node-c .166 (role=data)
+    ports:
+      - name: metrics
+        port: 2381
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: k3s-etcd
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["kube-system"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k3s-etcd
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scheme: https
+      tlsConfig:
+        # etcd serves metrics over mTLS; client cert from the ESO Secret.
+        caFile: /etc/prometheus/secrets/etcd-client-certs/ca.crt
+        certFile: /etc/prometheus/secrets/etcd-client-certs/client.crt
+        keyFile: /etc/prometheus/secrets/etcd-client-certs/client.key
+        insecureSkipVerify: false
+# NOTE: the etcd-client-certs Secret must be mounted into Prometheus. The
+# kube-prometheus-stack values would normally list it under
+# prometheus.prometheusSpec.secrets: [etcd-client-certs]; add that line when the
+# operator has populated the Infisical keys (kept out of the values file until
+# the cert exists, so a missing Secret can't wedge the Prometheus pod at first
+# boot). Documented in ../../runbooks/monitoring.md.

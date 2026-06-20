@@ -1,0 +1,93 @@
+# =============================================================================
+# PrometheusRule — Workload health + Phase-A apps  (plan §3 kube-state, §5.1)
+# -----------------------------------------------------------------------------
+# Phase-A SCOPE ONLY (plan constraint): restormel-dashboard, restormel-worker,
+# allotmentology. PlotBudget + UseSophia are Phase B — NOT built here.
+#
+# kube-state-metrics is the richest workload-health source: CrashLoopBackOff,
+# Deployment/StatefulSet desired-vs-ready, OOMKills, and Job/CronJob FAILURES —
+# which directly cover the Surreal-export, etcd-snapshot, and scheduled-backup
+# jobs (plan §3). App-level product errors (auth-failure spike, ingest error
+# rate, egress runaway) are PostHog's job, routed to the same Telegram channel —
+# NOT modelled here (plan §3 "PLUS PostHog").
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: workload-app-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # =========================================================================
+    - name: workloads.health
+      rules:
+        - alert: PodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace=~"restormel-prod|allotmentology-prod|cnpg-system|data|monitoring"}[15m]) > 3
+          for: 5m
+          labels: { severity: page, area: workloads }
+          annotations:
+            summary: "CrashLoopBackOff: {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "{{ $labels.pod }} restarted >3x in 15m — likely a crash-loop (incl. a fail-closed migration crash)."
+            first_action: "kubectl logs --previous the pod; a fail-closed migration crash-loop is BY DESIGN — fix the migration, don't bypass it."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#crashloop"
+
+        # ---- OOMKills — both real prod outages were OOM/disk-full ------------
+        - alert: ContainerOOMKilled
+          expr: |
+            increase(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[15m]) > 0
+          for: 1m
+          labels: { severity: warn, area: workloads }
+          annotations:
+            summary: "OOMKilled: {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }}"
+            description: "A container was OOMKilled — RAM is the tight resource on the 8GB boxes; a prod-box OOM occurred during a prior migration."
+            first_action: "Raise the container's memory limit OR find the leak; check node MemAvailable (NodeMemoryPressure)."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#oomkill"
+
+        - alert: DeploymentReplicasMismatch
+          expr: |
+            (kube_deployment_spec_replicas{namespace=~"restormel-prod|allotmentology-prod"}
+             - kube_deployment_status_replicas_available{namespace=~"restormel-prod|allotmentology-prod"}) > 0
+          for: 15m
+          labels: { severity: warn, area: workloads }
+          annotations:
+            summary: "Deployment under-replicated: {{ $labels.namespace }}/{{ $labels.deployment }}"
+            description: "Desired vs available replicas mismatch for >15m — a pod can't schedule or keeps failing readiness."
+            first_action: "kubectl describe the Deployment + its pods; check scheduling (PodsPendingUnschedulable) + readiness."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#replicas-mismatch"
+
+    # =========================================================================
+    - name: jobs.backups-and-snapshots   # covers Surreal export, etcd snapshot, backups
+      rules:
+        # ---- ANY failed Job in the data/backup namespaces ------------------
+        - alert: CronJobFailed
+          expr: |
+            kube_job_status_failed{namespace=~"data|cnpg-system|kube-system|monitoring"} > 0
+          for: 5m
+          labels: { severity: page, area: backups }
+          annotations:
+            summary: "Job failed: {{ $labels.namespace }}/{{ $labels.job_name }}"
+            description: >-
+              A Job failed. In these namespaces that includes the Surreal-export,
+              etcd-snapshot, and scheduled-backup jobs — a failed backup job is a
+              silent data-loss risk (the class of the Neon egress runaway: no alarm).
+            first_action: "kubectl logs the failed Job pod; re-run if transient; verify the backup target + ESO creds."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#job-failed"
+
+    # =========================================================================
+    - name: apps.phase-a
+      rules:
+        # Phase-A app liveness via the blackbox public-endpoints probe + restarts.
+        # (HTTP RED metrics come from Traefik per-router; product errors → PostHog.)
+        - alert: AppEndpointDown
+          expr: probe_success{job="public-endpoints"} == 0
+          for: 3m
+          labels: { severity: page, area: apps }
+          annotations:
+            summary: "App endpoint down: {{ $labels.instance }}"
+            description: "A public Phase-A app endpoint (restormel.dev / allotmentology.tech) is failing its liveness probe."
+            first_action: "Correlate with Traefik 5xx + the app pod readiness/restarts; check the app logs in Loki."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#app-down"

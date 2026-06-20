@@ -1,0 +1,34 @@
+# =============================================================================
+# ServiceMonitor — cert-manager  (plan point 4, §3 "cert-manager")
+# -----------------------------------------------------------------------------
+# cert-manager v1.20.2 (deploy/k3s/ingress/clusterissuer-letsencrypt.yaml)
+# exposes controller metrics on the `cert-manager` Service, port 9402 (named
+# "http-metrics" / "tcp-prometheus-servicemonitor" depending on chart version).
+# These power the §5.1 alert "Cert expiring & not renewing" (certificate
+# days-to-expiry + Ready=false) — load-bearing because ALL public TLS
+# (*.restormel.dev, *.allotmentology.tech wildcards) flows through DNS-01 and a
+# stuck renewal silently takes the estate offline at expiry.
+#
+# Exposes the metric `certmanager_certificate_expiration_timestamp_seconds`
+# (used by ../rules/edge-rules.yaml).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["cert-manager"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  endpoints:
+    - port: http-metrics
+      interval: 60s
+      path: /metrics
+      # Some chart versions name the port "tcp-prometheus-servicemonitor".
+      # If scrape shows no targets, switch `port:` to that name (runbook note).

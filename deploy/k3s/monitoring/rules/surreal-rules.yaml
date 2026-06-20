@@ -1,0 +1,70 @@
+# =============================================================================
+# PrometheusRule — SurrealDB  (plan §5.1, D-M10 RPO=1h)
+# -----------------------------------------------------------------------------
+# SurrealDB is a 1-replica StatefulSet (rocksdb single-writer = no HA; restore-
+# from-backup IS recovery). It exposes NO /metrics — liveness comes from the
+# blackbox Probe (../scrape/blackbox-exporter.yaml) on the in-cluster Service +
+# the public surreal.restormel.dev ingress (a HARD UseSophia invariant — a dark
+# endpoint must page immediately).
+#
+# RPO (D-M10 RESOLVED 2026-06-20 = 1h): the `surreal export` CronJob runs hourly
+# (0 * * * *). The export-age alert fires at >70 min (hourly + grace). This is the
+# ratified hourly RPO (the design's earlier "<=24h" figure is corrected).
+# CronJob-success is covered in workload-rules.yaml (kube-state Job failures).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: surreal-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: surreal.liveness
+      rules:
+        # ---- ENDPOINT DARK — blackbox probe failing (in-cluster OR public) ---
+        - alert: SurrealEndpointDark
+          expr: probe_success{job="surreal-health"} == 0
+          for: 3m
+          labels: { severity: page, area: surreal, priority: highest }
+          annotations:
+            summary: "SurrealDB endpoint dark: {{ $labels.instance }}"
+            description: >-
+              The SurrealDB /health probe is failing. surreal.restormel.dev is a HARD
+              UseSophia cross-phase invariant — it must never go dark. The restore path
+              is the hourly export backup.
+            first_action: "Check the SurrealDB StatefulSet pod (single writer = any restart is downtime) + the ingress; restore from export if data is lost (runbook)."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#surreal-dark"
+
+        - alert: SurrealPodRestarting
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="data",pod=~"surreal.*"}[15m]) > 0
+          for: 1m
+          labels: { severity: warn, area: surreal }
+          annotations:
+            summary: "SurrealDB pod restarted"
+            description: "The single-writer SurrealDB pod restarted — any restart is downtime for the data plane."
+            first_action: "Check pod logs + PVC capacity/inodes; confirm it came back healthy."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#surreal-dark"
+
+    - name: surreal.backup
+      rules:
+        # ---- EXPORT ARTIFACT AGE — hourly CronJob; alarm at >70 min --------
+        # Prefers the CronJob last-success timestamp from kube-state-metrics for
+        # the data-ns surreal export job. The Job-failure alert in workload-rules
+        # complements this (catches a hard failure even if no prior success).
+        - alert: SurrealExportStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{namespace="data",cronjob=~"surreal-export.*"}) > 4200
+          for: 5m
+          labels: { severity: page, area: surreal, priority: highest }
+          annotations:
+            summary: "SurrealDB export >70min old (hourly RPO breached)"
+            description: >-
+              The hourly `surreal export` CronJob (0 * * * *) has no success in >70min.
+              RPO=1h (D-M10) is breached; restore is the only recovery for the single
+              writer.
+            first_action: "Check the surreal-export CronJob + its restic->BX11 target; verify the backup ESO secret + rclone config."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#surreal-export"

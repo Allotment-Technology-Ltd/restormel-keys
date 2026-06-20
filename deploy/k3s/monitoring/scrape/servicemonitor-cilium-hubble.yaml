@@ -1,0 +1,69 @@
+# =============================================================================
+# ServiceMonitors — Cilium + Hubble  (plan req 3 + point 4, §3 "Cilium + Hubble")
+# -----------------------------------------------------------------------------
+# Scrapes the metrics endpoints enabled by ../hubble/cilium-hubble-enablement.yaml:
+#   - cilium-agent     /metrics :9962  (BPF map pressure, endpoint-regen errors,
+#                                       drops, DNS errors)
+#   - cilium-operator  /metrics :9963
+#   - hubble (relay)   /metrics :9965  (policy-drops by reason/namespace, HTTP
+#                                       flow latency/status, DNS errors — plan §3)
+# Cilium components live in kube-system (hetzner-k3s install). Cilium
+# NetworkPolicy is THE mechanism isolating prod DB traffic from build/ops pods on
+# shared nodes (plan §3) — policy drops = attack/misconfig OR a broken legit path.
+# =============================================================================
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cilium-agent
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["kube-system"]
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cilium-operator
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["kube-system"]
+  selector:
+    matchLabels:
+      io.cilium/app: operator
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+---
+# Hubble flow metrics (the network-observability signal). Cilium exposes these on
+# the `hubble-metrics` Service when hubble.metrics.enabled is set.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hubble
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["kube-system"]
+  selector:
+    matchLabels:
+      k8s-app: hubble
+  endpoints:
+    - port: hubble-metrics
+      interval: 30s
+      path: /metrics
