@@ -85,7 +85,7 @@ stay off-cluster through cutover.
    └─────────────────────────────────┬────────────────────────────────────────┘
                           ┌───────────▼───────────┐   ┌──────────▼───────────┐
                           │ Hetzner Object Storage │   │ BX11 Storage Box 1TB │
-                          │ hel1.your-objectstorage│   │ restic cold copies + │
+                          │ fsn1.your-objectstorage│   │ restic cold copies + │
                           │ CNPG Barman WAL + PITR  │   │ Surreal export + PVC │
                           └────────────────────────┘   └──────────────────────┘
    OFF-CLUSTER through migration: Forgejo + its PG + Actions runner + Infisical
@@ -174,7 +174,9 @@ doesn't fight data I/O (matters with etcd co-resident). **Size tight (10–20 Gi
 are small; volumes are billed per GB.
 
 ### 4.3 Barman → Hetzner Object Storage
-**Region-matched endpoint `https://hel1.your-objectstorage.com`** (mismatched region = empty
+**Endpoint `https://fsn1.your-objectstorage.com`** — backups land in **`fsn1` (Falkenstein),
+deliberately cross-region from the `hel1` compute** for DR geo-separation (DECIDED 2026-06-20;
+register-authoritative). The endpoint must match the **bucket's** region (a mismatched region = empty
 listings/errors), S3v4. Continuous WAL (`compression: gzip, maxParallel: 4`) + daily `ScheduledBackup` +
 `retentionPolicy: 14d`. PITR/DR bootstraps a fresh cluster from the same object store via
 `bootstrap.recovery` + `externalClusters`. S3 creds via ESO (§6), never plaintext.
@@ -217,7 +219,7 @@ Infisical machine-identity bootstrap. etcd encrypted at rest (`--secrets-encrypt
 ## 7. Backups & DR
 | Layer | Mechanism | Target | RPO | Restore |
 |---|---|---|---|---|
-| Postgres (all CNPG) | Barman continuous WAL + daily base | Hetzner Object Storage (hel1) | ~minutes (PITR) | bootstrap new cluster from store |
+| Postgres (all CNPG) | Barman continuous WAL + daily base | Hetzner Object Storage (fsn1, cross-region) | ~minutes (PITR) | bootstrap new cluster from store |
 | SurrealDB | `surreal export` CronJob → restic | BX11 | daily | import into fresh STS |
 | PVCs | restic / volume snapshot | BX11 | daily | restic restore |
 | etcd | K3s etcd snapshots | Object Storage / BX11 | scheduled | `--cluster-reset` from snapshot |
@@ -272,7 +274,7 @@ recurring.
   (REC-PLAN-011)? Design `auth.restormel.dev` once.
 - **Burst nodes day one?** (default: ship at `max_instances: 0`, add later — €0 either way).
 - **RTO ≤ 2 h / RPO ≤ 5 min (PG), ≤ 24 h (Surreal)** — acceptable or stricter?
-- **Object Storage region** — confirm **hel1** (same region as compute).
+- ~~**Object Storage region**~~ — **DECIDED: `fsn1`** (cross-region from the `hel1` compute, for DR geo-separation; 2026-06-20).
 - **PlotBudget production domain** — needed for ingress + Supabase `SITE_URL`/JWT.
 - **Forgejo/Infisical** — keep off-cluster permanently (bootstrap anchors) or migrate in post-cutover?
 
