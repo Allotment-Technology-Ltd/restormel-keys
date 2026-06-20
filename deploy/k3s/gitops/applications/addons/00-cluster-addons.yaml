@@ -1,0 +1,50 @@
+# Cluster add-ons — the platform layer the workloads depend on.
+# ---------------------------------------------------------------------------
+# This Application points Argo at the rest of deploy/k3s/** (the non-gitops
+# manifests authored elsewhere in the migration: CNPG operator + clusters,
+# SurrealDB StatefulSet, Supabase [Phase B], ingress/Traefik, cert-manager,
+# ESO + SecretStores, Hetzner CCM/CSI, Cilium NetworkPolicies).
+#
+# Ordered via sync-waves so the operator + CRDs land before the resources that
+# need them. Auto-synced: these are platform invariants (design §8).
+#
+# The `path` here is `cluster` in restormel-gitops; in this authoring PR it would
+# map to deploy/k3s/cluster/** once those manifests are authored in a sibling PR.
+# Kept as a single Application with sync-waves rather than fanning out so a solo
+# operator sees one health roll-up for "is the platform up?".
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-addons
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"   # earliest — platform before apps
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cluster-addons
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    # Sibling PR authors these (CNPG, Surreal, Supabase, ingress, cert-manager,
+    # ESO). Path is a directory of kustomize bases / Helm value sets.
+    path: cluster
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd          # Application object lives here; children target their own ns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      # CRDs (CNPG, cert-manager, ESO) must apply before the CRs that use them.
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff: { duration: 15s, factor: 2, maxDuration: 5m }

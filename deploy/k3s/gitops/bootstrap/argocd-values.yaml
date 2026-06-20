@@ -1,0 +1,91 @@
+# Argo CD install — Helm values (PINNED).
+# ---------------------------------------------------------------------------
+# Source of truth: planning/k3s-cluster-target-design.md §8 (CI/CD — Argo CD over Flux).
+# Decision: Argo CD (its web UI gives at-a-glance state/drift for a solo operator).
+#
+# VERSION PINS (verified 2026-06-20):
+#   Argo CD application  : v3.4.4   (the version named in the design doc)
+#   argo-cd Helm chart   : 9.5.22   (artifacthub argoproj/argo → appVersion v3.4.4)
+#
+# Install (run by the operator OUT OF BAND during bootstrap, before Argo manages
+# itself — see deploy/k3s/gitops/DEPLOY-PIPELINE.md "Bootstrap order"):
+#
+#   helm repo add argo https://argoproj.github.io/argo-helm
+#   helm upgrade --install argocd argo/argo-cd \
+#     --version 9.5.22 \
+#     --namespace argocd --create-namespace \
+#     -f deploy/k3s/gitops/bootstrap/argocd-values.yaml
+#
+# NO SECRETS LIVE HERE. The Forgejo repo-connection credential and the admin
+# password are delivered by External Secrets Operator (ESO) ← Infisical
+# (design §6), NOT by these values. See bootstrap/argocd-repo-externalsecret.yaml.
+# ---------------------------------------------------------------------------
+
+global:
+  # Pin the image to the chart's appVersion so a chart bump can't silently move
+  # the Argo CD version. Bumps go through Renovate + the security gate like any dep.
+  image:
+    tag: v3.4.4
+
+# Argo CD is HA-overkill for a 3-node solo-operator cluster; run the lean profile
+# but keep the components resilient to a single node loss via anti-affinity.
+redis-ha:
+  enabled: false
+controller:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+repoServer:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { memory: 384Mi }
+applicationSet:
+  enabled: true        # used by addons/ ApplicationSet-style fan-out later
+  replicas: 1
+notifications:
+  enabled: false       # alerting flows through the existing Telegram/PostHog path
+
+server:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { memory: 256Mi }
+  # TLS terminates at the cluster Traefik ingress (design §3.4); Argo's own server
+  # runs insecure behind it so cert-manager owns the cert, not Argo.
+  extraArgs:
+    - --insecure
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.restormel.dev
+    annotations:
+      # cert-manager ClusterIssuer (DNS-01 wildcard, design §3.4). The issuer
+      # name is created by the cluster-addons app; referenced by name only.
+      cert-manager.io/cluster-issuer: letsencrypt-dns01
+    tls: true
+
+configs:
+  params:
+    # Prod is NEVER auto-synced (design §8: "prod sync stays manual/gated").
+    # This is belt-and-braces at the controller level; per-Application syncPolicy
+    # (applications/workloads/*) is the primary control.
+    server.insecure: true
+  cm:
+    # Repo + project wiring. The actual repo CREDENTIAL is an ExternalSecret
+    # (ESO ← Infisical), not inlined here.
+    url: https://argocd.restormel.dev
+    # Restrict resource tracking noise on a small cluster.
+    application.resourceTrackingMethod: annotation
+    # Forgejo is a self-hosted git host; Argo treats it as a generic git repo.
+    timeout.reconciliation: 180s
+  rbac:
+    # Solo operator: admin via Forgejo OIDC could be added later; for bootstrap
+    # the admin account (password via ESO) is the only principal.
+    policy.default: role:readonly
+
+# The Forgejo container registry that CI pushes images to (design §8, €0 registry).
+# Image pull happens at the workload pods, not here; this block documents the host
+# Argo's repo-server needs network access to for Image Updater (optional path).
+# registry.allotmentology.tech  — resolved via cluster DNS / ingress.

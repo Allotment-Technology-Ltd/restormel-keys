@@ -1,0 +1,39 @@
+# PlotBudget / Supabase plane — PRODUCTION.  PHASE B.  SYNC = MANUAL.
+# ---------------------------------------------------------------------------
+# PHASE B per design §4.1 / §4.3: Supabase (GoTrue/PostgREST/Storage/Realtime/
+# Kong) on a DEDICATED pg-plotbudget CNPG cluster (it needs auth/storage/pgjwt/
+# pg_graphql roles+extensions isolated). The PlotBudget production domain is still
+# a §10 open question (SITE_URL / JWT issuer depend on it) — FOUNDER FLAG below.
+#
+# Authored now for layout completeness; DISABLED until Phase B + the domain is
+# confirmed. Supabase secrets (JWT secret, anon/service keys, SMTP) flow via ESO
+# ← Infisical — NONE in git.
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: plotbudget-supabase-prod
+  namespace: argocd
+  annotations:
+    restormel.dev/phase: "B"
+    # FOUNDER FLAG: PlotBudget production domain unresolved (design §10). Needed
+    # for Supabase SITE_URL + JWT issuer + ingress host before this can go live.
+    restormel.dev/blocked-on: "plotbudget-prod-domain"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: restormel-prod
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    path: charts/supabase-plotbudget
+    helm:
+      valueFiles:
+        - ../../values/plotbudget-supabase-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: plotbudget-prod
+  syncPolicy:                # MANUAL (prod). Phase B.
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

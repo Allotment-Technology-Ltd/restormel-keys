@@ -1,0 +1,82 @@
+# Argo CD AppProjects — bounded blast radius per environment.
+# ---------------------------------------------------------------------------
+# Two projects so prod and non-prod can't accidentally touch each other's
+# namespaces, and so prod-targeting Applications inherit stricter policy.
+# Design §8: "prod sync stays manual/gated"; §2: role=prod/.167, role=ops/.150,
+# role=data/.166.
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: restormel-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: >-
+    Production workloads. Sync is MANUAL/GATED — no Application in this project
+    may carry an automated syncPolicy (enforced by review, see DEPLOY-PIPELINE.md).
+  sourceRepos:
+    - https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: restormel-prod
+    - server: https://kubernetes.default.svc
+      namespace: allotmentology-prod
+    - server: https://kubernetes.default.svc
+      namespace: cnpg-system
+    - server: https://kubernetes.default.svc
+      namespace: surreal
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: restormel-nonprod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: >-
+    Staging / preview workloads. Auto-sync is permitted here (design §8 —
+    auto-sync OK for staging).
+  sourceRepos:
+    - https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: restormel-staging
+    - server: https://kubernetes.default.svc
+      namespace: restormel-preview
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cluster-addons
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: >-
+    Cluster add-ons (cert-manager, Traefik, ESO, CNPG operator, Hetzner CCM/CSI,
+    Cilium policies, SurrealDB STS, Supabase Phase B). Auto-synced — these are
+    platform invariants, not app rollouts.
+  sourceRepos:
+    - https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

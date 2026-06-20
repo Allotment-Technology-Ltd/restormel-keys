@@ -1,0 +1,57 @@
+# Restormel dashboard + worker — STAGING.  SYNC = AUTOMATED (design §8 allows it).
+# ---------------------------------------------------------------------------
+# Staging tracks main: every merge to main builds an image and (optionally) the
+# Argo CD Image Updater writes the new tag back to git, then Argo auto-syncs.
+# This is the safe place to exercise the GitOps round-trip before a prod sync.
+#
+# IMAGE UPDATER (opt-in, STAGING ONLY) — classic annotation form, validated
+# against argocd-image-updater (stable, git write-back method). Annotations:
+#   image-list           : alias=registry/image  (which images to watch)
+#   <alias>.update-strategy : newest-build / digest / semver
+#   <alias>.allow-tags    : regexp to restrict candidate tags (here: 12-hex SHAs)
+#   write-back-method     : git  (declarative — commits the tag back to the repo,
+#                           so the gitops repo stays the source of truth)
+#   git-branch            : main
+#   write-back-target     : helmvalues:../../values/restormel-dashboard-staging.yaml
+# Prod deliberately does NOT carry these (see restormel-dashboard-prod.yaml).
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: restormel-dashboard-staging
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: >-
+      dash=registry.allotmentology.tech/restormel/dashboard
+    argocd-image-updater.argoproj.io/dash.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/dash.allow-tags: "regexp:^[0-9a-f]{12}$"
+    argocd-image-updater.argoproj.io/dash.helm.image-tag: image.tag
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+    argocd-image-updater.argoproj.io/write-back-target: >-
+      helmvalues:../../values/restormel-dashboard-staging.yaml
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: restormel-nonprod
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    path: charts/restormel-dashboard
+    helm:
+      valueFiles:
+        - ../../values/restormel-dashboard-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: restormel-staging
+  syncPolicy:
+    automated:               # AUTO-SYNC permitted on staging
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }

@@ -1,0 +1,40 @@
+# UseSophia (usesophia.app) — PRODUCTION.  PHASE B.  SYNC = MANUAL.
+# ---------------------------------------------------------------------------
+# PHASE B per design §3.5 / §4.1 (UseSophia DB folds into pg-platform in Phase B).
+# Authored now so the gitops layout is complete, but kept DISABLED until Phase B:
+# the root app-of-apps will only render this when the file is present AND the
+# Phase-B label gate is lifted (see README "Phase gating"). Until then this
+# Application points at an empty/placeholder chart path so it renders Healthy-empty.
+#
+# HARD INVARIANT (design §3.5, §5): Sophia depends on surreal.restormel.dev →
+# cluster ingress → SurrealDB Service. That Service must stay resolving to the
+# cluster and NEVER go dark across this migration — it is a cross-phase Sophia
+# dependency. The SurrealDB STS itself is a cluster add-on (addons app), not this
+# workload app; this note is the reminder that Sophia's contract rides on it.
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: usesophia-prod
+  namespace: argocd
+  annotations:
+    restormel.dev/phase: "B"          # gate marker — see README "Phase gating"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: restormel-prod
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    # Phase-B chart authored in a later PR; placeholder path until then.
+    path: charts/usesophia
+    helm:
+      valueFiles:
+        - ../../values/usesophia-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: usesophia-prod
+  syncPolicy:                # MANUAL (prod). Phase B.
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
