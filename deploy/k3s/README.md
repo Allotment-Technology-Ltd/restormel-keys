@@ -39,9 +39,16 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
 
 ## Apply order (operator, off-cluster — for reference; NOT executed by CI)
 
-1. **Pre-flight** — set `<OPERATOR_IP>/32`, the SSH key name, and confirm the
-   existing private network name in `cluster/cluster_config.yaml`. Export
-   `HCLOUD_TOKEN` from the secret store (never write it to disk).
+0. **Operator tooling** — `hetzner-k3s` shells out to **`kubectl`** and **`helm`**;
+   all three must be on PATH. Install them locally first (rehearsal finding 2026-06-20).
+1. **Pre-flight** — set `<OPERATOR_IP>/32` to the operator's **current** egress IP, the
+   SSH key name, and confirm the existing private network name in
+   `cluster/cluster_config.yaml`. Export `HCLOUD_TOKEN` from the secret store (never
+   write it to disk; the `hetzner_token` key stays **omitted** — see that file).
+   ⚠ The operator IP locks SSH + kube-API; on a **dynamic broadband IP** a change locks
+   you out — recoverable by updating the firewall via the **hcloud API** (never
+   SSH/kube-dependent). Durable fix: reach kube-API over the **private network** via a
+   box tunnel and drop the public IP from `allowed_networks.api`.
 2. **Create the cluster** — `hetzner-k3s create --config cluster/cluster_config.yaml`
    (provisions the **temp CX43 bootstrap node** only).
 3. **Hetzner CCM + CSI** — install the cloud-controller-manager + CSI driver
@@ -78,6 +85,26 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
 | External Secrets Operator | **v2.6.0** | chart `external-secrets` 2.6.0; API `external-secrets.io/v1` |
 | CloudNativePG | **v1.29.1** | DB plane (manifests in the **CNPG** migration PR, not here) |
 | Argo CD | **v3.4.4** | GitOps (manifests land later; off-cluster Forgejo hosts the repo) |
+
+## Rehearsal validation (2026-06-20)
+
+A full Path-A rehearsal stood the cluster up on a temp CX43 (`172.16.0.5`), validated it,
+and tore it down clean — **no orphaned servers / firewalls / volumes; the existing network
+and the 3 boxes untouched**. Proven end-to-end: provisioning, k3s v1.34.8, Cilium, Hetzner
+CCM + CSI (dynamic `hcloud-volumes` attach), the autoscaler, and **CNPG → Barman → S3
+backups landing in `restormel-cnpg-backups-fsn1`** (base backup + WAL archiving, verified at
+the object-storage layer). Findings folded into config/docs:
+
+- **`hetzner_token: ""` aborts `create`** — the key must be **absent**, not an empty string
+  (fixed in `cluster/cluster_config.yaml`).
+- **`kubectl` + `helm` are operator prerequisites** — hetzner-k3s shells out to them (step 0).
+- **Hetzner CSI minimum volume = 10 GiB** — CNPG `storage` / `walStorage` requests below 10 Gi
+  round up, so size them **≥ 10 Gi** to avoid paying for unused capacity.
+- **`protect_against_deletion: true`** makes `hetzner-k3s delete` prompt for the cluster name
+  (set it `false` or pipe the name) — kept `true` here as the safe default.
+- **Still to validate at the real apply** (not exercised in this rehearsal): ESO ← Infisical,
+  cert-manager DNS-01, Traefik, the **Barman Cloud _plugin_** path (needs cert-manager; the
+  rehearsal used in-tree `barmanObjectStore` for speed), and SurrealDB.
 
 ## Known gaps / open items (flag for founder)
 
