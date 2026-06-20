@@ -32,15 +32,19 @@
 config_format_version: 2
 
 # --- Hetzner API token -------------------------------------------------------
-# NEVER inline a real token. hetzner-k3s reads the token from the HCLOUD_TOKEN
-# environment variable when `hetzner_token` is left empty. The operator exports
-# it for the single bootstrap invocation from the secret store, e.g.:
+# NEVER inline a real token. hetzner-k3s reads it from the HCLOUD_TOKEN env var
+# when the `hetzner_token` key is ABSENT.
+# ⚠ REHEARSAL FINDING (2026-06-20): in hetzner-k3s v2.5.0 an empty STRING
+#   (hetzner_token: "") does NOT trigger the env fallback — it validates as
+#   "token missing" and aborts create. So the key is OMITTED (commented out),
+#   NOT set to "". The operator exports the token for the single bootstrap
+#   invocation from the secret store, e.g.:
 #   export HCLOUD_TOKEN="$(infisical secrets get HCLOUD_TOKEN \
 #       --projectId=<restormel-ops> --env=prod \
 #       --domain=https://secrets.restormel.dev --plain)"
 # The same token is later consumed in-cluster by the Hetzner CCM + CSI driver,
 # delivered there via External Secrets Operator (see ../secrets/).
-hetzner_token: ""   # <-- intentionally empty; sourced from $HCLOUD_TOKEN at runtime
+# hetzner_token: <OMITTED — provided via the HCLOUD_TOKEN env var at runtime>
 
 cluster_name: restormel-sovereign
 kubeconfig_path: "./kubeconfig"        # written locally by the operator; gitignored
