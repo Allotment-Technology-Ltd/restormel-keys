@@ -1,0 +1,120 @@
+# =============================================================================
+# Grafana Alloy — Helm values  (plan §2.1 / §4)
+# -----------------------------------------------------------------------------
+# Chart: grafana/alloy  PINNED 1.10.0  (appVersion Alloy v1.17.0, verified 2026-06-20)
+# Role: DaemonSet that tails EVERY pod's stdout/stderr via the kubelet log files
+#       (/var/log/pods) and writes to Loki. This REPLACES #166's
+#       loki.source.docker Docker-agent collection — there is no Docker socket in
+#       K3s (plan §4). Covers Traefik access logs, app logs, CNPG/Surreal logs,
+#       Barman-plugin sidecar logs, and K3s component logs.
+#
+# Collection is via loki.source.kubernetes (Kubelet API) + discovery.kubernetes,
+# enriched with pod/namespace/container labels and OOMKill-friendly so the LogQL
+# alerts in ../rules/loki-rules.yaml (OOMKill lines, PG PANIC/FATAL, Barman
+# archive errors, ACME failures) can fire (plan §4).
+#
+# promtail is the documented 1-line fallback (plan §2.1) if Alloy-on-K8s bites.
+# =============================================================================
+
+controller:
+  type: daemonset
+  # tolerate control-plane taints (all 3 boxes are schedulable CP nodes) + burst
+  tolerations:
+    - operator: Exists           # run on every node incl. CP + burst
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+
+alloy:
+  # ---- mount the host pod-log dir so Alloy can tail kubelet logs -------------
+  mounts:
+    varlog: true                 # mounts /var/log (incl. /var/log/pods)
+
+  # ---- the Alloy pipeline config (River) ------------------------------------
+  configMap:
+    content: |-
+      // -----------------------------------------------------------------------
+      // Discover pods on THIS node, tail their logs, label, ship to Loki.
+      // -----------------------------------------------------------------------
+      discovery.kubernetes "pods" {
+        role = "pod"
+        // only pods scheduled to the node this DaemonSet pod runs on
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("HOSTNAME")
+        }
+      }
+
+      // Build Loki-friendly labels from pod metadata.
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+      }
+
+      // Tail the pod log files the kubelet writes under /var/log/pods.
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.enrich.receiver]
+      }
+
+      // Light processing: keep raw line; surface obvious severities so LogQL
+      // alerts (OOMKilled, PANIC/FATAL, archive errors, ACME) are cheap.
+      loki.process "enrich" {
+        forward_to = [loki.write.default.receiver]
+
+        stage.match {
+          selector = "{namespace=~\".+\"}"
+          stage.regex {
+            expression = "(?i)(?P<level>panic|fatal|error|warn|info|debug)"
+          }
+          stage.labels {
+            values = { level = "" }
+          }
+        }
+      }
+
+      // Ship to the in-cluster Loki single-binary.
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+        external_labels = {
+          cluster = "restormel-sovereign",
+        }
+      }
+
+  # ---- expose Alloy's own /metrics so Prometheus scrapes the collector -------
+  enableReporting: false
+
+# ---- ServiceMonitor for Alloy's self-metrics (Prometheus selects it because
+#      kube-prometheus-stack sets serviceMonitorSelectorNilUsesHelmValues:false)
+serviceMonitor:
+  enabled: true
+
+# Alloy needs to read pod logs + list pods cluster-wide; the chart's default
+# RBAC (ClusterRole get/list/watch pods + nodes) covers loki.source.kubernetes.
+rbac:
+  create: true

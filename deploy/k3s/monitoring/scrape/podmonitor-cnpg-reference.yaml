@@ -1,0 +1,53 @@
+# =============================================================================
+# CNPG metrics — PodMonitor selection  (plan req 4 + D-M2, §3 CloudNativePG)
+# -----------------------------------------------------------------------------
+# *** READ THIS — IT EXPLAINS WHY THERE IS NO PodMonitor RESOURCE HERE. ***
+#
+# CloudNativePG CREATES THE PodMonitor ITSELF, in the cluster's namespace
+# (cnpg-system), when each Cluster CR sets:
+#
+#     spec:
+#       monitoring:
+#         enablePodMonitor: true
+#
+# So the correct, idempotent fix is the ONE-LINE per-cluster spec change (plan
+# D-M2 — "the single highest-value fix"), NOT a hand-authored PodMonitor that
+# would duplicate/conflict with CNPG's own.
+#
+# *** STATE OF THE REPO (verified 2026-06-20 on docs/ops-centre-k3s-rework): ***
+# NONE of the three CNPG clusters currently carry a `monitoring:` block:
+#   - deploy/k3s/cnpg/cluster-pg-restormel.yaml   (no monitoring block)
+#   - deploy/k3s/cnpg/cluster-pg-platform.yaml    (no monitoring block)
+#   - deploy/k3s/cnpg/cluster-pg-plotbudget.yaml  (no monitoring block, Phase B)
+# The plan §10 marks D-M2 "RESOLVED — YES, applied via a config PR." That config
+# PR (the per-cluster `monitoring.enablePodMonitor: true` edit) is a PREREQUISITE
+# of CNPG metrics flowing. The patch to apply to each Phase-A cluster
+# (pg-restormel, pg-platform) is recorded below for the assembler / config PR.
+#
+# Once CNPG creates its PodMonitor, Prometheus DISCOVERS IT AUTOMATICALLY because
+# the kube-prometheus-stack values set podMonitorSelectorNilUsesHelmValues:false
+# (cluster-wide PodMonitor selection) — no extra wiring needed here.
+#
+# CNPG metrics power the §5.1 highest-severity alerts (../rules/cnpg-rules.yaml):
+#   - CNPG backup failed / WAL-archive-to-fsn1 stalled  (the worst undetected
+#     failure in the system — PITR/RPO<=5min is the load-bearing DR guarantee)
+#   - CNPG replication lag / primary down
+#   - last-base-backup age / PITR window
+# Metric families: cnpg_collector_*, cnpg_pg_replication_*,
+#   cnpg_pg_stat_archiver_* (last_archived_wal age, failed_count).
+# -----------------------------------------------------------------------------
+# PATCH FOR THE CONFIG PR (apply to each Phase-A CNPG Cluster CR):
+#
+#   # deploy/k3s/cnpg/cluster-pg-restormel.yaml  (and cluster-pg-platform.yaml)
+#   spec:
+#     monitoring:
+#       enablePodMonitor: true
+#
+# (pg-plotbudget is Phase B — flip it when PlotBudget migrates.)
+# =============================================================================
+#
+# Intentionally NO Kubernetes resource in this file — CNPG owns the PodMonitor.
+# This file is documentation/contract only, kept under scrape/ so the dependency
+# is discoverable next to the other scrape configs. The Application's `exclude`
+# does not skip it; it parses as an all-comment doc (no YAML doc separators), so
+# it is a no-op apply.

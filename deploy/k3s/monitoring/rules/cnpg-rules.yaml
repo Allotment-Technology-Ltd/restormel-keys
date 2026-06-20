@@ -1,0 +1,159 @@
+# =============================================================================
+# PrometheusRule — CloudNativePG + Barman + storage  (plan §5.1, HIGHEST severity)
+# -----------------------------------------------------------------------------
+# Postgres is the crown-jewel state plane. The Neon egress runaway (no alarm) and
+# the disk-full PG PANIC are both in the incident history. WAL-archiving-to-fsn1 +
+# PITR readiness are the load-bearing DR guarantees (RPO <= 5 min) — a SILENT
+# WAL-archive failure is the worst undetected failure in the whole system.
+#
+# DEPENDS ON: CNPG metrics flowing, which requires D-M2
+# (`monitoring.enablePodMonitor: true`) on each CNPG Cluster CR — see
+# ../scrape/podmonitor-cnpg-reference.yaml. Until that config PR lands these
+# rules evaluate to no-data (no false pages).
+#
+# Metric families: cnpg_collector_*, cnpg_pg_replication_*,
+#   cnpg_pg_stat_archiver_* (last_archived_wal, last_failed_wal, failed_count),
+#   cnpg_collector_last_available_backup_timestamp / first_recoverability_point.
+# Clusters live in namespace cnpg-system (pg-restormel, pg-platform Phase A).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-backup-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # =========================================================================
+    - name: cnpg.wal-archive     # *** the most important alerts in the system ***
+      rules:
+        # ---- WAL ARCHIVE STALLED — last-archived-WAL too old --------------
+        - alert: CNPGWalArchiveStalled
+          expr: |
+            (time() - cnpg_pg_stat_archiver_last_archived_time) > 900
+          for: 5m
+          labels: { severity: page, area: cnpg, priority: highest }
+          annotations:
+            summary: "CNPG WAL archive to fsn1 STALLED on {{ $labels.pod }} (>15m)"
+            description: >-
+              Last successful WAL archive on cluster {{ $labels.cluster }} is >15m
+              old. PITR/RPO<=5min is breached — this is the worst undetected failure
+              class in the system. Likely cause: ESO `s3-backup-creds-fsn1` not
+              synced OR fsn1 unreachable OR the Barman sidecar down.
+            first_action: >-
+              Verify ESO `s3-backup-creds-fsn1` is Synced + fsn1 reachable; check the
+              Barman plugin sidecar (see CNPGBarmanSidecarDown). PITR gap = data-loss risk.
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cnpg-wal-archive"
+
+        - alert: CNPGWalArchiveFailing
+          expr: increase(cnpg_pg_stat_archiver_failed_count[10m]) > 0
+          for: 5m
+          labels: { severity: page, area: cnpg, priority: highest }
+          annotations:
+            summary: "CNPG WAL archive FAILURES on {{ $labels.cluster }}"
+            description: "pg_stat_archiver reports failed archive attempts to fsn1 in the last 10m."
+            first_action: "Check Barman sidecar logs + fsn1 creds/reachability; archiving is silently failing."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cnpg-wal-archive"
+
+        # ---- BASE-BACKUP AGE — daily ScheduledBackup; alarm at >26h --------
+        - alert: CNPGBaseBackupStale
+          expr: |
+            (time() - cnpg_collector_last_available_backup_timestamp) > 93600
+          for: 15m
+          labels: { severity: page, area: cnpg, priority: highest }
+          annotations:
+            summary: "CNPG base backup >26h old on {{ $labels.cluster }}"
+            description: "No successful base backup to fsn1 in >26h (daily cadence). PITR window is shrinking."
+            first_action: "Check the ScheduledBackup + Barman sidecar; verify fsn1 creds. Confirm with `kubectl cnpg backup` status."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cnpg-base-backup"
+
+    # =========================================================================
+    - name: cnpg.barman-sidecar   # MECHANISM down, distinct from archive-AGE (plan §3)
+      rules:
+        # The Barman Cloud PLUGIN runs as a sidecar in each instance pod. It can
+        # crashloop / lose its cert-manager cert while Postgres looks healthy,
+        # silently stopping archiving. This catches the MECHANISM being down;
+        # CNPGWalArchiveStalled catches the OUTPUT gap. Both are needed (plan §3).
+        - alert: CNPGBarmanSidecarDown
+          expr: |
+            kube_pod_container_status_ready{namespace="cnpg-system",container=~"plugin-barman-cloud.*"} == 0
+            or
+            increase(kube_pod_container_status_restarts_total{namespace="cnpg-system",container=~"plugin-barman-cloud.*"}[15m]) > 2
+          for: 5m
+          labels: { severity: page, area: cnpg, priority: highest }
+          annotations:
+            summary: "Barman plugin sidecar down/crashlooping in cnpg-system"
+            description: >-
+              The barman-cloud plugin sidecar (container plugin-barman-cloud) is not
+              ready or is crashlooping. The archiving MECHANISM is down even if
+              Postgres itself looks healthy — archiving is silently stopped.
+            first_action: "Check the sidecar container logs + its cert-manager cert validity; the plugin depends on cert-manager."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#barman-sidecar"
+
+    # =========================================================================
+    - name: cnpg.replication-health
+      rules:
+        - alert: CNPGReplicationLagHigh
+          expr: cnpg_pg_replication_lag > 30
+          for: 5m
+          labels: { severity: page, area: cnpg }
+          annotations:
+            summary: "CNPG replication lag >30s on {{ $labels.cluster }}"
+            description: "Standby is falling behind the primary by >30s — failover would lose data."
+            first_action: "Check standby streaming + node I/O; consult the switchover runbook."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cnpg-replication"
+
+        - alert: CNPGPrimaryDown
+          expr: |
+            max by (cluster) (cnpg_collector_up{namespace="cnpg-system"}) == 0
+          for: 2m
+          labels: { severity: page, area: cnpg, priority: highest }
+          annotations:
+            summary: "CNPG cluster {{ $labels.cluster }} has no reachable instance"
+            description: "No CNPG instance is reporting up for this cluster — the app DB is likely down."
+            first_action: "Check the StatefulSet pods + PVCs; CNPG should auto-failover to the standby — verify the switchover completed."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cnpg-primary-down"
+
+    # =========================================================================
+    - name: storage.pvc          # walStorage is the tightest, highest-consequence vol
+      rules:
+        # ---- walStorage > 70% — TIGHTEST threshold. A full WAL volume stalls
+        #      Postgres AND breaks archiving simultaneously (plan §3 CSI). ------
+        - alert: CNPGWalStorageNearFull
+          expr: |
+            (kubelet_volume_stats_used_bytes{persistentvolumeclaim=~".*-wal"}
+             / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim=~".*-wal"}) > 0.70
+          for: 5m
+          labels: { severity: page, area: storage, priority: highest }
+          annotations:
+            summary: "WAL PVC >70% full ({{ $labels.persistentvolumeclaim }})"
+            description: >-
+              The 10Gi walStorage PVC is >70% full. A full WAL volume STALLS Postgres
+              AND breaks archiving at the same time — the tightest, highest-consequence
+              volume in the cluster.
+            first_action: "Expand the WAL PVC NOW (Hetzner CSI online resize) or resolve the archiving backlog draining WAL."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#pvc-near-full"
+
+        - alert: PVCNearFull
+          expr: |
+            (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.80
+          for: 10m
+          labels: { severity: warn, area: storage }
+          annotations:
+            summary: "PVC >80% full: {{ $labels.persistentvolumeclaim }} ({{ $labels.namespace }})"
+            description: "PVC {{ $labels.persistentvolumeclaim }} is over 80% — CNPG data / Surreal / monitoring volumes are deliberately tight."
+            first_action: "Expand the volume (Hetzner CSI online resize) or clean up; don't let it reach 100%."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#pvc-near-full"
+
+        - alert: PVCAttachErrors
+          expr: |
+            increase(kube_persistentvolumeclaim_status_phase{phase="Pending"}[15m]) > 0
+          for: 10m
+          labels: { severity: warn, area: storage }
+          annotations:
+            summary: "PVC stuck Pending: {{ $labels.persistentvolumeclaim }}"
+            description: "A PVC is stuck Pending — Hetzner CSI attach/mount failure (a known failure mode on node-move / box-fold)."
+            first_action: "kubectl describe the PVC + check the CSI controller/node pods + FailedAttach events."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#csi-attach"

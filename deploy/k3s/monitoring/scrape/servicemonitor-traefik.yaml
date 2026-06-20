@@ -1,0 +1,43 @@
+# =============================================================================
+# ServiceMonitor — Traefik ingress  (plan point 4, §3 "Traefik ingress")
+# -----------------------------------------------------------------------------
+# Traefik runs as a DaemonSet (single-node ingress, no LB — design §2.3/§3.4),
+# the sole public entry. It must expose Prometheus metrics on a `metrics`
+# entrypoint (port 9100, metric prefix `traefik_`). Enable in the Traefik Helm
+# values:
+#     metrics:
+#       prometheus:
+#         entryPoint: metrics
+#         addEntryPointsLabels: true
+#         addRoutersLabels: true
+#         addServicesLabels: true
+#     ports:
+#       metrics:
+#         port: 9100
+#         expose: { default: false }   # internal only
+#   (documented in ../../runbooks/monitoring.md — Traefik values lives in
+#    deploy/k3s/ingress/traefik-helm-values.yaml, a sibling PR.)
+#
+# Powers the §5.1 alert "Traefik 5xx spike" (edge 5xx rate over baseline) — the
+# earliest user-facing signal on single-node ingress. Metric:
+# traefik_router_requests_total{code=~"5.."} (see ../rules/edge-rules.yaml).
+# Traefik runs in kube-system (k3s default) OR `ingress` ns depending on install;
+# both are matched below.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: traefik
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["kube-system", "ingress", "traefik"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics

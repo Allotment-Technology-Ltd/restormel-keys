@@ -1,0 +1,92 @@
+# =============================================================================
+# Alertmanager routing — REFERENCE TEMPLATE  (plan §5 / §6, D-M9)
+# -----------------------------------------------------------------------------
+# *** THIS FILE IS DOCUMENTATION, NOT AN APPLIED RESOURCE. ***
+# The LIVE Alertmanager config is rendered by ESO into the Secret
+# `alertmanager-telegram` (../secrets/externalsecrets-monitoring.yaml), which the
+# kube-prometheus-stack values reference via
+# `alertmanager.alertmanagerSpec.configSecret: alertmanager-telegram`. The config
+# is rendered by ESO (not committed) BECAUSE it embeds the Telegram bot token —
+# *** no token in git, ever *** (plan §8). This template shows the EXACT shape ESO
+# renders, with the secret values as {{ }} placeholders pulled from Infisical.
+#
+# ROUTES:
+#   1. Watchdog (always-firing) → `deadmansswitch` receiver → webhook to a tiny
+#      bridge that re-pings healthchecks.io. (The CronJob in ../deadmansswitch is
+#      the PRIMARY heartbeat; this Alertmanager route is the SECOND independent
+#      path — plan §6.) Watchdog has repeat_interval shorter than the
+#      healthchecks.io grace so the external service always hears from it.
+#   2. Everything else → `telegram` receiver (the single human channel — free, no
+#      SMTP, proven live REC-INC-001). PostHog also posts to the same Telegram
+#      channel (the app-layer producer) — one channel, two producers (plan §5).
+#
+# GROUPING / INHIBITION: group by alertname+area; a `page` for a component
+# inhibits its `warn`-level duplicates; node-down inhibits that node's pod alerts.
+#
+# Telegram bot_token + chat_id come from Infisical:
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# (the infrastructure project; same channel the existing alerts use).
+# =============================================================================
+#
+# --- the rendered ./alertmanager.yaml shape (what ESO writes into the Secret): --
+#
+# global:
+#   resolve_timeout: 5m
+#
+# route:
+#   receiver: telegram
+#   group_by: ['alertname', 'area']
+#   group_wait: 30s
+#   group_interval: 5m
+#   repeat_interval: 4h
+#   routes:
+#     # --- dead-man's-switch: always-firing Watchdog → external heartbeat -----
+#     - receiver: deadmansswitch
+#       matchers:
+#         - alertname = "Watchdog"
+#       group_wait: 0s
+#       group_interval: 1m
+#       repeat_interval: 5m        # < healthchecks.io grace, so it never lapses
+#       continue: false
+#     # --- highest-priority pages: still Telegram, but no grouping delay -------
+#     - receiver: telegram
+#       matchers:
+#         - severity = "page"
+#       group_wait: 10s
+#       repeat_interval: 1h
+#
+# receivers:
+#   - name: telegram
+#     telegram_configs:
+#       - bot_token: '{{ "{{" }} .telegramBotToken {{ "}}" }}'   # ESO-injected
+#         chat_id: {{ "{{" }} .telegramChatId {{ "}}" }}          # ESO-injected (int)
+#         parse_mode: HTML
+#         api_url: https://api.telegram.org
+#         send_resolved: true
+#         message: |
+#           {{ "{{" }} if eq .Status "firing" {{ "}}" }}🔴 FIRING{{ "{{" }} else {{ "}}" }}✅ RESOLVED{{ "{{" }} end {{ "}}" }} [{{ "{{" }} .CommonLabels.severity {{ "}}" }}] {{ "{{" }} .CommonLabels.alertname {{ "}}" }}
+#           {{ "{{" }} range .Alerts {{ "}}" }}• {{ "{{" }} .Annotations.summary {{ "}}" }}
+#           ↳ first action: {{ "{{" }} .Annotations.first_action {{ "}}" }}
+#           ↳ runbook: {{ "{{" }} .Annotations.runbook_url {{ "}}" }}
+#           {{ "{{" }} end {{ "}}" }}
+#   - name: deadmansswitch
+#     webhook_configs:
+#       # Outbound HTTPS only. Points at a tiny in-cluster bridge OR directly at a
+#       # healthchecks.io ping (Alertmanager webhook posts JSON; healthchecks.io
+#       # accepts any POST as a ping). The ping URL is a capability secret → the
+#       # FULL url is ESO-injected, not in git.
+#       - url: '{{ "{{" }} .heartbeatPingUrl {{ "}}" }}'
+#         send_resolved: false
+#
+# inhibit_rules:
+#   - source_matchers: [ severity = "page" ]
+#     target_matchers: [ severity = "warn" ]
+#     equal: ['alertname', 'area']
+#   - source_matchers: [ alertname = "NodeNotReady" ]
+#     target_matchers: [ area = "workloads" ]
+#     equal: ['node']
+#
+# =============================================================================
+# Intentionally no live YAML doc separators here — this is a comment-only
+# reference. The applied config is the ESO-rendered Secret. See
+# ../secrets/externalsecrets-monitoring.yaml (`alertmanager-telegram`).

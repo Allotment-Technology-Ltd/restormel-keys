@@ -1,0 +1,161 @@
+# =============================================================================
+# Loki — Helm values  (plan §4 / D-M4)
+# -----------------------------------------------------------------------------
+# Chart: grafana/loki  PINNED 7.1.0  (appVersion Loki 3.x, verified 2026-06-20)
+# Mode: SINGLE BINARY (deploymentMode: SingleBinary) — single-process Loki is
+#       the right footprint for a lean cluster (plan §2.1 / §4). NOT the
+#       microservices/scalable target deployment.
+#
+# STORAGE CHOICE (D-M4) — DECISION: S3-backed on the EXISTING Hetzner Object
+# Storage (fsn1), the SAME object store CNPG/Barman already uses.
+#   WHY S3 (not filesystem PVC):
+#     - Reuses the fsn1 bucket already provisioned for CNPG backups → no new
+#       infra, ~€0 marginal (1 TB + 1 TB egress included; logs are tiny vs that).
+#     - Cheap long retention without growing the crowded .166 PVCs (plan §4:
+#       "cold tail to fsn1 mirroring the CNPG/restic cadence").
+#     - Decouples log durability from a single node's block volume.
+#   The chunk index uses TSDB; chunks + index ship to fsn1 over S3v4.
+#   *** A small PVC is STILL mounted for the WAL / boltdb-shipper active index +
+#       compactor working dir — S3 is the durable backing, not the live write path.
+#   FILESYSTEM FALLBACK (1-line revert if S3 bites): set
+#     loki.storage.type: filesystem and remove the s3 block + bucketNames; the
+#     singleBinary persistence PVC then becomes the chunk store. Documented in
+#     ../README.md.
+#
+# *** NO SECRET VALUES HERE *** — the fsn1 S3 access/secret keys come from the
+# ESO-rendered Secret `loki-s3-creds` (../secrets/externalsecrets-monitoring.yaml),
+# injected as env (extraEnvFrom) and referenced via ${ENV} in storage_config.
+# =============================================================================
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false          # single-tenant in-cluster; access gated at Grafana/ingress
+
+  # ---- schema: TSDB index, v13 (current) --------------------------------------
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  # ---- storage: S3 → fsn1 (creds via env from ESO Secret) ---------------------
+  storage:
+    type: s3
+    bucketNames:
+      chunks: restormel-loki-logs-fsn1
+      ruler: restormel-loki-logs-fsn1
+      admin: restormel-loki-logs-fsn1
+    s3:
+      endpoint: https://fsn1.your-objectstorage.com   # SAME endpoint as CNPG Barman
+      region: fsn1
+      s3ForcePathStyle: true
+      # Credentials are read from env (set via extraEnvFrom below). Loki expands
+      # ${VAR} in config when -config.expand-env=true (set in extraArgs).
+      accessKeyId: "${LOKI_S3_ACCESS_KEY_ID}"
+      secretAccessKey: "${LOKI_S3_SECRET_ACCESS_KEY}"
+      insecure: false
+
+  # ---- retention (plan §4: 30d hot; compactor enforces; cold tail to fsn1) ----
+  limits_config:
+    retention_period: 720h      # 30 days
+    # Bound ingestion so observability doesn't become the next egress runaway
+    # (plan §4: "alert on Loki dropped-lines / ingestion spikes").
+    ingestion_rate_mb: 8
+    ingestion_burst_size_mb: 16
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_query_series: 5000
+    volume_enabled: true        # enables log-volume queries for the RAG board
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+
+  # ---- expand ${ENV} in the config (so ESO-injected S3 creds resolve) ---------
+  extraArgs:
+    - -config.expand-env=true
+
+  # ---- ruler: send LogQL alerts to the in-cluster Alertmanager (plan §4) ------
+  rulerConfig:
+    storage:
+      type: s3
+      s3:
+        bucketnames: restormel-loki-logs-fsn1
+    alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+    enable_alertmanager_v2: true
+
+  # ---- modest resource ceiling --------------------------------------------------
+  server:
+    http_listen_port: 3100
+
+# ---- inject the fsn1 S3 creds from the ESO Secret as env --------------------
+# `${LOKI_S3_ACCESS_KEY_ID}` / `${LOKI_S3_SECRET_ACCESS_KEY}` above resolve from
+# these. Secret `loki-s3-creds` is ESO-rendered (../secrets/).
+extraEnvFrom:
+  - secretRef:
+      name: loki-s3-creds
+
+# =============================================================================
+# Single-binary deployment shape (one replica; tight resources; soft role=data)
+# =============================================================================
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: hcloud-volumes
+    size: 10Gi                 # WAL + active index + compactor working dir (S3 is durable backing)
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "768Mi"
+      cpu: "1"
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: role
+                operator: In
+                values: ["data"]
+
+# ---- disable the scalable-mode components (single-binary only) --------------
+backend: { replicas: 0 }
+read: { replicas: 0 }
+write: { replicas: 0 }
+
+# ---- chunk cache / results cache: keep small (memcached adds RAM we don't have)
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# ---- self-monitoring/canary off (kube-prometheus-stack scrapes Loki's /metrics
+#      via the ServiceMonitor below; the bundled canary + Grafana Agent are extra
+#      footprint we don't need on tight boxes)
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+
+# ---- ServiceMonitor so Prometheus scrapes Loki's own /metrics ---------------
+# (chart creates it under release labels; Prometheus selects it because the
+# kube-prometheus-stack values set serviceMonitorSelectorNilUsesHelmValues:false)
+serviceMonitor:
+  enabled: true
+
+# ---- gateway off: Grafana talks to the singleBinary Service directly ---------
+gateway:
+  enabled: false
+
+test:
+  enabled: false

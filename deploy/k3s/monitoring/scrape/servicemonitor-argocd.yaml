@@ -1,0 +1,87 @@
+# =============================================================================
+# ServiceMonitors — Argo CD  (plan point 4, §3 "Argo CD")
+# -----------------------------------------------------------------------------
+# Argo CD exposes Prometheus metrics on several components. We scrape:
+#   - argocd-metrics            (application controller — per-Application health,
+#                                sync status, OutOfSync/drift, reconcile latency)
+#   - argocd-server-metrics     (API/repo-server request metrics)
+#   - argocd-repo-server-metrics
+#   - argocd-applicationset-controller-metrics (if ApplicationSets are used)
+#   - argocd-redis (via redis exporter, if enabled)
+#
+# These ServiceMonitors carry NO release label; Prometheus discovers them because
+# the kube-prometheus-stack values set serviceMonitorSelectorNilUsesHelmValues:
+# false (cluster-wide selection). Argo CD runs in the `argocd` namespace (the
+# bootstrap install ns).
+#
+# The Argo metrics power the §5.1 alerts: "Argo drift on prod app" (OutOfSync/
+# Degraded) and "Argo PostSync / sync-operation failed" — see ../rules/.
+# =============================================================================
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["argocd"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-metrics
+  endpoints:
+    - port: metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-server-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["argocd"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server-metrics
+  endpoints:
+    - port: metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-repo-server-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["argocd"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  endpoints:
+    - port: metrics
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-applicationset-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  namespaceSelector:
+    matchNames: ["argocd"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-applicationset-controller
+  endpoints:
+    - port: metrics
+      interval: 30s

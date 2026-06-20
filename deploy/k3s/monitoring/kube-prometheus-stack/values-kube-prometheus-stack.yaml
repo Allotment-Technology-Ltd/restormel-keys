@@ -1,0 +1,332 @@
+# =============================================================================
+# kube-prometheus-stack — Helm values  (plan §2.1 / §3 / D-M3 / D-M11)
+# -----------------------------------------------------------------------------
+# Chart: prometheus-community/kube-prometheus-stack  PINNED 86.3.2
+#        (appVersion: prometheus-operator v0.91.0, verified 2026-06-20)
+# Delivers: Prometheus Operator + Prometheus + Alertmanager + Grafana +
+#           node-exporter (DaemonSet, replaces Beszel) + kube-state-metrics.
+#
+# Sizing posture (plan D-M11): the cluster runs on small 8 GB boxes (.150/.167)
+# + one 16 GB box (.166, role=data, also carries Forgejo/Infisical/CI). So:
+#   - SOFT affinity toward role=data (NOT a hard pin — plan §2.2 contention caveat)
+#   - tight retention (Prometheus 15d), requests/limits on every component
+#   - drop the noisy default rules that don't apply (etcd/kube-proxy handled by k3s)
+#   - one Prometheus replica (HA Prometheus would double RAM on tight boxes)
+#
+# *** NO SECRET VALUES HERE *** — Grafana admin creds come from the ESO-rendered
+# Secret `grafana-admin-credentials` (see ../secrets/externalsecrets-monitoring.yaml).
+# =============================================================================
+
+# --- Disable components k3s already provides / that aren't scrapable here -----
+# k3s bundles its own kube-proxy replacement (Cilium) + manages the control
+# plane components behind a single supervisor process; the default per-component
+# scrape endpoints (kube-scheduler/controller-manager/proxy on 1025x) are not
+# individually exposed. We DO scrape the kube-apiserver + kubelet (cAdvisor).
+# etcd is embedded in k3s; its metrics ServiceMonitor is provided separately in
+# ../scrape/servicemonitor-etcd.yaml (needs the k3s metrics flag + a client cert).
+kubeApiServer:
+  enabled: true
+kubelet:
+  enabled: true
+  serviceMonitor:
+    cAdvisor: true
+kubeControllerManager:
+  enabled: false        # not individually exposed by k3s supervisor
+kubeScheduler:
+  enabled: false        # not individually exposed by k3s supervisor
+kubeProxy:
+  enabled: false        # Cilium replaces kube-proxy (cni.mode: cilium)
+kubeEtcd:
+  enabled: false        # embedded k3s etcd — scraped via ../scrape/servicemonitor-etcd.yaml
+coreDns:
+  enabled: true
+
+# =============================================================================
+# Prometheus
+# =============================================================================
+prometheus:
+  prometheusSpec:
+    # ---- retention (plan §4: 15d hot) -------------------------------------
+    retention: 15d
+    retentionSize: "8GB"          # hard cap below the PVC size; protects the box
+
+    # ---- THE KEY SELECTOR SETTINGS (plan point 4 + D-M2) ------------------
+    # By default the chart only selects ServiceMonitors/PodMonitors/Rules that
+    # carry its own release label. Setting these to FALSE makes Prometheus
+    # discover EVERY ServiceMonitor / PodMonitor / PrometheusRule in EVERY
+    # namespace — so it picks up the CNPG PodMonitor in cnpg-system (D-M2),
+    # Cilium/Hubble, Traefik, cert-manager, ESO, Argo CD, and our hand-authored
+    # scrape configs under ../scrape/** with zero extra wiring.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+    # ---- external label so Alertmanager/DMS can identify the source cluster
+    externalLabels:
+      cluster: restormel-sovereign
+
+    # ---- persistence on Hetzner CSI (plan req 1: >=10Gi) ------------------
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: hcloud-volumes
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # ---- resources (tight; plan D-M11) ------------------------------------
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "100m"
+      limits:
+        memory: "1500Mi"          # bounded so it can't starve CNPG primaries on .166
+        cpu: "1"
+
+    # ---- soft affinity toward role=data (.166, most headroom) — NOT a pin --
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: role
+                  operator: In
+                  values: ["data"]
+
+    # tolerate swap-on nodes (the deliberate OOM cushion, design §2.1) — no
+    # special toleration needed; burst taint NOT tolerated so it never lands on
+    # scale-to-zero burst nodes.
+
+    # ---- scrape cadence: 30s keeps cardinality + RAM down on small boxes ---
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+  # Expose Prometheus only in-cluster (plan §2.3: Prometheus has no external UI;
+  # Grafana is the front door). port-forward for ad-hoc.
+  service:
+    type: ClusterIP
+
+# =============================================================================
+# Alertmanager — Telegram receiver + Watchdog→external DMS (plan §5, §6, D-M9)
+# -----------------------------------------------------------------------------
+# The chart-managed Alertmanager config is DISABLED here; the full routing tree
+# (Telegram + the Watchdog→healthchecks.io dead-man's-switch) is supplied as a
+# separate AlertmanagerConfig CR in ../alertmanager/ so secrets (the Telegram
+# bot token) come from ESO and never sit in Helm values.
+# =============================================================================
+alertmanager:
+  enabled: true
+  # Use the chart's Alertmanager CR but DO NOT inline its config — our routing +
+  # the Telegram bot token are delivered via the `alertmanager-telegram` Secret
+  # (ESO) referenced by alertmanagerSpec.configSecret below, so no token in git.
+  alertmanagerSpec:
+    configSecret: alertmanager-telegram     # ESO-rendered, ../secrets/
+    # Discover AlertmanagerConfig CRs in all namespaces (the Watchdog route +
+    # any future per-team routes) — same nil-uses-helm-values pattern.
+    alertmanagerConfigSelector: {}
+    alertmanagerConfigMatcherStrategy:
+      type: None
+    externalUrl: https://alerts.allotmentology.tech   # D-M13: hosts under *.allotmentology.tech
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: hcloud-volumes
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: role
+                  operator: In
+                  values: ["data"]
+  # Alertmanager UI stays cluster-internal (plan D-M15: rest internal). No Ingress.
+  service:
+    type: ClusterIP
+
+# =============================================================================
+# Grafana — the Ops Centre front door (plan §2.3 / §2.4)
+# -----------------------------------------------------------------------------
+# - admin creds via ESO (NO password in git)
+# - persistence on hcloud-volumes
+# - dashboard + datasource sidecars ON so the single-pane RAG board + Loki/
+#   Alertmanager datasources are provisioned from ConfigMaps (GitOps-managed)
+# - exposed externally via Traefik under grafana.allotmentology.tech (D-M13),
+#   fronted by the portal forward-auth middleware (D-M14) — see ../ingress note.
+# =============================================================================
+grafana:
+  enabled: true
+
+  # ---- admin credentials from the ESO-rendered Secret (plan req 1) ----------
+  # The chart reads admin-user/admin-password keys from this existing Secret.
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # ---- persistence -----------------------------------------------------------
+  persistence:
+    enabled: true
+    storageClassName: hcloud-volumes
+    accessModes: ["ReadWriteOnce"]
+    size: 5Gi
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "384Mi"
+      cpu: "500m"
+
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: role
+                operator: In
+                values: ["data"]
+
+  # ---- dashboard + datasource provisioning via sidecars (plan §2.4) ---------
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL            # pick up the RAG board ConfigMap from this ns
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+      searchNamespace: ALL
+
+  # ---- extra datasource: Loki (Prometheus datasource is auto-provisioned) ----
+  # Provisioned inline here so Grafana can query logs through the same pane
+  # (plan §2.3: "Loki logs are queried *through* Grafana").
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      jsonData:
+        maxLines: 1000
+    - name: Alertmanager
+      type: alertmanager
+      access: proxy
+      url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+      jsonData:
+        implementation: prometheus
+
+  # ---- Grafana served under its external host (D-M13). The Ingress + portal
+  #      forward-auth middleware are authored in ../grafana-ingress.yaml (HIGH-
+  #      RISK-SECURITY GATE) — NOT here, to keep the auth surface reviewed in one
+  #      place. The chart's own ingress is left DISABLED.
+  ingress:
+    enabled: false
+  grafana.ini:
+    server:
+      root_url: https://grafana.allotmentology.tech
+      # The portal forward-auth (Traefik middleware) terminates SSO at the edge;
+      # Grafana trusts the upstream-authenticated user header. Wiring (header
+      # name, auth proxy) is finalised under the high-risk-security gate.
+    users:
+      auto_assign_org_role: Viewer
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+
+# =============================================================================
+# node-exporter (DaemonSet) — replaces Beszel; uniform across CP + burst nodes
+# =============================================================================
+nodeExporter:
+  enabled: true
+prometheus-node-exporter:
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "25m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+  # tolerate the burst taint so burst nodes are also covered while they exist
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: burst
+      effect: NoSchedule
+
+# =============================================================================
+# kube-state-metrics — workload health (restarts, CrashLoop, Job/CronJob fails)
+# =============================================================================
+kubeStateMetrics:
+  enabled: true
+kube-state-metrics:
+  resources:
+    requests:
+      memory: "48Mi"
+      cpu: "25m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+
+# =============================================================================
+# Prometheus Operator
+# =============================================================================
+prometheusOperator:
+  resources:
+    requests:
+      memory: "96Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+  admissionWebhooks:
+    # patch job tolerates being scheduled anywhere
+    patch:
+      resources:
+        requests: { memory: "32Mi", cpu: "25m" }
+
+# =============================================================================
+# Default rules — keep the cluster-relevant ones, drop the inapplicable
+# (plan D-M3: "drop unused default rules"). Our hand-authored Phase-A alerts
+# live in ../rules/** and supplement these.
+# =============================================================================
+defaultRules:
+  create: true
+  rules:
+    etcd: false                 # embedded k3s etcd — covered by our own rule
+    kubeScheduler: false        # not individually exposed
+    kubeControllerManager: false
+    kubeProxy: false            # Cilium replaces kube-proxy
+    # keep: general, node, kubernetesApps, kubernetesResources,
+    #       kubernetesStorage, kubernetesSystem, kubeApiserver*, alertmanager,
+    #       prometheus, configReloaders, network — all relevant.
+
+# The chart ships a built-in "Watchdog" always-firing alert in defaultRules
+# (alertmanager group). We rely on it for the dead-man's-switch route (plan §6).
+
+# =============================================================================
+# Disable Windows / thanos / other unused subcharts to keep footprint minimal
+# =============================================================================
+windowsMonitoring:
+  enabled: false

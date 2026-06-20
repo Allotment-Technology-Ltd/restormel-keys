@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Traefik forwardAuth middleware — REUSE the portal's existing Better-Auth SSO.
+# ---------------------------------------------------------------------------
+# Ports the EXACT pattern already proven in prod for the Coolify tile
+# (allotmentology repo: web/infra/traefik/coolify-portal.deployed.yaml) into the
+# IN-CLUSTER K3s Traefik. The middleware calls the public portal endpoint
+# OUTBOUND — https://allotmentology.tech/api/forward-auth — which validates the
+# Better-Auth session cookie (scoped to `.allotmentology.tech`), checks the
+# AUTH_ALLOWED_EMAILS allowlist, and checks public.users.approval_status.
+#   2xx  -> Traefik forwards the original request to the dashboard (access granted)
+#   3xx/4xx/5xx -> Traefik relays that response (a 302 bounces the browser to the
+#                  portal sign-in). The endpoint fails CLOSED.
+#
+# WHY THIS WORKS (D-M13 finding): the dashboards are hosted under
+# *.allotmentology.tech (NOT *.restormel.dev), so the `.allotmentology.tech`
+# session cookie is sent on requests to grafana./argo./status., Traefik copies it
+# onto its call to /api/forward-auth, and the existing portal session carries
+# straight in. Cross-apex cookies do NOT flow, which is why restormel.dev was
+# rejected.
+#
+# Decisions: D-M14 (reuse forward-auth, NO oauth2-proxy) · D-M13 (apex) · D-M15
+# (Grafana + Argo + status external; Hubble + Alertmanager stay internal).
+#
+# >>> AUTH SURFACE: route this through `restormel-high-risk-security` before any PR. <<<
+# ---------------------------------------------------------------------------
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: portal-forward-auth
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+    app.kubernetes.io/component: auth
+spec:
+  forwardAuth:
+    # Outbound to the PUBLIC portal endpoint — the cluster Traefik does NOT need
+    # in-cluster reachability to the portal; this is the same call the Coolify
+    # file-provider middleware already makes from the box Traefik.
+    address: "https://allotmentology.tech/api/forward-auth"
+    # Required: forward the X-Forwarded-* headers so the endpoint can build the
+    # correct sign-in redirect and see the original Host/Proto/Uri.
+    trustForwardHeader: true
+    # The endpoint authorizes on the Cookie header (Better-Auth session). It
+    # returns no auth headers we need to copy back, so authResponseHeaders is
+    # intentionally omitted (matches the proven Coolify config).
+---
+# HTTP->HTTPS redirect, mirroring the proven config's `coolify-portal-redirect`.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

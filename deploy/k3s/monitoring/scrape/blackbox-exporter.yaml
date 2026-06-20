@@ -1,0 +1,156 @@
+# =============================================================================
+# Blackbox exporter + Probes — endpoint liveness  (plan §3 SurrealDB, §5.1)
+# -----------------------------------------------------------------------------
+# SurrealDB exposes NO /metrics port (plan §3: "no `/metrics` port exists ->
+# blackbox `/health`"). The blackbox exporter HTTP-probes liveness endpoints; the
+# Prometheus Operator `Probe` CR points it at targets. Two probe targets:
+#   1. surreal-db.data.svc.cluster.local:8000/health  (in-cluster Service)
+#   2. https://surreal.restormel.dev/health           (the public ingress —
+#      HARD UseSophia invariant; a dark endpoint must page immediately, plan §3)
+#
+# We also probe restormel.dev + allotmentology.tech so the §2.4 "Apps/Edge" tiles
+# have an at-a-glance liveness signal. All probes are OUTBOUND HTTP(S) GETs to
+# PUBLIC endpoints (or the in-cluster Service) — they never dial a box private API
+# (REC-INC-006 invariant; the cluster Service is in-cluster, not a runner->on-box
+# private call).
+#
+# Powers §5.1 "Surreal endpoint dark" + the Edge/Apps RAG tiles.
+# blackbox runs as a small Deployment in the monitoring ns; Prometheus discovers
+# the Probe CRs because probeSelectorNilUsesHelmValues:false is set.
+# =============================================================================
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_status_codes: [200]
+          method: GET
+          preferred_ip_protocol: ip4
+          follow_redirects: true
+      http_2xx_insecure:
+        prober: http
+        timeout: 5s
+        http:
+          valid_status_codes: [200]
+          method: GET
+          tls_config:
+            insecure_skip_verify: true
+      tcp_connect:
+        prober: tcp
+        timeout: 5s
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: role
+                    operator: In
+                    values: ["data"]
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.27.0   # pinned
+          args:
+            - --config.file=/etc/blackbox/blackbox.yml
+          ports:
+            - name: http
+              containerPort: 9115
+          resources:
+            requests: { memory: "24Mi", cpu: "10m" }
+            limits:   { memory: "64Mi", cpu: "100m" }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+          readinessProbe:
+            httpGet: { path: /-/healthy, port: http }
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
+---
+# ---- Probe: SurrealDB (in-cluster Service + public ingress) ------------------
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: surreal-health
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  jobName: surreal-health
+  interval: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - http://surreal-db.data.svc.cluster.local:8000/health
+        - https://surreal.restormel.dev/health
+      labels:
+        service: surrealdb
+---
+# ---- Probe: public app endpoints (Edge/Apps RAG tiles) ----------------------
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: public-endpoints
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+spec:
+  jobName: public-endpoints
+  interval: 60s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - https://restormel.dev
+        - https://allotmentology.tech
+      labels:
+        service: public-edge

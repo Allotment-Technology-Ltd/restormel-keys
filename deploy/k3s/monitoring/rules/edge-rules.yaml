@@ -1,0 +1,78 @@
+# =============================================================================
+# PrometheusRule — Edge: cert-manager + Traefik  (plan §5.1)
+# -----------------------------------------------------------------------------
+# Cert expiry (all public TLS flows through DNS-01 wildcards; a stuck renewal is
+# a silent time-bomb) + Traefik 5xx rate (single-node ingress = the sole public
+# entry; the #166 PostHog "5xx spike" alert moves here, at the edge).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: edge-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # =========================================================================
+    - name: cert-manager.expiry
+      rules:
+        - alert: CertExpiringSoon
+          expr: |
+            (certmanager_certificate_expiration_timestamp_seconds - time()) < (21 * 24 * 3600)
+          for: 1h
+          labels: { severity: warn, area: edge }
+          annotations:
+            summary: "TLS cert {{ $labels.name }} expires in <21d"
+            description: >-
+              Certificate {{ $labels.name }} ({{ $labels.namespace }}) expires within
+              21 days. All public TLS (*.restormel.dev / *.allotmentology.tech
+              wildcards) flows through DNS-01; a stuck renewal takes the estate
+              offline at expiry.
+            first_action: "Check the cert-manager renewal + the DNS-01 challenge (Hetzner DNS token ExternalSecret `hetzner-dns-token`)."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cert-expiry"
+
+        - alert: CertNotReady
+          expr: |
+            certmanager_certificate_ready_status{condition="False"} == 1
+            and on (name, namespace)
+            (certmanager_certificate_expiration_timestamp_seconds - time()) < (21 * 24 * 3600)
+          for: 30m
+          labels: { severity: page, area: edge }
+          annotations:
+            summary: "TLS cert {{ $labels.name }} NOT renewing + expiring <21d"
+            description: "Certificate {{ $labels.name }} is in Ready=False AND within 21d of expiry — renewal is stuck."
+            first_action: "Inspect the Certificate + Order/Challenge resources; check ACME + the Hetzner DNS-01 solver webhook."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#cert-expiry"
+
+    # =========================================================================
+    - name: traefik.edge
+      rules:
+        # ---- 5xx rate over baseline (the earliest user-facing signal) -------
+        - alert: Traefik5xxSpike
+          expr: |
+            sum(rate(traefik_router_requests_total{code=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(traefik_router_requests_total[5m])), 1)
+            > 0.05
+          for: 5m
+          labels: { severity: page, area: edge }
+          annotations:
+            summary: "Traefik edge 5xx rate >5% (5m)"
+            description: >-
+              Over 5% of ingress requests are 5xx. Single-node ingress is the sole
+              public entry — this is the earliest user-facing outage signal (the
+              catalog 503, REC-INC-001, is the class this covers).
+            first_action: "Identify the router (per-router metrics); correlate Loki logs + Hubble flows; rate-limit if it's abuse."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#traefik-5xx"
+
+        - alert: TraefikConfigReloadFailing
+          expr: increase(traefik_config_reloads_failure_total[15m]) > 0
+          for: 5m
+          labels: { severity: warn, area: edge }
+          annotations:
+            summary: "Traefik config reload failing"
+            description: "Traefik failed to reload its dynamic config — new routes/middlewares (incl. the portal forward-auth) may not be applied."
+            first_action: "Check Traefik logs for the rejected config; verify recent IngressRoute/middleware changes."
+            runbook_url: "https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-keys/src/branch/main/docs/runbooks/infra-alert-response.md#traefik-config"

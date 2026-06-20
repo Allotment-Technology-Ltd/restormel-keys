@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# Argo CD IngressRoute — argo.allotmentology.tech, gated by the portal SSO.
+# ---------------------------------------------------------------------------
+# D-M15: Argo CD is exposed externally (alongside Grafana + the status page) for
+# the portal launchpad. The portal forward-auth gate fronts it; Argo's OWN RBAC
+# login is the second layer (admin/SSO) — same two-layer model the proven Coolify
+# tile uses ("portal session gates it, then Coolify's own login").
+#
+# Argo CD runs in the `argocd` namespace, so the IngressRoute + a local copy of
+# the middlewares live there too (Traefik middlewares are namespace-scoped; an
+# IngressRoute references a Middleware by name+namespace). Either duplicate the
+# two middlewares into `argocd`, OR (cleaner) reference the monitoring-ns ones via
+# the `<namespace>-<name>@kubernetescrd` cross-namespace form if
+# `allowCrossNamespace` is enabled on the Traefik provider. Shown here with a
+# local middleware copy for least surprise.
+#
+# NOTE: Argo's server must run with `--insecure` (TLS terminated at Traefik) OR
+# the route must use a serversTransport that trusts Argo's self-signed cert. The
+# kube-prometheus pattern is to terminate TLS at Traefik and run argocd-server
+# insecure behind it (set `configs.params."server.insecure": true` in argo-cd
+# Helm values — that is an Argo config change, coordinate with the gitops PR).
+#
+# >>> AUTH SURFACE: restormel-high-risk-security before any PR. <<<
+# ---------------------------------------------------------------------------
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: portal-forward-auth
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  forwardAuth:
+    address: "https://allotmentology.tech/api/forward-auth"
+    trustForwardHeader: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  entryPoints: ["websecure"]
+  routes:
+    - kind: Rule
+      match: Host(`argo.allotmentology.tech`)
+      middlewares:
+        - name: portal-forward-auth
+          namespace: argocd
+      services:
+        - name: argocd-server
+          port: 80   # argocd-server http port when run with server.insecure=true
+  tls:
+    secretName: wildcard-allotmentology-tech-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-http
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ops-centre
+spec:
+  entryPoints: ["web"]
+  routes:
+    - kind: Rule
+      match: Host(`argo.allotmentology.tech`)
+      middlewares:
+        - name: https-redirect
+          namespace: argocd
+      services:
+        - name: argocd-server
+          port: 80

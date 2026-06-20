@@ -1,0 +1,22 @@
+# =============================================================================
+# Namespace: monitoring — the Ops Centre stack's home (plan §2.2 / D-M1)
+# -----------------------------------------------------------------------------
+# In-cluster primary stack runs here: Prometheus Operator + Prometheus +
+# Alertmanager + Grafana + node-exporter + kube-state-metrics (kube-prometheus-
+# stack), Loki, Grafana Alloy (DaemonSet), the dead-man's-switch CronJob.
+#
+# The kube-prometheus-stack Application (CreateNamespace=true) will create this
+# ns if it does not exist; it is declared explicitly here so labels +
+# observability-plane classification are GitOps-managed (matches the surreal
+# `data` ns convention in deploy/k3s/surreal/00-namespace.yaml).
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-stack
+    restormel.dev/plane: observability
+    # Lets the kube-prometheus-stack ServiceMonitor/PodMonitor namespaceSelector
+    # match this ns explicitly if it is ever narrowed from "all namespaces".
+    monitoring: "true"

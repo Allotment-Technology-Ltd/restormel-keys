@@ -1,0 +1,39 @@
+# =============================================================================
+# Watchdog — always-firing alert for the dead-man's-switch  (plan §6, D-M9)
+# -----------------------------------------------------------------------------
+# An alert that is ALWAYS firing. Routed (in ../alertmanager/) to a receiver that
+# pings an EXTERNAL heartbeat (healthchecks.io). If the cluster or Alertmanager
+# dies, the ping STOPS and the external service alarms — an outside system catches
+# a total estate outage (D-M9 RESOLVED: founder accepts the .166 SPOF, so this
+# external DMS is the ONLY guaranteed off-estate pager).
+#
+# kube-prometheus-stack ships a built-in `Watchdog` alert in its default rules; we
+# author our own explicitly too so the DMS does not depend on a default we might
+# later prune, and so the alertname is stable for the Alertmanager route.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: watchdog
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: restormel-monitoring
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: meta.watchdog
+      rules:
+        - alert: Watchdog
+          # vector(1) is always true → this alert is permanently firing.
+          expr: vector(1)
+          labels:
+            severity: none
+            area: meta
+          annotations:
+            summary: "Alertmanager watchdog — proves the alert pipeline is alive"
+            description: >-
+              This alert is ALWAYS firing. It is routed to an external heartbeat
+              (healthchecks.io). The EXTERNAL service alarms if it STOPS receiving
+              this — i.e. if Prometheus/Alertmanager/the cluster is dead. The
+              presence of this alert is healthy; its ABSENCE (seen externally) is
+              the incident.
