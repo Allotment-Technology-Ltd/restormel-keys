@@ -11,9 +11,11 @@
 
 `hetzner-k3s create` provisions **new Hetzner Cloud nodes** for everything in
 `masters_pool`. Our three control-plane members are the **existing** boxes
-(.167 / .150 / .166) — Robot/dedicated machines running prod, **not** new Cloud
-nodes. Setting `instance_count: 3` would spin up three *extra* Cloud servers
-(unwanted spend, wrong machines). So the tool provisions **one** node — the
+(.167 / .150 / .166) — **existing Hetzner Cloud servers** running prod (`cx33` /
+`cx33` / `cx43`, hel1; verified via the hcloud API 2026-06-20), **not** new nodes
+for the tool to create. Setting `instance_count: 3` would spin up three *extra*,
+brand-new Cloud servers (unwanted spend, wrong machines — they would NOT be these
+prod boxes). So the tool provisions **one** node — the
 temporary CX43 bootstrap node — and the boxes are **hand-joined** as additional
 control-plane servers out-of-band. hetzner-k3s then *manages* the resulting
 cluster (CCM / CSI / autoscaler).
