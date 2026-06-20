@@ -76,7 +76,7 @@ spec:
     size: 10Gi
     storageClass: *sc
   walStorage:
-    size: 4Gi
+    size: 10Gi          # Hetzner CSI minimum is 10Gi — a smaller request silently rounds up (rehearsal finding 2026-06-20)
     storageClass: *sc
 
   resources:
