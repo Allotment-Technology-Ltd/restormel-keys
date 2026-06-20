@@ -1,0 +1,105 @@
+# =============================================================================
+# CNPG Cluster: pg-platform — SHARED cluster (medium criticality)
+# =============================================================================
+# DESIGN ARTEFACT ONLY — not applied.
+#
+# Hosts the lower-criticality, co-locatable databases:
+#   - allotmentology     (allotmentology.tech web app)
+#   - restormel_staging  (Restormel staging dashboard DB)
+#   - usesophia          (UseSophia / Sophia app DB — ONLY AFTER Sophia's DB
+#                         migration off Firestore; see MIGRATION.md. Created
+#                         here pre-emptively but stays unused until that move.)
+#
+# One CNPG cluster, multiple databases. instances: 2 (primary + standby),
+# Hetzner CSI volumes, separate walStorage, backups → fsn1 via the plugin.
+# Additional databases beyond the bootstrap one are created via the
+# `managed.databases` declarative API (CNPG ≥ 1.25) so all three live in-cluster.
+# -----------------------------------------------------------------------------
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-platform
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-migration
+    restormel.dev/criticality: shared
+spec:
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.8
+  instances: 2
+  primaryUpdateStrategy: unsupervised
+
+  bootstrap:
+    initdb:
+      # The first/primary database for the cluster. The other two are added
+      # declaratively below via spec.managed.databases.
+      database: allotmentology
+      owner: allotmentology_app
+      secret:
+        name: pg-platform-allotmentology-creds
+      encoding: UTF8
+      localeCType: C
+      localeCollate: C
+
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: pg-platform-superuser
+
+  # ---- declaratively-managed extra databases + their owner roles. ----------
+  # restormel_staging and usesophia live alongside allotmentology in one cluster.
+  # Roles/passwords come from ESO-rendered Secrets (placeholders).
+  managed:
+    roles:
+      - name: restormel_staging_app
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-platform-restormel-staging-creds
+      - name: usesophia_app
+        ensure: present
+        login: true
+        passwordSecret:
+          name: pg-platform-usesophia-creds
+    # `databases` is the CNPG declarative Database management surface; for
+    # operators that don't yet support inline `managed.databases`, create the
+    # equivalent `kind: Database` (postgresql.cnpg.io/v1) resources instead.
+    databases:
+      - name: restormel_staging
+        owner: restormel_staging_app
+        ensure: present
+      - name: usesophia
+        owner: usesophia_app
+        ensure: present
+
+  # ---- storage: shared cluster, tight per-the-sizing-doc (PoC traffic). -----
+  storageClass: &sc hcloud-volumes
+  storage:
+    size: 10Gi
+    storageClass: *sc
+  walStorage:
+    size: 4Gi
+    storageClass: *sc
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: "256MB"
+      archive_timeout: "60s"
+
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backups-fsn1
+
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred

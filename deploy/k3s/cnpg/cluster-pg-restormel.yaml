@@ -1,0 +1,92 @@
+# =============================================================================
+# CNPG Cluster: pg-restormel — THE LIVE PROD APP DB (highest criticality)
+# =============================================================================
+# DESIGN ARTEFACT ONLY — not applied.
+#
+# Hosts `restormel_ops` — the dashboard's operational database (the same DB the
+# P3 self-hosted-Postgres runbook stood up on Coolify). Isolated in its own
+# cluster so the prod app DB never shares a failure domain with staging / other
+# products. Schema is vanilla PG16-portable (verified in P3 runbook §0): no
+# Neon-isms, no extensions beyond core gen_random_uuid().
+#
+# Topology: 1 primary + 1 hot standby (instances: 2), Hetzner CSI volumes,
+# SEPARATE walStorage PVC (WAL I/O isolated from the data volume), continuous
+# archiving + base backups to fsn1 via the Barman Cloud Plugin.
+# -----------------------------------------------------------------------------
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-restormel
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-migration
+    restormel.dev/criticality: prod
+spec:
+  # PG16 — matches the P3 cutover target (schema verified portable to PG16).
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.8
+  instances: 2                       # primary + 1 standby
+  primaryUpdateStrategy: unsupervised
+
+  # ---- bootstrap: an EMPTY cluster with the app DB + role. ------------------
+  # Data is loaded by the pg_dump/restore cutover (see MIGRATION.md), NOT by
+  # bootstrap.recovery — source stays authoritative until verified.
+  # To do a fresh PITR-from-fsn1 restore instead, see recovery-example.yaml.
+  bootstrap:
+    initdb:
+      database: restormel_ops
+      owner: restormel_app
+      # App role password rendered by ESO (placeholder Secret).
+      secret:
+        name: pg-restormel-app-creds
+      encoding: UTF8
+      localeCType: C
+      localeCollate: C
+
+  # ---- superuser secret (ESO-rendered placeholder; superuser access ON so
+  #      pg_dump/restore + migrations can run during cutover). ---------------
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: pg-restormel-superuser
+
+  # ---- storage: tight sizing for the operational DB (~55 tables). ----------
+  storageClass: &sc hcloud-volumes
+  storage:
+    size: 10Gi
+    storageClass: *sc
+  # SEPARATE WAL volume — isolates WAL fsync from data-file I/O.
+  walStorage:
+    size: 4Gi
+    storageClass: *sc
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: "256MB"
+      # Encourage WAL archiving cadence without starving throughput.
+      archive_timeout: "60s"
+
+  # ---- backup via Barman Cloud PLUGIN → fsn1 ObjectStore. ------------------
+  # isWALArchiver: true → this plugin owns WAL archiving (continuous PITR).
+  # barmanObjectName must match the ObjectStore in objectstore-fsn1.yaml.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backups-fsn1
+
+  # ---- pod anti-affinity so the two instances don't co-locate. -------------
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred
+
+  # Hold off auto-deleting PVCs on cluster delete (safety during migration).
+  # (CNPG default retains; stated explicitly for the prod cluster.)
