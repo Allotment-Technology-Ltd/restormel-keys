@@ -1,0 +1,37 @@
+# Ingress for SurrealDB — keeps `surreal.restormel.dev` STABLE.
+#
+# HARD INVARIANT (design §3.5/§5): `surreal.restormel.dev` is a cross-phase Sophia
+# dependency. Sophia (still on Railway during Phase A) connects to wss://surreal.restormel.dev;
+# the migration is transparent to Sophia *because* this name keeps resolving — only the DNS
+# A record flips to the K3s ingress IP, no Sophia code/env change at this step. Never let this
+# host go dark.
+#
+# SurrealDB serves HTTP `/sql` and WebSocket RPC on the same :8000, so a single ingress route
+# carries both https:// and wss:// (WS upgrade is transparent to Traefik). TLS via cert-manager
+# (DNS-01 wildcard preferred — design §3.4).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: surreal
+  namespace: data
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dns01
+    # Generous timeouts: long-lived WS RPC connections + large import/export streams.
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - surreal.restormel.dev
+      secretName: surreal-tls # cert-manager fills this; or the wildcard *.restormel.dev cert
+  rules:
+    - host: surreal.restormel.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: surreal-db
+                port:
+                  number: 8000

@@ -1,0 +1,65 @@
+# Non-secret shared config for the Supabase stack. Secrets come from ESO (10-externalsecret.yaml).
+#
+# IMPORTANT — Postgres target: every service points at the `pg-plotbudget` CNPG cluster
+# (design §4.1), NOT a Supabase-bundled Postgres. The connection STRINGS carry credentials and
+# therefore live in the `supabase-core` ExternalSecret (DB_PLOTBUDGET_URL); only host/port/db
+# fragments that are non-secret live here.
+#
+# CNPG exposes two services for the cluster named `pg-plotbudget` in namespace `data`:
+#   pg-plotbudget-rw.data.svc.cluster.local:5432  (read/write, primary)
+#   pg-plotbudget-ro.data.svc.cluster.local:5432  (read-only, replicas)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supabase-config
+  namespace: supabase
+data:
+  # Public-facing URLs — PlotBudget production domain (design §3.5 TBD: confirm with founder).
+  SITE_URL: "https://app.plotbudget.com"
+  API_EXTERNAL_URL: "https://api.plotbudget.com"
+  SUPABASE_PUBLIC_URL: "https://api.plotbudget.com"
+  ADDITIONAL_REDIRECT_URLS: "https://app.plotbudget.com"
+
+  # CNPG service host/port/db (non-secret fragments; full URL w/ creds is in supabase-core).
+  POSTGRES_HOST: "pg-plotbudget-rw.data.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "plotbudget"
+
+  # GoTrue
+  GOTRUE_SITE_URL: "https://app.plotbudget.com"
+  GOTRUE_URI_ALLOW_LIST: "https://app.plotbudget.com"
+  GOTRUE_DISABLE_SIGNUP: "false"
+  GOTRUE_JWT_EXP: "3600"
+  GOTRUE_JWT_DEFAULT_GROUP_NAME: "authenticated"
+  GOTRUE_JWT_ADMIN_ROLES: "service_role"
+  GOTRUE_JWT_AUD: "authenticated"
+  GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+  GOTRUE_MAILER_AUTOCONFIRM: "false"
+  # OAuth providers (creds via supabase-auth ExternalSecret); redirect goes through Kong.
+  GOTRUE_EXTERNAL_GOOGLE_ENABLED: "true"
+  GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: "https://api.plotbudget.com/auth/v1/callback"
+  GOTRUE_EXTERNAL_APPLE_ENABLED: "true"
+  GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: "https://api.plotbudget.com/auth/v1/callback"
+  # Send-email hook -> the self-hosted send-resend-email function (see README).
+  GOTRUE_HOOK_SEND_EMAIL_ENABLED: "true"
+  GOTRUE_HOOK_SEND_EMAIL_URI: "http://send-resend-email.supabase.svc.cluster.local:9000/send-resend-email"
+
+  # PostgREST
+  PGRST_DB_SCHEMAS: "public,storage,graphql_public"
+  PGRST_DB_ANON_ROLE: "anon"
+  PGRST_DB_USE_LEGACY_GUCS: "false"
+
+  # Realtime
+  REALTIME_DB_NAME: "plotbudget"
+  REALTIME_DB_HOST: "pg-plotbudget-rw.data.svc.cluster.local"
+  REALTIME_DB_PORT: "5432"
+
+  # Storage — S3 backend = Hetzner Object Storage (hel1). See README for the justification
+  # vs in-cluster MinIO.
+  STORAGE_BACKEND: "s3"
+  STORAGE_S3_ENDPOINT: "https://hel1.your-objectstorage.com"
+  STORAGE_S3_REGION: "hel1"
+  STORAGE_S3_BUCKET: "plotbudget-storage"
+  STORAGE_S3_FORCE_PATH_STYLE: "true"
+  STORAGE_FILE_SIZE_LIMIT: "52428800" # 50 MiB
+  STORAGE_TENANT_ID: "plotbudget"

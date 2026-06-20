@@ -1,0 +1,193 @@
+# Kong API gateway — the single public entrypoint for the Supabase stack. Fronts auth/rest/
+# realtime/storage/functions and Studio, applies key-auth (anon/service_role) + ACL + CORS.
+# Routes use cluster service DNS (e.g. http://auth.supabase.svc.cluster.local:9999).
+#
+# Kong runs in DB-less declarative mode; the config is the ConfigMap below. The ANON_KEY /
+# SERVICE_ROLE_KEY are interpolated by Kong's `$(...)` env templating at boot (KONG_DECLARATIVE
+# placeholders are filled from the supabase-core secret, mounted as env). Studio basic-auth
+# creds come from supabase-studio.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: supabase
+data:
+  kong.yml: |
+    _format_version: "2.1"
+    _transform: true
+
+    consumers:
+      - username: DASHBOARD
+      - username: anon
+        keyauth_credentials:
+          - key: $SUPABASE_ANON_KEY
+      - username: service_role
+        keyauth_credentials:
+          - key: $SUPABASE_SERVICE_KEY
+
+    acls:
+      - consumer: anon
+        group: anon
+      - consumer: service_role
+        group: admin
+
+    services:
+      - name: auth-v1-open
+        url: http://auth.supabase.svc.cluster.local:9999/verify
+        routes:
+          - name: auth-v1-open
+            strip_path: true
+            paths: [/auth/v1/verify]
+        plugins:
+          - name: cors
+      - name: auth-v1-open-callback
+        url: http://auth.supabase.svc.cluster.local:9999/callback
+        routes:
+          - name: auth-v1-open-callback
+            strip_path: true
+            paths: [/auth/v1/callback]
+        plugins:
+          - name: cors
+      - name: auth-v1
+        url: http://auth.supabase.svc.cluster.local:9999/
+        routes:
+          - name: auth-v1-all
+            strip_path: true
+            paths: [/auth/v1/]
+        plugins:
+          - name: cors
+          - name: key-auth
+            config: { hide_credentials: false }
+          - name: acl
+            config: { hide_groups_header: true, allow: [admin, anon] }
+      - name: rest-v1
+        url: http://rest.supabase.svc.cluster.local:3000/
+        routes:
+          - name: rest-v1-all
+            strip_path: true
+            paths: [/rest/v1/]
+        plugins:
+          - name: cors
+          - name: key-auth
+            config: { hide_credentials: true }
+          - name: acl
+            config: { hide_groups_header: true, allow: [admin, anon] }
+      - name: realtime-v1-ws
+        url: http://realtime.supabase.svc.cluster.local:4000/socket
+        protocol: http
+        routes:
+          - name: realtime-v1-ws
+            strip_path: true
+            paths: [/realtime/v1/]
+        plugins:
+          - name: cors
+          - name: key-auth
+            config: { hide_credentials: false }
+          - name: acl
+            config: { hide_groups_header: true, allow: [admin, anon] }
+      - name: storage-v1
+        url: http://storage.supabase.svc.cluster.local:5000/
+        routes:
+          - name: storage-v1-all
+            strip_path: true
+            paths: [/storage/v1/]
+        plugins:
+          - name: cors
+      - name: functions-v1
+        url: http://send-resend-email.supabase.svc.cluster.local:9000/
+        routes:
+          - name: functions-v1-all
+            strip_path: true
+            paths: [/functions/v1/]
+        plugins:
+          - name: cors
+      - name: dashboard
+        url: http://studio.supabase.svc.cluster.local:3000/
+        routes:
+          - name: dashboard-all
+            strip_path: true
+            paths: [/]
+        plugins:
+          - name: cors
+          - name: basic-auth
+            config: { hide_credentials: true }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: supabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kong
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kong
+    spec:
+      containers:
+        - name: kong
+          image: kong/kong:3.9.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: proxy
+              containerPort: 8000
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: /kong/kong.yml
+            - name: KONG_DNS_ORDER
+              value: "LAST,A,CNAME"
+            - name: KONG_PLUGINS
+              value: "request-transformer,cors,key-auth,acl,basic-auth"
+            - name: KONG_NGINX_PROXY_PROXY_BUFFER_SIZE
+              value: "160k"
+            - name: KONG_NGINX_PROXY_PROXY_BUFFERS
+              value: "64 160k"
+            # Interpolated into kong.yml by Kong's env templating.
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: ANON_KEY }
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-core, key: SERVICE_ROLE_KEY }
+          volumeMounts:
+            - name: kong-config
+              mountPath: /kong
+              readOnly: true
+          livenessProbe:
+            httpGet: { path: /, port: proxy }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /, port: proxy }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "50m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+      volumes:
+        - name: kong-config
+          configMap:
+            name: kong-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong
+  namespace: supabase
+  labels:
+    app.kubernetes.io/name: kong
+spec:
+  selector:
+    app.kubernetes.io/name: kong
+  ports:
+    - name: proxy
+      port: 8000
+      targetPort: proxy

@@ -1,0 +1,10 @@
+# Self-hosted Supabase stack for PlotBudget (planning/full-migration-plan-k3s.md §B,
+# Option 1). Runs in its own namespace; the Postgres it talks to is NOT here — it is the
+# `pg-plotbudget` CNPG cluster (design §4.1), referenced by service DNS.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: supabase
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-stack
+    restormel.dev/plane: app

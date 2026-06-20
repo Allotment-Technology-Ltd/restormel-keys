@@ -1,0 +1,10 @@
+# SurrealDB lives in its own k8s namespace `data` (matches the node role=data in
+# planning/k3s-cluster-target-design.md §2). CNPG clusters and Supabase also land here
+# so a single NetworkPolicy boundary (Cilium) can isolate the data plane from build/ops pods.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    app.kubernetes.io/part-of: restormel-sovereign-stack
+    restormel.dev/plane: data
