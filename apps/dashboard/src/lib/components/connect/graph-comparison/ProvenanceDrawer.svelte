@@ -9,12 +9,22 @@
   /** Opaque workspace id for the Phase 3 north metric (non-PII). Null when unknown. */
   export let workspaceId: string | null = null;
 
-  let open = false;
+  // Open by default so the cited sources are visible the moment an answer lands —
+  // citations are the trust payload, not a hidden detail.
+  let open = true;
 
-  function truncate(text: string, max = 80): string {
+  function truncate(text: string, max = 140): string {
     const t = text.trim();
     return t.length <= max ? t : `${t.slice(0, max).trimEnd()}…`;
   }
+
+  /** A citation is "broken" when its claim has no source title to point at. */
+  function citationMissing(claim: ProvenanceClaim): boolean {
+    const title = claim.sourceTitle?.trim() ?? "";
+    return title === "" || title.toLowerCase() === "untitled source";
+  }
+
+  $: brokenCount = claims.filter(citationMissing).length;
 
   /**
    * W4.3: the prove-it gesture on the MCP answer's verified-claim envelope.
@@ -46,37 +56,32 @@
     on:click={() => (open = !open)}
   >
     <span class="caret" class:open aria-hidden="true">▶</span>
-    SOURCES ({claims.length} {claims.length === 1 ? "claim" : "claims"} used)
+    CITED SOURCES ({claims.length} {claims.length === 1 ? "claim" : "claims"})
+    {#if brokenCount > 0}
+      <span class="broken-flag">· {brokenCount} missing citation{brokenCount === 1 ? "" : "s"}</span>
+    {/if}
   </button>
 
   {#if open}
     <div class="drawer-body">
       {#if claims.length === 0}
-        <p class="drawer-empty">No verified claims were injected for this answer.</p>
+        <p class="drawer-empty">
+          No verified claims backed this answer — it was not grounded in your graph.
+        </p>
       {:else}
-        <ul class="claim-list">
-          {#each claims as claim (claim.id)}
+        <ol class="claim-list">
+          {#each claims as claim, i (claim.id)}
             <!-- The metric fires on the prove-it link inside this row (delegated);
                  the row itself is not interactive, so no extra a11y role is needed. -->
             <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
             <li
               class="claim"
               class:weak={claim.verification === "weak"}
+              class:broken={citationMissing(claim)}
               on:click={(ev) => onClaimRowClick(claim, ev)}
             >
-              <p class="claim-text">
-                <!-- W4.3: the shared ProveLink renders the prove-it affordance (dotted
-                     underline + ↗) so the gesture is one component, not a hand-rolled <a>. -->
-                <ProveLink
-                  href={dossierHref(claim)}
-                  class="claim-link"
-                  label="Open this claim's evidence dossier in Claims"
-                >
-                  {truncate(claim.text)}
-                </ProveLink>
-              </p>
-              <div class="claim-meta">
-                <span class="claim-source">{claim.sourceTitle}</span>
+              <div class="claim-head">
+                <span class="claim-num" aria-hidden="true">[{i + 1}]</span>
                 <span class="claim-badge" class:weak={claim.verification === "weak"}>
                   {claim.verification === "supported" ? "SUPPORTED" : "WEAK"}
                 </span>
@@ -84,9 +89,28 @@
                   <span class="claim-trust">trust {Math.round(claim.trustScore)}</span>
                 {/if}
               </div>
+              <p class="claim-text">
+                <!-- W4.3: the shared ProveLink renders the prove-it affordance (dotted
+                     underline + ↗) so the gesture is one component, not a hand-rolled <a>.
+                     The quoted span IS the evidence — clicking opens its source span. -->
+                <ProveLink
+                  href={dossierHref(claim)}
+                  class="claim-link"
+                  label={`Open the source span for citation ${i + 1}`}
+                >
+                  “{truncate(claim.text)}”
+                </ProveLink>
+              </p>
+              <p class="claim-source" class:missing={citationMissing(claim)}>
+                {#if citationMissing(claim)}
+                  ⚠ Source not recorded for this claim — citation cannot be verified.
+                {:else}
+                  Source: {claim.sourceTitle}
+                {/if}
+              </p>
             </li>
           {/each}
-        </ul>
+        </ol>
       {/if}
       <p class="trace">
         Retrieved using {trace.traversalType} across {trace.hops}
@@ -143,6 +167,10 @@
     color: var(--color-ink-faint);
   }
 
+  .broken-flag {
+    color: var(--state-fail-fg);
+  }
+
   .claim-list {
     list-style: none;
     margin: 0;
@@ -150,6 +178,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    counter-reset: citation;
   }
 
   .claim {
@@ -157,13 +186,33 @@
     background: var(--color-bg);
     border-left: 3px solid var(--color-yellow);
     /* W4.5 a11y (#294): the claim row (which carries the inline prove-it claim
-       link to the dossier) is a ≥44px target. The link text itself is an
+       link to the source span) is a ≥44px target. The link text itself is an
        in-sentence link — exempt from 2.5.8 — but the row it sits in is sized so
-       the dossier deep-link is comfortably tappable. */
+       the source deep-link is comfortably tappable. */
     min-height: 44px;
   }
   .claim.weak {
     border-left: 3px dashed var(--color-ink);
+  }
+  .claim.broken {
+    border-left: 3px solid var(--state-fail-fg);
+  }
+
+  .claim-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    letter-spacing: var(--text-mono-tracking);
+    color: var(--color-ink-faint);
+  }
+
+  .claim-num {
+    font-weight: 700;
+    color: var(--color-ink);
   }
 
   .claim-text {
@@ -177,19 +226,16 @@
   /* The dotted-underline + ↗ + yellow hover now come from the global `.prove-it`
      rule (W4.3); nothing claim-local to add. */
 
-  .claim-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
+  .claim-source {
+    margin: 0;
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     letter-spacing: var(--text-mono-tracking);
-    color: var(--color-ink-faint);
-  }
-
-  .claim-source {
     color: var(--color-ink-muted);
+  }
+  .claim-source.missing {
+    color: var(--state-fail-fg);
+    font-weight: 700;
   }
 
   .claim-badge {

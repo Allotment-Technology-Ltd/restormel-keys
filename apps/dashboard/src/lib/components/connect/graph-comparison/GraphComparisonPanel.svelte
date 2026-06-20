@@ -6,10 +6,12 @@
     RetrievalSummary,
     SuggestedQuestion,
   } from "$lib/connect/graph-comparison-types";
+  import { deriveAnswerVerdict } from "$lib/connect/graph-comparison-types";
   import { streamComparison } from "$lib/connect/comparison-stream";
   import { INGEST_FLOW_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
   import ComparisonQuestion from "./ComparisonQuestion.svelte";
   import ResponsePanel from "./ResponsePanel.svelte";
+  import VerdictBadge from "./VerdictBadge.svelte";
   import QualityDeltaPanel from "./QualityDelta.svelte";
   import ExportTraceLink from "./ExportTraceLink.svelte";
 
@@ -20,6 +22,10 @@
   export let proveBase = "/keys/dashboard/prove";
   /** Opaque workspace id (non-PII) threaded to the claim→span north metric. */
   export let workspaceId: string | null = null;
+  /** True when the console is answering over the seeded first-run demo graph. */
+  export let isDemo = false;
+  /** Pre-authored demo questions (incl. a deliberate abstention) — first-run fallback. */
+  export let demoQuestions: { type: "answerable" | "abstention"; question: string }[] = [];
 
   type PanelMode = "raw" | "graph";
   type PanelState = {
@@ -44,6 +50,13 @@
   let question = "";
   let running = false;
 
+  /**
+   * Depth toggle (Stage 1 reframe): the verified answer is the hero by default;
+   * the raw-vs-graph side-by-side is opt-in depth, not the framing. Turning it on
+   * also streams the baseline so the quality delta can be computed.
+   */
+  let showComparison = false;
+
   let panelRaw: PanelState = initialPanel();
   let panelGraph: PanelState = initialPanel();
   let delta: QualityDelta | null = null;
@@ -58,6 +71,10 @@
   const controllers: Partial<Record<PanelMode, AbortController>> = {};
 
   $: noRoutes = routes.length === 0;
+  $: hasAnswer = panelGraph.status === "complete";
+  // The verdict is derived from the verified answer's retrieved claims (or null
+  // when retrieval failed entirely — distinct from a designed abstention).
+  $: verdict = hasAnswer ? deriveAnswerVerdict(panelGraph.retrieval) : null;
 
   function setPanel(mode: PanelMode, next: PanelState): void {
     if (mode === "raw") panelRaw = next;
@@ -113,6 +130,7 @@
   }
 
   async function maybeRunDelta(): Promise<void> {
+    if (!showComparison) return;
     if (panelRaw.status !== "complete" || panelGraph.status !== "complete") return;
     deltaLoading = true;
     try {
@@ -138,14 +156,20 @@
     }
   }
 
-  async function runComparison(q: string, seeds: string[] = []): Promise<void> {
+  /**
+   * Ask → verified answer. The graph-grounded answer always streams (the hero);
+   * the raw baseline only streams when the depth toggle is on, so the default
+   * experience is "one verified answer", not "compare two boxes".
+   */
+  async function ask(q: string, seeds: string[] = []): Promise<void> {
     if (!q.trim() || noRoutes) return;
     lastQuestion = q.trim();
     lastSeeds = seeds;
     question = q;
     delta = null;
     running = true;
-    await Promise.allSettled([streamOne("raw"), streamOne("graph")]);
+    const jobs = showComparison ? [streamOne("graph"), streamOne("raw")] : [streamOne("graph")];
+    await Promise.allSettled(jobs);
     running = false;
     await maybeRunDelta();
   }
@@ -156,8 +180,28 @@
     await maybeRunDelta();
   }
 
+  /** Reveal the baseline on demand: stream it for the current answer, then delta. */
+  async function enableComparison(): Promise<void> {
+    showComparison = true;
+    if (!lastQuestion) return;
+    if (panelRaw.status === "idle" || panelRaw.status === "error") {
+      await streamOne("raw");
+    }
+    await maybeRunDelta();
+  }
+
   function handleSelectSuggestion(suggestion: SuggestedQuestion): void {
-    void runComparison(suggestion.question, suggestion.seedNodeIds);
+    void ask(suggestion.question, suggestion.seedNodeIds);
+  }
+
+  /** Map the pre-authored demo questions into the suggestion shape (no seeds). */
+  function demoToSuggestions(): SuggestedQuestion[] {
+    return demoQuestions.map((q, i) => ({
+      id: `demo-${i}`,
+      question: q.question,
+      type: q.type === "abstention" ? "generic" : ("A" as const),
+      seedNodeIds: [],
+    }));
   }
 
   async function loadSuggestions(): Promise<void> {
@@ -172,9 +216,19 @@
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as { questions?: SuggestedQuestion[] };
-      suggestions = data.questions ?? [];
+      const generated = data.questions ?? [];
+      // First-run/demo fallback: if the generator returns nothing (e.g. no chat
+      // route yet), surface the curated demo questions incl. the abstention demo.
+      suggestions = generated.length > 0 ? generated : demoToSuggestions();
     } catch {
-      suggestionsFailed = true;
+      // Never leave a first-run user with an empty console: fall back to the demo
+      // questions when the generator errors.
+      if (demoQuestions.length > 0) {
+        suggestions = demoToSuggestions();
+        suggestionsFailed = false;
+      } else {
+        suggestionsFailed = true;
+      }
     } finally {
       suggestionsLoading = false;
     }
@@ -192,7 +246,12 @@
 
 <section class="proof">
   <header class="proof-head">
-    <span class="proof-tag">PROVE YOUR GRAPH</span>
+    <div class="proof-headings">
+      <span class="proof-tag">ASK · GET A VERIFIED ANSWER</span>
+      <p class="proof-lede">
+        Ask a question — get an answer bound to verified claims, each quoting its source.
+      </p>
+    </div>
     {#if !noRoutes}
       <label class="route-picker">
         <span class="route-label">MODEL</span>
@@ -207,11 +266,19 @@
     {/if}
   </header>
 
+  {#if isDemo && hasGraph}
+    <p class="demo-banner">
+      <strong>Demo graph.</strong> You're asking a small pre-loaded knowledge graph so you can see a
+      verified answer right away — connect your own sources to answer over your data.
+    </p>
+  {/if}
+
   {#if !hasGraph}
     <div class="empty">
-      <h2 class="empty-title">YOUR GRAPH HAS NOTHING TO COMPARE YET</h2>
+      <h2 class="empty-title">NOTHING TO ANSWER FROM YET</h2>
       <p class="empty-body">
-        Run your first ingest to build your knowledge graph, then come back here to see what it knows.
+        Connect a source and run your first ingest to build a knowledge graph, then ask it a question
+        here to get a verified, cited answer.
       </p>
       <a class="empty-cta brut-pressable brut-focus" href={INGEST_FLOW_HREF}>
         START YOUR FIRST RUN →
@@ -222,7 +289,7 @@
       <p>
         Configure a model route in
         <a href={INGEST_ROUTES_HREF}>Ingest routes</a>
-        before testing your graph.
+        before asking your graph a question.
       </p>
     </div>
   {:else}
@@ -233,19 +300,16 @@
       {suggestions}
       {suggestionsLoading}
       {suggestionsFailed}
-      onCompare={(q) => runComparison(q)}
+      onCompare={(q) => ask(q)}
       onSelectSuggestion={handleSelectSuggestion}
     />
 
-    <div class="panels">
-      <ResponsePanel
-        variant="raw"
-        status={panelRaw.status}
-        text={panelRaw.text}
-        model={panelRaw.model}
-        error={panelRaw.error}
-        onRetry={() => retry("raw")}
-      />
+    {#if verdict}
+      <VerdictBadge summary={verdict} />
+    {/if}
+
+    <!-- Hero: the verified answer. The raw baseline is opt-in depth (below). -->
+    <div class="answer">
       <ResponsePanel
         variant="graph"
         status={panelGraph.status}
@@ -264,10 +328,39 @@
       </div>
     {/if}
 
-    {#if delta}
-      <QualityDeltaPanel {delta} />
-    {:else if deltaLoading}
-      <p class="delta-pending">Analysing the difference…</p>
+    <!-- Optional depth: compare the same question without the graph. -->
+    {#if hasAnswer || showComparison}
+      <div class="depth">
+        {#if !showComparison}
+          <button type="button" class="depth-toggle brut-focus" on:click={enableComparison}>
+            COMPARE WITHOUT THE GRAPH →
+          </button>
+        {:else}
+          <div class="depth-head">
+            <span class="depth-label">WITHOUT THE GRAPH (BASELINE)</span>
+            <button
+              type="button"
+              class="depth-toggle depth-toggle-hide brut-focus"
+              on:click={() => (showComparison = false)}
+            >
+              HIDE
+            </button>
+          </div>
+          <ResponsePanel
+            variant="raw"
+            status={panelRaw.status}
+            text={panelRaw.text}
+            model={panelRaw.model}
+            error={panelRaw.error}
+            onRetry={() => retry("raw")}
+          />
+          {#if delta}
+            <QualityDeltaPanel {delta} />
+          {:else if deltaLoading}
+            <p class="delta-pending">Analysing the difference…</p>
+          {/if}
+        {/if}
+      </div>
     {/if}
   {/if}
 </section>
@@ -288,6 +381,12 @@
     gap: var(--space-4);
   }
 
+  .proof-headings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
   .proof-tag {
     font-family: var(--font-mono);
     font-size: var(--text-mono-lg);
@@ -295,6 +394,69 @@
     letter-spacing: var(--text-mono-tracking);
     text-transform: uppercase;
     color: var(--color-ink);
+  }
+
+  .proof-lede {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-body-md);
+    line-height: 1.5;
+    color: var(--color-ink-muted);
+  }
+
+  .demo-banner {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: var(--border);
+    border-left-width: 6px;
+    background: var(--color-yellow);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    line-height: 1.5;
+  }
+
+  .answer {
+    display: block;
+  }
+
+  .depth {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .depth-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .depth-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .depth-toggle {
+    align-self: flex-start;
+    background: var(--color-surface);
+    border: var(--border-thin);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+  .depth-toggle-hide {
+    color: var(--color-blue);
   }
 
   .route-picker {
@@ -318,12 +480,6 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-md);
     padding: var(--space-2) var(--space-3);
-  }
-
-  .panels {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
   }
 
   .trace-row {
@@ -400,12 +556,6 @@
     }
     50% {
       opacity: 0.45;
-    }
-  }
-
-  @media (max-width: 860px) {
-    .panels {
-      grid-template-columns: 1fr;
     }
   }
 

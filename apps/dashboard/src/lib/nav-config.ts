@@ -41,8 +41,15 @@ export const TESTING_HUB_HREF = DASHBOARD_BASE + "/testing";
 /** The per-stage ingest-routes view, rehomed under Routes (§2.3 `/connect/models` → MOVE). */
 export const INGEST_ROUTES_HREF = DASHBOARD_BASE + "/routes/ingestion";
 
-/** Workspace home (login landing). Alias kept for marketing/dashboard entry helpers. */
-export const WORKSPACE_HOME_HREF = HOME_HREF;
+/**
+ * Phase 3 Stage 1 — the verified-query Answer Console (the Prove "Proof" tab).
+ * North Star = verified answers at query time, so this is the dashboard's default
+ * landing. `/home` remains the operator masthead, reachable from the work nav.
+ */
+export const ANSWER_CONSOLE_HREF = PROVE_HREF + "/proof";
+
+/** Workspace landing (login + dashboard root). Phase 3 Stage 1: the Answer Console. */
+export const WORKSPACE_HOME_HREF = ANSWER_CONSOLE_HREF;
 
 /** Primary work destinations — the golden path, top of the sidebar. */
 export const WORK_NAV_ITEMS: NavItem[] = [

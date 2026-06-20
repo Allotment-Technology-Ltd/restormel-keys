@@ -14,6 +14,12 @@ import {
 } from "$lib/server/connect/stage-routing";
 import type { ChatRouteOption } from "$lib/connect/graph-comparison-types";
 import { sessionUser } from "$lib/server/session-user";
+import {
+  seedDemoGraph,
+  demoGraphSuggestedQuestions,
+  workspaceHasDemoGraph,
+  type DemoGraphSuggestedQuestion,
+} from "$lib/server/connect/demo-graph/seed-demo-graph";
 
 const CHAT_STAGES = new Set(["extraction", "grouping", "validation", "remediation"]);
 
@@ -24,6 +30,10 @@ type ProofData = {
   routes: ChatRouteOption[];
   suggestCacheKey: string;
   proveBase: string;
+  /** True when the graph the console answers over is the seeded first-run demo. */
+  isDemo: boolean;
+  /** Pre-authored demo questions (incl. a deliberate abstention) — first-run fallback. */
+  demoQuestions: DemoGraphSuggestedQuestion[];
 };
 
 type ProofDataWithState = ProofData & { signedIn: boolean; loadError: boolean };
@@ -35,6 +45,8 @@ const SIGNED_OUT: ProofDataWithState = {
   routes: [],
   suggestCacheKey: "",
   proveBase: DASHBOARD_BASE + "/prove",
+  isDemo: false,
+  demoQuestions: [],
   signedIn: false,
   loadError: false,
 };
@@ -46,6 +58,8 @@ const LOAD_ERROR: ProofDataWithState = {
   routes: [],
   suggestCacheKey: "",
   proveBase: DASHBOARD_BASE + "/prove",
+  isDemo: false,
+  demoQuestions: [],
   signedIn: true,
   loadError: true,
 };
@@ -62,16 +76,42 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
     const userId = user.uid;
     event.depends(`app:connect-proof:${wsId}`);
 
-    const [target, stats] = await Promise.all([
+    let [target, stats] = await Promise.all([
       getGraphTargetForUi(wsId).catch(() => null),
       peekConnectGraphStats(wsId).catch(() => null),
     ]);
 
+    // First-run ungate (Phase 3 Stage 1): the Answer Console is the home hero, so a
+    // brand-new workspace with no graph must still answer. Idempotently seed the
+    // Stage-0 demo graph into the Postgres spine (zero ingest, zero external store)
+    // and re-read stats. Best-effort — a seed failure must not break the console.
+    let firstRunSeeded = false;
+    if (!target || target.status !== "ok" || (stats?.units ?? 0) === 0) {
+      try {
+        const seedResult = await seedDemoGraph(wsId);
+        firstRunSeeded = !seedResult.already_seeded;
+        [target, stats] = await Promise.all([
+          getGraphTargetForUi(wsId).catch(() => null),
+          peekConnectGraphStats(wsId).catch(() => null),
+        ]);
+      } catch {
+        /* seeding is best-effort; fall through to the empty-state UI */
+      }
+    }
+
     const graphNodeCount = stats?.units ?? 0;
     const relations = stats?.relations ?? 0;
     const hasGraph = Boolean(target && target.status === "ok" && graphNodeCount > 0);
+    // The console is answering over the demo graph when the workspace's only graph
+    // is the seeded first-run demo (Postgres-spine, one-click dashboard DB). Used for
+    // copy + the suggested-question fallback. Probed once; cheap single-row lookup.
+    const isDemo =
+      hasGraph &&
+      target?.provider === "postgres" &&
+      (firstRunSeeded || (await workspaceHasDemoGraph(wsId).catch(() => false)));
 
     const routes = await resolveChatRoutes(wsId, userId).catch(() => [] as ChatRouteOption[]);
+    const demoQuestions = isDemo ? safeDemoQuestions() : [];
 
     return {
       workspaceId: wsId,
@@ -80,6 +120,8 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
       routes,
       suggestCacheKey: `${wsId}:${graphNodeCount}:${relations}`,
       proveBase: DASHBOARD_BASE + "/prove",
+      isDemo,
+      demoQuestions,
       signedIn: true,
       loadError: false,
     };
@@ -87,6 +129,15 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
     return LOAD_ERROR;
   }
 };
+
+/** Demo seed questions, never throwing — a missing seed must not break the page. */
+function safeDemoQuestions(): DemoGraphSuggestedQuestion[] {
+  try {
+    return demoGraphSuggestedQuestions();
+  } catch {
+    return [];
+  }
+}
 
 async function resolveChatRoutes(workspaceId: string, userId: string): Promise<ChatRouteOption[]> {
   const ctx = await resolveKnowledgeRouteExecutionContext({ workspaceId, userId });

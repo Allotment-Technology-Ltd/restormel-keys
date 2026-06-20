@@ -50,8 +50,10 @@ describe("sidebar nav (§2.2)", () => {
     ]);
   });
 
-  it("login landing (workspace home) is /home", () => {
-    expect(WORKSPACE_HOME_HREF).toBe(DASHBOARD_BASE + "/home");
+  it("workspace landing is the verified Answer Console (Phase 3 Stage 1)", () => {
+    // Stage 1 makes the verified-query surface the default landing (North Star =
+    // verified answers at query time). `/home` remains the operator masthead in nav.
+    expect(WORKSPACE_HOME_HREF).toBe(DASHBOARD_BASE + "/prove/proof");
   });
 
   it("has exactly two collapsed groups: Foundation and Observe", () => {

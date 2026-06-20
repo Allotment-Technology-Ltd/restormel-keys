@@ -38,6 +38,66 @@ export type RetrievalSummary = {
   trace: RetrievalTrace;
 };
 
+/**
+ * The two-layer trust verdict shown above an answer (Phase 3 Stage 1).
+ * Every label is backed by the retrieved claims — no quality word is unearned.
+ *  - `grounded`     — verified claims were retrieved; the answer is source-bound.
+ *  - `uncertain`    — claims were retrieved but some are weak/contested.
+ *  - `abstained`    — no verified claim matched; the graph honestly declined.
+ */
+export type AnswerVerdict = "grounded" | "uncertain" | "abstained";
+
+export type AnswerVerdictSummary = {
+  verdict: AnswerVerdict;
+  label: string;
+  /** Short, true description of why this verdict — shown under the badge. */
+  detail: string;
+  supportedCount: number;
+  weakCount: number;
+  totalClaims: number;
+};
+
+/**
+ * Derive the verdict from a retrieval summary. Pure + shared (client renders it,
+ * server can assert on it). Abstention (zero claims) is a designed state.
+ */
+export function deriveAnswerVerdict(
+  retrieval: Pick<RetrievalSummary, "claims"> | null,
+): AnswerVerdictSummary {
+  const claims = retrieval?.claims ?? [];
+  const supportedCount = claims.filter((c) => c.verification === "supported").length;
+  const weakCount = claims.length - supportedCount;
+
+  if (claims.length === 0) {
+    return {
+      verdict: "abstained",
+      label: "Insufficient evidence — abstained",
+      detail: "No verified claim in your graph matched this question, so the answer is not graph-grounded.",
+      supportedCount: 0,
+      weakCount: 0,
+      totalClaims: 0,
+    };
+  }
+  if (weakCount > 0) {
+    return {
+      verdict: "uncertain",
+      label: "Some uncertainty",
+      detail: `${supportedCount} supported, ${weakCount} weaker ${weakCount === 1 ? "claim" : "claims"} — read the cited sources before relying on this.`,
+      supportedCount,
+      weakCount,
+      totalClaims: claims.length,
+    };
+  }
+  return {
+    verdict: "grounded",
+    label: "Grounded",
+    detail: `Answer bound to ${supportedCount} verified ${supportedCount === 1 ? "claim" : "claims"}, each quoting its source.`,
+    supportedCount,
+    weakCount: 0,
+    totalClaims: claims.length,
+  };
+}
+
 export type QualityVerdict = "significant" | "moderate" | "minimal";
 
 export type QualityDelta = {

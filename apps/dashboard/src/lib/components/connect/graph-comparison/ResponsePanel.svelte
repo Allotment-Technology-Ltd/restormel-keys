@@ -13,10 +13,10 @@
   export let workspaceId: string | null = null;
 
   $: isGraph = variant === "graph";
-  $: heading = isGraph ? "WITH YOUR KNOWLEDGE GRAPH" : "WITHOUT KNOWLEDGE GRAPH";
+  $: heading = isGraph ? "VERIFIED ANSWER" : "BASELINE (NO GRAPH)";
   $: claimCount = retrieval?.claims.length ?? 0;
   $: idlePlaceholder = isGraph
-    ? "The knowledge graph response will appear here."
+    ? "Ask a question above to get a verified, cited answer."
     : "The base model response will appear here.";
 
   $: subLabel = (() => {

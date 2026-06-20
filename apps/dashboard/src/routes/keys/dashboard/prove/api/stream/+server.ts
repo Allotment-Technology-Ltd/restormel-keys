@@ -20,6 +20,7 @@ import { toRetrievalSummary } from "$lib/server/graph-comparison/provenance";
 import { buildProvenanceTraceFromRetrieval } from "$lib/server/connect-v1/provenance-trace-builder";
 import { insertProvenanceTrace } from "$lib/server/connect-traces";
 import { getSelectedDomainPackId } from "$lib/server/connect/domain-pack-service";
+import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
 import type { ComparisonStreamEvent } from "$lib/connect/graph-comparison-types";
 import { sessionUser } from "$lib/server/session-user";
 
@@ -121,12 +122,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
           if (!retrieval.degraded && retrieval.result.claims.length > 0) {
             try {
               const traceId = crypto.randomUUID();
+              const graphTarget = await getConnectGraphTargetForWorkspace(workspace.id).catch(
+                () => null,
+              );
               const trace = buildProvenanceTraceFromRetrieval({
                 traceId,
                 query: question,
                 workspaceId: workspace.id,
                 domainPack: (await getSelectedDomainPackId(workspace.id)) ?? "unknown",
-                graphStoreType: "surreal",
+                graphStoreType: graphTarget?.provider ?? "surreal",
                 queriedAt: new Date().toISOString(),
                 verificationPolicy: COMPARISON_VERIFICATION_POLICY,
                 tokenBudget: 0,
