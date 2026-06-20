@@ -41,7 +41,7 @@ This table is the single source of truth for the cross-cutting decisions; both t
 | Area | Decision |
 |---|---|
 | Cluster topology | 3 existing boxes as HA embedded-etcd control-plane (schedulable) + scale-to-zero burst pool (enabled day-1, min=0/max=2) |
-| **Migration approach** | **Path A "bootstrap node": cluster starts on a temporary **Hetzner Cloud** server (≈ **CCX23**, x86, 4 vCPU / 16 GB) on the **€20 "Hetzner Cloud Community" credit (redeem before 31 Aug 2026)** → migrate state onto the cluster → fold the 3 existing boxes in as they free up → retire the temp node. NEVER convert a live prod box in-place. NOT a Robot/dedicated server — €20 won't cover one + hetzner-k3s manages Cloud only.** |
+| **Migration approach** | **Path A "bootstrap node": cluster starts on a temporary **Hetzner Cloud** server (**CX43**, shared vCPU, 8 vCPU / 16 GB, x86) on the **€20 "Hetzner Cloud Community" credit (redeem before 31 Aug 2026)** → migrate state onto the cluster → fold the 3 existing boxes in as they free up → retire the temp node. NEVER convert a live prod box in-place. NOT a Robot/dedicated server — €20 won't cover one + hetzner-k3s manages Cloud only.** |
 | Postgres | CloudNativePG, hybrid (shared `pg-platform` + dedicated `pg-restormel` + `pg-plotbudget`); instances:2 |
 | PG backups | CNPG Barman → Hetzner Object Storage **fsn1** (cross-region PITR) + restic → Storage Box (cold) |
 | SurrealDB | in-cluster 1-replica StatefulSet on Hetzner CSI; `surreal.restormel.dev` DNS kept stable (UseSophia dependency) |
@@ -55,7 +55,7 @@ This table is the single source of truth for the cross-cutting decisions; both t
 | **PlotBudget** | **Option 1** (self-host Supabase: GoTrue+PostgREST+Storage+Realtime on K3s, backed by CNPG); **short maintenance-window cutover** (pg_dump/restore + rehearsed runbook + positive/negative RLS revalidation) |
 | Restormel/Allotmentology cutover | short pg_dump maintenance window |
 | DR targets | RTO ≤ 2h; RPO ≤ 5min (Postgres) / ~1h (SurrealDB hourly export) |
-| Cost | ~+€7–9/mo (fsn1 object storage + tight CSI volumes); burst €0 at rest; temp Cloud bootstrap node on the **€20 Hetzner Cloud Community credit** (hourly; ~3.5 wks of a CCX23) |
+| Cost | ~+€7–9/mo (fsn1 object storage + tight CSI volumes); burst €0 at rest; temp Cloud bootstrap node on the **€20 Hetzner Cloud Community credit** (hourly; **CX43** shared-vCPU ≈ €0.0256/h → a multi-day migration window ≈ €1–2, credit covers ~32 days. The 15 Jun 2026 price hike pushed dedicated-vCPU **CCX23 to €0.138/h / €86-mo** — shared-vCPU CX is the deliberate cheaper choice; the temp node never hosts CNPG/data so dedicated vCPU is unnecessary) |
 
 ---
 
@@ -218,7 +218,7 @@ sovereignty win (Neon = US company, eu-west-2 AWS) and is recorded in the Decisi
 ```
 PHASE A  (Coolify → K3s; the foundation — Path-A bootstrap)        depends on
 ─────────────────────────────────────────────────────           ──────────
-A0  Provision a temp Hetzner Cloud node (CCX23 x86, €20 credit);   ← Decisions register (Path A)
+A0  Provision a temp Hetzner Cloud node (CX43 shared-vCPU x86, €20 credit); ← Decisions register (Path A)
     bootstrap the K3s cluster on it (hetzner-k3s) + ingress/cert-mgr
 A1  CNPG operator + cluster(s) on cluster storage (Hetzner CSI)    ← A0
 A2  SurrealDB StatefulSet on CSI; restore dump; keep              ← A1   ⟶ unblocks UseSophia (Phase B)
@@ -277,8 +277,8 @@ that needs a formal, tested cutover runbook** (it's a security boundary over rea
 7. **Cutover windows → short pg_dump maintenance windows** (pre-launch, low traffic; logical replication
    deferred until live with real users). PlotBudget's auth + RLS migration still gets a **rehearsed, tested
    cutover runbook** with positive/negative RLS revalidation (security boundary over real financial data).
-8. **Migration approach → Path A temp-node bootstrap** (build on a temporary **Hetzner Cloud** node — CCX23
-   x86 — on the **€20 "Hetzner Cloud Community" credit, redeemed before 31 Aug 2026**; fold the boxes in,
+8. **Migration approach → Path A temp-node bootstrap** (build on a temporary **Hetzner Cloud** node — **CX43**
+   shared-vCPU x86 — on the **€20 "Hetzner Cloud Community" credit, redeemed before 31 Aug 2026**; fold the boxes in,
    retire the temp node; never convert a live prod box in-place. NOT a Robot/dedicated server.)
 9. **PlotBudget auth → Better Auth LATER** (separate ADR, post-cutover; GoTrue moves as-is at cutover).
 

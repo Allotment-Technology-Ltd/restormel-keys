@@ -26,8 +26,7 @@ migration; cost-constrained Forgejo/CI placement).
 > [full-migration-plan-k3s.md](full-migration-plan-k3s.md); the shared Decisions register there is authoritative.
 
 > **Founder decisions (2026-06-19)** — refining §3.3/§3.4/§4.4 and resolving the first four §10 questions:
-> **(1) Migration = Path A** — build the cluster on a temporary **Hetzner Cloud** node (≈ **CCX23**, x86,
-> 16 GB) on the **€20 "Hetzner Cloud Community" credit (redeem before 31 Aug 2026)** — NOT a Robot/dedicated
+> **(1) Migration = Path A** — build the cluster on a temporary **Hetzner Cloud** node (**CX43**, shared vCPU, 8 vCPU / 16 GB, x86) on the **€20 "Hetzner Cloud Community" credit (redeem before 31 Aug 2026)** — NOT a Robot/dedicated
 > server (€20 won't cover one; hetzner-k3s provisions Cloud) — migrate state onto it, fold the 3 boxes in,
 > then retire the temp node (de-risks converting the live prod box).
 > **(2) DNS = consolidate onto Hetzner DNS** (free) → cert-manager **DNS-01** (wildcards); **deSEC** is the
@@ -137,7 +136,7 @@ Boxes **run prod during migration**, so `hetzner-k3s` must not reprovision them.
   migrate least-critical workloads, free `.150`, join it, then `.167` last. hetzner-k3s then *manages* the
   hand-joined cluster (CCM/CSI/autoscaler). Keeps prod up, adds €0. **Order: `.166` → `.150` → `.167`.**
 - **Path A — DECIDED (uses the €20 "Hetzner Cloud Community" credit):** stand the cluster up on a
-  **temporary Hetzner Cloud node** (≈ **CCX23**, x86, 16 GB — NOT a Robot/dedicated server; hetzner-k3s
+  **temporary Hetzner Cloud node** (**CX43**, shared vCPU, 8 vCPU / 16 GB, x86 — NOT a Robot/dedicated server; hetzner-k3s
   provisions Cloud, and €20 won't cover a dedicated box), migrate state onto it, then fold the existing boxes
   in and retire the temp node. De-risks converting a live prod box in place. **Redeem the credit before its
   31 Aug 2026 expiry.** (This supersedes the Path-B default described above.)
