@@ -155,6 +155,41 @@ channel; PostHog stays the product error tracker.**
  PRODUCT (SaaS EU): PostHog — app errors + security/business events + Signals  → Telegram
 ```
 
+### 2.3 Visual access — the dashboards + company-portal integration
+
+The Ops Centre's UI surface, fronted by **Grafana**:
+
+- **Grafana** (the front door) — every dashboard (cluster, CNPG/backups, nodes, apps) + the unified alert view; Loki logs are queried *through* Grafana.
+- **Hubble UI** (Cilium) — live network flows / policy drops · **Argo CD UI** — sync/health/drift · **Alertmanager** — active/silenced alerts · **Uptime-Kuma** — the external status page (the off-estate meta-monitor).
+
+**Exposure.** Traefik ingress + cert-manager TLS per UI at stable hostnames under `*.restormel.dev` (e.g. `grafana.`, `hubble.`, `argo.`, `alerts.`, `status.`). UIs not needed externally (Hubble, Alertmanager) can stay cluster-internal / `kubectl port-forward` only — least exposure.
+
+**Auth — single sign-on, NOT per-tool passwords.** An `oauth2-proxy` (or Traefik forward-auth) middleware fronts the UIs, tied to the **company portal's Better Auth** so one login carries through (Grafana can alternatively use its native OAuth against the same IdP). Interim fallback before SSO is wired: Traefik basic-auth + operator-IP allowlist. **These UIs expose infra internals → auth is mandatory and this is a high-risk surface — route the auth wiring through `restormel-high-risk-security`.**
+
+**Company-portal integration (allotmentology.tech).** Add an **"Ops Centre" card/section to the portal launchpad** linking to Grafana (+ the others), alongside the existing infra links. This is **cross-repo**: the ingress + auth manifests live HERE (restormel-keys, `deploy/k3s/monitoring/`); the launchpad links live in the **allotmentology repo** (a small follow-up PR there). With Better-Auth SSO, the portal session flows straight into the dashboards — no second login.
+
+Open decisions for this: §10 **D-M13** (hostname scheme), **D-M14** (auth method), **D-M15** (which UIs are external vs internal-only).
+
+### 2.4 The single-pane overview — at-a-glance operational health
+
+The Ops Centre's **home** is ONE curated Grafana dashboard: a **RAG (red/amber/green) status board** of the most important operational areas, readable in a glance, where **each tile is a drill-down link** into the detailed view (CNPG dashboard, Hubble, Argo, logs, …). This is the dashboard the company-portal **"Ops Centre" card opens by default** (§2.3) — the "what's happening right now" front door; the deep views are one click in.
+
+At-a-glance tiles (Phase A):
+
+| Tile | Green / Amber / Red signal |
+|---|---|
+| **Cluster** | nodes Ready, etcd quorum, control-plane up, pending/unschedulable pods |
+| **Backups** *(the one that matters most)* | CNPG last-backup success + **WAL-archiving-to-fsn1 healthy + age**; Surreal export age; restic→BX11 last-run. Red = any backup stale/failed. |
+| **Apps** | restormel-dashboard / worker / allotmentology up + error rate (PostHog) + p95 latency |
+| **Data** | CNPG replication lag · PVC headroom (the 10Gi vols) · Surreal up |
+| **Delivery** | Argo app health/sync + **drift** · the PBI PostSync-hook last status (#184) |
+| **Edge** | min cert days-to-expiry (wildcards) · Traefik 5xx rate · ingress up |
+| **Secrets** | ESO sync status (any `SecretSyncedError`) |
+| **Cost/scale** | **burst nodes count — should be 0 at rest** (€-bleed guard) |
+| **Alerts** | count of firing alerts by severity (Alertmanager), linking to the alert list |
+
+Built as a Grafana dashboard (stat + state-timeline panels), **provisioned as a ConfigMap via the Grafana sidecar** so it's GitOps-managed + version-controlled (not hand-built in the UI). RAG thresholds (amber-vs-red cut-offs per tile) → §10 **D-M17**.
+
 ---
 
 ## 3. What's monitored, per component
@@ -351,7 +386,12 @@ Tabled in register style so they can be promoted into
 | **D-M10** | Surreal export RPO discrepancy | The sources **disagree**: CronJob is **hourly (`0 * * * *`)**, the design Decisions register says **≤24h (daily)**, the execution sequence says **~1h**. The alert is set to export-age **> ~70 min** (the CronJob reality), which **tightens the design's ≤24h RPO**. Founder must reconcile: either ratify the hourly RPO into the design, or relax the alert to match ≤24h. | **Open — discrepancy flagged, do NOT silently pick** |
 | **D-M11** | Monitoring storage/retention sizing + chart pin | (a) **Pin a tested `kube-prometheus-stack` (and Loki/Alloy) chart version** — don't track latest. (b) Decide Prometheus/Loki PVC sizes + retention on the **crowded `.166`/16 GB** box (which also carries Forgejo, Infisical, CI runner, and the WAL-heavy CNPG primaries) — size retention to the box's real headroom, prefer soft affinity + PDB over a hard pin. | **Open — sizing + version pin** |
 | **D-M12** | Doc control-tier | This proposal is `control-tier: 1`. If it becomes the **authoritative** monitoring design (referenced by the execution sequence), it arguably warrants **tier ≥2**, which then requires `approved-by` / `approved-on` / `retention` per CLAUDE.md. Decide deliberately at sign-off. | **Open — set tier at sign-off** |
+| **D-M13** | UI hostnames | Per-UI subdomains under `*.restormel.dev` (`grafana.`/`hubble.`/`argo.`/`alerts.`/`status.`) **vs** one `ops.restormel.dev` + paths. Recommend per-UI subdomains (clean TLS via the existing DNS-01 wildcard). | **Open — recommend per-UI subdomains** |
+| **D-M14** | Dashboard auth (portal SSO) | `oauth2-proxy` / Traefik forward-auth tied to the company portal's **Better Auth** (one login, operator-scoped) **vs** Grafana-native OAuth **vs** interim Traefik basic-auth + operator-IP allowlist. Route the wiring through `restormel-high-risk-security`. | **Open — recommend Better-Auth SSO via oauth2-proxy** |
+| **D-M15** | External vs internal UIs | Expose **Grafana (+ Argo CD + status page)** externally for the portal launchpad; keep **Hubble + Alertmanager** cluster-internal / port-forward (smaller attack surface). | **Open — recommend Grafana+Argo external, rest internal** |
+| **D-M16** | Portal launchpad link | Add an **"Ops Centre" card** to the allotmentology.tech company portal launchpad → the single-pane overview (§2.4). Cross-repo follow-up in the **allotmentology repo** (ingress/auth live here in restormel-keys). | **Proposed — recommend yes** |
+| **D-M17** | Single-pane RAG thresholds | Define amber/red cut-offs per overview tile (§2.4): backup age, cert days-to-expiry, replication lag, PVC %, 5xx rate, burst-nodes>0 duration, alert counts. Seed sensible defaults; tune after soak. | **Open — seed defaults, tune post-soak** |
 
-**Still genuinely open elsewhere (not monitoring-specific, noted for completeness):** the
-`governance/bcp-dr-policy.md` record is still owed (register), and PlotBudget's prod domain is
-needed before its Phase-B ingress/Supabase signals can be wired.
+**Still genuinely open elsewhere (not monitoring-specific, noted for completeness):**
+PlotBudget's prod domain is needed before its Phase-B ingress/Supabase signals can be wired.
+(The `governance/bcp-dr-policy.md` record is already filed + approved — REC-POL-005, PR #191.)
