@@ -30,10 +30,12 @@ suppliers:
       "surreal-forgejo" — LEGACY NAME; actual role: live prod runtime restormel-dashboard-prod +
       restormel-worker-prod; Coolify reg: restormel-prod-a-167); Box 3 / .166 (CX43,
       "restormel-build"; role: dedicated Forgejo CI build runner, NOT a Coolify server).
-      Plus BX11 Falkenstein storage box (u613941.your-storagebox.de) for restic backups.
-      See AST-009/010/018/012.
+      Plus BX11 Falkenstein storage box (u613941.your-storagebox.de) for restic backups,
+      and (added 2026-06-20) Hetzner Object Storage (S3, fsn1 Falkenstein) for CloudNativePG
+      Postgres backups — cross-region PITR for the K3s migration (bucket
+      restormel-cnpg-backups-fsn1). See AST-009/010/018/012/019.
     role: sub-processor
-    location: "Helsinki, Finland (EU) — compute; Falkenstein, Germany (EU) — storage"
+    location: "Helsinki, Finland (EU) — compute; Falkenstein, Germany (EU) — storage (BX11 + Object Storage)"
     data_processed: "All in-scope Restormel data (transits / resides on these hosts)"
     dpa: "verify-and-accept — Hetzner Order Processing Contract (AVV) requires explicit acceptance in Hetzner control panel; confirm this has been done"
     sovereignty: ok

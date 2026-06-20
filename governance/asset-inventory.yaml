@@ -43,6 +43,12 @@
 #   sourcing PLACEHOLDER resolved (allotmentology.tech does NOT source app-wide from Infisical;
 #   Coolify env is primary). AST-014 PLACEHOLDER already closed by PR #146.
 #   last-reviewed updated to 2026-06-19 (founder re-approval of reconciled facts requested).
+# 2026-06-20 (govern/object-storage-asset): added AST-019 — Hetzner Object Storage (S3, fsn1
+#   Falkenstein) procured for CNPG Postgres backups (cross-region PITR for the K3s migration,
+#   REC-PLAN-012); supplier entry (suppliers.yaml) updated to list the new Hetzner service.
+#   Bucket provisioned + connectivity-verified 2026-06-20; will hold prod backups once the K3s
+#   migration applies (currently empty). ROPA unchanged (same sub-processor Hetzner; no new
+#   data category). last-reviewed → 2026-06-20 (founder re-approval via merge).
 
 assets:
   - id: AST-001
@@ -353,3 +359,25 @@ assets:
       Coolify image-build relocation is a follow-up. Stateless runner (re-registerable) — not in
       restic scope. Right-sized from an initial ccx23 to cx43 (shared vCPU adequate for bursty
       builds; ~€15.99/mo). Connected to private network AST-011 (172.16.0.4).
+
+  - id: AST-019
+    asset: "Hetzner Object Storage (S3) — CNPG Postgres backup bucket"
+    type: backup/storage
+    owner: founder
+    product: shared
+    location: "Hetzner Object Storage, Falkenstein DE (EU) fsn1 — bucket restormel-cnpg-backups-fsn1, endpoint https://fsn1.your-objectstorage.com — ~€5.99/mo (1 TB incl.)"
+    notes: >
+      S3-compatible object store procured 2026-06-20 as the CloudNativePG / Barman
+      backup target for the sovereign K3s migration (REC-PLAN-012). Holds continuous
+      WAL + base backups (PITR) for all CNPG clusters (pg-restormel / pg-platform /
+      pg-plotbudget) under per-cluster prefixes in a single bucket.
+      DELIBERATELY CROSS-REGION: backups live in Falkenstein (fsn1) while compute is
+      Helsinki (hel1) — DR geo-separation so a hel1-region loss does not take the
+      backups with it (BCP/DR policy REC-POL-005; mitigating control for RISK-001/RISK-009).
+      Access: S3 v4 creds (HETZNER_S3_FSN1_ACCESS_KEY_ID / _SECRET_ACCESS_KEY) held in
+      Infisical (AST-013), delivered in-cluster via External Secrets Operator; bucket ACL
+      private. Connectivity + a full CNPG backup round-trip were verified 2026-06-20
+      (rehearsal). Currently EMPTY — real prod backups land once the K3s migration applies.
+      Distinct from AST-012 (BX11 Storage Box, SFTP/restic): AST-019 is S3 for CNPG Barman;
+      BX11 remains the restic cold-copy target (SurrealDB exports + PVCs). EU-sovereign,
+      no third-party SaaS. Hetzner sub-processor: suppliers.yaml.
