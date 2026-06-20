@@ -26,7 +26,12 @@ deployment:
 # type=LoadBalancer (that would need Klipper or a paid Hetzner LB).
 service:
   enabled: true
-  type: ClusterIP        # not LoadBalancer — we expose via hostPort below
+  # v41 schema: service type lives under service.spec.type (was the old top-level
+  # service.type, which v41 silently ignores → chart default LoadBalancer would win
+  # and the hcloud CCM would try to provision a paid Hetzner LB). ClusterIP keeps
+  # ingress on the node's own :80/:443 via the hostPorts above — no cloud LB.
+  spec:
+    type: ClusterIP
 
 ports:
   web:
@@ -34,15 +39,23 @@ ports:
     hostPort: 80         # node :80  → Traefik web entrypoint
     expose:
       default: true
-    redirectTo:
-      port: websecure    # force HTTP→HTTPS
+    # v41 schema: redirect lives under http.redirections.entryPoint (was the old
+    # top-level `redirectTo`). Forces HTTP→HTTPS, permanent (308).
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
   websecure:
     port: 8443
     hostPort: 443        # node :443 → Traefik websecure entrypoint
     expose:
       default: true
-    tls:
-      enabled: true
+    # v41 schema: TLS enable lives under http.tls (was the old port-level `tls`).
+    http:
+      tls:
+        enabled: true
   traefik:
     # Dashboard/health entrypoint — kept internal (no hostPort, not exposed).
     port: 9000
@@ -83,11 +96,12 @@ resources:
     memory: "256Mi"
 
 # --- Observability + hardening ----------------------------------------------
-logs:
-  general:
-    level: INFO
-  access:
-    enabled: true        # access logs for incident response (ISMS evidence trail)
+# v41 schema: split into top-level `log` (general) + `accessLog` (was the old
+# `logs.general` / `logs.access` nesting).
+log:
+  level: INFO
+accessLog:
+  enabled: true          # access logs for incident response (ISMS evidence trail)
 
 # Run on the schedulable control-plane nodes (they ARE the workers). The burst
 # pool carries a NoSchedule taint we deliberately do NOT tolerate — ingress must
