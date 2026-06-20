@@ -84,6 +84,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Observe",
     defaultOpen: false,
     items: [
+      // Traces leads Observe: the verified-query surface ("what my app actually asked"),
+      // the same entity the Answer Console produces (Phase 3 Stage 5).
+      { href: DASHBOARD_BASE + "/traces", label: "Traces" },
       { href: DASHBOARD_BASE + "/logs", label: "Logs" },
       { href: DASHBOARD_BASE + "/analytics", label: "Usage" },
       { href: DASHBOARD_BASE + "/healthcheck", label: "Health" },
@@ -164,6 +167,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/policies"]: "Guard rails",
   [DASHBOARD_BASE + "/analytics"]: "Usage",
   [DASHBOARD_BASE + "/logs"]: "Logs",
+  [DASHBOARD_BASE + "/traces"]: "Traces",
   [DASHBOARD_BASE + "/sandbox"]: "Request tester",
   [DASHBOARD_BASE + "/settings"]: "Profile",
 };
