@@ -1,0 +1,52 @@
+# Restormel dashboard — PRODUCTION.  SYNC = MANUAL (design §8 hard rule).
+# ---------------------------------------------------------------------------
+# Prod is NEVER main-auto-deploy. There is deliberately NO `syncPolicy.automated`
+# block here: Argo tracks git and shows OutOfSync when CI bumps the image tag in
+# restormel-gitops, but the rollout only happens when the operator clicks Sync
+# (or runs `argocd app sync restormel-dashboard-prod`). This is the GitOps
+# equivalent of the old "tag-gated workflow_dispatch=prod" Coolify deploy.
+#
+# Image tag bump flow (DEPLOY-PIPELINE.md):
+#   CI builds → pushes registry.allotmentology.tech/restormel/dashboard:<sha>
+#            → bumps image.tag in values-dashboard-prod.yaml in restormel-gitops
+#            → Argo shows OutOfSync → OPERATOR SYNCS (manual gate).
+#
+# MIGRATIONS FAIL-CLOSED: the dashboard image runs pending DB migrations on start
+# against CNPG (pg-restormel); if a migration fails the pod crash-loops and the
+# Argo sync is reported Degraded — it does NOT silently serve old schema. This
+# preserves the current "deploys auto-apply pending migrations, fail-closed"
+# invariant (CLAUDE.md standing norms).
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: restormel-dashboard-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  # NOTE: Argo CD Image Updater is INTENTIONALLY NOT enabled on prod (no
+  # argocd-image-updater.argoproj.io/* annotations). Auto-writing a tag to git +
+  # auto-sync would defeat the manual gate. Prod tags are bumped by the CI step
+  # and synced by hand. See staging app for the Image-Updater opt-in.
+spec:
+  project: restormel-prod
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    path: charts/restormel-dashboard
+    helm:
+      valueFiles:
+        - ../../values/restormel-dashboard-prod.yaml   # image.tag bumped by CI
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: restormel-prod
+  # NO automated block → MANUAL SYNC. syncOptions still apply on a manual sync.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff: { duration: 15s, factor: 2, maxDuration: 3m }
+  # Surface drift loudly even though we don't auto-heal it (operator decides).
+  ignoreDifferences: []

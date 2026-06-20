@@ -1,0 +1,54 @@
+# App-of-Apps ROOT — the single Application the operator applies once, by hand,
+# after Argo CD is installed. It renders every child Application in
+# applications/addons/ and applications/workloads/ from the gitops repo.
+# ---------------------------------------------------------------------------
+# Pattern: app-of-apps (Argo CD canonical). The root is AUTO-synced because it
+# only manages *other Application objects* — creating an Application object never
+# rolls a workload by itself; whether that child syncs is governed by the CHILD's
+# own syncPolicy. So:
+#   - root auto-syncs        → child Applications always exist + track git
+#   - prod children: manual  → workloads only roll when the operator clicks Sync
+#   - staging/addon children: auto → roll on git change
+# This is the standard way to keep "prod manual" while still GitOps-managing the
+# Application objects themselves (design §8).
+#
+# Bootstrap (once, by the operator — see DEPLOY-PIPELINE.md):
+#   kubectl apply -n argocd -f \
+#     <restormel-gitops>/applications/root/root-app.yaml
+#
+# NOTE ON PATHS: in THIS PR the manifests live under deploy/k3s/gitops/** of the
+# restormel-keys repo (authoring location). In the real restormel-gitops repo
+# they sit at the repo root (applications/…). The README documents the 1:1 move.
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cluster-addons
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    # In restormel-gitops this is `applications/`; here it maps to
+    # deploy/k3s/gitops/applications/ (see README "Repo move map").
+    path: applications
+    directory:
+      recurse: true
+      include: '{addons/*.yaml,workloads/*.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true          # delete child Applications removed from git
+      selfHeal: true       # re-create a child Application if deleted out-of-band
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false   # children create their own namespaces
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }

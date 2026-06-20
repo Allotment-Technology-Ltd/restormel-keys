@@ -1,0 +1,33 @@
+# allotmentology.tech (company app) — PRODUCTION.  SYNC = MANUAL.
+# ---------------------------------------------------------------------------
+# Runs on role=ops node (.150) in the target topology (design §2). Better Auth
+# is live in prod here. Same prod posture as restormel: image tag bumped by CI,
+# synced by the operator. Migrations fail-closed via the app's own start-up
+# migration step (crash-loops → Argo Degraded, never silently serves old schema).
+# ---------------------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: allotmentology-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: restormel-prod
+  source:
+    repoURL: https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
+    targetRevision: main
+    path: charts/allotmentology
+    helm:
+      valueFiles:
+        - ../../values/allotmentology-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: allotmentology-prod
+  syncPolicy:                # NO automated block → MANUAL
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff: { duration: 15s, factor: 2, maxDuration: 3m }
