@@ -164,6 +164,31 @@ export interface AnalyticsEventMap {
     surface: string;
   };
 
+  // --- Connect journey spine (sources→answers funnel, decision 4) ----------
+  // The measured funnel that judges the journey redesign: door-choice →
+  // stage-advance (×5) → time-to-first-verified-answer → drop-off per stage.
+  // Payloads are flat enums/strings only — NO doc names, NO query text, NO PII.
+
+  /**
+   * A journey door was chosen on the stateful Home hub. The "quick" door only
+   * appears after ≥1 terminal-completed run (decision 7); a first-run / failed-
+   * only workspace can only emit "setup".
+   */
+  connect_door_choice: {
+    door: "quick" | "setup";
+  };
+
+  /**
+   * The user advanced (or resumed at) a spine stage. `from`/`to` are stable
+   * stage identifiers ("sources" | "bind" | "ingest" | "make_ready" | "go_live"),
+   * never free text. Declared in Phase 1; wired per-stage as the 5-stage recast
+   * lands in Phase 2.
+   */
+  connect_stage_advance: {
+    from: string;
+    to: string;
+  };
+
   // --- Engagement (emitted by global handlers in hooks.client.ts) ----------
   /** A scroll-depth milestone was reached on the current page. */
   scroll_depth: {
@@ -207,6 +232,8 @@ export const ANALYTICS_EVENTS = [
   "dashboard_onboarding_step",
   "dashboard_feature_interest",
   "verified_claim_source_span_opened",
+  "connect_door_choice",
+  "connect_stage_advance",
   "scroll_depth",
 ] as const satisfies readonly AnalyticsEventName[];
 

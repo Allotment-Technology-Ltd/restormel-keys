@@ -16,13 +16,49 @@
     spineNumeral,
     type ConnectSpine,
     type ConnectSpineStage,
+    type ConnectSpineStageId,
     type ConnectSpineStageState,
   } from "$lib/connect/connect-spine";
   import { HOME_HREF } from "$lib/nav-config";
+  import { track } from "$lib/analytics/track";
 
   export let spine: ConnectSpine | null;
   /** Which surface is mounting this — used only to mark the active surface, never to change state. */
   export let activeStageId: ConnectSpineStage["id"] | null = null;
+
+  /**
+   * Decision 4 — the measured sources→answers funnel. Map the internal spine
+   * stage id onto the stable, PII-free funnel stage name shipped in the analytics
+   * taxonomy (events.ts). Keep these names STABLE — renaming breaks historical
+   * funnel analysis in PostHog.
+   */
+  const FUNNEL_STAGE: Record<ConnectSpineStageId, string> = {
+    connect: "bind",
+    ingest: "ingest",
+    make_ready: "make_ready",
+    review: "make_ready",
+    go_live: "go_live",
+  };
+
+  /**
+   * A user acted on a spine stage's primary CTA. This is the journey's measured
+   * forward motion:
+   *  - The current-stage CTA is the single "Set up / do this next" door — emit
+   *    `connect_door_choice {door:"setup"}` (the Quick-run door is Phase 3).
+   *  - When the click moves to a DIFFERENT stage than the surface we're on, emit
+   *    `connect_stage_advance {from,to}` so drop-off per stage is derivable.
+   * No-ops in SSR (track() is browser-guarded) and never throws.
+   */
+  function onStageCta(stage: ConnectSpineStage): void {
+    if (stage.isCurrent) {
+      track("connect_door_choice", { door: "setup" });
+    }
+    const to = FUNNEL_STAGE[stage.id];
+    const from = activeStageId ? FUNNEL_STAGE[activeStageId] : "hub";
+    if (from !== to) {
+      track("connect_stage_advance", { from, to });
+    }
+  }
 
   function glyph(state: ConnectSpineStageState): string {
     switch (state) {
@@ -113,6 +149,7 @@
                 class="spine-cta brut-focus brut-pressable"
                 class:spine-cta--primary={stage.isCurrent}
                 href={stage.cta.href}
+                on:click={() => onStageCta(stage)}
               >
                 {stage.cta.label} →
               </a>
