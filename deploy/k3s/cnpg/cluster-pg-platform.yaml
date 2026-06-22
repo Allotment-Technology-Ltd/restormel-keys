@@ -60,26 +60,20 @@ spec:
         ensure: present
         login: true
         passwordSecret:
-          name: pg-platform-usesophia-creds
-    # `databases` is the CNPG declarative Database management surface; for
-    # operators that don't yet support inline `managed.databases`, create the
-    # equivalent `kind: Database` (postgresql.cnpg.io/v1) resources instead.
-    databases:
-      - name: restormel_staging
-        owner: restormel_staging_app
-        ensure: present
-      - name: usesophia
-        owner: usesophia_app
-        ensure: present
+          name: pg-platform-usesophia-creds   # Phase B — infisical-sophia store
+    # Databases are managed via separate `kind: Database` (postgresql.cnpg.io/v1) resources —
+    # this CNPG version (v1.29.1) rejects inline `spec.managed.databases` (strict decode).
+    # See database-restormel-staging.yaml + database-usesophia.yaml (Phase B).
+    # PHASE-A DEPLOY NOTE: at runtime the usesophia role + Database are omitted until the
+    # sophia Infisical store exists (its password secret can't render yet).
 
   # ---- storage: shared cluster, tight per-the-sizing-doc (PoC traffic). -----
-  storageClass: &sc hcloud-volumes
   storage:
     size: 10Gi
-    storageClass: *sc
+    storageClass: hcloud-volumes
   walStorage:
     size: 10Gi          # Hetzner CSI minimum is 10Gi — a smaller request silently rounds up (rehearsal finding 2026-06-20)
-    storageClass: *sc
+    storageClass: hcloud-volumes
 
   resources:
     requests:
