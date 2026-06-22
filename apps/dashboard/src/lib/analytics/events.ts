@@ -179,14 +179,24 @@ export interface AnalyticsEventMap {
   };
 
   /**
-   * The user advanced (or resumed at) a spine stage. `from`/`to` are stable
-   * stage identifiers ("sources" | "bind" | "ingest" | "make_ready" | "go_live"),
-   * never free text. Declared in Phase 1; wired per-stage as the 5-stage recast
-   * lands in Phase 2.
+   * The user advanced from one spine stage to another by acting on a stage's
+   * primary CTA. `from`/`to` are the SHIPPED spine stage ids — never free text:
+   *   "connect" | "ingest" | "make_ready" | "review" | "go_live"
+   * plus the literal "hub" for `from` when the advance originates on the Home
+   * hub (which mounts the ledger with no active stage). These names match the
+   * on-screen stages 1:1 (connect-spine.ts STAGE_META) so the funnel measures
+   * the journey the UI actually presents — keep them STABLE (renaming breaks
+   * historical PostHog funnel analysis).
+   *
+   * NOTE: the founder-locked dossier intent is a source-first spine
+   * ("Add sources" as stage ①); the SHIPPED spine starts at "connect"
+   * (store · provider · routes). The taxonomy tracks what ships. If the spine
+   * is later reshaped to source-first (open founder decision), add a "sources"
+   * id here in lockstep with connect-spine.ts.
    */
   connect_stage_advance: {
-    from: string;
-    to: string;
+    from: "hub" | "connect" | "ingest" | "make_ready" | "review" | "go_live";
+    to: "connect" | "ingest" | "make_ready" | "review" | "go_live";
   };
 
   // --- Engagement (emitted by global handlers in hooks.client.ts) ----------
