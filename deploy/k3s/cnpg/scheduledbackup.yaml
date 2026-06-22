@@ -51,7 +51,8 @@ metadata:
   name: pg-plotbudget-daily
   namespace: cnpg-system
 spec:
-  # 03:30 UTC daily — plotbudget / self-hosted Supabase.
+  # 03:30 UTC daily — plotbudget / self-hosted Supabase. PHASE B: do not apply until
+  # the pg-plotbudget cluster exists (applying it against a missing cluster just errors).
   schedule: "0 30 3 * * *"
   immediate: true
   backupOwnerReference: self

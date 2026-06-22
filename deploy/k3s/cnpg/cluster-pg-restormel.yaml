@@ -51,14 +51,13 @@ spec:
     name: pg-restormel-superuser
 
   # ---- storage: tight sizing for the operational DB (~55 tables). ----------
-  storageClass: &sc hcloud-volumes
   storage:
     size: 10Gi
-    storageClass: *sc
+    storageClass: hcloud-volumes
   # SEPARATE WAL volume — isolates WAL fsync from data-file I/O.
   walStorage:
     size: 10Gi          # Hetzner CSI minimum is 10Gi — a smaller request silently rounds up (rehearsal finding 2026-06-20)
-    storageClass: *sc
+    storageClass: hcloud-volumes
 
   resources:
     requests:
