@@ -21,6 +21,7 @@ metadata:
     app.kubernetes.io/component: backup
 spec:
   schedule: "0 * * * *" # hourly, on the hour
+  suspend: true   # PARKED 2026-06-22: rclone creds + BX11 connection VALIDATED (restic-surreal repo exists), but the CronJob cannot RUN yet — restic/restic image lacks rclone (rclone: backend) + surrealdb image is shell-less (export wrapper). Needs a combined-image/curl-export rework; not urgent (Surreal empty until Sophia migrates). Un-suspend after the rework.
   concurrencyPolicy: Forbid # never overlap an export with a still-running one
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -46,7 +47,7 @@ spec:
           # ships the dump to BX11 with restic. They share an emptyDir scratch volume.
           initContainers:
             - name: surreal-export
-              image: surrealdb/surrealdb:v3.2.0
+              image: surrealdb/surrealdb:v3.1.4
               command:
                 - /bin/sh
                 - -ec
@@ -82,6 +83,8 @@ spec:
                 - -ec
                 - |
                   export RCLONE_CONFIG=/rclone/rclone.conf
+                  # init the repo on first run (idempotent) — restic backup fails on a fresh repo
+                  restic snapshots >/dev/null 2>&1 || restic init
                   restic backup \
                     --host surreal-k3s \
                     --tag surreal --tag main-sophia \
