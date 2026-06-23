@@ -7,7 +7,7 @@
 #   status: approved
 #   approved-by: Adam Boon
 #   approved-on: 2026-06-19
-#   last-reviewed: 2026-06-19
+#   last-reviewed: 2026-06-23
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -393,3 +393,37 @@ risks:
     owner: founder
     status: open
     review: 2026-12-15
+
+  - id: RISK-014
+    risk: >
+      Bundled adapter-node asset-path overshoot (prod-only ENOENT). Server modules that resolve a
+      shipped non-code asset (seed JSON, starter corpus, governance records) via a fixed
+      import.meta.url-relative climb work correctly in the source tree, in dev/CI, and under
+      SvelteKit prerender, but OVERSHOOT in the bundled adapter-node prod runtime — the importing
+      module is emitted at a shallower depth, so the relative climb points at a path that does not
+      exist and the read throws ENOENT, surfacing as a bare HTTP 500. The failure is invisible
+      everywhere except the bundled prod build, so it reaches founders/users before it is caught.
+      Recurring class — 3 known instances: REPO_ROOT records gate (fixed 112b8c99), live Connect
+      starter-corpus load, and model-catalog-seed.json on the key→stage bind path (REC-INC-008).
+    asset: "AST-003 (compute/dashboard); restormel.dev prod dashboard (.167)"
+    product: restormel
+    likelihood: M
+    impact: M
+    rating: Medium
+    treatment_type: mitigate
+    treatment: >
+      Each instance has been point-fixed with a robust runtime resolver (resolveRepoRoot in
+      records/gate.ts; resolveSeedPath in catalogue/seed-path.ts) that prefers the module-relative
+      path when it exists on disk (unchanged source/prerender behaviour) and otherwise walks up
+      from process.cwd() to the pnpm-workspace.yaml marker to resolve the canonical asset path.
+      SYSTEMIC GUARD RECOMMENDED (not yet implemented — see REC-INC-008 follow-ups): either (a) a
+      build-time copy of apps/dashboard/data and other shipped runtime assets into the server
+      bundle at a stable bundle-relative location so runtime paths are deterministic regardless of
+      bundle depth; OR (b) mandate the shared resolver for every shipped-asset read plus a lint/CI
+      grep that fails on raw fixed-climb import.meta.url asset reads under src/lib/server/. Pick one
+      and apply repo-wide so the class cannot recur per-file. Coordinate with the concurrent
+      starter-corpus fix to avoid conflicting build-config edits.
+    treatment_status: "Open — three instances point-fixed (112b8c99 records gate; starter-corpus in flight; REC-INC-008 catalog seed). Systemic guard (build-copy OR mandated-resolver + CI grep) recommended as a PBI, not yet implemented."
+    owner: founder
+    status: open
+    review: 2026-12-23
