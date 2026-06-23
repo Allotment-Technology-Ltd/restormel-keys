@@ -6,14 +6,20 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-19
+#   approved-on: 2026-06-23
 #   last-reviewed: 2026-06-23
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
-# (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
-# Per-risk scope is in the product: field.
+# ISMS scope: Allotment Technology Ltd — company-wide across all in-scope products
+# (Restormel + allotmentology.tech + PlotBudget + Sophia) and the shared K3s cluster.
+# SCOPE EXPANSION (2026-06-23, founder decision): PlotBudget + Sophia now IN scope (live on the
+# shared in-scope K3s cluster). RISK-001 blast radius updated below to the single in-scope HA
+# estate. Per-risk scope is in the product: field. See Phase-1 ground-truth §6 F1/F12 and PBI #239.
+# NOTE: the K3s estate surfaced several NEW critical risks (single-node SPOF, unprotected SurrealDB
+# backup, single-AZ, 131% memory overcommit, Infisical+ESO bootstrap SPOF) — these are captured as
+# findings F1/F2/F7/F8/F9 in the ground-truth and filed as follow-up PBIs; full new RISK-* entries
+# for them are a follow-up to this scope-expansion PR (this PR updates RISK-001 and flags the rest).
 #
 # Risk rating matrix (likelihood × impact):
 #   L×L = Low   L×M = Low    L×H = Medium
@@ -30,12 +36,20 @@ risks:
 
   - id: RISK-001
     risk: >
-      The Hetzner Helsinki compute (now a 2-server Coolify cluster, AST-003) is a
-      single point of failure. Loss or unreachability of the cluster takes down the
-      Restormel app, the allotmentology.tech company portal (AST-017), Forgejo
-      (canonical repo), self-hosted Postgres (verification spine), Infisical, and
-      BetterAuth simultaneously.
-    asset: "AST-003 — Coolify compute (2-server Helsinki cluster); AST-017 portal"
+      Single-point-of-failure compute, now spanning a SHARED IN-SCOPE ESTATE.
+      BLAST-RADIUS UPDATE (2026-06-23): the live production data-plane has moved to a SINGLE
+      K3s node — restormel-sovereign-master1 (cx43, hel1, AST-022) — which carries the
+      control-plane + etcd + ALL stateful workloads of EVERY in-scope product on one host:
+      the 3 CNPG Postgres clusters (AST-023), SurrealDB (AST-024), the self-hosted Supabase /
+      PlotBudget backend (AST-025), Sophia (AST-026), External Secrets Operator (AST-027), and
+      monitoring (AST-028). With PlotBudget + Sophia now formally IN scope (founder decision
+      2026-06-23), this is no longer "out-of-scope products contaminating an in-scope plane" —
+      it is ONE in-scope estate whose loss = total outage of all four products at once. The
+      legacy Coolify cluster (AST-003 — now superseded-in-transition) is STILL RUNNING and still
+      hosts the not-yet-migrated Restormel app, Forgejo, Infisical (AST-013) and BetterAuth, so
+      the SPOF surface currently spans BOTH the K3s node and the legacy boxes. Single AZ (hel1)
+      throughout, including the S3 backup bucket (AST-019).
+    asset: "AST-022 — K3s sovereign cluster (single node); AST-023/024/025/026/027 in-cluster systems; AST-003 — legacy Coolify compute (superseded-in-transition); AST-017 portal"
     product: shared
     likelihood: M
     impact: H
@@ -58,7 +72,21 @@ risks:
       cannot lock the founder out of recovery. The SPOF blast radius now also includes
       the Infisical secret manager (AST-013, on Box B); its own failure modes are
       tracked separately in RISK-010.
-    treatment_status: "In-treatment — split in execution (REC-PLAN-012); restic backups active (AST-012); break-glass runbook published (REC-PLAN-015)"
+      K3s BLAST-RADIUS TREATMENT GAP (2026-06-23): the REC-PLAN-012 box-split mitigation above was
+      for the OLD Coolify topology and does NOT mitigate the new single-K3s-node SPOF (AST-022). The
+      live estate now needs: control-plane/etcd HA + spreading stateful workloads off the one cx43
+      (ground-truth F1); a WORKING SurrealDB backup — currently none, cronjob suspended (F2/D5,
+      tracked on AST-024); CNPG backup-record reconciliation + a restore drill against the live
+      S3/barman path (F6, on AST-019/023); right-sizing the 131% memory overcommit (F7); addressing
+      the 16/16 CSI volume cap (F5); and cross-region/AZ DR given everything incl. backups is hel1
+      (F9). These are FILED as follow-up PBIs (referenced from the ground-truth findings) — NOT
+      resolved by this scope-expansion PR. Net effect of the expansion on this risk: rating stays
+      High; the affected-asset set widens to the whole in-scope estate; mitigation owed grows.
+    treatment_status: >
+      In-treatment — legacy box-split (REC-PLAN-012) done for the OLD topology; restic backups active
+      on the legacy boxes (AST-012). NEW (2026-06-23) K3s-estate mitigations OUTSTANDING (HA, SurrealDB
+      backup, CNPG restore drill, overcommit, volume cap, cross-region DR) — tracked as follow-up PBIs
+      from Phase-1 ground-truth F1/F2/F5/F6/F7/F9. Blast radius now = single in-scope K3s node + legacy boxes.
     owner: founder
     status: open
     review: 2026-12-15
@@ -126,17 +154,23 @@ risks:
       Neon Postgres (legacy backup) remains active beyond planned decommission
       date (~2026-06-30), leaving an unneeded attack surface and keeping
       stale entries in the privacy notice and suppliers register.
-    asset: "AST-004 — Neon Postgres (decommissioning)"
-    product: restormel
+      WIDENED (2026-06-23, Phase-1 ground-truth §2 / §5 D8/D10): Neon is also STILL WIRED LIVE in
+      Sophia (now in scope) — NEON_API_KEY + Neon Auth remain in the sophia-app-env secret even
+      though Sophia's data plane is the in-cluster CNPG estate (AST-023). So Neon is not a
+      Restormel-only loose end; its decommission must cover Sophia too.
+    asset: "AST-004 — Neon Postgres (decommissioning); sophia-app-env (AST-026) — Neon still wired"
+    product: shared
     likelihood: L
     impact: L
     rating: Low
     treatment_type: mitigate
     treatment: >
-      Complete Neon decommission by 2026-06-30: delete project in Neon console,
-      remove AST-004 from asset-inventory.yaml, remove Neon from suppliers.yaml,
-      update privacy notice. Stage a cowork-outbox bundle on completion.
-    treatment_status: "Open — decommission pending"
+      Complete Neon decommission: delete project in Neon console, remove AST-004 from
+      asset-inventory.yaml, remove Neon from suppliers.yaml, update privacy notice. ADDED
+      2026-06-23: also remove NEON_API_KEY + Neon Auth from Sophia (sophia-app-env, AST-026) and
+      confirm Sophia no longer depends on Neon at runtime before deletion. Stage a cowork-outbox
+      bundle on completion.
+    treatment_status: "Open — decommission pending; now also covers Sophia's live Neon wiring (2026-06-23)"
     owner: founder
     status: open
     review: 2026-07-15
