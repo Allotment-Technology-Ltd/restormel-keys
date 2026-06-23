@@ -17,6 +17,53 @@
   $: prefs = data.emailPreferences;
 
   let savingPrefs = false;
+
+  // ── Danger zone: reset to day-0 ───────────────────────────────────────────
+  // Type-to-confirm gate (must match RESET_CONFIRM_PHRASE on the server).
+  const RESET_CONFIRM_PHRASE = "reset my account";
+  let resetConfirm = "";
+  let eraseUserData = false;
+  let resetting = false;
+  let resetMsg: { kind: "ok" | "error"; text: string } | null = null;
+  $: resetArmed = resetConfirm.trim().toLowerCase() === RESET_CONFIRM_PHRASE;
+
+  async function submitReset() {
+    if (!resetArmed || resetting) return;
+    resetting = true;
+    resetMsg = null;
+    try {
+      const res = await fetch(DASHBOARD_BASE + "/settings/reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // Same-origin fetch: the browser sends an Origin header the server validates.
+        body: JSON.stringify({
+          confirm: resetConfirm.trim(),
+          scope: "account",
+          eraseUserScopedData: eraseUserData,
+        }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.ok && out?.ok) {
+        resetMsg = { kind: "ok", text: "Your account was reset to day-0. Reloading…" };
+        // Land the user on a clean first-run state.
+        setTimeout(() => location.assign(DASHBOARD_BASE), 900);
+      } else {
+        resetMsg = {
+          kind: "error",
+          text:
+            out?.error === "confirm_required"
+              ? "Confirmation phrase did not match."
+              : out?.error === "forbidden_origin"
+                ? "Request blocked (origin check). Reload and try again."
+                : "Reset failed. Nothing was changed.",
+        };
+        resetting = false;
+      }
+    } catch {
+      resetMsg = { kind: "error", text: "Network error. Nothing was changed." };
+      resetting = false;
+    }
+  }
 </script>
 
 <h1 class="page-title">Profile &amp; settings</h1>
@@ -154,6 +201,59 @@
     <h2 id="signout-heading" class="section-title">Sign out</h2>
     <p class="section-desc">Sign out of the dashboard on this device.</p>
     <a class="btn btn-secondary" href={DASHBOARD_BASE + "/logout"} data-sveltekit-reload>Sign out</a>
+  </section>
+
+  <section class="settings-section danger-zone" aria-labelledby="danger-heading">
+    <h2 id="danger-heading" class="section-title danger-title">Danger zone</h2>
+    <p class="section-desc">
+      <strong>Reset to day-0 / clear all my data.</strong> This permanently deletes
+      <strong>everything in your account</strong> — sources, graphs, projects, routes, keys,
+      ingestion &amp; readiness runs, the Connect ledger, request/usage logs, and your encrypted
+      provider credentials. Your sign-in stays; you start again from a clean, first-run state.
+      <strong>This cannot be undone.</strong>
+    </p>
+
+    <label class="erase-row">
+      <input type="checkbox" bind:checked={eraseUserData} disabled={resetting} />
+      <span>
+        <strong>Also erase my marketing-consent record</strong>
+        <span class="erase-desc"
+          >For a full GDPR right-to-erasure (Art 17), also drop your email-preference / consent
+          ledger. Leave unticked if you only want a clean test reset.</span
+        >
+      </span>
+    </label>
+
+    <label class="confirm-label" for="reset-confirm">
+      Type <code>{RESET_CONFIRM_PHRASE}</code> to confirm
+    </label>
+    <input
+      id="reset-confirm"
+      class="confirm-input"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder={RESET_CONFIRM_PHRASE}
+      bind:value={resetConfirm}
+      disabled={resetting}
+    />
+
+    <button
+      type="button"
+      class="btn btn-danger"
+      on:click={submitReset}
+      disabled={!resetArmed || resetting}
+    >
+      {resetting ? "Resetting…" : "Reset my account to day-0"}
+    </button>
+
+    {#if resetMsg}
+      <p class="reset-msg {resetMsg.kind}" role="status">{resetMsg.text}</p>
+    {/if}
+
+    <p class="section-note">
+      A record of this erasure (who, when, what) is written to your account's immutable audit log.
+    </p>
   </section>
 {/if}
 
@@ -332,6 +432,98 @@
     color: var(--rm-sage, #2f6f4f);
   }
   .prefs-status.err {
+    color: var(--rm-danger, #b3261e);
+  }
+
+  /* ── Danger zone ───────────────────────────────────────────────────────── */
+  .danger-zone {
+    border-color: var(--rm-danger, #b3261e);
+    border-left: 4px solid var(--rm-danger, #b3261e);
+  }
+  .danger-title {
+    color: var(--rm-danger, #b3261e);
+  }
+  .erase-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    margin: 0 0 var(--space-4);
+    cursor: pointer;
+  }
+  .erase-row input[type="checkbox"] {
+    margin-top: 3px;
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--rm-danger, #b3261e);
+    flex: none;
+  }
+  .erase-row strong {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--rm-text);
+  }
+  .erase-desc {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--rm-muted);
+    margin-top: 2px;
+  }
+  .confirm-label {
+    display: block;
+    font-size: var(--text-xs);
+    color: var(--rm-dim);
+    margin: 0 0 var(--space-1);
+  }
+  .confirm-label code {
+    color: var(--rm-danger, #b3261e);
+    font-weight: 600;
+  }
+  .confirm-input {
+    display: block;
+    width: 100%;
+    max-width: 22rem;
+    padding: var(--space-2) var(--space-3);
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    border: var(--border-thin);
+    border-radius: var(--radius-md);
+    background: var(--rm-surface-raised);
+    color: var(--rm-text);
+  }
+  .confirm-input:focus {
+    outline: none;
+    border-color: var(--rm-danger, #b3261e);
+  }
+  .btn-danger {
+    background: var(--rm-danger, #b3261e);
+    color: #fff;
+    border: var(--border, 3px solid var(--rm-text));
+    border-radius: 0;
+    box-shadow: var(--shadow-sm, 4px 4px 0 var(--rm-text));
+    font-family: var(--rm-font-mono, ui-monospace, monospace);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    min-height: 44px;
+  }
+  .btn-danger:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-md, 6px 6px 0 var(--rm-text));
+  }
+  .btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .reset-msg {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .reset-msg.ok {
+    color: var(--rm-sage, #2f6f4f);
+  }
+  .reset-msg.error {
     color: var(--rm-danger, #b3261e);
   }
 </style>
