@@ -6,16 +6,25 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-19
-#   last-reviewed: 2026-06-19
+#   approved-on: 2026-06-23
+#   last-reviewed: 2026-06-23
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Restormel only.
+# ISMS scope: Allotment Technology Ltd — company-wide across all in-scope products
+# (Restormel + allotmentology.tech + PlotBudget + Sophia) and shared infrastructure.
+# SCOPE EXPANSION (2026-06-23, founder decision): PlotBudget + Sophia now IN scope (they run
+# live on the shared in-scope K3s cluster — asset-inventory.yaml AST-022..028). Their live
+# sub-processors are added below. Per-supplier scope is in the products: field. See Phase-1
+# ground-truth §5 D10 / §6 F10 and PBI #237.
 # DPA note: for standard SaaS products, acceptance of T&Cs at signup constitutes
 # valid DPA acceptance where the DPA is embedded in those T&Cs (UK GDPR Art 28).
 # Two exceptions require explicit in-portal acceptance and are flagged: Google
 # Workspace (Admin Console → Account → Legal) and Hetzner (control panel AVV).
+# The newly-added LLM/inference + email sub-processors (Resend, AIZOLO, Fireworks, Together,
+# Voyage, ElevenLabs) need their Art 28 DPA/AVV status CONFIRMED — flagged [PLACEHOLDER —
+# founder/counsel: confirm DPA] per entry; tracked as a follow-up PBI (sub-processor AVV/contract
+# confirmation). Do NOT assume acceptance for these until verified.
 # Sub-processor changes must fire the customer change-notification hook (Phase 5).
 
 suppliers:
@@ -50,13 +59,19 @@ suppliers:
       DNS moved off US Vercel DNS to EU Hetzner. Availability concentration tracked as RISK-013.
 
   - name: Neon
-    provides: "Postgres (legacy backup — decommissioning)"
+    provides: "Postgres (legacy — Restormel backup decommissioning; STILL WIRED in Sophia)"
     role: sub-processor
     location: "AWS eu-west"
-    data_processed: "Product spine data (backup only; no new writes)"
+    data_processed: "Restormel product spine data (backup only; no new writes); Sophia: still wired (NEON_API_KEY + Neon Auth in sophia-app-env)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: ok
-    notes: "DECOMMISSIONING ~2026-06-30. Remove this entry on confirmed deletion."
+    products: [restormel, sophia]
+    notes: >
+      DECOMMISSIONING for Restormel ~2026-06-30. CORRECTION (2026-06-23, Phase-1 ground-truth §2 /
+      §5 D8/D10): Neon is NOT fully retired — it is STILL WIRED LIVE in Sophia (now in scope):
+      NEON_API_KEY + Neon Auth remain in the sophia-app-env secret even though Sophia's data plane
+      is the in-cluster CNPG estate (AST-023). Sophia's Neon decommission is not executed. Tracked
+      in RISK-004; remove this entry only on confirmed deletion across BOTH products.
 
   - name: Neon (quick-start tier)
     provides: "Managed per-workspace Postgres for the non-sovereign QUICK-START tier (Neon for Platforms; per-workspace project, EU-Frankfurt aws-eu-central-1, scale-to-zero)"
@@ -79,18 +94,30 @@ suppliers:
       primitive. Tied to ROPA PROC-009, a new DAT entry, and DPIA evidence/dpia/neon-quick-start-tier.md.
 
   - name: Vercel
-    provides: "Domain REGISTRAR for restormel.dev (DNS hosting retired 2026-06-20 → Hetzner Cloud DNS, AST-020)"
+    provides: >
+      (1) Domain REGISTRAR for restormel.dev (DNS hosting retired 2026-06-20 → Hetzner Cloud DNS,
+      AST-020); (2) FRONTEND HOSTING for PlotBudget (plotbudget.com) — the PlotBudget web app /
+      static frontend (AST-025; the Supabase backend is self-hosted in-cluster on K3s).
     role: sub-processor
     location: "US"
-    data_processed: "Domain registration contact data (director name/email/address)"
-    dpa: "accepted (standard terms at signup)"
+    data_processed: >
+      restormel.dev: domain registration contact data (director name/email/address) only.
+      plotbudget.com frontend hosting: serves the PlotBudget web app to end users — Vercel sees
+      request metadata + client IPs (edge/CDN). PlotBudget user/auth/financial data lives in the
+      self-hosted Supabase backend (AST-025 / pg-plotbudget), NOT in Vercel.
+    dpa: "accepted (standard terms at signup) — confirm Vercel DPA covers the PlotBudget frontend hosting scope, not just the restormel.dev registrar relationship [PLACEHOLDER — founder: confirm]"
     sovereignty: review
+    products: [restormel, plotbudget]
     notes: >
-      Registrar only as of 2026-06-20 — both app hosting (long retired) and DNS hosting (moved to
-      Hetzner Cloud DNS, AST-020) are now off Vercel; nameservers were re-pointed at the registrar
-      to *.ns.hetzner.com. No customer data; only domain registration details. Low risk. The
-      Entri/Brevo OAuth grant that wrote into the Vercel DNS zone is now moot (DNS moved) — see the
-      Entri entry's revoke recommendation.
+      SCOPE EXPANDED 2026-06-23: previously recorded as restormel.dev registrar only; Vercel ALSO
+      hosts the PlotBudget frontend (plotbudget.com) — now in ISMS scope (ground-truth §5 D10 / F10).
+      US edge SaaS for the frontend; the financial/budget data path is the self-hosted EU Supabase
+      backend (AST-025), so the regulated data does not reside on Vercel — but request metadata +
+      client IPs transit it (UK/EU→US edge). Confirm the DPA/SCC posture for the frontend hosting.
+      restormel.dev: registrar only as of 2026-06-20 — app hosting (long retired) and DNS hosting
+      (moved to Hetzner Cloud DNS, AST-020) are off Vercel; nameservers re-pointed to *.ns.hetzner.com.
+      The Entri/Brevo OAuth grant that wrote into the Vercel DNS zone is now moot (DNS moved) — see
+      the Entri entry's revoke recommendation.
 
   - name: Entri
     provides: "DNS automation — used by Brevo's automatic domain authentication to write authentication records into the Vercel DNS zone"
@@ -125,16 +152,29 @@ suppliers:
     data_processed: "API request metadata, auth headers; kept off the verification path"
     dpa: "accepted (standard terms at signup)"
     sovereignty: flagged
-    notes: "US edge SaaS; kept off verification/PII path per sovereignty policy. Review if personal data scope changes."
+    products: [restormel, sophia]
+    notes: >
+      US edge SaaS; kept off verification/PII path per sovereignty policy. Review if personal data
+      scope changes. CORRECTION (2026-06-23, Phase-1 ground-truth §2 / §5 D10): the Zuplo dev portal
+      was noted as "retired" but Zuplo gateway key refs are STILL PRESENT in Sophia's env
+      (sophia-app-env, AST-026) — not fully retired. Confirm whether Zuplo is still a live data path
+      for Sophia and retire the refs if not (tracked with the supplier reconciliation PBI #237).
 
   - name: Sentry
-    provides: "Error tracking"
+    provides: "Error tracking — NEVER DEPLOYED (see status)"
     role: sub-processor
+    status: pending-removal
     location: "US (sentry.io default)"
     data_processed: "Error payloads — confirmed no PII (sendDefaultPii: off)"
     dpa: "accepted (standard terms at signup)"
     sovereignty: flagged
-    notes: "US SaaS; no personal data in payloads confirmed 2026-06-15. Sovereignty flag retained — review if Sentry config changes."
+    notes: >
+      PENDING-REMOVAL (2026-06-23, Phase-1 ground-truth §5 D10 / §6 F10): Sentry was listed here
+      but was NEVER actually deployed — PostHog (PostHog EU) is the live error tracker. This entry
+      is stale. Retained (not deleted) per the append-only/flag-don't-delete discipline; founder to
+      confirm and remove on merge. Any RoPA/data-inventory rows referencing Sentry (PROC-003,
+      DAT-009) must be reconciled to PostHog on removal — flagged but NOT silently rewritten here.
+      US SaaS; no personal data in payloads confirmed 2026-06-15.
 
   # --- BILLING ---
 
@@ -193,6 +233,15 @@ suppliers:
       third-party enquirer PII (name/email/message). Art 28 DPA coverage confirmed via
       Migadu's publicly published combined Privacy Policy + DPA (https://migadu.com/privacy/).
       Fire the sub-processor change-notification hook on any further scope change.
+      RECONCILE-FLAG (2026-06-23, Phase-1 ground-truth §5 D10 / §6 F10): the audit reported
+      "Migadu listed but live email is Resend". CLARIFICATION (do NOT blanket-supersede): Migadu
+      remains the LIVE transactional + auth email path for the Restormel product and the
+      allotmentology.tech portal (richly verified above). The Resend finding is the PlotBudget
+      stack — the in-cluster send-resend-email edge function (AST-025) uses RESEND, not Migadu, for
+      PlotBudget's emails. So Resend is the email path for PlotBudget (new entry below), NOT a
+      replacement of Migadu for Restormel/allotmentology.tech. [PLACEHOLDER — founder: confirm
+      whether any consolidation onto a single email sub-processor is intended; until then both are
+      live, each scoped to its products.]
 
   - name: Brevo (Sendinblue)
     provides: "Marketing email — newsletters / release notes from news.restormel.dev; isolated from the transactional stream (Migadu)"
@@ -211,6 +260,36 @@ suppliers:
       deliberately NOT enabled. The marketing-email activity is already in RoPA (PROC-009) +
       data-inventory (DAT-013). Public privacy-notice / sub-processor-page disclosure is GATED
       publish-when-live (first marketing send).
+
+  - name: Resend
+    provides: "Transactional email for PlotBudget (plotbudget.com) — sent via the in-cluster send-resend-email Supabase edge function (AST-025)"
+    role: sub-processor
+    location: "US [PLACEHOLDER — founder/counsel: confirm Resend entity + data region]"
+    data_processed: "PlotBudget user email addresses + transactional message content (e.g. auth/verification, notifications)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm Resend DPA / Art 28 terms accepted — NOT yet verified]"
+    sovereignty: "flagged — US email sub-processor; confirm region + transfer safeguards"
+    products: [plotbudget]
+    notes: >
+      ADDED 2026-06-23 (ISMS scope expansion; Phase-1 ground-truth §2 / §5 D10 / §6 F10). Live email
+      provider for PlotBudget — the self-hosted Supabase stack runs a send-resend-email edge-runtime
+      function that calls Resend (AST-025). API key delivered in-cluster via ESO (AST-027) from
+      Infisical (AST-013). DPA/region NOT yet confirmed — sub-processor AVV/contract confirmation is
+      a follow-up PBI. Distinct from Migadu (Restormel/allotmentology.tech email) and Brevo (Restormel
+      marketing). Add to the PlotBudget privacy notice (publish-when-live).
+
+  - name: Telegram
+    provides: "Operational alerting — infra/monitoring alerts delivered to a private operator channel"
+    role: tooling
+    location: "Telegram FZ-LLC (Dubai, UAE); distributed infrastructure"
+    data_processed: "Operational alert messages (host/service health, error-rate/egress/uptime signals). No customer or regulated personal data — operator-only channel."
+    dpa: "n/a — no customer/regulated personal data in alert payloads [PLACEHOLDER — founder: confirm no PII leaks into alert text]"
+    sovereignty: "flagged — non-EU messaging service; operator alerts only, kept off the customer-data path"
+    products: [shared]
+    notes: >
+      ADDED 2026-06-23 (Phase-1 ground-truth §5 D10 / §6 F10). The alert-delivery channel for the
+      monitoring/alerting stack (Beszel/PostHog/Uptime-Kuma/dead-man's-switch → Telegram, per the
+      infra-alert-response runbook). Logged as a sub-processor/tool because it receives operational
+      signal; guardrail: NO customer PII in alert text. Bot token in Infisical (AST-013).
 
   - name: Notion
     provides: "Docs / workspace (internal tooling)"
@@ -237,6 +316,63 @@ suppliers:
     data_processed: "Source code only; no customer data"
     dpa: "n/a (push-only mirror; no personal data)"
     sovereignty: review
+
+  # --- LLM / INFERENCE FLEET (Sophia, in scope 2026-06-23) ---
+  # ADDED 2026-06-23 (Phase-1 ground-truth §2 / §5 D10 / §6 F10): Sophia (AST-026, usesophia.app)
+  # is now in ISMS scope and its runtime inference fleet is wired in the sophia-app-env secret.
+  # These process user-submitted prompt/content and model outputs — GDPR-relevant. Art 28 DPA
+  # status for each is NOT yet confirmed; flagged [PLACEHOLDER] and tracked as a follow-up PBI
+  # (sub-processor AVV/contract confirmation). Sophia DPIA owed (separate follow-up PBI).
+
+  - name: AIZOLO (LLM gateway)
+    provides: "LLM routing/gateway for Sophia inference"
+    role: sub-processor
+    location: "[PLACEHOLDER — founder/counsel: confirm AIZOLO entity + data region]"
+    data_processed: "User prompt/content routed to models + model outputs (Sophia)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm DPA / Art 28 + sub-processor terms — NOT verified]"
+    sovereignty: "flagged — confirm region + transfer safeguards; assess no-training / data-retention terms"
+    products: [sophia]
+    notes: "ADDED 2026-06-23. Inference gateway wired in sophia-app-env (AST-026). DPA unconfirmed (follow-up PBI). Confirm no-training + retention posture."
+
+  - name: Fireworks AI
+    provides: "LLM inference provider (Sophia)"
+    role: sub-processor
+    location: "US [PLACEHOLDER — confirm]"
+    data_processed: "User prompt/content + model outputs (Sophia)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm DPA / Art 28 — NOT verified]"
+    sovereignty: "flagged — US inference; confirm transfer safeguards + no-training/retention terms"
+    products: [sophia]
+    notes: "ADDED 2026-06-23. Wired in sophia-app-env (AST-026). DPA unconfirmed (follow-up PBI)."
+
+  - name: Together AI
+    provides: "LLM inference provider (Sophia)"
+    role: sub-processor
+    location: "US [PLACEHOLDER — confirm]"
+    data_processed: "User prompt/content + model outputs (Sophia)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm DPA / Art 28 — NOT verified]"
+    sovereignty: "flagged — US inference; confirm transfer safeguards + no-training/retention terms"
+    products: [sophia]
+    notes: "ADDED 2026-06-23. Wired in sophia-app-env (AST-026). DPA unconfirmed (follow-up PBI)."
+
+  - name: Voyage AI
+    provides: "Embeddings / retrieval inference (Sophia)"
+    role: sub-processor
+    location: "US [PLACEHOLDER — confirm]"
+    data_processed: "Text submitted for embedding (Sophia corpus / query content)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm DPA / Art 28 — NOT verified]"
+    sovereignty: "flagged — US inference; confirm transfer safeguards + no-training/retention terms"
+    products: [sophia]
+    notes: "ADDED 2026-06-23. Embeddings provider wired in sophia-app-env (AST-026). DPA unconfirmed (follow-up PBI)."
+
+  - name: ElevenLabs
+    provides: "Text-to-speech / voice inference (Sophia)"
+    role: sub-processor
+    location: "US [PLACEHOLDER — confirm]"
+    data_processed: "Text submitted for speech synthesis + generated audio (Sophia)"
+    dpa: "[PLACEHOLDER — founder/counsel: confirm DPA / Art 28 — NOT verified]"
+    sovereignty: "flagged — US inference; confirm transfer safeguards + voice-data/retention terms"
+    products: [sophia]
+    notes: "ADDED 2026-06-23. TTS provider wired in sophia-app-env (AST-026). DPA unconfirmed (follow-up PBI). Voice data may warrant extra scrutiny in the Sophia DPIA."
 
   # --- FINANCE / LEGAL ---
 

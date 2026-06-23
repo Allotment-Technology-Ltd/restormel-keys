@@ -143,6 +143,19 @@ jobs:
           done
           echo "PM lifecycle callback complete."
 
+      # REC-INC-006 alert leg (#245): if the staging build/push/bump failed, make it
+      # LOUD on the Telegram ops channel (the ~14-silent-merge gap). No-ops without secrets.
+      - name: Alert on deploy failure (Telegram / PostHog)
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          DEPLOY_PIPELINE: "deploy-k3s (staging)"
+          DEPLOY_ENV: staging
+        run: bash "${GITHUB_WORKSPACE}/.forgejo/scripts/deploy-failure-alert.sh"
+
   # ===========================================================================
   # PROD — build → push → bump prod values. CI STOPS HERE.
   #   Argo shows restormel-dashboard-prod / -worker-prod OutOfSync.
@@ -177,3 +190,17 @@ jobs:
           "${GITHUB_WORKSPACE}/.forgejo/scripts/k3s-build-push-bump.sh" "${ENV_NAME}"
           echo "::notice::PROD image tag bumped in restormel-gitops. Argo will show OutOfSync."
           echo "::notice::OPERATOR ACTION REQUIRED — sync by hand: argocd app sync restormel-dashboard-prod && argocd app sync restormel-worker-prod (or click Sync in the Argo UI). The PBI lifecycle flip runs as the prod PostSync hook on Sync success."
+
+      # REC-INC-006 alert leg (#245): if the PROD build/push/bump failed, alert the
+      # Telegram ops channel immediately. This is the exact gap behind the silent ~14
+      # broken merges — a failed prod deploy must never be silent again. No-ops w/o secrets.
+      - name: Alert on deploy failure (Telegram / PostHog)
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          DEPLOY_PIPELINE: "deploy-k3s (prod)"
+          DEPLOY_ENV: prod
+        run: bash "${GITHUB_WORKSPACE}/.forgejo/scripts/deploy-failure-alert.sh"

@@ -18,14 +18,14 @@ related: [REC-TPL-003, REC-ADR-009, REC-ADR-008, REC-GOV-003, REC-GOV-005]
 # DPIA — Neon quick-start managed-DB tier
 
 > Filed from REC-TPL-003 (DPIA template). **GO-LIVE GATE:** no customer data may land on Neon
-> until this DPIA + RoPA PROC-010 + the suppliers.yaml sub-processor entry are filed AND
+> until this DPIA + RoPA PROC-012 + the suppliers.yaml sub-processor entry are filed AND
 > founder-approved (see go-live conditions in §5). Append-only once approved. References
 > REC-ADR-009 (PR #285) and the Step-1 design (Section B, `scratchpad/tenant-db-provisioning-design.md`).
 
 ## 1. Processing described
 
 Per-workspace managed Postgres on **Neon** for **opt-in, non-sovereign quick-start** workspaces
-(RoPA **PROC-010**). Data processed: Connect ingest content, verification results, provenance
+(RoPA **PROC-012**). Data processed: Connect ingest content, verification results, provenance
 traces, and workspace/project metadata (workspace product data), plus per-workspace DB connection
 credentials held as ciphertext in the Restormel vault. Data subjects: registered users and their
 end-users. Each workspace = **one isolated Neon project** in AWS **eu-central-1 (Frankfurt)**, with

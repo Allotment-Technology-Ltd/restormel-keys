@@ -6,15 +6,20 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-19
-#   last-reviewed: 2026-06-19
+#   approved-on: 2026-06-23
+#   last-reviewed: 2026-06-23
 #   classification: internal
 #   retention: life-of-processing
 #
 # Controller: Allotment Technology Ltd, company no. 16925574, contact@restormel.dev
-# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
-# (Restormel + allotmentology.tech). Plot/Sophia out of scope until their phases.
-# Per-activity scope is in the product: field.
+# ISMS scope: Allotment Technology Ltd — company-wide across all in-scope products
+# (Restormel + allotmentology.tech + PlotBudget + Sophia).
+# SCOPE EXPANSION (2026-06-23, founder decision): PlotBudget (PROC-010) and Sophia (PROC-011)
+# are now IN scope (live on the shared in-scope K3s cluster — asset-inventory.yaml AST-022..028).
+# Their processing activities + data categories are added below. NOTE: these two PROC entries are
+# scaffolded from infrastructure ground-truth (Phase-1 §2; PBIs #237/#239) — several data-category,
+# retention, and lawful-basis specifics are [PLACEHOLDER — founder/counsel] pending each product's
+# DPIA (DPIA-per-product is a filed follow-up PBI). Per-activity scope is in the product: field.
 # allotmentology.tech privacy notice v1.1 published 2026-06-19 at https://allotmentology.tech/privacy.
 # PROC-008 form is live as of 2026-06-19 (RISK-011 closed).
 #
@@ -266,7 +271,7 @@ processing_activities:
       marketing send.
     product: restormel
 
-  - id: PROC-010
+  - id: PROC-012
     purpose: >
       Provide the non-sovereign QUICK-START database tier for Restormel Connect — provision and operate
       a dedicated per-workspace managed Postgres (Neon) for workspaces that explicitly opt into the
@@ -303,3 +308,78 @@ processing_activities:
       describe the EU-region/non-sovereign nature before the tier is offered. Update
       https://restormel.dev/keys/privacy §3.
     product: restormel
+  # --- PROC-010 / PROC-011 added 2026-06-23 (ISMS scope expansion: PlotBudget + Sophia now in
+  #     scope). SCAFFOLDED from infra ground-truth — specifics to be confirmed by each product's
+  #     DPIA (filed follow-up PBIs). Do not treat the placeholders as settled. ---
+
+  - id: PROC-010
+    purpose: >
+      Provide the PlotBudget (plotbudget.com) service — a personal/allotment budgeting web app:
+      user accounts, authentication, and storage of users' budget/financial planning data.
+    lawful_basis: >
+      CONTRACT — service T&Cs accepted at sign-up (Art 6(1)(b)) for account + core service.
+      [PLACEHOLDER — founder/counsel: confirm lawful basis per data category in the PlotBudget DPIA.]
+    data_subjects: "PlotBudget registered users"
+    data_categories:
+      - "Account identity: email address, name/display name, auth credentials/session (Supabase Auth/gotrue)"
+      - "User budget / financial-planning data (amounts, categories, plans) — user-entered financial data"
+      - "Uploaded objects (Supabase storage, e.g. images) where applicable"
+      - "[PLACEHOLDER — founder/counsel: confirm full category list, esp. any special-category or financial data, in the DPIA]"
+    recipients:
+      - "Hetzner (Helsinki EU, K3s cluster AST-022) — self-hosted Supabase backend (AST-025) + pg-plotbudget (AST-023); all application/financial data resides here"
+      - "Hetzner Object Storage S3 fsn1 (EU, AST-019) — encrypted CNPG/Supabase backups; plotbudget-storage bucket"
+      - "Vercel (US) — frontend hosting (plotbudget.com); request metadata + client IPs at the edge (financial data path is the EU backend, not Vercel)"
+      - "Resend (US) — transactional email (auth/verification, notifications); user email address + message content"
+    transfers: >
+      Core data + backups: no transfer (self-hosted EU, Hetzner). Frontend edge (Vercel, US) and
+      transactional email (Resend, US): UK/EU→US — DPA/SCC posture for both is [PLACEHOLDER —
+      founder/counsel: confirm], tracked as the sub-processor AVV/contract-confirmation PBI.
+    retention: >
+      [PLACEHOLDER — founder/counsel: define PlotBudget retention. Interim: account + budget data
+      retained while account active; delete on account closure on request, per the PlotBudget DPIA.]
+    security_measures: >
+      TLS in transit; Supabase Auth + Row-Level Security (RLS) on pg-plotbudget; EU-resident
+      self-hosted backend; encrypted backups to S3 fsn1; secrets via ESO/Infisical (AST-027/013).
+      [PLACEHOLDER — confirm RLS coverage + backup-encryption details in the DPIA.]
+    privacy_notice_ref: "[PLACEHOLDER — confirm/publish a PlotBudget privacy notice URL (plotbudget.com) before significant user volume]"
+    product: plotbudget
+
+  - id: PROC-011
+    purpose: >
+      Provide the Sophia (usesophia.app) service — an LLM/AI product: user accounts, authentication,
+      and processing of user-submitted content/prompts through an LLM + retrieval (knowledge-graph)
+      pipeline to generate responses.
+    lawful_basis: >
+      CONTRACT — service T&Cs accepted at sign-up (Art 6(1)(b)) for account + core service.
+      [PLACEHOLDER — founder/counsel: confirm lawful basis for the AI/inference processing and any
+      LI balancing test in the Sophia DPIA. Sophia is an LLM product — DPIA is mandatory-by-default.]
+    data_subjects: "Sophia registered users (and any third parties named in user-submitted content)"
+    data_categories:
+      - "Account identity: email address, name, auth/session (Better Auth / Neon Auth — legacy wiring still present)"
+      - "User-submitted prompts / content sent to the model (may contain free-text personal data)"
+      - "Knowledge-graph / corpus data (SurrealDB AST-024, NS main/DB sophia)"
+      - "Relational app data (usesophia DB in pg-platform, AST-023)"
+      - "Model outputs / generated audio (where ElevenLabs TTS used)"
+      - "[PLACEHOLDER — founder/counsel: confirm full category list incl. any special-category content users may submit, in the DPIA]"
+    recipients:
+      - "Hetzner (Helsinki EU, K3s cluster AST-022) — Sophia app (AST-026), SurrealDB (AST-024), pg-platform usesophia DB (AST-023); core data resides here"
+      - "LLM/inference fleet (suppliers.yaml): AIZOLO gateway, Fireworks, Together, Voyage (embeddings), ElevenLabs (TTS) — user prompt/content + outputs routed for inference"
+      - "Paddle (UK/EU) — billing (merchant of record)"
+      - "Resend (US) — transactional email where used [PLACEHOLDER — confirm Sophia email path]"
+      - "Neon (AWS eu-west) — STILL WIRED (NEON_API_KEY + Neon Auth in sophia-app-env); legacy, decommission pending (RISK-004)"
+      - "Zuplo (US edge) — gateway refs still present in env; confirm if a live data path (RISK / supplier reconciliation)"
+    transfers: >
+      Core data: no transfer (self-hosted EU). LLM/inference fleet + Resend: UK/EU→US (and other
+      regions TBC) — DPA/SCC + no-training/retention posture for each is [PLACEHOLDER —
+      founder/counsel: confirm], tracked as the sub-processor AVV/contract-confirmation PBI. The
+      cross-border AI inference flow is a primary subject of the Sophia DPIA.
+    retention: >
+      [PLACEHOLDER — founder/counsel: define Sophia retention, incl. prompt/output logging and any
+      model-provider retention windows, per the Sophia DPIA.]
+    security_measures: >
+      TLS in transit; EU-resident self-hosted core; secrets via ESO/Infisical (AST-027/013).
+      GAP (Phase-1 ground-truth F2/D5): SurrealDB (AST-024) has NO working backup — its 20 GB graph
+      store is currently unprotected; critical follow-up PBI. [PLACEHOLDER — confirm inference-fleet
+      no-training/data-retention terms + prompt-handling controls in the DPIA.]
+    privacy_notice_ref: "[PLACEHOLDER — confirm/publish a Sophia privacy notice URL (usesophia.app) covering AI/LLM processing + the inference sub-processor list]"
+    product: sophia
