@@ -28,7 +28,7 @@
   <h1>Phase 6 — Verify and go live</h1>
   <p class="doc-prereqs">
     <strong>Time:</strong> ~10 minutes<br />
-    <strong>Prerequisites:</strong> At least one of Phase 2 (CLI), 3 (MCP), or 4 (AAIF) complete<br />
+    <strong>Prerequisites:</strong> At least one of Phase 2 (CLI), 3 (MCP), or 4 (Dispatch) complete<br />
     <strong>You'll need:</strong> Terminal, Dashboard access
   </p>
 
@@ -45,14 +45,14 @@
   <p><strong>How to test:</strong> All three commands complete without errors.</p>
 
   <h2>Step 6.2 — Dashboard verification</h2>
-  <p>Open <a href="/keys/dashboard/dev-tools">Developer Tools</a>. Confirm overview and the tab for your surface (CLI, MCP, or AAIF) match your setup.</p>
+  <p>Open <a href="/keys/dashboard/dev-tools">Developer Tools</a>. Confirm overview and the tab for your surface (CLI, MCP, or Dispatch) match your setup.</p>
 
   <h2>Step 6.3 — Document and share</h2>
-  <p>Add a short section to your README or docs: "Restormel Integrations" with links to the CLI quickstart and/or MCP/AAIF docs. If you use the CLI in CI, add a step that runs <code>keys doctor</code>. If you used agent prompts, keep the <a href="/keys/docs/integrations-walkthrough/prompt-index">Prompt index</a> link.</p>
+  <p>Add a short section to your README or docs: "Restormel Integrations" with links to the CLI quickstart and/or MCP/Dispatch docs. If you use the CLI in CI, add a step that runs <code>keys doctor</code>. If you used agent prompts, keep the <a href="/keys/docs/integrations-walkthrough/prompt-index">Prompt index</a> link.</p>
 
   <h2>Step 6.4 — Go live checklist</h2>
   <ul>
-    <li>At least one surface (CLI / MCP / AAIF) installed and verified.</li>
+    <li>At least one surface (CLI / MCP / Dispatch) installed and verified.</li>
     <li>Dashboard Developer Tools and usage path set.</li>
     <li>Doc links (or README) updated.</li>
     <li>Optional: CLI in CI; agent prompts documented.</li>

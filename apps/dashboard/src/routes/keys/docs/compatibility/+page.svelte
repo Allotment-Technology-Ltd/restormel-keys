@@ -13,7 +13,7 @@
 
 <svelte:head>
   <title>Framework compatibility — Restormel Keys</title>
-  <meta name="description" content="Keys REST, Web Components, CLI, MCP, and AAIF — recommended public packages for Keys MVP." />
+  <meta name="description" content="Keys REST, Web Components, CLI, MCP, and Dispatch — recommended public packages for Keys MVP." />
 </svelte:head>
 
 <div class="doc-content">
@@ -60,7 +60,7 @@
   <ul>
     <li><a href="/keys/docs/cloud-api">Cloud API</a> — Gateway key, Developer Portal, OpenAPI</li>
     <li><a href="/keys/docs/guides/npm-to-rest-keys">Migrate from @restormel/keys npm</a></li>
-    <li><a href="/keys/docs/integrations">CLI, MCP, AAIF</a></li>
+    <li><a href="/keys/docs/integrations">CLI, MCP, Dispatch</a></li>
     <li><a href="/keys/dashboard">Dashboard</a> — projects and provider vault</li>
   </ul>
 </div>

@@ -7,7 +7,7 @@ import {
   isIntegrationCatalogEntryVisible,
   isSuiteMarketingExpanded,
 } from "./integration-catalog-for-flags";
-import { INTEGRATION_CATALOG } from "@restormel/aaif";
+import { INTEGRATION_CATALOG } from "@restormel/dispatch";
 
 describe("integration-catalog-for-flags", () => {
   it("MVP defaults hide gateway and CI catalog entries", () => {

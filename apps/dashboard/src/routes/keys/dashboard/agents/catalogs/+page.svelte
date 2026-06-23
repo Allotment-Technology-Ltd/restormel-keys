@@ -50,7 +50,7 @@
 
 <h1 class="page-title">Catalogs</h1>
 <p class="page-desc">
-  Reference catalog for all agent integration surfaces: MCP tools, CLI commands, and AAIF contracts.
+  Reference catalog for all agent integration surfaces: MCP tools, CLI commands, and Dispatch contracts.
   Install the surface you need and return here for the full tool list.
 </p>
 
@@ -186,11 +186,11 @@
   </details>
 </section>
 
-<!-- ── AAIF ─────────────────────────────────────────────────────────────── -->
+<!-- ── Dispatch ─────────────────────────────────────────────────────────── -->
 <section class="catalog-section" aria-labelledby="aaif-heading">
-  <h2 id="aaif-heading" class="section-title">AAIF</h2>
+  <h2 id="aaif-heading" class="section-title">Dispatch</h2>
   <p class="section-desc">
-    Agent-to-Agent Interaction Format — a structured request/response contract for predictable AI interactions.
+    A structured request/response contract for predictable AI interactions.
     Your host provides final model output; Restormel resolves provider/model and estimates cost.
   </p>
 
@@ -223,7 +223,7 @@
       </div>
       <p class="hint" style="margin-top: var(--space-3)">
         Use <code class="tool-name">keys.resolve()</code> + <code class="tool-name">keys.estimateCost()</code> for routing and cost.
-        <a href="/keys/docs/integrations/aaif" class="btn-link">AAIF documentation</a>
+        <a href="/keys/docs/integrations/aaif" class="btn-link">Dispatch documentation</a>
       </p>
     </div>
   </details>

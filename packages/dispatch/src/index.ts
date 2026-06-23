@@ -1,28 +1,28 @@
 export type {
-  AAIFRequest,
-  AAIFResponse,
-  AAIFTask,
-  AAIFLatency,
-  AAIFConstraints,
-  AAIFUser,
-  AAIFRouting,
-  AAIFRoutingHints,
-  AAIFRoutingContext,
-  AAIFRoutingPlan,
-  AAIFRoutingPlanStep,
-  AAIFRoutingAttempt,
-  AAIFRoutingAttemptOutcome,
-  AAIFIntegrationStack,
-  AAIFIntegrationStackComponent,
-  AAIFIntegrationStackSchemaVersion,
+  DispatchRequest,
+  DispatchResponse,
+  DispatchTask,
+  DispatchLatency,
+  DispatchConstraints,
+  DispatchUser,
+  DispatchRouting,
+  DispatchRoutingHints,
+  DispatchRoutingContext,
+  DispatchRoutingPlan,
+  DispatchRoutingPlanStep,
+  DispatchRoutingAttempt,
+  DispatchRoutingAttemptOutcome,
+  DispatchIntegrationStack,
+  DispatchIntegrationStackComponent,
+  DispatchIntegrationStackSchemaVersion,
   // Stage 4.3 — verified-context envelope
-  AAIFVerifiedClaimState,
-  AAIFEvidenceMatch,
-  AAIFVerifiedClaimEvidence,
-  AAIFVerifiedClaimJudge,
-  AAIFVerifiedClaimEnvelope,
-  AAIFVerifiedContextInput,
-  AAIFVerifiedContextOutput,
+  DispatchVerifiedClaimState,
+  DispatchEvidenceMatch,
+  DispatchVerifiedClaimEvidence,
+  DispatchVerifiedClaimJudge,
+  DispatchVerifiedClaimEnvelope,
+  DispatchVerifiedContextInput,
+  DispatchVerifiedContextOutput,
 } from "./types.js";
 
 export {
@@ -51,15 +51,15 @@ export {
 } from "./suite-tool-names.js";
 
 export {
-  isAAIFRequest,
-  isAAIFResponse,
-  isAAIFVerifiedClaimEnvelope,
-  isAAIFVerifiedContextInput,
-  isAAIFVerifiedContextOutput,
+  isDispatchRequest,
+  isDispatchResponse,
+  isDispatchVerifiedClaimEnvelope,
+  isDispatchVerifiedContextInput,
+  isDispatchVerifiedContextOutput,
 } from "./validate.js";
 
-export type { ExecuteAAIFOptions } from "./runtime.js";
-export { executeAAIFRequest } from "./runtime.js";
+export type { ExecuteDispatchOptions } from "./runtime.js";
+export { executeDispatchRequest } from "./runtime.js";
 
 // Stage 4.3 — verified-context runtime helpers
 export {
@@ -73,3 +73,7 @@ export {
   getResponseVerifiedContext,
   getSupportedClaims,
 } from "./verified-context.js";
+
+// Deprecated AAIF* aliases (pre-1.0 grace period — no silent breaking rename).
+// Removed at 1.0; migrate to the Dispatch* names. See ./deprecated.ts.
+export * from "./deprecated.js";

@@ -1,25 +1,30 @@
 <svelte:head>
-  <title>AAIF — Integrations — Docs — Restormel Keys</title>
-  <meta name="description" content="AAIF: Agent-to-Agent Interaction Format — a structured request/response contract for predictable AI interactions." />
+  <title>Dispatch — Integrations — Docs — Restormel Keys</title>
+  <meta name="description" content="Dispatch: the in-process model-execution Interaction Format — a structured request/response envelope for predictable AI interactions." />
 </svelte:head>
 
-<h1 class="docs-h1">AAIF</h1>
+<h1 class="docs-h1">Dispatch</h1>
 <p class="docs-intro">
-  The Agent-to-Agent Interaction Format (AAIF) defines a structured request/response contract
-  for predictable AI interactions. Use it to standardise how your application communicates
-  task intent, cost constraints, and routing context.
+  Dispatch is Restormel's in-process model-execution <strong>Interaction Format</strong>: a structured
+  request/response envelope for predictable AI interactions. Use it to standardise how your application
+  communicates task intent, cost constraints, and routing context. It is an in-process contract,
+  <strong>not a wire protocol</strong> — for spec-conformant cross-agent interop see A2A (Agent2Agent).
+</p>
+<p class="docs-p">
+  <em>Formerly published as <code class="inline-code">@restormel/aaif</code> (the "AAIF" envelope); renamed to
+  Dispatch. Old <code class="inline-code">AAIF*</code> exports remain as deprecated aliases until 1.0.</em>
 </p>
 
 <h2 class="docs-h2">Status</h2>
 <p class="docs-p">
-  AAIF is <strong>advanced</strong> — the type contract is defined and exported from
-  <code class="inline-code">@restormel/aaif</code>. AAIF runtime helpers are available via
-  <code class="inline-code">executeAAIFRequest()</code>. Before install, verify availability with
-  <code class="inline-code">npm view @restormel/aaif version</code>.
+  Dispatch is <strong>advanced</strong> — the type contract is defined and exported from
+  <code class="inline-code">@restormel/dispatch</code>. Dispatch runtime helpers are available via
+  <code class="inline-code">executeDispatchRequest()</code>. Before install, verify availability with
+  <code class="inline-code">npm view @restormel/dispatch version</code>.
 </p>
 
 <h2 class="docs-h2">Request</h2>
-<pre class="code-block"><code>type AAIFRequest = &#123;
+<pre class="code-block"><code>type DispatchRequest = &#123;
   input: string
   task?: "chat" | "completion" | "embedding"
   constraints?: &#123;
@@ -48,7 +53,7 @@
 &#125;</code></pre>
 
 <h2 class="docs-h2">Response</h2>
-<pre class="code-block"><code>type AAIFResponse = &#123;
+<pre class="code-block"><code>type DispatchResponse = &#123;
   output: string
   provider: string
   model: string
@@ -60,10 +65,10 @@
 
 <h2 class="docs-h2">Package</h2>
 <p class="docs-p">
-  Types, runtime guards, and the runtime helper are exported from <code class="inline-code">@restormel/aaif</code>:
+  Types, runtime guards, and the runtime helper are exported from <code class="inline-code">@restormel/dispatch</code>:
 </p>
-<pre class="code-block"><code>import type &#123; AAIFRequest, AAIFResponse &#125; from "@restormel/aaif";
-import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code></pre>
+<pre class="code-block"><code>import type &#123; DispatchRequest, DispatchResponse &#125; from "@restormel/dispatch";
+import &#123; isDispatchRequest, isDispatchResponse &#125; from "@restormel/dispatch";</code></pre>
 
 <h2 class="docs-h2">Use cases</h2>
 <ul class="docs-list">
@@ -74,9 +79,9 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
 
 <h2 class="docs-h2" id="integration-stack">Integration stack (optional)</h2>
 <p class="docs-p">
-  Optional <code class="inline-code">integrationStack</code> on <code class="inline-code">AAIFRequest</code> declares which third-party products appear in the host environment (for example Neon, Vercel, OpenRouter). It is <strong>orthogonal</strong> to
+  Optional <code class="inline-code">integrationStack</code> on <code class="inline-code">DispatchRequest</code> declares which third-party products appear in the host environment (for example Neon, Vercel, OpenRouter). It is <strong>orthogonal</strong> to
   <code class="inline-code">routingContext</code> (resolve hints) and <strong>does not</strong> change provider selection. Use it for logs, MCP agents, and analytics. Valid <code class="inline-code">components[].id</code> values are exported as
-  <code class="inline-code">INTEGRATION_COMPONENT_IDS</code> from <code class="inline-code">@restormel/aaif</code>; <code class="inline-code">isAAIFRequest()</code> validates the object when present. The Dashboard <strong>Overview → Connect your stack</strong> wizard copies JSON that passes this guard.
+  <code class="inline-code">INTEGRATION_COMPONENT_IDS</code> from <code class="inline-code">@restormel/dispatch</code>; <code class="inline-code">isDispatchRequest()</code> validates the object when present. The Dashboard <strong>Overview → Connect your stack</strong> wizard copies JSON that passes this guard.
 </p>
 <p class="docs-p">
   Human index of vendors: <a href="/keys/docs/guides/integration-catalog">Integration catalog</a>.
@@ -84,27 +89,27 @@ import &#123; isAAIFRequest, isAAIFResponse &#125; from "@restormel/aaif";</code
 
 <h2 class="docs-h2">Routing and resolve</h2>
 <p class="docs-p">
-  AAIF adds optional <code class="inline-code">routingContext</code> on <code class="inline-code">AAIFRequest</code> so hosts can mirror resolve hints (for example <code class="inline-code">workload</code>, <code class="inline-code">stage</code>, <code class="inline-code">attemptNumber</code>) next to the legacy <code class="inline-code">routing</code> object.
-  AAIF does <strong>not</strong> call the dashboard resolve HTTP API; for a full <code class="inline-code">stepChain</code> from Keys, use <code class="inline-code">@restormel/keys</code> <code class="inline-code">resolve()</code> (Gateway key) then execute the model in your worker.
+  Dispatch adds optional <code class="inline-code">routingContext</code> on <code class="inline-code">DispatchRequest</code> so hosts can mirror resolve hints (for example <code class="inline-code">workload</code>, <code class="inline-code">stage</code>, <code class="inline-code">attemptNumber</code>) next to the legacy <code class="inline-code">routing</code> object.
+  Dispatch does <strong>not</strong> call the dashboard resolve HTTP API; for a full <code class="inline-code">stepChain</code> from Keys, use <code class="inline-code">@restormel/keys</code> <code class="inline-code">resolve()</code> (Gateway key) then execute the model in your worker.
 </p>
 <p class="docs-p">
   Canonical semantics: <a href="/keys/docs/guides/routing-contract">Routing contract</a> (mirrors <code class="inline-code">docs/architecture/keys-routing-contract.md</code>). Agents: MCP <code class="inline-code">docs.canonical_resolve</code> topic <code class="inline-code">keys_routing_contract</code> or suite tool <code class="inline-code">routing.capabilities</code>.
 </p>
 
-<h2 class="docs-h2">When to choose AAIF vs MCP vs CLI</h2>
+<h2 class="docs-h2">When to choose Dispatch vs MCP vs CLI</h2>
 <ul class="docs-list">
-  <li><strong>AAIF</strong> — your app/service wants a typed contract and runtime helper for routing + cost estimation.</li>
+  <li><strong>Dispatch</strong> — your app/service wants a typed contract and runtime helper for routing + cost estimation.</li>
   <li><strong>MCP</strong> — an agent or IDE wants to call Restormel tool surface (routing/cost/validation) via stdio.</li>
   <li><strong>CLI</strong> — you need local, developer-friendly inspection and debugging without embedding into runtime code.</li>
 </ul>
 
 <h2 class="docs-h2">Runtime helper</h2>
 <p class="docs-p">
-  The AAIF runtime helper resolves <strong>provider/model</strong> and estimates cost via
+  The Dispatch runtime helper resolves <strong>provider/model</strong> and estimates cost via
   <code class="inline-code">@restormel/keys</code>. Hosts can optionally provide the final model
   output via the <code class="inline-code">generate</code> callback.
 </p>
-<pre class="code-block"><code>import &#123; executeAAIFRequest &#125; from "@restormel/aaif";
+<pre class="code-block"><code>import &#123; executeDispatchRequest &#125; from "@restormel/dispatch";
 import &#123; createKeys, openaiProvider &#125; from "@restormel/keys";
 
 const keys = createKeys(
@@ -112,7 +117,7 @@ const keys = createKeys(
   &#123; providers: [openaiProvider] &#125;
 );
 
-const res = await executeAAIFRequest(
+const res = await executeDispatchRequest(
   &#123; input: "Summarise…", task: "chat", routing: &#123; model: "gpt-4o-mini" &#125; &#125;,
   keys,
   &#123; generate: async (ctx) => "output(cost=" + ctx.cost + ")" &#125;
