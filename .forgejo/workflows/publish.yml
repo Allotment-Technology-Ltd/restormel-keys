@@ -7,7 +7,7 @@
 # Runbook: docs/runbooks/npm-maintenance-window.md
 #
 # Order: @restormel/keys → @restormel/keys-svelte → @restormel/keys-elements → @restormel/keys-react
-#   → @restormel/aaif → @restormel/mcp (with platform deps + tests) → doctor → validate → keys-cli.
+#   → @restormel/dispatch → @restormel/mcp (with platform deps + tests) → doctor → validate → keys-cli.
 # keys-svelte is intentionally before aaif so a first-time / permission failure on aaif
 # does not block publishing keys-svelte (previously aaif ran first and aborted the job).
 #
@@ -69,10 +69,10 @@ jobs:
       - name: Publish @restormel/keys-react to npm
         run: pnpm --filter @restormel/keys-react publish --access public --no-git-checks
 
-      - name: Build @restormel/aaif
-        run: pnpm --filter @restormel/aaif run build
-      - name: Publish @restormel/aaif to npm
-        run: pnpm --filter @restormel/aaif publish --access public --no-git-checks
+      - name: Build @restormel/dispatch
+        run: pnpm --filter @restormel/dispatch run build
+      - name: Publish @restormel/dispatch to npm
+        run: pnpm --filter @restormel/dispatch publish --access public --no-git-checks
 
       - name: Build deps for @restormel/mcp
         run: |
