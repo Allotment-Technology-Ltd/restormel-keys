@@ -58,6 +58,26 @@ suppliers:
     sovereignty: ok
     notes: "DECOMMISSIONING ~2026-06-30. Remove this entry on confirmed deletion."
 
+  - name: Neon (quick-start tier)
+    provides: "Managed per-workspace Postgres for the non-sovereign QUICK-START tier (Neon for Platforms; per-workspace project, EU-Frankfurt aws-eu-central-1, scale-to-zero)"
+    role: sub-processor
+    location: "AWS eu-central-1 (Frankfurt, EU) — region pinned at project creation; Neon Inc. is a US company"
+    data_processed: "Customer workspace/Connect product data for workspaces that opt into the quick-start tier (dedicated per-workspace Neon project)"
+    dpa: "[PLACEHOLDER — confirm] founder/counsel: accept/confirm Neon DPA + SCCs/IDTA for the Platforms relationship BEFORE first customer project; Neon is US-controlled so a transfer instrument is required even with EU-region residency"
+    sovereignty: "flagged — non-sovereign opt-in tier; default tier is EU/UK self-hosted CNPG. EU-region residency is a mitigation, not sovereignty (US company / FISA exposure — see DPIA)."
+    products: [restormel]
+    notes: >
+      Added 2026-06-23 for the Stage-2 quick-start tier (REC-ADR-009, PR #285). GO-LIVE GATE:
+      no customer data may land on Neon until this entry + ROPA PROC-009 + the DPIA
+      (evidence/dpia/neon-quick-start-tier.md) are filed AND founder-approved. Funded by the Neon
+      open-source-programme credit (~$5000/yr) via Neon for Platforms. DISTINCT from the legacy Neon
+      backup entry above (decommissioning by 2026-06-30 under RISK-004) — this is a NEW active
+      customer-data relationship at a higher risk class, NOT an edit to the dead entry. Confirm
+      OSS-programme attribution/usage obligations. Adding this sub-processor MUST fire the customer
+      change-notification hook (Phase 5, notify-subprocessor-change.mjs on suppliers.yaml → main).
+      Per-workspace isolation; physical project deletion (DELETE /projects/{id}) is the Art-17 erasure
+      primitive. Tied to ROPA PROC-009, a new DAT entry, and DPIA evidence/dpia/neon-quick-start-tier.md.
+
   - name: Vercel
     provides: "Domain REGISTRAR for restormel.dev (DNS hosting retired 2026-06-20 → Hetzner Cloud DNS, AST-020)"
     role: sub-processor
