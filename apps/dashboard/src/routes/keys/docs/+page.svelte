@@ -20,7 +20,7 @@
   <div class="intent-grid">
     <a class="intent-card" href="/keys/docs/tutorials">
       <strong>Tutorials</strong>
-      <span>Choose your path by role, then follow the integration or CLI/MCP/AAIF walkthrough.</span>
+      <span>Choose your path by role, then follow the integration or CLI/MCP/Dispatch walkthrough.</span>
     </a>
     <a class="intent-card" href="/keys/docs/guides/provider-access-modes">
       <strong>Provider access modes</strong>
@@ -83,7 +83,7 @@
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Restormel Testing onboarding</a> — Connections, Testing hub, Gateway keys, CLI env</li>
     <li><a href="/keys/docs/guides/integration-catalog">Integration catalog</a> — index of vendors and stacks with links to canonical guides</li>
     <li><a href="/docs/how-it-fits-together">How the suite fits together</a> — key types, API surfaces, and where each URL fits</li>
-    <li><a href="/keys/docs/tutorials">Tutorials</a> — choose your path, the integration walkthrough (Phase 0–6), and CLI/MCP/AAIF onboarding</li>
+    <li><a href="/keys/docs/tutorials">Tutorials</a> — choose your path, the integration walkthrough (Phase 0–6), and CLI/MCP/Dispatch onboarding</li>
     <li>
       <a href="/keys/docs/cloud-api">Cloud API</a> — Dashboard API (<code>rk_…</code>): resolve, routes, policies, catalog, <strong>project model index</strong>; Zuplo gateway (<code>zpka_…</code>); OpenAPI imports.
       Integrator note (index <code>data</code> shape, validation errors):

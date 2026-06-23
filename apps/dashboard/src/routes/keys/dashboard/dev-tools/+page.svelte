@@ -5,7 +5,7 @@
 
 <h1 class="page-title">Developer Tools</h1>
 <p class="page-desc">
-  Connect Restormel to your development workflow — CLI, agent tools (MCP), and structured AI interaction (AAIF).
+  Connect Restormel to your development workflow — CLI, agent tools (MCP), and structured AI interaction (Dispatch).
 </p>
 
 <div class="cards-grid">
@@ -24,10 +24,10 @@
     href="{DASHBOARD_BASE}/dev-tools/mcp"
   />
   <IntegrationCard
-    title="AAIF"
+    title="Dispatch"
     description="Contract + runtime routing/spend estimation; your host provides final model output."
     status="advanced"
-    cta="AAIF details"
+    cta="Dispatch details"
     href="{DASHBOARD_BASE}/dev-tools/aaif"
   />
 </div>

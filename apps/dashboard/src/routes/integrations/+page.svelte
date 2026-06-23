@@ -33,7 +33,7 @@
   <section id="integrations" class="section" aria-labelledby="cards-heading">
     <h2 id="cards-heading" class="section-title">Restormel developer surfaces</h2>
     <p class="section-intro">
-      CLI, MCP, and AAIF are how you wire Restormel into terminals and agents.
+      CLI, MCP, and Dispatch are how you wire Restormel into terminals and agents.
       {#if showIntegrationCatalog}
         Third-party databases, gateways, and CI are indexed in the
         <a href="/keys/docs/guides/integration-catalog">integration catalog</a>.
@@ -55,7 +55,7 @@
         href="/keys/docs/integrations/mcp"
       />
       <IntegrationCard
-        title="AAIF"
+        title="Dispatch"
         description="Structured request/response contract with runtime routing + spend estimation via Keys."
         status="advanced"
         cta="Learn more"
@@ -113,7 +113,7 @@
     <ul class="docs-links">
       <li><a href="/keys/docs/integrations/cli">CLI Quickstart</a></li>
       <li><a href="/keys/docs/integrations/mcp">MCP Setup</a></li>
-      <li><a href="/keys/docs/integrations/aaif">AAIF Overview</a></li>
+      <li><a href="/keys/docs/integrations/aaif">Dispatch Overview</a></li>
     </ul>
   </section>
 </div>

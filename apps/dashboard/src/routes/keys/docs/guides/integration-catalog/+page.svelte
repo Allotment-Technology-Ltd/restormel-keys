@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { IntegrationCatalogCategory, IntegrationCatalogEntry } from "@restormel/aaif";
+  import type { IntegrationCatalogCategory, IntegrationCatalogEntry } from "@restormel/dispatch";
   import { page } from "$app/stores";
   import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
@@ -44,8 +44,8 @@
   Restormel sits <strong>above</strong> gateways and providers — you keep your stack; we add routing
   {#if flags.testing}and Testing{/if}
   {#if flags.connect} and Connect knowledge paths{/if}.
-  For machine-readable stack metadata in AAIF, see
-  <a href="/keys/docs/integrations/aaif#integration-stack"><code>integrationStack</code> on AAIF</a>.
+  For machine-readable stack metadata in Dispatch, see
+  <a href="/keys/docs/integrations/aaif#integration-stack"><code>integrationStack</code> on Dispatch</a>.
   Connect’s default graph path is <strong>Bring-your-own SurrealDB</strong>; Neon covers workspace Postgres and optional spine patterns — see
   <a href="/keys/docs/guides/connect-first-graph-onboarding">Connect first graph onboarding</a>.
 </p>
@@ -77,7 +77,7 @@
   {#if flags.testing}
     <li><a href="/keys/docs/guides/keys-testing-onboarding">Keys + Restormel Testing onboarding</a></li>
   {/if}
-  <li><a href="/keys/docs/integrations">Restormel Integrations</a> (CLI, MCP, AAIF)</li>
+  <li><a href="/keys/docs/integrations">Restormel Integrations</a> (CLI, MCP, Dispatch)</li>
   <li><a href="/keys/docs/guides/third-party-brand-marks">Third-party brand marks</a> (logos policy)</li>
 </ul>
 

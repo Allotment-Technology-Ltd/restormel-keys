@@ -3,7 +3,7 @@
    * Phase 3 Stage 4 — "Publish = deploy the answer-serving config".
    *
    * Promotes the current verified-query routing to LIVE so the user's app can call
-   * it (MCP / AAIF / REST). Concretely it publishes the unpublished chat-stage
+   * it (MCP / Dispatch / REST). Concretely it publishes the unpublished chat-stage
    * routes that back the console answer — resolving the publish-stranding (K-P0-3)
    * without hopping into the 3,461-line route builder. After publish, the live
    * endpoint (POST /connect/v1/graph) serves this config — the very endpoint the

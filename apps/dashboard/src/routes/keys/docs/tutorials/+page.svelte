@@ -2,7 +2,7 @@
   /**
    * Tutorials hub — the single spine for step-by-step Keys learning.
    * Unifies what used to be three competing trees: "Choose your path" (personas),
-   * the Keys integration walkthrough, and the Integrations (CLI/MCP/AAIF) walkthrough.
+   * the Keys integration walkthrough, and the Integrations (CLI/MCP/Dispatch) walkthrough.
    */
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { page } from "$app/stores";
@@ -15,7 +15,7 @@
   <title>Tutorials — Restormel Keys</title>
   <meta
     name="description"
-    content="Step-by-step Keys tutorials: choose your path by role, follow the integration walkthrough, or onboard CLI / MCP / AAIF."
+    content="Step-by-step Keys tutorials: choose your path by role, follow the integration walkthrough, or onboard CLI / MCP / Dispatch."
   />
 </svelte:head>
 
@@ -43,7 +43,7 @@
     </a>
     <a class="intent-card" href="/keys/docs/journeys/agent-ide">
       <strong>CLI, agent, or IDE path</strong>
-      <span>Developer tooling path (CLI, MCP, AAIF).</span>
+      <span>Developer tooling path (CLI, MCP, Dispatch).</span>
     </a>
     <a class="intent-card" href="/keys/docs/journeys/platform-ops">
       <strong>Running platform operations</strong>
@@ -72,7 +72,7 @@
     setup are linked from there.
   </p>
 
-  <h2>Integrations: CLI, MCP, AAIF</h2>
+  <h2>Integrations: CLI, MCP, Dispatch</h2>
   <p>
     The developer-enablement walkthrough for connecting Keys to your terminal, agent workflows, and typed AI contracts.
     Same shape as the integration walkthrough above — choose a surface, then install, configure, and verify.
@@ -82,7 +82,7 @@
     <li><a href="/keys/docs/integrations-walkthrough/phase-1-choose-workflow">Phase 1 — Choose your workflow</a></li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-2-cli">Phase 2 — CLI</a></li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-3-mcp">Phase 3 — MCP</a></li>
-    <li><a href="/keys/docs/integrations-walkthrough/phase-4-aaif">Phase 4 — AAIF</a></li>
+    <li><a href="/keys/docs/integrations-walkthrough/phase-4-aaif">Phase 4 — Dispatch</a></li>
     <li><a href="/keys/docs/integrations-walkthrough/phase-6-verify">Phase 6 — Verify and go live</a></li>
   </ol>
   <p><a href="/keys/docs/integrations-walkthrough">Integrations walkthrough overview</a> · reference lives in the <a href="/keys/docs/integrations">Integrations hub</a>.</p>

@@ -1,6 +1,6 @@
 /**
  * R5: Agents / Catalogs tab.
- * Absorbs /dev-tools (CLI, MCP catalog, AAIF).
+ * Absorbs /dev-tools (CLI, MCP catalog, Dispatch).
  * W2.4's generated MCP catalog (CATALOG_ENTRIES from @restormel/mcp) loads here
  * so the tab reflects the live tool set.
  */

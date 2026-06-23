@@ -8,7 +8,7 @@
  * stages — extraction / grouping / validation / remediation), so the resolver
  * stops returning `route_unpublished` and the live endpoint
  * (`POST /connect/v1/graph`, operation `retrieve_context` — the one the Get-Code
- * snippet targets) serves this config to the user's app (MCP / AAIF / REST).
+ * snippet targets) serves this config to the user's app (MCP / Dispatch / REST).
  *
  * This resolves the documented publish-stranding (K-P0-3) for the common case:
  * the user no longer has to hop into the 3,461-line route builder to flip each

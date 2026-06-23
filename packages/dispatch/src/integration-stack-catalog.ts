@@ -1,6 +1,6 @@
 /**
  * Single source of truth for integration component ids used in marketing, docs,
- * the dashboard stack wizard, and optional {@link AAIFRequest.integrationStack}.
+ * the dashboard stack wizard, and optional {@link DispatchRequest.integrationStack}.
  */
 export const INTEGRATION_STACK_SCHEMA_VERSION = "1" as const;
 

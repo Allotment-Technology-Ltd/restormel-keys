@@ -1,9 +1,9 @@
 {
-  "name": "@restormel/aaif",
-  "version": "0.0.19",
-  "description": "Agent-to-Agent Interaction Format — structured request/response contract for predictable AI interactions.",
+  "name": "@restormel/dispatch",
+  "version": "0.1.0",
+  "description": "Restormel Dispatch — in-process model-execution envelope: a structured request/response Interaction Format for predictable AI interactions over @restormel/keys routing and cost. Not a wire protocol (see A2A for cross-agent interop).",
   "keywords": [
-    "aaif",
+    "dispatch",
     "ai",
     "agent",
     "restormel",
@@ -11,7 +11,7 @@
   ],
   "author": "Allotment Technology Ltd",
   "license": "MIT",
-  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/aaif#readme",
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/dispatch#readme",
   "bugs": {
     "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
   },
@@ -21,7 +21,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
-    "directory": "packages/aaif"
+    "directory": "packages/dispatch"
   },
   "files": [
     "dist",

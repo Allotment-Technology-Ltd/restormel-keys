@@ -10,19 +10,19 @@
     {
       id: "i01-overview",
       title: "Prompt I01 — Review Phase 0 (no code changes)",
-      intent: "Have an agent read Phase 0 and the Integrations spec and produce a short summary of what Integrations is and when to use CLI vs MCP vs AAIF.",
+      intent: "Have an agent read Phase 0 and the Integrations spec and produce a short summary of what Integrations is and when to use CLI vs MCP vs Dispatch.",
       contextDocs: [
         "This page: /keys/docs/integrations-walkthrough/phase-0-overview",
         "docs/integrations/INTEGRATIONS-FULL-SPEC.md §0–1",
       ],
       prompt: `You are working in [your repo or the restormel-keys repo].
 
-Goal: Review the Restormel Integrations walkthrough Phase 0 and produce a one-paragraph summary of what Integrations is and when you would use CLI vs MCP vs AAIF. No code changes.
+Goal: Review the Restormel Integrations walkthrough Phase 0 and produce a one-paragraph summary of what Integrations is and when you would use CLI vs MCP vs Dispatch. No code changes.
 
 Steps:
 1. Read Phase 0 (What is Restormel Integrations?) in full.
 2. Read the Integrations full spec §0 (Purpose) and §1 (Product model).
-3. Write 2–3 sentences: what Integrations is, and which surface (CLI / MCP / AAIF) applies to "terminal workflow," "agent/IDE workflow," and "structured AI contract."
+3. Write 2–3 sentences: what Integrations is, and which surface (CLI / MCP / Dispatch) applies to "terminal workflow," "agent/IDE workflow," and "structured AI contract."
 
 DO NOT: Install packages. Modify any code. Commit.`,
       gate: "You have a short written summary; no repo changes.",
@@ -32,7 +32,7 @@ DO NOT: Install packages. Modify any code. Commit.`,
 
 <svelte:head>
   <title>Phase 0 — What is Restormel Integrations? — Integrations walkthrough</title>
-  <meta name="description" content="Product model, when to use CLI/MCP/AAIF, and how Integrations relates to Keys." />
+  <meta name="description" content="Product model, when to use CLI/MCP/Dispatch, and how Integrations relates to Keys." />
 </svelte:head>
 
 <div class="doc-content">
@@ -44,12 +44,12 @@ DO NOT: Install packages. Modify any code. Commit.`,
     <strong>You'll need:</strong> A browser; optional: Restormel account
   </p>
 
-  <p>This phase establishes what Restormel Integrations is, how it relates to Restormel Keys, and when to use which surface (CLI, MCP, AAIF).</p>
+  <p>This phase establishes what Restormel Integrations is, how it relates to Restormel Keys, and when to use which surface (CLI, MCP, Dispatch).</p>
 
   <h2>Product model</h2>
   <ul>
     <li><strong>Restormel Keys</strong> — Core. BYOK, routing, cost, entitlements. You use it from your app via the SDK and Cloud API.</li>
-    <li><strong>Restormel Integrations</strong> — Developer surfaces. Connects Keys to your <strong>terminal</strong> (CLI), <strong>agent/IDE</strong> (MCP), and <strong>structured AI contracts</strong> (AAIF).</li>
+    <li><strong>Restormel Integrations</strong> — Developer surfaces. Connects Keys to your <strong>terminal</strong> (CLI), <strong>agent/IDE</strong> (MCP), and <strong>structured AI contracts</strong> (Dispatch).</li>
     <li><strong>Future Restormel</strong> — Graph, evaluation, reasoning (out of scope for this walkthrough).</li>
   </ul>
   <p>Integrations does not replace Keys. It makes Keys usable from more places.</p>
@@ -62,12 +62,12 @@ DO NOT: Install packages. Modify any code. Commit.`,
     <tbody>
       <tr><td><strong>CLI</strong></td><td>Available</td><td>You want terminal-based doctor, validate, models list, routing explain</td></tr>
       <tr><td><strong>MCP</strong></td><td>Early</td><td>You want agents or IDEs to call Restormel tools</td></tr>
-      <tr><td><strong>AAIF</strong></td><td>Advanced</td><td>You want a typed request/response contract for AI interactions</td></tr>
+      <tr><td><strong>Dispatch</strong></td><td>Advanced</td><td>You want a typed request/response contract for AI interactions</td></tr>
     </tbody>
   </table>
 
   <h2>Step 0.1 — Confirm your starting point</h2>
-  <p>You either already use Restormel Keys (project, Gateway Key, routes) — then Integrations adds CLI/MCP/AAIF on top — or you are new to Restormel. If new, start with the <a href="/keys/docs/walkthrough">Keys walkthrough</a> for install and first resolve; then return here for Integrations phases 1–6.</p>
+  <p>You either already use Restormel Keys (project, Gateway Key, routes) — then Integrations adds CLI/MCP/Dispatch on top — or you are new to Restormel. If new, start with the <a href="/keys/docs/walkthrough">Keys walkthrough</a> for install and first resolve; then return here for Integrations phases 1–6.</p>
 
   <AgentPromptsSection
     intro="Optional. Use if you're implementing with a coding agent and want a gated review of Phase 0."

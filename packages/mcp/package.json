@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@restormel/aaif": "workspace:*",
+    "@restormel/dispatch": "workspace:*",
     "@restormel/connect-core": "workspace:*",
     "@restormel/contracts": "workspace:*",
     "@restormel/keys": "workspace:*",

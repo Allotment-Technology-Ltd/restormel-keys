@@ -174,7 +174,7 @@ const PHASES_ALL: JourneyPhase[] = [
     steps: [
       {
         title: "Dev Tools",
-        detail: "MCP, CLI, AAIF entry points.",
+        detail: "MCP, CLI, Dispatch entry points.",
         dashboardHref: `${HOST}/keys/dashboard/dev-tools`,
         suggestedMcpTools: [
           "testing.journey",
