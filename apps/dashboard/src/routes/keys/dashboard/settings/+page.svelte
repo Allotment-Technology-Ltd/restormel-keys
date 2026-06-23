@@ -27,6 +27,47 @@
   let resetMsg: { kind: "ok" | "error"; text: string } | null = null;
   $: resetArmed = resetConfirm.trim().toLowerCase() === RESET_CONFIRM_PHRASE;
 
+  // ── Export my data (GDPR Art 20) ──────────────────────────────────────────
+  // Recommended before an erasure: take your data out, THEN reset to day-0.
+  let exporting = false;
+  let exportMsg: { kind: "ok" | "error"; text: string } | null = null;
+
+  async function exportMyData() {
+    if (exporting) return;
+    exporting = true;
+    exportMsg = null;
+    try {
+      // Same-origin GET; the browser attaches an Origin/Referer the server validates.
+      const res = await fetch(DASHBOARD_BASE + "/settings/export", { method: "GET" });
+      if (!res.ok) {
+        exportMsg = {
+          kind: "error",
+          text:
+            res.status === 403
+              ? "Request blocked (origin check). Reload and try again."
+              : "Export failed. Please try again.",
+        };
+        return;
+      }
+      // Stream the attachment to a download without leaving the page.
+      const blob = await res.blob();
+      const stamp = new Date().toISOString().slice(0, 10);
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `restormel-account-export-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      exportMsg = { kind: "ok", text: "Your data export was downloaded." };
+    } catch {
+      exportMsg = { kind: "error", text: "Network error. Nothing was exported." };
+    } finally {
+      exporting = false;
+    }
+  }
+
   async function submitReset() {
     if (!resetArmed || resetting) return;
     resetting = true;
@@ -203,6 +244,28 @@
     <a class="btn btn-secondary" href={DASHBOARD_BASE + "/logout"} data-sveltekit-reload>Sign out</a>
   </section>
 
+  <section class="settings-section export-zone" aria-labelledby="export-heading">
+    <h2 id="export-heading" class="section-title">Export my data</h2>
+    <p class="section-desc">
+      <strong>Download a copy of your account data</strong> (GDPR Art 20 — data portability) as a
+      single machine-readable JSON file: your projects, sources, knowledge graph (units, relations,
+      groups), routes, policies, and settings. We recommend doing this <strong>before</strong> a
+      reset or erasure below.
+    </p>
+    <p class="section-note">
+      For your security the export contains API-key and provider-credential <strong>metadata
+      only</strong> (provider, label, key prefix, last-4, scopes, timestamps) — never any secret
+      value. Your decrypted provider keys are <strong>not</strong> included; you already hold those
+      with your providers.
+    </p>
+    <button type="button" class="btn btn-secondary" on:click={exportMyData} disabled={exporting}>
+      {exporting ? "Preparing export…" : "Export my data (JSON)"}
+    </button>
+    {#if exportMsg}
+      <p class="reset-msg {exportMsg.kind === 'ok' ? 'ok' : 'error'}" role="status">{exportMsg.text}</p>
+    {/if}
+  </section>
+
   <section class="settings-section danger-zone" aria-labelledby="danger-heading">
     <h2 id="danger-heading" class="section-title danger-title">Danger zone</h2>
     <p class="section-desc">
@@ -210,7 +273,16 @@
       <strong>everything in your account</strong> — sources, graphs, projects, routes, keys,
       ingestion &amp; readiness runs, the Connect ledger, request/usage logs, and your encrypted
       provider credentials. Your sign-in stays; you start again from a clean, first-run state.
-      <strong>This cannot be undone.</strong>
+      <strong>This cannot be undone.</strong> Consider
+      <strong>exporting your data above first</strong>.
+    </p>
+
+    <p class="section-note external-store-note">
+      <strong>Using an external graph store?</strong> If you connected your own SurrealDB, Neo4j, or
+      Weaviate, that data lives in <strong>your</strong> infrastructure, not ours. This reset clears
+      only the <strong>connection configuration</strong> held here — it cannot and does not delete
+      rows in your external store. To complete a full erasure, delete the data in your external
+      store directly with your provider.
     </p>
 
     <label class="erase-row">
@@ -435,10 +507,22 @@
     color: var(--rm-danger, #b3261e);
   }
 
+  /* ── Export zone ───────────────────────────────────────────────────────── */
+  .export-zone {
+    border-left: 4px solid var(--rm-sage, #2f6f4f);
+  }
+
   /* ── Danger zone ───────────────────────────────────────────────────────── */
   .danger-zone {
     border-color: var(--rm-danger, #b3261e);
     border-left: 4px solid var(--rm-danger, #b3261e);
+  }
+  .external-store-note {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    background: var(--rm-surface-raised);
+    border: var(--border-thin);
+    border-left: 3px solid var(--rm-dim);
   }
   .danger-title {
     color: var(--rm-danger, #b3261e);

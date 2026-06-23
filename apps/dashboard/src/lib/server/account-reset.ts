@@ -68,14 +68,26 @@ export const ORPHAN_RISK_WORKSPACE_TABLES = [
 ] as const;
 
 /**
- * Note for reviewers: an external graph store (when
- * `workspaces.graph_store_config` points at SurrealDB / another graph DB) is NOT
- * reachable from this Postgres transaction. Full erasure of those rows is a
- * follow-up (open question). The Postgres `knowledge_graph_*` spine IS cleared
- * via the workspace cascade.
+ * Note for reviewers — external graph store boundary (BYO infra, out of Art 17 scope):
+ *
+ * When `workspaces.graph_store_config` points at an EXTERNAL graph store
+ * (SurrealDB / Neo4j / Weaviate), that store is the USER's OWN infrastructure —
+ * Restormel only holds the connection config + an encrypted secret to reach it.
+ * Those external rows are therefore OUTSIDE Restormel's data-controller boundary
+ * and out of scope for OUR Art 17 erasure: this reset clears only the connection
+ * CONFIG held in Postgres (the `graph_store_config` JSONB is wiped by the
+ * workspace cascade, taking the encrypted secret with it), so Restormel retains
+ * no further access to the user's store. To complete a full erasure the user
+ * deletes the data in their external store directly with their provider. This is
+ * surfaced to the user in the Danger-zone copy.
+ *
+ * The Postgres `knowledge_graph_*` spine (Restormel-hosted) IS fully cleared via
+ * the workspace cascade — only genuinely external stores are out of scope.
  */
 export const EXTERNAL_GRAPH_RESIDUAL =
-  "external graph store rows (graph_store_config) are not deleted by this Postgres transaction";
+  "external graph store rows (graph_store_config) are not deleted by this Postgres transaction; " +
+  "the external store is the user's own infrastructure — reset clears only the connection config " +
+  "(and its encrypted secret), and the user erases their own external store with their provider";
 
 /** The exact phrase the user must type to confirm a destructive reset. */
 export const RESET_CONFIRM_PHRASE = "reset my account";
